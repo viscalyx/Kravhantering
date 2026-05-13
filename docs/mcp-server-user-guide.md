@@ -94,13 +94,10 @@ The MCP route is authenticated. Every request to `/api/mcp` must include an
 
 The middleware checks that the Bearer header is present. The MCP HTTP route then
 validates the JWT against the configured issuer JWKS and API audience before any
-MCP transport or tool handler runs. Accepted tokens must contain an
-`employeeHsaId` claim. Mutating tools that stamp actor history require a
-real-format HSA-ID; the committed local MCP service client emits
-`SE2321000032-mcp1`. Read-only service-account tokens may use the documented
-synthetic form `mcp-client:<client-id>`; for the configured MCP service client,
-the server can derive that value from a verified `client_id` or `azp` claim
-when the token does not carry a separate `employeeHsaId` mapper.
+MCP transport or tool handler runs. Accepted tokens must contain a real-format
+`employeeHsaId` claim. The committed local MCP service client emits
+`SE2321000032-mcp1`. If a local token lacks that claim, reset or re-import the
+local Keycloak realm instead of compensating in application code.
 
 Invalid or missing tokens return `401` with `WWW-Authenticate: Bearer` and a
 JSON-RPC error body. MCP does not use browser cookies and is intentionally
@@ -119,7 +116,8 @@ TypeORM stack. For the full developer setup, see
 4. Start the app with `npm run dev`.
 
    To obtain a dev MCP token, first make sure the local IdP is running with
-   `npm run idp:up`, then run `node scripts/security/get-mcp-token.mjs`.
+   the current realm JSON (`npm run idp:up` if the realm may be stale), then
+   run `node scripts/security/get-mcp-token.mjs`.
 
 5. Configure your MCP client with the non-production Bearer token from
    `scripts/security/get-mcp-token.mjs` for the local issuer/audience and

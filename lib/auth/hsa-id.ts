@@ -12,8 +12,7 @@
  *
  * Example: `SE2321000032-1003`.
  *
- * The synthetic MCP namespace `mcp-client:<client_id>` is intentionally
- * NOT a valid HSA-id and must be checked for separately by the caller.
+ * Non-HSA service identifiers are intentionally NOT valid HSA-ids.
  */
 
 /** Maximum length of an HSA-id (inclusive). */

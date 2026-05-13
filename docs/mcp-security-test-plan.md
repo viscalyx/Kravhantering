@@ -28,8 +28,7 @@ The suite covers:
 - Tool allowlist: exactly the documented 11 tools are exposed, and unknown
   tool names fail without invoking the requirements service.
 - Bearer auth: missing, invalid, wrong-issuer, wrong-audience, missing
-  `employeeHsaId`, invalid HSA ID, and accepted synthetic `mcp-client:*`
-  identities.
+  `employeeHsaId`, and invalid HSA ID.
 - Authorization seams: representative MCP calls receive a `RequestContext`
   with `source: "mcp"`, the expected `toolName`, the request ID, and the
   verified actor attached at the HTTP edge.
@@ -50,9 +49,8 @@ Use only disposable local services and non-production credentials.
 
 1. Start the local SQL Server and app with the normal developer workflow.
 2. Obtain or mint a non-production Bearer token for the configured issuer and
-   audience. Mutating tools must use a real-format `employeeHsaId`, for example
-   `SE2321000032-mcp1` in the local Keycloak realm. Read-only service-account
-   smoke tests may use the synthetic fallback `mcp-client:<client-id>`.
+   audience. Tokens must use a real-format `employeeHsaId`, for example
+   `SE2321000032-mcp1` in the local Keycloak realm.
 3. Open MCP Inspector or another MCP client that supports Streamable HTTP.
 4. Configure the server URL as `http://localhost:3000/api/mcp`.
 5. Add the header `Authorization: Bearer <non-production-token>`.

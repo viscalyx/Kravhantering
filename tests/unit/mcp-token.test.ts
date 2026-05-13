@@ -31,8 +31,6 @@ function mockOidcConfiguration(jwksUri = discoveredJwksUri) {
 
 describe('verifyMcpBearerToken', () => {
   beforeEach(() => {
-    vi.stubEnv('AUTH_OIDC_MCP_CLIENT_ID', 'kravhantering-mcp')
-    vi.stubEnv('MCP_CLIENT_ID', 'kravhantering-mcp')
     getAuthConfigMock.mockReset()
     getOidcConfigurationMock.mockReset()
     jwtVerifyMock.mockReset()
@@ -68,7 +66,7 @@ describe('verifyMcpBearerToken', () => {
       payload: {
         sub: 'svc-account',
         roles: ['Admin'],
-        employeeHsaId: 'mcp-client:kravhantering-mcp',
+        employeeHsaId: 'SE2321000032-mcp1',
       },
     })
 
@@ -82,7 +80,7 @@ describe('verifyMcpBearerToken', () => {
     expect(result?.actor).toEqual({
       id: 'svc-account',
       displayName: 'svc-account',
-      hsaId: 'mcp-client:kravhantering-mcp',
+      hsaId: 'SE2321000032-mcp1',
       isAuthenticated: true,
       roles: ['Admin'],
       source: 'mcp',
@@ -121,92 +119,6 @@ describe('verifyMcpBearerToken', () => {
       }),
     )
     expect(result?.actor.hsaId).toBe('SE2321000032-reviewer1')
-  })
-
-  it('derives a synthetic HSA-id for the configured MCP service client', async () => {
-    getAuthConfigMock.mockReturnValue({
-      issuerUrl: 'https://issuer.example.com',
-      apiAudience: 'kravhantering-app',
-    })
-    jwtVerifyMock.mockResolvedValue({
-      payload: {
-        sub: 'service-account-kravhantering-mcp',
-        roles: ['Admin'],
-        client_id: 'kravhantering-mcp',
-      },
-    })
-
-    const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
-    const result = await verifyMcpBearerToken(
-      new Request('http://x/', {
-        headers: { authorization: 'Bearer abc.def.ghi' },
-      }),
-    )
-
-    expect(result?.actor).toEqual({
-      id: 'service-account-kravhantering-mcp',
-      displayName: 'service-account-kravhantering-mcp',
-      hsaId: 'mcp-client:kravhantering-mcp',
-      isAuthenticated: true,
-      roles: ['Admin'],
-      source: 'mcp',
-    })
-  })
-
-  it('derives a synthetic HSA-id from azp for providers without client_id', async () => {
-    getAuthConfigMock.mockReturnValue({
-      issuerUrl: 'https://issuer.example.com',
-      apiAudience: 'kravhantering-app',
-    })
-    jwtVerifyMock.mockResolvedValue({
-      payload: {
-        sub: 'service-account-kravhantering-mcp',
-        roles: ['Admin'],
-        azp: 'kravhantering-mcp',
-      },
-    })
-
-    const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
-    const result = await verifyMcpBearerToken(
-      new Request('http://x/', {
-        headers: { authorization: 'Bearer abc.def.ghi' },
-      }),
-    )
-
-    expect(result?.actor.hsaId).toBe('mcp-client:kravhantering-mcp')
-  })
-
-  it('warns and prefers AUTH_OIDC_MCP_CLIENT_ID when MCP client ids differ', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    vi.stubEnv('AUTH_OIDC_MCP_CLIENT_ID', 'canonical-client')
-    vi.stubEnv('MCP_CLIENT_ID', 'legacy-client')
-    getAuthConfigMock.mockReturnValue({
-      issuerUrl: 'https://issuer.example.com',
-      apiAudience: 'kravhantering-app',
-    })
-    jwtVerifyMock.mockResolvedValue({
-      payload: {
-        sub: 'service-account-canonical-client',
-        roles: ['Admin'],
-        client_id: 'canonical-client',
-      },
-    })
-
-    try {
-      const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
-      const result = await verifyMcpBearerToken(
-        new Request('http://x/', {
-          headers: { authorization: 'Bearer abc.def.ghi' },
-        }),
-      )
-
-      expect(result?.actor.hsaId).toBe('mcp-client:canonical-client')
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('AUTH_OIDC_MCP_CLIENT_ID takes precedence'),
-      )
-    } finally {
-      warnSpy.mockRestore()
-    }
   })
 
   it('rejects when employeeHsaId is missing', async () => {
@@ -263,7 +175,7 @@ describe('verifyMcpBearerToken', () => {
     )
   })
 
-  it('rejects when employeeHsaId is malformed (and not synthetic)', async () => {
+  it('rejects when employeeHsaId is malformed', async () => {
     getAuthConfigMock.mockReturnValue({
       issuerUrl: 'https://issuer.example.com',
       apiAudience: 'kravhantering-app',
@@ -425,8 +337,6 @@ describe('verifyMcpBearerToken security audit events', () => {
   let infoSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
-    vi.stubEnv('AUTH_OIDC_MCP_CLIENT_ID', 'kravhantering-mcp')
-    vi.stubEnv('MCP_CLIENT_ID', 'kravhantering-mcp')
     getAuthConfigMock.mockReset()
     getOidcConfigurationMock.mockReset()
     jwtVerifyMock.mockReset()
@@ -543,7 +453,7 @@ describe('verifyMcpBearerToken security audit events', () => {
       payload: {
         sub: 'svc',
         roles: ['Admin'],
-        employeeHsaId: 'mcp-client:kravhantering-mcp',
+        employeeHsaId: 'SE2321000032-mcp1',
         client_id: 'kravhantering-mcp',
         scope: 'mcp:read mcp:write',
       },
@@ -562,7 +472,7 @@ describe('verifyMcpBearerToken security audit events', () => {
     expect(events[0].actor).toEqual({
       source: 'mcp',
       sub: 'svc',
-      hsaId: 'mcp-client:kravhantering-mcp',
+      hsaId: 'SE2321000032-mcp1',
       clientId: 'kravhantering-mcp',
     })
     expect(events[0].detail).toEqual({

@@ -50,7 +50,7 @@ describe('isHsaId / assertHsaId', () => {
     expect(() => assertHsaId('not-an-hsa-id')).toThrow(HsaIdFormatError)
   })
 
-  it('does not consider the synthetic MCP value to be an HSA-id', () => {
+  it('does not consider a service identifier to be an HSA-id', () => {
     expect(isHsaId('mcp-client:kravhantering-mcp')).toBe(false)
   })
 })
