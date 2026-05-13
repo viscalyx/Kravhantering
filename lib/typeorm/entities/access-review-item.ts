@@ -98,6 +98,7 @@ export const accessReviewItemEntity = new EntitySchema<AccessReviewItemEntity>({
     decidedAt: {
       name: 'decided_at',
       nullable: true,
+      precision: 3,
       type: 'datetime2',
     },
     decidedByHsaId: {
@@ -118,7 +119,7 @@ export const accessReviewItemEntity = new EntitySchema<AccessReviewItemEntity>({
       nullable: true,
       type: 'nvarchar',
     },
-    createdAt: { name: 'created_at', type: 'datetime2' },
+    createdAt: { name: 'created_at', precision: 3, type: 'datetime2' },
   },
   indices: [
     {

@@ -5,18 +5,13 @@ import {
   accessReviewServiceActor,
   recordAccessReviewAuthorizationDenied,
 } from '@/lib/access-review/route-audit'
+import { accessReviewErrorResponse } from '@/lib/access-review/route-helpers'
 import {
   createAccessReviewRun,
   listAccessReviewRuns,
 } from '@/lib/access-review/service'
 import { recordSecurityEvent } from '@/lib/auth/audit'
-import { CsrfError } from '@/lib/auth/csrf'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import {
-  getErrorMessage,
-  logSanitizedError,
-  redactSensitiveText,
-} from '@/lib/http/safe-errors'
 import {
   nullableBoundedDbStringSchema,
   readJsonWithSchema,
@@ -26,8 +21,6 @@ import {
   type RequestContext,
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
-import { isRequirementsServiceError } from '@/lib/requirements/errors'
-import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,26 +41,6 @@ const createAccessReviewSchema = z
   })
   .strict()
 
-function unexpectedErrorBody(message: string, error: unknown) {
-  return {
-    ...(process.env.NODE_ENV === 'development'
-      ? { debugMessage: redactSensitiveText(getErrorMessage(error)) }
-      : {}),
-    error: message,
-  }
-}
-
-function errorResponse(message: string, error: unknown) {
-  if (error instanceof CsrfError || isRequirementsServiceError(error)) {
-    const { body, status } = toHttpErrorPayload(error)
-    return NextResponse.json(body, { status })
-  }
-  logSanitizedError(message, error)
-  return NextResponse.json(unexpectedErrorBody(message, error), {
-    status: 500,
-  })
-}
-
 export async function GET(request: NextRequest) {
   try {
     const context = await createRequestContext(request, 'rest')
@@ -78,7 +51,7 @@ export async function GET(request: NextRequest) {
     )
     return NextResponse.json({ runs })
   } catch (error) {
-    return errorResponse('Failed to list access reviews', error)
+    return accessReviewErrorResponse('Failed to list access reviews', error)
   }
 }
 
@@ -121,6 +94,6 @@ export async function POST(request: NextRequest) {
       { actionKind: 'access_review.create' },
       error,
     )
-    return errorResponse('Failed to create access review', error)
+    return accessReviewErrorResponse('Failed to create access review', error)
   }
 }

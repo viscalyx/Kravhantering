@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { CsrfError } from '@/lib/auth/csrf'
 import { forbiddenError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
@@ -239,6 +240,21 @@ describe('access review routes', () => {
     )
   })
 
+  it('rejects create when CSRF validation fails before opening the database', async () => {
+    routeState.createRequestContext.mockRejectedValueOnce(
+      new CsrfError('Missing X-Requested-With header.'),
+    )
+    const { POST } = await import('@/app/api/admin/access-reviews/route')
+    const response = await POST(
+      jsonRequest('http://localhost/api/admin/access-reviews', {}) as never,
+    )
+
+    expect(response.status).toBe(403)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.createAccessReviewRun).not.toHaveBeenCalled()
+    expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
+  })
+
   it('decides an assigned review item', async () => {
     const { PATCH } = await import(
       '@/app/api/admin/access-reviews/[id]/items/[itemId]/route'
@@ -289,6 +305,28 @@ describe('access review routes', () => {
     expect(routeState.decideAccessReviewItem).not.toHaveBeenCalled()
   })
 
+  it('rejects item decisions when CSRF validation fails before opening the database', async () => {
+    routeState.createRequestContext.mockRejectedValueOnce(
+      new CsrfError('Missing X-Requested-With header.'),
+    )
+    const { PATCH } = await import(
+      '@/app/api/admin/access-reviews/[id]/items/[itemId]/route'
+    )
+    const response = await PATCH(
+      jsonRequest(
+        'http://localhost/api/admin/access-reviews/42/items/7',
+        { comment: 'Still needed', decision: 'approved' },
+        'PATCH',
+      ) as never,
+      { params: Promise.resolve({ id: '42', itemId: '7' }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.decideAccessReviewItem).not.toHaveBeenCalled()
+    expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
+  })
+
   it('cancels an access review run and audits the state change', async () => {
     const { POST } = await import(
       '@/app/api/admin/access-reviews/[id]/cancel/route'
@@ -312,6 +350,26 @@ describe('access review routes', () => {
         event: 'access_review.cancelled',
       }),
     )
+  })
+
+  it('rejects cancelling when CSRF validation fails before opening the database', async () => {
+    routeState.createRequestContext.mockRejectedValueOnce(
+      new CsrfError('Missing X-Requested-With header.'),
+    )
+    const { POST } = await import(
+      '@/app/api/admin/access-reviews/[id]/cancel/route'
+    )
+    const response = await POST(
+      new Request('http://localhost/api/admin/access-reviews/42/cancel', {
+        method: 'POST',
+      }) as never,
+      { params: Promise.resolve({ id: '42' }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.cancelAccessReviewRun).not.toHaveBeenCalled()
+    expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
   })
 
   it('exports JSON with no-store headers', async () => {
@@ -340,5 +398,26 @@ describe('access review routes', () => {
         event: 'access_review.exported',
       }),
     )
+  })
+
+  it('rejects exports with no-store headers when CSRF validation fails before opening the database', async () => {
+    routeState.createRequestContext.mockRejectedValueOnce(
+      new CsrfError('Missing X-Requested-With header.'),
+    )
+    const { POST } = await import(
+      '@/app/api/admin/access-reviews/[id]/export/route'
+    )
+    const response = await POST(
+      jsonRequest('http://localhost/api/admin/access-reviews/42/export', {
+        delivery: 'json',
+      }) as never,
+      { params: Promise.resolve({ id: '42' }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.buildAccessReviewExport).not.toHaveBeenCalled()
+    expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
   })
 })

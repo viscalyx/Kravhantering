@@ -5,15 +5,13 @@ import {
   accessReviewServiceActor,
   recordAccessReviewAuthorizationDenied,
 } from '@/lib/access-review/route-audit'
+import {
+  type AccessReviewItemRouteParams,
+  accessReviewErrorResponse,
+} from '@/lib/access-review/route-helpers'
 import { decideAccessReviewItem } from '@/lib/access-review/service'
 import { recordSecurityEvent } from '@/lib/auth/audit'
-import { CsrfError } from '@/lib/auth/csrf'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import {
-  getErrorMessage,
-  logSanitizedError,
-  redactSensitiveText,
-} from '@/lib/http/safe-errors'
 import {
   nullableBusinessTextSchema,
   parseRouteParams,
@@ -24,12 +22,8 @@ import {
   createRequestContext,
   type RequestContext,
 } from '@/lib/requirements/auth'
-import { isRequirementsServiceError } from '@/lib/requirements/errors'
-import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
-
-type Params = Promise<{ id: string; itemId: string }>
 
 const paramsSchema = z
   .object({
@@ -50,29 +44,9 @@ const decisionSchema = z
   })
   .strict()
 
-function unexpectedErrorBody(message: string, error: unknown) {
-  return {
-    ...(process.env.NODE_ENV === 'development'
-      ? { debugMessage: redactSensitiveText(getErrorMessage(error)) }
-      : {}),
-    error: message,
-  }
-}
-
-function errorResponse(message: string, error: unknown) {
-  if (error instanceof CsrfError || isRequirementsServiceError(error)) {
-    const { body, status } = toHttpErrorPayload(error)
-    return NextResponse.json(body, { status })
-  }
-  logSanitizedError(message, error)
-  return NextResponse.json(unexpectedErrorBody(message, error), {
-    status: 500,
-  })
-}
-
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Params },
+  { params }: { params: AccessReviewItemRouteParams },
 ) {
   const parsedParams = await parseRouteParams(params, paramsSchema)
   if (!parsedParams.ok) return parsedParams.response
@@ -113,6 +87,9 @@ export async function PATCH(
       },
       error,
     )
-    return errorResponse('Failed to decide access review item', error)
+    return accessReviewErrorResponse(
+      'Failed to decide access review item',
+      error,
+    )
   }
 }

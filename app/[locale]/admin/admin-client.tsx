@@ -57,7 +57,8 @@ import type {
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
-import { formatActorDisplayName } from '@/lib/privacy/display-name'
+import { BUSINESS_TEXT_MAX_LENGTH } from '@/lib/http/validation-constants'
+import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import {
   getOrderedRequirementListColumns,
   getRequirementColumnDefinition,
@@ -986,9 +987,9 @@ function PrivacyErasurePanel() {
                     canSwitch: canUseSwitchAction,
                   })
                   const rowExecutionStatus = executionStatuses?.[group.key]
-                  const currentDisplayValue = formatActorDisplayName(
+                  const currentDisplayValue = formatActorDisplayNameForLocale(
                     group.currentDisplayValue,
-                    tc('anonymousUser'),
+                    locale,
                   )
                   return (
                     <tr
@@ -1385,6 +1386,17 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
     if (!selectedRunId) return
     const draft = decisionDrafts[item.id]
     if (!draft) return
+    const comment = draft.comment.trim()
+    if (comment.length > BUSINESS_TEXT_MAX_LENGTH) {
+      setStatus('error')
+      setSavingAction(null)
+      setMessage(
+        ta('accessReview.commentTooLong', {
+          max: BUSINESS_TEXT_MAX_LENGTH,
+        }),
+      )
+      return
+    }
     exportDownload.clearError()
     setStatus('saving')
     setSavingAction('decision')
@@ -1394,7 +1406,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
         `/api/admin/access-reviews/${selectedRunId}/items/${item.id}`,
         {
           body: JSON.stringify({
-            comment: draft.comment.trim() || null,
+            comment: comment || null,
             decision: draft.decision,
           }),
           headers: { 'Content-Type': 'application/json' },
@@ -1465,9 +1477,9 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
   const displayedDetail = selectedDetail
   const displayedRun = displayedDetail?.run ?? null
   const selectedReviewerDisplayName = displayedRun
-    ? (formatActorDisplayName(
+    ? (formatActorDisplayNameForLocale(
         displayedRun.reviewer.displayName,
-        tc('anonymousUser'),
+        locale,
       ) ?? displayedRun.reviewer.displayName)
     : ''
   const isDisplayedRunClosed =
@@ -1915,7 +1927,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                                       ? ta('accessReview.rowNeedsReview')
                                       : ta('accessReview.rowApproved')
                                   }
-                                  className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors disabled:opacity-60 ${
+                                  className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border transition-colors disabled:opacity-60 ${
                                     canChooseDecision
                                       ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-900/40'
                                       : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-900/40'
@@ -1951,9 +1963,9 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                             )}
                             <td className="px-4 py-3">
                               <div className="font-medium text-secondary-900 dark:text-secondary-100">
-                                {formatActorDisplayName(
+                                {formatActorDisplayNameForLocale(
                                   item.principal.displayName,
-                                  tc('anonymousUser'),
+                                  locale,
                                 ) ?? item.principal.displayName}
                               </div>
                               <div className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
@@ -2024,7 +2036,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                             <td className="px-4 py-3 text-left align-middle">
                               {canChooseDecision ? (
                                 <textarea
-                                  className="min-h-20 w-64 rounded-xl border border-secondary-200 bg-white px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-secondary-100 disabled:text-secondary-500 dark:border-secondary-700 dark:bg-secondary-950 dark:disabled:bg-secondary-800 dark:disabled:text-secondary-400"
+                                  className="min-h-20 w-full max-w-sm rounded-xl border border-secondary-200 bg-white px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-secondary-100 disabled:text-secondary-500 dark:border-secondary-700 dark:bg-secondary-950 dark:disabled:bg-secondary-800 dark:disabled:text-secondary-400"
                                   disabled={
                                     isDetailLoading || status === 'saving'
                                   }

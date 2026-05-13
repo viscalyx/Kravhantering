@@ -1,0 +1,1 @@
+export const BUSINESS_TEXT_MAX_LENGTH = 10_000

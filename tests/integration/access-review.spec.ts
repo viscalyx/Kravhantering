@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 
 function accessReviewDetail(decision = 'pending') {
   return {
@@ -75,7 +75,13 @@ function accessReviewExport() {
   }
 }
 
-test('admin can decide and export an access review run', async ({ page }) => {
+async function routeAccessReviewApis(
+  page: Page,
+  options: {
+    decisionError?: { error: string; status: number }
+    exportError?: { error: string; status: number }
+  } = {},
+) {
   const exportRequests: unknown[] = []
   const decisionRequests: unknown[] = []
 
@@ -93,6 +99,14 @@ test('admin can decide and export an access review run', async ({ page }) => {
   })
   await page.route('**/api/admin/access-reviews/42/items/7', async route => {
     decisionRequests.push(route.request().postDataJSON())
+    if (options.decisionError) {
+      await route.fulfill({
+        contentType: 'application/json',
+        json: { error: options.decisionError.error },
+        status: options.decisionError.status,
+      })
+      return
+    }
     await route.fulfill({
       contentType: 'application/json',
       json: accessReviewDetail('approved'),
@@ -100,11 +114,29 @@ test('admin can decide and export an access review run', async ({ page }) => {
   })
   await page.route('**/api/admin/access-reviews/42/export', async route => {
     exportRequests.push(route.request().postDataJSON())
+    if (options.exportError) {
+      await route.fulfill({
+        contentType: 'application/json',
+        json: { error: options.exportError.error },
+        status: options.exportError.status,
+      })
+      return
+    }
     await route.fulfill({
       contentType: 'application/json',
       json: accessReviewExport(),
     })
   })
+
+  return { decisionRequests, exportRequests }
+}
+
+function accessReviewAlert(page: Page) {
+  return page.locator('#accessReview-panel').getByRole('alert')
+}
+
+test('admin can decide and export an access review run', async ({ page }) => {
+  const { decisionRequests, exportRequests } = await routeAccessReviewApis(page)
 
   await page.goto('/sv/admin?tab=accessReview')
 
@@ -116,16 +148,15 @@ test('admin can decide and export an access review run', async ({ page }) => {
 
   const row = page.getByRole('row').filter({ hasText: 'Kalle Svensson' })
   await row.getByRole('textbox').fill('Fortsatt uppdrag')
-  await row.getByRole('button', { name: 'Spara beslut' }).click()
+  await row.getByRole('button', { name: 'Rad behöver granskas' }).click()
 
   await expect.poll(() => decisionRequests.length).toBe(1)
   expect(decisionRequests[0]).toMatchObject({
     comment: 'Fortsatt uppdrag',
     decision: 'approved',
   })
-  await expect(
-    page.getByText('Beslutet i behörighetsöversynen sparades.'),
-  ).toBeVisible()
+  await expect(row).toContainText('Godkänd')
+  await expect(row).toContainText('Fortsatt uppdrag')
 
   await page.getByRole('button', { name: 'Exportera JSON' }).click()
   await expect.poll(() => exportRequests.length).toBe(1)
@@ -134,4 +165,70 @@ test('admin can decide and export an access review run', async ({ page }) => {
   await page.getByRole('button', { name: 'Exportera PDF' }).click()
   await expect.poll(() => exportRequests.length).toBe(2)
   expect(exportRequests[1]).toEqual({ delivery: 'pdf' })
+})
+
+for (const { error, status } of [
+  { error: 'Serverfel vid beslut', status: 500 },
+  { error: 'Saknar behörighet', status: 403 },
+]) {
+  test(`surfaces decision failure ${status} without saving the row`, async ({
+    page,
+  }) => {
+    const { decisionRequests } = await routeAccessReviewApis(page, {
+      decisionError: { error, status },
+    })
+
+    await page.goto('/sv/admin?tab=accessReview')
+
+    const row = page.getByRole('row').filter({ hasText: 'Kalle Svensson' })
+    await row.getByRole('textbox').fill('Fortsatt uppdrag')
+    await row.getByRole('button', { name: 'Rad behöver granskas' }).click()
+
+    await expect.poll(() => decisionRequests.length).toBe(1)
+    await expect(accessReviewAlert(page)).toContainText(error)
+    await expect(
+      row.getByRole('button', { name: 'Rad behöver granskas' }),
+    ).toBeVisible()
+    await expect(row.getByRole('textbox')).toBeVisible()
+  })
+}
+
+for (const { error, status } of [
+  { error: 'Exporten misslyckades', status: 500 },
+  { error: 'Saknar behörighet', status: 403 },
+  {
+    error: 'Granskningen kan inte exporteras i nuvarande läge',
+    status: 409,
+  },
+]) {
+  test(`surfaces export failure ${status}`, async ({ page }) => {
+    const { exportRequests } = await routeAccessReviewApis(page, {
+      exportError: { error, status },
+    })
+
+    await page.goto('/sv/admin?tab=accessReview')
+
+    await page.getByRole('button', { name: 'Exportera JSON' }).click()
+
+    await expect.poll(() => exportRequests.length).toBe(1)
+    expect(exportRequests[0]).toEqual({ delivery: 'json' })
+    await expect(accessReviewAlert(page)).toContainText(error)
+  })
+}
+
+test('validates long decision comments before sending a decision request', async ({
+  page,
+}) => {
+  const { decisionRequests } = await routeAccessReviewApis(page)
+
+  await page.goto('/sv/admin?tab=accessReview')
+
+  const row = page.getByRole('row').filter({ hasText: 'Kalle Svensson' })
+  await row.getByRole('textbox').fill('a'.repeat(10_001))
+  await row.getByRole('button', { name: 'Rad behöver granskas' }).click()
+
+  await expect(accessReviewAlert(page)).toContainText(
+    'Kommentaren får vara högst',
+  )
+  expect(decisionRequests).toHaveLength(0)
 })

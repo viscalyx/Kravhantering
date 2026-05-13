@@ -828,6 +828,7 @@
       "cancelError": "Kunde inte avbryta behörighetsöversynen.",
       "cancelSuccess": "Behörighetsöversynen avbröts.",
       "comment": "Kommentar",
+      "commentTooLong": "Kommentaren får vara högst {max} tecken.",
       "complete": "Slutför granskning",
       "completeError": "Kunde inte slutföra behörighetsöversynen.",
       "completeSuccess": "Behörighetsöversynen slutfördes.",

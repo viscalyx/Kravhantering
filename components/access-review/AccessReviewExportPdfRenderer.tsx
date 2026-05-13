@@ -1,9 +1,11 @@
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer'
 import type {
+  AccessReviewActor,
   AccessReviewDecision,
   AccessReviewExportV1,
   AccessReviewRunStatus,
 } from '@/lib/access-review/types'
+import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 
 interface ComponentProps {
   exportData: AccessReviewExportV1
@@ -166,6 +168,13 @@ function MetadataRow({ label, value }: { label: string; value: string }) {
   )
 }
 
+function actorLabel(actor: AccessReviewActor, locale: string): string {
+  const displayName =
+    formatActorDisplayNameForLocale(actor.displayName, locale) ??
+    actor.displayName
+  return `${displayName} (${actor.hsaId})`
+}
+
 export default function AccessReviewExportPdfRenderer({
   exportData,
   locale,
@@ -183,8 +192,7 @@ export default function AccessReviewExportPdfRenderer({
           {t.generated}: {exportData.generatedAt}
         </Text>
         <Text style={styles.meta}>
-          {t.generatedBy}: {exportData.generatedBy.displayName} (
-          {exportData.generatedBy.hsaId})
+          {t.generatedBy}: {actorLabel(exportData.generatedBy, locale)}
         </Text>
 
         <View style={styles.section}>
@@ -197,7 +205,7 @@ export default function AccessReviewExportPdfRenderer({
           <MetadataRow label={t.due} value={run.dueAt} />
           <MetadataRow
             label={t.reviewer}
-            value={`${run.reviewer.displayName} (${run.reviewer.hsaId})`}
+            value={actorLabel(run.reviewer, locale)}
           />
           <MetadataRow
             label={t.evidence}
@@ -221,7 +229,7 @@ export default function AccessReviewExportPdfRenderer({
               </Text>
               <MetadataRow
                 label={t.principal}
-                value={`${item.principal.displayName} (${item.principal.hsaId})`}
+                value={actorLabel(item.principal, locale)}
               />
               <MetadataRow
                 label={t.decision}
@@ -232,7 +240,7 @@ export default function AccessReviewExportPdfRenderer({
               {item.decidedBy ? (
                 <MetadataRow
                   label={t.decidedBy}
-                  value={`${item.decidedBy.displayName} (${item.decidedBy.hsaId})`}
+                  value={actorLabel(item.decidedBy, locale)}
                 />
               ) : null}
               {item.comment ? (

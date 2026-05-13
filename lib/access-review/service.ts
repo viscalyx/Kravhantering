@@ -56,6 +56,8 @@ export interface DecideAccessReviewItemInput {
 }
 
 const ADMIN_ROLE = 'Admin'
+const ACCESS_REVIEW_ITEM_INSERT_BATCH_SIZE = 150
+const ACCESS_REVIEW_ITEM_INSERT_PARAMETER_COUNT = 11
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
@@ -393,7 +395,38 @@ async function insertItems(
   generatedAt: Date,
   items: AccessReviewPrincipalSnapshot[],
 ): Promise<void> {
-  for (const item of items) {
+  if (items.length === 0) return
+
+  const createdAt = dateParam(generatedAt)
+  for (
+    let batchStart = 0;
+    batchStart < items.length;
+    batchStart += ACCESS_REVIEW_ITEM_INSERT_BATCH_SIZE
+  ) {
+    const batch = items.slice(
+      batchStart,
+      batchStart + ACCESS_REVIEW_ITEM_INSERT_BATCH_SIZE,
+    )
+    const parameters: unknown[] = []
+    const valuesSql = batch.map((item, rowIndex) => {
+      const parameterOffset =
+        rowIndex * ACCESS_REVIEW_ITEM_INSERT_PARAMETER_COUNT
+      parameters.push(
+        runId,
+        item.sourceKey,
+        item.sourceTable,
+        item.principalHsaId,
+        item.principalDisplayName,
+        item.scopeType,
+        item.scopeKey,
+        item.scopeLabel,
+        item.permissionType,
+        item.canGenerateAi ? 1 : 0,
+        createdAt,
+      )
+      return `(@${parameterOffset}, @${parameterOffset + 1}, @${parameterOffset + 2}, @${parameterOffset + 3}, @${parameterOffset + 4}, @${parameterOffset + 5}, @${parameterOffset + 6}, @${parameterOffset + 7}, @${parameterOffset + 8}, @${parameterOffset + 9}, N'pending', @${parameterOffset + 10})`
+    })
+
     await db.query(
       `INSERT INTO access_review_items (
           run_id,
@@ -409,20 +442,8 @@ async function insertItems(
           decision,
           created_at
         )
-        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, N'pending', @10)`,
-      [
-        runId,
-        item.sourceKey,
-        item.sourceTable,
-        item.principalHsaId,
-        item.principalDisplayName,
-        item.scopeType,
-        item.scopeKey,
-        item.scopeLabel,
-        item.permissionType,
-        item.canGenerateAi ? 1 : 0,
-        dateParam(generatedAt),
-      ],
+        VALUES ${valuesSql.join(', ')}`,
+      parameters,
     )
   }
 }
@@ -604,28 +625,33 @@ export async function decideAccessReviewItem(
   }
 
   const decidedAt = new Date()
-  await db.query(
-    `UPDATE access_review_items
-      SET decision = @0,
-          decided_at = @1,
-          decided_by_hsa_id = @2,
-          decided_by_display_name = @3,
-          comment = @4
-      WHERE id = @5 AND run_id = @6`,
-    [
-      input.decision,
-      dateParam(decidedAt),
-      decidedBy.hsaId,
-      decidedBy.displayName,
-      input.comment?.trim() || null,
-      itemId,
-      runId,
-    ],
-  )
-  await db.query(
-    'UPDATE access_review_runs SET updated_at = @0 WHERE id = @1',
-    [dateParam(decidedAt), runId],
-  )
+  await db.transaction(async manager => {
+    const tx: QueryExecutor = {
+      query: (sql, params) => manager.query(sql, params),
+    }
+    await tx.query(
+      `UPDATE access_review_items
+        SET decision = @0,
+            decided_at = @1,
+            decided_by_hsa_id = @2,
+            decided_by_display_name = @3,
+            comment = @4
+        WHERE id = @5 AND run_id = @6`,
+      [
+        input.decision,
+        dateParam(decidedAt),
+        decidedBy.hsaId,
+        decidedBy.displayName,
+        input.comment?.trim() || null,
+        itemId,
+        runId,
+      ],
+    )
+    await tx.query(
+      'UPDATE access_review_runs SET updated_at = @0 WHERE id = @1',
+      [dateParam(decidedAt), runId],
+    )
+  })
   return getAccessReviewRun(db, runId, actor)
 }
 

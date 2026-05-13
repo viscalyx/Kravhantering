@@ -466,7 +466,7 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   },
   {
     affectedReferencesSql: `/* privacy:affected:access_review_runs.created_by */
-      SELECT CONCAT(N'Access review ', id) AS value
+      SELECT CONCAT(N'access_review:', id) AS value
       FROM access_review_runs
       WHERE created_by_hsa_id = @0
       ORDER BY id ASC`,
@@ -488,7 +488,7 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   },
   {
     affectedReferencesSql: `/* privacy:affected:access_review_runs.reviewer */
-      SELECT CONCAT(N'Access review ', id) AS value
+      SELECT CONCAT(N'access_review:', id) AS value
       FROM access_review_runs
       WHERE reviewer_hsa_id = @0
       ORDER BY id ASC`,
@@ -510,7 +510,7 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   },
   {
     affectedReferencesSql: `/* privacy:affected:access_review_runs.completed_by */
-      SELECT CONCAT(N'Access review ', id) AS value
+      SELECT CONCAT(N'access_review:', id) AS value
       FROM access_review_runs
       WHERE completed_by_hsa_id = @0
       ORDER BY id ASC`,
@@ -532,7 +532,7 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   },
   {
     affectedReferencesSql: `/* privacy:affected:access_review_items.principal */
-      SELECT CONCAT(N'Access review ', run_id, N' / item ', id) AS value
+      SELECT CONCAT(N'access_review_item:', run_id, N':', id) AS value
       FROM access_review_items
       WHERE principal_hsa_id = @0
       ORDER BY run_id ASC, id ASC`,
@@ -554,7 +554,7 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   },
   {
     affectedReferencesSql: `/* privacy:affected:access_review_items.decided_by */
-      SELECT CONCAT(N'Access review ', run_id, N' / item ', id) AS value
+      SELECT CONCAT(N'access_review_item:', run_id, N':', id) AS value
       FROM access_review_items
       WHERE decided_by_hsa_id = @0
       ORDER BY run_id ASC, id ASC`,

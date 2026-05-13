@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('localized App Router error boundaries', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setExtraHTTPHeaders({ 'x-error-boundary-test': '1' })
+  })
+
   test('shows Swedish catalog recovery for a locale client render failure', async ({
     page,
   }) => {

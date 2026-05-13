@@ -40,11 +40,11 @@ export const accessReviewRunEntity = new EntitySchema<AccessReviewRunEntity>({
       name: 'status',
       type: 'nvarchar',
     },
-    periodStart: { name: 'period_start', type: 'datetime2' },
-    periodEnd: { name: 'period_end', type: 'datetime2' },
-    dueAt: { name: 'due_at', type: 'datetime2' },
-    createdAt: { name: 'created_at', type: 'datetime2' },
-    updatedAt: { name: 'updated_at', type: 'datetime2' },
+    periodStart: { name: 'period_start', precision: 3, type: 'datetime2' },
+    periodEnd: { name: 'period_end', precision: 3, type: 'datetime2' },
+    dueAt: { name: 'due_at', precision: 3, type: 'datetime2' },
+    createdAt: { name: 'created_at', precision: 3, type: 'datetime2' },
+    updatedAt: { name: 'updated_at', precision: 3, type: 'datetime2' },
     createdByHsaId: {
       length: 64,
       name: 'created_by_hsa_id',
@@ -76,6 +76,7 @@ export const accessReviewRunEntity = new EntitySchema<AccessReviewRunEntity>({
     completedAt: {
       name: 'completed_at',
       nullable: true,
+      precision: 3,
       type: 'datetime2',
     },
     completedByHsaId: {

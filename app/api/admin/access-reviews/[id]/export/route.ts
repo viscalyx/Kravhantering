@@ -5,15 +5,14 @@ import {
   accessReviewServiceActor,
   recordAccessReviewAuthorizationDenied,
 } from '@/lib/access-review/route-audit'
+import {
+  type AccessReviewRouteParams,
+  accessReviewErrorResponse,
+  addNoStore,
+} from '@/lib/access-review/route-helpers'
 import { buildAccessReviewExport } from '@/lib/access-review/service'
 import { recordSecurityEvent } from '@/lib/auth/audit'
-import { CsrfError } from '@/lib/auth/csrf'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import {
-  getErrorMessage,
-  logSanitizedError,
-  redactSensitiveText,
-} from '@/lib/http/safe-errors'
 import {
   idParamSchema,
   parseRouteParams,
@@ -23,12 +22,8 @@ import {
   createRequestContext,
   type RequestContext,
 } from '@/lib/requirements/auth'
-import { isRequirementsServiceError } from '@/lib/requirements/errors'
-import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
-
-type Params = Promise<{ id: string }>
 
 const exportSchema = z
   .object({
@@ -36,43 +31,17 @@ const exportSchema = z
   })
   .strict()
 
-function unexpectedErrorBody(message: string, error: unknown) {
-  return {
-    ...(process.env.NODE_ENV === 'development'
-      ? { debugMessage: redactSensitiveText(getErrorMessage(error)) }
-      : {}),
-    error: message,
-  }
-}
-
-function errorResponse(message: string, error: unknown) {
-  if (error instanceof CsrfError || isRequirementsServiceError(error)) {
-    const { body, status } = toHttpErrorPayload(error)
-    return NextResponse.json(body, {
-      headers: { 'Cache-Control': 'no-store' },
-      status,
-    })
-  }
-  logSanitizedError(message, error)
-  return NextResponse.json(unexpectedErrorBody(message, error), {
-    headers: { 'Cache-Control': 'no-store' },
-    status: 500,
-  })
-}
-
 export async function POST(
   request: NextRequest,
-  { params }: { params: Params },
+  { params }: { params: AccessReviewRouteParams },
 ) {
   const parsedParams = await parseRouteParams(params, idParamSchema)
   if (!parsedParams.ok) {
-    parsedParams.response.headers.set('Cache-Control', 'no-store')
-    return parsedParams.response
+    return addNoStore(parsedParams.response)
   }
   const parsedBody = await readJsonWithSchema(request, exportSchema)
   if (!parsedBody.ok) {
-    parsedBody.response.headers.set('Cache-Control', 'no-store')
-    return parsedBody.response
+    return addNoStore(parsedBody.response)
   }
 
   let context: RequestContext | null = null
@@ -110,6 +79,8 @@ export async function POST(
       },
       error,
     )
-    return errorResponse('Failed to export access review', error)
+    return accessReviewErrorResponse('Failed to export access review', error, {
+      noStore: true,
+    })
   }
 }

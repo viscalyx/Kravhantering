@@ -733,7 +733,7 @@ async function collectAccessReviewRunActor(
     `/* privacy:data-export:${options.key} */
       SELECT
         id AS runId,
-        CONCAT(N'Access review ', id) AS runLabel,
+        CONCAT(N'access_review:', id) AS runLabel,
         ${options.hsaField} AS hsaId,
         ${options.displayField} AS displayName,
         status,
@@ -798,7 +798,7 @@ async function collectAccessReviewItemActor(
     `/* privacy:data-export:${options.key} */
       SELECT
         item.id AS itemId,
-        CONCAT(N'Access review ', item.run_id, N' / item ', item.id) AS itemLabel,
+        CONCAT(N'access_review_item:', item.run_id, N':', item.id) AS itemLabel,
         item.${options.hsaField} AS hsaId,
         item.${options.displayField} AS displayName,
         item.source_key AS sourceKey,

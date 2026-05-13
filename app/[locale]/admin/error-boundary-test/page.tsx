@@ -4,10 +4,18 @@ import ErrorBoundaryTestTrigger from '../../error-boundary-test/ErrorBoundaryTes
 
 export const dynamic = 'force-dynamic'
 
-export default async function AdminErrorBoundaryTestPage() {
-  await headers()
+function isErrorBoundaryTestRouteEnabled(requestHeaders: Headers) {
+  return (
+    process.env.ENABLE_ERROR_BOUNDARY_TEST_ROUTE === '1' ||
+    (process.env.NODE_ENV === 'development' &&
+      requestHeaders.get('x-error-boundary-test') === '1')
+  )
+}
 
-  if (process.env.ENABLE_ERROR_BOUNDARY_TEST_ROUTE !== '1') {
+export default async function AdminErrorBoundaryTestPage() {
+  const requestHeaders = await headers()
+
+  if (!isErrorBoundaryTestRouteEnabled(requestHeaders)) {
     notFound()
   }
 

@@ -828,6 +828,7 @@
       "cancelError": "Could not cancel access review.",
       "cancelSuccess": "Access review cancelled.",
       "comment": "Comment",
+      "commentTooLong": "The comment can be at most {max} characters.",
       "complete": "Complete review",
       "completeError": "Could not complete access review.",
       "completeSuccess": "Access review completed.",
