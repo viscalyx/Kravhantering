@@ -6,6 +6,7 @@ import {
   getTranslations,
   setRequestLocale,
 } from 'next-intl/server'
+import AuthExpiryGuard from '@/components/AuthExpiryGuard'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import DeveloperModeProvider from '@/components/DeveloperModeProvider'
 import Footer from '@/components/Footer'
@@ -79,6 +80,7 @@ export default async function LocaleLayout({
         <ConfirmModalProvider>
           <HelpProvider>
             <LocaleStorageSync />
+            <AuthExpiryGuard />
             <div className="flex flex-col min-h-screen">
               <Navigation />
               <main className="flex-1">{children}</main>

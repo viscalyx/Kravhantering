@@ -31,6 +31,10 @@ function restoreTrackedEnv() {
   }
 }
 
+function futureEpochSeconds(): number {
+  return Math.floor(Date.now() / 1000) + 60 * 60
+}
+
 describe('session helpers', () => {
   beforeEach(() => {
     env.AUTH_OIDC_ISSUER_URL = 'https://issuer.example.com'
@@ -48,8 +52,8 @@ describe('session helpers', () => {
     resetAuthConfigForTests()
   })
 
-  it('isSignedIn returns false for empty and partial sessions, and true for complete sessions', async () => {
-    const { isSignedIn } = await import('@/lib/auth/session')
+  it('isSignedIn returns false for empty, partial, and expired sessions, and true for complete future sessions', async () => {
+    const { isSessionExpired, isSignedIn } = await import('@/lib/auth/session')
     expect(isSignedIn({} as never)).toBe(false)
     expect(isSignedIn({ sub: 'alice' } as never)).toBe(false)
     expect(
@@ -61,6 +65,28 @@ describe('session helpers', () => {
         hsaId: 'SE2321000032-reviewer1',
         roles: ['Reviewer'],
         accessTokenExpiresAt: 1,
+      } as never),
+    ).toBe(false)
+    expect(
+      isSessionExpired({
+        sub: 'alice',
+        givenName: 'Alice',
+        familyName: 'Reviewer',
+        name: 'Alice Reviewer',
+        hsaId: 'SE2321000032-reviewer1',
+        roles: ['Reviewer'],
+        accessTokenExpiresAt: 1,
+      } as never),
+    ).toBe(true)
+    expect(
+      isSignedIn({
+        sub: 'alice',
+        givenName: 'Alice',
+        familyName: 'Reviewer',
+        name: 'Alice Reviewer',
+        hsaId: 'SE2321000032-reviewer1',
+        roles: ['Reviewer'],
+        accessTokenExpiresAt: futureEpochSeconds(),
       } as never),
     ).toBe(true)
   })
@@ -78,7 +104,7 @@ describe('session helpers', () => {
     session.hsaId = 'SE2321000032-reviewer1'
     session.roles = ['Reviewer']
     session.idToken = 'jwt'
-    session.accessTokenExpiresAt = 1
+    session.accessTokenExpiresAt = futureEpochSeconds()
     await session.save()
 
     const setCookie = writeRes.headers.get('set-cookie') ?? ''

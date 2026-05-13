@@ -24,6 +24,24 @@ describe('auth me route', () => {
     await expect(response.json()).resolves.toEqual({ authenticated: false })
   })
 
+  it('returns unauthenticated responses for expired sessions', async () => {
+    getSessionMock.mockResolvedValue({
+      sub: 'user-1',
+      hsaId: 'SE2321000032-rev1',
+      givenName: 'Alice',
+      familyName: 'Reviewer',
+      name: 'Alice Reviewer',
+      email: 'alice@example.test',
+      roles: ['Reviewer'],
+      accessTokenExpiresAt: 1,
+    })
+    isSignedInMock.mockReturnValue(false)
+
+    const response = await GET()
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    await expect(response.json()).resolves.toEqual({ authenticated: false })
+  })
+
   it('returns authenticated responses with no-store caching', async () => {
     getSessionMock.mockResolvedValue({
       sub: 'user-1',

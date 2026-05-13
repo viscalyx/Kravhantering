@@ -82,7 +82,13 @@ function buildRequest(
   return new NextRequest(url, { method: init.method ?? 'GET', headers })
 }
 
-async function writeSignedInCookie(): Promise<string> {
+function futureEpochSeconds(): number {
+  return Math.floor(Date.now() / 1000) + 60 * 60
+}
+
+async function writeSignedInCookie(
+  accessTokenExpiresAt = futureEpochSeconds(),
+): Promise<string> {
   const response = new Response()
   const session = await getSessionFromRequest(
     new Request('http://localhost/'),
@@ -94,7 +100,7 @@ async function writeSignedInCookie(): Promise<string> {
   session.name = 'Alice Reviewer'
   session.hsaId = 'SE2321000032-rev1'
   session.roles = ['Reviewer']
-  session.accessTokenExpiresAt = 1
+  session.accessTokenExpiresAt = accessTokenExpiresAt
   await session.save()
   return response.headers.get('set-cookie')?.split(';')[0] ?? ''
 }
@@ -138,6 +144,41 @@ describe('middleware', () => {
         'text/plain; charset=utf-8',
       )
     } finally {
+      restore()
+    }
+  })
+
+  it('redirects expired browser sessions to /api/auth/login and audits expiry', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    try {
+      const cookie = await writeSignedInCookie(1)
+      const response = await middleware(
+        buildRequest('http://localhost/sv/requirements', {
+          accept: 'text/html',
+          cookie,
+        }),
+      )
+      expect(response.status).toBe(302)
+      const location = response.headers.get('location') ?? ''
+      expect(location).toContain('/api/auth/login')
+      expect(location).toContain(
+        `returnTo=${encodeURIComponent('/sv/requirements')}`,
+      )
+      const events = parseSecurityEvents(infoSpy)
+      expect(events).toHaveLength(1)
+      expect(events[0]).toMatchObject({
+        actor: {
+          hsaId: 'SE2321000032-rev1',
+          source: 'oidc',
+          sub: 'user-1',
+        },
+        detail: { expiredAt: 1 },
+        event: 'auth.session.expired',
+        outcome: 'failure',
+      })
+    } finally {
+      infoSpy.mockRestore()
       restore()
     }
   })
@@ -250,6 +291,26 @@ describe('middleware', () => {
       expect(response.headers.get('content-type') ?? '').toContain(
         'application/json',
       )
+    } finally {
+      restore()
+    }
+  })
+
+  it('returns 401 JSON for expired API sessions', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const cookie = await writeSignedInCookie(1)
+      const response = await middleware(
+        buildRequest('http://localhost/api/owners', {
+          cookie,
+          method: 'POST',
+        }),
+      )
+      expect(response.status).toBe(401)
+      await expect(response.json()).resolves.toMatchObject({
+        error: 'Unauthorized',
+        detail: 'Sign in required.',
+      })
     } finally {
       restore()
     }
