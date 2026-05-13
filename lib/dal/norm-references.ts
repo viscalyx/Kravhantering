@@ -278,6 +278,7 @@ export async function updateNormReference(
 export async function deleteNormReference(
   db: SqlServerDatabase,
   id: number,
-): Promise<void> {
-  await db.getRepository(normReferenceEntity).delete(id)
+): Promise<number> {
+  const result = await db.getRepository(normReferenceEntity).delete(id)
+  return result.affected ?? 0
 }

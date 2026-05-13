@@ -286,6 +286,14 @@ export async function updateRequirementPackage(
 export async function deleteRequirementPackage(
   db: SqlServerDatabase,
   id: number,
-): Promise<void> {
-  await db.query(`DELETE FROM requirement_packages WHERE id = @0`, [id])
+): Promise<number> {
+  const rows = await db.query(
+    `
+      DELETE FROM requirement_packages
+      OUTPUT deleted.id AS id
+      WHERE id = @0
+    `,
+    [id],
+  )
+  return rows.length
 }

@@ -153,6 +153,17 @@ export async function updateArea(
   return rows[0] ? mapAreaRow(rows[0]) : undefined
 }
 
-export async function deleteArea(db: SqlServerDatabase, id: number) {
-  await db.query(`DELETE FROM requirement_areas WHERE id = @0`, [id])
+export async function deleteArea(
+  db: SqlServerDatabase,
+  id: number,
+): Promise<number> {
+  const rows = await db.query(
+    `
+      DELETE FROM requirement_areas
+      OUTPUT deleted.id AS id
+      WHERE id = @0
+    `,
+    [id],
+  )
+  return rows.length
 }

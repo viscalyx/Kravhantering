@@ -55,6 +55,9 @@ export async function updateSpecificationResponsibilityArea(
 export async function deleteSpecificationResponsibilityArea(
   db: SqlServerDatabase,
   id: number,
-): Promise<void> {
-  await db.getRepository(specificationResponsibilityAreaEntity).delete(id)
+): Promise<number> {
+  const result = await db
+    .getRepository(specificationResponsibilityAreaEntity)
+    .delete(id)
+  return result.affected ?? 0
 }

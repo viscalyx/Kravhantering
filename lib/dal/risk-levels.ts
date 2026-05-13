@@ -144,6 +144,7 @@ export async function updateRiskLevel(
 export async function deleteRiskLevel(
   db: SqlServerDatabase,
   id: number,
-): Promise<void> {
-  await db.getRepository(riskLevelEntity).delete(id)
+): Promise<number> {
+  const result = await db.getRepository(riskLevelEntity).delete(id)
+  return result.affected ?? 0
 }

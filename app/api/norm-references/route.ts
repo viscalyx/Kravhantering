@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
+import {
   countLinkedRequirements,
   createNormReference,
   listNormReferences,
@@ -70,9 +74,16 @@ export async function POST(request: Request) {
     normReferenceCreateSchema,
   )
   if (!parsedBody.ok) return parsedBody.response
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
   try {
     const normReference = await createNormReference(db, parsedBody.data)
+    recordAdminPrivilegedActionSucceeded(auditContext, {
+      changedFields: Object.keys(parsedBody.data),
+      operation: 'create',
+      resourceId: normReference.id,
+      resourceType: 'norm_reference',
+    })
     return NextResponse.json(normReference, { status: 201 })
   } catch {
     return NextResponse.json(

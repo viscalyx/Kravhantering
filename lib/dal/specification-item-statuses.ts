@@ -197,7 +197,7 @@ export async function updateSpecificationItemStatus(
 export async function deleteSpecificationItemStatus(
   db: SqlServerDatabase,
   id: number,
-): Promise<void> {
+): Promise<number> {
   if (
     id === DEFAULT_SPECIFICATION_ITEM_STATUS_ID ||
     id === DEVIATED_SPECIFICATION_ITEM_STATUS_ID
@@ -205,5 +205,8 @@ export async function deleteSpecificationItemStatus(
     throw new Error('Cannot delete reserved specification item status')
   }
 
-  await db.getRepository(specificationItemStatusEntity).delete(id)
+  const result = await db
+    .getRepository(specificationItemStatusEntity)
+    .delete(id)
+  return result.affected ?? 0
 }

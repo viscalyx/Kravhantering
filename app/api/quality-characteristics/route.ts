@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
+import {
   createQualityCharacteristic,
   listQualityCharacteristics,
 } from '@/lib/dal/requirement-types'
@@ -62,7 +66,14 @@ export async function POST(request: Request) {
     qualityCharacteristicCreateSchema,
   )
   if (!parsedBody.ok) return parsedBody.response
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
   const category = await createQualityCharacteristic(db, parsedBody.data)
+  recordAdminPrivilegedActionSucceeded(auditContext, {
+    changedFields: Object.keys(parsedBody.data),
+    operation: 'create',
+    resourceId: category.id,
+    resourceType: 'quality_characteristic',
+  })
   return NextResponse.json(category, { status: 201 })
 }

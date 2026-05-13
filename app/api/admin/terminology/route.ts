@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
+import {
   formatUiSettingsLoadError,
   getUiTerminology,
   updateUiTerminology,
@@ -73,8 +77,14 @@ export async function PUT(request: Request) {
         },
       ])
     }
+    const auditContext = await createAdminPrivilegedAuditContext(request)
     const db = await getRequestSqlServerDataSource()
     const terminology = await updateUiTerminology(db, body.terminology)
+    recordAdminPrivilegedActionSucceeded(auditContext, {
+      itemCount: body.terminology.length,
+      operation: 'save',
+      resourceType: 'ui_terminology',
+    })
 
     return NextResponse.json({
       terminology: buildUiTerminologyPayload(terminology),

@@ -3,6 +3,33 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mockListStatuses = vi.fn()
 const mockListTransitions = vi.fn()
 const mockCreateStatus = vi.fn()
+const auditState = vi.hoisted(() => ({
+  createAdminPrivilegedAuditContext: vi.fn(async () => ({
+    actor: {
+      displayName: 'Ada Admin',
+      hsaId: 'SE2321000032-admin1',
+      id: 'admin-sub',
+      isAuthenticated: true,
+      roles: ['Admin'],
+      source: 'oidc',
+    },
+    request: {
+      method: 'POST',
+      path: '/api/requirement-statuses',
+      requestId: 'request-status',
+    },
+    requestId: 'request-status',
+    source: 'rest',
+  })),
+  recordAdminPrivilegedActionSucceeded: vi.fn(),
+}))
+
+vi.mock('@/lib/admin/privileged-audit', () => ({
+  createAdminPrivilegedAuditContext:
+    auditState.createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded:
+    auditState.recordAdminPrivilegedActionSucceeded,
+}))
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: () => ({}),
@@ -57,5 +84,16 @@ describe('requirement-statuses route', () => {
       nameEn: string
     }
     expect(json).toEqual({ id: 2, nameSv: 'Ny', nameEn: 'New' })
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ requestId: 'request-status' }),
+      {
+        changedFields: ['color', 'nameEn', 'nameSv', 'sortOrder'],
+        operation: 'create',
+        resourceId: 2,
+        resourceType: 'requirement_status',
+      },
+    )
   })
 })

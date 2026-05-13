@@ -17,6 +17,7 @@ export type SecurityEventName =
   | 'access_review.created'
   | 'access_review.exported'
   | 'access_review.item_decided'
+  | 'admin.privileged_action.succeeded'
   | 'auth.login.succeeded'
   | 'auth.login.failed'
   | 'auth.logout'

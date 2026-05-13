@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
+import {
   formatUiSettingsLoadError,
   getRequirementListColumnDefaults,
   updateRequirementListColumnDefaults,
@@ -79,10 +83,17 @@ export async function PUT(request: Request) {
         },
       ])
     }
+    const auditContext = await createAdminPrivilegedAuditContext(request)
     const db = await getRequestSqlServerDataSource()
+    const columns = await updateRequirementListColumnDefaults(db, body.columns)
+    recordAdminPrivilegedActionSucceeded(auditContext, {
+      itemCount: body.columns.length,
+      operation: 'save',
+      resourceType: 'requirement_columns',
+    })
 
     return NextResponse.json({
-      columns: await updateRequirementListColumnDefaults(db, body.columns),
+      columns,
     })
   } catch {
     return NextResponse.json(

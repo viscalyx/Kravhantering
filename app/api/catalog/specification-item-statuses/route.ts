@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
+import {
   countLinkedSpecificationItems,
   createSpecificationItemStatus,
   listSpecificationItemStatuses,
@@ -52,8 +56,15 @@ export async function POST(request: Request) {
   )
   if (!parsedBody.ok) return parsedBody.response
   try {
+    const auditContext = await createAdminPrivilegedAuditContext(request)
     const db = await getRequestSqlServerDataSource()
     const status = await createSpecificationItemStatus(db, parsedBody.data)
+    recordAdminPrivilegedActionSucceeded(auditContext, {
+      changedFields: Object.keys(parsedBody.data),
+      operation: 'create',
+      resourceId: status.id,
+      resourceType: 'specification_item_status',
+    })
     return NextResponse.json(status, { status: 201 })
   } catch (error) {
     const isDuplicate = isDuplicateKeyError(error)

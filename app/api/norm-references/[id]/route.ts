@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
+import {
   deleteNormReference,
   getLinkedRequirements,
   getNormReferenceById,
@@ -64,6 +68,7 @@ export async function PUT(
     normReferenceUpdateSchema,
   )
   if (!parsedBody.ok) return parsedBody.response
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
   const normReference = await updateNormReference(
     db,
@@ -73,16 +78,23 @@ export async function PUT(
   if (!normReference) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
+  recordAdminPrivilegedActionSucceeded(auditContext, {
+    changedFields: Object.keys(parsedBody.data),
+    operation: 'update',
+    resourceId: parsedParams.data.id,
+    resourceType: 'norm_reference',
+  })
   return NextResponse.json(normReference)
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(params, idParamSchema)
   if (!parsedParams.ok) return parsedParams.response
   const { id } = parsedParams.data
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
   const linked = await getLinkedRequirements(db, id)
   if (linked.length > 0) {
@@ -91,6 +103,14 @@ export async function DELETE(
       { status: 409 },
     )
   }
-  await deleteNormReference(db, id)
+  const deletedCount = await deleteNormReference(db, id)
+  if (deletedCount === 0) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+  recordAdminPrivilegedActionSucceeded(auditContext, {
+    operation: 'delete',
+    resourceId: id,
+    resourceType: 'norm_reference',
+  })
   return NextResponse.json({ ok: true })
 }

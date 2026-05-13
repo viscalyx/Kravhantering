@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import {
+  createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
 import { isHsaId } from '@/lib/auth/hsa-id'
 import { createOwner, listOwners } from '@/lib/dal/owners'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -35,10 +39,17 @@ export async function GET() {
 export async function POST(request: Request) {
   const parsedBody = await readJsonWithSchema(request, ownerCreateSchema)
   if (!parsedBody.ok) return parsedBody.response
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
   const owner = await createOwner(db, {
     ...parsedBody.data,
     email: parsedBody.data.email ?? null,
+  })
+  recordAdminPrivilegedActionSucceeded(auditContext, {
+    changedFields: Object.keys(parsedBody.data),
+    operation: 'create',
+    resourceId: owner.id,
+    resourceType: 'owner',
   })
   return NextResponse.json(owner, { status: 201 })
 }

@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import {
+  createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
 import { listOwners, type Owner } from '@/lib/dal/owners'
 import {
   createArea,
@@ -47,7 +51,14 @@ export async function GET() {
 export async function POST(request: Request) {
   const parsedBody = await readJsonWithSchema(request, createAreaSchema)
   if (!parsedBody.ok) return parsedBody.response
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
   const area = await createArea(db, parsedBody.data)
+  recordAdminPrivilegedActionSucceeded(auditContext, {
+    changedFields: Object.keys(parsedBody.data),
+    operation: 'create',
+    resourceId: area.id,
+    resourceType: 'requirement_area',
+  })
   return NextResponse.json(area, { status: 201 })
 }
