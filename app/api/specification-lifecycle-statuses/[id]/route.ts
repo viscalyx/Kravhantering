@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
+import {
   deleteSpecificationLifecycleStatus,
   updateSpecificationLifecycleStatus,
 } from '@/lib/dal/specification-lifecycle-statuses'
@@ -41,6 +45,7 @@ export async function PUT(
     updateLifecycleStatusSchema,
   )
   if (!parsedBody.ok) return parsedBody.response
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
   try {
     const status = await updateSpecificationLifecycleStatus(
@@ -54,6 +59,12 @@ export async function PUT(
         { status: 404 },
       )
     }
+    recordAdminPrivilegedActionSucceeded(auditContext, {
+      changedFields: Object.keys(parsedBody.data),
+      operation: 'update',
+      resourceId: parsedParams.data.id,
+      resourceType: 'specification_lifecycle_status',
+    })
     return NextResponse.json(status)
   } catch (err) {
     logSanitizedError('Failed to update specification lifecycle status', err)
@@ -65,11 +76,12 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(params, idParamSchema)
   if (!parsedParams.ok) return parsedParams.response
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
   try {
     const deletedCount = await deleteSpecificationLifecycleStatus(
@@ -82,6 +94,11 @@ export async function DELETE(
         { status: 404 },
       )
     }
+    recordAdminPrivilegedActionSucceeded(auditContext, {
+      operation: 'delete',
+      resourceId: parsedParams.data.id,
+      resourceType: 'specification_lifecycle_status',
+    })
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json(

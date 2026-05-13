@@ -4,6 +4,33 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mockUpdateStatus = vi.fn()
 const mockDeleteStatus = vi.fn()
 const getRequestSqlServerDataSourceMock = vi.hoisted(() => vi.fn(() => ({})))
+const auditState = vi.hoisted(() => ({
+  createAdminPrivilegedAuditContext: vi.fn(async () => ({
+    actor: {
+      displayName: 'Ada Admin',
+      hsaId: 'SE2321000032-admin1',
+      id: 'admin-sub',
+      isAuthenticated: true,
+      roles: ['Admin'],
+      source: 'oidc',
+    },
+    request: {
+      method: 'PUT',
+      path: '/api/requirement-statuses/1',
+      requestId: 'request-status-id',
+    },
+    requestId: 'request-status-id',
+    source: 'rest',
+  })),
+  recordAdminPrivilegedActionSucceeded: vi.fn(),
+}))
+
+vi.mock('@/lib/admin/privileged-audit', () => ({
+  createAdminPrivilegedAuditContext:
+    auditState.createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded:
+    auditState.recordAdminPrivilegedActionSucceeded,
+}))
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: getRequestSqlServerDataSourceMock,
@@ -46,6 +73,17 @@ describe('requirement-statuses/[id] route', () => {
       nameSv: 'X',
       nameEn: 'X',
     })
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ requestId: 'request-status-id' }),
+      {
+        changedFields: ['nameEn', 'nameSv'],
+        operation: 'update',
+        resourceId: 1,
+        resourceType: 'requirement_status',
+      },
+    )
   })
 
   it('DELETE deletes status', async () => {
@@ -57,6 +95,16 @@ describe('requirement-statuses/[id] route', () => {
     expect(json.ok).toBe(true)
     expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
     expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ requestId: 'request-status-id' }),
+      {
+        operation: 'delete',
+        resourceId: 1,
+        resourceType: 'requirement_status',
+      },
+    )
   })
 
   it('DELETE returns sanitized error on unexpected failure', async () => {
@@ -68,6 +116,9 @@ describe('requirement-statuses/[id] route', () => {
     expect(json.error).toBe('An internal error occurred')
     expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
     expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 
   it('DELETE preserves known business errors', async () => {
@@ -79,6 +130,9 @@ describe('requirement-statuses/[id] route', () => {
     expect(json).toEqual({ code: 'conflict', error: 'Cannot delete' })
     expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
     expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 
   it('DELETE maps not_found business errors to 404', async () => {
@@ -90,6 +144,9 @@ describe('requirement-statuses/[id] route', () => {
     expect(json).toEqual({ code: 'not_found', error: 'Status not found' })
     expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
     expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 
   it('DELETE returns fallback message for non-Error rejection', async () => {
@@ -101,6 +158,9 @@ describe('requirement-statuses/[id] route', () => {
     expect(json.error).toBe('An internal error occurred')
     expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
     expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 
   it('PUT returns 400 for invalid ids before opening the DB', async () => {
@@ -115,6 +175,9 @@ describe('requirement-statuses/[id] route', () => {
     expect(res.status).toBe(400)
     expect(getRequestSqlServerDataSourceMock).not.toHaveBeenCalled()
     expect(mockUpdateStatus).not.toHaveBeenCalled()
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 
   it('DELETE returns 400 for invalid ids before opening the DB', async () => {
@@ -125,5 +188,8 @@ describe('requirement-statuses/[id] route', () => {
     expect(res.status).toBe(400)
     expect(getRequestSqlServerDataSourceMock).not.toHaveBeenCalled()
     expect(mockDeleteStatus).not.toHaveBeenCalled()
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 })

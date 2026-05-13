@@ -1,5 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import {
+  createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
 import { isHsaId } from '@/lib/auth/hsa-id'
 import { deleteOwner, updateOwner } from '@/lib/dal/owners'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -37,24 +41,37 @@ export async function PUT(
   if (!parsedParams.ok) return parsedParams.response
   const parsedBody = await readJsonWithSchema(request, ownerUpdateSchema)
   if (!parsedBody.ok) return parsedBody.response
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
   const owner = await updateOwner(db, parsedParams.data.id, parsedBody.data)
   if (!owner) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
+  recordAdminPrivilegedActionSucceeded(auditContext, {
+    changedFields: Object.keys(parsedBody.data),
+    operation: 'update',
+    resourceId: parsedParams.data.id,
+    resourceType: 'owner',
+  })
   return NextResponse.json(owner)
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(params, idParamSchema)
   if (!parsedParams.ok) return parsedParams.response
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
   const deleted = await deleteOwner(db, parsedParams.data.id)
   if (!deleted) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
+  recordAdminPrivilegedActionSucceeded(auditContext, {
+    operation: 'delete',
+    resourceId: parsedParams.data.id,
+    resourceType: 'owner',
+  })
   return NextResponse.json({ ok: true })
 }

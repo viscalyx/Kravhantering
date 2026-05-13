@@ -6,9 +6,34 @@ import {
 } from '@/lib/ui-terminology'
 
 const routeState = vi.hoisted(() => ({
+  createAdminPrivilegedAuditContext: vi.fn(async () => ({
+    actor: {
+      displayName: 'Ada Admin',
+      hsaId: 'SE2321000032-admin1',
+      id: 'admin-sub',
+      isAuthenticated: true,
+      roles: ['Admin'],
+      source: 'oidc',
+    },
+    request: {
+      method: 'PUT',
+      path: '/api/admin/terminology',
+      requestId: 'request-1',
+    },
+    requestId: 'request-1',
+    source: 'rest',
+  })),
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
   getUiTerminology: vi.fn(),
+  recordAdminPrivilegedActionSucceeded: vi.fn(),
   updateUiTerminology: vi.fn(),
+}))
+
+vi.mock('@/lib/admin/privileged-audit', () => ({
+  createAdminPrivilegedAuditContext:
+    routeState.createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded:
+    routeState.recordAdminPrivilegedActionSucceeded,
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -142,6 +167,9 @@ describe('admin terminology route', () => {
 
     expect(response.status).toBe(400)
     expect(routeState.updateUiTerminology).not.toHaveBeenCalled()
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 
   it('returns 400 for malformed JSON request bodies', async () => {
@@ -156,6 +184,9 @@ describe('admin terminology route', () => {
     expect(response.status).toBe(400)
     await expectInvalidRequest(response, 'Malformed JSON body')
     expect(routeState.updateUiTerminology).not.toHaveBeenCalled()
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 
   it('rejects payloads that duplicate an allowed key and omit another key', async () => {
@@ -185,6 +216,9 @@ describe('admin terminology route', () => {
       'Each terminology key must be provided exactly once.',
     )
     expect(routeState.updateUiTerminology).not.toHaveBeenCalled()
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
   it('saves a valid terminology payload and returns the normalized response body', async () => {
     const terminology = normalizeUiTerminology([
@@ -219,6 +253,16 @@ describe('admin terminology route', () => {
       buildUiTerminologyPayload(terminology),
     )
     expect(body.terminology).toEqual(buildUiTerminologyPayload(terminology))
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ requestId: 'request-1' }),
+      {
+        itemCount: buildUiTerminologyPayload(terminology).length,
+        operation: 'save',
+        resourceType: 'ui_terminology',
+      },
+    )
   })
 
   it('returns a structured error response when saving terminology fails', async () => {
@@ -254,5 +298,8 @@ describe('admin terminology route', () => {
 
     expect(response.status).toBe(500)
     expect(body.error).toBe('Failed to save terminology.')
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 })

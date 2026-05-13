@@ -55,6 +55,9 @@ export async function updateSpecificationImplementationType(
 export async function deleteSpecificationImplementationType(
   db: SqlServerDatabase,
   id: number,
-): Promise<void> {
-  await db.getRepository(specificationImplementationTypeEntity).delete(id)
+): Promise<number> {
+  const result = await db
+    .getRepository(specificationImplementationTypeEntity)
+    .delete(id)
+  return result.affected ?? 0
 }

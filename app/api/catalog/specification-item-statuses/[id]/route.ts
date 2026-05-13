@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
+import {
   deleteSpecificationItemStatus,
   getLinkedSpecificationItems,
   getSpecificationItemStatusById,
@@ -60,6 +64,7 @@ export async function PUT(
     specificationItemStatusUpdateSchema,
   )
   if (!parsedBody.ok) return parsedBody.response
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
   const status = await updateSpecificationItemStatus(
     db,
@@ -69,16 +74,34 @@ export async function PUT(
   if (!status) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
+  recordAdminPrivilegedActionSucceeded(auditContext, {
+    changedFields: Object.keys(parsedBody.data),
+    operation: 'update',
+    resourceId: parsedParams.data.id,
+    resourceType: 'specification_item_status',
+  })
   return NextResponse.json(status)
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(params, idParamSchema)
   if (!parsedParams.ok) return parsedParams.response
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
-  await deleteSpecificationItemStatus(db, parsedParams.data.id)
+  const deletedCount = await deleteSpecificationItemStatus(
+    db,
+    parsedParams.data.id,
+  )
+  if (deletedCount === 0) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+  recordAdminPrivilegedActionSucceeded(auditContext, {
+    operation: 'delete',
+    resourceId: parsedParams.data.id,
+    resourceType: 'specification_item_status',
+  })
   return NextResponse.json({ ok: true })
 }

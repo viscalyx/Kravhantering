@@ -2,8 +2,33 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
+  createAdminPrivilegedAuditContext: vi.fn(async () => ({
+    actor: {
+      displayName: 'Ada Admin',
+      hsaId: 'SE2321000032-admin1',
+      id: 'admin-sub',
+      isAuthenticated: true,
+      roles: ['Admin'],
+      source: 'oidc',
+    },
+    request: {
+      method: 'POST',
+      path: '/api/risk-levels',
+      requestId: 'request-risk',
+    },
+    requestId: 'request-risk',
+    source: 'rest',
+  })),
   createRiskLevel: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(() => ({})),
+  recordAdminPrivilegedActionSucceeded: vi.fn(),
+}))
+
+vi.mock('@/lib/admin/privileged-audit', () => ({
+  createAdminPrivilegedAuditContext:
+    routeState.createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded:
+    routeState.recordAdminPrivilegedActionSucceeded,
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -53,6 +78,9 @@ describe('risk-levels route', () => {
     await expectInvalidRequest(response, '$')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(routeState.createRiskLevel).not.toHaveBeenCalled()
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 
   it('returns the created risk level on success', async () => {
@@ -80,5 +108,16 @@ describe('risk-levels route', () => {
     await expect(response.json()).resolves.toEqual(createdRiskLevel)
     expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
     expect(routeState.createRiskLevel).toHaveBeenCalledWith(mockDb, payload)
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ requestId: 'request-risk' }),
+      {
+        changedFields: ['color', 'nameEn', 'nameSv', 'sortOrder'],
+        operation: 'create',
+        resourceId: 7,
+        resourceType: 'risk_level',
+      },
+    )
   })
 })

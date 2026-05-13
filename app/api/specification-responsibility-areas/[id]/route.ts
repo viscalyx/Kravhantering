@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
+import {
   deleteSpecificationResponsibilityArea,
   updateSpecificationResponsibilityArea,
 } from '@/lib/dal/specification-responsibility-areas'
@@ -34,6 +38,7 @@ export async function PUT(
     updateResponsibilityAreaSchema,
   )
   if (!parsedBody.ok) return parsedBody.response
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
   const area = await updateSpecificationResponsibilityArea(
     db,
@@ -43,16 +48,34 @@ export async function PUT(
   if (area === undefined) {
     return NextResponse.json({ message: 'Not found' }, { status: 404 })
   }
+  recordAdminPrivilegedActionSucceeded(auditContext, {
+    changedFields: Object.keys(parsedBody.data),
+    operation: 'update',
+    resourceId: parsedParams.data.id,
+    resourceType: 'specification_responsibility_area',
+  })
   return NextResponse.json(area)
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(params, idParamSchema)
   if (!parsedParams.ok) return parsedParams.response
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
-  await deleteSpecificationResponsibilityArea(db, parsedParams.data.id)
+  const deletedCount = await deleteSpecificationResponsibilityArea(
+    db,
+    parsedParams.data.id,
+  )
+  if (deletedCount === 0) {
+    return NextResponse.json({ message: 'Not found' }, { status: 404 })
+  }
+  recordAdminPrivilegedActionSucceeded(auditContext, {
+    operation: 'delete',
+    resourceId: parsedParams.data.id,
+    resourceType: 'specification_responsibility_area',
+  })
   return NextResponse.json({ ok: true })
 }

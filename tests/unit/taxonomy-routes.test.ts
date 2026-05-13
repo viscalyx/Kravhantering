@@ -8,6 +8,27 @@ const routeState = vi.hoisted(() => ({
   getRequestSqlServerDataSource: vi.fn(() => ({})),
 }))
 
+const auditState = vi.hoisted(() => ({
+  createAdminPrivilegedAuditContext: vi.fn(async () => ({
+    actor: {
+      displayName: 'Ada Admin',
+      hsaId: 'SE2321000032-admin1',
+      id: 'admin-sub',
+      isAuthenticated: true,
+      roles: ['Admin'],
+      source: 'oidc',
+    },
+    request: {
+      method: 'POST',
+      path: '/api/taxonomy',
+      requestId: 'request-taxonomy',
+    },
+    requestId: 'request-taxonomy',
+    source: 'rest',
+  })),
+  recordAdminPrivilegedActionSucceeded: vi.fn(),
+}))
+
 const requirementsRuntimeState = vi.hoisted(() => {
   const listSpecifications = vi.fn(async () => ({
     message: 'ok',
@@ -24,6 +45,13 @@ const requirementsRuntimeState = vi.hoisted(() => {
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
+}))
+
+vi.mock('@/lib/admin/privileged-audit', () => ({
+  createAdminPrivilegedAuditContext:
+    auditState.createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded:
+    auditState.recordAdminPrivilegedActionSucceeded,
 }))
 
 vi.mock('@/lib/requirements/server', () => ({
@@ -287,8 +315,21 @@ describe('specification-implementation-types routes', () => {
     )
     expect(mockUpdateImpl).not.toHaveBeenCalled()
   })
+  it('PUT returns 404 without audit when the implementation type is missing', async () => {
+    mockUpdateImpl.mockResolvedValue(undefined)
+    const r = await putImplType(
+      jsonReq('PUT', { nameEn: 'Missing' }),
+      makeParams('404'),
+    )
+
+    expect(r.status).toBe(404)
+    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
+  })
   it('DELETE deletes', async () => {
-    mockDeleteImpl.mockResolvedValue(undefined)
+    mockDeleteImpl.mockResolvedValue(1)
     const r = await deleteImplType(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('1'),
@@ -344,7 +385,7 @@ describe('specification-lifecycle-statuses routes', () => {
     expect(mockUpdateLifecycle).not.toHaveBeenCalled()
   })
   it('DELETE deletes', async () => {
-    mockDeleteLifecycle.mockResolvedValue(undefined)
+    mockDeleteLifecycle.mockResolvedValue(1)
     const r = await deleteLifecycle(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('1'),
@@ -382,12 +423,26 @@ describe('specification-responsibility-areas routes', () => {
     expect(((await r.json()) as { id: number }).id).toBe(1)
   })
   it('DELETE deletes', async () => {
-    mockDeleteArea.mockResolvedValue(undefined)
+    mockDeleteArea.mockResolvedValue(1)
     const r = await deleteRespArea(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('1'),
     )
     expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
+  })
+
+  it('DELETE returns 404 without audit when the responsibility area is missing', async () => {
+    mockDeleteArea.mockResolvedValue(0)
+    const r = await deleteRespArea(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('404'),
+    )
+
+    expect(r.status).toBe(404)
+    await expect(r.json()).resolves.toEqual({ message: 'Not found' })
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 
   it('returns 400 for invalid ids before opening the DB', async () => {
@@ -472,6 +527,7 @@ describe('specification-item-statuses catalog routes', () => {
   })
 
   it('DELETE removes a catalog status', async () => {
+    mockDeleteSpecItemStatus.mockResolvedValue(1)
     const r = await deleteSpecItemStatus(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('5'),
@@ -479,6 +535,20 @@ describe('specification-item-statuses catalog routes', () => {
 
     expect(r.status).toBe(200)
     await expect(r.json()).resolves.toEqual({ ok: true })
+  })
+
+  it('DELETE returns 404 without audit when the catalog status is missing', async () => {
+    mockDeleteSpecItemStatus.mockResolvedValue(0)
+    const r = await deleteSpecItemStatus(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('404'),
+    )
+
+    expect(r.status).toBe(404)
+    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 })
 
@@ -514,13 +584,40 @@ describe('requirement-areas/[id] routes', () => {
     const r = await putReqArea(jsonReq('PUT', { name: 'X' }), makeParams('1'))
     expect(((await r.json()) as { id: number }).id).toBe(1)
   })
+  it('PUT returns 404 without audit when the requirement area is missing', async () => {
+    mockUpdateReqArea.mockResolvedValue(undefined)
+    const r = await putReqArea(
+      jsonReq('PUT', { name: 'Missing' }),
+      makeParams('404'),
+    )
+
+    expect(r.status).toBe(404)
+    await expect(r.json()).resolves.toEqual({ message: 'Not found' })
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
+  })
   it('DELETE deletes', async () => {
-    mockDeleteReqArea.mockResolvedValue(undefined)
+    mockDeleteReqArea.mockResolvedValue(1)
     const r = await deleteReqArea(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('1'),
     )
     expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
+  })
+
+  it('DELETE returns 404 without audit when the requirement area is missing', async () => {
+    mockDeleteReqArea.mockResolvedValue(0)
+    const r = await deleteReqArea(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('404'),
+    )
+
+    expect(r.status).toBe(404)
+    await expect(r.json()).resolves.toEqual({ message: 'Not found' })
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 
   it('returns 400 for invalid ids before opening the DB', async () => {
@@ -628,12 +725,26 @@ describe('requirement-packages routes', () => {
     expect(((await r.json()) as { id: number }).id).toBe(1)
   })
   it('DELETE deletes', async () => {
-    mockDeleteRequirementPackage.mockResolvedValue(undefined)
+    mockDeleteRequirementPackage.mockResolvedValue(1)
     const r = await deleteRequirementPackage(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('1'),
     )
     expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
+  })
+
+  it('DELETE returns 404 without audit when the requirement package is missing', async () => {
+    mockDeleteRequirementPackage.mockResolvedValue(0)
+    const r = await deleteRequirementPackage(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('404'),
+    )
+
+    expect(r.status).toBe(404)
+    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 })
 

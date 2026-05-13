@@ -2,11 +2,34 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
+  createAdminPrivilegedAuditContext: vi.fn(async () => ({
+    actor: {
+      displayName: 'Ada Admin',
+      hsaId: 'SE2321000032-admin1',
+      id: 'admin-sub',
+      isAuthenticated: true,
+      roles: ['Admin'],
+      source: 'oidc',
+    },
+    request: {
+      method: 'POST',
+      path: '/api/owners',
+      requestId: 'request-owner',
+    },
+    requestId: 'request-owner',
+    source: 'rest',
+  })),
   getRequestSqlServerDataSource: vi.fn(() => 'mock-db'),
   listOwners: vi.fn(),
   createOwner: vi.fn(),
+  recordAdminPrivilegedActionSucceeded: vi.fn(),
   updateOwner: vi.fn(),
   deleteOwner: vi.fn(),
+}))
+vi.mock('@/lib/admin/privileged-audit', () => ({
+  createAdminPrivilegedAuditContext: mocks.createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded:
+    mocks.recordAdminPrivilegedActionSucceeded,
 }))
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: mocks.getRequestSqlServerDataSource,
@@ -90,6 +113,15 @@ describe('owners routes', () => {
       expect(res.status).toBe(201)
       expect(await res.json()).toMatchObject({ id: 2 })
       expect(mocks.createOwner).toHaveBeenCalledWith('mock-db', body)
+      expect(mocks.recordAdminPrivilegedActionSucceeded).toHaveBeenCalledWith(
+        expect.objectContaining({ requestId: 'request-owner' }),
+        {
+          changedFields: ['email', 'firstName', 'hsaId', 'lastName'],
+          operation: 'create',
+          resourceId: 2,
+          resourceType: 'owner',
+        },
+      )
     })
 
     it('returns 400 for invalid JSON before opening the DB', async () => {
@@ -99,6 +131,7 @@ describe('owners routes', () => {
       await expectInvalidRequest(res, '$')
       expect(mocks.getRequestSqlServerDataSource).not.toHaveBeenCalled()
       expect(mocks.createOwner).not.toHaveBeenCalled()
+      expect(mocks.recordAdminPrivilegedActionSucceeded).not.toHaveBeenCalled()
     })
 
     it.each([
@@ -139,6 +172,7 @@ describe('owners routes', () => {
       await expectInvalidRequest(res, path)
       expect(mocks.getRequestSqlServerDataSource).not.toHaveBeenCalled()
       expect(mocks.createOwner).not.toHaveBeenCalled()
+      expect(mocks.recordAdminPrivilegedActionSucceeded).not.toHaveBeenCalled()
     })
   })
 
@@ -152,6 +186,7 @@ describe('owners routes', () => {
       const res = await PUT(req, { params: makeParams('abc') })
       expect(res.status).toBe(400)
       await expectInvalidRequest(res, 'id')
+      expect(mocks.recordAdminPrivilegedActionSucceeded).not.toHaveBeenCalled()
     })
 
     it('returns 400 for float id', async () => {
@@ -162,6 +197,7 @@ describe('owners routes', () => {
       })
       const res = await PUT(req, { params: makeParams('1.5') })
       expect(res.status).toBe(400)
+      expect(mocks.recordAdminPrivilegedActionSucceeded).not.toHaveBeenCalled()
     })
 
     it('returns 400 for non-object body', async () => {
@@ -173,6 +209,7 @@ describe('owners routes', () => {
       const res = await PUT(req, { params: makeParams('1') })
       expect(res.status).toBe(400)
       await expectInvalidRequest(res, '$')
+      expect(mocks.recordAdminPrivilegedActionSucceeded).not.toHaveBeenCalled()
     })
 
     it('returns 400 for array body', async () => {
@@ -184,6 +221,7 @@ describe('owners routes', () => {
       const res = await PUT(req, { params: makeParams('1') })
       expect(res.status).toBe(400)
       await expectInvalidRequest(res, '$')
+      expect(mocks.recordAdminPrivilegedActionSucceeded).not.toHaveBeenCalled()
     })
 
     it('returns 400 for unknown fields', async () => {
@@ -195,6 +233,7 @@ describe('owners routes', () => {
       const res = await PUT(req, { params: makeParams('1') })
       expect(res.status).toBe(400)
       await expectInvalidRequest(res, '$')
+      expect(mocks.recordAdminPrivilegedActionSucceeded).not.toHaveBeenCalled()
     })
 
     it('returns 400 for non-string field types', async () => {
@@ -206,6 +245,7 @@ describe('owners routes', () => {
       const res = await PUT(req, { params: makeParams('1') })
       expect(res.status).toBe(400)
       await expectInvalidRequest(res, 'firstName')
+      expect(mocks.recordAdminPrivilegedActionSucceeded).not.toHaveBeenCalled()
     })
 
     it('returns 404 when owner not found', async () => {
@@ -217,6 +257,7 @@ describe('owners routes', () => {
       })
       const res = await PUT(req, { params: makeParams('99') })
       expect(res.status).toBe(404)
+      expect(mocks.recordAdminPrivilegedActionSucceeded).not.toHaveBeenCalled()
     })
 
     it('updates and returns owner on success', async () => {
@@ -238,6 +279,15 @@ describe('owners routes', () => {
       expect(mocks.updateOwner).toHaveBeenCalledWith('mock-db', 1, {
         firstName: 'New',
       })
+      expect(mocks.recordAdminPrivilegedActionSucceeded).toHaveBeenCalledWith(
+        expect.objectContaining({ requestId: 'request-owner' }),
+        {
+          changedFields: ['firstName'],
+          operation: 'update',
+          resourceId: 1,
+          resourceType: 'owner',
+        },
+      )
     })
   })
 
@@ -248,6 +298,7 @@ describe('owners routes', () => {
       })
       const res = await DELETE(req, { params: makeParams('abc') })
       expect(res.status).toBe(400)
+      expect(mocks.recordAdminPrivilegedActionSucceeded).not.toHaveBeenCalled()
     })
 
     it('returns 404 when no row deleted', async () => {
@@ -258,6 +309,7 @@ describe('owners routes', () => {
       const res = await DELETE(req, { params: makeParams('99') })
       expect(res.status).toBe(404)
       expect(await res.json()).toEqual({ error: 'Not found' })
+      expect(mocks.recordAdminPrivilegedActionSucceeded).not.toHaveBeenCalled()
     })
 
     it('returns ok on successful delete', async () => {
@@ -268,6 +320,14 @@ describe('owners routes', () => {
       const res = await DELETE(req, { params: makeParams('1') })
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual({ ok: true })
+      expect(mocks.recordAdminPrivilegedActionSucceeded).toHaveBeenCalledWith(
+        expect.objectContaining({ requestId: 'request-owner' }),
+        {
+          operation: 'delete',
+          resourceId: 1,
+          resourceType: 'owner',
+        },
+      )
     })
   })
 })

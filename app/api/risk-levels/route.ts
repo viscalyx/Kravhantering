@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
+import {
   countLinkedRequirements,
   createRiskLevel,
   listRiskLevels,
@@ -45,8 +49,15 @@ export async function POST(request: Request) {
   if (!parsedBody.ok) return parsedBody.response
 
   try {
+    const auditContext = await createAdminPrivilegedAuditContext(request)
     const db = await getRequestSqlServerDataSource()
     const riskLevel = await createRiskLevel(db, parsedBody.data)
+    recordAdminPrivilegedActionSucceeded(auditContext, {
+      changedFields: Object.keys(parsedBody.data),
+      operation: 'create',
+      resourceId: riskLevel.id,
+      resourceType: 'risk_level',
+    })
     return NextResponse.json(riskLevel, { status: 201 })
   } catch (error) {
     const isDuplicate = isDuplicateKeyError(error)

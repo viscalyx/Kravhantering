@@ -1271,14 +1271,16 @@ informationssäkerhetsåtgärder i nuvarande version:
 - **Strukturerad loggning** — JSON-formaterade loggar
   med fält för händelse, förfrågnings-ID, aktör,
   källa, krav-ID, versionsnummer och körtid.
-- **Separat säkerhetsaudit för auth och riskmutationer** —
+- **Separat säkerhetsaudit för auth, admin och riskmutationer** —
   `lib/auth/audit.ts` skriver ett JSON-objekt per
   säkerhetshändelse till processens loggström med
   `channel: "security-audit"`. Händelser som
   `auth.login.succeeded`, `auth.logout`,
   `auth.token.rejected`, `auth.mcp.token.accepted`
   `auth.csrf.rejected`, `auth.authorization.denied`
-  och `requirements.high_risk_mutation.succeeded` kan
+  `requirements.high_risk_mutation.succeeded`,
+  `admin.privileged_action.succeeded` och
+  `access_review.created` kan
   därmed särskiljas från övriga applikationsloggar.
 - **Defensiv redigering av känsliga fält** —
   säkerhetsauditens `detail`-fält filtrerar bort

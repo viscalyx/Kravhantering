@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
+import {
   createSpecificationImplementationType,
   listSpecificationImplementationTypes,
 } from '@/lib/dal/specification-implementation-types'
@@ -28,7 +32,14 @@ export async function GET() {
 export async function POST(request: Request) {
   const parsedBody = await readJsonWithSchema(request, implementationTypeSchema)
   if (!parsedBody.ok) return parsedBody.response
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
   const type = await createSpecificationImplementationType(db, parsedBody.data)
+  recordAdminPrivilegedActionSucceeded(auditContext, {
+    changedFields: Object.keys(parsedBody.data),
+    operation: 'create',
+    resourceId: type.id,
+    resourceType: 'specification_implementation_type',
+  })
   return NextResponse.json(type, { status: 201 })
 }

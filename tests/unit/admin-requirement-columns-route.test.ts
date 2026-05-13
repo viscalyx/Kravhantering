@@ -2,9 +2,34 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
+  createAdminPrivilegedAuditContext: vi.fn(async () => ({
+    actor: {
+      displayName: 'Ada Admin',
+      hsaId: 'SE2321000032-admin1',
+      id: 'admin-sub',
+      isAuthenticated: true,
+      roles: ['Admin'],
+      source: 'oidc',
+    },
+    request: {
+      method: 'PUT',
+      path: '/api/admin/requirement-columns',
+      requestId: 'request-2',
+    },
+    requestId: 'request-2',
+    source: 'rest',
+  })),
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
   getRequirementListColumnDefaults: vi.fn(),
+  recordAdminPrivilegedActionSucceeded: vi.fn(),
   updateRequirementListColumnDefaults: vi.fn(),
+}))
+
+vi.mock('@/lib/admin/privileged-audit', () => ({
+  createAdminPrivilegedAuditContext:
+    routeState.createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded:
+    routeState.recordAdminPrivilegedActionSucceeded,
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -116,6 +141,9 @@ describe('admin requirement columns route', () => {
     expect(
       routeState.updateRequirementListColumnDefaults,
     ).not.toHaveBeenCalled()
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 
   it('rejects duplicate requirement column ids', async () => {
@@ -149,6 +177,9 @@ describe('admin requirement columns route', () => {
     expect(
       routeState.updateRequirementListColumnDefaults,
     ).not.toHaveBeenCalled()
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 
   it('rejects duplicate requirement column sort orders', async () => {
@@ -181,6 +212,9 @@ describe('admin requirement columns route', () => {
     )
     expect(
       routeState.updateRequirementListColumnDefaults,
+    ).not.toHaveBeenCalled()
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
     ).not.toHaveBeenCalled()
   })
 
@@ -237,6 +271,16 @@ describe('admin requirement columns route', () => {
       'normReferences',
       'suggestionCount',
     ])
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ requestId: 'request-2' }),
+      {
+        itemCount: reorderedColumns.length,
+        operation: 'save',
+        resourceType: 'requirement_columns',
+      },
+    )
   })
 
   it('returns a structured error response when saving the column defaults fails', async () => {
@@ -274,6 +318,9 @@ describe('admin requirement columns route', () => {
 
     expect(response.status).toBe(500)
     expect(body.error).toBe('Failed to save requirement column defaults.')
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
   })
 
   it('returns a validation error for malformed JSON payloads', async () => {
@@ -297,6 +344,9 @@ describe('admin requirement columns route', () => {
     )
     expect(
       routeState.updateRequirementListColumnDefaults,
+    ).not.toHaveBeenCalled()
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
     ).not.toHaveBeenCalled()
   })
 })

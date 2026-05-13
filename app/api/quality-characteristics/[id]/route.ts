@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  createAdminPrivilegedAuditContext,
+  recordAdminPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
+import {
   deleteQualityCharacteristic,
   listQualityCharacteristics,
   type QualityCharacteristicRow,
@@ -52,6 +56,7 @@ export async function PUT(
     qualityCharacteristicUpdateSchema,
   )
   if (!parsedBody.ok) return parsedBody.response
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
   const category = await updateQualityCharacteristic(
     db,
@@ -61,16 +66,23 @@ export async function PUT(
   if (!category) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
+  recordAdminPrivilegedActionSucceeded(auditContext, {
+    changedFields: Object.keys(parsedBody.data),
+    operation: 'update',
+    resourceId: parsedParams.data.id,
+    resourceType: 'quality_characteristic',
+  })
   return NextResponse.json(category)
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(params, idParamSchema)
   if (!parsedParams.ok) return parsedParams.response
   const { id } = parsedParams.data
+  const auditContext = await createAdminPrivilegedAuditContext(request)
   const db = await getRequestSqlServerDataSource()
 
   const allCategories = await listQualityCharacteristics(db)
@@ -89,6 +101,11 @@ export async function DELETE(
     if (!deleted) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
+    recordAdminPrivilegedActionSucceeded(auditContext, {
+      operation: 'delete',
+      resourceId: id,
+      resourceType: 'quality_characteristic',
+    })
   } catch (error) {
     if (isForeignKeyOrConstraintError(error)) {
       return NextResponse.json(
