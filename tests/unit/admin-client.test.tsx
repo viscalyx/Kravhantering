@@ -35,6 +35,9 @@ const revokeObjectURLMock = vi.fn()
 const anchorClickMock = vi.fn()
 const routerRefresh = routerMock.refresh
 const routerReplace = routerMock.replace
+const TEST_ACCESS_REVIEW_ITEM_ID = 7
+const TEST_ACCESS_REVIEW_RUN_ID = 42
+const TEST_NEXT_ACCESS_REVIEW_RUN_ID = 43
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'sv',
@@ -120,7 +123,7 @@ function accessReviewDetail() {
         decidedAt: null,
         decidedBy: null,
         decision: 'pending',
-        id: 7,
+        id: TEST_ACCESS_REVIEW_ITEM_ID,
         permissionType: 'area_co_author',
         principal: {
           displayName: 'Kalle Svensson',
@@ -145,7 +148,7 @@ function accessReviewDetail() {
       },
       dueAt: '2026-06-11T12:00:00.000Z',
       externalEvidenceReference: 'IDM-2026',
-      id: 42,
+      id: TEST_ACCESS_REVIEW_RUN_ID,
       periodEnd: '2027-05-12T12:00:00.000Z',
       periodStart: '2026-05-12T12:00:00.000Z',
       reviewer: {
@@ -212,7 +215,8 @@ function mockAccessReviewApi(options?: {
         )
       }
       if (
-        url === '/api/admin/access-reviews/42/items/7' &&
+        url ===
+          `/api/admin/access-reviews/${TEST_ACCESS_REVIEW_RUN_ID}/items/${TEST_ACCESS_REVIEW_ITEM_ID}` &&
         method === 'PATCH'
       ) {
         return Promise.resolve(
@@ -237,12 +241,20 @@ function mockAccessReviewApi(options?: {
             }),
         )
       }
-      if (url === '/api/admin/access-reviews/42/export' && method === 'POST') {
+      if (
+        url ===
+          `/api/admin/access-reviews/${TEST_ACCESS_REVIEW_RUN_ID}/export` &&
+        method === 'POST'
+      ) {
         return Promise.resolve(
           options?.exportResponse ?? okJson(accessReviewExportBody()),
         )
       }
-      if (url === '/api/admin/access-reviews/42/cancel' && method === 'POST') {
+      if (
+        url ===
+          `/api/admin/access-reviews/${TEST_ACCESS_REVIEW_RUN_ID}/cancel` &&
+        method === 'POST'
+      ) {
         return Promise.resolve(
           options?.cancelResponse ??
             okJson({
@@ -272,6 +284,21 @@ function deferred<T>() {
 
 function renderWithConfirmModal(ui: Parameters<typeof render>[0]) {
   return render(<ConfirmModalProvider>{ui}</ConfirmModalProvider>)
+}
+
+function renderAdminAccessReview(
+  options?: Parameters<typeof mockAccessReviewApi>[0],
+) {
+  searchParamsMock.current = new URLSearchParams('tab=accessReview')
+  mockAccessReviewApi(options)
+
+  renderWithConfirmModal(
+    <AdminClient
+      currentUserRoles={['Admin']}
+      initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+      initialTerminology={buildUiTerminologyPayload(getDefaultUiTerminology())}
+    />,
+  )
 }
 
 function HelpContentProbe() {
@@ -593,20 +620,8 @@ describe('AdminClient', () => {
     )
   })
 
-  it('loads access review runs and saves reviewer decisions', async () => {
-    searchParamsMock.current = new URLSearchParams('tab=accessReview')
-    mockAccessReviewApi()
-
-    renderWithConfirmModal(
-      <AdminClient
-        currentUserRoles={['Admin']}
-        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
-      />,
-    )
-
+  it('displays access review item details', async () => {
+    renderAdminAccessReview()
     const principalCell = await screen.findByText('Kalle Svensson')
     const row = principalCell.closest('tr')
     expect(row).not.toBeNull()
@@ -639,6 +654,12 @@ describe('AdminClient', () => {
       'title',
       'admin.accessReview.rowNeedsReview',
     )
+  })
+
+  it('saves reviewer decisions', async () => {
+    renderAdminAccessReview()
+    const row = (await screen.findByText('Kalle Svensson')).closest('tr')
+    expect(row).not.toBeNull()
 
     fireEvent.change(within(row as HTMLTableRowElement).getByRole('textbox'), {
       target: { value: 'Still needed' },
@@ -651,7 +672,7 @@ describe('AdminClient', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/admin/access-reviews/42/items/7',
+        `/api/admin/access-reviews/${TEST_ACCESS_REVIEW_RUN_ID}/items/${TEST_ACCESS_REVIEW_ITEM_ID}`,
         expect.objectContaining({
           body: JSON.stringify({
             comment: 'Still needed',
@@ -692,6 +713,33 @@ describe('AdminClient', () => {
       'align-middle',
       'text-left',
     )
+  })
+
+  it('unlocks saved reviewer decisions', async () => {
+    const savedDetail = {
+      ...accessReviewDetail(),
+      items: [
+        {
+          ...accessReviewDetail().items[0],
+          comment: 'Still needed',
+          decision: 'approved',
+        },
+      ],
+      run: {
+        ...accessReviewDetail().run,
+        summary: {
+          ...accessReviewDetail().run.summary,
+          approvedCount: 1,
+          pendingCount: 0,
+        },
+      },
+    }
+    renderAdminAccessReview({
+      detailResponse: okJson(savedDetail),
+      listResponse: okJson({ runs: [savedDetail.run] }),
+    })
+    const row = (await screen.findByText('Kalle Svensson')).closest('tr')
+    expect(row).not.toBeNull()
     const unlockButton = within(row as HTMLTableRowElement).getByRole(
       'button',
       {
@@ -750,7 +798,7 @@ describe('AdminClient', () => {
     ).toBeNull()
     expect(within(row as HTMLTableRowElement).queryByRole('textbox')).toBeNull()
     expect(fetchMock).not.toHaveBeenCalledWith(
-      '/api/admin/access-reviews/42/items/7',
+      `/api/admin/access-reviews/${TEST_ACCESS_REVIEW_RUN_ID}/items/${TEST_ACCESS_REVIEW_ITEM_ID}`,
       expect.objectContaining({ method: 'PATCH' }),
     )
   })
@@ -1005,7 +1053,7 @@ describe('AdminClient', () => {
       ],
       run: {
         ...accessReviewDetail().run,
-        id: 43,
+        id: TEST_NEXT_ACCESS_REVIEW_RUN_ID,
         summary: {
           ...accessReviewDetail().run.summary,
           approvedCount: 1,
@@ -1016,8 +1064,8 @@ describe('AdminClient', () => {
     const pendingNextDetail = deferred<Response>()
     mockAccessReviewApi({
       detailResponses: {
-        42: okJson(currentDetail),
-        43: pendingNextDetail.promise,
+        [TEST_ACCESS_REVIEW_RUN_ID]: okJson(currentDetail),
+        [TEST_NEXT_ACCESS_REVIEW_RUN_ID]: pendingNextDetail.promise,
       },
       listResponse: okJson({ runs: [currentDetail.run, nextDetail.run] }),
     })
@@ -1040,14 +1088,14 @@ describe('AdminClient', () => {
         button.textContent?.includes('admin.accessReview.pendingCount'),
       )
     expect(runButtons).toHaveLength(2)
-    await act(async () => {
-      fireEvent.click(runButtons[0])
-    })
+    fireEvent.click(runButtons[0])
 
     expect(screen.getByText('Kalle Svensson')).toBeTruthy()
     expect(screen.queryByText('admin.accessReview.selectRun')).toBeNull()
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith('/api/admin/access-reviews/43'),
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/admin/access-reviews/${TEST_NEXT_ACCESS_REVIEW_RUN_ID}`,
+      ),
     )
     expect(
       fetchMock.mock.calls.filter(([input]) => {
@@ -1103,7 +1151,7 @@ describe('AdminClient', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/admin/access-reviews/42/cancel',
+        `/api/admin/access-reviews/${TEST_ACCESS_REVIEW_RUN_ID}/cancel`,
         expect.objectContaining({ method: 'POST' }),
       ),
     )
@@ -1169,7 +1217,7 @@ describe('AdminClient', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/admin/access-reviews/42/export',
+        `/api/admin/access-reviews/${TEST_ACCESS_REVIEW_RUN_ID}/export`,
         expect.objectContaining({
           body: JSON.stringify({ delivery: 'json' }),
           method: 'POST',
