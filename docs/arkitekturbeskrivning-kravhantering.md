@@ -1276,8 +1276,8 @@ informationssäkerhetsåtgärder i nuvarande version:
   säkerhetshändelse till processens loggström med
   `channel: "security-audit"`. Händelser som
   `auth.login.succeeded`, `auth.logout`,
-  `auth.token.rejected`, `auth.mcp.token.accepted`
-  `auth.csrf.rejected`, `auth.authorization.denied`
+  `auth.token.rejected`, `auth.mcp.token.accepted`,
+  `auth.csrf.rejected`, `auth.authorization.denied`,
   `requirements.high_risk_mutation.succeeded`,
   `admin.privileged_action.succeeded` och
   `access_review.created` kan

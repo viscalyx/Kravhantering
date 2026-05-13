@@ -54,10 +54,7 @@ export async function PUT(
       parsedBody.data,
     )
     if (!status) {
-      return NextResponse.json(
-        { error: 'Lifecycle status not found' },
-        { status: 404 },
-      )
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     recordAdminPrivilegedActionSucceeded(auditContext, {
       changedFields: Object.keys(parsedBody.data),
@@ -89,10 +86,7 @@ export async function DELETE(
       parsedParams.data.id,
     )
     if (deletedCount === 0) {
-      return NextResponse.json(
-        { error: 'Lifecycle status not found' },
-        { status: 404 },
-      )
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     recordAdminPrivilegedActionSucceeded(auditContext, {
       operation: 'delete',

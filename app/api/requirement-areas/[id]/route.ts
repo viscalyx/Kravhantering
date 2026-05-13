@@ -39,7 +39,7 @@ export async function PUT(
   const db = await getRequestSqlServerDataSource()
   const area = await updateArea(db, parsedParams.data.id, parsedBody.data)
   if (!area) {
-    return NextResponse.json({ message: 'Not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
   recordAdminPrivilegedActionSucceeded(auditContext, {
     changedFields: Object.keys(parsedBody.data),
@@ -60,7 +60,7 @@ export async function DELETE(
   const db = await getRequestSqlServerDataSource()
   const deletedCount = await deleteArea(db, parsedParams.data.id)
   if (deletedCount === 0) {
-    return NextResponse.json({ message: 'Not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
   recordAdminPrivilegedActionSucceeded(auditContext, {
     operation: 'delete',

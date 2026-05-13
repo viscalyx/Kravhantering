@@ -384,6 +384,16 @@ describe('specification-lifecycle-statuses routes', () => {
     )
     expect(mockUpdateLifecycle).not.toHaveBeenCalled()
   })
+  it('PUT returns 404 when the lifecycle status is missing', async () => {
+    mockUpdateLifecycle.mockResolvedValue(undefined)
+    const r = await putLifecycle(
+      jsonReq('PUT', { nameEn: 'Missing' }),
+      makeParams('404'),
+    )
+
+    expect(r.status).toBe(404)
+    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
+  })
   it('DELETE deletes', async () => {
     mockDeleteLifecycle.mockResolvedValue(1)
     const r = await deleteLifecycle(
@@ -391,6 +401,16 @@ describe('specification-lifecycle-statuses routes', () => {
       makeParams('1'),
     )
     expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
+  })
+  it('DELETE returns 404 when the lifecycle status is missing', async () => {
+    mockDeleteLifecycle.mockResolvedValue(0)
+    const r = await deleteLifecycle(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('404'),
+    )
+
+    expect(r.status).toBe(404)
+    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
   })
 })
 
@@ -439,7 +459,7 @@ describe('specification-responsibility-areas routes', () => {
     )
 
     expect(r.status).toBe(404)
-    await expect(r.json()).resolves.toEqual({ message: 'Not found' })
+    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
     expect(
       auditState.recordAdminPrivilegedActionSucceeded,
     ).not.toHaveBeenCalled()
@@ -464,7 +484,7 @@ describe('specification-responsibility-areas routes', () => {
     )
 
     expect(r.status).toBe(404)
-    await expect(r.json()).resolves.toEqual({ message: 'Not found' })
+    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
   })
 })
 
@@ -592,7 +612,7 @@ describe('requirement-areas/[id] routes', () => {
     )
 
     expect(r.status).toBe(404)
-    await expect(r.json()).resolves.toEqual({ message: 'Not found' })
+    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
     expect(
       auditState.recordAdminPrivilegedActionSucceeded,
     ).not.toHaveBeenCalled()
@@ -614,7 +634,7 @@ describe('requirement-areas/[id] routes', () => {
     )
 
     expect(r.status).toBe(404)
-    await expect(r.json()).resolves.toEqual({ message: 'Not found' })
+    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
     expect(
       auditState.recordAdminPrivilegedActionSucceeded,
     ).not.toHaveBeenCalled()
