@@ -1383,6 +1383,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
   }
 
   const saveDecision = async (item: AccessReviewItem) => {
+    if (!canManage) return
     if (!selectedRunId) return
     const draft = decisionDrafts[item.id]
     if (!draft) return
@@ -1506,6 +1507,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
   }
 
   const unlockDecision = (item: AccessReviewItem) => {
+    if (!canManage) return
     if (isDisplayedRunClosed) return
     setMessage(null)
     exportDownload.clearError()
@@ -1883,13 +1885,13 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                   <table className="min-w-full divide-y divide-secondary-200 text-sm dark:divide-secondary-700">
                     <thead className="bg-white dark:bg-secondary-900">
                       <tr>
-                        {isDisplayedRunClosed ? null : (
+                        {canManage && !isDisplayedRunClosed ? (
                           <th className="w-12 px-4 py-3 text-left font-semibold">
                             <span className="sr-only">
                               {ta('accessReview.lockState')}
                             </span>
                           </th>
-                        )}
+                        ) : null}
                         <th className="px-4 py-3 text-left font-semibold">
                           {ta('accessReview.principal')}
                         </th>
@@ -1914,12 +1916,13 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                           decision: 'approved' as const,
                         }
                         const canChooseDecision =
+                          canManage &&
                           !isDisplayedRunClosed &&
                           (item.decision === 'pending' ||
                             unlockedDecisionItemIds.has(item.id))
                         return (
                           <tr key={item.id}>
-                            {isDisplayedRunClosed ? null : (
+                            {canManage && !isDisplayedRunClosed ? (
                               <td className="px-4 py-3 align-middle">
                                 <button
                                   aria-label={
@@ -1933,13 +1936,18 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                                       : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-900/40'
                                   }`}
                                   disabled={
-                                    isDetailLoading || status === 'saving'
+                                    !canManage ||
+                                    isDetailLoading ||
+                                    status === 'saving'
                                   }
-                                  onClick={() =>
-                                    canChooseDecision
-                                      ? void saveDecision(item)
-                                      : unlockDecision(item)
-                                  }
+                                  onClick={() => {
+                                    if (!canManage) return
+                                    if (canChooseDecision) {
+                                      void saveDecision(item)
+                                    } else {
+                                      unlockDecision(item)
+                                    }
+                                  }}
                                   title={
                                     canChooseDecision
                                       ? ta('accessReview.rowNeedsReview')
@@ -1960,7 +1968,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                                   )}
                                 </button>
                               </td>
-                            )}
+                            ) : null}
                             <td className="px-4 py-3">
                               <div className="font-medium text-secondary-900 dark:text-secondary-100">
                                 {formatActorDisplayNameForLocale(

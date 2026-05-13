@@ -78,10 +78,10 @@ function relatedObject(
   row: ExportRow,
   type: string,
   keyField: string,
-  labelField: string,
+  labelField?: string,
 ): DataSubjectExportRelatedObject {
   const key = stringValue(row[keyField]) ?? ''
-  const label = stringValue(row[labelField])
+  const label = labelField ? stringValue(row[labelField]) : null
   return {
     key,
     ...(label ? { label } : {}),
@@ -733,7 +733,6 @@ async function collectAccessReviewRunActor(
     `/* privacy:data-export:${options.key} */
       SELECT
         id AS runId,
-        CONCAT(N'access_review:', id) AS runLabel,
         ${options.hsaField} AS hsaId,
         ${options.displayField} AS displayName,
         status,
@@ -768,12 +767,7 @@ async function collectAccessReviewRunActor(
         },
       ],
       {
-        relatedObject: relatedObject(
-          row,
-          'access_review_run',
-          'runId',
-          'runLabel',
-        ),
+        relatedObject: relatedObject(row, 'access_review_run', 'runId'),
         timestamp: row.actorTimestamp,
       },
     ),
@@ -798,7 +792,7 @@ async function collectAccessReviewItemActor(
     `/* privacy:data-export:${options.key} */
       SELECT
         item.id AS itemId,
-        CONCAT(N'access_review_item:', item.run_id, N':', item.id) AS itemLabel,
+        CONCAT(item.run_id, N':', item.id) AS itemKey,
         item.${options.hsaField} AS hsaId,
         item.${options.displayField} AS displayName,
         item.source_key AS sourceKey,
@@ -840,12 +834,7 @@ async function collectAccessReviewItemActor(
         { fieldName: 'decision', value: stringValue(row.decision) },
       ],
       {
-        relatedObject: relatedObject(
-          row,
-          'access_review_item',
-          'itemId',
-          'itemLabel',
-        ),
+        relatedObject: relatedObject(row, 'access_review_item', 'itemKey'),
         timestamp: row.actorTimestamp,
       },
     ),

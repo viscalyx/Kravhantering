@@ -717,6 +717,44 @@ describe('AdminClient', () => {
     ).toBeTruthy()
   })
 
+  it('hides access review decision controls without Admin permission', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=accessReview')
+    mockAccessReviewApi()
+
+    renderWithConfirmModal(
+      <AdminClient
+        currentUserRoles={['Reviewer']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    const principalCell = await screen.findByText('Kalle Svensson')
+    const row = principalCell.closest('tr')
+    expect(row).not.toBeNull()
+    expect(screen.queryByText('admin.accessReview.lockState')).toBeNull()
+    expect(
+      within(row as HTMLTableRowElement).queryByRole('button', {
+        name: 'admin.accessReview.rowNeedsReview',
+      }),
+    ).toBeNull()
+    expect(
+      within(row as HTMLTableRowElement).queryByRole('button', {
+        name: 'admin.accessReview.rowApproved',
+      }),
+    ).toBeNull()
+    expect(
+      within(row as HTMLTableRowElement).queryByRole('combobox'),
+    ).toBeNull()
+    expect(within(row as HTMLTableRowElement).queryByRole('textbox')).toBeNull()
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/admin/access-reviews/42/items/7',
+      expect.objectContaining({ method: 'PATCH' }),
+    )
+  })
+
   it('keeps a row in place when locking a saved access review decision', async () => {
     searchParamsMock.current = new URLSearchParams('tab=accessReview')
     const baseDetail = accessReviewDetail()

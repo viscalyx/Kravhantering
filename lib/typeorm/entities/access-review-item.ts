@@ -21,7 +21,6 @@ export interface AccessReviewItemEntity {
   principalDisplayName: string
   principalHsaId: string | null
   run: AccessReviewRunEntity
-  runId: number
   scopeKey: string
   scopeLabel: string
   scopeType: string
@@ -37,10 +36,6 @@ export const accessReviewItemEntity = new EntitySchema<AccessReviewItemEntity>({
       generated: 'increment',
       name: 'id',
       primary: true,
-      type: 'int',
-    },
-    runId: {
-      name: 'run_id',
       type: 'int',
     },
     sourceKey: {
@@ -123,7 +118,7 @@ export const accessReviewItemEntity = new EntitySchema<AccessReviewItemEntity>({
   },
   indices: [
     {
-      columns: ['runId', 'decision'],
+      columns: ['run', 'decision'],
       name: 'idx_access_review_items_run_id_decision',
     },
     {

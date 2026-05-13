@@ -38,18 +38,17 @@ export function accessReviewErrorResponse(
   error: unknown,
   options: AccessReviewErrorResponseOptions = {},
 ) {
-  const response =
-    error instanceof CsrfError || isRequirementsServiceError(error)
-      ? (() => {
-          const { body, status } = toHttpErrorPayload(error)
-          return NextResponse.json(body, { status })
-        })()
-      : (() => {
-          logSanitizedError(message, error)
-          return NextResponse.json(unexpectedErrorBody(message, error), {
-            status: 500,
-          })
-        })()
+  let response: NextResponse
+
+  if (error instanceof CsrfError || isRequirementsServiceError(error)) {
+    const { body, status } = toHttpErrorPayload(error)
+    response = NextResponse.json(body, { status })
+  } else {
+    logSanitizedError(message, error)
+    response = NextResponse.json(unexpectedErrorBody(message, error), {
+      status: 500,
+    })
+  }
 
   return options.noStore ? addNoStore(response) : response
 }
