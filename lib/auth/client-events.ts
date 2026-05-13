@@ -13,9 +13,23 @@ export function dispatchAuthReauthRequired(
   reason: AuthReauthRequiredReason,
 ): void {
   if (typeof window === 'undefined') return
-  window.dispatchEvent(
-    new CustomEvent<AuthReauthRequiredEventDetail>(AUTH_REAUTH_REQUIRED_EVENT, {
-      detail: { reason },
-    }),
-  )
+  try {
+    window.dispatchEvent(
+      new CustomEvent<AuthReauthRequiredEventDetail>(
+        AUTH_REAUTH_REQUIRED_EVENT,
+        {
+          detail: { reason },
+        },
+      ),
+    )
+  } catch (error) {
+    try {
+      console.error(
+        '[auth] failed to dispatch auth-required event',
+        error instanceof Error ? error.message : String(error),
+      )
+    } catch {
+      /* swallow: auth-required notification must not break callers */
+    }
+  }
 }

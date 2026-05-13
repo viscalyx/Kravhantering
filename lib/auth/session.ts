@@ -226,10 +226,11 @@ export async function getSessionFromRequestWithDiagnostics(
   if (!cookiePresent) {
     return { session, rejected: false }
   }
-  if (isSessionExpired(session)) {
+  const now = currentEpochSeconds()
+  if (isSessionExpired(session, now)) {
     return { session, rejected: true, reason: 'access_token_expired' }
   }
-  if (!isSignedIn(session)) {
+  if (!isSignedIn(session, now)) {
     return { session, rejected: true, reason: 'invalid_session_cookie' }
   }
   return { session, rejected: false }

@@ -134,4 +134,29 @@ describe('apiFetch', () => {
       window.removeEventListener(AUTH_REAUTH_REQUIRED_EVENT, listener)
     }
   })
+
+  it('still returns the API response when reauth event dispatch fails', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {})
+    const dispatchSpy = vi
+      .spyOn(window, 'dispatchEvent')
+      .mockImplementation(() => {
+        throw new Error('dispatch failed')
+      })
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 401 }))
+
+    try {
+      const response = await apiFetch('/api/items')
+
+      expect(response.status).toBe(401)
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[auth] failed to dispatch auth-required event',
+        'dispatch failed',
+      )
+    } finally {
+      dispatchSpy.mockRestore()
+      consoleErrorSpy.mockRestore()
+    }
+  })
 })
