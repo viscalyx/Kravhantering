@@ -1,5 +1,8 @@
 import { accessReviewItemEntity } from '@/lib/typeorm/entities/access-review-item'
 import { accessReviewRunEntity } from '@/lib/typeorm/entities/access-review-run'
+import { archivingRetentionExceptionEntity } from '@/lib/typeorm/entities/archiving-retention-exception'
+import { archivingRetentionPolicyEntity } from '@/lib/typeorm/entities/archiving-retention-policy'
+import { archivingRetentionRunEntity } from '@/lib/typeorm/entities/archiving-retention-run'
 import { deviationEntity } from '@/lib/typeorm/entities/deviation'
 import { improvementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 import { normReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
@@ -39,6 +42,9 @@ export const sqlServerEntities = [
   improvementSuggestionEntity,
   normReferenceEntity,
   ownerEntity,
+  archivingRetentionPolicyEntity,
+  archivingRetentionRunEntity,
+  archivingRetentionExceptionEntity,
   specificationImplementationTypeEntity,
   specificationItemStatusEntity,
   specificationLifecycleStatusEntity,
@@ -70,6 +76,9 @@ export const sqlServerEntities = [
 
 export type { AccessReviewItemEntity } from '@/lib/typeorm/entities/access-review-item'
 export type { AccessReviewRunEntity } from '@/lib/typeorm/entities/access-review-run'
+export type { ArchivingRetentionExceptionEntity } from '@/lib/typeorm/entities/archiving-retention-exception'
+export type { ArchivingRetentionPolicyEntity } from '@/lib/typeorm/entities/archiving-retention-policy'
+export type { ArchivingRetentionRunEntity } from '@/lib/typeorm/entities/archiving-retention-run'
 export type { DeviationEntity } from '@/lib/typeorm/entities/deviation'
 export type { ImprovementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 export type { NormReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
@@ -105,6 +114,9 @@ export type { UiTerminologyEntity } from '@/lib/typeorm/entities/ui-terminology'
 export {
   accessReviewItemEntity,
   accessReviewRunEntity,
+  archivingRetentionExceptionEntity,
+  archivingRetentionPolicyEntity,
+  archivingRetentionRunEntity,
   deviationEntity,
   improvementSuggestionEntity,
   normReferenceEntity,

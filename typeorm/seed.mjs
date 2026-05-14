@@ -1,6 +1,9 @@
 const TABLE_ORDER = [
   'norm_references',
   'owners',
+  'archiving_retention_policies',
+  'archiving_retention_runs',
+  'archiving_retention_exceptions',
   'specification_implementation_types',
   'specification_item_statuses',
   'specification_lifecycle_statuses',
@@ -160,6 +163,111 @@ const SEED_DATA = {
         '2026-04-20 20:07:00',
       ],
     ],
+  },
+  archiving_retention_policies: {
+    columns: [
+      'id',
+      'policy_key',
+      'information_set',
+      'action',
+      'age_days',
+      'status_condition',
+      'is_enabled',
+      'decision_reference',
+      'last_run_at',
+      'created_at',
+      'updated_at',
+    ],
+    pk: ['id'],
+    rows: [
+      [
+        2,
+        'orphaned_owner_delete',
+        'Fristående ägare utan aktiva uppdrag',
+        'delete',
+        365,
+        'Ägare utan koppling till kravområden eller kravunderlag',
+        1,
+        'docs/informationsmangder-kravhantering.md#gallrings--och-arkiveringsmatris',
+        null,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        3,
+        'unused_taxonomy_delete',
+        'Oanvänd taxonomi',
+        'delete',
+        730,
+        'Kravområden, kravpaket och normreferenser utan aktuella kopplingar',
+        1,
+        'docs/informationsmangder-kravhantering.md#gallrings--och-arkiveringsmatris',
+        null,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        4,
+        'old_requirement_versions_delete',
+        'Gamla kravversioner utan kravunderlagsberoende',
+        'delete',
+        365,
+        'Arkiverade, granskade eller utkastversioner utan kravunderlagsberoende',
+        1,
+        'docs/informationsmangder-kravhantering.md#gallrings--och-arkiveringsmatris',
+        null,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        5,
+        'obsolete_specifications_delete',
+        'Kravunderlag utanför förvaltning',
+        'delete',
+        730,
+        'Kravunderlag som inte har status Förvaltning och inte uppdaterats på två år',
+        1,
+        'docs/informationsmangder-kravhantering.md#gallrings--och-arkiveringsmatris',
+        null,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+    ],
+  },
+  archiving_retention_runs: {
+    columns: [
+      'id',
+      'policy_id',
+      'status',
+      'started_at',
+      'completed_at',
+      'executed_by_hsa_id',
+      'executed_by_display_name',
+      'preview_token',
+      'candidate_count',
+      'archived_count',
+      'deleted_count',
+      'skipped_count',
+      'exception_count',
+    ],
+    pk: ['id'],
+    rows: [],
+  },
+  archiving_retention_exceptions: {
+    columns: [
+      'id',
+      'policy_id',
+      'source_key',
+      'subject_table',
+      'subject_id',
+      'reason',
+      'created_by_hsa_id',
+      'created_by_display_name',
+      'created_at',
+      'expires_at',
+    ],
+    pk: ['id'],
+    rows: [],
   },
   specification_implementation_types: {
     columns: ['id', 'name_sv', 'name_en'],
@@ -12145,6 +12253,9 @@ const SEED_DATA = {
 // typeorm/seed-dogfood-build.mjs for the builder logic.
 const { appendDogfoodSeed } = await import('./seed-dogfood-build.mjs')
 appendDogfoodSeed(SEED_DATA)
+const { RETENTION_HISTORY_ONLY_VERSION_IDS, appendArchivingRetentionSeed } =
+  await import('./seed-archiving-retention-build.mjs')
+appendArchivingRetentionSeed(SEED_DATA)
 
 const PRIVACY_SEED_TS = '2026-04-23 09:00:00'
 
@@ -12183,6 +12294,8 @@ const OWNER_HSA_BY_ID = new Map([
   [1003, 'SE2321000032-linneab'],
   [1004, 'SE2321000032-oscarn'],
   [1005, 'SE2321000032-emmal'],
+  [910001, 'SE2321000032-retentionorphan'],
+  [910002, 'SE2321000032-retentionlinked'],
 ])
 
 const SPEC_RESPONSIBLE_BY_ID = new Map([
@@ -12199,6 +12312,9 @@ const SPEC_RESPONSIBLE_BY_ID = new Map([
   [11, { displayName: 'Maria Johansson', hsaId: 'SE2321000032-mariaj' }],
   [1001, { displayName: 'Sara Holm', hsaId: 'SE2321000032-saraholm' }],
   [1002, { displayName: 'Kalle Svensson', hsaId: 'SE2321000032-kalle2' }],
+  [910300, { displayName: 'seed', hsaId: 'SE2321000032-seed' }],
+  [910301, { displayName: 'Oscar Nilsson', hsaId: 'SE2321000032-oscarn' }],
+  [910302, { displayName: 'Emma Lindqvist', hsaId: 'SE2321000032-emmal' }],
 ])
 
 function seedTable(name) {
@@ -12243,6 +12359,39 @@ function setSeedRowValues(table, matchColumn, matchValue, values) {
       throw new Error(`Privacy seed: table lacks column '${column}'`)
     }
     row[index] = value
+  }
+}
+
+function applyArchivingRetentionSeed() {
+  const versions = seedTable('requirement_versions')
+  ensureColumn(versions, 'status_updated_at', (row, table) => {
+    const value = column => row[table.columns.indexOf(column)]
+    return (
+      value('archived_at') ??
+      value('published_at') ??
+      value('edited_at') ??
+      value('created_at')
+    )
+  })
+  ensureColumn(versions, 'has_specification_item_history', () => 0)
+
+  const versionIdIndex = versions.columns.indexOf('id')
+  const historyIndex = versions.columns.indexOf(
+    'has_specification_item_history',
+  )
+  const itemVersionIndex = seedTable(
+    'requirements_specification_items',
+  ).columns.indexOf('requirement_version_id')
+  const linkedVersionIds = new Set(
+    seedTable('requirements_specification_items').rows.map(
+      row => row[itemVersionIndex],
+    ),
+  )
+  for (const versionId of RETENTION_HISTORY_ONLY_VERSION_IDS) {
+    linkedVersionIds.add(versionId)
+  }
+  for (const row of versions.rows) {
+    row[historyIndex] = linkedVersionIds.has(row[versionIdIndex]) ? 1 : 0
   }
 }
 
@@ -12763,6 +12912,7 @@ function applyPrivacyIdentitySeed() {
 }
 
 applyPrivacyIdentitySeed()
+applyArchivingRetentionSeed()
 
 export function seedPositionDetail({
   table,

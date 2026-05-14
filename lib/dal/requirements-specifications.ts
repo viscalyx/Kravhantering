@@ -1433,6 +1433,12 @@ export async function linkRequirementsToSpecification(
       ],
     )) as Array<{ id: number }>
     if (rows.length > 0) {
+      await db.query(
+        `UPDATE requirement_versions
+          SET has_specification_item_history = 1
+          WHERE id = @0`,
+        [item.requirementVersionId],
+      )
       inserted += 1
     }
   }

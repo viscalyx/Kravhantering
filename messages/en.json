@@ -782,6 +782,7 @@
         "owners": "Owners",
         "requirementAreas": "Requirement areas",
         "requirementPackages": "Requirement packages",
+        "normReferences": "Norm references",
         "requirementVersions": "Requirement versions",
         "deviations": "Deviations",
         "specificationLocalDeviations": "Specification-local deviations",
@@ -802,7 +803,10 @@
         "responsible": "Responsible",
         "coAuthor": "Co-author",
         "reviewer": "Reviewer",
-        "accessReviewPrincipal": "Access review principal"
+        "accessReviewPrincipal": "Access review principal",
+        "taxonomy": "Taxonomy",
+        "requirementVersion": "Requirement version",
+        "specificationArchive": "Specification"
       },
       "warnings": {
         "ownerSwitch": "Switch references to a replacement owner, or anonymize to the deleted-user sentinel when no replacement is supplied.",
@@ -822,6 +826,48 @@
       "readOnly": {
         "controlledByOwner": "Shown for information. Requirement areas and packages are switched automatically when the owner row is switched."
       }
+    },
+    "archiving": {
+      "body": "Use archiving to preview and execute approved retention policies and export archive evidence before deletion. The data protection flow remains separate for data-subject cases.",
+      "description": "Preview retention candidates, manage exceptions, and export archive material before data is removed from the application.",
+      "heading": "Archiving and retention",
+      "retention": {
+        "action": "Retention action",
+        "actions": {
+          "delete": "Delete"
+        },
+        "ageBasis": "Age basis",
+        "ageDays": "Age in days",
+        "confirmMessage": "This will process {archiveCount} archive row(s) and delete {deleteCount} row(s).",
+        "confirmTitle": "Run retention?",
+        "createException": "Exempt",
+        "cutoff": "Cutoff: {date}",
+        "defaultExceptionReason": "Exempted from archiving preview by Privacy officer.",
+        "description": "Retention and archiving are handled here. De-identification belongs in the export, while the application database only executes approved retention actions.",
+        "disabled": "Inactive",
+        "enabled": "Active",
+        "exception": "Exception",
+        "exceptionCreated": "Retention exception created.",
+        "exceptionError": "Could not create retention exception.",
+        "execute": "Run retention",
+        "executeError": "Could not run retention.",
+        "executeSuccess": "Retention run completed.",
+        "exportError": "Could not create archive export.",
+        "exportJson": "Export JSON",
+        "exportRequired": "Export the archive evidence before running retention.",
+        "exportSuccess": "Archive export created.",
+        "lastRun": "Last run",
+        "loadError": "Could not load retention policies.",
+        "policy": "Retention policy",
+        "preview": "Preview retention",
+        "previewError": "Could not preview retention.",
+        "previewResult": "{count} retention candidate(s)",
+        "reload": "Reload policies",
+        "stalePreview": "The retention preview is stale. Run preview again.",
+        "state": "State",
+        "title": "Retention"
+      },
+      "title": "Archiving"
     },
     "accessReview": {
       "title": "Access review",

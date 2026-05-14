@@ -2,7 +2,8 @@
 
 This document describes the contributor-facing admin center for UI
 terminology, default requirement-list columns, recurring access review,
-privacy erasure and data portability, and reference-data entrypoints.
+privacy erasure and data portability, archiving retention, and reference-data
+entrypoints.
 
 For requirement-list interaction details such as resizing, sorting, and
 filtering, see [requirements-ui-behaviour.md](./requirements-ui-behaviour.md).
@@ -21,12 +22,13 @@ the admin center instead.
 
 ## Tabs
 
-The admin center currently has five tabs:
+The admin center currently has six tabs:
 
 - `Terminology`
 - `Columns`
 - `Reference data`
 - `Access review`
+- `Archiving`
 - `Privacy`
 
 ## Terminology
@@ -230,6 +232,48 @@ Signed-in users can export their own data at `/{locale}/privacy`. That
 self-service path sends no target HSA-ID in the request body; the server derives
 the subject from the verified session HSA-ID and includes current session claims
 only for that self-export.
+
+## Archiving
+
+The `Archiving` tab is available at `/{locale}/admin?tab=archiving`. Archive
+and retention work is separated from the GDPR erasure and data portability
+flows. Retention is also separate from the requirement lifecycle's functional
+`Archived` state.
+
+A `PrivacyOfficer` can load documented retention policies, preview rows whose
+policy age and status criteria have passed, create row-level exceptions for
+legal hold or documented operational need, export archive evidence, and execute
+the accepted preview through `/api/admin/archiving/*`.
+
+V1 supports direct deletion after preview and confirmation for:
+
+- orphaned owner rows with no active requirement-area or package assignment
+- unused requirement areas, requirement packages and norm references older than
+  the policy age
+- old requirement versions with no current or historical requirements
+  specification dependency
+
+Local seed data includes deterministic `RETENTION-SEED` fixtures for every
+active policy source and the main exclusion cases, so a freshly seeded
+development database can be used to verify previews, export confirmation and
+deletion behavior from this tab.
+
+Requirement-version deletion removes package and norm-reference join rows first,
+then the version row. If no versions remain, the requirement row is deleted as
+well. Versions that have ever been linked to a requirements specification are
+excluded by `has_specification_item_history`.
+
+Requirements specifications outside `Förvaltning` and older than the policy age
+require an anonymized JSON archive export before deletion. The export includes
+the specification metadata, needs references, local requirements, linked catalog
+requirements, the pinned requirement-version properties, taxonomy labels,
+packages, norm references and deviations. Person fields in the export are
+written as `null` or `no-user`; the database is not anonymized by this flow.
+
+The retention run emits security-audit events with policy key, counts, request
+id and export confirmation fingerprint, but not raw target HSA-ID values or
+free-text payloads. Export responses and mutation responses use
+`Cache-Control: no-store`.
 
 ## Access Review
 

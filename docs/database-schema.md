@@ -217,6 +217,8 @@ erDiagram
         text published_at
         text archive_initiated_at
         text archived_at
+        text status_updated_at
+        integer has_specification_item_history "boolean"
         text created_by
         text created_by_hsa_id
     }
@@ -441,6 +443,49 @@ erDiagram
         text created_at
     }
 
+    archiving_retention_policies {
+        integer id PK
+        text policy_key UK
+        text information_set
+        text action
+        integer age_days
+        text status_condition
+        integer is_enabled "boolean"
+        text decision_reference
+        text last_run_at
+        text created_at
+        text updated_at
+    }
+
+    archiving_retention_runs {
+        integer id PK
+        integer policy_id FK
+        text status
+        text started_at
+        text completed_at
+        text executed_by_hsa_id
+        text executed_by_display_name
+        text preview_token
+        integer candidate_count
+        integer archived_count
+        integer deleted_count
+        integer skipped_count
+        integer exception_count
+    }
+
+    archiving_retention_exceptions {
+        integer id PK
+        integer policy_id FK
+        text source_key
+        text subject_table
+        text subject_id
+        text reason
+        text created_by_hsa_id
+        text created_by_display_name
+        text created_at
+        text expires_at
+    }
+
     %% Relationships
     owners |o--o{ requirement_areas : "owns"
     requirement_areas ||--o{ requirement_area_co_authors : "has co-authors"
@@ -485,6 +530,8 @@ erDiagram
     norm_references ||--o{ specification_local_requirement_norm_references : "linked via"
     specification_local_requirements ||--o{ specification_local_requirement_deviations : "has deviations"
     access_review_runs ||--o{ access_review_items : "snapshots assignments"
+    archiving_retention_policies ||--o{ archiving_retention_runs : "records executions"
+    archiving_retention_policies ||--o{ archiving_retention_exceptions : "has exceptions"
 
     improvement_suggestions {
         integer id PK
@@ -1053,6 +1100,8 @@ precondition.
 | `published_at` | text (ISO 8601) | When status changed to Published (nullable) |
 | `archive_initiated_at` | text (ISO 8601) | When archiving was initiated — set when status moves from Published to Review for archiving (nullable). When set, the UI swaps the status badge label to "Arkiveringsgranskning" / "Archiving Review" — see [UI status labels](lifecycle-workflow.md#ui-status-labels). |
 | `archived_at` | text (ISO 8601) | When status changed to Archived (nullable) |
+| `status_updated_at` | text (ISO 8601) | When `requirement_status_id` last changed; used by Admin Archiving to identify stale Draft/Review/Archived versions without touching `edited_at` |
+| `has_specification_item_history` | boolean (integer, default false) | Durable marker set when the version has ever been linked to a requirements specification item |
 | `created_by` | text | Display-name snapshot for the actor that created this version (nullable) |
 | `created_by_hsa_id` | text | HSA-ID for the actor that created this version (nullable after privacy erasure) |
 <!-- markdownlint-enable MD013 -->
@@ -1062,7 +1111,9 @@ precondition.
 on `(requirement_id, version_number)`;
 `uq_requirement_versions_revision_token` on `revision_token`.
 **Indexes:** `idx_requirement_versions_requirement_id`,
-`idx_requirement_versions_created_by_hsa_id`.
+`idx_requirement_versions_created_by_hsa_id`,
+`idx_requirement_versions_status_updated_at`,
+`idx_requirement_versions_has_specification_item_history`.
 
 **Lifecycle invariant:** `created_at` < `published_at`
 < `archived_at` (when applicable).
@@ -1250,6 +1301,94 @@ Point-in-time snapshot of one app-managed assignment in an access-review run.
 
 **Check constraint:** `chk_access_review_items_decision` limits `decision` to
 the review decision values above.
+
+### `archiving_retention_policies`
+
+Archiving retention policies that define which app-owned information set can be
+previewed and executed for gallring. Policies may require JSON export before
+the delete run, but the policy action itself is deletion.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `policy_key` | text | Stable policy key used by the hard-coded retention source definitions |
+| `information_set` | text | Human-readable information set covered by the policy |
+| `action` | text | Retention action. V1 uses `delete`; export requirements are candidate metadata, not a separate policy action. |
+| `age_days` | integer | Minimum age before rows become candidates |
+| `status_condition` | text | Human-readable status condition for candidate selection |
+| `is_enabled` | boolean (integer) | Whether the policy may be previewed and executed |
+| `decision_reference` | text | Reference to the documented management decision |
+| `last_run_at` | text (ISO 8601) | Last successful retention execution timestamp |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+| `updated_at` | text (ISO 8601) | Last-updated timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Unique indexes:** `uq_archiving_retention_policies_policy_key`.
+**Indexes:** `idx_archiving_retention_policies_enabled`.
+
+Seeded policies:
+
+- `orphaned_owner_delete` — deletes owner rows with no requirement-area or
+  requirement-package assignments after 365 days.
+- `unused_taxonomy_delete` — deletes unused requirement areas, requirement
+  packages and norm references after 730 days.
+- `old_requirement_versions_delete` — deletes old Draft, Review or Archived
+  requirement versions after 365 days when they have no requirements
+  specification history.
+- `obsolete_specifications_delete` — requires anonymized JSON export and then
+  deletes requirements specifications outside `Förvaltning` after 730 days.
+
+### `archiving_retention_runs`
+
+Execution receipts for Admin Archiving retention runs. Rows contain counts and
+operator identity snapshots, but not raw target HSA-ID values or free-text
+payloads from affected business records.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `policy_id` | integer FK → `archiving_retention_policies.id` (CASCADE DELETE) | Policy that was executed |
+| `status` | text | Execution status; v1 stores `completed` |
+| `started_at` | text (ISO 8601) | Execution start timestamp |
+| `completed_at` | text (ISO 8601) | Execution completion timestamp |
+| `executed_by_hsa_id` | text | HSA-ID for the PrivacyOfficer that executed the run |
+| `executed_by_display_name` | text | Display-name snapshot for the executing officer |
+| `preview_token` | text | Hash of the preview used to guard against stale execution |
+| `candidate_count` | integer | Number of rows in the accepted preview |
+| `archived_count` | integer | Number of rows selected for archive export |
+| `deleted_count` | integer | Number of rows selected for deletion |
+| `skipped_count` | integer | Number of rows skipped because they no longer matched at execution |
+| `exception_count` | integer | Active exceptions at preview time |
+<!-- markdownlint-enable MD013 -->
+
+**Indexes:** `idx_archiving_retention_runs_policy_id`,
+`idx_archiving_retention_runs_started_at`.
+
+### `archiving_retention_exceptions`
+
+Legal-hold or management exceptions that exclude one source row from a
+specific retention policy. Exceptions may expire automatically via
+`expires_at`.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `policy_id` | integer FK → `archiving_retention_policies.id` (CASCADE DELETE) | Policy that the exception applies to |
+| `source_key` | text | Source definition key such as `requirement_versions.created_by` |
+| `subject_table` | text | Source table for the affected row |
+| `subject_id` | text | Stable source row identifier |
+| `reason` | text | Documented exception reason |
+| `created_by_hsa_id` | text | HSA-ID for the officer that created the exception |
+| `created_by_display_name` | text | Display-name snapshot for the officer |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+| `expires_at` | text (ISO 8601) | Optional exception expiry timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Unique indexes:** `uq_archiving_retention_exceptions_subject`.
+**Indexes:** `idx_archiving_retention_exceptions_policy_source`.
 
 ---
 
@@ -1549,6 +1688,8 @@ its purpose and the table/column(s) it covers.
 | `uq_ui_terminology_key` | `ui_terminology` | `key` | Prevents duplicate terminology overlays for the same UI term family |
 | `uq_requirement_list_column_defaults_column_id` | `requirement_list_column_defaults` | `column_id` | Ensures each requirement-list column has one org-managed default row |
 | `uq_requirement_list_column_defaults_sort_order` | `requirement_list_column_defaults` | `sort_order` | Ensures each default list position is assigned to exactly one column |
+| `uq_archiving_retention_policies_policy_key` | `archiving_retention_policies` | `policy_key` | Ensures each retention policy has one stable configuration row |
+| `uq_archiving_retention_exceptions_subject` | `archiving_retention_exceptions` | `(policy_id, source_key, subject_table, subject_id)` | Ensures one active exception record per policy/source subject |
 | `uq_requirements_unique_id` | `requirements` | `unique_id` | Ensures each requirement has a distinct human-readable ID |
 | `uq_requirement_versions_requirement_id_version_number` | `requirement_versions` | `(requirement_id, version_number)` | Ensures version numbers are unique per requirement |
 | `uq_requirement_versions_revision_token` | `requirement_versions` | `revision_token` | Ensures each opaque edit token identifies one version row |
@@ -1582,6 +1723,8 @@ its purpose and the table/column(s) it covers.
 | `idx_requirements_is_archived` | `requirements` | `is_archived` | Speed up filtering active vs archived requirements |
 | `idx_requirement_versions_requirement_id` | `requirement_versions` | `requirement_id` | Speed up fetching all versions of a requirement |
 | `idx_requirement_versions_created_by_hsa_id` | `requirement_versions` | `created_by_hsa_id` | Speed up privacy erasure and actor-history lookups |
+| `idx_requirement_versions_status_updated_at` | `requirement_versions` | `status_updated_at` | Speed up Admin Archiving candidate checks for stale Draft, Review and Archived versions |
+| `idx_requirement_versions_has_specification_item_history` | `requirement_versions` | `has_specification_item_history` | Speed up filtering versions that have never belonged to a requirements specification |
 | `idx_requirements_specifications_responsible_hsa_id` | `requirements_specifications` | `responsible_hsa_id` | Speed up responsible assignment and privacy lookups |
 | `idx_requirement_area_co_authors_hsa_id` | `requirement_area_co_authors` | `hsa_id` | Speed up assignment authorization and privacy lookups |
 | `idx_requirement_area_co_authors_created_by_hsa_id` | `requirement_area_co_authors` | `created_by_hsa_id` | Speed up privacy erasure of historical assignment creators |
@@ -1614,6 +1757,10 @@ its purpose and the table/column(s) it covers.
 | `idx_access_review_items_principal_hsa_id` | `access_review_items` | `principal_hsa_id` | Speed up privacy lookup for reviewed principals |
 | `idx_access_review_items_source_key` | `access_review_items` | `source_key` | Speed up source-family review evidence queries |
 | `idx_access_review_items_decided_by_hsa_id` | `access_review_items` | `decided_by_hsa_id` | Speed up privacy lookup for decision actors |
+| `idx_archiving_retention_policies_enabled` | `archiving_retention_policies` | `is_enabled` | Speed up listing executable retention policies |
+| `idx_archiving_retention_runs_policy_id` | `archiving_retention_runs` | `policy_id` | Speed up latest-run lookups per retention policy |
+| `idx_archiving_retention_runs_started_at` | `archiving_retention_runs` | `started_at` | Speed up retention execution history ordering |
+| `idx_archiving_retention_exceptions_policy_source` | `archiving_retention_exceptions` | `(policy_id, source_key)` | Speed up filtering legal-hold exceptions during preview |
 <!-- markdownlint-enable MD013 -->
 
 ### Named Foreign Key Constraints
@@ -1682,6 +1829,8 @@ The following table lists every named FK constraint:
 | `fk_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | `requirement_versions.id` | SET NULL | NO ACTION |
 | `fk_requirement_packages_owner_id` | `requirement_packages` | `owner_id` | `owners.id` | NO ACTION | NO ACTION |
 | `fk_access_review_items_run_id` | `access_review_items` | `run_id` | `access_review_runs.id` | CASCADE | NO ACTION |
+| `fk_archiving_retention_runs_policy_id` | `archiving_retention_runs` | `policy_id` | `archiving_retention_policies.id` | CASCADE | NO ACTION |
+| `fk_archiving_retention_exceptions_policy_id` | `archiving_retention_exceptions` | `policy_id` | `archiving_retention_policies.id` | CASCADE | NO ACTION |
 <!-- markdownlint-enable MD013 -->
 
 ### Index Relationship Diagram
@@ -1736,6 +1885,12 @@ graph LR
         ARI[access_review_items]
     end
 
+    subgraph Archiving Retention
+        PRP[archiving_retention_policies]
+        PRR[archiving_retention_runs]
+        PRE[archiving_retention_exceptions]
+    end
+
     OW -- "uq_owners_email\n(email)" --> OW
     OW -- "uq_owners_hsa_id\n(hsa_id)" --> OW
     RA -- "FK owner_id" --> OW
@@ -1748,6 +1903,8 @@ graph LR
     RV -- "uq_requirement_versions_revision_token\n(revision_token)" --> RV
     RV -- "idx_..._requirement_id\n(requirement_id)" --> R
     RV -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> RV
+    RV -- "idx_..._status_updated_at\n(status_updated_at)" --> RV
+    RV -- "idx_..._has_specification_item_history\n(has_specification_item_history)" --> RV
 
     IS -- "idx_..._requirement_id\n(requirement_id)" --> R
     IS -- "idx_..._requirement_version_id\n(requirement_version_id)" --> RV
@@ -1803,6 +1960,14 @@ graph LR
     ARI -- "idx_..._principal_hsa_id\n(principal_hsa_id)" --> ARI
     ARI -- "idx_..._source_key\n(source_key)" --> ARI
     ARI -- "idx_..._decided_by_hsa_id\n(decided_by_hsa_id)" --> ARI
+
+    PRP -- "uq_..._policy_key\n(policy_key)" --> PRP
+    PRP -- "idx_..._enabled\n(is_enabled)" --> PRP
+    PRR -- "FK policy_id" --> PRP
+    PRR -- "idx_..._started_at\n(started_at)" --> PRR
+    PRE -- "FK policy_id" --> PRP
+    PRE -- "uq_..._subject\n(policy, source, subject)" --> PRE
+    PRE -- "idx_..._policy_source\n(policy_id, source_key)" --> PRP
 
     PRA -- "uq_..._name_sv / name_en" --> PRA
     PIT -- "uq_..._name_sv / name_en" --> PIT
