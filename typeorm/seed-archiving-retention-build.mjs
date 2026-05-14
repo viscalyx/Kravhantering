@@ -302,43 +302,57 @@ function addRetentionRequirements(seedData) {
   const versions = [
     requirementVersionRow({
       archived_at: OLD_365_TS,
+      has_specification_item_history: 0,
       id: RETENTION_SEED.requirementVersion.archivedUnused,
       requirement_id: RETENTION_SEED.requirement.archivedUnused,
       requirement_status_id: 4,
+      status_updated_at: OLD_365_TS,
     }),
     requirementVersionRow({
+      has_specification_item_history: 0,
       id: RETENTION_SEED.requirementVersion.reviewStale,
       requirement_id: RETENTION_SEED.requirement.reviewStale,
       requirement_status_id: 2,
+      status_updated_at: OLD_365_TS,
     }),
     requirementVersionRow({
+      has_specification_item_history: 0,
       id: RETENTION_SEED.requirementVersion.draftStale,
       requirement_id: RETENTION_SEED.requirement.draftStale,
       requirement_status_id: 1,
+      status_updated_at: OLD_365_TS,
     }),
     requirementVersionRow({
       archived_at: OLD_365_TS,
+      has_specification_item_history: 0,
       id: RETENTION_SEED.requirementVersion.historyOnly,
       requirement_id: RETENTION_SEED.requirement.historyOnly,
       requirement_status_id: 4,
+      status_updated_at: OLD_365_TS,
     }),
     requirementVersionRow({
       archive_initiated_at: OLD_365_TS,
+      has_specification_item_history: 0,
       id: RETENTION_SEED.requirementVersion.archiveReview,
       requirement_id: RETENTION_SEED.requirement.archiveReview,
       requirement_status_id: 2,
+      status_updated_at: OLD_365_TS,
     }),
     requirementVersionRow({
       archived_at: OLD_365_TS,
+      has_specification_item_history: 0,
       id: RETENTION_SEED.requirementVersion.currentSpecificationLink,
       requirement_id: RETENTION_SEED.requirement.currentSpecificationLink,
       requirement_status_id: 4,
+      status_updated_at: OLD_365_TS,
     }),
     requirementVersionRow({
+      has_specification_item_history: 0,
       id: RETENTION_SEED.requirementVersion.specificationLibrary,
       published_at: OLD_365_TS,
       requirement_id: RETENTION_SEED.requirement.specificationLibrary,
       requirement_status_id: 3,
+      status_updated_at: OLD_365_TS,
     }),
   ]
   for (const version of versions) {

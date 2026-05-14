@@ -1675,6 +1675,7 @@ describe('AdminClient', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'admin.archiving.retention.executeSuccess',
     )
+    expect(screen.queryByText('SPEC0001 Gammalt kravunderlag')).toBeNull()
   })
 
   it('previews duplicate-name privacy erasure by HSA-ID instead of name', async () => {

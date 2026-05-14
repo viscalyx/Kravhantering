@@ -1,12 +1,10 @@
 const UP_STATEMENTS = [
   `DELETE FROM [archiving_retention_policies]
     WHERE [policy_key] = N'historical_actor_archive';`,
-  'ALTER TABLE [archiving_retention_policies] DROP CONSTRAINT [chk_archiving_retention_policies_action];',
-  `ALTER TABLE [archiving_retention_policies]
-    ADD CONSTRAINT [chk_archiving_retention_policies_action]
-    CHECK ([action] IN (N'delete'));`,
 ]
 
+// The historical_actor_archive policy is intentionally removed and should not
+// be restored by rollback; actors are handled by the privacy-erasure workflow.
 const DOWN_STATEMENTS = []
 
 export class RemoveHistoricalActorArchivingPolicy1715500000000 {

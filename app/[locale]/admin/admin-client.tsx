@@ -1418,10 +1418,7 @@ function ArchivingPanel() {
         )
         return
       }
-      const data = (await response.json()) as ArchivingRetentionPreview & {
-        runId: number
-      }
-      setRetentionPreview(data)
+      setRetentionPreview(null)
       setRetentionExportToken(null)
       setRetentionStatus('saved')
       setRetentionMessage(ta('archiving.retention.executeSuccess'))

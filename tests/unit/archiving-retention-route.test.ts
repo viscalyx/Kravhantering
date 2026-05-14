@@ -203,4 +203,69 @@ describe('archiving retention routes', () => {
       }),
     )
   })
+
+  it('creates retention exceptions with no-store and redacted audit detail', async () => {
+    const { POST } = await import('@/app/api/admin/archiving/exceptions/route')
+    const payload = {
+      policyId: 3,
+      reason: 'Legal hold for case 2026-05',
+      sourceKey: 'owners.identity',
+      subjectId: 'SE2321000032-kalle1',
+      subjectTable: 'owners',
+    }
+    routeState.createArchivingRetentionException.mockResolvedValueOnce({
+      id: 4,
+      policyId: payload.policyId,
+      sourceKey: payload.sourceKey,
+      subjectTable: payload.subjectTable,
+    })
+    const response = await POST(
+      jsonRequest(
+        'http://localhost/api/admin/archiving/exceptions',
+        payload,
+      ) as never,
+    )
+
+    expect(response.status).toBe(201)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(routeState.createArchivingRetentionException).toHaveBeenCalledWith(
+      { db: true },
+      {
+        ...payload,
+        expiresAt: null,
+      },
+      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE2321000032-privacy1' },
+    )
+    expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          policyId: 3,
+          sourceKey: 'owners.identity',
+          subjectTable: 'owners',
+        }),
+        event: 'admin.archiving.exception.created',
+      }),
+    )
+    expect(
+      JSON.stringify(routeState.recordSecurityEvent.mock.calls[0][0].detail),
+    ).not.toContain('SE2321000032-kalle1')
+  })
+
+  it('rejects retention exceptions without PrivacyOfficer', async () => {
+    routeState.createRequestContext.mockResolvedValueOnce(privacyContext([]))
+    const { POST } = await import('@/app/api/admin/archiving/exceptions/route')
+    const response = await POST(
+      jsonRequest('http://localhost/api/admin/archiving/exceptions', {
+        policyId: 3,
+        reason: 'Legal hold for case 2026-05',
+        sourceKey: 'owners.identity',
+        subjectId: 'SE2321000032-kalle1',
+        subjectTable: 'owners',
+      }) as never,
+    )
+
+    expect(response.status).toBe(403)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(routeState.createArchivingRetentionException).not.toHaveBeenCalled()
+  })
 })

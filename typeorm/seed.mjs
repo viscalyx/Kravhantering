@@ -12379,19 +12379,24 @@ function applyArchivingRetentionSeed() {
   const historyIndex = versions.columns.indexOf(
     'has_specification_item_history',
   )
-  const itemVersionIndex = seedTable(
-    'requirements_specification_items',
-  ).columns.indexOf('requirement_version_id')
+  const specificationItems = seedTable('requirements_specification_items')
+  const itemVersionIndex = specificationItems.columns.indexOf(
+    'requirement_version_id',
+  )
   const linkedVersionIds = new Set(
-    seedTable('requirements_specification_items').rows.map(
-      row => row[itemVersionIndex],
-    ),
+    itemVersionIndex === -1
+      ? []
+      : specificationItems.rows
+          .map(row => row[itemVersionIndex])
+          .filter(versionId => versionId != null),
   )
   for (const versionId of RETENTION_HISTORY_ONLY_VERSION_IDS) {
     linkedVersionIds.add(versionId)
   }
   for (const row of versions.rows) {
-    row[historyIndex] = linkedVersionIds.has(row[versionIdIndex]) ? 1 : 0
+    const hasSpecificationItemHistory =
+      versionIdIndex !== -1 && linkedVersionIds.has(row[versionIdIndex])
+    row[historyIndex] = hasSpecificationItemHistory ? 1 : 0
   }
 }
 

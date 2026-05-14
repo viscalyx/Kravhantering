@@ -1,6 +1,7 @@
 // cspell:ignore SYSUTCDATETIME
-import { createHash, randomUUID } from 'node:crypto'
+import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { SqlServerDatabase } from '@/lib/db'
+import { isDeletedUserInternalName } from '@/lib/privacy/display-name'
 import {
   conflictError,
   notFoundError,
@@ -140,6 +141,16 @@ const UNUSED_TAXONOMY_POLICY_KEY = 'unused_taxonomy_delete'
 const OLD_REQUIREMENT_VERSIONS_POLICY_KEY = 'old_requirement_versions_delete'
 const OBSOLETE_SPECIFICATIONS_POLICY_KEY = 'obsolete_specifications_delete'
 const SPECIFICATION_MANAGEMENT_STATUS_ID = 4
+const EXPORT_CONFIRMATION_TTL_MS = 15 * 60 * 1000
+
+interface ExportConfirmation {
+  candidateKeys: string[]
+  expiresAt: number
+  policyId: number
+  previewToken: string
+}
+
+const exportConfirmations = new Map<string, ExportConfirmation>()
 
 const ACTIVE_EXCEPTION_SQL = `NOT EXISTS (
       SELECT 1
@@ -591,20 +602,59 @@ function previewTokenFor(args: {
     .digest('hex')
 }
 
-function exportTokenFor(preview: ArchivingRetentionPreview): string {
-  return createHash('sha256')
-    .update(
-      JSON.stringify({
-        candidateKeys: preview.candidates
-          .filter(candidate => candidate.requiresExport)
-          .map(candidate => candidate.key)
-          .sort(),
-        previewToken: preview.previewToken,
-        schemaVersion: 'archiving-retention-export.v2',
-      }),
-      'utf8',
-    )
-    .digest('hex')
+function exportCandidateKeys(preview: ArchivingRetentionPreview): string[] {
+  return preview.candidates
+    .filter(candidate => candidate.requiresExport)
+    .map(candidate => candidate.key)
+    .sort()
+}
+
+function cleanupExportConfirmations(now = Date.now()): void {
+  for (const [token, confirmation] of exportConfirmations) {
+    if (confirmation.expiresAt <= now) {
+      exportConfirmations.delete(token)
+    }
+  }
+}
+
+function mintExportToken(preview: ArchivingRetentionPreview): string {
+  const now = Date.now()
+  cleanupExportConfirmations(now)
+  const token = randomBytes(32).toString('hex')
+  exportConfirmations.set(token, {
+    candidateKeys: exportCandidateKeys(preview),
+    expiresAt: now + EXPORT_CONFIRMATION_TTL_MS,
+    policyId: preview.policy.id,
+    previewToken: preview.previewToken,
+  })
+  return token
+}
+
+function sameCandidateKeys(left: string[], right: string[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((candidateKey, index) => candidateKey === right[index])
+  )
+}
+
+function consumeExportToken(
+  preview: ArchivingRetentionPreview,
+  token: string | null | undefined,
+): boolean {
+  if (!token) return false
+  const now = Date.now()
+  cleanupExportConfirmations(now)
+  const confirmation = exportConfirmations.get(token)
+  if (!confirmation || confirmation.expiresAt <= now) return false
+  if (
+    confirmation.policyId !== preview.policy.id ||
+    confirmation.previewToken !== preview.previewToken ||
+    !sameCandidateKeys(confirmation.candidateKeys, exportCandidateKeys(preview))
+  ) {
+    return false
+  }
+  exportConfirmations.delete(token)
+  return true
 }
 
 async function countActiveExceptions(
@@ -868,20 +918,32 @@ export async function executeArchivingRetention(
     }
     if (
       preview.candidates.some(candidate => candidate.requiresExport) &&
-      input.exportToken !== exportTokenFor(preview)
+      !consumeExportToken(preview, input.exportToken)
     ) {
       throw conflictError(
         'Archive export confirmation is required before executing retention.',
         { reason: 'missing_archiving_export_confirmation' },
       )
     }
+    let archiveCount = 0
+    let deleteCount = 0
     let skippedCount = 0
     for (const candidate of preview.candidates) {
       const changed = await executeCandidate(tx, candidate)
-      if (!changed) skippedCount += 1
+      if (!changed) {
+        skippedCount += 1
+        continue
+      }
+      if (candidate.requiresExport) archiveCount += 1
+      if (candidate.action === 'delete') deleteCount += 1
     }
     const completedAt = new Date()
-    const finalSummary = { ...preview.summary, skippedCount }
+    const finalSummary = {
+      ...preview.summary,
+      archiveCount,
+      deleteCount,
+      skippedCount,
+    }
     const runId = await insertRun(tx, {
       actor,
       completedAt,
@@ -1248,7 +1310,7 @@ async function buildArchiveExport(
       candidate.requiresExport &&
       candidate.subjectTable === 'requirements_specifications',
   )
-  return {
+  return publicArchiveValue({
     candidates: preview.candidates.map(archiveCandidate),
     cutoff: preview.cutoff,
     generatedAt: new Date().toISOString(),
@@ -1268,7 +1330,21 @@ async function buildArchiveExport(
       ),
     ),
     summary: preview.summary,
+  }) as Record<string, unknown>
+}
+
+function publicArchiveValue(value: unknown): unknown {
+  if (typeof value === 'string' && isDeletedUserInternalName(value)) return null
+  if (Array.isArray(value)) return value.map(publicArchiveValue)
+  if (value === null || value instanceof Date || typeof value !== 'object') {
+    return value
   }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, nested]) => [
+      key,
+      publicArchiveValue(nested),
+    ]),
+  )
 }
 
 export async function exportArchivingRetentionArchive(
@@ -1284,7 +1360,7 @@ export async function exportArchivingRetentionArchive(
       { reason: 'stale_archiving_retention_preview' },
     )
   }
-  const exportToken = exportTokenFor(preview)
+  const exportToken = mintExportToken(preview)
   return {
     archive: {
       ...(await buildArchiveExport(db, preview)),
@@ -1314,7 +1390,9 @@ export async function createArchivingRetentionException(
   actor: ArchivingRetentionActor,
 ): Promise<ArchivingRetentionException> {
   await getPolicy(db, input.policyId)
-  const now = new Date().toISOString()
+  const now = new Date()
+  const nowIso = now.toISOString()
+  const expiresAt = input.expiresAt?.toISOString() ?? null
   const existing = (await db.query(
     `SELECT TOP (1)
         id,
@@ -1333,7 +1411,40 @@ export async function createArchivingRetentionException(
         AND subject_id = @3`,
     [input.policyId, input.sourceKey, input.subjectTable, input.subjectId],
   )) as Row[]
-  if (existing[0]) return mapException(existing[0])
+  if (existing[0]) {
+    const existingExpiresAt = nullableIsoTimestamp(existing[0].expiresAt)
+    if (existingExpiresAt === null || new Date(existingExpiresAt) > now) {
+      return mapException(existing[0])
+    }
+    const updated = (await db.query(
+      `UPDATE archiving_retention_exceptions
+        SET reason = @1,
+          created_by_hsa_id = @2,
+          created_by_display_name = @3,
+          created_at = @4,
+          expires_at = @5
+        OUTPUT
+          INSERTED.id AS id,
+          INSERTED.policy_id AS policyId,
+          INSERTED.source_key AS sourceKey,
+          INSERTED.subject_table AS subjectTable,
+          INSERTED.subject_id AS subjectId,
+          INSERTED.reason AS reason,
+          INSERTED.created_by_display_name AS createdByDisplayName,
+          INSERTED.created_at AS createdAt,
+          INSERTED.expires_at AS expiresAt
+        WHERE id = @0`,
+      [
+        numberValue(existing[0].id),
+        input.reason,
+        actor.hsaId,
+        actor.displayName,
+        nowIso,
+        expiresAt,
+      ],
+    )) as Row[]
+    return mapException(updated[0])
+  }
 
   const inserted = (await db.query(
     `INSERT INTO archiving_retention_exceptions (
@@ -1366,8 +1477,8 @@ export async function createArchivingRetentionException(
       input.reason,
       actor.hsaId,
       actor.displayName,
-      now,
-      input.expiresAt?.toISOString() ?? null,
+      nowIso,
+      expiresAt,
     ],
   )) as Row[]
   return mapException(inserted[0])

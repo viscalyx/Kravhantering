@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  createArchivingRetentionException,
   executeArchivingRetention,
   exportArchivingRetentionArchive,
   previewArchivingRetention,
@@ -67,6 +68,7 @@ const BASE_SOURCE_CANDIDATES: Record<string, Array<Record<string, unknown>>> = {
 }
 
 function createRetentionDb(options?: {
+  executeAffectedBySubjectId?: Record<string, number>
   exceptionCount?: number
   inactive?: boolean
   policy?: Partial<typeof POLICY_ROW>
@@ -91,7 +93,7 @@ function createRetentionDb(options?: {
       options.specificationCandidates
   }
   const query = vi.fn(
-    async (sql: string, _parameters?: unknown[]): Promise<unknown> => {
+    async (sql: string, parameters?: unknown[]): Promise<unknown> => {
       if (sql.includes('FROM archiving_retention_policies policy')) {
         return [
           {
@@ -128,6 +130,16 @@ function createRetentionDb(options?: {
         ]
       }
       if (
+        sql.includes('DELETE area') ||
+        sql.includes('DECLARE @requirement_id int') ||
+        sql.includes('DELETE FROM specification_local_requirements')
+      ) {
+        const subjectId = String(parameters?.[0] ?? '')
+        return {
+          affected: options?.executeAffectedBySubjectId?.[subjectId] ?? 1,
+        }
+      }
+      if (
         sql.includes('FROM specification_needs_references') ||
         sql.includes('FROM specification_co_authors') ||
         sql.includes('FROM requirements_specification_items') ||
@@ -138,13 +150,6 @@ function createRetentionDb(options?: {
         return []
       }
       if (sql.startsWith('UPDATE requirement_versions')) {
-        return { affected: 1 }
-      }
-      if (
-        sql.includes('DELETE area') ||
-        sql.includes('DECLARE @requirement_id int') ||
-        sql.includes('DELETE FROM specification_local_requirements')
-      ) {
         return { affected: 1 }
       }
       if (sql.includes('INSERT INTO archiving_retention_runs')) {
@@ -230,6 +235,57 @@ describe('archiving retention service', () => {
     expect(
       query.mock.calls.some(([sql]) => String(sql).includes('DELETE area')),
     ).toBe(true)
+  })
+
+  it('records run counts from candidates that actually changed', async () => {
+    const { db, query } = createRetentionDb({
+      executeAffectedBySubjectId: {
+        '12': 1,
+        '13': 0,
+      },
+      taxonomyCandidates: [
+        {
+          age_basis: new Date('2023-01-01T00:00:00.000Z'),
+          current_display_value: 'Old area',
+          reference: 'OLD Old area',
+          source_key: 'requirement_areas.unused',
+          subject_id: '12',
+          subject_table: 'requirement_areas',
+        },
+        {
+          age_basis: new Date('2023-01-01T00:00:00.000Z'),
+          current_display_value: 'Already removed area',
+          reference: 'REM Removed area',
+          source_key: 'requirement_areas.unused',
+          subject_id: '13',
+          subject_table: 'requirement_areas',
+        },
+      ],
+    })
+    const preview = await previewArchivingRetention(db as never, {
+      now: new Date('2026-05-14T00:00:00.000Z'),
+      policyId: 3,
+    })
+
+    const result = await executeArchivingRetention(
+      db as never,
+      {
+        policyId: 3,
+        previewToken: preview.previewToken,
+      },
+      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE2321000032-privacy1' },
+    )
+
+    expect(result.summary).toMatchObject({
+      archiveCount: 0,
+      candidateCount: 2,
+      deleteCount: 1,
+      skippedCount: 1,
+    })
+    const insertRunCall = query.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO archiving_retention_runs'),
+    )
+    expect(insertRunCall?.[1]?.slice(5, 9)).toEqual([2, 0, 1, 1])
   })
 
   it('rejects stale execution tokens before modifying rows', async () => {
@@ -548,11 +604,105 @@ describe('archiving retention service', () => {
       specifications: [
         {
           specification: expect.objectContaining({
-            responsibleDisplayName: 'no-user',
+            responsibleDisplayName: null,
             responsibleHsaId: null,
           }),
         },
       ],
     })
+    expect(JSON.stringify(archive.archive)).not.toContain('no-user')
+
+    const result = await executeArchivingRetention(
+      db as never,
+      {
+        exportToken: archive.exportToken,
+        policyId: 5,
+        previewToken: preview.previewToken,
+      },
+      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE2321000032-privacy1' },
+    )
+    expect(result.runId).toBe(9)
+
+    await expect(
+      executeArchivingRetention(
+        db as never,
+        {
+          exportToken: archive.exportToken,
+          policyId: 5,
+          previewToken: preview.previewToken,
+        },
+        { displayName: 'Disa PrivacyOfficer', hsaId: 'SE2321000032-privacy1' },
+      ),
+    ).rejects.toMatchObject({
+      details: { reason: 'missing_archiving_export_confirmation' },
+      status: 409,
+    })
+  })
+
+  it('refreshes expired retention exceptions in place', async () => {
+    const query = vi.fn(async (sql: string, parameters?: unknown[]) => {
+      if (sql.includes('FROM archiving_retention_policies policy')) {
+        return [POLICY_ROW]
+      }
+      if (sql.includes('FROM archiving_retention_exceptions')) {
+        return [
+          {
+            createdAt: new Date('2024-01-01T00:00:00.000Z'),
+            createdByDisplayName: 'Disa PrivacyOfficer',
+            expiresAt: new Date('2024-02-01T00:00:00.000Z'),
+            id: 7,
+            policyId: 3,
+            reason: 'Old legal hold',
+            sourceKey: 'requirement_areas.unused',
+            subjectId: '12',
+            subjectTable: 'requirement_areas',
+          },
+        ]
+      }
+      if (sql.includes('UPDATE archiving_retention_exceptions')) {
+        return [
+          {
+            createdAt: parameters?.[4],
+            createdByDisplayName: parameters?.[3],
+            expiresAt: parameters?.[5],
+            id: parameters?.[0],
+            policyId: 3,
+            reason: parameters?.[1],
+            sourceKey: 'requirement_areas.unused',
+            subjectId: '12',
+            subjectTable: 'requirement_areas',
+          },
+        ]
+      }
+      return []
+    })
+
+    const exception = await createArchivingRetentionException(
+      { query } as never,
+      {
+        expiresAt: new Date('2026-12-31T00:00:00.000Z'),
+        policyId: 3,
+        reason: 'Renewed legal hold',
+        sourceKey: 'requirement_areas.unused',
+        subjectId: '12',
+        subjectTable: 'requirement_areas',
+      },
+      { displayName: 'Ada Admin', hsaId: 'SE2321000032-admin1' },
+    )
+
+    expect(exception).toMatchObject({
+      id: 7,
+      reason: 'Renewed legal hold',
+    })
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('UPDATE archiving_retention_exceptions'),
+      ),
+    ).toBe(true)
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('INSERT INTO archiving_retention_exceptions'),
+      ),
+    ).toBe(false)
   })
 })
