@@ -56,10 +56,12 @@ applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed.mjs,docs
 - Do not add raw `*_id` relation columns to `columns:` unless the scalar ID is
   part of the entity primary key, unique key, or documented lookup contract.
 - Name FK constraints `fk_<table>_<col>` where `<table>` is the declaring table
-  and `<col>` is the referencing column name.
+  and `<col>` is the full referencing column name, for example
+  `fk_orders_user_id` on `[user_id]`.
 - Specify referential actions with explicit `onDelete`. Add `onUpdate` only
   when the relation or migration uses it.
-- In raw migration SQL use `ALTER TABLE [<table>] ADD CONSTRAINT [fk_<table>_<col>] FOREIGN KEY ([<col>_id]) REFERENCES [<other>] ([id]) ON DELETE <action>`.
+- In raw migration SQL use
+  `ALTER TABLE [<table>] ADD CONSTRAINT [fk_<table>_<col>] FOREIGN KEY ([<col>]) REFERENCES [<other>] ([id]) ON DELETE <action>`.
 
 ## Sync
 
