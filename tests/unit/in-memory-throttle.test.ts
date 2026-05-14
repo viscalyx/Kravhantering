@@ -86,4 +86,42 @@ describe('in-memory throttle', () => {
 
     expect(getInMemoryThrottleBucketCountForTests()).toBe(1)
   })
+
+  it('bounds active buckets and evicts the oldest reset window', () => {
+    const maxBuckets = 10_000
+    const now = 1_000
+    const windowMs = 1_000_000
+
+    for (let index = 0; index < maxBuckets; index += 1) {
+      expect(
+        checkInMemoryThrottle({
+          key: `actor-${index}:operation`,
+          limit: 1,
+          now: now + index,
+          windowMs,
+        }).allowed,
+      ).toBe(true)
+    }
+    expect(getInMemoryThrottleBucketCountForTests()).toBe(maxBuckets)
+
+    expect(
+      checkInMemoryThrottle({
+        key: 'actor-new:operation',
+        limit: 1,
+        now: now + maxBuckets,
+        windowMs,
+      }).allowed,
+    ).toBe(true)
+    expect(getInMemoryThrottleBucketCountForTests()).toBe(maxBuckets)
+
+    expect(
+      checkInMemoryThrottle({
+        key: 'actor-0:operation',
+        limit: 1,
+        now: now + maxBuckets + 1,
+        windowMs,
+      }).allowed,
+    ).toBe(true)
+    expect(getInMemoryThrottleBucketCountForTests()).toBe(maxBuckets)
+  })
 })

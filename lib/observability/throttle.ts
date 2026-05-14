@@ -18,13 +18,37 @@ interface ThrottleBucket {
   resetAt: number
 }
 
+const MAX_BUCKETS = 10_000
 const buckets = new Map<string, ThrottleBucket>()
 
-function pruneExpiredBuckets(now: number): void {
+function evictOldestBucket(): void {
+  let oldestKey: string | null = null
+  let oldestResetAt = Number.POSITIVE_INFINITY
+
+  for (const [key, bucket] of buckets) {
+    if (bucket.resetAt < oldestResetAt) {
+      oldestKey = key
+      oldestResetAt = bucket.resetAt
+    }
+  }
+
+  if (oldestKey !== null) {
+    buckets.delete(oldestKey)
+  }
+}
+
+function pruneExpiredBuckets(now: number, requiredFreeSlots = 0): void {
   for (const [key, bucket] of buckets) {
     if (bucket.resetAt <= now) {
       buckets.delete(key)
     }
+  }
+
+  const maximumRetainedBuckets = Math.max(0, MAX_BUCKETS - requiredFreeSlots)
+  while (buckets.size > maximumRetainedBuckets) {
+    const previousSize = buckets.size
+    evictOldestBucket()
+    if (buckets.size === previousSize) break
   }
 }
 
@@ -42,10 +66,11 @@ export function checkInMemoryThrottle(
   const now = policy.now ?? Date.now()
   pruneExpiredBuckets(now)
   const existing = buckets.get(policy.key)
-  const bucket =
-    existing && existing.resetAt > now
-      ? existing
-      : { count: 0, resetAt: now + policy.windowMs }
+  let bucket = existing && existing.resetAt > now ? existing : null
+  if (!bucket) {
+    pruneExpiredBuckets(now, 1)
+    bucket = { count: 0, resetAt: now + policy.windowMs }
+  }
 
   if (bucket.count >= policy.limit) {
     buckets.set(policy.key, bucket)
