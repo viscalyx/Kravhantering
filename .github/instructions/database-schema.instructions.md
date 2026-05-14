@@ -60,8 +60,15 @@ applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed.mjs,docs
   `fk_orders_user_id` on `[user_id]`.
 - Specify referential actions with explicit `onDelete`. Add `onUpdate` only
   when the relation or migration uses it.
-- In raw migration SQL use
-  `ALTER TABLE [<table>] ADD CONSTRAINT [fk_<table>_<col>] FOREIGN KEY ([<col>]) REFERENCES [<other>] ([id]) ON DELETE <action>`.
+- In raw migration SQL use this shape:
+
+```sql
+ALTER TABLE [<table>]
+  ADD CONSTRAINT [fk_<table>_<col>]
+  FOREIGN KEY ([<col>])
+  REFERENCES [<other>] ([id])
+  ON DELETE <action>
+```
 
 ## Sync
 
