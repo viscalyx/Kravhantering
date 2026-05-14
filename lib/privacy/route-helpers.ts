@@ -10,6 +10,12 @@ export interface PrivacyUnexpectedErrorBody {
   error: string
 }
 
+export interface AuditActor {
+  hsaId?: string
+  source: RequestContext['actor']['source']
+  sub?: string
+}
+
 export function assertPrivacyOfficer(context: RequestContext): void {
   if (!context.actor.roles.includes('PrivacyOfficer')) {
     throw forbiddenError('PrivacyOfficer role is required', {
@@ -19,7 +25,7 @@ export function assertPrivacyOfficer(context: RequestContext): void {
   requireHumanActorSnapshot(context)
 }
 
-export function auditActor(context: RequestContext) {
+export function auditActor(context: RequestContext): AuditActor {
   return {
     hsaId: context.actor.hsaId ?? undefined,
     source: context.actor.source,

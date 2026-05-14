@@ -48,6 +48,7 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
 }))
 
 import { DELETE } from '@/app/api/specifications/[id]/local-requirements/[localRequirementId]/route'
+import { RequirementsServiceError } from '@/lib/requirements/errors'
 
 function makeParams(id: string, localRequirementId: string) {
   return { params: Promise.resolve({ id, localRequirementId }) }
@@ -109,6 +110,38 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
           }),
         }),
       )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('maps requirements service errors when deleting a specification-local requirement fails', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    mocks.deleteSpecificationLocalRequirement.mockRejectedValue(
+      new RequirementsServiceError('conflict', 'Requirement is still linked'),
+    )
+
+    try {
+      const response = await DELETE(
+        new NextRequest(
+          'http://localhost/api/specifications/spec/local-requirements/41',
+        ),
+        makeParams('spec', '41'),
+      )
+
+      expect(response.status).toBe(409)
+      await expect(response.json()).resolves.toEqual({
+        code: 'conflict',
+        error: 'Requirement is still linked',
+      })
+      expect(mocks.deleteSpecificationLocalRequirement).toHaveBeenCalledWith(
+        mockDb,
+        5,
+        41,
+      )
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
     } finally {
       consoleErrorSpy.mockRestore()
     }

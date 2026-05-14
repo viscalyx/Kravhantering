@@ -239,7 +239,11 @@ describe('POST /api/ai/generate-requirements', () => {
       expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(5)
       expect(
         parseCapacityEvents(consoleInfoSpy).some(
-          event => event.event === 'capacity.throttled',
+          event =>
+            event.event === 'capacity.throttled' &&
+            event.operation === 'ai.generate-requirements' &&
+            event.outcome === 'throttled' &&
+            event.throttled === true,
         ),
       ).toBe(true)
     } finally {

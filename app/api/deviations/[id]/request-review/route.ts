@@ -19,9 +19,8 @@ export const POST = secureMutationRoute({
     requireHumanActorSnapshot(context)
   }),
   handler: async ({ params }) => {
-    const db = await getRequestSqlServerDataSource()
-
     try {
+      const db = await getRequestSqlServerDataSource()
       await requestReview(db, params.id)
       return NextResponse.json({ ok: true })
     } catch (error) {

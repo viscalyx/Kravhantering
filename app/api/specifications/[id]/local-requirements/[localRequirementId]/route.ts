@@ -155,6 +155,11 @@ export const DELETE = secureMutationRoute({
         return NextResponse.json({ error: 'Not found' }, { status: 404 })
       }
     } catch (error) {
+      if (isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return NextResponse.json(body, { status })
+      }
+
       logSanitizedError(
         'Failed to delete specification-local requirement',
         error,

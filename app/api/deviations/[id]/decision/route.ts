@@ -35,9 +35,8 @@ export const POST = secureMutationRoute({
     requireHumanActorSnapshot(context)
   }),
   handler: async ({ body, context, params }) => {
-    const db = await getRequestSqlServerDataSource()
-
     try {
+      const db = await getRequestSqlServerDataSource()
       const actor = requireHumanActorSnapshot(context)
       await recordDecision(db, params.id, {
         decision: body.decision,

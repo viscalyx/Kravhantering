@@ -11,7 +11,6 @@ import {
   adminMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { invalidRequestResponse } from '@/lib/http/validation'
 import { REQUIREMENT_COLUMN_ORDER } from '@/lib/requirements/list-view'
 
 const columnDefaultsEntrySchema = z
@@ -29,6 +28,30 @@ const columnDefaultsPayloadSchema = z
       .length(REQUIREMENT_COLUMN_ORDER.length),
   })
   .strict()
+  .superRefine((value, ctx) => {
+    const uniqueColumnIds = new Set(
+      value.columns.map(column => column.columnId),
+    )
+    const uniqueSortOrders = new Set(
+      value.columns.map(column => column.sortOrder),
+    )
+
+    if (uniqueColumnIds.size !== REQUIREMENT_COLUMN_ORDER.length) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Each requirement column must be provided exactly once.',
+        path: ['columns'],
+      })
+    }
+
+    if (uniqueSortOrders.size !== REQUIREMENT_COLUMN_ORDER.length) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Each requirement column sort order must be unique.',
+        path: ['columns'],
+      })
+    }
+  })
 
 export async function GET() {
   try {
@@ -54,32 +77,6 @@ export const PUT = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ body, context }) => {
     try {
-      const uniqueColumnIds = new Set(
-        body.columns.map(column => column.columnId),
-      )
-      const uniqueSortOrders = new Set(
-        body.columns.map(column => column.sortOrder),
-      )
-
-      if (uniqueColumnIds.size !== REQUIREMENT_COLUMN_ORDER.length) {
-        return invalidRequestResponse([
-          {
-            code: 'custom',
-            message: 'Each requirement column must be provided exactly once.',
-            path: 'columns',
-          },
-        ])
-      }
-
-      if (uniqueSortOrders.size !== REQUIREMENT_COLUMN_ORDER.length) {
-        return invalidRequestResponse([
-          {
-            code: 'custom',
-            message: 'Each requirement column sort order must be unique.',
-            path: 'columns',
-          },
-        ])
-      }
       const db = await getRequestSqlServerDataSource()
       const columns = await updateRequirementListColumnDefaults(
         db,
