@@ -1,9 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  createAdminPrivilegedAuditContext,
-  recordAdminPrivilegedActionSucceeded,
-} from '@/lib/admin/privileged-audit'
+import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   deleteSpecificationItemStatus,
   getLinkedSpecificationItems,
@@ -11,13 +8,17 @@ import {
   updateSpecificationItemStatus,
 } from '@/lib/dal/specification-item-statuses'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { isForeignKeyViolation } from '@/lib/http/safe-errors'
+import {
+  adminMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
 import {
   boundedDbStringSchema,
   idParamSchema,
   nonNegativeIntegerSchema,
   nullableBusinessTextSchema,
   parseRouteParams,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
 
 export const dynamic = 'force-dynamic'
@@ -53,55 +54,50 @@ export async function GET(
   return NextResponse.json({ status, linkedItems })
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
-  if (!parsedParams.ok) return parsedParams.response
-  const parsedBody = await readJsonWithSchema(
-    request,
-    specificationItemStatusUpdateSchema,
-  )
-  if (!parsedBody.ok) return parsedBody.response
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-  const status = await updateSpecificationItemStatus(
-    db,
-    parsedParams.data.id,
-    parsedBody.data,
-  )
-  if (!status) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
-  recordAdminPrivilegedActionSucceeded(auditContext, {
-    changedFields: Object.keys(parsedBody.data),
-    operation: 'update',
-    resourceId: parsedParams.data.id,
-    resourceType: 'specification_item_status',
-  })
-  return NextResponse.json(status)
-}
+export const PUT = secureMutationRoute({
+  bodySchema: specificationItemStatusUpdateSchema,
+  paramsSchema: idParamSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ body, context, params }) => {
+    const db = await getRequestSqlServerDataSource()
+    const status = await updateSpecificationItemStatus(db, params.id, body)
+    if (!status) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    recordAdminPrivilegedActionSucceeded(context, {
+      changedFields: Object.keys(body),
+      operation: 'update',
+      resourceId: params.id,
+      resourceType: 'specification_item_status',
+    })
+    return NextResponse.json(status)
+  },
+})
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
-  if (!parsedParams.ok) return parsedParams.response
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-  const deletedCount = await deleteSpecificationItemStatus(
-    db,
-    parsedParams.data.id,
-  )
-  if (deletedCount === 0) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
-  recordAdminPrivilegedActionSucceeded(auditContext, {
-    operation: 'delete',
-    resourceId: parsedParams.data.id,
-    resourceType: 'specification_item_status',
-  })
-  return NextResponse.json({ ok: true })
-}
+export const DELETE = secureMutationRoute({
+  paramsSchema: idParamSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ context, params }) => {
+    const db = await getRequestSqlServerDataSource()
+    try {
+      const deletedCount = await deleteSpecificationItemStatus(db, params.id)
+      if (deletedCount === 0) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+      recordAdminPrivilegedActionSucceeded(context, {
+        operation: 'delete',
+        resourceId: params.id,
+        resourceType: 'specification_item_status',
+      })
+      return NextResponse.json({ ok: true })
+    } catch (error) {
+      if (isForeignKeyViolation(error)) {
+        return NextResponse.json(
+          { error: 'Cannot delete: specification item status is in use' },
+          { status: 409 },
+        )
+      }
+      throw error
+    }
+  },
+})

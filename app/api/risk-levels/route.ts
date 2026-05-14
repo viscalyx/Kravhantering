@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  createAdminPrivilegedAuditContext,
-  recordAdminPrivilegedActionSucceeded,
-} from '@/lib/admin/privileged-audit'
+import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   countLinkedRequirements,
   createRiskLevel,
@@ -16,9 +13,12 @@ import {
   logSanitizedError,
 } from '@/lib/http/safe-errors'
 import {
+  adminMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   boundedDbStringSchema,
   nonNegativeIntegerSchema,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
 
 const createRiskLevelSchema = z
@@ -44,31 +44,33 @@ export async function GET() {
   })
 }
 
-export async function POST(request: Request) {
-  const parsedBody = await readJsonWithSchema(request, createRiskLevelSchema)
-  if (!parsedBody.ok) return parsedBody.response
-
-  try {
-    const auditContext = await createAdminPrivilegedAuditContext(request)
-    const db = await getRequestSqlServerDataSource()
-    const riskLevel = await createRiskLevel(db, parsedBody.data)
-    recordAdminPrivilegedActionSucceeded(auditContext, {
-      changedFields: Object.keys(parsedBody.data),
-      operation: 'create',
-      resourceId: riskLevel.id,
-      resourceType: 'risk_level',
-    })
-    return NextResponse.json(riskLevel, { status: 201 })
-  } catch (error) {
-    const isDuplicate = isDuplicateKeyError(error)
-    if (!isDuplicate) {
-      logSanitizedError('Failed to create risk level', error)
+export const POST = secureMutationRoute({
+  bodySchema: createRiskLevelSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ body, context }) => {
+    try {
+      const db = await getRequestSqlServerDataSource()
+      const riskLevel = await createRiskLevel(db, body)
+      recordAdminPrivilegedActionSucceeded(context, {
+        changedFields: Object.keys(body),
+        operation: 'create',
+        resourceId: riskLevel.id,
+        resourceType: 'risk_level',
+      })
+      return NextResponse.json(riskLevel, { status: 201 })
+    } catch (error) {
+      const isDuplicate = isDuplicateKeyError(error)
+      if (!isDuplicate) {
+        logSanitizedError('Failed to create risk level', error)
+      }
+      return NextResponse.json(
+        {
+          error: isDuplicate
+            ? 'Duplicate entry'
+            : INTERNAL_SERVER_ERROR_MESSAGE,
+        },
+        { status: isDuplicate ? 409 : 500 },
+      )
     }
-    return NextResponse.json(
-      {
-        error: isDuplicate ? 'Duplicate entry' : INTERNAL_SERVER_ERROR_MESSAGE,
-      },
-      { status: isDuplicate ? 409 : 500 },
-    )
-  }
-}
+  },
+})

@@ -9,7 +9,12 @@ applyTo: '{components,app}/**/*.tsx'
 - Mobile-first: base styles for small screens, add `sm:`, `md:`, `lg:` for larger
 - All layouts must work from 320px to 1440px+ (single-column mobile, multi-column desktop)
 - Touch targets: buttons and links need `min-h-[44px] min-w-[44px]` unless the target is inline in text, user-agent controls, or a particular size/presentation is essential
-- No fixed widths — use responsive/fluid sizing (`w-full`, `max-w-*`, `flex`, `grid`)
+- Avoid fixed widths; use responsive/fluid sizing (`w-full`, `max-w-*`, `flex`, `grid`)
+- Fixed-format controls and data grids may use constrained or persisted widths
+  when layout semantics require them.
+- Developer Mode overlays, chips, badges, and toasts are desktop-only developer
+  surfaces. Follow `.github/instructions/developer-mode.instructions.md` for
+  their size and responsive behavior.
 - Test layout mentally at mobile and desktop before submitting
 
 ## Dark Mode
@@ -19,6 +24,8 @@ applyTo: '{components,app}/**/*.tsx'
 ## Accessibility
 
 - Follow Web Content Accessibility Guidelines (WCAG) 2.2 Level AA compliance (AAA as an aspirational goal where feasible)
+- Developer Mode overlays, chips, badges, and toasts are exempt from product UI
+  accessibility requirements. Keep the underlying app accessible.
 - Semantic HTML elements over `<div>`/`<span>` + ARIA roles (Biome `a11y/useSemanticElements`)
 - Proper heading order (`h1` > `h2` > `h3`)
 - ARIA labels on all interactive elements

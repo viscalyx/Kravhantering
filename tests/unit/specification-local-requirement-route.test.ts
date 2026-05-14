@@ -2,6 +2,24 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockDb = {}
+const authState = vi.hoisted(() => ({
+  assertAuthorized: vi.fn(),
+  createRequestContext: vi.fn(),
+  getRequestSqlServerDataSource: vi.fn(),
+}))
+const mockContext = {
+  actor: {
+    displayName: 'Route Tester',
+    hsaId: 'SE2321000032-route',
+    id: 'route-test',
+    isAuthenticated: true,
+    roles: ['RequirementsEditor'],
+    source: 'oidc',
+  },
+  correlationId: 'correlation-1',
+  requestId: 'request-1',
+  source: 'rest',
+}
 
 const mocks = {
   deleteSpecificationLocalRequirement: vi.fn(),
@@ -10,8 +28,20 @@ const mocks = {
 }
 
 vi.mock('@/lib/db', () => ({
-  getRequestSqlServerDataSource: () => mockDb,
+  getRequestSqlServerDataSource: authState.getRequestSqlServerDataSource,
 }))
+
+vi.mock('@/lib/requirements/auth', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/lib/requirements/auth')>()
+  return {
+    ...actual,
+    createDefaultAuthorizationService: () => ({
+      assertAuthorized: authState.assertAuthorized,
+    }),
+    createRequestContext: authState.createRequestContext,
+  }
+})
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   deleteSpecificationLocalRequirement: (...args: unknown[]) =>
@@ -25,6 +55,10 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
 }))
 
 import { DELETE } from '@/app/api/specifications/[id]/local-requirements/[localRequirementId]/route'
+import {
+  forbiddenError,
+  RequirementsServiceError,
+} from '@/lib/requirements/errors'
 
 function makeParams(id: string, localRequirementId: string) {
   return { params: Promise.resolve({ id, localRequirementId }) }
@@ -50,6 +84,9 @@ async function expectInvalidRequest(
 describe('specifications/[id]/local-requirements/[localRequirementId] route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    authState.assertAuthorized.mockResolvedValue(undefined)
+    authState.createRequestContext.mockResolvedValue(mockContext)
+    authState.getRequestSqlServerDataSource.mockResolvedValue(mockDb)
     mocks.getSpecificationBySlug.mockResolvedValue({ id: 5 })
   })
 
@@ -86,6 +123,38 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
           }),
         }),
       )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('maps requirements service errors when deleting a specification-local requirement fails', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    mocks.deleteSpecificationLocalRequirement.mockRejectedValue(
+      new RequirementsServiceError('conflict', 'Requirement is still linked'),
+    )
+
+    try {
+      const response = await DELETE(
+        new NextRequest(
+          'http://localhost/api/specifications/spec/local-requirements/41',
+        ),
+        makeParams('spec', '41'),
+      )
+
+      expect(response.status).toBe(409)
+      await expect(response.json()).resolves.toEqual({
+        code: 'conflict',
+        error: 'Requirement is still linked',
+      })
+      expect(mocks.deleteSpecificationLocalRequirement).toHaveBeenCalledWith(
+        mockDb,
+        5,
+        41,
+      )
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
     } finally {
       consoleErrorSpy.mockRestore()
     }
@@ -138,6 +207,37 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
     )
   })
 
+  it('returns 403 before loading the database when specification-local requirement deletion is not authorized', async () => {
+    authState.assertAuthorized.mockRejectedValueOnce(
+      forbiddenError('Missing specification-local requirement permission'),
+    )
+
+    const response = await DELETE(
+      new NextRequest(
+        'http://localhost/api/specifications/spec/local-requirements/41',
+      ),
+      makeParams('spec', '41'),
+    )
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({
+      code: 'forbidden',
+      error: 'Missing specification-local requirement permission',
+    })
+    expect(authState.assertAuthorized).toHaveBeenCalledWith(
+      {
+        kind: 'manage_specification_local_requirement',
+        localRequirementId: 41,
+        operation: 'delete',
+        specificationId: undefined,
+        specificationSlug: 'spec',
+      },
+      expect.objectContaining({ requestId: 'request-1' }),
+    )
+    expect(authState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mocks.deleteSpecificationLocalRequirement).not.toHaveBeenCalled()
+  })
+
   it('returns 200 when the requirement was deleted', async () => {
     mocks.deleteSpecificationLocalRequirement.mockResolvedValueOnce(true)
 
@@ -150,6 +250,16 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ok: true })
+    expect(authState.assertAuthorized).toHaveBeenCalledWith(
+      {
+        kind: 'manage_specification_local_requirement',
+        localRequirementId: 41,
+        operation: 'delete',
+        specificationId: undefined,
+        specificationSlug: 'spec',
+      },
+      expect.objectContaining({ requestId: 'request-1' }),
+    )
     expect(mocks.deleteSpecificationLocalRequirement).toHaveBeenCalledWith(
       mockDb,
       5,

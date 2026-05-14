@@ -1,10 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { getAuthConfig } from '@/lib/auth/config'
-import { assertSameOriginRequest } from '@/lib/auth/csrf'
 import { getOidcConfiguration, oidcClient } from '@/lib/auth/oidc'
 import { getSession } from '@/lib/auth/session'
 import { redactSensitiveText } from '@/lib/http/safe-errors'
+import { secureLogoutMutationRoute } from '@/lib/http/secure-mutation-route'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +13,7 @@ function createLocalRedirect(request: NextRequest, target: string) {
 }
 
 function createPostLogoutResponse(
-  request: NextRequest,
+  request: Request,
   target: string | URL,
 ): NextResponse {
   const url = target instanceof URL ? target : new URL(target, request.url)
@@ -47,9 +47,8 @@ export async function GET(request: NextRequest) {
   return createLocalRedirect(request, cfg.postLogoutRedirectUri)
 }
 
-export async function POST(request: NextRequest) {
+export const POST = secureLogoutMutationRoute(async (request: Request) => {
   const cfg = getAuthConfig()
-  assertSameOriginRequest(request)
 
   const session = await getSession()
   const idTokenHint =
@@ -92,4 +91,4 @@ export async function POST(request: NextRequest) {
     // IdP did not advertise an end_session_endpoint — just bounce home.
     return createPostLogoutResponse(request, cfg.postLogoutRedirectUri)
   }
-}
+})

@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  createAdminPrivilegedAuditContext,
-  recordAdminPrivilegedActionSucceeded,
-} from '@/lib/admin/privileged-audit'
+import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   countLinkedRequirementsByPackage,
   createRequirementPackage,
@@ -11,10 +8,13 @@ import {
 } from '@/lib/dal/requirement-packages'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
+  adminMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   boundedDbStringSchema,
   optionalBusinessTextSchema,
   positiveIntegerSchema,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
 
 const requirementPackageSchema = z
@@ -41,17 +41,18 @@ export async function GET() {
   })
 }
 
-export async function POST(request: Request) {
-  const parsedBody = await readJsonWithSchema(request, requirementPackageSchema)
-  if (!parsedBody.ok) return parsedBody.response
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-  const requirementPackage = await createRequirementPackage(db, parsedBody.data)
-  recordAdminPrivilegedActionSucceeded(auditContext, {
-    changedFields: Object.keys(parsedBody.data),
-    operation: 'create',
-    resourceId: requirementPackage.id,
-    resourceType: 'requirement_package',
-  })
-  return NextResponse.json(requirementPackage, { status: 201 })
-}
+export const POST = secureMutationRoute({
+  bodySchema: requirementPackageSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ body, context }) => {
+    const db = await getRequestSqlServerDataSource()
+    const requirementPackage = await createRequirementPackage(db, body)
+    recordAdminPrivilegedActionSucceeded(context, {
+      changedFields: Object.keys(body),
+      operation: 'create',
+      resourceId: requirementPackage.id,
+      resourceType: 'requirement_package',
+    })
+    return NextResponse.json(requirementPackage, { status: 201 })
+  },
+})

@@ -13,12 +13,12 @@ import {
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  nullableBoundedDbStringSchema,
-  readJsonWithSchema,
-} from '@/lib/http/validation'
+  customMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import { nullableBoundedDbStringSchema } from '@/lib/http/validation'
 import {
   createRequestContext,
-  type RequestContext,
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
 
@@ -55,45 +55,43 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  const parsedBody = await readJsonWithSchema(request, createAccessReviewSchema)
-  if (!parsedBody.ok) return parsedBody.response
-
-  let context: RequestContext | null = null
-  try {
-    context = await createRequestContext(request, 'rest')
-    const db = await getRequestSqlServerDataSource()
-    const detail = await createAccessReviewRun(
-      db,
-      {
-        dueAt: parsedBody.data.dueAt,
-        externalEvidenceReference:
-          parsedBody.data.externalEvidenceReference ?? null,
-        periodEnd: parsedBody.data.periodEnd,
-        periodStart: parsedBody.data.periodStart,
-        reviewer: requireHumanActorSnapshot(context),
-      },
-      accessReviewServiceActor(context),
-    )
-    recordSecurityEvent({
-      actor: accessReviewAuditActor(context),
-      detail: {
-        itemCount: detail.run.summary.itemCount,
-        reviewId: detail.run.id,
-        status: detail.run.status,
-      },
-      event: 'access_review.created',
-      outcome: 'success',
-      request: context.request ?? request,
-    })
-    return NextResponse.json(detail, { status: 201 })
-  } catch (error) {
-    recordAccessReviewAuthorizationDenied(
-      context,
-      request,
-      { actionKind: 'access_review.create' },
-      error,
-    )
-    return accessReviewErrorResponse('Failed to create access review', error)
-  }
-}
+export const POST = secureMutationRoute({
+  bodySchema: createAccessReviewSchema,
+  policy: customMutationPolicy('access_review.create', () => {}),
+  handler: async ({ body, context, request }) => {
+    try {
+      const db = await getRequestSqlServerDataSource()
+      const detail = await createAccessReviewRun(
+        db,
+        {
+          dueAt: body.dueAt,
+          externalEvidenceReference: body.externalEvidenceReference ?? null,
+          periodEnd: body.periodEnd,
+          periodStart: body.periodStart,
+          reviewer: requireHumanActorSnapshot(context),
+        },
+        accessReviewServiceActor(context),
+      )
+      recordSecurityEvent({
+        actor: accessReviewAuditActor(context),
+        detail: {
+          itemCount: detail.run.summary.itemCount,
+          reviewId: detail.run.id,
+          status: detail.run.status,
+        },
+        event: 'access_review.created',
+        outcome: 'success',
+        request: context.request ?? request,
+      })
+      return NextResponse.json(detail, { status: 201 })
+    } catch (error) {
+      recordAccessReviewAuthorizationDenied(
+        context,
+        request,
+        { actionKind: 'access_review.create' },
+        error,
+      )
+      return accessReviewErrorResponse('Failed to create access review', error)
+    }
+  },
+})

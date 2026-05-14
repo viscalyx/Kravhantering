@@ -21,6 +21,8 @@ applyTo: 'components/**/*.tsx'
 ## Required
 
 - `useTranslations('section')` for all UI text (client components only; server components use `getTranslations`)
+- Developer Mode labels stay in English. Follow
+  `.github/instructions/developer-mode.instructions.md` for that surface.
 
 ## Animation Patterns
 
@@ -46,7 +48,9 @@ const shouldReduceMotion = useReducedMotion()
 
 ## Images
 
-- Always use `next/image` for all images
+- Use `next/image` for product UI images.
+- Report PDF renderers may use the image primitive required by `@react-pdf/renderer`
+  instead of `next/image`.
 - Include `alt` text for accessibility
 
 ## Loading States

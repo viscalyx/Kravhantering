@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  createAdminPrivilegedAuditContext,
-  recordAdminPrivilegedActionSucceeded,
-} from '@/lib/admin/privileged-audit'
+import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import { listOwners, type Owner } from '@/lib/dal/owners'
 import {
   createArea,
@@ -12,10 +9,13 @@ import {
 } from '@/lib/dal/requirement-areas'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
+  adminMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   boundedDbStringSchema,
   optionalBusinessTextSchema,
   positiveIntegerSchema,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
 
 const optionalOwnerIdSchema = positiveIntegerSchema
@@ -48,17 +48,18 @@ export async function GET() {
   return NextResponse.json({ areas: enriched })
 }
 
-export async function POST(request: Request) {
-  const parsedBody = await readJsonWithSchema(request, createAreaSchema)
-  if (!parsedBody.ok) return parsedBody.response
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-  const area = await createArea(db, parsedBody.data)
-  recordAdminPrivilegedActionSucceeded(auditContext, {
-    changedFields: Object.keys(parsedBody.data),
-    operation: 'create',
-    resourceId: area.id,
-    resourceType: 'requirement_area',
-  })
-  return NextResponse.json(area, { status: 201 })
-}
+export const POST = secureMutationRoute({
+  bodySchema: createAreaSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ body, context }) => {
+    const db = await getRequestSqlServerDataSource()
+    const area = await createArea(db, body)
+    recordAdminPrivilegedActionSucceeded(context, {
+      changedFields: Object.keys(body),
+      operation: 'create',
+      resourceId: area.id,
+      resourceType: 'requirement_area',
+    })
+    return NextResponse.json(area, { status: 201 })
+  },
+})

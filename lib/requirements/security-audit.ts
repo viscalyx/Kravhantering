@@ -94,6 +94,14 @@ function actionAuditDetail(
         specificationId: action.specificationId,
         specificationSlug: action.specificationSlug,
       }
+    case 'manage_specification_local_requirement':
+      return {
+        actionKind: action.kind,
+        localRequirementId: action.localRequirementId,
+        operation: action.operation,
+        specificationId: action.specificationId,
+        specificationSlug: action.specificationSlug,
+      }
     case 'get_requirement':
       return {
         actionKind: action.kind,

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockUpdateQualityCharacteristic = vi.fn()
 const mockDeleteQualityCharacteristic = vi.fn()
-const mockListQualityCharacteristics = vi.fn()
+const mockHasChildQualityCharacteristics = vi.fn()
 const auditState = vi.hoisted(() => ({
   createAdminPrivilegedAuditContext: vi.fn(async () => ({
     actor: {
@@ -42,8 +42,8 @@ vi.mock('@/lib/dal/requirement-types', () => ({
     mockUpdateQualityCharacteristic(...a),
   deleteQualityCharacteristic: (...a: unknown[]) =>
     mockDeleteQualityCharacteristic(...a),
-  listQualityCharacteristics: (...a: unknown[]) =>
-    mockListQualityCharacteristics(...a),
+  hasChildQualityCharacteristics: (...a: unknown[]) =>
+    mockHasChildQualityCharacteristics(...a),
 }))
 
 import { DELETE, PUT } from '@/app/api/quality-characteristics/[id]/route'
@@ -80,7 +80,7 @@ async function expectInvalidRequest(
 describe('quality-characteristics/[id] route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockListQualityCharacteristics.mockResolvedValue([])
+    mockHasChildQualityCharacteristics.mockResolvedValue(false)
   })
 
   describe('PUT', () => {
@@ -233,7 +233,7 @@ describe('quality-characteristics/[id] route', () => {
     })
 
     it('returns 409 when has sub-characteristics', async () => {
-      mockListQualityCharacteristics.mockResolvedValue([{ id: 2, parentId: 5 }])
+      mockHasChildQualityCharacteristics.mockResolvedValue(true)
       const req = new NextRequest('http://localhost', { method: 'DELETE' })
       const res = await DELETE(req, makeParams('5'))
       expect(res.status).toBe(409)

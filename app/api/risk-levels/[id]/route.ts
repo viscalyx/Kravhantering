@@ -1,9 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  createAdminPrivilegedAuditContext,
-  recordAdminPrivilegedActionSucceeded,
-} from '@/lib/admin/privileged-audit'
+import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   deleteRiskLevel,
   getLinkedRequirements,
@@ -12,11 +9,14 @@ import {
 } from '@/lib/dal/risk-levels'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
+  adminMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   boundedDbStringSchema,
   idParamSchema,
   nonNegativeIntegerSchema,
   parseRouteParams,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
 
 export const dynamic = 'force-dynamic'
@@ -50,49 +50,40 @@ export async function GET(
   return NextResponse.json({ riskLevel, linkedRequirements })
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
-  if (!parsedParams.ok) return parsedParams.response
-  const parsedBody = await readJsonWithSchema(request, updateRiskLevelSchema)
-  if (!parsedBody.ok) return parsedBody.response
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-  const riskLevel = await updateRiskLevel(
-    db,
-    parsedParams.data.id,
-    parsedBody.data,
-  )
-  if (!riskLevel) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
-  recordAdminPrivilegedActionSucceeded(auditContext, {
-    changedFields: Object.keys(parsedBody.data),
-    operation: 'update',
-    resourceId: parsedParams.data.id,
-    resourceType: 'risk_level',
-  })
-  return NextResponse.json(riskLevel)
-}
+export const PUT = secureMutationRoute({
+  bodySchema: updateRiskLevelSchema,
+  paramsSchema: idParamSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ body, context, params }) => {
+    const db = await getRequestSqlServerDataSource()
+    const riskLevel = await updateRiskLevel(db, params.id, body)
+    if (!riskLevel) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    recordAdminPrivilegedActionSucceeded(context, {
+      changedFields: Object.keys(body),
+      operation: 'update',
+      resourceId: params.id,
+      resourceType: 'risk_level',
+    })
+    return NextResponse.json(riskLevel)
+  },
+})
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
-  if (!parsedParams.ok) return parsedParams.response
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-  const deletedCount = await deleteRiskLevel(db, parsedParams.data.id)
-  if (deletedCount === 0) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
-  recordAdminPrivilegedActionSucceeded(auditContext, {
-    operation: 'delete',
-    resourceId: parsedParams.data.id,
-    resourceType: 'risk_level',
-  })
-  return NextResponse.json({ ok: true })
-}
+export const DELETE = secureMutationRoute({
+  paramsSchema: idParamSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ context, params }) => {
+    const db = await getRequestSqlServerDataSource()
+    const deletedCount = await deleteRiskLevel(db, params.id)
+    if (deletedCount === 0) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    recordAdminPrivilegedActionSucceeded(context, {
+      operation: 'delete',
+      resourceId: params.id,
+      resourceType: 'risk_level',
+    })
+    return NextResponse.json({ ok: true })
+  },
+})

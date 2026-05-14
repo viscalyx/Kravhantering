@@ -11,15 +11,16 @@ import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
-  ARRAY_INPUT_MAX_ITEMS,
-  businessTextSchema,
-  nullableBusinessTextSchema,
+  requirementsMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import { specificationLocalRequirementSchema } from '@/lib/http/specification-local-requirement-validation'
+import {
   parseRouteParams,
-  positiveIntegerSchema,
   positiveIntegerStringSchema,
-  readJsonWithSchema,
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
+import type { RequirementsAction } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
@@ -34,33 +35,29 @@ const specificationLocalRequirementParamSchema = z
   })
   .strict()
 
-const uniquePositiveIntegerArrayFieldSchema = z
-  .array(positiveIntegerSchema)
-  .max(ARRAY_INPUT_MAX_ITEMS)
-  .refine(values => new Set(values).size === values.length, {
-    message: 'Expected unique positive integers',
-  })
+type SpecificationLocalRequirementParams = z.infer<
+  typeof specificationLocalRequirementParamSchema
+>
+type SpecificationLocalRequirementBody = z.infer<
+  typeof specificationLocalRequirementSchema
+>
 
-const specificationLocalRequirementSchema = z
-  .object({
-    acceptanceCriteria: nullableBusinessTextSchema.optional(),
-    description: businessTextSchema,
-    needsReferenceId: positiveIntegerSchema.nullable().optional(),
-    normReferenceIds: uniquePositiveIntegerArrayFieldSchema
-      .optional()
-      .default([]),
-    qualityCharacteristicId: positiveIntegerSchema.nullable().optional(),
-    requirementAreaId: positiveIntegerSchema.nullable().optional(),
-    requirementCategoryId: positiveIntegerSchema.nullable().optional(),
-    requirementPackageIds: uniquePositiveIntegerArrayFieldSchema
-      .optional()
-      .default([]),
-    requirementTypeId: positiveIntegerSchema.nullable().optional(),
-    requiresTesting: z.boolean().optional().default(false),
-    riskLevelId: positiveIntegerSchema.nullable().optional(),
-    verificationMethod: nullableBusinessTextSchema.optional(),
-  })
-  .strict()
+function specificationLocalRequirementAction(
+  operation: string,
+  params: SpecificationLocalRequirementParams,
+): RequirementsAction {
+  const specificationId = /^\d+$/.test(params.id)
+    ? Number(params.id)
+    : undefined
+
+  return {
+    kind: 'manage_specification_local_requirement',
+    localRequirementId: params.localRequirementId,
+    operation,
+    specificationId,
+    specificationSlug: specificationId === undefined ? params.id : undefined,
+  }
+}
 
 async function resolveSpecificationId(
   db: SqlServerDatabase,
@@ -104,104 +101,104 @@ export async function GET(
   return NextResponse.json(requirement)
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(
-    params,
-    specificationLocalRequirementParamSchema,
-  )
-  if (!parsedParams.ok) {
-    return parsedParams.response
-  }
-  const parsedBody = await readJsonWithSchema(
-    request,
-    specificationLocalRequirementSchema,
-  )
-  if (!parsedBody.ok) {
-    return parsedBody.response
-  }
-  const { id, localRequirementId: numericLocalRequirementId } =
-    parsedParams.data
-  const body = parsedBody.data
-  const db = await getRequestSqlServerDataSource()
-  const specificationId = await resolveSpecificationId(db, id)
-  if (specificationId === null) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
-
-  try {
-    const localRequirement = await updateSpecificationLocalRequirement(
-      db,
-      specificationId,
-      numericLocalRequirementId,
-      {
-        acceptanceCriteria: body.acceptanceCriteria ?? null,
-        description: body.description,
-        needsReferenceId: body.needsReferenceId ?? null,
-        normReferenceIds: body.normReferenceIds,
-        qualityCharacteristicId: body.qualityCharacteristicId ?? null,
-        requirementAreaId: body.requirementAreaId ?? null,
-        requirementCategoryId: body.requirementCategoryId ?? null,
-        requirementPackageIds: body.requirementPackageIds,
-        requirementTypeId: body.requirementTypeId ?? null,
-        requiresTesting: body.requiresTesting,
-        riskLevelId: body.riskLevelId ?? null,
-        verificationMethod: body.verificationMethod ?? null,
-      },
-    )
-
-    return NextResponse.json({ localRequirement, ok: true })
-  } catch (error) {
-    if (isRequirementsServiceError(error)) {
-      const { body, status } = toHttpErrorPayload(error)
-      return NextResponse.json(body, { status })
-    }
-
-    logSanitizedError('Failed to update specification-local requirement', error)
-    return NextResponse.json(
-      { error: 'Failed to update specification-local requirement' },
-      { status: 500 },
-    )
-  }
-}
-
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(
-    params,
-    specificationLocalRequirementParamSchema,
-  )
-  if (!parsedParams.ok) {
-    return parsedParams.response
-  }
-  const { id, localRequirementId: numericLocalRequirementId } =
-    parsedParams.data
-  const db = await getRequestSqlServerDataSource()
-  const specificationId = await resolveSpecificationId(db, id)
-  if (specificationId === null) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
-
-  try {
-    const deleted = await deleteSpecificationLocalRequirement(
-      db,
-      specificationId,
-      numericLocalRequirementId,
-    )
-    if (!deleted) {
+export const PUT = secureMutationRoute<
+  SpecificationLocalRequirementBody,
+  SpecificationLocalRequirementParams
+>({
+  bodySchema: specificationLocalRequirementSchema,
+  paramsSchema: specificationLocalRequirementParamSchema,
+  policy: requirementsMutationPolicy(({ params }) =>
+    specificationLocalRequirementAction('update', params),
+  ),
+  handler: async ({ body, params }) => {
+    const { id, localRequirementId: numericLocalRequirementId } = params
+    const db = await getRequestSqlServerDataSource()
+    const specificationId = await resolveSpecificationId(db, id)
+    if (specificationId === null) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-  } catch (error) {
-    logSanitizedError('Failed to delete specification-local requirement', error)
-    return NextResponse.json(
-      { error: 'Failed to delete specification-local requirement' },
-      { status: 500 },
-    )
-  }
 
-  return NextResponse.json({ ok: true })
-}
+    try {
+      const localRequirement = await updateSpecificationLocalRequirement(
+        db,
+        specificationId,
+        numericLocalRequirementId,
+        {
+          acceptanceCriteria: body.acceptanceCriteria ?? null,
+          description: body.description,
+          needsReferenceId: body.needsReferenceId ?? null,
+          normReferenceIds: body.normReferenceIds,
+          qualityCharacteristicId: body.qualityCharacteristicId ?? null,
+          requirementAreaId: body.requirementAreaId ?? null,
+          requirementCategoryId: body.requirementCategoryId ?? null,
+          requirementPackageIds: body.requirementPackageIds,
+          requirementTypeId: body.requirementTypeId ?? null,
+          requiresTesting: body.requiresTesting,
+          riskLevelId: body.riskLevelId ?? null,
+          verificationMethod: body.verificationMethod ?? null,
+        },
+      )
+
+      return NextResponse.json({ localRequirement, ok: true })
+    } catch (error) {
+      if (isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return NextResponse.json(body, { status })
+      }
+
+      logSanitizedError(
+        'Failed to update specification-local requirement',
+        error,
+      )
+      return NextResponse.json(
+        { error: 'Failed to update specification-local requirement' },
+        { status: 500 },
+      )
+    }
+  },
+})
+
+export const DELETE = secureMutationRoute<
+  undefined,
+  SpecificationLocalRequirementParams
+>({
+  paramsSchema: specificationLocalRequirementParamSchema,
+  policy: requirementsMutationPolicy(({ params }) =>
+    specificationLocalRequirementAction('delete', params),
+  ),
+  handler: async ({ params }) => {
+    const { id, localRequirementId: numericLocalRequirementId } = params
+    const db = await getRequestSqlServerDataSource()
+    const specificationId = await resolveSpecificationId(db, id)
+    if (specificationId === null) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    try {
+      const deleted = await deleteSpecificationLocalRequirement(
+        db,
+        specificationId,
+        numericLocalRequirementId,
+      )
+      if (!deleted) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+    } catch (error) {
+      if (isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return NextResponse.json(body, { status })
+      }
+
+      logSanitizedError(
+        'Failed to delete specification-local requirement',
+        error,
+      )
+      return NextResponse.json(
+        { error: 'Failed to delete specification-local requirement' },
+        { status: 500 },
+      )
+    }
+
+    return NextResponse.json({ ok: true })
+  },
+})

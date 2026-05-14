@@ -165,7 +165,6 @@ describe('specification-local deviation lifecycle routes', () => {
             body: JSON.stringify({
               decision: 1,
               decisionMotivation: 'Looks good',
-              decidedBy: 'Reviewer',
             }),
             headers: { 'Content-Type': 'application/json' },
             method: 'POST',
@@ -192,7 +191,6 @@ describe('specification-local deviation lifecycle routes', () => {
           body: JSON.stringify({
             decision: 1,
             decisionMotivation: 'Looks good',
-            decidedBy: 'Reviewer',
           }),
           headers: { 'Content-Type': 'application/json' },
           method: 'POST',
@@ -228,7 +226,6 @@ describe('specification-local deviation lifecycle routes', () => {
           body: JSON.stringify({
             decision: 2,
             decisionMotivation: 'Rejected',
-            decidedBy: 'Approver',
           }),
           headers: { 'Content-Type': 'application/json' },
           method: 'POST',
@@ -252,7 +249,6 @@ describe('specification-local deviation lifecycle routes', () => {
           body: JSON.stringify({
             decision: 1,
             decisionMotivation: 'Looks good',
-            decidedBy: 'Reviewer',
           }),
           headers: { 'Content-Type': 'application/json' },
           method: 'POST',

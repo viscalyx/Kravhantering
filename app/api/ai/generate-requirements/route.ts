@@ -17,17 +17,17 @@ import {
   logSanitizedError,
 } from '@/lib/http/safe-errors'
 import {
-  ARRAY_INPUT_MAX_ITEMS,
-  localeSchema,
-  readJsonWithSchema,
-} from '@/lib/http/validation'
+  requirementsMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import { ARRAY_INPUT_MAX_ITEMS, localeSchema } from '@/lib/http/validation'
 import { recordCapacityEvent } from '@/lib/observability/capacity'
 import {
   applyResponseCorrelationHeaders,
   type RequestCorrelationIds,
 } from '@/lib/observability/request-ids'
 import { checkInMemoryThrottle } from '@/lib/observability/throttle'
-import { createRequestContext } from '@/lib/requirements/auth'
+import type { RequestContext } from '@/lib/requirements/auth'
 
 const ALLOWED_IMAGE_MIMES = [
   'image/png',
@@ -45,6 +45,50 @@ const MAX_AI_TOPIC_LENGTH = 4000
 const AI_GENERATE_RATE_LIMIT = 5
 const AI_GENERATE_RATE_WINDOW_MS = 60_000
 const AI_GENERATE_SLOW_THRESHOLD_MS = 30_000
+
+function checkAiGenerateThrottle(context: RequestContext) {
+  return checkInMemoryThrottle({
+    key: [
+      'ai.generate-requirements',
+      context.actor.source,
+      context.actor.id ?? context.actor.hsaId ?? context.correlationId,
+    ].join(':'),
+    limit: AI_GENERATE_RATE_LIMIT,
+    windowMs: AI_GENERATE_RATE_WINDOW_MS,
+  })
+}
+
+function createAiGenerateThrottleResponse(
+  context: RequestContext,
+  throttle: ReturnType<typeof checkInMemoryThrottle>,
+) {
+  recordCapacityEvent({
+    correlationId: context.correlationId,
+    event: 'capacity.throttled',
+    level: 'warn',
+    metrics: { throttled: true },
+    operation: 'ai.generate-requirements',
+    outcome: 'throttled',
+    requestId: context.requestId,
+    retryAfterSeconds: throttle.retryAfterSeconds,
+    source: 'rest',
+    statusCode: 429,
+  })
+  return applyResponseCorrelationHeaders(
+    Response.json(
+      {
+        error: 'Too many AI generation requests. Try again later.',
+      },
+      {
+        headers: {
+          'Retry-After': String(throttle.retryAfterSeconds),
+        },
+        status: 429,
+      },
+    ),
+    context,
+  )
+}
 
 const imageDataUrlSchema = z.string().superRefine((dataUrl, context) => {
   const mimeMatch = dataUrl.match(/^data:([^;]+);base64,/)
@@ -109,118 +153,64 @@ const generateRequirementsSchema = z
   })
   .strict()
 
-export async function POST(request: Request) {
-  const context = await createRequestContext(request, 'rest')
-  const throttle = checkInMemoryThrottle({
-    key: [
-      'ai.generate-requirements',
-      context.actor.source,
-      context.actor.id ?? context.actor.hsaId ?? context.correlationId,
-    ].join(':'),
-    limit: AI_GENERATE_RATE_LIMIT,
-    windowMs: AI_GENERATE_RATE_WINDOW_MS,
-  })
-
-  if (!throttle.allowed) {
-    recordCapacityEvent({
-      correlationId: context.correlationId,
-      event: 'capacity.throttled',
-      level: 'warn',
-      metrics: {
-        throttled: true,
-      },
-      operation: 'ai.generate-requirements',
-      outcome: 'throttled',
-      requestId: context.requestId,
-      retryAfterSeconds: throttle.retryAfterSeconds,
-      source: 'rest',
-      statusCode: 429,
-    })
-    return applyResponseCorrelationHeaders(
-      Response.json(
-        {
-          error: 'Too many AI generation requests. Try again later.',
-        },
-        {
-          headers: {
-            'Retry-After': String(throttle.retryAfterSeconds),
-          },
-          status: 429,
-        },
-      ),
-      context,
-    )
-  }
-
-  const parsedBody = await readJsonWithSchema(
-    request,
-    generateRequirementsSchema,
-  )
-  if (!parsedBody.ok) {
-    return parsedBody.response
-  }
-  const body = parsedBody.data
-  const providerPreferences = body.providerPreferences
-  const { images, locale } = body
-  const imageBytes = images.reduce((sum, image) => {
-    const data = image.dataUrl.slice(image.dataUrl.indexOf(',') + 1)
-    return sum + Math.round((data.length * 3) / 4)
-  }, 0)
-
-  const db = await getRequestSqlServerDataSource()
-
-  const taxonomy = await loadTaxonomy(db, locale)
-  const systemPrompt = buildSystemPrompt(taxonomy, locale)
-  const userPrompt = buildUserPrompt(body.topic, body.customInstruction, locale)
-
-  // Build user message content: text-only or multipart with images
-  let userContent: ContentPart[] | string = userPrompt
-  if (images.length > 0) {
-    const parts: ContentPart[] = [{ text: userPrompt, type: 'text' }]
-    for (const img of images) {
-      parts.push({ image_url: { url: img.dataUrl }, type: 'image_url' })
+export const POST = secureMutationRoute({
+  bodySchema: generateRequirementsSchema,
+  policy: requirementsMutationPolicy({ kind: 'generate_requirements' }),
+  preParse: ({ context }) => {
+    const throttle = checkAiGenerateThrottle(context)
+    if (!throttle.allowed) {
+      return createAiGenerateThrottleResponse(context, throttle)
     }
-    userContent = parts
-  }
+  },
+  handler: async ({ body, context, request }) => {
+    const providerPreferences = body.providerPreferences
+    const { images, locale } = body
+    const imageBytes = images.reduce((sum, image) => {
+      const data = image.dataUrl.slice(image.dataUrl.indexOf(',') + 1)
+      return sum + Math.round((data.length * 3) / 4)
+    }, 0)
 
-  const streamStartedAt = Date.now()
-  let recordedTerminalEvent = false
+    const db = await getRequestSqlServerDataSource()
 
-  function recordStreamEvent(
-    ids: RequestCorrelationIds,
-    outcome: 'failure' | 'success',
-    statusCode: number,
-    stats?: { cost: number; totalTokens: number },
-  ) {
-    if (recordedTerminalEvent) return
-    recordedTerminalEvent = true
-    const durationMs = Date.now() - streamStartedAt
-    recordCapacityEvent({
-      correlationId: ids.correlationId,
-      durationMs,
-      event:
-        outcome === 'success'
-          ? 'capacity.operation.completed'
-          : 'capacity.operation.failed',
-      metrics: {
-        cost: stats?.cost,
-        image_bytes: imageBytes,
-        image_count: images.length,
-        token_count: stats?.totalTokens,
-      },
-      operation: 'ai.generate-requirements',
-      outcome,
-      requestId: ids.requestId,
-      source: 'rest',
-      statusCode,
-    })
-    if (durationMs >= AI_GENERATE_SLOW_THRESHOLD_MS) {
+    const taxonomy = await loadTaxonomy(db, locale)
+    const systemPrompt = buildSystemPrompt(taxonomy, locale)
+    const userPrompt = buildUserPrompt(
+      body.topic,
+      body.customInstruction,
+      locale,
+    )
+
+    // Build user message content: text-only or multipart with images
+    let userContent: ContentPart[] | string = userPrompt
+    if (images.length > 0) {
+      const parts: ContentPart[] = [{ text: userPrompt, type: 'text' }]
+      for (const img of images) {
+        parts.push({ image_url: { url: img.dataUrl }, type: 'image_url' })
+      }
+      userContent = parts
+    }
+
+    const streamStartedAt = Date.now()
+    let recordedTerminalEvent = false
+
+    function recordStreamEvent(
+      ids: RequestCorrelationIds,
+      outcome: 'failure' | 'success',
+      statusCode: number,
+      stats?: { cost: number; totalTokens: number },
+    ) {
+      if (recordedTerminalEvent) return
+      recordedTerminalEvent = true
+      const durationMs = Date.now() - streamStartedAt
       recordCapacityEvent({
         correlationId: ids.correlationId,
         durationMs,
-        event: 'capacity.threshold_exceeded',
-        level: 'warn',
+        event:
+          outcome === 'success'
+            ? 'capacity.operation.completed'
+            : 'capacity.operation.failed',
         metrics: {
+          cost: stats?.cost,
           image_bytes: imageBytes,
           image_count: images.length,
           token_count: stats?.totalTokens,
@@ -231,103 +221,123 @@ export async function POST(request: Request) {
         source: 'rest',
         statusCode,
       })
+      if (durationMs >= AI_GENERATE_SLOW_THRESHOLD_MS) {
+        recordCapacityEvent({
+          correlationId: ids.correlationId,
+          durationMs,
+          event: 'capacity.threshold_exceeded',
+          level: 'warn',
+          metrics: {
+            image_bytes: imageBytes,
+            image_count: images.length,
+            token_count: stats?.totalTokens,
+          },
+          operation: 'ai.generate-requirements',
+          outcome,
+          requestId: ids.requestId,
+          source: 'rest',
+          statusCode,
+        })
+      }
     }
-  }
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      const encoder = new TextEncoder()
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder()
 
-      function send(event: string, data: unknown) {
-        controller.enqueue(
-          encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
-        )
-      }
-
-      try {
-        for await (const event of generateChatStream({
-          format: REQUIREMENT_FORMAT_SCHEMA,
-          messages: [
-            { content: systemPrompt, role: 'system' },
-            { content: userContent, role: 'user' },
-          ],
-          model: body.model,
-          providerPreferences,
-          reasoningEffort:
-            typeof body.reasoningEffort === 'string'
-              ? body.reasoningEffort
-              : undefined,
-          signal: request.signal,
-          supportedParameters: Array.isArray(body.supportedParameters)
-            ? body.supportedParameters
-            : undefined,
-        })) {
-          switch (event.phase) {
-            case 'thinking':
-              send('thinking', {
-                chunk: event.chunk,
-                thinkingSoFar: event.thinkingSoFar,
-              })
-              break
-            case 'generating':
-              send('generating', { chunk: event.chunk })
-              break
-            case 'done': {
-              // Validate taxonomy IDs before sending to client
-              let validated = event.rawContent
-              try {
-                const parsed = JSON.parse(event.rawContent) as {
-                  requirements: GeneratedRequirement[]
-                }
-                if (parsed.requirements) {
-                  parsed.requirements = validateGeneratedRequirements(
-                    parsed.requirements,
-                    taxonomy,
-                  )
-                  validated = JSON.stringify(parsed)
-                }
-              } catch {
-                // If parsing fails, send raw content; client will handle the error
-              }
-              send('done', {
-                model:
-                  body.model ?? process.env.NEXT_PUBLIC_DEFAULT_MODEL ?? '',
-                rawContent: validated,
-                stats: event.stats,
-                taxonomy,
-                thinking: event.thinking,
-              })
-              recordStreamEvent(context, 'success', 200, event.stats)
-              break
-            }
-            case 'error':
-              logSanitizedError(
-                'AI requirement generation stream failed',
-                event.cause ?? event.message,
-              )
-              send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
-              recordStreamEvent(context, 'failure', 503)
-              break
-          }
+        function send(event: string, data: unknown) {
+          controller.enqueue(
+            encoder.encode(
+              `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`,
+            ),
+          )
         }
-      } catch (err) {
-        logSanitizedError('AI requirement generation failed', err)
-        send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
-        recordStreamEvent(context, 'failure', 503)
-      } finally {
-        controller.close()
-      }
-    },
-  })
 
-  return applyResponseCorrelationHeaders(
-    new Response(stream, {
-      headers: {
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-        'Content-Type': 'text/event-stream',
+        try {
+          for await (const event of generateChatStream({
+            format: REQUIREMENT_FORMAT_SCHEMA,
+            messages: [
+              { content: systemPrompt, role: 'system' },
+              { content: userContent, role: 'user' },
+            ],
+            model: body.model,
+            providerPreferences,
+            reasoningEffort:
+              typeof body.reasoningEffort === 'string'
+                ? body.reasoningEffort
+                : undefined,
+            signal: request.signal,
+            supportedParameters: Array.isArray(body.supportedParameters)
+              ? body.supportedParameters
+              : undefined,
+          })) {
+            switch (event.phase) {
+              case 'thinking':
+                send('thinking', {
+                  chunk: event.chunk,
+                  thinkingSoFar: event.thinkingSoFar,
+                })
+                break
+              case 'generating':
+                send('generating', { chunk: event.chunk })
+                break
+              case 'done': {
+                // Validate taxonomy IDs before sending to client
+                let validated = event.rawContent
+                try {
+                  const parsed = JSON.parse(event.rawContent) as {
+                    requirements: GeneratedRequirement[]
+                  }
+                  if (parsed.requirements) {
+                    parsed.requirements = validateGeneratedRequirements(
+                      parsed.requirements,
+                      taxonomy,
+                    )
+                    validated = JSON.stringify(parsed)
+                  }
+                } catch {
+                  // If parsing fails, send raw content; client will handle the error
+                }
+                send('done', {
+                  model:
+                    body.model ?? process.env.NEXT_PUBLIC_DEFAULT_MODEL ?? '',
+                  rawContent: validated,
+                  stats: event.stats,
+                  taxonomy,
+                  thinking: event.thinking,
+                })
+                recordStreamEvent(context, 'success', 200, event.stats)
+                break
+              }
+              case 'error':
+                logSanitizedError(
+                  'AI requirement generation stream failed',
+                  event.cause ?? event.message,
+                )
+                send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
+                recordStreamEvent(context, 'failure', 503)
+                break
+            }
+          }
+        } catch (err) {
+          logSanitizedError('AI requirement generation failed', err)
+          send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
+          recordStreamEvent(context, 'failure', 503)
+        } finally {
+          controller.close()
+        }
       },
-    }),
-    context,
-  )
-}
+    })
+
+    return applyResponseCorrelationHeaders(
+      new Response(stream, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+          'Content-Type': 'text/event-stream',
+        },
+      }),
+      context,
+    )
+  },
+})

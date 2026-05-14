@@ -13,7 +13,7 @@ import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 interface DeviationDecisionModalProps {
   loading?: boolean
   onClose: () => void
-  onSubmit: (decision: 1 | 2, motivation: string, decidedBy: string) => void
+  onSubmit: (decision: 1 | 2, motivation: string) => void
   open: boolean
 }
 
@@ -27,7 +27,6 @@ export default function DeviationDecisionModal({
   const tc = useTranslations('common')
   const [decision, setDecision] = useState<1 | 2>(1)
   const [motivation, setMotivation] = useState('')
-  const [decidedBy, setDecidedBy] = useState('')
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
@@ -37,7 +36,6 @@ export default function DeviationDecisionModal({
     if (open) {
       setDecision(1)
       setMotivation('')
-      setDecidedBy('')
       setOpenHelp(new Set())
     }
   }, [open])
@@ -62,9 +60,9 @@ export default function DeviationDecisionModal({
   }
 
   const handleSubmit = useCallback(() => {
-    if (!motivation.trim() || !decidedBy.trim()) return
-    onSubmit(decision, motivation.trim(), decidedBy.trim())
-  }, [decision, motivation, decidedBy, onSubmit])
+    if (!motivation.trim()) return
+    onSubmit(decision, motivation.trim())
+  }, [decision, motivation, onSubmit])
 
   if (typeof window === 'undefined') return null
 
@@ -164,41 +162,6 @@ export default function DeviationDecisionModal({
                 />
               </div>
 
-              <div>
-                <div className="flex items-center gap-1.5 mb-1">
-                  <label
-                    className="text-sm font-medium text-secondary-900 dark:text-secondary-100"
-                    htmlFor="decision-decidedBy"
-                  >
-                    {td('decidedBy')} *
-                  </label>
-                  <button
-                    aria-controls="help-decision-decidedBy"
-                    aria-expanded={openHelp.has('decidedBy')}
-                    aria-label={`${tc('help')}: ${td('decidedBy')}`}
-                    className="inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                    onClick={() => toggleHelp('decidedBy')}
-                    type="button"
-                  >
-                    <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <AnimatedHelpPanel
-                  id="help-decision-decidedBy"
-                  isOpen={openHelp.has('decidedBy')}
-                >
-                  {td('decidedByHelp')}
-                </AnimatedHelpPanel>
-                <input
-                  className="w-full rounded-lg border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  id="decision-decidedBy"
-                  onChange={e => setDecidedBy(e.target.value)}
-                  placeholder={td('decidedByPlaceholder')}
-                  type="text"
-                  value={decidedBy}
-                />
-              </div>
-
               <div className="flex gap-2 justify-end">
                 <button
                   className="btn-secondary text-sm px-4 py-2"
@@ -210,7 +173,7 @@ export default function DeviationDecisionModal({
                 </button>
                 <button
                   className="btn-primary text-sm px-4 py-2"
-                  disabled={!motivation.trim() || !decidedBy.trim() || loading}
+                  disabled={!motivation.trim() || loading}
                   onClick={handleSubmit}
                   type="button"
                 >

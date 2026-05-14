@@ -71,8 +71,19 @@ integers, booleans must use the documented representation for their transport,
 strings are bounded, arrays are capped, and malformed JSON receives the same
 typed validation envelope.
 
+All app-owned mutating REST route exports (`POST`, `PUT`, `PATCH`, and
+`DELETE`) must go through `lib/http/secure-mutation-route.ts`. The standard
+order is request context and same-origin/CSRF validation, authenticated actor
+check, route param and JSON body validation, declared authorization policy,
+then handler work. Every mutating REST route must declare an `admin`,
+`requirements`, or `custom` policy; logout uses the explicit
+`secureLogoutMutationRoute` special case because it is an auth endpoint with
+CSRF and audit but no business authorization policy. A unit coverage test scans
+`app/api/**/route.ts` to keep this invariant in place.
+
 `/api/mcp` is the intentional exception. It keeps validation inside its
-JSON-RPC/MCP schema layer so MCP tool contracts remain the source of truth.
+JSON-RPC/MCP schema layer and uses Bearer-token authentication, so MCP tool
+contracts remain the source of truth.
 
 ## Workflow
 

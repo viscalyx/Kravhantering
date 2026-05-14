@@ -10,11 +10,14 @@ import {
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
+  customMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   nullableBusinessTextSchema,
   parseRouteParams,
   positiveIntegerSchema,
   positiveIntegerStringSchema,
-  readJsonWithSchema,
   routeSegmentSchema,
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
@@ -111,66 +114,53 @@ export async function GET(
   })
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(
-    params,
-    specificationItemRefParamSchema,
-  )
-  if (!parsedParams.ok) {
-    return parsedParams.response
-  }
-  const parsedBody = await readJsonWithSchema(
-    request,
-    patchSpecificationItemSchema,
-  )
-  if (!parsedBody.ok) {
-    return parsedBody.response
-  }
-  const { id, itemId } = parsedParams.data
-  const body = parsedBody.data
-  const db = await getRequestSqlServerDataSource()
-  const specificationId = await resolveSpecificationId(id, db)
-  if (specificationId === null) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
-  let decodedItemRef: string
-  try {
-    decodedItemRef = decodeURIComponent(itemId)
-  } catch (decodeError) {
-    if (decodeError instanceof URIError) {
-      return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
+export const PATCH = secureMutationRoute({
+  bodySchema: patchSpecificationItemSchema,
+  paramsSchema: specificationItemRefParamSchema,
+  policy: customMutationPolicy('specification_item.patch', () => {}),
+  handler: async ({ body, params }) => {
+    const { id, itemId } = params
+    const db = await getRequestSqlServerDataSource()
+    const specificationId = await resolveSpecificationId(id, db)
+    if (specificationId === null) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    throw decodeError
-  }
-  const item = await getSpecificationItemByRef(
-    db,
-    specificationId,
-    decodedItemRef,
-  )
-  if (!item) {
-    return NextResponse.json(
-      { error: 'Item not found in specification' },
-      { status: 404 },
-    )
-  }
-  try {
-    await updateSpecificationItemFieldsByItemRef(
+    let decodedItemRef: string
+    try {
+      decodedItemRef = decodeURIComponent(itemId)
+    } catch (decodeError) {
+      if (decodeError instanceof URIError) {
+        return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
+      }
+      throw decodeError
+    }
+    const item = await getSpecificationItemByRef(
       db,
       specificationId,
       decodedItemRef,
-      body,
     )
-  } catch (error) {
-    if (isRequirementsServiceError(error) && error.code === 'not_found') {
+    if (!item) {
       return NextResponse.json(
         { error: 'Item not found in specification' },
         { status: 404 },
       )
     }
-    throw error
-  }
-  return NextResponse.json({ ok: true })
-}
+    try {
+      await updateSpecificationItemFieldsByItemRef(
+        db,
+        specificationId,
+        decodedItemRef,
+        body,
+      )
+    } catch (error) {
+      if (isRequirementsServiceError(error) && error.code === 'not_found') {
+        return NextResponse.json(
+          { error: 'Item not found in specification' },
+          { status: 404 },
+        )
+      }
+      throw error
+    }
+    return NextResponse.json({ ok: true })
+  },
+})

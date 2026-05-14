@@ -1,9 +1,6 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  createAdminPrivilegedAuditContext,
-  recordAdminPrivilegedActionSucceeded,
-} from '@/lib/admin/privileged-audit'
+import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   deleteSpecificationLifecycleStatus,
   updateSpecificationLifecycleStatus,
@@ -11,18 +8,16 @@ import {
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   INTERNAL_SERVER_ERROR_MESSAGE,
+  isForeignKeyViolation,
   logSanitizedError,
 } from '@/lib/http/safe-errors'
 import {
-  boundedDbStringSchema,
-  idParamSchema,
-  parseRouteParams,
-  readJsonWithSchema,
-} from '@/lib/http/validation'
+  adminMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import { boundedDbStringSchema, idParamSchema } from '@/lib/http/validation'
 
 export const dynamic = 'force-dynamic'
-
-type Params = Promise<{ id: string }>
 
 const updateLifecycleStatusSchema = z
   .object({
@@ -34,70 +29,69 @@ const updateLifecycleStatusSchema = z
     message: 'At least one of nameEn or nameSv must be provided',
   })
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
-  if (!parsedParams.ok) return parsedParams.response
-  const parsedBody = await readJsonWithSchema(
-    request,
-    updateLifecycleStatusSchema,
-  )
-  if (!parsedBody.ok) return parsedBody.response
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-  try {
-    const status = await updateSpecificationLifecycleStatus(
-      db,
-      parsedParams.data.id,
-      parsedBody.data,
-    )
-    if (!status) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+export const PUT = secureMutationRoute({
+  bodySchema: updateLifecycleStatusSchema,
+  paramsSchema: idParamSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ body, context, params }) => {
+    const db = await getRequestSqlServerDataSource()
+    try {
+      const status = await updateSpecificationLifecycleStatus(
+        db,
+        params.id,
+        body,
+      )
+      if (!status) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+      recordAdminPrivilegedActionSucceeded(context, {
+        changedFields: Object.keys(body),
+        operation: 'update',
+        resourceId: params.id,
+        resourceType: 'specification_lifecycle_status',
+      })
+      return NextResponse.json(status)
+    } catch (err) {
+      logSanitizedError('Failed to update specification lifecycle status', err)
+      return NextResponse.json(
+        { error: INTERNAL_SERVER_ERROR_MESSAGE },
+        { status: 500 },
+      )
     }
-    recordAdminPrivilegedActionSucceeded(auditContext, {
-      changedFields: Object.keys(parsedBody.data),
-      operation: 'update',
-      resourceId: parsedParams.data.id,
-      resourceType: 'specification_lifecycle_status',
-    })
-    return NextResponse.json(status)
-  } catch (err) {
-    logSanitizedError('Failed to update specification lifecycle status', err)
-    return NextResponse.json(
-      { error: INTERNAL_SERVER_ERROR_MESSAGE },
-      { status: 500 },
-    )
-  }
-}
+  },
+})
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
-  if (!parsedParams.ok) return parsedParams.response
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-  try {
-    const deletedCount = await deleteSpecificationLifecycleStatus(
-      db,
-      parsedParams.data.id,
-    )
-    if (deletedCount === 0) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+export const DELETE = secureMutationRoute({
+  paramsSchema: idParamSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ context, params }) => {
+    const db = await getRequestSqlServerDataSource()
+    try {
+      const deletedCount = await deleteSpecificationLifecycleStatus(
+        db,
+        params.id,
+      )
+      if (deletedCount === 0) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+      recordAdminPrivilegedActionSucceeded(context, {
+        operation: 'delete',
+        resourceId: params.id,
+        resourceType: 'specification_lifecycle_status',
+      })
+      return NextResponse.json({ ok: true })
+    } catch (err) {
+      if (isForeignKeyViolation(err)) {
+        return NextResponse.json(
+          { error: 'Cannot delete: lifecycle status is in use' },
+          { status: 409 },
+        )
+      }
+      logSanitizedError('Failed to delete specification lifecycle status', err)
+      return NextResponse.json(
+        { error: INTERNAL_SERVER_ERROR_MESSAGE },
+        { status: 500 },
+      )
     }
-    recordAdminPrivilegedActionSucceeded(auditContext, {
-      operation: 'delete',
-      resourceId: parsedParams.data.id,
-      resourceType: 'specification_lifecycle_status',
-    })
-    return NextResponse.json({ ok: true })
-  } catch {
-    return NextResponse.json(
-      { error: 'Cannot delete: lifecycle status is in use' },
-      { status: 409 },
-    )
-  }
-}
+  },
+})

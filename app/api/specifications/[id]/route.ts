@@ -10,11 +10,14 @@ import {
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
+  customMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   boundedDbStringSchema,
   nullableBusinessTextSchema,
   parseRouteParams,
   positiveIntegerSchema,
-  readJsonWithSchema,
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 
@@ -63,48 +66,35 @@ export async function GET(
   return NextResponse.json(spec)
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, specificationParamSchema)
-  if (!parsedParams.ok) {
-    return parsedParams.response
-  }
-  const parsedBody = await readJsonWithSchema(
-    request,
-    updateSpecificationSchema,
-  )
-  if (!parsedBody.ok) {
-    return parsedBody.response
-  }
-  const { id } = parsedParams.data
-  const body = parsedBody.data
-  const db = await getRequestSqlServerDataSource()
+export const PUT = secureMutationRoute({
+  bodySchema: updateSpecificationSchema,
+  paramsSchema: specificationParamSchema,
+  policy: customMutationPolicy('specification.update', () => {}),
+  handler: async ({ body, params }) => {
+    const { id } = params
+    const db = await getRequestSqlServerDataSource()
 
-  const spec = await resolveSpecification(db, id)
-  if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const spec = await resolveSpecification(db, id)
+    if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  if (body.uniqueId && (await isSlugTaken(db, body.uniqueId, spec.id))) {
-    return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
-  }
+    if (body.uniqueId && (await isSlugTaken(db, body.uniqueId, spec.id))) {
+      return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
+    }
 
-  const updated = await updateSpecification(db, spec.id, body)
-  return NextResponse.json(updated)
-}
+    const updated = await updateSpecification(db, spec.id, body)
+    return NextResponse.json(updated)
+  },
+})
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, specificationParamSchema)
-  if (!parsedParams.ok) {
-    return parsedParams.response
-  }
-  const { id } = parsedParams.data
-  const db = await getRequestSqlServerDataSource()
-  const spec = await resolveSpecification(db, id)
-  if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  await deleteSpecification(db, spec.id)
-  return NextResponse.json({ ok: true })
-}
+export const DELETE = secureMutationRoute({
+  paramsSchema: specificationParamSchema,
+  policy: customMutationPolicy('specification.delete', () => {}),
+  handler: async ({ params }) => {
+    const { id } = params
+    const db = await getRequestSqlServerDataSource()
+    const spec = await resolveSpecification(db, id)
+    if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    await deleteSpecification(db, spec.id)
+    return NextResponse.json({ ok: true })
+  },
+})

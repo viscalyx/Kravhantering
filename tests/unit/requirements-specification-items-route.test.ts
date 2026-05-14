@@ -20,7 +20,14 @@ const mocks = {
 }
 
 const mockContext = {
-  actor: { id: 'route-test' },
+  actor: {
+    displayName: 'Route Tester',
+    hsaId: 'SE2321000032-route',
+    id: 'route-test',
+    isAuthenticated: true,
+    roles: ['RequirementsEditor'],
+    source: 'oidc',
+  },
   correlationId: 'correlation-1',
   requestId: 'request-1',
   source: 'rest',
@@ -53,6 +60,16 @@ vi.mock('@/lib/requirements/server', () => ({
   createRequirementsRestRuntime: (...args: unknown[]) =>
     mocks.createRequirementsRestRuntime(...args),
 }))
+
+vi.mock('@/lib/requirements/auth', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/lib/requirements/auth')>()
+  return {
+    ...actual,
+    createDefaultAuthorizationService: () => ({ assertAuthorized: vi.fn() }),
+    createRequestContext: vi.fn(async () => mockContext),
+  }
+})
 
 import { DELETE, GET, POST } from '@/app/api/specifications/[id]/items/route'
 import { validationError } from '@/lib/requirements/errors'
@@ -216,6 +233,7 @@ describe('specifications/[id]/items route', () => {
 
     expect(response.status).toBe(201)
     expect(mocks.createRequirementsRestRuntime).toHaveBeenCalledWith(request, {
+      context: mockContext,
       db: mockDb,
     })
     expect(mocks.addToSpecification).toHaveBeenCalledWith(mockContext, {

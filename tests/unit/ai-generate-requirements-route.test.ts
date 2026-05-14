@@ -207,7 +207,7 @@ describe('POST /api/ai/generate-requirements', () => {
     }
   })
 
-  it('rejects over-limit callers before parsing a heavy body', async () => {
+  it('applies the generation throttle before validating the request body', async () => {
     const consoleInfoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined)
@@ -237,16 +237,15 @@ describe('POST /api/ai/generate-requirements', () => {
       expect(response.status).toBe(429)
       expect(body.error).toContain('Too many AI generation requests')
       expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(5)
-      expect(parseCapacityEvents(consoleInfoSpy)).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            event: 'capacity.throttled',
-            operation: 'ai.generate-requirements',
-            outcome: 'throttled',
-            throttled: true,
-          }),
-        ]),
-      )
+      expect(
+        parseCapacityEvents(consoleInfoSpy).some(
+          event =>
+            event.event === 'capacity.throttled' &&
+            event.operation === 'ai.generate-requirements' &&
+            event.outcome === 'throttled' &&
+            event.throttled === true,
+        ),
+      ).toBe(true)
     } finally {
       consoleInfoSpy.mockRestore()
     }

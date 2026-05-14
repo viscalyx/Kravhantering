@@ -51,10 +51,24 @@ applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed.mjs,docs
 
 ## Foreign Keys
 
-- Define foreign keys via TypeORM `@ManyToOne` / `@JoinColumn({ name: '<col>_id', foreignKeyConstraintName: 'fk_<table>_<col>' })`.
-- Name FK constraints `fk_<table>_<col>` where `<table>` is the declaring table and `<col>` is the referencing column name.
-- Specify referential actions (`onDelete`, `onUpdate`) on the relation decorator.
-- In raw migration SQL use `ALTER TABLE [<table>] ADD CONSTRAINT [fk_<table>_<col>] FOREIGN KEY ([<col>_id]) REFERENCES [<other>] ([id]) ON DELETE <action>`.
+- Define foreign keys via TypeORM `EntitySchema` `relations:` entries with
+  `joinColumn.name` and `joinColumn.foreignKeyConstraintName`.
+- Do not add raw `*_id` relation columns to `columns:` unless the scalar ID is
+  part of the entity primary key, unique key, or documented lookup contract.
+- Name FK constraints `fk_<table>_<col>` where `<table>` is the declaring table
+  and `<col>` is the full referencing column name, for example
+  `fk_orders_user_id` on `[user_id]`.
+- Specify referential actions with explicit `onDelete`. Add `onUpdate` only
+  when the relation or migration uses it.
+- In raw migration SQL use this shape:
+
+```sql
+ALTER TABLE [<table>]
+  ADD CONSTRAINT [fk_<table>_<col>]
+  FOREIGN KEY ([<col>])
+  REFERENCES [<other>] ([id])
+  ON DELETE <action>
+```
 
 ## Sync
 

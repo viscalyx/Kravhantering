@@ -3,6 +3,10 @@ import { z } from 'zod'
 import { exportToCsv } from '@/lib/export-csv'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
+  requirementsMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   businessTextSchema,
   nonNegativeIntegerStringSchema,
   optionalBusinessTextSchema,
@@ -12,7 +16,6 @@ import {
   positiveIntegerSchema,
   positiveIntegerStringSchema,
   queryBooleanStringSchema,
-  readJsonWithSchema,
   uniquePositiveIntegerArraySchema,
 } from '@/lib/http/validation'
 import { queryRequirementList } from '@/lib/requirements/list-query'
@@ -211,37 +214,39 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  const parsedBody = await readJsonWithSchema(
-    request,
-    requirementMutationSchema,
-  )
-  if (!parsedBody.ok) return parsedBody.response
-  const body = parsedBody.data
+export const POST = secureMutationRoute({
+  bodySchema: requirementMutationSchema,
+  policy: requirementsMutationPolicy({
+    kind: 'manage_requirement',
+    operation: 'create',
+  }),
+  handler: async ({ body, context, request }) => {
+    try {
+      const { service } = await createRequirementsRestRuntime(request, {
+        context,
+      })
+      const result = await service.manageRequirement(context, {
+        operation: 'create',
+        requirement: {
+          acceptanceCriteria: body.acceptanceCriteria,
+          areaId: body.areaId,
+          categoryId: body.categoryId,
+          description: body.description,
+          normReferenceIds: body.normReferenceIds,
+          requiresTesting: body.requiresTesting,
+          verificationMethod: body.verificationMethod,
+          requirementPackageIds: body.requirementPackageIds,
+          qualityCharacteristicId: body.qualityCharacteristicId,
+          riskLevelId: body.riskLevelId,
+          typeId: body.typeId,
+        },
+      })
 
-  try {
-    const { context, service } = await createRequirementsRestRuntime(request)
-    const result = await service.manageRequirement(context, {
-      operation: 'create',
-      requirement: {
-        acceptanceCriteria: body.acceptanceCriteria,
-        areaId: body.areaId,
-        categoryId: body.categoryId,
-        description: body.description,
-        normReferenceIds: body.normReferenceIds,
-        requiresTesting: body.requiresTesting,
-        verificationMethod: body.verificationMethod,
-        requirementPackageIds: body.requirementPackageIds,
-        qualityCharacteristicId: body.qualityCharacteristicId,
-        riskLevelId: body.riskLevelId,
-        typeId: body.typeId,
-      },
-    })
-
-    return NextResponse.json(result.result, { status: 201 })
-  } catch (error) {
-    logSanitizedError('[API] Failed to create requirement', error)
-    const { body: errorBody, status } = toHttpErrorPayload(error)
-    return NextResponse.json(errorBody, { status })
-  }
-}
+      return NextResponse.json(result.result, { status: 201 })
+    } catch (error) {
+      logSanitizedError('[API] Failed to create requirement', error)
+      const { body: errorBody, status } = toHttpErrorPayload(error)
+      return NextResponse.json(errorBody, { status })
+    }
+  },
+})

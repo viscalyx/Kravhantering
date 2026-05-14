@@ -37,7 +37,9 @@ describe('admin privileged action audit', () => {
     const context = await createAdminPrivilegedAuditContext(
       new Request('https://example.test/api/admin/terminology?debug=true', {
         headers: {
+          origin: 'http://localhost:3000',
           'user-agent': 'vitest',
+          'x-requested-with': 'XMLHttpRequest',
           'x-request-id': 'request-123',
         },
         method: 'PUT',

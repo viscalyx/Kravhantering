@@ -4,6 +4,7 @@ import {
   createType,
   deleteQualityCharacteristic,
   deleteType,
+  hasChildQualityCharacteristics,
   listQualityCharacteristics,
   listTypes,
   updateQualityCharacteristic,
@@ -99,6 +100,19 @@ describe('requirement-types DAL (SQL Server path)', () => {
     expect(sql).not.toContain('WHERE')
     expect(sql).toContain('chapter_id AS chapterId')
     expect(params).toEqual([])
+  })
+
+  it('hasChildQualityCharacteristics uses a single existence query', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([{ hasChild: 1 }])
+
+    await expect(hasChildQualityCharacteristics(db, 10)).resolves.toBe(true)
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('SELECT TOP (1) 1 AS hasChild'),
+      [10],
+    )
+    expect(query.mock.calls[0][0]).toContain('WHERE parent_id = @0')
   })
 
   it('createType saves a new type and returns mapped row', async () => {
