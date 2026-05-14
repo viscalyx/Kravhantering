@@ -21,6 +21,7 @@ const mockRequestContext = vi.hoisted(() => ({
     roles: [],
     source: 'anonymous' as const,
   },
+  correlationId: 'test-correlation',
   requestId: 'test-request',
   source: 'rest' as const,
 }))

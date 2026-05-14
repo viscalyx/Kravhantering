@@ -77,6 +77,7 @@ describe('admin privileged action audit', () => {
         path: '/api/owners/7',
         requestId: 'request-456',
       },
+      correlationId: 'correlation-456',
       requestId: 'request-456',
       source: 'rest',
     }

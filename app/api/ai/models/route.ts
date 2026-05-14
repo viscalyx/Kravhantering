@@ -11,12 +11,22 @@ import {
   parseSearchParams,
   parseWithSchema,
 } from '@/lib/http/validation'
+import {
+  observeCapacity,
+  recordCapacityEvent,
+} from '@/lib/observability/capacity'
+import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
+import { checkInMemoryThrottle } from '@/lib/observability/throttle'
+import { createRequestContext } from '@/lib/requirements/auth'
 
 // ---------------------------------------------------------------------------
 // In-memory cache (24 h TTL, keyed by supported_parameters)
 // ---------------------------------------------------------------------------
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
+const AI_MODELS_REFRESH_RATE_LIMIT = 10
+const AI_MODELS_REFRESH_RATE_WINDOW_MS = 60_000
+const AI_MODELS_SLOW_THRESHOLD_MS = 2_000
 
 const modelCache = new Map<
   string,
@@ -38,6 +48,7 @@ const supportedParametersSchema = z
   })
 
 export async function GET(request: NextRequest) {
+  const context = await createRequestContext(request, 'rest')
   const parsedQuery = parseSearchParams(
     request.nextUrl.searchParams,
     modelsQuerySchema,
@@ -62,7 +73,46 @@ export async function GET(request: NextRequest) {
   if (!refresh) {
     const cached = modelCache.get(cacheKey)
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      return NextResponse.json({ models: cached.models })
+      return applyResponseCorrelationHeaders(
+        NextResponse.json({ models: cached.models }),
+        context,
+      )
+    }
+  } else {
+    const throttle = checkInMemoryThrottle({
+      key: [
+        'ai.models.refresh',
+        context.actor.source,
+        context.actor.id ?? context.actor.hsaId ?? context.correlationId,
+      ].join(':'),
+      limit: AI_MODELS_REFRESH_RATE_LIMIT,
+      windowMs: AI_MODELS_REFRESH_RATE_WINDOW_MS,
+    })
+    if (!throttle.allowed) {
+      recordCapacityEvent({
+        correlationId: context.correlationId,
+        event: 'capacity.throttled',
+        level: 'warn',
+        metrics: { throttled: true },
+        operation: 'ai.models.refresh',
+        outcome: 'throttled',
+        requestId: context.requestId,
+        retryAfterSeconds: throttle.retryAfterSeconds,
+        source: 'rest',
+        statusCode: 429,
+      })
+      return applyResponseCorrelationHeaders(
+        NextResponse.json(
+          { error: 'Too many AI model refresh requests.', models: [] },
+          {
+            headers: {
+              'Retry-After': String(throttle.retryAfterSeconds),
+            },
+            status: 429,
+          },
+        ),
+        context,
+      )
     }
   }
 
@@ -71,27 +121,47 @@ export async function GET(request: NextRequest) {
     // OpenRouter only exposes structured_outputs as a query filter — it is not
     // included in the per-model supported_parameters array, so we need a second
     // call to discover which models support json_schema.
-    const structuredFilter = [...(paramList ?? []), 'structured_outputs']
-    const [models, structuredModels] = await Promise.all([
-      listModels(paramList),
-      listModels(structuredFilter),
-    ])
-    const structuredIds = new Set(structuredModels.map(m => m.id))
-    const enriched = models.map(m => {
-      const extra: string[] = []
-      if (structuredIds.has(m.id)) extra.push('structured_outputs')
-      if (m.modality?.includes('image')) extra.push('vision')
-      return extra.length > 0
-        ? { ...m, supportedParameters: [...m.supportedParameters, ...extra] }
-        : m
-    })
+    const enriched = await observeCapacity(
+      {
+        correlationId: context.correlationId,
+        operation: refresh ? 'ai.models.refresh' : 'ai.models.list',
+        requestId: context.requestId,
+        slowThresholdMs: AI_MODELS_SLOW_THRESHOLD_MS,
+        source: 'rest',
+      },
+      async () => {
+        const structuredFilter = [...(paramList ?? []), 'structured_outputs']
+        const [models, structuredModels] = await Promise.all([
+          listModels(paramList),
+          listModels(structuredFilter),
+        ])
+        const structuredIds = new Set(structuredModels.map(m => m.id))
+        return models.map(m => {
+          const extra: string[] = []
+          if (structuredIds.has(m.id)) extra.push('structured_outputs')
+          if (m.modality?.includes('image')) extra.push('vision')
+          return extra.length > 0
+            ? {
+                ...m,
+                supportedParameters: [...m.supportedParameters, ...extra],
+              }
+            : m
+        })
+      },
+    )
     modelCache.set(cacheKey, { models: enriched, timestamp: Date.now() })
-    return NextResponse.json({ models: enriched })
+    return applyResponseCorrelationHeaders(
+      NextResponse.json({ models: enriched }),
+      context,
+    )
   } catch (err) {
     logSanitizedError('Failed to list AI models', err)
-    return NextResponse.json(
-      { error: AI_PROVIDER_UNAVAILABLE_MESSAGE, models: [] },
-      { status: 503 },
+    return applyResponseCorrelationHeaders(
+      NextResponse.json(
+        { error: AI_PROVIDER_UNAVAILABLE_MESSAGE, models: [] },
+        { status: 503 },
+      ),
+      context,
     )
   }
 }

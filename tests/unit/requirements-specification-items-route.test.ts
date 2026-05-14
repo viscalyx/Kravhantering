@@ -21,6 +21,7 @@ const mocks = {
 
 const mockContext = {
   actor: { id: 'route-test' },
+  correlationId: 'correlation-1',
   requestId: 'request-1',
   source: 'rest',
 }

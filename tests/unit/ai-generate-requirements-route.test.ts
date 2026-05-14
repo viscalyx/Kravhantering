@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
+import { attachVerifiedActor } from '@/lib/requirements/auth'
 
 const routeState = vi.hoisted(() => ({
   generateChatStream: vi.fn(),
@@ -28,21 +30,94 @@ vi.mock('@/lib/ai/openrouter-client', () => ({
 import { POST } from '@/app/api/ai/generate-requirements/route'
 
 function makeRequest(): Request {
-  return new Request('https://example.test/api/ai/generate-requirements', {
-    body: JSON.stringify({
-      locale: 'en',
-      topic: 'secure audit logging',
-    }),
-    headers: { 'Content-Type': 'application/json' },
-    method: 'POST',
+  const request = new Request(
+    'https://example.test/api/ai/generate-requirements',
+    {
+      body: JSON.stringify({
+        locale: 'en',
+        topic: 'secure audit logging',
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-correlation-id': 'workflow-ai',
+        'x-request-id': 'request-ai',
+      },
+      method: 'POST',
+    },
+  )
+  attachVerifiedActor(request, {
+    displayName: 'AI User',
+    hsaId: 'SE2321000032-ai1',
+    id: 'ai-user',
+    isAuthenticated: true,
+    roles: ['Admin'],
+    source: 'oidc',
   })
+  return request
+}
+
+function parseCapacityEvents(spy: ReturnType<typeof vi.spyOn>) {
+  return spy.mock.calls
+    .map((call: unknown[]) => {
+      try {
+        return JSON.parse(String(call[0])) as Record<string, unknown>
+      } catch {
+        return null
+      }
+    })
+    .filter(
+      (
+        event: Record<string, unknown> | null,
+      ): event is Record<string, unknown> =>
+        event !== null && event.channel === 'capacity-observability',
+    )
 }
 
 describe('POST /api/ai/generate-requirements', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    clearInMemoryThrottleForTests()
     routeState.getRequestSqlServerDataSource.mockResolvedValue({})
     routeState.loadTaxonomy.mockResolvedValue({})
+  })
+
+  it('logs successful generation capacity metrics', async () => {
+    const consoleInfoSpy = vi
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined)
+    routeState.generateChatStream.mockImplementation(async function* () {
+      yield {
+        phase: 'done',
+        rawContent: '{"requirements":[]}',
+        stats: {
+          completionTokens: 7,
+          cost: 0.02,
+          promptTokens: 3,
+          reasoningTokens: 0,
+          totalTokens: 10,
+        },
+        thinking: '',
+      }
+    })
+
+    try {
+      const response = await POST(makeRequest())
+      const text = await response.text()
+
+      expect(text).toContain('event: done')
+      expect(response.headers.get('X-Request-Id')).toBe('request-ai')
+      expect(response.headers.get('X-Correlation-Id')).toBe('workflow-ai')
+      expect(parseCapacityEvents(consoleInfoSpy)[0]).toMatchObject({
+        correlation_id: 'workflow-ai',
+        cost: 0.02,
+        event: 'capacity.operation.completed',
+        operation: 'ai.generate-requirements',
+        request_id: 'request-ai',
+        token_count: 10,
+      })
+    } finally {
+      consoleInfoSpy.mockRestore()
+    }
   })
 
   it('streams sanitized provider errors only', async () => {
@@ -98,6 +173,51 @@ describe('POST /api/ai/generate-requirements', () => {
       )
     } finally {
       consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('returns 429 and logs throttling when the process-local limit is reached', async () => {
+    const consoleInfoSpy = vi
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined)
+    routeState.generateChatStream.mockImplementation(async function* () {
+      yield {
+        phase: 'done',
+        rawContent: '{"requirements":[]}',
+        stats: {
+          completionTokens: 0,
+          cost: 0,
+          promptTokens: 0,
+          reasoningTokens: 0,
+          totalTokens: 0,
+        },
+        thinking: '',
+      }
+    })
+
+    try {
+      for (let index = 0; index < 5; index += 1) {
+        await (await POST(makeRequest())).text()
+      }
+
+      const response = await POST(makeRequest())
+      const body = (await response.json()) as { error: string }
+
+      expect(response.status).toBe(429)
+      expect(response.headers.get('Retry-After')).toBe('60')
+      expect(body.error).toContain('Too many AI generation requests')
+      expect(parseCapacityEvents(consoleInfoSpy)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            event: 'capacity.throttled',
+            operation: 'ai.generate-requirements',
+            outcome: 'throttled',
+            throttled: true,
+          }),
+        ]),
+      )
+    } finally {
+      consoleInfoSpy.mockRestore()
     }
   })
 })

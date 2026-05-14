@@ -134,6 +134,8 @@ describe('middleware', () => {
         }),
       )
       expect(response.status).toBe(302)
+      expect(response.headers.get('X-Request-Id')).toBeTruthy()
+      expect(response.headers.get('X-Correlation-Id')).toBeTruthy()
       const location = response.headers.get('location') ?? ''
       expect(location).toContain('/api/auth/login')
       expect(location).toContain(

@@ -19,6 +19,7 @@ const auditState = vi.hoisted(() => ({
       path: '/api/requirement-statuses/1',
       requestId: 'request-status-id',
     },
+    correlationId: 'correlation-status-id',
     requestId: 'request-status-id',
     source: 'rest',
   })),

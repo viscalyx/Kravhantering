@@ -16,6 +16,7 @@ const routeState = vi.hoisted(() => ({
       path: '/api/risk-levels',
       requestId: 'request-risk',
     },
+    correlationId: 'correlation-risk',
     requestId: 'request-risk',
     source: 'rest',
   })),

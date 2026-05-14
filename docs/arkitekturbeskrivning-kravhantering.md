@@ -59,6 +59,7 @@
   - [AI-stödd vidareutveckling](#ai-stödd-vidareutveckling)
 - [9. Informationssäkerhetsperspektiv](#9-informationssäkerhetsperspektiv)
   - [ArchiMate — Informationssäkerhet (ASCII)](#archimate--informationssäkerhet-ascii)
+  - [Leveranskedja och underleverantörer](#leveranskedja-och-underleverantörer)
   - [Nuvarande säkerhetsåtgärder](#nuvarande-säkerhetsåtgärder)
   - [Krav och vidare säkerhetsinriktning för produktion](#krav-och-vidare-säkerhetsinriktning-för-produktion)
 - [10. Infrastruktur- och nätperspektiv](#10-infrastruktur--och-nätperspektiv)
@@ -646,10 +647,23 @@ SQL Server-databas.
 I nuläget har systemet **inga externa
 verksamhetsintegrationer**. All kravdata, historik och
 referensdata hanteras inom applikationens egen databas.
-Den enda externa tekniska integrationen är den
+De externa tekniska beroenden som påverkar
+integrationsbilden och bilden av leveranskedjan är
+främst den
 OIDC-baserade identitetsleverantören för inloggning,
-tokenutbyte, nyckelhämtning och utloggning. Nedan
-beskrivs de interna applikationssambanden:
+tokenutbyte, nyckelhämtning och utloggning samt,
+när AI-generering är aktiverad, OpenRouter som
+AI-förmedlande tjänst. `/api/mcp` är ett externt
+anropsgränssnitt för godkända MCP-klienter snarare än
+en verksamhetsintegration. Nedan beskrivs de interna
+applikationssambanden:
+
+För förvaltningens inventering finns ett samlat underlag i
+[`informationsmangder-kravhantering.md`](./informationsmangder-kravhantering.md).
+Det dokumentet beskriver Kravhanterings informationsmängder,
+systemkomponenter och integrationer. Slutlig rättslig grund,
+informationsklassning, retention och formellt ägarskap fastställs i
+förvaltningens ordinarie it-stöd, inte i applikationen.
 
 ### ArchiMate — Applikationssamband (ASCII)
 
@@ -1214,6 +1228,39 @@ varje enskild mekanism.
 └──────────────────────────────────────────────────────────────┘
 ```
 
+### Leveranskedja och underleverantörer
+
+Källkrav 5.21 innebär att leverantörens ansvar ska omfatta
+underleverantörer och att beställaren ska informeras om
+vilka underleverantörer som nyttjas. Kravhanterings
+dokumentation redovisar arkitektoniskt relevanta externa
+tjänster, integrationsparter och driftberoenden som underlag
+för förvaltningens register. Den avtalsmässiga
+underleverantörslistan fastställs per leverans- och
+driftmodell, men följande beroenden är relevanta att redovisa
+när de används:
+
+<!-- markdownlint-disable MD013 -->
+| Beroende | Roll i lösningen | Berörd information eller åtkomst | Redovisning till beställaren |
+| --- | --- | --- | --- |
+| Extern OIDC-/IdP-tjänst, till exempel PhenixID i målmiljö och Keycloak i lokal utveckling | Autentisering, tokenutbyte, JWKS-hämtning och utloggning | Identitetsattribut som `sub`, namn, e-post, `employeeHsaId`, roller och metadata om token | IdP-ägare, tillitsnivå/MFA-krav, geografisk behandling, incidentkontakt, tillgänglighetskrav och ansvar för identitetslivscykel |
+| SQL Server-drift eller databastjänst | Persistens för kravkatalog, historik, taxonomi, referensdata och audit | Kravdata, ägaruppgifter, avvikelser, förbättringsförslag, UI-konfiguration och säkerhetsaudit | Driftansvarig, backup/restore, kryptering, åtkomst till databas, RTO/RPO, loggskydd och geografisk lagring |
+| OpenRouter och valda modellleverantörer | AI-generering av krav, lista över modeller och nyckel-/kredituppslag | Ämne, instruktioner, bilder, taxonomi, AI-svar, modellval och metadata om användning | Ska redovisas när AI är aktiverat med `OPENROUTER_API_KEY`; ange modell-leverantör, datapolicy, retention, egress, sekretessklassning och revisionsstatus |
+| MCP-klienter och AI-agenter | Godkända tekniska klienter till `/api/mcp` | Läsning och mutation av krav, historik, statusövergångar och eventuellt AI-generering | Klientägare, `client_id`, syntetiskt eller personbundet HSA-id, behörighetsomfång, hantering av token, loggkrav och notifieringsansvar |
+| Driftplattform, reverse proxy, logg- och SIEM-tjänster | Runtime, TLS-terminering, hemlighetshantering, begärandeloggning och säkerhetsaudit | Metadata om trafik, säkerhetsloggar, driftloggar, sessionscookies i transit och skyddade miljöparametrar | Plattformsägare, geografisk driftplats, loggretention, åtkomst till loggar/hemligheter, incidentväg och tekniska säkerhetskrav |
+| CI/CD-, paket- och containerkällor, till exempel GitHub Actions, npm, Microsoft Container Registry och Quay | Bygg, test, beroendehämtning och container-/paketleveranskedja | Källkod, byggloggar, dependency metadata och syntetisk testdata | Redovisas som beroenden för utveckling och leveranskedja; produktionsdata ska inte behandlas där utan särskilt beslut |
+<!-- markdownlint-enable MD013 -->
+
+En teknisk integration är inte automatiskt ett
+personuppgiftsbiträde eller en avtalsmässig
+underleverantör. Förvaltningens register eller
+underleverantörsredovisning bör därför skilja på teknisk
+roll, dataskyddsroll, informationsmängd, geografisk
+behandling, säkerhetskrav, revisionsstatus och
+notifieringsansvar. Detta ger beställaren en samlad bild av
+vilka externa parter som kan påverka konfidentialitet,
+riktighet och tillgänglighet.
+
 ### Nuvarande säkerhetsåtgärder
 
 Kravhantering implementerar följande
@@ -1412,6 +1459,13 @@ oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
   JSON-loggar** som kan ledas till valfritt
   loggsystem (t.ex. Grafana Loki, Datadog,
   Azure Monitor).
+- Kapacitets- och throttling-händelser skrivs som
+  en separat JSON-ström märkt
+  `channel: "capacity-observability"` med
+  `request_id`, `correlation_id`, duration,
+  status och säkra volymmått. Loggplattformen
+  ansvarar för dashboards, larm, retention och
+  vidare analys.
 - Säkerhetsrelaterade auth-händelser skrivs som en
   separat JSON-ström märkt
   `channel: "security-audit"`, vilket gör att

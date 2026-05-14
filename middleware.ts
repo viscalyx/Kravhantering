@@ -7,6 +7,12 @@ import {
   getSessionFromRequestWithDiagnostics,
   isSignedIn,
 } from '@/lib/auth/session'
+import {
+  applyRequestCorrelationHeaders,
+  applyResponseCorrelationHeaders,
+  type RequestCorrelationIds,
+  resolveRequestCorrelationIds,
+} from '@/lib/observability/request-ids'
 import { USE_DEV_CSP, USE_INSECURE_COOKIE } from '@/lib/runtime/build-target'
 
 const intlMiddleware = createMiddleware(routing)
@@ -343,7 +349,18 @@ async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
   )
 }
 
-function applyPageHeaders(request: NextRequest): NextResponse {
+function finalizeResponse(
+  response: NextResponse,
+  ids: RequestCorrelationIds,
+): NextResponse {
+  applyResponseCorrelationHeaders(response, ids)
+  return response
+}
+
+function applyPageHeaders(
+  request: NextRequest,
+  ids: RequestCorrelationIds,
+): NextResponse {
   // The unlocalized root page (`app/page.tsx`) renders a client-side
   // <RootLocaleRedirect> that picks the locale from localStorage. Skip
   // next-intl's middleware here so it does not 307 `/` to `/<defaultLocale>`
@@ -360,6 +377,7 @@ function applyPageHeaders(request: NextRequest): NextResponse {
   const requestHeaders = new Headers(request.headers)
   stripUserHeaders(requestHeaders)
 
+  applyRequestCorrelationHeaders(requestHeaders, ids)
   requestHeaders.set('x-nonce', nonce)
   requestHeaders.set('content-security-policy', csp)
   applyRequestHeaderOverrides(response, requestHeaders)
@@ -371,25 +389,31 @@ function applyPageHeaders(request: NextRequest): NextResponse {
 }
 
 export default async function middleware(request: NextRequest) {
+  const ids = resolveRequestCorrelationIds(request.headers)
+
   const methodResponse = rejectUnsupportedApiMethod(request)
-  if (methodResponse) return methodResponse
+  if (methodResponse) return finalizeResponse(methodResponse, ids)
 
   const authResponse = await enforceAuth(request)
-  if (authResponse) return authResponse
+  if (authResponse) return finalizeResponse(authResponse, ids)
 
   const csrfResponse = enforceRestCsrf(request)
-  if (csrfResponse) return csrfResponse
+  if (csrfResponse) return finalizeResponse(csrfResponse, ids)
 
   if (isLocaleRootPath(request.nextUrl.pathname)) {
-    return redirectLocaleRootToRequirements(request)
+    return finalizeResponse(redirectLocaleRootToRequirements(request), ids)
   }
 
   if (isApiPath(request.nextUrl.pathname)) {
     const cleaned = stripUserHeaders(new Headers(request.headers))
-    return NextResponse.next({ request: { headers: cleaned } })
+    applyRequestCorrelationHeaders(cleaned, ids)
+    return finalizeResponse(
+      NextResponse.next({ request: { headers: cleaned } }),
+      ids,
+    )
   }
 
-  return applyPageHeaders(request)
+  return finalizeResponse(applyPageHeaders(request, ids), ids)
 }
 
 export const config = {

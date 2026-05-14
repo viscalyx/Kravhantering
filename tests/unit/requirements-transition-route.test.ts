@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockTransitionRequirement = vi.fn()
 const mockCreateRequestContext = vi.hoisted(() =>
-  vi.fn(() => ({ source: 'rest' })),
+  vi.fn(() => ({
+    correlationId: 'corr-test',
+    requestId: 'req-test',
+    source: 'rest',
+  })),
 )
 const mockAuthorization = vi.hoisted(() => ({ assertAuthorized: vi.fn() }))
 const mockCreateDefaultAuthorizationService = vi.hoisted(() =>

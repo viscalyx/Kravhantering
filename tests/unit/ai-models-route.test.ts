@@ -1,17 +1,36 @@
-import { describe, expect, it, vi } from 'vitest'
+import { NextRequest } from 'next/server'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { GET } from '@/app/api/ai/models/route'
+import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
+import { attachVerifiedActor } from '@/lib/requirements/auth'
 
 vi.mock('@/lib/ai/openrouter-client', () => ({
   listModels: vi.fn(),
 }))
 
 function makeRequest(url = 'http://localhost:3000/api/ai/models') {
-  return {
-    nextUrl: new URL(url),
-  } as Parameters<typeof GET>[0]
+  const request = new NextRequest(url, {
+    headers: {
+      'x-correlation-id': 'workflow-models',
+      'x-request-id': 'request-models',
+    },
+  })
+  attachVerifiedActor(request, {
+    displayName: 'AI User',
+    hsaId: 'SE2321000032-ai1',
+    id: 'ai-user',
+    isAuthenticated: true,
+    roles: ['Admin'],
+    source: 'oidc',
+  })
+  return request
 }
 
 describe('GET /api/ai/models', () => {
+  beforeEach(() => {
+    clearInMemoryThrottleForTests()
+  })
+
   it('returns models enriched with structured_outputs flag', async () => {
     const { listModels } = await import('@/lib/ai/openrouter-client')
     const claudeModel = {
@@ -117,5 +136,26 @@ describe('GET /api/ai/models', () => {
     expect(listModels).toHaveBeenCalledWith(['tools'])
     // Second call: same params plus structured_outputs
     expect(listModels).toHaveBeenCalledWith(['tools', 'structured_outputs'])
+  })
+
+  it('throttles repeated refresh requests', async () => {
+    const { listModels } = await import('@/lib/ai/openrouter-client')
+    vi.mocked(listModels).mockResolvedValue([])
+
+    for (let index = 0; index < 10; index += 1) {
+      const response = await GET(
+        makeRequest('http://localhost:3000/api/ai/models?refresh=1'),
+      )
+      expect(response.status).toBe(200)
+    }
+
+    const response = await GET(
+      makeRequest('http://localhost:3000/api/ai/models?refresh=1'),
+    )
+    const body = (await response.json()) as { error: string }
+
+    expect(response.status).toBe(429)
+    expect(response.headers.get('Retry-After')).toBeTruthy()
+    expect(body.error).toContain('Too many AI model refresh requests')
   })
 })

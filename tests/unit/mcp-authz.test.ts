@@ -171,7 +171,10 @@ function createService() {
 
 async function createClient(service: RequirementsService) {
   const request = new Request('https://example.test/api/mcp', {
-    headers: { 'x-request-id': 'req-phase3' },
+    headers: {
+      'x-correlation-id': 'corr-phase3',
+      'x-request-id': 'req-phase3',
+    },
   })
   attachVerifiedActor(request, {
     displayName: 'MCP Service Account',
@@ -205,6 +208,7 @@ function expectContext(fn: ReturnType<typeof vi.fn>, toolName: string): void {
       roles: ['Reviewer'],
       source: 'mcp',
     },
+    correlationId: 'corr-phase3',
     requestId: 'req-phase3',
     source: 'mcp',
     toolName,

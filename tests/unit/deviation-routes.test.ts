@@ -70,6 +70,7 @@ describe('deviation mutation routes', () => {
         roles: ['Reviewer'],
         source: 'oidc',
       },
+      correlationId: 'correlation-1',
       requestId: 'request-1',
       source: 'rest',
     })

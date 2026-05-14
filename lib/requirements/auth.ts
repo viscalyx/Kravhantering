@@ -6,6 +6,7 @@ import {
   isSignedIn,
   type LoggedInSession,
 } from '@/lib/auth/session'
+import { resolveRequestCorrelationIds } from '@/lib/observability/request-ids'
 import { forbiddenError, validationError } from '@/lib/requirements/errors'
 
 // In-process attachment of verified actor identities to Request objects.
@@ -42,6 +43,7 @@ export interface ActorContext {
 
 export interface RequestContext {
   actor: ActorContext
+  correlationId: string
   request?: SecurityEventRequest
   requestId: string
   source: RequestSource
@@ -265,9 +267,12 @@ export async function createRequestContext(
   source: RequestSource,
   toolName?: string,
 ): Promise<RequestContext> {
-  const requestId = request.headers.get('x-request-id') ?? crypto.randomUUID()
+  const { correlationId, requestId } = resolveRequestCorrelationIds(
+    request.headers,
+  )
   return {
     actor: await getActorContextFromSession(request),
+    correlationId,
     request: buildSecurityEventRequest(request, requestId),
     requestId,
     source,

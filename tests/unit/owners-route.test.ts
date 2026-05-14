@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
       path: '/api/owners',
       requestId: 'request-owner',
     },
+    correlationId: 'correlation-owner',
     requestId: 'request-owner',
     source: 'rest',
   })),
