@@ -17,7 +17,10 @@ import {
 } from '@/lib/observability/capacity'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { checkInMemoryThrottle } from '@/lib/observability/throttle'
-import { createRequestContext } from '@/lib/requirements/auth'
+import {
+  createRequestContext,
+  type RequestContext,
+} from '@/lib/requirements/auth'
 
 // ---------------------------------------------------------------------------
 // In-memory cache (24 h TTL, keyed by supported_parameters)
@@ -27,11 +30,14 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const AI_MODELS_REFRESH_RATE_LIMIT = 10
 const AI_MODELS_REFRESH_RATE_WINDOW_MS = 60_000
 const AI_MODELS_SLOW_THRESHOLD_MS = 2_000
+const MAX_MODEL_CACHE_ENTRIES = 32
 
-const modelCache = new Map<
-  string,
-  { models: OpenRouterModel[]; timestamp: number }
->()
+interface ModelCacheEntry {
+  models: OpenRouterModel[]
+  timestamp: number
+}
+
+const modelCache = new Map<string, ModelCacheEntry>()
 
 const modelsQuerySchema = z
   .object({
@@ -46,6 +52,106 @@ const supportedParametersSchema = z
   .refine(values => new Set(values).size === values.length, {
     message: 'Expected unique supported parameters',
   })
+
+function isFreshCacheEntry(entry: ModelCacheEntry, now: number): boolean {
+  return now - entry.timestamp < CACHE_TTL_MS
+}
+
+function getFreshModelCacheEntry(
+  cacheKey: string,
+  now: number,
+): ModelCacheEntry | null {
+  const cached = modelCache.get(cacheKey)
+  if (!cached) return null
+  if (!isFreshCacheEntry(cached, now)) {
+    modelCache.delete(cacheKey)
+    return null
+  }
+
+  modelCache.delete(cacheKey)
+  modelCache.set(cacheKey, cached)
+  return cached
+}
+
+function pruneExpiredModelCacheEntries(now: number): void {
+  for (const [key, entry] of modelCache) {
+    if (!isFreshCacheEntry(entry, now)) {
+      modelCache.delete(key)
+    }
+  }
+}
+
+function setModelCacheEntry(
+  cacheKey: string,
+  models: OpenRouterModel[],
+  now: number,
+): void {
+  pruneExpiredModelCacheEntries(now)
+  if (modelCache.has(cacheKey)) {
+    modelCache.delete(cacheKey)
+  }
+
+  while (modelCache.size >= MAX_MODEL_CACHE_ENTRIES) {
+    const oldestKey = modelCache.keys().next().value
+    if (oldestKey === undefined) break
+    modelCache.delete(oldestKey)
+  }
+
+  modelCache.set(cacheKey, { models, timestamp: now })
+}
+
+function checkAiModelsFetchThrottle(context: RequestContext) {
+  return checkInMemoryThrottle({
+    key: [
+      'ai.models.refresh',
+      context.actor.source,
+      context.actor.id ?? context.actor.hsaId ?? context.correlationId,
+    ].join(':'),
+    limit: AI_MODELS_REFRESH_RATE_LIMIT,
+    windowMs: AI_MODELS_REFRESH_RATE_WINDOW_MS,
+  })
+}
+
+function createAiModelsThrottleResponse(
+  context: RequestContext,
+  throttle: ReturnType<typeof checkInMemoryThrottle>,
+  operation: 'ai.models.list' | 'ai.models.refresh',
+): Response {
+  recordCapacityEvent({
+    correlationId: context.correlationId,
+    event: 'capacity.throttled',
+    level: 'warn',
+    metrics: { throttled: true },
+    operation,
+    outcome: 'throttled',
+    requestId: context.requestId,
+    retryAfterSeconds: throttle.retryAfterSeconds,
+    source: 'rest',
+    statusCode: 429,
+  })
+  return applyResponseCorrelationHeaders(
+    NextResponse.json(
+      {
+        error:
+          operation === 'ai.models.refresh'
+            ? 'Too many AI model refresh requests.'
+            : 'Too many AI model requests.',
+        models: [],
+      },
+      {
+        headers: {
+          'Retry-After': String(throttle.retryAfterSeconds),
+        },
+        status: 429,
+      },
+    ),
+    context,
+  )
+}
+
+export function clearAiModelsCacheForTests(): void {
+  modelCache.clear()
+}
 
 export async function GET(request: NextRequest) {
   const context = await createRequestContext(request, 'rest')
@@ -68,52 +174,23 @@ export async function GET(request: NextRequest) {
   const paramList =
     parsedParameters.data.length > 0 ? parsedParameters.data : undefined
 
-  const cacheKey = paramList ? paramList.sort().join(',') : '__default__'
+  const cacheKey = paramList ? [...paramList].sort().join(',') : '__default__'
+  const now = Date.now()
+  const operation = refresh ? 'ai.models.refresh' : 'ai.models.list'
 
   if (!refresh) {
-    const cached = modelCache.get(cacheKey)
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    const cached = getFreshModelCacheEntry(cacheKey, now)
+    if (cached) {
       return applyResponseCorrelationHeaders(
         NextResponse.json({ models: cached.models }),
         context,
       )
     }
-  } else {
-    const throttle = checkInMemoryThrottle({
-      key: [
-        'ai.models.refresh',
-        context.actor.source,
-        context.actor.id ?? context.actor.hsaId ?? context.correlationId,
-      ].join(':'),
-      limit: AI_MODELS_REFRESH_RATE_LIMIT,
-      windowMs: AI_MODELS_REFRESH_RATE_WINDOW_MS,
-    })
-    if (!throttle.allowed) {
-      recordCapacityEvent({
-        correlationId: context.correlationId,
-        event: 'capacity.throttled',
-        level: 'warn',
-        metrics: { throttled: true },
-        operation: 'ai.models.refresh',
-        outcome: 'throttled',
-        requestId: context.requestId,
-        retryAfterSeconds: throttle.retryAfterSeconds,
-        source: 'rest',
-        statusCode: 429,
-      })
-      return applyResponseCorrelationHeaders(
-        NextResponse.json(
-          { error: 'Too many AI model refresh requests.', models: [] },
-          {
-            headers: {
-              'Retry-After': String(throttle.retryAfterSeconds),
-            },
-            status: 429,
-          },
-        ),
-        context,
-      )
-    }
+  }
+
+  const throttle = checkAiModelsFetchThrottle(context)
+  if (!throttle.allowed) {
+    return createAiModelsThrottleResponse(context, throttle, operation)
   }
 
   try {
@@ -149,7 +226,7 @@ export async function GET(request: NextRequest) {
         })
       },
     )
-    modelCache.set(cacheKey, { models: enriched, timestamp: Date.now() })
+    setModelCacheEntry(cacheKey, enriched, Date.now())
     return applyResponseCorrelationHeaders(
       NextResponse.json({ models: enriched }),
       context,

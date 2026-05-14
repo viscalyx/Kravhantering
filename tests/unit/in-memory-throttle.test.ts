@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   checkInMemoryThrottle,
   clearInMemoryThrottleForTests,
+  getInMemoryThrottleBucketCountForTests,
 } from '@/lib/observability/throttle'
 
 describe('in-memory throttle', () => {
@@ -65,5 +66,24 @@ describe('in-memory throttle', () => {
         windowMs: 1_000,
       }).allowed,
     ).toBe(true)
+  })
+
+  it('prunes expired buckets lazily on access', () => {
+    checkInMemoryThrottle({
+      key: 'actor-a:operation',
+      limit: 1,
+      now: 1_000,
+      windowMs: 1_000,
+    })
+    expect(getInMemoryThrottleBucketCountForTests()).toBe(1)
+
+    checkInMemoryThrottle({
+      key: 'actor-b:operation',
+      limit: 1,
+      now: 2_001,
+      windowMs: 1_000,
+    })
+
+    expect(getInMemoryThrottleBucketCountForTests()).toBe(1)
   })
 })

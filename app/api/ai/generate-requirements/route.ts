@@ -110,21 +110,7 @@ const generateRequirementsSchema = z
   .strict()
 
 export async function POST(request: Request) {
-  const parsedBody = await readJsonWithSchema(
-    request,
-    generateRequirementsSchema,
-  )
-  if (!parsedBody.ok) {
-    return parsedBody.response
-  }
   const context = await createRequestContext(request, 'rest')
-  const body = parsedBody.data
-  const providerPreferences = body.providerPreferences
-  const { images, locale } = body
-  const imageBytes = images.reduce((sum, image) => {
-    const data = image.dataUrl.slice(image.dataUrl.indexOf(',') + 1)
-    return sum + Math.round((data.length * 3) / 4)
-  }, 0)
   const throttle = checkInMemoryThrottle({
     key: [
       'ai.generate-requirements',
@@ -141,8 +127,6 @@ export async function POST(request: Request) {
       event: 'capacity.throttled',
       level: 'warn',
       metrics: {
-        image_bytes: imageBytes,
-        image_count: images.length,
         throttled: true,
       },
       operation: 'ai.generate-requirements',
@@ -167,6 +151,21 @@ export async function POST(request: Request) {
       context,
     )
   }
+
+  const parsedBody = await readJsonWithSchema(
+    request,
+    generateRequirementsSchema,
+  )
+  if (!parsedBody.ok) {
+    return parsedBody.response
+  }
+  const body = parsedBody.data
+  const providerPreferences = body.providerPreferences
+  const { images, locale } = body
+  const imageBytes = images.reduce((sum, image) => {
+    const data = image.dataUrl.slice(image.dataUrl.indexOf(',') + 1)
+    return sum + Math.round((data.length * 3) / 4)
+  }, 0)
 
   const db = await getRequestSqlServerDataSource()
 

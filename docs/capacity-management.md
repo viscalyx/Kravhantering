@@ -75,7 +75,8 @@ strings, tokens, secrets, or HSA IDs.
 V1 measures:
 
 - AI generation through `/api/ai/generate-requirements`.
-- AI metadata through `/api/ai/models?refresh=1` and `/api/ai/credits`.
+- AI metadata through `/api/ai/models` cache misses, `refresh=1`, and
+  `/api/ai/credits`.
 - AI generation through the MCP tool `requirements_generate_requirements`.
 - Shared service operations through service logging.
 - Server-side report item loading for the specification report.
@@ -88,7 +89,8 @@ data collection and limits report lists to 50 items.
 V1 uses process-local in-memory throttling:
 
 - AI generation: 5 requests per minute per actor/process.
-- AI model refresh with `refresh=1`: 10 requests per minute per actor/process.
+- AI model metadata refreshes and cache misses: 10 requests per minute per
+  actor/process.
 - AI credit lookup: 20 requests per minute per actor/process.
 
 When a limit is reached, REST flows respond with `429` and `Retry-After`. MCP

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { GET } from '@/app/api/ai/models/route'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { clearAiModelsCacheForTests, GET } from '@/app/api/ai/models/route'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
 
@@ -28,7 +28,13 @@ function makeRequest(url = 'http://localhost:3000/api/ai/models') {
 
 describe('GET /api/ai/models', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
+    clearAiModelsCacheForTests()
     clearInMemoryThrottleForTests()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('returns models enriched with structured_outputs flag', async () => {
@@ -157,5 +163,61 @@ describe('GET /api/ai/models', () => {
     expect(response.status).toBe(429)
     expect(response.headers.get('Retry-After')).toBeTruthy()
     expect(body.error).toContain('Too many AI model refresh requests')
+  })
+
+  it('throttles repeated cache misses from varying supported parameters', async () => {
+    const { listModels } = await import('@/lib/ai/openrouter-client')
+    vi.mocked(listModels).mockResolvedValue([])
+
+    for (let index = 0; index < 10; index += 1) {
+      const response = await GET(
+        makeRequest(
+          `http://localhost:3000/api/ai/models?supported_parameters=param-${index}`,
+        ),
+      )
+      expect(response.status).toBe(200)
+    }
+
+    const response = await GET(
+      makeRequest(
+        'http://localhost:3000/api/ai/models?supported_parameters=param-10',
+      ),
+    )
+    const body = (await response.json()) as { error: string }
+
+    expect(response.status).toBe(429)
+    expect(response.headers.get('Retry-After')).toBeTruthy()
+    expect(body.error).toContain('Too many AI model requests')
+    expect(listModels).toHaveBeenCalledTimes(20)
+  })
+
+  it('evicts the oldest model cache entry when the bounded cache is full', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-14T12:00:00.000Z'))
+    const { listModels } = await import('@/lib/ai/openrouter-client')
+    vi.mocked(listModels).mockResolvedValue([])
+
+    for (let index = 0; index < 33; index += 1) {
+      if (index > 0 && index % 10 === 0) {
+        vi.advanceTimersByTime(60_001)
+      }
+      const response = await GET(
+        makeRequest(
+          `http://localhost:3000/api/ai/models?supported_parameters=cache-${index}`,
+        ),
+      )
+      expect(response.status).toBe(200)
+    }
+
+    vi.advanceTimersByTime(60_001)
+    const callsBeforeRepeat = vi.mocked(listModels).mock.calls.length
+    const response = await GET(
+      makeRequest(
+        'http://localhost:3000/api/ai/models?supported_parameters=cache-0',
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    expect(listModels).toHaveBeenCalledTimes(callsBeforeRepeat + 2)
   })
 })

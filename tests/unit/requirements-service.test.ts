@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { conflictError, forbiddenError } from '@/lib/requirements/errors'
 import { normalizeUiTerminology } from '@/lib/ui-terminology'
+import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
 
 const mocks = vi.hoisted(() => ({
   approveArchiving: vi.fn(),
@@ -260,23 +261,6 @@ function makeUiSettings() {
     getColumnDefaults: vi.fn(),
     getTerminology: vi.fn(async () => normalizeUiTerminology([])),
   }
-}
-
-function parseCapacityEvents(infoSpy: ReturnType<typeof vi.spyOn>) {
-  return infoSpy.mock.calls
-    .map((call: unknown[]) => {
-      try {
-        return JSON.parse(String(call[0])) as Record<string, unknown>
-      } catch {
-        return null
-      }
-    })
-    .filter(
-      (
-        event: Record<string, unknown> | null,
-      ): event is Record<string, unknown> =>
-        event !== null && event.channel === 'capacity-observability',
-    )
 }
 
 describe('createRequirementsService', () => {

@@ -3,23 +3,7 @@ import {
   observeCapacity,
   recordCapacityEvent,
 } from '@/lib/observability/capacity'
-
-function parseCapacityEvents(spy: ReturnType<typeof vi.spyOn>) {
-  return spy.mock.calls
-    .map((call: unknown[]) => {
-      try {
-        return JSON.parse(String(call[0])) as Record<string, unknown>
-      } catch {
-        return null
-      }
-    })
-    .filter(
-      (
-        event: Record<string, unknown> | null,
-      ): event is Record<string, unknown> =>
-        event !== null && event.channel === 'capacity-observability',
-    )
-}
+import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
 
 describe('capacity observability', () => {
   afterEach(() => {

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
+import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
 
 const routeState = vi.hoisted(() => ({
   generateChatStream: vi.fn(),
@@ -29,14 +30,16 @@ vi.mock('@/lib/ai/openrouter-client', () => ({
 
 import { POST } from '@/app/api/ai/generate-requirements/route'
 
-function makeRequest(): Request {
+function makeRequest(
+  body: Record<string, unknown> | string = {
+    locale: 'en',
+    topic: 'secure audit logging',
+  },
+): Request {
   const request = new Request(
     'https://example.test/api/ai/generate-requirements',
     {
-      body: JSON.stringify({
-        locale: 'en',
-        topic: 'secure audit logging',
-      }),
+      body: typeof body === 'string' ? body : JSON.stringify(body),
       headers: {
         'Content-Type': 'application/json',
         'x-correlation-id': 'workflow-ai',
@@ -54,23 +57,6 @@ function makeRequest(): Request {
     source: 'oidc',
   })
   return request
-}
-
-function parseCapacityEvents(spy: ReturnType<typeof vi.spyOn>) {
-  return spy.mock.calls
-    .map((call: unknown[]) => {
-      try {
-        return JSON.parse(String(call[0])) as Record<string, unknown>
-      } catch {
-        return null
-      }
-    })
-    .filter(
-      (
-        event: Record<string, unknown> | null,
-      ): event is Record<string, unknown> =>
-        event !== null && event.channel === 'capacity-observability',
-    )
 }
 
 describe('POST /api/ai/generate-requirements', () => {
@@ -206,6 +192,51 @@ describe('POST /api/ai/generate-requirements', () => {
       expect(response.status).toBe(429)
       expect(response.headers.get('Retry-After')).toBe('60')
       expect(body.error).toContain('Too many AI generation requests')
+      expect(parseCapacityEvents(consoleInfoSpy)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            event: 'capacity.throttled',
+            operation: 'ai.generate-requirements',
+            outcome: 'throttled',
+            throttled: true,
+          }),
+        ]),
+      )
+    } finally {
+      consoleInfoSpy.mockRestore()
+    }
+  })
+
+  it('rejects over-limit callers before parsing a heavy body', async () => {
+    const consoleInfoSpy = vi
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined)
+    routeState.generateChatStream.mockImplementation(async function* () {
+      yield {
+        phase: 'done',
+        rawContent: '{"requirements":[]}',
+        stats: {
+          completionTokens: 0,
+          cost: 0,
+          promptTokens: 0,
+          reasoningTokens: 0,
+          totalTokens: 0,
+        },
+        thinking: '',
+      }
+    })
+
+    try {
+      for (let index = 0; index < 5; index += 1) {
+        await (await POST(makeRequest())).text()
+      }
+
+      const response = await POST(makeRequest('not-json'))
+      const body = (await response.json()) as { error: string }
+
+      expect(response.status).toBe(429)
+      expect(body.error).toContain('Too many AI generation requests')
+      expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(5)
       expect(parseCapacityEvents(consoleInfoSpy)).toEqual(
         expect.arrayContaining([
           expect.objectContaining({

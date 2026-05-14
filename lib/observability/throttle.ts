@@ -20,14 +20,27 @@ interface ThrottleBucket {
 
 const buckets = new Map<string, ThrottleBucket>()
 
+function pruneExpiredBuckets(now: number): void {
+  for (const [key, bucket] of buckets) {
+    if (bucket.resetAt <= now) {
+      buckets.delete(key)
+    }
+  }
+}
+
 export function clearInMemoryThrottleForTests(): void {
   buckets.clear()
+}
+
+export function getInMemoryThrottleBucketCountForTests(): number {
+  return buckets.size
 }
 
 export function checkInMemoryThrottle(
   policy: InMemoryThrottlePolicy,
 ): InMemoryThrottleDecision {
   const now = policy.now ?? Date.now()
+  pruneExpiredBuckets(now)
   const existing = buckets.get(policy.key)
   const bucket =
     existing && existing.resetAt > now

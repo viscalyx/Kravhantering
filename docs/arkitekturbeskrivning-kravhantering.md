@@ -1462,8 +1462,8 @@ oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
 - Kapacitets- och throttling-händelser skrivs som
   en separat JSON-ström märkt
   `channel: "capacity-observability"` med
-  `request_id`, `correlation_id`, duration,
-  status och säkra volymmått. Loggplattformen
+  `request_id`, `correlation_id`, `duration_ms`
+  (millisekunder), status och säkra volymmått. Loggplattformen
   ansvarar för dashboards, larm, retention och
   vidare analys.
 - Säkerhetsrelaterade auth-händelser skrivs som en
