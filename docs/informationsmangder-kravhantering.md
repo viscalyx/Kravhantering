@@ -6,6 +6,7 @@
 <!-- cSpell:words tokenmetadata -->
 <!-- cSpell:words användningsmetadata begärandeloggning trafikmetadata -->
 <!-- cSpell:words leveranskedjeansvar -->
+<!-- cSpell:words fältvis pseudonymisering -->
 
 # Informationsmängder i Kravhantering
 
@@ -47,6 +48,38 @@ Underlaget stödjer arbetet med följande krav:
 | AI-generering | Stödja kravförfattare med förslag baserade på ämne, instruktioner, bilder och taxonomi. | Prompt, ämne, bildinnehåll, taxonomival, modellval, AI-svar och metadata om användning. | Ja, om användaren matar in personuppgifter eller sekretessbelagt material i prompt eller bild. | Webb-UI, OpenRouter och valda modellleverantörer när AI är aktiverat, samt SQL Server om AI-svar sparas som kravdata. | Fastställs av förvaltningen. AI-generering ska behandlas som stödflöde och inte som fristående långtidsarkiv. | Fastställs av förvaltningen. Användning och leverantörsbedömning ska beslutas i ordinarie dataskydds- och leverantörsstyrning. | [AI-dokumentation](./reference-data-and-ai.md), [riskanalys](./riskanalys.txt), [arkitektur](./arkitekturbeskrivning-kravhantering.md) |
 | Rapporter och exporter | Dela kravkatalog, kravdetaljer, historik, access review-evidens och dataskyddsexport i läsbart format. | CSV, PDF, rapporthuvuden, kravdetaljer, historik, access review-underlag och data subject export. | Ja, om källdata innehåller aktörer, ägare, HSA-id, kommentarer eller annan personinformation. | Slutanvändare, Admin Center, webbläsare, rapportmottagare och eventuell vidarebehandling utanför applikationen. | Fastställs av förvaltningen. Exporterade filer hamnar utanför applikationens tekniska kontroll. | Fastställs av förvaltningen. Mottagare ansvarar för hantering efter export enligt organisationens regler. | [rapporter](./reports.md), [Admin Center](./admin-center.md), [dataportabilitet](./privacy-data-portability.md) |
 <!-- markdownlint-enable MD013 -->
+
+## Artikel 32-bedömning av personuppgiftsskydd
+
+Den här bedömningen avser appens avsiktliga identitets- och kontaktfält:
+namn, e-post, HSA-id, aktörsfält, ägar- och uppdragsfält samt
+säkerhetsauditens metadata. Personuppgifterna avser anställda eller
+medarbetare och behöver kunna ses av andra behöriga anställda för ansvar,
+spårbarhet, handläggning, behörighetsgranskning och historik.
+
+För nuvarande användningsfall bedöms fältvis applikationskryptering och
+pseudonymisering därför inte vara nödvändigt eller relevant. Sådana skydd
+skulle försämra de verksamhetsfunktioner som uppgifterna finns för att stödja,
+utan att ge proportionerlig riskreduktion när åtkomsten redan ska styras av
+autentisering, rollstyrning, access review och behörighetskontroller.
+
+Befintliga appnära skydd är:
+
+- federerad autentisering och validerad HSA-identitet
+- rollstyrda admin- och dataskyddsflöden
+- access review för appstyrda uppdrag
+- krypterad och signerad sessionscookie samt krypterad SQL-transport
+- redigerad säkerhetsaudit som inte ska bära hemligheter eller råa
+  mål-HSA-id i händelsedetaljer
+- GDPR-radering och dataportabilitet för HSA-id-baserade identitetsfält
+- policy och hjälptexter som säger att fritextfält inte ska innehålla namn
+  eller andra uppgifter som identifierar levande personer
+
+Beslutet ska omprövas om Kravhantering börjar behandla externa personer,
+känsligare personuppgifter, särskilt skyddsvärda personuppgifter eller
+avsiktliga personuppgifter i fritext. Förvaltningen och driftorganisationen
+behöver fortsatt verifiera skydd för vilande databaslagring, backup,
+nyckelhantering, loggplattform och behörighet till driftloggar.
 
 ## Systemkomponenter
 
