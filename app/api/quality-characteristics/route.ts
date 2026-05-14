@@ -1,20 +1,20 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  createAdminPrivilegedAuditContext,
-  recordAdminPrivilegedActionSucceeded,
-} from '@/lib/admin/privileged-audit'
+import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   createQualityCharacteristic,
   listQualityCharacteristics,
 } from '@/lib/dal/requirement-types'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
+  adminMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   boundedDbStringSchema,
   parseSearchParams,
   positiveIntegerSchema,
   positiveIntegerStringSchema,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
 
 const qualityCharacteristicsQuerySchema = z
@@ -60,20 +60,18 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ qualityCharacteristics })
 }
 
-export async function POST(request: Request) {
-  const parsedBody = await readJsonWithSchema(
-    request,
-    qualityCharacteristicCreateSchema,
-  )
-  if (!parsedBody.ok) return parsedBody.response
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-  const category = await createQualityCharacteristic(db, parsedBody.data)
-  recordAdminPrivilegedActionSucceeded(auditContext, {
-    changedFields: Object.keys(parsedBody.data),
-    operation: 'create',
-    resourceId: category.id,
-    resourceType: 'quality_characteristic',
-  })
-  return NextResponse.json(category, { status: 201 })
-}
+export const POST = secureMutationRoute({
+  bodySchema: qualityCharacteristicCreateSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ body, context }) => {
+    const db = await getRequestSqlServerDataSource()
+    const category = await createQualityCharacteristic(db, body)
+    recordAdminPrivilegedActionSucceeded(context, {
+      changedFields: Object.keys(body),
+      operation: 'create',
+      resourceId: category.id,
+      resourceType: 'quality_characteristic',
+    })
+    return NextResponse.json(category, { status: 201 })
+  },
+})

@@ -6,10 +6,13 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
+  customMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   boundedDbStringSchema,
   nullableBusinessTextSchema,
   positiveIntegerSchema,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
@@ -43,22 +46,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  const parsedBody = await readJsonWithSchema(
-    request,
-    createSpecificationSchema,
-  )
-  if (!parsedBody.ok) {
-    return parsedBody.response
-  }
+export const POST = secureMutationRoute({
+  bodySchema: createSpecificationSchema,
+  policy: customMutationPolicy('specification.create', () => {}),
+  handler: async ({ body }) => {
+    const db = await getRequestSqlServerDataSource()
 
-  const db = await getRequestSqlServerDataSource()
-  const body = parsedBody.data
+    if (await isSlugTaken(db, body.uniqueId)) {
+      return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
+    }
 
-  if (await isSlugTaken(db, body.uniqueId)) {
-    return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
-  }
-
-  const spec = await createSpecification(db, body)
-  return NextResponse.json(spec, { status: 201 })
-}
+    const spec = await createSpecification(db, body)
+    return NextResponse.json(spec, { status: 201 })
+  },
+})

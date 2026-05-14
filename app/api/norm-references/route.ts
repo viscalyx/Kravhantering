@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  createAdminPrivilegedAuditContext,
-  recordAdminPrivilegedActionSucceeded,
-} from '@/lib/admin/privileged-audit'
+import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   countLinkedRequirements,
   createNormReference,
@@ -11,13 +8,16 @@ import {
 } from '@/lib/dal/norm-references'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
+  adminMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   boundedDbStringSchema,
   optionalBusinessTextSchema,
   optionalQueryArraySchema,
   parseSearchParams,
   positiveIntegerStringSchema,
   queryBooleanSchema,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
 
 const nullableOptionalTextSchema = optionalBusinessTextSchema
@@ -68,27 +68,25 @@ export async function GET(request: Request) {
   return NextResponse.json({ normReferences: results })
 }
 
-export async function POST(request: Request) {
-  const parsedBody = await readJsonWithSchema(
-    request,
-    normReferenceCreateSchema,
-  )
-  if (!parsedBody.ok) return parsedBody.response
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-  try {
-    const normReference = await createNormReference(db, parsedBody.data)
-    recordAdminPrivilegedActionSucceeded(auditContext, {
-      changedFields: Object.keys(parsedBody.data),
-      operation: 'create',
-      resourceId: normReference.id,
-      resourceType: 'norm_reference',
-    })
-    return NextResponse.json(normReference, { status: 201 })
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to create norm reference' },
-      { status: 500 },
-    )
-  }
-}
+export const POST = secureMutationRoute({
+  bodySchema: normReferenceCreateSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ body, context }) => {
+    const db = await getRequestSqlServerDataSource()
+    try {
+      const normReference = await createNormReference(db, body)
+      recordAdminPrivilegedActionSucceeded(context, {
+        changedFields: Object.keys(body),
+        operation: 'create',
+        resourceId: normReference.id,
+        resourceType: 'norm_reference',
+      })
+      return NextResponse.json(normReference, { status: 201 })
+    } catch {
+      return NextResponse.json(
+        { error: 'Failed to create norm reference' },
+        { status: 500 },
+      )
+    }
+  },
+})

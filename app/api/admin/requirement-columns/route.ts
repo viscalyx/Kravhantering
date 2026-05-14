@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  createAdminPrivilegedAuditContext,
-  recordAdminPrivilegedActionSucceeded,
-} from '@/lib/admin/privileged-audit'
+import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   formatUiSettingsLoadError,
   getRequirementListColumnDefaults,
@@ -11,9 +8,10 @@ import {
 } from '@/lib/dal/ui-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  invalidRequestResponse,
-  readJsonWithSchema,
-} from '@/lib/http/validation'
+  adminMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import { invalidRequestResponse } from '@/lib/http/validation'
 import { REQUIREMENT_COLUMN_ORDER } from '@/lib/requirements/list-view'
 
 const columnDefaultsEntrySchema = z
@@ -51,54 +49,56 @@ export async function GET() {
   }
 }
 
-export async function PUT(request: Request) {
-  try {
-    const parsedBody = await readJsonWithSchema(
-      request,
-      columnDefaultsPayloadSchema,
-    )
-    if (!parsedBody.ok) return parsedBody.response
-    const body = parsedBody.data
-    const uniqueColumnIds = new Set(body.columns.map(column => column.columnId))
-    const uniqueSortOrders = new Set(
-      body.columns.map(column => column.sortOrder),
-    )
+export const PUT = secureMutationRoute({
+  bodySchema: columnDefaultsPayloadSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ body, context }) => {
+    try {
+      const uniqueColumnIds = new Set(
+        body.columns.map(column => column.columnId),
+      )
+      const uniqueSortOrders = new Set(
+        body.columns.map(column => column.sortOrder),
+      )
 
-    if (uniqueColumnIds.size !== REQUIREMENT_COLUMN_ORDER.length) {
-      return invalidRequestResponse([
-        {
-          code: 'custom',
-          message: 'Each requirement column must be provided exactly once.',
-          path: 'columns',
-        },
-      ])
+      if (uniqueColumnIds.size !== REQUIREMENT_COLUMN_ORDER.length) {
+        return invalidRequestResponse([
+          {
+            code: 'custom',
+            message: 'Each requirement column must be provided exactly once.',
+            path: 'columns',
+          },
+        ])
+      }
+
+      if (uniqueSortOrders.size !== REQUIREMENT_COLUMN_ORDER.length) {
+        return invalidRequestResponse([
+          {
+            code: 'custom',
+            message: 'Each requirement column sort order must be unique.',
+            path: 'columns',
+          },
+        ])
+      }
+      const db = await getRequestSqlServerDataSource()
+      const columns = await updateRequirementListColumnDefaults(
+        db,
+        body.columns,
+      )
+      recordAdminPrivilegedActionSucceeded(context, {
+        itemCount: body.columns.length,
+        operation: 'save',
+        resourceType: 'requirement_columns',
+      })
+
+      return NextResponse.json({
+        columns,
+      })
+    } catch {
+      return NextResponse.json(
+        { error: 'Failed to save requirement column defaults.' },
+        { status: 500 },
+      )
     }
-
-    if (uniqueSortOrders.size !== REQUIREMENT_COLUMN_ORDER.length) {
-      return invalidRequestResponse([
-        {
-          code: 'custom',
-          message: 'Each requirement column sort order must be unique.',
-          path: 'columns',
-        },
-      ])
-    }
-    const auditContext = await createAdminPrivilegedAuditContext(request)
-    const db = await getRequestSqlServerDataSource()
-    const columns = await updateRequirementListColumnDefaults(db, body.columns)
-    recordAdminPrivilegedActionSucceeded(auditContext, {
-      itemCount: body.columns.length,
-      operation: 'save',
-      resourceType: 'requirement_columns',
-    })
-
-    return NextResponse.json({
-      columns,
-    })
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to save requirement column defaults.' },
-      { status: 500 },
-    )
-  }
-}
+  },
+})

@@ -8,15 +8,15 @@ import {
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
+  customMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   idParamSchema,
   optionalBusinessTextSchema,
   parseRouteParams,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
-import {
-  createRequestContext,
-  requireHumanActorSnapshot,
-} from '@/lib/requirements/auth'
+import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
@@ -55,60 +55,60 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
-  if (!parsedParams.ok) return parsedParams.response
-  const parsedBody = await readJsonWithSchema(
-    request,
-    updateSpecificationLocalDeviationSchema,
-  )
-  if (!parsedBody.ok) return parsedBody.response
+export const PUT = secureMutationRoute({
+  bodySchema: updateSpecificationLocalDeviationSchema,
+  paramsSchema: idParamSchema,
+  policy: customMutationPolicy(
+    'specification_local_deviation.update',
+    ({ context }) => {
+      requireHumanActorSnapshot(context)
+    },
+  ),
+  handler: async ({ body, params }) => {
+    try {
+      const db = await getRequestSqlServerDataSource()
+      await updateSpecificationLocalDeviation(db, params.id, {
+        motivation: body.motivation,
+      })
+      return NextResponse.json({ ok: true })
+    } catch (error) {
+      if (isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return NextResponse.json(body, { status })
+      }
 
-  try {
-    requireHumanActorSnapshot(await createRequestContext(request, 'rest'))
+      logSanitizedError('Failed to update specification-local deviation', error)
+      return NextResponse.json(
+        { error: 'Failed to update specification-local deviation' },
+        { status: 500 },
+      )
+    }
+  },
+})
+
+export const DELETE = secureMutationRoute({
+  paramsSchema: idParamSchema,
+  policy: customMutationPolicy(
+    'specification_local_deviation.delete',
+    () => {},
+  ),
+  handler: async ({ params }) => {
     const db = await getRequestSqlServerDataSource()
-    await updateSpecificationLocalDeviation(db, parsedParams.data.id, {
-      motivation: parsedBody.data.motivation,
-    })
-    return NextResponse.json({ ok: true })
-  } catch (error) {
-    if (isRequirementsServiceError(error)) {
-      const { body, status } = toHttpErrorPayload(error)
-      return NextResponse.json(body, { status })
+
+    try {
+      await deleteSpecificationLocalDeviation(db, params.id)
+      return NextResponse.json({ ok: true })
+    } catch (error) {
+      if (isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return NextResponse.json(body, { status })
+      }
+
+      logSanitizedError('Failed to delete specification-local deviation', error)
+      return NextResponse.json(
+        { error: 'Failed to delete specification-local deviation' },
+        { status: 500 },
+      )
     }
-
-    logSanitizedError('Failed to update specification-local deviation', error)
-    return NextResponse.json(
-      { error: 'Failed to update specification-local deviation' },
-      { status: 500 },
-    )
-  }
-}
-
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
-  if (!parsedParams.ok) return parsedParams.response
-  const db = await getRequestSqlServerDataSource()
-
-  try {
-    await deleteSpecificationLocalDeviation(db, parsedParams.data.id)
-    return NextResponse.json({ ok: true })
-  } catch (error) {
-    if (isRequirementsServiceError(error)) {
-      const { body, status } = toHttpErrorPayload(error)
-      return NextResponse.json(body, { status })
-    }
-
-    logSanitizedError('Failed to delete specification-local deviation', error)
-    return NextResponse.json(
-      { error: 'Failed to delete specification-local deviation' },
-      { status: 500 },
-    )
-  }
-}
+  },
+})

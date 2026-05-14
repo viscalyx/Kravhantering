@@ -10,17 +10,17 @@ import { parseSpecificationItemRef } from '@/lib/dal/requirements-specifications
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
+  customMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   businessTextSchema,
   invalidRequestResponse,
   parseRouteParams,
-  readJsonWithSchema,
   routeSegmentSchema,
   SQL_SERVER_INT_MAX,
 } from '@/lib/http/validation'
-import {
-  createRequestContext,
-  requireHumanActorSnapshot,
-} from '@/lib/requirements/auth'
+import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
@@ -126,53 +126,51 @@ export async function GET(
   }
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, itemDeviationParamSchema)
-  if (!parsedParams.ok) {
-    return parsedParams.response
-  }
-  const parsedBody = await readJsonWithSchema(request, createDeviationSchema)
-  if (!parsedBody.ok) {
-    return parsedBody.response
-  }
-  const itemIdResult = parseItemId(parsedParams.data.itemId)
-  if (!itemIdResult.ok) {
-    return itemIdResult.response
-  }
-  const { decodedItemId, parsedItemRef, numericItemId } = itemIdResult
-  const { motivation } = parsedBody.data
-  const db = await getRequestSqlServerDataSource()
-
-  try {
-    const context = await createRequestContext(request, 'rest')
-    const actor = requireHumanActorSnapshot(context)
-    const result =
-      parsedItemRef == null
-        ? await createDeviation(db, {
-            specificationItemId: numericItemId ?? 0,
-            motivation,
-            createdBy: actor.displayName,
-            createdByHsaId: actor.hsaId,
-          })
-        : await createDeviationForItemRef(db, {
-            createdBy: actor.displayName,
-            createdByHsaId: actor.hsaId,
-            itemRef: decodedItemId,
-            motivation,
-          })
-    return NextResponse.json({ id: result.id, ok: true }, { status: 201 })
-  } catch (error) {
-    if (isRequirementsServiceError(error)) {
-      const { body, status } = toHttpErrorPayload(error)
-      return NextResponse.json(body, { status })
+export const POST = secureMutationRoute({
+  bodySchema: createDeviationSchema,
+  paramsSchema: itemDeviationParamSchema,
+  policy: customMutationPolicy(
+    'specification_item_deviation.create',
+    ({ context }) => {
+      requireHumanActorSnapshot(context)
+    },
+  ),
+  handler: async ({ body, context, params }) => {
+    const itemIdResult = parseItemId(params.itemId)
+    if (!itemIdResult.ok) {
+      return itemIdResult.response
     }
-    logSanitizedError('Failed to create deviation', error)
-    return NextResponse.json(
-      { error: 'Failed to create deviation' },
-      { status: 500 },
-    )
-  }
-}
+    const { decodedItemId, parsedItemRef, numericItemId } = itemIdResult
+    const { motivation } = body
+    const db = await getRequestSqlServerDataSource()
+
+    try {
+      const actor = requireHumanActorSnapshot(context)
+      const result =
+        parsedItemRef == null
+          ? await createDeviation(db, {
+              specificationItemId: numericItemId ?? 0,
+              motivation,
+              createdBy: actor.displayName,
+              createdByHsaId: actor.hsaId,
+            })
+          : await createDeviationForItemRef(db, {
+              createdBy: actor.displayName,
+              createdByHsaId: actor.hsaId,
+              itemRef: decodedItemId,
+              motivation,
+            })
+      return NextResponse.json({ id: result.id, ok: true }, { status: 201 })
+    } catch (error) {
+      if (isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return NextResponse.json(body, { status })
+      }
+      logSanitizedError('Failed to create deviation', error)
+      return NextResponse.json(
+        { error: 'Failed to create deviation' },
+        { status: 500 },
+      )
+    }
+  },
+})

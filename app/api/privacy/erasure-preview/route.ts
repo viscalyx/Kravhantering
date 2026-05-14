@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { CsrfError } from '@/lib/auth/csrf'
@@ -10,13 +10,15 @@ import {
   redactSensitiveText,
 } from '@/lib/http/safe-errors'
 import {
+  customMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   boundedDbStringSchema,
   optionalBoundedDbStringSchema,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
 import { previewPrivacyErasure } from '@/lib/privacy/erasure'
 import {
-  createRequestContext,
   type RequestContext,
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
@@ -82,39 +84,40 @@ function unexpectedErrorBody(message: string, error: unknown) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  const parsedBody = await readJsonWithSchema(request, erasurePreviewSchema)
-  if (!parsedBody.ok) return parsedBody.response
-
-  try {
-    const context = await createRequestContext(request, 'rest')
+export const POST = secureMutationRoute({
+  bodySchema: erasurePreviewSchema,
+  policy: customMutationPolicy('privacy.erasure.preview', ({ context }) => {
     assertPrivacyOfficer(context)
-    const db = await getRequestSqlServerDataSource()
-    const preview = await previewPrivacyErasure(db, {
-      replacement: parsedBody.data.replacement ?? null,
-      target: parsedBody.data.target,
-    })
-    recordSecurityEvent({
-      actor: auditActor(context),
-      detail: {
-        groupCount: preview.groups.length,
-        targetFingerprint: preview.targetFingerprint,
-        totalCount: preview.totalCount,
-      },
-      event: 'privacy.erasure.previewed',
-      outcome: 'success',
-      request: context.request ?? request,
-    })
-    return NextResponse.json(preview)
-  } catch (error) {
-    if (error instanceof CsrfError || isRequirementsServiceError(error)) {
-      const { body, status } = toHttpErrorPayload(error)
-      return NextResponse.json(body, { status })
+  }),
+  handler: async ({ body, context, request }) => {
+    try {
+      const db = await getRequestSqlServerDataSource()
+      const preview = await previewPrivacyErasure(db, {
+        replacement: body.replacement ?? null,
+        target: body.target,
+      })
+      recordSecurityEvent({
+        actor: auditActor(context),
+        detail: {
+          groupCount: preview.groups.length,
+          targetFingerprint: preview.targetFingerprint,
+          totalCount: preview.totalCount,
+        },
+        event: 'privacy.erasure.previewed',
+        outcome: 'success',
+        request: context.request ?? request,
+      })
+      return NextResponse.json(preview)
+    } catch (error) {
+      if (error instanceof CsrfError || isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return NextResponse.json(body, { status })
+      }
+      logSanitizedError('Failed to preview privacy erasure', error)
+      return NextResponse.json(
+        unexpectedErrorBody('Failed to preview privacy erasure', error),
+        { status: 500 },
+      )
     }
-    logSanitizedError('Failed to preview privacy erasure', error)
-    return NextResponse.json(
-      unexpectedErrorBody('Failed to preview privacy erasure', error),
-      { status: 500 },
-    )
-  }
-}
+  },
+})

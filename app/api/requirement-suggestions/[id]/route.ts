@@ -2,12 +2,15 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
+  requirementsMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   businessTextSchema,
   idParamSchema,
   nullableBusinessTextSchema,
   parseRouteParams,
   positiveIntegerSchema,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
@@ -49,36 +52,42 @@ export async function GET(
   }
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
-  if (!parsedParams.ok) return parsedParams.response
-  const parsedBody = await readJsonWithSchema(request, createSuggestionSchema)
-  if (!parsedBody.ok) return parsedBody.response
-  const { content, createdBy, requirementVersionId } = parsedBody.data
-
-  try {
-    const { context, service } = await createRequirementsRestRuntime(request)
-    const payload = await service.manageSuggestion(context, {
-      operation: 'create',
-      requirementId: parsedParams.data.id,
-      requirementVersionId: requirementVersionId ?? null,
-      content,
-      createdBy: createdBy ?? null,
-      responseFormat: 'json',
-    })
-    return NextResponse.json(payload.result, { status: 201 })
-  } catch (error) {
-    if (isRequirementsServiceError(error)) {
-      const { body, status } = toHttpErrorPayload(error)
-      return NextResponse.json(body, { status })
+export const POST = secureMutationRoute({
+  bodySchema: createSuggestionSchema,
+  paramsSchema: idParamSchema,
+  policy: requirementsMutationPolicy<
+    z.infer<typeof createSuggestionSchema>,
+    { id: number }
+  >(({ params }) => ({
+    kind: 'manage_suggestion',
+    operation: 'create',
+    requirementId: params.id,
+  })),
+  handler: async ({ body, context, params, request }) => {
+    const { content, createdBy, requirementVersionId } = body
+    try {
+      const { service } = await createRequirementsRestRuntime(request, {
+        context,
+      })
+      const payload = await service.manageSuggestion(context, {
+        operation: 'create',
+        requirementId: params.id,
+        requirementVersionId: requirementVersionId ?? null,
+        content,
+        createdBy: createdBy ?? null,
+        responseFormat: 'json',
+      })
+      return NextResponse.json(payload.result, { status: 201 })
+    } catch (error) {
+      if (isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return NextResponse.json(body, { status })
+      }
+      logSanitizedError('Failed to create improvement suggestion', error)
+      return NextResponse.json(
+        { error: 'Failed to create improvement suggestion' },
+        { status: 500 },
+      )
     }
-    logSanitizedError('Failed to create improvement suggestion', error)
-    return NextResponse.json(
-      { error: 'Failed to create improvement suggestion' },
-      { status: 500 },
-    )
-  }
-}
+  },
+})

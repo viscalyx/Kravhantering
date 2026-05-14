@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { CsrfError } from '@/lib/auth/csrf'
@@ -10,16 +10,18 @@ import {
   redactSensitiveText,
 } from '@/lib/http/safe-errors'
 import {
+  customMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   boundedDbStringSchema,
   optionalBoundedDbStringSchema,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
 import {
   executePrivacyErasure,
   type PrivacyErasureAction,
 } from '@/lib/privacy/erasure'
 import {
-  createRequestContext,
   type RequestContext,
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
@@ -94,47 +96,48 @@ function unexpectedErrorBody(message: string, error: unknown) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  const parsedBody = await readJsonWithSchema(request, erasureRequestSchema)
-  if (!parsedBody.ok) return parsedBody.response
-
-  try {
-    const context = await createRequestContext(request, 'rest')
+export const POST = secureMutationRoute({
+  bodySchema: erasureRequestSchema,
+  policy: customMutationPolicy('privacy.erasure.execute', ({ context }) => {
     assertPrivacyOfficer(context)
-    const db = await getRequestSqlServerDataSource()
-    const result = await executePrivacyErasure(db, {
-      actions: parsedBody.data.actions as
-        | Record<string, PrivacyErasureAction>
-        | undefined,
-      previewToken: parsedBody.data.previewToken,
-      replacement: parsedBody.data.replacement ?? null,
-      target: parsedBody.data.target,
-    })
-    recordSecurityEvent({
-      actor: auditActor(context),
-      detail: {
-        anonymizeCount: result.actions.anonymize,
-        deleteCount: result.actions.delete,
-        erasureRequestId: result.requestId,
-        skipCount: result.actions.skip,
-        switchCount: result.actions.switch,
-        targetFingerprint: result.targetFingerprint,
-        totalCount: result.totalCount,
-      },
-      event: 'privacy.erasure.executed',
-      outcome: 'success',
-      request: context.request ?? request,
-    })
-    return NextResponse.json(result, { status: 201 })
-  } catch (error) {
-    if (error instanceof CsrfError || isRequirementsServiceError(error)) {
-      const { body, status } = toHttpErrorPayload(error)
-      return NextResponse.json(body, { status })
+  }),
+  handler: async ({ body, context, request }) => {
+    try {
+      const db = await getRequestSqlServerDataSource()
+      const result = await executePrivacyErasure(db, {
+        actions: body.actions as
+          | Record<string, PrivacyErasureAction>
+          | undefined,
+        previewToken: body.previewToken,
+        replacement: body.replacement ?? null,
+        target: body.target,
+      })
+      recordSecurityEvent({
+        actor: auditActor(context),
+        detail: {
+          anonymizeCount: result.actions.anonymize,
+          deleteCount: result.actions.delete,
+          erasureRequestId: result.requestId,
+          skipCount: result.actions.skip,
+          switchCount: result.actions.switch,
+          targetFingerprint: result.targetFingerprint,
+          totalCount: result.totalCount,
+        },
+        event: 'privacy.erasure.executed',
+        outcome: 'success',
+        request: context.request ?? request,
+      })
+      return NextResponse.json(result, { status: 201 })
+    } catch (error) {
+      if (error instanceof CsrfError || isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return NextResponse.json(body, { status })
+      }
+      logSanitizedError('Failed to execute privacy erasure', error)
+      return NextResponse.json(
+        unexpectedErrorBody('Failed to execute privacy erasure', error),
+        { status: 500 },
+      )
     }
-    logSanitizedError('Failed to execute privacy erasure', error)
-    return NextResponse.json(
-      unexpectedErrorBody('Failed to execute privacy erasure', error),
-      { status: 500 },
-    )
-  }
-}
+  },
+})

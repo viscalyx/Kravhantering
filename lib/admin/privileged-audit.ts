@@ -4,6 +4,7 @@ import {
   type SecurityEventDetailValue,
   type SecurityEventRequest,
 } from '@/lib/auth/audit'
+import { assertSameOriginRequest } from '@/lib/auth/csrf'
 import {
   getSessionFromRequest,
   isSignedIn,
@@ -105,6 +106,8 @@ function actorFromSession(session: LoggedInSession): ActorContext {
 export async function createAdminPrivilegedAuditContext(
   request: Request,
 ): Promise<RequestContext> {
+  assertSameOriginRequest(request)
+
   const { correlationId, requestId } = resolveRequestCorrelationIds(
     request.headers,
   )

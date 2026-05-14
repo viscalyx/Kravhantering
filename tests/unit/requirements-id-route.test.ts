@@ -6,6 +6,14 @@ const mockManageRequirement = vi.fn()
 const mockGetOwnerById = vi.fn()
 const mockCreateRequestContext = vi.hoisted(() =>
   vi.fn(() => ({
+    actor: {
+      displayName: 'Route Tester',
+      hsaId: 'SE2321000032-route',
+      id: 'route-test',
+      isAuthenticated: true,
+      roles: ['RequirementsEditor'],
+      source: 'oidc',
+    },
     correlationId: 'corr-test',
     requestId: 'req-test',
     source: 'rest',

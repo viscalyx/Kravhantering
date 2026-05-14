@@ -11,6 +11,9 @@ const buildEndSessionUrlMock = vi.fn()
 
 vi.mock('@/lib/auth/session', () => ({
   getSession: () => getSessionMock(),
+  getSessionFromRequest: () => getSessionMock(),
+  isSignedIn: (session: { sub?: string } | null | undefined) =>
+    Boolean(session?.sub),
 }))
 vi.mock('@/lib/auth/oidc', () => ({
   getOidcConfiguration: () => getOidcConfigurationMock(),
@@ -85,9 +88,11 @@ describe('auth logout security audit events', () => {
   it('emits auth.logout with the signed-in actor on POST', async () => {
     const destroy = vi.fn()
     getSessionMock.mockResolvedValue({
-      sub: 'user-1',
       hsaId: 'SE2321000032-rev1',
       idToken: 'idt',
+      name: 'Review User',
+      roles: ['Reviewer'],
+      sub: 'user-1',
       destroy,
     })
     const { POST } = await importRoute()
@@ -138,13 +143,16 @@ describe('auth logout security audit events', () => {
   it('rejects POST requests without X-Requested-With', async () => {
     const { POST } = await importRoute()
 
-    await expect(
-      POST(
-        buildPostRequest({
-          origin: 'http://localhost:3000',
-        }),
-      ),
-    ).rejects.toThrow('Missing X-Requested-With header.')
+    const response = await POST(
+      buildPostRequest({
+        origin: 'http://localhost:3000',
+      }),
+    )
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Missing X-Requested-With header.',
+    })
   })
 
   it('keeps GET non-destructive and redirects locally', async () => {

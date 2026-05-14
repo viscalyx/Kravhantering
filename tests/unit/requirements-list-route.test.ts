@@ -10,12 +10,12 @@ const mockManageRequirement = vi.fn()
 const mockAuthorization = { assertAuthorized: vi.fn() }
 const mockRequestContext = {
   actor: {
-    id: null,
-    displayName: '',
-    hsaId: null,
-    roles: [],
-    source: 'anonymous',
-    isAuthenticated: false,
+    id: 'route-test',
+    displayName: 'Route Tester',
+    hsaId: 'SE2321000032-route',
+    roles: ['RequirementsEditor'],
+    source: 'oidc',
+    isAuthenticated: true,
   },
   correlationId: 'test-correlation',
   requestId: 'test',

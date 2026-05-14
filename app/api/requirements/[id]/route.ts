@@ -2,11 +2,14 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getOwnerById } from '@/lib/dal/owners'
 import {
+  requirementsMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   businessTextSchema,
   optionalBusinessTextSchema,
   parseRouteParams,
   positiveIntegerSchema,
-  readJsonWithSchema,
   refOrPositiveIntegerSegmentSchema,
   uniquePositiveIntegerArraySchema,
 } from '@/lib/http/validation'
@@ -93,74 +96,78 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(
-    params,
-    requirementRefParamsSchema,
-  )
-  if (!parsedParams.ok) return parsedParams.response
-  const { id } = parsedParams.data
-  const parsedBody = await readJsonWithSchema(request, requirementEditSchema)
-  if (!parsedBody.ok) return parsedBody.response
-  const body = parsedBody.data
+export const PUT = secureMutationRoute({
+  bodySchema: requirementEditSchema,
+  paramsSchema: requirementRefParamsSchema,
+  policy: requirementsMutationPolicy<
+    z.infer<typeof requirementEditSchema>,
+    z.infer<typeof requirementRefParamsSchema>
+  >(({ params }) => {
+    const ref = parseRequirementRef(params.id)
+    return { ...ref, kind: 'manage_requirement', operation: 'edit' }
+  }),
+  handler: async ({ body, context, params, request }) => {
+    try {
+      const { service } = await createRequirementsRestRuntime(request, {
+        context,
+      })
+      const { id } = params
+      const ref = parseRequirementRef(id)
+      const result = await service.manageRequirement(context, {
+        ...ref,
+        operation: 'edit',
+        requirement: {
+          acceptanceCriteria: body.acceptanceCriteria,
+          areaId: body.areaId,
+          baseRevisionToken: body.baseRevisionToken,
+          baseVersionId: body.baseVersionId,
+          categoryId: body.categoryId,
+          description: body.description,
+          normReferenceIds: body.normReferenceIds,
+          requiresTesting: body.requiresTesting,
+          verificationMethod: body.verificationMethod,
+          requirementPackageIds: body.requirementPackageIds,
+          qualityCharacteristicId: body.qualityCharacteristicId,
+          riskLevelId: body.riskLevelId,
+          typeId: body.typeId,
+        },
+      })
+      return NextResponse.json({
+        id: result.detail?.id ?? ref.id ?? null,
+        uniqueId: result.detail?.uniqueId,
+        version: result.result,
+      })
+    } catch (error) {
+      const { body: errorBody, status } = toHttpErrorPayload(error)
+      return NextResponse.json(errorBody, { status })
+    }
+  },
+})
 
-  try {
-    const { context, service } = await createRequirementsRestRuntime(request)
-    const ref = parseRequirementRef(id)
-    const result = await service.manageRequirement(context, {
-      ...ref,
-      operation: 'edit',
-      requirement: {
-        acceptanceCriteria: body.acceptanceCriteria,
-        areaId: body.areaId,
-        baseRevisionToken: body.baseRevisionToken,
-        baseVersionId: body.baseVersionId,
-        categoryId: body.categoryId,
-        description: body.description,
-        normReferenceIds: body.normReferenceIds,
-        requiresTesting: body.requiresTesting,
-        verificationMethod: body.verificationMethod,
-        requirementPackageIds: body.requirementPackageIds,
-        qualityCharacteristicId: body.qualityCharacteristicId,
-        riskLevelId: body.riskLevelId,
-        typeId: body.typeId,
-      },
-    })
-    return NextResponse.json({
-      id: result.detail?.id ?? ref.id ?? null,
-      uniqueId: result.detail?.uniqueId,
-      version: result.result,
-    })
-  } catch (error) {
-    const { body: errorBody, status } = toHttpErrorPayload(error)
-    return NextResponse.json(errorBody, { status })
-  }
-}
-
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(
-    params,
-    requirementRefParamsSchema,
-  )
-  if (!parsedParams.ok) return parsedParams.response
-  const { id } = parsedParams.data
-
-  try {
-    const { context, service } = await createRequirementsRestRuntime(_request)
-    const ref = parseRequirementRef(id)
-    await service.manageRequirement(context, {
-      ...ref,
-      operation: 'archive',
-    })
-    return NextResponse.json({ ok: true })
-  } catch (error) {
-    const { body, status } = toHttpErrorPayload(error)
-    return NextResponse.json(body, { status })
-  }
-}
+export const DELETE = secureMutationRoute({
+  paramsSchema: requirementRefParamsSchema,
+  policy: requirementsMutationPolicy<
+    unknown,
+    z.infer<typeof requirementRefParamsSchema>
+  >(({ params }) => {
+    const ref = parseRequirementRef(params.id)
+    return { ...ref, kind: 'manage_requirement', operation: 'archive' }
+  }),
+  handler: async ({ context, params, request }) => {
+    try {
+      const { service } = await createRequirementsRestRuntime(request, {
+        context,
+      })
+      const { id } = params
+      const ref = parseRequirementRef(id)
+      await service.manageRequirement(context, {
+        ...ref,
+        operation: 'archive',
+      })
+      return NextResponse.json({ ok: true })
+    } catch (error) {
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
+    }
+  },
+})

@@ -4,7 +4,14 @@ import { validationError } from '@/lib/requirements/errors'
 
 const mocks = vi.hoisted(() => {
   const context = {
-    actor: { id: 'route-test' },
+    actor: {
+      displayName: 'Route Tester',
+      hsaId: 'SE2321000032-route',
+      id: 'route-test',
+      isAuthenticated: true,
+      roles: ['RequirementsEditor'],
+      source: 'oidc',
+    },
     correlationId: 'correlation-1',
     requestId: 'request-1',
     source: 'rest',
@@ -29,6 +36,16 @@ const mocks = vi.hoisted(() => {
 vi.mock('@/lib/requirements/server', () => ({
   createRequirementsRestRuntime: mocks.createRequirementsRestRuntime,
 }))
+
+vi.mock('@/lib/requirements/auth', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/lib/requirements/auth')>()
+  return {
+    ...actual,
+    createDefaultAuthorizationService: () => ({ assertAuthorized: vi.fn() }),
+    createRequestContext: vi.fn(async () => mocks.context),
+  }
+})
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: mocks.getRequestSqlServerDataSource,

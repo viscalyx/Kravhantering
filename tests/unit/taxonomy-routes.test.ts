@@ -44,6 +44,23 @@ const requirementsRuntimeState = vi.hoisted(() => {
   }
 })
 
+const authState = vi.hoisted(() => ({
+  assertAuthorized: vi.fn(),
+  context: {
+    actor: {
+      displayName: 'Route Tester',
+      hsaId: 'SE2321000032-route',
+      id: 'route-test',
+      isAuthenticated: true,
+      roles: ['RequirementsEditor'],
+      source: 'oidc',
+    },
+    correlationId: 'correlation-taxonomy',
+    requestId: 'request-taxonomy',
+    source: 'rest',
+  },
+}))
+
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
 }))
@@ -54,6 +71,18 @@ vi.mock('@/lib/admin/privileged-audit', () => ({
   recordAdminPrivilegedActionSucceeded:
     auditState.recordAdminPrivilegedActionSucceeded,
 }))
+
+vi.mock('@/lib/requirements/auth', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/lib/requirements/auth')>()
+  return {
+    ...actual,
+    createDefaultAuthorizationService: () => ({
+      assertAuthorized: authState.assertAuthorized,
+    }),
+    createRequestContext: vi.fn(async () => authState.context),
+  }
+})
 
 vi.mock('@/lib/requirements/server', () => ({
   createRequirementsRestRuntime:

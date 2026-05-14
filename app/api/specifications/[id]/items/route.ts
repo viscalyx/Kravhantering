@@ -11,11 +11,15 @@ import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
+  customMutationPolicy,
+  requirementsMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   ARRAY_INPUT_MAX_ITEMS,
   nullableBoundedDbStringSchema,
   parseRouteParams,
   positiveIntegerSchema,
-  readJsonWithSchema,
   routeSegmentSchema,
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
@@ -120,124 +124,126 @@ export async function GET(
   return NextResponse.json({ items: enrichedItems })
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, specificationParamSchema)
-  if (!parsedParams.ok) {
-    return parsedParams.response
-  }
-  const parsedBody = await readJsonWithSchema(request, postItemsSchema)
-  if (!parsedBody.ok) {
-    return parsedBody.response
-  }
-  const { id } = parsedParams.data
-  const db = await getRequestSqlServerDataSource()
+export const POST = secureMutationRoute({
+  bodySchema: postItemsSchema,
+  paramsSchema: specificationParamSchema,
+  policy: requirementsMutationPolicy<
+    z.infer<typeof postItemsSchema>,
+    z.infer<typeof specificationParamSchema>
+  >(({ body, params }) => ({
+    kind: 'add_to_specification',
+    requirementIds: body.requirementIds,
+    specificationSlug: params.id,
+  })),
+  handler: async ({ body, context, params, request }) => {
+    const { id } = params
+    const db = await getRequestSqlServerDataSource()
 
-  const specificationId = await resolveSpecificationId(db, id)
-  if (specificationId === null)
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const specificationId = await resolveSpecificationId(db, id)
+    if (specificationId === null)
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const { requirementIds, needsReferenceId, needsReferenceText } =
-    parsedBody.data
+    const { requirementIds, needsReferenceId, needsReferenceText } = body
 
-  try {
-    const { context, service } = await createRequirementsRestRuntime(request, {
-      db,
-    })
-    const payload = await service.addToSpecification(context, {
-      specificationId,
-      requirementIds,
-      needsReferenceId,
-      needsReferenceText,
-      responseFormat: 'json',
-    })
-    return NextResponse.json(
-      { addedCount: payload.addedCount, ok: true },
-      { status: payload.addedCount > 0 ? 201 : 200 },
-    )
-  } catch (error) {
-    if (isRequirementsServiceError(error)) {
-      const { body, status } = toHttpErrorPayload(error)
-      return NextResponse.json(body, { status })
-    }
-
-    logSanitizedError(
-      'Failed to add requirements to requirements specification',
-      error,
-    )
-    return NextResponse.json({ error: ADD_REQUIREMENTS_ERROR }, { status: 500 })
-  }
-}
-
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, specificationParamSchema)
-  if (!parsedParams.ok) {
-    return parsedParams.response
-  }
-  const parsedBody = await readJsonWithSchema(request, deleteItemsSchema)
-  if (!parsedBody.ok) {
-    return parsedBody.response
-  }
-  const { id } = parsedParams.data
-  const db = await getRequestSqlServerDataSource()
-
-  const specificationId = await resolveSpecificationId(db, id)
-  if (specificationId === null)
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
-  if ('itemRefs' in parsedBody.data) {
     try {
-      const { deletedLibraryCount, deletedSpecificationLocalCount } =
-        await deleteSpecificationItemsByRefs(
-          db,
-          specificationId,
-          parsedBody.data.itemRefs,
-        )
-      return NextResponse.json({
-        deletedLibraryCount,
-        deletedSpecificationLocalCount,
-        ok: true,
-        removedCount: deletedLibraryCount + deletedSpecificationLocalCount,
+      const { service } = await createRequirementsRestRuntime(request, {
+        context,
+        db,
       })
+      const payload = await service.addToSpecification(context, {
+        specificationId,
+        requirementIds,
+        needsReferenceId,
+        needsReferenceText,
+        responseFormat: 'json',
+      })
+      return NextResponse.json(
+        { addedCount: payload.addedCount, ok: true },
+        { status: payload.addedCount > 0 ? 201 : 200 },
+      )
     } catch (error) {
       if (isRequirementsServiceError(error)) {
         const { body, status } = toHttpErrorPayload(error)
         return NextResponse.json(body, { status })
       }
 
-      logSanitizedError('Failed to delete specification items by refs', error)
+      logSanitizedError(
+        'Failed to add requirements to requirements specification',
+        error,
+      )
       return NextResponse.json(
-        { error: 'Failed to remove items' },
+        { error: ADD_REQUIREMENTS_ERROR },
         { status: 500 },
       )
     }
-  }
+  },
+})
 
-  try {
-    const { context, service } = await createRequirementsRestRuntime(request, {
-      db,
-    })
-    const payload = await service.removeFromSpecification(context, {
-      specificationId,
-      requirementIds: parsedBody.data.requirementIds,
-      responseFormat: 'json',
-    })
-    return NextResponse.json({ ok: true, removedCount: payload.removedCount })
-  } catch (error) {
-    if (isRequirementsServiceError(error)) {
-      const { body, status } = toHttpErrorPayload(error)
-      return NextResponse.json(body, { status })
+export const DELETE = secureMutationRoute({
+  bodySchema: deleteItemsSchema,
+  paramsSchema: specificationParamSchema,
+  policy: customMutationPolicy('specification_items.delete', () => {}),
+  handler: async ({ body, context, params, request }) => {
+    const { id } = params
+    const db = await getRequestSqlServerDataSource()
+
+    const specificationId = await resolveSpecificationId(db, id)
+    if (specificationId === null)
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    if ('itemRefs' in body) {
+      try {
+        const { deletedLibraryCount, deletedSpecificationLocalCount } =
+          await deleteSpecificationItemsByRefs(
+            db,
+            specificationId,
+            body.itemRefs,
+          )
+        return NextResponse.json({
+          deletedLibraryCount,
+          deletedSpecificationLocalCount,
+          ok: true,
+          removedCount: deletedLibraryCount + deletedSpecificationLocalCount,
+        })
+      } catch (error) {
+        if (isRequirementsServiceError(error)) {
+          const { body, status } = toHttpErrorPayload(error)
+          return NextResponse.json(body, { status })
+        }
+
+        logSanitizedError('Failed to delete specification items by refs', error)
+        return NextResponse.json(
+          { error: 'Failed to remove items' },
+          { status: 500 },
+        )
+      }
     }
 
-    logSanitizedError('Failed to unlink requirements from specification', error)
-    return NextResponse.json(
-      { error: 'Failed to unlink requirements' },
-      { status: 500 },
-    )
-  }
-}
+    try {
+      const { service } = await createRequirementsRestRuntime(request, {
+        context,
+        db,
+      })
+      const payload = await service.removeFromSpecification(context, {
+        specificationId,
+        requirementIds: body.requirementIds,
+        responseFormat: 'json',
+      })
+      return NextResponse.json({ ok: true, removedCount: payload.removedCount })
+    } catch (error) {
+      if (isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return NextResponse.json(body, { status })
+      }
+
+      logSanitizedError(
+        'Failed to unlink requirements from specification',
+        error,
+      )
+      return NextResponse.json(
+        { error: 'Failed to unlink requirements' },
+        { status: 500 },
+      )
+    }
+  },
+})

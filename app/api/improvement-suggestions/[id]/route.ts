@@ -4,10 +4,13 @@ import { getSuggestion } from '@/lib/dal/improvement-suggestions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
+  requirementsMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   businessTextSchema,
   idParamSchema,
   parseRouteParams,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
@@ -44,61 +47,71 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
-  if (!parsedParams.ok) return parsedParams.response
-  const parsedBody = await readJsonWithSchema(request, suggestionUpdateSchema)
-  if (!parsedBody.ok) return parsedBody.response
-
-  try {
-    const { context, service } = await createRequirementsRestRuntime(request)
-    await service.manageSuggestion(context, {
-      operation: 'edit',
-      suggestionId: parsedParams.data.id,
-      content: parsedBody.data.content,
-      responseFormat: 'json',
-    })
-    return NextResponse.json({ ok: true })
-  } catch (error) {
-    if (isRequirementsServiceError(error)) {
-      const { body, status } = toHttpErrorPayload(error)
-      return NextResponse.json(body, { status })
+export const PUT = secureMutationRoute({
+  bodySchema: suggestionUpdateSchema,
+  paramsSchema: idParamSchema,
+  policy: requirementsMutationPolicy<
+    z.infer<typeof suggestionUpdateSchema>,
+    { id: number }
+  >(({ params }) => ({
+    kind: 'manage_suggestion',
+    operation: 'edit',
+    suggestionId: params.id,
+  })),
+  handler: async ({ body, context, params, request }) => {
+    try {
+      const { service } = await createRequirementsRestRuntime(request, {
+        context,
+      })
+      await service.manageSuggestion(context, {
+        operation: 'edit',
+        suggestionId: params.id,
+        content: body.content,
+        responseFormat: 'json',
+      })
+      return NextResponse.json({ ok: true })
+    } catch (error) {
+      if (isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return NextResponse.json(body, { status })
+      }
+      logSanitizedError('Failed to update improvement suggestion', error)
+      return NextResponse.json(
+        { error: 'Failed to update improvement suggestion' },
+        { status: 500 },
+      )
     }
-    logSanitizedError('Failed to update improvement suggestion', error)
-    return NextResponse.json(
-      { error: 'Failed to update improvement suggestion' },
-      { status: 500 },
-    )
-  }
-}
+  },
+})
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
-  if (!parsedParams.ok) return parsedParams.response
-
-  try {
-    const { context, service } = await createRequirementsRestRuntime(request)
-    await service.manageSuggestion(context, {
-      operation: 'delete',
-      suggestionId: parsedParams.data.id,
-      responseFormat: 'json',
-    })
-    return NextResponse.json({ ok: true })
-  } catch (error) {
-    if (isRequirementsServiceError(error)) {
-      const { body, status } = toHttpErrorPayload(error)
-      return NextResponse.json(body, { status })
+export const DELETE = secureMutationRoute({
+  paramsSchema: idParamSchema,
+  policy: requirementsMutationPolicy<unknown, { id: number }>(({ params }) => ({
+    kind: 'manage_suggestion',
+    operation: 'delete',
+    suggestionId: params.id,
+  })),
+  handler: async ({ context, params, request }) => {
+    try {
+      const { service } = await createRequirementsRestRuntime(request, {
+        context,
+      })
+      await service.manageSuggestion(context, {
+        operation: 'delete',
+        suggestionId: params.id,
+        responseFormat: 'json',
+      })
+      return NextResponse.json({ ok: true })
+    } catch (error) {
+      if (isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return NextResponse.json(body, { status })
+      }
+      logSanitizedError('Failed to delete improvement suggestion', error)
+      return NextResponse.json(
+        { error: 'Failed to delete improvement suggestion' },
+        { status: 500 },
+      )
     }
-    logSanitizedError('Failed to delete improvement suggestion', error)
-    return NextResponse.json(
-      { error: 'Failed to delete improvement suggestion' },
-      { status: 500 },
-    )
-  }
-}
+  },
+})

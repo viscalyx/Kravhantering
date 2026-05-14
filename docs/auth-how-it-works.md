@@ -213,8 +213,15 @@ sequenceDiagram
   check.
   `middleware.ts` enforces this centrally for mutating REST API requests after
   authentication has succeeded, excluding `/api/mcp`, which uses Bearer-token
-  auth. Route-level checks remain as defense-in-depth for existing
-  `createRequestContext` and logout paths.
+  auth. Route-level checks remain as defense-in-depth through
+  `lib/http/secure-mutation-route.ts`: app-owned `POST`, `PUT`, `PATCH`, and
+  `DELETE` REST routes build `RequestContext`, require an authenticated actor,
+  validate params and JSON bodies, run a declared `admin`, `requirements`, or
+  `custom` authorization policy, and only then call route-specific handler
+  work. `/api/auth/logout` uses `secureLogoutMutationRoute` because logout is
+  an auth endpoint with CSRF and audit but no business authorization policy.
+  `/api/mcp` remains the documented exception because it is guarded by Bearer
+  JWT verification and MCP tool schemas instead of the REST mutation wrapper.
 - Page responses get a per-request CSP nonce from `middleware.ts`.
 - Security audit events are emitted through
   [`lib/auth/audit.ts`](../lib/auth/audit.ts). The current event set is:

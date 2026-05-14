@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  createAdminPrivilegedAuditContext,
-  recordAdminPrivilegedActionSucceeded,
-} from '@/lib/admin/privileged-audit'
+import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   createSpecificationImplementationType,
   listSpecificationImplementationTypes,
 } from '@/lib/dal/specification-implementation-types'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  boundedDbStringSchema,
-  readJsonWithSchema,
-} from '@/lib/http/validation'
+  adminMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import { boundedDbStringSchema } from '@/lib/http/validation'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,17 +27,18 @@ export async function GET() {
   return NextResponse.json({ types })
 }
 
-export async function POST(request: Request) {
-  const parsedBody = await readJsonWithSchema(request, implementationTypeSchema)
-  if (!parsedBody.ok) return parsedBody.response
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-  const type = await createSpecificationImplementationType(db, parsedBody.data)
-  recordAdminPrivilegedActionSucceeded(auditContext, {
-    changedFields: Object.keys(parsedBody.data),
-    operation: 'create',
-    resourceId: type.id,
-    resourceType: 'specification_implementation_type',
-  })
-  return NextResponse.json(type, { status: 201 })
-}
+export const POST = secureMutationRoute({
+  bodySchema: implementationTypeSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ body, context }) => {
+    const db = await getRequestSqlServerDataSource()
+    const type = await createSpecificationImplementationType(db, body)
+    recordAdminPrivilegedActionSucceeded(context, {
+      changedFields: Object.keys(body),
+      operation: 'create',
+      resourceId: type.id,
+      resourceType: 'specification_implementation_type',
+    })
+    return NextResponse.json(type, { status: 201 })
+  },
+})

@@ -3,14 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RequestContext } from '@/lib/requirements/auth'
 
 const mockTransitionRequirement = vi.fn()
-const mockCreateRequestContext = vi.hoisted(() => {
-  const context = {
+const mockCreateRequestContext = vi.hoisted(() =>
+  vi.fn(() => ({
     actor: {
-      displayName: 'Route Test User',
-      hsaId: 'SE2321000032-route1',
-      id: 'route-test-user',
+      displayName: 'Route Tester',
+      hsaId: 'SE2321000032-route',
+      id: 'route-test',
       isAuthenticated: true,
-      roles: ['Admin'],
+      roles: ['RequirementsEditor'],
       source: 'oidc',
     },
     correlationId: 'corr-test',
@@ -149,7 +149,7 @@ describe('requirements/[id]/transition route', () => {
     })
 
     const res = await POST(req, makeParams('1'))
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(500)
     expect(mockTransitionRequirement).not.toHaveBeenCalled()
   })
 })

@@ -1,9 +1,6 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  createAdminPrivilegedAuditContext,
-  recordAdminPrivilegedActionSucceeded,
-} from '@/lib/admin/privileged-audit'
+import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   deleteQualityCharacteristic,
   listQualityCharacteristics,
@@ -17,16 +14,16 @@ import {
   logSanitizedError,
 } from '@/lib/http/safe-errors'
 import {
+  adminMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   boundedDbStringSchema,
   idParamSchema,
-  parseRouteParams,
   positiveIntegerSchema,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
 
 export const dynamic = 'force-dynamic'
-
-type Params = Promise<{ id: string }>
 
 const chapterIdSchema = z
   .string()
@@ -45,79 +42,67 @@ const qualityCharacteristicUpdateSchema = z
   })
   .strict()
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
-  if (!parsedParams.ok) return parsedParams.response
-  const parsedBody = await readJsonWithSchema(
-    request,
-    qualityCharacteristicUpdateSchema,
-  )
-  if (!parsedBody.ok) return parsedBody.response
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-  const category = await updateQualityCharacteristic(
-    db,
-    parsedParams.data.id,
-    parsedBody.data,
-  )
-  if (!category) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
-  recordAdminPrivilegedActionSucceeded(auditContext, {
-    changedFields: Object.keys(parsedBody.data),
-    operation: 'update',
-    resourceId: parsedParams.data.id,
-    resourceType: 'quality_characteristic',
-  })
-  return NextResponse.json(category)
-}
-
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
-  if (!parsedParams.ok) return parsedParams.response
-  const { id } = parsedParams.data
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-
-  const allCategories = await listQualityCharacteristics(db)
-  const hasChildren = allCategories.some(
-    (category: QualityCharacteristicRow) => category.parentId === id,
-  )
-  if (hasChildren) {
-    return NextResponse.json(
-      { error: 'Has sub-characteristics' },
-      { status: 409 },
-    )
-  }
-
-  try {
-    const deleted = await deleteQualityCharacteristic(db, id)
-    if (!deleted) {
+export const PUT = secureMutationRoute({
+  bodySchema: qualityCharacteristicUpdateSchema,
+  paramsSchema: idParamSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ body, context, params }) => {
+    const db = await getRequestSqlServerDataSource()
+    const category = await updateQualityCharacteristic(db, params.id, body)
+    if (!category) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    recordAdminPrivilegedActionSucceeded(auditContext, {
-      operation: 'delete',
-      resourceId: id,
+    recordAdminPrivilegedActionSucceeded(context, {
+      changedFields: Object.keys(body),
+      operation: 'update',
+      resourceId: params.id,
       resourceType: 'quality_characteristic',
     })
-  } catch (error) {
-    if (isForeignKeyOrConstraintError(error)) {
+    return NextResponse.json(category)
+  },
+})
+
+export const DELETE = secureMutationRoute({
+  paramsSchema: idParamSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ context, params }) => {
+    const { id } = params
+    const db = await getRequestSqlServerDataSource()
+
+    const allCategories = await listQualityCharacteristics(db)
+    const hasChildren = allCategories.some(
+      (category: QualityCharacteristicRow) => category.parentId === id,
+    )
+    if (hasChildren) {
       return NextResponse.json(
-        { error: 'In use by requirements' },
+        { error: 'Has sub-characteristics' },
         { status: 409 },
       )
     }
-    logSanitizedError('Failed to delete quality characteristic', error)
-    return NextResponse.json(
-      { error: INTERNAL_SERVER_ERROR_MESSAGE },
-      { status: 500 },
-    )
-  }
-  return NextResponse.json({ ok: true })
-}
+
+    try {
+      const deleted = await deleteQualityCharacteristic(db, id)
+      if (!deleted) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+      recordAdminPrivilegedActionSucceeded(context, {
+        operation: 'delete',
+        resourceId: id,
+        resourceType: 'quality_characteristic',
+      })
+    } catch (error) {
+      if (isForeignKeyOrConstraintError(error)) {
+        return NextResponse.json(
+          { error: 'In use by requirements' },
+          { status: 409 },
+        )
+      }
+      logSanitizedError('Failed to delete quality characteristic', error)
+      return NextResponse.json(
+        { error: INTERNAL_SERVER_ERROR_MESSAGE },
+        { status: 500 },
+      )
+    }
+    return NextResponse.json({ ok: true })
+  },
+})

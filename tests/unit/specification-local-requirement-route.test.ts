@@ -2,6 +2,19 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockDb = {}
+const mockContext = {
+  actor: {
+    displayName: 'Route Tester',
+    hsaId: 'SE2321000032-route',
+    id: 'route-test',
+    isAuthenticated: true,
+    roles: ['RequirementsEditor'],
+    source: 'oidc',
+  },
+  correlationId: 'correlation-1',
+  requestId: 'request-1',
+  source: 'rest',
+}
 
 const mocks = {
   deleteSpecificationLocalRequirement: vi.fn(),
@@ -12,6 +25,16 @@ const mocks = {
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: () => mockDb,
 }))
+
+vi.mock('@/lib/requirements/auth', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/lib/requirements/auth')>()
+  return {
+    ...actual,
+    createDefaultAuthorizationService: () => ({ assertAuthorized: vi.fn() }),
+    createRequestContext: vi.fn(async () => mockContext),
+  }
+})
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   deleteSpecificationLocalRequirement: (...args: unknown[]) =>

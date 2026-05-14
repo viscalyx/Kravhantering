@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  createAdminPrivilegedAuditContext,
-  recordAdminPrivilegedActionSucceeded,
-} from '@/lib/admin/privileged-audit'
+import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   createSpecificationLifecycleStatus,
   listSpecificationLifecycleStatuses,
 } from '@/lib/dal/specification-lifecycle-statuses'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  boundedDbStringSchema,
-  readJsonWithSchema,
-} from '@/lib/http/validation'
+  adminMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import { boundedDbStringSchema } from '@/lib/http/validation'
 
 const lifecycleStatusSchema = z
   .object({
@@ -27,17 +25,18 @@ export async function GET() {
   return NextResponse.json({ statuses })
 }
 
-export async function POST(request: Request) {
-  const parsedBody = await readJsonWithSchema(request, lifecycleStatusSchema)
-  if (!parsedBody.ok) return parsedBody.response
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-  const status = await createSpecificationLifecycleStatus(db, parsedBody.data)
-  recordAdminPrivilegedActionSucceeded(auditContext, {
-    changedFields: Object.keys(parsedBody.data),
-    operation: 'create',
-    resourceId: status.id,
-    resourceType: 'specification_lifecycle_status',
-  })
-  return NextResponse.json(status, { status: 201 })
-}
+export const POST = secureMutationRoute({
+  bodySchema: lifecycleStatusSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ body, context }) => {
+    const db = await getRequestSqlServerDataSource()
+    const status = await createSpecificationLifecycleStatus(db, body)
+    recordAdminPrivilegedActionSucceeded(context, {
+      changedFields: Object.keys(body),
+      operation: 'create',
+      resourceId: status.id,
+      resourceType: 'specification_lifecycle_status',
+    })
+    return NextResponse.json(status, { status: 201 })
+  },
+})

@@ -1,9 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  createAdminPrivilegedAuditContext,
-  recordAdminPrivilegedActionSucceeded,
-} from '@/lib/admin/privileged-audit'
+import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   deleteNormReference,
   getLinkedRequirements,
@@ -12,11 +9,14 @@ import {
 } from '@/lib/dal/norm-references'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
+  adminMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   boundedDbStringSchema,
   idParamSchema,
   optionalBusinessTextSchema,
   parseRouteParams,
-  readJsonWithSchema,
 } from '@/lib/http/validation'
 
 export const dynamic = 'force-dynamic'
@@ -57,60 +57,48 @@ export async function GET(
   return NextResponse.json({ normReference, linkedRequirements })
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
-  if (!parsedParams.ok) return parsedParams.response
-  const parsedBody = await readJsonWithSchema(
-    request,
-    normReferenceUpdateSchema,
-  )
-  if (!parsedBody.ok) return parsedBody.response
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-  const normReference = await updateNormReference(
-    db,
-    parsedParams.data.id,
-    parsedBody.data,
-  )
-  if (!normReference) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
-  recordAdminPrivilegedActionSucceeded(auditContext, {
-    changedFields: Object.keys(parsedBody.data),
-    operation: 'update',
-    resourceId: parsedParams.data.id,
-    resourceType: 'norm_reference',
-  })
-  return NextResponse.json(normReference)
-}
+export const PUT = secureMutationRoute({
+  bodySchema: normReferenceUpdateSchema,
+  paramsSchema: idParamSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ body, context, params }) => {
+    const db = await getRequestSqlServerDataSource()
+    const normReference = await updateNormReference(db, params.id, body)
+    if (!normReference) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    recordAdminPrivilegedActionSucceeded(context, {
+      changedFields: Object.keys(body),
+      operation: 'update',
+      resourceId: params.id,
+      resourceType: 'norm_reference',
+    })
+    return NextResponse.json(normReference)
+  },
+})
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
-  if (!parsedParams.ok) return parsedParams.response
-  const { id } = parsedParams.data
-  const auditContext = await createAdminPrivilegedAuditContext(request)
-  const db = await getRequestSqlServerDataSource()
-  const linked = await getLinkedRequirements(db, id)
-  if (linked.length > 0) {
-    return NextResponse.json(
-      { error: 'Cannot delete norm reference with linked requirements' },
-      { status: 409 },
-    )
-  }
-  const deletedCount = await deleteNormReference(db, id)
-  if (deletedCount === 0) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
-  recordAdminPrivilegedActionSucceeded(auditContext, {
-    operation: 'delete',
-    resourceId: id,
-    resourceType: 'norm_reference',
-  })
-  return NextResponse.json({ ok: true })
-}
+export const DELETE = secureMutationRoute({
+  paramsSchema: idParamSchema,
+  policy: adminMutationPolicy(),
+  handler: async ({ context, params }) => {
+    const { id } = params
+    const db = await getRequestSqlServerDataSource()
+    const linked = await getLinkedRequirements(db, id)
+    if (linked.length > 0) {
+      return NextResponse.json(
+        { error: 'Cannot delete norm reference with linked requirements' },
+        { status: 409 },
+      )
+    }
+    const deletedCount = await deleteNormReference(db, id)
+    if (deletedCount === 0) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    recordAdminPrivilegedActionSucceeded(context, {
+      operation: 'delete',
+      resourceId: id,
+      resourceType: 'norm_reference',
+    })
+    return NextResponse.json({ ok: true })
+  },
+})

@@ -1,16 +1,15 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
-  parseRouteParams,
-  refOrPositiveIntegerSegmentSchema,
-} from '@/lib/http/validation'
+  requirementsMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import { refOrPositiveIntegerSegmentSchema } from '@/lib/http/validation'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { toHttpErrorPayload } from '@/lib/requirements/service'
 import { parseRequirementRef } from '../../parse-requirement-ref'
 
 export const dynamic = 'force-dynamic'
-
-type Params = Promise<{ id: string }>
 
 const requirementRefParamsSchema = z
   .object({
@@ -18,27 +17,31 @@ const requirementRefParamsSchema = z
   })
   .strict()
 
-export async function POST(
-  _request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(
-    params,
-    requirementRefParamsSchema,
-  )
-  if (!parsedParams.ok) return parsedParams.response
-  const { id } = parsedParams.data
-
-  try {
-    const { context, service } = await createRequirementsRestRuntime(_request)
-    const ref = parseRequirementRef(id)
-    await service.manageRequirement(context, {
-      ...ref,
-      operation: 'reactivate',
-    })
-    return NextResponse.json({ ok: true })
-  } catch (error) {
-    const { body, status } = toHttpErrorPayload(error)
-    return NextResponse.json(body, { status })
-  }
-}
+export const POST = secureMutationRoute({
+  paramsSchema: requirementRefParamsSchema,
+  policy: requirementsMutationPolicy<
+    unknown,
+    z.infer<typeof requirementRefParamsSchema>
+  >(({ params }) => ({
+    ...parseRequirementRef(params.id),
+    kind: 'manage_requirement',
+    operation: 'reactivate',
+  })),
+  handler: async ({ context, params, request }) => {
+    try {
+      const { service } = await createRequirementsRestRuntime(request, {
+        context,
+      })
+      const { id } = params
+      const ref = parseRequirementRef(id)
+      await service.manageRequirement(context, {
+        ...ref,
+        operation: 'reactivate',
+      })
+      return NextResponse.json({ ok: true })
+    } catch (error) {
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
+    }
+  },
+})

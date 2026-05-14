@@ -31,6 +31,7 @@ export interface RequirementsRestRuntime extends RequirementsRuntime {
 }
 
 export interface CreateRequirementsRestRuntimeOptions {
+  context?: RequestContext
   db?: SqlServerDatabase
 }
 
@@ -60,7 +61,8 @@ export async function createRequirementsRestRuntime(
   options: CreateRequirementsRestRuntimeOptions = {},
 ): Promise<RequirementsRestRuntime> {
   const db = options.db ?? (await getRequestSqlServerDataSource())
-  const context = await createRequestContext(request, 'rest')
+  const context =
+    options.context ?? (await createRequestContext(request, 'rest'))
   const runtime = createRequirementsRuntime(db)
 
   return {

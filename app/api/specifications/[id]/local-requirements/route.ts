@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
   createSpecificationLocalRequirement,
@@ -9,20 +9,20 @@ import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
+  customMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import {
   ARRAY_INPUT_MAX_ITEMS,
   businessTextSchema,
   nullableBusinessTextSchema,
-  parseRouteParams,
   positiveIntegerSchema,
-  readJsonWithSchema,
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
-
-type Params = Promise<{ id: string }>
 
 const specificationParamSchema = z
   .object({
@@ -69,61 +69,57 @@ async function resolveSpecificationId(
   return (await getSpecificationBySlug(db, idOrSlug))?.id ?? null
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Params },
-) {
-  const parsedParams = await parseRouteParams(params, specificationParamSchema)
-  if (!parsedParams.ok) {
-    return parsedParams.response
-  }
-  const parsedBody = await readJsonWithSchema(
-    request,
-    specificationLocalRequirementSchema,
-  )
-  if (!parsedBody.ok) {
-    return parsedBody.response
-  }
-  const { id } = parsedParams.data
-  const body = parsedBody.data
-  const db = await getRequestSqlServerDataSource()
+export const POST = secureMutationRoute({
+  bodySchema: specificationLocalRequirementSchema,
+  paramsSchema: specificationParamSchema,
+  policy: customMutationPolicy(
+    'specification_local_requirement.create',
+    () => {},
+  ),
+  handler: async ({ body, params }) => {
+    const { id } = params
+    const db = await getRequestSqlServerDataSource()
 
-  const specificationId = await resolveSpecificationId(db, id)
-  if (specificationId === null) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
-
-  try {
-    const localRequirement = await createSpecificationLocalRequirement(
-      db,
-      specificationId,
-      {
-        acceptanceCriteria: body.acceptanceCriteria ?? null,
-        description: body.description,
-        needsReferenceId: body.needsReferenceId ?? null,
-        normReferenceIds: body.normReferenceIds,
-        qualityCharacteristicId: body.qualityCharacteristicId ?? null,
-        requirementAreaId: body.requirementAreaId ?? null,
-        requirementCategoryId: body.requirementCategoryId ?? null,
-        requirementPackageIds: body.requirementPackageIds,
-        requirementTypeId: body.requirementTypeId ?? null,
-        requiresTesting: body.requiresTesting,
-        riskLevelId: body.riskLevelId ?? null,
-        verificationMethod: body.verificationMethod ?? null,
-      },
-    )
-
-    return NextResponse.json({ localRequirement, ok: true }, { status: 201 })
-  } catch (error) {
-    if (isRequirementsServiceError(error)) {
-      const { body, status } = toHttpErrorPayload(error)
-      return NextResponse.json(body, { status })
+    const specificationId = await resolveSpecificationId(db, id)
+    if (specificationId === null) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    logSanitizedError('Failed to create specification-local requirement', error)
-    return NextResponse.json(
-      { error: 'Failed to create specification-local requirement' },
-      { status: 500 },
-    )
-  }
-}
+    try {
+      const localRequirement = await createSpecificationLocalRequirement(
+        db,
+        specificationId,
+        {
+          acceptanceCriteria: body.acceptanceCriteria ?? null,
+          description: body.description,
+          needsReferenceId: body.needsReferenceId ?? null,
+          normReferenceIds: body.normReferenceIds,
+          qualityCharacteristicId: body.qualityCharacteristicId ?? null,
+          requirementAreaId: body.requirementAreaId ?? null,
+          requirementCategoryId: body.requirementCategoryId ?? null,
+          requirementPackageIds: body.requirementPackageIds,
+          requirementTypeId: body.requirementTypeId ?? null,
+          requiresTesting: body.requiresTesting,
+          riskLevelId: body.riskLevelId ?? null,
+          verificationMethod: body.verificationMethod ?? null,
+        },
+      )
+
+      return NextResponse.json({ localRequirement, ok: true }, { status: 201 })
+    } catch (error) {
+      if (isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return NextResponse.json(body, { status })
+      }
+
+      logSanitizedError(
+        'Failed to create specification-local requirement',
+        error,
+      )
+      return NextResponse.json(
+        { error: 'Failed to create specification-local requirement' },
+        { status: 500 },
+      )
+    }
+  },
+})
