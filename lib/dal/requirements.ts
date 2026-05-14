@@ -252,6 +252,7 @@ interface VersionInsertedRow {
   createdByHsaId: string | null
   description: string
   editedAt: string | null
+  hasSpecificationItemHistory: boolean
   id: number
   publishedAt: string | null
   qualityCharacteristicId: number | null
@@ -262,6 +263,7 @@ interface VersionInsertedRow {
   revisionToken: string
   riskLevelId: number | null
   statusId: number
+  statusUpdatedAt: string | null
   verificationMethod: string | null
   versionNumber: number
 }
@@ -302,6 +304,8 @@ function mapVersion(row: Record<string, unknown>): VersionInsertedRow {
     createdBy: row.createdBy == null ? null : String(row.createdBy),
     createdByHsaId:
       row.createdByHsaId == null ? null : String(row.createdByHsaId),
+    statusUpdatedAt: toIso(row.statusUpdatedAt),
+    hasSpecificationItemHistory: toBool(row.hasSpecificationItemHistory),
   }
 }
 
@@ -336,7 +340,9 @@ const VERSION_OUTPUT = `
     INSERTED.archived_at AS archivedAt,
     INSERTED.archive_initiated_at AS archiveInitiatedAt,
     INSERTED.created_by AS createdBy,
-    INSERTED.created_by_hsa_id AS createdByHsaId
+    INSERTED.created_by_hsa_id AS createdByHsaId,
+    INSERTED.status_updated_at AS statusUpdatedAt,
+    CAST(INSERTED.has_specification_item_history AS int) AS hasSpecificationItemHistory
 `
 
 export async function createRequirement(
@@ -378,10 +384,11 @@ export async function createRequirement(
         requirement_category_id, requirement_type_id, quality_characteristic_id,
         risk_level_id, requirement_status_id, is_testing_required,
         verification_method, created_at, edited_at, published_at,
-        archived_at, archive_initiated_at, created_by, created_by_hsa_id
+        archived_at, archive_initiated_at, created_by, created_by_hsa_id,
+        status_updated_at, has_specification_item_history
       )
         ${VERSION_OUTPUT}
-        VALUES (@0, 1, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, NULL, NULL, NULL, @12, @13)`,
+        VALUES (@0, 1, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, NULL, NULL, NULL, @12, @13, @14, 0)`,
       [
         requirement.id,
         data.description,
@@ -397,6 +404,7 @@ export async function createRequirement(
         now,
         data.createdBy ?? null,
         data.createdByHsaId ?? null,
+        now,
       ],
     )) as Array<Record<string, unknown>>
     version = mapVersion(verRows[0] ?? {})
@@ -642,12 +650,13 @@ export async function editRequirement(
       `INSERT INTO requirement_versions (
           requirement_id, version_number, description, acceptance_criteria,
           requirement_category_id, requirement_type_id, quality_characteristic_id,
-          risk_level_id, requirement_status_id, is_testing_required,
-          verification_method, created_at, edited_at, published_at,
-          archived_at, archive_initiated_at, created_by, created_by_hsa_id
-        )
+        risk_level_id, requirement_status_id, is_testing_required,
+        verification_method, created_at, edited_at, published_at,
+        archived_at, archive_initiated_at, created_by, created_by_hsa_id,
+        status_updated_at, has_specification_item_history
+      )
         ${VERSION_OUTPUT}
-        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, NULL, NULL, NULL, @13, @14)`,
+        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, NULL, NULL, NULL, @13, @14, @15, 0)`,
       [
         requirementId,
         nextVersionNumber,
@@ -664,6 +673,7 @@ export async function editRequirement(
         now,
         data.createdBy ?? null,
         data.createdByHsaId ?? null,
+        now,
       ],
     )) as Array<Record<string, unknown>>
     result = mapVersion(insertRows[0] ?? {})
@@ -717,6 +727,7 @@ export async function initiateArchiving(
       `UPDATE requirement_versions
         SET requirement_status_id = ${STATUS_REVIEW},
             archive_initiated_at = @0,
+            status_updated_at = @0,
             revision_token = NEWID()
         OUTPUT INSERTED.id AS id
         WHERE id = @1
@@ -769,6 +780,7 @@ export async function approveArchiving(
         SET requirement_status_id = ${STATUS_ARCHIVED},
             archived_at = @0,
             archive_initiated_at = NULL,
+            status_updated_at = @0,
             revision_token = NEWID()
         OUTPUT INSERTED.id AS id
         WHERE id = @1
@@ -821,12 +833,13 @@ export async function cancelArchiving(
       `UPDATE requirement_versions
         SET requirement_status_id = ${STATUS_PUBLISHED},
             archive_initiated_at = NULL,
+            status_updated_at = @1,
             revision_token = NEWID()
         OUTPUT INSERTED.id AS id
         WHERE id = @0
           AND requirement_status_id = ${STATUS_REVIEW}
           AND archive_initiated_at IS NOT NULL`,
-      [Number(rows[0].id)],
+      [Number(rows[0].id), new Date()],
     )) as Array<Record<string, unknown>>
     if (!updatedRows[0]) {
       throw conflictError('No version with archiving initiated found')
@@ -933,7 +946,11 @@ export async function transitionStatus(
 
     const now = new Date()
     const sets: string[] = ['requirement_status_id = @P_status']
-    const params: Record<string, unknown> = { P_status: newStatusId }
+    const params: Record<string, unknown> = {
+      P_status: newStatusId,
+      P_statusUpdated: now,
+    }
+    sets.push('status_updated_at = @P_statusUpdated')
 
     if (isArchivingInitiationTransition(current.statusId, newStatusId)) {
       sets.push('archive_initiated_at = @P_archInit')
@@ -953,6 +970,7 @@ export async function transitionStatus(
         `UPDATE requirement_versions
           SET requirement_status_id = ${STATUS_ARCHIVED},
               archived_at = @0,
+              status_updated_at = @0,
               revision_token = NEWID()
           WHERE requirement_id = @1 AND requirement_status_id = ${STATUS_PUBLISHED}`,
         [now, requirementId],
@@ -1091,10 +1109,11 @@ async function restoreVersionSqlServer(
         requirement_category_id, requirement_type_id, quality_characteristic_id,
         risk_level_id, requirement_status_id, is_testing_required,
         verification_method, created_at, edited_at, published_at,
-        archived_at, archive_initiated_at, created_by, created_by_hsa_id
+        archived_at, archive_initiated_at, created_by, created_by_hsa_id,
+        status_updated_at, has_specification_item_history
       )
       ${VERSION_OUTPUT}
-      VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, NULL, NULL, NULL, @13, @14)`,
+      VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, NULL, NULL, NULL, @13, @14, @15, 0)`,
     [
       requirementId,
       nextVersionNumber,
@@ -1111,6 +1130,7 @@ async function restoreVersionSqlServer(
       now,
       actor.createdBy,
       actor.createdByHsaId,
+      now,
     ],
   )) as Array<Record<string, unknown>>
   const result = mapVersion(insertRows[0] ?? {})

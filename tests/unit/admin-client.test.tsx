@@ -38,6 +38,7 @@ const routerReplace = routerMock.replace
 const TEST_ACCESS_REVIEW_ITEM_ID = 7
 const TEST_ACCESS_REVIEW_RUN_ID = 42
 const TEST_NEXT_ACCESS_REVIEW_RUN_ID = 43
+let retentionPoliciesResponse: Response | Promise<Response> | null = null
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'sv',
@@ -88,6 +89,17 @@ function errorJson(body: unknown, status: number) {
   } as Response
 }
 
+function adminTestFetch(input: RequestInfo | URL, init?: RequestInit) {
+  const url = String(input)
+  const method = init?.method ?? 'GET'
+  if (url === '/api/admin/archiving/policies' && method === 'GET') {
+    return Promise.resolve(
+      retentionPoliciesResponse ?? okJson({ policies: [] }),
+    )
+  }
+  return init === undefined ? fetchMock(input) : fetchMock(input, init)
+}
+
 function dataSubjectExportBody() {
   return {
     generatedAt: '2026-05-12T12:00:00.000Z',
@@ -109,6 +121,62 @@ function dataSubjectExportBody() {
       itemCount: 2,
       limitationCount: 0,
       sourceCount: 1,
+    },
+  }
+}
+
+function archivingRetentionPolicy() {
+  return {
+    action: 'delete',
+    ageDays: 730,
+    decisionReference: 'Förvaltningsbeslut 2026-01',
+    id: 5,
+    informationSet: 'Kravunderlag utanför förvaltning',
+    isEnabled: true,
+    lastRunAt: null,
+    latestRun: null,
+    policyKey: 'obsolete_specifications_delete',
+    statusCondition: 'Inte Förvaltning och äldre än två år',
+  }
+}
+
+function archivingRetentionCandidate() {
+  return {
+    action: 'delete',
+    ageBasis: '2025-01-01T00:00:00.000Z',
+    blockedReasonKey: null,
+    currentDisplayValue: 'Gammalt kravunderlag',
+    fieldKey: 'lifecycleStatus',
+    key: 'requirements_specifications.obsolete:101',
+    objectKey: 'specifications',
+    reference: 'SPEC0001 Gammalt kravunderlag',
+    requiresExport: true,
+    sourceKey: 'requirements_specifications.obsolete',
+    subjectId: '101',
+    subjectTable: 'requirements_specifications',
+  }
+}
+
+function archivingRetentionPreview(
+  candidates = [archivingRetentionCandidate()],
+) {
+  const archiveCount = candidates.filter(
+    candidate => candidate.requiresExport,
+  ).length
+  const deleteCount = candidates.filter(
+    candidate => candidate.action === 'delete',
+  ).length
+  return {
+    candidates,
+    cutoff: '2025-05-14T00:00:00.000Z',
+    policy: archivingRetentionPolicy(),
+    previewToken: 'retention-preview-token',
+    summary: {
+      archiveCount,
+      candidateCount: candidates.length,
+      deleteCount,
+      exceptionCount: 0,
+      skippedCount: 0,
     },
   }
 }
@@ -317,13 +385,14 @@ function getColumnOrder(container: HTMLElement) {
 describe('AdminClient', () => {
   beforeEach(() => {
     fetchMock.mockReset()
+    retentionPoliciesResponse = null
     createObjectURLMock.mockClear()
     revokeObjectURLMock.mockClear()
     anchorClickMock.mockClear()
     routerRefresh.mockReset()
     routerReplace.mockReset()
     searchParamsMock.current = new URLSearchParams()
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', adminTestFetch)
     Object.defineProperty(URL, 'createObjectURL', {
       configurable: true,
       value: createObjectURLMock,
@@ -1454,6 +1523,159 @@ describe('AdminClient', () => {
     )
 
     expect(screen.getByText('admin.privacy.fieldHelp.targetHsaId')).toBeTruthy()
+  })
+
+  it('previews retention candidates and can create an exception', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=archiving')
+    retentionPoliciesResponse = okJson({
+      policies: [archivingRetentionPolicy()],
+    })
+    fetchMock
+      .mockResolvedValueOnce(okJson(archivingRetentionPreview()))
+      .mockResolvedValueOnce(okJson({ exception: { id: 5 } }))
+      .mockResolvedValueOnce(okJson(archivingRetentionPreview([])))
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    await screen.findByText('Kravunderlag utanför förvaltning')
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'admin.archiving.retention.preview',
+      }),
+    )
+
+    await screen.findByText('SPEC0001 Gammalt kravunderlag')
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/admin/archiving/preview',
+      expect.objectContaining({
+        body: JSON.stringify({ policyId: 5 }),
+        method: 'POST',
+      }),
+    )
+    expect(
+      screen.getByText('admin.privacy.objects.specifications'),
+    ).toBeTruthy()
+    expect(screen.getByText('Gammalt kravunderlag')).toBeTruthy()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'admin.archiving.retention.createException',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/admin/archiving/exceptions',
+        expect.objectContaining({
+          body: JSON.stringify({
+            policyId: 5,
+            reason: 'admin.archiving.retention.defaultExceptionReason',
+            sourceKey: 'requirements_specifications.obsolete',
+            subjectId: '101',
+            subjectTable: 'requirements_specifications',
+          }),
+          method: 'POST',
+        }),
+      ),
+    )
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'admin.archiving.retention.exceptionCreated',
+    )
+    expect(screen.queryByText('SPEC0001 Gammalt kravunderlag')).toBeNull()
+  })
+
+  it('executes a retention run after confirmation', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=archiving')
+    retentionPoliciesResponse = okJson({
+      policies: [archivingRetentionPolicy()],
+    })
+    fetchMock
+      .mockResolvedValueOnce(okJson(archivingRetentionPreview()))
+      .mockResolvedValueOnce(
+        okJson({
+          archive: {
+            schemaVersion: 'archiving-retention-export.v2',
+          },
+          exportToken: 'archive-export-token',
+        }),
+      )
+      .mockResolvedValueOnce(
+        okJson({
+          ...archivingRetentionPreview([]),
+          runId: 77,
+        }),
+      )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    await screen.findByText('Kravunderlag utanför förvaltning')
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'admin.archiving.retention.preview',
+      }),
+    )
+    await screen.findByText('SPEC0001 Gammalt kravunderlag')
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'admin.archiving.retention.exportJson',
+      }),
+    )
+    await waitFor(() => expect(anchorClickMock).toHaveBeenCalledTimes(1))
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'admin.archiving.retention.exportSuccess',
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'admin.archiving.retention.execute',
+      }),
+    )
+    const dialog = await screen.findByRole('alertdialog')
+    expect(dialog).toHaveTextContent('admin.archiving.retention.confirmTitle')
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: 'admin.archiving.retention.execute',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        '/api/admin/archiving/runs',
+        expect.objectContaining({
+          body: JSON.stringify({
+            exportToken: 'archive-export-token',
+            policyId: 5,
+            previewToken: 'retention-preview-token',
+          }),
+          method: 'POST',
+        }),
+      ),
+    )
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'admin.archiving.retention.executeSuccess',
+    )
+    expect(screen.queryByText('SPEC0001 Gammalt kravunderlag')).toBeNull()
   })
 
   it('previews duplicate-name privacy erasure by HSA-ID instead of name', async () => {

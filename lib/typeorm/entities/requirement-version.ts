@@ -15,6 +15,7 @@ export interface RequirementVersionEntity {
   createdByHsaId: string | null
   description: string
   editedAt: Date | null
+  hasSpecificationItemHistory: boolean
   id: number
   isTestingRequired: boolean
   publishedAt: Date | null
@@ -25,6 +26,7 @@ export interface RequirementVersionEntity {
   requirementType: RequirementTypeEntity | null
   revisionToken: string
   riskLevel: RiskLevelEntity | null
+  statusUpdatedAt: Date | null
   verificationMethod: string | null
   versionNumber: number
 }
@@ -85,6 +87,16 @@ export const requirementVersionEntity =
         type: 'datetime2',
         nullable: true,
       },
+      statusUpdatedAt: {
+        name: 'status_updated_at',
+        type: 'datetime2',
+        nullable: true,
+      },
+      hasSpecificationItemHistory: {
+        default: false,
+        name: 'has_specification_item_history',
+        type: 'bit',
+      },
     },
     uniques: [
       {
@@ -104,6 +116,14 @@ export const requirementVersionEntity =
       {
         name: 'idx_requirement_versions_created_by_hsa_id',
         columns: ['createdByHsaId'],
+      },
+      {
+        name: 'idx_requirement_versions_status_updated_at',
+        columns: ['statusUpdatedAt'],
+      },
+      {
+        name: 'idx_requirement_versions_has_specification_item_history',
+        columns: ['hasSpecificationItemHistory'],
       },
     ],
     relations: {

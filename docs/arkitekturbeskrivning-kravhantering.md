@@ -1,7 +1,7 @@
 # Arkitekturbeskrivning — Kravhantering
 
 <!-- markdownlint-disable MD013 -->
-<!-- cSpell:words Archi applikationskomponenter applikationskod applikationssamband applikationsstruktur applikationstjänster Affärslogiklager Avsteghantering avsteghistorik avstegsstatus batchoperationer behörighetskontroll beslutsfattare Beslutsfattande datan Dataåtkomstlager detaljvy detaljvyn detaljvyer Enkelkolumnssortering Feedbackhantering feedbackhistorik feedbackstatus Flerkravsrapport Förbättringsförslag förbättringsförslag Förbättringsförslagen granskningsrapport helsidevy historiksektion Huvudvyn infrastrukturanvändning informationsklassning infrastrukturarkitekt Kalkylbladsliknande kantterminering kodtäckning Kolumnbreddsjustering kombinerad kravförfattare Kravdata Kravfrågor kravinnehåll Kravlistrapport Kravlivscykel Kravlivscykeln kravmetadata kravnamn kravunderlagshantering kravpost kravposter kravpostens kravrelaterade livscykeldatum livscykelhantering Läsåtkomst Navigeringsnav ordnivådifferenser Underlagsvyn Parameteriserade parameteriserade Pluggbart rapportgenerering referensdatahantering referensdatasidor säkerhetsrubrik statusövergång statusövergångar säkerhetsperspektiv terminologihantering tillståndsmaskin trestegsmodell tvåstegs -->
+<!-- cSpell:words Archi applikationskomponenter applikationskod applikationssamband applikationsstruktur applikationstjänster Affärslogiklager Avsteghantering avsteghistorik avstegsstatus batchoperationer behörighetskontroll beslutsfattare Beslutsfattande datan Dataåtkomstlager detaljvy detaljvyn detaljvyer Enkelkolumnssortering Feedbackhantering feedbackhistorik feedbackstatus Flerkravsrapport Förbättringsförslag förbättringsförslag Förbättringsförslagen granskningsrapport helsidevy historiksektion Huvudvyn infrastrukturanvändning informationsklassning infrastrukturarkitekt Kalkylbladsliknande kantterminering kodtäckning Kolumnbreddsjustering kombinerad kravförfattare Kravdata Kravfrågor kravinnehåll Kravlistrapport Kravlivscykel Kravlivscykeln kravmetadata kravnamn kravunderlagshantering kravunderlagshistorik kravpost kravposter kravpostens kravrelaterade livscykeldatum livscykelhantering Läsåtkomst Navigeringsnav ordnivådifferenser Underlagsvyn Parameteriserade parameteriserade Pluggbart rapportgenerering referensdatahantering referensdatasidor säkerhetsrubrik statusövergång statusövergångar säkerhetsperspektiv terminologihantering tillståndsmaskin trestegsmodell tvåstegs -->
 <!-- markdownlint-enable MD013 -->
 
 ## Innehållsförteckning
@@ -829,10 +829,19 @@ erDiagram
     specification_local_requirement_norm_references }o--|| norm_references : "refererar normreferens"
     specification_local_requirements ||--o{ specification_local_requirement_deviations : "har avsteg"
     access_review_runs ||--o{ access_review_items : "sparar behörighetssnapshot"
+    archiving_retention_policies ||--o{ archiving_retention_runs : "loggar körningar"
+    archiving_retention_policies ||--o{ archiving_retention_exceptions : "har undantag"
     requirements ||--o{ improvement_suggestions : "har förbättringsförslag"
 ```
 
 <!-- markdownlint-enable MD013 -->
+
+`requirement_versions.status_updated_at` används för gallringsregler som bygger
+på hur länge en version har haft status Utkast, Granskning eller Arkiverad.
+`has_specification_item_history` sätts när en kravversion kopplas till ett
+kravunderlag och gör att arkiveringsgallring inte raderar versioner som har
+kravunderlagshistorik. Tabellerna `archiving_retention_*` driver Admin
+Centers arkiveringsflöde med policyer, körningskvitton och undantag/legal hold.
 
 > **Tillämpningsbarhet via kravpaket.**
 > Tabellen `requirement_packages` hanterar även

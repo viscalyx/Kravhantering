@@ -782,6 +782,7 @@
         "owners": "Ägare",
         "requirementAreas": "Kravområden",
         "requirementPackages": "Kravpaket",
+        "normReferences": "Normreferenser",
         "requirementVersions": "Versioner",
         "deviations": "Avvikelser",
         "specificationLocalDeviations": "Lokala avvikelser i kravunderlag",
@@ -802,7 +803,10 @@
         "responsible": "Ansvarig",
         "coAuthor": "Medförfattare",
         "reviewer": "Granskare",
-        "accessReviewPrincipal": "Behörig i översyn"
+        "accessReviewPrincipal": "Behörig i översyn",
+        "taxonomy": "Taxonomi",
+        "requirementVersion": "Kravversion",
+        "specificationArchive": "Kravunderlag"
       },
       "warnings": {
         "ownerSwitch": "Byt referenser till en ersättande ägare, eller anonymisera till den raderade användaren när ingen ersättare anges.",
@@ -822,6 +826,48 @@
       "readOnly": {
         "controlledByOwner": "Visas som information. Kravområden och kravpaket byts automatiskt när ägarraden byts."
       }
+    },
+    "archiving": {
+      "body": "Använd arkivering för att förhandsgranska och köra beslutade gallringspolicyer samt exportera arkivunderlag innan radering. Dataskyddsflödet ligger kvar separat för individärenden.",
+      "description": "Förhandsgranska gallringskandidater, hantera undantag och exportera arkivmaterial innan data tas bort ur applikationen.",
+      "heading": "Arkivering och gallring",
+      "retention": {
+        "action": "Gallringsåtgärd",
+        "actions": {
+          "delete": "Ta bort"
+        },
+        "ageBasis": "Åldersgrund",
+        "ageDays": "Ålder i dagar",
+        "confirmMessage": "Detta behandlar {archiveCount} arkivrad(er) och tar bort {deleteCount} rad(er).",
+        "confirmTitle": "Kör gallring?",
+        "createException": "Undanta",
+        "cutoff": "Brytdatum: {date}",
+        "defaultExceptionReason": "Undantagen från arkiveringsförhandsgranskning av dataskyddshandläggare.",
+        "description": "Gallring och arkivering hanteras här. Avidentifiering ska ske i exporten, medan applikationens databas bara verkställer beslutade gallringsåtgärder.",
+        "disabled": "Inaktiv",
+        "enabled": "Aktiv",
+        "exception": "Undantag",
+        "exceptionCreated": "Gallringsundantag skapat.",
+        "exceptionError": "Kunde inte skapa gallringsundantag.",
+        "execute": "Kör gallring",
+        "executeError": "Kunde inte köra gallringen.",
+        "executeSuccess": "Gallringskörningen slutfördes.",
+        "exportJson": "Exportera JSON",
+        "exportError": "Kunde inte skapa arkivexport.",
+        "exportRequired": "Exportera arkivunderlaget innan gallringskörningen genomförs.",
+        "exportSuccess": "Arkivexport skapad.",
+        "lastRun": "Senast körd",
+        "loadError": "Kunde inte läsa in gallringspolicyer.",
+        "policy": "Gallringspolicy",
+        "preview": "Förhandsgranska gallring",
+        "previewError": "Kunde inte förhandsgranska gallring.",
+        "previewResult": "{count} gallringskandidat(er)",
+        "reload": "Läs in policyer igen",
+        "stalePreview": "Gallringsförhandsgranskningen är inaktuell. Kör en ny förhandsgranskning.",
+        "state": "Status",
+        "title": "Gallring"
+      },
+      "title": "Arkivering"
     },
     "accessReview": {
       "title": "Behörighetsöversyn",

@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import { seedDatabase, seedPositionDetail } from '../../typeorm/seed.mjs'
+import {
+  RETENTION_HISTORY_ONLY_VERSION_IDS,
+  RETENTION_POSITIVE_SOURCE_KEYS,
+  RETENTION_SEED,
+} from '../../typeorm/seed-archiving-retention-build.mjs'
 
-// cspell:ignore linneab repoåtkomstgranskning
+// cspell:ignore linneab repoåtkomstgranskning retentionlinked retentionorphan
 
 const LINNEA_HSA_ID = 'SE2321000032-linneab'
 const LINNEA_DISPLAY_NAME = 'Linnéa Bergström'
@@ -37,6 +42,10 @@ function seedRowsFor(rows: SeedInsertRow[], table: string) {
   return rows
     .filter(seedRow => seedRow.table === table)
     .map(seedRow => seedRow.row)
+}
+
+function rowById(rows: Record<string, unknown>[]) {
+  return new Map(rows.map(row => [row.id, row]))
 }
 
 describe('seedDatabase', () => {
@@ -341,5 +350,233 @@ describe('seedDatabase', () => {
           row.reviewer_display_name === LINNEA_DISPLAY_NAME,
       ),
     ).toBe(true)
+  })
+
+  it('seeds deterministic archiving retention fixtures for every active policy source', async () => {
+    const { executor, rows } = collectSeedInsertRows()
+
+    await seedDatabase(executor)
+
+    expect(RETENTION_POSITIVE_SOURCE_KEYS).toEqual([
+      'owners.identity',
+      'requirement_areas.unused',
+      'requirement_packages.unused',
+      'norm_references.unused',
+      'requirement_versions.archived_unused',
+      'requirement_versions.review_stale',
+      'requirement_versions.draft_stale',
+      'requirements_specifications.obsolete',
+    ])
+
+    const owners = rowById(seedRowsFor(rows, 'owners'))
+    const areas = rowById(seedRowsFor(rows, 'requirement_areas'))
+    const packages = rowById(seedRowsFor(rows, 'requirement_packages'))
+    const norms = rowById(seedRowsFor(rows, 'norm_references'))
+    const requirements = rowById(seedRowsFor(rows, 'requirements'))
+    const versions = rowById(seedRowsFor(rows, 'requirement_versions'))
+    const specifications = rowById(
+      seedRowsFor(rows, 'requirements_specifications'),
+    )
+    const localRequirements = rowById(
+      seedRowsFor(rows, 'specification_local_requirements'),
+    )
+    const specificationItems = seedRowsFor(
+      rows,
+      'requirements_specification_items',
+    )
+    const versionPackages = seedRowsFor(
+      rows,
+      'requirement_version_requirement_packages',
+    )
+    const versionNorms = seedRowsFor(
+      rows,
+      'requirement_version_norm_references',
+    )
+    const localPackages = seedRowsFor(
+      rows,
+      'specification_local_requirement_requirement_packages',
+    )
+    const localNorms = seedRowsFor(
+      rows,
+      'specification_local_requirement_norm_references',
+    )
+
+    expect(owners.get(RETENTION_SEED.owner.orphan)).toMatchObject({
+      hsa_id: 'SE2321000032-retentionorphan',
+      updated_at: '2023-01-15 09:00:00',
+    })
+    expect(
+      seedRowsFor(rows, 'requirement_areas').some(
+        row => row.owner_id === RETENTION_SEED.owner.orphan,
+      ),
+    ).toBe(false)
+    expect(
+      seedRowsFor(rows, 'requirement_packages').some(
+        row => row.owner_id === RETENTION_SEED.owner.orphan,
+      ),
+    ).toBe(false)
+
+    expect(areas.get(RETENTION_SEED.requirementArea.unused)).toMatchObject({
+      name: 'RETENTION-SEED oanvänt kravområde',
+      updated_at: '2023-01-15 09:00:00',
+    })
+    expect(
+      packages.get(RETENTION_SEED.requirementPackage.unused),
+    ).toMatchObject({
+      name_sv: 'RETENTION-SEED oanvänt kravpaket',
+      updated_at: '2023-01-15 09:00:00',
+    })
+    expect(norms.get(RETENTION_SEED.normReference.unused)).toMatchObject({
+      name: 'RETENTION-SEED oanvänd normreferens',
+      updated_at: '2023-01-15 09:00:00',
+    })
+
+    expect(
+      versions.get(RETENTION_SEED.requirementVersion.archivedUnused),
+    ).toMatchObject({
+      has_specification_item_history: 0,
+      requirement_status_id: 4,
+      status_updated_at: '2024-01-15 09:00:00',
+    })
+    expect(
+      versions.get(RETENTION_SEED.requirementVersion.reviewStale),
+    ).toMatchObject({
+      archive_initiated_at: null,
+      has_specification_item_history: 0,
+      requirement_status_id: 2,
+      status_updated_at: '2024-01-15 09:00:00',
+    })
+    expect(
+      versions.get(RETENTION_SEED.requirementVersion.draftStale),
+    ).toMatchObject({
+      edited_at: '2024-01-15 09:00:00',
+      has_specification_item_history: 0,
+      requirement_status_id: 1,
+      status_updated_at: '2024-01-15 09:00:00',
+    })
+
+    expect(
+      specifications.get(RETENTION_SEED.specification.obsolete),
+    ).toMatchObject({
+      name: 'RETENTION-SEED kravunderlag utanför förvaltning',
+      responsible_display_name: 'seed',
+      specification_lifecycle_status_id: 1,
+      updated_at: '2023-01-15 09:00:00',
+    })
+    expect(
+      specificationItems.filter(
+        row =>
+          row.requirements_specification_id ===
+          RETENTION_SEED.specification.obsolete,
+      ),
+    ).toHaveLength(2)
+    expect(
+      localRequirements.get(
+        RETENTION_SEED.localRequirement.obsoleteSpecification,
+      ),
+    ).toMatchObject({
+      specification_id: RETENTION_SEED.specification.obsolete,
+      unique_id: 'RETENTION-SEED-LR-1',
+    })
+
+    expect(owners.get(RETENTION_SEED.owner.linked)).toMatchObject({
+      hsa_id: 'SE2321000032-retentionlinked',
+    })
+    expect(
+      seedRowsFor(rows, 'requirement_areas').some(
+        row => row.owner_id === RETENTION_SEED.owner.linked,
+      ),
+    ).toBe(true)
+    expect(
+      seedRowsFor(rows, 'requirement_packages').some(
+        row => row.owner_id === RETENTION_SEED.owner.linked,
+      ),
+    ).toBe(true)
+    expect(areas.get(RETENTION_SEED.requirementArea.freshUnused)).toMatchObject(
+      {
+        updated_at: '2026-04-25 09:00:00',
+      },
+    )
+    expect(
+      packages.get(RETENTION_SEED.requirementPackage.freshUnused),
+    ).toMatchObject({
+      updated_at: '2026-04-25 09:00:00',
+    })
+    expect(norms.get(RETENTION_SEED.normReference.freshUnused)).toMatchObject({
+      updated_at: '2026-04-25 09:00:00',
+    })
+    expect(
+      [...requirements.values()].some(
+        row => row.requirement_area_id === RETENTION_SEED.requirementArea.used,
+      ),
+    ).toBe(true)
+    expect(
+      [...localRequirements.values()].some(
+        row => row.requirement_area_id === RETENTION_SEED.requirementArea.used,
+      ),
+    ).toBe(true)
+    expect(
+      versionPackages.some(
+        row =>
+          row.requirement_package_id === RETENTION_SEED.requirementPackage.used,
+      ),
+    ).toBe(true)
+    expect(
+      localPackages.some(
+        row =>
+          row.requirement_package_id === RETENTION_SEED.requirementPackage.used,
+      ),
+    ).toBe(true)
+    expect(
+      versionNorms.some(
+        row => row.norm_reference_id === RETENTION_SEED.normReference.used,
+      ),
+    ).toBe(true)
+    expect(
+      localNorms.some(
+        row => row.norm_reference_id === RETENTION_SEED.normReference.used,
+      ),
+    ).toBe(true)
+    expect(
+      specificationItems.some(
+        row =>
+          row.requirement_version_id ===
+          RETENTION_SEED.requirementVersion.currentSpecificationLink,
+      ),
+    ).toBe(true)
+    expect(
+      versions.get(RETENTION_SEED.requirementVersion.historyOnly),
+    ).toMatchObject({
+      has_specification_item_history: 1,
+      requirement_status_id: 4,
+    })
+    expect(RETENTION_HISTORY_ONLY_VERSION_IDS).toContain(
+      RETENTION_SEED.requirementVersion.historyOnly,
+    )
+    expect(
+      specificationItems.some(
+        row =>
+          row.requirement_version_id ===
+          RETENTION_SEED.requirementVersion.historyOnly,
+      ),
+    ).toBe(false)
+    expect(
+      versions.get(RETENTION_SEED.requirementVersion.archiveReview),
+    ).toMatchObject({
+      archive_initiated_at: '2024-01-15 09:00:00',
+      requirement_status_id: 2,
+    })
+    expect(
+      specifications.get(RETENTION_SEED.specification.management),
+    ).toMatchObject({
+      specification_lifecycle_status_id: 4,
+      updated_at: '2023-01-15 09:00:00',
+    })
+    expect(
+      specifications.get(RETENTION_SEED.specification.freshObsolete),
+    ).toMatchObject({
+      specification_lifecycle_status_id: 1,
+      updated_at: '2026-04-25 09:00:00',
+    })
   })
 })
