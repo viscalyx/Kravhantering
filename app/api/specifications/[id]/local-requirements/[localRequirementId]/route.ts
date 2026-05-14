@@ -14,12 +14,9 @@ import {
   customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
+import { specificationLocalRequirementSchema } from '@/lib/http/specification-local-requirement-validation'
 import {
-  ARRAY_INPUT_MAX_ITEMS,
-  businessTextSchema,
-  nullableBusinessTextSchema,
   parseRouteParams,
-  positiveIntegerSchema,
   positiveIntegerStringSchema,
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
@@ -34,34 +31,6 @@ const specificationLocalRequirementParamSchema = z
   .object({
     id: specificationIdOrSlugSchema,
     localRequirementId: positiveIntegerStringSchema,
-  })
-  .strict()
-
-const uniquePositiveIntegerArrayFieldSchema = z
-  .array(positiveIntegerSchema)
-  .max(ARRAY_INPUT_MAX_ITEMS)
-  .refine(values => new Set(values).size === values.length, {
-    message: 'Expected unique positive integers',
-  })
-
-const specificationLocalRequirementSchema = z
-  .object({
-    acceptanceCriteria: nullableBusinessTextSchema.optional(),
-    description: businessTextSchema,
-    needsReferenceId: positiveIntegerSchema.nullable().optional(),
-    normReferenceIds: uniquePositiveIntegerArrayFieldSchema
-      .optional()
-      .default([]),
-    qualityCharacteristicId: positiveIntegerSchema.nullable().optional(),
-    requirementAreaId: positiveIntegerSchema.nullable().optional(),
-    requirementCategoryId: positiveIntegerSchema.nullable().optional(),
-    requirementPackageIds: uniquePositiveIntegerArrayFieldSchema
-      .optional()
-      .default([]),
-    requirementTypeId: positiveIntegerSchema.nullable().optional(),
-    requiresTesting: z.boolean().optional().default(false),
-    riskLevelId: positiveIntegerSchema.nullable().optional(),
-    verificationMethod: nullableBusinessTextSchema.optional(),
   })
   .strict()
 

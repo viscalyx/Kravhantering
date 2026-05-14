@@ -81,6 +81,21 @@ export async function listQualityCharacteristics(
   )
 }
 
+export async function hasChildQualityCharacteristics(
+  db: SqlServerDatabase,
+  id: number,
+): Promise<boolean> {
+  const rows = await db.query(
+    `
+      SELECT TOP (1) 1 AS hasChild
+      FROM quality_characteristics
+      WHERE parent_id = @0
+    `,
+    [id],
+  )
+  return rows.length > 0
+}
+
 export async function createType(
   db: SqlServerDatabase,
   data: { nameSv: string; nameEn: string },

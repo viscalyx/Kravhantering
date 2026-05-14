@@ -8,6 +8,7 @@ import {
   updateNormReference,
 } from '@/lib/dal/norm-references'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { isForeignKeyViolation } from '@/lib/http/safe-errors'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -90,15 +91,25 @@ export const DELETE = secureMutationRoute({
         { status: 409 },
       )
     }
-    const deletedCount = await deleteNormReference(db, id)
-    if (deletedCount === 0) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    try {
+      const deletedCount = await deleteNormReference(db, id)
+      if (deletedCount === 0) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+      recordAdminPrivilegedActionSucceeded(context, {
+        operation: 'delete',
+        resourceId: id,
+        resourceType: 'norm_reference',
+      })
+      return NextResponse.json({ ok: true })
+    } catch (error) {
+      if (isForeignKeyViolation(error)) {
+        return NextResponse.json(
+          { error: 'Cannot delete norm reference with linked requirements' },
+          { status: 409 },
+        )
+      }
+      throw error
     }
-    recordAdminPrivilegedActionSucceeded(context, {
-      operation: 'delete',
-      resourceId: id,
-      resourceType: 'norm_reference',
-    })
-    return NextResponse.json({ ok: true })
   },
 })

@@ -483,7 +483,7 @@ export default function SpecificationLocalRequirementDetailClient({
   )
 
   const handleRecordDecision = useCallback(
-    async (decision: 1 | 2, motivation: string, decidedBy: string) => {
+    async (decision: 1 | 2, motivation: string) => {
       if (!latestDeviation) {
         return
       }
@@ -494,7 +494,6 @@ export default function SpecificationLocalRequirementDetailClient({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            decidedBy,
             decision,
             decisionMotivation: motivation,
           }),

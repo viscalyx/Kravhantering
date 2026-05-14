@@ -8,6 +8,7 @@ import {
   updateSpecificationItemStatus,
 } from '@/lib/dal/specification-item-statuses'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { isForeignKeyViolation } from '@/lib/http/safe-errors'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -78,15 +79,25 @@ export const DELETE = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const deletedCount = await deleteSpecificationItemStatus(db, params.id)
-    if (deletedCount === 0) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    try {
+      const deletedCount = await deleteSpecificationItemStatus(db, params.id)
+      if (deletedCount === 0) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+      recordAdminPrivilegedActionSucceeded(context, {
+        operation: 'delete',
+        resourceId: params.id,
+        resourceType: 'specification_item_status',
+      })
+      return NextResponse.json({ ok: true })
+    } catch (error) {
+      if (isForeignKeyViolation(error)) {
+        return NextResponse.json(
+          { error: 'Cannot delete: specification item status is in use' },
+          { status: 409 },
+        )
+      }
+      throw error
     }
-    recordAdminPrivilegedActionSucceeded(context, {
-      operation: 'delete',
-      resourceId: params.id,
-      resourceType: 'specification_item_status',
-    })
-    return NextResponse.json({ ok: true })
   },
 })

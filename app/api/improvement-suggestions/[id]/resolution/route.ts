@@ -27,6 +27,12 @@ const resolutionBodySchema = z
   })
   .strict()
 
+function getSuggestionResolutionOperation(
+  resolution: z.infer<typeof resolutionBodySchema>['resolution'],
+) {
+  return resolution === SUGGESTION_RESOLVED ? 'resolve' : 'dismiss'
+}
+
 export const POST = secureMutationRoute({
   bodySchema: resolutionBodySchema,
   paramsSchema: idParamSchema,
@@ -35,17 +41,17 @@ export const POST = secureMutationRoute({
     { id: number }
   >(({ body, params }) => ({
     kind: 'manage_suggestion',
-    operation: body.resolution === SUGGESTION_RESOLVED ? 'resolve' : 'dismiss',
+    operation: getSuggestionResolutionOperation(body.resolution),
     suggestionId: params.id,
   })),
   handler: async ({ body, context, params, request }) => {
     try {
+      const operation = getSuggestionResolutionOperation(body.resolution)
       const { service } = await createRequirementsRestRuntime(request, {
         context,
       })
       await service.manageSuggestion(context, {
-        operation:
-          body.resolution === SUGGESTION_RESOLVED ? 'resolve' : 'dismiss',
+        operation,
         suggestionId: params.id,
         resolutionMotivation: body.resolutionMotivation,
         resolvedBy: body.resolvedBy,

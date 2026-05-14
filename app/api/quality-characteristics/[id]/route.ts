@@ -3,8 +3,7 @@ import { z } from 'zod'
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   deleteQualityCharacteristic,
-  listQualityCharacteristics,
-  type QualityCharacteristicRow,
+  hasChildQualityCharacteristics,
   updateQualityCharacteristic,
 } from '@/lib/dal/requirement-types'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -69,11 +68,7 @@ export const DELETE = secureMutationRoute({
     const { id } = params
     const db = await getRequestSqlServerDataSource()
 
-    const allCategories = await listQualityCharacteristics(db)
-    const hasChildren = allCategories.some(
-      (category: QualityCharacteristicRow) => category.parentId === id,
-    )
-    if (hasChildren) {
+    if (await hasChildQualityCharacteristics(db, id)) {
       return NextResponse.json(
         { error: 'Has sub-characteristics' },
         { status: 409 },

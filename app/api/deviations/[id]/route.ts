@@ -80,7 +80,9 @@ export const PUT = secureMutationRoute({
 
 export const DELETE = secureMutationRoute({
   paramsSchema: idParamSchema,
-  policy: customMutationPolicy('deviation.delete', () => {}),
+  policy: customMutationPolicy('deviation.delete', ({ context }) => {
+    requireHumanActorSnapshot(context)
+  }),
   handler: async ({ params }) => {
     const db = await getRequestSqlServerDataSource()
 

@@ -90,7 +90,9 @@ export const DELETE = secureMutationRoute({
   paramsSchema: idParamSchema,
   policy: customMutationPolicy(
     'specification_local_deviation.delete',
-    () => {},
+    ({ context }) => {
+      requireHumanActorSnapshot(context)
+    },
   ),
   handler: async ({ params }) => {
     const db = await getRequestSqlServerDataSource()

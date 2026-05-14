@@ -8,6 +8,7 @@ import {
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   INTERNAL_SERVER_ERROR_MESSAGE,
+  isForeignKeyViolation,
   logSanitizedError,
 } from '@/lib/http/safe-errors'
 import {
@@ -79,10 +80,17 @@ export const DELETE = secureMutationRoute({
         resourceType: 'specification_lifecycle_status',
       })
       return NextResponse.json({ ok: true })
-    } catch {
+    } catch (err) {
+      if (isForeignKeyViolation(err)) {
+        return NextResponse.json(
+          { error: 'Cannot delete: lifecycle status is in use' },
+          { status: 409 },
+        )
+      }
+      logSanitizedError('Failed to delete specification lifecycle status', err)
       return NextResponse.json(
-        { error: 'Cannot delete: lifecycle status is in use' },
-        { status: 409 },
+        { error: INTERNAL_SERVER_ERROR_MESSAGE },
+        { status: 500 },
       )
     }
   },

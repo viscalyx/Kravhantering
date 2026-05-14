@@ -207,7 +207,7 @@ describe('POST /api/ai/generate-requirements', () => {
     }
   })
 
-  it('validates the request body before applying the generation throttle', async () => {
+  it('applies the generation throttle before validating the request body', async () => {
     const consoleInfoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined)
@@ -234,14 +234,14 @@ describe('POST /api/ai/generate-requirements', () => {
       const response = await POST(makeRequest('not-json'))
       const body = (await response.json()) as { error: string }
 
-      expect(response.status).toBe(400)
-      expect(body.error).toBe('Invalid request')
+      expect(response.status).toBe(429)
+      expect(body.error).toContain('Too many AI generation requests')
       expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(5)
       expect(
         parseCapacityEvents(consoleInfoSpy).some(
           event => event.event === 'capacity.throttled',
         ),
-      ).toBe(false)
+      ).toBe(true)
     } finally {
       consoleInfoSpy.mockRestore()
     }

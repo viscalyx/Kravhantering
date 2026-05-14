@@ -20,7 +20,6 @@ export const dynamic = 'force-dynamic'
 
 const decisionBodySchema = z
   .object({
-    decidedBy: businessTextSchema.optional(),
     decision: z.union([
       z.literal(DEVIATION_APPROVED),
       z.literal(DEVIATION_REJECTED),

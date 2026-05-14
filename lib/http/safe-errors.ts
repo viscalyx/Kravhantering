@@ -114,6 +114,24 @@ export function isDuplicateKeyError(error: unknown): boolean {
   return /\b(?:duplicate|unique)\b/i.test(getErrorMessage(error))
 }
 
+function getErrorProperty(error: unknown, property: string): unknown {
+  return error && typeof error === 'object'
+    ? (error as Record<string, unknown>)[property]
+    : undefined
+}
+
+export function isForeignKeyViolation(error: unknown): boolean {
+  const errorNumber = getErrorProperty(error, 'number')
+  return (
+    errorNumber === 547 ||
+    errorNumber === '547' ||
+    /\b(?:foreign key|reference constraint)\b/i.test(getErrorMessage(error))
+  )
+}
+
 export function isForeignKeyOrConstraintError(error: unknown): boolean {
-  return /\b(?:constraint|foreign key)\b/i.test(getErrorMessage(error))
+  return (
+    isForeignKeyViolation(error) ||
+    /\b(?:constraint|foreign key)\b/i.test(getErrorMessage(error))
+  )
 }

@@ -58,6 +58,11 @@ export interface SecureMutationHandlerArgs<TBody, TParams> {
   request: Request
 }
 
+export interface SecureMutationPreParseArgs {
+  context: RequestContext
+  request: Request
+}
+
 type NoInferMutation<T> = [T][T extends unknown ? 0 : never]
 
 export interface SecureMutationRouteOptions<TBody, TParams> {
@@ -69,6 +74,9 @@ export interface SecureMutationRouteOptions<TBody, TParams> {
   ) => Promise<Response> | Response
   paramsSchema?: ZodType<TParams>
   policy: MutationPolicy<NoInferMutation<TBody>, NoInferMutation<TParams>>
+  preParse?: (
+    args: SecureMutationPreParseArgs,
+  ) => Promise<Response | undefined> | Response | undefined
 }
 
 async function createMutationContext<TBody, TParams>(
@@ -82,7 +90,15 @@ async function createMutationContext<TBody, TParams>(
   return createRequestContext(request, 'rest')
 }
 
-function unexpectedErrorBody(message: string, error: unknown) {
+interface UnexpectedErrorBody {
+  debugMessage?: string
+  error: string
+}
+
+function unexpectedErrorBody(
+  message: string,
+  error: unknown,
+): UnexpectedErrorBody {
   return {
     ...(process.env.NODE_ENV === 'development'
       ? { debugMessage: redactSensitiveText(getErrorMessage(error)) }
@@ -159,6 +175,16 @@ export function secureMutationRoute<TBody = undefined, TParams = undefined>(
 
     try {
       context = await createMutationContext(request, options.policy)
+    } catch (error) {
+      return decorateErrorResponse(options, errorResponse(errorMessage, error))
+    }
+
+    try {
+      requireAuthenticated(context)
+      const preParseResponse = await options.preParse?.({ context, request })
+      if (preParseResponse) {
+        return preParseResponse
+      }
     } catch (error) {
       return decorateErrorResponse(options, errorResponse(errorMessage, error))
     }

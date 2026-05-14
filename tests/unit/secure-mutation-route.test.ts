@@ -123,9 +123,32 @@ describe('secureMutationRoute', () => {
       policy: adminMutationPolicy(),
     })
 
-    const response = await route(jsonRequest({ name: 'Valid' }))
+    const response = await route(jsonRequest({}))
 
     expect(response.status).toBe(401)
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('runs pre-parse guards before body validation and handler work', async () => {
+    const handler = vi.fn(() => NextResponse.json({ ok: true }))
+    const preParse = vi.fn(() =>
+      NextResponse.json({ error: 'Too many requests' }, { status: 429 }),
+    )
+    const route = secureMutationRoute({
+      bodySchema: z.object({ name: z.string() }).strict(),
+      handler,
+      policy: adminMutationPolicy(),
+      preParse,
+    })
+
+    const response = await route(jsonRequest({}))
+
+    expect(response.status).toBe(429)
+    expect(preParse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: expect.objectContaining({ requestId: 'request-1' }),
+      }),
+    )
     expect(handler).not.toHaveBeenCalled()
   })
 

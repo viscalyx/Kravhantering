@@ -3,9 +3,9 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const MUTATING_EXPORT =
-  /\bexport\s+(?:async\s+function|const)\s+(POST|PUT|PATCH|DELETE)\b/
+  /\bexport\s+(?:(?:async\s+)?function|const)\s+(POST|PUT|PATCH|DELETE)\b/
 const DIRECT_MUTATING_EXPORT =
-  /\bexport\s+async\s+function\s+(POST|PUT|PATCH|DELETE)\b/
+  /\bexport\s+(?:async\s+)?function\s+(POST|PUT|PATCH|DELETE)\b/
 
 const documentedExceptions = new Set(['app/api/mcp/route.ts'])
 

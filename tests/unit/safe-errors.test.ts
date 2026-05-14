@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  isForeignKeyViolation,
   logSanitizedError,
   redactSensitiveText,
   toSafeErrorLogValue,
@@ -63,5 +64,17 @@ describe('safe error helpers', () => {
     } finally {
       consoleErrorSpy.mockRestore()
     }
+  })
+
+  it('detects SQL Server foreign-key violations by number or message', () => {
+    expect(isForeignKeyViolation({ number: 547 })).toBe(true)
+    expect(
+      isForeignKeyViolation(
+        new Error(
+          'The DELETE statement conflicted with the REFERENCE constraint',
+        ),
+      ),
+    ).toBe(true)
+    expect(isForeignKeyViolation(new Error('duplicate key value'))).toBe(false)
   })
 })

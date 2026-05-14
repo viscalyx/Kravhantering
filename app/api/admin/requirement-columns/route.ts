@@ -94,7 +94,11 @@ export const PUT = secureMutationRoute({
       return NextResponse.json({
         columns,
       })
-    } catch {
+    } catch (error) {
+      console.error(
+        'Failed to save requirement column defaults',
+        formatUiSettingsLoadError(error),
+      )
       return NextResponse.json(
         { error: 'Failed to save requirement column defaults.' },
         { status: 500 },

@@ -26,8 +26,15 @@ const updateStatusSchema = z
   })
   .strict()
 
+const nonEmptyUpdateStatusSchema = updateStatusSchema.refine(
+  data => Object.keys(data).length > 0,
+  {
+    message: 'At least one field must be provided',
+  },
+)
+
 export const PUT = secureMutationRoute({
-  bodySchema: updateStatusSchema,
+  bodySchema: nonEmptyUpdateStatusSchema,
   paramsSchema: idParamSchema,
   policy: adminMutationPolicy(),
   handler: async ({ body, context, params }) => {

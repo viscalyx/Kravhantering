@@ -87,7 +87,6 @@ async function closeLatestPendingDeviation(
   await expectOk(
     await request.post(`/api/deviations/${latest.id}/decision`, {
       data: {
-        decidedBy: 'Playwright cleanup',
         decision: 2,
         decisionMotivation: 'Closed before rerunning the Playwright flow.',
       },
@@ -246,9 +245,6 @@ for (const viewport of viewports) {
           await decisionDialog
             .locator('#decision-motivation')
             .fill(decisionMotivation)
-          await decisionDialog
-            .locator('#decision-decidedBy')
-            .fill('Playwright Reviewer')
           await decisionDialog
             .getByRole('button', { name: 'Registrera beslut' })
             .click()

@@ -9,11 +9,7 @@ import {
   type LoggedInSession,
 } from '@/lib/auth/session'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import {
-  getErrorMessage,
-  logSanitizedError,
-  redactSensitiveText,
-} from '@/lib/http/safe-errors'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   customMutationPolicy,
   secureMutationRoute,
@@ -24,6 +20,7 @@ import {
   collectDataSubjectExport,
 } from '@/lib/privacy/data-subject-export'
 import type { DataSubjectExportSessionClaims } from '@/lib/privacy/data-subject-export-types'
+import { auditActor, unexpectedErrorBody } from '@/lib/privacy/route-helpers'
 import {
   type RequestContext,
   requireHumanActorSnapshot,
@@ -52,23 +49,6 @@ const dataSubjectExportSchema = z
       .optional(),
   })
   .strict()
-
-function auditActor(context: RequestContext) {
-  return {
-    hsaId: context.actor.hsaId ?? undefined,
-    source: context.actor.source,
-    sub: context.actor.id ?? undefined,
-  }
-}
-
-function unexpectedErrorBody(message: string, error: unknown) {
-  return {
-    ...(process.env.NODE_ENV === 'development'
-      ? { debugMessage: redactSensitiveText(getErrorMessage(error)) }
-      : {}),
-    error: message,
-  }
-}
 
 function sessionClaims(
   session: LoggedInSession,

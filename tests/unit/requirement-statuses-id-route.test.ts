@@ -87,6 +87,34 @@ describe('requirement-statuses/[id] route', () => {
     )
   })
 
+  it('PUT rejects empty update payloads before updating or auditing', async () => {
+    const req = new NextRequest('http://localhost', {
+      method: 'PUT',
+      body: JSON.stringify({}),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const res = await PUT(req, makeParams('1'))
+    const json = (await res.json()) as {
+      error: string
+      issues: Array<{ message: string }>
+    }
+
+    expect(res.status).toBe(400)
+    expect(json.error).toBe('Invalid request')
+    expect(json.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'At least one field must be provided',
+        }),
+      ]),
+    )
+    expect(mockUpdateStatus).not.toHaveBeenCalled()
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
+  })
+
   it('DELETE deletes status', async () => {
     mockDeleteStatus.mockResolvedValue(undefined)
     const req = new NextRequest('http://localhost', { method: 'DELETE' })

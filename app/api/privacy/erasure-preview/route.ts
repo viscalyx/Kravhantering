@@ -4,11 +4,7 @@ import { recordSecurityEvent } from '@/lib/auth/audit'
 import { CsrfError } from '@/lib/auth/csrf'
 import { isHsaId } from '@/lib/auth/hsa-id'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import {
-  getErrorMessage,
-  logSanitizedError,
-  redactSensitiveText,
-} from '@/lib/http/safe-errors'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   customMutationPolicy,
   secureMutationRoute,
@@ -19,13 +15,11 @@ import {
 } from '@/lib/http/validation'
 import { previewPrivacyErasure } from '@/lib/privacy/erasure'
 import {
-  type RequestContext,
-  requireHumanActorSnapshot,
-} from '@/lib/requirements/auth'
-import {
-  forbiddenError,
-  isRequirementsServiceError,
-} from '@/lib/requirements/errors'
+  assertPrivacyOfficer,
+  auditActor,
+  unexpectedErrorBody,
+} from '@/lib/privacy/route-helpers'
+import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
@@ -57,32 +51,6 @@ const erasurePreviewSchema = z
       .strict(),
   })
   .strict()
-
-function assertPrivacyOfficer(context: RequestContext): void {
-  if (!context.actor.roles.includes('PrivacyOfficer')) {
-    throw forbiddenError('PrivacyOfficer role is required', {
-      reason: 'privacy_officer_required',
-    })
-  }
-  requireHumanActorSnapshot(context)
-}
-
-function auditActor(context: RequestContext) {
-  return {
-    hsaId: context.actor.hsaId ?? undefined,
-    source: context.actor.source,
-    sub: context.actor.id ?? undefined,
-  }
-}
-
-function unexpectedErrorBody(message: string, error: unknown) {
-  return {
-    ...(process.env.NODE_ENV === 'development'
-      ? { debugMessage: redactSensitiveText(getErrorMessage(error)) }
-      : {}),
-    error: message,
-  }
-}
 
 export const POST = secureMutationRoute({
   bodySchema: erasurePreviewSchema,

@@ -27,6 +27,7 @@ import {
   type RequestCorrelationIds,
 } from '@/lib/observability/request-ids'
 import { checkInMemoryThrottle } from '@/lib/observability/throttle'
+import type { RequestContext } from '@/lib/requirements/auth'
 
 const ALLOWED_IMAGE_MIMES = [
   'image/png',
@@ -44,6 +45,50 @@ const MAX_AI_TOPIC_LENGTH = 4000
 const AI_GENERATE_RATE_LIMIT = 5
 const AI_GENERATE_RATE_WINDOW_MS = 60_000
 const AI_GENERATE_SLOW_THRESHOLD_MS = 30_000
+
+function checkAiGenerateThrottle(context: RequestContext) {
+  return checkInMemoryThrottle({
+    key: [
+      'ai.generate-requirements',
+      context.actor.source,
+      context.actor.id ?? context.actor.hsaId ?? context.correlationId,
+    ].join(':'),
+    limit: AI_GENERATE_RATE_LIMIT,
+    windowMs: AI_GENERATE_RATE_WINDOW_MS,
+  })
+}
+
+function createAiGenerateThrottleResponse(
+  context: RequestContext,
+  throttle: ReturnType<typeof checkInMemoryThrottle>,
+) {
+  recordCapacityEvent({
+    correlationId: context.correlationId,
+    event: 'capacity.throttled',
+    level: 'warn',
+    metrics: { throttled: true },
+    operation: 'ai.generate-requirements',
+    outcome: 'throttled',
+    requestId: context.requestId,
+    retryAfterSeconds: throttle.retryAfterSeconds,
+    source: 'rest',
+    statusCode: 429,
+  })
+  return applyResponseCorrelationHeaders(
+    Response.json(
+      {
+        error: 'Too many AI generation requests. Try again later.',
+      },
+      {
+        headers: {
+          'Retry-After': String(throttle.retryAfterSeconds),
+        },
+        status: 429,
+      },
+    ),
+    context,
+  )
+}
 
 const imageDataUrlSchema = z.string().superRefine((dataUrl, context) => {
   const mimeMatch = dataUrl.match(/^data:([^;]+);base64,/)
@@ -111,6 +156,12 @@ const generateRequirementsSchema = z
 export const POST = secureMutationRoute({
   bodySchema: generateRequirementsSchema,
   policy: requirementsMutationPolicy({ kind: 'generate_requirements' }),
+  preParse: ({ context }) => {
+    const throttle = checkAiGenerateThrottle(context)
+    if (!throttle.allowed) {
+      return createAiGenerateThrottleResponse(context, throttle)
+    }
+  },
   handler: async ({ body, context, request }) => {
     const providerPreferences = body.providerPreferences
     const { images, locale } = body
@@ -118,48 +169,6 @@ export const POST = secureMutationRoute({
       const data = image.dataUrl.slice(image.dataUrl.indexOf(',') + 1)
       return sum + Math.round((data.length * 3) / 4)
     }, 0)
-    const throttle = checkInMemoryThrottle({
-      key: [
-        'ai.generate-requirements',
-        context.actor.source,
-        context.actor.id ?? context.actor.hsaId ?? context.correlationId,
-      ].join(':'),
-      limit: AI_GENERATE_RATE_LIMIT,
-      windowMs: AI_GENERATE_RATE_WINDOW_MS,
-    })
-
-    if (!throttle.allowed) {
-      recordCapacityEvent({
-        correlationId: context.correlationId,
-        event: 'capacity.throttled',
-        level: 'warn',
-        metrics: {
-          image_bytes: imageBytes,
-          image_count: images.length,
-          throttled: true,
-        },
-        operation: 'ai.generate-requirements',
-        outcome: 'throttled',
-        requestId: context.requestId,
-        retryAfterSeconds: throttle.retryAfterSeconds,
-        source: 'rest',
-        statusCode: 429,
-      })
-      return applyResponseCorrelationHeaders(
-        Response.json(
-          {
-            error: 'Too many AI generation requests. Try again later.',
-          },
-          {
-            headers: {
-              'Retry-After': String(throttle.retryAfterSeconds),
-            },
-            status: 429,
-          },
-        ),
-        context,
-      )
-    }
 
     const db = await getRequestSqlServerDataSource()
 

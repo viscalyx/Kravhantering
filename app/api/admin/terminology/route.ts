@@ -83,7 +83,11 @@ export const PUT = secureMutationRoute({
       return NextResponse.json({
         terminology: buildUiTerminologyPayload(terminology),
       })
-    } catch {
+    } catch (error) {
+      console.error(
+        'Failed to save terminology',
+        formatUiSettingsLoadError(error),
+      )
       return NextResponse.json(
         { error: 'Failed to save terminology.' },
         { status: 500 },

@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RequestContext } from '@/lib/requirements/auth'
 
 const mockTransitionRequirement = vi.fn()
-const mockCreateRequestContext = vi.hoisted(() =>
-  vi.fn(() => ({
+const mockCreateRequestContext = vi.hoisted(() => {
+  const context = {
     actor: {
       displayName: 'Route Tester',
       hsaId: 'SE2321000032-route',

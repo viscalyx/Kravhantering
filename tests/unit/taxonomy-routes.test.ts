@@ -442,6 +442,40 @@ describe('specification-lifecycle-statuses routes', () => {
     expect(r.status).toBe(404)
     await expect(r.json()).resolves.toEqual({ error: 'Not found' })
   })
+
+  it('DELETE returns 409 when the lifecycle status is in use', async () => {
+    mockDeleteLifecycle.mockRejectedValue(
+      new Error(
+        'The DELETE statement conflicted with the REFERENCE constraint',
+      ),
+    )
+    const r = await deleteLifecycle(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(409)
+    await expect(r.json()).resolves.toEqual({
+      error: 'Cannot delete: lifecycle status is in use',
+    })
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
+  })
+
+  it('DELETE returns 500 when lifecycle deletion fails unexpectedly', async () => {
+    mockDeleteLifecycle.mockRejectedValue(new Error('database offline'))
+    const r = await deleteLifecycle(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(500)
+    await expect(r.json()).resolves.toEqual({ error: 'Internal server error' })
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
+  })
 })
 
 describe('specification-responsibility-areas routes', () => {
@@ -596,6 +630,26 @@ describe('specification-item-statuses catalog routes', () => {
 
     expect(r.status).toBe(404)
     await expect(r.json()).resolves.toEqual({ error: 'Not found' })
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
+  })
+
+  it('DELETE returns 409 when the catalog status is in use', async () => {
+    mockDeleteSpecItemStatus.mockRejectedValue(
+      new Error(
+        'The DELETE statement conflicted with the REFERENCE constraint',
+      ),
+    )
+    const r = await deleteSpecItemStatus(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('5'),
+    )
+
+    expect(r.status).toBe(409)
+    await expect(r.json()).resolves.toEqual({
+      error: 'Cannot delete: specification item status is in use',
+    })
     expect(
       auditState.recordAdminPrivilegedActionSucceeded,
     ).not.toHaveBeenCalled()
