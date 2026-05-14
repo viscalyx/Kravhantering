@@ -17,6 +17,7 @@ const mockRequestContext = {
     source: 'anonymous',
     isAuthenticated: false,
   },
+  correlationId: 'test-correlation',
   requestId: 'test',
   source: 'rest',
 }

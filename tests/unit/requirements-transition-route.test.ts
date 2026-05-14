@@ -1,10 +1,30 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { RequestContext } from '@/lib/requirements/auth'
 
 const mockTransitionRequirement = vi.fn()
-const mockCreateRequestContext = vi.hoisted(() =>
-  vi.fn(() => ({ source: 'rest' })),
-)
+const mockCreateRequestContext = vi.hoisted(() => {
+  const context = {
+    actor: {
+      displayName: 'Route Test User',
+      hsaId: 'SE2321000032-route1',
+      id: 'route-test-user',
+      isAuthenticated: true,
+      roles: ['Admin'],
+      source: 'oidc',
+    },
+    correlationId: 'corr-test',
+    request: {
+      method: 'POST',
+      path: '/api/requirement-transitions/1',
+      requestId: 'req-test',
+    },
+    requestId: 'req-test',
+    source: 'rest',
+  } satisfies RequestContext
+
+  return vi.fn(() => context)
+})
 const mockAuthorization = vi.hoisted(() => ({ assertAuthorized: vi.fn() }))
 const mockCreateDefaultAuthorizationService = vi.hoisted(() =>
   vi.fn(() => mockAuthorization),

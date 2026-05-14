@@ -1,4 +1,8 @@
 import { redactSensitiveText } from '@/lib/http/safe-errors'
+import {
+  type CapacityMetrics,
+  recordCapacityEvent,
+} from '@/lib/observability/capacity'
 import type {
   AuthorizationService,
   RequestContext,
@@ -175,28 +179,89 @@ export async function withLogging<T>(
 
   try {
     const result = await operation()
+    const durationMs = Date.now() - startedAt
     logger.info(event, {
       actor_id: context.actor.id,
+      correlation_id: context.correlationId,
       request_id: context.requestId,
       source: context.source,
       tool_name: context.toolName,
-      duration_ms: Date.now() - startedAt,
+      duration_ms: durationMs,
       ...metadata,
+    })
+    recordCapacityEvent({
+      correlationId: context.correlationId,
+      durationMs,
+      event: 'capacity.operation.completed',
+      metrics: extractCapacityMetrics(result),
+      operation: event,
+      outcome: 'success',
+      requestId: context.requestId,
+      source: context.source,
+      statusCode: 200,
+      toolName: context.toolName,
     })
     return result
   } catch (error) {
+    const durationMs = Date.now() - startedAt
+    const statusCode = getErrorStatusCode(error)
     logger.error(`${event}.failed`, {
       actor_id: context.actor.id,
+      correlation_id: context.correlationId,
       request_id: context.requestId,
       source: context.source,
       tool_name: context.toolName,
-      duration_ms: Date.now() - startedAt,
+      duration_ms: durationMs,
       error:
         error instanceof Error
           ? redactSensitiveText(error.message)
           : 'Unknown requirements error',
       ...metadata,
     })
+    recordCapacityEvent({
+      correlationId: context.correlationId,
+      durationMs,
+      event: 'capacity.operation.failed',
+      operation: event,
+      outcome: 'failure',
+      requestId: context.requestId,
+      source: context.source,
+      statusCode,
+      toolName: context.toolName,
+    })
     throw error
   }
+}
+
+function getErrorStatusCode(error: unknown): number {
+  const status = (error as { status?: unknown })?.status
+  return typeof status === 'number' && Number.isInteger(status) ? status : 500
+}
+
+function extractCapacityMetrics(value: unknown): CapacityMetrics | undefined {
+  if (!value || typeof value !== 'object') return undefined
+
+  const record = value as {
+    requirements?: unknown
+    stats?: {
+      cost?: unknown
+      totalTokens?: unknown
+    }
+  }
+  const metrics: CapacityMetrics = {}
+
+  if (Array.isArray(record.requirements)) {
+    metrics.item_count = record.requirements.length
+  }
+
+  if (record.stats && typeof record.stats === 'object') {
+    if (typeof record.stats.totalTokens === 'number') {
+      metrics.token_count = record.stats.totalTokens
+    }
+    if (typeof record.stats.cost === 'number') {
+      metrics.cost = record.stats.cost
+    }
+  }
+
+  return Object.keys(metrics).length > 0 ? metrics : undefined
 }

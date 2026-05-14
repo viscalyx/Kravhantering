@@ -7,6 +7,8 @@ import {
   RoleBasedAuthorizationService,
 } from '@/lib/requirements/auth'
 
+// cSpell:words traceparent
+
 const COOKIE_PASSWORD =
   'test-cookie-password-must-be-at-least-32-characters-long'
 
@@ -71,8 +73,49 @@ describe('requirements auth', () => {
       })
       const ctx = await createRequestContext(req, 'rest')
       expect(ctx.requestId).toBe('req-abc')
+      expect(ctx.correlationId).toBe('req-abc')
       expect(ctx.source).toBe('rest')
       expect(ctx.actor.isAuthenticated).toBe(true)
+    })
+
+    it('uses X-Correlation-Id when present', async () => {
+      const req = buildAuthedRequest('http://localhost/test', {
+        headers: {
+          'x-correlation-id': 'workflow-123',
+          'x-request-id': 'req-abc',
+        },
+      })
+      const ctx = await createRequestContext(req, 'rest')
+      expect(ctx.requestId).toBe('req-abc')
+      expect(ctx.correlationId).toBe('workflow-123')
+    })
+
+    it('falls back to traceparent trace id for correlation', async () => {
+      const req = buildAuthedRequest('http://localhost/test', {
+        headers: {
+          traceparent:
+            '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
+          'x-request-id': 'req-abc',
+        },
+      })
+      const ctx = await createRequestContext(req, 'rest')
+      expect(ctx.requestId).toBe('req-abc')
+      expect(ctx.correlationId).toBe('4bf92f3577b34da6a3ce929d0e0e4736')
+    })
+
+    it('replaces invalid incoming identifiers', async () => {
+      const req = buildAuthedRequest('http://localhost/test', {
+        headers: {
+          'x-correlation-id': 'bad value with spaces',
+          'x-request-id': 'bad value with spaces',
+        },
+      })
+      const ctx = await createRequestContext(req, 'rest')
+      expect(ctx.requestId).not.toBe('bad value with spaces')
+      expect(ctx.correlationId).toBe(ctx.requestId)
+      expect(ctx.requestId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      )
     })
 
     it('adds normalized request metadata for security audit events', async () => {
@@ -97,6 +140,7 @@ describe('requirements auth', () => {
       const req = buildAuthedRequest('http://localhost/test')
       const ctx = await createRequestContext(req, 'mcp', 'list_requirements')
       expect(ctx.requestId).toBeTruthy()
+      expect(ctx.correlationId).toBe(ctx.requestId)
       expect(ctx.source).toBe('mcp')
       expect(ctx.toolName).toBe('list_requirements')
     })
@@ -146,6 +190,7 @@ describe('requirements auth', () => {
               source: 'oidc',
               isAuthenticated: true,
             },
+            correlationId: 'c1',
             requestId: 'r1',
             source: 'rest',
           },
@@ -169,6 +214,7 @@ describe('requirements auth', () => {
               source: 'oidc',
               isAuthenticated: true,
             },
+            correlationId: 'c1',
             requestId: 'r1',
             source: 'rest',
           },
@@ -190,6 +236,7 @@ describe('requirements auth', () => {
               source: 'anonymous',
               isAuthenticated: false,
             },
+            correlationId: 'c1',
             requestId: 'r1',
             source: 'rest',
           },

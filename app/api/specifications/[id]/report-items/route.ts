@@ -19,7 +19,11 @@ import {
   routeSegmentSchema,
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
+import { observeCapacity } from '@/lib/observability/capacity'
+import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
+import { MAX_REPORT_ITEM_COUNT } from '@/lib/reports/limits'
+import { createRequestContext } from '@/lib/requirements/auth'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
 export const dynamic = 'force-dynamic'
@@ -41,7 +45,7 @@ const reportItemsQuerySchema = z
 const itemRefsSchema = z
   .array(routeSegmentSchema)
   .min(1)
-  .max(ARRAY_INPUT_MAX_ITEMS)
+  .max(Math.min(ARRAY_INPUT_MAX_ITEMS, MAX_REPORT_ITEM_COUNT))
 
 function mapSpecificationLocalRequirementToReportData(
   requirement: NonNullable<
@@ -136,6 +140,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Params },
 ) {
+  const context = await createRequestContext(request, 'rest')
   const parsedParams = await parseRouteParams(params, specificationParamSchema)
   if (!parsedParams.ok) {
     return parsedParams.response
@@ -171,75 +176,111 @@ export async function GET(
   }
   const { id } = parsedParams.data
   const itemRefs = parsedItemRefs.data
-  const db = await getRequestSqlServerDataSource()
-  const spec = /^\d+$/.test(id)
-    ? await getSpecificationById(db, Number(id))
-    : await getSpecificationBySlug(db, id)
+  return observeCapacity(
+    {
+      correlationId: context.correlationId,
+      metrics: { item_count: itemRefs.length },
+      operation: 'reports.specification_items',
+      requestId: context.requestId,
+      slowThresholdMs: 10_000,
+      source: 'rest',
+    },
+    async () => {
+      const db = await getRequestSqlServerDataSource()
+      const spec = /^\d+$/.test(id)
+        ? await getSpecificationById(db, Number(id))
+        : await getSpecificationBySlug(db, id)
 
-  if (!spec) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
-
-  const reportItems: RequirementReportData[] = []
-
-  for (const itemRef of itemRefs) {
-    const parsed = parseSpecificationItemRef(itemRef)
-    if (!parsed) {
-      return NextResponse.json(
-        { error: `Invalid item ref: ${itemRef}` },
-        { status: 400 },
-      )
-    }
-
-    if (parsed.kind === 'library') {
-      const specificationItem = await getSpecificationItemById(db, parsed.id)
-      if (!specificationItem || specificationItem.specificationId !== spec.id) {
-        return NextResponse.json(
-          { error: `Item not found in specification: ${itemRef}` },
-          { status: 404 },
+      if (!spec) {
+        return applyResponseCorrelationHeaders(
+          NextResponse.json({ error: 'Not found' }, { status: 404 }),
+          context,
         )
       }
 
-      const requirement = await getRequirementById(
-        db,
-        specificationItem.requirementId,
-      )
-      if (!requirement) {
-        return NextResponse.json(
-          { error: `Requirement not found: ${itemRef}` },
-          { status: 404 },
+      const reportItems: RequirementReportData[] = []
+
+      for (const itemRef of itemRefs) {
+        const parsed = parseSpecificationItemRef(itemRef)
+        if (!parsed) {
+          return applyResponseCorrelationHeaders(
+            NextResponse.json(
+              { error: `Invalid item ref: ${itemRef}` },
+              { status: 400 },
+            ),
+            context,
+          )
+        }
+
+        if (parsed.kind === 'library') {
+          const specificationItem = await getSpecificationItemById(
+            db,
+            parsed.id,
+          )
+          if (
+            !specificationItem ||
+            specificationItem.specificationId !== spec.id
+          ) {
+            return applyResponseCorrelationHeaders(
+              NextResponse.json(
+                { error: `Item not found in specification: ${itemRef}` },
+                { status: 404 },
+              ),
+              context,
+            )
+          }
+
+          const requirement = await getRequirementById(
+            db,
+            specificationItem.requirementId,
+          )
+          if (!requirement) {
+            return applyResponseCorrelationHeaders(
+              NextResponse.json(
+                { error: `Requirement not found: ${itemRef}` },
+                { status: 404 },
+              ),
+              context,
+            )
+          }
+
+          reportItems.push({
+            ...requirement,
+            area: requirement.area
+              ? {
+                  id: requirement.area.id,
+                  name: requirement.area.name,
+                  ownerName: null,
+                }
+              : null,
+          })
+          continue
+        }
+
+        const localRequirement = await getSpecificationLocalRequirementDetail(
+          db,
+          spec.id,
+          parsed.id,
+        )
+        if (!localRequirement) {
+          return applyResponseCorrelationHeaders(
+            NextResponse.json(
+              { error: `Item not found in specification: ${itemRef}` },
+              { status: 404 },
+            ),
+            context,
+          )
+        }
+
+        reportItems.push(
+          mapSpecificationLocalRequirementToReportData(localRequirement),
         )
       }
 
-      reportItems.push({
-        ...requirement,
-        area: requirement.area
-          ? {
-              id: requirement.area.id,
-              name: requirement.area.name,
-              ownerName: null,
-            }
-          : null,
-      })
-      continue
-    }
-
-    const localRequirement = await getSpecificationLocalRequirementDetail(
-      db,
-      spec.id,
-      parsed.id,
-    )
-    if (!localRequirement) {
-      return NextResponse.json(
-        { error: `Item not found in specification: ${itemRef}` },
-        { status: 404 },
+      return applyResponseCorrelationHeaders(
+        NextResponse.json(reportItems),
+        context,
       )
-    }
-
-    reportItems.push(
-      mapSpecificationLocalRequirementToReportData(localRequirement),
-    )
-  }
-
-  return NextResponse.json(reportItems)
+    },
+  )
 }

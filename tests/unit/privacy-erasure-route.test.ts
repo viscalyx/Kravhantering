@@ -55,6 +55,7 @@ function privacyContext(roles: string[] = ['PrivacyOfficer']) {
       roles,
       source: 'session',
     },
+    correlationId: 'correlation-1',
     request: new Request('http://localhost/api/privacy/erasure-preview'),
     requestId: 'request-1',
     source: 'rest',

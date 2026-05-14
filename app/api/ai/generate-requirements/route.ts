@@ -21,6 +21,13 @@ import {
   localeSchema,
   readJsonWithSchema,
 } from '@/lib/http/validation'
+import { recordCapacityEvent } from '@/lib/observability/capacity'
+import {
+  applyResponseCorrelationHeaders,
+  type RequestCorrelationIds,
+} from '@/lib/observability/request-ids'
+import { checkInMemoryThrottle } from '@/lib/observability/throttle'
+import { createRequestContext } from '@/lib/requirements/auth'
 
 const ALLOWED_IMAGE_MIMES = [
   'image/png',
@@ -35,6 +42,9 @@ const MAX_AI_INSTRUCTION_LENGTH = 4000
 const MAX_AI_MODEL_LENGTH = 100
 const MAX_AI_PARAMETER_LENGTH = 100
 const MAX_AI_TOPIC_LENGTH = 4000
+const AI_GENERATE_RATE_LIMIT = 5
+const AI_GENERATE_RATE_WINDOW_MS = 60_000
+const AI_GENERATE_SLOW_THRESHOLD_MS = 30_000
 
 const imageDataUrlSchema = z.string().superRefine((dataUrl, context) => {
   const mimeMatch = dataUrl.match(/^data:([^;]+);base64,/)
@@ -100,6 +110,48 @@ const generateRequirementsSchema = z
   .strict()
 
 export async function POST(request: Request) {
+  const context = await createRequestContext(request, 'rest')
+  const throttle = checkInMemoryThrottle({
+    key: [
+      'ai.generate-requirements',
+      context.actor.source,
+      context.actor.id ?? context.actor.hsaId ?? context.correlationId,
+    ].join(':'),
+    limit: AI_GENERATE_RATE_LIMIT,
+    windowMs: AI_GENERATE_RATE_WINDOW_MS,
+  })
+
+  if (!throttle.allowed) {
+    recordCapacityEvent({
+      correlationId: context.correlationId,
+      event: 'capacity.throttled',
+      level: 'warn',
+      metrics: {
+        throttled: true,
+      },
+      operation: 'ai.generate-requirements',
+      outcome: 'throttled',
+      requestId: context.requestId,
+      retryAfterSeconds: throttle.retryAfterSeconds,
+      source: 'rest',
+      statusCode: 429,
+    })
+    return applyResponseCorrelationHeaders(
+      Response.json(
+        {
+          error: 'Too many AI generation requests. Try again later.',
+        },
+        {
+          headers: {
+            'Retry-After': String(throttle.retryAfterSeconds),
+          },
+          status: 429,
+        },
+      ),
+      context,
+    )
+  }
+
   const parsedBody = await readJsonWithSchema(
     request,
     generateRequirementsSchema,
@@ -110,6 +162,11 @@ export async function POST(request: Request) {
   const body = parsedBody.data
   const providerPreferences = body.providerPreferences
   const { images, locale } = body
+  const imageBytes = images.reduce((sum, image) => {
+    const data = image.dataUrl.slice(image.dataUrl.indexOf(',') + 1)
+    return sum + Math.round((data.length * 3) / 4)
+  }, 0)
+
   const db = await getRequestSqlServerDataSource()
 
   const taxonomy = await loadTaxonomy(db, locale)
@@ -124,6 +181,57 @@ export async function POST(request: Request) {
       parts.push({ image_url: { url: img.dataUrl }, type: 'image_url' })
     }
     userContent = parts
+  }
+
+  const streamStartedAt = Date.now()
+  let recordedTerminalEvent = false
+
+  function recordStreamEvent(
+    ids: RequestCorrelationIds,
+    outcome: 'failure' | 'success',
+    statusCode: number,
+    stats?: { cost: number; totalTokens: number },
+  ) {
+    if (recordedTerminalEvent) return
+    recordedTerminalEvent = true
+    const durationMs = Date.now() - streamStartedAt
+    recordCapacityEvent({
+      correlationId: ids.correlationId,
+      durationMs,
+      event:
+        outcome === 'success'
+          ? 'capacity.operation.completed'
+          : 'capacity.operation.failed',
+      metrics: {
+        cost: stats?.cost,
+        image_bytes: imageBytes,
+        image_count: images.length,
+        token_count: stats?.totalTokens,
+      },
+      operation: 'ai.generate-requirements',
+      outcome,
+      requestId: ids.requestId,
+      source: 'rest',
+      statusCode,
+    })
+    if (durationMs >= AI_GENERATE_SLOW_THRESHOLD_MS) {
+      recordCapacityEvent({
+        correlationId: ids.correlationId,
+        durationMs,
+        event: 'capacity.threshold_exceeded',
+        level: 'warn',
+        metrics: {
+          image_bytes: imageBytes,
+          image_count: images.length,
+          token_count: stats?.totalTokens,
+        },
+        operation: 'ai.generate-requirements',
+        outcome,
+        requestId: ids.requestId,
+        source: 'rest',
+        statusCode,
+      })
+    }
   }
 
   const stream = new ReadableStream({
@@ -189,6 +297,7 @@ export async function POST(request: Request) {
                 taxonomy,
                 thinking: event.thinking,
               })
+              recordStreamEvent(context, 'success', 200, event.stats)
               break
             }
             case 'error':
@@ -197,23 +306,28 @@ export async function POST(request: Request) {
                 event.cause ?? event.message,
               )
               send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
+              recordStreamEvent(context, 'failure', 503)
               break
           }
         }
       } catch (err) {
         logSanitizedError('AI requirement generation failed', err)
         send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
+        recordStreamEvent(context, 'failure', 503)
       } finally {
         controller.close()
       }
     },
   })
 
-  return new Response(stream, {
-    headers: {
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-      'Content-Type': 'text/event-stream',
-    },
-  })
+  return applyResponseCorrelationHeaders(
+    new Response(stream, {
+      headers: {
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'Content-Type': 'text/event-stream',
+      },
+    }),
+    context,
+  )
 }

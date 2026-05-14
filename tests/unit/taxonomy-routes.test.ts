@@ -23,6 +23,7 @@ const auditState = vi.hoisted(() => ({
       path: '/api/taxonomy',
       requestId: 'request-taxonomy',
     },
+    correlationId: 'correlation-taxonomy',
     requestId: 'request-taxonomy',
     source: 'rest',
   })),

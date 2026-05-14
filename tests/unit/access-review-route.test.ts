@@ -67,6 +67,7 @@ function context(roles: string[] = ['Admin']) {
       roles,
       source: 'oidc',
     },
+    correlationId: 'correlation-1',
     request: new Request('http://localhost/api/admin/access-reviews'),
     requestId: 'request-1',
     source: 'rest',

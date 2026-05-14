@@ -16,6 +16,7 @@ const routeState = vi.hoisted(() => ({
       path: '/api/admin/requirement-columns',
       requestId: 'request-2',
     },
+    correlationId: 'correlation-2',
     requestId: 'request-2',
     source: 'rest',
   })),

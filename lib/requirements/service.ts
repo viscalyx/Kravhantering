@@ -14,6 +14,8 @@ import {
   type UiSettingsLoader,
 } from '@/lib/dal/ui-settings'
 import type { SqlServerDatabase } from '@/lib/db'
+import { recordCapacityEvent } from '@/lib/observability/capacity'
+import { checkInMemoryThrottle } from '@/lib/observability/throttle'
 import {
   type AuthorizationService,
   createDefaultAuthorizationService,
@@ -70,6 +72,9 @@ export type CatalogKind =
   | 'statuses'
   | 'requirement_packages'
   | 'transitions'
+
+const AI_SERVICE_GENERATE_RATE_LIMIT = 5
+const AI_SERVICE_GENERATE_RATE_WINDOW_MS = 60_000
 
 export interface RequirementMutationInput {
   acceptanceCriteria?: string
@@ -701,6 +706,39 @@ export function createRequirementsService(
       }
 
       await authorize(authorization, { kind: 'generate_requirements' }, context)
+      const throttle = checkInMemoryThrottle({
+        key: [
+          'requirements.generate_requirements',
+          context.source,
+          context.actor.source,
+          context.actor.id ?? context.actor.hsaId ?? context.correlationId,
+        ].join(':'),
+        limit: AI_SERVICE_GENERATE_RATE_LIMIT,
+        windowMs: AI_SERVICE_GENERATE_RATE_WINDOW_MS,
+      })
+
+      if (!throttle.allowed) {
+        recordCapacityEvent({
+          correlationId: context.correlationId,
+          event: 'capacity.throttled',
+          level: 'warn',
+          metrics: { throttled: true },
+          operation: 'requirements.generate_requirements',
+          outcome: 'throttled',
+          requestId: context.requestId,
+          retryAfterSeconds: throttle.retryAfterSeconds,
+          source: context.source,
+          statusCode: 429,
+          toolName: context.toolName,
+        })
+        throw validationError(
+          'Too many AI generation requests. Try again later.',
+          {
+            reason: 'rate_limited',
+            retryAfterSeconds: throttle.retryAfterSeconds,
+          },
+        )
+      }
 
       return withLogging(
         logger,

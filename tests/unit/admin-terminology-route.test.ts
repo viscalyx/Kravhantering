@@ -20,6 +20,7 @@ const routeState = vi.hoisted(() => ({
       path: '/api/admin/terminology',
       requestId: 'request-1',
     },
+    correlationId: 'correlation-1',
     requestId: 'request-1',
     source: 'rest',
   })),

@@ -4,16 +4,77 @@ import {
   AI_CREDIT_INFORMATION_UNAVAILABLE_MESSAGE,
   logSanitizedError,
 } from '@/lib/http/safe-errors'
+import {
+  observeCapacity,
+  recordCapacityEvent,
+} from '@/lib/observability/capacity'
+import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
+import { checkInMemoryThrottle } from '@/lib/observability/throttle'
+import { createRequestContext } from '@/lib/requirements/auth'
 
-export async function GET() {
+const AI_CREDITS_RATE_LIMIT = 20
+const AI_CREDITS_RATE_WINDOW_MS = 60_000
+const AI_CREDITS_SLOW_THRESHOLD_MS = 2_000
+
+export async function GET(request: Request) {
+  const context = await createRequestContext(request, 'rest')
+  const throttle = checkInMemoryThrottle({
+    key: [
+      'ai.credits',
+      context.actor.source,
+      context.actor.id ?? context.actor.hsaId ?? context.correlationId,
+    ].join(':'),
+    limit: AI_CREDITS_RATE_LIMIT,
+    windowMs: AI_CREDITS_RATE_WINDOW_MS,
+  })
+
+  if (!throttle.allowed) {
+    recordCapacityEvent({
+      correlationId: context.correlationId,
+      event: 'capacity.throttled',
+      level: 'warn',
+      metrics: { throttled: true },
+      operation: 'ai.credits',
+      outcome: 'throttled',
+      requestId: context.requestId,
+      retryAfterSeconds: throttle.retryAfterSeconds,
+      source: 'rest',
+      statusCode: 429,
+    })
+    return applyResponseCorrelationHeaders(
+      NextResponse.json(
+        { error: 'Too many AI credit requests.' },
+        {
+          headers: {
+            'Retry-After': String(throttle.retryAfterSeconds),
+          },
+          status: 429,
+        },
+      ),
+      context,
+    )
+  }
+
   try {
-    const info = await getKeyInfo()
-    return NextResponse.json(info)
+    const info = await observeCapacity(
+      {
+        correlationId: context.correlationId,
+        operation: 'ai.credits',
+        requestId: context.requestId,
+        slowThresholdMs: AI_CREDITS_SLOW_THRESHOLD_MS,
+        source: 'rest',
+      },
+      getKeyInfo,
+    )
+    return applyResponseCorrelationHeaders(NextResponse.json(info), context)
   } catch (err) {
     logSanitizedError('Failed to get AI credit information', err)
-    return NextResponse.json(
-      { error: AI_CREDIT_INFORMATION_UNAVAILABLE_MESSAGE },
-      { status: 503 },
+    return applyResponseCorrelationHeaders(
+      NextResponse.json(
+        { error: AI_CREDIT_INFORMATION_UNAVAILABLE_MESSAGE },
+        { status: 503 },
+      ),
+      context,
     )
   }
 }

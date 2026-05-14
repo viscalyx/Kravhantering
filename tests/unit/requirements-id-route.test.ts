@@ -5,7 +5,11 @@ const mockGetRequirement = vi.fn()
 const mockManageRequirement = vi.fn()
 const mockGetOwnerById = vi.fn()
 const mockCreateRequestContext = vi.hoisted(() =>
-  vi.fn(() => ({ source: 'rest' })),
+  vi.fn(() => ({
+    correlationId: 'corr-test',
+    requestId: 'req-test',
+    source: 'rest',
+  })),
 )
 const mockAuthorization = vi.hoisted(() => ({ assertAuthorized: vi.fn() }))
 const mockCreateDefaultAuthorizationService = vi.hoisted(() =>

@@ -68,6 +68,7 @@ describe('specification-local deviation lifecycle routes', () => {
         roles: ['Reviewer'],
         source: 'oidc',
       },
+      correlationId: 'corr-1',
       requestId: 'req-1',
       source: 'rest',
     })

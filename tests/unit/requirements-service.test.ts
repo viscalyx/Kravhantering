@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { conflictError, forbiddenError } from '@/lib/requirements/errors'
 import { normalizeUiTerminology } from '@/lib/ui-terminology'
+import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
 
 const mocks = vi.hoisted(() => ({
   approveArchiving: vi.fn(),
@@ -20,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   getRequirementById: vi.fn(),
   getRequirementByUniqueId: vi.fn(),
   getVersionHistory: vi.fn(),
+  generateChat: vi.fn(),
   listAreas: vi.fn(),
   listCategories: vi.fn(),
   listRequirements: vi.fn(),
@@ -38,6 +41,7 @@ const mocks = vi.hoisted(() => ({
   listSuggestionsForRequirement: vi.fn(),
   listQualityCharacteristics: vi.fn(),
   listTypes: vi.fn(),
+  loadTaxonomy: vi.fn(),
   reactivateRequirement: vi.fn(),
   recordDecision: vi.fn(),
   recordResolution: vi.fn(),
@@ -47,6 +51,21 @@ const mocks = vi.hoisted(() => ({
   transitionStatus: vi.fn(),
   updateDeviation: vi.fn(),
   updateSuggestion: vi.fn(),
+}))
+
+vi.mock('@/lib/ai/openrouter-client', () => ({
+  generateChat: mocks.generateChat,
+}))
+
+vi.mock('@/lib/ai/requirement-prompt', () => ({
+  REQUIREMENT_FORMAT_SCHEMA: { type: 'object' },
+  buildSystemPrompt: () => 'system prompt',
+  buildUserPrompt: () => 'user prompt',
+  validateGeneratedRequirements: (requirements: unknown[]) => requirements,
+}))
+
+vi.mock('@/lib/ai/taxonomy', () => ({
+  loadTaxonomy: mocks.loadTaxonomy,
 }))
 
 vi.mock('@/lib/dal/requirement-areas', () => ({
@@ -231,6 +250,7 @@ function makeContext() {
       roles: ['Admin'],
       source: 'oidc' as const,
     },
+    correlationId: 'corr-1',
     requestId: 'req-1',
     source: 'rest' as const,
   }
@@ -252,6 +272,7 @@ describe('createRequirementsService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    clearInMemoryThrottleForTests()
     infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     mocks.countDeviationsBySpecification.mockResolvedValue({
       approved: 0,
@@ -274,6 +295,18 @@ describe('createRequirementsService', () => {
     mocks.getRequirementById.mockResolvedValue(makeRequirementRecord())
     mocks.getRequirementByUniqueId.mockResolvedValue(makeRequirementRecord())
     mocks.getVersionHistory.mockResolvedValue([])
+    mocks.loadTaxonomy.mockResolvedValue({})
+    mocks.generateChat.mockResolvedValue({
+      content: { requirements: [] },
+      stats: {
+        completionTokens: 7,
+        cost: 0.02,
+        promptTokens: 3,
+        reasoningTokens: 0,
+        totalTokens: 10,
+      },
+      thinking: '',
+    })
     mocks.getAreaById.mockResolvedValue({
       id: 1,
       name: 'Integration',
@@ -1209,8 +1242,46 @@ describe('createRequirementsService', () => {
       'requirements.list_specifications',
       expect.objectContaining({
         actor_id: 'alice',
+        correlation_id: 'corr-1',
         source: 'rest',
       }),
+    )
+  })
+
+  it('emits capacity metrics for MCP AI generation', async () => {
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    const result = await service.generateRequirements(
+      {
+        ...makeContext(),
+        correlationId: 'corr-mcp',
+        requestId: 'req-mcp',
+        source: 'mcp',
+        toolName: 'requirements_generate_requirements',
+      },
+      {
+        locale: 'sv',
+        topic: 'kapacitetshantering',
+      },
+    )
+
+    expect(result.stats.totalTokens).toBe(10)
+    expect(parseCapacityEvents(infoSpy)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          correlation_id: 'corr-mcp',
+          cost: 0.02,
+          event: 'capacity.operation.completed',
+          operation: 'requirements.generate_requirements',
+          request_id: 'req-mcp',
+          source: 'mcp',
+          token_count: 10,
+          tool_name: 'requirements_generate_requirements',
+        }),
+      ]),
     )
   })
 

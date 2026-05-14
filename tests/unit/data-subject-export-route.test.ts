@@ -63,6 +63,7 @@ function context(roles: string[] = []) {
       roles,
       source: 'oidc',
     },
+    correlationId: 'correlation-1',
     request: new Request('http://localhost/api/privacy/data-subject-export'),
     requestId: 'request-1',
     source: 'rest',

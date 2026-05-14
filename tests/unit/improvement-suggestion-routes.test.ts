@@ -5,6 +5,7 @@ import { validationError } from '@/lib/requirements/errors'
 const mocks = vi.hoisted(() => {
   const context = {
     actor: { id: 'route-test' },
+    correlationId: 'correlation-1',
     requestId: 'request-1',
     source: 'rest',
   }

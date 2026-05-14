@@ -9,6 +9,7 @@ import {
   isSignedIn,
   type LoggedInSession,
 } from '@/lib/auth/session'
+import { resolveRequestCorrelationIds } from '@/lib/observability/request-ids'
 import type { ActorContext, RequestContext } from '@/lib/requirements/auth'
 
 export type AdminPrivilegedActionOperation =
@@ -104,7 +105,9 @@ function actorFromSession(session: LoggedInSession): ActorContext {
 export async function createAdminPrivilegedAuditContext(
   request: Request,
 ): Promise<RequestContext> {
-  const requestId = request.headers.get('x-request-id') ?? crypto.randomUUID()
+  const { correlationId, requestId } = resolveRequestCorrelationIds(
+    request.headers,
+  )
   const session = await getSessionFromRequest(request, new Response())
   const actor: ActorContext = isSignedIn(session)
     ? actorFromSession(session)
@@ -118,6 +121,7 @@ export async function createAdminPrivilegedAuditContext(
       }
   return {
     actor,
+    correlationId,
     request: requestMetadata(request, requestId),
     requestId,
     source: 'rest',

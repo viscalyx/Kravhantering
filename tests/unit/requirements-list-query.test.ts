@@ -28,6 +28,7 @@ function makeContext(): RequestContext {
       roles: ['admin'],
       source: 'oidc',
     },
+    correlationId: 'correlation-1',
     requestId: 'request-1',
     source: 'rest',
   }
