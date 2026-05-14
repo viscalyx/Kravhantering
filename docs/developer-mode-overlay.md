@@ -113,6 +113,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   uses `page: privacy data export` for the main export surface.
 - Auth logout failures use the stable `text: logout error` marker so the
   localized alert text does not become the developer-mode identifier.
+- Auth expiry and expired-authentication warnings use the shared
+  `dialog` marker from `ConfirmModal`; they do not add a separate auth-specific
+  developer-mode surface.
 - Requirement specification form save errors and specification-list load errors
   stay
   inside the existing `specifications` form/table surfaces; they do not add

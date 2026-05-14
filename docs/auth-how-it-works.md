@@ -39,7 +39,7 @@ It is intentionally not a replacement for the more detailed workflow docs:
   discovery, the authorization-code exchange, PKCE handling, and OIDC
   validation.
 - `/api/auth/me` exposes only safe session fields to the UI. It never returns
-  raw tokens.
+  raw tokens, and expired browser sessions are reported as unauthenticated.
 - `/api/auth/logout` destroys the local session and, when the discovered IdP
   advertises it, redirects through the IdP `end_session_endpoint`.
 - `/api/mcp` uses Bearer JWTs instead of the browser session cookie. Token
@@ -117,9 +117,16 @@ sequenceDiagram
 - [`components/AuthMenu.tsx`](../components/AuthMenu.tsx) calls `/api/auth/me`
   once on mount to render the signed-in user and aborts that request if the
   menu unmounts before the response settles.
+- [`components/AuthExpiryGuard.tsx`](../components/AuthExpiryGuard.tsx) also
+  calls `/api/auth/me` on mount. It warns signed-in users two minutes before
+  `expiresAt`, lets them authenticate again immediately, and redirects through
+  `/api/auth/login?returnTo=<current-path>` when the session expires.
 - `/api/auth/me` returns:
   `sub`, `hsaId`, `givenName`, `familyName`, `name`, `email?`, `roles`, and
   `expiresAt`. It never returns the raw ID token or raw access token.
+- `lib/http/api-fetch.ts` emits a browser auth-required event when same-origin
+  API calls return `401`, so unexpected invalid-session responses use the same
+  sign-in flow instead of leaving the user on a stale page.
 - The sign-in link in `AuthMenu` points to
   `/api/auth/login?returnTo=<locale-prefixed-path>`.
 - `POST /api/auth/logout` is the real logout operation. It:
@@ -131,9 +138,10 @@ sequenceDiagram
   alert.
 - `GET /api/auth/logout` is intentionally non-destructive. It only redirects
   locally and does not clear the session.
-- If a session cookie is present but invalid or unreadable,
-  `middleware.ts` records `auth.session.rejected` and treats the request as signed
-  out.
+- If a session cookie is present but past `accessTokenExpiresAt`,
+  `middleware.ts` records `auth.session.expired` and treats the request as
+  signed out. Invalid or unreadable cookies still record
+  `auth.session.rejected`.
 
 ### MCP bearer-token flow
 
@@ -211,7 +219,7 @@ sequenceDiagram
 - Security audit events are emitted through
   [`lib/auth/audit.ts`](../lib/auth/audit.ts). The current event set is:
   `auth.login.succeeded`, `auth.login.failed`, `auth.logout`,
-  `auth.session.rejected`, `auth.token.rejected`,
+  `auth.session.expired`, `auth.session.rejected`, `auth.token.rejected`,
   `auth.mcp.token.accepted`, `auth.roles.changed`,
   `auth.csrf.rejected`, `auth.authorization.denied`,
   `requirements.high_risk_mutation.succeeded`,
@@ -348,7 +356,8 @@ flowchart LR
   instance.
 - Keep the session model stateless. The app expects an encrypted cookie-based
   session, not a server-side session store, and it does not require sticky
-  sessions between replicas.
+  sessions between replicas. Browser access tokens are not stored for periodic
+  introspection.
 - If MCP is enabled in production, provision a separate confidential client
   for the service-to-service `client_credentials` flow and set
   `AUTH_OIDC_API_AUDIENCE` explicitly when its access-token `aud` differs from
@@ -366,6 +375,11 @@ flowchart LR
 - Expose authorization, token, and JWKS endpoints. An
   `end_session_endpoint` is strongly preferred so logout can also terminate
   the IdP session.
+- For immediate invalidation before `accessTokenExpiresAt`, prefer standard
+  OIDC front-channel logout, back-channel logout, or equivalent provider
+  session notifications in production. If the production IdP cannot support
+  those hooks, keep using the stateless session model and bound stale access by
+  shortening token/session lifetimes instead of storing browser access tokens.
 - Issue ID tokens that include the required claims:
   `sub`, `given_name`, `family_name`, and `employeeHsaId`.
 - Emit global role information in a way that resolves to the canonical app

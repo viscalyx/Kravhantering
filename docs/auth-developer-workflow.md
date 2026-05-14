@@ -282,10 +282,10 @@ does not compensate for a stale realm by deriving a replacement identity from
 ### No refresh tokens
 
 Browser sessions intentionally do **not** carry a refresh token. When
-the session expires, the user is bounced through `/api/auth/login` for
-silent re-auth against the still-valid SSO session at the IdP. This
-keeps the encrypted session cookie small and avoids long-lived tokens
-on the client.
+the session or cached access-token lifetime expires, the user is bounced
+through `/api/auth/login` for silent re-auth against the still-valid SSO
+session at the IdP. This keeps the encrypted session cookie small and
+avoids long-lived tokens on the client.
 
 ### CSRF: client `fetch` mutations
 
@@ -365,7 +365,7 @@ lifetime.
 | --- | --- | --- | --- |
 | `AUTH_SESSION_COOKIE_PASSWORD` | yes | _(none)_ | Encryption + signing key for the session cookie. **Must be ≥ 32 characters.** Generate with `openssl rand -base64 48`. **Secret**: per env, lives in the OpenShift Secret. Rotating invalidates every live session — schedule during low traffic. |
 | `AUTH_SESSION_COOKIE_NAME` | no | `kravhantering_session` | Cookie name. Override only if you need to coexist with another deployment on the same host. |
-| `AUTH_SESSION_TTL_SECONDS` | no | `28800` (8 h) | Session lifetime. After expiry the next request bounces through `/api/auth/login` (silent if the IdP SSO session is still alive). |
+| `AUTH_SESSION_TTL_SECONDS` | no | `28800` (8 h) | Absolute encrypted-cookie lifetime. The cached access-token expiry normally forces a new sign-in sooner. |
 <!-- markdownlint-enable MD013 -->
 
 ### Session and token timeouts
@@ -379,13 +379,14 @@ independent — the shortest one wins.
 <!-- markdownlint-disable MD013 -->
 | Knob | Where | Default | Meaning |
 | --- | --- | --- | --- |
-| `AUTH_SESSION_TTL_SECONDS` | env → [lib/auth/config.ts](../lib/auth/config.ts), [lib/auth/session.ts](../lib/auth/session.ts) | `28800` (8 h) | Absolute lifetime of the encrypted `iron-session` cookie. **Does not slide on activity.** When the cookie expires, the next request hits `/api/auth/login` and is silently re-authenticated if the IdP SSO session is still alive; otherwise the user sees the IdP login page. |
-| `session.accessTokenExpiresAt` | written in [app/api/auth/callback/route.ts](../app/api/auth/callback/route.ts) | `tokens.expiresIn()` from the IdP, falling back to `AUTH_SESSION_TTL_SECONDS` | Tracks when the cached access token expires so the app knows when to re-auth. Not user-visible. |
+| `AUTH_SESSION_TTL_SECONDS` | env → [lib/auth/config.ts](../lib/auth/config.ts), [lib/auth/session.ts](../lib/auth/session.ts) | `28800` (8 h) | Absolute lifetime of the encrypted `iron-session` cookie. **Does not slide on activity.** If the cookie expires first, the next request hits `/api/auth/login` and is silently re-authenticated if the IdP SSO session is still alive; otherwise the user sees the IdP login page. |
+| `session.accessTokenExpiresAt` | written in [app/api/auth/callback/route.ts](../app/api/auth/callback/route.ts) | `tokens.expiresIn()` from the IdP, falling back to `AUTH_SESSION_TTL_SECONDS` | Active browser-session validity boundary. The client warns two minutes before this timestamp and redirects through `/api/auth/login` at expiry. Middleware also treats cookies past this timestamp as signed out. |
 <!-- markdownlint-enable MD013 -->
 
 The app does **not** implement an idle/inactivity timeout. There is no
-sliding renewal on the cookie, no "logged out after N minutes idle"
-banner, and no server-side session store to expire.
+sliding renewal on the cookie and no server-side session store to expire.
+The visible auth-expiry warning is tied to absolute token expiry, not
+per-user idle activity.
 
 **IdP side (Keycloak realm `kravhantering-dev`):**
 
@@ -397,7 +398,7 @@ Production values are set per environment by ops on the real IdP.
 | --- | --- | --- |
 | `ssoSessionIdleTimeout` | `28800` (8 h) | **Idle** SSO session timeout. If the user is gone longer than this, the next silent re-auth via `/api/auth/login` requires a fresh password. |
 | `ssoSessionMaxLifespan` | `28800` (8 h) | **Absolute** SSO session lifetime. Hard cap regardless of activity; after this the user must sign in again. |
-| `accessTokenLifespan` (realm) | `1800` (30 min) | Access-token lifetime issued to the `kravhantering-app` web client. The app does **not** refresh access tokens client-side; on cookie expiry it re-bounces through `/api/auth/login`. |
+| `accessTokenLifespan` (realm) | `1800` (30 min) | Access-token lifetime issued to the `kravhantering-app` web client. The app does **not** refresh access tokens client-side; it warns shortly before this timestamp and re-bounces through `/api/auth/login` at expiry. |
 | `access.token.lifespan` (`kravhantering-mcp` client) | `3600` (1 h) | Access-token lifetime for service-to-service MCP tokens. Validated by [lib/auth/mcp-token.ts](../lib/auth/mcp-token.ts). |
 <!-- markdownlint-enable MD013 -->
 
@@ -405,16 +406,23 @@ Production values are set per environment by ops on the real IdP.
 
 - A user signs in → cookie valid 8 h, IdP SSO session valid 8 h
   (idle + max), access token valid 30 min.
-- Active user: when the cookie's 8 h absolute lifetime expires the next
-  request bounces through `/api/auth/login`, which silently re-auths
-  against the still-valid SSO session at the IdP and writes a fresh
-  cookie. There is no in-process refresh-token round-trip.
-- Idle user past 8 h: cookie has expired and IdP SSO session has
+- Active user: two minutes before the 30 min access-token boundary, the
+  browser shows an authentication-expiry warning. At expiry it redirects
+  through `/api/auth/login`, which silently re-auths against the still-valid
+  SSO session at the IdP and writes a fresh cookie. There is no in-process
+  refresh-token round-trip.
+- Idle user past 8 h: the local cookie and IdP SSO session have both
   expired → full IdP login on next request.
 - To enforce a shorter inactivity window (e.g. 30 min idle), lower
   `ssoSessionIdleTimeout` on the IdP and lower
   `AUTH_SESSION_TTL_SECONDS` to a comparable value. There is no
   app-level idle timer to configure.
+- Immediate IdP-side invalidation before `accessTokenExpiresAt` is a later
+  provider-contract phase. Prefer production IdP front-channel logout,
+  back-channel logout, or equivalent session notification hooks; do not store
+  browser access tokens just to introspect them periodically. If the production
+  IdP cannot support those hooks, reduce token/session lifetimes to bound stale
+  access.
 
 ### Build-target auth constants
 

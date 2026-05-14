@@ -105,8 +105,7 @@ function hasFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
 }
 
-/** True when the session carries enough data to consider the user signed in. */
-export function isSignedIn(
+function hasSignedInSessionShape(
   session: SessionData | IronSession<SessionData>,
 ): session is LoggedInSession {
   return (
@@ -118,6 +117,25 @@ export function isSignedIn(
     Array.isArray(session.roles) &&
     hasFiniteNumber(session.accessTokenExpiresAt)
   )
+}
+
+function currentEpochSeconds(): number {
+  return Math.floor(Date.now() / 1000)
+}
+
+export function isSessionExpired(
+  session: SessionData | IronSession<SessionData>,
+  now: number = currentEpochSeconds(),
+): boolean {
+  return hasSignedInSessionShape(session) && session.accessTokenExpiresAt <= now
+}
+
+/** True when the session carries enough data and has not expired. */
+export function isSignedIn(
+  session: SessionData | IronSession<SessionData>,
+  now: number = currentEpochSeconds(),
+): session is LoggedInSession {
+  return hasSignedInSessionShape(session) && session.accessTokenExpiresAt > now
 }
 
 function computeCookieMaxAge(ttl: number): number {
@@ -179,18 +197,17 @@ export async function estimateSerializedSessionCookieLength(
 }
 
 export interface SessionDiagnostics {
-  reason?: 'invalid_session_cookie'
+  reason?: 'access_token_expired' | 'invalid_session_cookie'
   rejected: boolean
   session: IronSession<SessionData>
 }
 
 /**
  * Read the session like {@link getSessionFromRequest} but additionally
- * reports whether a session cookie was present-but-invalid. `iron-session`
- * silently returns an empty session on decrypt/expiry/tamper failures, so
- * detection is "cookie present in request but resulting session has no
- * `sub`". Used by `middleware.ts` to emit the `auth.session.rejected`
- * security audit event without changing the public read API.
+ * reports whether a session cookie was present but cannot be accepted.
+ * `iron-session` silently returns an empty session on decrypt/expiry/tamper
+ * failures, so detection distinguishes complete-but-expired session payloads
+ * from malformed, partial, or unreadable cookies.
  */
 export async function getSessionFromRequestWithDiagnostics(
   request: Request,
@@ -206,7 +223,14 @@ export async function getSessionFromRequestWithDiagnostics(
     response,
     buildSessionOptions(),
   )
-  if (cookiePresent && !isSignedIn(session)) {
+  if (!cookiePresent) {
+    return { session, rejected: false }
+  }
+  const now = currentEpochSeconds()
+  if (isSessionExpired(session, now)) {
+    return { session, rejected: true, reason: 'access_token_expired' }
+  }
+  if (!isSignedIn(session, now)) {
     return { session, rejected: true, reason: 'invalid_session_cookie' }
   }
   return { session, rejected: false }

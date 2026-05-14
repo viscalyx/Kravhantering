@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { AUTH_REAUTH_REQUIRED_EVENT } from '@/lib/auth/client-events'
 import { apiFetch } from '@/lib/http/api-fetch'
 
 const fetchMock = vi.fn()
@@ -99,5 +100,63 @@ describe('apiFetch', () => {
 
     expect(headers.get('content-type')).toBe('application/json')
     expect(headers.get('x-requested-with')).toBe('XMLHttpRequest')
+  })
+
+  it('dispatches a reauth event for same-origin API 401 responses', async () => {
+    const events: CustomEvent[] = []
+    const listener = (event: Event) => events.push(event as CustomEvent)
+    window.addEventListener(AUTH_REAUTH_REQUIRED_EVENT, listener)
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 401 }))
+
+    try {
+      const response = await apiFetch('/api/items')
+
+      expect(response.status).toBe(401)
+      expect(events).toHaveLength(1)
+      expect(events[0]?.detail).toEqual({ reason: 'api_unauthorized' })
+    } finally {
+      window.removeEventListener(AUTH_REAUTH_REQUIRED_EVENT, listener)
+    }
+  })
+
+  it('does not dispatch a reauth event for cross-origin 401 responses', async () => {
+    const events: CustomEvent[] = []
+    const listener = (event: Event) => events.push(event as CustomEvent)
+    window.addEventListener(AUTH_REAUTH_REQUIRED_EVENT, listener)
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 401 }))
+
+    try {
+      const response = await apiFetch('https://api.example.test/items')
+
+      expect(response.status).toBe(401)
+      expect(events).toHaveLength(0)
+    } finally {
+      window.removeEventListener(AUTH_REAUTH_REQUIRED_EVENT, listener)
+    }
+  })
+
+  it('still returns the API response when reauth event dispatch fails', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {})
+    const dispatchSpy = vi
+      .spyOn(window, 'dispatchEvent')
+      .mockImplementation(() => {
+        throw new Error('dispatch failed')
+      })
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 401 }))
+
+    try {
+      const response = await apiFetch('/api/items')
+
+      expect(response.status).toBe(401)
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[auth] failed to dispatch auth-required event',
+        'dispatch failed',
+      )
+    } finally {
+      dispatchSpy.mockRestore()
+      consoleErrorSpy.mockRestore()
+    }
   })
 })

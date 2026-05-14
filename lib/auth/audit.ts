@@ -21,6 +21,7 @@ export type SecurityEventName =
   | 'auth.login.succeeded'
   | 'auth.login.failed'
   | 'auth.logout'
+  | 'auth.session.expired'
   | 'auth.session.rejected'
   | 'auth.token.rejected'
   | 'auth.mcp.token.accepted'

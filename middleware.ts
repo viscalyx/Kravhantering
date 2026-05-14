@@ -304,12 +304,25 @@ async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
   if (isSignedIn(session)) return null
 
   if (rejected) {
+    const sessionExpired = reason === 'access_token_expired'
     recordSecurityEvent({
-      event: 'auth.session.rejected',
+      event: sessionExpired ? 'auth.session.expired' : 'auth.session.rejected',
       outcome: 'failure',
-      actor: { source: 'anonymous' },
+      actor:
+        sessionExpired && typeof session.sub === 'string'
+          ? {
+              source: 'oidc',
+              sub: session.sub,
+              ...(typeof session.hsaId === 'string'
+                ? { hsaId: session.hsaId }
+                : {}),
+            }
+          : { source: 'anonymous' },
       request,
-      detail: { reason: reason ?? 'invalid_session_cookie' },
+      detail:
+        sessionExpired && typeof session.accessTokenExpiresAt === 'number'
+          ? { expiredAt: session.accessTokenExpiresAt }
+          : { reason: reason ?? 'invalid_session_cookie' },
     })
   }
 

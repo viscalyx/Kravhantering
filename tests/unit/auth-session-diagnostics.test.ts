@@ -31,6 +31,10 @@ function restoreTrackedEnv() {
   }
 }
 
+function futureEpochSeconds(): number {
+  return Math.floor(Date.now() / 1000) + 60 * 60
+}
+
 describe('getSessionFromRequestWithDiagnostics', () => {
   beforeEach(() => {
     env.AUTH_OIDC_ISSUER_URL = 'https://issuer.example.com'
@@ -70,7 +74,7 @@ describe('getSessionFromRequestWithDiagnostics', () => {
       session.hsaId = 'SE2321000032-rev1'
       session.roles = ['Reviewer']
       session.idToken = 'jwt'
-      session.accessTokenExpiresAt = 1
+      session.accessTokenExpiresAt = futureEpochSeconds()
     })
   }
 
@@ -96,6 +100,29 @@ describe('getSessionFromRequestWithDiagnostics', () => {
       new Response(),
     )
     expect(result.rejected).toBe(false)
+    expect(result.session.sub).toBe('user-1')
+  })
+
+  it('returns rejected=true with access_token_expired for a complete expired session cookie', async () => {
+    const cookieHeader = await writeSessionCookie(session => {
+      session.sub = 'user-1'
+      session.givenName = 'Alice'
+      session.familyName = 'Reviewer'
+      session.name = 'Alice Reviewer'
+      session.hsaId = 'SE2321000032-rev1'
+      session.roles = ['Reviewer']
+      session.idToken = 'jwt'
+      session.accessTokenExpiresAt = 1
+    })
+    const { getSessionFromRequestWithDiagnostics } = await import(
+      '@/lib/auth/session'
+    )
+    const result = await getSessionFromRequestWithDiagnostics(
+      new Request('http://localhost/', { headers: { cookie: cookieHeader } }),
+      new Response(),
+    )
+    expect(result.rejected).toBe(true)
+    expect(result.reason).toBe('access_token_expired')
     expect(result.session.sub).toBe('user-1')
   })
 
