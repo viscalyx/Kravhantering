@@ -434,4 +434,25 @@ describe('deviation mutation routes', () => {
     expect(routeState.deleteSpecificationLocalDeviation).not.toHaveBeenCalled()
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
+
+  it('deletes specification-local deviations when a human actor is present', async () => {
+    const { DELETE } = await import(
+      '@/app/api/specification-local-deviations/[id]/route'
+    )
+
+    const response = await DELETE(
+      new Request('https://example.test/api/specification-local-deviations/7', {
+        method: 'DELETE',
+      }) as never,
+      params({ id: '7' }),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ ok: true })
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
+    expect(routeState.deleteSpecificationLocalDeviation).toHaveBeenCalledWith(
+      mockDb,
+      7,
+    )
+  })
 })

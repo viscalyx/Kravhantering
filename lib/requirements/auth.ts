@@ -102,6 +102,13 @@ export type RequirementsAction =
       requirementIds: number[]
     }
   | {
+      kind: 'manage_specification_local_requirement'
+      operation: string
+      specificationId?: number
+      specificationSlug?: string
+      localRequirementId?: number
+    }
+  | {
       kind: 'get_requirement'
       uniqueId?: string
       id?: number

@@ -11,7 +11,7 @@ import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
-  customMutationPolicy,
+  requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { specificationLocalRequirementSchema } from '@/lib/http/specification-local-requirement-validation'
@@ -20,6 +20,7 @@ import {
   positiveIntegerStringSchema,
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
+import type { RequirementsAction } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
@@ -33,6 +34,30 @@ const specificationLocalRequirementParamSchema = z
     localRequirementId: positiveIntegerStringSchema,
   })
   .strict()
+
+type SpecificationLocalRequirementParams = z.infer<
+  typeof specificationLocalRequirementParamSchema
+>
+type SpecificationLocalRequirementBody = z.infer<
+  typeof specificationLocalRequirementSchema
+>
+
+function specificationLocalRequirementAction(
+  operation: string,
+  params: SpecificationLocalRequirementParams,
+): RequirementsAction {
+  const specificationId = /^\d+$/.test(params.id)
+    ? Number(params.id)
+    : undefined
+
+  return {
+    kind: 'manage_specification_local_requirement',
+    localRequirementId: params.localRequirementId,
+    operation,
+    specificationId,
+    specificationSlug: specificationId === undefined ? params.id : undefined,
+  }
+}
 
 async function resolveSpecificationId(
   db: SqlServerDatabase,
@@ -76,12 +101,14 @@ export async function GET(
   return NextResponse.json(requirement)
 }
 
-export const PUT = secureMutationRoute({
+export const PUT = secureMutationRoute<
+  SpecificationLocalRequirementBody,
+  SpecificationLocalRequirementParams
+>({
   bodySchema: specificationLocalRequirementSchema,
   paramsSchema: specificationLocalRequirementParamSchema,
-  policy: customMutationPolicy(
-    'specification_local_requirement.update',
-    () => {},
+  policy: requirementsMutationPolicy(({ params }) =>
+    specificationLocalRequirementAction('update', params),
   ),
   handler: async ({ body, params }) => {
     const { id, localRequirementId: numericLocalRequirementId } = params
@@ -131,11 +158,13 @@ export const PUT = secureMutationRoute({
   },
 })
 
-export const DELETE = secureMutationRoute({
+export const DELETE = secureMutationRoute<
+  undefined,
+  SpecificationLocalRequirementParams
+>({
   paramsSchema: specificationLocalRequirementParamSchema,
-  policy: customMutationPolicy(
-    'specification_local_requirement.delete',
-    () => {},
+  policy: requirementsMutationPolicy(({ params }) =>
+    specificationLocalRequirementAction('delete', params),
   ),
   handler: async ({ params }) => {
     const { id, localRequirementId: numericLocalRequirementId } = params
