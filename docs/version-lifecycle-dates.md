@@ -317,8 +317,8 @@ The version history pills show the relevant date per status:
   version row. Does **not** set `is_archived`.
 - **Approving archiving** (`approveArchiving`): In-place
   `UPDATE` on the existing version row. Sets `statusId` to
-  Archived and sets `archived_at` and `status_updated_at` to the current time.
-  Sets
+  Archived, sets `archived_at` and `status_updated_at` to the current time,
+  clears `archive_initiated_at` to `NULL`, and sets
   `is_archived = true`. **Never** touches `edited_at`.
   **Never** creates a new version row.
 - **Cancelling archiving** (`cancelArchiving`): In-place
