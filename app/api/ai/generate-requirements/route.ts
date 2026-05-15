@@ -8,7 +8,7 @@ import {
   buildUserPrompt,
   type GeneratedRequirement,
   REQUIREMENT_FORMAT_SCHEMA,
-  validateGeneratedRequirements,
+  validateGeneratedRequirementsWithMetadata,
 } from '@/lib/ai/requirement-prompt'
 import { loadTaxonomy } from '@/lib/ai/taxonomy'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -244,6 +244,9 @@ export const POST = secureMutationRoute({
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder()
+        const supportedParameters = Array.isArray(body.supportedParameters)
+          ? body.supportedParameters
+          : undefined
 
         function send(event: string, data: unknown) {
           controller.enqueue(
@@ -267,9 +270,7 @@ export const POST = secureMutationRoute({
                 ? body.reasoningEffort
                 : undefined,
             signal: request.signal,
-            supportedParameters: Array.isArray(body.supportedParameters)
-              ? body.supportedParameters
-              : undefined,
+            supportedParameters,
           })) {
             switch (event.phase) {
               case 'thinking':
@@ -289,10 +290,12 @@ export const POST = secureMutationRoute({
                     requirements: GeneratedRequirement[]
                   }
                   if (parsed.requirements) {
-                    parsed.requirements = validateGeneratedRequirements(
-                      parsed.requirements,
-                      taxonomy,
-                    )
+                    const validation =
+                      validateGeneratedRequirementsWithMetadata(
+                        parsed.requirements,
+                        taxonomy,
+                      )
+                    parsed.requirements = validation.requirements
                     validated = JSON.stringify(parsed)
                   }
                 } catch {

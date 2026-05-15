@@ -124,7 +124,9 @@ function saveFavorites(favorites: Set<string>) {
 function loadFilters(): string[] {
   try {
     const raw = localStorage.getItem(FILTERS_KEY)
-    if (raw) return JSON.parse(raw) as string[]
+    if (raw) {
+      return (JSON.parse(raw) as string[]).filter(item => item !== 'logprobs')
+    }
   } catch {
     /* empty */
   }
@@ -133,6 +135,10 @@ function loadFilters(): string[] {
 
 function saveFilters(filters: string[]) {
   localStorage.setItem(FILTERS_KEY, JSON.stringify(filters))
+}
+
+function sameFilterSet(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every(item => b.includes(item))
 }
 
 const DATA_POLICIES_KEY = 'ai-data-policies'
@@ -165,16 +171,12 @@ const OPTIONAL_CAPABILITIES = [
     tooltipKey: 'capabilityToolsTooltip',
   },
   {
-    key: 'logprobs',
-    labelKey: 'capabilityLogprobs',
-    tooltipKey: 'capabilityLogprobsTooltip',
-  },
-  {
     key: 'vision',
     labelKey: 'capabilityVision',
     tooltipKey: 'capabilityVisionTooltip',
   },
 ] as const
+type OptionalCapabilityKey = (typeof OPTIONAL_CAPABILITIES)[number]['key']
 
 // Image attachment constraints
 const ALLOWED_IMAGE_TYPES = [
@@ -252,6 +254,10 @@ export default function AiRequirementGenerator({
   // Favorites & capability filters
   const [favorites, setFavorites] = useState<Set<string>>(() => new Set())
   const [activeFilters, setActiveFilters] = useState<string[]>([])
+  const [modelListFilters, setModelListFilters] = useState<string[]>([])
+  const [capabilityModelCounts, setCapabilityModelCounts] = useState<
+    Partial<Record<OptionalCapabilityKey, number>>
+  >({})
   const [dataPolicies, setDataPolicies] = useState<string[]>(
     DATA_POLICIES_DEFAULT,
   )
@@ -317,21 +323,69 @@ export default function AiRequirementGenerator({
       const ac = new AbortController()
       modelsAbortRef.current = ac
       setModelsLoading(true)
-      const params = new URLSearchParams()
-      if (refresh) params.set('refresh', '1')
-      if (activeFilters.length > 0) {
-        params.set('supported_parameters', activeFilters.join(','))
+      const requestFilters = activeFilters
+
+      const buildModelsUrl = (filters: string[]) => {
+        const params = new URLSearchParams()
+        if (refresh) params.set('refresh', '1')
+        if (filters.length > 0) {
+          params.set('supported_parameters', filters.join(','))
+        }
+        const qs = params.toString()
+        return `/api/ai/models${qs ? `?${qs}` : ''}`
       }
-      const qs = params.toString()
-      apiFetch(`/api/ai/models${qs ? `?${qs}` : ''}`, { signal: ac.signal })
-        .then(
-          r =>
-            r.json() as Promise<{ error?: string; models?: OpenRouterModel[] }>,
+      const appendFilter = (filters: string[], filter: string) =>
+        filters.includes(filter) ? filters : [...filters, filter]
+
+      const loadModels = async () => {
+        const response = await apiFetch(buildModelsUrl(requestFilters), {
+          signal: ac.signal,
+        })
+        const data = (await response.json()) as {
+          error?: string
+          models?: OpenRouterModel[]
+        }
+        const list = data.models ?? []
+        const modelsError = data.error ?? null
+        const capabilityCountEntries = await Promise.all(
+          OPTIONAL_CAPABILITIES.map(async cap => {
+            if (requestFilters.includes(cap.key)) {
+              return [cap.key, list.length] as const
+            }
+            try {
+              const countResponse = await apiFetch(
+                buildModelsUrl(appendFilter(requestFilters, cap.key)),
+                { signal: ac.signal },
+              )
+              const countData = (await countResponse.json()) as {
+                models?: OpenRouterModel[]
+              }
+              return [cap.key, countData.models?.length ?? null] as const
+            } catch {
+              return [cap.key, null] as const
+            }
+          }),
         )
-        .then(data => {
+        const capabilityCounts = Object.fromEntries(
+          capabilityCountEntries.filter(
+            (entry): entry is readonly [OptionalCapabilityKey, number] =>
+              entry[1] !== null,
+          ),
+        )
+
+        return {
+          capabilityCounts,
+          list,
+          modelsError,
+        }
+      }
+
+      loadModels()
+        .then(({ capabilityCounts, list, modelsError }) => {
           if (ac.signal.aborted) return
-          const list = data.models ?? []
-          setModelsError(data.error ?? null)
+          setCapabilityModelCounts(capabilityCounts)
+          setModelListFilters(requestFilters)
+          setModelsError(modelsError)
           setModels(list)
           if (list.length > 0) {
             const needsSelection =
@@ -350,6 +404,8 @@ export default function AiRequirementGenerator({
         })
         .catch((err: unknown) => {
           if (ac.signal.aborted) return
+          setCapabilityModelCounts({})
+          setModelListFilters(requestFilters)
           setModels([])
           setModelsError(
             err instanceof Error ? err.message : t('errors.failedToLoadModels'),
@@ -991,14 +1047,27 @@ export default function AiRequirementGenerator({
 
   // Compute which optional capabilities would actually filter.
   // Always keep active filters visible so users can uncheck them.
+  const countsMatchActiveFilters = sameFilterSet(
+    modelListFilters,
+    activeFilters,
+  )
+  const countsAreRefreshing = modelsLoading && !countsMatchActiveFilters
   const capabilityCounts = OPTIONAL_CAPABILITIES.map(cap => ({
     ...cap,
-    count: models.filter(m => m.supportedParameters.includes(cap.key)).length,
+    count: modelListFilters.includes(cap.key)
+      ? models.length
+      : (capabilityModelCounts[cap.key] ??
+        models.filter(m => m.supportedParameters.includes(cap.key)).length),
   })).filter(
     cap =>
       activeFilters.includes(cap.key) ||
+      modelListFilters.includes(cap.key) ||
       (cap.count > 0 && cap.count < models.length),
   )
+  const visibleRequirementEntries = requirements.map((req, index) => ({
+    index,
+    req,
+  }))
 
   return (
     <AnimatePresence>
@@ -1358,6 +1427,11 @@ export default function AiRequirementGenerator({
                           {/* Optional toggles */}
                           {capabilityCounts.map(cap => (
                             <div
+                              aria-busy={
+                                countsAreRefreshing &&
+                                (activeFilters.includes(cap.key) ||
+                                  modelListFilters.includes(cap.key))
+                              }
                               className="mb-1 flex items-center gap-1.5 text-secondary-600 dark:text-secondary-300"
                               key={cap.key}
                             >
@@ -1386,10 +1460,6 @@ export default function AiRequirementGenerator({
                               </span>
                             </div>
                           ))}
-                          <div className="mt-2 text-secondary-400 dark:text-secondary-500">
-                            {t('modelsMatch', { count: models.length })}
-                          </div>
-
                           {/* Data privacy settings */}
                           <div className="mt-3 border-t border-secondary-200 pt-3 dark:border-secondary-700">
                             <div className="mb-1 flex items-center gap-1 font-medium text-secondary-700 dark:text-secondary-300">
@@ -1849,7 +1919,6 @@ export default function AiRequirementGenerator({
                     {stats.cost > 0 && <> · ${stats.cost.toFixed(4)}</>}
                   </div>
                 )}
-
                 {/* Results */}
                 {phase === 'done' && requirements.length > 0 && (
                   <div className="mt-4 space-y-3">
@@ -1871,7 +1940,7 @@ export default function AiRequirementGenerator({
 
                     {/* Requirement cards */}
                     <div className="space-y-2">
-                      {requirements.map((req, i) => {
+                      {visibleRequirementEntries.map(({ index: i, req }) => {
                         const isExpanded = expandedCards.has(req._id)
                         const toggleExpand = () => {
                           setExpandedCards(prev => {
