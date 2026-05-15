@@ -1,6 +1,6 @@
 'use client'
 
-import { motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { AlertTriangle, ExternalLink, Plus, RotateCcw, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
@@ -12,7 +12,11 @@ import RequirementFormFields, {
 import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 import { useRouter } from '@/i18n/routing'
 import { apiFetch } from '@/lib/http/api-fetch'
-import { dialogPanelMotion, offsetPanelMotion } from '@/lib/reduced-motion'
+import {
+  dialogPanelMotion,
+  fadeMotion,
+  offsetPanelMotion,
+} from '@/lib/reduced-motion'
 
 interface RequirementFormProps {
   baseRevisionToken?: string | null
@@ -302,73 +306,82 @@ export default function RequirementForm({
         values={form}
       />
 
-      {showCreateNormRef &&
+      {typeof document !== 'undefined' &&
         createPortal(
-          <NormReferenceModal
-            normRefError={normRefError}
-            normRefForm={normRefForm}
-            normRefSubmitting={normRefSubmitting}
-            onCancel={() => {
-              setShowCreateNormRef(false)
-              setNormRefError(null)
-            }}
-            onSave={async () => {
-              setNormRefSubmitting(true)
-              setNormRefError(null)
-              try {
-                const res = await apiFetch('/api/norm-references', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    normReferenceId: normRefForm.normReferenceId || undefined,
-                    name: normRefForm.name,
-                    type: normRefForm.type,
-                    reference: normRefForm.reference,
-                    version: normRefForm.version || null,
-                    issuer: normRefForm.issuer,
-                    uri: normRefForm.uri || null,
-                  }),
-                })
-                if (!res.ok) {
-                  const data = (await res.json().catch(() => null)) as {
-                    error?: string
-                  } | null
-                  setNormRefError(data?.error ?? tc('error'))
-                } else {
-                  const created = (await res.json()) as NormReferenceOption
-                  setCreatedNormRefs(prev => [
-                    ...prev,
-                    {
-                      id: created.id,
-                      name: created.name,
-                      normReferenceId: created.normReferenceId,
-                    },
-                  ])
-                  setForm(prev => ({
-                    ...prev,
-                    normReferenceIds: [...prev.normReferenceIds, created.id],
-                  }))
-                  setNormRefForm({
-                    normReferenceId: '',
-                    name: '',
-                    type: '',
-                    reference: '',
-                    version: '',
-                    issuer: '',
-                    uri: '',
-                  })
+          <AnimatePresence initial={false}>
+            {showCreateNormRef ? (
+              <NormReferenceModal
+                key="create-norm-reference-modal"
+                normRefError={normRefError}
+                normRefForm={normRefForm}
+                normRefSubmitting={normRefSubmitting}
+                onCancel={() => {
                   setShowCreateNormRef(false)
+                  setNormRefError(null)
+                }}
+                onSave={async () => {
+                  setNormRefSubmitting(true)
+                  setNormRefError(null)
+                  try {
+                    const res = await apiFetch('/api/norm-references', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        normReferenceId:
+                          normRefForm.normReferenceId || undefined,
+                        name: normRefForm.name,
+                        type: normRefForm.type,
+                        reference: normRefForm.reference,
+                        version: normRefForm.version || null,
+                        issuer: normRefForm.issuer,
+                        uri: normRefForm.uri || null,
+                      }),
+                    })
+                    if (!res.ok) {
+                      const data = (await res.json().catch(() => null)) as {
+                        error?: string
+                      } | null
+                      setNormRefError(data?.error ?? tc('error'))
+                    } else {
+                      const created = (await res.json()) as NormReferenceOption
+                      setCreatedNormRefs(prev => [
+                        ...prev,
+                        {
+                          id: created.id,
+                          name: created.name,
+                          normReferenceId: created.normReferenceId,
+                        },
+                      ])
+                      setForm(prev => ({
+                        ...prev,
+                        normReferenceIds: [
+                          ...prev.normReferenceIds,
+                          created.id,
+                        ],
+                      }))
+                      setNormRefForm({
+                        normReferenceId: '',
+                        name: '',
+                        type: '',
+                        reference: '',
+                        version: '',
+                        issuer: '',
+                        uri: '',
+                      })
+                      setShowCreateNormRef(false)
+                    }
+                  } catch {
+                    setNormRefError(tc('error'))
+                  } finally {
+                    setNormRefSubmitting(false)
+                  }
+                }}
+                onSetField={(field, value) =>
+                  setNormRefForm(prev => ({ ...prev, [field]: value }))
                 }
-              } catch {
-                setNormRefError(tc('error'))
-              } finally {
-                setNormRefSubmitting(false)
-              }
-            }}
-            onSetField={(field, value) =>
-              setNormRefForm(prev => ({ ...prev, [field]: value }))
-            }
-          />,
+              />
+            ) : null}
+          </AnimatePresence>,
           document.body,
         )}
 
@@ -574,10 +587,11 @@ function NormReferenceModal({
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       ref={overlayRef}
     >
-      <div
+      <motion.div
         aria-hidden="true"
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={normRefSubmitting ? undefined : onCancel}
+        {...fadeMotion(shouldReduceMotion, { duration: 0.22 })}
       />
       <motion.div
         aria-describedby="modal-desc-norm-ref"
@@ -586,7 +600,7 @@ function NormReferenceModal({
         className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto"
         ref={dialogRef}
         role="dialog"
-        {...dialogPanelMotion(shouldReduceMotion)}
+        {...dialogPanelMotion(shouldReduceMotion, { duration: 0.22 })}
       >
         <div className="flex items-center justify-between">
           <h2
