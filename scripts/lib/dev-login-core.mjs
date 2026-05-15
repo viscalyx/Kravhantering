@@ -1,0 +1,385 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+
+export const KNOWN_USERS = {
+  'ada.admin': 'devpass',
+  'only.admin': 'devpass',
+  'rita.reviewer': 'devpass',
+}
+
+export const USAGE =
+  'Usage: node scripts/dev-login.mjs [--user ada.admin] [--password devpass]\n' +
+  '                                  [--base http://localhost:3000] [--jar PATH]\n' +
+  '                                  [--force] [--print-jar]\n'
+
+export function parseArgs(
+  argv,
+  { env = process.env, stdout = process.stdout, exit = process.exit } = {},
+) {
+  const requireValue = (index, flag) => {
+    const value = argv[index + 1]
+    if (value == null || value.startsWith('-')) {
+      throw new Error(`Missing value for ${flag}`)
+    }
+    return value
+  }
+  const args = {
+    user: 'ada.admin',
+    password: undefined,
+    base: env.DEV_LOGIN_BASE_URL ?? 'http://localhost:3000',
+    jar: undefined,
+    force: false,
+    printJar: false,
+  }
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i]
+    if (a === '--user' || a === '-u') args.user = requireValue(i++, a)
+    else if (a === '--password' || a === '-p')
+      args.password = requireValue(i++, a)
+    else if (a === '--base' || a === '-b')
+      args.base = requireValue(i++, a).replace(/\/$/, '')
+    else if (a === '--jar' || a === '-j') args.jar = requireValue(i++, a)
+    else if (a === '--force' || a === '-f') args.force = true
+    else if (a === '--print-jar') args.printJar = true
+    else if (a === '--help' || a === '-h') {
+      stdout.write(USAGE)
+      exit(0)
+    } else {
+      throw new Error(`Unknown argument: ${a}`)
+    }
+  }
+  if (!args.password) args.password = KNOWN_USERS[args.user] ?? 'devpass'
+  if (!args.jar) args.jar = `.auth/${args.user}.cookies`
+  return args
+}
+
+export function decodeHtmlEntities(value) {
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&#x2F;/g, '/')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+}
+
+/** Minimal cookie jar keyed by `${domain}|${path}|${name}`. */
+export class CookieJar {
+  constructor() {
+    this.cookies = new Map()
+  }
+
+  /**
+   * Ingest Set-Cookie headers from a fetch Response. Uses the request URL
+   * to fill in default Domain/Path. Honors Expires/Max-Age for purging.
+   */
+  ingest(response, requestUrl) {
+    const url = new URL(requestUrl)
+    // Node's fetch exposes raw Set-Cookie via getSetCookie().
+    const raw = response.headers.getSetCookie?.() ?? []
+    for (const line of raw) this.#addOne(line, url)
+  }
+
+  #addOne(line, requestUrl) {
+    const parts = line.split(';').map(p => p.trim())
+    const [nameValue, ...attrs] = parts
+    const eq = nameValue.indexOf('=')
+    if (eq < 0) return
+    const name = nameValue.slice(0, eq).trim()
+    const value = nameValue.slice(eq + 1).trim()
+
+    let domain = requestUrl.hostname
+    let hostOnly = true
+    let path = '/'
+    let secure = false
+    let httpOnly = false
+    let expires = null
+    let maxAge = null
+
+    for (const attr of attrs) {
+      const [rawKey, ...rest] = attr.split('=')
+      const key = rawKey.toLowerCase().trim()
+      const val = rest.join('=').trim()
+      if (key === 'domain' && val) {
+        domain = val.replace(/^\./, '').toLowerCase()
+        hostOnly = false
+      } else if (key === 'path' && val) path = val
+      else if (key === 'secure') secure = true
+      else if (key === 'httponly') httpOnly = true
+      else if (key === 'expires' && val) expires = new Date(val).getTime()
+      else if (key === 'max-age' && val) maxAge = Number(val)
+    }
+
+    const expiry = maxAge != null ? Date.now() + maxAge * 1000 : (expires ?? 0)
+
+    const key = `${domain}|${path}|${name}`
+    if (maxAge === 0 || (expiry > 0 && expiry < Date.now())) {
+      this.cookies.delete(key)
+      return
+    }
+    this.cookies.set(key, {
+      name,
+      value,
+      domain,
+      hostOnly,
+      path,
+      secure,
+      httpOnly,
+      expiry,
+    })
+  }
+
+  /** Build a Cookie header for the given request URL. */
+  header(requestUrl) {
+    const url = new URL(requestUrl)
+    const matches = []
+    for (const [key, c] of this.cookies) {
+      if (c.expiry > 0 && c.expiry < Date.now()) {
+        this.cookies.delete(key)
+        continue
+      }
+      if (!hostMatches(url.hostname, c.domain, c.hostOnly)) continue
+      if (!pathMatches(url.pathname, c.path)) continue
+      // Note: we intentionally ignore the Secure flag. The local Keycloak
+      // dev realm serves cookies with Secure;SameSite=None even over HTTP
+      // on localhost, and a strict browser-style check would drop them.
+      matches.push(`${c.name}=${c.value}`)
+    }
+    return matches.join('; ')
+  }
+
+  /** Serialize as Netscape cookies.txt for `curl -b`. */
+  toNetscape() {
+    const lines = [
+      '# Netscape HTTP Cookie File',
+      '# Generated by scripts/dev-login.mjs',
+    ]
+    for (const c of this.cookies.values()) {
+      const domainField = c.domain
+      const includeSubdomains = c.hostOnly ? 'FALSE' : 'TRUE'
+      const secure = c.secure ? 'TRUE' : 'FALSE'
+      const expiry = c.expiry > 0 ? Math.floor(c.expiry / 1000) : 0
+      lines.push(
+        [
+          domainField,
+          includeSubdomains,
+          c.path,
+          secure,
+          String(expiry),
+          c.name,
+          c.value,
+        ].join('\t'),
+      )
+    }
+    return `${lines.join('\n')}\n`
+  }
+}
+
+export function hostMatches(reqHost, cookieHost, hostOnly = false) {
+  const requestHost = reqHost.toLowerCase()
+  const domain = cookieHost.toLowerCase()
+  if (requestHost === domain) return true
+  if (hostOnly) return false
+  if (requestHost.endsWith(`.${domain}`)) return true
+  return false
+}
+
+function pathMatches(requestPath, cookiePath) {
+  if (requestPath === cookiePath) return true
+  if (!requestPath.startsWith(cookiePath)) return false
+  if (cookiePath.endsWith('/')) return true
+  return requestPath[cookiePath.length] === '/'
+}
+
+/** fetch wrapper that records cookies and never auto-follows redirects. */
+export async function step(jar, url, init = {}, options = {}) {
+  const {
+    fetchImpl = globalThis.fetch,
+    env = process.env,
+    stderr = process.stderr,
+  } = options
+  const headers = new Headers(init.headers ?? {})
+  const cookieHeader = jar.header(url)
+  if (cookieHeader) headers.set('cookie', cookieHeader)
+  if (env.DEV_LOGIN_DEBUG) {
+    stderr.write(
+      `[dev-login] -> ${init.method ?? 'GET'} ${url} cookies=${cookieHeader}\n`,
+    )
+  }
+  const response = await fetchImpl(url, {
+    ...init,
+    headers,
+    redirect: 'manual',
+  })
+  if (env.DEV_LOGIN_DEBUG) {
+    stderr.write(
+      `[dev-login]   <- ${response.status} ${response.headers.get('location') ?? ''}\n`,
+    )
+  }
+  jar.ingest(response, url)
+  return response
+}
+
+/** Follow Location-based redirects manually until a non-3xx is reached. */
+export async function followRedirects(
+  jar,
+  response,
+  currentUrl,
+  maxHops = 12,
+  options = {},
+) {
+  let res = response
+  let url = currentUrl
+  let hops = 0
+  while (res.status >= 300 && res.status < 400) {
+    if (hops++ >= maxHops) {
+      throw new Error(`Too many redirects starting from ${currentUrl}`)
+    }
+    const location = res.headers.get('location')
+    if (!location) return { res, url }
+    const nextUrl = new URL(location, url).toString()
+    res = await step(jar, nextUrl, {}, options)
+    url = nextUrl
+  }
+  return { res, url }
+}
+
+export async function login({ base, user, password }, options = {}) {
+  const jar = new CookieJar()
+
+  // 1. Hit /api/auth/login -> redirected to Keycloak /authorize -> login form.
+  const loginStart = await step(jar, `${base}/api/auth/login`, {}, options)
+  const { res: loginPage, url: loginPageUrl } = await followRedirects(
+    jar,
+    loginStart,
+    `${base}/api/auth/login`,
+    12,
+    options,
+  )
+  if (!loginPage.ok) {
+    throw new Error(
+      `Failed to load Keycloak login form: ${loginPage.status} ${loginPage.statusText}`,
+    )
+  }
+  const loginHtml = await loginPage.text()
+  const formTagMatch = loginHtml.match(
+    /<form\b[^>]*\bid="kc-form-login"[^>]*>/i,
+  )
+  const actionMatch = formTagMatch?.[0].match(/\baction="([^"]+)"/i)
+  if (!actionMatch) {
+    throw new Error('Could not find Keycloak login form in response')
+  }
+  // Resolve against the (possibly redirected) login-page URL so that
+  // server-rendered relative form actions work too.
+  const formAction = new URL(
+    decodeHtmlEntities(actionMatch[1]),
+    loginPageUrl,
+  ).toString()
+
+  // 2. POST credentials. Keycloak then redirects via 302 chain back to the app.
+  const credResponse = await step(
+    jar,
+    formAction,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ username: user, password, credentialId: '' }),
+    },
+    options,
+  )
+  const { res: finalRes, url: finalUrl } = await followRedirects(
+    jar,
+    credResponse,
+    formAction,
+    12,
+    options,
+  )
+  if (!finalRes.ok && finalRes.status !== 302) {
+    throw new Error(
+      `Login chain ended with ${finalRes.status} ${finalRes.statusText} at ${finalUrl}`,
+    )
+  }
+
+  // 3. Verify with /api/auth/me.
+  const meRes = await step(jar, `${base}/api/auth/me`, {}, options)
+  const meBody = await meRes.json()
+  if (!meBody.authenticated) {
+    throw new Error(
+      `Login finished but /api/auth/me reported authenticated=false for ${user}`,
+    )
+  }
+
+  return jar
+}
+
+export async function isJarStillValid(jarPath, base, options = {}) {
+  const {
+    existsSyncImpl = existsSync,
+    readFileSyncImpl = readFileSync,
+    fetchImpl = globalThis.fetch,
+  } = options
+  if (!existsSyncImpl(jarPath)) return false
+  const text = readFileSyncImpl(jarPath, 'utf8')
+  const cookies = text
+    .split('\n')
+    .filter(line => line && !line.startsWith('#'))
+    .map(line => line.split('\t'))
+    .filter(parts => parts.length >= 7)
+  const header = cookies.map(parts => `${parts[5]}=${parts[6]}`).join('; ')
+  if (!header) return false
+  try {
+    const res = await fetchImpl(`${base}/api/auth/me`, {
+      headers: { cookie: header },
+      redirect: 'manual',
+    })
+    if (!res.ok) return false
+    const body = await res.json()
+    return Boolean(body.authenticated)
+  } catch {
+    return false
+  }
+}
+
+export async function main(argv = process.argv.slice(2), options = {}) {
+  const {
+    cwd = process.cwd(),
+    dirnameImpl = dirname,
+    env = process.env,
+    exit = process.exit,
+    isJarStillValidImpl = isJarStillValid,
+    loginImpl = login,
+    mkdirSyncImpl = mkdirSync,
+    parseArgsImpl = parseArgs,
+    resolveImpl = resolve,
+    stderr = process.stderr,
+    stdout = process.stdout,
+    writeFileSyncImpl = writeFileSync,
+  } = options
+  const args = parseArgsImpl(argv, { env, stdout, exit })
+  const jarPath = resolveImpl(cwd, args.jar)
+
+  if (args.printJar) {
+    stdout.write(`${jarPath}\n`)
+    return
+  }
+
+  if (!args.force && (await isJarStillValidImpl(jarPath, args.base, options))) {
+    stderr.write(`[dev-login] Reusing valid session at ${jarPath}\n`)
+    stdout.write(`${jarPath}\n`)
+    return
+  }
+
+  stderr.write(`[dev-login] Logging in as ${args.user} at ${args.base} ...\n`)
+  const jar = await loginImpl(
+    {
+      base: args.base,
+      user: args.user,
+      password: args.password,
+    },
+    options,
+  )
+  mkdirSyncImpl(dirnameImpl(jarPath), { recursive: true })
+  writeFileSyncImpl(jarPath, jar.toNetscape(), { mode: 0o600 })
+  stderr.write(`[dev-login] Wrote cookie jar to ${jarPath}\n`)
+  stdout.write(`${jarPath}\n`)
+}
