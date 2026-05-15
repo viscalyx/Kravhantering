@@ -276,13 +276,13 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 8: suggesti
 [Req: formal — docs/lifecycle-workflow.md "Deviation Lifecycle"]
 ```
 
-**What happened:** Both library and specification-local deviation decisions
-are guarded by `isReviewRequested` checks in
-`lib/dal/deviations.ts:521-693`. Decisions can only be recorded
-when a deviation has been submitted for review
-(`isReviewRequested === 1`). After a decision is recorded, further
-edits, deletes, or second decisions are blocked by conflict guards.
-Deviations in review-requested state cannot be edited or deleted.
+**What happened:** Both library and specification-local deviation mutations
+use atomic SQL Server guards in `lib/dal/deviations.ts:196-275` and
+`lib/dal/deviations.ts:671-1106`. Decisions can only be recorded
+when a deviation has been submitted for review (`isReviewRequested === 1`).
+After a decision is recorded, further edits, deletes, or second decisions
+are blocked by conflict guards. Deviations in review-requested state cannot
+be edited or deleted.
 
 **The requirement:** After a deviation decision is recorded, further
 edits, deletes, or second decisions must fail with a conflict.

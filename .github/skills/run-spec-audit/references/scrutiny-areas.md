@@ -100,15 +100,16 @@ maintenance rule.
 
 ## 9. Scenario 9: deviation decisions are write-once audit events
 
-- **Code:** `lib/dal/deviations.ts` — approval/rejection logic,
-  review-requested guards, edit/delete guards.
+- **Code:** `lib/dal/deviations.ts` — atomic approval/rejection
+  mutations, review-requested guards, edit/delete guards.
 - **Spec:** `docs/lifecycle-workflow.md` "Deviation Lifecycle".
 - **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
   "Deviation Lifecycle"]`
 - **Question:** Can approvals or rejections be rewritten, deleted, or
-  duplicated after the first decision? Can decisions be recorded on
-  deviations that haven't been submitted for review? Can deviations
-  be edited or deleted while in review-requested state?
+  duplicated after the first decision, including under stale/concurrent
+  writes? Can decisions be recorded on deviations that haven't been
+  submitted for review? Can deviations be edited or deleted while in
+  review-requested state?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 9: deviation decisions are write-once audit events"`
 

@@ -7,11 +7,13 @@ import {
   DEVIATION_APPROVED,
   DEVIATION_REJECTED,
   deleteDeviation,
+  deleteSpecificationLocalDeviation,
   recordDecision,
   recordSpecificationLocalDecision,
   requestReview as requestDeviationReview,
   requestSpecificationLocalReview,
   updateDeviation,
+  updateSpecificationLocalDeviation,
 } from '@/lib/dal/deviations'
 import {
   createSuggestion,
@@ -750,6 +752,48 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       }),
     ).rejects.toMatchObject({ code: 'conflict' })
     await expect(deleteDeviation(appDb(), deviation.id)).rejects.toMatchObject({
+      code: 'conflict',
+    })
+
+    const localItem = await createSpecificationLocalRequirement(
+      appDb(),
+      spec.id,
+      {
+        description: 'Specification-local decision source',
+      },
+    )
+    const localDeviation = await createDeviationForItemRef(appDb(), {
+      itemRef: `local:${localItem.id}`,
+      motivation: 'One final local decision only',
+    })
+    await requestSpecificationLocalReview(appDb(), localDeviation.id)
+    await recordSpecificationLocalDecision(appDb(), localDeviation.id, {
+      decidedBy: 'reviewer',
+      decidedByHsaId: 'SE2321000032-reviewer1',
+      decision: DEVIATION_APPROVED,
+      decisionMotivation: 'Approved local once',
+    })
+
+    await expect(
+      recordSpecificationLocalDecision(appDb(), localDeviation.id, {
+        decidedBy: 'reviewer',
+        decidedByHsaId: 'SE2321000032-reviewer1',
+        decision: DEVIATION_REJECTED,
+        decisionMotivation: 'Second local decision must fail',
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      message: 'A decision has already been recorded for this deviation',
+    })
+
+    await expect(
+      updateSpecificationLocalDeviation(appDb(), localDeviation.id, {
+        motivation: 'Mutating a decided local deviation should fail',
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' })
+    await expect(
+      deleteSpecificationLocalDeviation(appDb(), localDeviation.id),
+    ).rejects.toMatchObject({
       code: 'conflict',
     })
   })

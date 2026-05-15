@@ -373,7 +373,7 @@ export default function SpecificationLocalRequirementDetailClient({
   )
 
   const handleCreateDeviation = useCallback(
-    async (motivation: string, _createdBy: string) => {
+    async (motivation: string) => {
       if (!requirement?.itemRef || !motivation) {
         return
       }
@@ -395,7 +395,7 @@ export default function SpecificationLocalRequirementDetailClient({
   )
 
   const handleEditDeviation = useCallback(
-    async (motivation: string, _createdBy: string) => {
+    async (motivation: string) => {
       if (!latestDeviation || !motivation) {
         return
       }
@@ -914,7 +914,6 @@ export default function SpecificationLocalRequirementDetailClient({
         open={showDeviationForm}
       />
       <DeviationFormModal
-        initialCreatedBy={latestDeviation?.createdBy ?? ''}
         initialMotivation={latestDeviation?.motivation ?? ''}
         loading={deviationSaving}
         onClose={() => setShowEditDeviationForm(false)}

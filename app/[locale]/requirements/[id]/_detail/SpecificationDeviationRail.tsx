@@ -113,7 +113,6 @@ export default function SpecificationDeviationRail({
         riskLevel={riskLevel}
       />
       <DeviationFormModal
-        initialCreatedBy={workflow.latestDeviation?.createdBy ?? ''}
         initialMotivation={workflow.latestDeviation?.motivation ?? ''}
         loading={workflow.deviationSaving}
         onClose={workflow.closeDialog}

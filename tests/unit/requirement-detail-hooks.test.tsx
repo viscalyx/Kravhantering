@@ -119,10 +119,7 @@ describe('useDeviationWorkflow', () => {
     )
 
     await act(async () => {
-      await result.current.handleCreateDeviation(
-        'Needs exception',
-        'Client Supplied Creator',
-      )
+      await result.current.handleCreateDeviation('Needs exception')
     })
 
     const postCall = fetchMock.mock.calls.find(
@@ -179,10 +176,7 @@ describe('useDeviationWorkflow', () => {
     await waitFor(() => expect(result.current.latestDeviation?.id).toBe(11))
 
     await act(async () => {
-      await result.current.handleEditDeviation(
-        'Updated deviation',
-        'Client Supplied Creator',
-      )
+      await result.current.handleEditDeviation('Updated deviation')
     })
 
     const putCall = fetchMock.mock.calls.find(
