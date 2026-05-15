@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createArchivingRetentionException,
   executeArchivingRetention,
@@ -172,6 +172,15 @@ function createRetentionDb(options?: {
 }
 
 describe('archiving retention service', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-14T00:00:00.000Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('previews retention candidates from active policies without exposing raw SQL choices', async () => {
     const { db, query } = createRetentionDb()
 
