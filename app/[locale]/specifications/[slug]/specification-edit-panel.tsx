@@ -5,10 +5,16 @@ import { HelpCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { type FormEvent, useEffect, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import { isHsaId } from '@/lib/auth/hsa-id'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
 import { normalizeSlugInput } from '@/lib/slug'
+import {
+  normalizeResponsibleDisplayName,
+  normalizeResponsibleHsaId,
+} from '@/lib/specifications/responsible-person'
 
 interface TaxonomyItem {
   id: number
@@ -18,7 +24,10 @@ interface TaxonomyItem {
 
 interface SpecificationMeta {
   businessNeedsReference: string | null
+  canResponsibleGenerateAi: boolean
   name: string
+  responsibleDisplayName: string | null
+  responsibleHsaId: string | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
   specificationResponsibilityAreaId: number | null
@@ -38,7 +47,10 @@ interface SpecificationEditPanelProps {
 
 interface SpecificationFormState {
   businessNeedsReference: string
+  canResponsibleGenerateAi: boolean
   name: string
+  responsibleDisplayName: string
+  responsibleHsaId: string
   specificationImplementationTypeId: string
   specificationLifecycleStatusId: string
   specificationResponsibilityAreaId: string
@@ -47,10 +59,24 @@ interface SpecificationFormState {
 
 export const SPECIFICATION_EDIT_FORM_ID = 'requirement-specification-edit-form'
 
-function buildFormState(spec: SpecificationMeta): SpecificationFormState {
+function buildFormState(
+  spec: SpecificationMeta,
+  locale: string,
+): SpecificationFormState {
+  const responsibleDisplayName =
+    spec.responsibleHsaId != null
+      ? formatActorDisplayNameForLocale(spec.responsibleDisplayName, locale)
+      : null
+
   return {
     businessNeedsReference: spec.businessNeedsReference ?? '',
+    canResponsibleGenerateAi:
+      spec.responsibleHsaId != null &&
+      spec.responsibleDisplayName != null &&
+      spec.canResponsibleGenerateAi,
     name: spec.name,
+    responsibleDisplayName: responsibleDisplayName ?? '',
+    responsibleHsaId: spec.responsibleHsaId ?? '',
     specificationImplementationTypeId:
       spec.specificationImplementationTypeId?.toString() ?? '',
     specificationLifecycleStatusId:
@@ -80,13 +106,13 @@ export default function SpecificationEditPanel({
   const [slugError, setSlugError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [form, setForm] = useState<SpecificationFormState>(() =>
-    buildFormState(spec),
+    buildFormState(spec, locale),
   )
 
   useEffect(() => {
-    setForm(buildFormState(spec))
+    setForm(buildFormState(spec, locale))
     setOpenHelp(new Set())
-  }, [spec])
+  }, [locale, spec])
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -119,12 +145,42 @@ export default function SpecificationEditPanel({
     </AnimatedHelpPanel>
   )
 
+  const buildResponsiblePayload = () => {
+    const responsibleHsaId = normalizeResponsibleHsaId(form.responsibleHsaId)
+    const responsibleDisplayName = normalizeResponsibleDisplayName(
+      form.responsibleDisplayName,
+    )
+
+    if (Boolean(responsibleHsaId) !== Boolean(responsibleDisplayName)) {
+      setSubmitError(t('responsiblePairRequired'))
+      return null
+    }
+
+    if (responsibleHsaId && !isHsaId(responsibleHsaId)) {
+      setSubmitError(t('invalidResponsibleHsaId'))
+      return null
+    }
+
+    return {
+      responsibleHsaId,
+      responsibleDisplayName,
+      canResponsibleGenerateAi:
+        responsibleHsaId != null &&
+        responsibleDisplayName != null &&
+        form.canResponsibleGenerateAi,
+    }
+  }
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (isSubmitting) return
-    setIsSubmitting(true)
     setSlugError(null)
     setSubmitError(null)
+    const responsiblePayload = buildResponsiblePayload()
+    if (!responsiblePayload) {
+      return
+    }
+    setIsSubmitting(true)
 
     try {
       const response = await apiFetch(
@@ -147,6 +203,7 @@ export default function SpecificationEditPanel({
               ? Number(form.specificationLifecycleStatusId)
               : null,
             businessNeedsReference: form.businessNeedsReference || null,
+            ...responsiblePayload,
           }),
         },
       )
@@ -275,6 +332,112 @@ export default function SpecificationEditPanel({
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <div className="mb-1 flex items-center gap-1.5">
+            <label
+              className="block text-sm font-medium"
+              htmlFor="spec-responsible-name"
+            >
+              {t('responsibleDisplayName')}
+            </label>
+            {helpButton('spec-responsible-name', t('responsibleDisplayName'))}
+          </div>
+          {helpPanel('responsibleDisplayNameHelp', 'spec-responsible-name')}
+          <input
+            autoComplete="off"
+            className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+            id="spec-responsible-name"
+            onChange={event =>
+              setForm(current => {
+                const next = {
+                  ...current,
+                  responsibleDisplayName: event.target.value,
+                }
+                if (
+                  !next.responsibleDisplayName.trim() ||
+                  !next.responsibleHsaId.trim()
+                ) {
+                  next.canResponsibleGenerateAi = false
+                }
+                return next
+              })
+            }
+            value={form.responsibleDisplayName}
+          />
+        </div>
+        <div>
+          <div className="mb-1 flex items-center gap-1.5">
+            <label
+              className="block text-sm font-medium"
+              htmlFor="spec-responsible-hsa-id"
+            >
+              {t('responsibleHsaId')}
+            </label>
+            {helpButton('spec-responsible-hsa-id', t('responsibleHsaId'))}
+          </div>
+          {helpPanel('responsibleHsaIdHelp', 'spec-responsible-hsa-id')}
+          <input
+            autoComplete="off"
+            className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 font-mono text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+            id="spec-responsible-hsa-id"
+            onChange={event =>
+              setForm(current => {
+                const next = {
+                  ...current,
+                  responsibleHsaId: event.target.value,
+                }
+                if (
+                  !next.responsibleDisplayName.trim() ||
+                  !next.responsibleHsaId.trim()
+                ) {
+                  next.canResponsibleGenerateAi = false
+                }
+                return next
+              })
+            }
+            value={form.responsibleHsaId}
+          />
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-1 flex items-center gap-1.5">
+          <label
+            className="block text-sm font-medium"
+            htmlFor="spec-can-responsible-generate-ai"
+          >
+            {t('canResponsibleGenerateAi')}
+          </label>
+          {helpButton(
+            'spec-can-responsible-generate-ai',
+            t('canResponsibleGenerateAi'),
+          )}
+        </div>
+        {helpPanel(
+          'canResponsibleGenerateAiHelp',
+          'spec-can-responsible-generate-ai',
+        )}
+        <div className="flex min-h-[44px] items-center rounded-xl border bg-white px-3.5 py-2.5 transition-all duration-200 dark:bg-secondary-800/50">
+          <input
+            checked={form.canResponsibleGenerateAi}
+            className="h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={
+              !form.responsibleDisplayName.trim() ||
+              !form.responsibleHsaId.trim()
+            }
+            id="spec-can-responsible-generate-ai"
+            onChange={event =>
+              setForm(current => ({
+                ...current,
+                canResponsibleGenerateAi: event.target.checked,
+              }))
+            }
+            type="checkbox"
+          />
+        </div>
       </div>
 
       <div>

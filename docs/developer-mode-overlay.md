@@ -137,6 +137,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Requirement specification list requirement-area labels render as compact,
   non-interactive pills inside the existing `specifications > crud table`
   surface; they do not add separate developer-mode marker names.
+- Requirement specification list responsible-person metadata renders inside the
+  existing `specifications > crud table` surface, and the create/edit controls
+  stay inside the existing `specifications > crud form` surface.
 - Requirement specification list edit and delete row actions render as icon-only
   buttons, but keep the existing `specifications > table action: edit` and
   `specifications > table action: delete` markers.
@@ -187,10 +190,11 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `detail section` values `needs reference` and `specification item status`
   when the requirement is opened from `Krav i kravunderlag`.
 - The specification-detail header may visually regroup the title,
-  business-needs reference, and short metadata summary into a compact
-  layout, including a wide-screen variant where the metadata sits
-  beside the title. That layout does not introduce any separate
-  developer-mode marker beyond the existing edit action.
+  business-needs reference, responsible person, and short metadata summary into
+  a compact layout where the metadata row sits to the right of the title on
+  wide screens and the metadata cards stay on one horizontal row. That layout
+  does not introduce any separate developer-mode marker beyond the existing edit
+  action.
 - The specification-detail page no longer renders a separate breadcrumb-style
   back control in that header area; browser navigation is the supported
   way back from this compact header.

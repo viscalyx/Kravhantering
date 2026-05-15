@@ -90,6 +90,9 @@ const sampleSpecifications = [
     itemCount: 0,
     requirementAreas: [],
     businessNeedsReference: null,
+    responsibleHsaId: 'SE2321000032-ada1',
+    responsibleDisplayName: 'Ada Admin',
+    canResponsibleGenerateAi: true,
   },
 ]
 
@@ -136,6 +139,38 @@ describe('RequirementsSpecificationsClient', () => {
     expect(screen.getByText('Area')).toBeInTheDocument()
     expect(screen.getByText('Type')).toBeInTheDocument()
     expect(screen.getByText('Development')).toBeInTheDocument()
+    expect(screen.getByText('Ada Admin')).toBeInTheDocument()
+    expect(screen.getByText('SE2321000032-ada1')).toBeInTheDocument()
+  })
+
+  it('formats anonymized responsible display names in the table', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/specifications')
+        return Promise.resolve(
+          okJson({
+            specifications: [
+              {
+                ...sampleSpecifications[0],
+                responsibleDisplayName: 'no-user',
+                responsibleHsaId: null,
+                canResponsibleGenerateAi: false,
+              },
+            ],
+          }),
+        )
+      if (url === '/api/specification-responsibility-areas')
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<RequirementsSpecificationsClient />)
+
+    expect(await screen.findByText('Anonymous')).toBeInTheDocument()
+    expect(screen.queryByText('no-user')).toBeNull()
   })
 
   it('fetches and displays kravunderlag after strict-mode effect replays', async () => {
@@ -364,7 +399,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     const emptyState = await screen.findByText('specification.emptyState')
     expect(emptyState).toBeInTheDocument()
-    expect(emptyState.closest('td')).toHaveAttribute('colspan', '7')
+    expect(emptyState.closest('td')).toHaveAttribute('colspan', '8')
   })
 
   it('renders requirement-area badges as compact static pills', async () => {
@@ -584,6 +619,12 @@ describe('RequirementsSpecificationsClient', () => {
       screen.getByRole('combobox', {
         name: /specification\.responsibilityArea/,
       }),
+      screen.getByRole('textbox', {
+        name: /specification\.responsibleDisplayName/,
+      }),
+      screen.getByRole('textbox', {
+        name: /specification\.responsibleHsaId/,
+      }),
       screen.getByRole('combobox', {
         name: /specification\.implementationType/,
       }),
@@ -593,6 +634,14 @@ describe('RequirementsSpecificationsClient', () => {
     ]) {
       expect(field.className).toContain('min-h-[44px]')
     }
+
+    expect(
+      screen
+        .getByRole('checkbox', {
+          name: /specification\.canResponsibleGenerateAi/,
+        })
+        .closest('div')?.className,
+    ).toContain('min-h-[44px]')
   })
 
   it('submits create form', async () => {
@@ -611,6 +660,25 @@ describe('RequirementsSpecificationsClient', () => {
       },
     )
     fireEvent.blur(screen.getByRole('textbox', { name: /specification\.name/ }))
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: /specification\.responsibleDisplayName/,
+      }),
+      {
+        target: { value: 'Rita Reviewer' },
+      },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
+      {
+        target: { value: 'SE2321000032-rita1' },
+      },
+    )
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: /specification\.canResponsibleGenerateAi/,
+      }),
+    )
 
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
       if (opts?.method === 'POST') return Promise.resolve(okJson({ id: 2 }))
@@ -632,6 +700,17 @@ describe('RequirementsSpecificationsClient', () => {
         '/api/specifications',
         expect.objectContaining({ method: 'POST' }),
       )
+    })
+
+    const postCall = fetchMock.mock.calls.find(
+      ([, init]) => (init as RequestInit | undefined)?.method === 'POST',
+    )
+    expect(
+      JSON.parse(((postCall?.[1] as RequestInit)?.body as string) ?? '{}'),
+    ).toMatchObject({
+      responsibleDisplayName: 'Rita Reviewer',
+      responsibleHsaId: 'SE2321000032-rita1',
+      canResponsibleGenerateAi: true,
     })
   })
 
@@ -680,6 +759,37 @@ describe('RequirementsSpecificationsClient', () => {
     ).toBeInTheDocument()
   })
 
+  it('requires responsible person and HSA-ID to be saved together', async () => {
+    render(<RequirementsSpecificationsClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /specification\.newSpecification/i }),
+    )
+
+    const nameInput = screen.getByRole('textbox', {
+      name: /specification\.name/,
+    })
+    fireEvent.change(nameInput, { target: { value: 'Nytt kravunderlag' } })
+    fireEvent.blur(nameInput)
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
+      {
+        target: { value: 'SE2321000032-rita1' },
+      },
+    )
+
+    const callsBeforeSave = fetchMock.mock.calls.length
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'specification.responsiblePairRequired',
+    )
+    expect(fetchMock.mock.calls).toHaveLength(callsBeforeSave)
+  })
+
   it('opens edit form with existing data', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
@@ -696,6 +806,19 @@ describe('RequirementsSpecificationsClient', () => {
         }) as HTMLInputElement
       ).value,
     ).toBe('Kravunderlag sv')
+    expect(
+      screen.getByRole('textbox', {
+        name: /specification\.responsibleDisplayName/,
+      }),
+    ).toHaveValue('Ada Admin')
+    expect(
+      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
+    ).toHaveValue('SE2321000032-ada1')
+    expect(
+      screen.getByRole('checkbox', {
+        name: /specification\.canResponsibleGenerateAi/,
+      }),
+    ).toBeChecked()
   })
 
   it('closes form on cancel', async () => {

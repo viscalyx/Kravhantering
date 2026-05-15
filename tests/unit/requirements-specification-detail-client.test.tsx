@@ -130,10 +130,13 @@ let failNextSpecificationItemsFetch = false
 
 const initialSpec = {
   businessNeedsReference: 'Shared IAM business case',
+  canResponsibleGenerateAi: true,
   id: 8,
   implementationType: { id: 2, nameEn: 'Program', nameSv: 'Program' },
   lifecycleStatus: { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
   name: 'Authorization and IAM',
+  responsibleDisplayName: 'Ada Admin',
+  responsibleHsaId: 'SE2321000032-ada1',
   specificationImplementationTypeId: 2,
   specificationLifecycleStatusId: 3,
   specificationResponsibilityAreaId: 1,
@@ -259,6 +262,9 @@ describe('RequirementsSpecificationDetailClient', () => {
               implementationType: { nameEn: 'Program', nameSv: 'Program' },
               lifecycleStatus: { nameEn: 'Development', nameSv: 'Utveckling' },
               name: 'Authorization and IAM',
+              responsibleDisplayName: 'Ada Admin',
+              responsibleHsaId: 'SE2321000032-ada1',
+              canResponsibleGenerateAi: true,
               specificationImplementationTypeId: 2,
               specificationLifecycleStatusId: 3,
               specificationResponsibilityAreaId: 1,
@@ -479,12 +485,23 @@ describe('RequirementsSpecificationDetailClient', () => {
       screen.queryByRole('link', { name: 'nav.specifications' }),
     ).not.toBeInTheDocument()
     expect(headerSummary).toHaveTextContent('Platform')
+    expect(headerSummary).toHaveTextContent('Ada Admin')
+    expect(headerSummary).toHaveTextContent('SE2321000032-ada1')
     expect(headerSummary).toHaveTextContent('Program')
     expect(headerSummary).toHaveTextContent('Shared IAM business case')
     expect(headerSummary).not.toHaveTextContent(
       'specification.businessNeedsReference',
     )
+    expect(headerSummary).toHaveClass('xl:grid')
+    expect(headerSummary).toHaveClass(
+      'xl:grid-cols-[minmax(40vw,1fr)_minmax(0,1fr)]',
+    )
     expect(headerMetadata).not.toHaveTextContent('Shared IAM business case')
+    expect(headerMetadata).toHaveClass('grid-flow-col')
+    expect(headerMetadata).toHaveClass('auto-cols-[minmax(12rem,1fr)]')
+    expect(headerMetadata).toHaveClass('overflow-x-auto')
+    expect(headerMetadata).toHaveClass('xl:auto-cols-fr')
+    expect(headerMetadata).not.toHaveClass('xl:grid-cols-3')
 
     const editButton = screen.getByRole('button', {
       name: /specification\.editSpecification/i,

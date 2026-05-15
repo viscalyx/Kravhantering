@@ -173,6 +173,9 @@ export function createSpecificationWorkflow({
                   }
                 : null,
               requirementAreas: p.requirementAreas,
+              responsibleDisplayName: p.responsibleDisplayName,
+              responsibleHsaId: p.responsibleHsaId,
+              canResponsibleGenerateAi: p.canResponsibleGenerateAi,
               responsibilityArea: p.responsibilityArea
                 ? {
                     id: p.responsibilityArea.id,

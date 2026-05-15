@@ -88,7 +88,7 @@
     "signingOut": "Loggar ut…",
     "logoutError": "Kunde inte logga ut. Försök igen.",
     "sessionExpiringTitle": "Autentiseringen går snart ut",
-    "sessionExpiringMessage": "Din autentisering går snart ut. Om ditt arbete är sparat, autentisera dig igen nu. Om du har pågående arbete, spara det snabbt innan token går ut och autentisera dig sedan igen.",
+    "sessionExpiringMessage": "Din autentisering går snart ut. Om ditt arbete är sparat, autentisera dig igen nu. Om du har pågående arbete, spara det snabbt innan biljetten går ut och autentisera dig sedan igen.",
     "sessionExpiredTitle": "Autentiseringen har gått ut",
     "sessionExpiredMessage": "Din autentisering har gått ut. Du behöver autentisera dig igen för att fortsätta.",
     "reauthenticate": "Autentisera igen",
@@ -301,6 +301,15 @@
     },
     "responsibilityArea": "Verksamhetsobjekt",
     "responsibilityAreaHelp": "Välj det verksamhetsobjekt som underlaget hör till, eller lämna tomt om underlaget spänner över flera verksamhetsobjekt.",
+    "responsible": "Ansvarig",
+    "responsibleDisplayName": "Ansvarig person",
+    "responsibleDisplayNameHelp": "Ange visningsnamnet för personen som ansvarar för kravunderlaget. Använd inte detta för användaren som registrerar ett avsteg om den personen inte också ansvarar för underlaget.",
+    "responsibleHsaId": "Ansvarigs HSA-ID",
+    "responsibleHsaIdHelp": "Ange HSA-ID för ansvarig person. HSA-ID och visningsnamn måste sparas tillsammans så att dataskyddsexport, radering och behörighetsöversyn kan identifiera tilldelningen.",
+    "canResponsibleGenerateAi": "Ansvarig får använda AI",
+    "canResponsibleGenerateAiHelp": "Aktivera bara när den ansvariga personen får använda AI-stöd för detta kravunderlag.",
+    "responsiblePairRequired": "Ange både ansvarig person och ansvarigs HSA-ID, eller lämna båda tomma.",
+    "invalidResponsibleHsaId": "Kontrollera ansvarigs HSA-ID. Formatet ska vara SE följt av 10 siffror, bindestreck och en alfanumerisk ändelse.",
     "implementationType": "Genomförandeform",
     "implementationTypeHelp": "Välj den genomförandeform som bäst beskriver hur underlaget ska levereras.",
     "lifecycleStatus": "Livscykelstatus",
@@ -721,7 +730,7 @@
       "replacementEmailOptional": "E-postadress är valfri.",
       "fieldHelp": {
         "targetHsaId": "Ange HSA-ID för personen som ska sökas fram för förhandsgranskning, export eller radering. Alla träffar görs med exakt HSA-ID. Namn används inte för matchning och därför finns inget separat namn att söka på.",
-        "replacementHsaId": "Ange HSA-ID för personen som ska ta över aktiva tilldelningar, till exempel ägare eller medförfattare. Fältet måste kombineras med ersättande namn för att åtgärden Byt ska kunna användas.",
+        "replacementHsaId": "Ange HSA-ID för personen som ska ta över aktiva tilldelningar, till exempel ägare, medförfattare eller ansvarig för kravunderlag. Fältet måste kombineras med ersättande namn för att åtgärden Byt ska kunna användas.",
         "replacementName": "Ange visningsnamnet som ska sparas som ögonblicksbild för den ersättande personen. Namnet hjälper användaren att kontrollera bytet, men HSA-ID är den beständiga identiteten.",
         "replacementFirstName": "Valfritt. Ange exakt förnamn för ägarposten när visningsnamnet inte kan delas upp säkert.",
         "replacementLastName": "Valfritt. Ange exakt efternamn för ägarposten när visningsnamnet inte kan delas upp säkert.",
@@ -750,7 +759,7 @@
       "confirmTitle": "Kör dataskyddsradering",
       "confirmMessage": "Detta byter {switch}, anonymiserar {anonymize}, tar bort {delete} och hoppar över {skip} förekomster.",
       "guidanceTitle": "Rekommenderad hantering och export",
-      "guidanceBody": "Använd förhandsgranskningen för att kontrollera exakt vilka HSA-ID-träffar som kan exporteras eller raderas. Exporten påverkar inte uppgifterna. Aktiva tilldelningar byts oftast till ett annat HSA-ID vid radering. Historiska fält för skapare, beslut och åtgärd anonymiseras oftast i stället för att tilldelas om. Beskrivningsfält och fritext skannas inte eftersom gränssnittet instruerar användare att inte ange personidentifierande uppgifter där.",
+      "guidanceBody": "Använd förhandsgranskningen för att kontrollera exakt vilka HSA-ID-träffar som kan exporteras eller raderas. Exporten påverkar inte uppgifterna. Aktiva tilldelningar, inklusive ansvarig för kravunderlag, byts oftast till ett annat HSA-ID vid radering. Historiska fält för skapare, beslut och åtgärd anonymiseras oftast i stället för att tilldelas om. Beskrivningsfält och fritext skannas inte eftersom gränssnittet instruerar användare att inte ange personidentifierande uppgifter där.",
       "previewResult": "{count} HSA-ID-förekomster",
       "object": "Objekt",
       "count": "Antal",
@@ -1260,11 +1269,11 @@
       "title": "Kravunderlag",
       "overview": {
         "heading": "Vad är ett kravunderlag?",
-        "body": "Kravunderlag grupperar publicerade krav för en specifik leverans, upphandling eller verksamhetskontext. Varje underlag kan kopplas till ett verksamhetsobjekt och en genomförandeform."
+        "body": "Kravunderlag grupperar publicerade krav för en specifik leverans, upphandling eller verksamhetskontext. Varje underlag kan kopplas till ett verksamhetsobjekt, en genomförandeform och en ansvarig person."
       },
       "create": {
         "heading": "Skapa och redigera",
-        "body": "Klicka på \"Nytt kravunderlag\" för att skapa ett. Klicka på underlagsnamnet för att öppna detaljvyn. Använd redigeringsikonen för att uppdatera underlagets metadata."
+        "body": "Klicka på \"Nytt kravunderlag\" för att skapa ett. Klicka på underlagsnamnet för att öppna detaljvyn. Använd redigeringsikonen för att uppdatera underlagets metadata, inklusive ansvarig person."
       }
     },
     "requirementsSpecificationDetail": {

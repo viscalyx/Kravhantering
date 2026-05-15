@@ -24,9 +24,11 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { Link } from '@/i18n/routing'
+import { isHsaId } from '@/lib/auth/hsa-id'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
 import { generateSpecificationSlug, normalizeSlugInput } from '@/lib/slug'
 import type {
@@ -34,6 +36,10 @@ import type {
   Specification,
   SpecificationTaxonomyItem,
 } from '@/lib/specifications/preload-types'
+import {
+  normalizeResponsibleDisplayName,
+  normalizeResponsibleHsaId,
+} from '@/lib/specifications/responsible-person'
 
 const REQUIREMENT_SPECIFICATIONS_HELP: HelpContent = {
   sections: [
@@ -216,7 +222,9 @@ export default function RequirementsSpecificationsClient({
   const getName = (spec: Specification) => spec.name
   const getTaxonomyName = (item: SpecificationTaxonomyItem | null) =>
     item ? (locale === 'sv' ? item.nameSv : item.nameEn) : '—'
-  const specificationTableColumnCount = 7
+  const getResponsibleDisplayName = (spec: Specification) =>
+    formatActorDisplayNameForLocale(spec.responsibleDisplayName, locale) ?? null
+  const specificationTableColumnCount = 8
 
   const responsibilityAreasResource = useAsyncResource<
     SpecificationTaxonomyItem[]
@@ -355,6 +363,9 @@ export default function RequirementsSpecificationsClient({
     specificationImplementationTypeId: '' as string,
     specificationLifecycleStatusId: '' as string,
     businessNeedsReference: '',
+    responsibleDisplayName: '',
+    responsibleHsaId: '',
+    canResponsibleGenerateAi: false,
   })
   const deferredNameFilter = useDeferredValue(nameFilter)
   const normalizedNameFilter = deferredNameFilter
@@ -372,6 +383,9 @@ export default function RequirementsSpecificationsClient({
     specificationImplementationTypeId: '' as string,
     specificationLifecycleStatusId: '' as string,
     businessNeedsReference: '',
+    responsibleDisplayName: '',
+    responsibleHsaId: '',
+    canResponsibleGenerateAi: false,
   })
 
   const toggleHelp = (field: string) => {
@@ -430,12 +444,42 @@ export default function RequirementsSpecificationsClient({
     }
   }, [isFetchingSpecifications])
 
+  const buildResponsiblePayload = () => {
+    const responsibleHsaId = normalizeResponsibleHsaId(form.responsibleHsaId)
+    const responsibleDisplayName = normalizeResponsibleDisplayName(
+      form.responsibleDisplayName,
+    )
+
+    if (Boolean(responsibleHsaId) !== Boolean(responsibleDisplayName)) {
+      setSaveError(t('responsiblePairRequired'))
+      return null
+    }
+
+    if (responsibleHsaId && !isHsaId(responsibleHsaId)) {
+      setSaveError(t('invalidResponsibleHsaId'))
+      return null
+    }
+
+    return {
+      responsibleHsaId,
+      responsibleDisplayName,
+      canResponsibleGenerateAi:
+        responsibleHsaId != null &&
+        responsibleDisplayName != null &&
+        form.canResponsibleGenerateAi,
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (isSubmitting) return
-    setIsSubmitting(true)
     setSlugError(null)
     setSaveError(null)
+    const responsiblePayload = buildResponsiblePayload()
+    if (!responsiblePayload) {
+      return
+    }
+    setIsSubmitting(true)
     try {
       const method = editSpec ? 'PUT' : 'POST'
       const url = editSpec
@@ -459,6 +503,7 @@ export default function RequirementsSpecificationsClient({
             ? Number(form.specificationLifecycleStatusId)
             : null,
           businessNeedsReference: form.businessNeedsReference || null,
+          ...responsiblePayload,
         }),
       })
       if (res.status === 409) {
@@ -501,6 +546,14 @@ export default function RequirementsSpecificationsClient({
       specificationLifecycleStatusId:
         spec.specificationLifecycleStatusId?.toString() ?? '',
       businessNeedsReference: spec.businessNeedsReference ?? '',
+      responsibleDisplayName: spec.responsibleHsaId
+        ? (getResponsibleDisplayName(spec) ?? '')
+        : '',
+      responsibleHsaId: spec.responsibleHsaId ?? '',
+      canResponsibleGenerateAi:
+        spec.responsibleHsaId != null &&
+        spec.responsibleDisplayName != null &&
+        spec.canResponsibleGenerateAi,
     })
     setShowForm(true)
   }
@@ -704,6 +757,116 @@ export default function RequirementsSpecificationsClient({
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <label
+                      className="block text-sm font-medium"
+                      htmlFor="spec-responsible-name"
+                    >
+                      {t('responsibleDisplayName')}
+                    </label>
+                    {helpButton(
+                      'spec-responsible-name',
+                      t('responsibleDisplayName'),
+                    )}
+                  </div>
+                  {helpPanel(
+                    'responsibleDisplayNameHelp',
+                    'spec-responsible-name',
+                  )}
+                  <input
+                    autoComplete="off"
+                    className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                    id="spec-responsible-name"
+                    onChange={e =>
+                      setForm(f => {
+                        const next = {
+                          ...f,
+                          responsibleDisplayName: e.target.value,
+                        }
+                        if (
+                          !next.responsibleDisplayName.trim() ||
+                          !next.responsibleHsaId.trim()
+                        ) {
+                          next.canResponsibleGenerateAi = false
+                        }
+                        return next
+                      })
+                    }
+                    value={form.responsibleDisplayName}
+                  />
+                </div>
+                <div>
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <label
+                      className="block text-sm font-medium"
+                      htmlFor="spec-responsible-hsa-id"
+                    >
+                      {t('responsibleHsaId')}
+                    </label>
+                    {helpButton(
+                      'spec-responsible-hsa-id',
+                      t('responsibleHsaId'),
+                    )}
+                  </div>
+                  {helpPanel('responsibleHsaIdHelp', 'spec-responsible-hsa-id')}
+                  <input
+                    autoComplete="off"
+                    className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 font-mono text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                    id="spec-responsible-hsa-id"
+                    onChange={e =>
+                      setForm(f => {
+                        const next = { ...f, responsibleHsaId: e.target.value }
+                        if (
+                          !next.responsibleDisplayName.trim() ||
+                          !next.responsibleHsaId.trim()
+                        ) {
+                          next.canResponsibleGenerateAi = false
+                        }
+                        return next
+                      })
+                    }
+                    value={form.responsibleHsaId}
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="mb-1 flex items-center gap-1.5">
+                  <label
+                    className="block text-sm font-medium"
+                    htmlFor="spec-can-responsible-generate-ai"
+                  >
+                    {t('canResponsibleGenerateAi')}
+                  </label>
+                  {helpButton(
+                    'spec-can-responsible-generate-ai',
+                    t('canResponsibleGenerateAi'),
+                  )}
+                </div>
+                {helpPanel(
+                  'canResponsibleGenerateAiHelp',
+                  'spec-can-responsible-generate-ai',
+                )}
+                <div className="flex min-h-[44px] items-center rounded-xl border bg-white px-3.5 py-2.5 transition-all duration-200 dark:bg-secondary-800/50">
+                  <input
+                    checked={form.canResponsibleGenerateAi}
+                    className="h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={
+                      !form.responsibleDisplayName.trim() ||
+                      !form.responsibleHsaId.trim()
+                    }
+                    id="spec-can-responsible-generate-ai"
+                    onChange={e =>
+                      setForm(f => ({
+                        ...f,
+                        canResponsibleGenerateAi: e.target.checked,
+                      }))
+                    }
+                    type="checkbox"
+                  />
+                </div>
               </div>
               <div>
                 <div className="mb-1 flex items-center gap-1.5">
@@ -911,6 +1074,9 @@ export default function RequirementsSpecificationsClient({
                   <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
                     <th className="py-3 px-4 font-medium">{t('name')}</th>
                     <th className="py-3 px-4 font-medium">
+                      {t('responsible')}
+                    </th>
+                    <th className="py-3 px-4 font-medium">
                       {t('responsibilityArea')}
                     </th>
                     <th className="py-3 px-4 font-medium">
@@ -939,6 +1105,22 @@ export default function RequirementsSpecificationsClient({
                         >
                           {getName(spec)}
                         </Link>
+                      </td>
+                      <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
+                        {getResponsibleDisplayName(spec) ? (
+                          <div className="min-w-36">
+                            <div className="font-medium text-secondary-800 dark:text-secondary-100">
+                              {getResponsibleDisplayName(spec)}
+                            </div>
+                            {spec.responsibleHsaId ? (
+                              <div className="mt-0.5 font-mono text-xs text-secondary-500 dark:text-secondary-400">
+                                {spec.responsibleHsaId}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
                         {getTaxonomyName(spec.responsibilityArea)}

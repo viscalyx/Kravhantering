@@ -18,11 +18,14 @@ export interface SpecificationTaxonomyItem {
 
 export interface SpecificationMeta {
   businessNeedsReference: string | null
+  canResponsibleGenerateAi: boolean
   id: number
   implementationType: SpecificationTaxonomyItem | null
   lifecycleStatus: SpecificationTaxonomyItem | null
   name: string
   responsibilityArea: SpecificationTaxonomyItem | null
+  responsibleDisplayName: string | null
+  responsibleHsaId: string | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
   specificationResponsibilityAreaId: number | null
@@ -67,6 +70,7 @@ export interface SpecificationRequirementArea {
 
 export interface Specification {
   businessNeedsReference: string | null
+  canResponsibleGenerateAi: boolean
   id: number
   implementationType: SpecificationTaxonomyItem | null
   itemCount: number
@@ -74,6 +78,8 @@ export interface Specification {
   name: string
   requirementAreas: SpecificationRequirementArea[]
   responsibilityArea: SpecificationTaxonomyItem | null
+  responsibleDisplayName: string | null
+  responsibleHsaId: string | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
   specificationResponsibilityAreaId: number | null

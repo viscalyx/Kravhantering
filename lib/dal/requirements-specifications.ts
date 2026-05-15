@@ -212,6 +212,9 @@ export async function listSpecifications(db: SqlServerDatabase) {
         specification_record.specification_implementation_type_id AS specificationImplementationTypeId,
         specification_record.specification_lifecycle_status_id AS specificationLifecycleStatusId,
         specification_record.business_needs_reference AS businessNeedsReference,
+        specification_record.responsible_hsa_id AS responsibleHsaId,
+        specification_record.responsible_display_name AS responsibleDisplayName,
+        CAST(specification_record.can_responsible_generate_ai AS int) AS canResponsibleGenerateAi,
         specification_record.created_at AS createdAt,
         specification_record.updated_at AS updatedAt,
         responsibility_area.name_sv AS responsibilityAreaNameSv,
@@ -322,6 +325,9 @@ export async function listSpecifications(db: SqlServerDatabase) {
       specificationImplementationTypeId,
       specificationLifecycleStatusId,
       businessNeedsReference: toStr(row.businessNeedsReference),
+      responsibleHsaId: toStr(row.responsibleHsaId),
+      responsibleDisplayName: toStr(row.responsibleDisplayName),
+      canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
       createdAt: toIso(row.createdAt) ?? '',
       updatedAt: toIso(row.updatedAt) ?? '',
       responsibilityArea:
@@ -364,12 +370,15 @@ export async function listSpecifications(db: SqlServerDatabase) {
 
 interface SpecificationRecord {
   businessNeedsReference: string | null
+  canResponsibleGenerateAi: boolean
   createdAt: string
   id: number
   implementationType: { id: number; nameSv: string; nameEn: string } | null
   lifecycleStatus: { id: number; nameSv: string; nameEn: string } | null
   name: string
   responsibilityArea: { id: number; nameSv: string; nameEn: string } | null
+  responsibleDisplayName: string | null
+  responsibleHsaId: string | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
   specificationResponsibilityAreaId: number | null
@@ -396,6 +405,9 @@ function mapSpecificationRow(row: Row | undefined): SpecificationRecord | null {
     specificationImplementationTypeId,
     specificationLifecycleStatusId,
     businessNeedsReference: toStr(row.businessNeedsReference),
+    responsibleHsaId: toStr(row.responsibleHsaId),
+    responsibleDisplayName: toStr(row.responsibleDisplayName),
+    canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
     createdAt: toIso(row.createdAt) ?? '',
     updatedAt: toIso(row.updatedAt) ?? '',
     responsibilityArea:
@@ -440,6 +452,9 @@ const SPECIFICATION_SELECT_WITH_JOINS = `
     specification_record.specification_implementation_type_id AS specificationImplementationTypeId,
     specification_record.specification_lifecycle_status_id AS specificationLifecycleStatusId,
     specification_record.business_needs_reference AS businessNeedsReference,
+    specification_record.responsible_hsa_id AS responsibleHsaId,
+    specification_record.responsible_display_name AS responsibleDisplayName,
+    CAST(specification_record.can_responsible_generate_ai AS int) AS canResponsibleGenerateAi,
     specification_record.created_at AS createdAt,
     specification_record.updated_at AS updatedAt,
     responsibility_area.name_sv AS responsibilityAreaNameSv,
@@ -499,6 +514,9 @@ export async function createSpecification(
     specificationImplementationTypeId?: number | null
     specificationLifecycleStatusId?: number | null
     businessNeedsReference?: string | null
+    responsibleHsaId?: string | null
+    responsibleDisplayName?: string | null
+    canResponsibleGenerateAi?: boolean
   },
 ) {
   const now = new Date()
@@ -511,6 +529,9 @@ export async function createSpecification(
         specification_implementation_type_id,
         specification_lifecycle_status_id,
         business_needs_reference,
+        responsible_hsa_id,
+        responsible_display_name,
+        can_responsible_generate_ai,
         created_at,
         updated_at
       )
@@ -522,9 +543,12 @@ export async function createSpecification(
         INSERTED.specification_implementation_type_id AS specificationImplementationTypeId,
         INSERTED.specification_lifecycle_status_id AS specificationLifecycleStatusId,
         INSERTED.business_needs_reference AS businessNeedsReference,
+        INSERTED.responsible_hsa_id AS responsibleHsaId,
+        INSERTED.responsible_display_name AS responsibleDisplayName,
+        INSERTED.can_responsible_generate_ai AS canResponsibleGenerateAi,
         INSERTED.created_at AS createdAt,
         INSERTED.updated_at AS updatedAt
-      VALUES (@0, @1, @2, @3, @4, @5, @6, @6)
+      VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @9)
     `,
     [
       data.uniqueId,
@@ -533,6 +557,9 @@ export async function createSpecification(
       data.specificationImplementationTypeId ?? null,
       data.specificationLifecycleStatusId ?? null,
       data.businessNeedsReference ?? null,
+      data.responsibleHsaId ?? null,
+      data.responsibleDisplayName ?? null,
+      data.canResponsibleGenerateAi ? 1 : 0,
       now,
     ],
   )) as Row[]
@@ -553,6 +580,9 @@ export async function createSpecification(
     ),
     specificationLifecycleStatusId: toNum(row.specificationLifecycleStatusId),
     businessNeedsReference: toStr(row.businessNeedsReference),
+    responsibleHsaId: toStr(row.responsibleHsaId),
+    responsibleDisplayName: toStr(row.responsibleDisplayName),
+    canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
     createdAt: toIso(row.createdAt) ?? '',
     updatedAt: toIso(row.updatedAt) ?? '',
   }
@@ -568,6 +598,9 @@ export async function updateSpecification(
     specificationImplementationTypeId?: number | null
     specificationLifecycleStatusId?: number | null
     businessNeedsReference?: string | null
+    responsibleHsaId?: string | null
+    responsibleDisplayName?: string | null
+    canResponsibleGenerateAi?: boolean
   },
 ) {
   const setClauses: string[] = []
@@ -597,6 +630,18 @@ export async function updateSpecification(
     setClauses.push(`business_needs_reference = @${params.length}`)
     params.push(data.businessNeedsReference ?? null)
   }
+  if ('responsibleHsaId' in data) {
+    setClauses.push(`responsible_hsa_id = @${params.length}`)
+    params.push(data.responsibleHsaId ?? null)
+  }
+  if ('responsibleDisplayName' in data) {
+    setClauses.push(`responsible_display_name = @${params.length}`)
+    params.push(data.responsibleDisplayName ?? null)
+  }
+  if ('canResponsibleGenerateAi' in data) {
+    setClauses.push(`can_responsible_generate_ai = @${params.length}`)
+    params.push(data.canResponsibleGenerateAi ? 1 : 0)
+  }
 
   setClauses.push(`updated_at = @${params.length}`)
   params.push(new Date())
@@ -616,6 +661,9 @@ export async function updateSpecification(
         INSERTED.specification_implementation_type_id AS specificationImplementationTypeId,
         INSERTED.specification_lifecycle_status_id AS specificationLifecycleStatusId,
         INSERTED.business_needs_reference AS businessNeedsReference,
+        INSERTED.responsible_hsa_id AS responsibleHsaId,
+        INSERTED.responsible_display_name AS responsibleDisplayName,
+        INSERTED.can_responsible_generate_ai AS canResponsibleGenerateAi,
         INSERTED.created_at AS createdAt,
         INSERTED.updated_at AS updatedAt
       WHERE id = ${idPlaceholder}
@@ -637,6 +685,9 @@ export async function updateSpecification(
     ),
     specificationLifecycleStatusId: toNum(row.specificationLifecycleStatusId),
     businessNeedsReference: toStr(row.businessNeedsReference),
+    responsibleHsaId: toStr(row.responsibleHsaId),
+    responsibleDisplayName: toStr(row.responsibleDisplayName),
+    canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
     createdAt: toIso(row.createdAt) ?? '',
     updatedAt: toIso(row.updatedAt) ?? '',
   }

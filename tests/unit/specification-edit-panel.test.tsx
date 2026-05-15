@@ -22,7 +22,10 @@ const lifecycleStatuses = [
 const responsibilityAreas = [{ id: 1, nameEn: 'Platform', nameSv: 'Plattform' }]
 const spec = {
   businessNeedsReference: 'Current business need',
+  canResponsibleGenerateAi: true,
   name: 'Upphandling av e-tjänstplattform',
+  responsibleDisplayName: 'Ada Admin',
+  responsibleHsaId: 'SE2321000032-ada1',
   specificationImplementationTypeId: 2,
   specificationLifecycleStatusId: 3,
   specificationResponsibilityAreaId: 1,
@@ -57,6 +60,19 @@ describe('SpecificationEditPanel', () => {
     expect(
       screen.getByRole('textbox', { name: /specification\.name/ }),
     ).toHaveValue('Upphandling av e-tjänstplattform')
+    expect(
+      screen.getByRole('textbox', {
+        name: /specification\.responsibleDisplayName/,
+      }),
+    ).toHaveValue('Ada Admin')
+    expect(
+      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
+    ).toHaveValue('SE2321000032-ada1')
+    expect(
+      screen.getByRole('checkbox', {
+        name: /specification\.canResponsibleGenerateAi/,
+      }),
+    ).toBeChecked()
 
     const form = container.querySelector(
       '[data-developer-mode-name="crud form"][data-developer-mode-context="requirements specification detail"]',
@@ -147,6 +163,9 @@ describe('SpecificationEditPanel', () => {
     expect(JSON.parse((requestInit?.body as string) ?? '{}')).toMatchObject({
       businessNeedsReference: 'Current business need',
       name: 'Nytt kravunderlagsnamn',
+      responsibleDisplayName: 'Ada Admin',
+      responsibleHsaId: 'SE2321000032-ada1',
+      canResponsibleGenerateAi: true,
       specificationImplementationTypeId: 2,
       specificationLifecycleStatusId: 3,
       specificationResponsibilityAreaId: 1,

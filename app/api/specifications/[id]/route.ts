@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { updateSpecificationSchema } from '@/app/api/specifications/schema'
 import {
   deleteSpecification,
   getSpecificationById,
@@ -14,10 +15,7 @@ import {
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
-  boundedDbStringSchema,
-  nullableBusinessTextSchema,
   parseRouteParams,
-  positiveIntegerSchema,
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 
@@ -28,21 +26,6 @@ type Params = Promise<{ id: string }>
 const specificationParamSchema = z
   .object({
     id: specificationIdOrSlugSchema,
-  })
-  .strict()
-
-const updateSpecificationSchema = z
-  .object({
-    businessNeedsReference: nullableBusinessTextSchema.optional(),
-    name: boundedDbStringSchema.optional(),
-    specificationImplementationTypeId: positiveIntegerSchema
-      .nullable()
-      .optional(),
-    specificationLifecycleStatusId: positiveIntegerSchema.nullable().optional(),
-    specificationResponsibilityAreaId: positiveIntegerSchema
-      .nullable()
-      .optional(),
-    uniqueId: boundedDbStringSchema.optional(),
   })
   .strict()
 

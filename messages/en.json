@@ -301,6 +301,15 @@
     },
     "responsibilityArea": "Business object",
     "responsibilityAreaHelp": "Choose the business object the specification belongs to, or leave it blank if the specification spans multiple business objects.",
+    "responsible": "Responsible",
+    "responsibleDisplayName": "Responsible person",
+    "responsibleDisplayNameHelp": "Enter the display name for the person responsible for the requirements specification. Do not use this for the user who registers a deviation unless that person also owns the specification.",
+    "responsibleHsaId": "Responsible HSA-ID",
+    "responsibleHsaIdHelp": "Enter the HSA-ID for the responsible person. The HSA-ID and display name must be saved together so privacy export, erasure, and access review can identify the assignment.",
+    "canResponsibleGenerateAi": "Responsible may use AI",
+    "canResponsibleGenerateAiHelp": "Enable this only when the responsible person is allowed to use AI support for this requirements specification.",
+    "responsiblePairRequired": "Enter both responsible person and responsible HSA-ID, or leave both empty.",
+    "invalidResponsibleHsaId": "Check the responsible HSA-ID. The format is SE followed by 10 digits, a hyphen, and an alphanumeric suffix.",
     "implementationType": "Implementation type",
     "implementationTypeHelp": "Choose the implementation type that best describes how this specification will be delivered.",
     "lifecycleStatus": "Lifecycle status",
@@ -721,7 +730,7 @@
       "replacementEmailOptional": "Email address is optional.",
       "fieldHelp": {
         "targetHsaId": "Enter the HSA-ID to search for before preview, export, or erasure. Every match uses the exact HSA-ID. Names are not used for matching, so there is no separate name search field.",
-        "replacementHsaId": "Enter the HSA-ID for the person who should take over live assignments, such as owner or co-author. This field must be combined with replacement name before the Switch action can be used.",
+        "replacementHsaId": "Enter the HSA-ID for the person who should take over live assignments, such as owner, co-author, or specification responsible. This field must be combined with replacement name before the Switch action can be used.",
         "replacementName": "Enter the display name snapshot to store for the replacement person. The name helps the operator confirm the switch, but HSA-ID remains the durable identity.",
         "replacementFirstName": "Optional. Enter the exact first-name value for the owner record when the display name cannot be split reliably.",
         "replacementLastName": "Optional. Enter the exact last-name value for the owner record when the display name cannot be split reliably.",
@@ -750,7 +759,7 @@
       "confirmTitle": "Execute privacy erasure",
       "confirmMessage": "This will switch {switch}, anonymize {anonymize}, delete {delete}, and skip {skip} occurrence(s).",
       "guidanceTitle": "Recommended handling and export",
-      "guidanceBody": "Use the preview to verify exactly which HSA-ID matches can be exported or erased. Export does not change the data. Live assignments are usually switched to another HSA-ID during erasure. Historical creator, decision, and resolution fields are usually anonymized instead of reassigned. Description and free-text fields are not scanned because the UI instructs users not to enter person-identifying details there.",
+      "guidanceBody": "Use the preview to verify exactly which HSA-ID matches can be exported or erased. Export does not change the data. Live assignments, including specification responsibles, are usually switched to another HSA-ID during erasure. Historical creator, decision, and resolution fields are usually anonymized instead of reassigned. Description and free-text fields are not scanned because the UI instructs users not to enter person-identifying details there.",
       "previewResult": "{count} HSA-ID occurrence(s)",
       "object": "Object",
       "count": "Count",
@@ -1260,11 +1269,11 @@
       "title": "Requirements Specifications",
       "overview": {
         "heading": "What is a requirements specification?",
-        "body": "Specifications group published requirements for a specific delivery, procurement, or business context. Each specification can be linked to a business object and an implementation type."
+        "body": "Specifications group published requirements for a specific delivery, procurement, or business context. Each specification can be linked to a business object, an implementation type, and a responsible person."
       },
       "create": {
         "heading": "Creating and editing",
-        "body": "Click \"New requirements specification\" to create one. Click the specification name to open its detail view. Use the edit icon to update the specification metadata."
+        "body": "Click \"New requirements specification\" to create one. Click the specification name to open its detail view. Use the edit icon to update the specification metadata, including the responsible person."
       }
     },
     "requirementsSpecificationDetail": {

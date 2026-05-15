@@ -169,11 +169,12 @@ vi.mock('@/lib/dal/specification-item-statuses', () => ({
     mockUpdateSpecItemStatus(...a),
 }))
 
+const mockCreatePkg = vi.fn(async (..._args: unknown[]) => ({ id: 2 }))
 const mockUpdatePkg = vi.fn()
 const mockDeletePkg = vi.fn()
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   listSpecifications: async () => [{ id: 1 }],
-  createSpecification: async () => ({ id: 2 }),
+  createSpecification: (...a: unknown[]) => mockCreatePkg(...a),
   updateSpecification: (...a: unknown[]) => mockUpdatePkg(...a),
   deleteSpecification: (...a: unknown[]) => mockDeletePkg(...a),
   getSpecificationById: async (_db: unknown, id: number) => ({ id }),
@@ -773,10 +774,86 @@ describe('requirement-specifications routes', () => {
     )
     expect(r.status).toBe(201)
   })
+  it('POST passes responsible person fields through as an HSA-ID/name pair', async () => {
+    const r = await postPkg(
+      jsonReq('POST', {
+        name: 'A',
+        uniqueId: 'A',
+        responsibleHsaId: 'SE2321000032-ada1',
+        responsibleDisplayName: 'Ada Admin',
+        canResponsibleGenerateAi: true,
+      }),
+    )
+
+    expect(r.status).toBe(201)
+    expect(mockCreatePkg).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        responsibleHsaId: 'SE2321000032-ada1',
+        responsibleDisplayName: 'Ada Admin',
+        canResponsibleGenerateAi: true,
+      }),
+    )
+  })
+  it('POST rejects a responsible HSA-ID without a responsible name', async () => {
+    const r = await postPkg(
+      jsonReq('POST', {
+        name: 'A',
+        uniqueId: 'A',
+        responsibleHsaId: 'SE2321000032-ada1',
+      }),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'responsibleDisplayName')
+    expect(mockCreatePkg).not.toHaveBeenCalled()
+  })
   it('PUT updates', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
     const r = await putPkg(jsonReq('PUT', { name: 'X' }), makeParams('1'))
     await expect(r.json()).resolves.toEqual({ id: 1 })
+  })
+  it('PUT updates responsible person and AI permission fields', async () => {
+    mockUpdatePkg.mockResolvedValue({ id: 1 })
+    const r = await putPkg(
+      jsonReq('PUT', {
+        responsibleHsaId: 'SE2321000032-rita1',
+        responsibleDisplayName: 'Rita Reviewer',
+        canResponsibleGenerateAi: true,
+      }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(200)
+    expect(mockUpdatePkg).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      expect.objectContaining({
+        responsibleHsaId: 'SE2321000032-rita1',
+        responsibleDisplayName: 'Rita Reviewer',
+        canResponsibleGenerateAi: true,
+      }),
+    )
+  })
+  it('PUT clears the responsible person fields as a pair', async () => {
+    mockUpdatePkg.mockResolvedValue({ id: 1 })
+    const r = await putPkg(
+      jsonReq('PUT', {
+        responsibleDisplayName: '',
+      }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(200)
+    expect(mockUpdatePkg).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      expect.objectContaining({
+        responsibleHsaId: null,
+        responsibleDisplayName: null,
+        canResponsibleGenerateAi: false,
+      }),
+    )
   })
   it('DELETE deletes', async () => {
     mockDeletePkg.mockResolvedValue(undefined)

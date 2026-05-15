@@ -203,6 +203,7 @@ export interface ListSpecificationsOutput {
   message: string
   specifications: {
     businessNeedsReference: string | null
+    canResponsibleGenerateAi?: boolean
     createdAt?: string
     id: number
     implementationType: { id?: number; nameSv: string; nameEn: string } | null
@@ -210,6 +211,8 @@ export interface ListSpecificationsOutput {
     lifecycleStatus?: { id: number; nameSv: string; nameEn: string } | null
     name: string
     requirementAreas?: { id: number; name: string }[]
+    responsibleDisplayName?: string | null
+    responsibleHsaId?: string | null
     responsibilityArea: { id?: number; nameSv: string; nameEn: string } | null
     specificationImplementationTypeId?: number | null
     specificationLifecycleStatusId?: number | null
