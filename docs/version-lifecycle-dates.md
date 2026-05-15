@@ -1,8 +1,9 @@
 # Version Lifecycle Dates
 
-Each `requirement_version` row carries five timestamp columns
-that track its lifecycle. The values depend on the version's
-**status** and the operations performed on it.
+Each `requirement_version` row carries six timestamp columns that track its
+lifecycle, plus one retention marker for requirements-specification history.
+The values depend on the version's **status** and the operations performed on
+it.
 
 ## Columns
 
@@ -14,6 +15,8 @@ that track its lifecycle. The values depend on the version's
 | `published_at` | TEXT NULL | When the version was published (status → 3) |
 | `archive_initiated_at` | TEXT NULL | When archiving review was initiated (status → 2 with flag) |
 | `archived_at` | TEXT NULL | When the version was archived (status → 4) |
+| `status_updated_at` | TEXT NULL | When `requirement_status_id` last changed; set at creation and on every status transition |
+| `has_specification_item_history` | BIT NOT NULL | Retention marker set to true when the version has ever been linked to a requirements specification |
 <!-- markdownlint-enable MD013 -->
 
 ## Statuses
@@ -44,6 +47,11 @@ New version rows are created **only** by these operations:
 Status transitions **never** create new version rows. They update
 the existing row in place.
 
+New version rows start with `status_updated_at = created_at` and
+`has_specification_item_history = false`. The history marker is set to true
+when the version is linked into a requirements specification and remains true
+even if that specification link is later deleted.
+
 Editing is **not allowed** when the current version is in Review
 or Archived status. Review must first be moved back to Draft;
 Archived must be restored (which creates a new Draft version).
@@ -72,6 +80,11 @@ change:
 - Archiving functions (`initiateArchiving`, `approveArchiving`, `cancelArchiving`)
 - System-controlled date changes (`published_at`, `archived_at`, `archive_initiated_at`)
 
+`status_updated_at` is the complementary lifecycle field: it changes on status
+transitions but not on content-only edits. Admin Archiving uses it to identify
+Draft and Review versions that have stayed in that status longer than the
+approved retention policy.
+
 ## Rules by Status
 
 ### Utkast (1) — Draft
@@ -79,6 +92,8 @@ change:
 - `created_at` — set at creation time.
 - `edited_at` — set at creation time. Updated when content fields
   change. Must be **≥** `created_at`.
+- `status_updated_at` — set when the row enters Draft. It is unchanged by
+  content edits.
 - `published_at` — always `NULL`.
 - `archived_at` — always `NULL`.
 
@@ -91,6 +106,7 @@ For the archiving-review path (Published → Review) see
 - `created_at` — unchanged from Draft.
 - `edited_at` — unchanged from Draft. **Not** updated by the
   status transition.
+- `status_updated_at` — set when the version transitions to Review.
 - `published_at` — `NULL` (not yet published).
 - `archived_at` — always `NULL`.
 
@@ -103,13 +119,15 @@ Reached via in-place transition from Review. No new version row.
   transition.
 - `published_at` — set when the version transitions to Published.
   Must be **after** `edited_at`.
+- `status_updated_at` — set when the version transitions to Published.
 - `archive_initiated_at` — always `NULL`.
 - `archived_at` — always `NULL`.
 
 When a version is published and a previously published version of
 the same requirement exists, the old version is automatically
 archived: its `statusId` is set to 4 and `archived_at` is set to
-the same timestamp as the new version's `published_at`.
+the same timestamp as the new version's `published_at`. The archived
+predecessor's `status_updated_at` is set to the same timestamp.
 
 ### Archiving Review (Published → Review)
 
@@ -121,16 +139,18 @@ set. This is an in-place update — no new version row is created.
 - `edited_at` — unchanged. **Not** updated by the operation.
 - `published_at` — unchanged from when the version was published.
 - `archive_initiated_at` — set when `initiateArchiving` is called.
+- `status_updated_at` — set when `initiateArchiving` moves the version back to
+  Review.
 - `archived_at` — always `NULL`.
 
 From archiving review, there are two possible transitions:
 
 - **`approveArchiving`**: sets `statusId` to 4 (Archived),
   sets `archived_at`, clears `archive_initiated_at` to `NULL`,
-  and sets `requirements.is_archived` to `true`.
+  sets `status_updated_at`, and sets `requirements.is_archived` to `true`.
 - **`cancelArchiving`**: returns `statusId` to 3 (Published),
-  clears `archive_initiated_at` to `NULL`. `published_at`
-  remains intact.
+  clears `archive_initiated_at` to `NULL` and sets `status_updated_at`.
+  `published_at` remains intact.
 
 ### Arkiverad (4) — Archived
 
@@ -146,10 +166,12 @@ auto-archive when a newer version is published.
   never set by auto-archive.
 - `archived_at` — set when the version transitions to Archived.
   Must be **after** `published_at`.
+- `status_updated_at` — set when the version transitions to Archived, including
+  auto-archive during publication of a newer version.
 
 ## Chronological Order
 
-When all timestamps are present, they follow this order:
+When all main lifecycle timestamps are present, they follow this order:
 
 ```text
 created_at  ≤  edited_at  <  published_at  <  archive_initiated_at  <  archived_at
@@ -157,6 +179,19 @@ created_at  ≤  edited_at  <  published_at  <  archive_initiated_at  <  archive
 
 `created_at` and `edited_at` may be equal (both set at creation
 time before any user edits).
+
+`status_updated_at` is not part of that strict sequence. It reflects the latest
+status transition for the current row and can therefore equal `created_at`,
+`published_at`, `archive_initiated_at`, `archived_at`, or the time a Review
+version returned to Draft.
+
+## Specification History Marker
+
+`has_specification_item_history` is used only for retention decisions. It is
+set when a version is linked into `requirements_specification_items` and is not
+cleared when the link is removed. This makes it possible to distinguish
+"never used in a requirements specification" from "used historically but no
+longer linked" before Admin Archiving deletes old versions.
 
 ## Rules Relative to Version Numbering
 
@@ -253,7 +288,7 @@ The version history pills show the relevant date per status:
 ## DAL Behavior
 
 - **Creating a requirement** (`createRequirement`): Sets
-  `created_at` and `edited_at` to the current time.
+  `created_at`, `edited_at` and `status_updated_at` to the current time.
   `published_at` and `archived_at` are `NULL`.
 - **Editing a requirement** (`editRequirement`): When the current
   version is Draft, updates the existing row in place with
@@ -263,10 +298,11 @@ The version history pills show the relevant date per status:
   current version is Published, creates a new Draft version with
   `edited_at` set to the current time after the same precondition
   check. **Not allowed** when the current version is in Review or
-  Archived status.
+  Archived status. Content-only edits do not update `status_updated_at`.
 - **Transitioning status** (`transitionStatus`): In-place
   `UPDATE` on the existing version row. Sets `statusId` to the
-  target status. Sets `published_at` or `archived_at` when
+  target status and `status_updated_at` to the current time. Sets
+  `published_at` or `archived_at` when
   transitioning to Published or Archived respectively.
   Rotates `revision_token` because the row changed, but **never**
   touches `edited_at`. **Never** creates a new version row. When
@@ -276,17 +312,19 @@ The version history pills show the relevant date per status:
   replacement version is published.
 - **Initiating archiving** (`initiateArchiving`): In-place
   `UPDATE` on the existing version row. Sets `statusId` to
-  Review and `archive_initiated_at` to the current time.
+  Review, `archive_initiated_at` and `status_updated_at` to the current time.
   **Never** touches `edited_at`. **Never** creates a new
   version row. Does **not** set `is_archived`.
 - **Approving archiving** (`approveArchiving`): In-place
   `UPDATE` on the existing version row. Sets `statusId` to
-  Archived and `archived_at` to the current time. Sets
+  Archived and sets `archived_at` and `status_updated_at` to the current time.
+  Sets
   `is_archived = true`. **Never** touches `edited_at`.
   **Never** creates a new version row.
 - **Cancelling archiving** (`cancelArchiving`): In-place
   `UPDATE` on the existing version row. Sets `statusId`
-  back to Published and clears `archive_initiated_at`.
+  back to Published, clears `archive_initiated_at`, and sets
+  `status_updated_at` to the current time.
   **Never** touches `edited_at`. **Never** creates a new
   version row.
 - **Restoring a version** (`restoreVersion`): Creates a new
