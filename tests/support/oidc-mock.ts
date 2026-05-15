@@ -207,7 +207,7 @@ export async function startMockIdp(
       revocation: { enabled: true },
       rpInitiatedLogout: { enabled: true },
     },
-    findAccount: async (_ctx: unknown, sub: string) => {
+    findAccount: async (_ctx, sub) => {
       const account = Object.values(users).find(u => u.sub === sub) ?? nextLogin
       return {
         accountId: account.sub,
