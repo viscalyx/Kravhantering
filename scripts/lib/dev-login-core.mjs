@@ -16,6 +16,13 @@ export function parseArgs(
   argv,
   { env = process.env, stdout = process.stdout, exit = process.exit } = {},
 ) {
+  const requireValue = (index, flag) => {
+    const value = argv[index + 1]
+    if (value == null || value.startsWith('-')) {
+      throw new Error(`Missing value for ${flag}`)
+    }
+    return value
+  }
   const args = {
     user: 'ada.admin',
     password: undefined,
@@ -26,11 +33,12 @@ export function parseArgs(
   }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
-    if (a === '--user' || a === '-u') args.user = argv[++i]
-    else if (a === '--password' || a === '-p') args.password = argv[++i]
+    if (a === '--user' || a === '-u') args.user = requireValue(i++, a)
+    else if (a === '--password' || a === '-p')
+      args.password = requireValue(i++, a)
     else if (a === '--base' || a === '-b')
-      args.base = argv[++i].replace(/\/$/, '')
-    else if (a === '--jar' || a === '-j') args.jar = argv[++i]
+      args.base = requireValue(i++, a).replace(/\/$/, '')
+    else if (a === '--jar' || a === '-j') args.jar = requireValue(i++, a)
     else if (a === '--force' || a === '-f') args.force = true
     else if (a === '--print-jar') args.printJar = true
     else if (a === '--help' || a === '-h') {
@@ -81,6 +89,7 @@ export class CookieJar {
     const value = nameValue.slice(eq + 1).trim()
 
     let domain = requestUrl.hostname
+    let hostOnly = true
     let path = '/'
     let secure = false
     let httpOnly = false
@@ -91,8 +100,10 @@ export class CookieJar {
       const [rawKey, ...rest] = attr.split('=')
       const key = rawKey.toLowerCase().trim()
       const val = rest.join('=').trim()
-      if (key === 'domain' && val) domain = val.replace(/^\./, '')
-      else if (key === 'path' && val) path = val
+      if (key === 'domain' && val) {
+        domain = val.replace(/^\./, '').toLowerCase()
+        hostOnly = false
+      } else if (key === 'path' && val) path = val
       else if (key === 'secure') secure = true
       else if (key === 'httponly') httpOnly = true
       else if (key === 'expires' && val) expires = new Date(val).getTime()
@@ -110,6 +121,7 @@ export class CookieJar {
       name,
       value,
       domain,
+      hostOnly,
       path,
       secure,
       httpOnly,
@@ -121,13 +133,16 @@ export class CookieJar {
   header(requestUrl) {
     const url = new URL(requestUrl)
     const matches = []
-    for (const c of this.cookies.values()) {
-      if (!hostMatches(url.hostname, c.domain)) continue
-      if (!url.pathname.startsWith(c.path)) continue
+    for (const [key, c] of this.cookies) {
+      if (c.expiry > 0 && c.expiry < Date.now()) {
+        this.cookies.delete(key)
+        continue
+      }
+      if (!hostMatches(url.hostname, c.domain, c.hostOnly)) continue
+      if (!pathMatches(url.pathname, c.path)) continue
       // Note: we intentionally ignore the Secure flag. The local Keycloak
       // dev realm serves cookies with Secure;SameSite=None even over HTTP
       // on localhost, and a strict browser-style check would drop them.
-      if (c.expiry > 0 && c.expiry < Date.now()) continue
       matches.push(`${c.name}=${c.value}`)
     }
     return matches.join('; ')
@@ -141,7 +156,7 @@ export class CookieJar {
     ]
     for (const c of this.cookies.values()) {
       const domainField = c.domain
-      const includeSubdomains = 'FALSE'
+      const includeSubdomains = c.hostOnly ? 'FALSE' : 'TRUE'
       const secure = c.secure ? 'TRUE' : 'FALSE'
       const expiry = c.expiry > 0 ? Math.floor(c.expiry / 1000) : 0
       lines.push(
@@ -160,10 +175,20 @@ export class CookieJar {
   }
 }
 
-export function hostMatches(reqHost, cookieHost) {
-  if (reqHost === cookieHost) return true
-  if (reqHost.endsWith(`.${cookieHost}`)) return true
+export function hostMatches(reqHost, cookieHost, hostOnly = false) {
+  const requestHost = reqHost.toLowerCase()
+  const domain = cookieHost.toLowerCase()
+  if (requestHost === domain) return true
+  if (hostOnly) return false
+  if (requestHost.endsWith(`.${domain}`)) return true
   return false
+}
+
+function pathMatches(requestPath, cookiePath) {
+  if (requestPath === cookiePath) return true
+  if (!requestPath.startsWith(cookiePath)) return false
+  if (cookiePath.endsWith('/')) return true
+  return requestPath[cookiePath.length] === '/'
 }
 
 /** fetch wrapper that records cookies and never auto-follows redirects. */

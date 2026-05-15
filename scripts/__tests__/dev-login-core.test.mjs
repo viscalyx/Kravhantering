@@ -158,6 +158,25 @@ describe('parseArgs', () => {
       'Unknown argument: --wat',
     )
   })
+
+  it.each([
+    ['--user'],
+    ['--password'],
+    ['--base'],
+    ['--jar'],
+    ['--user', '--force'],
+    ['--password', '--print-jar'],
+    ['--base', '--force'],
+    ['--jar', '--force'],
+    ['-u'],
+    ['-p'],
+    ['-b'],
+    ['-j'],
+  ])('throws a clear error when %s is missing its value', (...argv) => {
+    expect(() => parseArgs(argv, { env: {} })).toThrow(
+      `Missing value for ${argv[0]}`,
+    )
+  })
 })
 
 describe('decodeHtmlEntities', () => {
@@ -185,13 +204,14 @@ describe('decodeHtmlEntities', () => {
 })
 
 describe('CookieJar', () => {
-  it('matches exact hosts and subdomains only', () => {
+  it('matches exact hosts, subdomains, and host-only cookies correctly', () => {
     expect(hostMatches('example.test', 'example.test')).toBe(true)
     expect(hostMatches('sub.example.test', 'example.test')).toBe(true)
+    expect(hostMatches('sub.example.test', 'example.test', true)).toBe(false)
     expect(hostMatches('badexample.test', 'example.test')).toBe(false)
   })
 
-  it('ingests cookies, filters by host/path/expiry, and serializes Netscape output', () => {
+  it('ingests cookies, filters by host-only domain/path/expiry, and serializes Netscape output', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
     const jar = new CookieJar()
@@ -211,18 +231,26 @@ describe('CookieJar', () => {
       'http://example.test/app/login',
     )
 
-    expect(jar.header('http://sub.example.test/app/page')).toBe(
+    expect(jar.header('http://example.test/app/page')).toBe(
       'root=1; pathScoped=2; hostOnly=3',
     )
+    expect(jar.header('http://example.test/app')).toBe(
+      'root=1; pathScoped=2; hostOnly=3',
+    )
+    expect(jar.header('http://example.test/application')).toBe(
+      'root=1; hostOnly=3',
+    )
+    expect(jar.header('http://sub.example.test/app/page')).toBe('root=1')
     expect(jar.header('http://example.test/other')).toBe('root=1; hostOnly=3')
     expect(jar.header('http://other.test/app/page')).toBe('')
 
     const output = jar.toNetscape()
     expect(output).toContain('# Netscape HTTP Cookie File\n')
-    expect(output).toContain(
-      'example.test\tFALSE\t/\tTRUE\t1767225660\troot\t1',
-    )
+    expect(output).toContain('example.test\tTRUE\t/\tTRUE\t1767225660\troot\t1')
     expect(output).toContain('example.test\tFALSE\t/app\tFALSE\t')
+    expect(output).toContain(
+      'example.test\tFALSE\t/\tFALSE\t1767225660\thostOnly\t3',
+    )
     expect(output).not.toContain('expired')
     expect(output).not.toContain('purged')
   })
