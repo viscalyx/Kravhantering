@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useRef, useState } from 'react'
+import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
@@ -247,12 +248,12 @@ export default function SpecificationItemStatusesClient() {
                     {controller.editId ? t('editItem') : t('newItem')}
                   </h2>
                   <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
+                    <FieldLabelWithHelp
+                      help={t('nameSvHelp')}
                       htmlFor="pis-name-sv"
-                    >
-                      {t('name')} (SV) <span aria-hidden="true">*</span>
-                    </label>
+                      label={`${t('name')} (SV)`}
+                      required
+                    />
                     <input
                       className={inputClassName}
                       disabled={controller.submitting}
@@ -266,17 +267,14 @@ export default function SpecificationItemStatusesClient() {
                       required
                       value={controller.form.nameSv}
                     />
-                    <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                      {t('nameSvHelp')}
-                    </p>
                   </div>
                   <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
+                    <FieldLabelWithHelp
+                      help={t('nameEnHelp')}
                       htmlFor="pis-name-en"
-                    >
-                      {t('name')} (EN) <span aria-hidden="true">*</span>
-                    </label>
+                      label={`${t('name')} (EN)`}
+                      required
+                    />
                     <input
                       className={inputClassName}
                       disabled={controller.submitting}
@@ -290,17 +288,13 @@ export default function SpecificationItemStatusesClient() {
                       required
                       value={controller.form.nameEn}
                     />
-                    <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                      {t('nameEnHelp')}
-                    </p>
                   </div>
                   <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
+                    <FieldLabelWithHelp
+                      help={t('definitionSvHelp')}
                       htmlFor="pis-definition-sv"
-                    >
-                      {t('definition')} (SV)
-                    </label>
+                      label={`${t('definition')} (SV)`}
+                    />
                     <textarea
                       className={inputClassName}
                       disabled={controller.submitting}
@@ -314,17 +308,13 @@ export default function SpecificationItemStatusesClient() {
                       rows={2}
                       value={controller.form.descriptionSv}
                     />
-                    <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                      {t('definitionSvHelp')}
-                    </p>
                   </div>
                   <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
+                    <FieldLabelWithHelp
+                      help={t('definitionEnHelp')}
                       htmlFor="pis-definition-en"
-                    >
-                      {t('definition')} (EN)
-                    </label>
+                      label={`${t('definition')} (EN)`}
+                    />
                     <textarea
                       className={inputClassName}
                       disabled={controller.submitting}
@@ -338,17 +328,14 @@ export default function SpecificationItemStatusesClient() {
                       rows={2}
                       value={controller.form.descriptionEn}
                     />
-                    <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                      {t('definitionEnHelp')}
-                    </p>
                   </div>
                   <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
+                    <FieldLabelWithHelp
+                      help={t('colorHelp')}
                       htmlFor="pis-color"
-                    >
-                      {t('color')} <span aria-hidden="true">*</span>
-                    </label>
+                      label={t('color')}
+                      required
+                    />
                     <div className="flex items-center gap-3">
                       <input
                         className="h-10 w-14 rounded-lg border cursor-pointer"
@@ -386,12 +373,11 @@ export default function SpecificationItemStatusesClient() {
                     </div>
                   </div>
                   <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
+                    <FieldLabelWithHelp
+                      help={t('sortOrderHelp')}
                       htmlFor="pis-sort-order"
-                    >
-                      {t('sortOrder')}
-                    </label>
+                      label={t('sortOrder')}
+                    />
                     <input
                       className={`${inputClassName}${isSortOrderLocked ? ' opacity-50 cursor-not-allowed' : ''}`}
                       disabled={controller.submitting || isSortOrderLocked}

@@ -1544,7 +1544,9 @@
     "definition": "Definition",
     "definitionSvHelp": "Ange en svensk definition som beskriver vad denna status innebär. Den visas som en tooltip där statusen används.",
     "definitionEnHelp": "Ange en engelsk definition som beskriver vad denna status innebär. Den visas som en tooltip där statusen används.",
+    "colorHelp": "Välj färgen som används för märket för denna användningsstatus.",
     "noStatus": "— Ingen status —",
+    "sortOrderHelp": "Ange ett tal som styr visningsordningen. Lägre tal visas först. Reserverade statusar har låst sorteringsordning.",
     "sortOrderLocked": "Sorteringsordningen för denna systemstatus kan inte ändras.",
     "specification": "Underlag",
     "requirement": "Krav"

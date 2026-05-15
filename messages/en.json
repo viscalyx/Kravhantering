@@ -1544,7 +1544,9 @@
     "definition": "Definition",
     "definitionSvHelp": "Enter a Swedish definition that describes what this status means. It is shown as a tooltip where the status is used.",
     "definitionEnHelp": "Enter an English definition that describes what this status means. It is shown as a tooltip where the status is used.",
+    "colorHelp": "Choose the color used for this usage status badge.",
     "noStatus": "— No status —",
+    "sortOrderHelp": "Enter a number that controls the display order. Lower numbers appear first. Reserved statuses keep a locked sort order.",
     "sortOrderLocked": "The sort order for this system status cannot be changed.",
     "specification": "Specification",
     "requirement": "Requirement"
