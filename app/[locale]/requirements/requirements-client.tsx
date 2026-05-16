@@ -340,16 +340,24 @@ export default function RequirementsClient({
         if (match) resolvedNumericId = match.id
       }
 
-      const hasCurrentPinnedSelection = () =>
-        requestId === latestRowsRequestIdRef.current &&
-        selectedIdRef.current === sid
+      const isCurrentRowsRequest = () =>
+        requestId === latestRowsRequestIdRef.current
+      const hasCurrentPinnedSelection = (
+        row?: Pick<RequirementRow, 'id' | 'uniqueId'>,
+      ) =>
+        isCurrentRowsRequest() &&
+        (selectedIdRef.current === sid ||
+          (row
+            ? selectionMatchesRequirementRow(selectedIdRef.current, row)
+            : false))
 
       try {
         const singleRes = await fetch(`/api/requirements/${sid}`)
-        if (singleRes.ok && hasCurrentPinnedSelection()) {
+        if (singleRes.ok && isCurrentRowsRequest()) {
           const detail = (await singleRes.json()) as RequirementDetailRowSource
-          if (hasCurrentPinnedSelection()) {
-            newPinnedRow = mapRequirementDetailToRow(detail)
+          const row = mapRequirementDetailToRow(detail)
+          if (hasCurrentPinnedSelection(row)) {
+            newPinnedRow = row
             resolvedNumericId = detail.id
           }
         } else if (!singleRes.ok && hasCurrentPinnedSelection()) {

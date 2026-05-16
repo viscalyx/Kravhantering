@@ -1645,6 +1645,58 @@ describe('RequirementsClient', () => {
     await waitFor(() => expect(window.location.search).toBe(''))
   })
 
+  it('keeps the URL-selected pin when hydration resolves before row refresh detail', async () => {
+    navigationState.searchParams = new URLSearchParams('selected=PWT0009')
+    window.history.replaceState({}, '', '/sv/requirements?selected=PWT0009')
+
+    const hydrationDetail =
+      createDeferredJsonResponse<ReturnType<typeof makeRequirementDetail>>()
+    const refreshDetail =
+      createDeferredJsonResponse<ReturnType<typeof makeRequirementDetail>>()
+    let selectedDetailFetchCount = 0
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        return Promise.resolve(
+          okJson({
+            pagination: { hasMore: false },
+            requirements: [makeRequirementRow(1)],
+          }),
+        )
+      }
+
+      if (url === '/api/requirements/PWT0009') {
+        selectedDetailFetchCount += 1
+        return selectedDetailFetchCount === 1
+          ? hydrationDetail.promise
+          : refreshDetail.promise
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() => expect(selectedDetailFetchCount).toBeGreaterThan(1))
+
+    hydrationDetail.resolve(makeRequirementDetail(9, { uniqueId: 'PWT0009' }))
+    refreshDetail.resolve(makeRequirementDetail(9, { uniqueId: 'PWT0009' }))
+
+    await waitFor(() =>
+      expect(screen.getByText('detail-refresh-9')).toBeInTheDocument(),
+    )
+    expect(screen.getByTestId('row-ids').textContent).toContain('PWT0009')
+    await waitFor(() => expect(window.location.search).toBe(''))
+  })
+
   it('keeps a user row click when delayed URL hydration resolves afterward', async () => {
     navigationState.searchParams = new URLSearchParams('selected=PWT0009')
     window.history.replaceState({}, '', '/sv/requirements?selected=PWT0009')
