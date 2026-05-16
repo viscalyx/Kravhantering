@@ -21,7 +21,10 @@ vi.mock('@/lib/ai/requirement-prompt', () => ({
   REQUIREMENT_FORMAT_SCHEMA: { type: 'object' },
   buildSystemPrompt: () => 'system prompt',
   buildUserPrompt: () => 'user prompt',
-  validateGeneratedRequirements: (requirements: unknown[]) => requirements,
+  validateGeneratedRequirementsWithMetadata: (requirements: unknown[]) => ({
+    originalIndexes: requirements.map((_, index) => index),
+    requirements,
+  }),
 }))
 
 vi.mock('@/lib/ai/openrouter-client', () => ({
@@ -64,7 +67,13 @@ describe('POST /api/ai/generate-requirements', () => {
     vi.clearAllMocks()
     clearInMemoryThrottleForTests()
     routeState.getRequestSqlServerDataSource.mockResolvedValue({})
-    routeState.loadTaxonomy.mockResolvedValue({})
+    routeState.loadTaxonomy.mockResolvedValue({
+      categories: [{ id: 2, name: 'Security' }],
+      qualityCharacteristics: [{ id: 3, name: 'Confidentiality' }],
+      requirementPackages: [{ id: 4, name: 'Core' }],
+      riskLevels: [{ id: 1, name: 'Low' }],
+      types: [{ id: 1, name: 'Functional' }],
+    })
   })
 
   it('logs successful generation capacity metrics', async () => {
@@ -91,6 +100,9 @@ describe('POST /api/ai/generate-requirements', () => {
       const text = await response.text()
 
       expect(text).toContain('event: done')
+      const streamOptions = routeState.generateChatStream.mock.calls[0]?.[0]
+      expect(streamOptions).not.toHaveProperty('logprobs')
+      expect(streamOptions).not.toHaveProperty('topLogprobs')
       expect(response.headers.get('X-Request-Id')).toBe('request-ai')
       expect(response.headers.get('X-Correlation-Id')).toBe('workflow-ai')
       expect(parseCapacityEvents(consoleInfoSpy)[0]).toMatchObject({

@@ -61,6 +61,16 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     employeeHsaId: 'SE2321000032-areaco1',
     roles: [],
   },
+  TwoAreaOwner: {
+    sub: 'mock-two-area-owner-sub',
+    given_name: 'Linnéa',
+    family_name: 'AreaOwner',
+    name: 'Linnéa AreaOwner',
+    email: 'linnea.areaowner@example.test',
+    preferred_username: 'linnea.areaowner',
+    employeeHsaId: 'SE2321000032-linneab',
+    roles: [],
+  },
   SpecificationResp: {
     sub: 'mock-specresp-sub',
     given_name: 'Petra',
@@ -207,7 +217,7 @@ export async function startMockIdp(
       revocation: { enabled: true },
       rpInitiatedLogout: { enabled: true },
     },
-    findAccount: async (_ctx: unknown, sub: string) => {
+    findAccount: async (_ctx, sub) => {
       const account = Object.values(users).find(u => u.sub === sub) ?? nextLogin
       return {
         accountId: account.sub,

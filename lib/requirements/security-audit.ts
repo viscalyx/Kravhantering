@@ -23,6 +23,9 @@ export interface HighRiskMutationAuditDetail {
   deleted?: string
   deviationId?: number
   locale?: string
+  localRequirementId?: number
+  newRequirementId?: number
+  newRequirementUniqueId?: string
   operation?: string
   removedCount?: number
   requirementCount?: number
@@ -34,6 +37,7 @@ export interface HighRiskMutationAuditDetail {
   specificationId?: number
   specificationSlug?: string
   suggestionId?: number
+  targetRequirementAreaId?: number
   versionNumber?: number
 }
 
@@ -93,6 +97,21 @@ function actionAuditDetail(
         requirementCount: action.requirementIds.length,
         specificationId: action.specificationId,
         specificationSlug: action.specificationSlug,
+      }
+    case 'list_graduation_target_areas':
+      return {
+        actionKind: action.kind,
+        localRequirementId: action.localRequirementId,
+        specificationId: action.specificationId,
+        specificationSlug: action.specificationSlug,
+      }
+    case 'graduate_specification_local_requirement':
+      return {
+        actionKind: action.kind,
+        localRequirementId: action.localRequirementId,
+        specificationId: action.specificationId,
+        specificationSlug: action.specificationSlug,
+        targetRequirementAreaId: action.requirementAreaId,
       }
     case 'manage_specification_local_requirement':
       return {

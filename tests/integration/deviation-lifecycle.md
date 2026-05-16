@@ -74,7 +74,7 @@ approved after the return-to-draft confirmation is dismissed once.
 2. Open `/sv/specifications/PLAYWRIGHT-LIFECYCLE-2026`.
 3. Expand `PWT0001` on desktop or `PWT0002` on mobile.
 4. Click "Begär ett avsteg".
-5. Fill motivation and requester, then click "Registrera avsteg".
+5. Fill the motivation, then click "Registrera avsteg".
 6. Wait for the API latest deviation to match the draft and reopen the row.
 7. Assert the active deviation step is "Utkast".
 8. Click "Granskning", wait for persisted review state, and reopen the row.
@@ -122,7 +122,7 @@ and rejected after the return-to-draft confirmation is dismissed once.
 2. Open `/sv/specifications/PLAYWRIGHT-LIFECYCLE-2026`.
 3. Expand `PWT0003` on desktop or `PWT0004` on mobile.
 4. Click "Begär ett avsteg".
-5. Fill motivation and requester, then click "Registrera avsteg".
+5. Fill the motivation, then click "Registrera avsteg".
 6. Wait for the API latest deviation to match the draft and reopen the row.
 7. Assert the active deviation step is "Utkast".
 8. Click "Granskning", wait for persisted review state, and reopen the row.

@@ -1269,14 +1269,13 @@ test.describe('Kravhantering — Guidegenerering', () => {
             page,
             'avstegsformular-tomt',
             'Formulär för avstegsansökan',
-            '**Steg 3 — Fyll i avstegsformuläret.** Ange en motivering som förklarar varför kravet inte kan uppfyllas som specificerat och vilka kompenserande åtgärder som vidtas. Fältet "Registrerat av" är valfritt.',
+            '**Steg 3 — Fyll i avstegsformuläret.** Ange en motivering som förklarar varför kravet inte kan uppfyllas som specificerat och vilka kompenserande åtgärder som vidtas. Begärande användare registreras automatiskt.',
             { fullPage: false },
           )
         })
 
         await test.step('Avstegsformulär — ifyllt', async () => {
           await page.locator('#deviation-motivation').fill(MOCK_DEVIATION)
-          await page.locator('#deviation-createdBy').fill('Playwright Guide')
 
           await snap(
             page,

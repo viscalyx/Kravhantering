@@ -351,6 +351,14 @@ export function validateGeneratedRequirements(
   requirements: GeneratedRequirement[],
   taxonomy: TaxonomyData,
 ): GeneratedRequirement[] {
+  return validateGeneratedRequirementsWithMetadata(requirements, taxonomy)
+    .requirements
+}
+
+export function validateGeneratedRequirementsWithMetadata(
+  requirements: GeneratedRequirement[],
+  taxonomy: TaxonomyData,
+): { originalIndexes: number[]; requirements: GeneratedRequirement[] } {
   const validTypeIds = new Set(taxonomy.types.map(t => t.id))
   const validCatIds = new Set(taxonomy.categories.map(c => c.id))
   const validQcIds = new Set(taxonomy.qualityCharacteristics.map(qc => qc.id))
@@ -359,9 +367,13 @@ export function validateGeneratedRequirements(
     taxonomy.requirementPackages.map(s => s.id),
   )
 
-  return requirements
-    .filter(r => validTypeIds.has(r.typeId))
-    .map(r => ({
+  const validated: GeneratedRequirement[] = []
+  const originalIndexes: number[] = []
+
+  requirements.forEach((r, index) => {
+    if (!validTypeIds.has(r.typeId)) return
+    originalIndexes.push(index)
+    validated.push({
       ...r,
       categoryId:
         r.categoryId && validCatIds.has(r.categoryId)
@@ -378,5 +390,8 @@ export function validateGeneratedRequirements(
       requirementPackageIds: r.requirementPackageIds?.filter(id =>
         validRequirementPackageIds.has(id),
       ),
-    }))
+    })
+  })
+
+  return { originalIndexes, requirements: validated }
 }

@@ -137,6 +137,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Requirement specification list requirement-area labels render as compact,
   non-interactive pills inside the existing `specifications > crud table`
   surface; they do not add separate developer-mode marker names.
+- Requirement specification list responsible-person metadata renders inside the
+  existing `specifications > crud table` surface, and the create/edit controls
+  stay inside the existing `specifications > crud form` surface.
 - Requirement specification list edit and delete row actions render as icon-only
   buttons, but keep the existing `specifications > table action: edit` and
   `specifications > table action: delete` markers.
@@ -164,15 +167,17 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   specification-item detail layout, while their local edit/delete controls
   continue to use `detail action`.
 - Specification-local inline detail actions now use `detail action` markers
-  for the right-side edit and delete buttons, mirroring the catalog
-  detail-card action column pattern.
+  for the right-side edit, delete, and graduate-to-library buttons, mirroring
+  the catalog detail-card action column pattern.
 - The specification-local right-side action rail now mirrors the specification-item
-  rail's stacked button sizing and spacing, but it does not introduce
-  any new developer-mode marker names beyond the existing
-  print/deviation/detail action surfaces.
+  rail's stacked button sizing and spacing. Opening the graduation target-area
+  picker adds the shared `dialog` marker with value
+  `graduate-local-requirement`; the rail itself keeps the existing
+  print/deviation/detail action marker surfaces.
 - Those existing specification-local edit/delete `detail action` controls may
-  render disabled when usage status is not Included or when a deviation
-  is still pending. In that state they are visually muted, but this
+  render disabled when usage status is not Included or when a deviation is still
+  pending. The graduation action is disabled when usage status is not Included.
+  In either disabled state the controls are visually muted, but this
   state change does not add any new developer-mode markers.
 - Specification-local inline details now also use the same outer inset as the
   catalog inline detail surface; this is a layout-only alignment change
@@ -187,10 +192,11 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `detail section` values `needs reference` and `specification item status`
   when the requirement is opened from `Krav i kravunderlag`.
 - The specification-detail header may visually regroup the title,
-  business-needs reference, and short metadata summary into a compact
-  layout, including a wide-screen variant where the metadata sits
-  beside the title. That layout does not introduce any separate
-  developer-mode marker beyond the existing edit action.
+  business-needs reference, responsible person, and short metadata summary into
+  a compact layout where the metadata row sits to the right of the title on
+  wide screens and the metadata cards stay on one horizontal row. That layout
+  does not introduce any separate developer-mode marker beyond the existing edit
+  action.
 - The specification-detail page no longer renders a separate breadcrumb-style
   back control in that header area; browser navigation is the supported
   way back from this compact header.

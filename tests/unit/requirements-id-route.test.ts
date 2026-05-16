@@ -244,14 +244,53 @@ describe('requirements/[id] route', () => {
 
   describe('DELETE', () => {
     it('archives requirement', async () => {
-      mockManageRequirement.mockResolvedValue({})
+      const detail = { id: 1, uniqueId: 'REQ-001' }
+      mockManageRequirement.mockResolvedValue({ detail })
 
       const req = new NextRequest('http://localhost/api/requirements/1', {
         method: 'DELETE',
       })
       const res = await DELETE(req, makeParams('1'))
-      const json = (await res.json()) as { ok: boolean }
-      expect(json.ok).toBe(true)
+      const json = (await res.json()) as {
+        detail: typeof detail
+        id: number
+        ok: boolean
+        uniqueId: string
+      }
+      expect(json).toEqual({
+        detail,
+        id: 1,
+        ok: true,
+        uniqueId: 'REQ-001',
+      })
+      expect(mockManageRequirement).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ operation: 'archive' }),
+      )
+    })
+
+    it.each([
+      ['numeric id', '1', 1, null],
+      ['unique id', 'REQ-001', null, 'REQ-001'],
+    ])('archives requirement with fallback response when no detail is returned for %s', async (_label, ref, expectedId, expectedUniqueId) => {
+      mockManageRequirement.mockResolvedValue({})
+
+      const req = new NextRequest(`http://localhost/api/requirements/${ref}`, {
+        method: 'DELETE',
+      })
+      const res = await DELETE(req, makeParams(ref))
+      const json = (await res.json()) as {
+        detail: null
+        id: number | null
+        ok: boolean
+        uniqueId: string | null
+      }
+      expect(json).toEqual({
+        detail: null,
+        id: expectedId,
+        ok: true,
+        uniqueId: expectedUniqueId,
+      })
       expect(mockManageRequirement).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ operation: 'archive' }),

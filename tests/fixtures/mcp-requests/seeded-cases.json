@@ -62,6 +62,27 @@
       }
     },
     {
+      "name": "list graduation target areas",
+      "tool": "requirements_list_graduation_target_areas",
+      "kind": "read",
+      "arguments": {
+        "specificationId": "${specification.id}",
+        "localRequirementId": "${localRequirement.id}",
+        "responseFormat": "json"
+      }
+    },
+    {
+      "name": "graduate local requirement to library",
+      "tool": "requirements_graduate_local_requirement",
+      "kind": "mutation",
+      "arguments": {
+        "specificationId": "${specification.id}",
+        "localRequirementId": "${localRequirement.id}",
+        "requirementAreaId": "${requirementArea.id}",
+        "responseFormat": "json"
+      }
+    },
+    {
       "name": "add published requirement to specification",
       "tool": "requirements_add_to_specification",
       "kind": "mutation",

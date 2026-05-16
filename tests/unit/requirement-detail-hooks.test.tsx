@@ -33,10 +33,13 @@ function wrapper({ children }: { children: ReactNode }) {
   return <ConfirmModalProvider>{children}</ConfirmModalProvider>
 }
 
-function makeRequirement(versionId: number): RequirementDetailResponse {
+function makeRequirement(
+  versionId: number,
+  requirementId = 123,
+): RequirementDetailResponse {
   return {
-    id: 123,
-    uniqueId: 'REQ-123',
+    id: requirementId,
+    uniqueId: `REQ-${requirementId}`,
     area: null,
     createdAt: '2026-03-01T00:00:00Z',
     isArchived: false,
@@ -119,10 +122,7 @@ describe('useDeviationWorkflow', () => {
     )
 
     await act(async () => {
-      await result.current.handleCreateDeviation(
-        'Needs exception',
-        'Client Supplied Creator',
-      )
+      await result.current.handleCreateDeviation('Needs exception')
     })
 
     const postCall = fetchMock.mock.calls.find(
@@ -179,10 +179,7 @@ describe('useDeviationWorkflow', () => {
     await waitFor(() => expect(result.current.latestDeviation?.id).toBe(11))
 
     await act(async () => {
-      await result.current.handleEditDeviation(
-        'Updated deviation',
-        'Client Supplied Creator',
-      )
+      await result.current.handleEditDeviation('Updated deviation')
     })
 
     const putCall = fetchMock.mock.calls.find(
@@ -375,7 +372,7 @@ describe('useSuggestionWorkflow', () => {
     const { result, rerender } = renderHook(
       ({ requirementId }: { requirementId: number }) =>
         useSuggestionWorkflow({
-          requirement: makeRequirement(1),
+          requirement: makeRequirement(1, requirementId),
           requirementId,
           selectedVersionNumber: 1,
         }),
@@ -408,6 +405,38 @@ describe('useSuggestionWorkflow', () => {
     expect(result.current.versionSuggestionItems).toHaveLength(0)
   })
 
+  it('loads suggestions through the requirement numeric id when the route id is a unique id', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/requirement-suggestions/123') {
+        return response({ suggestions: [] })
+      }
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { result } = renderHook(
+      () =>
+        useSuggestionWorkflow({
+          requirement: makeRequirement(1, 123),
+          requirementId: 'SPR0003',
+          selectedVersionNumber: 1,
+        }),
+      { wrapper },
+    )
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-suggestions/123',
+      ),
+    )
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/requirement-suggestions/SPR0003',
+    )
+    expect(result.current.suggestionError).toBeNull()
+    expect(result.current.versionSuggestionItems).toHaveLength(0)
+  })
+
   it('ignores stale suggestion responses after a newer requirement fetch wins', async () => {
     const firstFetch = createDeferred<Response>()
     const secondFetch = createDeferred<Response>()
@@ -426,7 +455,7 @@ describe('useSuggestionWorkflow', () => {
     const { result, rerender } = renderHook(
       ({ requirementId }: { requirementId: number }) =>
         useSuggestionWorkflow({
-          requirement: makeRequirement(1),
+          requirement: makeRequirement(1, requirementId),
           requirementId,
           selectedVersionNumber: 1,
         }),

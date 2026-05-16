@@ -54,6 +54,21 @@
       "realmRoles": []
     },
     {
+      "username": "linnea.areaowner",
+      "enabled": true,
+      "email": "linnea.areaowner@example.test",
+      "emailVerified": true,
+      "firstName": "Linnéa",
+      "lastName": "AreaOwner",
+      "attributes": {
+        "hsaId": ["SE2321000032-linneab"]
+      },
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": []
+    },
+    {
       "username": "petra.specresp",
       "enabled": true,
       "email": "petra.specresp@example.test",

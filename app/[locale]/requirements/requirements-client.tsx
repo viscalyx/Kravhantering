@@ -194,6 +194,7 @@ function mapRequirementDetailToRow(
           statusColor: version.statusColor,
           statusNameEn: version.statusNameEn,
           statusNameSv: version.statusNameSv,
+          archiveInitiatedAt: version.archiveInitiatedAt,
           qualityCharacteristicNameEn:
             version.qualityCharacteristic?.nameEn ?? null,
           qualityCharacteristicNameSv:
@@ -209,6 +210,13 @@ function mapRequirementDetailToRow(
         }
       : null,
   }
+}
+
+function selectionMatchesRequirementRow(
+  selection: number | string | null,
+  row: Pick<RequirementRow, 'id' | 'uniqueId'>,
+) {
+  return selection === row.id || selection === row.uniqueId
 }
 
 export default function RequirementsClient({
@@ -332,30 +340,36 @@ export default function RequirementsClient({
         if (match) resolvedNumericId = match.id
       }
 
-      if (!inResults) {
-        const hasCurrentPinnedSelection = () =>
-          requestId === latestRowsRequestIdRef.current &&
-          selectedIdRef.current === sid
+      const isCurrentRowsRequest = () =>
+        requestId === latestRowsRequestIdRef.current
+      const hasCurrentPinnedSelection = (
+        row?: Pick<RequirementRow, 'id' | 'uniqueId'>,
+      ) =>
+        isCurrentRowsRequest() &&
+        (selectedIdRef.current === sid ||
+          (row
+            ? selectionMatchesRequirementRow(selectedIdRef.current, row)
+            : false))
 
-        try {
-          const singleRes = await fetch(`/api/requirements/${sid}`)
-          if (singleRes.ok && hasCurrentPinnedSelection()) {
-            const detail =
-              (await singleRes.json()) as RequirementDetailRowSource
-            if (hasCurrentPinnedSelection()) {
-              newPinnedRow = mapRequirementDetailToRow(detail)
-              // Resolve uniqueId string → numeric id
-              if (typeof sid === 'string') {
-                resolvedNumericId = detail.id
-              }
-            }
-          } else if (!singleRes.ok && hasCurrentPinnedSelection()) {
+      try {
+        const singleRes = await fetch(`/api/requirements/${sid}`)
+        if (singleRes.ok && isCurrentRowsRequest()) {
+          const detail = (await singleRes.json()) as RequirementDetailRowSource
+          const row = mapRequirementDetailToRow(detail)
+          if (hasCurrentPinnedSelection(row)) {
+            newPinnedRow = row
+            resolvedNumericId = detail.id
+          }
+        } else if (!singleRes.ok && hasCurrentPinnedSelection()) {
+          if (!inResults) {
             selectedIdRef.current = null
             setSelectedId(null)
             scrollToIdRef.current = null
           }
-        } catch {
-          if (hasCurrentPinnedSelection()) {
+        }
+      } catch {
+        if (hasCurrentPinnedSelection()) {
+          if (!inResults) {
             selectedIdRef.current = null
             setSelectedId(null)
             scrollToIdRef.current = null
@@ -380,6 +394,59 @@ export default function RequirementsClient({
     setRows(newRows)
     setPinnedRow(newPinnedRow)
   }, [filters, locale, sortState])
+
+  const applyChangedRequirementDetail = useCallback(
+    (
+      detail: RequirementDetailRowSource,
+      initiatingSelectedId: number | string | null,
+    ) => {
+      const changedRow = mapRequirementDetailToRow(detail)
+      const canApplySelection =
+        selectedIdRef.current === initiatingSelectedId &&
+        selectionMatchesRequirementRow(initiatingSelectedId, changedRow)
+
+      if (canApplySelection) {
+        selectedIdRef.current = changedRow.id
+        setSelectedId(changedRow.id)
+        setPinnedRow(changedRow)
+      }
+      setRows(previousRows =>
+        previousRows.some(row => row.id === changedRow.id)
+          ? previousRows.map(row =>
+              row.id === changedRow.id ? changedRow : row,
+            )
+          : previousRows,
+      )
+
+      return canApplySelection ? changedRow : undefined
+    },
+    [],
+  )
+
+  const handleRequirementChange = useCallback(
+    async (
+      initiatingSelectedId: number | string | null,
+      detail?: RequirementDetailRowSource,
+    ) => {
+      const changedRow = detail
+        ? applyChangedRequirementDetail(detail, initiatingSelectedId)
+        : undefined
+
+      await refreshRows()
+
+      if (changedRow && selectedIdRef.current === changedRow.id) {
+        setPinnedRow(changedRow)
+        setRows(previousRows =>
+          previousRows.some(row => row.id === changedRow.id)
+            ? previousRows.map(row =>
+                row.id === changedRow.id ? changedRow : row,
+              )
+            : previousRows,
+        )
+      }
+    },
+    [applyChangedRequirementDetail, refreshRows],
+  )
 
   const fetchData = useCallback(async () => {
     const requestId = ++latestFetchDataRequestIdRef.current
@@ -454,24 +521,65 @@ export default function RequirementsClient({
     const sel = searchParams.get('selected')
     if (!sel) return
 
+    let cancelled = false
     const numId = Number(sel)
-    if (!Number.isNaN(numId) && Number.isInteger(numId) && numId > 0) {
+    const numericSelectedId =
+      !Number.isNaN(numId) && Number.isInteger(numId) && numId > 0
+        ? numId
+        : null
+    const urlSelectionStillCurrent = () =>
+      !cancelled &&
+      (selectedIdRef.current === sel ||
+        (numericSelectedId != null &&
+          selectedIdRef.current === numericSelectedId))
+
+    if (numericSelectedId != null) {
       // Numeric id — set synchronously
-      setSelectedId(numId)
-      selectedIdRef.current = numId
-      scrollToIdRef.current = numId
+      setSelectedId(numericSelectedId)
+      selectedIdRef.current = numericSelectedId
+      scrollToIdRef.current = numericSelectedId
     } else {
-      // UniqueId string — set ref for the pinning logic; the numeric id
-      // will be resolved in refreshRows once the requirement is fetched.
+      // UniqueId string — keep the ref stable until the detail fetch resolves
+      // the numeric id used by the inline detail row.
       selectedIdRef.current = sel
     }
 
-    refreshRows()
+    const hydrateSelectedRequirement = async () => {
+      try {
+        const singleRes = await fetch(
+          `/api/requirements/${encodeURIComponent(sel)}`,
+        )
+        if (!singleRes.ok || !urlSelectionStillCurrent()) return
 
-    // Clean up the params to avoid re-opening on manual refresh
-    const url = new URL(window.location.href)
-    url.searchParams.delete('selected')
-    window.history.replaceState({}, '', url.toString())
+        const detail = (await singleRes.json()) as RequirementDetailRowSource
+        if (!urlSelectionStillCurrent()) return
+
+        const row = mapRequirementDetailToRow(detail)
+        selectedIdRef.current = row.id
+        setSelectedId(row.id)
+        setPinnedRow(row)
+        scrollToIdRef.current = row.id
+      } catch {
+        return
+      }
+    }
+
+    const resolveSelectedRequirement = async () => {
+      await Promise.allSettled([hydrateSelectedRequirement(), refreshRows()])
+      if (cancelled) return
+
+      // Clean up the params after hydration so selected-row pinning cannot be
+      // cancelled before the row is available in the table.
+      const url = new URL(window.location.href)
+      url.searchParams.delete('selected')
+      window.history.replaceState({}, '', url.toString())
+    }
+
+    void resolveSelectedRequirement()
+
+    return () => {
+      cancelled = true
+    }
   }, [searchParams, refreshRows])
 
   // Scroll to the selected requirement once the expanded detail row is in the
@@ -687,7 +795,14 @@ export default function RequirementsClient({
   }, [columnPreferencesReady, fetchData])
 
   const displayRows = useMemo(() => {
-    if (pinnedRow && !rows.some(r => r.id === pinnedRow.id)) {
+    if (!pinnedRow) return rows
+
+    const existingPinnedRowIndex = rows.findIndex(r => r.id === pinnedRow.id)
+    if (existingPinnedRowIndex !== -1) {
+      return rows.map(row => (row.id === pinnedRow.id ? pinnedRow : row))
+    }
+
+    if (pinnedRow) {
       const hasStatusSortMetadata =
         sortState.by !== 'status' ||
         statusOptions.some(option => option.sortOrder !== undefined)
@@ -868,17 +983,20 @@ export default function RequirementsClient({
                 onColumnWidthsChange={setColumnWidths}
                 onFilterChange={val => {
                   setFilters(val)
+                  selectedIdRef.current = null
                   setSelectedId(null)
                   setPinnedRow(null)
                   setSelectedIds(new Set())
                 }}
                 onLoadMore={loadMore}
                 onRowClick={id => {
-                  setSelectedId(prev => {
-                    const next = prev === id ? null : id
-                    if (prev !== id || next === null) setPinnedRow(null)
-                    return next
-                  })
+                  const previousSelectedId = selectedIdRef.current
+                  const nextSelectedId = previousSelectedId === id ? null : id
+                  selectedIdRef.current = nextSelectedId
+                  setSelectedId(nextSelectedId)
+                  if (previousSelectedId !== id || nextSelectedId === null) {
+                    setPinnedRow(null)
+                  }
                 }}
                 onSelectionChange={setSelectedIds}
                 onSortChange={setSortState}
@@ -888,8 +1006,9 @@ export default function RequirementsClient({
                 renderExpanded={id => (
                   <RequirementDetailClient
                     inline
-                    onChange={refreshRows}
+                    onChange={detail => handleRequirementChange(id, detail)}
                     onClose={() => {
+                      selectedIdRef.current = null
                       setSelectedId(null)
                       setPinnedRow(null)
                       fetchData()

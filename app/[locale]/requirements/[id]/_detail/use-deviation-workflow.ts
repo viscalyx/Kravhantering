@@ -52,14 +52,11 @@ export interface UseDeviationWorkflowResult {
   deviationHistory: DeviationData[]
   deviationSaving: boolean
   deviationStep: DeviationStep | null
-  handleCreateDeviation: (
-    motivation: string,
-    createdBy: string,
-  ) => Promise<void>
+  handleCreateDeviation: (motivation: string) => Promise<void>
   handleDeleteDeviation: (
     event?: MouseEvent<HTMLButtonElement>,
   ) => Promise<void>
-  handleEditDeviation: (motivation: string, createdBy: string) => Promise<void>
+  handleEditDeviation: (motivation: string) => Promise<void>
   handleRecordDecision: (decision: 1 | 2, motivation: string) => Promise<void>
   handleRequestReview: () => Promise<void>
   handleRevertToDraft: (event?: MouseEvent<HTMLButtonElement>) => Promise<void>
@@ -148,7 +145,7 @@ export function useDeviationWorkflow({
   }, [])
 
   const handleCreateDeviation = useCallback(
-    async (motivation: string, _createdBy: string) => {
+    async (motivation: string) => {
       if (!specificationItemId || !motivation) return
       setDeviationSaving(true)
       try {
@@ -178,7 +175,7 @@ export function useDeviationWorkflow({
   )
 
   const handleEditDeviation = useCallback(
-    async (motivation: string, _createdBy: string) => {
+    async (motivation: string) => {
       if (!latestDeviation || !motivation) return
       setDeviationSaving(true)
       try {

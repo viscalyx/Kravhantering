@@ -14,6 +14,10 @@ type KeycloakRealmClient = {
 
 type KeycloakRealm = {
   clients?: KeycloakRealmClient[]
+  users?: Array<{
+    attributes?: Record<string, string[]>
+    username?: string
+  }>
 }
 
 function readDevRealm() {
@@ -44,5 +48,16 @@ describe('dev Keycloak realm', () => {
     expect(mapper?.config?.['access.token.claim']).toBe('true')
     expect(employeeHsaId).toBe('SE2321000032-mcp1')
     expect(isHsaId(employeeHsaId)).toBe(true)
+  })
+
+  it('has a non-admin two-area owner user for graduation filtering checks', () => {
+    const realm = readDevRealm()
+    const user = realm.users?.find(
+      candidate => candidate.username === 'linnea.areaowner',
+    )
+    const hsaId = user?.attributes?.hsaId?.[0]
+
+    expect(hsaId).toBe('SE2321000032-linneab')
+    expect(isHsaId(hsaId)).toBe(true)
   })
 })

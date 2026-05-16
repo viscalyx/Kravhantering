@@ -156,11 +156,7 @@ async function findSqlServerDeviationState(
 async function findSqlServerSpecificationLocalDeviationState(
   db: SqlServerDatabase,
   deviationId: number,
-): Promise<{
-  decision: number | null
-  id: number
-  isReviewRequested: number
-} | null> {
+): Promise<DeviationState | null> {
   const rows = (await db.query(
     `
       SELECT TOP (1)
@@ -182,6 +178,90 @@ async function findSqlServerSpecificationLocalDeviationState(
     id: Number(rows[0].id),
     isReviewRequested: toNumericFlag(rows[0].isReviewRequested),
   }
+}
+
+interface DeviationState {
+  decision: number | null
+  id: number
+  isReviewRequested: number
+}
+
+type DeviationStateFinder = (
+  db: SqlServerDatabase,
+  deviationId: number,
+) => Promise<DeviationState | null>
+
+export type ConflictMessageForDeviationState = (state: DeviationState) => string
+
+export interface RunGuardedDeviationMutationOptions {
+  conflictMessageForState: ConflictMessageForDeviationState
+  db: SqlServerDatabase
+  deviationId: number
+  findState: DeviationStateFinder
+  mutationSql: string
+  notFoundMessage: string
+  parameters: unknown[]
+}
+
+async function runGuardedDeviationMutation({
+  conflictMessageForState,
+  db,
+  findState,
+  mutationSql,
+  notFoundMessage,
+  parameters,
+  deviationId,
+}: RunGuardedDeviationMutationOptions): Promise<void> {
+  const mutatedRows = (await db.query(mutationSql, parameters)) as Array<
+    Record<string, unknown>
+  >
+
+  if (mutatedRows[0]) {
+    return
+  }
+
+  const row = await findState(db, deviationId)
+  if (!row) {
+    throw notFoundError(notFoundMessage)
+  }
+
+  throw conflictError(conflictMessageForState(row))
+}
+
+function editDeviationConflictMessage(state: DeviationState): string {
+  if (state.decision !== null) {
+    return 'Cannot edit a deviation after a decision has been recorded'
+  }
+
+  if (state.isReviewRequested === 1) {
+    return 'Cannot edit a deviation that has been submitted for review'
+  }
+
+  return 'Cannot edit a deviation because it changed before the update completed'
+}
+
+function deleteDeviationConflictMessage(state: DeviationState): string {
+  if (state.decision !== null) {
+    return 'Cannot delete a deviation after a decision has been recorded'
+  }
+
+  if (state.isReviewRequested === 1) {
+    return 'Cannot delete a deviation that has been submitted for review'
+  }
+
+  return 'Cannot delete a deviation because it changed before the delete completed'
+}
+
+function recordDecisionConflictMessage(state: DeviationState): string {
+  if (state.decision !== null) {
+    return 'A decision has already been recorded for this deviation'
+  }
+
+  if (state.isReviewRequested !== 1) {
+    return 'Can only approve or reject deviations that have been submitted for review'
+  }
+
+  return 'Cannot record a decision because the deviation changed before the update completed'
 }
 
 export async function listDeviationsForSpecificationItem(
@@ -611,62 +691,103 @@ export async function updateDeviation(
     }
 
     if (data.createdBy !== undefined) {
-      await db.query(
-        `
+      await runGuardedDeviationMutation({
+        conflictMessageForState: editDeviationConflictMessage,
+        db,
+        deviationId,
+        findState: findSqlServerDeviationState,
+        mutationSql: `
           UPDATE deviations
           SET
             motivation = @0,
             created_by = @1,
             created_by_hsa_id = @2,
             updated_at = @3
-          WHERE id = @4
+          OUTPUT INSERTED.id AS id
+          WHERE
+            id = @4
+            AND decision IS NULL
+            AND is_review_requested = 0
         `,
-        [
+        notFoundMessage: `Deviation ${deviationId} not found`,
+        parameters: [
           data.motivation.trim(),
           data.createdBy,
           data.createdByHsaId ?? null,
           now,
           deviationId,
         ],
-      )
+      })
     } else {
-      await db.query(
-        `
+      await runGuardedDeviationMutation({
+        conflictMessageForState: editDeviationConflictMessage,
+        db,
+        deviationId,
+        findState: findSqlServerDeviationState,
+        mutationSql: `
           UPDATE deviations
           SET
             motivation = @0,
             updated_at = @1
-          WHERE id = @2
+          OUTPUT INSERTED.id AS id
+          WHERE
+            id = @2
+            AND decision IS NULL
+            AND is_review_requested = 0
         `,
-        [data.motivation.trim(), now, deviationId],
-      )
+        notFoundMessage: `Deviation ${deviationId} not found`,
+        parameters: [data.motivation.trim(), now, deviationId],
+      })
     }
     return
   }
 
   if (data.createdBy !== undefined) {
-    await db.query(
-      `
+    await runGuardedDeviationMutation({
+      conflictMessageForState: editDeviationConflictMessage,
+      db,
+      deviationId,
+      findState: findSqlServerDeviationState,
+      mutationSql: `
         UPDATE deviations
         SET
           created_by = @0,
           created_by_hsa_id = @1,
           updated_at = @2
-        WHERE id = @3
+        OUTPUT INSERTED.id AS id
+        WHERE
+          id = @3
+          AND decision IS NULL
+          AND is_review_requested = 0
       `,
-      [data.createdBy, data.createdByHsaId ?? null, now, deviationId],
-    )
+      notFoundMessage: `Deviation ${deviationId} not found`,
+      parameters: [
+        data.createdBy,
+        data.createdByHsaId ?? null,
+        now,
+        deviationId,
+      ],
+    })
     return
   }
 
-  await db.query(
-    `
+  await runGuardedDeviationMutation({
+    conflictMessageForState: editDeviationConflictMessage,
+    db,
+    deviationId,
+    findState: findSqlServerDeviationState,
+    mutationSql: `
       UPDATE deviations
       SET updated_at = @0
-      WHERE id = @1
+      OUTPUT INSERTED.id AS id
+      WHERE
+        id = @1
+        AND decision IS NULL
+        AND is_review_requested = 0
     `,
-    [now, deviationId],
-  )
+    notFoundMessage: `Deviation ${deviationId} not found`,
+    parameters: [now, deviationId],
+  })
   return
 }
 
@@ -695,27 +816,13 @@ export async function recordDecision(
     throw validationError('Decided by is required')
   }
 
-  const existing = await findSqlServerDeviationState(db, deviationId)
-
-  if (!existing) {
-    throw notFoundError(`Deviation ${deviationId} not found`)
-  }
-
-  if (existing.decision !== null) {
-    throw conflictError(
-      'A decision has already been recorded for this deviation',
-    )
-  }
-
-  if (existing.isReviewRequested !== 1) {
-    throw conflictError(
-      'Can only approve or reject deviations that have been submitted for review',
-    )
-  }
-
   const now = new Date()
-  await db.query(
-    `
+  await runGuardedDeviationMutation({
+    conflictMessageForState: recordDecisionConflictMessage,
+    db,
+    deviationId,
+    findState: findSqlServerDeviationState,
+    mutationSql: `
       UPDATE deviations
       SET
         decision = @0,
@@ -724,9 +831,14 @@ export async function recordDecision(
         decided_by_hsa_id = @3,
         decided_at = @4,
         updated_at = @4
-      WHERE id = @5
+      OUTPUT INSERTED.id AS id
+      WHERE
+        id = @5
+        AND decision IS NULL
+        AND is_review_requested = 1
     `,
-    [
+    notFoundMessage: `Deviation ${deviationId} not found`,
+    parameters: [
       data.decision,
       data.decisionMotivation.trim(),
       data.decidedBy.trim(),
@@ -734,7 +846,7 @@ export async function recordDecision(
       now,
       deviationId,
     ],
-  )
+  })
   return
 }
 
@@ -742,25 +854,22 @@ export async function deleteDeviation(
   db: SqlServerDatabase,
   deviationId: number,
 ): Promise<void> {
-  const existing = await findSqlServerDeviationState(db, deviationId)
-
-  if (!existing) {
-    throw notFoundError(`Deviation ${deviationId} not found`)
-  }
-
-  if (existing.decision !== null) {
-    throw conflictError(
-      'Cannot delete a deviation after a decision has been recorded',
-    )
-  }
-
-  if (existing.isReviewRequested === 1) {
-    throw conflictError(
-      'Cannot delete a deviation that has been submitted for review',
-    )
-  }
-
-  await db.query(`DELETE FROM deviations WHERE id = @0`, [deviationId])
+  await runGuardedDeviationMutation({
+    conflictMessageForState: deleteDeviationConflictMessage,
+    db,
+    deviationId,
+    findState: findSqlServerDeviationState,
+    mutationSql: `
+      DELETE FROM deviations
+      OUTPUT DELETED.id AS id
+      WHERE
+        id = @0
+        AND decision IS NULL
+        AND is_review_requested = 0
+    `,
+    notFoundMessage: `Deviation ${deviationId} not found`,
+    parameters: [deviationId],
+  })
   return
 }
 
@@ -803,62 +912,103 @@ export async function updateSpecificationLocalDeviation(
     }
 
     if (data.createdBy !== undefined) {
-      await db.query(
-        `
+      await runGuardedDeviationMutation({
+        conflictMessageForState: editDeviationConflictMessage,
+        db,
+        deviationId,
+        findState: findSqlServerSpecificationLocalDeviationState,
+        mutationSql: `
           UPDATE specification_local_requirement_deviations
           SET
             motivation = @0,
             created_by = @1,
             created_by_hsa_id = @2,
             updated_at = @3
-          WHERE id = @4
+          OUTPUT INSERTED.id AS id
+          WHERE
+            id = @4
+            AND decision IS NULL
+            AND is_review_requested = 0
         `,
-        [
+        notFoundMessage: `Specification-local deviation ${deviationId} not found`,
+        parameters: [
           data.motivation.trim(),
           data.createdBy,
           data.createdByHsaId ?? null,
           now,
           deviationId,
         ],
-      )
+      })
     } else {
-      await db.query(
-        `
+      await runGuardedDeviationMutation({
+        conflictMessageForState: editDeviationConflictMessage,
+        db,
+        deviationId,
+        findState: findSqlServerSpecificationLocalDeviationState,
+        mutationSql: `
           UPDATE specification_local_requirement_deviations
           SET
             motivation = @0,
             updated_at = @1
-          WHERE id = @2
+          OUTPUT INSERTED.id AS id
+          WHERE
+            id = @2
+            AND decision IS NULL
+            AND is_review_requested = 0
         `,
-        [data.motivation.trim(), now, deviationId],
-      )
+        notFoundMessage: `Specification-local deviation ${deviationId} not found`,
+        parameters: [data.motivation.trim(), now, deviationId],
+      })
     }
     return
   }
 
   if (data.createdBy !== undefined) {
-    await db.query(
-      `
+    await runGuardedDeviationMutation({
+      conflictMessageForState: editDeviationConflictMessage,
+      db,
+      deviationId,
+      findState: findSqlServerSpecificationLocalDeviationState,
+      mutationSql: `
         UPDATE specification_local_requirement_deviations
         SET
           created_by = @0,
           created_by_hsa_id = @1,
           updated_at = @2
-        WHERE id = @3
+        OUTPUT INSERTED.id AS id
+        WHERE
+          id = @3
+          AND decision IS NULL
+          AND is_review_requested = 0
       `,
-      [data.createdBy, data.createdByHsaId ?? null, now, deviationId],
-    )
+      notFoundMessage: `Specification-local deviation ${deviationId} not found`,
+      parameters: [
+        data.createdBy,
+        data.createdByHsaId ?? null,
+        now,
+        deviationId,
+      ],
+    })
     return
   }
 
-  await db.query(
-    `
+  await runGuardedDeviationMutation({
+    conflictMessageForState: editDeviationConflictMessage,
+    db,
+    deviationId,
+    findState: findSqlServerSpecificationLocalDeviationState,
+    mutationSql: `
       UPDATE specification_local_requirement_deviations
       SET updated_at = @0
-      WHERE id = @1
+      OUTPUT INSERTED.id AS id
+      WHERE
+        id = @1
+        AND decision IS NULL
+        AND is_review_requested = 0
     `,
-    [now, deviationId],
-  )
+    notFoundMessage: `Specification-local deviation ${deviationId} not found`,
+    parameters: [now, deviationId],
+  })
   return
 }
 
@@ -887,32 +1037,13 @@ export async function recordSpecificationLocalDecision(
     throw validationError('Decided by is required')
   }
 
-  const existing = await findSqlServerSpecificationLocalDeviationState(
+  const now = new Date()
+  await runGuardedDeviationMutation({
+    conflictMessageForState: recordDecisionConflictMessage,
     db,
     deviationId,
-  )
-
-  if (!existing) {
-    throw notFoundError(
-      `Specification-local deviation ${deviationId} not found`,
-    )
-  }
-
-  if (existing.decision !== null) {
-    throw conflictError(
-      'A decision has already been recorded for this deviation',
-    )
-  }
-
-  if (existing.isReviewRequested !== 1) {
-    throw conflictError(
-      'Can only approve or reject deviations that have been submitted for review',
-    )
-  }
-
-  const now = new Date()
-  await db.query(
-    `
+    findState: findSqlServerSpecificationLocalDeviationState,
+    mutationSql: `
       UPDATE specification_local_requirement_deviations
       SET
         decision = @0,
@@ -921,9 +1052,14 @@ export async function recordSpecificationLocalDecision(
         decided_by_hsa_id = @3,
         decided_at = @4,
         updated_at = @4
-      WHERE id = @5
+      OUTPUT INSERTED.id AS id
+      WHERE
+        id = @5
+        AND decision IS NULL
+        AND is_review_requested = 1
     `,
-    [
+    notFoundMessage: `Specification-local deviation ${deviationId} not found`,
+    parameters: [
       data.decision,
       data.decisionMotivation.trim(),
       data.decidedBy.trim(),
@@ -931,7 +1067,7 @@ export async function recordSpecificationLocalDecision(
       now,
       deviationId,
     ],
-  )
+  })
   return
 }
 
@@ -939,33 +1075,22 @@ export async function deleteSpecificationLocalDeviation(
   db: SqlServerDatabase,
   deviationId: number,
 ): Promise<void> {
-  const existing = await findSqlServerSpecificationLocalDeviationState(
+  await runGuardedDeviationMutation({
+    conflictMessageForState: deleteDeviationConflictMessage,
     db,
     deviationId,
-  )
-
-  if (!existing) {
-    throw notFoundError(
-      `Specification-local deviation ${deviationId} not found`,
-    )
-  }
-
-  if (existing.decision !== null) {
-    throw conflictError(
-      'Cannot delete a deviation after a decision has been recorded',
-    )
-  }
-
-  if (existing.isReviewRequested === 1) {
-    throw conflictError(
-      'Cannot delete a deviation that has been submitted for review',
-    )
-  }
-
-  await db.query(
-    `DELETE FROM specification_local_requirement_deviations WHERE id = @0`,
-    [deviationId],
-  )
+    findState: findSqlServerSpecificationLocalDeviationState,
+    mutationSql: `
+      DELETE FROM specification_local_requirement_deviations
+      OUTPUT DELETED.id AS id
+      WHERE
+        id = @0
+        AND decision IS NULL
+        AND is_review_requested = 0
+    `,
+    notFoundMessage: `Specification-local deviation ${deviationId} not found`,
+    parameters: [deviationId],
+  })
   return
 }
 

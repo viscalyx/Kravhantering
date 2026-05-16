@@ -31,6 +31,7 @@ const AI_MODELS_REFRESH_RATE_LIMIT = 10
 const AI_MODELS_REFRESH_RATE_WINDOW_MS = 60_000
 const AI_MODELS_SLOW_THRESHOLD_MS = 2_000
 const MAX_MODEL_CACHE_ENTRIES = 32
+const LOCAL_MODEL_FILTERS = new Set(['vision'])
 
 interface ModelCacheEntry {
   models: OpenRouterModel[]
@@ -173,6 +174,16 @@ export async function GET(request: NextRequest) {
   }
   const paramList =
     parsedParameters.data.length > 0 ? parsedParameters.data : undefined
+  const providerParamList = paramList?.filter(
+    parameter => !LOCAL_MODEL_FILTERS.has(parameter),
+  )
+  const openRouterParamList =
+    providerParamList && providerParamList.length > 0
+      ? providerParamList
+      : undefined
+  const localParamList = paramList?.filter(parameter =>
+    LOCAL_MODEL_FILTERS.has(parameter),
+  )
 
   const cacheKey = paramList ? [...paramList].sort().join(',') : '__default__'
   const now = Date.now()
@@ -207,13 +218,18 @@ export async function GET(request: NextRequest) {
         source: 'rest',
       },
       async () => {
-        const structuredFilter = [...(paramList ?? []), 'structured_outputs']
+        const structuredFilter = [
+          ...(openRouterParamList ?? []),
+          'structured_outputs',
+        ].filter((parameter, index, parameters) => {
+          return parameters.indexOf(parameter) === index
+        })
         const [models, structuredModels] = await Promise.all([
-          listModels(paramList),
+          listModels(openRouterParamList),
           listModels(structuredFilter),
         ])
         const structuredIds = new Set(structuredModels.map(m => m.id))
-        return models.map(m => {
+        const enrichedModels = models.map(m => {
           const extra: string[] = []
           if (structuredIds.has(m.id)) extra.push('structured_outputs')
           if (m.modality?.includes('image')) extra.push('vision')
@@ -224,6 +240,13 @@ export async function GET(request: NextRequest) {
               }
             : m
         })
+        return localParamList && localParamList.length > 0
+          ? enrichedModels.filter(model =>
+              localParamList.every(parameter =>
+                model.supportedParameters.includes(parameter),
+              ),
+            )
+          : enrichedModels
       },
     )
     setModelCacheEntry(cacheKey, enriched, Date.now())

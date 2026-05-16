@@ -145,7 +145,7 @@ export function formatRequirementListItem(
 
 export type RequirementListItem = ReturnType<typeof formatRequirementListItem>
 
-function formatRequirementDetail(
+export function formatRequirementDetail(
   requirement: NonNullable<Awaited<ReturnType<typeof getRequirementById>>>,
 ): RequirementDetail {
   return {

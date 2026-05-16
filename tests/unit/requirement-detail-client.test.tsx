@@ -94,6 +94,11 @@ vi.mock('next-intl', () => ({
       'requirement.qualityCharacteristic': 'Quality characteristic',
       'requirement.viewingOlderVersion': values =>
         `Viewing older version v${values?.version}`,
+      'improvementSuggestion.fetchFailed':
+        'Kunde inte ladda förbättringsförslag.',
+      'improvementSuggestion.noSuggestions':
+        'Det finns inga förbättringsförslag att visa.',
+      'improvementSuggestion.title': 'Förbättringsförslag',
       'specification.needsReference': 'Needs reference',
     }
 
@@ -453,10 +458,11 @@ function setupFetch({
         return response(statusesPayload)
       }
 
-      if (
-        url === `/api/requirements/${currentRequirement.id}` &&
-        method === 'GET'
-      ) {
+      const requirementDetailUrls = new Set([
+        `/api/requirements/${currentRequirement.id}`,
+        `/api/requirements/${currentRequirement.uniqueId}`,
+      ])
+      if (requirementDetailUrls.has(url) && method === 'GET') {
         return response(currentRequirement)
       }
 
@@ -1616,6 +1622,41 @@ describe('RequirementDetailClient', () => {
     expect(openSpy).toHaveBeenCalledWith(
       '/sv/requirements/reports/print/deviation-review/123?spec=ETJANST-UPP-2026&item=31',
       '_blank',
+    )
+  })
+
+  it('shows a neutral empty suggestions message for draft versions reached by unique id', async () => {
+    const requirement = makeRequirement(
+      [
+        makeVersion(1, {
+          description: 'Draft description',
+          status: 1,
+          statusColor: '#3b82f6',
+          statusNameEn: 'Draft',
+          statusNameSv: 'Utkast',
+        }),
+      ],
+      { uniqueId: 'SPR0003' },
+    )
+
+    const fetchMock = setupFetch({
+      initialRequirement: requirement,
+      suggestions: [],
+    })
+    renderSubject({
+      defaultVersion: 1,
+      requirementId: 'SPR0003',
+    })
+
+    expect(
+      await screen.findByText('Det finns inga förbättringsförslag att visa.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('Kunde inte ladda förbättringsförslag.'),
+    ).not.toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith('/api/requirement-suggestions/123')
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/requirement-suggestions/SPR0003',
     )
   })
 

@@ -39,6 +39,73 @@ export async function listAreas(
   return rows.map(mapAreaRow)
 }
 
+export async function listAreasActorCanAuthor(
+  db: SqlServerDatabase,
+  actorHsaId: string | null,
+  isAdmin: boolean,
+): Promise<RequirementAreaRow[]> {
+  if (isAdmin) {
+    return listAreas(db)
+  }
+
+  if (!actorHsaId) {
+    return []
+  }
+
+  const rows = await db.query(
+    `
+      SELECT DISTINCT
+        area.id,
+        area.prefix,
+        area.name,
+        area.description,
+        area.owner_id AS ownerId,
+        area.next_sequence AS nextSequence,
+        area.created_at AS createdAt,
+        area.updated_at AS updatedAt
+      FROM requirement_areas area
+      LEFT JOIN owners owner
+        ON owner.id = area.owner_id
+      LEFT JOIN requirement_area_co_authors co_author
+        ON co_author.area_id = area.id
+      WHERE owner.hsa_id = @0 OR co_author.hsa_id = @0
+      ORDER BY area.name ASC
+    `,
+    [actorHsaId],
+  )
+  return rows.map(mapAreaRow)
+}
+
+export async function canAuthorArea(
+  db: SqlServerDatabase,
+  areaId: number,
+  actorHsaId: string | null,
+  isAdmin: boolean,
+): Promise<boolean> {
+  if (isAdmin) {
+    return true
+  }
+
+  if (!actorHsaId) {
+    return false
+  }
+
+  const rows = await db.query(
+    `
+      SELECT TOP (1) area.id
+      FROM requirement_areas area
+      LEFT JOIN owners owner
+        ON owner.id = area.owner_id
+      LEFT JOIN requirement_area_co_authors co_author
+        ON co_author.area_id = area.id
+      WHERE area.id = @0
+        AND (owner.hsa_id = @1 OR co_author.hsa_id = @1)
+    `,
+    [areaId, actorHsaId],
+  )
+  return rows.length > 0
+}
+
 export async function getAreaById(
   db: SqlServerDatabase,
   id: number,

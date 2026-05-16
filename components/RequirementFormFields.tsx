@@ -2,7 +2,14 @@
 
 import { HelpCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { type ReactNode, useMemo, useState } from 'react'
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import type {
   NormReferenceOption,
@@ -55,6 +62,11 @@ const selectClassName =
 const textareaClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 min-h-[100px]'
 
+const associationFieldsetClassName = 'm-0 flex min-h-0 flex-col border-0 p-0'
+
+const associationListClassName =
+  'min-h-0 flex-1 space-y-1.5 overflow-y-auto rounded-xl border bg-white p-3 pr-1 dark:bg-secondary-800/50'
+
 export default function RequirementFormFields({
   additionalNormReferences,
   areaRequired = true,
@@ -84,6 +96,54 @@ export default function RequirementFormFields({
     locale === 'sv' ? o.nameSv : o.nameEn
 
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
+  const mainFieldsRef = useRef<HTMLDivElement>(null)
+  const [associationPanelHeight, setAssociationPanelHeight] = useState<
+    number | null
+  >(null)
+
+  useEffect(() => {
+    if (layout !== 'sidebar') {
+      setAssociationPanelHeight(null)
+      return
+    }
+
+    const mainFieldsNode = mainFieldsRef.current
+    if (!mainFieldsNode) return
+
+    let animationFrame: number | null = null
+    const updatePanelHeight = () => {
+      const nextHeight = Math.ceil(
+        mainFieldsNode.getBoundingClientRect().height,
+      )
+      if (nextHeight <= 0) return
+      setAssociationPanelHeight(current =>
+        current === nextHeight ? current : nextHeight,
+      )
+    }
+    const schedulePanelHeightUpdate = () => {
+      if (animationFrame !== null) {
+        window.cancelAnimationFrame(animationFrame)
+      }
+      animationFrame = window.requestAnimationFrame(updatePanelHeight)
+    }
+
+    schedulePanelHeightUpdate()
+
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(schedulePanelHeightUpdate)
+    resizeObserver?.observe(mainFieldsNode)
+    window.addEventListener('resize', schedulePanelHeightUpdate)
+
+    return () => {
+      if (animationFrame !== null) {
+        window.cancelAnimationFrame(animationFrame)
+      }
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', schedulePanelHeightUpdate)
+    }
+  }, [layout])
 
   const allNormReferences = useMemo(() => {
     if (!additionalNormReferences?.length) return normReferences
@@ -93,6 +153,12 @@ export default function RequirementFormFields({
       ...additionalNormReferences.filter(nr => !existingIds.has(nr.id)),
     ]
   }, [normReferences, additionalNormReferences])
+
+  const associationSidebarStyle = associationPanelHeight
+    ? ({
+        '--requirement-association-height': `${associationPanelHeight}px`,
+      } as CSSProperties)
+    : undefined
 
   const handleChange = (
     key: keyof RequirementFormFieldValues,
@@ -378,7 +444,7 @@ export default function RequirementFormFields({
   )
 
   const requirementPackagesFieldset = requirementPackages.length > 0 && (
-    <fieldset className="border-0 m-0 p-0">
+    <fieldset className={associationFieldsetClassName}>
       <div className="flex items-center gap-1.5 mb-1">
         <legend className="text-sm font-medium contents">
           {t('requirementPackage')}
@@ -386,7 +452,7 @@ export default function RequirementFormFields({
         {helpButton(fid('requirementPackage'), t('requirementPackage'))}
       </div>
       {helpPanel('requirementPackageHelp', fid('requirementPackage'))}
-      <div className="space-y-1.5 rounded-xl border bg-white dark:bg-secondary-800/50 p-3">
+      <div className={associationListClassName}>
         {requirementPackages.map(s => (
           <label
             className="flex items-center gap-2 text-sm cursor-pointer"
@@ -414,7 +480,7 @@ export default function RequirementFormFields({
   )
 
   const normReferencesFieldset = (
-    <fieldset className="border-0 m-0 p-0">
+    <fieldset className={associationFieldsetClassName}>
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-1.5">
           <legend className="text-sm font-medium contents">
@@ -425,37 +491,35 @@ export default function RequirementFormFields({
         {normReferenceActions}
       </div>
       {helpPanel('normReferencesHelp', fid('normReferences'))}
-      {allNormReferences.length > 0 && (
-        <div className="space-y-1.5 rounded-xl border bg-white dark:bg-secondary-800/50 p-3 max-h-56 overflow-y-auto pr-1">
-          {allNormReferences.map(nr => (
-            <label
-              className="flex items-center gap-2 text-sm cursor-pointer"
-              key={nr.id}
-            >
-              <input
-                checked={values.normReferenceIds.includes(nr.id)}
-                className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                onChange={e => {
-                  const checked = e.target.checked
-                  onChange({
-                    ...values,
-                    normReferenceIds: checked
-                      ? [...values.normReferenceIds, nr.id]
-                      : values.normReferenceIds.filter(id => id !== nr.id),
-                  })
-                }}
-                type="checkbox"
-              />
-              <span>
-                <span className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
-                  {nr.normReferenceId}
-                </span>{' '}
-                {nr.name}
-              </span>
-            </label>
-          ))}
-        </div>
-      )}
+      <div className={associationListClassName}>
+        {allNormReferences.map(nr => (
+          <label
+            className="flex items-center gap-2 text-sm cursor-pointer"
+            key={nr.id}
+          >
+            <input
+              checked={values.normReferenceIds.includes(nr.id)}
+              className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+              onChange={e => {
+                const checked = e.target.checked
+                onChange({
+                  ...values,
+                  normReferenceIds: checked
+                    ? [...values.normReferenceIds, nr.id]
+                    : values.normReferenceIds.filter(id => id !== nr.id),
+                })
+              }}
+              type="checkbox"
+            />
+            <span>
+              <span className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
+                {nr.normReferenceId}
+              </span>{' '}
+              {nr.name}
+            </span>
+          </label>
+        ))}
+      </div>
     </fieldset>
   )
 
@@ -545,9 +609,14 @@ export default function RequirementFormFields({
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-start">
-      <div className="space-y-5">{mainFields}</div>
-      <div className="self-start lg:w-64 space-y-6">
+    <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(32rem,34rem)]">
+      <div className="space-y-5" ref={mainFieldsRef}>
+        {mainFields}
+      </div>
+      <div
+        className="grid min-h-0 gap-6 sm:grid-cols-2 lg:h-[var(--requirement-association-height)] lg:max-h-[var(--requirement-association-height)] lg:w-[34rem] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden"
+        style={associationSidebarStyle}
+      >
         {requirementPackagesFieldset}
         {normReferencesFieldset}
       </div>

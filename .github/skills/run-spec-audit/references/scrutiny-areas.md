@@ -100,15 +100,16 @@ maintenance rule.
 
 ## 9. Scenario 9: deviation decisions are write-once audit events
 
-- **Code:** `lib/dal/deviations.ts` — approval/rejection logic,
-  review-requested guards, edit/delete guards.
+- **Code:** `lib/dal/deviations.ts` — atomic approval/rejection
+  mutations, review-requested guards, edit/delete guards.
 - **Spec:** `docs/lifecycle-workflow.md` "Deviation Lifecycle".
 - **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
   "Deviation Lifecycle"]`
 - **Question:** Can approvals or rejections be rewritten, deleted, or
-  duplicated after the first decision? Can decisions be recorded on
-  deviations that haven't been submitted for review? Can deviations
-  be edited or deleted while in review-requested state?
+  duplicated after the first decision, including under stale/concurrent
+  writes? Can decisions be recorded on deviations that haven't been
+  submitted for review? Can deviations be edited or deleted while in
+  review-requested state?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 9: deviation decisions are write-once audit events"`
 
@@ -235,6 +236,21 @@ maintenance rule.
 - **Verify:** `npm exec -- vitest run
   tests/quality/functional.test.ts -t "Scenario 12d: strict-target behavior with manual state manipulation"`
 
+## 20. Scenario 13: specification-local graduation is copy-only into a draft library requirement
+
+- **Code:** `lib/dal/requirements-specifications.ts` —
+  `graduateSpecificationLocalRequirementToLibrary`; `lib/requirements/service-specifications.ts`
+  graduation authorization and service wrapper.
+- **Spec:** issue #96 copy-only graduation workflow and
+  `docs/requirements-ui-behaviour.md` specification-local action rail.
+- **Req tag:** `[Req: formal — issue #96 copy-only graduation workflow]`
+- **Question:** Does graduation copy an Included specification-local
+  requirement into a new Draft library requirement in the selected
+  target area while leaving the source local row, status, note, area
+  hint, and local deviations unchanged?
+- **Verify:** `npm exec -- vitest run
+  tests/quality/functional.test.ts -t "Scenario 13: specification-local graduation is copy-only into a draft library requirement"`
+
 ## Maintenance
 
 This file must stay in sync with `tests/quality/QUALITY.md`:
@@ -246,21 +262,6 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
 - When code files are renamed or restructured, update the `Code`
   references here.
 - See `tests/quality/AGENTS.md` for the authoritative sync rule.
-
-## 20. Reference Data Behavioral Contracts
-
-- **Code:** `lib/dal/norm-references.ts`, `lib/dal/owners.ts`,
-  `lib/dal/specification-implementation-types.ts`,
-  `lib/dal/specification-lifecycle-statuses.ts`,
-  `lib/dal/specification-responsibility-areas.ts`.
-- **Spec:** `docs/reference-data-and-ai.md` §1–3,
-  `docs/database-schema.md`.
-- **Question:** Does norm-reference ID derivation follow the
-  3-tier strategy? Does collision resolution work? Does
-  lifecycle-status validation reject empty strings while other
-  taxonomy DALs skip validation? Is ordering consistent
-  (`nameSv` for taxonomy, `normReferenceId` for norm
-  references, `lastName`/`firstName` for owners)?
 
 ## 21. AI Generation Contracts
 
@@ -274,3 +275,18 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   consistent EN/SV? Does format negotiation attempt
   `json_schema` (when `structured_outputs` is supported)
   and fall back to `json_object`?
+
+## 22. Reference Data Behavioral Contracts
+
+- **Code:** `lib/dal/norm-references.ts`, `lib/dal/owners.ts`,
+  `lib/dal/specification-implementation-types.ts`,
+  `lib/dal/specification-lifecycle-statuses.ts`,
+  `lib/dal/specification-responsibility-areas.ts`.
+- **Spec:** `docs/reference-data-and-ai.md` §1–3,
+  `docs/database-schema.md`.
+- **Question:** Does norm-reference ID derivation follow the
+  3-tier strategy? Does collision resolution work? Does
+  lifecycle-status validation reject empty strings while other
+  taxonomy DALs skip validation? Is ordering consistent
+  (`nameSv` for taxonomy, `normReferenceId` for norm
+  references, `lastName`/`firstName` for owners)?

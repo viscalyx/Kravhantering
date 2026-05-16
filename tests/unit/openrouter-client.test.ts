@@ -67,6 +67,8 @@ describe('generateChat (non-streaming)', () => {
     expect(body.model).toBe('anthropic/claude-sonnet-4')
     expect(body.stream).toBe(false)
     expect(body.reasoning).toEqual({ effort: 'high' })
+    expect(body).not.toHaveProperty('logprobs')
+    expect(body).not.toHaveProperty('top_logprobs')
     expect(body.messages).toHaveLength(2)
 
     expect(result.thinking).toBe('I analyzed the topic...')

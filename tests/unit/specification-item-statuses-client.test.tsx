@@ -70,6 +70,19 @@ const sampleStatuses = [
   },
 ]
 
+const statusNameSvInput = () =>
+  screen.getByRole('textbox', {
+    name: /specificationItemStatusAdmin\.name.+SV/,
+  })
+const statusNameEnInput = () =>
+  screen.getByRole('textbox', {
+    name: /specificationItemStatusAdmin\.name.+EN/,
+  })
+const statusSortOrderInput = () =>
+  screen.getByRole('spinbutton', {
+    name: /specificationItemStatusAdmin\.sortOrder/,
+  })
+
 describe('SpecificationItemStatusesClient', () => {
   afterEach(cleanup)
 
@@ -128,11 +141,38 @@ describe('SpecificationItemStatusesClient', () => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+    expect(statusNameSvInput()).toBeInTheDocument()
+    expect(statusNameEnInput()).toBeInTheDocument()
+  })
+
+  it('shows collapsible inline help for specification item status fields', async () => {
+    render(<SpecificationItemStatusesClient />)
+    await waitFor(() => {
+      expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
+    })
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    const helpButtons = [
+      'common.help: specificationItemStatusAdmin.name (SV)',
+      'common.help: specificationItemStatusAdmin.name (EN)',
+      'common.help: specificationItemStatusAdmin.definition (SV)',
+      'common.help: specificationItemStatusAdmin.definition (EN)',
+      'common.help: specificationItemStatusAdmin.color',
+      'common.help: specificationItemStatusAdmin.sortOrder',
+    ] as const
+
+    for (const label of helpButtons) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
+    }
+
+    const definitionHelpButton = screen.getByRole('button', {
+      name: 'common.help: specificationItemStatusAdmin.definition (SV)',
+    })
+    fireEvent.click(definitionHelpButton)
+
+    expect(definitionHelpButton).toHaveAttribute('aria-expanded', 'true')
     expect(
-      screen.getByLabelText(/specificationItemStatusAdmin\.name.+SV/),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByLabelText(/specificationItemStatusAdmin\.name.+EN/),
+      screen.getByText('specificationItemStatusAdmin.definitionSvHelp'),
     ).toBeInTheDocument()
   })
 
@@ -142,14 +182,8 @@ describe('SpecificationItemStatusesClient', () => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    fireEvent.change(
-      screen.getByLabelText(/specificationItemStatusAdmin\.name.+SV/),
-      { target: { value: 'Ny status' } },
-    )
-    fireEvent.change(
-      screen.getByLabelText(/specificationItemStatusAdmin\.name.+EN/),
-      { target: { value: 'New status' } },
-    )
+    fireEvent.change(statusNameSvInput(), { target: { value: 'Ny status' } })
+    fireEvent.change(statusNameEnInput(), { target: { value: 'New status' } })
 
     fetchMock.mockResolvedValueOnce(okResponse({ id: 3 }))
     fetchMock.mockResolvedValueOnce(okResponse({ statuses: sampleStatuses }))
@@ -173,13 +207,7 @@ describe('SpecificationItemStatusesClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[1])
-    expect(
-      (
-        screen.getByLabelText(
-          /specificationItemStatusAdmin\.name.+EN/,
-        ) as HTMLInputElement
-      ).value,
-    ).toBe('Included')
+    expect((statusNameEnInput() as HTMLInputElement).value).toBe('Included')
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })
@@ -214,7 +242,9 @@ describe('SpecificationItemStatusesClient', () => {
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
     expect(
-      screen.queryByLabelText(/specificationItemStatusAdmin\.name.+SV/),
+      screen.queryByRole('textbox', {
+        name: /specificationItemStatusAdmin\.name.+SV/,
+      }),
     ).toBeNull()
   })
 
@@ -257,9 +287,7 @@ describe('SpecificationItemStatusesClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[1])
-    const sortInput = screen.getByLabelText(
-      /specificationItemStatusAdmin\.sortOrder/,
-    ) as HTMLInputElement
+    const sortInput = statusSortOrderInput() as HTMLInputElement
     expect(sortInput.disabled).toBe(true)
     expect(
       screen.getByText('specificationItemStatusAdmin.sortOrderLocked'),
@@ -282,9 +310,7 @@ describe('SpecificationItemStatusesClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[0])
-    const sortInput = screen.getByLabelText(
-      /specificationItemStatusAdmin\.sortOrder/,
-    ) as HTMLInputElement
+    const sortInput = statusSortOrderInput() as HTMLInputElement
     expect(sortInput.disabled).toBe(true)
     expect(
       screen.getByText('specificationItemStatusAdmin.sortOrderLocked'),
@@ -307,9 +333,7 @@ describe('SpecificationItemStatusesClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[2])
-    const sortInput = screen.getByLabelText(
-      /specificationItemStatusAdmin\.sortOrder/,
-    ) as HTMLInputElement
+    const sortInput = statusSortOrderInput() as HTMLInputElement
     expect(sortInput.disabled).toBe(false)
     expect(
       screen.queryByText('specificationItemStatusAdmin.sortOrderLocked'),

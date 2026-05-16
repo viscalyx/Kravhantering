@@ -39,6 +39,14 @@ const testAreas = [
   { id: 2, name: 'Performance' },
 ]
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(res => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
 async function renderOpenGenerator(overrides?: {
   onClose?: () => void
   onCreated?: () => void
@@ -65,6 +73,7 @@ async function renderOpenGenerator(overrides?: {
 describe('AiRequirementGenerator', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.localStorage.clear()
     // Default: models endpoint returns models, credits returns info
     mockFetch.mockImplementation(async (url: string) => {
       if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
@@ -181,5 +190,329 @@ describe('AiRequirementGenerator', () => {
     await userEvent.click(helpBtn)
     expect(helpBtn).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByText('topicHelp')).not.toBeInTheDocument()
+  })
+
+  it('does not expose logprob confidence scoring as a model option', async () => {
+    await renderOpenGenerator()
+
+    await userEvent.click(screen.getByLabelText('capabilitySettings'))
+
+    expect(screen.queryByLabelText('confidenceScoring')).not.toBeInTheDocument()
+    expect(screen.queryByText('confidenceScoring')).not.toBeInTheDocument()
+    expect(
+      mockFetch.mock.calls.some(([url]) =>
+        String(url).includes('supported_parameters=logprobs'),
+      ),
+    ).toBe(false)
+  })
+
+  it('shows selected vision model count over the filtered model total', async () => {
+    const baseModels = [
+      {
+        contextLength: 200000,
+        id: 'anthropic/claude-sonnet-4',
+        name: 'Claude Sonnet 4',
+        pricing: {
+          completion: '0.000015',
+          prompt: '0.000003',
+          reasoning: '0.000015',
+        },
+        provider: 'anthropic',
+        supportedParameters: ['reasoning', 'stream', 'vision'],
+      },
+      {
+        contextLength: 128000,
+        id: 'openai/gpt-5-vision',
+        name: 'GPT-5 Vision',
+        pricing: {
+          completion: '0.000002',
+          prompt: '0.000001',
+          reasoning: '0.000002',
+        },
+        provider: 'openai',
+        supportedParameters: ['reasoning', 'stream', 'vision'],
+      },
+      {
+        contextLength: 128000,
+        id: 'meta/llama',
+        name: 'Llama',
+        pricing: {
+          completion: '0.000001',
+          prompt: '0.000001',
+          reasoning: '0.000001',
+        },
+        provider: 'meta',
+        supportedParameters: ['reasoning', 'stream'],
+      },
+    ]
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        const parsedUrl = new URL(url, 'http://localhost')
+        const filters =
+          parsedUrl.searchParams
+            .get('supported_parameters')
+            ?.split(',')
+            .filter(Boolean) ?? []
+        const models = baseModels.filter(model =>
+          filters.every(filter => model.supportedParameters.includes(filter)),
+        )
+        return {
+          json: async () => ({ models }),
+          ok: true,
+        }
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return {
+          json: async () => ({
+            isFreeTier: false,
+            limit: 50,
+            limitRemaining: 37.5,
+            managementKeyMissing: false,
+            totalCredits: 50,
+            usage: 12.5,
+            usageDaily: 12.5,
+          }),
+          ok: true,
+        }
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.click(screen.getByLabelText('capabilitySettings'))
+
+    expect(screen.getByText('(2/3)')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByLabelText('capabilityVision'))
+
+    await waitFor(() => {
+      expect(screen.getByText('(2/2)')).toBeInTheDocument()
+    })
+  })
+
+  it('shows tools model count from the filtered endpoint before selection', async () => {
+    const baseModels = [
+      {
+        contextLength: 200000,
+        id: 'anthropic/claude-sonnet-4',
+        name: 'Claude Sonnet 4',
+        pricing: {
+          completion: '0.000015',
+          prompt: '0.000003',
+          reasoning: '0.000015',
+        },
+        provider: 'anthropic',
+        supportedParameters: ['reasoning', 'stream', 'tools'],
+      },
+      {
+        contextLength: 128000,
+        id: 'openai/gpt-5-tools',
+        name: 'GPT-5 Tools',
+        pricing: {
+          completion: '0.000002',
+          prompt: '0.000001',
+          reasoning: '0.000002',
+        },
+        provider: 'openai',
+        supportedParameters: ['reasoning', 'stream', 'tools'],
+      },
+      {
+        contextLength: 128000,
+        id: 'provider/metadata-only-tools',
+        name: 'Metadata Only Tools',
+        pricing: {
+          completion: '0.000001',
+          prompt: '0.000001',
+          reasoning: '0.000001',
+        },
+        provider: 'provider',
+        supportedParameters: ['reasoning', 'stream', 'tools'],
+      },
+      {
+        contextLength: 128000,
+        id: 'meta/llama',
+        name: 'Llama',
+        pricing: {
+          completion: '0.000001',
+          prompt: '0.000001',
+          reasoning: '0.000001',
+        },
+        provider: 'meta',
+        supportedParameters: ['reasoning', 'stream'],
+      },
+    ]
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        const parsedUrl = new URL(url, 'http://localhost')
+        const filters =
+          parsedUrl.searchParams
+            .get('supported_parameters')
+            ?.split(',')
+            .filter(Boolean) ?? []
+        const models = filters.includes('tools')
+          ? baseModels
+              .filter(model => model.supportedParameters.includes('tools'))
+              .filter(model => model.id !== 'provider/metadata-only-tools')
+          : baseModels.filter(model =>
+              filters.every(filter =>
+                model.supportedParameters.includes(filter),
+              ),
+            )
+        return {
+          json: async () => ({ models }),
+          ok: true,
+        }
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return {
+          json: async () => ({
+            isFreeTier: false,
+            limit: 50,
+            limitRemaining: 37.5,
+            managementKeyMissing: false,
+            totalCredits: 50,
+            usage: 12.5,
+            usageDaily: 12.5,
+          }),
+          ok: true,
+        }
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.click(screen.getByLabelText('capabilitySettings'))
+
+    const getToolsRow = () =>
+      screen.getByLabelText('capabilityTools').closest('div')
+    expect(getToolsRow()).toHaveTextContent('(2/4)')
+
+    await userEvent.click(screen.getByLabelText('capabilityTools'))
+
+    await waitFor(() => {
+      expect(getToolsRow()).toHaveTextContent('(2/2)')
+    })
+  })
+
+  it('keeps capability counts stable while the selected filter is loading', async () => {
+    const baseModels = [
+      {
+        contextLength: 200000,
+        id: 'anthropic/claude-sonnet-4',
+        name: 'Claude Sonnet 4',
+        pricing: {
+          completion: '0.000015',
+          prompt: '0.000003',
+          reasoning: '0.000015',
+        },
+        provider: 'anthropic',
+        supportedParameters: ['reasoning', 'stream', 'tools'],
+      },
+      {
+        contextLength: 128000,
+        id: 'openai/gpt-5-tools',
+        name: 'GPT-5 Tools',
+        pricing: {
+          completion: '0.000002',
+          prompt: '0.000001',
+          reasoning: '0.000002',
+        },
+        provider: 'openai',
+        supportedParameters: ['reasoning', 'stream', 'tools'],
+      },
+      {
+        contextLength: 128000,
+        id: 'provider/metadata-only-tools',
+        name: 'Metadata Only Tools',
+        pricing: {
+          completion: '0.000001',
+          prompt: '0.000001',
+          reasoning: '0.000001',
+        },
+        provider: 'provider',
+        supportedParameters: ['reasoning', 'stream', 'tools'],
+      },
+      {
+        contextLength: 128000,
+        id: 'meta/llama',
+        name: 'Llama',
+        pricing: {
+          completion: '0.000001',
+          prompt: '0.000001',
+          reasoning: '0.000001',
+        },
+        provider: 'meta',
+        supportedParameters: ['reasoning', 'stream'],
+      },
+    ]
+    const filteredToolsModels = baseModels
+      .filter(model => model.supportedParameters.includes('tools'))
+      .filter(model => model.id !== 'provider/metadata-only-tools')
+    const responseFor = (models: typeof baseModels) => ({
+      json: async () => ({ models }),
+      ok: true,
+    })
+    let deferSelectedTools = false
+    const pendingToolsResponse =
+      createDeferred<ReturnType<typeof responseFor>>()
+
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        const parsedUrl = new URL(url, 'http://localhost')
+        const filters =
+          parsedUrl.searchParams
+            .get('supported_parameters')
+            ?.split(',')
+            .filter(Boolean) ?? []
+        if (
+          deferSelectedTools &&
+          filters.length === 1 &&
+          filters[0] === 'tools'
+        ) {
+          return pendingToolsResponse.promise
+        }
+        const models = filters.includes('tools')
+          ? filteredToolsModels
+          : baseModels.filter(model =>
+              filters.every(filter =>
+                model.supportedParameters.includes(filter),
+              ),
+            )
+        return responseFor(models)
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return {
+          json: async () => ({
+            isFreeTier: false,
+            limit: 50,
+            limitRemaining: 37.5,
+            managementKeyMissing: false,
+            totalCredits: 50,
+            usage: 12.5,
+            usageDaily: 12.5,
+          }),
+          ok: true,
+        }
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.click(screen.getByLabelText('capabilitySettings'))
+    const getToolsRow = () =>
+      screen.getByLabelText('capabilityTools').closest('div')
+    expect(getToolsRow()).toHaveTextContent('(2/4)')
+
+    deferSelectedTools = true
+    await userEvent.click(screen.getByLabelText('capabilityTools'))
+
+    expect(getToolsRow()).toHaveTextContent('(2/4)')
+    expect(getToolsRow()).not.toHaveTextContent('(4/4)')
+
+    pendingToolsResponse.resolve(responseFor(filteredToolsModels))
+
+    await waitFor(() => {
+      expect(getToolsRow()).toHaveTextContent('(2/2)')
+    })
   })
 })

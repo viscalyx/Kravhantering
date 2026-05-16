@@ -15,6 +15,22 @@ const desktopChromium = {
 const baseUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001'
 
 /**
+ * Parse a millisecond timeout from an environment variable. Falls back to the
+ * provided default when the variable is unset or not a positive integer.
+ */
+const readTimeout = (envVar: string, fallbackMs: number): number => {
+  const raw = process.env[envVar]
+  if (!raw) return fallbackMs
+  const parsed = Number.parseInt(raw, 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackMs
+}
+
+const testTimeoutMs = readTimeout('PLAYWRIGHT_TEST_TIMEOUT', 60_000)
+const expectTimeoutMs = readTimeout('PLAYWRIGHT_EXPECT_TIMEOUT', 15_000)
+const actionTimeoutMs = readTimeout('PLAYWRIGHT_ACTION_TIMEOUT', 15_000)
+const navigationTimeoutMs = readTimeout('PLAYWRIGHT_NAVIGATION_TIMEOUT', 15_000)
+
+/**
  * Derive a canonical origin from `baseUrl` so a trailing slash or path on
  * `PLAYWRIGHT_BASE_URL` cannot leak into the `Origin` header and trigger
  * spurious CSRF rejections in `lib/auth/csrf.ts`.
@@ -42,6 +58,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : 2,
+  timeout: testTimeoutMs,
+  expect: { timeout: expectTimeoutMs },
   reporter: [
     ['html', { outputFolder: 'playwright-report-prodlike', open: 'never' }],
     ['junit', { outputFile: 'test-results/prodlike/playwright-junit.xml' }],
@@ -62,6 +80,9 @@ export default defineConfig({
     },
 
     storageState: 'test-results/auth/admin.json',
+
+    actionTimeout: actionTimeoutMs,
+    navigationTimeout: navigationTimeoutMs,
 
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',

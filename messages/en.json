@@ -88,7 +88,7 @@
     "signingOut": "Signing out…",
     "logoutError": "Could not sign out. Try again.",
     "sessionExpiringTitle": "Authentication expiring soon",
-    "sessionExpiringMessage": "Your authentication is about to expire. Authenticate again now to keep working without interruption.",
+    "sessionExpiringMessage": "Your authentication is about to expire. If your work is saved, authenticate again now. If you have pending work, save it quickly before the token expires, then authenticate again.",
     "sessionExpiredTitle": "Authentication expired",
     "sessionExpiredMessage": "Your authentication has expired. You need to authenticate again to continue.",
     "reauthenticate": "Authenticate again",
@@ -301,6 +301,15 @@
     },
     "responsibilityArea": "Business object",
     "responsibilityAreaHelp": "Choose the business object the specification belongs to, or leave it blank if the specification spans multiple business objects.",
+    "responsible": "Responsible",
+    "responsibleDisplayName": "Responsible person",
+    "responsibleDisplayNameHelp": "Enter the display name for the person responsible for the requirements specification. Do not use this for the user who registers a deviation unless that person also owns the specification.",
+    "responsibleHsaId": "Responsible HSA-ID",
+    "responsibleHsaIdHelp": "Enter the HSA-ID for the responsible person. The HSA-ID and display name must be saved together so privacy export, erasure, and access review can identify the assignment.",
+    "canResponsibleGenerateAi": "Responsible may use AI",
+    "canResponsibleGenerateAiHelp": "Enable this only when the responsible person is allowed to use AI support for this requirements specification.",
+    "responsiblePairRequired": "Enter both responsible person and responsible HSA-ID, or leave both empty.",
+    "invalidResponsibleHsaId": "Check the responsible HSA-ID. The format is SE followed by 10 digits, a hyphen, and an alphanumeric suffix.",
     "implementationType": "Implementation type",
     "implementationTypeHelp": "Choose the implementation type that best describes how this specification will be delivered.",
     "lifecycleStatus": "Lifecycle status",
@@ -341,6 +350,14 @@
     "editLocalRequirement": "Edit local requirement",
     "localRequirementNotFound": "Local requirement not found in this specification.",
     "localRequirementActionDisabledTooltip": "This local requirement can only be edited or removed when Usage status is Included and no deviation is pending.",
+    "graduateLocalRequirement": "Graduate to library",
+    "graduateLocalRequirementTargetLabel": "Requirement area",
+    "graduateLocalRequirementTargetHelp": "Choose the library area where the copied draft requirement should be created.",
+    "graduateLocalRequirementConfirmTitle": "Graduate local requirement",
+    "graduateLocalRequirementConfirm": "Create a new draft library requirement from this local requirement? The local requirement stays in this specification.",
+    "graduateLocalRequirementConfirmText": "Graduate",
+    "graduateLocalRequirementDisabledTooltip": "This local requirement can only be graduated when Usage status is Included.",
+    "graduateLocalRequirementFailed": "Could not graduate the local requirement.",
     "deleteLocalRequirementConfirmTitle": "Delete local requirement",
     "deleteLocalRequirementConfirm": "Are you sure you want to permanently delete this local requirement? It cannot be restored.",
     "versionPinned": "Version {version} (published)",
@@ -444,9 +461,9 @@
     "historyLabel": "{count, plural, one {Previous deviation (#)} other {Previous deviations (#)}}",
     "decisionMotivationPlaceholder": "Enter the reasoning for the decision",
     "decidedByPlaceholder": "Enter the name of the decision maker",
-    "createdByLabel": "Responsible for requirements",
-    "createdByHelp": "Enter the name of the person responsible for the requirement specification.",
-    "createdByPlaceholder": "Enter name",
+    "createdByLabel": "Requested by",
+    "createdByHelp": "The requester is recorded automatically from the signed-in user.",
+    "createdByPlaceholder": "Requester",
     "reviewFailed": "Could not request review.",
     "revertFailed": "Could not revert to draft.",
     "riskLevel": "Risk level",
@@ -484,7 +501,7 @@
     "fetchFailed": "Could not load improvement suggestions.",
     "resolutionFailed": "Could not record the resolution.",
     "suggestionCount": "{count, plural, =0 {No suggestions} one {1 suggestion} other {# suggestions}}",
-    "noSuggestions": "No improvement suggestions registered for this requirement.",
+    "noSuggestions": "There are no improvement suggestions to show.",
     "cannotEditAfterResolution": "Improvement suggestions cannot be edited after a resolution has been recorded.",
     "cannotDeleteAfterResolution": "Improvement suggestions cannot be deleted after a resolution has been recorded.",
     "stepDraft": "Draft",
@@ -721,7 +738,7 @@
       "replacementEmailOptional": "Email address is optional.",
       "fieldHelp": {
         "targetHsaId": "Enter the HSA-ID to search for before preview, export, or erasure. Every match uses the exact HSA-ID. Names are not used for matching, so there is no separate name search field.",
-        "replacementHsaId": "Enter the HSA-ID for the person who should take over live assignments, such as owner or co-author. This field must be combined with replacement name before the Switch action can be used.",
+        "replacementHsaId": "Enter the HSA-ID for the person who should take over live assignments, such as owner, co-author, or specification responsible. This field must be combined with replacement name before the Switch action can be used.",
         "replacementName": "Enter the display name snapshot to store for the replacement person. The name helps the operator confirm the switch, but HSA-ID remains the durable identity.",
         "replacementFirstName": "Optional. Enter the exact first-name value for the owner record when the display name cannot be split reliably.",
         "replacementLastName": "Optional. Enter the exact last-name value for the owner record when the display name cannot be split reliably.",
@@ -750,7 +767,7 @@
       "confirmTitle": "Execute privacy erasure",
       "confirmMessage": "This will switch {switch}, anonymize {anonymize}, delete {delete}, and skip {skip} occurrence(s).",
       "guidanceTitle": "Recommended handling and export",
-      "guidanceBody": "Use the preview to verify exactly which HSA-ID matches can be exported or erased. Export does not change the data. Live assignments are usually switched to another HSA-ID during erasure. Historical creator, decision, and resolution fields are usually anonymized instead of reassigned. Description and free-text fields are not scanned because the UI instructs users not to enter person-identifying details there.",
+      "guidanceBody": "Use the preview to verify exactly which HSA-ID matches can be exported or erased. Export does not change the data. Live assignments, including specification responsibles, are usually switched to another HSA-ID during erasure. Historical creator, decision, and resolution fields are usually anonymized instead of reassigned. Description and free-text fields are not scanned because the UI instructs users not to enter person-identifying details there.",
       "previewResult": "{count} HSA-ID occurrence(s)",
       "object": "Object",
       "count": "Count",
@@ -1074,6 +1091,14 @@
         "count": "Added {count} {requirementWord} to specification {reference}.",
         "skipped": "Skipped {count} {requirementWord} with no published version: {ids}."
       },
+      "graduationTargets": {
+        "title": "Library Target Areas",
+        "summary": "{count} requirement area(s) can receive the copy."
+      },
+      "graduate": {
+        "title": "Requirement Graduated to Library",
+        "summary": "Specification-local requirement {sourceUniqueId} was copied to {requirementUniqueId} as a draft in {targetAreaName}."
+      },
       "remove": {
         "count": "Removed {count} {requirementWord} from specification {reference}."
       }
@@ -1260,11 +1285,11 @@
       "title": "Requirements Specifications",
       "overview": {
         "heading": "What is a requirements specification?",
-        "body": "Specifications group published requirements for a specific delivery, procurement, or business context. Each specification can be linked to a business object and an implementation type."
+        "body": "Specifications group published requirements for a specific delivery, procurement, or business context. Each specification can be linked to a business object, an implementation type, and a responsible person."
       },
       "create": {
         "heading": "Creating and editing",
-        "body": "Click \"New requirements specification\" to create one. Click the specification name to open its detail view. Use the edit icon to update the specification metadata."
+        "body": "Click \"New requirements specification\" to create one. Click the specification name to open its detail view. Use the edit icon to update the specification metadata, including the responsible person."
       }
     },
     "requirementsSpecificationDetail": {
@@ -1544,7 +1569,9 @@
     "definition": "Definition",
     "definitionSvHelp": "Enter a Swedish definition that describes what this status means. It is shown as a tooltip where the status is used.",
     "definitionEnHelp": "Enter an English definition that describes what this status means. It is shown as a tooltip where the status is used.",
+    "colorHelp": "Choose the color used for this usage status badge.",
     "noStatus": "— No status —",
+    "sortOrderHelp": "Enter a number that controls the display order. Lower numbers appear first. Reserved statuses keep a locked sort order.",
     "sortOrderLocked": "The sort order for this system status cannot be changed.",
     "specification": "Specification",
     "requirement": "Requirement"
@@ -1604,8 +1631,6 @@
     "capabilityToolsTooltip": "The model can invoke external tools or functions during generation. Not required for requirement generation but may improve results with some models.",
     "capabilityResponseFormat": "JSON output mode",
     "capabilityResponseFormatTooltip": "The model supports returning structured JSON output. This is required so generated requirements can be parsed and imported. If Strict JSON schema is enabled, it replaces this mode.",
-    "capabilityLogprobs": "Log probabilities",
-    "capabilityLogprobsTooltip": "The model can return token-level log probabilities, useful for confidence scoring. Not required for requirement generation.",
     "capabilityVision": "Vision (image input)",
     "capabilityVisionTooltip": "The model can analyze images such as architecture diagrams, wireframes, or screenshots. When enabled, you can attach images as context for requirement generation.",
     "modelsMatch": "{count, plural, one {# model matches} other {# models match}}",
@@ -1668,6 +1693,7 @@
     "showDetails": "Show details",
     "hideDetails": "Hide details",
     "detailRiskLevel": "Risk level",
+    "detailType": "Requirement type",
     "detailCategory": "Category",
     "detailQuality": "Quality characteristic",
     "detailAcceptanceCriteria": "Acceptance criteria",

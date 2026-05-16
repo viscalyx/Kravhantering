@@ -35,6 +35,7 @@ import { devMarker } from '@/lib/developer-mode-markers'
 import { exportToCsv } from '@/lib/export-csv'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import { fetchSpecificationItemsForReport } from '@/lib/reports/data/fetch-specification-items'
 import { buildListReport } from '@/lib/reports/templates/list-template'
 import type { ReportModel } from '@/lib/reports/types'
@@ -216,9 +217,8 @@ export default function KravunderlagDetailClient({
   const [leftSort, setLeftSort] = useState<RequirementSortState>(
     DEFAULT_REQUIREMENT_SORT,
   )
-  const [leftVisibleCols, setLeftVisibleCols] = useState<RequirementColumnId[]>(
-    () => readStoredCols(LEFT_VISIBLE_COLS_KEY, DEFAULT_LEFT_COLS),
-  )
+  const [leftVisibleCols, setLeftVisibleCols] =
+    useState<RequirementColumnId[]>(DEFAULT_LEFT_COLS)
 
   // Right panel state
   const [rightSelectedIds, setRightSelectedIds] = useState<Set<number>>(
@@ -234,9 +234,9 @@ export default function KravunderlagDetailClient({
   )
   const [rightLoadingMore, setRightLoadingMore] = useState(false)
   const [loadMoreWarning, setLoadMoreWarning] = useState<string | null>(null)
-  const [rightVisibleCols, setRightVisibleCols] = useState<
-    RequirementColumnId[]
-  >(() => readStoredCols(RIGHT_VISIBLE_COLS_KEY, DEFAULT_RIGHT_COLS))
+  const [rightVisibleCols, setRightVisibleCols] =
+    useState<RequirementColumnId[]>(DEFAULT_RIGHT_COLS)
+  const [columnPreferencesLoaded, setColumnPreferencesLoaded] = useState(false)
 
   // Add modal state
   const [showAddModal, setShowAddModal] = useState(false)
@@ -597,17 +597,27 @@ export default function KravunderlagDetailClient({
     t,
   ])
 
-  // Persist visible columns to localStorage
   useEffect(() => {
+    setLeftVisibleCols(readStoredCols(LEFT_VISIBLE_COLS_KEY, DEFAULT_LEFT_COLS))
+    setRightVisibleCols(
+      readStoredCols(RIGHT_VISIBLE_COLS_KEY, DEFAULT_RIGHT_COLS),
+    )
+    setColumnPreferencesLoaded(true)
+  }, [])
+
+  // Persist visible columns to localStorage after hydration has read them.
+  useEffect(() => {
+    if (!columnPreferencesLoaded) return
     localStorage.setItem(LEFT_VISIBLE_COLS_KEY, JSON.stringify(leftVisibleCols))
-  }, [leftVisibleCols])
+  }, [columnPreferencesLoaded, leftVisibleCols])
 
   useEffect(() => {
+    if (!columnPreferencesLoaded) return
     localStorage.setItem(
       RIGHT_VISIBLE_COLS_KEY,
       JSON.stringify(rightVisibleCols),
     )
-  }, [rightVisibleCols])
+  }, [columnPreferencesLoaded, rightVisibleCols])
 
   // Open add modal
   const handleOpenAddModal = useCallback(async () => {
@@ -888,7 +898,7 @@ export default function KravunderlagDetailClient({
   )
 
   const handleBulkDeviation = useCallback(
-    async (motivation: string, _createdBy: string) => {
+    async (motivation: string) => {
       if (leftSelectedIds.size === 0) return
       setBulkDeviationSaving(true)
       setBulkDeviationError(null)
@@ -1360,6 +1370,10 @@ export default function KravunderlagDetailClient({
   const specificationDetailSplitPanelClassName = showEditSpecificationForm
     ? 'grid grid-cols-1 gap-6 items-start xl:grid-cols-2'
     : 'grid grid-cols-1 gap-6 items-start xl:-mx-8 xl:min-h-0 xl:flex-1 xl:grid-cols-2 xl:items-stretch xl:gap-4'
+  const responsibleDisplayName = formatActorDisplayNameForLocale(
+    spec.responsibleDisplayName,
+    locale,
+  )
 
   return (
     <>
@@ -1379,7 +1393,7 @@ export default function KravunderlagDetailClient({
           {/* Header */}
           <div className="mb-5">
             <div
-              className="flex flex-col gap-3 xl:grid xl:grid-cols-[minmax(0,1.2fr)_minmax(24rem,1fr)] xl:items-start xl:gap-5"
+              className="flex flex-col gap-3 xl:grid xl:grid-cols-[minmax(40vw,1fr)_minmax(0,1fr)] xl:items-start xl:gap-5"
               data-specification-detail-header-summary="true"
             >
               <div className="min-w-0">
@@ -1417,7 +1431,7 @@ export default function KravunderlagDetailClient({
                 )}
               </div>
               <dl
-                className="grid gap-3 sm:grid-cols-2 xl:w-full xl:grid-cols-3"
+                className="grid grid-flow-col auto-cols-[minmax(12rem,1fr)] gap-3 overflow-x-auto pb-1 xl:auto-cols-fr"
                 data-specification-detail-header-metadata="true"
               >
                 {spec.responsibilityArea && (
@@ -1428,6 +1442,21 @@ export default function KravunderlagDetailClient({
                     <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 break-words dark:text-secondary-100">
                       {localName(spec.responsibilityArea)}
                     </dd>
+                  </div>
+                )}
+                {responsibleDisplayName && (
+                  <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
+                    <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
+                      {t('responsible')}
+                    </dt>
+                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 break-words dark:text-secondary-100">
+                      {responsibleDisplayName}
+                    </dd>
+                    {spec.responsibleHsaId ? (
+                      <dd className="mt-0.5 font-mono text-xs leading-5 text-secondary-500 break-words dark:text-secondary-400">
+                        {spec.responsibleHsaId}
+                      </dd>
+                    ) : null}
                   </div>
                 )}
                 {spec.implementationType && (

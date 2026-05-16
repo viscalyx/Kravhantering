@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -39,6 +40,20 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
+function rectWithHeight(height: number): DOMRect {
+  return {
+    bottom: height,
+    height,
+    left: 0,
+    right: 0,
+    toJSON: () => ({}),
+    top: 0,
+    width: 0,
+    x: 0,
+    y: 0,
+  } as DOMRect
+}
+
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
@@ -47,6 +62,12 @@ import RequirementForm from '@/components/RequirementForm'
 const sampleAreas = [{ id: 1, name: 'Area 1', ownerName: 'Owner' }]
 const sampleCategories = [{ id: 1, nameSv: 'Kat', nameEn: 'Cat' }]
 const sampleTypes = [{ id: 1, nameSv: 'Typ', nameEn: 'Type' }]
+const sampleRequirementPackages = [
+  { id: 1, nameSv: 'Kravpaket Alfa', nameEn: 'Package Alpha' },
+]
+const sampleNormReferences = [
+  { id: 1, name: 'Norm Alpha', normReferenceId: 'NR-1' },
+]
 
 describe('RequirementForm', () => {
   afterEach(cleanup)
@@ -69,6 +90,12 @@ describe('RequirementForm', () => {
         return Promise.resolve(okJson({ qualityCharacteristics: [] }))
       if (typeof url === 'string' && url.includes('/api/requirement-types'))
         return Promise.resolve(okJson({ types: sampleTypes }))
+      if (typeof url === 'string' && url.includes('/api/requirement-packages'))
+        return Promise.resolve(
+          okJson({ requirementPackages: sampleRequirementPackages }),
+        )
+      if (typeof url === 'string' && url.includes('/api/norm-references'))
+        return Promise.resolve(okJson({ normReferences: sampleNormReferences }))
       return Promise.resolve(okJson({}))
     })
   })
@@ -103,6 +130,92 @@ describe('RequirementForm', () => {
       expect(fetchMock).toHaveBeenCalledWith('/api/requirement-categories')
       expect(fetchMock).toHaveBeenCalledWith('/api/requirement-types')
     })
+  })
+
+  it('opens and closes the norm reference modal and restores trigger focus', async () => {
+    render(<RequirementForm mode="create" />)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-areas')
+    })
+
+    const createNormReference = screen.getByRole('button', {
+      name: /common\.create/i,
+    })
+    createNormReference.focus()
+    fireEvent.click(createNormReference)
+
+    const dialog = await screen.findByRole('dialog', {
+      name: /requirement\.addNewNormReference/i,
+    })
+    expect(dialog).toHaveTextContent('requirement.newNormReferenceWarning')
+
+    fireEvent.click(within(dialog).getByText('common.cancel'))
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', {
+          name: /requirement\.addNewNormReference/i,
+        }),
+      ).not.toBeInTheDocument()
+    })
+    expect(createNormReference).toHaveFocus()
+  })
+
+  it('stretches norm references beside requirement packages through the sidebar form height', async () => {
+    const rectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function getBoundingClientRect(this: HTMLElement) {
+        return rectWithHeight(this.classList.contains('space-y-5') ? 640 : 0)
+      })
+
+    try {
+      render(<RequirementForm mode="create" />)
+
+      const requirementPackage = await screen.findByText('Package Alpha')
+      const normReference = await screen.findByText('NR-1')
+
+      const requirementPackageFieldset = requirementPackage.closest('fieldset')
+      const normReferenceFieldset = normReference.closest('fieldset')
+      expect(requirementPackageFieldset).toBeInTheDocument()
+      expect(normReferenceFieldset).toBeInTheDocument()
+
+      const sidebarGrid = requirementPackageFieldset?.parentElement
+      expect(sidebarGrid).toBe(normReferenceFieldset?.parentElement)
+      expect(sidebarGrid?.parentElement).toHaveClass('items-stretch')
+      expect(sidebarGrid).toHaveClass('sm:grid-cols-2')
+      expect(sidebarGrid).toHaveClass('lg:w-[34rem]')
+      expect(sidebarGrid).toHaveClass(
+        'lg:h-[var(--requirement-association-height)]',
+      )
+      expect(sidebarGrid).toHaveClass(
+        'lg:max-h-[var(--requirement-association-height)]',
+      )
+      expect(sidebarGrid).toHaveClass('lg:overflow-hidden')
+
+      await waitFor(() => {
+        expect(
+          sidebarGrid?.style.getPropertyValue(
+            '--requirement-association-height',
+          ),
+        ).toBe('640px')
+      })
+
+      const requirementPackageList =
+        requirementPackageFieldset?.querySelector('.flex-1')
+      const normReferenceList = normReferenceFieldset?.querySelector('.flex-1')
+
+      expect(requirementPackageFieldset).toHaveClass('flex')
+      expect(normReferenceFieldset).toHaveClass('flex')
+      expect(requirementPackageList).toHaveClass('min-h-0')
+      expect(normReferenceList).toHaveClass('min-h-0')
+      expect(requirementPackageList).toHaveClass('overflow-y-auto')
+      expect(normReferenceList).toHaveClass('overflow-y-auto')
+      expect(requirementPackageList).not.toHaveClass('h-56')
+      expect(normReferenceList).not.toHaveClass('h-56')
+    } finally {
+      rectSpy.mockRestore()
+    }
   })
 
   it('submits create form and navigates', async () => {

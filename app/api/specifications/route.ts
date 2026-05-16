@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
+import { createSpecificationSchema } from '@/app/api/specifications/schema'
 import {
   createSpecification,
   isSlugTaken,
@@ -9,28 +9,8 @@ import {
   customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import {
-  boundedDbStringSchema,
-  nullableBusinessTextSchema,
-  positiveIntegerSchema,
-} from '@/lib/http/validation'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
-
-const createSpecificationSchema = z
-  .object({
-    businessNeedsReference: nullableBusinessTextSchema.optional(),
-    name: boundedDbStringSchema,
-    specificationImplementationTypeId: positiveIntegerSchema
-      .nullable()
-      .optional(),
-    specificationLifecycleStatusId: positiveIntegerSchema.nullable().optional(),
-    specificationResponsibilityAreaId: positiveIntegerSchema
-      .nullable()
-      .optional(),
-    uniqueId: boundedDbStringSchema,
-  })
-  .strict()
 
 export async function GET(request: NextRequest) {
   try {

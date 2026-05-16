@@ -11,9 +11,6 @@ const translations: Record<string, Record<string, string>> = {
     saving: 'Sparar',
   },
   deviation: {
-    createdByHelp: 'Ange vem som begär avsteget.',
-    createdByLabel: 'Begärt av',
-    createdByPlaceholder: 'Namn',
     motivation: 'Motivering',
     motivationHelp: 'Beskriv varför avsteget behövs.',
     motivationPlaceholder: 'Beskriv avsteget',
@@ -29,7 +26,7 @@ vi.mock('next-intl', () => ({
 }))
 
 describe('DeviationFormModal', () => {
-  it('enables submission after required fields are filled immediately after opening', async () => {
+  it('submits motivation only after opening', async () => {
     const onSubmit = vi.fn()
     const user = userEvent.setup()
     const { rerender } = render(
@@ -46,20 +43,20 @@ describe('DeviationFormModal', () => {
     })
 
     expect(submitButton).toBeDisabled()
+    expect(
+      within(dialog).queryByLabelText(/Ansvarig för kravställning/),
+    ).not.toBeInTheDocument()
+    expect(within(dialog).queryByLabelText(/Begärt av/)).not.toBeInTheDocument()
 
     await user.type(
       within(dialog).getByLabelText(/Motivering/, { selector: 'textarea' }),
       '  Needs exception  ',
-    )
-    await user.type(
-      within(dialog).getByLabelText(/Begärt av/, { selector: 'input' }),
-      '  Test User  ',
     )
 
     expect(submitButton).toBeEnabled()
 
     await user.click(submitButton)
 
-    expect(onSubmit).toHaveBeenCalledWith('Needs exception', 'Test User')
+    expect(onSubmit).toHaveBeenCalledWith('Needs exception')
   })
 })

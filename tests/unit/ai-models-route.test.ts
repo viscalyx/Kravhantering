@@ -94,6 +94,46 @@ describe('GET /api/ai/models', () => {
     )
   })
 
+  it('filters vision support locally after enriching model modality', async () => {
+    const { listModels } = await import('@/lib/ai/openrouter-client')
+    const visionModel = {
+      contextLength: 200000,
+      id: 'openai/gpt-5-vision',
+      modality: 'text+image->text',
+      name: 'GPT-5 Vision',
+      pricing: { completion: '0', prompt: '0', reasoning: '0' },
+      provider: 'openai',
+      supportedParameters: ['reasoning', 'stream'],
+    }
+    const textModel = {
+      contextLength: 128000,
+      id: 'openai/gpt-5-text',
+      modality: 'text->text',
+      name: 'GPT-5 Text',
+      pricing: { completion: '0', prompt: '0', reasoning: '0' },
+      provider: 'openai',
+      supportedParameters: ['reasoning', 'stream'],
+    }
+    vi.mocked(listModels)
+      .mockResolvedValueOnce([visionModel, textModel])
+      .mockResolvedValueOnce([])
+
+    const response = await GET(
+      makeRequest(
+        'http://localhost:3000/api/ai/models?supported_parameters=vision',
+      ),
+    )
+    const data = (await response.json()) as {
+      models: { id: string; supportedParameters: string[] }[]
+    }
+
+    expect(listModels).toHaveBeenNthCalledWith(1, undefined)
+    expect(listModels).toHaveBeenNthCalledWith(2, ['structured_outputs'])
+    expect(data.models).toHaveLength(1)
+    expect(data.models[0].id).toBe('openai/gpt-5-vision')
+    expect(data.models[0].supportedParameters).toContain('vision')
+  })
+
   it('returns sanitized error when OpenRouter is unavailable', async () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
