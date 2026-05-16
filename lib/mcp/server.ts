@@ -15,6 +15,7 @@ import {
   buildRequirementViewUri,
   type GenerateRequirementsInput,
   type GetRequirementInput,
+  type GraduateSpecificationLocalRequirementInput,
   type ManageRequirementInput,
   type QueryCatalogInput,
   type RequirementsService,
@@ -109,6 +110,16 @@ const GetRequirementOutputSchema = z
       .describe(
         'All version objects when view is "history"; versions[0] is the latest overall version and includes id plus revisionToken for edit base fields.',
       ),
+  })
+  .strict()
+
+const GraduateLocalRequirementOutputSchema = z
+  .object({
+    detail: RequirementDetailOutputSchema,
+    message: z.string(),
+    requirementResourceUri: z.string(),
+    requirementViewUri: z.string(),
+    result: z.record(z.string(), z.unknown()),
   })
   .strict()
 
@@ -894,6 +905,49 @@ function createTransitionRequirementSchema() {
     })
 }
 
+function createGraduateLocalRequirementSchema() {
+  return z
+    .object({
+      locale: ResponseLocaleSchema,
+      localRequirementId: z
+        .number()
+        .int()
+        .positive()
+        .describe('Numeric specification-local requirement ID to copy.'),
+      requirementAreaId: z
+        .number()
+        .int()
+        .positive()
+        .describe(
+          'Target library requirement area ID where the new draft should be created.',
+        ),
+      responseFormat: ResponseFormatSchema,
+      specificationId: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Numeric ID of the source requirements specification.'),
+      specificationSlug: z
+        .string()
+        .optional()
+        .describe(
+          'Slug (uniqueId) of the source requirements specification, e.g. "SAKLYFT-INFOR-Q2".',
+        ),
+    })
+    .strict()
+    .superRefine((val, ctx) => {
+      if ((val.specificationId == null) === (val.specificationSlug == null)) {
+        ctx.addIssue({
+          code: 'custom',
+          message:
+            'Provide exactly one of specificationId or specificationSlug.',
+          path: ['specificationId'],
+        })
+      }
+    })
+}
+
 function toCatalogInput(
   input: z.infer<ReturnType<typeof createQueryCatalogSchema>>,
 ): QueryCatalogInput {
@@ -957,6 +1011,19 @@ function toTransitionInput(
     responseFormat: toResponseFormat(input.responseFormat),
     toStatusId: input.toStatusId,
     uniqueId: input.uniqueId,
+  }
+}
+
+function toGraduateLocalRequirementInput(
+  input: z.infer<ReturnType<typeof createGraduateLocalRequirementSchema>>,
+): GraduateSpecificationLocalRequirementInput {
+  return {
+    locale: toResponseLocale(input.locale),
+    localRequirementId: input.localRequirementId,
+    requirementAreaId: input.requirementAreaId,
+    responseFormat: toResponseFormat(input.responseFormat),
+    specificationId: input.specificationId,
+    specificationSlug: input.specificationSlug,
   }
 }
 
@@ -1459,6 +1526,52 @@ export function createKravhanteringMcpServer(
         )
         return {
           content: [{ text: payload.message, type: 'text' }],
+          structuredContent: payload as unknown as Record<string, unknown>,
+        }
+      } catch (error) {
+        return formatError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    'requirements_graduate_local_requirement',
+    {
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+        readOnlyHint: false,
+      },
+      description:
+        'Copy an Included specification-local requirement into a chosen library requirement area as a new Draft library requirement. The source local requirement remains unchanged in its requirements specification, and deviations stay attached to the local requirement. Use requirements_list_specifications and requirements_get_specification_items to identify the source, then choose a target area owned or co-authored by the actor from requirements_query_catalog catalog "areas".',
+      inputSchema: createGraduateLocalRequirementSchema(),
+      outputSchema: GraduateLocalRequirementOutputSchema,
+      title: 'Graduate Local Requirement to Library',
+    },
+    async input => {
+      try {
+        const payload = await service.graduateSpecificationLocalRequirement(
+          await getBaseContext(
+            request,
+            'requirements_graduate_local_requirement',
+          ),
+          toGraduateLocalRequirementInput(input),
+        )
+        const versionNumber = payload.result.version.versionNumber
+
+        return {
+          _meta: {
+            'openai/outputTemplate': payload.requirementViewUri,
+          },
+          content: [
+            { text: payload.message, type: 'text' },
+            createRequirementResourceLink(
+              payload.detail.uniqueId,
+              versionNumber,
+            ),
+            createUiResourceLink(payload.detail.uniqueId, versionNumber),
+          ],
           structuredContent: payload as unknown as Record<string, unknown>,
         }
       } catch (error) {

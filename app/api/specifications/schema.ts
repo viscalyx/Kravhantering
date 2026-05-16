@@ -7,6 +7,7 @@ import {
 } from '@/lib/http/validation'
 import {
   hasIncompleteResponsiblePerson,
+  normalizeResponsibleHsaId,
   normalizeSpecificationResponsiblePersonInput,
   type SpecificationResponsiblePersonInput,
 } from '@/lib/specifications/responsible-person'
@@ -41,11 +42,20 @@ function validateResponsiblePerson(
   data: SpecificationResponsiblePersonInput,
   ctx: RefinementCtx,
 ) {
+  if (data.canResponsibleGenerateAi === true && !hasResponsibleField(data)) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Responsible person is required for AI permission',
+      path: ['canResponsibleGenerateAi'],
+    })
+  }
+
   if (hasResponsibleField(data) && hasIncompleteResponsiblePerson(data)) {
+    const hasHsaId = normalizeResponsibleHsaId(data.responsibleHsaId) != null
     ctx.addIssue({
       code: 'custom',
       message: 'Responsible HSA-ID and name must be provided together',
-      path: ['responsibleDisplayName'],
+      path: hasHsaId ? ['responsibleDisplayName'] : ['responsibleHsaId'],
     })
   }
 

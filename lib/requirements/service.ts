@@ -8,7 +8,10 @@ import {
   recordDecision,
   updateDeviation,
 } from '@/lib/dal/deviations'
-import { getSpecificationBySlug } from '@/lib/dal/requirements-specifications'
+import {
+  type GraduatedRequirementResult,
+  getSpecificationBySlug,
+} from '@/lib/dal/requirements-specifications'
 import {
   createUiSettingsLoader,
   type UiSettingsLoader,
@@ -199,6 +202,39 @@ export interface RemoveFromSpecificationInput extends SpecificationRefInput {
   responseFormat?: ResponseFormat
 }
 
+export interface ListGraduationTargetAreasInput extends SpecificationRefInput {
+  locale?: ResponseLocale
+  localRequirementId: number
+  responseFormat?: ResponseFormat
+}
+
+export interface GraduationTargetArea {
+  id: number
+  name: string
+  prefix: string
+}
+
+export interface ListGraduationTargetAreasOutput {
+  areas: GraduationTargetArea[]
+  message: string
+}
+
+export interface GraduateSpecificationLocalRequirementInput
+  extends SpecificationRefInput {
+  locale?: ResponseLocale
+  localRequirementId: number
+  requirementAreaId: number
+  responseFormat?: ResponseFormat
+}
+
+export interface GraduateSpecificationLocalRequirementOutput {
+  detail: RequirementDetail
+  message: string
+  requirementResourceUri: string
+  requirementViewUri: string
+  result: GraduatedRequirementResult
+}
+
 export interface ListSpecificationsOutput {
   message: string
   specifications: {
@@ -331,6 +367,10 @@ export interface RequirementsService {
     context: RequestContext,
     input: GetSpecificationItemsInput,
   ): Promise<GetSpecificationItemsOutput>
+  graduateSpecificationLocalRequirement(
+    context: RequestContext,
+    input: GraduateSpecificationLocalRequirementInput,
+  ): Promise<GraduateSpecificationLocalRequirementOutput>
   listDeviations(
     context: RequestContext,
     input: {
@@ -340,6 +380,10 @@ export interface RequirementsService {
       responseFormat?: ResponseFormat
     },
   ): Promise<ListDeviationsOutput>
+  listGraduationTargetAreas(
+    context: RequestContext,
+    input: ListGraduationTargetAreasInput,
+  ): Promise<ListGraduationTargetAreasOutput>
   listSpecifications(
     context: RequestContext,
     input: ListSpecificationsInput,

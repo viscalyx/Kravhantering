@@ -102,6 +102,19 @@ export type RequirementsAction =
       requirementIds: number[]
     }
   | {
+      kind: 'list_graduation_target_areas'
+      localRequirementId: number
+      specificationId?: number
+      specificationSlug?: string
+    }
+  | {
+      kind: 'graduate_specification_local_requirement'
+      localRequirementId: number
+      requirementAreaId: number
+      specificationId?: number
+      specificationSlug?: string
+    }
+  | {
       kind: 'manage_specification_local_requirement'
       operation: string
       specificationId?: number

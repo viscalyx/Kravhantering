@@ -84,7 +84,6 @@ export interface UseSuggestionWorkflowResult {
 export function useSuggestionWorkflow({
   onChange,
   requirement,
-  requirementId,
   selectedVersionNumber,
 }: UseSuggestionWorkflowOptions): UseSuggestionWorkflowResult {
   const tf = useTranslations('improvementSuggestion')
@@ -103,6 +102,7 @@ export function useSuggestionWorkflow({
   const suggestionReviewFailed = tf('reviewFailed')
   const suggestionRevertFailed = tf('revertFailed')
   const suggestionResolutionFailed = tf('resolutionFailed')
+  const resolvedRequirementId = requirement?.id ?? null
 
   const fetchSuggestions = useCallback(async () => {
     const requestId = ++suggestionFetchRequestIdRef.current
@@ -111,9 +111,13 @@ export function useSuggestionWorkflow({
 
     setSuggestionItems([])
     setSuggestionError(null)
+    if (resolvedRequirementId == null) {
+      return
+    }
+
     try {
       const res = await apiFetch(
-        `/api/requirement-suggestions/${requirementId}`,
+        `/api/requirement-suggestions/${resolvedRequirementId}`,
       )
       if (!isLatestRequest()) return
       if (res.ok) {
@@ -127,7 +131,7 @@ export function useSuggestionWorkflow({
       if (!isLatestRequest()) return
       setSuggestionError(suggestionFetchFailed)
     }
-  }, [requirementId, suggestionFetchFailed])
+  }, [resolvedRequirementId, suggestionFetchFailed])
 
   useEffect(() => {
     void fetchSuggestions()
@@ -174,7 +178,7 @@ export function useSuggestionWorkflow({
 
   const handleCreateSuggestion = useCallback(
     async (content: string, createdBy: string) => {
-      if (!content) return
+      if (!content || resolvedRequirementId == null) return
       setSuggestionSaving(true)
       try {
         const versionId =
@@ -182,7 +186,7 @@ export function useSuggestionWorkflow({
             version => version.versionNumber === selectedVersionNumber,
           )?.id ?? null
         const ok = await performSuggestionMutation(
-          `/api/requirement-suggestions/${requirementId}`,
+          `/api/requirement-suggestions/${resolvedRequirementId}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -202,8 +206,8 @@ export function useSuggestionWorkflow({
       }
     },
     [
-      requirementId,
       requirement,
+      resolvedRequirementId,
       selectedVersionNumber,
       performSuggestionMutation,
       suggestionSaveFailed,

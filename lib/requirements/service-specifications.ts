@@ -1,24 +1,50 @@
 import {
+  canAuthorArea,
+  getAreaById,
+  listAreasActorCanAuthor,
+} from '@/lib/dal/requirement-areas'
+import { getRequirementById } from '@/lib/dal/requirements'
+import {
   getPublishedVersionIdForRequirement,
   getSpecificationBySlug,
+  getSpecificationLocalRequirementDetail,
+  graduateSpecificationLocalRequirementToLibrary,
   linkRequirementsToSpecificationAtomically,
   listSpecificationItems,
   listSpecifications,
   unlinkRequirementsFromSpecification,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
-import type { AuthorizationService } from '@/lib/requirements/auth'
-import { notFoundError, validationError } from '@/lib/requirements/errors'
+import {
+  type AuthorizationService,
+  type RequestContext,
+  type RequirementsAction,
+  requireHumanActorSnapshot,
+} from '@/lib/requirements/auth'
+import {
+  forbiddenError,
+  notFoundError,
+  validationError,
+} from '@/lib/requirements/errors'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
-import { recordHighRiskMutationSucceeded } from '@/lib/requirements/security-audit'
+import {
+  recordAuthorizationDenied,
+  recordHighRiskMutationSucceeded,
+} from '@/lib/requirements/security-audit'
 import type {
   AddToSpecificationInput,
   GetSpecificationItemsInput,
+  GraduateSpecificationLocalRequirementInput,
+  ListGraduationTargetAreasInput,
   ListSpecificationsInput,
   RemoveFromSpecificationInput,
   RequirementsService,
   SpecificationRefInput,
 } from '@/lib/requirements/service'
+import {
+  buildRequirementViewUri,
+  formatRequirementDetail,
+} from '@/lib/requirements/service-requirements'
 import {
   authorize,
   createServiceMessage,
@@ -71,6 +97,37 @@ function getSpecificationReferenceLabel(
   return input.specificationSlug ?? String(specificationId)
 }
 
+function isAdminActor(context: RequestContext): boolean {
+  return context.actor.roles.includes('Admin')
+}
+
+async function assertGraduationTargetAreaAuthor(
+  db: SqlServerDatabase,
+  context: RequestContext,
+  action: RequirementsAction,
+  requirementAreaId: number,
+): Promise<void> {
+  const allowed = await canAuthorArea(
+    db,
+    requirementAreaId,
+    context.actor.hsaId,
+    isAdminActor(context),
+  )
+  if (allowed) {
+    return
+  }
+
+  const error = forbiddenError(
+    'Missing owner or co-author access to the target requirement area',
+    {
+      reason: 'target_area_author_required',
+      requirementAreaId,
+    },
+  )
+  recordAuthorizationDenied(context, action, error)
+  throw error
+}
+
 export function createSpecificationWorkflow({
   authorization,
   db,
@@ -79,6 +136,8 @@ export function createSpecificationWorkflow({
   RequirementsService,
   | 'addToSpecification'
   | 'getSpecificationItems'
+  | 'graduateSpecificationLocalRequirement'
+  | 'listGraduationTargetAreas'
   | 'listSpecifications'
   | 'removeFromSpecification'
 > {
@@ -284,6 +343,175 @@ export function createSpecificationWorkflow({
               responseFormat,
             ),
             specificationId,
+          }
+        },
+      )
+    },
+
+    async listGraduationTargetAreas(
+      context,
+      input: ListGraduationTargetAreasInput,
+    ) {
+      const responseFormat = input.responseFormat ?? 'markdown'
+      const locale = input.locale ?? 'en'
+      const action: RequirementsAction = {
+        kind: 'list_graduation_target_areas',
+        localRequirementId: input.localRequirementId,
+        specificationId: input.specificationId,
+        specificationSlug: input.specificationSlug,
+      }
+
+      await authorize(authorization, action, context)
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.list_graduation_target_areas',
+        {
+          local_requirement_id: input.localRequirementId,
+          specification_id: input.specificationId,
+          specification_slug: input.specificationSlug,
+        },
+        async () => {
+          const specificationId = await resolveSpecificationIdOrThrow(db, input)
+          const localRequirement = await getSpecificationLocalRequirementDetail(
+            db,
+            specificationId,
+            input.localRequirementId,
+          )
+          if (!localRequirement) {
+            throw notFoundError('Specification-local requirement not found', {
+              localRequirementId: input.localRequirementId,
+              specificationId,
+            })
+          }
+
+          const areas = await listAreasActorCanAuthor(
+            db,
+            context.actor.hsaId,
+            isAdminActor(context),
+          )
+          const summary =
+            locale === 'sv'
+              ? `${areas.length} kravområde(n) kan ta emot kopian.`
+              : `${areas.length} requirement area(s) can receive the copy.`
+
+          return {
+            areas: areas.map(area => ({
+              id: area.id,
+              name: area.name,
+              prefix: area.prefix,
+            })),
+            message: createServiceMessage(
+              locale === 'sv'
+                ? 'Målområden för kravkatalogen'
+                : 'Library Target Areas',
+              [summary],
+              responseFormat,
+            ),
+          }
+        },
+      )
+    },
+
+    async graduateSpecificationLocalRequirement(
+      context,
+      input: GraduateSpecificationLocalRequirementInput,
+    ) {
+      const responseFormat = input.responseFormat ?? 'markdown'
+      const locale = input.locale ?? 'en'
+      const action: RequirementsAction = {
+        kind: 'graduate_specification_local_requirement',
+        localRequirementId: input.localRequirementId,
+        requirementAreaId: input.requirementAreaId,
+        specificationId: input.specificationId,
+        specificationSlug: input.specificationSlug,
+      }
+
+      await authorize(authorization, action, context)
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.graduate_specification_local_requirement',
+        {
+          local_requirement_id: input.localRequirementId,
+          requirement_area_id: input.requirementAreaId,
+          specification_id: input.specificationId,
+          specification_slug: input.specificationSlug,
+        },
+        async () => {
+          const actor = requireHumanActorSnapshot(context)
+          const specificationId = await resolveSpecificationIdOrThrow(db, input)
+          const targetArea = await getAreaById(db, input.requirementAreaId)
+          if (!targetArea) {
+            throw notFoundError('Requirement area not found', {
+              requirementAreaId: input.requirementAreaId,
+            })
+          }
+
+          await assertGraduationTargetAreaAuthor(
+            db,
+            context,
+            action,
+            input.requirementAreaId,
+          )
+
+          const result = await graduateSpecificationLocalRequirementToLibrary(
+            db,
+            {
+              actorDisplayName: actor.displayName,
+              actorHsaId: actor.hsaId,
+              specificationId,
+              specificationLocalRequirementId: input.localRequirementId,
+              targetRequirementAreaId: input.requirementAreaId,
+            },
+          )
+
+          const requirement = await getRequirementById(
+            db,
+            result.requirement.id,
+          )
+          if (!requirement) {
+            throw notFoundError('Graduated requirement not found', {
+              requirementId: result.requirement.id,
+            })
+          }
+          const detail = formatRequirementDetail(requirement)
+          const requirementResourceUri = `requirements://requirement/${encodeURIComponent(detail.uniqueId)}?version=${result.version.versionNumber}`
+          const requirementViewUri = buildRequirementViewUri(
+            { uniqueId: detail.uniqueId },
+            result.version.versionNumber,
+          )
+          const summary =
+            locale === 'sv'
+              ? `Det lokala kravet ${result.sourceLocalRequirement.uniqueId} kopierades till ${detail.uniqueId} som utkast i ${targetArea.name}.`
+              : `Specification-local requirement ${result.sourceLocalRequirement.uniqueId} was copied to ${detail.uniqueId} as a draft in ${targetArea.name}.`
+
+          recordHighRiskMutationSucceeded(context, {
+            action: 'specification_local_requirement.graduated',
+            locale,
+            localRequirementId: input.localRequirementId,
+            newRequirementId: detail.id,
+            newRequirementUniqueId: detail.uniqueId,
+            operation: 'graduate_specification_local_requirement',
+            specificationId,
+            specificationSlug: input.specificationSlug,
+            targetRequirementAreaId: input.requirementAreaId,
+          })
+
+          return {
+            detail,
+            message: createServiceMessage(
+              locale === 'sv'
+                ? 'Lokalt krav kopierat till kravkatalogen'
+                : 'Requirement Graduated to Library',
+              [summary],
+              responseFormat,
+            ),
+            requirementResourceUri,
+            requirementViewUri,
+            result,
           }
         },
       )

@@ -4,8 +4,15 @@ export interface SpecificationResponsiblePersonInput {
   responsibleHsaId?: string | null
 }
 
-function hasOwn(input: object, key: keyof SpecificationResponsiblePersonInput) {
+function hasOwn(
+  input: object,
+  key: keyof SpecificationResponsiblePersonInput,
+): boolean {
   return Object.hasOwn(input, key)
+}
+
+interface SpecificationResponsiblePersonNormalizeOptions {
+  preserveOmittedFields?: boolean
 }
 
 export function normalizeResponsibleHsaId(
@@ -34,7 +41,7 @@ export function hasIncompleteResponsiblePerson(
 
 export function normalizeSpecificationResponsiblePersonInput<
   T extends SpecificationResponsiblePersonInput,
->(input: T, options: { preserveOmittedFields?: boolean } = {}): T {
+>(input: T, options: SpecificationResponsiblePersonNormalizeOptions = {}): T {
   const preserveOmittedFields = options.preserveOmittedFields === true
   const hasHsaIdField = hasOwn(input, 'responsibleHsaId')
   const hasDisplayNameField = hasOwn(input, 'responsibleDisplayName')

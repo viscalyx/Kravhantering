@@ -1,8 +1,16 @@
 'use client'
 
-import { AlertTriangle, Pencil, Printer, Trash2 } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import {
+  AlertTriangle,
+  LibraryBig,
+  Pencil,
+  Printer,
+  Trash2,
+} from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationDecisionModal from '@/components/DeviationDecisionModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
@@ -12,8 +20,11 @@ import RequirementDetailSections from '@/components/RequirementDetailSections'
 import SpecificationLocalRequirementForm, {
   type SpecificationLocalRequirementSubmitPayload,
 } from '@/components/SpecificationLocalRequirementForm'
+import { useModalFocus } from '@/hooks/useModalFocus'
+import { useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 
 interface SpecificationLocalRequirementDetail {
@@ -68,6 +79,12 @@ interface DeviationData {
   motivation: string
 }
 
+interface GraduationTargetArea {
+  id: number
+  name: string
+  prefix: string
+}
+
 interface SpecificationLocalRequirementDetailClientProps {
   localRequirementId: number
   needsReferences: { id: number; text: string }[]
@@ -88,6 +105,165 @@ function readResponseError(body: unknown): string | null {
   return null
 }
 
+interface GraduationTargetAreaModalProps {
+  areas: GraduationTargetArea[]
+  error: string | null
+  idPrefix: string
+  loading: boolean
+  onClose: () => void
+  onSelectArea: (areaId: string) => void
+  onSubmit: () => void
+  open: boolean
+  selectedAreaId: string
+}
+
+function GraduationTargetAreaModal({
+  areas,
+  error,
+  idPrefix,
+  loading,
+  onClose,
+  onSelectArea,
+  onSubmit,
+  open,
+  selectedAreaId,
+}: GraduationTargetAreaModalProps) {
+  const tp = useTranslations('specification')
+  const tc = useTranslations('common')
+  const shouldReduceMotion = useReducedMotion()
+  const modalRef = useRef<HTMLDivElement>(null)
+  const selectRef = useRef<HTMLSelectElement>(null)
+  const selectedArea = areas.find(area => String(area.id) === selectedAreaId)
+  const titleId = `${idPrefix}-title`
+  const descriptionId = `${idPrefix}-description`
+  const targetHelpId = `${idPrefix}-target-help`
+  const selectId = `${idPrefix}-target-area`
+  const { handleKeyDown } = useModalFocus({
+    closeDisabled: loading,
+    initialFocusRef: selectRef,
+    modalRef,
+    onClose,
+    open,
+  })
+
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  return createPortal(
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          key="graduation-target-area-modal"
+          {...fadeMotion(shouldReduceMotion)}
+        >
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+            onClick={() => {
+              if (!loading) {
+                onClose()
+              }
+            }}
+          />
+          <motion.div
+            aria-describedby={`${descriptionId} ${targetHelpId}`}
+            aria-labelledby={titleId}
+            aria-modal="true"
+            className="relative z-50 w-full max-w-lg rounded-lg border border-secondary-200 bg-white p-5 shadow-2xl dark:border-secondary-700 dark:bg-secondary-900"
+            {...devMarker({
+              name: 'dialog',
+              priority: 420,
+              value: 'graduate-local-requirement',
+            })}
+            onKeyDown={handleKeyDown}
+            ref={modalRef}
+            role="dialog"
+            {...dialogPanelMotion(shouldReduceMotion)}
+          >
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <h2
+                  className="text-base font-semibold text-secondary-900 dark:text-secondary-100"
+                  id={titleId}
+                >
+                  {tp('graduateLocalRequirementConfirmTitle')}
+                </h2>
+                <p
+                  className="text-sm text-secondary-600 dark:text-secondary-300"
+                  id={descriptionId}
+                >
+                  {tp('graduateLocalRequirementConfirm')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  className="block text-xs font-semibold uppercase tracking-[0.08em] text-secondary-500 dark:text-secondary-400"
+                  htmlFor={selectId}
+                >
+                  {tp('graduateLocalRequirementTargetLabel')}
+                </label>
+                <select
+                  aria-describedby={targetHelpId}
+                  className="min-h-[44px] w-full rounded-lg border border-secondary-300 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-600 dark:bg-secondary-800/50 dark:text-secondary-100"
+                  disabled={loading}
+                  id={selectId}
+                  onChange={event => onSelectArea(event.target.value)}
+                  ref={selectRef}
+                  value={selectedAreaId}
+                >
+                  {areas.map(area => (
+                    <option key={area.id} value={area.id}>
+                      {area.name} ({area.prefix})
+                    </option>
+                  ))}
+                </select>
+                <p
+                  className="text-sm text-secondary-600 dark:text-secondary-300"
+                  id={targetHelpId}
+                >
+                  {tp('graduateLocalRequirementTargetHelp')}
+                </p>
+              </div>
+
+              {error ? (
+                <p
+                  className="text-sm text-red-600 dark:text-red-400"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              ) : null}
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                  className="btn-secondary min-h-[44px] w-full justify-center"
+                  disabled={loading}
+                  onClick={onClose}
+                  type="button"
+                >
+                  {tc('cancel')}
+                </button>
+                <button
+                  className="btn-primary min-h-[44px] w-full justify-center"
+                  disabled={loading || !selectedArea}
+                  onClick={() => onSubmit()}
+                  type="button"
+                >
+                  {tp('graduateLocalRequirementConfirmText')}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>,
+    document.body,
+  )
+}
+
 export default function SpecificationLocalRequirementDetailClient({
   localRequirementId,
   needsReferences,
@@ -99,6 +275,7 @@ export default function SpecificationLocalRequirementDetailClient({
   const td = useTranslations('deviation')
   const tc = useTranslations('common')
   const locale = useLocale()
+  const router = useRouter()
   const { confirm } = useConfirmModal()
 
   const localName = useCallback(
@@ -128,6 +305,14 @@ export default function SpecificationLocalRequirementDetailClient({
   const [showDeviationForm, setShowDeviationForm] = useState(false)
   const [showEditDeviationForm, setShowEditDeviationForm] = useState(false)
   const [showDecisionForm, setShowDecisionForm] = useState(false)
+  const [graduationTargetAreas, setGraduationTargetAreas] = useState<
+    GraduationTargetArea[]
+  >([])
+  const [graduationError, setGraduationError] = useState<string | null>(null)
+  const [isGraduating, setIsGraduating] = useState(false)
+  const [selectedGraduationAreaId, setSelectedGraduationAreaId] =
+    useState<string>('')
+  const [showGraduationModal, setShowGraduationModal] = useState(false)
 
   const latestDeviation = useMemo(() => {
     if (deviations.length === 0) {
@@ -223,6 +408,55 @@ export default function SpecificationLocalRequirementDetailClient({
     [requirement?.itemRef, td],
   )
 
+  const fetchGraduationTargetAreas = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!requirement) {
+        setGraduationTargetAreas([])
+        setSelectedGraduationAreaId('')
+        return
+      }
+
+      try {
+        const response = await apiFetch(
+          `/api/specifications/${specificationSlug}/local-requirements/${localRequirementId}/graduation-target-areas`,
+          signal ? { signal } : undefined,
+        )
+
+        if (signal?.aborted) return
+
+        if (!response.ok) {
+          setGraduationTargetAreas([])
+          setSelectedGraduationAreaId('')
+          return
+        }
+
+        const data = (await response.json()) as {
+          areas?: GraduationTargetArea[]
+        }
+        if (signal?.aborted) return
+
+        const areas = data.areas ?? []
+        setGraduationTargetAreas(areas)
+        setSelectedGraduationAreaId(current =>
+          areas.some(area => String(area.id) === current)
+            ? current
+            : areas[0]
+              ? String(areas[0].id)
+              : '',
+        )
+      } catch (fetchError) {
+        if (
+          fetchError instanceof DOMException &&
+          fetchError.name === 'AbortError'
+        )
+          return
+        setGraduationTargetAreas([])
+        setSelectedGraduationAreaId('')
+      }
+    },
+    [localRequirementId, requirement, specificationSlug],
+  )
+
   useEffect(() => {
     void fetchRequirement()
   }, [fetchRequirement])
@@ -234,6 +468,13 @@ export default function SpecificationLocalRequirementDetailClient({
     void fetchDeviations(controller.signal)
     return () => controller.abort()
   }, [fetchDeviations])
+
+  useEffect(() => {
+    setGraduationError(null)
+    const controller = new AbortController()
+    void fetchGraduationTargetAreas(controller.signal)
+    return () => controller.abort()
+  }, [fetchGraduationTargetAreas])
 
   const refreshAll = useCallback(async () => {
     await Promise.all([fetchRequirement(), fetchDeviations(), onChange?.()])
@@ -334,6 +575,89 @@ export default function SpecificationLocalRequirementDetailClient({
       tp,
     ],
   )
+
+  const handleGraduate = useCallback(async () => {
+    if (!selectedGraduationAreaId || isGraduating) {
+      return
+    }
+
+    setIsGraduating(true)
+    setGraduationError(null)
+
+    try {
+      const response = await apiFetch(
+        `/api/specifications/${specificationSlug}/local-requirements/${localRequirementId}/graduate`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requirementAreaId: Number(selectedGraduationAreaId),
+          }),
+        },
+      )
+
+      const body = (await response.json().catch(() => null)) as
+        | {
+            detail?: { uniqueId?: string }
+            newRequirementUniqueId?: string
+            newRequirementVersionNumber?: number
+          }
+        | Record<string, unknown>
+        | null
+
+      if (!response.ok) {
+        setGraduationError(
+          readResponseError(body) ?? tp('graduateLocalRequirementFailed'),
+        )
+        return
+      }
+
+      const uniqueId =
+        body && typeof body === 'object'
+          ? ((body as { newRequirementUniqueId?: unknown })
+              .newRequirementUniqueId ??
+            (body as { detail?: { uniqueId?: unknown } }).detail?.uniqueId)
+          : null
+      const versionNumber =
+        body && typeof body === 'object'
+          ? (body as { newRequirementVersionNumber?: unknown })
+              .newRequirementVersionNumber
+          : null
+
+      if (
+        typeof uniqueId !== 'string' ||
+        uniqueId.length === 0 ||
+        typeof versionNumber !== 'number' ||
+        !Number.isInteger(versionNumber) ||
+        versionNumber < 1
+      ) {
+        setGraduationError(tp('graduateLocalRequirementFailed'))
+        return
+      }
+
+      await onChange?.()
+      setShowGraduationModal(false)
+      router.push(
+        `/requirements/${encodeURIComponent(uniqueId)}/${versionNumber}`,
+      )
+    } catch (graduateError) {
+      setGraduationError(
+        graduateError instanceof Error
+          ? graduateError.message
+          : tp('graduateLocalRequirementFailed'),
+      )
+    } finally {
+      setIsGraduating(false)
+    }
+  }, [
+    isGraduating,
+    localRequirementId,
+    onChange,
+    router,
+    selectedGraduationAreaId,
+    specificationSlug,
+    tp,
+  ])
 
   const performDeviationMutation = useCallback(
     async (
@@ -663,6 +987,12 @@ export default function SpecificationLocalRequirementDetailClient({
   const localRequirementMutationTooltip = canMutateLocalRequirement
     ? undefined
     : tp('localRequirementActionDisabledTooltip')
+  const canGraduateLocalRequirement =
+    requirement.specificationItemStatusId ===
+    DEFAULT_SPECIFICATION_ITEM_STATUS_ID
+  const graduationTooltip = canGraduateLocalRequirement
+    ? undefined
+    : tp('graduateLocalRequirementDisabledTooltip')
 
   return (
     <div
@@ -673,6 +1003,22 @@ export default function SpecificationLocalRequirementDetailClient({
         value: 'specification local requirement',
       })}
     >
+      <GraduationTargetAreaModal
+        areas={graduationTargetAreas}
+        error={graduationError}
+        idPrefix={`graduate-local-${localRequirementId}`}
+        loading={isGraduating}
+        onClose={() => {
+          if (!isGraduating) {
+            setShowGraduationModal(false)
+          }
+        }}
+        onSelectArea={setSelectedGraduationAreaId}
+        onSubmit={() => void handleGraduate()}
+        open={showGraduationModal && canGraduateLocalRequirement}
+        selectedAreaId={selectedGraduationAreaId}
+      />
+
       {showEditForm ? (
         <div className="px-6 py-4">
           <div className="space-y-4">
@@ -857,6 +1203,48 @@ export default function SpecificationLocalRequirementDetailClient({
                           </button>
                         </>
                       )}
+
+                      {graduationTargetAreas.length > 0 ? (
+                        <>
+                          <span
+                            className="inline-flex w-full"
+                            title={graduationTooltip}
+                          >
+                            <button
+                              className={railSecondaryButtonClass}
+                              disabled={
+                                !canGraduateLocalRequirement || isGraduating
+                              }
+                              {...devMarker({
+                                context: detailContext,
+                                name: 'detail action',
+                                priority: 292,
+                                value: 'graduate local requirement',
+                              })}
+                              onClick={() => {
+                                setGraduationError(null)
+                                setShowGraduationModal(true)
+                              }}
+                              type="button"
+                            >
+                              <LibraryBig
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                              />
+                              {tp('graduateLocalRequirement')}
+                            </button>
+                          </span>
+
+                          {graduationError ? (
+                            <p
+                              className="text-sm text-red-600 dark:text-red-400"
+                              role="alert"
+                            >
+                              {graduationError}
+                            </p>
+                          ) : null}
+                        </>
+                      ) : null}
 
                       <span
                         className="inline-flex w-full"

@@ -156,11 +156,7 @@ async function findSqlServerDeviationState(
 async function findSqlServerSpecificationLocalDeviationState(
   db: SqlServerDatabase,
   deviationId: number,
-): Promise<{
-  decision: number | null
-  id: number
-  isReviewRequested: number
-} | null> {
+): Promise<DeviationState | null> {
   const rows = (await db.query(
     `
       SELECT TOP (1)
@@ -184,14 +180,28 @@ async function findSqlServerSpecificationLocalDeviationState(
   }
 }
 
-type DeviationStateFinder = (
-  db: SqlServerDatabase,
-  deviationId: number,
-) => Promise<{
+interface DeviationState {
   decision: number | null
   id: number
   isReviewRequested: number
-} | null>
+}
+
+type DeviationStateFinder = (
+  db: SqlServerDatabase,
+  deviationId: number,
+) => Promise<DeviationState | null>
+
+export type ConflictMessageForDeviationState = (state: DeviationState) => string
+
+export interface RunGuardedDeviationMutationOptions {
+  conflictMessageForState: ConflictMessageForDeviationState
+  db: SqlServerDatabase
+  deviationId: number
+  findState: DeviationStateFinder
+  mutationSql: string
+  notFoundMessage: string
+  parameters: unknown[]
+}
 
 async function runGuardedDeviationMutation({
   conflictMessageForState,
@@ -201,19 +211,7 @@ async function runGuardedDeviationMutation({
   notFoundMessage,
   parameters,
   deviationId,
-}: {
-  conflictMessageForState: (state: {
-    decision: number | null
-    id: number
-    isReviewRequested: number
-  }) => string
-  db: SqlServerDatabase
-  deviationId: number
-  findState: DeviationStateFinder
-  mutationSql: string
-  notFoundMessage: string
-  parameters: unknown[]
-}): Promise<void> {
+}: RunGuardedDeviationMutationOptions): Promise<void> {
   const mutatedRows = (await db.query(mutationSql, parameters)) as Array<
     Record<string, unknown>
   >
@@ -230,10 +228,7 @@ async function runGuardedDeviationMutation({
   throw conflictError(conflictMessageForState(row))
 }
 
-function editDeviationConflictMessage(state: {
-  decision: number | null
-  isReviewRequested: number
-}): string {
+function editDeviationConflictMessage(state: DeviationState): string {
   if (state.decision !== null) {
     return 'Cannot edit a deviation after a decision has been recorded'
   }
@@ -245,10 +240,7 @@ function editDeviationConflictMessage(state: {
   return 'Cannot edit a deviation because it changed before the update completed'
 }
 
-function deleteDeviationConflictMessage(state: {
-  decision: number | null
-  isReviewRequested: number
-}): string {
+function deleteDeviationConflictMessage(state: DeviationState): string {
   if (state.decision !== null) {
     return 'Cannot delete a deviation after a decision has been recorded'
   }
@@ -260,10 +252,7 @@ function deleteDeviationConflictMessage(state: {
   return 'Cannot delete a deviation because it changed before the delete completed'
 }
 
-function recordDecisionConflictMessage(state: {
-  decision: number | null
-  isReviewRequested: number
-}): string {
+function recordDecisionConflictMessage(state: DeviationState): string {
   if (state.decision !== null) {
     return 'A decision has already been recorded for this deviation'
   }

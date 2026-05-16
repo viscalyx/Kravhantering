@@ -1,7 +1,14 @@
 import type { SqlServerDatabase } from '@/lib/db'
-import { notFoundError, validationError } from '@/lib/requirements/errors'
+import {
+  conflictError,
+  notFoundError,
+  validationError,
+} from '@/lib/requirements/errors'
 import type { RequirementRow } from '@/lib/requirements/list-view'
-import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
+import {
+  STATUS_DRAFT,
+  STATUS_PUBLISHED,
+} from '@/lib/requirements/status-constants.mjs'
 import {
   DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
   DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
@@ -88,6 +95,43 @@ interface SpecificationLocalRequirementIdentity {
   sequenceNumber: number
   specificationId: number
   uniqueId: string
+}
+
+interface SpecificationLocalRequirementGraduationRow {
+  acceptanceCriteria: string | null
+  description: string
+  id: number
+  normReferenceIds: number[]
+  qualityCharacteristicId: number | null
+  requirementCategoryId: number | null
+  requirementPackageIds: number[]
+  requirementTypeId: number | null
+  requiresTesting: boolean
+  riskLevelId: number | null
+  specificationId: number
+  specificationItemStatusId: number | null
+  uniqueId: string
+  verificationMethod: string | null
+}
+
+export interface GraduatedRequirementResult {
+  requirement: {
+    id: number
+    requirementAreaId: number
+    sequenceNumber: number
+    uniqueId: string
+  }
+  sourceLocalRequirement: {
+    id: number
+    specificationId: number
+    uniqueId: string
+  }
+  version: {
+    id: number
+    requirementId: number
+    statusId: number
+    versionNumber: number
+  }
 }
 
 // ─── Generic value coercion helpers ──────────────────────────────────────────
@@ -489,6 +533,38 @@ export async function getSpecificationBySlug(
     [slug],
   )) as Row[]
   return mapSpecificationRow(rows[0])
+}
+
+export async function canAuthorSpecification(
+  db: SqlServerDatabase,
+  specificationId: number,
+  actorHsaId: string | null,
+  isAdmin: boolean,
+): Promise<boolean> {
+  if (isAdmin) {
+    return true
+  }
+
+  if (!actorHsaId) {
+    return false
+  }
+
+  const rows = (await db.query(
+    `
+      SELECT TOP (1) specification_record.id AS id
+      FROM requirements_specifications specification_record
+      LEFT JOIN specification_co_authors co_author
+        ON co_author.specification_id = specification_record.id
+      WHERE specification_record.id = @0
+        AND (
+          specification_record.responsible_hsa_id = @1
+          OR co_author.hsa_id = @1
+        )
+    `,
+    [specificationId, actorHsaId],
+  )) as Array<{ id: number }>
+
+  return rows.length > 0
 }
 
 export async function isSlugTaken(
@@ -1440,6 +1516,276 @@ export async function deleteSpecificationLocalRequirement(
   )) as Array<{ id: number }>
 
   return deleted.length > 0
+}
+
+function mapGraduationSourceRow(
+  row: Row,
+  normReferenceRows: Row[],
+  requirementPackageRows: Row[],
+): SpecificationLocalRequirementGraduationRow {
+  return {
+    acceptanceCriteria: toStr(row.acceptanceCriteria),
+    description: String(row.description ?? ''),
+    id: Number(row.id),
+    normReferenceIds: normReferenceRows.map(reference =>
+      Number(reference.normReferenceId),
+    ),
+    qualityCharacteristicId: toNum(row.qualityCharacteristicId),
+    requirementCategoryId: toNum(row.requirementCategoryId),
+    requirementPackageIds: requirementPackageRows.map(requirementPackage =>
+      Number(requirementPackage.requirementPackageId),
+    ),
+    requirementTypeId: toNum(row.requirementTypeId),
+    requiresTesting: toBool(row.requiresTesting),
+    riskLevelId: toNum(row.riskLevelId),
+    specificationId: Number(row.specificationId),
+    specificationItemStatusId: toNum(row.specificationItemStatusId),
+    uniqueId: String(row.uniqueId ?? ''),
+    verificationMethod: toStr(row.verificationMethod),
+  }
+}
+
+async function insertRequirementVersionJoins(
+  manager: SqlExecutor,
+  versionId: number,
+  {
+    normReferenceIds,
+    requirementPackageIds,
+  }: {
+    normReferenceIds: number[]
+    requirementPackageIds: number[]
+  },
+) {
+  for (const requirementPackageId of requirementPackageIds) {
+    await manager.query(
+      `
+        INSERT INTO requirement_version_requirement_packages
+          (requirement_version_id, requirement_package_id)
+        VALUES (@0, @1)
+      `,
+      [versionId, requirementPackageId],
+    )
+  }
+
+  for (const normReferenceId of normReferenceIds) {
+    await manager.query(
+      `
+        INSERT INTO requirement_version_norm_references
+          (requirement_version_id, norm_reference_id)
+        VALUES (@0, @1)
+      `,
+      [versionId, normReferenceId],
+    )
+  }
+}
+
+export async function graduateSpecificationLocalRequirementToLibrary(
+  db: SqlServerDatabase,
+  data: {
+    actorDisplayName: string
+    actorHsaId: string
+    specificationId: number
+    specificationLocalRequirementId: number
+    targetRequirementAreaId: number
+  },
+): Promise<GraduatedRequirementResult> {
+  return db.transaction(async (manager: SqlExecutor) => {
+    const sourceRows = (await manager.query(
+      `
+        SELECT TOP (1)
+          local_requirement.id AS id,
+          local_requirement.specification_id AS specificationId,
+          local_requirement.unique_id AS uniqueId,
+          local_requirement.description AS description,
+          local_requirement.acceptance_criteria AS acceptanceCriteria,
+          local_requirement.requirement_category_id AS requirementCategoryId,
+          local_requirement.requirement_type_id AS requirementTypeId,
+          local_requirement.quality_characteristic_id AS qualityCharacteristicId,
+          local_requirement.risk_level_id AS riskLevelId,
+          CAST(local_requirement.is_testing_required AS int) AS requiresTesting,
+          local_requirement.verification_method AS verificationMethod,
+          local_requirement.specification_item_status_id AS specificationItemStatusId
+        FROM specification_local_requirements local_requirement WITH (UPDLOCK, HOLDLOCK)
+        WHERE local_requirement.id = @0
+          AND local_requirement.specification_id = @1
+      `,
+      [data.specificationLocalRequirementId, data.specificationId],
+    )) as Row[]
+
+    const sourceRow = sourceRows[0]
+    if (!sourceRow) {
+      throw notFoundError('Specification-local requirement not found', {
+        specificationId: data.specificationId,
+        specificationLocalRequirementId: data.specificationLocalRequirementId,
+      })
+    }
+
+    const normReferenceRows = (await manager.query(
+      `
+          SELECT norm_reference_id AS normReferenceId
+          FROM specification_local_requirement_norm_references
+          WHERE specification_local_requirement_id = @0
+        `,
+      [data.specificationLocalRequirementId],
+    )) as Row[]
+    const requirementPackageRows = (await manager.query(
+      `
+          SELECT requirement_package_id AS requirementPackageId
+          FROM specification_local_requirement_requirement_packages
+          WHERE specification_local_requirement_id = @0
+        `,
+      [data.specificationLocalRequirementId],
+    )) as Row[]
+
+    const source = mapGraduationSourceRow(
+      sourceRow,
+      normReferenceRows,
+      requirementPackageRows,
+    )
+
+    if (
+      source.specificationItemStatusId !== DEFAULT_SPECIFICATION_ITEM_STATUS_ID
+    ) {
+      throw conflictError(
+        'Only Included specification-local requirements can be graduated',
+        {
+          expectedSpecificationItemStatusId:
+            DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+          specificationItemStatusId: source.specificationItemStatusId,
+        },
+      )
+    }
+
+    const sequenceRows = (await manager.query(
+      `
+        UPDATE requirement_areas
+        SET next_sequence = next_sequence + 1
+        OUTPUT
+          INSERTED.next_sequence - 1 AS sequenceNumber,
+          INSERTED.prefix AS prefix
+        WHERE id = @0
+      `,
+      [data.targetRequirementAreaId],
+    )) as Row[]
+
+    const sequenceRow = sequenceRows[0]
+    if (!sequenceRow) {
+      throw notFoundError('Requirement area not found', {
+        requirementAreaId: data.targetRequirementAreaId,
+      })
+    }
+
+    const sequenceNumber = Number(sequenceRow.sequenceNumber)
+    const prefix = String(sequenceRow.prefix ?? '')
+    const uniqueId = `${prefix}${String(sequenceNumber).padStart(4, '0')}`
+    const now = new Date()
+    const verificationMethod = source.requiresTesting
+      ? source.verificationMethod
+      : null
+
+    const requirementRows = (await manager.query(
+      `
+        INSERT INTO requirements (
+          unique_id,
+          requirement_area_id,
+          sequence_number,
+          is_archived,
+          created_at
+        )
+        OUTPUT
+          INSERTED.id AS id,
+          INSERTED.unique_id AS uniqueId,
+          INSERTED.requirement_area_id AS requirementAreaId,
+          INSERTED.sequence_number AS sequenceNumber
+        VALUES (@0, @1, @2, 0, @3)
+      `,
+      [uniqueId, data.targetRequirementAreaId, sequenceNumber, now],
+    )) as Row[]
+
+    const requirementRow = requirementRows[0]
+    if (!requirementRow) {
+      throw new Error('Failed to create graduated library requirement')
+    }
+
+    const requirementId = Number(requirementRow.id)
+    const versionRows = (await manager.query(
+      `
+        INSERT INTO requirement_versions (
+          requirement_id,
+          version_number,
+          description,
+          acceptance_criteria,
+          requirement_category_id,
+          requirement_type_id,
+          quality_characteristic_id,
+          risk_level_id,
+          requirement_status_id,
+          is_testing_required,
+          verification_method,
+          created_at,
+          edited_at,
+          published_at,
+          archived_at,
+          archive_initiated_at,
+          created_by,
+          created_by_hsa_id,
+          status_updated_at,
+          has_specification_item_history
+        )
+        OUTPUT
+          INSERTED.id AS id,
+          INSERTED.requirement_id AS requirementId,
+          INSERTED.version_number AS versionNumber,
+          INSERTED.requirement_status_id AS statusId
+        VALUES (@0, 1, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @10, NULL, NULL, NULL, @11, @12, @10, 0)
+      `,
+      [
+        requirementId,
+        source.description,
+        source.acceptanceCriteria,
+        source.requirementCategoryId,
+        source.requirementTypeId,
+        source.qualityCharacteristicId,
+        source.riskLevelId,
+        STATUS_DRAFT,
+        source.requiresTesting ? 1 : 0,
+        verificationMethod,
+        now,
+        data.actorDisplayName,
+        data.actorHsaId,
+      ],
+    )) as Row[]
+
+    const versionRow = versionRows[0]
+    if (!versionRow) {
+      throw new Error('Failed to create graduated requirement version')
+    }
+
+    await insertRequirementVersionJoins(manager, Number(versionRow.id), {
+      normReferenceIds: source.normReferenceIds,
+      requirementPackageIds: source.requirementPackageIds,
+    })
+
+    return {
+      requirement: {
+        id: requirementId,
+        requirementAreaId: Number(requirementRow.requirementAreaId),
+        sequenceNumber: Number(requirementRow.sequenceNumber),
+        uniqueId: String(requirementRow.uniqueId ?? ''),
+      },
+      sourceLocalRequirement: {
+        id: source.id,
+        specificationId: source.specificationId,
+        uniqueId: source.uniqueId,
+      },
+      version: {
+        id: Number(versionRow.id),
+        requirementId: Number(versionRow.requirementId),
+        statusId: Number(versionRow.statusId),
+        versionNumber: Number(versionRow.versionNumber),
+      },
+    }
+  })
 }
 
 // ─── Library item linking ────────────────────────────────────────────────────
