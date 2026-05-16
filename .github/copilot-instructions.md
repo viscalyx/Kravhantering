@@ -31,6 +31,11 @@
 ## General Rules
 
 - After changes, update relevant `docs/*.md` when behavior or workflows change.
+- When user-facing functionality, workflows, roles/permissions, visible UI,
+  reports, privacy/export, lifecycle, or admin behavior changes, add or update
+  the matching automated tests and `docs/manual-test-cases.md` manual cases.
+  If the change is internal-only and no manual case update is needed, state that
+  in the final response.
 - Follow `docs/sql-server-developer-workflow.md` for database setup, migrations, seeding, and developer browse workflow expectations.
 - For visible UI element, label, role, or layout surface changes, see `.github/instructions/developer-mode.instructions.md`.
 - Developer Mode is a desktop-only developer tool. Its overlay, chips, badge, and toast do **not** need to follow WCAG touch-target sizes, mobile responsiveness, or accessibility guidelines. Keep chips compact so they don't obscure the underlying UI.
