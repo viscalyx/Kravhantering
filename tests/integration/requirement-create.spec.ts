@@ -52,40 +52,43 @@ test.describe('Requirement creation', () => {
       page,
       request,
     }) => {
-      await page.setViewportSize({
-        width: viewport.width,
-        height: viewport.height,
+      await test.step('prepare form data', async () => {
+        await page.setViewportSize({
+          width: viewport.width,
+          height: viewport.height,
+        })
+
+        // Get a valid area for selection
+        const areasRes = await request.get('/api/requirement-areas')
+        expect(areasRes.ok()).toBe(true)
+        const areasData = (await areasRes.json()) as {
+          areas: { id: number; name: string }[]
+        }
+        expect(areasData.areas.length).toBeGreaterThan(0)
+        const area = areasData.areas[0]
+
+        await page.goto('/sv/requirements/new')
+
+        // Select area
+        await page.selectOption('#areaId', String(area.id))
+
+        // Fill description
+        await page.fill('#description', 'Playwright UI test requirement')
       })
-      // Get a valid area for selection
-      const areasRes = await request.get('/api/requirement-areas')
-      expect(areasRes.ok()).toBe(true)
-      const areasData = (await areasRes.json()) as {
-        areas: { id: number; name: string }[]
-      }
-      expect(areasData.areas.length).toBeGreaterThan(0)
-      const area = areasData.areas[0]
 
-      await page.goto('/sv/requirements/new')
+      await test.step('submit and return to the selected row', async () => {
+        // Submit the form
+        await page.click('button[type="submit"]')
 
-      // Select area
-      await page.selectOption('#areaId', String(area.id))
+        // Should redirect to the list (not /requirements/undefined)
+        await expect(page).toHaveURL(/\/sv\/requirements(?:\?|$)/)
+        expect(page.url()).not.toContain('undefined')
 
-      // Fill description
-      await page.fill('#description', 'Playwright UI test requirement')
-
-      // Submit the form
-      await page.click('button[type="submit"]')
-
-      // Should redirect to the list (not /requirements/undefined)
-      await page.waitForURL(/\/sv\/requirements(?:\?|$)/, { timeout: 10000 })
-      expect(page.url()).not.toContain('undefined')
-
-      // The inline detail panel should be visible with the requirement description.
-      const detailPane = page.locator('[data-expanded-detail-cell="true"]')
-      await expect(detailPane).toBeVisible({ timeout: 10000 })
-      await expect(
-        detailPane.getByText('Playwright UI test requirement'),
-      ).toBeVisible({ timeout: 10000 })
+        // The inline detail panel should contain the requirement description.
+        await expect(
+          page.locator('[data-expanded-detail-cell="true"]').first(),
+        ).toContainText('Playwright UI test requirement')
+      })
     })
   }
 })

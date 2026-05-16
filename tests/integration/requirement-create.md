@@ -77,10 +77,10 @@ mobile (375 x 812) and desktop (1280 x 800) viewports.
 4. `selectOption('#areaId', areaId)` — pick the first area.
 5. `fill('#description', 'Playwright UI test requirement')`.
 6. `click('button[type="submit"]')`.
-7. `waitForURL(/\/sv\/requirements(?:\?|$)/)` — confirm redirect.
+7. `toHaveURL(/\/sv\/requirements(?:\?|$)/)` — confirm redirect.
 8. Assert URL does not contain `undefined`.
 9. Assert text *"Playwright UI test requirement"* is visible (inline detail
-   panel).
+   panel, using a web-first text assertion on the expanded detail cell).
 
 ```mermaid
 sequenceDiagram
