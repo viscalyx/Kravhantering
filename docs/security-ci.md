@@ -108,6 +108,13 @@ runs if the configured target is not local.
    to drive a real OIDC login as the realm test user `ada.admin` and
    obtain the iron-session cookie. The flow mirrors
    [tests/integration/global-setup.ts](../tests/integration/global-setup.ts).
+   Before printing the cookie, the helper validates the final stdout line
+   against a strict CI-safe `name=value` contract. Names may contain only ASCII
+   letters, digits, `_`, and `-`; values may contain only ASCII letters,
+   digits, `.`, `_`, `~`, `*`, `+`, `/`, `=`, and `-`. A mismatch exits
+   non-zero before printing the cookie, so scanner setup fails before ZAP,
+   Nuclei, or Schemathesis can run with a malformed or truncated session
+   header.
 6. Runs the [`zaproxy/action-baseline`](https://github.com/zaproxy/action-baseline)
    action against `http://localhost:3001/sv` with the captured cookie
    injected as a `Cookie` header on every request via ZAP's `replacer`

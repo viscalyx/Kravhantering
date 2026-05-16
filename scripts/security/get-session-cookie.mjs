@@ -14,6 +14,11 @@
  * Output (stdout, single line):
  *   <cookieName>=<sealedValue>
  *
+ * The final output is validated before printing. Cookie names may contain
+ * ASCII letters, digits, `_`, and `-`; sealed values may contain ASCII
+ * letters, digits, `.`, `_`, `~`, `*`, `+`, `/`, `=`, and `-`. Any mismatch
+ * exits non-zero without printing the cookie so scanner setup fails fast.
+ *
  * The OIDC flow mirrors `tests/integration/global-setup.ts`. Manual
  * redirect handling + per-host cookie jar is used to avoid pulling in a
  * new npm dependency.
@@ -37,6 +42,13 @@ const SESSION_COOKIE_NAME =
   env.AUTH_SESSION_COOKIE_NAME ?? 'kravhantering_session'
 const PASSWORD = env.KEYCLOAK_PASSWORD ?? 'devpass'
 const MAX_REDIRECTS = 10
+const SAFE_SESSION_COOKIE_OUTPUT_PATTERN =
+  /^[A-Za-z0-9_-]+=[A-Za-z0-9._~*+/=-]+$/
+
+export function isSafeSessionCookieOutput(value) {
+  const match = SAFE_SESSION_COOKIE_OUTPUT_PATTERN.exec(value)
+  return match?.[0] === value
+}
 
 function fail(message) {
   stderr.write(`[get-session-cookie] ${message}\n`)
@@ -197,7 +209,14 @@ async function main() {
     )
   }
 
-  stdout.write(`${SESSION_COOKIE_NAME}=${sessionValue}\n`)
+  const sessionCookieOutput = `${SESSION_COOKIE_NAME}=${sessionValue}`
+  if (!isSafeSessionCookieOutput(sessionCookieOutput)) {
+    fail(
+      'Session cookie output does not match the safe name=value charset contract; refusing to print it for scanner injection',
+    )
+  }
+
+  stdout.write(`${sessionCookieOutput}\n`)
 }
 
 const isMainEntry =

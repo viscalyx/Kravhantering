@@ -1,6 +1,33 @@
 import { describe, expect, it } from 'vitest'
 
-import { decodeHtmlEntities } from '../get-session-cookie.mjs'
+import {
+  decodeHtmlEntities,
+  isSafeSessionCookieOutput,
+} from '../get-session-cookie.mjs'
+
+describe('isSafeSessionCookieOutput', () => {
+  it.each([
+    ['standard cookie', 'kravhantering_session=sealedValue123'],
+    [
+      'iron-session seal characters',
+      'kravhantering_session=Fe26.2*1*8f8e70039b8c696c*fEsCKlLIL3q631INzC6-ag*1778955072071*8HYJm0ME1yfixZ_HKrO7LzSQDpgVAOd0PBvR1OaCBqI~2',
+    ],
+    ['base64-style value characters', 'kravhantering_session=abc+/def=='],
+  ])('accepts %s', (_label, value) => {
+    expect(isSafeSessionCookieOutput(value)).toBe(true)
+  })
+
+  it.each([
+    ['whitespace in value', 'kravhantering_session=abc def'],
+    ['quoted value', 'kravhantering_session="abc"'],
+    ['semicolon attribute', 'kravhantering_session=abc; Path=/'],
+    ['trailing newline', 'kravhantering_session=abc\n'],
+    ['empty name', '=abc'],
+    ['empty value', 'kravhantering_session='],
+  ])('rejects %s', (_label, value) => {
+    expect(isSafeSessionCookieOutput(value)).toBe(false)
+  })
+})
 
 describe('decodeHtmlEntities', () => {
   it('decodes each supported entity', () => {
