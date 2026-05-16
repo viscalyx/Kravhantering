@@ -14,6 +14,7 @@ import { apiFetch } from '@/lib/http/api-fetch'
 import { isSwedish } from '@/lib/i18n/localized'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
+import { resolveStatusLabel } from '@/lib/requirements/status-label'
 
 const REQUIREMENT_PACKAGES_HELP: HelpContent = {
   sections: [
@@ -58,9 +59,11 @@ interface RequirementPackageForm {
 }
 
 interface LinkedRequirement {
+  archiveInitiatedAt: string | null
   description: string | null
   id: number
   statusColor: string | null
+  statusId: number | null
   statusNameEn: string | null
   statusNameSv: string | null
   uniqueId: string
@@ -107,6 +110,7 @@ export default function RequirementPackagesClient() {
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const tr = useTranslations('requirement')
+  const tStatusLabel = useTranslations('requirement.statusLabel')
   const locale = useLocale()
   const shouldReduceMotion = useReducedMotion()
   const [owners, setOwners] = useState<Owner[]>([])
@@ -513,11 +517,19 @@ export default function RequirementPackagesClient() {
                                   <td className="py-2 px-3">
                                     <StatusBadge
                                       color={requirement.statusColor}
-                                      label={
-                                        (isSwedish(locale)
-                                          ? requirement.statusNameSv
-                                          : requirement.statusNameEn) ?? ''
-                                      }
+                                      label={resolveStatusLabel(
+                                        {
+                                          archiveInitiatedAt:
+                                            requirement.archiveInitiatedAt,
+                                          status: requirement.statusId,
+                                          statusNameEn:
+                                            requirement.statusNameEn,
+                                          statusNameSv:
+                                            requirement.statusNameSv,
+                                        },
+                                        isSwedish(locale) ? 'sv' : 'en',
+                                        tStatusLabel,
+                                      )}
                                     />
                                   </td>
                                 </tr>

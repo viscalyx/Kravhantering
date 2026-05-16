@@ -24,6 +24,7 @@ interface RequirementPackageWithOwner extends RequirementPackageRow {
 }
 
 interface LinkedRequirementRow {
+  archiveInitiatedAt: string | null
   description: string | null
   id: number
   statusColor: string | null
@@ -32,6 +33,11 @@ interface LinkedRequirementRow {
   statusNameSv: string | null
   uniqueId: string
   versionNumber: number
+}
+
+interface LinkedRequirementDbRow
+  extends Omit<LinkedRequirementRow, 'archiveInitiatedAt'> {
+  archiveInitiatedAt: Date | string | null
 }
 
 export type {
@@ -115,7 +121,7 @@ export async function getLinkedRequirementsForPackage(
   db: SqlServerDatabase,
   requirementPackageId: number,
 ): Promise<LinkedRequirementRow[]> {
-  return db.query(
+  const rows = (await db.query(
     `
       SELECT
         requirements.id AS id,
@@ -123,6 +129,7 @@ export async function getLinkedRequirementsForPackage(
         requirement_versions.description AS description,
         requirement_versions.version_number AS versionNumber,
         requirement_versions.requirement_status_id AS statusId,
+        requirement_versions.archive_initiated_at AS archiveInitiatedAt,
         requirement_statuses.name_sv AS statusNameSv,
         requirement_statuses.name_en AS statusNameEn,
         requirement_statuses.color AS statusColor
@@ -137,7 +144,14 @@ export async function getLinkedRequirementsForPackage(
       ORDER BY requirements.unique_id ASC
     `,
     [requirementPackageId],
-  )
+  )) as LinkedRequirementDbRow[]
+  return rows.map(row => ({
+    ...row,
+    archiveInitiatedAt:
+      row.archiveInitiatedAt == null
+        ? null
+        : toIsoString(row.archiveInitiatedAt as Date | string),
+  })) as LinkedRequirementRow[]
 }
 
 export async function getRequirementPackageById(
