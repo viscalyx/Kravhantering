@@ -11,6 +11,9 @@
  *   KEYCLOAK_PASSWORD           devpass
  *   AUTH_SESSION_COOKIE_NAME    kravhantering_session
  *
+ * Optional env vars:
+ *   DAST_FETCH_TIMEOUT_MS       15000
+ *
  * Output (stdout, single line):
  *   <cookieName>=<sealedValue>
  *
@@ -42,12 +45,75 @@ const SESSION_COOKIE_NAME =
   env.AUTH_SESSION_COOKIE_NAME ?? 'kravhantering_session'
 const PASSWORD = env.KEYCLOAK_PASSWORD ?? 'devpass'
 const MAX_REDIRECTS = 10
+export const DEFAULT_FETCH_TIMEOUT_MS = 15_000
+const MAX_ABORT_SIGNAL_TIMEOUT_MS = 2_147_483_647
 const SAFE_SESSION_COOKIE_OUTPUT_PATTERN =
   /^[A-Za-z0-9_-]+=[A-Za-z0-9._~*+/=-]+$/
 
 export function isSafeSessionCookieOutput(value) {
   const match = SAFE_SESSION_COOKIE_OUTPUT_PATTERN.exec(value)
   return match?.[0] === value
+}
+
+export function parseFetchTimeoutMs(value) {
+  const normalized = value == null ? '' : String(value).trim()
+  if (!normalized) return DEFAULT_FETCH_TIMEOUT_MS
+
+  if (!/^[1-9]\d*$/.test(normalized)) {
+    throw new Error(
+      'DAST_FETCH_TIMEOUT_MS must be a positive integer number of milliseconds',
+    )
+  }
+
+  const timeoutMs = Number(normalized)
+  if (
+    !Number.isSafeInteger(timeoutMs) ||
+    timeoutMs > MAX_ABORT_SIGNAL_TIMEOUT_MS
+  ) {
+    throw new Error(
+      `DAST_FETCH_TIMEOUT_MS must be no greater than ${MAX_ABORT_SIGNAL_TIMEOUT_MS} milliseconds`,
+    )
+  }
+  return timeoutMs
+}
+
+function isTimeoutError(error) {
+  return (
+    error instanceof Error &&
+    (error.name === 'AbortError' || error.name === 'TimeoutError')
+  )
+}
+
+function sanitizeUrlForLog(url) {
+  const parsed = new URL(url)
+  parsed.search = ''
+  parsed.hash = ''
+  return parsed.toString()
+}
+
+export async function fetchWithTimeout(
+  url,
+  init = {},
+  { fetchImpl = globalThis.fetch, timeoutMs = DEFAULT_FETCH_TIMEOUT_MS } = {},
+) {
+  if (typeof fetchImpl !== 'function') {
+    throw new Error('fetch is not available in this Node.js runtime')
+  }
+
+  const method = String(init.method ?? 'GET').toUpperCase()
+  try {
+    return await fetchImpl(url, {
+      ...init,
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+  } catch (err) {
+    if (isTimeoutError(err)) {
+      throw new Error(
+        `${method} ${sanitizeUrlForLog(url)} timed out after ${timeoutMs} ms`,
+      )
+    }
+    throw err
+  }
 }
 
 function fail(message) {
@@ -112,7 +178,11 @@ function originOf(url) {
 async function followingRedirects(
   initialUrl,
   init = {},
-  maxRedirects = MAX_REDIRECTS,
+  {
+    fetchImpl = globalThis.fetch,
+    maxRedirects = MAX_REDIRECTS,
+    timeoutMs = DEFAULT_FETCH_TIMEOUT_MS,
+  } = {},
 ) {
   let currentUrl = initialUrl
   let currentInit = { ...init, redirect: 'manual' }
@@ -121,7 +191,11 @@ async function followingRedirects(
     const cookieHeader = cookieHeaderFor(origin)
     const headers = new Headers(currentInit.headers ?? {})
     if (cookieHeader) headers.set('cookie', cookieHeader)
-    const response = await fetch(currentUrl, { ...currentInit, headers })
+    const response = await fetchWithTimeout(
+      currentUrl,
+      { ...currentInit, headers },
+      { fetchImpl, timeoutMs },
+    )
     storeSetCookies(origin, response)
 
     if (response.status >= 300 && response.status < 400) {
@@ -155,10 +229,17 @@ async function main() {
   if (!username) {
     fail('Missing required argument: <username>')
   }
+  const fetchTimeoutMs = parseFetchTimeoutMs(env.DAST_FETCH_TIMEOUT_MS)
   // 1. Trigger the OIDC login. /api/auth/login 302s to Keycloak /authorize,
   //    which renders the username/password form.
   const { response: loginPage, finalUrl: loginPageUrl } =
-    await followingRedirects(`${APP_BASE_URL}/api/auth/login`)
+    await followingRedirects(
+      `${APP_BASE_URL}/api/auth/login`,
+      {},
+      {
+        timeoutMs: fetchTimeoutMs,
+      },
+    )
   if (!loginPage.ok) {
     fail(
       `Login flow GET ${APP_BASE_URL}/api/auth/login ended at ${loginPageUrl} with HTTP ${loginPage.status}`,
@@ -178,11 +259,15 @@ async function main() {
     credentialId: '',
   }).toString()
   const { response: postLogin, finalUrl: postLoginUrl } =
-    await followingRedirects(resolvedFormAction, {
-      method: 'POST',
-      body,
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    })
+    await followingRedirects(
+      resolvedFormAction,
+      {
+        method: 'POST',
+        body,
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      },
+      { timeoutMs: fetchTimeoutMs },
+    )
   if (!postLogin.ok) {
     fail(
       `Credential submission for ${username} ended at ${postLoginUrl} with HTTP ${postLogin.status}`,
@@ -190,11 +275,15 @@ async function main() {
   }
 
   // 3. Verify the session is real and grab the iron-session cookie.
-  const verify = await fetch(`${APP_BASE_URL}/api/auth/me`, {
-    headers: {
-      cookie: cookieHeaderFor(APP_BASE_URL) ?? '',
+  const verify = await fetchWithTimeout(
+    `${APP_BASE_URL}/api/auth/me`,
+    {
+      headers: {
+        cookie: cookieHeaderFor(APP_BASE_URL) ?? '',
+      },
     },
-  })
+    { timeoutMs: fetchTimeoutMs },
+  )
   const verifyBody = await verify.json().catch(() => ({}))
   if (!verify.ok || verifyBody.authenticated !== true) {
     fail(
@@ -224,6 +313,6 @@ const isMainEntry =
 
 if (isMainEntry) {
   main().catch(err => {
-    fail(err instanceof Error ? (err.stack ?? err.message) : String(err))
+    fail(err instanceof Error ? err.message : String(err))
   })
 }

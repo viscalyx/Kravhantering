@@ -115,6 +115,10 @@ runs if the configured target is not local.
    non-zero before printing the cookie, so scanner setup fails before ZAP,
    Nuclei, or Schemathesis can run with a malformed or truncated session
    header.
+   Each helper fetch has a `15000` ms timeout by default. Set
+   `DAST_FETCH_TIMEOUT_MS` to a positive integer number of milliseconds when
+   a workflow needs a different bound; every redirect hop and the final
+   `/api/auth/me` verification receives its own fresh timeout signal.
 6. Runs the [`zaproxy/action-baseline`](https://github.com/zaproxy/action-baseline)
    action against `http://localhost:3001/sv` with the captured cookie
    injected as a `Cookie` header on every request via ZAP's `replacer`
