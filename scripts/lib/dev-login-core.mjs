@@ -1,5 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
+import {
+  describeKeycloakLoginFormActionError,
+  extractKeycloakLoginFormAction,
+} from './keycloak-login-form.mjs'
+
+export { decodeHtmlEntities } from './keycloak-login-form.mjs'
 
 export const KNOWN_USERS = {
   'ada.admin': 'devpass',
@@ -51,16 +57,6 @@ export function parseArgs(
   if (!args.password) args.password = KNOWN_USERS[args.user] ?? 'devpass'
   if (!args.jar) args.jar = `.auth/${args.user}.cookies`
   return args
-}
-
-export function decodeHtmlEntities(value) {
-  return value
-    .replace(/&quot;/g, '"')
-    .replace(/&#x2F;/g, '/')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
 }
 
 /** Minimal cookie jar keyed by `${domain}|${path}|${name}`. */
@@ -262,19 +258,13 @@ export async function login({ base, user, password }, options = {}) {
     )
   }
   const loginHtml = await loginPage.text()
-  const formTagMatch = loginHtml.match(
-    /<form\b[^>]*\bid="kc-form-login"[^>]*>/i,
-  )
-  const actionMatch = formTagMatch?.[0].match(/\baction="([^"]+)"/i)
-  if (!actionMatch) {
-    throw new Error('Could not find Keycloak login form in response')
+  const formActionPath = extractKeycloakLoginFormAction(loginHtml)
+  if (!formActionPath) {
+    throw new Error(describeKeycloakLoginFormActionError(loginPageUrl))
   }
   // Resolve against the (possibly redirected) login-page URL so that
   // server-rendered relative form actions work too.
-  const formAction = new URL(
-    decodeHtmlEntities(actionMatch[1]),
-    loginPageUrl,
-  ).toString()
+  const formAction = new URL(formActionPath, loginPageUrl).toString()
 
   // 2. POST credentials. Keycloak then redirects via 302 chain back to the app.
   const credResponse = await step(

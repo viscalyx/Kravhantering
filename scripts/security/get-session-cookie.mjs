@@ -22,6 +22,12 @@
 import { resolve } from 'node:path'
 import { argv, env, exit, stderr, stdout } from 'node:process'
 import { fileURLToPath } from 'node:url'
+import {
+  describeKeycloakLoginFormActionError,
+  extractKeycloakLoginFormAction,
+} from '../lib/keycloak-login-form.mjs'
+
+export { decodeHtmlEntities } from '../lib/keycloak-login-form.mjs'
 
 const APP_BASE_URL = (env.APP_BASE_URL ?? 'http://localhost:3001').replace(
   /\/$/,
@@ -132,16 +138,6 @@ async function followingRedirects(
   )
 }
 
-export function decodeHtmlEntities(value) {
-  return value
-    .replace(/&quot;/g, '"')
-    .replace(/&#x2F;/g, '/')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-}
-
 async function main() {
   const username = argv[2]
   if (!username) {
@@ -157,14 +153,8 @@ async function main() {
     )
   }
   const loginHtml = await loginPage.text()
-  const formTagMatch = loginHtml.match(
-    /<form\b[^>]*\bid="kc-form-login"[^>]*>/i,
-  )
-  const actionMatch = formTagMatch?.[0].match(/\baction="([^"]+)"/i)
-  if (!actionMatch) {
-    fail(`Could not locate Keycloak login form at ${loginPageUrl}`)
-  }
-  const formAction = decodeHtmlEntities(actionMatch[1])
+  const formAction = extractKeycloakLoginFormAction(loginHtml)
+  if (!formAction) fail(describeKeycloakLoginFormActionError(loginPageUrl))
 
   // 2. Submit credentials. Keycloak responds 302 to the app's
   //    /api/auth/callback, which 302s back to / and sets the iron-session
