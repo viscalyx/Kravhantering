@@ -72,6 +72,17 @@
       }
     },
     {
+      "name": "graduate local requirement to library",
+      "tool": "requirements_graduate_local_requirement",
+      "kind": "mutation",
+      "arguments": {
+        "specificationId": 8,
+        "localRequirementId": 1,
+        "requirementAreaId": 1,
+        "responseFormat": "json"
+      }
+    },
+    {
       "name": "add published requirement to specification",
       "tool": "requirements_add_to_specification",
       "kind": "mutation",

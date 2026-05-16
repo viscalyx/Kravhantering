@@ -454,6 +454,7 @@ export default function RequirementsClient({
     const sel = searchParams.get('selected')
     if (!sel) return
 
+    let cancelled = false
     const numId = Number(sel)
     if (!Number.isNaN(numId) && Number.isInteger(numId) && numId > 0) {
       // Numeric id — set synchronously
@@ -461,17 +462,42 @@ export default function RequirementsClient({
       selectedIdRef.current = numId
       scrollToIdRef.current = numId
     } else {
-      // UniqueId string — set ref for the pinning logic; the numeric id
-      // will be resolved in refreshRows once the requirement is fetched.
+      // UniqueId string — keep the ref stable until the detail fetch resolves
+      // the numeric id used by the inline detail row.
       selectedIdRef.current = sel
     }
 
+    const hydrateSelectedRequirement = async () => {
+      try {
+        const singleRes = await fetch(
+          `/api/requirements/${encodeURIComponent(sel)}`,
+        )
+        if (!singleRes.ok || cancelled) return
+
+        const detail = (await singleRes.json()) as RequirementDetailRowSource
+        if (cancelled) return
+
+        const row = mapRequirementDetailToRow(detail)
+        selectedIdRef.current = row.id
+        setSelectedId(row.id)
+        setPinnedRow(row)
+        scrollToIdRef.current = row.id
+      } catch {
+        return
+      }
+    }
+
+    void hydrateSelectedRequirement()
     refreshRows()
 
     // Clean up the params to avoid re-opening on manual refresh
     const url = new URL(window.location.href)
     url.searchParams.delete('selected')
     window.history.replaceState({}, '', url.toString())
+
+    return () => {
+      cancelled = true
+    }
   }, [searchParams, refreshRows])
 
   // Scroll to the selected requirement once the expanded detail row is in the
