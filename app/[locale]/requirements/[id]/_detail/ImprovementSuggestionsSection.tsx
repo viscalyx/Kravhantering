@@ -96,7 +96,7 @@ export default function ImprovementSuggestionsSection({
                             {tf('editSuggestion')}
                           </button>
                           <button
-                            className="text-xs btn-secondary px-3 py-1 min-h-[44px] inline-flex items-center text-red-600 dark:text-red-400"
+                            className="btn-destructive inline-flex items-center px-3 py-1 text-xs"
                             disabled={workflow.suggestionSaving}
                             onClick={event =>
                               void workflow.handleDeleteSuggestion(

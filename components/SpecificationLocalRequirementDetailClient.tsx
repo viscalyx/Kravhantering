@@ -506,7 +506,7 @@ export default function SpecificationLocalRequirementDetailClient({
   const railPrimaryButtonClass =
     'btn-primary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px] disabled:cursor-not-allowed disabled:pointer-events-none'
   const railDangerButtonClass =
-    'btn-secondary inline-flex items-center gap-1.5 w-full justify-center text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 min-h-[44px] min-w-[44px] disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:text-secondary-400 dark:disabled:text-secondary-500 disabled:border-secondary-200 dark:disabled:border-secondary-700 disabled:bg-white dark:disabled:bg-secondary-800'
+    'btn-destructive inline-flex items-center gap-1.5 w-full justify-center'
   const railAmberButtonClass =
     'inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-[44px] min-w-[44px]'
 

@@ -2381,7 +2381,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                     displayedRun.status !== 'completed' &&
                     displayedRun.status !== 'cancelled' ? (
                       <button
-                        className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-60 dark:border-red-800 dark:bg-secondary-900 dark:text-red-200 dark:hover:bg-red-950/30"
+                        className="btn-destructive inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm disabled:opacity-60 dark:bg-secondary-900 dark:text-red-200 dark:hover:bg-red-950/30"
                         disabled={isDetailLoading || status === 'saving'}
                         onClick={event => void cancelRun(displayedRun, event)}
                         type="button"

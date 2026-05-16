@@ -68,7 +68,7 @@ export default function SpecificationDeviationRail({
             {td('editDeviation')}
           </button>
           <button
-            className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 min-h-[44px] min-w-[44px]"
+            className="btn-destructive inline-flex items-center gap-1.5 w-full justify-center"
             disabled={workflow.deviationSaving}
             onClick={event => void workflow.handleDeleteDeviation(event)}
             type="button"

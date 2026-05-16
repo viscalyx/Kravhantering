@@ -492,7 +492,8 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(deleteButton).toBeDisabled()
     expect(graduateButton).toBeDisabled()
     expect(editButton.className).toContain('disabled:cursor-not-allowed')
-    expect(deleteButton.className).toContain('disabled:text-secondary-400')
+    expect(deleteButton.className).toContain('btn-destructive')
+    expect(deleteButton.className).not.toContain('disabled:text-secondary-400')
     expect(editButton.parentElement).toHaveAttribute(
       'title',
       'This local requirement can only be edited or removed when Usage status is Included and no deviation is pending.',
@@ -576,7 +577,8 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(editButton).toBeDisabled()
     expect(deleteButton).toBeDisabled()
     expect(editButton.className).toContain('disabled:cursor-not-allowed')
-    expect(deleteButton.className).toContain('disabled:text-secondary-400')
+    expect(deleteButton.className).toContain('btn-destructive')
+    expect(deleteButton.className).not.toContain('disabled:text-secondary-400')
     expect(editButton.parentElement).toHaveAttribute(
       'title',
       'This local requirement can only be edited or removed when Usage status is Included and no deviation is pending.',

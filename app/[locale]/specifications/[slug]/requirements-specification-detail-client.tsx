@@ -1538,7 +1538,7 @@ export default function KravunderlagDetailClient({
                       </button>
                       {leftSelectedIds.size > 0 && (
                         <button
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                          className="btn-destructive inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm"
                           onClick={event =>
                             void handleRemoveSelected(
                               event.currentTarget as HTMLElement,
@@ -1688,7 +1688,7 @@ export default function KravunderlagDetailClient({
                             })}
                           </button>
                           <button
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                            className="btn-destructive inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm"
                             onClick={event =>
                               void handleRemoveSelected(
                                 event.currentTarget as HTMLElement,

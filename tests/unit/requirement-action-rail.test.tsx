@@ -1,5 +1,9 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import tailwindcss from '@tailwindcss/postcss'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import postcss from 'postcss'
 import type { ComponentProps, ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import RequirementActionRail from '@/app/[locale]/requirements/[id]/_detail/RequirementActionRail'
@@ -63,6 +67,74 @@ function renderRequirementActionRail(
 }
 
 describe('RequirementActionRail', () => {
+  it('defines the shared destructive button variant with accessibility tokens', () => {
+    const globalsCss = readFileSync(
+      join(process.cwd(), 'app/globals.css'),
+      'utf8',
+    )
+
+    expect(globalsCss).toContain('.btn-destructive')
+    expect(globalsCss).toContain('text-red-700 dark:text-red-400')
+    expect(globalsCss).toContain('hover:bg-red-50')
+    expect(globalsCss).toContain('dark:hover:bg-red-950')
+    expect(globalsCss).toContain('focus:ring-red-400/50')
+    expect(globalsCss).toContain('min-h-[44px] min-w-[44px]')
+    expect(globalsCss).toContain('.btn-destructive:disabled')
+  })
+
+  it('emits the destructive button variant from Tailwind CSS', async () => {
+    const result = await postcss([tailwindcss()]).process(
+      readFileSync(join(process.cwd(), 'app/globals.css'), 'utf8'),
+      { from: join(process.cwd(), 'app/globals.css') },
+    )
+
+    expect(result.css).toContain('.btn-destructive')
+    expect(result.css).toContain('color: var(--color-red-700)')
+    expect(result.css).toContain('border-color: var(--color-red-200)')
+    expect(result.css).toContain('background-color: var(--color-red-50)')
+  })
+
+  it('uses the shared destructive variant for archive and delete draft actions', () => {
+    const { unmount } = renderRequirementActionRail()
+
+    const archiveButton = screen.getByRole('button', {
+      name: 'common.archive',
+    })
+    expect(archiveButton).toHaveClass(
+      'btn-destructive',
+      'inline-flex',
+      'w-full',
+      'justify-center',
+    )
+    expect(archiveButton).not.toHaveClass(
+      'text-red-700',
+      'hover:bg-red-50',
+      'dark:hover:bg-red-950',
+    )
+
+    unmount()
+
+    renderRequirementActionRail({
+      currentStatusId: 1,
+      latestStatusForActions: 1,
+    })
+
+    const deleteDraftButton = screen.getByRole('button', {
+      name: 'common.delete',
+    })
+    expect(deleteDraftButton).toHaveClass(
+      'btn-destructive',
+      'inline-flex',
+      'w-full',
+      'justify-center',
+    )
+    expect(deleteDraftButton).not.toHaveClass(
+      'text-red-700',
+      'hover:bg-red-50',
+      'dark:hover:bg-red-950',
+    )
+  })
+
   it('prefers the latest version prop for back to latest', async () => {
     const onVersionSelect = vi.fn()
 
