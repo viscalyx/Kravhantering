@@ -3014,56 +3014,55 @@ export default function AdminClient({
             >
               {adminTabs
                 .filter(
-                  tab =>
-                    tab.id !== 'actionAuditLog' || canManageAccessReviews,
+                  tab => tab.id !== 'actionAuditLog' || canManageAccessReviews,
                 )
                 .map(tab => {
-                const isDisabled =
-                  (tab.id === 'privacy' || tab.id === 'archiving') &&
-                  !canUsePrivacy
-                const label =
-                  tab.id === 'privacy'
-                    ? ta('privacy.title')
-                    : tab.id === 'accessReview'
-                      ? ta('accessReview.title')
-                      : tab.id === 'archiving'
-                        ? ta('archiving.title')
-                        : tab.id === 'actionAuditLog'
-                          ? ta('auditLog.title')
-                          : ta(tab.id)
+                  const isDisabled =
+                    (tab.id === 'privacy' || tab.id === 'archiving') &&
+                    !canUsePrivacy
+                  const label =
+                    tab.id === 'privacy'
+                      ? ta('privacy.title')
+                      : tab.id === 'accessReview'
+                        ? ta('accessReview.title')
+                        : tab.id === 'archiving'
+                          ? ta('archiving.title')
+                          : tab.id === 'actionAuditLog'
+                            ? ta('auditLog.title')
+                            : ta(tab.id)
 
-                return (
-                  <button
-                    aria-controls={`${tab.id}-panel`}
-                    aria-disabled={isDisabled ? 'true' : undefined}
-                    aria-selected={activeTab === tab.id}
-                    className={`inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
-                      isDisabled
-                        ? 'cursor-not-allowed text-secondary-400 opacity-50 hover:bg-transparent dark:text-secondary-500'
-                        : activeTab === tab.id
-                          ? 'bg-primary-700 text-white'
-                          : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-200 dark:hover:bg-secondary-800'
-                    }`}
-                    key={`admin-tab-${tab.id}`}
-                    {...devMarker({
-                      context: 'admin center',
-                      name: 'edge tab',
-                      priority: 360,
-                      value: ADMIN_TAB_DEVELOPER_MODE_VALUES[tab.id],
-                    })}
-                    id={`${tab.id}-tab`}
-                    onClick={() => selectTab(tab.id)}
-                    role="tab"
-                    title={
-                      isDisabled ? ta('privacy.disabledTooltip') : undefined
-                    }
-                    type="button"
-                  >
-                    <tab.icon aria-hidden="true" className="h-4 w-4" />
-                    {label}
-                  </button>
-                )
-              })}
+                  return (
+                    <button
+                      aria-controls={`${tab.id}-panel`}
+                      aria-disabled={isDisabled ? 'true' : undefined}
+                      aria-selected={activeTab === tab.id}
+                      className={`inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
+                        isDisabled
+                          ? 'cursor-not-allowed text-secondary-400 opacity-50 hover:bg-transparent dark:text-secondary-500'
+                          : activeTab === tab.id
+                            ? 'bg-primary-700 text-white'
+                            : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-200 dark:hover:bg-secondary-800'
+                      }`}
+                      key={`admin-tab-${tab.id}`}
+                      {...devMarker({
+                        context: 'admin center',
+                        name: 'edge tab',
+                        priority: 360,
+                        value: ADMIN_TAB_DEVELOPER_MODE_VALUES[tab.id],
+                      })}
+                      id={`${tab.id}-tab`}
+                      onClick={() => selectTab(tab.id)}
+                      role="tab"
+                      title={
+                        isDisabled ? ta('privacy.disabledTooltip') : undefined
+                      }
+                      type="button"
+                    >
+                      <tab.icon aria-hidden="true" className="h-4 w-4" />
+                      {label}
+                    </button>
+                  )
+                })}
             </div>
           </div>
         </section>
