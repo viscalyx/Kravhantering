@@ -48,6 +48,10 @@ agents can use it reliably.
   List requirements linked to a specific specification, with optional description
   search. Use `specificationId` (numeric) or `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`)
   from `requirements_list_specifications`.
+- `requirements_list_graduation_target_areas`
+  List requirement areas the actor may use when graduating a specific
+  specification-local requirement. Use a returned `areas[].id` as
+  `requirementAreaId` for `requirements_graduate_local_requirement`.
 - `requirements_add_to_specification`
   Link one or more requirements to a specification. Requirements must have a
   published version; those without are skipped and returned in `skippedIds`.
@@ -294,6 +298,7 @@ Use a configuration like this:
         "requirements_transition_requirement",
         "requirements_list_specifications",
         "requirements_get_specification_items",
+        "requirements_list_graduation_target_areas",
         "requirements_add_to_specification",
         "requirements_graduate_local_requirement",
         "requirements_remove_from_specification",
@@ -333,6 +338,7 @@ Example:
         "requirements_transition_requirement",
         "requirements_list_specifications",
         "requirements_get_specification_items",
+        "requirements_list_graduation_target_areas",
         "requirements_add_to_specification",
         "requirements_graduate_local_requirement",
         "requirements_remove_from_specification",
@@ -470,6 +476,7 @@ tool. For requirement lists, it supports:
 - `Search for requirements about login in specification SAKLYFT-INFOR-Q2.`
 - `Add requirements INT0001 and INT0002 to specification SAKLYFT-INFOR-Q2.`
 - `Add requirement INT0005 to specification GDPR-FORV-2026 with needs reference text "Behov 4.1".` <!-- markdownlint-disable-line MD013 -->
+- `List graduation target areas for local requirement 41 in SAKLYFT-INFOR-Q2.`
 - `Graduate local requirement 41 from specification SAKLYFT-INFOR-Q2 into requirement area 3.` <!-- markdownlint-disable-line MD013 -->
 - `Remove requirement INT0003 from specification SAKLYFT-INFOR-Q2.`
 
@@ -480,9 +487,10 @@ tool. For requirement lists, it supports:
 > them. Requirements must have a published version to be added to a specification.
 > Graduation is copy-only: it creates a new Draft library requirement and leaves
 > the source specification-local requirement unchanged. Graduation requires
-> ownership or co-authorship of the target requirement area, not authorship of
-> the source
-> specification.
+> authorship of the source specification and ownership or co-authorship of the
+> target requirement area. Use `requirements_list_graduation_target_areas` before
+> graduating so the target `requirementAreaId` comes from the actor's allowed
+> target areas.
 
 ## Limitations
 
