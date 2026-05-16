@@ -95,6 +95,38 @@ function createService() {
     message: 'Specification items',
     specificationId: 7,
   }))
+  const listGraduationTargetAreas = vi.fn(async (_context: RequestContext) => ({
+    areas: [{ id: 2, name: 'Security', prefix: 'SEC' }],
+    message: 'Target areas',
+  }))
+  const graduateSpecificationLocalRequirement = vi.fn(
+    async (_context: RequestContext) => ({
+      detail: createDetail('SEC0001'),
+      message: 'Requirement graduated',
+      requirementResourceUri: 'requirements://requirement/SEC0001?version=1',
+      requirementViewUri:
+        'ui://requirements/requirement-detail/SEC0001?version=1',
+      result: {
+        requirement: {
+          id: 2,
+          requirementAreaId: 2,
+          sequenceNumber: 1,
+          uniqueId: 'SEC0001',
+        },
+        sourceLocalRequirement: {
+          id: 12,
+          specificationId: 7,
+          uniqueId: 'KRAV0001',
+        },
+        version: {
+          id: 20,
+          requirementId: 2,
+          statusId: 1,
+          versionNumber: 1,
+        },
+      },
+    }),
+  )
   const addToSpecification = vi.fn(async (_context: RequestContext) => ({
     addedCount: 0,
     message: 'Requirements skipped',
@@ -145,7 +177,9 @@ function createService() {
     generateRequirements,
     getRequirement,
     getSpecificationItems,
+    graduateSpecificationLocalRequirement,
     listDeviations: vi.fn(),
+    listGraduationTargetAreas,
     listSpecifications,
     listSuggestions,
     manageDeviation: vi.fn(),
@@ -160,6 +194,7 @@ function createService() {
     addToSpecification,
     generateRequirements,
     getRequirement,
+    graduateSpecificationLocalRequirement,
     manageRequirement,
     manageSuggestion,
     queryCatalog,
@@ -250,6 +285,14 @@ describe('MCP authorization seams', () => {
     })
     await client.callTool({
       arguments: {
+        localRequirementId: 12,
+        requirementAreaId: 2,
+        specificationId: 7,
+      },
+      name: 'requirements_graduate_local_requirement',
+    })
+    await client.callTool({
+      arguments: {
         content: 'Improve wording',
         operation: 'create',
         requirementId: 1,
@@ -270,6 +313,10 @@ describe('MCP authorization seams', () => {
     expectContext(
       service.addToSpecification,
       'requirements_add_to_specification',
+    )
+    expectContext(
+      service.graduateSpecificationLocalRequirement,
+      'requirements_graduate_local_requirement',
     )
     expectContext(
       service.manageSuggestion,

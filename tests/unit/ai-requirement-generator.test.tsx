@@ -194,7 +194,6 @@ describe('AiRequirementGenerator', () => {
 
   it('does not expose logprob confidence scoring as a model option', async () => {
     await renderOpenGenerator()
-    mockFetch.mockClear()
 
     await userEvent.click(screen.getByLabelText('capabilitySettings'))
 

@@ -36,6 +36,7 @@ import {
 import {
   createSpecification,
   createSpecificationLocalRequirement,
+  graduateSpecificationLocalRequirementToLibrary,
   linkRequirementsToSpecificationAtomically,
   updateSpecificationItemFields,
   updateSpecificationLocalRequirementFields,
@@ -307,6 +308,51 @@ async function createArea(
     [overrides.prefix ?? 'INT', overrides.name ?? 'Integration', now],
   )) as Array<{ id: number; name: string; prefix: string }>
   return rows[0] as { id: number; name: string; prefix: string }
+}
+
+async function createRequirementPackage(
+  target: SqlServerDatabase,
+): Promise<{ id: number }> {
+  const now = new Date()
+  const rows = (await target.query(
+    `INSERT INTO requirement_packages (name_sv, name_en, created_at, updated_at)
+       OUTPUT INSERTED.id AS id
+       VALUES (@0, @1, @2, @2)`,
+    ['Säkerhetspaket', 'Security package', now],
+  )) as Array<{ id: number }>
+  return rows[0] as { id: number }
+}
+
+async function createNormReference(
+  target: SqlServerDatabase,
+): Promise<{ id: number }> {
+  const now = new Date()
+  const rows = (await target.query(
+    `INSERT INTO norm_references (
+       norm_reference_id,
+       name,
+       type,
+       reference,
+       version,
+       issuer,
+       uri,
+       created_at,
+       updated_at
+     )
+       OUTPUT INSERTED.id AS id
+       VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @7)`,
+    [
+      `REF-${now.getTime()}`,
+      'Security reference',
+      'standard',
+      'section 1',
+      null,
+      'Test issuer',
+      null,
+      now,
+    ],
+  )) as Array<{ id: number }>
+  return rows[0] as { id: number }
 }
 
 async function createPublishedRequirement(
@@ -619,6 +665,150 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(updatedLocal?.specificationItemStatusId).toBe(
       DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
     )
+  })
+
+  it('Scenario 13: specification-local graduation is copy-only into a draft library requirement', async () => {
+    const sourceArea = await createArea(appDb(), {
+      name: 'Source hint',
+      prefix: 'SRC',
+    })
+    const targetArea = await createArea(appDb(), {
+      name: 'Target library',
+      prefix: 'TGT',
+    })
+    const requirementPackage = await createRequirementPackage(appDb())
+    const normReference = await createNormReference(appDb())
+    const spec = await createSpecification(appDb(), {
+      name: 'Graduation specification',
+      uniqueId: 'GRADUATION-SPECIFICATION',
+    })
+    const localItem = await createSpecificationLocalRequirement(
+      appDb(),
+      spec.id,
+      {
+        acceptanceCriteria: 'Copied acceptance',
+        description: 'Copied local requirement',
+        normReferenceIds: [normReference.id],
+        requirementAreaId: sourceArea.id,
+        requirementPackageIds: [requirementPackage.id],
+        requiresTesting: true,
+        verificationMethod: 'Inspection',
+      },
+    )
+    await appDb().query(
+      `UPDATE specification_local_requirements SET note = @0 WHERE id = @1`,
+      ['Keep source note', localItem.id],
+    )
+    await createDeviationForItemRef(appDb(), {
+      itemRef: `local:${localItem.id}`,
+      motivation: 'Keep source deviation',
+    })
+
+    const result = await graduateSpecificationLocalRequirementToLibrary(
+      appDb(),
+      {
+        actorDisplayName: 'Functional Test Actor',
+        actorHsaId: 'SE2321000032-functional1',
+        specificationId: spec.id,
+        specificationLocalRequirementId: localItem.id,
+        targetRequirementAreaId: targetArea.id,
+      },
+    )
+
+    expect(result.requirement.requirementAreaId).toBe(targetArea.id)
+    expect(result.sourceLocalRequirement.id).toBe(localItem.id)
+
+    const [sourceRows, targetRows, targetPackageRows, targetNormRows] =
+      await Promise.all([
+        appDb().query(
+          `SELECT
+             requirement_area_id AS requirementAreaId,
+             specification_item_status_id AS specificationItemStatusId,
+             note
+           FROM specification_local_requirements
+           WHERE id = @0`,
+          [localItem.id],
+        ) as Promise<
+          Array<{
+            note: string | null
+            requirementAreaId: number
+            specificationItemStatusId: number
+          }>
+        >,
+        appDb().query(
+          `SELECT
+             requirement.unique_id AS uniqueId,
+             requirement.requirement_area_id AS requirementAreaId,
+             version.description,
+             version.acceptance_criteria AS acceptanceCriteria,
+             version.requirement_status_id AS statusId,
+             CAST(version.is_testing_required AS int) AS requiresTesting,
+             version.verification_method AS verificationMethod,
+             version.created_by AS createdBy,
+             version.created_by_hsa_id AS createdByHsaId
+           FROM requirements requirement
+           INNER JOIN requirement_versions version
+             ON version.requirement_id = requirement.id
+           WHERE requirement.id = @0`,
+          [result.requirement.id],
+        ) as Promise<
+          Array<{
+            acceptanceCriteria: string
+            createdBy: string
+            createdByHsaId: string
+            description: string
+            requirementAreaId: number
+            requiresTesting: number
+            statusId: number
+            uniqueId: string
+            verificationMethod: string
+          }>
+        >,
+        appDb().query(
+          `SELECT requirement_package_id AS requirementPackageId
+           FROM requirement_version_requirement_packages
+           WHERE requirement_version_id = @0`,
+          [result.version.id],
+        ) as Promise<Array<{ requirementPackageId: number }>>,
+        appDb().query(
+          `SELECT norm_reference_id AS normReferenceId
+           FROM requirement_version_norm_references
+           WHERE requirement_version_id = @0`,
+          [result.version.id],
+        ) as Promise<Array<{ normReferenceId: number }>>,
+      ])
+    const deviationRows = (await appDb().query(
+      `SELECT COUNT(*) AS count
+       FROM specification_local_requirement_deviations
+       WHERE specification_local_requirement_id = @0`,
+      [localItem.id],
+    )) as Array<{ count: number }>
+
+    expect(sourceRows).toEqual([
+      {
+        note: 'Keep source note',
+        requirementAreaId: sourceArea.id,
+        specificationItemStatusId: DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+      },
+    ])
+    expect(targetRows).toEqual([
+      expect.objectContaining({
+        acceptanceCriteria: 'Copied acceptance',
+        createdBy: 'Functional Test Actor',
+        createdByHsaId: 'SE2321000032-functional1',
+        description: 'Copied local requirement',
+        requirementAreaId: targetArea.id,
+        requiresTesting: 1,
+        statusId: STATUS_DRAFT,
+        uniqueId: 'TGT0001',
+        verificationMethod: 'Inspection',
+      }),
+    ])
+    expect(targetPackageRows).toEqual([
+      { requirementPackageId: requirementPackage.id },
+    ])
+    expect(targetNormRows).toEqual([{ normReferenceId: normReference.id }])
+    expect(Number(deviationRows[0]?.count ?? 0)).toBe(1)
   })
 
   it('Scenario 7: needs-reference linking never leaks orphan metadata', async () => {

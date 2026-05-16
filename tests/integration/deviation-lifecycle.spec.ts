@@ -193,7 +193,6 @@ for (const viewport of viewports) {
 
           const dialog = page.getByRole('dialog', { name: 'Begär ett avsteg' })
           await dialog.locator('#deviation-motivation').fill(motivation)
-          await dialog.locator('#deviation-createdBy').fill('Playwright Test')
           await dialog
             .getByRole('button', { name: 'Registrera avsteg' })
             .click()

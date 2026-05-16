@@ -808,6 +808,19 @@ describe('requirement-specifications routes', () => {
     await expectInvalidRequest(r, 'responsibleDisplayName')
     expect(mockCreatePkg).not.toHaveBeenCalled()
   })
+  it('POST rejects a responsible name without a responsible HSA-ID', async () => {
+    const r = await postPkg(
+      jsonReq('POST', {
+        name: 'A',
+        uniqueId: 'A',
+        responsibleDisplayName: 'Ada Lovelace',
+      }),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'responsibleHsaId')
+    expect(mockCreatePkg).not.toHaveBeenCalled()
+  })
   it('PUT updates', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
     const r = await putPkg(jsonReq('PUT', { name: 'X' }), makeParams('1'))
@@ -840,6 +853,26 @@ describe('requirement-specifications routes', () => {
     const r = await putPkg(
       jsonReq('PUT', {
         responsibleDisplayName: '',
+      }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(200)
+    expect(mockUpdatePkg).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      expect.objectContaining({
+        responsibleHsaId: null,
+        responsibleDisplayName: null,
+        canResponsibleGenerateAi: false,
+      }),
+    )
+  })
+  it('PUT clears the responsible person fields as a pair using HSA-ID', async () => {
+    mockUpdatePkg.mockResolvedValue({ id: 1 })
+    const r = await putPkg(
+      jsonReq('PUT', {
+        responsibleHsaId: '',
       }),
       makeParams('1'),
     )

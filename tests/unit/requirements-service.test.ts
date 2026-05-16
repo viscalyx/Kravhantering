@@ -7,6 +7,8 @@ import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
 const mocks = vi.hoisted(() => ({
   approveArchiving: vi.fn(),
   cancelArchiving: vi.fn(),
+  canAuthorArea: vi.fn(),
+  canAuthorSpecification: vi.fn(),
   countDeviationsBySpecification: vi.fn(),
   countSuggestionsByRequirement: vi.fn(),
   createDeviation: vi.fn(),
@@ -21,9 +23,12 @@ const mocks = vi.hoisted(() => ({
   getAreaById: vi.fn(),
   getRequirementById: vi.fn(),
   getRequirementByUniqueId: vi.fn(),
+  getSpecificationLocalRequirementDetail: vi.fn(),
   getVersionHistory: vi.fn(),
+  graduateSpecificationLocalRequirementToLibrary: vi.fn(),
   generateChat: vi.fn(),
   listAreas: vi.fn(),
+  listAreasActorCanAuthor: vi.fn(),
   listCategories: vi.fn(),
   listRequirements: vi.fn(),
   listRequirementPackages: vi.fn(),
@@ -69,7 +74,9 @@ vi.mock('@/lib/ai/taxonomy', () => ({
 }))
 
 vi.mock('@/lib/dal/requirement-areas', () => ({
+  canAuthorArea: mocks.canAuthorArea,
   getAreaById: mocks.getAreaById,
+  listAreasActorCanAuthor: mocks.listAreasActorCanAuthor,
   listAreas: mocks.listAreas,
 }))
 
@@ -102,9 +109,14 @@ vi.mock('@/lib/dal/improvement-suggestions', () => ({
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
+  canAuthorSpecification: mocks.canAuthorSpecification,
+  graduateSpecificationLocalRequirementToLibrary:
+    mocks.graduateSpecificationLocalRequirementToLibrary,
   getOrCreateSpecificationNeedsReference:
     mocks.getOrCreateSpecificationNeedsReference,
   getSpecificationBySlug: mocks.getSpecificationBySlug,
+  getSpecificationLocalRequirementDetail:
+    mocks.getSpecificationLocalRequirementDetail,
   getPublishedVersionIdForRequirement:
     mocks.getPublishedVersionIdForRequirement,
   linkRequirementsToSpecificationAtomically:
@@ -290,6 +302,8 @@ describe('createRequirementsService', () => {
     mocks.createSuggestion.mockResolvedValue({ id: 6 })
     mocks.deleteDeviation.mockResolvedValue(undefined)
     mocks.deleteSuggestion.mockResolvedValue(undefined)
+    mocks.canAuthorArea.mockResolvedValue(true)
+    mocks.canAuthorSpecification.mockResolvedValue(true)
     mocks.listRequirements.mockResolvedValue([])
     mocks.countRequirements.mockResolvedValue(0)
     mocks.getRequirementById.mockResolvedValue(makeRequirementRecord())
@@ -323,10 +337,43 @@ describe('createRequirementsService', () => {
       id: 7,
       uniqueId: 'IAM-SPECIFICATION',
     })
+    mocks.getSpecificationLocalRequirementDetail.mockResolvedValue({
+      id: 12,
+      itemRef: 'local:12',
+      specificationItemStatusId: 1,
+      uniqueId: 'KRAV0001',
+    })
+    mocks.graduateSpecificationLocalRequirementToLibrary.mockResolvedValue({
+      requirement: {
+        id: 2,
+        requirementAreaId: 1,
+        sequenceNumber: 1,
+        uniqueId: 'INT0001',
+      },
+      sourceLocalRequirement: {
+        id: 12,
+        specificationId: 7,
+        uniqueId: 'KRAV0001',
+      },
+      version: {
+        id: 20,
+        requirementId: 2,
+        statusId: 1,
+        versionNumber: 1,
+      },
+    })
     mocks.getPublishedVersionIdForRequirement.mockResolvedValue(101)
     mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(0)
     mocks.linkRequirementsToSpecification.mockResolvedValue(0)
     mocks.listDeviationsForSpecification.mockResolvedValue([])
+    mocks.listAreasActorCanAuthor.mockResolvedValue([
+      {
+        id: 1,
+        name: 'Integration',
+        ownerId: 'alice',
+        prefix: 'INT',
+      },
+    ])
     mocks.listSpecificationItems.mockResolvedValue([])
     mocks.listSpecifications.mockResolvedValue([])
     mocks.listSuggestionsForRequirement.mockResolvedValue([])
@@ -1410,6 +1457,165 @@ describe('createRequirementsService', () => {
       lines: ['Removed 1 requirement from specification IAM-SPECIFICATION.'],
       title: 'Requirements Removed from Specification',
     })
+  })
+
+  it('lists graduation target areas without source specification authorship', async () => {
+    mocks.canAuthorSpecification.mockResolvedValueOnce(false)
+    mocks.listAreasActorCanAuthor.mockResolvedValue([
+      {
+        id: 2,
+        name: 'Security',
+        ownerId: 'alice',
+        prefix: 'SEC',
+      },
+    ])
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    const result = await service.listGraduationTargetAreas(makeContext(), {
+      localRequirementId: 12,
+      responseFormat: 'json',
+      specificationSlug: 'IAM-SPECIFICATION',
+    })
+
+    expect(mocks.canAuthorSpecification).not.toHaveBeenCalled()
+    expect(mocks.getSpecificationLocalRequirementDetail).toHaveBeenCalledWith(
+      expect.anything(),
+      7,
+      12,
+    )
+    expect(result.areas).toEqual([{ id: 2, name: 'Security', prefix: 'SEC' }])
+  })
+
+  it('graduates a specification-local requirement through the shared service workflow', async () => {
+    mocks.getAreaById.mockResolvedValue({
+      id: 2,
+      name: 'Security',
+      ownerId: 'alice',
+      prefix: 'SEC',
+    })
+    mocks.graduateSpecificationLocalRequirementToLibrary.mockResolvedValue({
+      requirement: {
+        id: 2,
+        requirementAreaId: 2,
+        sequenceNumber: 1,
+        uniqueId: 'SEC0001',
+      },
+      sourceLocalRequirement: {
+        id: 12,
+        specificationId: 7,
+        uniqueId: 'KRAV0001',
+      },
+      version: {
+        id: 20,
+        requirementId: 2,
+        statusId: 1,
+        versionNumber: 1,
+      },
+    })
+    mocks.getRequirementById.mockResolvedValue({
+      ...makeRequirementRecord(),
+      area: {
+        id: 2,
+        name: 'Security',
+        ownerId: 'alice',
+        prefix: 'SEC',
+      },
+      id: 2,
+      uniqueId: 'SEC0001',
+      versions: [
+        {
+          ...makeRequirementRecord().versions[0],
+          id: 20,
+          status: 1,
+          statusNameEn: 'Draft',
+          statusNameSv: 'Utkast',
+          versionNumber: 1,
+        },
+      ],
+    })
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    const result = await service.graduateSpecificationLocalRequirement(
+      makeContext(),
+      {
+        localRequirementId: 12,
+        requirementAreaId: 2,
+        responseFormat: 'json',
+        specificationSlug: 'IAM-SPECIFICATION',
+      },
+    )
+
+    expect(
+      mocks.graduateSpecificationLocalRequirementToLibrary,
+    ).toHaveBeenCalledWith(expect.anything(), {
+      actorDisplayName: 'alice',
+      actorHsaId: 'SE2321000032-alice1',
+      specificationId: 7,
+      specificationLocalRequirementId: 12,
+      targetRequirementAreaId: 2,
+    })
+    expect(result.detail.uniqueId).toBe('SEC0001')
+    expect(result.requirementResourceUri).toBe(
+      'requirements://requirement/SEC0001?version=1',
+    )
+    expect(result.requirementViewUri).toBe(
+      'ui://requirements/requirement-detail/SEC0001?version=1',
+    )
+    expect(emittedSecurityEvents()).toEqual([
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          action: 'specification_local_requirement.graduated',
+          localRequirementId: 12,
+          newRequirementId: 2,
+          newRequirementUniqueId: 'SEC0001',
+          operation: 'graduate_specification_local_requirement',
+          specificationId: 7,
+          specificationSlug: 'IAM-SPECIFICATION',
+          targetRequirementAreaId: 2,
+        }),
+        event: 'requirements.high_risk_mutation.succeeded',
+      }),
+    ])
+  })
+
+  it('denies graduation when the actor cannot author the target area', async () => {
+    mocks.canAuthorArea.mockResolvedValueOnce(false)
+    mocks.getAreaById.mockResolvedValue({
+      id: 2,
+      name: 'Security',
+      ownerId: 'alice',
+      prefix: 'SEC',
+    })
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const context = {
+      ...makeContext(),
+      actor: {
+        ...makeContext().actor,
+        roles: [],
+      },
+    }
+
+    await expect(
+      service.graduateSpecificationLocalRequirement(context, {
+        localRequirementId: 12,
+        requirementAreaId: 2,
+        specificationSlug: 'IAM-SPECIFICATION',
+      }),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+    })
+    expect(
+      mocks.graduateSpecificationLocalRequirementToLibrary,
+    ).not.toHaveBeenCalled()
   })
 
   it('does not emit specification addition audit events when no links are added', async () => {

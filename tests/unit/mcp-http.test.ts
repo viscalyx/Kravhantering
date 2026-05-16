@@ -183,6 +183,50 @@ function createFakeService(
       message: 'Specification items',
       specificationId: 7,
     }),
+    graduateSpecificationLocalRequirement: vi.fn().mockResolvedValue({
+      detail: {
+        area: { id: 2, name: 'Security' },
+        createdAt: '2026-03-08T00:00:00.000Z',
+        id: 2,
+        isArchived: false,
+        specificationCount: 0,
+        uniqueId: 'SEC0001',
+        versions: [
+          {
+            id: 20,
+            revisionToken: '33333333-3333-4333-8333-333333333333',
+            versionNumber: 1,
+          },
+        ],
+      },
+      message: 'Requirement graduated',
+      requirementResourceUri: 'requirements://requirement/SEC0001?version=1',
+      requirementViewUri:
+        'ui://requirements/requirement-detail/SEC0001?version=1',
+      result: {
+        requirement: {
+          id: 2,
+          requirementAreaId: 2,
+          sequenceNumber: 1,
+          uniqueId: 'SEC0001',
+        },
+        sourceLocalRequirement: {
+          id: 12,
+          specificationId: 7,
+          uniqueId: 'KRAV0001',
+        },
+        version: {
+          id: 20,
+          requirementId: 2,
+          statusId: 1,
+          versionNumber: 1,
+        },
+      },
+    }),
+    listGraduationTargetAreas: vi.fn().mockResolvedValue({
+      areas: [{ id: 2, name: 'Security', prefix: 'SEC' }],
+      message: 'Target areas',
+    }),
     listSpecifications: vi.fn().mockResolvedValue({
       message: 'Specifications',
       specifications: [],
@@ -286,6 +330,7 @@ describe('handleRequirementsMcpRequest', () => {
           'requirements_generate_requirements',
           'requirements_get_requirement',
           'requirements_get_specification_items',
+          'requirements_graduate_local_requirement',
           'requirements_list_improvement_suggestions',
           'requirements_list_specifications',
           'requirements_manage_requirement',
@@ -353,6 +398,22 @@ describe('handleRequirementsMcpRequest', () => {
       expect(transitionTool?.description).toContain('rotates the version')
       expect(JSON.stringify(transitionTool?.outputSchema)).toContain(
         'revisionToken',
+      )
+    })
+
+    it('describes requirements_graduate_local_requirement copy-only behavior', async () => {
+      const graduateTool = getTool('requirements_graduate_local_requirement')
+
+      expect(graduateTool).toBeDefined()
+      expect(graduateTool?.description).toContain('Copy an Included')
+      expect(graduateTool?.description).toContain(
+        'source local requirement remains unchanged',
+      )
+      const graduateInputSchemaText = JSON.stringify(graduateTool?.inputSchema)
+      expect(graduateInputSchemaText).toContain('localRequirementId')
+      expect(graduateInputSchemaText).toContain('requirementAreaId')
+      expect(JSON.stringify(graduateTool?.outputSchema)).toContain(
+        'requirementViewUri',
       )
     })
 
@@ -500,6 +561,51 @@ describe('handleRequirementsMcpRequest', () => {
         sortDirection: 'desc',
         requirementPackageIds: [3],
       }),
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('graduates a specification-local requirement through MCP and returns links', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+
+    const result = await client.callTool({
+      arguments: {
+        localRequirementId: 12,
+        requirementAreaId: 2,
+        specificationId: 7,
+      },
+      name: 'requirements_graduate_local_requirement',
+    })
+
+    expect(result.isError).not.toBe(true)
+    expect(result._meta).toMatchObject({
+      'openai/outputTemplate':
+        'ui://requirements/requirement-detail/SEC0001?version=1',
+    })
+    expect(
+      fakeService.graduateSpecificationLocalRequirement,
+    ).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        localRequirementId: 12,
+        requirementAreaId: 2,
+        specificationId: 7,
+      }),
+    )
+    expect(result.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'resource_link',
+          uri: 'requirements://requirement/SEC0001?version=1',
+        }),
+        expect.objectContaining({
+          type: 'resource_link',
+          uri: 'ui://requirements/requirement-detail/SEC0001?version=1',
+        }),
+      ]),
     )
 
     await client.close()

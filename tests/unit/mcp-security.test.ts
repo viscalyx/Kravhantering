@@ -15,6 +15,7 @@ const EXPECTED_TOOLS = [
   'requirements_generate_requirements',
   'requirements_get_requirement',
   'requirements_get_specification_items',
+  'requirements_graduate_local_requirement',
   'requirements_list_improvement_suggestions',
   'requirements_list_specifications',
   'requirements_manage_improvement_suggestion',
@@ -99,7 +100,37 @@ function createService() {
       message: 'Specification items',
       specificationId: 7,
     })),
+    graduateSpecificationLocalRequirement: vi.fn(async () => ({
+      detail: createDetail('SEC0001'),
+      message: 'Specification-local requirement graduated to library draft',
+      requirementResourceUri: 'requirements://requirement/SEC0001?version=1',
+      requirementViewUri:
+        'ui://requirements/requirement-detail/SEC0001?version=1',
+      result: {
+        requirement: {
+          id: 12,
+          requirementAreaId: 2,
+          sequenceNumber: 1,
+          uniqueId: 'SEC0001',
+        },
+        sourceLocalRequirement: {
+          id: 1,
+          specificationId: 7,
+          uniqueId: 'LOCAL0001',
+        },
+        version: {
+          id: 22,
+          requirementId: 12,
+          statusId: 1,
+          versionNumber: 1,
+        },
+      },
+    })),
     listDeviations: vi.fn(),
+    listGraduationTargetAreas: vi.fn(async () => ({
+      areas: [{ id: 2, name: 'Security', prefix: 'SEC' }],
+      message: 'Graduation target areas',
+    })),
     listSpecifications: vi.fn(async () => ({
       message: 'Specifications',
       specifications: [],

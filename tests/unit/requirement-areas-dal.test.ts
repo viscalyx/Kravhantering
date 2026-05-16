@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createArea } from '@/lib/dal/requirement-areas'
+import {
+  canAuthorArea,
+  createArea,
+  listAreasActorCanAuthor,
+} from '@/lib/dal/requirement-areas'
 
 function createSqlServerDb() {
   const query = vi.fn().mockResolvedValue([
@@ -51,5 +55,27 @@ describe('requirement-areas DAL', () => {
       createdAt: '2026-05-02T08:00:00.000Z',
       updatedAt: '2026-05-02T08:00:00.000Z',
     })
+  })
+
+  it('lists graduation target areas by owner or area co-author HSA-ID', async () => {
+    const { db, query } = createSqlServerDb()
+
+    await listAreasActorCanAuthor(db, 'SE2321000032-owner1', false)
+
+    expect(query.mock.calls[0][0]).toContain('owner.hsa_id = @0')
+    expect(query.mock.calls[0][0]).toContain('requirement_area_co_authors')
+    expect(query.mock.calls[0][0]).toContain('co_author.hsa_id = @0')
+    expect(query.mock.calls[0][1]).toEqual(['SE2321000032-owner1'])
+  })
+
+  it('checks graduation target owner or co-author permission', async () => {
+    const { db, query } = createSqlServerDb()
+
+    await canAuthorArea(db, 11, 'SE2321000032-owner1', false)
+
+    expect(query.mock.calls[0][0]).toContain('owner.hsa_id = @1')
+    expect(query.mock.calls[0][0]).toContain('requirement_area_co_authors')
+    expect(query.mock.calls[0][0]).toContain('co_author.hsa_id = @1')
+    expect(query.mock.calls[0][1]).toEqual([11, 'SE2321000032-owner1'])
   })
 })

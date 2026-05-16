@@ -452,6 +452,36 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12d: strict
 ```
 <!-- markdownlint-enable MD013 -->
 
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 13: specification-local graduation is copy-only into a draft library requirement
+
+**Requirement tag:** `[Req: formal — issue #96 copy-only graduation workflow]`
+
+**What happened:** `graduateSpecificationLocalRequirementToLibrary()` in
+`lib/dal/requirements-specifications.ts` locks the source
+specification-local row, requires Included usage status, creates a new
+library requirement and Draft version in the selected target area, copies
+supported classification, verification, requirement-package and norm-reference
+joins, and leaves the original local row untouched. Without this fitness
+scenario, a later implementation could silently revert to the old replace/link
+idea and move or delete evidence from the source specification.
+
+**The requirement:** Graduation must be copy-only. The source
+specification-local requirement, its usage status, note, source area hint, and
+local deviations remain unchanged; the target library requirement is a new
+Draft in the chosen requirement area, even when that target differs from the
+source hint.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 13: specification-local graduation is copy-only into a draft library requirement"
+```
+<!-- markdownlint-enable MD013 -->
+
 ## AI Session Quality Discipline
 
 1. Read `tests/quality/QUALITY.md` before changing lifecycle, specification, MCP,
