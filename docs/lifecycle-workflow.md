@@ -77,7 +77,11 @@ All three operations run inside a single `SERIALIZABLE`
 transaction with locked precondition reads and conditional
 writes, so concurrent archiving attempts on the same
 requirement are serialized: at most one succeeds and the
-others fail with a conflict error.
+others fail with a conflict error. SQL Server filtered
+unique indexes additionally enforce that a requirement can
+have at most one version with `archive_initiated_at` set and
+at most one Published version, so manual or legacy data
+cannot create ambiguous archiving or publishing targets.
 
 While a version is in archiving review (status = Review
 *and* `archive_initiated_at` is set), the UI surfaces a

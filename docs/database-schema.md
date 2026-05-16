@@ -1129,14 +1129,20 @@ precondition.
 **Unique constraints:**
 `uq_requirement_versions_requirement_id_version_number`
 on `(requirement_id, version_number)`;
-`uq_requirement_versions_revision_token` on `revision_token`.
+`uq_requirement_versions_revision_token` on `revision_token`;
+`uq_requirement_versions_archive_initiated_requirement_id`
+on `requirement_id` where `archive_initiated_at IS NOT NULL`;
+`uq_requirement_versions_published_requirement_id`
+on `requirement_id` where `requirement_status_id = 3`.
 **Indexes:** `idx_requirement_versions_requirement_id`,
 `idx_requirement_versions_created_by_hsa_id`,
 `idx_requirement_versions_status_updated_at`,
 `idx_requirement_versions_has_specification_item_history`.
 
 **Lifecycle invariant:** `created_at` < `published_at`
-< `archived_at` (when applicable).
+< `archived_at` (when applicable). Filtered unique indexes
+also enforce at most one Published version and at most one
+archiving-in-progress version per requirement.
 
 **Effective status (filtering):** When listing requirements
 the system computes a priority-based effective status per
@@ -1769,6 +1775,8 @@ its purpose and the table/column(s) it covers.
 | `uq_requirements_unique_id` | `requirements` | `unique_id` | Ensures each requirement has a distinct human-readable ID |
 | `uq_requirement_versions_requirement_id_version_number` | `requirement_versions` | `(requirement_id, version_number)` | Ensures version numbers are unique per requirement |
 | `uq_requirement_versions_revision_token` | `requirement_versions` | `revision_token` | Ensures each opaque edit token identifies one version row |
+| `uq_requirement_versions_archive_initiated_requirement_id` | `requirement_versions` | `requirement_id` where `archive_initiated_at IS NOT NULL` | Ensures a requirement has at most one archiving-in-progress version |
+| `uq_requirement_versions_published_requirement_id` | `requirement_versions` | `requirement_id` where `requirement_status_id = 3` | Ensures a requirement has at most one Published version |
 | `uq_specification_responsibility_areas_name_sv` | `specification_responsibility_areas` | `name_sv` | Prevents duplicate Swedish responsibility area names |
 | `uq_specification_responsibility_areas_name_en` | `specification_responsibility_areas` | `name_en` | Prevents duplicate English responsibility area names |
 | `uq_owners_email` | `owners` | `email` | Prevents duplicate non-null owner email addresses |
@@ -1986,6 +1994,8 @@ graph LR
 
     RV -- "uq_..._requirement_id_version_number\n(requirement_id, version_number)" --> R
     RV -- "uq_requirement_versions_revision_token\n(revision_token)" --> RV
+    RV -- "uq_..._archive_initiated_requirement_id\n(requirement_id WHERE archive_initiated_at IS NOT NULL)" --> R
+    RV -- "uq_..._published_requirement_id\n(requirement_id WHERE requirement_status_id = 3)" --> R
     RV -- "idx_..._requirement_id\n(requirement_id)" --> R
     RV -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> RV
     RV -- "idx_..._status_updated_at\n(status_updated_at)" --> RV

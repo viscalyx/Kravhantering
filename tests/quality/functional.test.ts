@@ -1213,6 +1213,78 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(v2Cancel?.revisionToken).toBe(v2b.revisionToken)
   })
 
+  it('Scenario 12e: storage constraints reject duplicate archiving targets', async () => {
+    const area = await createArea(appDb())
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Duplicate archive target baseline',
+    )
+    const v2 = await editRequirement(appDb(), published.requirementId, {
+      baseRevisionToken: published.revisionToken,
+      baseVersionId: published.publishedVersionId,
+      description: 'Successor draft with duplicate archive flag attempt',
+    })
+
+    await appDb().query(
+      `UPDATE requirement_versions
+        SET requirement_status_id = @0,
+            archive_initiated_at = @1,
+            revision_token = NEWID()
+        WHERE id = @2`,
+      [STATUS_REVIEW, new Date(), published.publishedVersionId],
+    )
+
+    await expect(
+      appDb().query(
+        `UPDATE requirement_versions
+          SET archive_initiated_at = @0,
+              revision_token = NEWID()
+          WHERE id = @1`,
+        [new Date(), v2.id],
+      ),
+    ).rejects.toThrow(
+      'uq_requirement_versions_archive_initiated_requirement_id',
+    )
+
+    const history = await getVersionHistory(appDb(), published.requirementId)
+    const v1After = history.find(v => v.versionNumber === 1)
+    const v2After = history.find(v => v.versionNumber === 2)
+    expect(v1After?.archiveInitiatedAt).not.toBeNull()
+    expect(v2After?.archiveInitiatedAt).toBeNull()
+  })
+
+  it('Scenario 12f: storage constraints reject duplicate Published versions', async () => {
+    const area = await createArea(appDb())
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Duplicate published baseline',
+    )
+    const v2 = await editRequirement(appDb(), published.requirementId, {
+      baseRevisionToken: published.revisionToken,
+      baseVersionId: published.publishedVersionId,
+      description: 'Successor draft with duplicate published attempt',
+    })
+
+    await expect(
+      appDb().query(
+        `UPDATE requirement_versions
+          SET requirement_status_id = @0,
+              published_at = @1,
+              revision_token = NEWID()
+          WHERE id = @2`,
+        [STATUS_PUBLISHED, new Date(), v2.id],
+      ),
+    ).rejects.toThrow('uq_requirement_versions_published_requirement_id')
+
+    const history = await getVersionHistory(appDb(), published.requirementId)
+    const v1After = history.find(v => v.versionNumber === 1)
+    const v2After = history.find(v => v.versionNumber === 2)
+    expect(v1After?.status).toBe(STATUS_PUBLISHED)
+    expect(v2After?.status).toBe(STATUS_DRAFT)
+  })
+
   it('Scenario 14: action audit rows fail closed with the business transaction', async () => {
     await expect(
       appDb().transaction(async manager => {

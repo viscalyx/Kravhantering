@@ -47,6 +47,11 @@ New version rows are created **only** by these operations:
 Status transitions **never** create new version rows. They update
 the existing row in place.
 
+The database enforces two storage-level lifecycle uniqueness
+rules with SQL Server filtered unique indexes: only one version
+per requirement may be Published, and only one version per
+requirement may have `archive_initiated_at` set.
+
 New version rows start with `status_updated_at = created_at` and
 `has_specification_item_history = false`. The history marker is set to true
 when the version is linked into a requirements specification and remains true

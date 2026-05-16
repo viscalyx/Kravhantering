@@ -367,6 +367,8 @@ contradictory state.
 **The requirement:** Concurrent `initiateArchiving` attempts on the same
 requirement are serialized: at most one succeeds; the loser fails with a
 `conflict` error and the requirement is left in a consistent lifecycle state.
+The database also rejects duplicate archiving-in-progress rows for the same
+requirement.
 
 **How to verify:**
 
@@ -443,13 +445,58 @@ version is never silently flipped to Archived or Published.
 **The requirement:** Approve and cancel target strictly the version with
 `archive_initiated_at` set; a newer Draft or Review version on the same
 requirement is never the target and its status, content, and revision token
-remain untouched.
+remain untouched. Filtered unique indexes make duplicate Published or
+archiving-in-progress targets invalid at the storage layer.
 
 **How to verify:**
 
 <!-- markdownlint-disable MD013 -->
 ```sh
 npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12d: strict-target behavior with manual state manipulation"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 12e: storage constraints reject duplicate archiving targets
+
+**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+
+**What happened:** A filtered unique index on `requirement_versions` prevents
+more than one row for the same requirement from having
+`archive_initiated_at IS NOT NULL`.
+
+**The requirement:** Even direct SQL or legacy data manipulation cannot create
+two archiving-in-progress targets for one requirement.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12e: storage constraints reject duplicate archiving targets"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 12f: storage constraints reject duplicate Published versions
+
+**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+
+**What happened:** A filtered unique index on `requirement_versions` prevents
+more than one row for the same requirement from having
+`requirement_status_id = Published`.
+
+**The requirement:** Even direct SQL or legacy data manipulation cannot create
+two Published targets for one requirement.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12f: storage constraints reject duplicate Published versions"
 ```
 <!-- markdownlint-enable MD013 -->
 
