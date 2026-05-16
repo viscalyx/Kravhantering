@@ -155,6 +155,7 @@ async function main() {
   const loginHtml = await loginPage.text()
   const formAction = extractKeycloakLoginFormAction(loginHtml)
   if (!formAction) fail(describeKeycloakLoginFormActionError(loginPageUrl))
+  const resolvedFormAction = new URL(formAction, loginPageUrl).toString()
 
   // 2. Submit credentials. Keycloak responds 302 to the app's
   //    /api/auth/callback, which 302s back to / and sets the iron-session
@@ -165,7 +166,7 @@ async function main() {
     credentialId: '',
   }).toString()
   const { response: postLogin, finalUrl: postLoginUrl } =
-    await followingRedirects(formAction, {
+    await followingRedirects(resolvedFormAction, {
       method: 'POST',
       body,
       headers: { 'content-type': 'application/x-www-form-urlencoded' },

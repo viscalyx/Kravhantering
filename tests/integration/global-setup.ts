@@ -100,8 +100,9 @@ async function loginAndSaveStorageState(
   if (!formAction) {
     throw new Error(describeKeycloakLoginFormActionError(loginPage.url()))
   }
+  const resolvedFormAction = new URL(formAction, loginPage.url()).toString()
 
-  const callbackResponse = await context.post(formAction, {
+  const callbackResponse = await context.post(resolvedFormAction, {
     form: {
       username: spec.username,
       password: spec.password,

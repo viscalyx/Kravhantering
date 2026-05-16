@@ -1830,10 +1830,12 @@ describe('createRequirementsService', () => {
         outcome: 'success',
       }),
     ])
-    expect(mocks.auditQuery).not.toHaveBeenCalledWith(
-      expect.stringContaining('SELECT TOP (1) unique_id'),
-      expect.anything(),
+    const auditSqlCalls = mocks.auditQuery.mock.calls.map(([sql]) =>
+      typeof sql === 'string' ? sql : '',
     )
+    expect(
+      auditSqlCalls.some(sql => sql.includes('SELECT TOP (1) unique_id')),
+    ).toBe(false)
   })
 
   it('emits security audit events for specification removals', async () => {
