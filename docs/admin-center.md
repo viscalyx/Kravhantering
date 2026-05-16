@@ -23,7 +23,7 @@ the admin center instead.
 
 ## Tabs
 
-The admin center currently has six tabs:
+The admin center currently has six tabs for core administration:
 
 - `Terminology`
 - `Columns`
@@ -32,16 +32,17 @@ The admin center currently has six tabs:
 - `Archiving`
 - `Privacy`
 
-Admins also see an `Action audit log` link in the Admin Center header. The log
-is a separate page rather than a tab because it is read-only review evidence.
+Admins also see an `Action audit log` tab. The tab renders the audit-log
+filters, table, pagination, and CSV export directly in the Admin Center.
 
 ## Action Audit Log
 
 The action audit log is available at `/{locale}/admin/audit-log` for users with
-the `Admin` role. It reads `action_audit_events`, shows the latest 50 events by
-default, supports filters for actor HSA-ID, action, target, decision, and date
-range, plus client IP when a validated `X-Forwarded-For` value was available,
-and exports the filtered result as CSV.
+the `Admin` role, and also inline from the Admin Center `Action audit log` tab
+at `/{locale}/admin?tab=actionAuditLog`. It reads `action_audit_events`, shows
+the latest 50 events by default, supports filters for actor HSA-ID, action,
+target, decision, and date range, plus client IP when a validated
+`X-Forwarded-For` value was available, and exports the filtered result as CSV.
 
 The database action audit log is separate from the platform `security-audit`
 JSON stream. The database log is intended for application action review and

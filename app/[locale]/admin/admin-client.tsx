@@ -45,6 +45,10 @@ import {
 } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useAccessReviewExportDownload } from '@/components/access-review/useAccessReviewExportDownload'
+import ActionAuditLogView, {
+  type ActionAuditLogInitialState,
+  type ActionAuditLogLabels,
+} from '@/components/admin/ActionAuditLogView'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useDataSubjectExportDownload } from '@/components/privacy/useDataSubjectExportDownload'
@@ -55,6 +59,7 @@ import type {
   AccessReviewRun,
   AccessReviewRunDetail,
 } from '@/lib/access-review/types'
+import type { ActionAuditLogSearchParams } from '@/lib/audit/action-audit-query'
 import { downloadBlob } from '@/lib/browser-download'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -2657,10 +2662,12 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
   )
 }
 export default function AdminClient({
+  actionAuditLog,
   currentUserRoles = [],
   initialColumnDefaults,
   initialTerminology,
 }: {
+  actionAuditLog?: ActionAuditLogInitialState
   currentUserRoles?: string[]
   initialColumnDefaults: RequirementListColumnDefault[]
   initialTerminology: UiTermTranslation[]
@@ -2671,6 +2678,7 @@ export default function AdminClient({
   const tr = useTranslations('requirement')
   const tis = useTranslations('improvementSuggestion')
   const terminologyLabel = useTranslations('terminology')
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
   const canUsePrivacy = currentUserRoles.includes(PRIVACY_OFFICER_ROLE)
@@ -2701,6 +2709,10 @@ export default function AdminClient({
   const orderedColumns = useMemo(
     () => getOrderedRequirementListColumns(columnDefaults),
     [columnDefaults],
+  )
+  const actionAuditLogQuery = useMemo<ActionAuditLogSearchParams>(
+    () => Object.fromEntries(new URLSearchParams(searchParams).entries()),
+    [searchParams],
   )
   const isTerminologySaving = terminologySaveState === 'saving'
   const isColumnSaving = columnSaveState === 'saving'
@@ -2987,6 +2999,34 @@ export default function AdminClient({
     }
 
     return null
+  }
+
+  const actionAuditLogLabels: ActionAuditLogLabels = {
+    action: ta('auditLog.action'),
+    actor: ta('auditLog.actor'),
+    actorHsaId: ta('auditLog.actorHsaId'),
+    allDecisions: ta('auditLog.allDecisions'),
+    allowed: ta('auditLog.allowed'),
+    clear: ta('auditLog.clear'),
+    clientIp: ta('auditLog.clientIp'),
+    decision: ta('auditLog.decision'),
+    denied: ta('auditLog.denied'),
+    description: ta('auditLog.description'),
+    empty: ta('auditLog.empty'),
+    exportCsv: ta('auditLog.exportCsv'),
+    eyebrow: ta('auditLog.eyebrow'),
+    filter: ta('auditLog.filter'),
+    from: ta('auditLog.from'),
+    next: ta('auditLog.next'),
+    occurredAt: ta('auditLog.occurredAt'),
+    pagination: values => ta('auditLog.pagination', values),
+    previous: ta('auditLog.previous'),
+    requestId: ta('auditLog.requestId'),
+    target: ta('auditLog.target'),
+    targetId: ta('auditLog.targetId'),
+    targetKind: ta('auditLog.targetKind'),
+    title: ta('auditLog.title'),
+    to: ta('auditLog.to'),
   }
 
   return (
@@ -3392,7 +3432,7 @@ export default function AdminClient({
         {activeTab === 'actionAuditLog' && canManageAccessReviews ? (
           <section
             aria-labelledby="actionAuditLog-tab"
-            className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+            className="space-y-6"
             {...devMarker({
               context: 'admin center',
               name: 'tab panel',
@@ -3402,23 +3442,17 @@ export default function AdminClient({
             id="actionAuditLog-panel"
             role="tabpanel"
           >
-            <div className="border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60">
-              <h2 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
-                {ta('auditLog.title')}
-              </h2>
-              <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
-                {ta('auditLog.description')}
-              </p>
-            </div>
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Link
-                className="btn-secondary inline-flex items-center gap-2"
-                href="/admin/audit-log"
-              >
-                <FileText aria-hidden="true" className="h-4 w-4" />
-                {ta('auditLog.open')}
-              </Link>
-            </div>
+            <ActionAuditLogView
+              basePath={`/${locale}/admin`}
+              labels={actionAuditLogLabels}
+              loadingLabel={tc('loading')}
+              locale={locale}
+              preservedParams={{ [ADMIN_TAB_QUERY_KEY]: 'actionAuditLog' }}
+              query={actionAuditLog?.query ?? actionAuditLogQuery}
+              result={actionAuditLog?.result}
+              showEyebrow={false}
+              titleElement="h2"
+            />
           </section>
         ) : null}
       </div>

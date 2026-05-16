@@ -280,6 +280,43 @@ describe('access review service', () => {
     )
   })
 
+  it('runs the create audit callback inside the review creation transaction', async () => {
+    const items = [accessReviewSnapshot(1), accessReviewSnapshot(2)]
+    const { db, generatedAt, transactionQueries } = accessReviewCreateDb(items)
+    const audit = vi.fn(async (executor, detail) => {
+      expect(detail).toEqual({
+        itemCount: 2,
+        runId: 42,
+        status: 'in_review',
+      })
+      await executor.query('INSERT INTO action_audit_events (...) VALUES (...)')
+    })
+
+    await createAccessReviewRun(
+      db as never,
+      {
+        generatedAt,
+        reviewer: {
+          displayName: 'Ada Admin',
+          hsaId: 'SE2321000032-admin1',
+        },
+      },
+      {
+        displayName: 'Ada Admin',
+        hsaId: 'SE2321000032-admin1',
+        roles: ['Admin'],
+      },
+      { audit },
+    )
+
+    expect(audit).toHaveBeenCalledTimes(1)
+    expect(
+      transactionQueries.some(query =>
+        query.sql.includes('INSERT INTO action_audit_events'),
+      ),
+    ).toBe(true)
+  })
+
   it('splits review item inserts into batches below the SQL Server parameter limit', async () => {
     const items = Array.from({ length: 151 }, (_, index) =>
       accessReviewSnapshot(index + 1),

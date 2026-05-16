@@ -483,9 +483,6 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 13: specifi
 ```
 <!-- markdownlint-enable MD013 -->
 
----
-
-<!-- markdownlint-disable-next-line MD013 -->
 ### Scenario 14: action audit rows fail closed with the business transaction
 
 **Requirement tag:** `[Req: formal — docs/audit-log.md "Failure Mode"]`

@@ -1,4 +1,5 @@
 import {
+  type QueryExecutor,
   recordAllowedActionAuditEvent,
   recordDeniedActionAuditEvent,
 } from '@/lib/audit/action-audit'
@@ -362,7 +363,15 @@ export async function recordHighRiskMutationSucceeded(
   detail: HighRiskMutationAuditDetail,
 ): Promise<void> {
   const db = await getRequestSqlServerDataSource()
-  await recordAllowedActionAuditEvent(db, context, {
+  await recordHighRiskMutationSucceededWithExecutor(db, context, detail)
+}
+
+export async function recordHighRiskMutationSucceededWithExecutor(
+  executor: QueryExecutor,
+  context: RequestContext,
+  detail: HighRiskMutationAuditDetail,
+): Promise<void> {
+  await recordAllowedActionAuditEvent(executor, context, {
     action: normalizeHighRiskAction(detail),
     details: compactDetail({
       ...detail,

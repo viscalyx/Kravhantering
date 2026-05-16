@@ -268,6 +268,15 @@ interface VersionInsertedRow {
   versionNumber: number
 }
 
+interface RequirementMutationAuditOptions<TResult = undefined> {
+  audit?: (executor: SqlServerTxExecutor, result: TResult) => Promise<void>
+}
+
+interface CreateRequirementResult {
+  requirement: RequirementInsertedRow
+  version: VersionInsertedRow
+}
+
 function mapRequirement(row: Record<string, unknown>): RequirementInsertedRow {
   return {
     id: Number(row.id),
@@ -348,10 +357,8 @@ const VERSION_OUTPUT = `
 export async function createRequirement(
   db: SqlServerDatabase,
   data: RequirementMutationData,
-): Promise<{
-  requirement: RequirementInsertedRow
-  version: VersionInsertedRow
-}> {
+  options: RequirementMutationAuditOptions<CreateRequirementResult> = {},
+): Promise<CreateRequirementResult> {
   const requirementPackageIds = uniqueIds(data.requirementPackageIds)
   const normRefIds = uniqueIds(data.normReferenceIds)
   const now = new Date()
@@ -415,6 +422,7 @@ export async function createRequirement(
       requirementPackageIds,
       normRefIds,
     )
+    await options.audit?.(tx, { requirement, version })
   })
 
   return { requirement, version }
@@ -538,6 +546,7 @@ export async function editRequirement(
   data: Omit<RequirementMutationData, 'requirementAreaId'> & {
     requirementAreaId?: number
   },
+  options: RequirementMutationAuditOptions<VersionInsertedRow> = {},
 ): Promise<VersionInsertedRow> {
   const requirementPackageIds = uniqueIds(data.requirementPackageIds)
   const normRefIds = uniqueIds(data.normReferenceIds)
@@ -637,52 +646,52 @@ export async function editRequirement(
         requirementPackageIds,
         normRefIds,
       )
-      return
-    }
-
-    // Published → create new Draft version
-    const nextVersionNumber = await getNextVersionNumberSqlServer(
-      tx,
-      requirementId,
-    )
-    await updateRequirementArea()
-    const insertRows = (await tx.query(
-      `INSERT INTO requirement_versions (
-          requirement_id, version_number, description, acceptance_criteria,
-          requirement_category_id, requirement_type_id, quality_characteristic_id,
-        risk_level_id, requirement_status_id, is_testing_required,
-        verification_method, created_at, edited_at, published_at,
-        archived_at, archive_initiated_at, created_by, created_by_hsa_id,
-        status_updated_at, has_specification_item_history
-      )
-        ${VERSION_OUTPUT}
-        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, NULL, NULL, NULL, @13, @14, @15, 0)`,
-      [
+    } else {
+      // Published → create new Draft version
+      const nextVersionNumber = await getNextVersionNumberSqlServer(
+        tx,
         requirementId,
-        nextVersionNumber,
-        data.description,
-        data.acceptanceCriteria ?? null,
-        data.requirementCategoryId ?? null,
-        data.requirementTypeId ?? null,
-        data.qualityCharacteristicId ?? null,
-        data.riskLevelId ?? null,
-        STATUS_DRAFT,
-        data.requiresTesting ? 1 : 0,
-        verificationMethod,
-        now,
-        now,
-        data.createdBy ?? null,
-        data.createdByHsaId ?? null,
-        now,
-      ],
-    )) as Array<Record<string, unknown>>
-    result = mapVersion(insertRows[0] ?? {})
-    await insertVersionJoinsSqlServer(
-      tx,
-      result.id,
-      requirementPackageIds,
-      normRefIds,
-    )
+      )
+      await updateRequirementArea()
+      const insertRows = (await tx.query(
+        `INSERT INTO requirement_versions (
+            requirement_id, version_number, description, acceptance_criteria,
+            requirement_category_id, requirement_type_id, quality_characteristic_id,
+          risk_level_id, requirement_status_id, is_testing_required,
+          verification_method, created_at, edited_at, published_at,
+          archived_at, archive_initiated_at, created_by, created_by_hsa_id,
+          status_updated_at, has_specification_item_history
+        )
+          ${VERSION_OUTPUT}
+          VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, NULL, NULL, NULL, @13, @14, @15, 0)`,
+        [
+          requirementId,
+          nextVersionNumber,
+          data.description,
+          data.acceptanceCriteria ?? null,
+          data.requirementCategoryId ?? null,
+          data.requirementTypeId ?? null,
+          data.qualityCharacteristicId ?? null,
+          data.riskLevelId ?? null,
+          STATUS_DRAFT,
+          data.requiresTesting ? 1 : 0,
+          verificationMethod,
+          now,
+          now,
+          data.createdBy ?? null,
+          data.createdByHsaId ?? null,
+          now,
+        ],
+      )) as Array<Record<string, unknown>>
+      result = mapVersion(insertRows[0] ?? {})
+      await insertVersionJoinsSqlServer(
+        tx,
+        result.id,
+        requirementPackageIds,
+        normRefIds,
+      )
+    }
+    await options.audit?.(tx, result)
   })
 
   return result
@@ -691,6 +700,7 @@ export async function editRequirement(
 export async function initiateArchiving(
   db: SqlServerDatabase,
   requirementId: number,
+  options: RequirementMutationAuditOptions = {},
 ): Promise<void> {
   await db.transaction('SERIALIZABLE', async manager => {
     const tx: SqlServerTxExecutor = {
@@ -738,12 +748,14 @@ export async function initiateArchiving(
     if (!updatedRows[0]) {
       throw conflictError('No published version found to archive')
     }
+    await options.audit?.(tx, undefined)
   })
 }
 
 export async function approveArchiving(
   db: SqlServerDatabase,
   requirementId: number,
+  options: RequirementMutationAuditOptions = {},
 ): Promise<void> {
   // Strict-target rule: operate only on the single version with
   // archive_initiated_at set (the formerly-published version). A newer
@@ -795,12 +807,14 @@ export async function approveArchiving(
       `UPDATE requirements SET is_archived = 1 WHERE id = @0`,
       [requirementId],
     )
+    await options.audit?.(manager, undefined)
   })
 }
 
 export async function cancelArchiving(
   db: SqlServerDatabase,
   requirementId: number,
+  options: RequirementMutationAuditOptions = {},
 ): Promise<void> {
   // Strict-target rule: operate only on the single version with
   // archive_initiated_at set (the formerly-published version). A newer
@@ -844,12 +858,16 @@ export async function cancelArchiving(
     if (!updatedRows[0]) {
       throw conflictError('No version with archiving initiated found')
     }
+    await options.audit?.(manager, undefined)
   })
 }
 
 export async function deleteDraftVersion(
   db: SqlServerDatabase,
   requirementId: number,
+  options: RequirementMutationAuditOptions<{
+    deleted: 'requirement' | 'version'
+  }> = {},
 ): Promise<{ deleted: 'requirement' | 'version' }> {
   let result: { deleted: 'requirement' | 'version' } = { deleted: 'version' }
 
@@ -882,6 +900,7 @@ export async function deleteDraftVersion(
       await tx.query(`DELETE FROM requirements WHERE id = @0`, [requirementId])
       result = { deleted: 'requirement' }
     }
+    await options.audit?.(tx, result)
   })
 
   return result
@@ -891,6 +910,7 @@ export async function transitionStatus(
   db: SqlServerDatabase,
   requirementId: number,
   newStatusId: number,
+  options: RequirementMutationAuditOptions<VersionInsertedRow> = {},
 ): Promise<VersionInsertedRow> {
   const statusRows = (await db.query(
     `SELECT TOP (1) id FROM requirement_statuses WHERE id = @0`,
@@ -1014,6 +1034,7 @@ export async function transitionStatus(
       throw notFoundError('Failed to retrieve updated version')
     }
     result = mapVersion(updateRows[0])
+    await options.audit?.(tx, result)
   })
 
   return result
@@ -1025,6 +1046,7 @@ export async function restoreVersion(
   versionId: number,
   createdBy?: string,
   createdByHsaId?: string | null,
+  options: RequirementMutationAuditOptions<VersionInsertedRow> = {},
 ): Promise<VersionInsertedRow> {
   let result!: VersionInsertedRow
 
@@ -1039,6 +1061,7 @@ export async function restoreVersion(
       createdBy,
       createdByHsaId,
     )
+    await options.audit?.(tx, result)
   })
 
   return result
@@ -1150,6 +1173,7 @@ export async function reactivateRequirement(
   requirementId: number,
   createdBy?: string,
   createdByHsaId?: string | null,
+  options: RequirementMutationAuditOptions<VersionInsertedRow> = {},
 ): Promise<VersionInsertedRow> {
   let result!: VersionInsertedRow
 
@@ -1181,6 +1205,7 @@ export async function reactivateRequirement(
     await tx.query(`UPDATE requirements SET is_archived = 0 WHERE id = @0`, [
       requirementId,
     ])
+    await options.audit?.(tx, result)
   })
 
   return result

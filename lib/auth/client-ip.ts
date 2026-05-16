@@ -71,10 +71,10 @@ export function getClientIp(request: Request): string | undefined {
   }
   if (!forwardedFor) return undefined
 
-  for (const entry of forwardedFor.split(',')) {
-    const candidate = entry.trim()
-    if (!candidate) continue
-    if (isValidClientIp(candidate)) return candidate
-  }
-  return undefined
+  const candidate = forwardedFor
+    .split(',')
+    .find(entry => entry.trim() !== '')
+    ?.trim()
+
+  return candidate && isValidClientIp(candidate) ? candidate : undefined
 }

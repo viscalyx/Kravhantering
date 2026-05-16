@@ -1,4 +1,5 @@
 import {
+  type QueryExecutor,
   recordAllowedActionAuditEvent,
   recordDeniedActionAuditEvent,
 } from '@/lib/audit/action-audit'
@@ -45,9 +46,10 @@ export async function recordAccessReviewActionSucceeded(
     detail?: AuditDetail
     targetId?: number | string | null
   },
+  executor?: QueryExecutor,
 ): Promise<void> {
-  const db = await getRequestSqlServerDataSource()
-  await recordAllowedActionAuditEvent(db, context, {
+  const auditExecutor = executor ?? (await getRequestSqlServerDataSource())
+  await recordAllowedActionAuditEvent(auditExecutor, context, {
     action: input.action,
     details: compactDetail(input.detail ?? {}),
     targetId: input.targetId,

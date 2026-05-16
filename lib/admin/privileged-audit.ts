@@ -1,4 +1,7 @@
-import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
+import {
+  type QueryExecutor,
+  recordAllowedActionAuditEvent,
+} from '@/lib/audit/action-audit'
 import {
   recordSecurityEvent,
   type SecurityEventActor,
@@ -143,9 +146,10 @@ function adminActionName(detail: AdminPrivilegedActionDetail): string {
 export async function recordAdminPrivilegedActionSucceeded(
   context: RequestContext,
   detail: AdminPrivilegedActionDetail,
+  executor?: QueryExecutor,
 ): Promise<void> {
-  const db = await getRequestSqlServerDataSource()
-  await recordAllowedActionAuditEvent(db, context, {
+  const auditExecutor = executor ?? (await getRequestSqlServerDataSource())
+  await recordAllowedActionAuditEvent(auditExecutor, context, {
     action: adminActionName(detail),
     details: compactDetail({
       actionKind: 'admin.privileged_action',

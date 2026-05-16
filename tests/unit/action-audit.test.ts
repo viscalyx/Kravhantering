@@ -45,12 +45,16 @@ describe('action audit helper', () => {
         clientIp: '203.0.113.21',
         decision: 'allowed',
         details: {
+          assignee: 'ada@example.test',
           count: 2,
           description: 'must not be stored',
+          externalReference: '1234567890',
           operation: 'create',
           prompt: 'must not be stored',
           route: '/api/requirements',
+          reviewers: ['ok', 'SE2321000032-reviewer1'],
           targetHsaId: 'SE2321000032-target1',
+          opaque: 'token=abcdef1234567890abcdef1234567890',
         },
         occurredAt: new Date('2026-05-16T09:00:00Z'),
         requestId: 'request-1',
@@ -82,8 +86,12 @@ describe('action audit helper', () => {
     const details = JSON.parse(String(params[14])) as Record<string, unknown>
     expect(details).toEqual({
       count: 2,
+      assignee: '[REDACTED]',
+      externalReference: '[REDACTED]',
       operation: 'create',
       route: '/api/requirements',
+      reviewers: ['ok', '[REDACTED]'],
+      opaque: '[REDACTED]',
     })
     expect(JSON.stringify(details)).not.toContain('target1')
     expect(JSON.stringify(details)).not.toContain('must not be stored')

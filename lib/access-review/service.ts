@@ -50,6 +50,19 @@ export interface CreateAccessReviewRunInput {
   reviewer: AccessReviewActor
 }
 
+export interface CreateAccessReviewAuditDetail {
+  itemCount: number
+  runId: number
+  status: AccessReviewRunStatus
+}
+
+export interface CreateAccessReviewRunOptions {
+  audit?: (
+    executor: QueryExecutor,
+    detail: CreateAccessReviewAuditDetail,
+  ) => Promise<void>
+}
+
 export interface DecideAccessReviewItemInput {
   comment?: string | null
   decision: Exclude<AccessReviewDecision, 'pending'>
@@ -470,6 +483,7 @@ export async function createAccessReviewRun(
   db: SqlServerDatabase,
   input: CreateAccessReviewRunInput,
   actor: AccessReviewAuthContext,
+  options: CreateAccessReviewRunOptions = {},
 ): Promise<AccessReviewRunDetail> {
   const createdBy = requireAdmin(actor)
   const generatedAt = input.generatedAt ?? new Date()
@@ -490,6 +504,11 @@ export async function createAccessReviewRun(
     const items = await collectAccessReviewAssignments(tx)
     runId = await insertRun(tx, { ...input, generatedAt }, createdBy)
     await insertItems(tx, runId, generatedAt, items)
+    await options.audit?.(tx, {
+      itemCount: items.length,
+      runId,
+      status: 'in_review',
+    })
   })
 
   return getAccessReviewRun(db, runId, actor)

@@ -185,6 +185,17 @@ describe('access review routes', () => {
   })
 
   it('creates a review run and audits counts without raw reviewed HSA-ID lists', async () => {
+    const auditExecutor = { query: vi.fn() }
+    routeState.createAccessReviewRun.mockImplementationOnce(
+      async (_db, _input, _actor, options) => {
+        await options?.audit?.(auditExecutor, {
+          itemCount: 1,
+          runId: 42,
+          status: 'in_review',
+        })
+        return reviewDetail()
+      },
+    )
     const { POST } = await import('@/app/api/admin/access-reviews/route')
     const response = await POST(
       jsonRequest('http://localhost/api/admin/access-reviews', {
@@ -203,6 +214,16 @@ describe('access review routes', () => {
         },
       }),
       expect.objectContaining({ roles: ['Admin'] }),
+      expect.objectContaining({ audit: expect.any(Function) }),
+    )
+    expect(routeState.recordAllowedActionAuditEvent).toHaveBeenCalledWith(
+      auditExecutor,
+      expect.objectContaining({ requestId: 'request-1' }),
+      expect.objectContaining({
+        action: 'access_review.create',
+        targetId: 42,
+        targetKind: 'AccessReview',
+      }),
     )
     const auditArg = routeState.recordSecurityEvent.mock.calls[0][0]
     expect(auditArg.event).toBe('access_review.created')

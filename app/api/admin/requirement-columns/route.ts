@@ -81,12 +81,19 @@ export const PUT = secureMutationRoute({
       const columns = await updateRequirementListColumnDefaults(
         db,
         body.columns,
+        {
+          audit: executor =>
+            recordAdminPrivilegedActionSucceeded(
+              context,
+              {
+                itemCount: body.columns.length,
+                operation: 'save',
+                resourceType: 'requirement_columns',
+              },
+              executor,
+            ),
+        },
       )
-      await recordAdminPrivilegedActionSucceeded(context, {
-        itemCount: body.columns.length,
-        operation: 'save',
-        resourceType: 'requirement_columns',
-      })
 
       return NextResponse.json({
         columns,

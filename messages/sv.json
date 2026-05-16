@@ -728,7 +728,6 @@
     "privacyDescription": "Förhandsgranska HSA-ID-baserade träffar, exportera data och kör GDPR-radering för aktörsidentiteter och aktiva tilldelningar.",
     "auditLog": {
       "title": "Åtgärdslogg",
-      "open": "Öppna åtgärdslogg",
       "eyebrow": "Audit",
       "description": "Sök bland applikationsändringar och nekade behörighetsförsök som lagrats i databasen.",
       "exportCsv": "Exportera CSV",

@@ -334,11 +334,24 @@ describe('createRequirementsService', () => {
       ownerId: 'alice',
       prefix: 'INT',
     })
-    mocks.createRequirement.mockResolvedValue({
+    const createRequirementResult = {
       requirement: { id: 1, uniqueId: 'INT0001' },
       version: { id: 10, versionNumber: 1 },
+    }
+    mocks.createRequirement.mockImplementation(async (_db, _data, options) => {
+      await options?.audit?.(
+        { query: mocks.auditQuery },
+        createRequirementResult,
+      )
+      return createRequirementResult
     })
-    mocks.editRequirement.mockResolvedValue({ id: 10, versionNumber: 2 })
+    mocks.editRequirement.mockImplementation(
+      async (_db, _id, _data, options) => {
+        const result = { id: 10, versionNumber: 2 }
+        await options?.audit?.({ query: mocks.auditQuery }, result)
+        return result
+      },
+    )
     mocks.getOrCreateSpecificationNeedsReference.mockResolvedValue(44)
     mocks.getSpecificationBySlug.mockResolvedValue({
       id: 7,
@@ -388,19 +401,54 @@ describe('createRequirementsService', () => {
     mocks.recordResolution.mockResolvedValue(undefined)
     mocks.requestReview.mockResolvedValue(undefined)
     mocks.revertToDraft.mockResolvedValue(undefined)
-    mocks.restoreVersion.mockResolvedValue({ id: 22, versionNumber: 4 })
-    mocks.transitionStatus.mockResolvedValue({ id: 10, versionNumber: 1 })
+    mocks.initiateArchiving.mockImplementation(async (_db, _id, options) => {
+      await options?.audit?.({ query: mocks.auditQuery }, undefined)
+    })
+    mocks.approveArchiving.mockImplementation(async (_db, _id, options) => {
+      await options?.audit?.({ query: mocks.auditQuery }, undefined)
+    })
+    mocks.cancelArchiving.mockImplementation(async (_db, _id, options) => {
+      await options?.audit?.({ query: mocks.auditQuery }, undefined)
+    })
+    mocks.deleteDraftVersion.mockImplementation(async (_db, _id, options) => {
+      const result = { deleted: 'version' as const }
+      await options?.audit?.({ query: mocks.auditQuery }, result)
+      return result
+    })
+    mocks.restoreVersion.mockImplementation(
+      async (_db, _requirementId, _versionId, _createdBy, _hsaId, options) => {
+        const result = { id: 22, versionNumber: 4 }
+        await options?.audit?.({ query: mocks.auditQuery }, result)
+        return result
+      },
+    )
+    mocks.reactivateRequirement.mockImplementation(
+      async (_db, _requirementId, _createdBy, _hsaId, options) => {
+        const result = { id: 23, versionNumber: 5 }
+        await options?.audit?.({ query: mocks.auditQuery }, result)
+        return result
+      },
+    )
+    mocks.transitionStatus.mockImplementation(
+      async (_db, _requirementId, _toStatusId, options) => {
+        const result = { id: 10, versionNumber: 1 }
+        await options?.audit?.({ query: mocks.auditQuery }, result)
+        return result
+      },
+    )
     mocks.unlinkRequirementsFromSpecification.mockResolvedValue(0)
     mocks.updateDeviation.mockResolvedValue(undefined)
     mocks.updateSuggestion.mockResolvedValue(undefined)
-    mocks.auditQuery.mockResolvedValue([])
-    mocks.auditTransaction.mockImplementation(
-      async (
-        callback: (manager: {
-          query: typeof mocks.auditQuery
-        }) => Promise<unknown>,
-      ) => callback({ query: mocks.auditQuery }),
+    mocks.auditQuery.mockImplementation(async (sql: string) =>
+      sql.includes('SELECT TOP (1) unique_id') ? [{ uniqueId: 'INT0001' }] : [],
     )
+    mocks.auditTransaction.mockImplementation(async (...args: unknown[]) => {
+      const callback = typeof args[0] === 'function' ? args[0] : args[1]
+      if (typeof callback !== 'function') {
+        throw new Error('Expected transaction callback')
+      }
+      return callback({ query: mocks.auditQuery })
+    })
     mocks.getRequestSqlServerDataSource.mockResolvedValue({
       query: mocks.auditQuery,
       transaction: mocks.auditTransaction,
@@ -638,6 +686,7 @@ describe('createRequirementsService', () => {
         requirementAreaId: 1,
         requirementPackageIds: [7],
       }),
+      expect.objectContaining({ audit: expect.any(Function) }),
     )
     expect(result.detail?.uniqueId).toBe('INT0001')
   })
@@ -666,6 +715,7 @@ describe('createRequirementsService', () => {
       44,
       'alice',
       'SE2321000032-alice1',
+      expect.objectContaining({ audit: expect.any(Function) }),
     )
     expect(result.result).toMatchObject({ id: 22, versionNumber: 4 })
   })
@@ -931,6 +981,7 @@ describe('createRequirementsService', () => {
         baseVersionId: 10,
         description: 'Updated text',
       }),
+      expect.objectContaining({ audit: expect.any(Function) }),
     )
   })
 
@@ -1716,7 +1767,6 @@ describe('createRequirementsService', () => {
   })
 
   it('emits security audit events for high-risk requirement mutations', async () => {
-    mocks.approveArchiving.mockResolvedValue(undefined)
     const service = createRequirementsService({} as never, {
       logger,
       uiSettings: makeUiSettings(),

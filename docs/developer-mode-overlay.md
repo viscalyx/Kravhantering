@@ -102,6 +102,10 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   selectors, comments, field help toggles, cancel buttons, and export buttons
   and error popups do not add separate developer-mode marker names unless a
   later scanner needs to distinguish one control family.
+- Admin Center Åtgärdslogg controls stay inside the existing
+  `tab panel: action audit log` surface. Filters, pagination, CSV export, and
+  table cells do not add separate developer-mode marker names unless a later
+  scanner needs to distinguish one control family.
 - Navigation help triggers use the `navigation` context with button
   values `help toggle open` and `help toggle closed`.
 - Auth account-detail rows keep their developer-mode values in English

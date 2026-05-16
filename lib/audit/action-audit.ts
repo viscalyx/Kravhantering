@@ -90,6 +90,7 @@ const MAX_DETAIL_STRING_LENGTH = 255
 const MAX_DETAIL_ARRAY_LENGTH = 50
 const MAX_PAGE_SIZE = 200
 const DEFAULT_PAGE_SIZE = 50
+const REDACTED_DETAIL_VALUE = '[REDACTED]'
 
 const DETAIL_KEY_DENY_LIST: readonly RegExp[] = [
   /token/i,
@@ -106,6 +107,17 @@ const DETAIL_KEY_DENY_LIST: readonly RegExp[] = [
   /email/i,
   /hsa/i,
   /display.*name/i,
+]
+
+const DETAIL_VALUE_DENY_LIST: readonly RegExp[] = [
+  /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/iu,
+  /\bSE\d{10}-[A-Za-z0-9_-]+\b/u,
+  /\b(?:19|20)?\d{6}[-+]\d{4}\b/u,
+  /\b\d{10,16}\b/u,
+  /\b[0-9a-f]{32,}\b/iu,
+  /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*\b/u,
+  /\b(?:api[_-]?key|authorization|bearer|secret|token)\s*[:=]\s*["']?[^"',\s}]+/iu,
+  /^sk-[A-Za-z0-9_-]{20,}$/u,
 ]
 
 function boundedString(value: string, field: string): string {
@@ -134,18 +146,24 @@ function isDeniedDetailKey(key: string): boolean {
   return DETAIL_KEY_DENY_LIST.some(pattern => pattern.test(key))
 }
 
+function sanitizeDetailString(value: string): string {
+  return DETAIL_VALUE_DENY_LIST.some(pattern => pattern.test(value))
+    ? REDACTED_DETAIL_VALUE
+    : value
+}
+
 function normalizeDetailValue(
   value: ActionAuditDetailValue,
 ): ActionAuditDetailValue {
   if (typeof value === 'string') {
-    return value.slice(0, MAX_DETAIL_STRING_LENGTH)
+    return sanitizeDetailString(value).slice(0, MAX_DETAIL_STRING_LENGTH)
   }
   if (Array.isArray(value)) {
     return value
       .slice(0, MAX_DETAIL_ARRAY_LENGTH)
       .map(item =>
         typeof item === 'string'
-          ? item.slice(0, MAX_DETAIL_STRING_LENGTH)
+          ? sanitizeDetailString(item).slice(0, MAX_DETAIL_STRING_LENGTH)
           : item,
       )
   }
@@ -231,7 +249,7 @@ export async function recordActionAuditEvent(
 }
 
 export async function recordAllowedActionAuditEvent(
-  db: SqlServerDatabase,
+  executor: QueryExecutor,
   context: RequestContext,
   input: Omit<
     ActionAuditEventInput,
@@ -245,7 +263,7 @@ export async function recordAllowedActionAuditEvent(
     | 'requestId'
   >,
 ): Promise<void> {
-  await recordAllowedActionAuditEventWithExecutor(db, context, input)
+  await recordAllowedActionAuditEventWithExecutor(executor, context, input)
 }
 
 export async function recordAllowedActionAuditEventWithExecutor(

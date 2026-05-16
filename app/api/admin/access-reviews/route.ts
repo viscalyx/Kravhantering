@@ -72,16 +72,23 @@ export const POST = secureMutationRoute({
           reviewer: requireHumanActorSnapshot(context),
         },
         accessReviewServiceActor(context),
-      )
-      await recordAccessReviewActionSucceeded(context, {
-        action: 'access_review.create',
-        detail: {
-          itemCount: detail.run.summary.itemCount,
-          reviewId: detail.run.id,
-          status: detail.run.status,
+        {
+          audit: (executor, auditDetail) =>
+            recordAccessReviewActionSucceeded(
+              context,
+              {
+                action: 'access_review.create',
+                detail: {
+                  itemCount: auditDetail.itemCount,
+                  reviewId: auditDetail.runId,
+                  status: auditDetail.status,
+                },
+                targetId: auditDetail.runId,
+              },
+              executor,
+            ),
         },
-        targetId: detail.run.id,
-      })
+      )
       recordSecurityEvent({
         actor: accessReviewAuditActor(context),
         detail: {

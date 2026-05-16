@@ -728,7 +728,6 @@
     "privacyDescription": "Preview HSA-ID based matches, export data, and execute GDPR erasure for actor identity snapshots and live assignments.",
     "auditLog": {
       "title": "Action audit log",
-      "open": "Open action audit log",
       "eyebrow": "Audit",
       "description": "Search application mutations and authorization denials recorded in the database.",
       "exportCsv": "Export CSV",

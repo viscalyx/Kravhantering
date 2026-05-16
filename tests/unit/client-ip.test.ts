@@ -18,12 +18,12 @@ describe('getClientIp', () => {
     expect(getClientIp(request)).toBe('2001:db8::1')
   })
 
-  it('skips malformed candidates and returns the next valid address', () => {
+  it('rejects the header when the first non-empty candidate is malformed', () => {
     const request = new Request('https://app.example.test', {
       headers: { 'x-forwarded-for': 'not-an-ip, 203.0.113.9' },
     })
 
-    expect(getClientIp(request)).toBe('203.0.113.9')
+    expect(getClientIp(request)).toBeUndefined()
   })
 
   it('returns undefined for missing, empty, or whitespace-only headers', () => {
