@@ -217,9 +217,8 @@ export default function KravunderlagDetailClient({
   const [leftSort, setLeftSort] = useState<RequirementSortState>(
     DEFAULT_REQUIREMENT_SORT,
   )
-  const [leftVisibleCols, setLeftVisibleCols] = useState<RequirementColumnId[]>(
-    () => readStoredCols(LEFT_VISIBLE_COLS_KEY, DEFAULT_LEFT_COLS),
-  )
+  const [leftVisibleCols, setLeftVisibleCols] =
+    useState<RequirementColumnId[]>(DEFAULT_LEFT_COLS)
 
   // Right panel state
   const [rightSelectedIds, setRightSelectedIds] = useState<Set<number>>(
@@ -235,9 +234,9 @@ export default function KravunderlagDetailClient({
   )
   const [rightLoadingMore, setRightLoadingMore] = useState(false)
   const [loadMoreWarning, setLoadMoreWarning] = useState<string | null>(null)
-  const [rightVisibleCols, setRightVisibleCols] = useState<
-    RequirementColumnId[]
-  >(() => readStoredCols(RIGHT_VISIBLE_COLS_KEY, DEFAULT_RIGHT_COLS))
+  const [rightVisibleCols, setRightVisibleCols] =
+    useState<RequirementColumnId[]>(DEFAULT_RIGHT_COLS)
+  const [columnPreferencesLoaded, setColumnPreferencesLoaded] = useState(false)
 
   // Add modal state
   const [showAddModal, setShowAddModal] = useState(false)
@@ -598,17 +597,27 @@ export default function KravunderlagDetailClient({
     t,
   ])
 
-  // Persist visible columns to localStorage
   useEffect(() => {
+    setLeftVisibleCols(readStoredCols(LEFT_VISIBLE_COLS_KEY, DEFAULT_LEFT_COLS))
+    setRightVisibleCols(
+      readStoredCols(RIGHT_VISIBLE_COLS_KEY, DEFAULT_RIGHT_COLS),
+    )
+    setColumnPreferencesLoaded(true)
+  }, [])
+
+  // Persist visible columns to localStorage after hydration has read them.
+  useEffect(() => {
+    if (!columnPreferencesLoaded) return
     localStorage.setItem(LEFT_VISIBLE_COLS_KEY, JSON.stringify(leftVisibleCols))
-  }, [leftVisibleCols])
+  }, [columnPreferencesLoaded, leftVisibleCols])
 
   useEffect(() => {
+    if (!columnPreferencesLoaded) return
     localStorage.setItem(
       RIGHT_VISIBLE_COLS_KEY,
       JSON.stringify(rightVisibleCols),
     )
-  }, [rightVisibleCols])
+  }, [columnPreferencesLoaded, rightVisibleCols])
 
   // Open add modal
   const handleOpenAddModal = useCallback(async () => {

@@ -577,6 +577,62 @@ describe('RequirementsSpecificationDetailClient', () => {
     ])
   })
 
+  it('loads persisted detail columns after the hydration-safe default render', async () => {
+    const storedLeftColumns = [
+      'uniqueId',
+      'description',
+      'area',
+      'needsReference',
+      'status',
+    ]
+    const storedRightColumns = [
+      'uniqueId',
+      'description',
+      'area',
+      'status',
+      'type',
+    ]
+    window.localStorage.setItem(
+      'requirement-specifications.visibleColumns.left.v1',
+      JSON.stringify(storedLeftColumns),
+    )
+    window.localStorage.setItem(
+      'requirement-specifications.visibleColumns.right.v1',
+      JSON.stringify(storedRightColumns),
+    )
+
+    renderRequirementsSpecificationDetailClient()
+
+    const firstLeftTableProps = requirementsTableMock.mock.calls.find(
+      ([props]) => props.rows[0]?.id === initialSpecificationItem.id,
+    )?.[0]
+
+    expect(firstLeftTableProps?.visibleColumns).toEqual([
+      'uniqueId',
+      'description',
+      'area',
+      'needsReference',
+    ])
+
+    await waitFor(() => {
+      const latestCalls = [...requirementsTableMock.mock.calls].reverse()
+      const latestLeftTableProps = latestCalls.find(
+        ([props]) => props.rows[0]?.id === initialSpecificationItem.id,
+      )?.[0]
+      const latestRightTableProps = latestCalls.find(
+        ([props]) => props.rows[0]?.id === initialAvailableRequirement.id,
+      )?.[0]
+
+      expect(latestLeftTableProps?.visibleColumns).toEqual(storedLeftColumns)
+      expect(latestRightTableProps?.visibleColumns).toEqual(storedRightColumns)
+    })
+    expect(
+      window.localStorage.getItem(
+        'requirement-specifications.visibleColumns.left.v1',
+      ),
+    ).toBe(JSON.stringify(storedLeftColumns))
+  })
+
   it('uses inline top rails and sticky table titles for the split tables', async () => {
     const { container } = renderRequirementsSpecificationDetailClient()
 
