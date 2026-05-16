@@ -7,6 +7,8 @@ const routeState = vi.hoisted(() => ({
   executePrivacyErasure: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
   previewPrivacyErasure: vi.fn(),
+  recordAllowedActionAuditEventWithExecutor: vi.fn(),
+  recordDeniedActionAuditEvent: vi.fn(),
   recordSecurityEvent: vi.fn(),
   requireHumanActorSnapshot: vi.fn(() => ({
     displayName: 'Disa PrivacyOfficer',
@@ -21,6 +23,17 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/auth/audit', () => ({
   recordSecurityEvent: routeState.recordSecurityEvent,
 }))
+
+vi.mock('@/lib/audit/action-audit', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/lib/audit/action-audit')>()
+  return {
+    ...actual,
+    recordAllowedActionAuditEventWithExecutor:
+      routeState.recordAllowedActionAuditEventWithExecutor,
+    recordDeniedActionAuditEvent: routeState.recordDeniedActionAuditEvent,
+  }
+})
 
 vi.mock('@/lib/http/safe-errors', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/http/safe-errors')>()
@@ -138,6 +151,7 @@ describe('privacy erasure routes', () => {
 
     expect(response.status).toBe(403)
     expect(routeState.previewPrivacyErasure).not.toHaveBeenCalled()
+    expect(routeState.recordDeniedActionAuditEvent).not.toHaveBeenCalled()
   })
 
   it('accepts erasure preview when the request context passes CSRF validation', async () => {
@@ -202,6 +216,11 @@ describe('privacy erasure routes', () => {
 
     expect(response.status).toBe(403)
     expect(routeState.previewPrivacyErasure).not.toHaveBeenCalled()
+    expect(routeState.recordDeniedActionAuditEvent).toHaveBeenCalledWith(
+      { db: true },
+      expect.objectContaining({ requestId: 'request-1' }),
+      expect.objectContaining({ action: 'privacy.erasure.preview.denied' }),
+    )
   })
 
   it('rejects name-only preview requests before opening the database', async () => {
@@ -296,6 +315,11 @@ describe('privacy erasure routes', () => {
     expect(response.status).toBe(403)
     expect(routeState.executePrivacyErasure).not.toHaveBeenCalled()
     expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
+    expect(routeState.recordDeniedActionAuditEvent).toHaveBeenCalledWith(
+      { db: true },
+      expect.objectContaining({ requestId: 'request-1' }),
+      expect.objectContaining({ action: 'privacy.erasure.execute.denied' }),
+    )
   })
 
   it('returns safe row details for privacy execution validation errors', async () => {

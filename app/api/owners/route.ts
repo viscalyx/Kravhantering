@@ -43,7 +43,7 @@ export const POST = secureMutationRoute({
       ...body,
       email: body.email ?? null,
     })
-    recordAdminPrivilegedActionSucceeded(context, {
+    await recordAdminPrivilegedActionSucceeded(context, {
       changedFields: Object.keys(body),
       operation: 'create',
       resourceId: owner.id,

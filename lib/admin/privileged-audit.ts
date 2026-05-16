@@ -1,15 +1,18 @@
+import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
 import {
   recordSecurityEvent,
   type SecurityEventActor,
   type SecurityEventDetailValue,
   type SecurityEventRequest,
 } from '@/lib/auth/audit'
+import { getClientIp } from '@/lib/auth/client-ip'
 import { assertSameOriginRequest } from '@/lib/auth/csrf'
 import {
   getSessionFromRequest,
   isSignedIn,
   type LoggedInSession,
 } from '@/lib/auth/session'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { resolveRequestCorrelationIds } from '@/lib/observability/request-ids'
 import type { ActorContext, RequestContext } from '@/lib/requirements/auth'
 
@@ -89,6 +92,8 @@ function requestMetadata(
   }
   const userAgent = request.headers.get('user-agent')
   if (userAgent) metadata.userAgent = userAgent
+  const ip = getClientIp(request)
+  if (ip) metadata.ip = ip
   return metadata
 }
 
@@ -131,10 +136,32 @@ export async function createAdminPrivilegedAuditContext(
   }
 }
 
-export function recordAdminPrivilegedActionSucceeded(
+function adminActionName(detail: AdminPrivilegedActionDetail): string {
+  return `admin.${detail.resourceType}.${detail.operation}`
+}
+
+export async function recordAdminPrivilegedActionSucceeded(
   context: RequestContext,
   detail: AdminPrivilegedActionDetail,
-): void {
+): Promise<void> {
+  const db = await getRequestSqlServerDataSource()
+  await recordAllowedActionAuditEvent(db, context, {
+    action: adminActionName(detail),
+    details: compactDetail({
+      actionKind: 'admin.privileged_action',
+      actorRoles: context.actor.roles,
+      changedFields: detail.changedFields,
+      itemCount: detail.itemCount,
+      operation: detail.operation,
+      privilegeRoles: privilegedRoles(context),
+      privilegeSource: 'idp_role_claim',
+      requestSource: context.source,
+      resourceId: detail.resourceId,
+      resourceType: detail.resourceType,
+    }),
+    targetId: detail.resourceId,
+    targetKind: detail.resourceType,
+  })
   recordSecurityEvent({
     actor: auditActor(context),
     detail: compactDetail({

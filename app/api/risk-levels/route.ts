@@ -51,7 +51,7 @@ export const POST = secureMutationRoute({
     try {
       const db = await getRequestSqlServerDataSource()
       const riskLevel = await createRiskLevel(db, body)
-      recordAdminPrivilegedActionSucceeded(context, {
+      await recordAdminPrivilegedActionSucceeded(context, {
         changedFields: Object.keys(body),
         operation: 'create',
         resourceId: riskLevel.id,

@@ -82,7 +82,7 @@ export const PUT = secureMutationRoute({
         db,
         body.columns,
       )
-      recordAdminPrivilegedActionSucceeded(context, {
+      await recordAdminPrivilegedActionSucceeded(context, {
         itemCount: body.columns.length,
         operation: 'save',
         resourceType: 'requirement_columns',

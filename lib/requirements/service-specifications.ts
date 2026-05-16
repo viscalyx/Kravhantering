@@ -124,7 +124,7 @@ async function assertGraduationTargetAreaAuthor(
       requirementAreaId,
     },
   )
-  recordAuthorizationDenied(context, action, error)
+  await recordAuthorizationDenied(context, action, error)
   throw error
 }
 
@@ -495,7 +495,7 @@ export function createSpecificationWorkflow({
             },
           )
 
-          recordHighRiskMutationSucceeded(context, {
+          await recordHighRiskMutationSucceeded(context, {
             action: 'specification_local_requirement.graduated',
             locale,
             localRequirementId: input.localRequirementId,
@@ -576,7 +576,7 @@ export function createSpecificationWorkflow({
             )
           }
           if (addedCount > 0) {
-            recordHighRiskMutationSucceeded(context, {
+            await recordHighRiskMutationSucceeded(context, {
               action: 'specification.requirements.added',
               addedCount,
               locale,
@@ -665,7 +665,7 @@ export function createSpecificationWorkflow({
             specificationId,
             input.requirementIds,
           )
-          recordHighRiskMutationSucceeded(context, {
+          await recordHighRiskMutationSucceeded(context, {
             action: 'specification.requirements.removed',
             operation: 'remove_from_specification',
             removedCount,

@@ -1,4 +1,5 @@
 import type { SecurityEventRequest } from '@/lib/auth/audit'
+import { getClientIp } from '@/lib/auth/client-ip'
 import { getAuthConfig } from '@/lib/auth/config'
 import { assertSameOriginRequest } from '@/lib/auth/csrf'
 import {
@@ -279,6 +280,8 @@ function buildSecurityEventRequest(
   }
   const userAgent = request.headers.get('user-agent')
   if (userAgent) out.userAgent = userAgent
+  const ip = getClientIp(request)
+  if (ip) out.ip = ip
   return out
 }
 

@@ -56,6 +56,13 @@ const mocks = vi.hoisted(() => ({
   transitionStatus: vi.fn(),
   updateDeviation: vi.fn(),
   updateSuggestion: vi.fn(),
+  auditQuery: vi.fn(),
+  auditTransaction: vi.fn(),
+  getRequestSqlServerDataSource: vi.fn(),
+}))
+
+vi.mock('@/lib/db', () => ({
+  getRequestSqlServerDataSource: mocks.getRequestSqlServerDataSource,
 }))
 
 vi.mock('@/lib/ai/openrouter-client', () => ({
@@ -386,6 +393,18 @@ describe('createRequirementsService', () => {
     mocks.unlinkRequirementsFromSpecification.mockResolvedValue(0)
     mocks.updateDeviation.mockResolvedValue(undefined)
     mocks.updateSuggestion.mockResolvedValue(undefined)
+    mocks.auditQuery.mockResolvedValue([])
+    mocks.auditTransaction.mockImplementation(
+      async (
+        callback: (manager: {
+          query: typeof mocks.auditQuery
+        }) => Promise<unknown>,
+      ) => callback({ query: mocks.auditQuery }),
+    )
+    mocks.getRequestSqlServerDataSource.mockResolvedValue({
+      query: mocks.auditQuery,
+      transaction: mocks.auditTransaction,
+    })
   })
 
   afterEach(() => {

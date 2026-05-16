@@ -526,6 +526,9 @@ npm run dev | grep '"channel":"security-audit"' | jq .
 Use `jq 'select(.event=="auth.login.failed")'` to filter by event, or
 `select(.outcome=="failure")` to surface only rejections. Tokens, PKCE
 verifiers, `state`, `nonce`, and `code` values are stripped before emit.
+When a valid `X-Forwarded-For` header is present, audit events may include
+`request.ip`; treat it as authoritative only in reverse-proxy paths that own or
+strip the inbound header.
 
 ## Pre-prod smoke test
 

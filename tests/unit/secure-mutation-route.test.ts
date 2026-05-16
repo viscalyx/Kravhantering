@@ -20,6 +20,12 @@ const adminAuditState = vi.hoisted(() => ({
   createAdminPrivilegedAuditContext: vi.fn(),
 }))
 
+const auditState = vi.hoisted(() => ({
+  getRequestSqlServerDataSource: vi.fn(),
+  query: vi.fn(),
+  transaction: vi.fn(),
+}))
+
 vi.mock('@/lib/admin/privileged-audit', async importOriginal => {
   const actual =
     await importOriginal<typeof import('@/lib/admin/privileged-audit')>()
@@ -49,6 +55,10 @@ vi.mock('@/lib/http/safe-errors', async importOriginal => {
     logSanitizedError: vi.fn(),
   }
 })
+
+vi.mock('@/lib/db', () => ({
+  getRequestSqlServerDataSource: auditState.getRequestSqlServerDataSource,
+}))
 
 function context(roles: string[] = ['Admin']) {
   return {
@@ -86,6 +96,17 @@ describe('secureMutationRoute', () => {
       context(),
     )
     authState.createRequestContext.mockResolvedValue(context())
+    auditState.query.mockResolvedValue([])
+    auditState.transaction.mockImplementation(
+      async (
+        callback: (manager: {
+          query: typeof auditState.query
+        }) => Promise<unknown>,
+      ) => callback({ query: auditState.query }),
+    )
+    auditState.getRequestSqlServerDataSource.mockResolvedValue({
+      transaction: auditState.transaction,
+    })
   })
 
   it('passes parsed body, params and context to the handler', async () => {
@@ -127,6 +148,10 @@ describe('secureMutationRoute', () => {
 
     expect(response.status).toBe(401)
     expect(handler).not.toHaveBeenCalled()
+    expect(auditState.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO action_audit_events'),
+      expect.arrayContaining(['admin.authorization.denied', 'admin', 'denied']),
+    )
   })
 
   it('runs pre-parse guards before body validation and handler work', async () => {
@@ -219,6 +244,10 @@ describe('secureMutationRoute', () => {
 
     expect(response.status).toBe(403)
     expect(handler).not.toHaveBeenCalled()
+    expect(auditState.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO action_audit_events'),
+      expect.arrayContaining(['deny.denied', 'custom', 'denied']),
+    )
   })
 
   it('maps CSRF failures from context creation', async () => {

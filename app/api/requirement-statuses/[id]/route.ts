@@ -40,7 +40,7 @@ export const PUT = secureMutationRoute({
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const updated = await updateStatus(db, params.id, body)
-    recordAdminPrivilegedActionSucceeded(context, {
+    await recordAdminPrivilegedActionSucceeded(context, {
       changedFields: Object.keys(body),
       operation: 'update',
       resourceId: params.id,
@@ -57,7 +57,7 @@ export const DELETE = secureMutationRoute({
     const db = await getRequestSqlServerDataSource()
     try {
       await deleteStatus(db, params.id)
-      recordAdminPrivilegedActionSucceeded(context, {
+      await recordAdminPrivilegedActionSucceeded(context, {
         operation: 'delete',
         resourceId: params.id,
         resourceType: 'requirement_status',

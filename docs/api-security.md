@@ -81,6 +81,12 @@ then handler work. Every mutating REST route must declare an `admin`,
 CSRF and audit but no business authorization policy. A unit coverage test scans
 `app/api/**/route.ts` to keep this invariant in place.
 
+Authorization denials from these policies are fail-closed into the database
+action audit log before the denial response is returned. The audit-log read
+endpoint, `GET /api/admin/audit-events`, is Admin-only, read-only, `no-store`,
+supports a validated `client_ip` filter alongside the other audit filters, and
+intentionally does not create another audit row.
+
 `/api/mcp` is the intentional exception. It keeps validation inside its
 JSON-RPC/MCP schema layer and uses Bearer-token authentication, so MCP tool
 contracts remain the source of truth.

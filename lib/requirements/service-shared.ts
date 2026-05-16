@@ -167,7 +167,7 @@ export async function authorize(
   try {
     await authorization.assertAuthorized(action, context)
   } catch (error) {
-    recordAuthorizationDenied(context, action, error)
+    await recordAuthorizationDenied(context, action, error)
     throw error
   }
 }

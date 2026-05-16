@@ -47,7 +47,7 @@ export const POST = secureMutationRoute({
   handler: async ({ body, context }) => {
     const db = await getRequestSqlServerDataSource()
     const requirementPackage = await createRequirementPackage(db, body)
-    recordAdminPrivilegedActionSucceeded(context, {
+    await recordAdminPrivilegedActionSucceeded(context, {
       changedFields: Object.keys(body),
       operation: 'create',
       resourceId: requirementPackage.id,

@@ -574,6 +574,28 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
     table: 'access_review_items',
     warningKey: 'historySwitch',
   },
+  {
+    affectedReferencesSql: `/* privacy:affected:action_audit_events.actor */
+      SELECT CONCAT(action, N' #', id) AS value
+      FROM action_audit_events
+      WHERE actor_hsa_id = @0
+      ORDER BY occurred_at DESC, id DESC`,
+    allowedActions: ['anonymize', 'switch', 'skip'],
+    countSql:
+      'SELECT COUNT(*) AS count FROM action_audit_events WHERE actor_hsa_id = @0',
+    currentDisplaySql:
+      'SELECT TOP (1) actor_display_name AS value FROM action_audit_events WHERE actor_hsa_id = @0 ORDER BY occurred_at DESC, id DESC',
+    defaultWithReplacement: 'anonymize',
+    defaultWithoutReplacement: 'anonymize',
+    displayColumn: 'actor_display_name',
+    fieldKey: 'actor',
+    hsaColumn: 'actor_hsa_id',
+    key: 'action_audit_events.actor',
+    kind: 'simpleDisplay',
+    objectKey: 'actionAuditEvents',
+    table: 'action_audit_events',
+    warningKey: 'historySwitch',
+  },
 ]
 
 const POLICY_BY_KEY = new Map(
@@ -1161,7 +1183,12 @@ function summarizeActions(
 
 export async function executePrivacyErasure(
   db: SqlServerDatabase,
-  input: PrivacyErasureExecutionInput,
+  input: PrivacyErasureExecutionInput & {
+    audit?: (
+      executor: QueryExecutor,
+      result: PrivacyErasureResult,
+    ) => Promise<void>
+  },
 ): Promise<PrivacyErasureResult> {
   const target = normalizeTarget(input.target)
   const requestId = randomUUID()
@@ -1227,6 +1254,7 @@ export async function executePrivacyErasure(
       targetFingerprint: preview.targetFingerprint,
       totalCount: preview.totalCount,
     }
+    await input.audit?.(tx, result)
   })
   return result
 }

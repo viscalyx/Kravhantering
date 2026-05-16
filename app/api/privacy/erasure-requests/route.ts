@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { recordAllowedActionAuditEventWithExecutor } from '@/lib/audit/action-audit'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { CsrfError } from '@/lib/auth/csrf'
 import { isHsaId } from '@/lib/auth/hsa-id'
@@ -76,6 +77,21 @@ export const POST = secureMutationRoute({
       const db = await getRequestSqlServerDataSource()
       const result = await executePrivacyErasure(db, {
         actions: body.actions,
+        audit: (executor, auditResult) =>
+          recordAllowedActionAuditEventWithExecutor(executor, context, {
+            action: 'privacy.erasure.execute',
+            details: {
+              anonymizeCount: auditResult.actions.anonymize,
+              deleteCount: auditResult.actions.delete,
+              erasureRequestId: auditResult.requestId,
+              skipCount: auditResult.actions.skip,
+              switchCount: auditResult.actions.switch,
+              targetFingerprint: auditResult.targetFingerprint,
+              totalCount: auditResult.totalCount,
+            },
+            targetId: auditResult.requestId,
+            targetKind: 'PrivacyErasure',
+          }),
         previewToken: body.previewToken,
         replacement: body.replacement ?? null,
         target: body.target,

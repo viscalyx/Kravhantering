@@ -32,6 +32,7 @@ recorded production incident.
 | `lib/dal/requirements-specifications.ts` | 90-95% | Specification linking, needs-reference ownership, specification-local sequencing, and deviation gating determine what compliance reports say about real work. Silent drift here produces plausible but wrong specification status. |
 | `lib/requirements/service.ts` and `app/api/requirements/[id]/route.ts` | 88-92% | These are the public truth layer for REST and MCP. The highest-risk failure is published-detail reads leaking draft or review content. |
 | `lib/dal/deviations.ts` and `lib/dal/improvement-suggestions.ts` | 88-92% | These modules hold the project's write-once audit trail. Mutability after approval, rejection, resolution, or dismissal breaks traceability instead of throwing obvious errors. |
+| `lib/audit/action-audit.ts` and `app/api/admin/audit-events/route.ts` | 88-92% | The action audit log is fail-closed review evidence for mutations and denials. A regression here can make a valid business change untraceable or leak personal/free-text data into audit details. |
 | `lib/requirements/list-view.ts` and requirements-table UI consumers | 82-88% | Admin defaults, visible-column persistence, filter clearing, and width clamps are fail-safe logic. Bad fallback behavior leaves the UI looking normal while applying stale filters. |
 | `lib/mcp/http.ts`, `lib/mcp/server.ts`, and `lib/export-csv.ts` | 80-85% | These are outward-facing contracts. Wrong method handling, malformed MCP fields, or CSV escaping defects break integrations and downstream reporting even when the app UI still works. |
 <!-- markdownlint-enable MD013 -->
@@ -479,6 +480,33 @@ source hint.
 <!-- markdownlint-disable MD013 -->
 ```sh
 npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 13: specification-local graduation is copy-only into a draft library requirement"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 14: action audit rows fail closed with the business transaction
+
+**Requirement tag:** `[Req: formal — docs/audit-log.md "Failure Mode"]`
+
+**What happened:** The application action audit log is now database-backed and
+fail-closed. If an implementation writes audit rows after the business
+transaction commits, an audit failure can leave a mutation without durable
+review evidence. If details are not filtered, prompts or submitted free text
+can leak into audit metadata.
+
+**The requirement:** Mutating workflows that own a transaction must write the
+action-audit row before the transaction resolves. Audit write failure must roll
+back the logical mutation, and `details_json` must keep only bounded structured
+metadata. Validated `client_ip` values should persist as first-class audit
+metadata rather than being placed inside `details_json`.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 14: action audit rows fail closed with the business transaction"
 ```
 <!-- markdownlint-enable MD013 -->
 

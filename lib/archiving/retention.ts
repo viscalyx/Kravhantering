@@ -898,7 +898,12 @@ async function insertRun(
 
 export async function executeArchivingRetention(
   db: SqlServerDatabase,
-  input: ArchivingRetentionExecutionInput,
+  input: ArchivingRetentionExecutionInput & {
+    audit?: (
+      executor: QueryExecutor,
+      result: ArchivingRetentionRunResult,
+    ) => Promise<void>
+  },
   actor: ArchivingRetentionActor,
 ): Promise<ArchivingRetentionRunResult> {
   const runRequestId = randomUUID()
@@ -965,6 +970,7 @@ export async function executeArchivingRetention(
       runRequestId,
       summary: finalSummary,
     }
+    await input.audit?.(tx, result)
   })
   return result
 }

@@ -135,6 +135,53 @@ describe('data-subject export service', () => {
     ])
   })
 
+  it('exports action audit actor snapshots without raw details payloads', async () => {
+    const { db } = createExportDb({
+      'action_audit_events.actor': [
+        {
+          action: 'requirement.create',
+          decision: 'allowed',
+          displayName: 'Kalle Svensson',
+          eventId: 17,
+          hsaId: TARGET_HSA_ID,
+          occurredAt: new Date('2026-05-04T08:00:00Z'),
+          targetId: '42',
+          targetKind: 'Requirement',
+          targetUniqueId: 'AUTH-42',
+        },
+      ],
+    })
+
+    const result = await collectDataSubjectExport(db, {
+      generatedBy: generatedBy(),
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(result.sources).toEqual([
+      expect.objectContaining({
+        key: 'action_audit_events.actor',
+        relationToSubject: 'action_audit_actor_snapshot',
+      }),
+    ])
+    expect(result.sources[0].items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldName: 'actor_hsa_id',
+          value: TARGET_HSA_ID,
+        }),
+        expect.objectContaining({
+          fieldName: 'actor_display_name',
+          value: 'Kalle Svensson',
+        }),
+        expect.objectContaining({
+          fieldName: 'action',
+          value: 'requirement.create',
+        }),
+      ]),
+    )
+    expect(JSON.stringify(result)).not.toContain('details_json')
+  })
+
   it('keeps known limitations in the export payload', async () => {
     const { db } = createExportDb({})
 

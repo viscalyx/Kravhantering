@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { recordActionAuditEvent } from '@/lib/audit/action-audit'
 import {
   createDeviation,
   createDeviationForItemRef,
@@ -74,8 +75,8 @@ import {
  * Scenario 10 is a pure file-content check and always runs as part of
  * `npm run test`.
  *
- * Scenarios 1-9 and 11-12 exercise lifecycle invariants that require a real
- * SQL Server instance. The harness derives a connection URL automatically from
+ * Scenarios 1-9, 11-12, and 14 exercise lifecycle/audit invariants that
+ * require a real SQL Server instance. The harness derives a connection URL automatically from
  * the standard DB_* environment variables (the same ones used by the dev
  * scripts) and swaps the database name to a dedicated
  * `<DB_NAME>_functional_tests` instance so the development data is never
@@ -161,6 +162,7 @@ const FUNCTIONAL_TESTS_URL = resolveFunctionalTestsUrl()
 // Tables that the lifecycle scenarios populate and need cleared between tests.
 // Ordered child → parent so foreign key constraints never reject a DELETE.
 const TRANSACTIONAL_TABLES = [
+  'action_audit_events',
   'requirement_version_requirement_packages',
   'requirement_version_norm_references',
   'specification_local_requirement_requirement_packages',
@@ -1209,5 +1211,72 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(v2Cancel?.id).toBe(v2b.id)
     expect(v2Cancel?.status).toBe(STATUS_DRAFT)
     expect(v2Cancel?.revisionToken).toBe(v2b.revisionToken)
+  })
+
+  it('Scenario 14: action audit rows fail closed with the business transaction', async () => {
+    await expect(
+      appDb().transaction(async manager => {
+        await recordActionAuditEvent(manager, {
+          action: 'requirement.create',
+          actorDisplayName: 'Functional Test Actor',
+          actorHsaId: 'SE2321000032-functional1',
+          actorKind: 'user',
+          clientIp: '203.0.113.40',
+          decision: 'allowed',
+          details: { operation: 'create', route: '/quality/functional' },
+          requestId: 'quality-request-rollback',
+          targetId: 'rollback-target',
+          targetKind: 'Requirement',
+        })
+        throw new Error('rollback audit transaction')
+      }),
+    ).rejects.toThrow('rollback audit transaction')
+
+    const rollbackRows = (await appDb().query(
+      `SELECT COUNT(*) AS count
+       FROM action_audit_events
+       WHERE request_id = @0`,
+      ['quality-request-rollback'],
+    )) as Array<{ count: number }>
+    expect(Number(rollbackRows[0]?.count ?? 0)).toBe(0)
+
+    await appDb().transaction(async manager => {
+      await recordActionAuditEvent(manager, {
+        action: 'requirement.create',
+        actorDisplayName: 'Functional Test Actor',
+        actorHsaId: 'SE2321000032-functional1',
+        actorKind: 'user',
+        clientIp: '203.0.113.41',
+        decision: 'allowed',
+        details: {
+          operation: 'create',
+          prompt: 'must not be persisted',
+          route: '/quality/functional',
+        },
+        requestId: 'quality-request-commit',
+        targetId: 'commit-target',
+        targetKind: 'Requirement',
+      })
+    })
+
+    const committedRows = (await appDb().query(
+      `SELECT action, client_ip AS clientIp, details_json AS detailsJson
+       FROM action_audit_events
+       WHERE request_id = @0`,
+      ['quality-request-commit'],
+    )) as Array<{
+      action: string
+      clientIp: string | null
+      detailsJson: string | null
+    }>
+    expect(committedRows).toHaveLength(1)
+    expect(committedRows[0]).toEqual(
+      expect.objectContaining({
+        action: 'requirement.create',
+        clientIp: '203.0.113.41',
+      }),
+    )
+    expect(committedRows[0]?.detailsJson).toContain('/quality/functional')
+    expect(committedRows[0]?.detailsJson).not.toContain('must not be persisted')
   })
 })

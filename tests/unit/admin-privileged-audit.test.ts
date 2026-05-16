@@ -5,9 +5,18 @@ const sessionState = vi.hoisted(() => ({
   isSignedIn: vi.fn(),
 }))
 
+const auditState = vi.hoisted(() => ({
+  getRequestSqlServerDataSource: vi.fn(),
+  query: vi.fn(),
+}))
+
 vi.mock('@/lib/auth/session', () => ({
   getSessionFromRequest: sessionState.getSessionFromRequest,
   isSignedIn: sessionState.isSignedIn,
+}))
+
+vi.mock('@/lib/db', () => ({
+  getRequestSqlServerDataSource: auditState.getRequestSqlServerDataSource,
 }))
 
 import {
@@ -19,6 +28,10 @@ import type { RequestContext } from '@/lib/requirements/auth'
 describe('admin privileged action audit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    auditState.getRequestSqlServerDataSource.mockResolvedValue({
+      query: auditState.query,
+    })
+    auditState.query.mockResolvedValue([])
   })
 
   it('builds request context from the signed-in session without query details', async () => {
@@ -39,6 +52,7 @@ describe('admin privileged action audit', () => {
         headers: {
           origin: 'http://localhost:3000',
           'user-agent': 'vitest',
+          'x-forwarded-for': '203.0.113.10',
           'x-requested-with': 'XMLHttpRequest',
           'x-request-id': 'request-123',
         },
@@ -57,13 +71,14 @@ describe('admin privileged action audit', () => {
     expect(context.request).toEqual({
       method: 'PUT',
       path: '/api/admin/terminology',
+      ip: '203.0.113.10',
       requestId: 'request-123',
       userAgent: 'vitest',
     })
     expect(context.source).toBe('rest')
   })
 
-  it('emits compact security-audit details for successful privileged actions', () => {
+  it('emits compact security-audit details for successful privileged actions', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const context: RequestContext = {
       actor: {
@@ -85,7 +100,7 @@ describe('admin privileged action audit', () => {
     }
 
     try {
-      recordAdminPrivilegedActionSucceeded(context, {
+      await recordAdminPrivilegedActionSucceeded(context, {
         changedFields: ['email', 'hsaId'],
         operation: 'update',
         resourceId: 7,
@@ -128,6 +143,20 @@ describe('admin privileged action audit', () => {
       })
       expect(JSON.stringify(event.detail)).not.toContain('Ada Admin')
       expect(JSON.stringify(event.detail)).not.toContain('SE2321000032-admin1')
+      expect(auditState.query).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO action_audit_events'),
+        expect.arrayContaining([
+          'SE2321000032-admin1',
+          'Ada Admin',
+          'user',
+          null,
+          'admin.owner.update',
+          'owner',
+          '7',
+          null,
+          'allowed',
+        ]),
+      )
     } finally {
       infoSpy.mockRestore()
     }

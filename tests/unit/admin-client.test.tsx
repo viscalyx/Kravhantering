@@ -430,6 +430,49 @@ describe('AdminClient', () => {
     )
   })
 
+  it('opens the action audit log tab from the admin tab query parameter', () => {
+    searchParamsMock.current = new URLSearchParams('tab=actionAuditLog')
+
+    render(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    const actionAuditLogTab = screen.getByRole('tab', {
+      name: 'admin.auditLog.title',
+    })
+
+    expect(actionAuditLogTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute(
+      'id',
+      'actionAuditLog-panel',
+    )
+    expect(
+      screen.getByRole('link', { name: 'admin.auditLog.open' }),
+    ).toHaveAttribute('href', '/admin/audit-log')
+  })
+
+  it('renders the admin title without the reference data eyebrow', () => {
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'admin.title',
+    )
+    expect(screen.queryByText('nav.referenceData')).toBeNull()
+  })
+
   it('writes the selected admin tab to the current history entry', () => {
     render(
       <AdminClient
@@ -446,6 +489,28 @@ describe('AdminClient', () => {
       {
         pathname: '/admin',
         query: { tab: 'referenceData' },
+      },
+      { scroll: false },
+    )
+  })
+
+  it('writes the action audit log tab to the current history entry', () => {
+    render(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.auditLog.title' }))
+
+    expect(routerReplace).toHaveBeenCalledWith(
+      {
+        pathname: '/admin',
+        query: { tab: 'actionAuditLog' },
       },
       { scroll: false },
     )

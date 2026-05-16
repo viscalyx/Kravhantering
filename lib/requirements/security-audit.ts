@@ -1,9 +1,14 @@
 import {
+  recordAllowedActionAuditEvent,
+  recordDeniedActionAuditEvent,
+} from '@/lib/audit/action-audit'
+import {
   recordSecurityEvent,
   type SecurityEventActor,
   type SecurityEventDetailValue,
   type SecurityEventRequest,
 } from '@/lib/auth/audit'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import type {
   ActorContext,
   RequestContext,
@@ -38,6 +43,7 @@ export interface HighRiskMutationAuditDetail {
   specificationSlug?: string
   suggestionId?: number
   targetRequirementAreaId?: number
+  toStatusId?: number
   versionNumber?: number
 }
 
@@ -167,11 +173,149 @@ function actionAuditDetail(
   }
 }
 
-export function recordAuthorizationDenied(
+function actionNameForAuthorizationDenied(action: RequirementsAction): string {
+  switch (action.kind) {
+    case 'add_to_specification':
+      return 'specification.requirement.add.denied'
+    case 'remove_from_specification':
+      return 'specification.requirement.remove.denied'
+    case 'graduate_specification_local_requirement':
+      return 'specification_local_requirement.graduate.denied'
+    case 'manage_specification_local_requirement':
+      return `specification_local_requirement.${action.operation}.denied`
+    case 'manage_requirement':
+      return `requirement.${action.operation}.denied`
+    case 'transition_requirement':
+      return 'requirement.transition.denied'
+    case 'manage_deviation':
+      return `deviation.${action.operation}.denied`
+    case 'manage_suggestion':
+      return `improvement_suggestion.${action.operation}.denied`
+    case 'generate_requirements':
+      return 'ai_requirement.insert.denied'
+    default:
+      return `${action.kind}.denied`
+  }
+}
+
+function targetForAuthorizationDenied(action: RequirementsAction): {
+  targetId?: number | string | null
+  targetKind: string
+  targetUniqueId?: string | null
+} {
+  switch (action.kind) {
+    case 'add_to_specification':
+    case 'remove_from_specification':
+    case 'get_specification_items':
+    case 'list_deviations':
+      return {
+        targetId: action.specificationId ?? action.specificationSlug,
+        targetKind: 'RequirementsSpecification',
+      }
+    case 'graduate_specification_local_requirement':
+    case 'manage_specification_local_requirement':
+    case 'list_graduation_target_areas':
+      return {
+        targetId: action.localRequirementId,
+        targetKind: 'SpecificationLocalRequirement',
+      }
+    case 'get_requirement':
+    case 'manage_requirement':
+      return {
+        targetId: action.id ?? action.uniqueId,
+        targetKind: 'Requirement',
+        targetUniqueId: action.uniqueId,
+      }
+    case 'transition_requirement':
+      return {
+        targetId: action.id ?? action.uniqueId,
+        targetKind: 'Requirement',
+        targetUniqueId: action.uniqueId,
+      }
+    case 'manage_deviation':
+      return {
+        targetId: action.deviationId ?? action.specificationItemId,
+        targetKind: 'Deviation',
+      }
+    case 'manage_suggestion':
+      return {
+        targetId: action.suggestionId ?? action.requirementId,
+        targetKind: 'ImprovementSuggestion',
+      }
+    case 'list_suggestions':
+      return {
+        targetId: action.requirementId,
+        targetKind: 'ImprovementSuggestion',
+      }
+    case 'generate_requirements':
+      return { targetKind: 'AIRequirementGeneration' }
+    default:
+      return { targetKind: action.kind }
+  }
+}
+
+function normalizeHighRiskAction(detail: HighRiskMutationAuditDetail): string {
+  const { action } = detail
+  if (action === 'deviation.decision.recorded') return 'deviation.decision'
+  if (action === 'suggestion.resolution.recorded') {
+    return detail.operation === 'dismiss'
+      ? 'improvement_suggestion.dismiss'
+      : 'improvement_suggestion.resolve'
+  }
+  if (action.startsWith('suggestion.')) {
+    return action.replace(/^suggestion\./, 'improvement_suggestion.')
+  }
+  return action
+}
+
+function targetForHighRiskMutation(detail: HighRiskMutationAuditDetail): {
+  targetId?: number | string | null
+  targetKind: string
+  targetUniqueId?: string | null
+} {
+  if (detail.newRequirementId != null || detail.newRequirementUniqueId) {
+    return {
+      targetId: detail.newRequirementId ?? detail.newRequirementUniqueId,
+      targetKind: 'Requirement',
+      targetUniqueId: detail.newRequirementUniqueId,
+    }
+  }
+  if (detail.requirementId != null || detail.requirementUniqueId) {
+    return {
+      targetId: detail.requirementId ?? detail.requirementUniqueId,
+      targetKind: 'Requirement',
+      targetUniqueId: detail.requirementUniqueId,
+    }
+  }
+  if (detail.deviationId != null) {
+    return { targetId: detail.deviationId, targetKind: 'Deviation' }
+  }
+  if (detail.suggestionId != null) {
+    return {
+      targetId: detail.suggestionId,
+      targetKind: 'ImprovementSuggestion',
+    }
+  }
+  if (detail.localRequirementId != null) {
+    return {
+      targetId: detail.localRequirementId,
+      targetKind: 'SpecificationLocalRequirement',
+    }
+  }
+  if (detail.specificationId != null || detail.specificationSlug) {
+    return {
+      targetId: detail.specificationId ?? detail.specificationSlug,
+      targetKind: 'RequirementsSpecification',
+    }
+  }
+  return { targetKind: 'RequirementMutation' }
+}
+
+export async function recordAuthorizationDenied(
   context: RequestContext,
   action: RequirementsAction,
   error: unknown,
-): void {
+): Promise<void> {
   if (
     !isRequirementsServiceError(error) ||
     (error.code !== 'forbidden' && error.code !== 'unauthorized')
@@ -182,6 +326,20 @@ export function recordAuthorizationDenied(
   const requiredRoles = stringArrayDetail(error.details?.requiredRoles)
   const reason =
     typeof error.details?.reason === 'string' ? error.details.reason : undefined
+  const db = await getRequestSqlServerDataSource()
+  await recordDeniedActionAuditEvent(db, context, {
+    action: actionNameForAuthorizationDenied(action),
+    denialReason: reason ?? error.code,
+    details: compactDetail({
+      ...actionAuditDetail(action),
+      errorCode: error.code,
+      reason,
+      requestSource: context.source,
+      requiredRoles,
+      toolName: context.toolName,
+    }),
+    ...targetForAuthorizationDenied(action),
+  })
 
   recordSecurityEvent({
     actor: securityActorFromContext(context.actor),
@@ -199,10 +357,20 @@ export function recordAuthorizationDenied(
   })
 }
 
-export function recordHighRiskMutationSucceeded(
+export async function recordHighRiskMutationSucceeded(
   context: RequestContext,
   detail: HighRiskMutationAuditDetail,
-): void {
+): Promise<void> {
+  const db = await getRequestSqlServerDataSource()
+  await recordAllowedActionAuditEvent(db, context, {
+    action: normalizeHighRiskAction(detail),
+    details: compactDetail({
+      ...detail,
+      requestSource: context.source,
+      toolName: context.toolName,
+    }),
+    ...targetForHighRiskMutation(detail),
+  })
   recordSecurityEvent({
     actor: securityActorFromContext(context.actor),
     detail: compactDetail({

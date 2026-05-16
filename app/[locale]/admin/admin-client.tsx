@@ -190,6 +190,7 @@ const ADMIN_ACCESS_REVIEW_HELP: HelpContent = {
 
 type AdminTab =
   | 'accessReview'
+  | 'actionAuditLog'
   | 'archiving'
   | 'columns'
   | 'privacy'
@@ -208,10 +209,12 @@ const adminTabs: { icon: typeof Languages; id: AdminTab }[] = [
   { icon: ClipboardCheck, id: 'accessReview' },
   { icon: Archive, id: 'archiving' },
   { icon: ShieldCheck, id: 'privacy' },
+  { icon: FileText, id: 'actionAuditLog' },
 ]
 
 const ADMIN_TAB_DEVELOPER_MODE_VALUES: Record<AdminTab, string> = {
   accessReview: 'access review',
+  actionAuditLog: 'action audit log',
   archiving: 'archiving',
   columns: 'columns',
   privacy: 'privacy',
@@ -224,11 +227,15 @@ const DEFAULT_ADMIN_TAB: AdminTab = 'terminology'
 
 function getAdminTabFromSearchParams(
   searchParams: URLSearchParams,
-  options: { canUsePrivacy: boolean },
+  options: { canManageAccessReviews: boolean; canUsePrivacy: boolean },
 ): AdminTab {
   const tab = searchParams.get(ADMIN_TAB_QUERY_KEY)
 
   if (!adminTabs.some(item => item.id === tab)) {
+    return DEFAULT_ADMIN_TAB
+  }
+
+  if (tab === 'actionAuditLog' && !options.canManageAccessReviews) {
     return DEFAULT_ADMIN_TAB
   }
 
@@ -2670,6 +2677,7 @@ export default function AdminClient({
   const canManageAccessReviews = currentUserRoles.includes(ADMIN_ROLE)
   const [activeTab, setActiveTab] = useState<AdminTab>(() =>
     getAdminTabFromSearchParams(new URLSearchParams(searchParams), {
+      canManageAccessReviews,
       canUsePrivacy,
     }),
   )
@@ -2700,12 +2708,17 @@ export default function AdminClient({
   useEffect(() => {
     setActiveTab(
       getAdminTabFromSearchParams(new URLSearchParams(searchParams), {
+        canManageAccessReviews,
         canUsePrivacy,
       }),
     )
-  }, [canUsePrivacy, searchParams])
+  }, [canManageAccessReviews, canUsePrivacy, searchParams])
 
   const selectTab = (tab: AdminTab) => {
+    if (tab === 'actionAuditLog' && !canManageAccessReviews) {
+      return
+    }
+
     if ((tab === 'privacy' || tab === 'archiving') && !canUsePrivacy) {
       return
     }
@@ -2980,15 +2993,12 @@ export default function AdminClient({
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom space-y-6">
         <section className="overflow-hidden rounded-[2rem] border border-secondary-200/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(238,242,255,0.82))] p-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.55)] backdrop-blur-md dark:border-secondary-700/60 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.92),rgba(30,41,59,0.86))]">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-2xl xl:max-w-[28rem] 2xl:max-w-xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary-700 dark:text-primary-300">
-                {tn('referenceData')}
-              </p>
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-secondary-950 dark:text-secondary-50">
+          <div className="space-y-4">
+            <div className="space-y-2 xl:flex xl:flex-row xl:items-center xl:gap-6 xl:justify-between">
+              <h1 className="text-3xl font-semibold tracking-tight text-secondary-950 dark:text-secondary-50 xl:shrink-0">
                 {ta('title')}
               </h1>
-              <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-300">
+              <p className="text-sm text-secondary-600 dark:text-secondary-300 xl:ml-auto xl:flex-1">
                 {ta('description')}
               </p>
             </div>
@@ -3002,7 +3012,12 @@ export default function AdminClient({
               })}
               role="tablist"
             >
-              {adminTabs.map(tab => {
+              {adminTabs
+                .filter(
+                  tab =>
+                    tab.id !== 'actionAuditLog' || canManageAccessReviews,
+                )
+                .map(tab => {
                 const isDisabled =
                   (tab.id === 'privacy' || tab.id === 'archiving') &&
                   !canUsePrivacy
@@ -3013,7 +3028,9 @@ export default function AdminClient({
                       ? ta('accessReview.title')
                       : tab.id === 'archiving'
                         ? ta('archiving.title')
-                        : ta(tab.id)
+                        : tab.id === 'actionAuditLog'
+                          ? ta('auditLog.title')
+                          : ta(tab.id)
 
                 return (
                   <button
@@ -3371,6 +3388,39 @@ export default function AdminClient({
 
         {activeTab === 'privacy' && canUsePrivacy ? (
           <PrivacyErasurePanel />
+        ) : null}
+
+        {activeTab === 'actionAuditLog' && canManageAccessReviews ? (
+          <section
+            aria-labelledby="actionAuditLog-tab"
+            className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+            {...devMarker({
+              context: 'admin center',
+              name: 'tab panel',
+              priority: 340,
+              value: 'action audit log',
+            })}
+            id="actionAuditLog-panel"
+            role="tabpanel"
+          >
+            <div className="border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60">
+              <h2 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
+                {ta('auditLog.title')}
+              </h2>
+              <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+                {ta('auditLog.description')}
+              </p>
+            </div>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <Link
+                className="btn-secondary inline-flex items-center gap-2"
+                href="/admin/audit-log"
+              >
+                <FileText aria-hidden="true" className="h-4 w-4" />
+                {ta('auditLog.open')}
+              </Link>
+            </div>
+          </section>
         ) : null}
       </div>
     </div>

@@ -767,6 +767,13 @@ export function createRequirementWorkflow({
                   )
                 })(),
             )
+            await recordHighRiskMutationSucceeded(context, {
+              action: 'requirement.create',
+              operation: input.operation,
+              requirementId: created.requirement.id,
+              requirementUniqueId: detail.uniqueId,
+              versionNumber: created.version.versionNumber,
+            })
             return {
               detail,
               message: createServiceMessage(
@@ -857,6 +864,13 @@ export function createRequirementWorkflow({
                   )
                 })(),
             )
+            await recordHighRiskMutationSucceeded(context, {
+              action: 'requirement.edit',
+              operation: input.operation,
+              requirementId,
+              requirementUniqueId: detail.uniqueId,
+              versionNumber: version.versionNumber,
+            })
             return {
               detail,
               message: createServiceMessage(
@@ -881,7 +895,7 @@ export function createRequirementWorkflow({
                   )
                 })(),
             )
-            recordHighRiskMutationSucceeded(context, {
+            await recordHighRiskMutationSucceeded(context, {
               action: 'requirement.archiving.initiated',
               operation: input.operation,
               requirementId,
@@ -909,7 +923,7 @@ export function createRequirementWorkflow({
                   )
                 })(),
             )
-            recordHighRiskMutationSucceeded(context, {
+            await recordHighRiskMutationSucceeded(context, {
               action: 'requirement.archiving.approved',
               operation: input.operation,
               requirementId,
@@ -937,7 +951,7 @@ export function createRequirementWorkflow({
                   )
                 })(),
             )
-            recordHighRiskMutationSucceeded(context, {
+            await recordHighRiskMutationSucceeded(context, {
               action: 'requirement.archiving.cancelled',
               operation: input.operation,
               requirementId,
@@ -958,7 +972,7 @@ export function createRequirementWorkflow({
           if (input.operation === 'delete_draft') {
             const result = await deleteDraftVersion(db, requirementId)
             const detail = await getRequirementById(db, requirementId)
-            recordHighRiskMutationSucceeded(context, {
+            await recordHighRiskMutationSucceeded(context, {
               action: 'requirement.draft.deleted',
               deleted: result.deleted,
               operation: input.operation,
@@ -997,7 +1011,7 @@ export function createRequirementWorkflow({
                   )
                 })(),
             )
-            recordHighRiskMutationSucceeded(context, {
+            await recordHighRiskMutationSucceeded(context, {
               action: 'requirement.reactivated',
               operation: input.operation,
               requirementId,
@@ -1056,7 +1070,7 @@ export function createRequirementWorkflow({
               })(),
           )
 
-          recordHighRiskMutationSucceeded(context, {
+          await recordHighRiskMutationSucceeded(context, {
             action: 'requirement.version.restored',
             operation: input.operation,
             requirementId,
@@ -1115,6 +1129,14 @@ export function createRequirementWorkflow({
               })(),
           )
           const version = detail.versions[0]
+          await recordHighRiskMutationSucceeded(context, {
+            action: 'requirement.transition',
+            operation: 'transition',
+            requirementId,
+            requirementUniqueId: detail.uniqueId,
+            toStatusId: input.toStatusId,
+            versionNumber: version?.versionNumber,
+          })
 
           return {
             detail,

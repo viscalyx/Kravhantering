@@ -4,6 +4,7 @@ import {
   createArchivingRetentionException,
   deleteArchivingRetentionException,
 } from '@/lib/archiving/retention'
+import { recordAllowedActionAuditEventWithExecutor } from '@/lib/audit/action-audit'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { CsrfError } from '@/lib/auth/csrf'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -71,7 +72,24 @@ export const POST = secureMutationRoute({
     try {
       const db = await getRequestSqlServerDataSource()
       const actor = requireHumanActorSnapshot(context)
-      const exception = await createArchivingRetentionException(db, body, actor)
+      let exception!: Awaited<
+        ReturnType<typeof createArchivingRetentionException>
+      >
+      await db.transaction(async manager => {
+        const tx = manager as unknown as typeof db
+        exception = await createArchivingRetentionException(tx, body, actor)
+        await recordAllowedActionAuditEventWithExecutor(manager, context, {
+          action: 'admin.archiving_exception.create',
+          details: {
+            exceptionId: exception.id,
+            policyId: exception.policyId,
+            sourceKey: exception.sourceKey,
+            subjectTable: exception.subjectTable,
+          },
+          targetId: exception.id,
+          targetKind: 'ArchivingRetentionException',
+        })
+      })
       recordSecurityEvent({
         actor: auditActor(context),
         detail: {
@@ -113,7 +131,20 @@ export const DELETE = secureMutationRoute({
   handler: async ({ body, context, request }) => {
     try {
       const db = await getRequestSqlServerDataSource()
-      const deleted = await deleteArchivingRetentionException(db, body.id)
+      let deleted = false
+      await db.transaction(async manager => {
+        const tx = manager as unknown as typeof db
+        deleted = await deleteArchivingRetentionException(tx, body.id)
+        await recordAllowedActionAuditEventWithExecutor(manager, context, {
+          action: 'admin.archiving_exception.delete',
+          details: {
+            deleted,
+            exceptionId: body.id,
+          },
+          targetId: body.id,
+          targetKind: 'ArchivingRetentionException',
+        })
+      })
       recordSecurityEvent({
         actor: auditActor(context),
         detail: {

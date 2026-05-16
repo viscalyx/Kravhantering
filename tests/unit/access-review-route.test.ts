@@ -12,6 +12,8 @@ const routeState = vi.hoisted(() => ({
   getAccessReviewRun: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
   listAccessReviewRuns: vi.fn(),
+  recordAllowedActionAuditEvent: vi.fn(),
+  recordDeniedActionAuditEvent: vi.fn(),
   recordSecurityEvent: vi.fn(),
   requireHumanActorSnapshot: vi.fn(
     (context: { actor: { displayName: string; hsaId: string } }) => ({
@@ -28,6 +30,16 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/auth/audit', () => ({
   recordSecurityEvent: routeState.recordSecurityEvent,
 }))
+
+vi.mock('@/lib/audit/action-audit', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/lib/audit/action-audit')>()
+  return {
+    ...actual,
+    recordAllowedActionAuditEvent: routeState.recordAllowedActionAuditEvent,
+    recordDeniedActionAuditEvent: routeState.recordDeniedActionAuditEvent,
+  }
+})
 
 vi.mock('@/lib/http/safe-errors', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/http/safe-errors')>()

@@ -85,7 +85,7 @@ describe('recordSecurityEvent', () => {
     expect(ev.ts).toBe('2026-04-22T00:00:00.000Z')
   })
 
-  it('extracts method, path (sans query), user-agent and request-id from a Request', () => {
+  it('extracts method, path, user-agent, request-id and client IP from a Request', () => {
     recordSecurityEvent({
       event: 'auth.login.failed',
       outcome: 'failure',
@@ -97,6 +97,7 @@ describe('recordSecurityEvent', () => {
           headers: {
             'user-agent': 'TestAgent/1.0',
             'x-request-id': 'req-42',
+            'x-forwarded-for': '203.0.113.5, 10.0.0.1',
           },
         },
       ),
@@ -107,6 +108,7 @@ describe('recordSecurityEvent', () => {
       path: '/api/auth/callback',
       userAgent: 'TestAgent/1.0',
       requestId: 'req-42',
+      ip: '203.0.113.5',
     })
   })
 
@@ -151,6 +153,52 @@ describe('recordSecurityEvent', () => {
     const ev = emittedEvents()[0]
     expect((ev.request as Record<string, unknown>).userAgent).toBeUndefined()
     expect((ev.request as Record<string, unknown>).requestId).toBeUndefined()
+    expect((ev.request as Record<string, unknown>).ip).toBeUndefined()
+  })
+
+  it('omits request.ip when X-Forwarded-For has no valid candidate', () => {
+    recordSecurityEvent({
+      event: 'auth.login.failed',
+      outcome: 'failure',
+      actor: { source: 'oidc' },
+      request: new Request('https://app.example.test/api/auth/callback', {
+        headers: {
+          'x-forwarded-for': '<script>, 203.0.113.5:443',
+        },
+      }),
+    })
+    const ev = emittedEvents()[0]
+    expect((ev.request as Record<string, unknown>).ip).toBeUndefined()
+  })
+
+  it('preserves valid pre-normalized request IP values', () => {
+    recordSecurityEvent({
+      event: 'auth.csrf.rejected',
+      outcome: 'failure',
+      actor: { source: 'oidc' },
+      request: { ip: '2001:db8::1', method: 'POST', path: '/api/owners' },
+    })
+    const ev = emittedEvents()[0]
+    expect(ev.request).toEqual({
+      ip: '2001:db8::1',
+      method: 'POST',
+      path: '/api/owners',
+    })
+  })
+
+  it('omits invalid pre-normalized request IP values', () => {
+    recordSecurityEvent({
+      event: 'auth.csrf.rejected',
+      outcome: 'failure',
+      actor: { source: 'oidc' },
+      request: {
+        ip: '"203.0.113.5"',
+        method: 'POST',
+        path: '/api/owners',
+      },
+    })
+    const ev = emittedEvents()[0]
+    expect(ev.request).toEqual({ method: 'POST', path: '/api/owners' })
   })
 
   it('strips top-level detail keys that match the deny-list', () => {

@@ -56,7 +56,7 @@ export const POST = secureMutationRoute({
     try {
       const db = await getRequestSqlServerDataSource()
       const status = await createSpecificationItemStatus(db, body)
-      recordAdminPrivilegedActionSucceeded(context, {
+      await recordAdminPrivilegedActionSucceeded(context, {
         changedFields: Object.keys(body),
         operation: 'create',
         resourceId: status.id,

@@ -83,6 +83,9 @@ function keyForPrivacySql(sql: string): string | null {
   if (sql.includes('FROM specification_co_authors WHERE created_by_hsa_id')) {
     return 'specification_co_authors.created_by'
   }
+  if (sql.includes('FROM action_audit_events WHERE actor_hsa_id')) {
+    return 'action_audit_events.actor'
+  }
   return null
 }
 
@@ -938,6 +941,53 @@ describe('privacy erasure service', () => {
         )
       }),
     ).toBe(true)
+  })
+
+  it('anonymizes action audit actor snapshots without deleting audit rows', async () => {
+    const { db, query } = createPrivacyDb({
+      'action_audit_events.actor': {
+        affectedValues: ['requirement.create #1'],
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+    })
+    const preview = await previewPrivacyErasure(db, {
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(preview.groups[0]).toEqual(
+      expect.objectContaining({
+        affectedReferences: ['requirement.create #1'],
+        key: 'action_audit_events.actor',
+        objectKey: 'actionAuditEvents',
+        recommendedAction: 'anonymize',
+      }),
+    )
+
+    const result = await executePrivacyErasure(createTransactionalDb(query), {
+      actions: { 'action_audit_events.actor': 'anonymize' },
+      previewToken: preview.previewToken,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(result.actions.anonymize).toBe(1)
+    expect(
+      query.mock.calls.some(([sql, parameters]) => {
+        const normalizedSql = String(sql).replace(/\s+/g, ' ')
+        return (
+          normalizedSql.includes(
+            'UPDATE action_audit_events SET actor_hsa_id = NULL, actor_display_name = @1 WHERE actor_hsa_id = @0',
+          ) &&
+          parameters?.[0] === TARGET_HSA_ID &&
+          parameters?.[1] === DELETED_USER_INTERNAL_NAME
+        )
+      }),
+    ).toBe(true)
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('DELETE FROM action_audit_events'),
+      ),
+    ).toBe(false)
   })
 
   it('rejects stale previews before applying mutations', async () => {
