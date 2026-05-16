@@ -363,12 +363,21 @@ It links to the existing stable routes for:
 - requirement packages
 - norm references
 - statuses
+- specification item statuses
+- risk levels
 - quality characteristics
 - business objects
 - implementation types
 
 The admin center does not rename or move those routes. It only centralizes how
 users reach them.
+
+Requirement statuses, specification item statuses, and risk levels can also
+carry a nullable icon selected from the installed Lucide icon catalog through
+the shared status-icon allowlist. The admin pages keep the label visible and
+use the icon only as a decorative cue in tables, badges, steppers, and reports.
+Existing rows without an icon continue to render with text-only labels until an
+admin selects one.
 
 ### Area Owner
 
@@ -391,6 +400,7 @@ If you change any of the following, update this document:
 - privacy-erasure or data-portability policy, actions, or role gating
 - admin entrypoint navigation
 - reference-data navigation structure
+- status, usage-status, or risk-level icon behavior
 
 If you add a new requirement column or property, also update
 [.github/instructions/add-requirement-column.instructions.md](../.github/instructions/add-requirement-column.instructions.md).

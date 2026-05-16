@@ -36,6 +36,7 @@ export interface QualityCharacteristicOption {
 
 export interface StatusOption {
   color: string | null
+  iconName?: string | null
   id: number
   nameEn: string
   nameSv: string
@@ -44,6 +45,7 @@ export interface StatusOption {
 
 export interface RiskLevelOption {
   color: string
+  iconName?: string | null
   id: number
   nameEn: string
   nameSv: string
@@ -54,6 +56,7 @@ export interface SpecificationItemStatusOption {
   color: string
   descriptionEn: string | null
   descriptionSv: string | null
+  iconName?: string | null
   id: number
   isDeviationStatus?: boolean
   nameEn: string
@@ -78,12 +81,14 @@ export interface RequirementRow {
   needsReferenceId?: number | null
   normReferenceIds?: string[]
   pendingVersionStatusColor?: string | null
+  pendingVersionStatusIconName?: string | null
   pendingVersionStatusId?: number | null
   requirementPackageIds?: number[]
   specificationItemId?: number
   specificationItemStatusColor?: string | null
   specificationItemStatusDescriptionEn?: string | null
   specificationItemStatusDescriptionSv?: string | null
+  specificationItemStatusIconName?: string | null
   specificationItemStatusId?: number | null
   specificationItemStatusNameEn?: string | null
   specificationItemStatusNameSv?: string | null
@@ -101,9 +106,11 @@ export interface RequirementRow {
     riskLevelNameEn: string | null
     riskLevelNameSv: string | null
     riskLevelColor: string | null
+    riskLevelIconName?: string | null
     riskLevelSortOrder: number | null
     status: number
     statusColor: string | null
+    statusIconName?: string | null
     statusNameEn: string | null
     statusNameSv: string | null
     qualityCharacteristicNameEn: string | null

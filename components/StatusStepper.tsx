@@ -2,11 +2,13 @@
 
 import { useTranslations } from 'next-intl'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import StatusIcon from '@/components/StatusIcon'
 import { pickReadableTextOn } from '@/lib/color-contrast'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 interface StatusStep {
   color: string | null
+  iconName?: string | null
   id: number
   nameEn: string
   nameSv: string
@@ -14,9 +16,27 @@ interface StatusStep {
 }
 
 const FALLBACK_STEPS: StatusStep[] = [
-  { id: 1, color: '#3b82f6', nameEn: 'Draft', nameSv: 'Utkast' },
-  { id: 2, color: '#eab308', nameEn: 'Review', nameSv: 'Granskning' },
-  { id: 3, color: '#22c55e', nameEn: 'Published', nameSv: 'Publicerad' },
+  {
+    id: 1,
+    color: '#3b82f6',
+    iconName: 'PenLine',
+    nameEn: 'Draft',
+    nameSv: 'Utkast',
+  },
+  {
+    id: 2,
+    color: '#eab308',
+    iconName: 'Eye',
+    nameEn: 'Review',
+    nameSv: 'Granskning',
+  },
+  {
+    id: 3,
+    color: '#22c55e',
+    iconName: 'CheckCircle2',
+    nameEn: 'Published',
+    nameSv: 'Publicerad',
+  },
 ]
 
 /** Pixel depth of the arrow point / notch */
@@ -151,9 +171,10 @@ export default function StatusStepper({
             style={{ clipPath: stepClipPath(i === 0) }}
           >
             <span
-              className="text-sm select-none font-medium"
+              className="flex items-center justify-center gap-1.5 text-sm select-none font-medium"
               style={{ paddingLeft: i === 0 ? 0 : ARROW / 2 }}
             >
+              <StatusIcon className="h-4 w-4 shrink-0" name={step.iconName} />
               {stepLabel(step)}
             </span>
           </div>
@@ -184,9 +205,13 @@ export default function StatusStepper({
             }}
           >
             <span
-              className="text-sm select-none font-semibold"
+              className="flex items-center justify-center gap-1.5 text-sm select-none font-semibold"
               style={{ paddingLeft: targetIndex === 0 ? 0 : ARROW / 2 }}
             >
+              <StatusIcon
+                className="h-4 w-4 shrink-0"
+                name={steps[targetIndex].iconName}
+              />
               {stepLabel(steps[targetIndex])}
             </span>
           </div>

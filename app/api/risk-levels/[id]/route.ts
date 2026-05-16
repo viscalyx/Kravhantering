@@ -18,6 +18,7 @@ import {
   nonNegativeIntegerSchema,
   parseRouteParams,
 } from '@/lib/http/validation'
+import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +27,7 @@ type Params = Promise<{ id: string }>
 const updateRiskLevelSchema = z
   .object({
     color: boundedDbStringSchema.optional(),
+    iconName: nullableOptionalStatusIconNameSchema,
     nameEn: boundedDbStringSchema.optional(),
     nameSv: boundedDbStringSchema.optional(),
     sortOrder: nonNegativeIntegerSchema.optional(),

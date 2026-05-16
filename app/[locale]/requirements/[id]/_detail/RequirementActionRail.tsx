@@ -12,6 +12,7 @@ import {
 import { useTranslations } from 'next-intl'
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import StatusIcon from '@/components/StatusIcon'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import {
@@ -371,6 +372,10 @@ export default function RequirementActionRail({
                     title={t(`transitionTooltip${transition.nameSv}`)}
                     type="button"
                   >
+                    <StatusIcon
+                      className="h-3.5 w-3.5 shrink-0"
+                      name={transition.iconName}
+                    />
                     {t(`transitionTo${transition.nameSv}`)}
                   </button>
                 ))}

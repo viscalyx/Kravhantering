@@ -4,6 +4,7 @@ export interface SpecificationItemStatusEntity {
   color: string
   descriptionEn: string | null
   descriptionSv: string | null
+  iconName: string | null
   id: number
   nameEn: string
   nameSv: string
@@ -36,6 +37,12 @@ export const specificationItemStatusEntity =
         nullable: true,
       },
       color: { name: 'color', type: 'nvarchar', length: 'MAX' },
+      iconName: {
+        name: 'icon_name',
+        type: 'nvarchar',
+        length: 64,
+        nullable: true,
+      },
       sortOrder: { name: 'sort_order', type: 'int', default: 0 },
     },
     uniques: [

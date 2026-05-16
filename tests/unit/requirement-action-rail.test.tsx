@@ -232,31 +232,47 @@ describe('RequirementActionRail', () => {
   })
 
   it('announces share copy success and returns focus to the trigger', async () => {
+    const originalClipboard = globalThis.navigator.clipboard
+    const originalHref = window.location.href
     const clipboardWriteText = vi.fn().mockResolvedValue(undefined)
-    Object.defineProperty(globalThis.navigator, 'clipboard', {
-      configurable: true,
-      value: {
-        writeText: clipboardWriteText,
-      },
-    })
-    window.history.pushState({}, '', '/sv/requirements/REQ-123?draft=true')
-    renderRequirementActionRail()
+    try {
+      Object.defineProperty(globalThis.navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: clipboardWriteText,
+        },
+      })
+      window.history.pushState({}, '', '/sv/requirements/REQ-123?draft=true')
+      renderRequirementActionRail()
 
-    const shareTrigger = screen.getByRole('button', { name: 'common.share' })
-    await userEvent.click(shareTrigger)
-    await userEvent.click(
-      screen.getByRole('menuitem', {
-        name: 'requirement.shareLinkInline',
-      }),
-    )
+      const shareTrigger = screen.getByRole('button', { name: 'common.share' })
+      await userEvent.click(shareTrigger)
+      await userEvent.click(
+        screen.getByRole('menuitem', {
+          name: 'requirement.shareLinkInline',
+        }),
+      )
 
-    await waitFor(() =>
-      expect(clipboardWriteText).toHaveBeenCalledWith(
-        `${window.location.origin}/sv/requirements?selected=REQ-123`,
-      ),
-    )
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('common.copied')
-    expect(screen.getByRole('button', { name: 'common.copied' })).toHaveFocus()
+      await waitFor(() =>
+        expect(clipboardWriteText).toHaveBeenCalledWith(
+          `${window.location.origin}/sv/requirements?selected=REQ-123`,
+        ),
+      )
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('common.copied')
+      expect(
+        screen.getByRole('button', { name: 'common.copied' }),
+      ).toHaveFocus()
+    } finally {
+      if (originalClipboard === undefined) {
+        Reflect.deleteProperty(globalThis.navigator, 'clipboard')
+      } else {
+        Object.defineProperty(globalThis.navigator, 'clipboard', {
+          configurable: true,
+          value: originalClipboard,
+        })
+      }
+      window.history.pushState({}, '', originalHref)
+    }
   })
 })

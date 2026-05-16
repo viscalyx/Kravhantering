@@ -17,6 +17,7 @@ interface Version {
   publishedAt: string | null
   status: number
   statusColor: string | null
+  statusIconName?: string | null
   statusNameEn: string | null
   statusNameSv: string | null
   versionNumber: number
@@ -322,6 +323,7 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
                 <span>v{v.versionNumber}</span>
                 <StatusBadge
                   color={v.statusColor}
+                  iconName={v.statusIconName}
                   label={resolveStatusLabel(
                     {
                       status: v.status,

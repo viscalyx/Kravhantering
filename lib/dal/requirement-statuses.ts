@@ -8,6 +8,7 @@ import { toBoolean } from '@/lib/typeorm/value-mappers'
 
 export interface RequirementStatusRow {
   color: string
+  iconName: string | null
   id: number
   isSystem: boolean | number | string
   nameEn: string
@@ -35,6 +36,7 @@ export interface RequirementStatusTransitionDetail
 function mapStatus(row: RequirementStatusEntity): RequirementStatusRecord {
   return {
     color: row.color,
+    iconName: row.iconName ?? null,
     id: row.id,
     isSystem: toBoolean(row.isSystem),
     nameEn: row.nameEn,
@@ -69,6 +71,7 @@ export async function createStatus(
     nameEn: string
     sortOrder: number
     color: string
+    iconName?: string | null
     isSystem?: boolean
   },
 ): Promise<RequirementStatusRecord> {
@@ -79,6 +82,7 @@ export async function createStatus(
       nameEn: data.nameEn,
       sortOrder: data.sortOrder,
       color: data.color,
+      iconName: data.iconName ?? null,
       isSystem: data.isSystem ?? false,
     }),
   )
@@ -93,6 +97,7 @@ export async function updateStatus(
     nameEn?: string
     sortOrder?: number
     color?: string
+    iconName?: string | null
   },
 ): Promise<RequirementStatusRecord | undefined> {
   const repository = db.getRepository(requirementStatusEntity)
@@ -101,6 +106,7 @@ export async function updateStatus(
   if (data.nameEn !== undefined) patch.nameEn = data.nameEn
   if (data.sortOrder !== undefined) patch.sortOrder = data.sortOrder
   if (data.color !== undefined) patch.color = data.color
+  if (data.iconName !== undefined) patch.iconName = data.iconName
   if (Object.keys(patch).length > 0) {
     await repository.update(id, patch)
   }

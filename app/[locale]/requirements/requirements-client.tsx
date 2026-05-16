@@ -167,6 +167,7 @@ const PAGE_SIZE = 200
 type RequirementDetailRowSource = RequirementDetailResponse & {
   hasPendingVersion?: boolean
   pendingVersionStatusColor?: string | null
+  pendingVersionStatusIconName?: string | null
   pendingVersionStatusId?: number | null
 }
 
@@ -181,6 +182,7 @@ function mapRequirementDetailToRow(
     id: detail.id,
     isArchived: detail.isArchived,
     pendingVersionStatusColor: detail.pendingVersionStatusColor ?? null,
+    pendingVersionStatusIconName: detail.pendingVersionStatusIconName ?? null,
     pendingVersionStatusId: detail.pendingVersionStatusId ?? null,
     uniqueId: detail.uniqueId,
     version: version
@@ -192,6 +194,7 @@ function mapRequirementDetailToRow(
           revisionToken: version.revisionToken,
           status: version.status,
           statusColor: version.statusColor,
+          statusIconName: version.statusIconName,
           statusNameEn: version.statusNameEn,
           statusNameSv: version.statusNameSv,
           archiveInitiatedAt: version.archiveInitiatedAt,
@@ -203,6 +206,7 @@ function mapRequirementDetailToRow(
           riskLevelNameEn: version.riskLevel?.nameEn ?? null,
           riskLevelNameSv: version.riskLevel?.nameSv ?? null,
           riskLevelColor: version.riskLevel?.color ?? null,
+          riskLevelIconName: version.riskLevel?.iconName ?? null,
           riskLevelSortOrder: version.riskLevel?.sortOrder ?? null,
           typeNameEn: version.type?.nameEn ?? null,
           typeNameSv: version.type?.nameSv ?? null,

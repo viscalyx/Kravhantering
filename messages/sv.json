@@ -641,6 +641,8 @@
     "nameEnHelp": "Ange det engelska statusnamnet som visas när applikationens språk är engelska.",
     "color": "Färg",
     "colorHelp": "Välj den färg som används för statusmärket.",
+    "icon": "Ikon",
+    "iconHelp": "Välj en godkänd ikon som visas bredvid statusetiketten. Lämna tomt för ett märke med enbart text.",
     "sortOrder": "Sorteringsordning",
     "sortOrderHelp": "Ange ett tal som styr visningsordningen. Lägre tal visas först.",
     "isSystem": "Systemstatus",
@@ -649,6 +651,15 @@
     "preview": "Förhandsvisning",
     "cannotDeleteSystem": "Systemstatusar kan inte tas bort",
     "cannotDeleteInUse": "Går inte att ta bort - statusen används av befintliga krav"
+  },
+  "iconPicker": {
+    "clear": "Rensa ikon",
+    "close": "Stäng panel",
+    "noResults": "Inga ikoner matchar sökningen.",
+    "none": "Ingen ikon",
+    "searchLabel": "Sök ikoner",
+    "searchPlaceholder": "Sök på engelskt namn eller betydelse",
+    "title": "Välj ikon"
   },
   "reference": {
     "name": "Namn",
@@ -1576,6 +1587,7 @@
     "name": "Namn",
     "color": "Färg",
     "colorHex": "Färgkod (hex)",
+    "icon": "Ikon",
     "sortOrder": "Sorteringsordning",
     "linkedRequirements": "Kopplade krav",
     "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}"
@@ -1585,6 +1597,8 @@
     "name": "Namn",
     "color": "Färg",
     "colorHex": "Färgkod (hex)",
+    "icon": "Ikon",
+    "iconHelp": "Välj en godkänd ikon som visas bredvid etiketten för användningsstatus. Lämna tomt för ett märke med enbart text.",
     "sortOrder": "Sorteringsordning",
     "linkedSpecifications": "Kopplade kravunderlag",
     "linkedItemCount": "Kopplade poster",

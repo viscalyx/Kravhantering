@@ -286,6 +286,7 @@ const SEED_DATA = {
       'description_sv',
       'description_en',
       'color',
+      'icon_name',
       'sort_order',
     ],
     pk: ['id'],
@@ -297,6 +298,7 @@ const SEED_DATA = {
         'Kravet finns i underlaget men inget arbete påbörjat',
         'Requirement is in the specification but no work started',
         '#94a3b8',
+        'Circle',
         1,
       ],
       [
@@ -306,6 +308,7 @@ const SEED_DATA = {
         'Implementation pågår',
         'Implementation is in progress',
         '#f59e0b',
+        'Play',
         2,
       ],
       [
@@ -315,6 +318,7 @@ const SEED_DATA = {
         'Kravet är implementerat',
         'Requirement has been implemented',
         '#3b82f6',
+        'CheckCircle2',
         3,
       ],
       [
@@ -324,6 +328,7 @@ const SEED_DATA = {
         'Kravet är verifierat och testat',
         'Requirement has been verified and tested',
         '#22c55e',
+        'ShieldCheck',
         4,
       ],
       [
@@ -333,6 +338,7 @@ const SEED_DATA = {
         'Avsteg har registrerats för kravet',
         'A deviation has been registered for the requirement',
         '#ef4444',
+        'AlertTriangle',
         0,
       ],
       [
@@ -342,6 +348,7 @@ const SEED_DATA = {
         'Kravet gäller inte i denna kontext',
         'Requirement does not apply in this context',
         '#6b7280',
+        'XCircle',
         6,
       ],
     ],
@@ -816,13 +823,21 @@ const SEED_DATA = {
     ],
   },
   requirement_statuses: {
-    columns: ['id', 'name_sv', 'name_en', 'sort_order', 'color', 'is_system'],
+    columns: [
+      'id',
+      'name_sv',
+      'name_en',
+      'sort_order',
+      'color',
+      'icon_name',
+      'is_system',
+    ],
     pk: ['id'],
     rows: [
-      [1, 'Utkast', 'Draft', 1, '#3b82f6', 1],
-      [2, 'Granskning', 'Review', 2, '#eab308', 1],
-      [3, 'Publicerad', 'Published', 3, '#22c55e', 1],
-      [4, 'Arkiverad', 'Archived', 4, '#6b7280', 1],
+      [1, 'Utkast', 'Draft', 1, '#3b82f6', 'PenLine', 1],
+      [2, 'Granskning', 'Review', 2, '#eab308', 'Eye', 1],
+      [3, 'Publicerad', 'Published', 3, '#22c55e', 'CheckCircle2', 1],
+      [4, 'Arkiverad', 'Archived', 4, '#6b7280', 'Archive', 1],
     ],
   },
   requirement_status_transitions: {
@@ -1318,12 +1333,12 @@ const SEED_DATA = {
     ],
   },
   risk_levels: {
-    columns: ['id', 'name_sv', 'name_en', 'sort_order', 'color'],
+    columns: ['id', 'name_sv', 'name_en', 'sort_order', 'color', 'icon_name'],
     pk: ['id'],
     rows: [
-      [1, 'Låg', 'Low', 1, '#22c55e'],
-      [2, 'Medel', 'Medium', 2, '#eab308'],
-      [3, 'Hög', 'High', 3, '#ef4444'],
+      [1, 'Låg', 'Low', 1, '#22c55e', 'ShieldCheck'],
+      [2, 'Medel', 'Medium', 2, '#eab308', 'AlertCircle'],
+      [3, 'Hög', 'High', 3, '#ef4444', 'AlertTriangle'],
     ],
   },
   specification_local_requirements: {

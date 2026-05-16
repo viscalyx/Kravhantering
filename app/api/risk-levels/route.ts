@@ -20,10 +20,12 @@ import {
   boundedDbStringSchema,
   nonNegativeIntegerSchema,
 } from '@/lib/http/validation'
+import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
 
 const createRiskLevelSchema = z
   .object({
     color: boundedDbStringSchema,
+    iconName: nullableOptionalStatusIconNameSchema,
     nameEn: boundedDbStringSchema,
     nameSv: boundedDbStringSchema,
     sortOrder: nonNegativeIntegerSchema.optional(),

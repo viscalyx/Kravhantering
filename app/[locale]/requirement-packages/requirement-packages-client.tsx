@@ -63,6 +63,7 @@ interface LinkedRequirement {
   description: string | null
   id: number
   statusColor: string | null
+  statusIconName: string | null
   statusId: number | null
   statusNameEn: string | null
   statusNameSv: string | null
@@ -517,6 +518,7 @@ export default function RequirementPackagesClient() {
                                   <td className="py-2 px-3">
                                     <StatusBadge
                                       color={requirement.statusColor}
+                                      iconName={requirement.statusIconName}
                                       label={resolveStatusLabel(
                                         {
                                           archiveInitiatedAt:

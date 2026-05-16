@@ -31,6 +31,7 @@ export interface RequirementVersionNormReference {
 
 export interface RiskLevelSummary {
   color: string
+  iconName?: string | null
   id: number
   nameEn: string
   nameSv: string
@@ -55,6 +56,7 @@ export interface RequirementVersionDetail {
   riskLevel: RiskLevelSummary | null
   status: number
   statusColor: string | null
+  statusIconName?: string | null
   statusNameEn: string | null
   statusNameSv: string | null
   type: RequirementLocalizedEntity | null

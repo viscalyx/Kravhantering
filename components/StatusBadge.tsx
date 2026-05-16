@@ -1,11 +1,13 @@
 'use client'
 
 import type { CSSProperties } from 'react'
+import StatusIcon from '@/components/StatusIcon'
 import { getReadableTextColors } from '@/lib/color-contrast'
 
 interface StatusBadgeProps {
   className?: string
   color: string | null
+  iconName?: string | null
   label: string
   size?: 'sm' | 'md'
 }
@@ -21,6 +23,7 @@ interface StatusBadgeProps {
 export default function StatusBadge({
   className = '',
   color,
+  iconName = null,
   label,
   size = 'md',
 }: StatusBadgeProps) {
@@ -37,9 +40,10 @@ export default function StatusBadge({
 
   return (
     <span
-      className={`status-badge inline-block rounded-full font-medium ${sizeClass} ${className}`}
+      className={`status-badge inline-flex items-center gap-1 rounded-full font-medium ${sizeClass} ${className}`}
       style={style}
     >
+      <StatusIcon className="h-3 w-3 shrink-0" name={iconName} />
       {label}
     </span>
   )

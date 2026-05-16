@@ -21,6 +21,7 @@ import {
   nonNegativeIntegerSchema,
   nullableBusinessTextSchema,
 } from '@/lib/http/validation'
+import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
 import { DEVIATED_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 
 const specificationItemStatusCreateSchema = z
@@ -28,6 +29,7 @@ const specificationItemStatusCreateSchema = z
     color: boundedDbStringSchema,
     descriptionEn: nullableBusinessTextSchema.optional(),
     descriptionSv: nullableBusinessTextSchema.optional(),
+    iconName: nullableOptionalStatusIconNameSchema,
     nameEn: boundedDbStringSchema,
     nameSv: boundedDbStringSchema,
     sortOrder: nonNegativeIntegerSchema.optional(),

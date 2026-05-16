@@ -20,6 +20,7 @@ import {
   nullableBusinessTextSchema,
   parseRouteParams,
 } from '@/lib/http/validation'
+import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +31,7 @@ const specificationItemStatusUpdateSchema = z
     color: boundedDbStringSchema.optional(),
     descriptionEn: nullableBusinessTextSchema.optional(),
     descriptionSv: nullableBusinessTextSchema.optional(),
+    iconName: nullableOptionalStatusIconNameSchema,
     nameEn: boundedDbStringSchema.optional(),
     nameSv: boundedDbStringSchema.optional(),
     sortOrder: nonNegativeIntegerSchema.optional(),

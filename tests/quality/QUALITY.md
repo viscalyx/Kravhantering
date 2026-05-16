@@ -554,6 +554,30 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 14: action 
 ```
 <!-- markdownlint-enable MD013 -->
 
+### Scenario 15: configurable status and risk icons use an allowlist and stay additive
+
+**Requirement tag:** `[Req: formal — docs/admin-center.md "Reference Data"]`
+
+**What happened:** Status and risk icons are admin-configurable presentation
+data. If unchecked icon strings reach the DAL, reports or client rendering can
+receive arbitrary component names. If the API replaces old fields instead of
+adding `iconName`, MCP and REST clients can break.
+
+**The requirement:** Requirement statuses, specification item statuses, and
+risk levels may carry nullable `icon_name` values only from the shared
+allowlist generated from the installed Lucide icon catalog. REST and MCP output
+must expose icon data as additive `iconName` fields while keeping existing
+names/colors, and the migration must not backfill customer rows outside clean
+seed data.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 15: configurable status and risk icons use an allowlist and stay additive"
+```
+<!-- markdownlint-enable MD013 -->
+
 ## AI Session Quality Discipline
 
 1. Read `tests/quality/QUALITY.md` before changing lifecycle, specification, MCP,

@@ -37,6 +37,7 @@ import {
   transitionStatus,
 } from '@/lib/dal/requirements'
 import { listRiskLevels } from '@/lib/dal/risk-levels'
+import { listSpecificationItemStatuses } from '@/lib/dal/specification-item-statuses'
 import type { UiSettingsLoader } from '@/lib/dal/ui-settings'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
@@ -105,6 +106,10 @@ export function formatRequirementListItem(
       item.maxVersion > item.versionNumber
         ? item.pendingVersionStatusColor
         : null,
+    pendingVersionStatusIconName:
+      item.maxVersion > item.versionNumber
+        ? item.pendingVersionStatusIconName
+        : null,
     pendingVersionStatusId:
       item.maxVersion > item.versionNumber ? item.pendingVersionStatusId : null,
     normReferenceIds: item.normReferenceIds
@@ -129,9 +134,11 @@ export function formatRequirementListItem(
       riskLevelNameEn: item.riskLevelNameEn,
       riskLevelNameSv: item.riskLevelNameSv,
       riskLevelColor: item.riskLevelColor,
+      riskLevelIconName: item.riskLevelIconName,
       riskLevelSortOrder: item.riskLevelSortOrder ?? null,
       status: item.status,
       statusColor: item.statusColor,
+      statusIconName: item.statusIconName,
       statusNameEn: item.statusNameEn,
       statusNameSv: item.statusNameSv,
       qualityCharacteristicId: item.qualityCharacteristicId,
@@ -188,6 +195,7 @@ export function formatRequirementDetail(
       verificationMethod: version.verificationMethod,
       status: version.status,
       statusColor: version.statusColor,
+      statusIconName: version.statusIconName,
       statusNameEn: version.statusNameEn,
       statusNameSv: version.statusNameSv,
       type: version.type
@@ -210,6 +218,7 @@ export function formatRequirementDetail(
             nameEn: version.riskLevel.nameEn,
             nameSv: version.riskLevel.nameSv,
             color: version.riskLevel.color,
+            iconName: version.riskLevel.iconName,
             sortOrder: version.riskLevel.sortOrder,
           }
         : null,
@@ -523,6 +532,26 @@ export function createRequirementWorkflow({
                 getCatalogTitle('risk_levels', locale, terminology),
                 levels.map(level =>
                   locale === 'sv' ? level.nameSv : level.nameEn,
+                ),
+                responseFormat,
+              ),
+              pagination: null,
+            }
+          }
+
+          if (catalog === 'specification_item_statuses') {
+            const statuses = await listSpecificationItemStatuses(db)
+            return {
+              catalog,
+              items: statuses,
+              message: createServiceMessage(
+                getCatalogTitle(
+                  'specification_item_statuses',
+                  locale,
+                  terminology,
+                ),
+                statuses.map(status =>
+                  locale === 'sv' ? status.nameSv : status.nameEn,
                 ),
                 responseFormat,
               ),

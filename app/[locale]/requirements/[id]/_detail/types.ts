@@ -10,12 +10,14 @@ export {
 
 export interface StatusInfo {
   color: string | null
+  iconName?: string | null
   id: number
   nameEn: string
   nameSv: string
 }
 
 export interface TransitionTarget {
+  iconName?: string | null
   id: number
   nameEn: string
   nameSv: string
@@ -26,6 +28,7 @@ export interface SpecificationItemDetailContext {
   needsReferenceId: number | null
   specificationItemId: number
   specificationItemStatusColor: string | null
+  specificationItemStatusIconName: string | null
   specificationItemStatusId: number | null
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null

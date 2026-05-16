@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useRef, useState } from 'react'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import IconPicker from '@/components/IconPicker'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -36,6 +37,7 @@ interface SpecificationItemStatus {
   color: string
   descriptionEn: string | null
   descriptionSv: string | null
+  iconName: string | null
   id: number
   linkedItemCount: number
   nameEn: string
@@ -47,6 +49,7 @@ interface SpecificationItemStatusForm {
   color: string
   descriptionEn: string
   descriptionSv: string
+  iconName: string | null
   nameEn: string
   nameSv: string
   sortOrder: string
@@ -62,6 +65,7 @@ const getInitialForm = (): SpecificationItemStatusForm => ({
   color: '#3b82f6',
   descriptionEn: '',
   descriptionSv: '',
+  iconName: null,
   nameEn: '',
   nameSv: '',
   sortOrder: '0',
@@ -73,6 +77,7 @@ const toForm = (
   color: status.color,
   descriptionEn: status.descriptionEn ?? '',
   descriptionSv: status.descriptionSv ?? '',
+  iconName: status.iconName ?? null,
   nameEn: status.nameEn,
   nameSv: status.nameSv,
   sortOrder: String(status.sortOrder),
@@ -84,6 +89,7 @@ const toPayload = (form: SpecificationItemStatusForm) => ({
   descriptionSv: form.descriptionSv || null,
   descriptionEn: form.descriptionEn || null,
   color: form.color,
+  iconName: form.iconName,
   sortOrder: Number(form.sortOrder) || 0,
 })
 
@@ -374,6 +380,36 @@ export default function SpecificationItemStatusesClient() {
                   </div>
                   <div>
                     <FieldLabelWithHelp
+                      help={t('iconHelp')}
+                      htmlFor="pis-icon"
+                      label={t('icon')}
+                    />
+                    <div className="flex items-center gap-3">
+                      <IconPicker
+                        disabled={controller.submitting}
+                        id="pis-icon"
+                        label={t('icon')}
+                        onChange={iconName =>
+                          controller.setForm(previousForm => ({
+                            ...previousForm,
+                            iconName,
+                          }))
+                        }
+                        value={controller.form.iconName}
+                      />
+                      <StatusBadge
+                        color={controller.form.color}
+                        iconName={controller.form.iconName}
+                        label={
+                          controller.form.nameSv ||
+                          controller.form.nameEn ||
+                          t('name')
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <FieldLabelWithHelp
                       help={t('sortOrderHelp')}
                       htmlFor="pis-sort-order"
                       label={t('sortOrder')}
@@ -520,6 +556,7 @@ export default function SpecificationItemStatusesClient() {
                     <td className="py-3 px-4">
                       <StatusBadge
                         color={status.color}
+                        iconName={status.iconName}
                         label={getName(status)}
                       />
                     </td>

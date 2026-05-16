@@ -72,6 +72,7 @@ export type CatalogKind =
   | 'types'
   | 'quality_characteristics'
   | 'risk_levels'
+  | 'specification_item_statuses'
   | 'statuses'
   | 'requirement_packages'
   | 'transitions'

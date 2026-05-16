@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useRef, useState } from 'react'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import IconPicker from '@/components/IconPicker'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
@@ -30,6 +31,7 @@ const RISK_LEVELS_HELP: HelpContent = {
 
 interface RiskLevel {
   color: string
+  iconName: string | null
   id: number
   linkedRequirementCount: number
   nameEn: string
@@ -39,6 +41,7 @@ interface RiskLevel {
 
 interface RiskLevelForm {
   color: string
+  iconName: string | null
   nameEn: string
   nameSv: string
   sortOrder: string
@@ -48,6 +51,7 @@ interface LinkedRequirement {
   description: string | null
   id: number
   statusColor: string | null
+  statusIconName: string | null
   statusNameEn: string | null
   statusNameSv: string | null
   uniqueId: string
@@ -58,6 +62,7 @@ const DESCRIPTION_TRUNCATE = 80
 
 const getInitialForm = (): RiskLevelForm => ({
   color: '#3b82f6',
+  iconName: null,
   nameEn: '',
   nameSv: '',
   sortOrder: '0',
@@ -65,6 +70,7 @@ const getInitialForm = (): RiskLevelForm => ({
 
 const toForm = (riskLevel: RiskLevel): RiskLevelForm => ({
   color: riskLevel.color,
+  iconName: riskLevel.iconName ?? null,
   nameEn: riskLevel.nameEn,
   nameSv: riskLevel.nameSv,
   sortOrder: String(riskLevel.sortOrder),
@@ -74,6 +80,7 @@ const toPayload = (form: RiskLevelForm) => ({
   nameSv: form.nameSv,
   nameEn: form.nameEn,
   color: form.color,
+  iconName: form.iconName,
   sortOrder: Number(form.sortOrder) || 0,
 })
 
@@ -334,6 +341,37 @@ export default function RiskLevelsClient() {
                       value={controller.form.sortOrder}
                     />
                   </div>
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      htmlFor="rl-icon"
+                    >
+                      {t('icon')}
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <IconPicker
+                        disabled={controller.submitting}
+                        id="rl-icon"
+                        label={t('icon')}
+                        onChange={iconName =>
+                          controller.setForm(previousForm => ({
+                            ...previousForm,
+                            iconName,
+                          }))
+                        }
+                        value={controller.form.iconName}
+                      />
+                      <StatusBadge
+                        color={controller.form.color}
+                        iconName={controller.form.iconName}
+                        label={
+                          controller.form.nameSv ||
+                          controller.form.nameEn ||
+                          t('name')
+                        }
+                      />
+                    </div>
+                  </div>
                   {controller.formError && (
                     <p
                       className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
@@ -430,6 +468,7 @@ export default function RiskLevelsClient() {
                                   <td className="py-2 px-3">
                                     <StatusBadge
                                       color={requirement.statusColor}
+                                      iconName={requirement.statusIconName}
                                       label={
                                         (locale === 'sv'
                                           ? requirement.statusNameSv
@@ -490,7 +529,11 @@ export default function RiskLevelsClient() {
                       />
                     </td>
                     <td className="py-3 px-4 font-medium">
-                      {getName(riskLevel)}
+                      <StatusBadge
+                        color={riskLevel.color}
+                        iconName={riskLevel.iconName}
+                        label={getName(riskLevel)}
+                      />
                     </td>
                     <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
                       {riskLevel.sortOrder}

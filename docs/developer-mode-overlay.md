@@ -246,6 +246,10 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `detail action: add to specification` flow rather than introducing extra
   markers, including when those controls are temporarily disabled during
   submission.
+- Status and risk icon pickers on reference-data CRUD forms remain inside the
+  existing `crud form` and `crud table` surfaces. They do not introduce new
+  developer-mode markers; verify visible behavior through the surrounding
+  status, usage-status, or risk-level page marker.
 - Requirement specification list print pages expose `report state` markers
   with values `report-print:error`, `report-print:loading`, and
   `report-print:renderer`.

@@ -22,6 +22,7 @@ interface LinkedRequirementRow {
   description: string | null
   id: number
   statusColor: string | null
+  statusIconName: string | null
   statusId: number | null
   statusNameEn: string | null
   statusNameSv: string | null
@@ -125,7 +126,8 @@ export async function getLinkedRequirements(
         requirement_versions.requirement_status_id AS statusId,
         requirement_statuses.name_sv AS statusNameSv,
         requirement_statuses.name_en AS statusNameEn,
-        requirement_statuses.color AS statusColor
+        requirement_statuses.color AS statusColor,
+        requirement_statuses.icon_name AS statusIconName
       FROM requirement_version_norm_references AS links
       INNER JOIN requirement_versions
         ON links.requirement_version_id = requirement_versions.id

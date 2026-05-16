@@ -18,12 +18,15 @@ export interface RequirementReportVersion {
   } | null
   requiresTesting: boolean
   riskLevel: {
+    color?: string | null
+    iconName?: string | null
     id: number
     nameEn: string
     nameSv: string
   } | null
   status: number
   statusColor: string | null
+  statusIconName?: string | null
   statusNameEn: string | null
   statusNameSv: string | null
   type: { id: number; nameEn: string; nameSv: string } | null

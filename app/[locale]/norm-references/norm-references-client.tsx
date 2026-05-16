@@ -62,6 +62,7 @@ interface LinkedRequirement {
   description: string | null
   id: number
   statusColor: string | null
+  statusIconName: string | null
   statusNameEn: string | null
   statusNameSv: string | null
   uniqueId: string
@@ -392,6 +393,7 @@ export default function NormReferencesClient() {
                                   <td className="py-2 px-3">
                                     <StatusBadge
                                       color={requirement.statusColor}
+                                      iconName={requirement.statusIconName}
                                       label={
                                         (locale === 'sv'
                                           ? requirement.statusNameSv

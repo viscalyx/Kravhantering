@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { localizedName } from '@/lib/i18n/localized'
+import { getStatusIconComponent } from '@/lib/icons/status-icon-components'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import type {
   DiffSegment,
@@ -226,6 +227,7 @@ function HeaderSection({
         {section.status && (
           <StatusBadge
             color={section.status.color}
+            iconName={section.status.iconName}
             label={section.status.label}
           />
         )}
@@ -300,6 +302,7 @@ function VersionSummarySection({
           </h3>
           <StatusBadge
             color={version.status.color}
+            iconName={version.status.iconName}
             label={version.status.label}
           />
         </div>
@@ -382,6 +385,7 @@ function VersionDetails({
         )}
         {getName(version.riskLevel) && (
           <MetadataItem
+            iconName={version.riskLevel?.iconName}
             label={t('riskLevel')}
             value={getName(version.riskLevel)}
           />
@@ -419,9 +423,11 @@ function VersionDetails({
 }
 
 function MetadataItem({
+  iconName,
   label,
   value,
 }: {
+  iconName?: string | null
   label: string
   value: string | null
 }) {
@@ -429,7 +435,10 @@ function MetadataItem({
   return (
     <div>
       <span style={{ fontWeight: 500 }}>{label}: </span>
-      <span>{value}</span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <ReportStatusIcon name={iconName} />
+        {value}
+      </span>
     </div>
   )
 }
@@ -618,7 +627,11 @@ function TimelineEntrySection({
         <div style={{ fontWeight: 700, fontSize: '1rem', color: '#334155' }}>
           v{entry.versionNumber}
         </div>
-        <StatusBadge color={entry.status.color} label={entry.status.label} />
+        <StatusBadge
+          color={entry.status.color}
+          iconName={entry.status.iconName}
+          label={entry.status.label}
+        />
       </div>
       <div style={{ flex: 1, fontSize: '0.8125rem' }}>
         <div style={{ color: '#64748b' }}>
@@ -784,6 +797,7 @@ function RequirementTableSection({
                 {col.key === 'status' && row.statusColor ? (
                   <StatusBadge
                     color={row.statusColor}
+                    iconName={row.statusIconName}
                     label={row.cells[col.key] ?? ''}
                   />
                 ) : (
@@ -798,18 +812,41 @@ function RequirementTableSection({
   )
 }
 
+function ReportStatusIcon({ name }: { name?: string | null }) {
+  const Icon = getStatusIconComponent(name)
+  if (!Icon) return null
+
+  return (
+    <Icon
+      aria-hidden="true"
+      fill="none"
+      height="12"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+      width="12"
+    />
+  )
+}
+
 function StatusBadge({
   label,
   color,
+  iconName,
 }: {
   label: string
   color: string | null
+  iconName?: string | null
 }) {
   const hex = color ?? '#6b7280'
   return (
     <span
       style={{
-        display: 'inline-block',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.25rem',
         padding: '0.125rem 0.5rem',
         borderRadius: '9999px',
         fontSize: '0.75rem',
@@ -818,6 +855,7 @@ function StatusBadge({
         color: hex,
       }}
     >
+      <ReportStatusIcon name={iconName} />
       {label}
     </span>
   )
@@ -866,7 +904,7 @@ function DeviationSummarySection({
             {t('riskLevelValue')}
           </span>{' '}
           <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
-            {riskName}
+            <ReportStatusIcon name={section.riskLevel?.iconName} /> {riskName}
           </span>
         </div>
       )}

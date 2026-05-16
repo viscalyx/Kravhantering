@@ -73,6 +73,7 @@ export interface SpecificationLocalRequirementDetail {
   requiresTesting: boolean
   riskLevel: {
     color: string
+    iconName: string | null
     id: number
     nameEn: string
     nameSv: string
@@ -82,6 +83,7 @@ export interface SpecificationLocalRequirementDetail {
   specificationItemStatusColor: string | null
   specificationItemStatusDescriptionEn: string | null
   specificationItemStatusDescriptionSv: string | null
+  specificationItemStatusIconName: string | null
   specificationItemStatusId: number | null
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
@@ -1064,6 +1066,7 @@ const LOCAL_REQUIREMENT_DETAIL_SELECT = `
     needs_reference.text AS needsReference,
     local_requirement.specification_item_status_id AS specificationItemStatusId,
     specification_item_status.color AS specificationItemStatusColor,
+    specification_item_status.icon_name AS specificationItemStatusIconName,
     specification_item_status.description_en AS specificationItemStatusDescriptionEn,
     specification_item_status.description_sv AS specificationItemStatusDescriptionSv,
     specification_item_status.name_en AS specificationItemStatusNameEn,
@@ -1081,6 +1084,7 @@ const LOCAL_REQUIREMENT_DETAIL_SELECT = `
     requirement_type.name_sv AS requirementTypeNameSv,
     local_requirement.risk_level_id AS riskLevelId,
     risk_level.color AS riskLevelColor,
+    risk_level.icon_name AS riskLevelIconName,
     risk_level.name_en AS riskLevelNameEn,
     risk_level.name_sv AS riskLevelNameSv,
     risk_level.sort_order AS riskLevelSortOrder
@@ -1155,6 +1159,7 @@ function mapSpecificationLocalRequirementDetailFlat(
     normReferences: sortedNormReferences,
     specificationId: Number(row.specificationId),
     specificationItemStatusColor: toStr(row.specificationItemStatusColor),
+    specificationItemStatusIconName: toStr(row.specificationItemStatusIconName),
     specificationItemStatusDescriptionEn: toStr(
       row.specificationItemStatusDescriptionEn,
     ),
@@ -1200,6 +1205,7 @@ function mapSpecificationLocalRequirementDetailFlat(
       riskLevelId != null
         ? {
             color: String(row.riskLevelColor ?? ''),
+            iconName: toStr(row.riskLevelIconName),
             id: riskLevelId,
             nameEn: String(row.riskLevelNameEn ?? ''),
             nameSv: String(row.riskLevelNameSv ?? ''),
@@ -1962,6 +1968,7 @@ interface LibrarySpecificationItemFlatRow {
   requirementPackageIds: string | null
   requiresTesting: unknown
   riskLevelColor: string | null
+  riskLevelIconName: string | null
   riskLevelId: number | null
   riskLevelNameEn: string | null
   riskLevelNameSv: string | null
@@ -1970,10 +1977,12 @@ interface LibrarySpecificationItemFlatRow {
   specificationItemStatusColor: string | null
   specificationItemStatusDescriptionEn: string | null
   specificationItemStatusDescriptionSv: string | null
+  specificationItemStatusIconName: string | null
   specificationItemStatusId: number | null
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
   statusColor: string | null
+  statusIconName: string | null
   statusId: number
   statusNameEn: string | null
   statusNameSv: string | null
@@ -1998,6 +2007,8 @@ function mapLibrarySpecificationItemRow(
     normReferenceIds: parseCsvTextList(row.normReferenceIds),
     specificationItemId: Number(row.specificationItemId),
     specificationItemStatusColor: row.specificationItemStatusColor ?? null,
+    specificationItemStatusIconName:
+      row.specificationItemStatusIconName ?? null,
     specificationItemStatusDescriptionEn:
       row.specificationItemStatusDescriptionEn ?? null,
     specificationItemStatusDescriptionSv:
@@ -2016,12 +2027,14 @@ function mapLibrarySpecificationItemRow(
       qualityCharacteristicNameSv: row.qualityCharacteristicNameSv ?? null,
       requiresTesting: toBool(row.requiresTesting),
       riskLevelColor: row.riskLevelColor ?? null,
+      riskLevelIconName: row.riskLevelIconName ?? null,
       riskLevelId: row.riskLevelId ?? null,
       riskLevelNameEn: row.riskLevelNameEn ?? null,
       riskLevelNameSv: row.riskLevelNameSv ?? null,
       riskLevelSortOrder: row.riskLevelSortOrder ?? null,
       status: Number(row.statusId),
       statusColor: row.statusColor ?? null,
+      statusIconName: row.statusIconName ?? null,
       statusNameEn: row.statusNameEn ?? null,
       statusNameSv: row.statusNameSv ?? null,
       typeNameEn: row.typeNameEn ?? null,
@@ -2047,6 +2060,7 @@ interface SpecificationLocalListFlatRow {
   requirementTypeNameSv: string | null
   requiresTesting: unknown
   riskLevelColor: string | null
+  riskLevelIconName: string | null
   riskLevelId: number | null
   riskLevelNameEn: string | null
   riskLevelNameSv: string | null
@@ -2054,6 +2068,7 @@ interface SpecificationLocalListFlatRow {
   specificationItemStatusColor: string | null
   specificationItemStatusDescriptionEn: string | null
   specificationItemStatusDescriptionSv: string | null
+  specificationItemStatusIconName: string | null
   specificationItemStatusId: number | null
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
@@ -2074,6 +2089,8 @@ function mapSpecificationLocalRequirementListRow(
     needsReferenceId: row.needsReferenceId ?? null,
     normReferenceIds: parseCsvTextList(row.normReferenceIds),
     specificationItemStatusColor: row.specificationItemStatusColor ?? null,
+    specificationItemStatusIconName:
+      row.specificationItemStatusIconName ?? null,
     specificationItemStatusDescriptionEn:
       row.specificationItemStatusDescriptionEn ?? null,
     specificationItemStatusDescriptionSv:
@@ -2093,12 +2110,14 @@ function mapSpecificationLocalRequirementListRow(
       qualityCharacteristicNameSv: row.qualityCharacteristicNameSv ?? null,
       requiresTesting: toBool(row.requiresTesting),
       riskLevelColor: row.riskLevelColor ?? null,
+      riskLevelIconName: row.riskLevelIconName ?? null,
       riskLevelId: row.riskLevelId ?? null,
       riskLevelNameEn: row.riskLevelNameEn ?? null,
       riskLevelNameSv: row.riskLevelNameSv ?? null,
       riskLevelSortOrder: row.riskLevelSortOrder ?? null,
       status: STATUS_PUBLISHED,
       statusColor: '#22c55e',
+      statusIconName: 'CheckCircle2',
       statusNameEn: 'Published',
       statusNameSv: 'Publicerad',
       typeNameEn: row.requirementTypeNameEn ?? null,
@@ -2131,6 +2150,7 @@ export async function listSpecificationItems(
           ) AS normReferenceIds,
           specification_item.id AS specificationItemId,
           specification_item_status.color AS specificationItemStatusColor,
+          specification_item_status.icon_name AS specificationItemStatusIconName,
           specification_item_status.description_en AS specificationItemStatusDescriptionEn,
           specification_item_status.description_sv AS specificationItemStatusDescriptionSv,
           specification_item.specification_item_status_id AS specificationItemStatusId,
@@ -2141,11 +2161,13 @@ export async function listSpecificationItems(
           requirement.id AS requirementId,
           requirement_version.is_testing_required AS requiresTesting,
           risk_level.color AS riskLevelColor,
+          risk_level.icon_name AS riskLevelIconName,
           requirement_version.risk_level_id AS riskLevelId,
           risk_level.name_en AS riskLevelNameEn,
           risk_level.name_sv AS riskLevelNameSv,
           risk_level.sort_order AS riskLevelSortOrder,
           requirement_status.color AS statusColor,
+          requirement_status.icon_name AS statusIconName,
           requirement_version.requirement_status_id AS statusId,
           requirement_status.name_en AS statusNameEn,
           requirement_status.name_sv AS statusNameSv,
@@ -2199,6 +2221,7 @@ export async function listSpecificationItems(
             WHERE plrnr.specification_local_requirement_id = local_requirement.id
           ) AS normReferenceIds,
           specification_item_status.color AS specificationItemStatusColor,
+          specification_item_status.icon_name AS specificationItemStatusIconName,
           specification_item_status.description_en AS specificationItemStatusDescriptionEn,
           specification_item_status.description_sv AS specificationItemStatusDescriptionSv,
           local_requirement.specification_item_status_id AS specificationItemStatusId,
@@ -2213,6 +2236,7 @@ export async function listSpecificationItems(
           requirement_type.name_sv AS requirementTypeNameSv,
           local_requirement.is_testing_required AS requiresTesting,
           risk_level.color AS riskLevelColor,
+          risk_level.icon_name AS riskLevelIconName,
           local_requirement.risk_level_id AS riskLevelId,
           risk_level.name_en AS riskLevelNameEn,
           risk_level.name_sv AS riskLevelNameSv,

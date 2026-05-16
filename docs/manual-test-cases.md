@@ -78,6 +78,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [ADMIN-07: access-review decision and export](#admin-07-access-review-decision-and-export)
   - [ADMIN-08: access-review validation rejects long comments](#admin-08-access-review-validation-rejects-long-comments)
   - [ADMIN-09: archiving retention preview is privacy-gated](#admin-09-archiving-retention-preview-is-privacy-gated)
+  - [ADMIN-10: reference-data icons render across requirement surfaces](#admin-10-reference-data-icons-render-across-requirement-surfaces)
 - [Privacy and data portability](#privacy-and-data-portability)
   - [PRIV-01: self-service privacy export](#priv-01-self-service-privacy-export)
   - [PRIV-02: PrivacyOfficer preview by HSA-ID](#priv-02-privacyofficer-preview-by-hsa-id)
@@ -1274,6 +1275,36 @@ row.
 
 **Expected result:** `ada.admin` and `disa.privacy` can use archiving privacy
 tools; `only.admin` is redirected to the default tab or sees disabled access.
+
+### ADMIN-10: reference-data icons render across requirement surfaces
+
+**Purpose:** Confirm admins can assign and clear icons from the installed
+Lucide catalog, and that labels remain visible wherever icons are rendered.
+
+**Users:** `ada.admin`.
+
+**Prerequisites:** Use seeded data with at least one published requirement such
+as `INT0001`.
+
+**Steps:**
+
+1. Open `/sv/requirement-statuses`.
+1. Edit `Granskning`, search for `wifi`, choose icon `Wifi`, save, and confirm
+   the table preview shows the icon plus the label.
+1. Edit the same row again, select `Rensa`, save, and confirm the table keeps
+   the label without an icon.
+1. Restore `Eye`, then open `/sv/risk-levels` and
+   `/sv/specification-item-statuses` and verify each form has the same
+   searchable icon picker.
+1. Open `/sv/requirements`, then open a requirement detail page and version
+   history.
+1. Use the report menu to open a print report and a PDF report.
+1. Switch dark mode on and repeat the table/detail visual check.
+
+**Expected result:** Lucide catalog icons can be selected, clearing stores no
+icon, labels remain readable, and the configured icons appear consistently in
+tables, badges, the status stepper, version history, print reports, and PDF
+reports.
 
 ## Privacy and data portability
 

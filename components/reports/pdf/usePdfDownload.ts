@@ -1,6 +1,10 @@
 'use client'
 
 import { createElement, useCallback, useState } from 'react'
+import {
+  collectStatusIconNames,
+  preloadStatusIconNodes,
+} from '@/lib/icons/status-icon-allowlist'
 import type { ReportModel } from '@/lib/reports/types'
 
 interface UsePdfDownloadOptions {
@@ -32,6 +36,7 @@ export function usePdfDownload({
     try {
       const { pdf } = await import('@react-pdf/renderer')
       const { default: PdfReportRenderer } = await import('./PdfReportRenderer')
+      await preloadStatusIconNodes(collectStatusIconNames(model))
 
       const element = createElement(PdfReportRenderer, { model, locale })
       // PdfReportRenderer returns a <Document> but createElement types it

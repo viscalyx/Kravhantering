@@ -337,6 +337,11 @@ eller en förvaltningsperiod. Processen omfattar:
    i underlaget har en egen användningsstatus.
    Tillgängliga statusar hanteras i
    uppslagstabellen `specification_item_statuses`.
+   Kravstatusar, användningsstatusar och risknivåer kan
+   dessutom ha ett valfritt `icon_name` från den installerade
+   Lucide-katalogen via en gemensam allowlist; ikonen används
+   som visuell hjälp i UI och rapporter medan textetiketten
+   förblir styrande.
 4. **Spåra avsteg** — Om ett krav inte kan uppfyllas
    helt kan ett avsteg registreras (se
    *Avsteghantering* nedan).

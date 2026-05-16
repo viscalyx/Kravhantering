@@ -44,6 +44,10 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
+  isStatusIconName,
+  STATUS_ICON_NAMES,
+} from '@/lib/icons/status-icon-allowlist'
+import {
   attachVerifiedActor,
   createRequestContext,
   type RequestContext,
@@ -72,7 +76,7 @@ import {
  * Scenario names here must match the QUALITY.md `vitest -t "Scenario N: ..."`
  * invocations verbatim so that spec-referenced commands keep working.
  *
- * Scenario 10 is a pure file-content check and always runs as part of
+ * Scenarios 10 and 15 are pure file-content checks and always run as part of
  * `npm run test`.
  *
  * Scenarios 1-9, 11-12, and 14 exercise lifecycle/audit invariants that
@@ -88,6 +92,54 @@ import {
 
 const repoRoot = process.cwd()
 const mcpServerPath = join(repoRoot, 'lib', 'mcp', 'server.ts')
+const statusIconAllowlistPath = join(
+  repoRoot,
+  'lib',
+  'icons',
+  'status-icon-allowlist.ts',
+)
+const statusIconSchemaPath = join(
+  repoRoot,
+  'lib',
+  'icons',
+  'status-icon-schema.ts',
+)
+const statusIconMigrationPath = join(
+  repoRoot,
+  'typeorm',
+  'migrations',
+  '0014_status_and_risk_icons.mjs',
+)
+const requirementStatusesRoutePath = join(
+  repoRoot,
+  'app',
+  'api',
+  'requirement-statuses',
+  'route.ts',
+)
+const specificationItemStatusesRoutePath = join(
+  repoRoot,
+  'app',
+  'api',
+  'catalog',
+  'specification-item-statuses',
+  'route.ts',
+)
+const riskLevelsRoutePath = join(
+  repoRoot,
+  'app',
+  'api',
+  'risk-levels',
+  'route.ts',
+)
+const adminCenterDocPath = join(repoRoot, 'docs', 'admin-center.md')
+const databaseSchemaDocPath = join(repoRoot, 'docs', 'database-schema.md')
+const requirementsServicePath = join(
+  repoRoot,
+  'lib',
+  'requirements',
+  'service-requirements.ts',
+)
 const contributorGuidePath = join(
   repoRoot,
   'docs',
@@ -136,6 +188,99 @@ it('Scenario 10: MCP tool inventory matches documentation', () => {
     userGuideToolBullets,
     `user guide lists ${userGuideToolBullets} tool bullets but lib/mcp/server.ts registers ${registerToolCount}`,
   ).toBe(registerToolCount)
+})
+
+it('Scenario 15: configurable status and risk icons use an allowlist and stay additive', () => {
+  const allowlistSource = readFileSync(statusIconAllowlistPath, 'utf8')
+  const schemaSource = readFileSync(statusIconSchemaPath, 'utf8')
+  const migrationSource = readFileSync(statusIconMigrationPath, 'utf8')
+  const requirementStatusesRouteSource = readFileSync(
+    requirementStatusesRoutePath,
+    'utf8',
+  )
+  const specificationItemStatusesRouteSource = readFileSync(
+    specificationItemStatusesRoutePath,
+    'utf8',
+  )
+  const riskLevelsRouteSource = readFileSync(riskLevelsRoutePath, 'utf8')
+  const adminCenterDoc = readFileSync(adminCenterDocPath, 'utf8')
+  const databaseSchemaDoc = readFileSync(databaseSchemaDocPath, 'utf8')
+  const requirementsServiceSource = readFileSync(
+    requirementsServicePath,
+    'utf8',
+  )
+  const userGuideSource = readFileSync(userGuidePath, 'utf8')
+
+  for (const iconName of [
+    'AlertCircle',
+    'AlertTriangle',
+    'Archive',
+    'CheckCircle2',
+    'Circle',
+    'CircleDot',
+    'Clock',
+    'Eye',
+    'Flag',
+    'Hourglass',
+    'Lock',
+    'PenLine',
+    'Play',
+    'ShieldAlert',
+    'ShieldCheck',
+    'Sparkles',
+    'Star',
+    'ThumbsUp',
+    'XCircle',
+    'Zap',
+  ]) {
+    expect(isStatusIconName(iconName)).toBe(true)
+  }
+  expect(STATUS_ICON_NAMES).toContain('Camera')
+  expect(STATUS_ICON_NAMES).toContain('Wifi')
+  expect(STATUS_ICON_NAMES.length).toBeGreaterThan(1000)
+
+  expect(allowlistSource).toContain("from 'lucide-react/dynamicIconImports'")
+  expect(allowlistSource).toContain('isStatusIconName')
+  expect(allowlistSource).toContain('loadStatusIconNodes')
+  expect(allowlistSource).toContain('collectStatusIconNames')
+  expect(migrationSource).toContain(
+    'ALTER TABLE [requirement_statuses] ADD [icon_name] nvarchar(64) NULL;',
+  )
+  expect(migrationSource).toContain(
+    'ALTER TABLE [specification_item_statuses] ADD [icon_name] nvarchar(64) NULL;',
+  )
+  expect(migrationSource).toContain(
+    'ALTER TABLE [risk_levels] ADD [icon_name] nvarchar(64) NULL;',
+  )
+  expect(migrationSource).toContain(
+    'ALTER TABLE [requirement_statuses] DROP COLUMN [icon_name];',
+  )
+
+  for (const routeSource of [
+    requirementStatusesRouteSource,
+    specificationItemStatusesRouteSource,
+    riskLevelsRouteSource,
+  ]) {
+    expect(routeSource).toContain('nullableOptionalStatusIconNameSchema')
+    expect(routeSource).toContain(
+      'iconName: nullableOptionalStatusIconNameSchema',
+    )
+  }
+  expect(schemaSource).toContain('isStatusIconName')
+
+  expect(requirementsServiceSource).toContain(
+    'statusIconName: version.statusIconName',
+  )
+  expect(requirementsServiceSource).toContain(
+    'iconName: version.riskLevel.iconName',
+  )
+  expect(requirementsServiceSource).toContain('specification_item_statuses')
+  expect(userGuideSource).toContain('specification item statuses')
+  expect(userGuideSource).toContain('iconName')
+  expect(adminCenterDoc).toContain('nullable icon')
+  expect(databaseSchemaDoc).toContain('icon_name')
+  expect(databaseSchemaDoc).toContain('`PenLine`')
+  expect(databaseSchemaDoc).toContain('`ShieldCheck`')
 })
 
 function resolveFunctionalTestsUrl(): string | null {

@@ -727,12 +727,13 @@ describe('RequirementsTable', () => {
     expect(screen.getByText('Hög')).toBeTruthy()
   })
 
-  it('hides the read-only specification item status color dot from assistive tech', () => {
+  it('renders read-only specification item status icons as decorative badge content', () => {
     const rows = [
       makeRow({
         specificationItemStatusColor: '#f59e0b',
         specificationItemStatusDescriptionEn: 'In progress',
         specificationItemStatusDescriptionSv: 'Pågående',
+        specificationItemStatusIconName: 'Play',
         specificationItemStatusId: 2,
         specificationItemStatusNameEn: 'Ongoing',
         specificationItemStatusNameSv: 'Pågående',
@@ -752,10 +753,10 @@ describe('RequirementsTable', () => {
 
     const statusLabel = screen.getByText('Pågående')
     const statusWrapper = statusLabel.closest('span')
-    const statusDot = statusWrapper?.querySelector('span[aria-hidden="true"]')
+    const statusIcon = statusWrapper?.querySelector('svg[aria-hidden="true"]')
 
-    expect(statusDot).toHaveAttribute('aria-hidden', 'true')
-    expect(statusDot).toHaveStyle({ backgroundColor: '#f59e0b' })
+    expect(statusIcon).toHaveAttribute('aria-hidden', 'true')
+    expect(statusWrapper).toHaveClass('status-badge')
   })
 
   it('renders read-only specification item status labels without a color dot', () => {

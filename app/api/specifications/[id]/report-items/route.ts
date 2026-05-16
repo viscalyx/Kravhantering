@@ -96,12 +96,15 @@ function mapSpecificationLocalRequirementToReportData(
         riskLevel: requirement.riskLevel
           ? {
               id: requirement.riskLevel.id,
+              color: requirement.riskLevel.color,
+              iconName: requirement.riskLevel.iconName,
               nameEn: requirement.riskLevel.nameEn,
               nameSv: requirement.riskLevel.nameSv,
             }
           : null,
         status: STATUS_PUBLISHED,
         statusColor: '#22c55e',
+        statusIconName: 'CheckCircle2',
         statusNameEn: 'Published',
         statusNameSv: 'Publicerad',
         type: requirement.requirementType

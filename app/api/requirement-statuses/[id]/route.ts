@@ -13,6 +13,7 @@ import {
   idParamSchema,
   nonNegativeIntegerSchema,
 } from '@/lib/http/validation'
+import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
@@ -20,6 +21,7 @@ export const dynamic = 'force-dynamic'
 const updateStatusSchema = z
   .object({
     color: boundedDbStringSchema.optional(),
+    iconName: nullableOptionalStatusIconNameSchema,
     nameEn: boundedDbStringSchema.optional(),
     nameSv: boundedDbStringSchema.optional(),
     sortOrder: nonNegativeIntegerSchema.optional(),

@@ -153,6 +153,7 @@ erDiagram
         text name_en UK
         integer sort_order
         text color
+        text icon_name
         integer is_system "boolean"
     }
 
@@ -162,6 +163,7 @@ erDiagram
         text name_en UK
         integer sort_order
         text color
+        text icon_name
     }
 
     requirement_status_transitions {
@@ -283,6 +285,7 @@ erDiagram
         text description_sv
         text description_en
         text color
+        text icon_name
         integer sort_order
     }
 
@@ -655,17 +658,18 @@ Workflow statuses governing the lifecycle of a requirement version.
 | `name_en` | text, unique | English display name |
 | `sort_order` | integer | Display ordering |
 | `color` | text | Hex color code for UI badges |
+| `icon_name` | text | Allowed lucide icon name (nullable) |
 | `is_system` | boolean (integer) | `true` for built-in statuses that cannot be deleted |
 <!-- markdownlint-enable MD013 -->
 
 **Seed values:**
 
-| id | Swedish | English | Color |
-| ---- | --------- | --------- | ------- |
-| 1 | Utkast | Draft | `#3b82f6` (blue) |
-| 2 | Granskning | Review | `#eab308` (yellow) |
-| 3 | Publicerad | Published | `#22c55e` (green) |
-| 4 | Arkiverad | Archived | `#6b7280` (gray) |
+| id | Swedish | English | Color | Icon |
+| ---- | --------- | --------- | ------- | ------ |
+| 1 | Utkast | Draft | `#3b82f6` (blue) | `PenLine` |
+| 2 | Granskning | Review | `#eab308` (yellow) | `Eye` |
+| 3 | Publicerad | Published | `#22c55e` (green) | `CheckCircle2` |
+| 4 | Arkiverad | Archived | `#6b7280` (gray) | `Archive` |
 
 ---
 
@@ -724,14 +728,15 @@ Classifies the risk associated with a requirement.
 | `name_en` | text, unique | English display name |
 | `sort_order` | integer | Display ordering |
 | `color` | text | Hex color code for UI badges |
+| `icon_name` | text | Allowed lucide icon name (nullable) |
 
 **Seed values:**
 
-| id | Swedish | English | Color |
-| ---- | ------- | ------- | ------------------- |
-| 1 | Låg | Low | `#22c55e` (green) |
-| 2 | Medel | Medium | `#eab308` (yellow) |
-| 3 | Hög | High | `#ef4444` (red) |
+| id | Swedish | English | Color | Icon |
+| ---- | ------- | ------- | ------------------- | ------ |
+| 1 | Låg | Low | `#22c55e` (green) | `ShieldCheck` |
+| 2 | Medel | Medium | `#eab308` (yellow) | `AlertCircle` |
+| 3 | Hög | High | `#ef4444` (red) | `AlertTriangle` |
 
 ---
 
@@ -889,16 +894,21 @@ implemented, verified).
 | `description_sv` | text | Swedish description (nullable) |
 | `description_en` | text | English description (nullable) |
 | `color` | text | Hex color code for UI badges |
+| `icon_name` | text | Allowed lucide icon name (nullable) |
 | `sort_order` | integer | Display ordering |
 
 <!-- markdownlint-disable MD013 -->
 
-**Seed values:** Inkluderad (Included, #94a3b8),
-Pågående (In Progress, #f59e0b),
-Implementerad (Implemented, #3b82f6),
-Verifierad (Verified, #22c55e),
-Avviken (Deviated, #ef4444),
-Ej tillämpbar (Not Applicable, #6b7280).
+**Seed values:**
+
+| id | Swedish | English | Color | Icon |
+| ---- | ------- | ------- | ------------------- | ------ |
+| 1 | Inkluderad | Included | `#94a3b8` | `Circle` |
+| 2 | Pågående | In Progress | `#f59e0b` | `Play` |
+| 3 | Implementerad | Implemented | `#3b82f6` | `CheckCircle2` |
+| 4 | Verifierad | Verified | `#22c55e` | `ShieldCheck` |
+| 5 | Avviken | Deviated | `#ef4444` | `AlertTriangle` |
+| 6 | Ej tillämpbar | Not Applicable | `#6b7280` | `XCircle` |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -1327,8 +1337,6 @@ Point-in-time snapshot of one app-managed assignment in an access-review run.
 
 **Check constraint:** `chk_access_review_items_decision` limits `decision` to
 the review decision values above.
-
----
 
 ## Application Audit Tables
 

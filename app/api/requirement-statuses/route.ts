@@ -15,10 +15,12 @@ import {
   boundedDbStringSchema,
   nonNegativeIntegerSchema,
 } from '@/lib/http/validation'
+import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
 
 const createStatusSchema = z
   .object({
     color: boundedDbStringSchema,
+    iconName: nullableOptionalStatusIconNameSchema,
     isSystem: z.boolean().optional(),
     nameEn: boundedDbStringSchema,
     nameSv: boundedDbStringSchema,

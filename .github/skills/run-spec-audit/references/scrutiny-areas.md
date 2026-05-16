@@ -290,3 +290,22 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   taxonomy DALs skip validation? Is ordering consistent
   (`nameSv` for taxonomy, `normReferenceId` for norm
   references, `lastName`/`firstName` for owners)?
+
+## 23. Scenario 15: configurable status and risk icons use an allowlist and stay additive
+
+- **Code:** `lib/icons/status-icon-allowlist.ts`,
+  `lib/icons/status-icon-schema.ts`, `lib/icons/status-icon-components.ts`,
+  `app/api/requirement-statuses/route.ts`,
+  `app/api/catalog/specification-item-statuses/route.ts`,
+  `app/api/risk-levels/route.ts`,
+  `lib/requirements/service-requirements.ts`.
+- **Spec:** `docs/admin-center.md` "Reference Data",
+  `docs/database-schema.md`.
+- **Req tag:** `[Req: formal — docs/admin-center.md "Reference Data"]`
+- **Question:** Are icon names accepted only through the shared allowlist
+  generated from the installed Lucide icon catalog? Are `iconName` fields
+  additive on REST/MCP/catalog output? Do print/PDF renderers use validated
+  Lucide icon components or loaded SVG node data instead of unchecked component
+  names? Does the migration add nullable columns without backfilling live rows?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 15: configurable status and risk icons use an allowlist and stay additive"`

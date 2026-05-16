@@ -435,6 +435,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       specificationItemStatusColor: '#f59e0b',
       specificationItemStatusDescriptionEn: 'In progress',
       specificationItemStatusDescriptionSv: 'Pågående',
+      specificationItemStatusIconName: null,
       specificationItemStatusId: 2,
       specificationItemStatusNameEn: 'Ongoing',
       specificationItemStatusNameSv: 'Pågående',
@@ -457,6 +458,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       requiresTesting: true,
       riskLevel: {
         color: '#dc2626',
+        iconName: null,
         id: 10,
         nameEn: 'High',
         nameSv: 'Hög',

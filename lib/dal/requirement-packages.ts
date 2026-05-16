@@ -28,6 +28,7 @@ interface LinkedRequirementRow {
   description: string | null
   id: number
   statusColor: string | null
+  statusIconName: string | null
   statusId: number | null
   statusNameEn: string | null
   statusNameSv: string | null
@@ -132,7 +133,8 @@ export async function getLinkedRequirementsForPackage(
         requirement_versions.archive_initiated_at AS archiveInitiatedAt,
         requirement_statuses.name_sv AS statusNameSv,
         requirement_statuses.name_en AS statusNameEn,
-        requirement_statuses.color AS statusColor
+        requirement_statuses.color AS statusColor,
+        requirement_statuses.icon_name AS statusIconName
       FROM requirement_version_requirement_packages AS links
       INNER JOIN requirement_versions
         ON links.requirement_version_id = requirement_versions.id

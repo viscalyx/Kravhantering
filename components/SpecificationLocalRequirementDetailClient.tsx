@@ -20,6 +20,7 @@ import RequirementDetailSections from '@/components/RequirementDetailSections'
 import SpecificationLocalRequirementForm, {
   type SpecificationLocalRequirementSubmitPayload,
 } from '@/components/SpecificationLocalRequirementForm'
+import StatusBadge from '@/components/StatusBadge'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -53,12 +54,14 @@ interface SpecificationLocalRequirementDetail {
   requiresTesting: boolean
   riskLevel: {
     color: string
+    iconName: string | null
     id: number
     nameEn: string
     nameSv: string
   } | null
   specificationId: number
   specificationItemStatusColor: string | null
+  specificationItemStatusIconName: string | null
   specificationItemStatusId: number | null
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
@@ -886,13 +889,12 @@ export default function SpecificationLocalRequirementDetailClient({
       label: t('riskLevel'),
       markerValue: 'risk level',
       value: requirement.riskLevel ? (
-        <span className="inline-flex items-center gap-2">
-          <span
-            className="h-2.5 w-2.5 rounded-full"
-            style={{ backgroundColor: requirement.riskLevel.color }}
-          />
-          {localName(requirement.riskLevel)}
-        </span>
+        <StatusBadge
+          color={requirement.riskLevel.color}
+          iconName={requirement.riskLevel.iconName}
+          label={localName(requirement.riskLevel) ?? ''}
+          size="sm"
+        />
       ) : (
         '—'
       ),
@@ -925,21 +927,20 @@ export default function SpecificationLocalRequirementDetailClient({
       value:
         requirement.specificationItemStatusNameEn ||
         requirement.specificationItemStatusNameSv ? (
-          <span className="inline-flex items-center gap-2">
-            {requirement.specificationItemStatusColor ? (
-              <span
-                className="h-2.5 w-2.5 rounded-full"
-                style={{
-                  backgroundColor: requirement.specificationItemStatusColor,
-                }}
-              />
-            ) : null}
-            {locale === 'sv'
-              ? (requirement.specificationItemStatusNameSv ??
-                requirement.specificationItemStatusNameEn)
-              : (requirement.specificationItemStatusNameEn ??
-                requirement.specificationItemStatusNameSv)}
-          </span>
+          <StatusBadge
+            color={requirement.specificationItemStatusColor}
+            iconName={requirement.specificationItemStatusIconName}
+            label={
+              locale === 'sv'
+                ? (requirement.specificationItemStatusNameSv ??
+                  requirement.specificationItemStatusNameEn ??
+                  '')
+                : (requirement.specificationItemStatusNameEn ??
+                  requirement.specificationItemStatusNameSv ??
+                  '')
+            }
+            size="sm"
+          />
         ) : (
           '—'
         ),

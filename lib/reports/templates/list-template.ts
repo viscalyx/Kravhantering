@@ -75,6 +75,7 @@ export function buildListReport(
         status: latestVersion ? getStatusName(latestVersion) : '',
       },
       statusColor: latestVersion?.statusColor ?? null,
+      statusIconName: latestVersion?.statusIconName ?? null,
     }
   })
 

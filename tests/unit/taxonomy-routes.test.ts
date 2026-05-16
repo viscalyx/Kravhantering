@@ -587,6 +587,21 @@ describe('specification-item-statuses catalog routes', () => {
     expect(r.status).toBe(201)
   })
 
+  it('POST rejects non-allowed icon names before creating a status', async () => {
+    const r = await postSpecItemStatus(
+      jsonReq('POST', {
+        color: '#22c55e',
+        iconName: 'MadeUpIcon',
+        nameEn: 'New',
+        nameSv: 'Ny',
+      }),
+    )
+
+    expect(r.status).toBe(400)
+    await expect(r.json()).resolves.toMatchObject({ error: 'Invalid request' })
+    expect(mockCreateSpecItemStatus).not.toHaveBeenCalled()
+  })
+
   it('GET by id returns linked specification items', async () => {
     const r = await getSpecItemStatus(
       new NextRequest('http://l', { method: 'GET' }),

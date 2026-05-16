@@ -140,6 +140,8 @@ export async function listRequirements(
     statusNameSv: row.statusNameSv == null ? null : String(row.statusNameSv),
     statusNameEn: row.statusNameEn == null ? null : String(row.statusNameEn),
     statusColor: row.statusColor == null ? null : String(row.statusColor),
+    statusIconName:
+      row.statusIconName == null ? null : String(row.statusIconName),
     archiveInitiatedAt: toIso(row.archiveInitiatedAt),
     requiresTesting: toBool(row.requiresTesting),
     versionCreatedAt: toIso(row.versionCreatedAt) ?? '',
@@ -165,12 +167,18 @@ export async function listRequirements(
       row.riskLevelNameEn == null ? null : String(row.riskLevelNameEn),
     riskLevelColor:
       row.riskLevelColor == null ? null : String(row.riskLevelColor),
+    riskLevelIconName:
+      row.riskLevelIconName == null ? null : String(row.riskLevelIconName),
     riskLevelSortOrder: toNum(row.riskLevelSortOrder),
     maxVersion: Number(row.maxVersion),
     pendingVersionStatusColor:
       row.pendingVersionStatusColor == null
         ? null
         : String(row.pendingVersionStatusColor),
+    pendingVersionStatusIconName:
+      row.pendingVersionStatusIconName == null
+        ? null
+        : String(row.pendingVersionStatusIconName),
     pendingVersionStatusId: toNum(row.pendingVersionStatusId),
     normReferenceIds:
       row.normReferenceIds == null ? null : String(row.normReferenceIds),
@@ -1321,7 +1329,8 @@ export async function getVersionHistory(
         requirement_status.id AS statusRowId,
         requirement_status.name_en AS statusNameEn,
         requirement_status.name_sv AS statusNameSv,
-        requirement_status.color AS statusColor
+        requirement_status.color AS statusColor,
+        requirement_status.icon_name AS statusIconName
       FROM requirement_versions version
       LEFT JOIN requirement_categories requirement_category
         ON requirement_category.id = version.requirement_category_id
@@ -1432,6 +1441,8 @@ export async function getVersionHistory(
       statusNameSv: row.statusNameSv == null ? null : String(row.statusNameSv),
       statusNameEn: row.statusNameEn == null ? null : String(row.statusNameEn),
       statusColor: row.statusColor == null ? null : String(row.statusColor),
+      statusIconName:
+        row.statusIconName == null ? null : String(row.statusIconName),
       _statusRowId: statusRowId,
     }
   })
@@ -1500,11 +1511,13 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
         risk_level.name_en AS rlNameEn,
         risk_level.name_sv AS rlNameSv,
         risk_level.color AS rlColor,
+        risk_level.icon_name AS rlIconName,
         risk_level.sort_order AS rlSortOrder,
         requirement_status.id AS statusRowId,
         requirement_status.name_en AS statusNameEn,
         requirement_status.name_sv AS statusNameSv,
         requirement_status.color AS statusColor,
+        requirement_status.icon_name AS statusIconName,
         requirement_status.sort_order AS statusSortOrder,
         CAST(requirement_status.is_system AS int) AS statusIsSystem
       FROM requirement_versions version
@@ -1656,12 +1669,15 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
               nameEn: String(row.rlNameEn ?? ''),
               nameSv: String(row.rlNameSv ?? ''),
               color: String(row.rlColor ?? ''),
+              iconName: row.rlIconName == null ? null : String(row.rlIconName),
               sortOrder: Number(row.rlSortOrder ?? 0),
             },
       status: statusRowId == null ? Number(row.statusId) : Number(row.statusId),
       statusNameEn: row.statusNameEn == null ? null : String(row.statusNameEn),
       statusNameSv: row.statusNameSv == null ? null : String(row.statusNameSv),
       statusColor: row.statusColor == null ? null : String(row.statusColor),
+      statusIconName:
+        row.statusIconName == null ? null : String(row.statusIconName),
       versionNormReferences: (normRefByVersion.get(vId) ?? []).map(link => ({
         normReferenceId: Number(link.normReferenceId),
         requirementVersionId: vId,

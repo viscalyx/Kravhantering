@@ -233,6 +233,7 @@ describe('requirements DAL (SQL Server path)', () => {
       nameEn: 'High',
       nameSv: 'Hög',
       color: '#ff0000',
+      iconName: null,
       sortOrder: 10,
     })
     expect(version?.versionNormReferences).toEqual([

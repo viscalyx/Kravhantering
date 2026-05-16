@@ -42,6 +42,7 @@ import { useColumnState } from '@/components/_requirements-table/useColumnState'
 import { useFloatingRailPosition } from '@/components/_requirements-table/useFloatingRailPosition'
 import { useResizeHandles } from '@/components/_requirements-table/useResizeHandles'
 import StatusBadge from '@/components/StatusBadge'
+import StatusIcon from '@/components/StatusIcon'
 import { Link, useRouter } from '@/i18n/routing'
 import {
   devMarker,
@@ -2255,27 +2256,28 @@ export default function RequirementsTable({
               : row.version?.qualityCharacteristicNameEn) ?? '—'}
           </td>
         )
-      case 'riskLevel':
+      case 'riskLevel': {
+        const riskLevelLabel =
+          (locale === 'sv'
+            ? row.version?.riskLevelNameSv
+            : row.version?.riskLevelNameEn) ?? null
         return (
           <td
             className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
           >
-            {row.version?.riskLevelColor ? (
-              <span className="inline-flex items-center gap-1.5">
-                <span
-                  aria-hidden="true"
-                  className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: row.version.riskLevelColor }}
-                />
-                {(locale === 'sv'
-                  ? row.version?.riskLevelNameSv
-                  : row.version?.riskLevelNameEn) ?? '—'}
-              </span>
+            {riskLevelLabel ? (
+              <StatusBadge
+                color={row.version?.riskLevelColor ?? null}
+                iconName={row.version?.riskLevelIconName}
+                label={riskLevelLabel}
+                size="sm"
+              />
             ) : (
               '—'
             )}
           </td>
         )
+      }
       case 'status':
         return (
           <td className={`py-2 px-2 ${dividerClass}`}>
@@ -2284,6 +2286,7 @@ export default function RequirementsTable({
                 <span className={archivedContentClass}>
                   <StatusBadge
                     color={row.version.statusColor}
+                    iconName={row.version.statusIconName}
                     label={resolveStatusLabel(
                       {
                         status: row.version.status,
@@ -2301,23 +2304,38 @@ export default function RequirementsTable({
               )}
               {row.hasPendingVersion && (
                 <span
+                  aria-label={t(
+                    row.pendingVersionStatusId === 1
+                      ? 'hasPendingVersionDraft'
+                      : 'hasPendingVersionReview',
+                  )}
+                  role="img"
+                  style={{
+                    color: row.pendingVersionStatusColor ?? undefined,
+                  }}
                   title={t(
                     row.pendingVersionStatusId === 1
                       ? 'hasPendingVersionDraft'
                       : 'hasPendingVersionReview',
                   )}
                 >
-                  <AlertCircle
-                    aria-label={t(
-                      row.pendingVersionStatusId === 1
-                        ? 'hasPendingVersionDraft'
-                        : 'hasPendingVersionReview',
-                    )}
-                    className="h-3.5 w-3.5"
-                    style={{
-                      color: row.pendingVersionStatusColor ?? undefined,
-                    }}
-                  />
+                  {row.pendingVersionStatusIconName ? (
+                    <StatusIcon
+                      className="h-3.5 w-3.5"
+                      name={row.pendingVersionStatusIconName}
+                      style={{
+                        color: row.pendingVersionStatusColor ?? undefined,
+                      }}
+                    />
+                  ) : (
+                    <AlertCircle
+                      aria-hidden="true"
+                      className="h-3.5 w-3.5"
+                      style={{
+                        color: row.pendingVersionStatusColor ?? undefined,
+                      }}
+                    />
+                  )}
                 </span>
               )}
             </span>
@@ -2393,16 +2411,12 @@ export default function RequirementsTable({
             title={statusDescription}
           >
             {statusLabel ? (
-              <span className="inline-flex items-center gap-1.5">
-                {statusColor ? (
-                  <span
-                    aria-hidden="true"
-                    className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: statusColor }}
-                  />
-                ) : null}
-                {statusLabel}
-              </span>
+              <StatusBadge
+                color={statusColor ?? null}
+                iconName={row.specificationItemStatusIconName ?? null}
+                label={statusLabel}
+                size="sm"
+              />
             ) : (
               '—'
             )}

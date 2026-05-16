@@ -107,6 +107,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
       needsReferenceId: 81,
       specificationItemId: 31,
       specificationItemStatusColor: '#f59e0b',
+      specificationItemStatusIconName: null,
       specificationItemStatusId: 2,
       specificationItemStatusNameEn: 'Ongoing',
       specificationItemStatusNameSv: 'Pågående',
