@@ -417,6 +417,20 @@ unknown tool, stale edit conflict, and sanitized AI-disabled error.
 See [docs/mcp-seeded-dast.md](mcp-seeded-dast.md) for local run instructions
 and corpus extension rules.
 
+## Shared prodlike app cleanup
+
+>!-- cSpell:ignore setsid pgid -->
+The DAST, REST API Schemathesis, and MCP seeded workflows use
+[scripts/security/prodlike-app.sh](../scripts/security/prodlike-app.sh) to
+start the prodlike Next.js server under `setsid` so the wrapper, `npx` shims,
+and `next start` Node process share a dedicated process group. Each
+`Stop prodlike app` step reads the workflow-local `app.pgid`, sends `TERM` to
+the process group, waits up to 10 seconds, then sends `KILL` if any process
+remains.
+
+The marker is a process-group ID, not a single child PID. Do not switch these
+workflows back to `app.pid` unless the startup and cleanup model changes.
+
 ## Static security headers
 
 Static (per-response, non-nonce) security headers are set in the
