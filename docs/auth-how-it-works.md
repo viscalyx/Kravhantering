@@ -8,7 +8,8 @@ This document explains authentication in two separate layers:
 
 It is intentionally not a replacement for the more detailed workflow docs:
 
-- For local Keycloak, test setup, and env-var reference, see
+- For local Keycloak, integration-test CI dependency, test setup, and
+  env-var reference, see
   [auth-developer-workflow.md](./auth-developer-workflow.md).
 
 ## Reading guide
