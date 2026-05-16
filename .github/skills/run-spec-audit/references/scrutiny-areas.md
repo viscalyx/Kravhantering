@@ -236,6 +236,21 @@ maintenance rule.
 - **Verify:** `npm exec -- vitest run
   tests/quality/functional.test.ts -t "Scenario 12d: strict-target behavior with manual state manipulation"`
 
+## 20. Scenario 13: specification-local graduation is copy-only into a draft library requirement
+
+- **Code:** `lib/dal/requirements-specifications.ts` —
+  `graduateSpecificationLocalRequirementToLibrary`; `lib/requirements/service-specifications.ts`
+  graduation authorization and service wrapper.
+- **Spec:** issue #96 copy-only graduation workflow and
+  `docs/requirements-ui-behaviour.md` specification-local action rail.
+- **Req tag:** `[Req: formal — issue #96 copy-only graduation workflow]`
+- **Question:** Does graduation copy an Included specification-local
+  requirement into a new Draft library requirement in the selected
+  target area while leaving the source local row, status, note, area
+  hint, and local deviations unchanged?
+- **Verify:** `npm exec -- vitest run
+  tests/quality/functional.test.ts -t "Scenario 13: specification-local graduation is copy-only into a draft library requirement"`
+
 ## Maintenance
 
 This file must stay in sync with `tests/quality/QUALITY.md`:
@@ -248,7 +263,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   references here.
 - See `tests/quality/AGENTS.md` for the authoritative sync rule.
 
-## 20. Reference Data Behavioral Contracts
+## 21. Reference Data Behavioral Contracts
 
 - **Code:** `lib/dal/norm-references.ts`, `lib/dal/owners.ts`,
   `lib/dal/specification-implementation-types.ts`,
