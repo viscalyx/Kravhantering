@@ -9,6 +9,7 @@ import {
   positiveIntegerStringSchema,
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
+import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 
 export const dynamic = 'force-dynamic'
@@ -31,7 +32,9 @@ export const POST = secureMutationRoute({
   paramsSchema: graduateParamSchema,
   policy: customMutationPolicy(
     'specification_local_requirement.graduate',
-    () => {},
+    ({ context }) => {
+      requireHumanActorSnapshot(context)
+    },
   ),
   handler: async ({ body, context, params, request }) => {
     const { service } = await createRequirementsRestRuntime(request, {

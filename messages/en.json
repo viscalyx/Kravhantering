@@ -1091,6 +1091,14 @@
         "count": "Added {count} {requirementWord} to specification {reference}.",
         "skipped": "Skipped {count} {requirementWord} with no published version: {ids}."
       },
+      "graduationTargets": {
+        "title": "Library Target Areas",
+        "summary": "{count} requirement area(s) can receive the copy."
+      },
+      "graduate": {
+        "title": "Requirement Graduated to Library",
+        "summary": "Specification-local requirement {sourceUniqueId} was copied to {requirementUniqueId} as a draft in {targetAreaName}."
+      },
       "remove": {
         "count": "Removed {count} {requirementWord} from specification {reference}."
       }

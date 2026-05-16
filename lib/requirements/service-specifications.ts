@@ -5,6 +5,7 @@ import {
 } from '@/lib/dal/requirement-areas'
 import { getRequirementById } from '@/lib/dal/requirements'
 import {
+  canAuthorSpecification,
   getPublishedVersionIdForRequirement,
   getSpecificationBySlug,
   getSpecificationLocalRequirementDetail,
@@ -122,6 +123,33 @@ async function assertGraduationTargetAreaAuthor(
     {
       reason: 'target_area_author_required',
       requirementAreaId,
+    },
+  )
+  recordAuthorizationDenied(context, action, error)
+  throw error
+}
+
+async function assertSourceSpecificationAuthor(
+  db: SqlServerDatabase,
+  context: RequestContext,
+  action: RequirementsAction,
+  specificationId: number,
+): Promise<void> {
+  const allowed = await canAuthorSpecification(
+    db,
+    specificationId,
+    context.actor.hsaId,
+    isAdminActor(context),
+  )
+  if (allowed) {
+    return
+  }
+
+  const error = forbiddenError(
+    'Missing responsible or co-author access to the source requirements specification',
+    {
+      reason: 'source_specification_author_required',
+      specificationId,
     },
   )
   recordAuthorizationDenied(context, action, error)
@@ -374,6 +402,12 @@ export function createSpecificationWorkflow({
         },
         async () => {
           const specificationId = await resolveSpecificationIdOrThrow(db, input)
+          await assertSourceSpecificationAuthor(
+            db,
+            context,
+            action,
+            specificationId,
+          )
           const localRequirement = await getSpecificationLocalRequirementDetail(
             db,
             specificationId,
@@ -391,10 +425,11 @@ export function createSpecificationWorkflow({
             context.actor.hsaId,
             isAdminActor(context),
           )
-          const summary =
-            locale === 'sv'
-              ? `${areas.length} kravområde(n) kan ta emot kopian.`
-              : `${areas.length} requirement area(s) can receive the copy.`
+          const summary = translateServiceMessage(
+            locale,
+            'requirements.specifications.graduationTargets.summary',
+            { count: areas.length },
+          )
 
           return {
             areas: areas.map(area => ({
@@ -403,9 +438,10 @@ export function createSpecificationWorkflow({
               prefix: area.prefix,
             })),
             message: createServiceMessage(
-              locale === 'sv'
-                ? 'Målområden för kravkatalogen'
-                : 'Library Target Areas',
+              translateServiceMessage(
+                locale,
+                'requirements.specifications.graduationTargets.title',
+              ),
               [summary],
               responseFormat,
             ),
@@ -443,6 +479,12 @@ export function createSpecificationWorkflow({
         async () => {
           const actor = requireHumanActorSnapshot(context)
           const specificationId = await resolveSpecificationIdOrThrow(db, input)
+          await assertSourceSpecificationAuthor(
+            db,
+            context,
+            action,
+            specificationId,
+          )
           const targetArea = await getAreaById(db, input.requirementAreaId)
           if (!targetArea) {
             throw notFoundError('Requirement area not found', {
@@ -483,10 +525,15 @@ export function createSpecificationWorkflow({
             { uniqueId: detail.uniqueId },
             result.version.versionNumber,
           )
-          const summary =
-            locale === 'sv'
-              ? `Det lokala kravet ${result.sourceLocalRequirement.uniqueId} kopierades till ${detail.uniqueId} som utkast i ${targetArea.name}.`
-              : `Specification-local requirement ${result.sourceLocalRequirement.uniqueId} was copied to ${detail.uniqueId} as a draft in ${targetArea.name}.`
+          const summary = translateServiceMessage(
+            locale,
+            'requirements.specifications.graduate.summary',
+            {
+              requirementUniqueId: detail.uniqueId,
+              sourceUniqueId: result.sourceLocalRequirement.uniqueId,
+              targetAreaName: targetArea.name,
+            },
+          )
 
           recordHighRiskMutationSucceeded(context, {
             action: 'specification_local_requirement.graduated',
@@ -503,9 +550,10 @@ export function createSpecificationWorkflow({
           return {
             detail,
             message: createServiceMessage(
-              locale === 'sv'
-                ? 'Lokalt krav kopierat till kravkatalogen'
-                : 'Requirement Graduated to Library',
+              translateServiceMessage(
+                locale,
+                'requirements.specifications.graduate.title',
+              ),
               [summary],
               responseFormat,
             ),

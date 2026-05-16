@@ -1091,6 +1091,14 @@
         "count": "Lade till {count} {requirementWord} i kravunderlag {reference}.",
         "skipped": "Hoppade över {count} {requirementWord} utan publicerad version: {ids}."
       },
+      "graduationTargets": {
+        "title": "Målområden för kravkatalogen",
+        "summary": "{count} kravområde(n) kan ta emot kopian."
+      },
+      "graduate": {
+        "title": "Lokalt krav kopierat till kravkatalogen",
+        "summary": "Det lokala kravet {sourceUniqueId} kopierades till {requirementUniqueId} som utkast i {targetAreaName}."
+      },
       "remove": {
         "count": "Tog bort {count} {requirementWord} från kravunderlag {reference}."
       }

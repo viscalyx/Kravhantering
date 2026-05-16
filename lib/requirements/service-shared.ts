@@ -24,6 +24,10 @@ const SERVICE_MESSAGES = {
 type ServiceMessageKey =
   | 'requirements.specifications.add.count'
   | 'requirements.specifications.add.skipped'
+  | 'requirements.specifications.graduate.summary'
+  | 'requirements.specifications.graduate.title'
+  | 'requirements.specifications.graduationTargets.summary'
+  | 'requirements.specifications.graduationTargets.title'
   | 'requirements.specifications.items.count'
   | 'requirements.specifications.remove.count'
   | 'requirements.specifications.summary.count'
