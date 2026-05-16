@@ -17,6 +17,7 @@ const EXPECTED_TOOLS = [
   'requirements_get_specification_items',
   'requirements_graduate_local_requirement',
   'requirements_list_improvement_suggestions',
+  'requirements_list_graduation_target_areas',
   'requirements_list_specifications',
   'requirements_manage_improvement_suggestion',
   'requirements_manage_requirement',

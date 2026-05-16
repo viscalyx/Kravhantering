@@ -195,6 +195,7 @@ function createService() {
     generateRequirements,
     getRequirement,
     graduateSpecificationLocalRequirement,
+    listGraduationTargetAreas,
     manageRequirement,
     manageSuggestion,
     queryCatalog,
@@ -286,6 +287,13 @@ describe('MCP authorization seams', () => {
     await client.callTool({
       arguments: {
         localRequirementId: 12,
+        specificationId: 7,
+      },
+      name: 'requirements_list_graduation_target_areas',
+    })
+    await client.callTool({
+      arguments: {
+        localRequirementId: 12,
         requirementAreaId: 2,
         specificationId: 7,
       },
@@ -313,6 +321,10 @@ describe('MCP authorization seams', () => {
     expectContext(
       service.addToSpecification,
       'requirements_add_to_specification',
+    )
+    expectContext(
+      service.listGraduationTargetAreas,
+      'requirements_list_graduation_target_areas',
     )
     expectContext(
       service.graduateSpecificationLocalRequirement,

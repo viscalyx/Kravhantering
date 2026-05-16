@@ -62,6 +62,16 @@
       }
     },
     {
+      "name": "list graduation target areas",
+      "tool": "requirements_list_graduation_target_areas",
+      "kind": "read",
+      "arguments": {
+        "specificationId": 8,
+        "localRequirementId": 1,
+        "responseFormat": "json"
+      }
+    },
+    {
       "name": "add published requirement to specification",
       "tool": "requirements_add_to_specification",
       "kind": "mutation",

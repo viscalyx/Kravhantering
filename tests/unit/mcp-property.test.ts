@@ -67,6 +67,11 @@ const TOOL_CASES: ToolCase[] = [
   },
   {
     acceptsResponseFormat: true,
+    name: 'requirements_list_graduation_target_areas',
+    valid: { localRequirementId: 1, specificationId: 7 },
+  },
+  {
+    acceptsResponseFormat: true,
     name: 'requirements_graduate_local_requirement',
     valid: { localRequirementId: 1, requirementAreaId: 2, specificationId: 7 },
   },
@@ -411,6 +416,11 @@ describe('MCP property-based input validation', () => {
         client,
         'requirements_remove_from_specification',
         { requirementIds: [0], specificationId: 7 },
+      )
+      await expectInvalidToolCall(
+        client,
+        'requirements_list_graduation_target_areas',
+        { localRequirementId: 0, specificationId: 7 },
       )
       await expectInvalidToolCall(client, 'requirements_manage_requirement', {
         operation: 'edit',

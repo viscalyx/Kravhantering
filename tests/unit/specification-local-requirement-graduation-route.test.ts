@@ -135,6 +135,28 @@ describe('specification-local requirement graduation routes', () => {
     )
   })
 
+  it('rejects graduation before runtime when the actor lacks a verified HSA-ID', async () => {
+    mocks.createRequestContext.mockResolvedValueOnce({
+      ...mockContext,
+      actor: {
+        ...mockContext.actor,
+        hsaId: null,
+      },
+    })
+
+    const response = await POST(
+      makePostRequest({ requirementAreaId: 2 }),
+      makeParams('spec', '41'),
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'validation',
+    })
+    expect(mocks.createRequirementsRestRuntime).not.toHaveBeenCalled()
+    expect(mocks.graduateSpecificationLocalRequirement).not.toHaveBeenCalled()
+  })
+
   it('returns 400 for invalid graduation bodies', async () => {
     const response = await POST(
       makePostRequest({ requirementAreaId: 0 }),

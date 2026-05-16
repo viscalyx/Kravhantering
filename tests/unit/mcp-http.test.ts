@@ -332,6 +332,7 @@ describe('handleRequirementsMcpRequest', () => {
           'requirements_get_specification_items',
           'requirements_graduate_local_requirement',
           'requirements_list_improvement_suggestions',
+          'requirements_list_graduation_target_areas',
           'requirements_list_specifications',
           'requirements_manage_requirement',
           'requirements_manage_improvement_suggestion',
@@ -409,12 +410,27 @@ describe('handleRequirementsMcpRequest', () => {
       expect(graduateTool?.description).toContain(
         'source local requirement remains unchanged',
       )
+      expect(graduateTool?.description).toContain(
+        'requirements_list_graduation_target_areas',
+      )
       const graduateInputSchemaText = JSON.stringify(graduateTool?.inputSchema)
       expect(graduateInputSchemaText).toContain('localRequirementId')
       expect(graduateInputSchemaText).toContain('requirementAreaId')
       expect(JSON.stringify(graduateTool?.outputSchema)).toContain(
         'requirementViewUri',
       )
+    })
+
+    it('describes requirements_list_graduation_target_areas output', async () => {
+      const tool = getTool('requirements_list_graduation_target_areas')
+
+      expect(tool).toBeDefined()
+      expect(tool?.description).toContain('areas[].id')
+      expect(tool?.description).toContain(
+        'requirements_graduate_local_requirement',
+      )
+      expect(JSON.stringify(tool?.inputSchema)).toContain('localRequirementId')
+      expect(JSON.stringify(tool?.outputSchema)).toContain('prefix')
     })
 
     it('describes requirements_list_improvement_suggestions output', async () => {
@@ -607,6 +623,36 @@ describe('handleRequirementsMcpRequest', () => {
         }),
       ]),
     )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('lists graduation target areas through MCP', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+
+    const result = await client.callTool({
+      arguments: {
+        localRequirementId: 12,
+        responseFormat: 'json',
+        specificationId: 7,
+      },
+      name: 'requirements_list_graduation_target_areas',
+    })
+
+    expect(result.isError).not.toBe(true)
+    expect(fakeService.listGraduationTargetAreas).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        localRequirementId: 12,
+        responseFormat: 'json',
+        specificationId: 7,
+      }),
+    )
+    expect(result.structuredContent).toMatchObject({
+      areas: [{ id: 2, name: 'Security', prefix: 'SEC' }],
+    })
 
     await client.close()
     await transport.close()

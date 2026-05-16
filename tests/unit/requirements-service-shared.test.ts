@@ -33,4 +33,20 @@ describe('requirements service shared utilities', () => {
       ),
     ).toBe('Hittade 2 kravunderlag.')
   })
+
+  it('formats keyed graduation service messages', () => {
+    expect(
+      translateServiceMessage(
+        'en',
+        'requirements.specifications.graduate.summary',
+        {
+          requirementUniqueId: 'SEC0001',
+          sourceUniqueId: 'KRAV0001',
+          targetAreaName: 'Security',
+        },
+      ),
+    ).toBe(
+      'Specification-local requirement KRAV0001 was copied to SEC0001 as a draft in Security.',
+    )
+  })
 })
