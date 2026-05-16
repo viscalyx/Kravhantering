@@ -103,7 +103,10 @@ runs if the configured target is not local.
    starts it with `next start --hostname 127.0.0.1 --port 3001` loaded
    from [.env.prodlike](../.env.prodlike).
 4. Polls the new [`GET /api/health`](../app/api/health/route.ts)
-   endpoint until the app is ready.
+   endpoint until the app is ready. The DAST gate treats the endpoint as
+   healthy only when it returns HTTP `200` with JSON `{ "status": "ok" }`;
+   any other status or payload keeps the retry loop running and is printed on
+   terminal failure.
 5. Runs [scripts/security/get-session-cookie.mjs](../scripts/security/get-session-cookie.mjs)
    to drive a real OIDC login as the realm test user `ada.admin` and
    obtain the iron-session cookie. The flow mirrors

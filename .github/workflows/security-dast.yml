@@ -90,15 +90,42 @@ jobs:
       - name: Wait for app health endpoint
         run: |
           set -euo pipefail
+          # GitHub-hosted ubuntu-latest runners include jq; fail clearly if
+          # that runner-image contract changes.
+          if ! command -v jq > /dev/null 2>&1; then
+            echo "::error::jq is required to validate /api/health JSON."
+            exit 1
+          fi
+
+          last_http_code="not requested"
+          last_payload=""
           for i in $(seq 1 60); do
-            if curl -sf --max-time 5 "${APP_BASE_URL}/api/health" > /dev/null 2>&1; then
-              echo "App is healthy."
-              exit 0
+            response="$(
+              curl -sS --max-time 5 -w '\n%{http_code}' \
+                "${APP_BASE_URL}/api/health" 2>/dev/null || true
+            )"
+            last_http_code="$(printf '%s' "$response" | tail -n 1)"
+            last_payload="$(printf '%s' "$response" | sed '$d')"
+
+            if [ "$last_http_code" = "200" ]; then
+              if printf '%s' "$last_payload" |
+                jq -e '.status == "ok"' > /dev/null 2>&1; then
+                echo "App is healthy."
+                exit 0
+              fi
             fi
             echo "Attempt $i/60 - /api/health not ready yet, retrying in 2s..."
             sleep 2
           done
-          echo "App did not become healthy in time. Last 200 lines of app.log:"
+          echo "App did not become healthy in time."
+          echo "Last /api/health HTTP status: ${last_http_code}"
+          echo "Last /api/health payload:"
+          if [ -n "$last_payload" ]; then
+            printf '%s\n' "$last_payload"
+          else
+            echo "<empty>"
+          fi
+          echo "Last 200 lines of app.log:"
           tail -n 200 test-results/app.log || true
           exit 1
 
