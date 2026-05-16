@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ComponentProps, ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -86,10 +86,10 @@ describe('RequirementActionRail', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'common.share' }))
 
-    const inlineShareOption = screen.getByRole('button', {
+    const inlineShareOption = screen.getByRole('menuitem', {
       name: 'requirement.shareLinkInline',
     })
-    const pageShareOption = screen.getByRole('button', {
+    const pageShareOption = screen.getByRole('menuitem', {
       name: 'requirement.shareLinkPage',
     })
     const shareMenu = inlineShareOption.parentElement
@@ -112,5 +112,79 @@ describe('RequirementActionRail', () => {
         'dark:hover:text-white',
       )
     }
+  })
+
+  it('exposes share menu semantics and keyboard navigation', async () => {
+    renderRequirementActionRail()
+
+    const shareTrigger = screen.getByRole('button', { name: 'common.share' })
+    expect(shareTrigger).toHaveAttribute('aria-haspopup', 'menu')
+    expect(shareTrigger).toHaveAttribute('aria-expanded', 'false')
+    expect(shareTrigger).toHaveAttribute('aria-controls')
+
+    const menuId = shareTrigger.getAttribute('aria-controls')
+    await userEvent.click(shareTrigger)
+
+    expect(shareTrigger).toHaveAttribute('aria-expanded', 'true')
+    const shareMenu = screen.getByRole('menu', { name: 'common.share' })
+    expect(shareMenu).toHaveAttribute('id', menuId)
+    expect(shareMenu).toHaveAttribute('aria-labelledby', shareTrigger.id)
+
+    const inlineShareOption = screen.getByRole('menuitem', {
+      name: 'requirement.shareLinkInline',
+    })
+    const pageShareOption = screen.getByRole('menuitem', {
+      name: 'requirement.shareLinkPage',
+    })
+    await waitFor(() => expect(inlineShareOption).toHaveFocus())
+
+    await userEvent.keyboard('{ArrowDown}')
+    expect(pageShareOption).toHaveFocus()
+
+    await userEvent.keyboard('{ArrowDown}')
+    expect(inlineShareOption).toHaveFocus()
+
+    await userEvent.keyboard('{ArrowUp}')
+    expect(pageShareOption).toHaveFocus()
+
+    await userEvent.keyboard('{Home}')
+    expect(inlineShareOption).toHaveFocus()
+
+    await userEvent.keyboard('{End}')
+    expect(pageShareOption).toHaveFocus()
+
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(shareTrigger).toHaveAttribute('aria-expanded', 'false')
+    expect(shareTrigger).toHaveFocus()
+  })
+
+  it('announces share copy success and returns focus to the trigger', async () => {
+    const clipboardWriteText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: clipboardWriteText,
+      },
+    })
+    window.history.pushState({}, '', '/sv/requirements/REQ-123?draft=true')
+    renderRequirementActionRail()
+
+    const shareTrigger = screen.getByRole('button', { name: 'common.share' })
+    await userEvent.click(shareTrigger)
+    await userEvent.click(
+      screen.getByRole('menuitem', {
+        name: 'requirement.shareLinkInline',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(clipboardWriteText).toHaveBeenCalledWith(
+        `${window.location.origin}/sv/requirements?selected=REQ-123`,
+      ),
+    )
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('common.copied')
+    expect(screen.getByRole('button', { name: 'common.copied' })).toHaveFocus()
   })
 })

@@ -1565,7 +1565,7 @@ describe('RequirementDetailClient', () => {
     await screen.findByText('Reportable requirement')
     await userEvent.click(screen.getByRole('button', { name: 'common.print' }))
     await userEvent.click(
-      screen.getByRole('button', {
+      screen.getByRole('menuitem', {
         name: 'requirement.printHistoryReport',
       }),
     )
@@ -1614,7 +1614,7 @@ describe('RequirementDetailClient', () => {
     await screen.findByText('Deviation under review')
     await userEvent.click(screen.getByRole('button', { name: 'common.print' }))
     await userEvent.click(
-      screen.getByRole('button', {
+      screen.getByRole('menuitem', {
         name: 'deviation.printDeviationReviewReport',
       }),
     )

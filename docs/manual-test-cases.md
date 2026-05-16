@@ -29,6 +29,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [REQ-09: inline detail pane content order](#req-09-inline-detail-pane-content-order)
   - [REQ-10: catalog list report entrypoint works](#req-10-catalog-list-report-entrypoint-works)
   - [REQ-11: localized catalog error recovery](#req-11-localized-catalog-error-recovery)
+  - [REQ-12: detail action menus are keyboard accessible](#req-12-detail-action-menus-are-keyboard-accessible)
 - [Requirement creation and lifecycle](#requirement-creation-and-lifecycle)
   - [LIFE-01: create a requirement from the UI](#life-01-create-a-requirement-from-the-ui)
   - [LIFE-02: validate required fields on create](#life-02-validate-required-fields-on-create)
@@ -480,6 +481,28 @@ requirements without losing the current list context.
 
 **Expected result:** The panel says `Något gick fel`, does not leak stack text,
 and the recovery link returns to `/sv/requirements`.
+
+### REQ-12: detail action menus are keyboard accessible
+
+**Purpose:** Confirm detail-rail share and report menus expose accessible menu
+behavior.
+
+**Users:** `ada.admin`.
+
+**Prerequisites:** Open `/sv/requirements` and expand a requirement row.
+
+**Steps:**
+
+1. Move focus to `Dela` and press Enter.
+1. Use ArrowDown, ArrowUp, Home, and End to move between share options.
+1. Press Escape.
+1. Open `Skriv ut`, use the same arrow keys, then press Tab.
+1. Reopen `Dela` and copy one link.
+
+**Expected result:** Each menu opens with focus on the first option, arrow keys
+cycle only through menu options, Escape returns focus to the trigger, Tab closes
+the report menu without trapping focus, and the copy result is announced as
+`Kopierad`.
 
 ## Requirement creation and lifecycle
 

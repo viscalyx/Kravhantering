@@ -22,6 +22,7 @@ import {
 } from '@/lib/requirements/status-constants.mjs'
 import RequirementReportMenu from './RequirementReportMenu'
 import type { TransitionTarget } from './types'
+import { useDetailActionMenu } from './useDetailActionMenu'
 
 interface RequirementActionRailProps {
   canAddToSpecification: boolean
@@ -112,24 +113,14 @@ export default function RequirementActionRail({
   const [copied, setCopied] = useState<'inline' | 'page' | null>(null)
   const [showShareMenu, setShowShareMenu] = useState(false)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const shareMenuRef = useRef<HTMLDivElement>(null)
+  const shareMenu = useDetailActionMenu({
+    idPrefix: 'requirement-share-menu',
+    isOpen: showShareMenu,
+    setIsOpen: setShowShareMenu,
+  })
   const restoreDisabled =
     hasPendingWork || selectedVersionNumberForRestore == null
   const backToLatestVersionNumber = latestVersionNumber ?? displayVersionNumber
-
-  useEffect(() => {
-    if (!showShareMenu) return
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        shareMenuRef.current &&
-        !shareMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowShareMenu(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showShareMenu])
 
   useEffect(
     () => () => {
@@ -157,7 +148,7 @@ export default function RequirementActionRail({
     } catch {
       setCopied(null)
     }
-    setShowShareMenu(false)
+    shareMenu.closeMenu({ restoreFocus: true })
     if (copyTimeoutRef.current) {
       clearTimeout(copyTimeoutRef.current)
     }
@@ -193,8 +184,11 @@ export default function RequirementActionRail({
           {tp('addToSpecification')}
         </button>
       )}
-      <div className="relative" ref={shareMenuRef}>
+      <div className="relative" ref={shareMenu.rootRef}>
         <button
+          aria-controls={shareMenu.menuId}
+          aria-expanded={showShareMenu}
+          aria-haspopup="menu"
           className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
           {...devMarker({
             context: detailContext,
@@ -202,7 +196,9 @@ export default function RequirementActionRail({
             priority: 300,
             value: 'share',
           })}
+          id={shareMenu.triggerId}
           onClick={() => setShowShareMenu(prev => !prev)}
+          ref={shareMenu.triggerRef}
           title={tc('share')}
           type="button"
         >
@@ -213,8 +209,18 @@ export default function RequirementActionRail({
           )}
           {copied ? tc('copied') : tc('share')}
         </button>
+        <span aria-live="polite" className="sr-only" role="status">
+          {copied ? tc('copied') : ''}
+        </span>
         {showShareMenu && (
-          <div className="absolute right-0 z-20 mt-1 w-full max-w-xs rounded-xl border border-secondary-200 bg-white py-1 text-secondary-900 shadow-lg dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-100">
+          <div
+            aria-labelledby={shareMenu.triggerId}
+            className="absolute right-0 z-20 mt-1 w-full max-w-xs rounded-xl border border-secondary-200 bg-white py-1 text-secondary-900 shadow-lg dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-100"
+            id={shareMenu.menuId}
+            onKeyDown={shareMenu.handleMenuKeyDown}
+            ref={shareMenu.menuRef}
+            role="menu"
+          >
             <button
               className="flex min-h-[44px] min-w-[44px] w-full items-center gap-2 px-3 py-2 text-left text-sm text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-900 dark:text-secondary-100 dark:hover:bg-secondary-700 dark:hover:text-white"
               {...devMarker({
@@ -224,6 +230,7 @@ export default function RequirementActionRail({
                 value: 'share inline',
               })}
               onClick={() => void handleShare('inline')}
+              role="menuitem"
               type="button"
             >
               {copied === 'inline' ? (
@@ -242,6 +249,7 @@ export default function RequirementActionRail({
                 value: 'share page',
               })}
               onClick={() => void handleShare('page')}
+              role="menuitem"
               type="button"
             >
               {copied === 'page' ? (
