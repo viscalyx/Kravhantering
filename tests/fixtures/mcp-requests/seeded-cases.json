@@ -66,8 +66,8 @@
       "tool": "requirements_list_graduation_target_areas",
       "kind": "read",
       "arguments": {
-        "specificationId": 8,
-        "localRequirementId": 1,
+        "specificationId": "${specification.id}",
+        "localRequirementId": "${localRequirement.id}",
         "responseFormat": "json"
       }
     },
@@ -76,9 +76,9 @@
       "tool": "requirements_graduate_local_requirement",
       "kind": "mutation",
       "arguments": {
-        "specificationId": 8,
-        "localRequirementId": 1,
-        "requirementAreaId": 1,
+        "specificationId": "${specification.id}",
+        "localRequirementId": "${localRequirement.id}",
+        "requirementAreaId": "${requirementArea.id}",
         "responseFormat": "json"
       }
     },
