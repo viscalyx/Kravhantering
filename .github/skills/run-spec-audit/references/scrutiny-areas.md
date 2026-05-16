@@ -263,7 +263,20 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   references here.
 - See `tests/quality/AGENTS.md` for the authoritative sync rule.
 
-## 21. Reference Data Behavioral Contracts
+## 21. AI Generation Contracts
+
+- **Code:** `lib/ai/openrouter-client.ts`,
+  `lib/ai/requirement-prompt.ts`, `lib/ai/taxonomy.ts`.
+- **Spec:** `docs/reference-data-and-ai.md` §4.
+- **Question:** Do timeout values match spec (120 s chat,
+  10 s models, 5 s key info)? Does taxonomy validation
+  filter/repair correctly (invalid `typeId` → delete, invalid
+  optional IDs → `undefined`)? Are locale-dependent prompts
+  consistent EN/SV? Does format negotiation attempt
+  `json_schema` (when `structured_outputs` is supported)
+  and fall back to `json_object`?
+
+## 22. Reference Data Behavioral Contracts
 
 - **Code:** `lib/dal/norm-references.ts`, `lib/dal/owners.ts`,
   `lib/dal/specification-implementation-types.ts`,
@@ -277,16 +290,3 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   taxonomy DALs skip validation? Is ordering consistent
   (`nameSv` for taxonomy, `normReferenceId` for norm
   references, `lastName`/`firstName` for owners)?
-
-## 21. AI Generation Contracts
-
-- **Code:** `lib/ai/openrouter-client.ts`,
-  `lib/ai/requirement-prompt.ts`, `lib/ai/taxonomy.ts`.
-- **Spec:** `docs/reference-data-and-ai.md` §4.
-- **Question:** Do timeout values match spec (120 s chat,
-  10 s models, 5 s key info)? Does taxonomy validation
-  filter/repair correctly (invalid `typeId` → delete, invalid
-  optional IDs → `undefined`)? Are locale-dependent prompts
-  consistent EN/SV? Does format negotiation attempt
-  `json_schema` (when `structured_outputs` is supported)
-  and fall back to `json_object`?
