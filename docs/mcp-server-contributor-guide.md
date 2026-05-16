@@ -21,7 +21,7 @@ For admin-managed UI terminology and default column settings, see
 - Primary public identifier: `uniqueId`
 - Read response formats: `markdown`, `json`
 - Supported locales: `en`, `sv`
-- Exposed MCP tools: 11
+- Exposed MCP tools: 12
 - Exposed MCP resources:
   - `requirements://requirement/{uniqueId}`
   - `ui://requirements/requirement-detail/{uniqueId}`
@@ -36,7 +36,7 @@ For admin-managed UI terminology and default column settings, see
   Creates a fresh `WebStandardStreamableHTTPServerTransport` for each request
   and connects the server instance.
 - `lib/mcp/server.ts`
-  Registers the eleven tools, the JSON resource, and the HTML UI resource.
+  Registers the twelve tools, the JSON resource, and the HTML UI resource.
 - `lib/dal/ui-settings.ts`
   Loads DB-backed UI terminology and default column settings.
 - `lib/ui-terminology.ts`
@@ -82,7 +82,7 @@ keeps lifecycle behavior aligned between REST and MCP.
 ## Tool Design
 
 The MCP surface is split into four areas: individual requirements (four
-tools), requirements specifications (four tools), improvement suggestions (two
+tools), requirements specifications (five tools), improvement suggestions (two
 tools), and AI generation (one tool).
 
 ### `requirements_query_catalog`
@@ -157,6 +157,15 @@ this lets an agent batch-add requirements without needing to pre-filter by
 publish state. An optional `needsReferenceText` is resolved to a
 `specification_needs_references` row (created if needed) and linked to all added
 items.
+
+### `requirements_graduate_local_requirement`
+
+Copies an Included specification-local requirement into a target library
+requirement area as a new Draft library requirement. The workflow is copy-only:
+it does not replace, delete, or link the source specification-local row, and it
+does not move local deviations. The service enforces target requirement-area
+ownership or co-authorship before calling the transactional DAL copy operation;
+source specification authorship is not required for this graduation workflow.
 
 ### `requirements_remove_from_specification`
 
@@ -423,7 +432,7 @@ Useful commands:
 Manual verification should still include:
 
 - connecting an MCP client to `/api/mcp` with a non-production Bearer token
-- checking that all eleven tools appear
+- checking that all twelve tools appear
 - checking that the JSON resource resolves
 - checking that the requirement view app renders in a client with MCP Apps
   support

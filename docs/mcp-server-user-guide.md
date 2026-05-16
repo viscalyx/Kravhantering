@@ -53,6 +53,11 @@ agents can use it reliably.
   published version; those without are skipped and returned in `skippedIds`.
   Optionally attach a `needsReferenceText` to all added items. Use
   `specificationId` or `specificationSlug` to identify the specification.
+- `requirements_graduate_local_requirement`
+  Copy an Included specification-local requirement into a chosen library
+  requirement area as a new Draft library requirement. The source local
+  requirement remains unchanged in the specification, and deviations stay with
+  that source row.
 - `requirements_remove_from_specification`
   Unlink one or more requirements from a specification. The requirements themselves
   are not deleted. Use `specificationId` or `specificationSlug` to identify the
@@ -290,6 +295,7 @@ Use a configuration like this:
         "requirements_list_specifications",
         "requirements_get_specification_items",
         "requirements_add_to_specification",
+        "requirements_graduate_local_requirement",
         "requirements_remove_from_specification",
         "requirements_list_improvement_suggestions",
         "requirements_manage_improvement_suggestion",
@@ -328,6 +334,7 @@ Example:
         "requirements_list_specifications",
         "requirements_get_specification_items",
         "requirements_add_to_specification",
+        "requirements_graduate_local_requirement",
         "requirements_remove_from_specification",
         "requirements_list_improvement_suggestions",
         "requirements_manage_improvement_suggestion",
@@ -463,6 +470,7 @@ tool. For requirement lists, it supports:
 - `Search for requirements about login in specification SAKLYFT-INFOR-Q2.`
 - `Add requirements INT0001 and INT0002 to specification SAKLYFT-INFOR-Q2.`
 - `Add requirement INT0005 to specification GDPR-FORV-2026 with needs reference text "Behov 4.1".` <!-- markdownlint-disable-line MD013 -->
+- `Graduate local requirement 41 from specification SAKLYFT-INFOR-Q2 into requirement area 3.` <!-- markdownlint-disable-line MD013 -->
 - `Remove requirement INT0003 from specification SAKLYFT-INFOR-Q2.`
 
 > **Note:** Specifications can be identified by `specificationId` (numeric) or
@@ -470,6 +478,11 @@ tool. For requirement lists, it supports:
 > `requirements_list_specifications`. `requirementIds` are numeric IDs; use
 > `requirements_query_catalog` or `requirements_get_specification_items` to find
 > them. Requirements must have a published version to be added to a specification.
+> Graduation is copy-only: it creates a new Draft library requirement and leaves
+> the source specification-local requirement unchanged. Graduation requires
+> ownership or co-authorship of the target requirement area, not authorship of
+> the source
+> specification.
 
 ## Limitations
 

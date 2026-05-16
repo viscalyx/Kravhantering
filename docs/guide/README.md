@@ -307,7 +307,7 @@ klicka på den för att starta avstegsprocessen.
 
 **Steg 3 — Fyll i avstegsformuläret.** Ange en motivering som förklarar varför
 kravet inte kan uppfyllas som specificerat och vilka kompenserande åtgärder som
-vidtas. Fältet "Registrerat av" är valfritt.
+vidtas. Begärande användare registreras automatiskt.
 
 ![Formulär för avstegsansökan](images/030-avstegsformular-tomt.png)
 

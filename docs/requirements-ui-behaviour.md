@@ -321,6 +321,14 @@ down.
   draft or review request. Otherwise the buttons stay disabled and expose a
   tooltip explaining why the action is blocked, while the controls are also
   visually muted so they no longer read as active actions.
+- The same specification-local action rail may show **Graduate to library** when
+  the actor owns or co-authors at least one requirement area. The action is
+  disabled unless **Användningsstatus** is **Inkluderad**. Opening the action
+  shows a modal target-area picker over a dimmed background, including the
+  copy-only outcome text. Pressing the modal's **Graduate** action copies the
+  local requirement into the selected library area as a new Draft library
+  requirement, navigates to that new requirement's created Draft version, and
+  leaves the source specification-local row and any local deviations unchanged.
 
 ## Print List Report Floating Pill
 

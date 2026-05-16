@@ -167,15 +167,17 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   specification-item detail layout, while their local edit/delete controls
   continue to use `detail action`.
 - Specification-local inline detail actions now use `detail action` markers
-  for the right-side edit and delete buttons, mirroring the catalog
-  detail-card action column pattern.
+  for the right-side edit, delete, and graduate-to-library buttons, mirroring
+  the catalog detail-card action column pattern.
 - The specification-local right-side action rail now mirrors the specification-item
-  rail's stacked button sizing and spacing, but it does not introduce
-  any new developer-mode marker names beyond the existing
-  print/deviation/detail action surfaces.
+  rail's stacked button sizing and spacing. Opening the graduation target-area
+  picker adds the shared `dialog` marker with value
+  `graduate-local-requirement`; the rail itself keeps the existing
+  print/deviation/detail action marker surfaces.
 - Those existing specification-local edit/delete `detail action` controls may
-  render disabled when usage status is not Included or when a deviation
-  is still pending. In that state they are visually muted, but this
+  render disabled when usage status is not Included or when a deviation is still
+  pending. The graduation action is disabled when usage status is not Included.
+  In either disabled state the controls are visually muted, but this
   state change does not add any new developer-mode markers.
 - Specification-local inline details now also use the same outer inset as the
   catalog inline detail surface; this is a layout-only alignment change
