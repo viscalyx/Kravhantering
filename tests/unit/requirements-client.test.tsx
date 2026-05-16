@@ -20,6 +20,10 @@ const helpPanelState = vi.hoisted(() => ({
   useHelpContent: vi.fn(),
 }))
 
+const navigationState = vi.hoisted(() => ({
+  searchParams: new URLSearchParams(),
+}))
+
 const tableState = vi.hoisted(() => ({
   renderSpy: vi.fn(),
 }))
@@ -34,6 +38,10 @@ const storageSetItem = vi.fn()
 vi.mock('next-intl', () => ({
   useLocale: () => 'sv',
   useTranslations: () => (key: string) => key,
+}))
+
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => navigationState.searchParams,
 }))
 
 vi.mock('@/i18n/routing', () => ({
@@ -442,6 +450,7 @@ function mockCommonFetches() {
 
 describe('RequirementsClient', () => {
   beforeEach(() => {
+    navigationState.searchParams = new URLSearchParams()
     fetchMock.mockReset()
     helpPanelState.useHelpContent.mockReset()
     printMock.mockReset()
@@ -475,6 +484,7 @@ describe('RequirementsClient', () => {
       },
       writable: true,
     })
+    window.history.replaceState({}, '', '/')
   })
 
   it('registers help content for inline detail and lifecycle guidance', () => {
@@ -1571,6 +1581,57 @@ describe('RequirementsClient', () => {
       expect(screen.getByTestId('row-ids').textContent).toBe('INT0002'),
     )
     expect(screen.getByTestId('row-ids').textContent).not.toContain('INT0001')
+  })
+
+  it('pins and expands a selected URL requirement that is outside the first page', async () => {
+    navigationState.searchParams = new URLSearchParams('selected=PWT0009')
+    window.history.replaceState({}, '', '/sv/requirements?selected=PWT0009')
+
+    let selectedDetailFetchCount = 0
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        return Promise.resolve(
+          okJson({
+            pagination: { hasMore: true },
+            requirements: [makeRequirementRow(1)],
+          }),
+        )
+      }
+
+      if (
+        url === '/api/requirements/PWT0009' ||
+        url === '/api/requirements/9'
+      ) {
+        selectedDetailFetchCount += 1
+        return Promise.resolve(
+          okJson(
+            makeRequirementDetail(9, {
+              uniqueId: 'PWT0009',
+            }),
+          ),
+        )
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toContain('PWT0009'),
+    )
+
+    expect(screen.getByText('detail-refresh-9')).toBeInTheDocument()
+    expect(selectedDetailFetchCount).toBeGreaterThan(0)
+    await waitFor(() => expect(window.location.search).toBe(''))
   })
 
   it('replaces a selected stale list row with the refreshed requirement detail snapshot', async () => {

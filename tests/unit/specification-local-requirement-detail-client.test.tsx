@@ -482,7 +482,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(
       await screen.findByText('Locked local requirement'),
     ).toBeInTheDocument()
-    const editButton = screen.getByRole('button', { name: 'Edit' })
+    const editButton = await screen.findByRole('button', { name: 'Edit' })
     const deleteButton = screen.getByRole('button', { name: 'Delete' })
     const graduateButton = await screen.findByRole('button', {
       name: 'Graduate to library',

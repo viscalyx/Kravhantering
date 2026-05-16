@@ -528,13 +528,18 @@ export default function RequirementsClient({
       }
     }
 
-    void hydrateSelectedRequirement()
-    refreshRows()
+    const resolveSelectedRequirement = async () => {
+      await Promise.allSettled([hydrateSelectedRequirement(), refreshRows()])
+      if (cancelled) return
 
-    // Clean up the params to avoid re-opening on manual refresh
-    const url = new URL(window.location.href)
-    url.searchParams.delete('selected')
-    window.history.replaceState({}, '', url.toString())
+      // Clean up the params after hydration so selected-row pinning cannot be
+      // cancelled before the row is available in the table.
+      const url = new URL(window.location.href)
+      url.searchParams.delete('selected')
+      window.history.replaceState({}, '', url.toString())
+    }
+
+    void resolveSelectedRequirement()
 
     return () => {
       cancelled = true
