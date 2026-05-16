@@ -419,7 +419,7 @@ and corpus extension rules.
 
 ## Shared prodlike app cleanup
 
->!-- cSpell:ignore setsid pgid -->
+<!-- cSpell:ignore setsid pgid -->
 The DAST, REST API Schemathesis, and MCP seeded workflows use
 [scripts/security/prodlike-app.sh](../scripts/security/prodlike-app.sh) to
 start the prodlike Next.js server under `setsid` so the wrapper, `npx` shims,
