@@ -25,6 +25,10 @@ const navigationState = vi.hoisted(() => ({
 }))
 
 const tableState = vi.hoisted(() => ({
+  detailChangeHandlers: new Map<
+    number,
+    (detail?: RequirementDetailResponse) => void | Promise<void>
+  >(),
   renderSpy: vi.fn(),
 }))
 
@@ -204,74 +208,80 @@ vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
     onChange?: (detail?: RequirementDetailResponse) => void | Promise<void>
     onClose?: () => void
     requirementId?: number
-  }) => (
-    <div>
-      detail
-      <button onClick={() => void onChange?.()} type="button">
-        {`detail-refresh-${requirementId}`}
-      </button>
-      <button
-        onClick={() =>
-          void onChange?.({
-            area: {
-              id: 1,
-              name: 'Integration',
-              ownerId: 1,
-              ownerName: 'Area Owner',
-              prefix: 'INT',
-            },
-            createdAt: '2026-03-01T00:00:00Z',
-            id: requirementId ?? 1,
-            isArchived: false,
-            specificationCount: 0,
-            uniqueId: 'PWT0007',
-            versions: [
-              {
-                acceptanceCriteria: 'Acceptance 1',
-                archiveInitiatedAt: '2026-05-16T08:00:00.000Z',
-                archivedAt: null,
-                category: {
-                  id: 2,
-                  nameEn: 'Business requirement',
-                  nameSv: 'Verksamhetskrav',
-                },
-                createdAt: '2026-03-01T00:00:00Z',
-                createdBy: 'owner-1',
-                description: 'Pinned krav 1',
-                editedAt: null,
-                id: requirementId ?? 1,
-                ownerName: 'Owner',
-                publishedAt: '2026-03-01T00:00:00Z',
-                requiresTesting: false,
-                revisionToken: '11111111-1111-4111-8111-000000000001',
-                riskLevel: null,
-                status: 2,
-                statusColor: '#eab308',
-                statusNameEn: 'Review',
-                statusNameSv: 'Granskning',
-                qualityCharacteristic: null,
-                type: {
-                  id: 3,
-                  nameEn: 'Functional',
-                  nameSv: 'Funktionellt',
-                },
-                verificationMethod: null,
-                versionNumber: 1,
-                versionRequirementPackages: [],
-                versionNormReferences: [],
+  }) => {
+    if (requirementId != null && onChange) {
+      tableState.detailChangeHandlers.set(requirementId, onChange)
+    }
+
+    return (
+      <div>
+        detail
+        <button onClick={() => void onChange?.()} type="button">
+          {`detail-refresh-${requirementId}`}
+        </button>
+        <button
+          onClick={() =>
+            void onChange?.({
+              area: {
+                id: 1,
+                name: 'Integration',
+                ownerId: 1,
+                ownerName: 'Area Owner',
+                prefix: 'INT',
               },
-            ],
-          })
-        }
-        type="button"
-      >
-        {`detail-apply-archive-${requirementId}`}
-      </button>
-      <button onClick={onClose} type="button">
-        {`detail-close-${requirementId}`}
-      </button>
-    </div>
-  ),
+              createdAt: '2026-03-01T00:00:00Z',
+              id: requirementId ?? 1,
+              isArchived: false,
+              specificationCount: 0,
+              uniqueId: 'PWT0007',
+              versions: [
+                {
+                  acceptanceCriteria: 'Acceptance 1',
+                  archiveInitiatedAt: '2026-05-16T08:00:00.000Z',
+                  archivedAt: null,
+                  category: {
+                    id: 2,
+                    nameEn: 'Business requirement',
+                    nameSv: 'Verksamhetskrav',
+                  },
+                  createdAt: '2026-03-01T00:00:00Z',
+                  createdBy: 'owner-1',
+                  description: 'Pinned krav 1',
+                  editedAt: null,
+                  id: requirementId ?? 1,
+                  ownerName: 'Owner',
+                  publishedAt: '2026-03-01T00:00:00Z',
+                  requiresTesting: false,
+                  revisionToken: '11111111-1111-4111-8111-000000000001',
+                  riskLevel: null,
+                  status: 2,
+                  statusColor: '#eab308',
+                  statusNameEn: 'Review',
+                  statusNameSv: 'Granskning',
+                  qualityCharacteristic: null,
+                  type: {
+                    id: 3,
+                    nameEn: 'Functional',
+                    nameSv: 'Funktionellt',
+                  },
+                  verificationMethod: null,
+                  versionNumber: 1,
+                  versionRequirementPackages: [],
+                  versionNormReferences: [],
+                },
+              ],
+            })
+          }
+          type="button"
+        >
+          {`detail-apply-archive-${requirementId}`}
+        </button>
+        <button onClick={onClose} type="button">
+          {`detail-close-${requirementId}`}
+        </button>
+      </div>
+    )
+  },
 }))
 
 function okJson(body: unknown) {
@@ -461,6 +471,7 @@ describe('RequirementsClient', () => {
     storageGetItem.mockImplementation(() => null)
     storageSetItem.mockReset()
     tableState.renderSpy.mockReset()
+    tableState.detailChangeHandlers.clear()
     Object.defineProperty(window, 'print', {
       configurable: true,
       value: printMock,
@@ -1784,6 +1795,68 @@ describe('RequirementsClient', () => {
         ],
       }),
     )
+  })
+
+  it('does not reselect an older row from a stale mutation detail callback', async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        return Promise.resolve(
+          okJson({
+            pagination: { hasMore: false },
+            requirements: [makeRequirementRow(1), makeRequirementRow(2)],
+          }),
+        )
+      }
+
+      if (url === '/api/requirements/2') {
+        return Promise.resolve(okJson(makeRequirementDetail(2)))
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001,INT0002'),
+    )
+
+    fireEvent.click(screen.getByText('row-1'))
+    await waitFor(() =>
+      expect(screen.getByText('detail-refresh-1')).toBeInTheDocument(),
+    )
+
+    const staleChangeHandler = tableState.detailChangeHandlers.get(1)
+    expect(staleChangeHandler).toBeDefined()
+
+    fireEvent.click(screen.getByText('row-2'))
+    await waitFor(() =>
+      expect(screen.getByText('detail-refresh-2')).toBeInTheDocument(),
+    )
+
+    await act(async () => {
+      await staleChangeHandler?.(
+        makeRequirementDetail(1, { uniqueId: 'STALE-0001' }),
+      )
+    })
+
+    await waitFor(() =>
+      expect(screen.getByText('detail-refresh-2')).toBeInTheDocument(),
+    )
+    expect(screen.queryByText('detail-refresh-1')).toBeNull()
+    expect(
+      fetchMock.mock.calls.some(
+        ([input]) => String(input) === '/api/requirements/1',
+      ),
+    ).toBe(false)
   })
 
   it('resets load-more state when the next page request rejects', async () => {

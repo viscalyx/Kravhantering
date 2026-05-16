@@ -203,7 +203,11 @@ paths:
         - $ref: '#/components/parameters/Origin'
         - $ref: '#/components/parameters/XRequestedWith'
       responses:
-        '200': { $ref: '#/components/responses/Ok' }
+        '200':
+          description: Archived requirement result.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ArchiveRequirementResult' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -675,6 +679,18 @@ components:
       properties:
         ok: { type: boolean }
         version: { $ref: '#/components/schemas/RequirementVersion' }
+    ArchiveRequirementResult:
+      type: object
+      required: [detail, id, ok, uniqueId]
+      additionalProperties: true
+      properties:
+        detail:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/RequirementDetail'
+        id: { type: integer, nullable: true }
+        ok: { type: boolean }
+        uniqueId: { type: string, nullable: true }
     DeleteDraftResult:
       type: object
       required: [deleted]

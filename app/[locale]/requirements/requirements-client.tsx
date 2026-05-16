@@ -212,6 +212,13 @@ function mapRequirementDetailToRow(
   }
 }
 
+function selectionMatchesRequirementRow(
+  selection: number | string | null,
+  row: Pick<RequirementRow, 'id' | 'uniqueId'>,
+) {
+  return selection === row.id || selection === row.uniqueId
+}
+
 export default function RequirementsClient({
   initialColumnDefaults,
 }: {
@@ -381,12 +388,20 @@ export default function RequirementsClient({
   }, [filters, locale, sortState])
 
   const applyChangedRequirementDetail = useCallback(
-    (detail: RequirementDetailRowSource) => {
+    (
+      detail: RequirementDetailRowSource,
+      initiatingSelectedId: number | string | null,
+    ) => {
       const changedRow = mapRequirementDetailToRow(detail)
+      const canApplySelection =
+        selectedIdRef.current === initiatingSelectedId &&
+        selectionMatchesRequirementRow(initiatingSelectedId, changedRow)
 
-      selectedIdRef.current = changedRow.id
-      setSelectedId(changedRow.id)
-      setPinnedRow(changedRow)
+      if (canApplySelection) {
+        selectedIdRef.current = changedRow.id
+        setSelectedId(changedRow.id)
+        setPinnedRow(changedRow)
+      }
       setRows(previousRows =>
         previousRows.some(row => row.id === changedRow.id)
           ? previousRows.map(row =>
@@ -395,15 +410,18 @@ export default function RequirementsClient({
           : previousRows,
       )
 
-      return changedRow
+      return canApplySelection ? changedRow : undefined
     },
     [],
   )
 
   const handleRequirementChange = useCallback(
-    async (detail?: RequirementDetailRowSource) => {
+    async (
+      initiatingSelectedId: number | string | null,
+      detail?: RequirementDetailRowSource,
+    ) => {
       const changedRow = detail
-        ? applyChangedRequirementDetail(detail)
+        ? applyChangedRequirementDetail(detail, initiatingSelectedId)
         : undefined
 
       await refreshRows()
@@ -967,7 +985,7 @@ export default function RequirementsClient({
                 renderExpanded={id => (
                   <RequirementDetailClient
                     inline
-                    onChange={handleRequirementChange}
+                    onChange={detail => handleRequirementChange(id, detail)}
                     onClose={() => {
                       setSelectedId(null)
                       setPinnedRow(null)

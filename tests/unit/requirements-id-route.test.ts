@@ -244,14 +244,25 @@ describe('requirements/[id] route', () => {
 
   describe('DELETE', () => {
     it('archives requirement', async () => {
-      mockManageRequirement.mockResolvedValue({})
+      const detail = { id: 1, uniqueId: 'REQ-001' }
+      mockManageRequirement.mockResolvedValue({ detail })
 
       const req = new NextRequest('http://localhost/api/requirements/1', {
         method: 'DELETE',
       })
       const res = await DELETE(req, makeParams('1'))
-      const json = (await res.json()) as { ok: boolean }
-      expect(json.ok).toBe(true)
+      const json = (await res.json()) as {
+        detail: typeof detail
+        id: number
+        ok: boolean
+        uniqueId: string
+      }
+      expect(json).toEqual({
+        detail,
+        id: 1,
+        ok: true,
+        uniqueId: 'REQ-001',
+      })
       expect(mockManageRequirement).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ operation: 'archive' }),

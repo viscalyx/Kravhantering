@@ -164,11 +164,12 @@ export const DELETE = secureMutationRoute({
         ...ref,
         operation: 'archive',
       })
+      const detail = result.detail ?? null
       return NextResponse.json({
-        detail: result.detail,
-        id: result.detail?.id ?? ref.id ?? null,
+        detail,
+        id: detail?.id ?? ref.id ?? null,
         ok: true,
-        uniqueId: result.detail?.uniqueId,
+        uniqueId: detail?.uniqueId ?? ref.uniqueId ?? null,
       })
     } catch (error) {
       const { body, status } = toHttpErrorPayload(error)
