@@ -1794,6 +1794,48 @@ describe('createRequirementsService', () => {
     ])
   })
 
+  it('uses the delete-draft result unique ID for final-requirement audit events', async () => {
+    mocks.deleteDraftVersion.mockImplementation(async (_db, _id, options) => {
+      const result = {
+        deleted: 'requirement' as const,
+        deletedUniqueId: 'SEC-0001',
+      }
+      await options?.audit?.({ query: mocks.auditQuery }, result)
+      return result
+    })
+    mocks.getRequirementById
+      .mockResolvedValueOnce(makeRequirementRecord())
+      .mockResolvedValueOnce(null)
+    mocks.auditQuery.mockImplementation(async () => [])
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    await service.manageRequirement(makeContext(), {
+      id: 1,
+      operation: 'delete_draft',
+    })
+
+    expect(emittedSecurityEvents()).toEqual([
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          action: 'requirement.draft.deleted',
+          deleted: 'requirement',
+          operation: 'delete_draft',
+          requirementId: 1,
+          requirementUniqueId: 'SEC-0001',
+        }),
+        event: 'requirements.high_risk_mutation.succeeded',
+        outcome: 'success',
+      }),
+    ])
+    expect(mocks.auditQuery).not.toHaveBeenCalledWith(
+      expect.stringContaining('SELECT TOP (1) unique_id'),
+      expect.anything(),
+    )
+  })
+
   it('emits security audit events for specification removals', async () => {
     mocks.unlinkRequirementsFromSpecification.mockResolvedValue(2)
     const service = createRequirementsService({} as never, {

@@ -277,6 +277,11 @@ interface CreateRequirementResult {
   version: VersionInsertedRow
 }
 
+interface DeleteDraftVersionResult {
+  deleted: 'requirement' | 'version'
+  deletedUniqueId?: string
+}
+
 function mapRequirement(row: Record<string, unknown>): RequirementInsertedRow {
   return {
     id: Number(row.id),
@@ -865,11 +870,9 @@ export async function cancelArchiving(
 export async function deleteDraftVersion(
   db: SqlServerDatabase,
   requirementId: number,
-  options: RequirementMutationAuditOptions<{
-    deleted: 'requirement' | 'version'
-  }> = {},
-): Promise<{ deleted: 'requirement' | 'version' }> {
-  let result: { deleted: 'requirement' | 'version' } = { deleted: 'version' }
+  options: RequirementMutationAuditOptions<DeleteDraftVersionResult> = {},
+): Promise<DeleteDraftVersionResult> {
+  let result: DeleteDraftVersionResult = { deleted: 'version' }
 
   await db.transaction(async manager => {
     const tx: SqlServerTxExecutor = {
@@ -897,8 +900,21 @@ export async function deleteDraftVersion(
       [requirementId],
     )) as Array<Record<string, unknown>>
     if (Number(remainingRows[0]?.count ?? 0) === 0) {
+      const requirementRows = (await tx.query(
+        `SELECT TOP (1) unique_id AS uniqueId FROM requirements WHERE id = @0`,
+        [requirementId],
+      )) as Array<Record<string, unknown>>
+      const deletedUniqueId = requirementRows[0]?.uniqueId
+      result =
+        deletedUniqueId == null
+          ? { deleted: 'requirement' }
+          : {
+              deleted: 'requirement',
+              deletedUniqueId: String(deletedUniqueId),
+            }
+      await options.audit?.(tx, result)
       await tx.query(`DELETE FROM requirements WHERE id = @0`, [requirementId])
-      result = { deleted: 'requirement' }
+      return
     }
     await options.audit?.(tx, result)
   })

@@ -1034,10 +1034,12 @@ export function createRequirementWorkflow({
             const result = await deleteDraftVersion(db, requirementId, {
               audit: async (executor, deleteResult) => {
                 const requirementUniqueId =
+                  deleteResult.deletedUniqueId ??
                   (await getRequirementUniqueIdForAudit(
                     executor,
                     requirementId,
-                  )) ?? input.uniqueId
+                  )) ??
+                  input.uniqueId
                 await recordRequirementMutationAudit(executor, context, {
                   action: 'requirement.draft.deleted',
                   deleted: deleteResult.deleted,

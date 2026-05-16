@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   approveArchiving,
   cancelArchiving,
+  deleteDraftVersion,
   editRequirement,
   getRequirementById,
   getRequirementByUniqueId,
@@ -41,6 +42,38 @@ function createSqlServerDb() {
 describe('requirements DAL (SQL Server path)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('preserves the unique ID for audit before deleting the final requirement row', async () => {
+    const { db, query } = createSqlServerDb()
+    const audit = vi.fn(async () => undefined)
+    query
+      .mockResolvedValueOnce([{ id: 21, statusId: 1 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ count: 0 }])
+      .mockResolvedValueOnce([{ uniqueId: 'SEC-0001' }])
+      .mockResolvedValueOnce([])
+
+    const result = await deleteDraftVersion(db, 7, { audit })
+
+    expect(result).toEqual({
+      deleted: 'requirement',
+      deletedUniqueId: 'SEC-0001',
+    })
+    expect(audit).toHaveBeenCalledWith(
+      expect.objectContaining({ query: expect.any(Function) }),
+      result,
+    )
+    const sqlCalls = query.mock.calls.map(([sql]) => String(sql))
+    expect(sqlCalls[5]).toContain(
+      'SELECT TOP (1) unique_id AS uniqueId FROM requirements WHERE id = @0',
+    )
+    expect(sqlCalls[6]).toBe('DELETE FROM requirements WHERE id = @0')
+    const auditOrder = audit.mock.invocationCallOrder[0] ?? 0
+    const parentDeleteOrder = query.mock.invocationCallOrder[6] ?? 0
+    expect(auditOrder).toBeLessThan(parentDeleteOrder)
   })
 
   it('returns null when the requirement does not exist', async () => {
