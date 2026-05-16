@@ -387,7 +387,11 @@ for (const viewport of viewports) {
           isArchived: false,
           status: STATUS_REVIEW,
         })
-        await assertRequirementListStatus(page, uniqueId, 'Granskning')
+        await assertRequirementListStatus(
+          page,
+          uniqueId,
+          'Arkiveringsgranskning',
+        )
         await selectLatestVersion(
           detailPane,
           request,
@@ -452,7 +456,11 @@ for (const viewport of viewports) {
           isArchived: false,
           status: STATUS_REVIEW,
         })
-        await assertRequirementListStatus(page, uniqueId, 'Granskning')
+        await assertRequirementListStatus(
+          page,
+          uniqueId,
+          'Arkiveringsgranskning',
+        )
         await selectLatestVersion(
           detailPane,
           request,

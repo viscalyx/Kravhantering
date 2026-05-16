@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SpecificationLocalRequirementDetailClient from '@/components/SpecificationLocalRequirementDetailClient'
@@ -121,6 +121,23 @@ function okJson(body: unknown) {
   } as Response)
 }
 
+function createDeferredJsonResponse() {
+  let resolve: (body: unknown) => void = () => {}
+  const promise = new Promise<Response>(promiseResolve => {
+    resolve = body => {
+      promiseResolve({
+        json: () => Promise.resolve(body),
+        ok: true,
+      } as Response)
+    }
+  })
+
+  return {
+    promise,
+    resolve,
+  }
+}
+
 describe('SpecificationLocalRequirementDetailClient', () => {
   beforeEach(() => {
     vi.stubGlobal(
@@ -222,7 +239,8 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(screen.getByText('ISO27001')).toBeInTheDocument()
     expect(screen.getByText('Bestallning')).toBeInTheDocument()
     expect(screen.queryByText('KRAV0001')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Print' })).toBeInTheDocument()
+    const printButton = await screen.findByRole('button', { name: 'Print' })
+    expect(printButton).toBeInTheDocument()
     expect(screen.queryByText('Deviation')).not.toBeInTheDocument()
     expect(
       screen.queryByText('Only exists in this specification.'),
@@ -243,9 +261,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(screen.getByRole('button', { name: 'Edit' }).className).toContain(
       'min-w-[44px]',
     )
-    expect(screen.getByRole('button', { name: 'Print' }).className).toContain(
-      'w-full',
-    )
+    expect(printButton.className).toContain('w-full')
     expect(screen.getByRole('button', { name: 'Delete' })).toHaveAttribute(
       'data-developer-mode-value',
       'delete local requirement',
@@ -254,6 +270,75 @@ describe('SpecificationLocalRequirementDetailClient', () => {
       .getByText('Specification local description')
       .closest('div[class~="px-6"]')
     expect(inlineInset).toHaveClass('py-4')
+  })
+
+  it('waits for graduation eligibility before showing the action rail', async () => {
+    const graduationTargets = createDeferredJsonResponse()
+
+    vi.mocked(fetch)
+      .mockImplementationOnce(() =>
+        okJson({
+          acceptanceCriteria: 'Specification local acceptance',
+          createdAt: '2026-04-01T00:00:00.000Z',
+          description: 'Stable action rail requirement',
+          id: 1,
+          itemRef: 'local:1',
+          needsReference: 'Need A',
+          needsReferenceId: 3,
+          normReferences: [],
+          specificationId: 8,
+          specificationItemStatusColor: '#16a34a',
+          specificationItemStatusId: 1,
+          specificationItemStatusNameEn: 'Included',
+          specificationItemStatusNameSv: 'Inkluderad',
+          qualityCharacteristic: null,
+          requirementArea: {
+            id: 2,
+            name: 'Integration',
+          },
+          requirementCategory: null,
+          requirementType: null,
+          requiresTesting: false,
+          riskLevel: null,
+          requirementPackages: [],
+          uniqueId: 'KRAV0001',
+          updatedAt: '2026-04-02T00:00:00.000Z',
+          verificationMethod: null,
+        }),
+      )
+      .mockImplementationOnce(() => okJson({ deviations: [] }))
+      .mockImplementationOnce(() => graduationTargets.promise)
+
+    render(
+      <SpecificationLocalRequirementDetailClient
+        localRequirementId={1}
+        needsReferences={[]}
+        specificationSlug="ETJANST-UPP-2026"
+      />,
+    )
+
+    expect(
+      await screen.findByText('Stable action rail requirement'),
+    ).toBeInTheDocument()
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: 'Graduate to library' }),
+    ).toBeNull()
+
+    await act(async () => {
+      graduationTargets.resolve({
+        areas: [{ id: 2, name: 'Security', prefix: 'SEC' }],
+      })
+    })
+
+    expect(
+      await screen.findByRole('button', { name: 'Graduate to library' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
   })
 
   it('graduates an Included local requirement into the selected library area', async () => {

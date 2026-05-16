@@ -1459,7 +1459,8 @@ describe('createRequirementsService', () => {
     })
   })
 
-  it('lists graduation target areas for source specification authors', async () => {
+  it('lists graduation target areas for actors who can author target areas without source specification access', async () => {
+    mocks.canAuthorSpecification.mockResolvedValueOnce(false)
     mocks.listAreasActorCanAuthor.mockResolvedValue([
       {
         id: 2,
@@ -1479,12 +1480,7 @@ describe('createRequirementsService', () => {
       specificationSlug: 'IAM-SPECIFICATION',
     })
 
-    expect(mocks.canAuthorSpecification).toHaveBeenCalledWith(
-      expect.anything(),
-      7,
-      'SE2321000032-alice1',
-      true,
-    )
+    expect(mocks.canAuthorSpecification).not.toHaveBeenCalled()
     expect(mocks.getSpecificationLocalRequirementDetail).toHaveBeenCalledWith(
       expect.anything(),
       7,
@@ -1497,8 +1493,35 @@ describe('createRequirementsService', () => {
     })
   })
 
-  it('denies graduation target areas before exposing source local existence', async () => {
+  it('returns no graduation target areas when the actor cannot author any target area', async () => {
     mocks.canAuthorSpecification.mockResolvedValueOnce(false)
+    mocks.listAreasActorCanAuthor.mockResolvedValueOnce([])
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    const result = await service.listGraduationTargetAreas(makeContext(), {
+      localRequirementId: 12,
+      responseFormat: 'json',
+      specificationSlug: 'IAM-SPECIFICATION',
+    })
+
+    expect(mocks.canAuthorSpecification).not.toHaveBeenCalled()
+    expect(mocks.getSpecificationLocalRequirementDetail).toHaveBeenCalledWith(
+      expect.anything(),
+      7,
+      12,
+    )
+    expect(result.areas).toEqual([])
+    expect(JSON.parse(result.message)).toEqual({
+      lines: ['0 requirement area(s) can receive the copy.'],
+      title: 'Library Target Areas',
+    })
+  })
+
+  it('returns not found for graduation target areas when the local requirement does not exist', async () => {
+    mocks.getSpecificationLocalRequirementDetail.mockResolvedValueOnce(null)
     const service = createRequirementsService({} as never, {
       logger,
       uiSettings: makeUiSettings(),
@@ -1511,17 +1534,18 @@ describe('createRequirementsService', () => {
         specificationSlug: 'IAM-SPECIFICATION',
       }),
     ).rejects.toMatchObject({
-      code: 'forbidden',
+      code: 'not_found',
       details: {
-        reason: 'source_specification_author_required',
+        localRequirementId: 12,
         specificationId: 7,
       },
     })
-    expect(mocks.getSpecificationLocalRequirementDetail).not.toHaveBeenCalled()
+    expect(mocks.canAuthorSpecification).not.toHaveBeenCalled()
     expect(mocks.listAreasActorCanAuthor).not.toHaveBeenCalled()
   })
 
-  it('graduates a specification-local requirement through the shared service workflow', async () => {
+  it('graduates a specification-local requirement through the shared service workflow using target-area access only', async () => {
+    mocks.canAuthorSpecification.mockResolvedValueOnce(false)
     mocks.getAreaById.mockResolvedValue({
       id: 2,
       name: 'Security',
@@ -1583,6 +1607,7 @@ describe('createRequirementsService', () => {
       },
     )
 
+    expect(mocks.canAuthorSpecification).not.toHaveBeenCalled()
     expect(
       mocks.graduateSpecificationLocalRequirementToLibrary,
     ).toHaveBeenCalledWith(expect.anything(), {
@@ -1651,38 +1676,6 @@ describe('createRequirementsService', () => {
     ).rejects.toMatchObject({
       code: 'forbidden',
     })
-    expect(
-      mocks.graduateSpecificationLocalRequirementToLibrary,
-    ).not.toHaveBeenCalled()
-  })
-
-  it('denies graduation when the actor cannot author the source specification', async () => {
-    mocks.canAuthorSpecification.mockResolvedValueOnce(false)
-    mocks.getAreaById.mockResolvedValue({
-      id: 2,
-      name: 'Security',
-      ownerId: 'alice',
-      prefix: 'SEC',
-    })
-    const service = createRequirementsService({} as never, {
-      logger,
-      uiSettings: makeUiSettings(),
-    })
-
-    await expect(
-      service.graduateSpecificationLocalRequirement(makeContext(), {
-        localRequirementId: 12,
-        requirementAreaId: 2,
-        specificationSlug: 'IAM-SPECIFICATION',
-      }),
-    ).rejects.toMatchObject({
-      code: 'forbidden',
-      details: {
-        reason: 'source_specification_author_required',
-        specificationId: 7,
-      },
-    })
-    expect(mocks.getAreaById).not.toHaveBeenCalled()
     expect(
       mocks.graduateSpecificationLocalRequirementToLibrary,
     ).not.toHaveBeenCalled()

@@ -69,7 +69,7 @@ flowchart TD
   into the SQL Server DataSource so local certificate settings are honored in
   pruned prod-like runs.
 - After archive initiation, the spec waits for the API state and catalog row to
-  show `Granskning`, then `selectLatestVersion()` clicks the newest
+  show `Arkiveringsgranskning`, then `selectLatestVersion()` clicks the newest
   `Arkiveringsgranskning` version pill. This keeps assertions on the review
   version when a rerun fixture also has older archived history.
 - `assertActiveStepperStep()` verifies the active requirement lifecycle step
@@ -150,7 +150,7 @@ sequenceDiagram
     U->>P: Start archiving and confirm
     P->>API: Poll until archiving review is persisted
     Note over API: ✓ status = 2, archive flag set
-    Note over P: ✓ Catalog row = Granskning
+    Note over P: ✓ Catalog row = Arkiveringsgranskning
     U->>P: Select latest Arkiveringsgranskning version
     Note over P: ✓ Step = Arkiveringsgranskning
     U->>P: Click Godkänn arkivering
@@ -198,7 +198,7 @@ sequenceDiagram
     U->>P: Start archiving and confirm
     P->>API: Poll until archiving review is persisted
     Note over API: ✓ status = 2, archive flag set
-    Note over P: ✓ Catalog row = Granskning
+    Note over P: ✓ Catalog row = Arkiveringsgranskning
     U->>P: Select latest Arkiveringsgranskning version
     Note over P: ✓ Step = Arkiveringsgranskning
     U->>P: Click Avbryt arkivering

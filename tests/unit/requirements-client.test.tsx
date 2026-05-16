@@ -189,14 +189,76 @@ vi.mock('@/components/RequirementsTable', () => ({
 
 vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
   default: ({
+    onChange,
     onClose,
     requirementId,
   }: {
+    onChange?: (detail?: RequirementDetailResponse) => void | Promise<void>
     onClose?: () => void
     requirementId?: number
   }) => (
     <div>
       detail
+      <button onClick={() => void onChange?.()} type="button">
+        {`detail-refresh-${requirementId}`}
+      </button>
+      <button
+        onClick={() =>
+          void onChange?.({
+            area: {
+              id: 1,
+              name: 'Integration',
+              ownerId: 1,
+              ownerName: 'Area Owner',
+              prefix: 'INT',
+            },
+            createdAt: '2026-03-01T00:00:00Z',
+            id: requirementId ?? 1,
+            isArchived: false,
+            specificationCount: 0,
+            uniqueId: 'PWT0007',
+            versions: [
+              {
+                acceptanceCriteria: 'Acceptance 1',
+                archiveInitiatedAt: '2026-05-16T08:00:00.000Z',
+                archivedAt: null,
+                category: {
+                  id: 2,
+                  nameEn: 'Business requirement',
+                  nameSv: 'Verksamhetskrav',
+                },
+                createdAt: '2026-03-01T00:00:00Z',
+                createdBy: 'owner-1',
+                description: 'Pinned krav 1',
+                editedAt: null,
+                id: requirementId ?? 1,
+                ownerName: 'Owner',
+                publishedAt: '2026-03-01T00:00:00Z',
+                requiresTesting: false,
+                revisionToken: '11111111-1111-4111-8111-000000000001',
+                riskLevel: null,
+                status: 2,
+                statusColor: '#eab308',
+                statusNameEn: 'Review',
+                statusNameSv: 'Granskning',
+                qualityCharacteristic: null,
+                type: {
+                  id: 3,
+                  nameEn: 'Functional',
+                  nameSv: 'Funktionellt',
+                },
+                verificationMethod: null,
+                versionNumber: 1,
+                versionRequirementPackages: [],
+                versionNormReferences: [],
+              },
+            ],
+          })
+        }
+        type="button"
+      >
+        {`detail-apply-archive-${requirementId}`}
+      </button>
       <button onClick={onClose} type="button">
         {`detail-close-${requirementId}`}
       </button>
@@ -1509,6 +1571,158 @@ describe('RequirementsClient', () => {
       expect(screen.getByTestId('row-ids').textContent).toBe('INT0002'),
     )
     expect(screen.getByTestId('row-ids').textContent).not.toContain('INT0001')
+  })
+
+  it('replaces a selected stale list row with the refreshed requirement detail snapshot', async () => {
+    let listFetchCount = 0
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        listFetchCount += 1
+        return Promise.resolve(
+          okJson({
+            pagination: { hasMore: false },
+            requirements: [
+              makeRequirementRow(1, {
+                uniqueId: 'PWT0005',
+                version: {
+                  ...makeRequirementRow(1).version,
+                  status: 3,
+                  statusNameSv: 'Publicerad',
+                },
+              }),
+            ],
+          }),
+        )
+      }
+
+      if (url === '/api/requirements/1') {
+        return Promise.resolve(
+          okJson(
+            makeRequirementDetail(1, {
+              uniqueId: 'PWT0005',
+              versions: [
+                {
+                  ...makeRequirementDetail(1).versions[0],
+                  archiveInitiatedAt: '2026-05-16T08:00:00.000Z',
+                  status: 2,
+                  statusNameSv: 'Granskning',
+                },
+              ],
+            }),
+          ),
+        )
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('PWT0005'),
+    )
+
+    fireEvent.click(screen.getByText('row-1'))
+    fireEvent.click(screen.getByText('detail-refresh-1'))
+
+    await waitFor(() => expect(listFetchCount).toBeGreaterThanOrEqual(2))
+    await waitFor(() =>
+      expect(tableState.renderSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+        rows: [
+          expect.objectContaining({
+            uniqueId: 'PWT0005',
+            version: expect.objectContaining({
+              archiveInitiatedAt: '2026-05-16T08:00:00.000Z',
+              status: 2,
+              statusNameSv: 'Granskning',
+            }),
+          }),
+        ],
+      }),
+    )
+  })
+
+  it('keeps the mutation response detail visible when a follow-up list refresh is stale', async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        return Promise.resolve(
+          okJson({
+            pagination: { hasMore: false },
+            requirements: [
+              makeRequirementRow(1, {
+                uniqueId: 'PWT0007',
+                version: {
+                  ...makeRequirementRow(1).version,
+                  status: 3,
+                  statusNameSv: 'Publicerad',
+                },
+              }),
+            ],
+          }),
+        )
+      }
+
+      if (url === '/api/requirements/1') {
+        return Promise.resolve(
+          okJson(
+            makeRequirementDetail(1, {
+              uniqueId: 'PWT0007',
+              versions: [
+                {
+                  ...makeRequirementDetail(1).versions[0],
+                  archiveInitiatedAt: null,
+                  status: 3,
+                  statusNameSv: 'Publicerad',
+                },
+              ],
+            }),
+          ),
+        )
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('PWT0007'),
+    )
+
+    fireEvent.click(screen.getByText('row-1'))
+    fireEvent.click(await screen.findByText('detail-apply-archive-1'))
+
+    await waitFor(() =>
+      expect(tableState.renderSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+        rows: [
+          expect.objectContaining({
+            uniqueId: 'PWT0007',
+            version: expect.objectContaining({
+              archiveInitiatedAt: '2026-05-16T08:00:00.000Z',
+              status: 2,
+              statusNameSv: 'Granskning',
+            }),
+          }),
+        ],
+      }),
+    )
   })
 
   it('resets load-more state when the next page request rejects', async () => {

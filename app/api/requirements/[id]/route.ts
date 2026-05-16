@@ -160,11 +160,16 @@ export const DELETE = secureMutationRoute({
       })
       const { id } = params
       const ref = parseRequirementRef(id)
-      await service.manageRequirement(context, {
+      const result = await service.manageRequirement(context, {
         ...ref,
         operation: 'archive',
       })
-      return NextResponse.json({ ok: true })
+      return NextResponse.json({
+        detail: result.detail,
+        id: result.detail?.id ?? ref.id ?? null,
+        ok: true,
+        uniqueId: result.detail?.uniqueId,
+      })
     } catch (error) {
       const { body, status } = toHttpErrorPayload(error)
       return NextResponse.json(body, { status })

@@ -194,6 +194,7 @@ function mapRequirementDetailToRow(
           statusColor: version.statusColor,
           statusNameEn: version.statusNameEn,
           statusNameSv: version.statusNameSv,
+          archiveInitiatedAt: version.archiveInitiatedAt,
           qualityCharacteristicNameEn:
             version.qualityCharacteristic?.nameEn ?? null,
           qualityCharacteristicNameSv:
@@ -332,30 +333,28 @@ export default function RequirementsClient({
         if (match) resolvedNumericId = match.id
       }
 
-      if (!inResults) {
-        const hasCurrentPinnedSelection = () =>
-          requestId === latestRowsRequestIdRef.current &&
-          selectedIdRef.current === sid
+      const hasCurrentPinnedSelection = () =>
+        requestId === latestRowsRequestIdRef.current &&
+        selectedIdRef.current === sid
 
-        try {
-          const singleRes = await fetch(`/api/requirements/${sid}`)
-          if (singleRes.ok && hasCurrentPinnedSelection()) {
-            const detail =
-              (await singleRes.json()) as RequirementDetailRowSource
-            if (hasCurrentPinnedSelection()) {
-              newPinnedRow = mapRequirementDetailToRow(detail)
-              // Resolve uniqueId string → numeric id
-              if (typeof sid === 'string') {
-                resolvedNumericId = detail.id
-              }
-            }
-          } else if (!singleRes.ok && hasCurrentPinnedSelection()) {
+      try {
+        const singleRes = await fetch(`/api/requirements/${sid}`)
+        if (singleRes.ok && hasCurrentPinnedSelection()) {
+          const detail = (await singleRes.json()) as RequirementDetailRowSource
+          if (hasCurrentPinnedSelection()) {
+            newPinnedRow = mapRequirementDetailToRow(detail)
+            resolvedNumericId = detail.id
+          }
+        } else if (!singleRes.ok && hasCurrentPinnedSelection()) {
+          if (!inResults) {
             selectedIdRef.current = null
             setSelectedId(null)
             scrollToIdRef.current = null
           }
-        } catch {
-          if (hasCurrentPinnedSelection()) {
+        }
+      } catch {
+        if (hasCurrentPinnedSelection()) {
+          if (!inResults) {
             selectedIdRef.current = null
             setSelectedId(null)
             scrollToIdRef.current = null
@@ -380,6 +379,48 @@ export default function RequirementsClient({
     setRows(newRows)
     setPinnedRow(newPinnedRow)
   }, [filters, locale, sortState])
+
+  const applyChangedRequirementDetail = useCallback(
+    (detail: RequirementDetailRowSource) => {
+      const changedRow = mapRequirementDetailToRow(detail)
+
+      selectedIdRef.current = changedRow.id
+      setSelectedId(changedRow.id)
+      setPinnedRow(changedRow)
+      setRows(previousRows =>
+        previousRows.some(row => row.id === changedRow.id)
+          ? previousRows.map(row =>
+              row.id === changedRow.id ? changedRow : row,
+            )
+          : previousRows,
+      )
+
+      return changedRow
+    },
+    [],
+  )
+
+  const handleRequirementChange = useCallback(
+    async (detail?: RequirementDetailRowSource) => {
+      const changedRow = detail
+        ? applyChangedRequirementDetail(detail)
+        : undefined
+
+      await refreshRows()
+
+      if (changedRow && selectedIdRef.current === changedRow.id) {
+        setPinnedRow(changedRow)
+        setRows(previousRows =>
+          previousRows.some(row => row.id === changedRow.id)
+            ? previousRows.map(row =>
+                row.id === changedRow.id ? changedRow : row,
+              )
+            : previousRows,
+        )
+      }
+    },
+    [applyChangedRequirementDetail, refreshRows],
+  )
 
   const fetchData = useCallback(async () => {
     const requestId = ++latestFetchDataRequestIdRef.current
@@ -713,7 +754,14 @@ export default function RequirementsClient({
   }, [columnPreferencesReady, fetchData])
 
   const displayRows = useMemo(() => {
-    if (pinnedRow && !rows.some(r => r.id === pinnedRow.id)) {
+    if (!pinnedRow) return rows
+
+    const existingPinnedRowIndex = rows.findIndex(r => r.id === pinnedRow.id)
+    if (existingPinnedRowIndex !== -1) {
+      return rows.map(row => (row.id === pinnedRow.id ? pinnedRow : row))
+    }
+
+    if (pinnedRow) {
       const hasStatusSortMetadata =
         sortState.by !== 'status' ||
         statusOptions.some(option => option.sortOrder !== undefined)
@@ -914,7 +962,7 @@ export default function RequirementsClient({
                 renderExpanded={id => (
                   <RequirementDetailClient
                     inline
-                    onChange={refreshRows}
+                    onChange={handleRequirementChange}
                     onClose={() => {
                       setSelectedId(null)
                       setPinnedRow(null)

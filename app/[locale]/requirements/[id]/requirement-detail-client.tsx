@@ -22,6 +22,7 @@ import {
   STATUS_PUBLISHED,
   STATUS_REVIEW,
 } from '@/lib/requirements/status-constants.mjs'
+import type { RequirementDetailResponse } from '@/lib/requirements/types'
 import AddToSpecificationDialog from './_detail/AddToSpecificationDialog'
 import ImprovementSuggestionsSection from './_detail/ImprovementSuggestionsSection'
 import { getLocalizedName } from './_detail/localized-name'
@@ -62,7 +63,7 @@ const REQUIREMENT_DETAIL_HELP: HelpContent = {
 interface RequirementDetailClientPropsBase {
   defaultVersion?: number
   inline?: boolean
-  onChange?: () => void | Promise<void>
+  onChange?: (detail?: RequirementDetailResponse) => void | Promise<void>
   onClose?: () => void
   requirementId: number | string
 }
@@ -458,7 +459,16 @@ export default function RequirementDetailClient({
       })
       return
     }
-    await Promise.all([refreshRequirement(), onChange?.()])
+    let archivedDetail: RequirementDetailResponse | undefined
+    try {
+      const responseBody = (await res.json()) as {
+        detail?: RequirementDetailResponse
+      }
+      archivedDetail = responseBody.detail
+    } catch {
+      archivedDetail = undefined
+    }
+    await Promise.all([refreshRequirement(), onChange?.(archivedDetail)])
   }
 
   const handleApproveArchiving = async (

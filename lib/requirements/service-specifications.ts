@@ -5,7 +5,6 @@ import {
 } from '@/lib/dal/requirement-areas'
 import { getRequirementById } from '@/lib/dal/requirements'
 import {
-  canAuthorSpecification,
   getPublishedVersionIdForRequirement,
   getSpecificationBySlug,
   getSpecificationLocalRequirementDetail,
@@ -123,33 +122,6 @@ async function assertGraduationTargetAreaAuthor(
     {
       reason: 'target_area_author_required',
       requirementAreaId,
-    },
-  )
-  recordAuthorizationDenied(context, action, error)
-  throw error
-}
-
-async function assertSourceSpecificationAuthor(
-  db: SqlServerDatabase,
-  context: RequestContext,
-  action: RequirementsAction,
-  specificationId: number,
-): Promise<void> {
-  const allowed = await canAuthorSpecification(
-    db,
-    specificationId,
-    context.actor.hsaId,
-    isAdminActor(context),
-  )
-  if (allowed) {
-    return
-  }
-
-  const error = forbiddenError(
-    'Missing responsible or co-author access to the source requirements specification',
-    {
-      reason: 'source_specification_author_required',
-      specificationId,
     },
   )
   recordAuthorizationDenied(context, action, error)
@@ -402,12 +374,6 @@ export function createSpecificationWorkflow({
         },
         async () => {
           const specificationId = await resolveSpecificationIdOrThrow(db, input)
-          await assertSourceSpecificationAuthor(
-            db,
-            context,
-            action,
-            specificationId,
-          )
           const localRequirement = await getSpecificationLocalRequirementDetail(
             db,
             specificationId,
@@ -479,12 +445,6 @@ export function createSpecificationWorkflow({
         async () => {
           const actor = requireHumanActorSnapshot(context)
           const specificationId = await resolveSpecificationIdOrThrow(db, input)
-          await assertSourceSpecificationAuthor(
-            db,
-            context,
-            action,
-            specificationId,
-          )
           const targetArea = await getAreaById(db, input.requirementAreaId)
           if (!targetArea) {
             throw notFoundError('Requirement area not found', {

@@ -308,6 +308,8 @@ export default function SpecificationLocalRequirementDetailClient({
   const [graduationTargetAreas, setGraduationTargetAreas] = useState<
     GraduationTargetArea[]
   >([])
+  const [graduationTargetAreasLoaded, setGraduationTargetAreasLoaded] =
+    useState(false)
   const [graduationError, setGraduationError] = useState<string | null>(null)
   const [isGraduating, setIsGraduating] = useState(false)
   const [selectedGraduationAreaId, setSelectedGraduationAreaId] =
@@ -413,9 +415,11 @@ export default function SpecificationLocalRequirementDetailClient({
       if (!requirement) {
         setGraduationTargetAreas([])
         setSelectedGraduationAreaId('')
+        setGraduationTargetAreasLoaded(false)
         return
       }
 
+      setGraduationTargetAreasLoaded(false)
       try {
         const response = await apiFetch(
           `/api/specifications/${specificationSlug}/local-requirements/${localRequirementId}/graduation-target-areas`,
@@ -452,6 +456,10 @@ export default function SpecificationLocalRequirementDetailClient({
           return
         setGraduationTargetAreas([])
         setSelectedGraduationAreaId('')
+      } finally {
+        if (!signal?.aborted) {
+          setGraduationTargetAreasLoaded(true)
+        }
       }
     },
     [localRequirementId, requirement, specificationSlug],
@@ -1112,181 +1120,186 @@ export default function SpecificationLocalRequirementDetailClient({
                     />
                   </div>
 
-                  <div className="shrink-0">
-                    <div className="flex flex-col gap-2">
-                      {deviationStep !== 'draft' ? (
-                        <button
-                          className={railSecondaryButtonClass}
-                          {...devMarker({
-                            context: detailContext,
-                            name: 'report print button',
-                            priority: 289,
-                            value: 'reports',
-                          })}
-                          onClick={handlePrint}
-                          title={tc('print')}
-                          type="button"
-                        >
-                          <Printer aria-hidden="true" className="h-4 w-4" />
-                          {tc('print')}
-                        </button>
-                      ) : null}
+                  <div className="shrink-0 sm:w-64">
+                    {graduationTargetAreasLoaded ? (
+                      <div className="flex flex-col gap-2">
+                        {deviationStep !== 'draft' ? (
+                          <button
+                            className={railSecondaryButtonClass}
+                            {...devMarker({
+                              context: detailContext,
+                              name: 'report print button',
+                              priority: 289,
+                              value: 'reports',
+                            })}
+                            onClick={handlePrint}
+                            title={tc('print')}
+                            type="button"
+                          >
+                            <Printer aria-hidden="true" className="h-4 w-4" />
+                            {tc('print')}
+                          </button>
+                        ) : null}
 
-                      {deviationError ? (
-                        <p
-                          className="text-sm text-red-600 dark:text-red-400"
-                          role="alert"
-                        >
-                          {deviationError}
-                        </p>
-                      ) : null}
+                        {deviationError ? (
+                          <p
+                            className="text-sm text-red-600 dark:text-red-400"
+                            role="alert"
+                          >
+                            {deviationError}
+                          </p>
+                        ) : null}
 
-                      {deviationStep === null || deviationStep === 'decided' ? (
-                        <button
-                          className={railAmberButtonClass}
-                          disabled={deviationSaving}
-                          onClick={() => setShowDeviationForm(true)}
-                          type="button"
-                        >
-                          <AlertTriangle
-                            aria-hidden="true"
-                            className="h-4 w-4"
-                          />
-                          {td('requestDeviation')}
-                        </button>
-                      ) : deviationStep === 'draft' ? (
-                        <>
+                        {deviationStep === null ||
+                        deviationStep === 'decided' ? (
                           <button
                             className={railAmberButtonClass}
                             disabled={deviationSaving}
-                            onClick={() => setShowEditDeviationForm(true)}
+                            onClick={() => setShowDeviationForm(true)}
+                            type="button"
+                          >
+                            <AlertTriangle
+                              aria-hidden="true"
+                              className="h-4 w-4"
+                            />
+                            {td('requestDeviation')}
+                          </button>
+                        ) : deviationStep === 'draft' ? (
+                          <>
+                            <button
+                              className={railAmberButtonClass}
+                              disabled={deviationSaving}
+                              onClick={() => setShowEditDeviationForm(true)}
+                              type="button"
+                            >
+                              <Pencil aria-hidden="true" className="h-4 w-4" />
+                              {td('editDeviation')}
+                            </button>
+                            <button
+                              className={railDangerButtonClass}
+                              disabled={deviationSaving}
+                              onClick={event =>
+                                void handleDeleteDeviation(event)
+                              }
+                              type="button"
+                            >
+                              <Trash2 aria-hidden="true" className="h-4 w-4" />
+                              {td('deleteDeviation')}
+                            </button>
+                            <button
+                              className={railPrimaryButtonClass}
+                              disabled={deviationSaving}
+                              onClick={() => void handleRequestReview()}
+                              type="button"
+                            >
+                              {td('requestReview')}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              className={railSecondaryButtonClass}
+                              disabled={deviationSaving}
+                              onClick={event => void handleRevertToDraft(event)}
+                              type="button"
+                            >
+                              {td('revertToDraft')}
+                            </button>
+                            <button
+                              className={railPrimaryButtonClass}
+                              disabled={deviationSaving}
+                              onClick={() => setShowDecisionForm(true)}
+                              type="button"
+                            >
+                              {td('recordDecision')}
+                            </button>
+                          </>
+                        )}
+
+                        {graduationTargetAreas.length > 0 ? (
+                          <>
+                            <span
+                              className="inline-flex w-full"
+                              title={graduationTooltip}
+                            >
+                              <button
+                                className={railSecondaryButtonClass}
+                                disabled={
+                                  !canGraduateLocalRequirement || isGraduating
+                                }
+                                {...devMarker({
+                                  context: detailContext,
+                                  name: 'detail action',
+                                  priority: 292,
+                                  value: 'graduate local requirement',
+                                })}
+                                onClick={() => {
+                                  setGraduationError(null)
+                                  setShowGraduationModal(true)
+                                }}
+                                type="button"
+                              >
+                                <LibraryBig
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
+                                {tp('graduateLocalRequirement')}
+                              </button>
+                            </span>
+
+                            {graduationError ? (
+                              <p
+                                className="text-sm text-red-600 dark:text-red-400"
+                                role="alert"
+                              >
+                                {graduationError}
+                              </p>
+                            ) : null}
+                          </>
+                        ) : null}
+
+                        <span
+                          className="inline-flex w-full"
+                          title={localRequirementMutationTooltip}
+                        >
+                          <button
+                            className={railSecondaryButtonClass}
+                            disabled={!canMutateLocalRequirement || isDeleting}
+                            {...devMarker({
+                              context: detailContext,
+                              name: 'detail action',
+                              priority: 290,
+                              value: 'edit local requirement',
+                            })}
+                            onClick={() => setShowEditForm(true)}
                             type="button"
                           >
                             <Pencil aria-hidden="true" className="h-4 w-4" />
-                            {td('editDeviation')}
+                            {tc('edit')}
                           </button>
+                        </span>
+                        <span
+                          className="inline-flex w-full"
+                          title={localRequirementMutationTooltip}
+                        >
                           <button
                             className={railDangerButtonClass}
-                            disabled={deviationSaving}
-                            onClick={event => void handleDeleteDeviation(event)}
+                            disabled={!canMutateLocalRequirement || isDeleting}
+                            {...devMarker({
+                              context: detailContext,
+                              name: 'detail action',
+                              priority: 291,
+                              value: 'delete local requirement',
+                            })}
+                            onClick={event => void handleDelete(event)}
                             type="button"
                           >
                             <Trash2 aria-hidden="true" className="h-4 w-4" />
-                            {td('deleteDeviation')}
+                            {tc('delete')}
                           </button>
-                          <button
-                            className={railPrimaryButtonClass}
-                            disabled={deviationSaving}
-                            onClick={() => void handleRequestReview()}
-                            type="button"
-                          >
-                            {td('requestReview')}
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            className={railSecondaryButtonClass}
-                            disabled={deviationSaving}
-                            onClick={event => void handleRevertToDraft(event)}
-                            type="button"
-                          >
-                            {td('revertToDraft')}
-                          </button>
-                          <button
-                            className={railPrimaryButtonClass}
-                            disabled={deviationSaving}
-                            onClick={() => setShowDecisionForm(true)}
-                            type="button"
-                          >
-                            {td('recordDecision')}
-                          </button>
-                        </>
-                      )}
-
-                      {graduationTargetAreas.length > 0 ? (
-                        <>
-                          <span
-                            className="inline-flex w-full"
-                            title={graduationTooltip}
-                          >
-                            <button
-                              className={railSecondaryButtonClass}
-                              disabled={
-                                !canGraduateLocalRequirement || isGraduating
-                              }
-                              {...devMarker({
-                                context: detailContext,
-                                name: 'detail action',
-                                priority: 292,
-                                value: 'graduate local requirement',
-                              })}
-                              onClick={() => {
-                                setGraduationError(null)
-                                setShowGraduationModal(true)
-                              }}
-                              type="button"
-                            >
-                              <LibraryBig
-                                aria-hidden="true"
-                                className="h-4 w-4"
-                              />
-                              {tp('graduateLocalRequirement')}
-                            </button>
-                          </span>
-
-                          {graduationError ? (
-                            <p
-                              className="text-sm text-red-600 dark:text-red-400"
-                              role="alert"
-                            >
-                              {graduationError}
-                            </p>
-                          ) : null}
-                        </>
-                      ) : null}
-
-                      <span
-                        className="inline-flex w-full"
-                        title={localRequirementMutationTooltip}
-                      >
-                        <button
-                          className={railSecondaryButtonClass}
-                          disabled={!canMutateLocalRequirement || isDeleting}
-                          {...devMarker({
-                            context: detailContext,
-                            name: 'detail action',
-                            priority: 290,
-                            value: 'edit local requirement',
-                          })}
-                          onClick={() => setShowEditForm(true)}
-                          type="button"
-                        >
-                          <Pencil aria-hidden="true" className="h-4 w-4" />
-                          {tc('edit')}
-                        </button>
-                      </span>
-                      <span
-                        className="inline-flex w-full"
-                        title={localRequirementMutationTooltip}
-                      >
-                        <button
-                          className={railDangerButtonClass}
-                          disabled={!canMutateLocalRequirement || isDeleting}
-                          {...devMarker({
-                            context: detailContext,
-                            name: 'detail action',
-                            priority: 291,
-                            value: 'delete local requirement',
-                          })}
-                          onClick={event => void handleDelete(event)}
-                          type="button"
-                        >
-                          <Trash2 aria-hidden="true" className="h-4 w-4" />
-                          {tc('delete')}
-                        </button>
-                      </span>
-                    </div>
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
