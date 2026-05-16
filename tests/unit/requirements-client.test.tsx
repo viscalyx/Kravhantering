@@ -1645,6 +1645,69 @@ describe('RequirementsClient', () => {
     await waitFor(() => expect(window.location.search).toBe(''))
   })
 
+  it('keeps a user row click when delayed URL hydration resolves afterward', async () => {
+    navigationState.searchParams = new URLSearchParams('selected=PWT0009')
+    window.history.replaceState({}, '', '/sv/requirements?selected=PWT0009')
+
+    const delayedHydration =
+      createDeferredJsonResponse<ReturnType<typeof makeRequirementDetail>>()
+    let selectedDetailFetchCount = 0
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        return Promise.resolve(
+          okJson({
+            pagination: { hasMore: false },
+            requirements: [makeRequirementRow(1)],
+          }),
+        )
+      }
+
+      if (url === '/api/requirements/PWT0009') {
+        selectedDetailFetchCount += 1
+        return selectedDetailFetchCount === 1
+          ? delayedHydration.promise
+          : Promise.resolve(
+              okJson(makeRequirementDetail(9, { uniqueId: 'PWT0009' })),
+            )
+      }
+
+      if (url === '/api/requirements/9') {
+        return Promise.resolve(
+          okJson(makeRequirementDetail(9, { uniqueId: 'PWT0009' })),
+        )
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() =>
+      expect(screen.getByText('detail-refresh-9')).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByText('row-1'))
+
+    await waitFor(() =>
+      expect(screen.getByText('detail-refresh-1')).toBeInTheDocument(),
+    )
+
+    delayedHydration.resolve(makeRequirementDetail(9, { uniqueId: 'PWT0009' }))
+
+    await waitFor(() => expect(window.location.search).toBe(''))
+    expect(screen.getByText('detail-refresh-1')).toBeInTheDocument()
+    expect(screen.queryByText('detail-refresh-9')).toBeNull()
+  })
+
   it('replaces a selected stale list row with the refreshed requirement detail snapshot', async () => {
     let listFetchCount = 0
 

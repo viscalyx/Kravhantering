@@ -515,11 +515,21 @@ export default function RequirementsClient({
 
     let cancelled = false
     const numId = Number(sel)
-    if (!Number.isNaN(numId) && Number.isInteger(numId) && numId > 0) {
+    const numericSelectedId =
+      !Number.isNaN(numId) && Number.isInteger(numId) && numId > 0
+        ? numId
+        : null
+    const urlSelectionStillCurrent = () =>
+      !cancelled &&
+      (selectedIdRef.current === sel ||
+        (numericSelectedId != null &&
+          selectedIdRef.current === numericSelectedId))
+
+    if (numericSelectedId != null) {
       // Numeric id — set synchronously
-      setSelectedId(numId)
-      selectedIdRef.current = numId
-      scrollToIdRef.current = numId
+      setSelectedId(numericSelectedId)
+      selectedIdRef.current = numericSelectedId
+      scrollToIdRef.current = numericSelectedId
     } else {
       // UniqueId string — keep the ref stable until the detail fetch resolves
       // the numeric id used by the inline detail row.
@@ -531,10 +541,10 @@ export default function RequirementsClient({
         const singleRes = await fetch(
           `/api/requirements/${encodeURIComponent(sel)}`,
         )
-        if (!singleRes.ok || cancelled) return
+        if (!singleRes.ok || !urlSelectionStillCurrent()) return
 
         const detail = (await singleRes.json()) as RequirementDetailRowSource
-        if (cancelled) return
+        if (!urlSelectionStillCurrent()) return
 
         const row = mapRequirementDetailToRow(detail)
         selectedIdRef.current = row.id
@@ -965,17 +975,20 @@ export default function RequirementsClient({
                 onColumnWidthsChange={setColumnWidths}
                 onFilterChange={val => {
                   setFilters(val)
+                  selectedIdRef.current = null
                   setSelectedId(null)
                   setPinnedRow(null)
                   setSelectedIds(new Set())
                 }}
                 onLoadMore={loadMore}
                 onRowClick={id => {
-                  setSelectedId(prev => {
-                    const next = prev === id ? null : id
-                    if (prev !== id || next === null) setPinnedRow(null)
-                    return next
-                  })
+                  const previousSelectedId = selectedIdRef.current
+                  const nextSelectedId = previousSelectedId === id ? null : id
+                  selectedIdRef.current = nextSelectedId
+                  setSelectedId(nextSelectedId)
+                  if (previousSelectedId !== id || nextSelectedId === null) {
+                    setPinnedRow(null)
+                  }
                 }}
                 onSelectionChange={setSelectedIds}
                 onSortChange={setSortState}
@@ -987,6 +1000,7 @@ export default function RequirementsClient({
                     inline
                     onChange={detail => handleRequirementChange(id, detail)}
                     onClose={() => {
+                      selectedIdRef.current = null
                       setSelectedId(null)
                       setPinnedRow(null)
                       fetchData()

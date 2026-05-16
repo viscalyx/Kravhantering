@@ -269,6 +269,34 @@ describe('requirements/[id] route', () => {
       )
     })
 
+    it.each([
+      ['numeric id', '1', 1, null],
+      ['unique id', 'REQ-001', null, 'REQ-001'],
+    ])('archives requirement with fallback response when no detail is returned for %s', async (_label, ref, expectedId, expectedUniqueId) => {
+      mockManageRequirement.mockResolvedValue({})
+
+      const req = new NextRequest(`http://localhost/api/requirements/${ref}`, {
+        method: 'DELETE',
+      })
+      const res = await DELETE(req, makeParams(ref))
+      const json = (await res.json()) as {
+        detail: null
+        id: number | null
+        ok: boolean
+        uniqueId: string | null
+      }
+      expect(json).toEqual({
+        detail: null,
+        id: expectedId,
+        ok: true,
+        uniqueId: expectedUniqueId,
+      })
+      expect(mockManageRequirement).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ operation: 'archive' }),
+      )
+    })
+
     it('returns error on failure', async () => {
       mockManageRequirement.mockRejectedValue(new Error('Cannot archive'))
 
