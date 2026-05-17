@@ -26,6 +26,7 @@ const mocks = {
   deleteSpecificationLocalRequirement: vi.fn(),
   getSpecificationById: vi.fn(),
   getSpecificationBySlug: vi.fn(),
+  updateSpecificationLocalRequirement: vi.fn(),
 }
 
 vi.mock('@/lib/db', () => ({
@@ -61,10 +62,14 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
   getSpecificationBySlug: (...args: unknown[]) =>
     mocks.getSpecificationBySlug(...args),
   getSpecificationLocalRequirementDetail: vi.fn(),
-  updateSpecificationLocalRequirement: vi.fn(),
+  updateSpecificationLocalRequirement: (...args: unknown[]) =>
+    mocks.updateSpecificationLocalRequirement(...args),
 }))
 
-import { DELETE } from '@/app/api/specifications/[id]/local-requirements/[localRequirementId]/route'
+import {
+  DELETE,
+  PUT,
+} from '@/app/api/specifications/[id]/local-requirements/[localRequirementId]/route'
 import {
   forbiddenError,
   RequirementsServiceError,
@@ -168,6 +173,46 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
     } finally {
       consoleErrorSpy.mockRestore()
     }
+  })
+
+  it('maps validation errors when updating a specification-local requirement fails', async () => {
+    mocks.updateSpecificationLocalRequirement.mockRejectedValue(
+      new RequirementsServiceError(
+        'validation',
+        'requirementPackageIds references unknown requirement package id 13',
+      ),
+    )
+
+    const response = await PUT(
+      new NextRequest(
+        'http://localhost/api/specifications/spec/local-requirements/41',
+        {
+          body: JSON.stringify({
+            description: 'Updated local requirement',
+            requirementPackageIds: [13],
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT',
+        },
+      ),
+      makeParams('spec', '41'),
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      code: 'validation',
+      error:
+        'requirementPackageIds references unknown requirement package id 13',
+    })
+    expect(mocks.updateSpecificationLocalRequirement).toHaveBeenCalledWith(
+      mockDb,
+      5,
+      41,
+      expect.objectContaining({
+        description: 'Updated local requirement',
+        requirementPackageIds: [13],
+      }),
+    )
   })
 
   it('returns 400 when localRequirementId is not a positive integer', async () => {

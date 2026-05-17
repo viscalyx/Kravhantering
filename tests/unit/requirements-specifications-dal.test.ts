@@ -477,6 +477,9 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
   it('creates and updates specification-local requirements on SQL Server', async () => {
     const { db, query, transaction } = createSqlServerDb()
     query
+      .mockResolvedValueOnce([{ id: 7 }])
+      .mockResolvedValueOnce([{ id: 11 }])
+      .mockResolvedValueOnce([{ id: 13 }])
       .mockResolvedValueOnce([{ nextSequence: 2 }])
       .mockResolvedValueOnce([{ id: 41 }])
       .mockResolvedValueOnce([])
@@ -513,6 +516,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         { id: 41, specificationId: 5, sequenceNumber: 1, uniqueId: 'LOK-001' },
       ])
+      .mockResolvedValueOnce([{ id: 7 }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
@@ -595,6 +599,57 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       null,
       DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
       expect.any(Date),
+    ])
+  })
+
+  it('rejects unknown specification-local create references before inserts', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query.mockResolvedValueOnce([{ id: 7 }]).mockResolvedValueOnce([])
+
+    await expect(
+      createSpecificationLocalRequirement(db, 5, {
+        description: 'Created local requirement',
+        requirementAreaId: 7,
+        requirementPackageIds: [13],
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message:
+        'requirementPackageIds references unknown requirement package id 13',
+      status: 400,
+    })
+
+    expect(transaction).not.toHaveBeenCalled()
+    expect(query.mock.calls.map(([sql]) => String(sql))).toEqual([
+      expect.stringContaining('FROM requirement_areas'),
+      expect.stringContaining('FROM requirement_packages'),
+    ])
+  })
+
+  it('rejects unknown specification-local update references before updates', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        { id: 41, specificationId: 5, sequenceNumber: 1, uniqueId: 'LOK-001' },
+      ])
+      .mockResolvedValueOnce([])
+
+    await expect(
+      updateSpecificationLocalRequirement(db, 5, 41, {
+        description: 'Updated local requirement',
+        qualityCharacteristicId: 9,
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message:
+        'qualityCharacteristicId references unknown quality characteristic id 9',
+      status: 400,
+    })
+
+    expect(transaction).not.toHaveBeenCalled()
+    expect(query.mock.calls.map(([sql]) => String(sql))).toEqual([
+      expect.stringContaining('FROM specification_local_requirements'),
+      expect.stringContaining('FROM quality_characteristics'),
     ])
   })
 

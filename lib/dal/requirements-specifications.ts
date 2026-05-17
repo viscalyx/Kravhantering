@@ -1,3 +1,4 @@
+import { validateRequirementTaxonomyReferences } from '@/lib/dal/requirement-reference-validation'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   conflictError,
@@ -212,16 +213,6 @@ function formatSpecificationLocalRequirementUniqueId(
   sequenceNumber: number,
 ): string {
   return `KRAV${String(sequenceNumber).padStart(4, '0')}`
-}
-
-function dedupePositiveIntegerIds(values?: number[]): number[] {
-  if (!values?.length) {
-    return []
-  }
-
-  return [...new Set(values)].filter(
-    value => Number.isInteger(value) && value > 0,
-  )
 }
 
 function parseCsvNumberList(value: string | null): number[] {
@@ -971,14 +962,6 @@ async function normalizeSpecificationLocalRequirementInput(
     throw validationError('Description is required')
   }
 
-  if (
-    data.requirementAreaId != null &&
-    (!Number.isInteger(data.requirementAreaId) ||
-      Number(data.requirementAreaId) < 1)
-  ) {
-    throw validationError('requirementAreaId must be a positive integer')
-  }
-
   const requiresTesting = data.requiresTesting ?? false
   const verificationMethod = requiresTesting
     ? (data.verificationMethod?.trim() ?? '')
@@ -1004,22 +987,28 @@ async function normalizeSpecificationLocalRequirementInput(
     }
   }
 
+  const references = await validateRequirementTaxonomyReferences(db, {
+    normReferenceIds: data.normReferenceIds,
+    qualityCharacteristicId: data.qualityCharacteristicId,
+    requirementAreaId: data.requirementAreaId,
+    requirementCategoryId: data.requirementCategoryId,
+    requirementPackageIds: data.requirementPackageIds,
+    requirementTypeId: data.requirementTypeId,
+    riskLevelId: data.riskLevelId,
+  })
+
   return {
     acceptanceCriteria: data.acceptanceCriteria?.trim() || null,
     description,
     needsReferenceId,
-    normReferenceIds: dedupePositiveIntegerIds(data.normReferenceIds),
-    qualityCharacteristicId: normalizeOptionalForeignKeyId(
-      data.qualityCharacteristicId,
-    ),
-    requirementAreaId: normalizeOptionalForeignKeyId(data.requirementAreaId),
-    requirementCategoryId: normalizeOptionalForeignKeyId(
-      data.requirementCategoryId,
-    ),
-    requirementTypeId: normalizeOptionalForeignKeyId(data.requirementTypeId),
+    normReferenceIds: references.normReferenceIds,
+    qualityCharacteristicId: references.qualityCharacteristicId,
+    requirementAreaId: references.requirementAreaId,
+    requirementCategoryId: references.requirementCategoryId,
+    requirementTypeId: references.requirementTypeId,
     requiresTesting,
-    riskLevelId: normalizeOptionalForeignKeyId(data.riskLevelId),
-    requirementPackageIds: dedupePositiveIntegerIds(data.requirementPackageIds),
+    riskLevelId: references.riskLevelId,
+    requirementPackageIds: references.requirementPackageIds,
     verificationMethod,
   }
 }

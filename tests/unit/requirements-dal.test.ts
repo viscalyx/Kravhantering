@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   approveArchiving,
   cancelArchiving,
+  createRequirement,
   deleteDraftVersion,
   editRequirement,
   getRequirementById,
@@ -96,6 +97,74 @@ describe('requirements DAL (SQL Server path)', () => {
       expect.stringContaining('FROM requirements requirement'),
       [42],
     )
+  })
+
+  it('rejects unknown requirement area ids before creating a requirement', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query.mockResolvedValueOnce([])
+
+    await expect(
+      createRequirement(db, {
+        description: 'Invalid area requirement',
+        requirementAreaId: 99,
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'requirementAreaId references unknown requirement area id 99',
+      status: 400,
+    })
+
+    expect(transaction).not.toHaveBeenCalled()
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(query.mock.calls[0]?.[0]).toContain('FROM requirement_areas')
+    expect(query.mock.calls[0]?.[1]).toEqual([99])
+  })
+
+  it('rejects unknown norm references before creating a requirement', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query.mockResolvedValueOnce([{ id: 1 }]).mockResolvedValueOnce([])
+
+    await expect(
+      createRequirement(db, {
+        description: 'Invalid norm reference requirement',
+        normReferenceIds: [100],
+        requirementAreaId: 1,
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'normReferenceIds references unknown norm reference id 100',
+      status: 400,
+    })
+
+    expect(transaction).not.toHaveBeenCalled()
+    expect(query.mock.calls.map(([sql]) => String(sql))).toEqual([
+      expect.stringContaining('FROM requirement_areas'),
+      expect.stringContaining('FROM norm_references'),
+    ])
+  })
+
+  it('rejects unknown requirement packages before creating a requirement', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query.mockResolvedValueOnce([{ id: 1 }]).mockResolvedValueOnce([])
+
+    await expect(
+      createRequirement(db, {
+        description: 'Invalid package requirement',
+        requirementAreaId: 1,
+        requirementPackageIds: [200],
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message:
+        'requirementPackageIds references unknown requirement package id 200',
+      status: 400,
+    })
+
+    expect(transaction).not.toHaveBeenCalled()
+    expect(query.mock.calls.map(([sql]) => String(sql))).toEqual([
+      expect.stringContaining('FROM requirement_areas'),
+      expect.stringContaining('FROM requirement_packages'),
+    ])
   })
 
   it('hydrates the requirement, area, versions, joins and specification count', async () => {
@@ -425,6 +494,46 @@ describe('requirements DAL (SQL Server path)', () => {
     })
 
     expect(query).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects unknown edit references after stale and status checks but before mutations', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          id: 21,
+          revisionToken: '11111111-1111-4111-8111-111111111111',
+          statusId: 1,
+        },
+      ])
+      .mockResolvedValueOnce([])
+
+    await expect(
+      editRequirement(db, 7, {
+        baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+        baseVersionId: 21,
+        description: 'Invalid package edit',
+        requirementPackageIds: [200],
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message:
+        'requirementPackageIds references unknown requirement package id 200',
+      status: 400,
+    })
+
+    const sqlCalls = query.mock.calls.map(([sql]) => String(sql))
+    expect(sqlCalls).toHaveLength(2)
+    expect(sqlCalls[0]).toContain('WITH (UPDLOCK, HOLDLOCK)')
+    expect(sqlCalls[1]).toContain('FROM requirement_packages')
+    expect(
+      sqlCalls.some(sql => sql.includes('UPDATE requirement_versions')),
+    ).toBe(false)
+    expect(
+      sqlCalls.some(sql =>
+        sql.includes('DELETE FROM requirement_version_requirement_packages'),
+      ),
+    ).toBe(false)
   })
 
   it('rotates the revision token when updating a draft', async () => {

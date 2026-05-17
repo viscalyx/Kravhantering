@@ -1,3 +1,4 @@
+import { validateRequirementTaxonomyReferences } from '@/lib/dal/requirement-reference-validation'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   conflictError,
@@ -284,10 +285,6 @@ async function insertVersionJoinsSqlServer(
   }
 }
 
-function uniqueIds(values: number[] | undefined): number[] {
-  return values?.length ? Array.from(new Set(values)) : []
-}
-
 interface RequirementInsertedRow {
   createdAt: string
   id: number
@@ -418,8 +415,12 @@ export async function createRequirement(
   data: RequirementMutationData,
   options: RequirementMutationAuditOptions<CreateRequirementResult> = {},
 ): Promise<CreateRequirementResult> {
-  const requirementPackageIds = uniqueIds(data.requirementPackageIds)
-  const normRefIds = uniqueIds(data.normReferenceIds)
+  const references = await validateRequirementTaxonomyReferences(db, data)
+  if (references.requirementAreaId == null) {
+    throw validationError('requirementAreaId must be a positive integer')
+  }
+  const requirementAreaId = references.requirementAreaId
+
   const now = new Date()
   const verificationMethod = data.requiresTesting
     ? (data.verificationMethod ?? null)
@@ -434,13 +435,13 @@ export async function createRequirement(
     }
     const { sequenceNumber, uniqueId } = await reserveSequenceSqlServer(
       tx,
-      data.requirementAreaId,
+      requirementAreaId,
     )
     const reqRows = (await tx.query(
       `INSERT INTO requirements (unique_id, requirement_area_id, sequence_number, is_archived, created_at)
         ${REQUIREMENT_OUTPUT}
         VALUES (@0, @1, @2, 0, @3)`,
-      [uniqueId, data.requirementAreaId, sequenceNumber, now],
+      [uniqueId, requirementAreaId, sequenceNumber, now],
     )) as Array<Record<string, unknown>>
     requirement = mapRequirement(reqRows[0] ?? {})
 
@@ -459,10 +460,10 @@ export async function createRequirement(
         requirement.id,
         data.description,
         data.acceptanceCriteria ?? null,
-        data.requirementCategoryId ?? null,
-        data.requirementTypeId ?? null,
-        data.qualityCharacteristicId ?? null,
-        data.riskLevelId ?? null,
+        references.requirementCategoryId,
+        references.requirementTypeId,
+        references.qualityCharacteristicId,
+        references.riskLevelId,
         STATUS_DRAFT,
         data.requiresTesting ? 1 : 0,
         verificationMethod,
@@ -478,8 +479,8 @@ export async function createRequirement(
     await insertVersionJoinsSqlServer(
       tx,
       version.id,
-      requirementPackageIds,
-      normRefIds,
+      references.requirementPackageIds,
+      references.normReferenceIds,
     )
     await options.audit?.(tx, { requirement, version })
   })
@@ -607,8 +608,6 @@ export async function editRequirement(
   },
   options: RequirementMutationAuditOptions<VersionInsertedRow> = {},
 ): Promise<VersionInsertedRow> {
-  const requirementPackageIds = uniqueIds(data.requirementPackageIds)
-  const normRefIds = uniqueIds(data.normReferenceIds)
   const baseVersionId = normalizeBaseVersionId(data.baseVersionId)
   const baseRevisionToken = normalizeBaseRevisionToken(data.baseRevisionToken)
   const now = new Date()
@@ -622,14 +621,6 @@ export async function editRequirement(
     const tx: SqlServerTxExecutor = {
       query: (sql, params) => manager.query(sql, params),
     }
-    const updateRequirementArea = async (): Promise<void> => {
-      if (data.requirementAreaId == null) return
-      await tx.query(
-        `UPDATE requirements SET requirement_area_id = @0 WHERE id = @1`,
-        [data.requirementAreaId, requirementId],
-      )
-    }
-
     const current = await getLatestVersionLite(tx, requirementId, {
       lockForUpdate: true,
     })
@@ -648,6 +639,15 @@ export async function editRequirement(
     if (isRequirementArchivedStatus(current.statusId)) {
       throw conflictError(
         'Cannot edit an archived requirement — restore it first',
+      )
+    }
+
+    const references = await validateRequirementTaxonomyReferences(tx, data)
+    const updateRequirementArea = async (): Promise<void> => {
+      if (references.requirementAreaId == null) return
+      await tx.query(
+        `UPDATE requirements SET requirement_area_id = @0 WHERE id = @1`,
+        [references.requirementAreaId, requirementId],
       )
     }
 
@@ -670,10 +670,10 @@ export async function editRequirement(
         [
           data.description,
           data.acceptanceCriteria ?? null,
-          data.requirementCategoryId ?? null,
-          data.requirementTypeId ?? null,
-          data.qualityCharacteristicId ?? null,
-          data.riskLevelId ?? null,
+          references.requirementCategoryId,
+          references.requirementTypeId,
+          references.qualityCharacteristicId,
+          references.riskLevelId,
           data.requiresTesting ? 1 : 0,
           verificationMethod,
           now,
@@ -702,8 +702,8 @@ export async function editRequirement(
       await insertVersionJoinsSqlServer(
         tx,
         current.id,
-        requirementPackageIds,
-        normRefIds,
+        references.requirementPackageIds,
+        references.normReferenceIds,
       )
     } else {
       // Published → create new Draft version
@@ -728,10 +728,10 @@ export async function editRequirement(
           nextVersionNumber,
           data.description,
           data.acceptanceCriteria ?? null,
-          data.requirementCategoryId ?? null,
-          data.requirementTypeId ?? null,
-          data.qualityCharacteristicId ?? null,
-          data.riskLevelId ?? null,
+          references.requirementCategoryId,
+          references.requirementTypeId,
+          references.qualityCharacteristicId,
+          references.riskLevelId,
           STATUS_DRAFT,
           data.requiresTesting ? 1 : 0,
           verificationMethod,
@@ -746,8 +746,8 @@ export async function editRequirement(
       await insertVersionJoinsSqlServer(
         tx,
         result.id,
-        requirementPackageIds,
-        normRefIds,
+        references.requirementPackageIds,
+        references.normReferenceIds,
       )
     }
     await options.audit?.(tx, result)
