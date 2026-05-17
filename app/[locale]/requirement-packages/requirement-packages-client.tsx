@@ -158,14 +158,18 @@ export default function RequirementPackagesClient() {
         const response = await apiFetch('/api/owners/all')
         if (cancelled) return
         if (!response.ok) {
+          setOwners([])
           setOwnersError(ownerLoadError)
           return
         }
-        setOwners(
-          ((await response.json()) as { owners?: Owner[] }).owners ?? [],
-        )
+        const data = (await response.json()) as { owners?: Owner[] }
+        if (cancelled) return
+        setOwners(data.owners ?? [])
       } catch {
-        if (!cancelled) setOwnersError(ownerLoadError)
+        if (!cancelled) {
+          setOwners([])
+          setOwnersError(ownerLoadError)
+        }
       } finally {
         if (!cancelled) setOwnersLoading(false)
       }

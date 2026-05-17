@@ -7,12 +7,13 @@ import {
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const i18nState = vi.hoisted(() => ({ commonSuffix: '' }))
 const confirmMock = vi.fn()
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
   useTranslations: (ns?: string) => (key: string) =>
-    ns ? `${ns}.${key}` : key,
+    ns ? `${ns}.${key}${ns === 'common' ? i18nState.commonSuffix : ''}` : key,
 }))
 
 vi.mock('@/i18n/routing', () => ({
@@ -99,6 +100,7 @@ describe('RequirementPackagesClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    i18nState.commonSuffix = ''
     fetchMock.mockImplementation(async (url: string) => {
       if (url === '/api/requirement-packages') {
         return okJson({ requirementPackages: sampleRequirementPackages })
@@ -246,6 +248,43 @@ describe('RequirementPackagesClient', () => {
         'common.ownerLoadError',
       )
     })
+  })
+
+  it('clears stale owner options when owner reload fails', async () => {
+    let ownerRequests = 0
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: sampleRequirementPackages })
+      }
+      if (url === '/api/owners/all') {
+        ownerRequests += 1
+        return ownerRequests === 1 ? okJson({ owners: sampleOwners }) : notOk()
+      }
+      return okJson({})
+    })
+
+    const { rerender } = render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+    await waitFor(() => {
+      expect(
+        screen.getByRole('option', { name: 'Anna Owner' }),
+      ).toBeInTheDocument()
+    })
+
+    i18nState.commonSuffix = '.retry'
+    rerender(<RequirementPackagesClient />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'common.ownerLoadError.retry',
+      )
+    })
+    expect(screen.queryByRole('option', { name: 'Anna Owner' })).toBeNull()
+    expect(screen.queryByRole('option', { name: 'Erik Editor' })).toBeNull()
   })
 
   it('submits create form', async () => {
