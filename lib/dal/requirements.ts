@@ -68,6 +68,52 @@ function toNum(value: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+const REQUIREMENT_VERSION_LIFECYCLE_UNIQUE_INDEXES = [
+  'uq_requirement_versions_archive_initiated_requirement_id',
+  'uq_requirement_versions_published_requirement_id',
+] as const
+
+function getLifecycleUniqueIndexName(error: unknown): string | null {
+  const messages: string[] = []
+  const seen = new WeakSet<object>()
+  const collect = (value: unknown): void => {
+    if (!value || typeof value !== 'object') return
+    if (seen.has(value)) return
+    seen.add(value)
+    const record = value as Record<string, unknown>
+    if (typeof record.message === 'string') messages.push(record.message)
+    collect(record.originalError)
+    collect(record.driverError)
+    collect(record.cause)
+  }
+  collect(error)
+
+  const text = messages.join('\n')
+  return (
+    REQUIREMENT_VERSION_LIFECYCLE_UNIQUE_INDEXES.find(indexName =>
+      text.includes(indexName),
+    ) ?? null
+  )
+}
+
+async function mapLifecycleUniqueIndexConflict<T>(
+  operation: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await operation()
+  } catch (error) {
+    const indexName = getLifecycleUniqueIndexName(error)
+    if (!indexName) throw error
+    throw conflictError(
+      'Requirement version lifecycle state is no longer unique',
+      {
+        indexName,
+        reason: 'requirement_version_lifecycle_unique_index',
+      },
+    )
+  }
+}
+
 export async function listRequirements(
   db: SqlServerDatabase,
   opts: ListRequirementsOptions = {},
@@ -97,6 +143,8 @@ export async function listRequirements(
     statusNameSv: row.statusNameSv == null ? null : String(row.statusNameSv),
     statusNameEn: row.statusNameEn == null ? null : String(row.statusNameEn),
     statusColor: row.statusColor == null ? null : String(row.statusColor),
+    statusIconName:
+      row.statusIconName == null ? null : String(row.statusIconName),
     archiveInitiatedAt: toIso(row.archiveInitiatedAt),
     requiresTesting: toBool(row.requiresTesting),
     versionCreatedAt: toIso(row.versionCreatedAt) ?? '',
@@ -122,12 +170,18 @@ export async function listRequirements(
       row.riskLevelNameEn == null ? null : String(row.riskLevelNameEn),
     riskLevelColor:
       row.riskLevelColor == null ? null : String(row.riskLevelColor),
+    riskLevelIconName:
+      row.riskLevelIconName == null ? null : String(row.riskLevelIconName),
     riskLevelSortOrder: toNum(row.riskLevelSortOrder),
     maxVersion: Number(row.maxVersion),
     pendingVersionStatusColor:
       row.pendingVersionStatusColor == null
         ? null
         : String(row.pendingVersionStatusColor),
+    pendingVersionStatusIconName:
+      row.pendingVersionStatusIconName == null
+        ? null
+        : String(row.pendingVersionStatusIconName),
     pendingVersionStatusId: toNum(row.pendingVersionStatusId),
     normReferenceIds:
       row.normReferenceIds == null ? null : String(row.normReferenceIds),
@@ -268,6 +322,20 @@ interface VersionInsertedRow {
   versionNumber: number
 }
 
+interface RequirementMutationAuditOptions<TResult = undefined> {
+  audit?: (executor: SqlServerTxExecutor, result: TResult) => Promise<void>
+}
+
+interface CreateRequirementResult {
+  requirement: RequirementInsertedRow
+  version: VersionInsertedRow
+}
+
+interface DeleteDraftVersionResult {
+  deleted: 'requirement' | 'version'
+  deletedUniqueId?: string
+}
+
 function mapRequirement(row: Record<string, unknown>): RequirementInsertedRow {
   return {
     id: Number(row.id),
@@ -348,10 +416,8 @@ const VERSION_OUTPUT = `
 export async function createRequirement(
   db: SqlServerDatabase,
   data: RequirementMutationData,
-): Promise<{
-  requirement: RequirementInsertedRow
-  version: VersionInsertedRow
-}> {
+  options: RequirementMutationAuditOptions<CreateRequirementResult> = {},
+): Promise<CreateRequirementResult> {
   const requirementPackageIds = uniqueIds(data.requirementPackageIds)
   const normRefIds = uniqueIds(data.normReferenceIds)
   const now = new Date()
@@ -415,6 +481,7 @@ export async function createRequirement(
       requirementPackageIds,
       normRefIds,
     )
+    await options.audit?.(tx, { requirement, version })
   })
 
   return { requirement, version }
@@ -538,6 +605,7 @@ export async function editRequirement(
   data: Omit<RequirementMutationData, 'requirementAreaId'> & {
     requirementAreaId?: number
   },
+  options: RequirementMutationAuditOptions<VersionInsertedRow> = {},
 ): Promise<VersionInsertedRow> {
   const requirementPackageIds = uniqueIds(data.requirementPackageIds)
   const normRefIds = uniqueIds(data.normReferenceIds)
@@ -637,52 +705,52 @@ export async function editRequirement(
         requirementPackageIds,
         normRefIds,
       )
-      return
-    }
-
-    // Published → create new Draft version
-    const nextVersionNumber = await getNextVersionNumberSqlServer(
-      tx,
-      requirementId,
-    )
-    await updateRequirementArea()
-    const insertRows = (await tx.query(
-      `INSERT INTO requirement_versions (
-          requirement_id, version_number, description, acceptance_criteria,
-          requirement_category_id, requirement_type_id, quality_characteristic_id,
-        risk_level_id, requirement_status_id, is_testing_required,
-        verification_method, created_at, edited_at, published_at,
-        archived_at, archive_initiated_at, created_by, created_by_hsa_id,
-        status_updated_at, has_specification_item_history
-      )
-        ${VERSION_OUTPUT}
-        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, NULL, NULL, NULL, @13, @14, @15, 0)`,
-      [
+    } else {
+      // Published → create new Draft version
+      const nextVersionNumber = await getNextVersionNumberSqlServer(
+        tx,
         requirementId,
-        nextVersionNumber,
-        data.description,
-        data.acceptanceCriteria ?? null,
-        data.requirementCategoryId ?? null,
-        data.requirementTypeId ?? null,
-        data.qualityCharacteristicId ?? null,
-        data.riskLevelId ?? null,
-        STATUS_DRAFT,
-        data.requiresTesting ? 1 : 0,
-        verificationMethod,
-        now,
-        now,
-        data.createdBy ?? null,
-        data.createdByHsaId ?? null,
-        now,
-      ],
-    )) as Array<Record<string, unknown>>
-    result = mapVersion(insertRows[0] ?? {})
-    await insertVersionJoinsSqlServer(
-      tx,
-      result.id,
-      requirementPackageIds,
-      normRefIds,
-    )
+      )
+      await updateRequirementArea()
+      const insertRows = (await tx.query(
+        `INSERT INTO requirement_versions (
+            requirement_id, version_number, description, acceptance_criteria,
+            requirement_category_id, requirement_type_id, quality_characteristic_id,
+          risk_level_id, requirement_status_id, is_testing_required,
+          verification_method, created_at, edited_at, published_at,
+          archived_at, archive_initiated_at, created_by, created_by_hsa_id,
+          status_updated_at, has_specification_item_history
+        )
+          ${VERSION_OUTPUT}
+          VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, NULL, NULL, NULL, @13, @14, @15, 0)`,
+        [
+          requirementId,
+          nextVersionNumber,
+          data.description,
+          data.acceptanceCriteria ?? null,
+          data.requirementCategoryId ?? null,
+          data.requirementTypeId ?? null,
+          data.qualityCharacteristicId ?? null,
+          data.riskLevelId ?? null,
+          STATUS_DRAFT,
+          data.requiresTesting ? 1 : 0,
+          verificationMethod,
+          now,
+          now,
+          data.createdBy ?? null,
+          data.createdByHsaId ?? null,
+          now,
+        ],
+      )) as Array<Record<string, unknown>>
+      result = mapVersion(insertRows[0] ?? {})
+      await insertVersionJoinsSqlServer(
+        tx,
+        result.id,
+        requirementPackageIds,
+        normRefIds,
+      )
+    }
+    await options.audit?.(tx, result)
   })
 
   return result
@@ -691,40 +759,42 @@ export async function editRequirement(
 export async function initiateArchiving(
   db: SqlServerDatabase,
   requirementId: number,
+  options: RequirementMutationAuditOptions = {},
 ): Promise<void> {
-  await db.transaction('SERIALIZABLE', async manager => {
-    const tx: SqlServerTxExecutor = {
-      query: (sql, params) => manager.query(sql, params),
-    }
+  await mapLifecycleUniqueIndexConflict(() =>
+    db.transaction('SERIALIZABLE', async manager => {
+      const tx: SqlServerTxExecutor = {
+        query: (sql, params) => manager.query(sql, params),
+      }
 
-    const publishedRows = (await tx.query(
-      `SELECT TOP (1) id, version_number AS versionNumber
+      const publishedRows = (await tx.query(
+        `SELECT TOP (1) id, version_number AS versionNumber
         FROM requirement_versions WITH (UPDLOCK, HOLDLOCK)
         WHERE requirement_id = @0 AND requirement_status_id = ${STATUS_PUBLISHED}`,
-      [requirementId],
-    )) as Array<Record<string, unknown>>
-    if (!publishedRows[0]) {
-      throw conflictError('No published version found to archive')
-    }
-    const publishedId = Number(publishedRows[0].id)
-    const publishedVersionNumber = Number(publishedRows[0].versionNumber)
+        [requirementId],
+      )) as Array<Record<string, unknown>>
+      if (!publishedRows[0]) {
+        throw conflictError('No published version found to archive')
+      }
+      const publishedId = Number(publishedRows[0].id)
+      const publishedVersionNumber = Number(publishedRows[0].versionNumber)
 
-    const newerRows = (await tx.query(
-      `SELECT TOP (1) id FROM requirement_versions WITH (UPDLOCK, HOLDLOCK)
+      const newerRows = (await tx.query(
+        `SELECT TOP (1) id FROM requirement_versions WITH (UPDLOCK, HOLDLOCK)
         WHERE requirement_id = @0
           AND requirement_status_id IN (${STATUS_DRAFT}, ${STATUS_REVIEW})
           AND version_number > @1`,
-      [requirementId, publishedVersionNumber],
-    )) as Array<Record<string, unknown>>
-    if (newerRows[0]) {
-      throw conflictError(
-        'Cannot initiate archiving while there is a pending draft or review version',
-      )
-    }
+        [requirementId, publishedVersionNumber],
+      )) as Array<Record<string, unknown>>
+      if (newerRows[0]) {
+        throw conflictError(
+          'Cannot initiate archiving while there is a pending draft or review version',
+        )
+      }
 
-    const now = new Date()
-    const updatedRows = (await tx.query(
-      `UPDATE requirement_versions
+      const now = new Date()
+      const updatedRows = (await tx.query(
+        `UPDATE requirement_versions
         SET requirement_status_id = ${STATUS_REVIEW},
             archive_initiated_at = @0,
             status_updated_at = @0,
@@ -733,50 +803,57 @@ export async function initiateArchiving(
         WHERE id = @1
           AND requirement_status_id = ${STATUS_PUBLISHED}
           AND archive_initiated_at IS NULL`,
-      [now, publishedId],
-    )) as Array<Record<string, unknown>>
-    if (!updatedRows[0]) {
-      throw conflictError('No published version found to archive')
-    }
-  })
+        [now, publishedId],
+      )) as Array<Record<string, unknown>>
+      if (!updatedRows[0]) {
+        throw conflictError('No published version found to archive')
+      }
+      await options.audit?.(tx, undefined)
+    }),
+  )
 }
 
 export async function approveArchiving(
   db: SqlServerDatabase,
   requirementId: number,
+  options: RequirementMutationAuditOptions = {},
 ): Promise<void> {
   // Strict-target rule: operate only on the single version with
   // archive_initiated_at set (the formerly-published version). A newer
   // Draft/Review version may exist for the same requirement; it must never
   // be the target of approve/cancel.
-  await db.transaction('SERIALIZABLE', async manager => {
-    const rows = (await manager.query(
-      `SELECT TOP (1)
+  await mapLifecycleUniqueIndexConflict(() =>
+    db.transaction('SERIALIZABLE', async manager => {
+      const rows = (await manager.query(
+        `SELECT TOP (1)
           id,
           requirement_status_id AS statusId,
           archive_initiated_at AS archiveInitiatedAt
         FROM requirement_versions WITH (UPDLOCK, HOLDLOCK)
         WHERE requirement_id = @0 AND archive_initiated_at IS NOT NULL`,
-      [requirementId],
-    )) as Array<Record<string, unknown>>
-    if (!rows[0]) {
-      throw conflictError('No version with archiving initiated found')
-    }
-    if (
-      !isArchivingReviewState({
-        archiveInitiatedAt: rows[0].archiveInitiatedAt as Date | string | null,
-        statusId: Number(rows[0].statusId),
-      })
-    ) {
-      throw conflictError(
-        'Can only approve archiving from Review status with archiving initiated',
-      )
-    }
-    const versionId = Number(rows[0].id)
-    const now = new Date()
+        [requirementId],
+      )) as Array<Record<string, unknown>>
+      if (!rows[0]) {
+        throw conflictError('No version with archiving initiated found')
+      }
+      if (
+        !isArchivingReviewState({
+          archiveInitiatedAt: rows[0].archiveInitiatedAt as
+            | Date
+            | string
+            | null,
+          statusId: Number(rows[0].statusId),
+        })
+      ) {
+        throw conflictError(
+          'Can only approve archiving from Review status with archiving initiated',
+        )
+      }
+      const versionId = Number(rows[0].id)
+      const now = new Date()
 
-    const updatedRows = (await manager.query(
-      `UPDATE requirement_versions
+      const updatedRows = (await manager.query(
+        `UPDATE requirement_versions
         SET requirement_status_id = ${STATUS_ARCHIVED},
             archived_at = @0,
             archive_initiated_at = NULL,
@@ -786,51 +863,58 @@ export async function approveArchiving(
         WHERE id = @1
           AND requirement_status_id = ${STATUS_REVIEW}
           AND archive_initiated_at IS NOT NULL`,
-      [now, versionId],
-    )) as Array<Record<string, unknown>>
-    if (!updatedRows[0]) {
-      throw conflictError('No version with archiving initiated found')
-    }
-    await manager.query(
-      `UPDATE requirements SET is_archived = 1 WHERE id = @0`,
-      [requirementId],
-    )
-  })
+        [now, versionId],
+      )) as Array<Record<string, unknown>>
+      if (!updatedRows[0]) {
+        throw conflictError('No version with archiving initiated found')
+      }
+      await manager.query(
+        `UPDATE requirements SET is_archived = 1 WHERE id = @0`,
+        [requirementId],
+      )
+      await options.audit?.(manager, undefined)
+    }),
+  )
 }
 
 export async function cancelArchiving(
   db: SqlServerDatabase,
   requirementId: number,
+  options: RequirementMutationAuditOptions = {},
 ): Promise<void> {
   // Strict-target rule: operate only on the single version with
   // archive_initiated_at set (the formerly-published version). A newer
   // Draft/Review version may exist for the same requirement; it must never
   // be the target of approve/cancel.
-  await db.transaction('SERIALIZABLE', async manager => {
-    const rows = (await manager.query(
-      `SELECT TOP (1)
+  await mapLifecycleUniqueIndexConflict(() =>
+    db.transaction('SERIALIZABLE', async manager => {
+      const rows = (await manager.query(
+        `SELECT TOP (1)
           id,
           requirement_status_id AS statusId,
           archive_initiated_at AS archiveInitiatedAt
         FROM requirement_versions WITH (UPDLOCK, HOLDLOCK)
         WHERE requirement_id = @0 AND archive_initiated_at IS NOT NULL`,
-      [requirementId],
-    )) as Array<Record<string, unknown>>
-    if (!rows[0]) {
-      throw conflictError('No version with archiving initiated found')
-    }
-    if (
-      !isArchivingReviewState({
-        archiveInitiatedAt: rows[0].archiveInitiatedAt as Date | string | null,
-        statusId: Number(rows[0].statusId),
-      })
-    ) {
-      throw conflictError(
-        'Can only cancel archiving from Review status with archiving initiated',
-      )
-    }
-    const updatedRows = (await manager.query(
-      `UPDATE requirement_versions
+        [requirementId],
+      )) as Array<Record<string, unknown>>
+      if (!rows[0]) {
+        throw conflictError('No version with archiving initiated found')
+      }
+      if (
+        !isArchivingReviewState({
+          archiveInitiatedAt: rows[0].archiveInitiatedAt as
+            | Date
+            | string
+            | null,
+          statusId: Number(rows[0].statusId),
+        })
+      ) {
+        throw conflictError(
+          'Can only cancel archiving from Review status with archiving initiated',
+        )
+      }
+      const updatedRows = (await manager.query(
+        `UPDATE requirement_versions
         SET requirement_status_id = ${STATUS_PUBLISHED},
             archive_initiated_at = NULL,
             status_updated_at = @1,
@@ -839,19 +923,22 @@ export async function cancelArchiving(
         WHERE id = @0
           AND requirement_status_id = ${STATUS_REVIEW}
           AND archive_initiated_at IS NOT NULL`,
-      [Number(rows[0].id), new Date()],
-    )) as Array<Record<string, unknown>>
-    if (!updatedRows[0]) {
-      throw conflictError('No version with archiving initiated found')
-    }
-  })
+        [Number(rows[0].id), new Date()],
+      )) as Array<Record<string, unknown>>
+      if (!updatedRows[0]) {
+        throw conflictError('No version with archiving initiated found')
+      }
+      await options.audit?.(manager, undefined)
+    }),
+  )
 }
 
 export async function deleteDraftVersion(
   db: SqlServerDatabase,
   requirementId: number,
-): Promise<{ deleted: 'requirement' | 'version' }> {
-  let result: { deleted: 'requirement' | 'version' } = { deleted: 'version' }
+  options: RequirementMutationAuditOptions<DeleteDraftVersionResult> = {},
+): Promise<DeleteDraftVersionResult> {
+  let result: DeleteDraftVersionResult = { deleted: 'version' }
 
   await db.transaction(async manager => {
     const tx: SqlServerTxExecutor = {
@@ -879,9 +966,23 @@ export async function deleteDraftVersion(
       [requirementId],
     )) as Array<Record<string, unknown>>
     if (Number(remainingRows[0]?.count ?? 0) === 0) {
+      const requirementRows = (await tx.query(
+        `SELECT TOP (1) unique_id AS uniqueId FROM requirements WHERE id = @0`,
+        [requirementId],
+      )) as Array<Record<string, unknown>>
+      const deletedUniqueId = requirementRows[0]?.uniqueId
+      result =
+        deletedUniqueId == null
+          ? { deleted: 'requirement' }
+          : {
+              deleted: 'requirement',
+              deletedUniqueId: String(deletedUniqueId),
+            }
+      await options.audit?.(tx, result)
       await tx.query(`DELETE FROM requirements WHERE id = @0`, [requirementId])
-      result = { deleted: 'requirement' }
+      return
     }
+    await options.audit?.(tx, result)
   })
 
   return result
@@ -891,6 +992,7 @@ export async function transitionStatus(
   db: SqlServerDatabase,
   requirementId: number,
   newStatusId: number,
+  options: RequirementMutationAuditOptions<VersionInsertedRow> = {},
 ): Promise<VersionInsertedRow> {
   const statusRows = (await db.query(
     `SELECT TOP (1) id FROM requirement_statuses WHERE id = @0`,
@@ -902,119 +1004,122 @@ export async function transitionStatus(
 
   let result!: VersionInsertedRow
 
-  await db.transaction(async manager => {
-    const tx: SqlServerTxExecutor = {
-      query: (sql, params) => manager.query(sql, params),
-    }
-    const current = await getLatestVersionLite(tx, requirementId)
-    if (!current) {
-      throw notFoundError('No version found for requirement')
-    }
-    const reqRows = (await tx.query(
-      `SELECT TOP (1) CAST(is_archived AS int) AS isArchived FROM requirements WHERE id = @0`,
-      [requirementId],
-    )) as Array<Record<string, unknown>>
-    if (!reqRows[0]) {
-      throw notFoundError('Requirement not found')
-    }
-    const isArchived = toBool(reqRows[0].isArchived)
+  await mapLifecycleUniqueIndexConflict(() =>
+    db.transaction(async manager => {
+      const tx: SqlServerTxExecutor = {
+        query: (sql, params) => manager.query(sql, params),
+      }
+      const current = await getLatestVersionLite(tx, requirementId)
+      if (!current) {
+        throw notFoundError('No version found for requirement')
+      }
+      const reqRows = (await tx.query(
+        `SELECT TOP (1) CAST(is_archived AS int) AS isArchived FROM requirements WHERE id = @0`,
+        [requirementId],
+      )) as Array<Record<string, unknown>>
+      if (!reqRows[0]) {
+        throw notFoundError('Requirement not found')
+      }
+      const isArchived = toBool(reqRows[0].isArchived)
 
-    const transitionRows = (await tx.query(
-      `SELECT TOP (1) id FROM requirement_status_transitions
+      const transitionRows = (await tx.query(
+        `SELECT TOP (1) id FROM requirement_status_transitions
         WHERE from_requirement_status_id = @0 AND to_requirement_status_id = @1`,
-      [current.statusId, newStatusId],
-    )) as Array<Record<string, unknown>>
-    if (!transitionRows[0]) {
-      throw conflictError(
-        `Invalid transition from status ${current.statusId} to ${newStatusId}`,
-      )
-    }
-
-    if (isRequirementReviewStatus(current.statusId)) {
-      if (isArchivingReviewState(current)) {
-        if (!canArchivingReviewTransitionTo(newStatusId)) {
-          throw conflictError(
-            'Archiving review can only transition to Archived or back to Published',
-          )
-        }
-      } else if (isRequirementArchivedStatus(newStatusId)) {
+        [current.statusId, newStatusId],
+      )) as Array<Record<string, unknown>>
+      if (!transitionRows[0]) {
         throw conflictError(
-          'Cannot archive from publishing review; initiate archiving from Published state first',
+          `Invalid transition from status ${current.statusId} to ${newStatusId}`,
         )
       }
-    }
 
-    const now = new Date()
-    const sets: string[] = ['requirement_status_id = @P_status']
-    const params: Record<string, unknown> = {
-      P_status: newStatusId,
-      P_statusUpdated: now,
-    }
-    sets.push('status_updated_at = @P_statusUpdated')
+      if (isRequirementReviewStatus(current.statusId)) {
+        if (isArchivingReviewState(current)) {
+          if (!canArchivingReviewTransitionTo(newStatusId)) {
+            throw conflictError(
+              'Archiving review can only transition to Archived or back to Published',
+            )
+          }
+        } else if (isRequirementArchivedStatus(newStatusId)) {
+          throw conflictError(
+            'Cannot archive from publishing review; initiate archiving from Published state first',
+          )
+        }
+      }
 
-    if (isArchivingInitiationTransition(current.statusId, newStatusId)) {
-      sets.push('archive_initiated_at = @P_archInit')
-      params.P_archInit = now
-    }
-    const isCancellingArchiving = isArchivingCancellationTransition(
-      current,
-      newStatusId,
-    )
-    if (isCancellingArchiving) {
-      sets.push('archive_initiated_at = NULL')
-    }
-    if (shouldAutoArchivePublishedPredecessor(current, newStatusId)) {
-      sets.push('published_at = @P_published')
-      params.P_published = now
-      await tx.query(
-        `UPDATE requirement_versions
+      const now = new Date()
+      const sets: string[] = ['requirement_status_id = @P_status']
+      const params: Record<string, unknown> = {
+        P_status: newStatusId,
+        P_statusUpdated: now,
+      }
+      sets.push('status_updated_at = @P_statusUpdated')
+
+      if (isArchivingInitiationTransition(current.statusId, newStatusId)) {
+        sets.push('archive_initiated_at = @P_archInit')
+        params.P_archInit = now
+      }
+      const isCancellingArchiving = isArchivingCancellationTransition(
+        current,
+        newStatusId,
+      )
+      if (isCancellingArchiving) {
+        sets.push('archive_initiated_at = NULL')
+      }
+      if (shouldAutoArchivePublishedPredecessor(current, newStatusId)) {
+        sets.push('published_at = @P_published')
+        params.P_published = now
+        await tx.query(
+          `UPDATE requirement_versions
           SET requirement_status_id = ${STATUS_ARCHIVED},
               archived_at = @0,
               status_updated_at = @0,
               revision_token = NEWID()
           WHERE requirement_id = @1 AND requirement_status_id = ${STATUS_PUBLISHED}`,
-        [now, requirementId],
+          [now, requirementId],
+        )
+      }
+      if (isRequirementArchivedStatus(newStatusId)) {
+        sets.push('archived_at = @P_archived')
+        sets.push('archive_initiated_at = NULL')
+        params.P_archived = now
+      }
+
+      const nextIsArchived = resolveRequirementArchivedFlag(
+        isArchived,
+        newStatusId,
       )
-    }
-    if (isRequirementArchivedStatus(newStatusId)) {
-      sets.push('archived_at = @P_archived')
-      sets.push('archive_initiated_at = NULL')
-      params.P_archived = now
-    }
+        ? 1
+        : 0
+      await tx.query(`UPDATE requirements SET is_archived = @0 WHERE id = @1`, [
+        nextIsArchived,
+        requirementId,
+      ])
 
-    const nextIsArchived = resolveRequirementArchivedFlag(
-      isArchived,
-      newStatusId,
-    )
-      ? 1
-      : 0
-    await tx.query(`UPDATE requirements SET is_archived = @0 WHERE id = @1`, [
-      nextIsArchived,
-      requirementId,
-    ])
+      // Convert named placeholders to positional for the version update
+      const positionalValues: unknown[] = []
+      const resolvedSets = sets
+        .map(part =>
+          part.replace(/@P_(\w+)/g, (_match, key) => {
+            positionalValues.push(params[`P_${key}`])
+            return `@${positionalValues.length - 1}`
+          }),
+        )
+        .join(', ')
+      positionalValues.push(current.id)
+      const idParamIndex = positionalValues.length - 1
 
-    // Convert named placeholders to positional for the version update
-    const positionalValues: unknown[] = []
-    const resolvedSets = sets
-      .map(part =>
-        part.replace(/@P_(\w+)/g, (_match, key) => {
-          positionalValues.push(params[`P_${key}`])
-          return `@${positionalValues.length - 1}`
-        }),
-      )
-      .join(', ')
-    positionalValues.push(current.id)
-    const idParamIndex = positionalValues.length - 1
-
-    const updateRows = (await tx.query(
-      `UPDATE requirement_versions SET ${resolvedSets}, revision_token = NEWID() ${VERSION_OUTPUT} WHERE id = @${idParamIndex}`,
-      positionalValues,
-    )) as Array<Record<string, unknown>>
-    if (!updateRows[0]) {
-      throw notFoundError('Failed to retrieve updated version')
-    }
-    result = mapVersion(updateRows[0])
-  })
+      const updateRows = (await tx.query(
+        `UPDATE requirement_versions SET ${resolvedSets}, revision_token = NEWID() ${VERSION_OUTPUT} WHERE id = @${idParamIndex}`,
+        positionalValues,
+      )) as Array<Record<string, unknown>>
+      if (!updateRows[0]) {
+        throw notFoundError('Failed to retrieve updated version')
+      }
+      result = mapVersion(updateRows[0])
+      await options.audit?.(tx, result)
+    }),
+  )
 
   return result
 }
@@ -1025,6 +1130,7 @@ export async function restoreVersion(
   versionId: number,
   createdBy?: string,
   createdByHsaId?: string | null,
+  options: RequirementMutationAuditOptions<VersionInsertedRow> = {},
 ): Promise<VersionInsertedRow> {
   let result!: VersionInsertedRow
 
@@ -1039,6 +1145,7 @@ export async function restoreVersion(
       createdBy,
       createdByHsaId,
     )
+    await options.audit?.(tx, result)
   })
 
   return result
@@ -1150,6 +1257,7 @@ export async function reactivateRequirement(
   requirementId: number,
   createdBy?: string,
   createdByHsaId?: string | null,
+  options: RequirementMutationAuditOptions<VersionInsertedRow> = {},
 ): Promise<VersionInsertedRow> {
   let result!: VersionInsertedRow
 
@@ -1181,6 +1289,7 @@ export async function reactivateRequirement(
     await tx.query(`UPDATE requirements SET is_archived = 0 WHERE id = @0`, [
       requirementId,
     ])
+    await options.audit?.(tx, result)
   })
 
   return result
@@ -1223,7 +1332,8 @@ export async function getVersionHistory(
         requirement_status.id AS statusRowId,
         requirement_status.name_en AS statusNameEn,
         requirement_status.name_sv AS statusNameSv,
-        requirement_status.color AS statusColor
+        requirement_status.color AS statusColor,
+        requirement_status.icon_name AS statusIconName
       FROM requirement_versions version
       LEFT JOIN requirement_categories requirement_category
         ON requirement_category.id = version.requirement_category_id
@@ -1334,6 +1444,8 @@ export async function getVersionHistory(
       statusNameSv: row.statusNameSv == null ? null : String(row.statusNameSv),
       statusNameEn: row.statusNameEn == null ? null : String(row.statusNameEn),
       statusColor: row.statusColor == null ? null : String(row.statusColor),
+      statusIconName:
+        row.statusIconName == null ? null : String(row.statusIconName),
       _statusRowId: statusRowId,
     }
   })
@@ -1402,11 +1514,13 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
         risk_level.name_en AS rlNameEn,
         risk_level.name_sv AS rlNameSv,
         risk_level.color AS rlColor,
+        risk_level.icon_name AS rlIconName,
         risk_level.sort_order AS rlSortOrder,
         requirement_status.id AS statusRowId,
         requirement_status.name_en AS statusNameEn,
         requirement_status.name_sv AS statusNameSv,
         requirement_status.color AS statusColor,
+        requirement_status.icon_name AS statusIconName,
         requirement_status.sort_order AS statusSortOrder,
         CAST(requirement_status.is_system AS int) AS statusIsSystem
       FROM requirement_versions version
@@ -1558,12 +1672,15 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
               nameEn: String(row.rlNameEn ?? ''),
               nameSv: String(row.rlNameSv ?? ''),
               color: String(row.rlColor ?? ''),
+              iconName: row.rlIconName == null ? null : String(row.rlIconName),
               sortOrder: Number(row.rlSortOrder ?? 0),
             },
       status: statusRowId == null ? Number(row.statusId) : Number(row.statusId),
       statusNameEn: row.statusNameEn == null ? null : String(row.statusNameEn),
       statusNameSv: row.statusNameSv == null ? null : String(row.statusNameSv),
       statusColor: row.statusColor == null ? null : String(row.statusColor),
+      statusIconName:
+        row.statusIconName == null ? null : String(row.statusIconName),
       versionNormReferences: (normRefByVersion.get(vId) ?? []).map(link => ({
         normReferenceId: Number(link.normReferenceId),
         requirementVersionId: vId,

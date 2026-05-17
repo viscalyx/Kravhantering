@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   approveArchiving,
   cancelArchiving,
+  deleteDraftVersion,
   editRequirement,
   getRequirementById,
   getRequirementByUniqueId,
   initiateArchiving,
   reactivateRequirement,
   restoreVersion,
+  transitionStatus,
 } from '@/lib/dal/requirements'
 
 function createSqlServerDb() {
@@ -38,9 +40,50 @@ function createSqlServerDb() {
   return { db, query, transaction }
 }
 
+function uniqueIndexViolation(indexName: string): Error {
+  return Object.assign(
+    new Error(
+      `Cannot insert duplicate key row in object 'dbo.requirement_versions' with unique index '${indexName}'.`,
+    ),
+    { number: 2601 },
+  )
+}
+
 describe('requirements DAL (SQL Server path)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('preserves the unique ID for audit before deleting the final requirement row', async () => {
+    const { db, query } = createSqlServerDb()
+    const audit = vi.fn(async () => undefined)
+    query
+      .mockResolvedValueOnce([{ id: 21, statusId: 1 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ count: 0 }])
+      .mockResolvedValueOnce([{ uniqueId: 'SEC-0001' }])
+      .mockResolvedValueOnce([])
+
+    const result = await deleteDraftVersion(db, 7, { audit })
+
+    expect(result).toEqual({
+      deleted: 'requirement',
+      deletedUniqueId: 'SEC-0001',
+    })
+    expect(audit).toHaveBeenCalledWith(
+      expect.objectContaining({ query: expect.any(Function) }),
+      result,
+    )
+    const sqlCalls = query.mock.calls.map(([sql]) => String(sql))
+    expect(sqlCalls[5]).toContain(
+      'SELECT TOP (1) unique_id AS uniqueId FROM requirements WHERE id = @0',
+    )
+    expect(sqlCalls[6]).toBe('DELETE FROM requirements WHERE id = @0')
+    const auditOrder = audit.mock.invocationCallOrder[0] ?? 0
+    const parentDeleteOrder = query.mock.invocationCallOrder[6] ?? 0
+    expect(auditOrder).toBeLessThan(parentDeleteOrder)
   })
 
   it('returns null when the requirement does not exist', async () => {
@@ -190,6 +233,7 @@ describe('requirements DAL (SQL Server path)', () => {
       nameEn: 'High',
       nameSv: 'Hög',
       color: '#ff0000',
+      iconName: null,
       sortOrder: 10,
     })
     expect(version?.versionNormReferences).toEqual([
@@ -614,6 +658,48 @@ describe('archiving helpers (atomicity & strict-target rule)', () => {
         message: 'No published version found to archive',
       })
     })
+
+    it('maps archive-in-progress unique index violations to conflict', async () => {
+      const { db, query } = createSqlServerDb()
+      query
+        .mockResolvedValueOnce([{ id: 21, versionNumber: 1 }])
+        .mockResolvedValueOnce([])
+        .mockRejectedValueOnce(
+          uniqueIndexViolation(
+            'uq_requirement_versions_archive_initiated_requirement_id',
+          ),
+        )
+
+      await expect(initiateArchiving(db, 7)).rejects.toMatchObject({
+        code: 'conflict',
+        details: {
+          indexName: 'uq_requirement_versions_archive_initiated_requirement_id',
+          reason: 'requirement_version_lifecycle_unique_index',
+        },
+        message: 'Requirement version lifecycle state is no longer unique',
+      })
+    })
+
+    it('maps cyclic nested unique index errors without looping', async () => {
+      const { db, query } = createSqlServerDb()
+      const error = uniqueIndexViolation(
+        'uq_requirement_versions_archive_initiated_requirement_id',
+      ) as Error & { cause?: unknown }
+      error.cause = error
+      query
+        .mockResolvedValueOnce([{ id: 21, versionNumber: 1 }])
+        .mockResolvedValueOnce([])
+        .mockRejectedValueOnce(error)
+
+      await expect(initiateArchiving(db, 7)).rejects.toMatchObject({
+        code: 'conflict',
+        details: {
+          indexName: 'uq_requirement_versions_archive_initiated_requirement_id',
+          reason: 'requirement_version_lifecycle_unique_index',
+        },
+        message: 'Requirement version lifecycle state is no longer unique',
+      })
+    })
   })
 
   describe('approveArchiving', () => {
@@ -762,6 +848,42 @@ describe('archiving helpers (atomicity & strict-target rule)', () => {
       await expect(cancelArchiving(db, 7)).rejects.toMatchObject({
         code: 'conflict',
         message: 'No version with archiving initiated found',
+      })
+    })
+  })
+
+  describe('transitionStatus', () => {
+    it('maps published-version unique index violations to conflict', async () => {
+      const { db, query } = createSqlServerDb()
+      query
+        .mockResolvedValueOnce([{ id: 3 }])
+        .mockResolvedValueOnce([
+          {
+            archiveInitiatedAt: null,
+            description: 'review version',
+            id: 22,
+            requiresTesting: 0,
+            revisionToken: '11111111-1111-4111-8111-111111111111',
+            statusId: 2,
+          },
+        ])
+        .mockResolvedValueOnce([{ isArchived: 0 }])
+        .mockResolvedValueOnce([{ id: 12 }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockRejectedValueOnce(
+          uniqueIndexViolation(
+            'uq_requirement_versions_published_requirement_id',
+          ),
+        )
+
+      await expect(transitionStatus(db, 7, 3)).rejects.toMatchObject({
+        code: 'conflict',
+        details: {
+          indexName: 'uq_requirement_versions_published_requirement_id',
+          reason: 'requirement_version_lifecycle_unique_index',
+        },
+        message: 'Requirement version lifecycle state is no longer unique',
       })
     })
   })

@@ -75,30 +75,47 @@ jobs:
         run: npm run build:local-prod
 
       - name: Start prodlike app
-        run: |
-          set -euo pipefail
-          mkdir -p test-results
-          # Mirror the `start:prodlike` npm script (build was done in the
-          # previous step). next.config.ts requires NODE_ENV=production +
-          # BUILD_TARGET=local-prod, otherwise it throws on startup.
-          NODE_ENV=production BUILD_TARGET=local-prod \
-            nohup npx dotenv -e .env.prodlike -- \
-            npx next start --hostname 127.0.0.1 --port 3001 \
-            > test-results/app.log 2>&1 &
-          echo $! > test-results/app.pid
+        run: bash scripts/security/prodlike-app.sh start test-results
 
       - name: Wait for app health endpoint
         run: |
           set -euo pipefail
+          # GitHub-hosted ubuntu-latest runners include jq; fail clearly if
+          # that runner-image contract changes.
+          if ! command -v jq > /dev/null 2>&1; then
+            echo "::error::jq is required to validate /api/health JSON."
+            exit 1
+          fi
+
+          last_http_code="not requested"
+          last_payload=""
           for i in $(seq 1 60); do
-            if curl -sf --max-time 5 "${APP_BASE_URL}/api/health" > /dev/null 2>&1; then
-              echo "App is healthy."
-              exit 0
+            response="$(
+              curl -sS --max-time 5 -w '\n%{http_code}' \
+                "${APP_BASE_URL}/api/health" 2>/dev/null || true
+            )"
+            last_http_code="$(printf '%s' "$response" | tail -n 1)"
+            last_payload="$(printf '%s' "$response" | sed '$d')"
+
+            if [ "$last_http_code" = "200" ]; then
+              if printf '%s' "$last_payload" |
+                jq -e '.status == "ok"' > /dev/null 2>&1; then
+                echo "App is healthy."
+                exit 0
+              fi
             fi
             echo "Attempt $i/60 - /api/health not ready yet, retrying in 2s..."
             sleep 2
           done
-          echo "App did not become healthy in time. Last 200 lines of app.log:"
+          echo "App did not become healthy in time."
+          echo "Last /api/health HTTP status: ${last_http_code}"
+          echo "Last /api/health payload:"
+          if [ -n "$last_payload" ]; then
+            printf '%s\n' "$last_payload"
+          else
+            echo "<empty>"
+          fi
+          echo "Last 200 lines of app.log:"
           tail -n 200 test-results/app.log || true
           exit 1
 
@@ -534,10 +551,7 @@ jobs:
 
       - name: Stop prodlike app
         if: always()
-        run: |
-          if [ -f test-results/app.pid ]; then
-            kill "$(cat test-results/app.pid)" 2>/dev/null || true
-          fi
+        run: bash scripts/security/prodlike-app.sh stop test-results
 
       - name: Stop IdP service
         if: always()

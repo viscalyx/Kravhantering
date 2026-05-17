@@ -49,8 +49,8 @@ describe('AuthMenu', () => {
       `/api/auth/login?returnTo=${encodeURIComponent('/sv/requirements?tab=open#section-2')}`,
     )
     expect(signInLink).toHaveAttribute('aria-label', 'signIn')
-    expect(signInLink.className).toContain('min-h-[44px]')
-    expect(signInLink.className).toContain('min-w-[44px]')
+    expect(signInLink.className).toContain('min-h-11')
+    expect(signInLink.className).toContain('min-w-11')
     expect(signInLink.className).toContain('focus-visible:ring-2')
   })
 
@@ -61,8 +61,8 @@ describe('AuthMenu', () => {
 
     const signInLink = await screen.findByRole('link', { name: 'signIn' })
     expect(signInLink).toHaveAttribute('aria-label', 'signIn')
-    expect(signInLink.className).toContain('min-h-[44px]')
-    expect(signInLink.className).toContain('min-w-[44px]')
+    expect(signInLink.className).toContain('min-h-11')
+    expect(signInLink.className).toContain('min-w-11')
     expect(signInLink.className).toContain('focus-visible:ring-2')
   })
 
@@ -123,8 +123,8 @@ describe('AuthMenu', () => {
     expect(logoutForm).not.toHaveAttribute('method')
     expect(signingOutButton).toBeDisabled()
     expect(signingOutButton).toHaveAttribute('title', 'signingOut')
-    expect(signingOutButton.className).toContain('min-h-[44px]')
-    expect(signingOutButton.className).toContain('min-w-[44px]')
+    expect(signingOutButton.className).toContain('min-h-11')
+    expect(signingOutButton.className).toContain('min-w-11')
     expect(signingOutButton.className).toContain('focus-visible:ring-2')
     expect(signingOutButton.className).toContain('disabled:cursor-not-allowed')
 

@@ -51,7 +51,7 @@ export const PUT = secureMutationRoute({
     if (!category) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    recordAdminPrivilegedActionSucceeded(context, {
+    await recordAdminPrivilegedActionSucceeded(context, {
       changedFields: Object.keys(body),
       operation: 'update',
       resourceId: params.id,
@@ -80,7 +80,7 @@ export const DELETE = secureMutationRoute({
       if (!deleted) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 })
       }
-      recordAdminPrivilegedActionSucceeded(context, {
+      await recordAdminPrivilegedActionSucceeded(context, {
         operation: 'delete',
         resourceId: id,
         resourceType: 'quality_characteristic',

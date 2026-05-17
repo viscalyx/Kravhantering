@@ -562,6 +562,7 @@ export function getCatalogTitle(
     | 'requirements'
     | 'risk_levels'
     | 'requirement_packages'
+    | 'specification_item_statuses'
     | 'statuses'
     | 'transitions'
     | 'quality_characteristics'
@@ -585,6 +586,8 @@ export function getCatalogTitle(
       )
     case 'risk_levels':
       return getLocalizedUiTerm(terminology, 'riskLevel', locale, 'plural')
+    case 'specification_item_statuses':
+      return locale === 'sv' ? 'Användningsstatusar' : 'Usage statuses'
     case 'statuses':
       return getLocalizedUiTerm(terminology, 'status', locale, 'plural')
     case 'requirement_packages':

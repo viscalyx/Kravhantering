@@ -10,6 +10,7 @@ import DeviationStepper from '@/components/DeviationStepper'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 import StatusBadge from '@/components/StatusBadge'
+import StatusIcon from '@/components/StatusIcon'
 import StatusStepper from '@/components/StatusStepper'
 import VersionHistory from '@/components/VersionHistory'
 import { useRouter } from '@/i18n/routing'
@@ -273,6 +274,7 @@ export default function RequirementDetailClient({
       ? selectedVersion?.statusNameSv
       : selectedVersion?.statusNameEn) ?? ''
   const currentStatusColor = selectedVersion?.statusColor ?? null
+  const currentStatusIconName = selectedVersion?.statusIconName ?? null
   const canAddToSpecification =
     currentStatusId === STATUS_PUBLISHED && isViewingDisplayVersion
   const areaOwnerName = formatActorDisplayNameForLocale(
@@ -335,15 +337,12 @@ export default function RequirementDetailClient({
       label: t('riskLevel'),
       markerValue: 'risk level',
       value: selectedVersion?.riskLevel ? (
-        <span className="inline-flex items-center gap-1.5">
-          {selectedVersion.riskLevel.color && (
-            <span
-              className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: selectedVersion.riskLevel.color }}
-            />
-          )}
-          {localName(selectedVersion.riskLevel)}
-        </span>
+        <StatusBadge
+          color={selectedVersion.riskLevel.color}
+          iconName={selectedVersion.riskLevel.iconName}
+          label={localName(selectedVersion.riskLevel) ?? ''}
+          size="sm"
+        />
       ) : (
         '—'
       ),
@@ -375,22 +374,22 @@ export default function RequirementDetailClient({
             value:
               specificationItemDetail?.specificationItemStatusNameEn ||
               specificationItemDetail?.specificationItemStatusNameSv ? (
-                <span className="inline-flex items-center gap-1.5">
-                  {specificationItemDetail.specificationItemStatusColor ? (
-                    <span
-                      className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{
-                        backgroundColor:
-                          specificationItemDetail.specificationItemStatusColor,
-                      }}
-                    />
-                  ) : null}
-                  {locale === 'sv'
-                    ? (specificationItemDetail.specificationItemStatusNameSv ??
-                      specificationItemDetail.specificationItemStatusNameEn)
-                    : (specificationItemDetail.specificationItemStatusNameEn ??
-                      specificationItemDetail.specificationItemStatusNameSv)}
-                </span>
+                <StatusBadge
+                  color={specificationItemDetail.specificationItemStatusColor}
+                  iconName={
+                    specificationItemDetail.specificationItemStatusIconName
+                  }
+                  label={
+                    locale === 'sv'
+                      ? (specificationItemDetail.specificationItemStatusNameSv ??
+                        specificationItemDetail.specificationItemStatusNameEn ??
+                        '')
+                      : (specificationItemDetail.specificationItemStatusNameEn ??
+                        specificationItemDetail.specificationItemStatusNameSv ??
+                        '')
+                  }
+                  size="sm"
+                />
               ) : (
                 '—'
               ),
@@ -708,6 +707,7 @@ export default function RequirementDetailClient({
             </h1>
             <StatusBadge
               color={currentStatusColor}
+              iconName={currentStatusIconName}
               label={currentStatusLabel}
             />
           </div>
@@ -718,13 +718,26 @@ export default function RequirementDetailClient({
           archivedVersionPreferredVersion &&
           archivedVersionBannerKey ? (
             <div className="flex items-center gap-2 mb-2 px-1 text-xs text-secondary-500 dark:text-secondary-400">
-              <AlertCircle
-                className="h-3.5 w-3.5 shrink-0"
-                style={{
-                  color:
-                    archivedVersionPreferredVersion.statusColor ?? undefined,
-                }}
-              />
+              {archivedVersionPreferredVersion.statusIconName ? (
+                <StatusIcon
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 shrink-0"
+                  name={archivedVersionPreferredVersion.statusIconName}
+                  style={{
+                    color:
+                      archivedVersionPreferredVersion.statusColor ?? undefined,
+                  }}
+                />
+              ) : (
+                <AlertCircle
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 shrink-0"
+                  style={{
+                    color:
+                      archivedVersionPreferredVersion.statusColor ?? undefined,
+                  }}
+                />
+              )}
               <span>
                 {t(archivedVersionBannerKey, {
                   version: String(
@@ -739,6 +752,7 @@ export default function RequirementDetailClient({
           ) : isViewingHistory ? (
             <div className="flex items-center gap-2 mb-2 px-1 text-xs text-secondary-500 dark:text-secondary-400">
               <Clock
+                aria-hidden="true"
                 className="h-3.5 w-3.5 shrink-0"
                 style={{ color: currentStatusColor ?? undefined }}
               />
@@ -753,10 +767,20 @@ export default function RequirementDetailClient({
             isViewingDisplayVersion &&
             !showsArchivedVersionAvailabilityBanner && (
               <div className="flex items-center gap-2 mb-2 px-1 text-xs text-secondary-500 dark:text-secondary-400">
-                <AlertCircle
-                  className="h-3.5 w-3.5 shrink-0"
-                  style={{ color: latest?.statusColor ?? undefined }}
-                />
+                {latest?.statusIconName ? (
+                  <StatusIcon
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 shrink-0"
+                    name={latest.statusIconName}
+                    style={{ color: latest.statusColor ?? undefined }}
+                  />
+                ) : (
+                  <AlertCircle
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 shrink-0"
+                    style={{ color: latest?.statusColor ?? undefined }}
+                  />
+                )}
                 <span>
                   {t('pendingVersionBanner', {
                     version: String(pendingVersionNumber),
@@ -952,7 +976,7 @@ export default function RequirementDetailClient({
           >
             <button
               aria-label={tc('close')}
-              className="sticky top-0 z-10 float-right mt-4 mr-4 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-secondary-100 p-2 transition-colors hover:bg-secondary-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:bg-secondary-800 dark:hover:bg-secondary-700 dark:focus-visible:ring-offset-secondary-900"
+              className="sticky top-0 z-10 float-right mt-4 mr-4 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-secondary-100 p-2 transition-colors hover:bg-secondary-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:bg-secondary-800 dark:hover:bg-secondary-700 dark:focus-visible:ring-offset-secondary-900"
               onClick={onClose}
               type="button"
             >

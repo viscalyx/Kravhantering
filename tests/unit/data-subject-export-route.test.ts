@@ -6,6 +6,7 @@ const routeState = vi.hoisted(() => ({
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
   getSessionFromRequest: vi.fn(),
   isSignedIn: vi.fn(),
+  recordDeniedActionAuditEvent: vi.fn(),
   recordSecurityEvent: vi.fn(),
   requireHumanActorSnapshot: vi.fn(
     (context: { actor: { displayName: string; hsaId: string } }) => ({
@@ -22,6 +23,15 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/auth/audit', () => ({
   recordSecurityEvent: routeState.recordSecurityEvent,
 }))
+
+vi.mock('@/lib/audit/action-audit', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/lib/audit/action-audit')>()
+  return {
+    ...actual,
+    recordDeniedActionAuditEvent: routeState.recordDeniedActionAuditEvent,
+  }
+})
 
 vi.mock('@/lib/auth/session', () => ({
   getSessionFromRequest: routeState.getSessionFromRequest,
@@ -190,6 +200,11 @@ describe('data-subject export route', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(routeState.collectDataSubjectExport).not.toHaveBeenCalled()
     expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
+    expect(routeState.recordDeniedActionAuditEvent).toHaveBeenCalledWith(
+      { db: true },
+      expect.objectContaining({ requestId: 'request-1' }),
+      expect.objectContaining({ action: 'privacy.data_subject_export.denied' }),
+    )
   })
 
   it('rejects invalid target HSA-ID before opening the database', async () => {

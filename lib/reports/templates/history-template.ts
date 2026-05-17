@@ -48,11 +48,14 @@ function toVersionSummary(
       ? {
           nameSv: version.riskLevel.nameSv,
           nameEn: version.riskLevel.nameEn,
+          color: version.riskLevel.color,
+          iconName: version.riskLevel.iconName,
         }
       : null,
     status: {
       label: getStatusLabel(version, locale),
       color: version.statusColor,
+      iconName: version.statusIconName,
     },
     createdBy: version.createdBy,
     createdAt: version.createdAt,
@@ -91,6 +94,7 @@ function toTimelineEntry(
     status: {
       label: getStatusLabel(version, locale),
       color: version.statusColor,
+      iconName: version.statusIconName,
     },
     createdBy: version.createdBy,
     createdAt: version.createdAt,

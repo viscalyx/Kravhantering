@@ -74,7 +74,7 @@ export const PUT = secureMutationRoute({
       }
       const db = await getRequestSqlServerDataSource()
       const terminology = await updateUiTerminology(db, body.terminology)
-      recordAdminPrivilegedActionSucceeded(context, {
+      await recordAdminPrivilegedActionSucceeded(context, {
         itemCount: body.terminology.length,
         operation: 'save',
         resourceType: 'ui_terminology',

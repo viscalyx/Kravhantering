@@ -21,6 +21,7 @@ import {
   nonNegativeIntegerSchema,
   nullableBusinessTextSchema,
 } from '@/lib/http/validation'
+import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
 import { DEVIATED_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 
 const specificationItemStatusCreateSchema = z
@@ -28,6 +29,7 @@ const specificationItemStatusCreateSchema = z
     color: boundedDbStringSchema,
     descriptionEn: nullableBusinessTextSchema.optional(),
     descriptionSv: nullableBusinessTextSchema.optional(),
+    iconName: nullableOptionalStatusIconNameSchema,
     nameEn: boundedDbStringSchema,
     nameSv: boundedDbStringSchema,
     sortOrder: nonNegativeIntegerSchema.optional(),
@@ -55,12 +57,22 @@ export const POST = secureMutationRoute({
   handler: async ({ body, context }) => {
     try {
       const db = await getRequestSqlServerDataSource()
-      const status = await createSpecificationItemStatus(db, body)
-      recordAdminPrivilegedActionSucceeded(context, {
-        changedFields: Object.keys(body),
-        operation: 'create',
-        resourceId: status.id,
-        resourceType: 'specification_item_status',
+      const status = await db.transaction(async transactionDb => {
+        const createdStatus = await createSpecificationItemStatus(
+          transactionDb,
+          body,
+        )
+        await recordAdminPrivilegedActionSucceeded(
+          context,
+          {
+            changedFields: Object.keys(body),
+            operation: 'create',
+            resourceId: createdStatus.id,
+            resourceType: 'specification_item_status',
+          },
+          transactionDb,
+        )
+        return createdStatus
       })
       return NextResponse.json(status, { status: 201 })
     } catch (error) {

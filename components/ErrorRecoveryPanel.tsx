@@ -88,7 +88,7 @@ export default function ErrorRecoveryPanel({
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <button
-                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus-visible:ring-offset-secondary-900"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus-visible:ring-offset-secondary-900"
                 onClick={onRetry}
                 type="button"
                 {...devMarker({
@@ -101,7 +101,7 @@ export default function ErrorRecoveryPanel({
                 {copy.retry}
               </button>
               <a
-                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-900 transition-colors hover:bg-secondary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-secondary-700 dark:bg-secondary-950 dark:text-secondary-100 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-900"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-900 transition-colors hover:bg-secondary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-secondary-700 dark:bg-secondary-950 dark:text-secondary-100 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-900"
                 href={targets.primary.href}
                 {...devMarker({
                   context: 'error boundary',
@@ -113,7 +113,7 @@ export default function ErrorRecoveryPanel({
                 {primaryLabel}
               </a>
               <a
-                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-900"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-900"
                 href={targets.secondary.href}
                 {...devMarker({
                   context: 'error boundary',

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import {
   accessReviewAuditActor,
   accessReviewServiceActor,
+  recordAccessReviewActionSucceeded,
   recordAccessReviewAuthorizationDenied,
 } from '@/lib/access-review/route-audit'
 import { accessReviewErrorResponse } from '@/lib/access-review/route-helpers'
@@ -71,6 +72,22 @@ export const POST = secureMutationRoute({
           reviewer: requireHumanActorSnapshot(context),
         },
         accessReviewServiceActor(context),
+        {
+          audit: (executor, auditDetail) =>
+            recordAccessReviewActionSucceeded(
+              context,
+              {
+                action: 'access_review.create',
+                detail: {
+                  itemCount: auditDetail.itemCount,
+                  reviewId: auditDetail.runId,
+                  status: auditDetail.status,
+                },
+                targetId: auditDetail.runId,
+              },
+              executor,
+            ),
+        },
       )
       recordSecurityEvent({
         actor: accessReviewAuditActor(context),
@@ -85,7 +102,7 @@ export const POST = secureMutationRoute({
       })
       return NextResponse.json(detail, { status: 201 })
     } catch (error) {
-      recordAccessReviewAuthorizationDenied(
+      await recordAccessReviewAuthorizationDenied(
         context,
         request,
         { actionKind: 'access_review.create' },

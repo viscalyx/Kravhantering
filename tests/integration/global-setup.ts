@@ -2,6 +2,10 @@ import { existsSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { type FullConfig, request as playwrightRequest } from '@playwright/test'
+import {
+  describeKeycloakLoginFormActionError,
+  extractKeycloakLoginFormAction,
+} from '@/scripts/lib/keycloak-login-form.mjs'
 
 /**
  * Default Playwright role used by integration specs that do not opt into a
@@ -92,23 +96,13 @@ async function loginAndSaveStorageState(
   }
   const loginHtml = await loginPage.text()
 
-  // Match the Keycloak login form's `action` attribute regardless of
-  // whether `id` appears before or after `action` on the <form> tag.
-  // We require an `id="kc-form-login"` attribute somewhere on the same
-  // tag plus an `action="..."` attribute, in either order.
-  const formTagMatch = loginHtml.match(
-    /<form\b[^>]*\bid="kc-form-login"[^>]*>/i,
-  )
-  const formTag = formTagMatch?.[0]
-  const actionMatch = formTag?.match(/\baction="([^"]+)"/i)
-  if (!actionMatch) {
-    throw new Error(
-      `Could not locate Keycloak login form in response from ${loginPage.url()}`,
-    )
+  const formAction = extractKeycloakLoginFormAction(loginHtml)
+  if (!formAction) {
+    throw new Error(describeKeycloakLoginFormActionError(loginPage.url()))
   }
-  const formAction = decodeHtmlEntities(actionMatch[1])
+  const resolvedFormAction = new URL(formAction, loginPage.url()).toString()
 
-  const callbackResponse = await context.post(formAction, {
+  const callbackResponse = await context.post(resolvedFormAction, {
     form: {
       username: spec.username,
       password: spec.password,
@@ -131,16 +125,6 @@ async function loginAndSaveStorageState(
 
   await context.storageState({ path: spec.filePath })
   await context.dispose()
-}
-
-function decodeHtmlEntities(value: string): string {
-  return value
-    .replace(/&quot;/g, '"')
-    .replace(/&#x2F;/g, '/')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
 }
 
 export default async function globalSetup(config: FullConfig): Promise<void> {

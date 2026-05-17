@@ -20,6 +20,8 @@ workflow is `docker compose -f docker-compose.sqlserver.yml up -d`,
 
 Use [docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md)
 for setup, migrations, and the read-only browse workflow.
+Use [docs/auth-developer-workflow.md](docs/auth-developer-workflow.md)
+for local Keycloak setup and integration-test CI requirements.
 
 ## Available Scripts
 

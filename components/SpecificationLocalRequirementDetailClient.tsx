@@ -20,6 +20,7 @@ import RequirementDetailSections from '@/components/RequirementDetailSections'
 import SpecificationLocalRequirementForm, {
   type SpecificationLocalRequirementSubmitPayload,
 } from '@/components/SpecificationLocalRequirementForm'
+import StatusBadge from '@/components/StatusBadge'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -53,12 +54,14 @@ interface SpecificationLocalRequirementDetail {
   requiresTesting: boolean
   riskLevel: {
     color: string
+    iconName: string | null
     id: number
     nameEn: string
     nameSv: string
   } | null
   specificationId: number
   specificationItemStatusColor: string | null
+  specificationItemStatusIconName: string | null
   specificationItemStatusId: number | null
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
@@ -207,7 +210,7 @@ function GraduationTargetAreaModal({
                 </label>
                 <select
                   aria-describedby={targetHelpId}
-                  className="min-h-[44px] w-full rounded-lg border border-secondary-300 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-600 dark:bg-secondary-800/50 dark:text-secondary-100"
+                  className="min-h-11 w-full rounded-lg border border-secondary-300 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-600 dark:bg-secondary-800/50 dark:text-secondary-100"
                   disabled={loading}
                   id={selectId}
                   onChange={event => onSelectArea(event.target.value)}
@@ -239,7 +242,7 @@ function GraduationTargetAreaModal({
 
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button
-                  className="btn-secondary min-h-[44px] w-full justify-center"
+                  className="btn-secondary min-h-11 w-full justify-center"
                   disabled={loading}
                   onClick={onClose}
                   type="button"
@@ -247,7 +250,7 @@ function GraduationTargetAreaModal({
                   {tc('cancel')}
                 </button>
                 <button
-                  className="btn-primary min-h-[44px] w-full justify-center"
+                  className="btn-primary min-h-11 w-full justify-center"
                   disabled={loading || !selectedArea}
                   onClick={() => onSubmit()}
                   type="button"
@@ -502,13 +505,13 @@ export default function SpecificationLocalRequirementDetailClient({
   }, [locale, specificationSlug, requirement?.itemRef])
 
   const railSecondaryButtonClass =
-    'btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px] disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none'
+    'btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11 disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none'
   const railPrimaryButtonClass =
-    'btn-primary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px] disabled:cursor-not-allowed disabled:pointer-events-none'
+    'btn-primary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11 disabled:cursor-not-allowed disabled:pointer-events-none'
   const railDangerButtonClass =
-    'btn-secondary inline-flex items-center gap-1.5 w-full justify-center text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 min-h-[44px] min-w-[44px] disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:text-secondary-400 dark:disabled:text-secondary-500 disabled:border-secondary-200 dark:disabled:border-secondary-700 disabled:bg-white dark:disabled:bg-secondary-800'
+    'btn-destructive inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11'
   const railAmberButtonClass =
-    'inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-[44px] min-w-[44px]'
+    'inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-11 min-w-11'
 
   const handleEditSubmit = useCallback(
     async (payload: SpecificationLocalRequirementSubmitPayload) => {
@@ -856,6 +859,8 @@ export default function SpecificationLocalRequirementDetailClient({
     )
   }
 
+  const riskLevelLabel = localName(requirement.riskLevel)?.trim()
+
   const metadata = [
     {
       id: 'area',
@@ -885,17 +890,17 @@ export default function SpecificationLocalRequirementDetailClient({
       id: 'risk-level',
       label: t('riskLevel'),
       markerValue: 'risk level',
-      value: requirement.riskLevel ? (
-        <span className="inline-flex items-center gap-2">
-          <span
-            className="h-2.5 w-2.5 rounded-full"
-            style={{ backgroundColor: requirement.riskLevel.color }}
+      value:
+        requirement.riskLevel && riskLevelLabel ? (
+          <StatusBadge
+            color={requirement.riskLevel.color}
+            iconName={requirement.riskLevel.iconName}
+            label={riskLevelLabel}
+            size="sm"
           />
-          {localName(requirement.riskLevel)}
-        </span>
-      ) : (
-        '—'
-      ),
+        ) : (
+          '—'
+        ),
     },
     {
       id: 'requires-testing',
@@ -925,21 +930,20 @@ export default function SpecificationLocalRequirementDetailClient({
       value:
         requirement.specificationItemStatusNameEn ||
         requirement.specificationItemStatusNameSv ? (
-          <span className="inline-flex items-center gap-2">
-            {requirement.specificationItemStatusColor ? (
-              <span
-                className="h-2.5 w-2.5 rounded-full"
-                style={{
-                  backgroundColor: requirement.specificationItemStatusColor,
-                }}
-              />
-            ) : null}
-            {locale === 'sv'
-              ? (requirement.specificationItemStatusNameSv ??
-                requirement.specificationItemStatusNameEn)
-              : (requirement.specificationItemStatusNameEn ??
-                requirement.specificationItemStatusNameSv)}
-          </span>
+          <StatusBadge
+            color={requirement.specificationItemStatusColor}
+            iconName={requirement.specificationItemStatusIconName}
+            label={
+              locale === 'sv'
+                ? (requirement.specificationItemStatusNameSv ??
+                  requirement.specificationItemStatusNameEn ??
+                  '')
+                : (requirement.specificationItemStatusNameEn ??
+                  requirement.specificationItemStatusNameSv ??
+                  '')
+            }
+            size="sm"
+          />
         ) : (
           '—'
         ),

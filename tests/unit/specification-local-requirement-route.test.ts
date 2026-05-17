@@ -6,6 +6,7 @@ const authState = vi.hoisted(() => ({
   assertAuthorized: vi.fn(),
   createRequestContext: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
+  recordDeniedActionAuditEvent: vi.fn(),
 }))
 const mockContext = {
   actor: {
@@ -30,6 +31,15 @@ const mocks = {
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: authState.getRequestSqlServerDataSource,
 }))
+
+vi.mock('@/lib/audit/action-audit', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/lib/audit/action-audit')>()
+  return {
+    ...actual,
+    recordDeniedActionAuditEvent: authState.recordDeniedActionAuditEvent,
+  }
+})
 
 vi.mock('@/lib/requirements/auth', async importOriginal => {
   const actual =
@@ -207,7 +217,7 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
     )
   })
 
-  it('returns 403 before loading the database when specification-local requirement deletion is not authorized', async () => {
+  it('returns 403 and records an audit denial when specification-local requirement deletion is not authorized', async () => {
     authState.assertAuthorized.mockRejectedValueOnce(
       forbiddenError('Missing specification-local requirement permission'),
     )
@@ -234,7 +244,15 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
       },
       expect.objectContaining({ requestId: 'request-1' }),
     )
-    expect(authState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(authState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
+    expect(authState.recordDeniedActionAuditEvent).toHaveBeenCalledWith(
+      mockDb,
+      expect.objectContaining({ requestId: 'request-1' }),
+      expect.objectContaining({
+        action: 'requirements.authorization.denied',
+        targetKind: 'requirements',
+      }),
+    )
     expect(mocks.deleteSpecificationLocalRequirement).not.toHaveBeenCalled()
   })
 

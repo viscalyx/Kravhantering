@@ -8,6 +8,7 @@ import CrudAdminPanel, {
 } from '@/components/CrudAdminPanel'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import IconPicker from '@/components/IconPicker'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 
@@ -29,6 +30,7 @@ const REQUIREMENT_STATUSES_HELP: HelpContent = {
 
 interface Status {
   color: string | null
+  iconName: string | null
   id: number
   isSystem: boolean
   nameEn: string
@@ -38,6 +40,7 @@ interface Status {
 
 interface StatusForm {
   color: string
+  iconName: string | null
   nameEn: string
   nameSv: string
   sortOrder: number
@@ -45,6 +48,7 @@ interface StatusForm {
 
 const getInitialForm = (): StatusForm => ({
   color: '#3b82f6',
+  iconName: null,
   nameEn: '',
   nameSv: '',
   sortOrder: 0,
@@ -52,6 +56,7 @@ const getInitialForm = (): StatusForm => ({
 
 const toForm = (status: Status): StatusForm => ({
   color: status.color ?? '#3b82f6',
+  iconName: status.iconName ?? null,
   nameEn: status.nameEn,
   nameSv: status.nameSv,
   sortOrder: status.sortOrder,
@@ -115,7 +120,11 @@ export default function RequirementStatusesClient() {
       header: t('name'),
       key: 'name',
       render: status => (
-        <StatusBadge color={status.color} label={getName(status)} />
+        <StatusBadge
+          color={status.color}
+          iconName={status.iconName}
+          label={getName(status)}
+        />
       ),
     },
     {
@@ -242,9 +251,29 @@ export default function RequirementStatusesClient() {
               </span>
               <StatusBadge
                 color={form.color}
+                iconName={form.iconName}
                 label={form.nameSv || t('preview')}
               />
             </div>
+          </div>
+          <div>
+            <FieldLabelWithHelp
+              help={t('iconHelp')}
+              htmlFor="status-icon"
+              label={t('icon')}
+            />
+            <IconPicker
+              disabled={disabled}
+              id="status-icon"
+              label={t('icon')}
+              onChange={iconName =>
+                setForm(previousForm => ({
+                  ...previousForm,
+                  iconName,
+                }))
+              }
+              value={form.iconName}
+            />
           </div>
         </>
       )}

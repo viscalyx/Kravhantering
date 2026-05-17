@@ -481,7 +481,7 @@ export default function KravunderlagDetailClient({
       aria-controls={`help-${field}`}
       aria-expanded={openHelp.has(field)}
       aria-label={`${tc('help')}: ${label}`}
-      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-secondary-400 dark:hover:text-primary-400 dark:disabled:hover:text-secondary-400"
+      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-secondary-400 dark:hover:text-primary-400 dark:disabled:hover:text-secondary-400"
       disabled={disabled}
       onClick={() => toggleHelp(field)}
       type="button"
@@ -1538,7 +1538,7 @@ export default function KravunderlagDetailClient({
                       </button>
                       {leftSelectedIds.size > 0 && (
                         <button
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                          className="btn-destructive inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm"
                           onClick={event =>
                             void handleRemoveSelected(
                               event.currentTarget as HTMLElement,
@@ -1688,7 +1688,7 @@ export default function KravunderlagDetailClient({
                             })}
                           </button>
                           <button
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                            className="btn-destructive inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm"
                             onClick={event =>
                               void handleRemoveSelected(
                                 event.currentTarget as HTMLElement,

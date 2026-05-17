@@ -65,7 +65,10 @@ to find a subject.
 Free-text fields are excluded because product policy tells users not to enter
 person-identifying data there. Platform security-audit logs are operational logs
 outside the application database and are documented as a limitation of this
-export. Direct transfer to another controller is not implemented in this slice.
+export. Database action-audit actor snapshots are included through
+`action_audit_events.actor`, but raw audit details and action-audit client IP
+values are not exported. Direct transfer to another controller is not
+implemented in this slice.
 
 ## Audit And Filenames
 

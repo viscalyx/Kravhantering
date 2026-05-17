@@ -81,14 +81,8 @@ jobs:
 
       - name: Start prodlike app
         run: |
-          set -euo pipefail
-          mkdir -p test-results/security-mcp
           OPENROUTER_API_KEY= OPENROUTER_MGMT_API_KEY= \
-            NODE_ENV=production BUILD_TARGET=local-prod \
-            nohup npx dotenv -e .env.prodlike -- \
-            npx next start --hostname 127.0.0.1 --port 3001 \
-            > test-results/security-mcp/app.log 2>&1 &
-          echo $! > test-results/security-mcp/app.pid
+            bash scripts/security/prodlike-app.sh start test-results/security-mcp
 
       - name: Wait for app health endpoint
         run: |
@@ -193,10 +187,7 @@ jobs:
 
       - name: Stop prodlike app
         if: always()
-        run: |
-          if [ -f test-results/security-mcp/app.pid ]; then
-            kill "$(cat test-results/security-mcp/app.pid)" 2>/dev/null || true
-          fi
+        run: bash scripts/security/prodlike-app.sh stop test-results/security-mcp
 
       - name: Stop IdP service
         if: always()

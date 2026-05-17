@@ -54,6 +54,7 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
         nameSv: 'Granskning',
         sortOrder: 2,
         color: 'yellow',
+        iconName: 'CheckCircle2',
         isSystem: 0,
       },
     ])
@@ -71,6 +72,7 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
         nameSv: 'Utkast',
         sortOrder: 1,
         color: 'blue',
+        iconName: null,
         isSystem: true,
       },
       {
@@ -79,6 +81,7 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
         nameSv: 'Granskning',
         sortOrder: 2,
         color: 'yellow',
+        iconName: 'CheckCircle2',
         isSystem: false,
       },
     ])
@@ -92,6 +95,7 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
       nameSv: 'Publicerad',
       sortOrder: 3,
       color: 'green',
+      iconName: 'ShieldCheck',
       isSystem: 1,
     })
     await expect(getStatusById(db, 3)).resolves.toEqual({
@@ -100,6 +104,7 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
       nameSv: 'Publicerad',
       sortOrder: 3,
       color: 'green',
+      iconName: 'ShieldCheck',
       isSystem: true,
     })
     expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 3 } })
@@ -124,6 +129,7 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
       nameSv: 'Utkast',
       sortOrder: 1,
       color: 'blue',
+      iconName: null,
       isSystem: false,
     })
     expect(repository.save).toHaveBeenCalled()

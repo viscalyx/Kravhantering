@@ -146,13 +146,21 @@ describe('ui-settings DAL', () => {
   it('updateRequirementListColumnDefaults clears and reinserts within a transaction', async () => {
     const { db, query, transaction } = createSqlServerDb()
     query.mockResolvedValue([])
+    const audit = vi.fn(async executor => {
+      await executor.query('INSERT INTO action_audit_events (...) VALUES (...)')
+    })
 
-    await updateRequirementListColumnDefaults(db, [
-      { columnId: 'uniqueId', sortOrder: 0, defaultVisible: true },
-      { columnId: 'description', sortOrder: 1, defaultVisible: false },
-    ])
+    await updateRequirementListColumnDefaults(
+      db,
+      [
+        { columnId: 'uniqueId', sortOrder: 0, defaultVisible: true },
+        { columnId: 'description', sortOrder: 1, defaultVisible: false },
+      ],
+      { audit },
+    )
 
     expect(transaction).toHaveBeenCalledTimes(1)
+    expect(audit).toHaveBeenCalledTimes(1)
     const deleteCall = query.mock.calls.find(([sql]) =>
       /DELETE FROM requirement_list_column_defaults/.test(sql),
     )
@@ -161,5 +169,10 @@ describe('ui-settings DAL', () => {
       /INSERT INTO requirement_list_column_defaults/.test(sql),
     )
     expect(insertCalls.length).toBeGreaterThanOrEqual(2)
+    expect(
+      query.mock.calls.some(([sql]) =>
+        /INSERT INTO action_audit_events/.test(sql),
+      ),
+    ).toBe(true)
   })
 })

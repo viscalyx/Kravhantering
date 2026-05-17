@@ -18,6 +18,7 @@ import {
   nonNegativeIntegerSchema,
   parseRouteParams,
 } from '@/lib/http/validation'
+import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +27,7 @@ type Params = Promise<{ id: string }>
 const updateRiskLevelSchema = z
   .object({
     color: boundedDbStringSchema.optional(),
+    iconName: nullableOptionalStatusIconNameSchema,
     nameEn: boundedDbStringSchema.optional(),
     nameSv: boundedDbStringSchema.optional(),
     sortOrder: nonNegativeIntegerSchema.optional(),
@@ -60,7 +62,7 @@ export const PUT = secureMutationRoute({
     if (!riskLevel) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    recordAdminPrivilegedActionSucceeded(context, {
+    await recordAdminPrivilegedActionSucceeded(context, {
       changedFields: Object.keys(body),
       operation: 'update',
       resourceId: params.id,
@@ -79,7 +81,7 @@ export const DELETE = secureMutationRoute({
     if (deletedCount === 0) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    recordAdminPrivilegedActionSucceeded(context, {
+    await recordAdminPrivilegedActionSucceeded(context, {
       operation: 'delete',
       resourceId: params.id,
       resourceType: 'risk_level',

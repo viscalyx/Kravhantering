@@ -20,10 +20,12 @@ import {
   boundedDbStringSchema,
   nonNegativeIntegerSchema,
 } from '@/lib/http/validation'
+import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
 
 const createRiskLevelSchema = z
   .object({
     color: boundedDbStringSchema,
+    iconName: nullableOptionalStatusIconNameSchema,
     nameEn: boundedDbStringSchema,
     nameSv: boundedDbStringSchema,
     sortOrder: nonNegativeIntegerSchema.optional(),
@@ -51,7 +53,7 @@ export const POST = secureMutationRoute({
     try {
       const db = await getRequestSqlServerDataSource()
       const riskLevel = await createRiskLevel(db, body)
-      recordAdminPrivilegedActionSucceeded(context, {
+      await recordAdminPrivilegedActionSucceeded(context, {
         changedFields: Object.keys(body),
         operation: 'create',
         resourceId: riskLevel.id,

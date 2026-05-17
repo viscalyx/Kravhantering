@@ -13,8 +13,13 @@ export interface DeviationReportVersion {
   qualityCharacteristic: { nameEn: string; nameSv: string } | null
   requirementPackages: { nameEn: string | null; nameSv: string | null }[]
   requiresTesting: boolean
-  riskLevel: { nameEn: string; nameSv: string } | null
-  status: { color: string | null; label: string }
+  riskLevel: {
+    color: string | null
+    iconName: string | null
+    nameEn: string
+    nameSv: string
+  } | null
+  status: { color: string | null; iconName: string | null; label: string }
   type: { nameEn: string; nameSv: string } | null
   verificationMethod: string | null
   versionNumber: number
@@ -67,9 +72,16 @@ export async function fetchDeviationForReport(
         nameSv: string
       } | null
       requiresTesting: boolean
-      riskLevel: { id: number; nameEn: string; nameSv: string } | null
+      riskLevel: {
+        color: string | null
+        iconName: string | null
+        id: number
+        nameEn: string
+        nameSv: string
+      } | null
       status: number
       statusColor: string | null
+      statusIconName: string | null
       statusNameEn: string | null
       statusNameSv: string | null
       type: { id: number; nameEn: string; nameSv: string } | null
@@ -151,6 +163,8 @@ export async function fetchDeviationForReport(
         : null,
       riskLevel: version.riskLevel
         ? {
+            color: version.riskLevel.color,
+            iconName: version.riskLevel.iconName,
             nameEn: version.riskLevel.nameEn,
             nameSv: version.riskLevel.nameSv,
           }
@@ -158,6 +172,7 @@ export async function fetchDeviationForReport(
       status: {
         label: statusLabel ?? 'Unknown',
         color: version.statusColor,
+        iconName: version.statusIconName,
       },
       createdBy: version.createdBy,
       normReferences: version.versionNormReferences

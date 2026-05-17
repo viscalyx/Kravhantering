@@ -3,6 +3,7 @@ import { type RiskLevelEntity, riskLevelEntity } from '@/lib/typeorm/entities'
 
 export interface RiskLevelRow {
   color: string
+  iconName: string | null
   id: number
   nameEn: string
   nameSv: string
@@ -13,6 +14,7 @@ interface LinkedRequirementRow {
   description: string | null
   id: number
   statusColor: string | null
+  statusIconName: string | null
   statusNameEn: string | null
   statusNameSv: string | null
   uniqueId: string
@@ -24,6 +26,7 @@ export type { LinkedRequirementRow }
 function map(row: RiskLevelEntity): RiskLevelRow {
   return {
     color: row.color,
+    iconName: row.iconName ?? null,
     id: row.id,
     nameEn: row.nameEn,
     nameSv: row.nameSv,
@@ -84,7 +87,8 @@ export async function getLinkedRequirements(
         requirement_versions.version_number AS versionNumber,
         requirement_statuses.name_sv AS statusNameSv,
         requirement_statuses.name_en AS statusNameEn,
-        requirement_statuses.color AS statusColor
+        requirement_statuses.color AS statusColor,
+        requirement_statuses.icon_name AS statusIconName
       FROM requirement_versions
       INNER JOIN requirements
         ON requirement_versions.requirement_id = requirements.id
@@ -103,6 +107,7 @@ export async function createRiskLevel(
     nameSv: string
     nameEn: string
     color: string
+    iconName?: string | null
     sortOrder?: number
   },
 ): Promise<RiskLevelRow> {
@@ -112,6 +117,7 @@ export async function createRiskLevel(
       nameSv: data.nameSv,
       nameEn: data.nameEn,
       color: data.color,
+      iconName: data.iconName ?? null,
       sortOrder: data.sortOrder ?? 0,
     }),
   )
@@ -125,6 +131,7 @@ export async function updateRiskLevel(
     nameSv?: string
     nameEn?: string
     color?: string
+    iconName?: string | null
     sortOrder?: number
   },
 ): Promise<RiskLevelRow | undefined> {
@@ -133,6 +140,7 @@ export async function updateRiskLevel(
   if (data.nameSv !== undefined) patch.nameSv = data.nameSv
   if (data.nameEn !== undefined) patch.nameEn = data.nameEn
   if (data.color !== undefined) patch.color = data.color
+  if (data.iconName !== undefined) patch.iconName = data.iconName
   if (data.sortOrder !== undefined) patch.sortOrder = data.sortOrder
   if (Object.keys(patch).length > 0) {
     await repository.update(id, patch)

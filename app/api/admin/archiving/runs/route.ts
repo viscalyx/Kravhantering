@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { executeArchivingRetention } from '@/lib/archiving/retention'
+import { recordAllowedActionAuditEventWithExecutor } from '@/lib/audit/action-audit'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { CsrfError } from '@/lib/auth/csrf'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -48,7 +49,28 @@ export const POST = secureMutationRoute({
     try {
       const db = await getRequestSqlServerDataSource()
       const actor = requireHumanActorSnapshot(context)
-      const result = await executeArchivingRetention(db, body, actor)
+      const result = await executeArchivingRetention(
+        db,
+        {
+          ...body,
+          audit: (executor, auditResult) =>
+            recordAllowedActionAuditEventWithExecutor(executor, context, {
+              action: 'admin.archiving.execute',
+              details: {
+                archiveCount: auditResult.summary.archiveCount,
+                candidateCount: auditResult.summary.candidateCount,
+                deleteCount: auditResult.summary.deleteCount,
+                exceptionCount: auditResult.summary.exceptionCount,
+                policyId: body.policyId,
+                runRequestId: auditResult.runRequestId,
+                skippedCount: auditResult.summary.skippedCount,
+              },
+              targetId: auditResult.runId,
+              targetKind: 'ArchivingRetentionRun',
+            }),
+        },
+        actor,
+      )
       recordSecurityEvent({
         actor: auditActor(context),
         detail: {

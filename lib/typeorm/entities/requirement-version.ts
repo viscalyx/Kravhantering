@@ -125,6 +125,18 @@ export const requirementVersionEntity =
         name: 'idx_requirement_versions_has_specification_item_history',
         columns: ['hasSpecificationItemHistory'],
       },
+      {
+        name: 'uq_requirement_versions_archive_initiated_requirement_id',
+        columns: ['requirement'],
+        unique: true,
+        where: '[archive_initiated_at] IS NOT NULL',
+      },
+      {
+        name: 'uq_requirement_versions_published_requirement_id',
+        columns: ['requirement'],
+        unique: true,
+        where: '[requirement_status_id] = 3',
+      },
     ],
     relations: {
       requirement: {

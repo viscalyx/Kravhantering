@@ -39,6 +39,11 @@ describe('requirements-list-performance.mjs', () => {
     expect(seedSql).toContain('WHERE unique_id LIKE @uniqueIdLike')
     expect(seedSql).toContain("CONCAT(@uniqueIdPrefix, N'-'")
     expect(seedSql).toContain('SET IDENTITY_INSERT requirements ON')
+    expect(seedSql).toContain('published_version_number')
+    expect(seedSql).not.toContain('WHEN v.version_number = 1 THEN 3')
+    expect(seedSql).toContain(
+      'Performance fixture generated duplicate Published requirement_versions rows.',
+    )
     expect(seedSql).toContain('requirement_version_norm_references')
     expect(buildPerformanceFixtureStatusSql()).toContain(
       'COUNT(*) AS requirementCount',

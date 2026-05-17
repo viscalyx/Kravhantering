@@ -16,8 +16,13 @@ export interface VersionSummaryData {
   qualityCharacteristic: { nameSv: string; nameEn: string } | null
   requirementPackages: { nameSv: string; nameEn: string }[]
   requiresTesting: boolean
-  riskLevel: { nameSv: string; nameEn: string } | null
-  status: { label: string; color: string | null }
+  riskLevel: {
+    color?: string | null
+    iconName?: string | null
+    nameSv: string
+    nameEn: string
+  } | null
+  status: { label: string; color: string | null; iconName?: string | null }
   type: { nameSv: string; nameEn: string } | null
   verificationMethod: string | null
   versionNumber: number
@@ -46,7 +51,7 @@ export interface TimelineEntryData {
   descriptionExcerpt: string | null
   editedAt: string | null
   publishedAt: string | null
-  status: { label: string; color: string | null }
+  status: { label: string; color: string | null; iconName?: string | null }
   versionNumber: number
 }
 
@@ -57,7 +62,7 @@ export type ReportSection =
       subtitle?: string
       requirementId: string
       generatedAt: string
-      status?: { label: string; color: string | null }
+      status?: { label: string; color: string | null; iconName?: string | null }
     }
   | { type: 'notice'; message: string; severity: 'info' | 'warning' }
   | {
@@ -87,6 +92,7 @@ export type ReportSection =
       rows: {
         cells: Record<string, string>
         statusColor?: string | null
+        statusIconName?: string | null
       }[]
     }
   | {
@@ -104,7 +110,12 @@ export type ReportSection =
       createdAt: string
       specificationName: string | null
       specificationUniqueId: string | null
-      riskLevel: { nameSv: string; nameEn: string } | null
+      riskLevel: {
+        color?: string | null
+        iconName?: string | null
+        nameSv: string
+        nameEn: string
+      } | null
       locale: string
     }
   | {

@@ -123,6 +123,7 @@ describe('requirements auth', () => {
         method: 'POST',
         headers: {
           'user-agent': 'TestAgent/1.0',
+          'x-forwarded-for': '2001:db8::5',
           'x-request-id': 'req-audit',
         },
       })
@@ -131,6 +132,7 @@ describe('requirements auth', () => {
       expect(ctx.request).toEqual({
         method: 'POST',
         path: '/api/test',
+        ip: '2001:db8::5',
         requestId: 'req-audit',
         userAgent: 'TestAgent/1.0',
       })

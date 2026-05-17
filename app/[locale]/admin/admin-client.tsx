@@ -45,6 +45,10 @@ import {
 } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useAccessReviewExportDownload } from '@/components/access-review/useAccessReviewExportDownload'
+import ActionAuditLogView, {
+  type ActionAuditLogInitialState,
+  type ActionAuditLogLabels,
+} from '@/components/admin/ActionAuditLogView'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useDataSubjectExportDownload } from '@/components/privacy/useDataSubjectExportDownload'
@@ -55,6 +59,7 @@ import type {
   AccessReviewRun,
   AccessReviewRunDetail,
 } from '@/lib/access-review/types'
+import type { ActionAuditLogSearchParams } from '@/lib/audit/action-audit-query'
 import { downloadBlob } from '@/lib/browser-download'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -190,6 +195,7 @@ const ADMIN_ACCESS_REVIEW_HELP: HelpContent = {
 
 type AdminTab =
   | 'accessReview'
+  | 'actionAuditLog'
   | 'archiving'
   | 'columns'
   | 'privacy'
@@ -208,10 +214,12 @@ const adminTabs: { icon: typeof Languages; id: AdminTab }[] = [
   { icon: ClipboardCheck, id: 'accessReview' },
   { icon: Archive, id: 'archiving' },
   { icon: ShieldCheck, id: 'privacy' },
+  { icon: FileText, id: 'actionAuditLog' },
 ]
 
 const ADMIN_TAB_DEVELOPER_MODE_VALUES: Record<AdminTab, string> = {
   accessReview: 'access review',
+  actionAuditLog: 'action audit log',
   archiving: 'archiving',
   columns: 'columns',
   privacy: 'privacy',
@@ -224,11 +232,15 @@ const DEFAULT_ADMIN_TAB: AdminTab = 'terminology'
 
 function getAdminTabFromSearchParams(
   searchParams: URLSearchParams,
-  options: { canUsePrivacy: boolean },
+  options: { canManageAccessReviews: boolean; canUsePrivacy: boolean },
 ): AdminTab {
   const tab = searchParams.get(ADMIN_TAB_QUERY_KEY)
 
   if (!adminTabs.some(item => item.id === tab)) {
+    return DEFAULT_ADMIN_TAB
+  }
+
+  if (tab === 'actionAuditLog' && !options.canManageAccessReviews) {
     return DEFAULT_ADMIN_TAB
   }
 
@@ -929,7 +941,7 @@ function PrivacyErasurePanel() {
 
           <div className="flex flex-wrap items-center gap-3">
             <button
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-secondary-200 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
               disabled={status === 'saving' || !targetHsaId.trim()}
               onClick={runPreview}
               type="button"
@@ -975,7 +987,7 @@ function PrivacyErasurePanel() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                 disabled={
                   status === 'saving' || dataSubjectExport.downloading !== null
                 }
@@ -990,7 +1002,7 @@ function PrivacyErasurePanel() {
                   : ta('privacy.exportJson')}
               </button>
               <button
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                 disabled={
                   status === 'saving' || dataSubjectExport.downloading !== null
                 }
@@ -1222,7 +1234,7 @@ function PrivacyErasurePanel() {
           {preview.totalCount > 0 && !hasSuccessfulExecution ? (
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-secondary-200/70 bg-white px-4 py-4 dark:border-secondary-700/60 dark:bg-secondary-900">
               <button
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-800 disabled:opacity-60"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-800 disabled:opacity-60"
                 disabled={status === 'saving'}
                 onClick={executeErasure}
                 type="button"
@@ -1503,7 +1515,7 @@ function ArchivingPanel() {
             </p>
           </div>
           <button
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-secondary-200 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
             disabled={retentionStatus === 'saving'}
             onClick={() => void loadRetentionPolicies()}
             type="button"
@@ -1519,7 +1531,7 @@ function ArchivingPanel() {
               {ta('archiving.retention.policy')}
             </span>
             <select
-              className="min-h-[44px] w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+              className="min-h-11 w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
               disabled={retentionStatus === 'saving'}
               onChange={event => {
                 const policyId = Number(event.target.value)
@@ -1539,7 +1551,7 @@ function ArchivingPanel() {
           </label>
           <div className="flex items-end">
             <button
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:opacity-60"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:opacity-60"
               disabled={
                 retentionStatus === 'saving' ||
                 !selectedRetentionPolicy ||
@@ -1636,7 +1648,7 @@ function ArchivingPanel() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                   disabled={
                     retentionStatus === 'saving' ||
                     retentionPreview.summary.candidateCount === 0
@@ -1648,7 +1660,7 @@ function ArchivingPanel() {
                   {ta('archiving.retention.exportJson')}
                 </button>
                 <button
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-800 disabled:opacity-60"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-800 disabled:opacity-60"
                   disabled={
                     retentionStatus === 'saving' ||
                     retentionPreview.summary.candidateCount === 0 ||
@@ -2239,7 +2251,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <button
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
               disabled={isCreateDisabled}
               onClick={createRun}
               type="button"
@@ -2369,7 +2381,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                     displayedRun.status !== 'completed' &&
                     displayedRun.status !== 'cancelled' ? (
                       <button
-                        className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-60 dark:border-red-800 dark:bg-secondary-900 dark:text-red-200 dark:hover:bg-red-950/30"
+                        className="btn-destructive inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm disabled:opacity-60 dark:bg-secondary-900 dark:text-red-200 dark:hover:bg-red-950/30"
                         disabled={isDetailLoading || status === 'saving'}
                         onClick={event => void cancelRun(displayedRun, event)}
                         type="button"
@@ -2383,7 +2395,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                     displayedRun.status !== 'completed' &&
                     displayedRun.status !== 'cancelled' ? (
                       <button
-                        className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
+                        className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
                         disabled={isDetailLoading || status === 'saving'}
                         onClick={completeRun}
                         type="button"
@@ -2395,7 +2407,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                     {canManage ? (
                       <div className="flex min-w-0 max-w-full flex-nowrap items-center gap-2 overflow-x-auto">
                         <button
-                          className="inline-flex min-h-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                          className="inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                           disabled={
                             isDetailLoading ||
                             status === 'saving' ||
@@ -2412,7 +2424,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                             : ta('accessReview.exportJson')}
                         </button>
                         <button
-                          className="inline-flex min-h-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                          className="inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                           disabled={
                             isDetailLoading ||
                             status === 'saving' ||
@@ -2488,7 +2500,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                                       ? ta('accessReview.rowNeedsReview')
                                       : ta('accessReview.rowApproved')
                                   }
-                                  className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border transition-colors disabled:opacity-60 ${
+                                  className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border transition-colors disabled:opacity-60 ${
                                     canChooseDecision
                                       ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-900/40'
                                       : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-900/40'
@@ -2650,10 +2662,12 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
   )
 }
 export default function AdminClient({
+  actionAuditLog,
   currentUserRoles = [],
   initialColumnDefaults,
   initialTerminology,
 }: {
+  actionAuditLog?: ActionAuditLogInitialState
   currentUserRoles?: string[]
   initialColumnDefaults: RequirementListColumnDefault[]
   initialTerminology: UiTermTranslation[]
@@ -2664,12 +2678,14 @@ export default function AdminClient({
   const tr = useTranslations('requirement')
   const tis = useTranslations('improvementSuggestion')
   const terminologyLabel = useTranslations('terminology')
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
   const canUsePrivacy = currentUserRoles.includes(PRIVACY_OFFICER_ROLE)
   const canManageAccessReviews = currentUserRoles.includes(ADMIN_ROLE)
   const [activeTab, setActiveTab] = useState<AdminTab>(() =>
     getAdminTabFromSearchParams(new URLSearchParams(searchParams), {
+      canManageAccessReviews,
       canUsePrivacy,
     }),
   )
@@ -2694,18 +2710,27 @@ export default function AdminClient({
     () => getOrderedRequirementListColumns(columnDefaults),
     [columnDefaults],
   )
+  const actionAuditLogQuery = useMemo<ActionAuditLogSearchParams>(
+    () => Object.fromEntries(new URLSearchParams(searchParams).entries()),
+    [searchParams],
+  )
   const isTerminologySaving = terminologySaveState === 'saving'
   const isColumnSaving = columnSaveState === 'saving'
 
   useEffect(() => {
     setActiveTab(
       getAdminTabFromSearchParams(new URLSearchParams(searchParams), {
+        canManageAccessReviews,
         canUsePrivacy,
       }),
     )
-  }, [canUsePrivacy, searchParams])
+  }, [canManageAccessReviews, canUsePrivacy, searchParams])
 
   const selectTab = (tab: AdminTab) => {
+    if (tab === 'actionAuditLog' && !canManageAccessReviews) {
+      return
+    }
+
     if ((tab === 'privacy' || tab === 'archiving') && !canUsePrivacy) {
       return
     }
@@ -2976,19 +3001,44 @@ export default function AdminClient({
     return null
   }
 
+  const actionAuditLogLabels: ActionAuditLogLabels = {
+    action: ta('auditLog.action'),
+    actor: ta('auditLog.actor'),
+    actorHsaId: ta('auditLog.actorHsaId'),
+    allDecisions: ta('auditLog.allDecisions'),
+    allowed: ta('auditLog.allowed'),
+    clear: ta('auditLog.clear'),
+    clientIp: ta('auditLog.clientIp'),
+    decision: ta('auditLog.decision'),
+    denied: ta('auditLog.denied'),
+    description: ta('auditLog.description'),
+    empty: ta('auditLog.empty'),
+    exportCsv: ta('auditLog.exportCsv'),
+    eyebrow: ta('auditLog.eyebrow'),
+    filter: ta('auditLog.filter'),
+    from: ta('auditLog.from'),
+    next: ta('auditLog.next'),
+    occurredAt: ta('auditLog.occurredAt'),
+    pagination: values => ta('auditLog.pagination', values),
+    previous: ta('auditLog.previous'),
+    requestId: ta('auditLog.requestId'),
+    target: ta('auditLog.target'),
+    targetId: ta('auditLog.targetId'),
+    targetKind: ta('auditLog.targetKind'),
+    title: ta('auditLog.title'),
+    to: ta('auditLog.to'),
+  }
+
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom space-y-6">
         <section className="overflow-hidden rounded-[2rem] border border-secondary-200/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(238,242,255,0.82))] p-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.55)] backdrop-blur-md dark:border-secondary-700/60 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.92),rgba(30,41,59,0.86))]">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-2xl xl:max-w-[28rem] 2xl:max-w-xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary-700 dark:text-primary-300">
-                {tn('referenceData')}
-              </p>
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-secondary-950 dark:text-secondary-50">
+          <div className="space-y-4">
+            <div className="space-y-2 xl:flex xl:flex-row xl:items-center xl:gap-6 xl:justify-between">
+              <h1 className="text-3xl font-semibold tracking-tight text-secondary-950 dark:text-secondary-50 xl:shrink-0">
                 {ta('title')}
               </h1>
-              <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-300">
+              <p className="text-sm text-secondary-600 dark:text-secondary-300 xl:ml-auto xl:flex-1">
                 {ta('description')}
               </p>
             </div>
@@ -3002,51 +3052,57 @@ export default function AdminClient({
               })}
               role="tablist"
             >
-              {adminTabs.map(tab => {
-                const isDisabled =
-                  (tab.id === 'privacy' || tab.id === 'archiving') &&
-                  !canUsePrivacy
-                const label =
-                  tab.id === 'privacy'
-                    ? ta('privacy.title')
-                    : tab.id === 'accessReview'
-                      ? ta('accessReview.title')
-                      : tab.id === 'archiving'
-                        ? ta('archiving.title')
-                        : ta(tab.id)
-
-                return (
-                  <button
-                    aria-controls={`${tab.id}-panel`}
-                    aria-disabled={isDisabled ? 'true' : undefined}
-                    aria-selected={activeTab === tab.id}
-                    className={`inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
-                      isDisabled
-                        ? 'cursor-not-allowed text-secondary-400 opacity-50 hover:bg-transparent dark:text-secondary-500'
-                        : activeTab === tab.id
-                          ? 'bg-primary-700 text-white'
-                          : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-200 dark:hover:bg-secondary-800'
-                    }`}
-                    key={`admin-tab-${tab.id}`}
-                    {...devMarker({
-                      context: 'admin center',
-                      name: 'edge tab',
-                      priority: 360,
-                      value: ADMIN_TAB_DEVELOPER_MODE_VALUES[tab.id],
-                    })}
-                    id={`${tab.id}-tab`}
-                    onClick={() => selectTab(tab.id)}
-                    role="tab"
-                    title={
-                      isDisabled ? ta('privacy.disabledTooltip') : undefined
-                    }
-                    type="button"
-                  >
-                    <tab.icon aria-hidden="true" className="h-4 w-4" />
-                    {label}
-                  </button>
+              {adminTabs
+                .filter(
+                  tab => tab.id !== 'actionAuditLog' || canManageAccessReviews,
                 )
-              })}
+                .map(tab => {
+                  const isDisabled =
+                    (tab.id === 'privacy' || tab.id === 'archiving') &&
+                    !canUsePrivacy
+                  const label =
+                    tab.id === 'privacy'
+                      ? ta('privacy.title')
+                      : tab.id === 'accessReview'
+                        ? ta('accessReview.title')
+                        : tab.id === 'archiving'
+                          ? ta('archiving.title')
+                          : tab.id === 'actionAuditLog'
+                            ? ta('auditLog.title')
+                            : ta(tab.id)
+
+                  return (
+                    <button
+                      aria-controls={`${tab.id}-panel`}
+                      aria-disabled={isDisabled ? 'true' : undefined}
+                      aria-selected={activeTab === tab.id}
+                      className={`inline-flex min-h-11 min-w-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
+                        isDisabled
+                          ? 'cursor-not-allowed text-secondary-400 opacity-50 hover:bg-transparent dark:text-secondary-500'
+                          : activeTab === tab.id
+                            ? 'bg-primary-700 text-white'
+                            : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-200 dark:hover:bg-secondary-800'
+                      }`}
+                      key={`admin-tab-${tab.id}`}
+                      {...devMarker({
+                        context: 'admin center',
+                        name: 'edge tab',
+                        priority: 360,
+                        value: ADMIN_TAB_DEVELOPER_MODE_VALUES[tab.id],
+                      })}
+                      id={`${tab.id}-tab`}
+                      onClick={() => selectTab(tab.id)}
+                      role="tab"
+                      title={
+                        isDisabled ? ta('privacy.disabledTooltip') : undefined
+                      }
+                      type="button"
+                    >
+                      <tab.icon aria-hidden="true" className="h-4 w-4" />
+                      {label}
+                    </button>
+                  )
+                })}
             </div>
           </div>
         </section>
@@ -3078,7 +3134,7 @@ export default function AdminClient({
                   {(['sv', 'en'] as const).map(locale => (
                     <button
                       aria-pressed={activeLocale === locale}
-                      className={`min-h-[44px] min-w-[44px] rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                      className={`min-h-11 min-w-11 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                         activeLocale === locale
                           ? 'bg-primary-700 text-white'
                           : 'text-secondary-700 hover:bg-white dark:text-secondary-200 dark:hover:bg-secondary-800'
@@ -3097,7 +3153,7 @@ export default function AdminClient({
                   ta('terminologySaveError'),
                 )}
                 <button
-                  className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                  className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
                   disabled={isTerminologySaving}
                   onClick={() => {
                     setTerminology(createShippedTerminology())
@@ -3109,7 +3165,7 @@ export default function AdminClient({
                   {tc('resetToDefault')}
                 </button>
                 <button
-                  className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
+                  className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
                   disabled={isTerminologySaving}
                   onClick={saveTerminology}
                   type="button"
@@ -3220,7 +3276,7 @@ export default function AdminClient({
               <div className="flex flex-wrap items-center gap-3">
                 {renderSaveState(columnSaveState, ta('columnsSaveError'))}
                 <button
-                  className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800 sm:w-auto sm:min-w-[44px]"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800 sm:w-auto sm:min-w-11"
                   disabled={isColumnSaving}
                   onClick={() => {
                     setColumnDefaults(createShippedColumnDefaults())
@@ -3232,7 +3288,7 @@ export default function AdminClient({
                   {tc('resetToDefault')}
                 </button>
                 <button
-                  className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60 sm:w-auto sm:min-w-[44px]"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60 sm:w-auto sm:min-w-11"
                   disabled={isColumnSaving}
                   onClick={saveColumns}
                   type="button"
@@ -3271,7 +3327,7 @@ export default function AdminClient({
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
                       <button
-                        className="inline-flex h-10 w-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-secondary-200 bg-white text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-40 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                        className="inline-flex h-10 w-10 min-h-11 min-w-11 items-center justify-center rounded-full border border-secondary-200 bg-white text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-40 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                         disabled={isColumnSaving || index === 0}
                         onClick={() => moveColumn(column.id, -1)}
                         type="button"
@@ -3280,7 +3336,7 @@ export default function AdminClient({
                         <span className="sr-only">{ta('moveUp')}</span>
                       </button>
                       <button
-                        className="inline-flex h-10 w-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-secondary-200 bg-white text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-40 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                        className="inline-flex h-10 w-10 min-h-11 min-w-11 items-center justify-center rounded-full border border-secondary-200 bg-white text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-40 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                         disabled={
                           isColumnSaving || index === orderedColumns.length - 1
                         }
@@ -3371,6 +3427,33 @@ export default function AdminClient({
 
         {activeTab === 'privacy' && canUsePrivacy ? (
           <PrivacyErasurePanel />
+        ) : null}
+
+        {activeTab === 'actionAuditLog' && canManageAccessReviews ? (
+          <section
+            aria-labelledby="actionAuditLog-tab"
+            className="space-y-6"
+            {...devMarker({
+              context: 'admin center',
+              name: 'tab panel',
+              priority: 340,
+              value: 'action audit log',
+            })}
+            id="actionAuditLog-panel"
+            role="tabpanel"
+          >
+            <ActionAuditLogView
+              basePath={`/${locale}/admin`}
+              labels={actionAuditLogLabels}
+              loadingLabel={tc('loading')}
+              locale={locale}
+              preservedParams={{ [ADMIN_TAB_QUERY_KEY]: 'actionAuditLog' }}
+              query={actionAuditLog?.query ?? actionAuditLogQuery}
+              result={actionAuditLog?.result}
+              showEyebrow={false}
+              titleElement="h2"
+            />
+          </section>
         ) : null}
       </div>
     </div>

@@ -32,6 +32,7 @@ recorded production incident.
 | `lib/dal/requirements-specifications.ts` | 90-95% | Specification linking, needs-reference ownership, specification-local sequencing, and deviation gating determine what compliance reports say about real work. Silent drift here produces plausible but wrong specification status. |
 | `lib/requirements/service.ts` and `app/api/requirements/[id]/route.ts` | 88-92% | These are the public truth layer for REST and MCP. The highest-risk failure is published-detail reads leaking draft or review content. |
 | `lib/dal/deviations.ts` and `lib/dal/improvement-suggestions.ts` | 88-92% | These modules hold the project's write-once audit trail. Mutability after approval, rejection, resolution, or dismissal breaks traceability instead of throwing obvious errors. |
+| `lib/audit/action-audit.ts` and `app/api/admin/audit-events/route.ts` | 88-92% | The action audit log is fail-closed review evidence for mutations and denials. A regression here can make a valid business change untraceable or leak personal/free-text data into audit details. |
 | `lib/requirements/list-view.ts` and requirements-table UI consumers | 82-88% | Admin defaults, visible-column persistence, filter clearing, and width clamps are fail-safe logic. Bad fallback behavior leaves the UI looking normal while applying stale filters. |
 | `lib/mcp/http.ts`, `lib/mcp/server.ts`, and `lib/export-csv.ts` | 80-85% | These are outward-facing contracts. Wrong method handling, malformed MCP fields, or CSV escaping defects break integrations and downstream reporting even when the app UI still works. |
 <!-- markdownlint-enable MD013 -->
@@ -366,6 +367,8 @@ contradictory state.
 **The requirement:** Concurrent `initiateArchiving` attempts on the same
 requirement are serialized: at most one succeeds; the loser fails with a
 `conflict` error and the requirement is left in a consistent lifecycle state.
+The database also rejects duplicate archiving-in-progress rows for the same
+requirement.
 
 **How to verify:**
 
@@ -442,13 +445,58 @@ version is never silently flipped to Archived or Published.
 **The requirement:** Approve and cancel target strictly the version with
 `archive_initiated_at` set; a newer Draft or Review version on the same
 requirement is never the target and its status, content, and revision token
-remain untouched.
+remain untouched. Filtered unique indexes make duplicate Published or
+archiving-in-progress targets invalid at the storage layer.
 
 **How to verify:**
 
 <!-- markdownlint-disable MD013 -->
 ```sh
 npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12d: strict-target behavior with manual state manipulation"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 12e: storage constraints reject duplicate archiving targets
+
+**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+
+**What happened:** A filtered unique index on `requirement_versions` prevents
+more than one row for the same requirement from having
+`archive_initiated_at IS NOT NULL`.
+
+**The requirement:** Even direct SQL or legacy data manipulation cannot create
+two archiving-in-progress targets for one requirement.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12e: storage constraints reject duplicate archiving targets"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 12f: storage constraints reject duplicate Published versions
+
+**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+
+**What happened:** A filtered unique index on `requirement_versions` prevents
+more than one row for the same requirement from having
+`requirement_status_id = Published`.
+
+**The requirement:** Even direct SQL or legacy data manipulation cannot create
+two Published targets for one requirement.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12f: storage constraints reject duplicate Published versions"
 ```
 <!-- markdownlint-enable MD013 -->
 
@@ -479,6 +527,54 @@ source hint.
 <!-- markdownlint-disable MD013 -->
 ```sh
 npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 13: specification-local graduation is copy-only into a draft library requirement"
+```
+<!-- markdownlint-enable MD013 -->
+
+### Scenario 14: action audit rows fail closed with the business transaction
+
+**Requirement tag:** `[Req: formal — docs/audit-log.md "Failure Mode"]`
+
+**What happened:** The application action audit log is now database-backed and
+fail-closed. If an implementation writes audit rows after the business
+transaction commits, an audit failure can leave a mutation without durable
+review evidence. If details are not filtered, prompts or submitted free text
+can leak into audit metadata.
+
+**The requirement:** Mutating workflows that own a transaction must write the
+action-audit row before the transaction resolves. Audit write failure must roll
+back the logical mutation, and `details_json` must keep only bounded structured
+metadata. Validated `client_ip` values should persist as first-class audit
+metadata rather than being placed inside `details_json`.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 14: action audit rows fail closed with the business transaction"
+```
+<!-- markdownlint-enable MD013 -->
+
+### Scenario 15: configurable status and risk icons use an allowlist and stay additive
+
+**Requirement tag:** `[Req: formal — docs/admin-center.md "Reference Data"]`
+
+**What happened:** Status and risk icons are admin-configurable presentation
+data. If unchecked icon strings reach the DAL, reports or client rendering can
+receive arbitrary component names. If the API replaces old fields instead of
+adding `iconName`, MCP and REST clients can break.
+
+**The requirement:** Requirement statuses, specification item statuses, and
+risk levels may carry nullable `icon_name` values only from the shared
+allowlist generated from the installed Lucide icon catalog. REST and MCP output
+must expose icon data as additive `iconName` fields while keeping existing
+names/colors, and the migration must not backfill customer rows outside clean
+seed data.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 15: configurable status and risk icons use an allowlist and stay additive"
 ```
 <!-- markdownlint-enable MD013 -->
 

@@ -77,6 +77,18 @@ function setupRequirementPackageMocks(
   })
 }
 
+const linkedRequirement = {
+  archiveInitiatedAt: null,
+  description: 'Linked package requirement',
+  id: 10,
+  statusColor: '#f59e0b',
+  statusId: 2,
+  statusNameEn: 'Review',
+  statusNameSv: 'Granskning',
+  uniqueId: 'REQ-10',
+  versionNumber: 4,
+}
+
 describe('RequirementPackagesClient', () => {
   afterEach(cleanup)
 
@@ -219,6 +231,53 @@ describe('RequirementPackagesClient', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('common.error')
     })
     expect(screen.queryByText('common.noneAvailable')).toBeNull()
+  })
+
+  it('renders archiving review status for linked package requirements', async () => {
+    setupRequirementPackageMocks(() =>
+      okJson({
+        linkedRequirements: [
+          {
+            ...linkedRequirement,
+            archiveInitiatedAt: '2026-05-15T09:30:00.000Z',
+          },
+        ],
+      }),
+    )
+
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('requirement.statusLabel.Arkiveringsgranskning'),
+      ).toBeInTheDocument()
+    })
+    expect(screen.queryByText('Review')).not.toBeInTheDocument()
+  })
+
+  it('keeps ordinary review status for linked package requirements without archive review', async () => {
+    setupRequirementPackageMocks(() =>
+      okJson({ linkedRequirements: [linkedRequirement] }),
+    )
+
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Review')).toBeInTheDocument()
+    })
+    expect(
+      screen.queryByText('requirement.statusLabel.Arkiveringsgranskning'),
+    ).not.toBeInTheDocument()
   })
 
   it('closes form on cancel', async () => {

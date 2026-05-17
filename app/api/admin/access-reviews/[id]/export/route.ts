@@ -55,7 +55,7 @@ export const POST = secureMutationRoute({
         headers: { 'Cache-Control': 'no-store' },
       })
     } catch (error) {
-      recordAccessReviewAuthorizationDenied(
+      await recordAccessReviewAuthorizationDenied(
         context,
         request,
         {

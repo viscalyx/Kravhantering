@@ -12,6 +12,7 @@ export interface SpecificationItemStatusRow {
   color: string
   descriptionEn: string | null
   descriptionSv: string | null
+  iconName: string | null
   id: number
   nameEn: string
   nameSv: string
@@ -26,11 +27,17 @@ interface LinkedSpecificationRow {
 
 export type { LinkedSpecificationRow }
 
+type SpecificationItemStatusRepositoryProvider = Pick<
+  SqlServerDatabase,
+  'getRepository'
+>
+
 function map(row: SpecificationItemStatusEntity): SpecificationItemStatusRow {
   return {
     color: row.color,
     descriptionEn: row.descriptionEn,
     descriptionSv: row.descriptionSv,
+    iconName: row.iconName ?? null,
     id: row.id,
     nameEn: row.nameEn,
     nameSv: row.nameSv,
@@ -136,13 +143,14 @@ export async function getLinkedSpecificationItems(
 }
 
 export async function createSpecificationItemStatus(
-  db: SqlServerDatabase,
+  db: SpecificationItemStatusRepositoryProvider,
   data: {
     nameSv: string
     nameEn: string
     descriptionSv?: string | null
     descriptionEn?: string | null
     color: string
+    iconName?: string | null
     sortOrder?: number
   },
 ): Promise<SpecificationItemStatusRow> {
@@ -154,6 +162,7 @@ export async function createSpecificationItemStatus(
       descriptionSv: data.descriptionSv ?? null,
       descriptionEn: data.descriptionEn ?? null,
       color: data.color,
+      iconName: data.iconName ?? null,
       sortOrder: data.sortOrder ?? 0,
     }),
   )
@@ -169,6 +178,7 @@ export async function updateSpecificationItemStatus(
     descriptionSv?: string | null
     descriptionEn?: string | null
     color?: string
+    iconName?: string | null
     sortOrder?: number
   },
 ): Promise<SpecificationItemStatusRow | undefined> {
@@ -184,6 +194,7 @@ export async function updateSpecificationItemStatus(
   if (rest.descriptionSv !== undefined) patch.descriptionSv = rest.descriptionSv
   if (rest.descriptionEn !== undefined) patch.descriptionEn = rest.descriptionEn
   if (rest.color !== undefined) patch.color = rest.color
+  if (rest.iconName !== undefined) patch.iconName = rest.iconName
   if (safeSortOrder !== undefined) patch.sortOrder = safeSortOrder
 
   const repository = db.getRepository(specificationItemStatusEntity)

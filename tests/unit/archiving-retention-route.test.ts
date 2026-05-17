@@ -2,12 +2,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
   createArchivingRetentionException: vi.fn(),
+  deleteArchivingRetentionException: vi.fn(),
   createRequestContext: vi.fn(),
+  db: {
+    db: true,
+    transaction: vi.fn(
+      async (
+        callback: (manager: {
+          db: boolean
+          query: ReturnType<typeof vi.fn>
+        }) => Promise<unknown>,
+      ) => callback({ db: true, query: vi.fn() }),
+    ),
+  },
   executeArchivingRetention: vi.fn(),
   exportArchivingRetentionArchive: vi.fn(),
-  getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
+  getRequestSqlServerDataSource: vi.fn(),
   listArchivingRetentionPolicies: vi.fn(),
   previewArchivingRetention: vi.fn(),
+  recordAllowedActionAuditEvent: vi.fn(),
+  recordAllowedActionAuditEventWithExecutor: vi.fn(),
   recordSecurityEvent: vi.fn(),
   requireHumanActorSnapshot: vi.fn(() => ({
     displayName: 'Disa PrivacyOfficer',
@@ -23,10 +37,22 @@ vi.mock('@/lib/auth/audit', () => ({
   recordSecurityEvent: routeState.recordSecurityEvent,
 }))
 
+vi.mock('@/lib/audit/action-audit', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/lib/audit/action-audit')>()
+  return {
+    ...actual,
+    recordAllowedActionAuditEvent: routeState.recordAllowedActionAuditEvent,
+    recordAllowedActionAuditEventWithExecutor:
+      routeState.recordAllowedActionAuditEventWithExecutor,
+  }
+})
+
 vi.mock('@/lib/archiving/retention', () => ({
   createArchivingRetentionException:
     routeState.createArchivingRetentionException,
-  deleteArchivingRetentionException: vi.fn(),
+  deleteArchivingRetentionException:
+    routeState.deleteArchivingRetentionException,
   executeArchivingRetention: routeState.executeArchivingRetention,
   exportArchivingRetentionArchive: routeState.exportArchivingRetentionArchive,
   listArchivingRetentionPolicies: routeState.listArchivingRetentionPolicies,
@@ -88,6 +114,7 @@ describe('archiving retention routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     routeState.createRequestContext.mockResolvedValue(privacyContext())
+    routeState.getRequestSqlServerDataSource.mockResolvedValue(routeState.db)
     routeState.listArchivingRetentionPolicies.mockResolvedValue([{ id: 3 }])
     routeState.previewArchivingRetention.mockResolvedValue(preview)
     routeState.executeArchivingRetention.mockResolvedValue({
@@ -105,6 +132,7 @@ describe('archiving retention routes', () => {
       sourceKey: 'requirement_areas.unused',
       subjectTable: 'requirement_areas',
     })
+    routeState.deleteArchivingRetentionException.mockResolvedValue(true)
   })
 
   it('lists retention policies for PrivacyOfficer with no-store', async () => {
@@ -129,7 +157,7 @@ describe('archiving retention routes', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(routeState.previewArchivingRetention).toHaveBeenCalledWith(
-      { db: true },
+      expect.objectContaining({ db: true }),
       { policyId: 3 },
     )
     expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
@@ -171,8 +199,12 @@ describe('archiving retention routes', () => {
 
     expect(response.status).toBe(201)
     expect(routeState.executeArchivingRetention).toHaveBeenCalledWith(
-      { db: true },
-      { exportToken: 'export-token', policyId: 3, previewToken: 'token' },
+      expect.objectContaining({ db: true }),
+      expect.objectContaining({
+        exportToken: 'export-token',
+        policyId: 3,
+        previewToken: 'token',
+      }),
       { displayName: 'Disa PrivacyOfficer', hsaId: 'SE2321000032-privacy1' },
     )
     expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
@@ -194,7 +226,7 @@ describe('archiving retention routes', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(routeState.exportArchivingRetentionArchive).toHaveBeenCalledWith(
-      { db: true },
+      expect.objectContaining({ db: true }),
       { policyId: 3, previewToken: 'token' },
     )
     expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
@@ -229,7 +261,7 @@ describe('archiving retention routes', () => {
     expect(response.status).toBe(201)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(routeState.createArchivingRetentionException).toHaveBeenCalledWith(
-      { db: true },
+      expect.objectContaining({ db: true }),
       {
         ...payload,
         expiresAt: null,

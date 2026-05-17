@@ -47,6 +47,14 @@ interface SqlServerRequirementListColumnDefaultRow {
   sortOrder: number
 }
 
+interface QueryExecutor {
+  query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
+}
+
+interface UiSettingsWriteOptions {
+  audit?: (executor: QueryExecutor) => Promise<void>
+}
+
 function mapSqlServerUiTerminologyRow(
   row: SqlServerUiTerminologyRow,
 ): UiTermTranslation {
@@ -200,6 +208,7 @@ export async function updateUiTerminology(
 export async function updateRequirementListColumnDefaults(
   db: SqlServerDatabase,
   values: readonly Partial<RequirementListColumnDefault>[],
+  options: UiSettingsWriteOptions = {},
 ) {
   const normalized = normalizeRequirementListColumnDefaults(values)
   const updatedAt = new Date().toISOString()
@@ -221,6 +230,7 @@ export async function updateRequirementListColumnDefaults(
         [entry.columnId, entry.sortOrder, entry.defaultVisible, updatedAt],
       )
     }
+    await options.audit?.(manager)
   })
 
   return normalized

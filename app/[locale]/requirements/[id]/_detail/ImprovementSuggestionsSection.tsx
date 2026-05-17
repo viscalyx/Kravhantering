@@ -44,7 +44,7 @@ export default function ImprovementSuggestionsSection({
             )}
           </h3>
           <button
-            className="btn-primary text-xs px-3 py-1.5 min-h-[44px] inline-flex items-center"
+            className="btn-primary text-xs px-3 py-1.5 min-h-11 inline-flex items-center"
             disabled={workflow.suggestionSaving}
             onClick={workflow.openCreateDialog}
             type="button"
@@ -88,7 +88,7 @@ export default function ImprovementSuggestionsSection({
                       {step === 'draft' && (
                         <>
                           <button
-                            className="text-xs btn-secondary px-3 py-1 min-h-[44px] inline-flex items-center"
+                            className="text-xs btn-secondary px-3 py-1 min-h-11 inline-flex items-center"
                             disabled={workflow.suggestionSaving}
                             onClick={() => workflow.openEditDialog(suggestion)}
                             type="button"
@@ -96,7 +96,7 @@ export default function ImprovementSuggestionsSection({
                             {tf('editSuggestion')}
                           </button>
                           <button
-                            className="text-xs btn-secondary px-3 py-1 min-h-[44px] inline-flex items-center text-red-600 dark:text-red-400"
+                            className="btn-destructive inline-flex items-center px-3 py-1 text-xs"
                             disabled={workflow.suggestionSaving}
                             onClick={event =>
                               void workflow.handleDeleteSuggestion(
@@ -109,7 +109,7 @@ export default function ImprovementSuggestionsSection({
                             {tf('deleteSuggestion')}
                           </button>
                           <button
-                            className="text-xs btn-primary px-3 py-1 min-h-[44px] inline-flex items-center"
+                            className="text-xs btn-primary px-3 py-1 min-h-11 inline-flex items-center"
                             disabled={workflow.suggestionSaving}
                             onClick={() =>
                               void workflow.handleSuggestionRequestReview(
@@ -125,7 +125,7 @@ export default function ImprovementSuggestionsSection({
                       {step === 'review_requested' && (
                         <>
                           <button
-                            className="text-xs btn-secondary px-3 py-1 min-h-[44px] inline-flex items-center"
+                            className="text-xs btn-secondary px-3 py-1 min-h-11 inline-flex items-center"
                             disabled={workflow.suggestionSaving}
                             onClick={event =>
                               void workflow.handleSuggestionRevertToDraft(
@@ -138,7 +138,7 @@ export default function ImprovementSuggestionsSection({
                             {tf('revertToDraft')}
                           </button>
                           <button
-                            className="text-xs btn-primary px-3 py-1 min-h-[44px] inline-flex items-center"
+                            className="text-xs btn-primary px-3 py-1 min-h-11 inline-flex items-center"
                             disabled={workflow.suggestionSaving}
                             onClick={() =>
                               workflow.openResolutionDialog(suggestion)

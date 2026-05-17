@@ -337,6 +337,11 @@ eller en förvaltningsperiod. Processen omfattar:
    i underlaget har en egen användningsstatus.
    Tillgängliga statusar hanteras i
    uppslagstabellen `specification_item_statuses`.
+   Kravstatusar, användningsstatusar och risknivåer kan
+   dessutom ha ett valfritt `icon_name` från den installerade
+   Lucide-katalogen via en gemensam allowlist; ikonen används
+   som visuell hjälp i UI och rapporter medan textetiketten
+   förblir styrande.
 4. **Spåra avsteg** — Om ett krav inte kan uppfyllas
    helt kan ett avsteg registreras (se
    *Avsteghantering* nedan).
@@ -540,7 +545,8 @@ och visar samtliga kravposter i underlaget med:
 
 ### Administrationscenter
 
-Administrationscentret (`/admin`) erbjuder fyra flikar:
+Administrationscentret (`/admin`) erbjuder sex flikar och en
+administratörslänk till åtgärdslogg:
 
 1. **Terminologi** — Hantera visningsnamn för
    kravrelaterade begrepp (singular, plural, bestämd
@@ -554,6 +560,20 @@ Administrationscentret (`/admin`) erbjuder fyra flikar:
    HSA-ID-baserad GDPR-radering. Fliken kräver rollen
    `PrivacyOfficer` (`Dataskyddshandläggare`) och ger inte
    övriga administratörsrättigheter.
+5. **Behörighetsöversyn** — Återkommande kontroll av
+   applikationsstyrda uppdrag och AI-behörigheter.
+6. **Arkivering** — Policybaserad gallring med förhandsgranskning,
+   exportbekräftelse och undantag.
+
+Åtgärdsloggen (`/admin/audit-log`) läser tabellen
+`action_audit_events` och är endast tillgänglig för `Admin`. Den
+databasbaserade åtgärdsloggen visar lyckade mutationer och nekade
+behörighetsbeslut, medan plattformens `security-audit`-ström fortsatt
+är en separat ström för operativa säkerhetshändelser. Åtgärdsloggen
+kan även visa validerad klient-IP från `X-Forwarded-For` när ingress
+eller reverse proxy kontrollerar HTTP-rubriken; IP-värdet hanteras som
+operativ forensisk metadata och ingår inte i dataskyddsflödets
+HSA-ID-baserade matchning.
 
 Dataskyddsflödet matchar endast på HSA-ID. Namn visas för
 operatörens kontroll, men namn används inte som nyckel och
@@ -832,6 +852,7 @@ erDiagram
     archiving_retention_policies ||--o{ archiving_retention_runs : "loggar körningar"
     archiving_retention_policies ||--o{ archiving_retention_exceptions : "har undantag"
     requirements ||--o{ improvement_suggestions : "har förbättringsförslag"
+    action_audit_events }o--o{ requirements : "kan peka på krav utan FK"
 ```
 
 <!-- markdownlint-enable MD013 -->
@@ -842,6 +863,8 @@ på hur länge en version har haft status Utkast, Granskning eller Arkiverad.
 kravunderlag och gör att arkiveringsgallring inte raderar versioner som har
 kravunderlagshistorik. Tabellerna `archiving_retention_*` driver Admin
 Centers arkiveringsflöde med policyer, körningskvitton och undantag/legal hold.
+Tabellen `action_audit_events` saknar främmande nycklar medvetet så att
+åtgärdsrader bevaras även när målobjekt gallras eller anonymiseras.
 
 > **Tillämpningsbarhet via kravpaket.**
 > Tabellen `requirement_packages` hanterar även
@@ -1481,7 +1504,9 @@ oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
   loggplattformen kan filtrera och vidarebefordra
   just dessa poster till SIEM, revisionsspår eller
   annan övervakning utan att blanda ihop dem med
-  vanliga applikationsloggar.
+  vanliga applikationsloggar. När `X-Forwarded-For`
+  kontrolleras av ingressen kan posten innehålla
+  validerad `request.ip`.
 
 ### Plattformsalternativ
 

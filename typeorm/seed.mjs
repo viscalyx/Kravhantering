@@ -16,6 +16,7 @@ const TABLE_ORDER = [
   'specification_co_authors',
   'access_review_runs',
   'access_review_items',
+  'action_audit_events',
   'specification_needs_references',
   'requirement_statuses',
   'requirement_status_transitions',
@@ -285,6 +286,7 @@ const SEED_DATA = {
       'description_sv',
       'description_en',
       'color',
+      'icon_name',
       'sort_order',
     ],
     pk: ['id'],
@@ -296,6 +298,7 @@ const SEED_DATA = {
         'Kravet finns i underlaget men inget arbete påbörjat',
         'Requirement is in the specification but no work started',
         '#94a3b8',
+        'Circle',
         1,
       ],
       [
@@ -305,6 +308,7 @@ const SEED_DATA = {
         'Implementation pågår',
         'Implementation is in progress',
         '#f59e0b',
+        'Play',
         2,
       ],
       [
@@ -314,6 +318,7 @@ const SEED_DATA = {
         'Kravet är implementerat',
         'Requirement has been implemented',
         '#3b82f6',
+        'CheckCircle2',
         3,
       ],
       [
@@ -323,6 +328,7 @@ const SEED_DATA = {
         'Kravet är verifierat och testat',
         'Requirement has been verified and tested',
         '#22c55e',
+        'ShieldCheck',
         4,
       ],
       [
@@ -332,6 +338,7 @@ const SEED_DATA = {
         'Avsteg har registrerats för kravet',
         'A deviation has been registered for the requirement',
         '#ef4444',
+        'AlertTriangle',
         0,
       ],
       [
@@ -341,6 +348,7 @@ const SEED_DATA = {
         'Kravet gäller inte i denna kontext',
         'Requirement does not apply in this context',
         '#6b7280',
+        'XCircle',
         6,
       ],
     ],
@@ -815,13 +823,21 @@ const SEED_DATA = {
     ],
   },
   requirement_statuses: {
-    columns: ['id', 'name_sv', 'name_en', 'sort_order', 'color', 'is_system'],
+    columns: [
+      'id',
+      'name_sv',
+      'name_en',
+      'sort_order',
+      'color',
+      'icon_name',
+      'is_system',
+    ],
     pk: ['id'],
     rows: [
-      [1, 'Utkast', 'Draft', 1, '#3b82f6', 1],
-      [2, 'Granskning', 'Review', 2, '#eab308', 1],
-      [3, 'Publicerad', 'Published', 3, '#22c55e', 1],
-      [4, 'Arkiverad', 'Archived', 4, '#6b7280', 1],
+      [1, 'Utkast', 'Draft', 1, '#3b82f6', 'PenLine', 1],
+      [2, 'Granskning', 'Review', 2, '#eab308', 'Eye', 1],
+      [3, 'Publicerad', 'Published', 3, '#22c55e', 'CheckCircle2', 1],
+      [4, 'Arkiverad', 'Archived', 4, '#6b7280', 'Archive', 1],
     ],
   },
   requirement_status_transitions: {
@@ -1317,12 +1333,12 @@ const SEED_DATA = {
     ],
   },
   risk_levels: {
-    columns: ['id', 'name_sv', 'name_en', 'sort_order', 'color'],
+    columns: ['id', 'name_sv', 'name_en', 'sort_order', 'color', 'icon_name'],
     pk: ['id'],
     rows: [
-      [1, 'Låg', 'Low', 1, '#22c55e'],
-      [2, 'Medel', 'Medium', 2, '#eab308'],
-      [3, 'Hög', 'High', 3, '#ef4444'],
+      [1, 'Låg', 'Low', 1, '#22c55e', 'ShieldCheck'],
+      [2, 'Medel', 'Medium', 2, '#eab308', 'AlertCircle'],
+      [3, 'Hög', 'High', 3, '#ef4444', 'AlertTriangle'],
     ],
   },
   specification_local_requirements: {
@@ -12400,6 +12416,121 @@ function applyArchivingRetentionSeed() {
   }
 }
 
+function applyActionAuditSeed() {
+  const columns = [
+    'id',
+    'occurred_at',
+    'actor_hsa_id',
+    'actor_display_name',
+    'actor_kind',
+    'actor_client_id',
+    'action',
+    'target_kind',
+    'target_id',
+    'target_unique_id',
+    'decision',
+    'denial_reason',
+    'request_id',
+    'correlation_id',
+    'client_ip',
+    'details_json',
+  ]
+  SEED_DATA.action_audit_events ??= {
+    columns,
+    pk: ['id'],
+    rows: [],
+  }
+  const table = SEED_DATA.action_audit_events
+  table.columns ??= columns
+  table.pk ??= ['id']
+  table.rows ??= []
+
+  for (const row of [
+    [
+      1,
+      '2026-04-23 09:10:00',
+      'SE2321000032-linneab',
+      'Linnéa Bergström',
+      'user',
+      null,
+      'requirement.create',
+      'Requirement',
+      '1',
+      'INT-1',
+      'allowed',
+      null,
+      'seed-audit-request-1',
+      'seed-audit-correlation-1',
+      '203.0.113.10',
+      '{"operation":"create","statusId":1,"route":"/api/requirements"}',
+    ],
+    [
+      2,
+      '2026-04-23 09:12:00',
+      'SE2321000032-admin1',
+      'Ada Admin',
+      'user',
+      null,
+      'admin.requirement_status.update',
+      'requirement_status',
+      '2',
+      null,
+      'allowed',
+      null,
+      'seed-audit-request-2',
+      'seed-audit-correlation-2',
+      '203.0.113.11',
+      '{"operation":"update","resourceId":2,"route":"/api/requirement-statuses/2"}',
+    ],
+    [
+      3,
+      '2026-04-23 09:13:00',
+      'SE2321000032-linneab',
+      'Linnéa Bergström',
+      'user',
+      null,
+      'admin.authorization.denied',
+      'admin',
+      null,
+      null,
+      'denied',
+      'required_role_missing',
+      'seed-audit-request-3',
+      'seed-audit-correlation-3',
+      '203.0.113.12',
+      '{"policyKind":"admin","errorCode":"forbidden"}',
+    ],
+    [
+      4,
+      '2026-04-23 09:14:00',
+      null,
+      'Requirements MCP client',
+      'mcp_client',
+      'requirements-mcp',
+      'requirement.transition',
+      'Requirement',
+      '2',
+      'AUTH-2',
+      'allowed',
+      null,
+      'seed-audit-request-4',
+      'seed-audit-correlation-4',
+      '2001:db8::4',
+      '{"operation":"transition","toStatusId":3,"toolName":"kravhantering"}',
+    ],
+  ]) {
+    ensureSeedRow(
+      table,
+      seedRowFromColumns(
+        table,
+        Object.fromEntries(
+          columns.map((column, index) => [column, row[index]]),
+        ),
+      ),
+    )
+  }
+}
+
 function hsaForDisplayName(displayName) {
   if (displayName == null || displayName === '') return null
   const hsaId = HSA_BY_DISPLAY_NAME.get(displayName)
@@ -12918,6 +13049,7 @@ function applyPrivacyIdentitySeed() {
 
 applyPrivacyIdentitySeed()
 applyArchivingRetentionSeed()
+applyActionAuditSeed()
 
 export function seedPositionDetail({
   table,

@@ -483,6 +483,55 @@ describe('login', () => {
     expect(jar.header('http://idp.test/realms/r')).toBe('kc=2; kcAuth=3')
   })
 
+  it('falls back to a generic form action for themed Keycloak login pages', async () => {
+    const fetchImpl = vi.fn(async (url, init = {}) => {
+      if (url === 'http://app.test/api/auth/login') {
+        return response({
+          location: 'http://idp.test/login',
+          status: 302,
+        })
+      }
+      if (url === 'http://idp.test/login') {
+        return response({
+          textBody:
+            '<form class="realm-theme-login" action="/realms/r/login-actions/authenticate?session_code=abc&amp;execution=def"></form>',
+        })
+      }
+      if (
+        url ===
+        'http://idp.test/realms/r/login-actions/authenticate?session_code=abc&execution=def'
+      ) {
+        expect(init.method).toBe('POST')
+        return response({
+          location: 'http://app.test/api/auth/callback?code=123',
+          status: 302,
+        })
+      }
+      if (url === 'http://app.test/api/auth/callback?code=123') {
+        return response({
+          cookies: ['session=sealed; Path=/'],
+          location: '/',
+          status: 302,
+        })
+      }
+      if (url === 'http://app.test/') return response()
+      if (url === 'http://app.test/api/auth/me') {
+        return response({ jsonBody: { authenticated: true } })
+      }
+      throw new Error(`Unexpected fetch: ${url}`)
+    })
+
+    const jar = await login(
+      { base: 'http://app.test', password: 'devpass', user: 'ada.admin' },
+      { env: {}, fetchImpl },
+    )
+
+    expect(fetchImpl.mock.calls.map(call => call[0])).toContain(
+      'http://idp.test/realms/r/login-actions/authenticate?session_code=abc&execution=def',
+    )
+    expect(jar.header('http://app.test/api/auth/me')).toBe('session=sealed')
+  })
+
   it('throws when the login form is missing', async () => {
     const fetchImpl = vi.fn(async () => response({ textBody: '<main />' }))
 
@@ -491,7 +540,7 @@ describe('login', () => {
         { base: 'http://app.test', password: 'devpass', user: 'ada.admin' },
         { env: {}, fetchImpl },
       ),
-    ).rejects.toThrow('Could not find Keycloak login form in response')
+    ).rejects.toThrow('Expected the default Keycloak form id "kc-form-login"')
   })
 
   it('throws when the credential redirect chain fails', async () => {

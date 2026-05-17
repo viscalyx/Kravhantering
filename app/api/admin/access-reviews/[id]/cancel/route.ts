@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import {
   accessReviewAuditActor,
   accessReviewServiceActor,
+  recordAccessReviewActionSucceeded,
   recordAccessReviewAuthorizationDenied,
 } from '@/lib/access-review/route-audit'
 import { accessReviewErrorResponse } from '@/lib/access-review/route-helpers'
@@ -27,6 +28,15 @@ export const POST = secureMutationRoute({
         params.id,
         accessReviewServiceActor(context),
       )
+      await recordAccessReviewActionSucceeded(context, {
+        action: 'access_review.cancel',
+        detail: {
+          itemCount: detail.run.summary.itemCount,
+          reviewId: params.id,
+          status: detail.run.status,
+        },
+        targetId: params.id,
+      })
       recordSecurityEvent({
         actor: accessReviewAuditActor(context),
         detail: {
@@ -40,7 +50,7 @@ export const POST = secureMutationRoute({
       })
       return NextResponse.json(detail)
     } catch (error) {
-      recordAccessReviewAuthorizationDenied(
+      await recordAccessReviewAuthorizationDenied(
         context,
         request,
         {

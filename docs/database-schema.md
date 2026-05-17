@@ -21,8 +21,9 @@ workflow, and CLI reference live in
 4. [UI Settings Tables](#ui-settings-tables)
 5. [Core Domain Tables](#core-domain-tables)
 6. [Access Review Tables](#access-review-tables)
-7. [Join / Bridge Tables](#join--bridge-tables)
-8. [Status Workflow](#status-workflow)
+7. [Application Audit Tables](#application-audit-tables)
+8. [Join / Bridge Tables](#join--bridge-tables)
+9. [Status Workflow](#status-workflow)
 
 ---
 
@@ -152,6 +153,7 @@ erDiagram
         text name_en UK
         integer sort_order
         text color
+        text icon_name
         integer is_system "boolean"
     }
 
@@ -161,6 +163,7 @@ erDiagram
         text name_en UK
         integer sort_order
         text color
+        text icon_name
     }
 
     requirement_status_transitions {
@@ -282,6 +285,7 @@ erDiagram
         text description_sv
         text description_en
         text color
+        text icon_name
         integer sort_order
     }
 
@@ -441,6 +445,25 @@ erDiagram
         text decided_by_display_name
         text comment
         text created_at
+    }
+
+    action_audit_events {
+        bigint id PK
+        datetime occurred_at
+        text actor_hsa_id
+        text actor_display_name
+        text actor_kind
+        text actor_client_id
+        text action
+        text target_kind
+        text target_id
+        text target_unique_id
+        text decision
+        text denial_reason
+        text request_id
+        text correlation_id
+        text client_ip
+        text details_json
     }
 
     archiving_retention_policies {
@@ -635,17 +658,18 @@ Workflow statuses governing the lifecycle of a requirement version.
 | `name_en` | text, unique | English display name |
 | `sort_order` | integer | Display ordering |
 | `color` | text | Hex color code for UI badges |
+| `icon_name` | text | Allowed lucide icon name (nullable) |
 | `is_system` | boolean (integer) | `true` for built-in statuses that cannot be deleted |
 <!-- markdownlint-enable MD013 -->
 
 **Seed values:**
 
-| id | Swedish | English | Color |
-| ---- | --------- | --------- | ------- |
-| 1 | Utkast | Draft | `#3b82f6` (blue) |
-| 2 | Granskning | Review | `#eab308` (yellow) |
-| 3 | Publicerad | Published | `#22c55e` (green) |
-| 4 | Arkiverad | Archived | `#6b7280` (gray) |
+| id | Swedish | English | Color | Icon |
+| ---- | --------- | --------- | ------- | ------ |
+| 1 | Utkast | Draft | `#3b82f6` (blue) | `PenLine` |
+| 2 | Granskning | Review | `#eab308` (yellow) | `Eye` |
+| 3 | Publicerad | Published | `#22c55e` (green) | `CheckCircle2` |
+| 4 | Arkiverad | Archived | `#6b7280` (gray) | `Archive` |
 
 ---
 
@@ -704,14 +728,15 @@ Classifies the risk associated with a requirement.
 | `name_en` | text, unique | English display name |
 | `sort_order` | integer | Display ordering |
 | `color` | text | Hex color code for UI badges |
+| `icon_name` | text | Allowed lucide icon name (nullable) |
 
 **Seed values:**
 
-| id | Swedish | English | Color |
-| ---- | ------- | ------- | ------------------- |
-| 1 | Låg | Low | `#22c55e` (green) |
-| 2 | Medel | Medium | `#eab308` (yellow) |
-| 3 | Hög | High | `#ef4444` (red) |
+| id | Swedish | English | Color | Icon |
+| ---- | ------- | ------- | ------------------- | ------ |
+| 1 | Låg | Low | `#22c55e` (green) | `ShieldCheck` |
+| 2 | Medel | Medium | `#eab308` (yellow) | `AlertCircle` |
+| 3 | Hög | High | `#ef4444` (red) | `AlertTriangle` |
 
 ---
 
@@ -869,16 +894,21 @@ implemented, verified).
 | `description_sv` | text | Swedish description (nullable) |
 | `description_en` | text | English description (nullable) |
 | `color` | text | Hex color code for UI badges |
+| `icon_name` | text | Allowed lucide icon name (nullable) |
 | `sort_order` | integer | Display ordering |
 
 <!-- markdownlint-disable MD013 -->
 
-**Seed values:** Inkluderad (Included, #94a3b8),
-Pågående (In Progress, #f59e0b),
-Implementerad (Implemented, #3b82f6),
-Verifierad (Verified, #22c55e),
-Avviken (Deviated, #ef4444),
-Ej tillämpbar (Not Applicable, #6b7280).
+**Seed values:**
+
+| id | Swedish | English | Color | Icon |
+| ---- | ------- | ------- | ------------------- | ------ |
+| 1 | Inkluderad | Included | `#94a3b8` | `Circle` |
+| 2 | Pågående | In Progress | `#f59e0b` | `Play` |
+| 3 | Implementerad | Implemented | `#3b82f6` | `CheckCircle2` |
+| 4 | Verifierad | Verified | `#22c55e` | `ShieldCheck` |
+| 5 | Avviken | Deviated | `#ef4444` | `AlertTriangle` |
+| 6 | Ej tillämpbar | Not Applicable | `#6b7280` | `XCircle` |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -1109,14 +1139,20 @@ precondition.
 **Unique constraints:**
 `uq_requirement_versions_requirement_id_version_number`
 on `(requirement_id, version_number)`;
-`uq_requirement_versions_revision_token` on `revision_token`.
+`uq_requirement_versions_revision_token` on `revision_token`;
+`uq_requirement_versions_archive_initiated_requirement_id`
+on `requirement_id` where `archive_initiated_at IS NOT NULL`;
+`uq_requirement_versions_published_requirement_id`
+on `requirement_id` where `requirement_status_id = 3`.
 **Indexes:** `idx_requirement_versions_requirement_id`,
 `idx_requirement_versions_created_by_hsa_id`,
 `idx_requirement_versions_status_updated_at`,
 `idx_requirement_versions_has_specification_item_history`.
 
 **Lifecycle invariant:** `created_at` < `published_at`
-< `archived_at` (when applicable).
+< `archived_at` (when applicable). Filtered unique indexes
+also enforce at most one Published version and at most one
+archiving-in-progress version per requirement.
 
 **Effective status (filtering):** When listing requirements
 the system computes a priority-based effective status per
@@ -1301,6 +1337,60 @@ Point-in-time snapshot of one app-managed assignment in an access-review run.
 
 **Check constraint:** `chk_access_review_items_decision` limits `decision` to
 the review decision values above.
+
+## Application Audit Tables
+
+Application action audit rows are stored in the database and are separate from
+the platform `security-audit` JSON log stream. They capture successful
+app-owned mutations and authorization denials for Admin review, filtering, and
+CSV export.
+
+### `action_audit_events`
+
+Durable application-level action audit event. Rows intentionally have no
+foreign keys so they survive lifecycle deletes, archiving, and privacy erasure
+of related business data.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | bigint PK | Auto-increment primary key |
+| `occurred_at` | datetime2(3) | Event timestamp |
+| `actor_hsa_id` | nvarchar(64) | Actor HSA-ID for human users, nullable for MCP/system actors and after privacy erasure |
+| `actor_display_name` | nvarchar(max) | Actor display-name snapshot, can be anonymized through privacy erasure |
+| `actor_kind` | nvarchar(32) | `user`, `mcp_client`, or `system` |
+| `actor_client_id` | nvarchar(255) | MCP/client identifier when applicable |
+| `action` | nvarchar(64) | Dot-separated action name such as `requirement.create` |
+| `target_kind` | nvarchar(64) | Logical target family |
+| `target_id` | nvarchar(255) | Stable target identifier when available |
+| `target_unique_id` | nvarchar(255) | Human-readable target unique ID when available |
+| `decision` | nvarchar(16) | `allowed` or `denied` |
+| `denial_reason` | nvarchar(255) | Sanitized denial reason for denied events |
+| `request_id` | nvarchar(64) | Request ID from existing tracing |
+| `correlation_id` | nvarchar(64) | Correlation ID from existing tracing |
+| `client_ip` | nvarchar(45) | Validated client IP from `X-Forwarded-For`, nullable when unavailable or invalid |
+| `details_json` | nvarchar(max) | Bounded structured metadata only; no prompts, requirement text, comments, tokens, secrets, e-mail, target HSA-ID, or free text |
+<!-- markdownlint-enable MD013 -->
+
+**Indexes:** `idx_action_audit_events_occurred_at`,
+`idx_action_audit_events_actor_hsa_id_occurred_at`,
+`idx_action_audit_events_target_occurred_at`,
+`idx_action_audit_events_action_occurred_at`,
+`idx_action_audit_events_client_ip_occurred_at`.
+
+**Check constraints:** `chk_action_audit_events_actor_kind` and
+`chk_action_audit_events_decision`.
+
+**Privacy note:** Erasure preserves the audit row but may anonymize or switch
+`actor_hsa_id` and `actor_display_name`. This is an explicit exception to
+strict append-only identity fidelity so data-subject rights can be exercised
+without deleting action, target, time, decision, request ID, or correlation ID.
+`client_ip` is operational forensic metadata and is not handled by the Privacy
+preview/export/erasure workflow in this slice.
+
+**Seed note:** Development seed data includes allowed, denied, human, and MCP
+audit rows, including validated client IPs and `SE2321000032-linneab` actor
+snapshots for privacy preview/export coverage.
 
 ### `archiving_retention_policies`
 
@@ -1693,6 +1783,8 @@ its purpose and the table/column(s) it covers.
 | `uq_requirements_unique_id` | `requirements` | `unique_id` | Ensures each requirement has a distinct human-readable ID |
 | `uq_requirement_versions_requirement_id_version_number` | `requirement_versions` | `(requirement_id, version_number)` | Ensures version numbers are unique per requirement |
 | `uq_requirement_versions_revision_token` | `requirement_versions` | `revision_token` | Ensures each opaque edit token identifies one version row |
+| `uq_requirement_versions_archive_initiated_requirement_id` | `requirement_versions` | `requirement_id` where `archive_initiated_at IS NOT NULL` | Ensures a requirement has at most one archiving-in-progress version |
+| `uq_requirement_versions_published_requirement_id` | `requirement_versions` | `requirement_id` where `requirement_status_id = 3` | Ensures a requirement has at most one Published version |
 | `uq_specification_responsibility_areas_name_sv` | `specification_responsibility_areas` | `name_sv` | Prevents duplicate Swedish responsibility area names |
 | `uq_specification_responsibility_areas_name_en` | `specification_responsibility_areas` | `name_en` | Prevents duplicate English responsibility area names |
 | `uq_owners_email` | `owners` | `email` | Prevents duplicate non-null owner email addresses |
@@ -1757,6 +1849,11 @@ its purpose and the table/column(s) it covers.
 | `idx_access_review_items_principal_hsa_id` | `access_review_items` | `principal_hsa_id` | Speed up privacy lookup for reviewed principals |
 | `idx_access_review_items_source_key` | `access_review_items` | `source_key` | Speed up source-family review evidence queries |
 | `idx_access_review_items_decided_by_hsa_id` | `access_review_items` | `decided_by_hsa_id` | Speed up privacy lookup for decision actors |
+| `idx_action_audit_events_occurred_at` | `action_audit_events` | `occurred_at` | Speed up recent audit-log browsing |
+| `idx_action_audit_events_actor_hsa_id_occurred_at` | `action_audit_events` | `(actor_hsa_id, occurred_at)` | Speed up actor filtering and privacy erasure/export lookup |
+| `idx_action_audit_events_target_occurred_at` | `action_audit_events` | `(target_kind, target_id, occurred_at)` | Speed up target-focused audit review |
+| `idx_action_audit_events_action_occurred_at` | `action_audit_events` | `(action, occurred_at)` | Speed up action-name filtering |
+| `idx_action_audit_events_client_ip_occurred_at` | `action_audit_events` | `(client_ip, occurred_at)` | Speed up client-IP filtering during audit review |
 | `idx_archiving_retention_policies_enabled` | `archiving_retention_policies` | `is_enabled` | Speed up listing executable retention policies |
 | `idx_archiving_retention_runs_policy_id` | `archiving_retention_runs` | `policy_id` | Speed up latest-run lookups per retention policy |
 | `idx_archiving_retention_runs_started_at` | `archiving_retention_runs` | `started_at` | Speed up retention execution history ordering |
@@ -1885,6 +1982,10 @@ graph LR
         ARI[access_review_items]
     end
 
+    subgraph Action Audit
+        AAE[action_audit_events]
+    end
+
     subgraph Archiving Retention
         PRP[archiving_retention_policies]
         PRR[archiving_retention_runs]
@@ -1901,6 +2002,8 @@ graph LR
 
     RV -- "uq_..._requirement_id_version_number\n(requirement_id, version_number)" --> R
     RV -- "uq_requirement_versions_revision_token\n(revision_token)" --> RV
+    RV -- "uq_..._archive_initiated_requirement_id\n(requirement_id WHERE archive_initiated_at IS NOT NULL)" --> R
+    RV -- "uq_..._published_requirement_id\n(requirement_id WHERE requirement_status_id = 3)" --> R
     RV -- "idx_..._requirement_id\n(requirement_id)" --> R
     RV -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> RV
     RV -- "idx_..._status_updated_at\n(status_updated_at)" --> RV
@@ -1960,6 +2063,12 @@ graph LR
     ARI -- "idx_..._principal_hsa_id\n(principal_hsa_id)" --> ARI
     ARI -- "idx_..._source_key\n(source_key)" --> ARI
     ARI -- "idx_..._decided_by_hsa_id\n(decided_by_hsa_id)" --> ARI
+
+    AAE -- "idx_..._occurred_at\n(occurred_at)" --> AAE
+    AAE -- "idx_..._actor_hsa_id_occurred_at\n(actor_hsa_id, occurred_at)" --> AAE
+    AAE -- "idx_..._target_occurred_at\n(target_kind, target_id, occurred_at)" --> AAE
+    AAE -- "idx_..._action_occurred_at\naction, occurred_at" --> AAE
+    AAE -- "idx_..._client_ip_occurred_at\n(client_ip, occurred_at)" --> AAE
 
     PRP -- "uq_..._policy_key\n(policy_key)" --> PRP
     PRP -- "idx_..._enabled\n(is_enabled)" --> PRP

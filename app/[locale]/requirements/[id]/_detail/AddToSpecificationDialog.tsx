@@ -29,7 +29,7 @@ export default function AddToSpecificationDialog({
       aria-controls={`help-${field}`}
       aria-expanded={state.openHelp.has(field)}
       aria-label={`${tc('help')}: ${label}`}
-      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
       onClick={() => dialog.toggleHelp(field)}
       type="button"
     >
@@ -83,7 +83,7 @@ export default function AddToSpecificationDialog({
               </h2>
               <button
                 aria-label={tc('close')}
-                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-secondary-800"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-1.5 transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-secondary-800"
                 onClick={dialog.closeDialog}
                 type="button"
               >
@@ -124,7 +124,7 @@ export default function AddToSpecificationDialog({
                   </div>
                   {helpPanel('selectSpecificationHelp', 'atp-specification')}
                   <select
-                    className="min-h-[44px] w-full rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
+                    className="min-h-11 w-full rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
                     id="atp-specification"
                     onChange={event =>
                       void dialog.handleSpecificationSelect(event.target.value)
@@ -151,7 +151,7 @@ export default function AddToSpecificationDialog({
                   </div>
                   {helpPanel('needsReferenceHelp', 'atp-needs-ref')}
                   <select
-                    className="min-h-[44px] w-full rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
+                    className="min-h-11 w-full rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
                     id="atp-needs-ref"
                     onChange={event => {
                       const value = event.target.value

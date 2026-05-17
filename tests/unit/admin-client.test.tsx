@@ -10,6 +10,7 @@ import {
 import { StrictMode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AdminClient from '@/app/[locale]/admin/admin-client'
+import type { ActionAuditLogInitialState } from '@/components/admin/ActionAuditLogView'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import { HelpProvider, useHelp } from '@/components/HelpPanel'
 import {
@@ -250,6 +251,47 @@ function accessReviewExportBody() {
   }
 }
 
+function actionAuditLogState(
+  query: ActionAuditLogInitialState['query'] = {
+    action: 'requirement.create',
+    client_ip: '203.0.113.10',
+    page: '2',
+    pageSize: '25',
+    tab: 'actionAuditLog',
+  },
+): ActionAuditLogInitialState {
+  return {
+    query,
+    result: {
+      events: [
+        {
+          action: 'requirement.create',
+          actorClientId: null,
+          actorDisplayName: 'Ada Admin',
+          actorHsaId: 'SE2321000032-admin1',
+          actorKind: 'user',
+          clientIp: '203.0.113.10',
+          correlationId: null,
+          decision: 'allowed',
+          denialReason: null,
+          detailsJson: null,
+          id: '123',
+          occurredAt: '2026-05-12T12:00:00.000Z',
+          requestId: 'req-123',
+          targetId: '42',
+          targetKind: 'requirement',
+          targetUniqueId: 'REQ-42',
+        },
+      ],
+      pagination: {
+        page: 2,
+        pageSize: 25,
+        total: 75,
+      },
+    },
+  }
+}
+
 function mockAccessReviewApi(options?: {
   cancelResponse?: Promise<Response> | Response
   createResponse?: Promise<Response> | Response
@@ -430,6 +472,101 @@ describe('AdminClient', () => {
     )
   })
 
+  it('opens the action audit log tab from the admin tab query parameter', () => {
+    searchParamsMock.current = new URLSearchParams('tab=actionAuditLog')
+
+    render(
+      <AdminClient
+        actionAuditLog={actionAuditLogState()}
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    const actionAuditLogTab = screen.getByRole('tab', {
+      name: 'admin.auditLog.title',
+    })
+
+    expect(actionAuditLogTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute(
+      'id',
+      'actionAuditLog-panel',
+    )
+    expect(screen.queryByText('admin.auditLog.open')).toBeNull()
+    expect(
+      screen.getByRole('heading', { name: 'admin.auditLog.title' }),
+    ).toBeVisible()
+    expect(screen.getByLabelText('admin.auditLog.action')).toHaveValue(
+      'requirement.create',
+    )
+    expect(screen.getByLabelText('admin.auditLog.clientIp')).toHaveValue(
+      '203.0.113.10',
+    )
+    expect(
+      screen.getByRole('link', { name: 'admin.auditLog.exportCsv' }),
+    ).toHaveAttribute(
+      'href',
+      '/api/admin/audit-events?action=requirement.create&client_ip=203.0.113.10&page=2&pageSize=25&format=csv',
+    )
+    expect(
+      screen.getByRole('link', { name: 'admin.auditLog.clear' }),
+    ).toHaveAttribute('href', '/sv/admin?tab=actionAuditLog')
+    expect(
+      screen.getByRole('link', { name: 'admin.auditLog.previous' }),
+    ).toHaveAttribute(
+      'href',
+      '/sv/admin?tab=actionAuditLog&action=requirement.create&client_ip=203.0.113.10&page=1&pageSize=25',
+    )
+    expect(
+      screen.getByRole('link', { name: 'admin.auditLog.next' }),
+    ).toHaveAttribute(
+      'href',
+      '/sv/admin?tab=actionAuditLog&action=requirement.create&client_ip=203.0.113.10&page=3&pageSize=25',
+    )
+    expect(screen.getByText('requirement.create')).toBeVisible()
+    expect(screen.getByText('REQ-42')).toBeVisible()
+  })
+
+  it('shows an action audit log loading state while tab data is loading', () => {
+    searchParamsMock.current = new URLSearchParams('tab=actionAuditLog')
+
+    render(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    expect(screen.getByRole('tabpanel')).toHaveAttribute(
+      'id',
+      'actionAuditLog-panel',
+    )
+    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+    expect(screen.queryByText('admin.auditLog.open')).toBeNull()
+  })
+
+  it('renders the admin title without the reference data eyebrow', () => {
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'admin.title',
+    )
+    expect(screen.queryByText('nav.referenceData')).toBeNull()
+  })
+
   it('writes the selected admin tab to the current history entry', () => {
     render(
       <AdminClient
@@ -446,6 +583,28 @@ describe('AdminClient', () => {
       {
         pathname: '/admin',
         query: { tab: 'referenceData' },
+      },
+      { scroll: false },
+    )
+  })
+
+  it('writes the action audit log tab to the current history entry', () => {
+    render(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.auditLog.title' }))
+
+    expect(routerReplace).toHaveBeenCalledWith(
+      {
+        pathname: '/admin',
+        query: { tab: 'actionAuditLog' },
       },
       { scroll: false },
     )

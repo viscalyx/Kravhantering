@@ -841,6 +841,56 @@ async function collectAccessReviewItemActor(
   )
 }
 
+async function collectActionAuditEventActors(
+  db: QueryExecutor,
+  targetHsaId: string,
+): Promise<DataSubjectExportItem[]> {
+  const policy = policyFor('action_audit_events.actor')
+  const rows = (await db.query(
+    `/* privacy:data-export:action_audit_events.actor */
+      SELECT
+        event.id AS eventId,
+        event.actor_hsa_id AS hsaId,
+        event.actor_display_name AS displayName,
+        event.action AS action,
+        event.target_kind AS targetKind,
+        event.target_id AS targetId,
+        event.target_unique_id AS targetUniqueId,
+        event.decision AS decision,
+        event.occurred_at AS occurredAt
+      FROM action_audit_events event
+      WHERE event.actor_hsa_id = @0
+      ORDER BY event.occurred_at DESC, event.id DESC`,
+    [targetHsaId],
+  )) as ExportRow[]
+
+  return rows.flatMap(row =>
+    fieldsForRow(
+      policy,
+      'action_audit_actor_snapshot',
+      [
+        { fieldName: 'actor_hsa_id', value: stringValue(row.hsaId) },
+        {
+          fieldName: 'actor_display_name',
+          value: stringValue(row.displayName),
+        },
+        { fieldName: 'action', value: stringValue(row.action) },
+        { fieldName: 'target_kind', value: stringValue(row.targetKind) },
+        { fieldName: 'target_id', value: stringValue(row.targetId) },
+        {
+          fieldName: 'target_unique_id',
+          value: stringValue(row.targetUniqueId),
+        },
+        { fieldName: 'decision', value: stringValue(row.decision) },
+      ],
+      {
+        relatedObject: relatedObject(row, 'action_audit_event', 'eventId'),
+        timestamp: row.occurredAt,
+      },
+    ),
+  )
+}
+
 const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
   {
     collect: collectOwnerIdentity,
@@ -1018,6 +1068,11 @@ const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
       }),
     policy: policyFor('access_review_items.decided_by'),
     relationToSubject: 'access_review_decision_snapshot',
+  },
+  {
+    collect: collectActionAuditEventActors,
+    policy: policyFor('action_audit_events.actor'),
+    relationToSubject: 'action_audit_actor_snapshot',
   },
 ]
 

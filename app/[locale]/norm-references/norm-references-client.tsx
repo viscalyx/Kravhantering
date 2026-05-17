@@ -62,6 +62,7 @@ interface LinkedRequirement {
   description: string | null
   id: number
   statusColor: string | null
+  statusIconName: string | null
   statusNameEn: string | null
   statusNameSv: string | null
   uniqueId: string
@@ -370,7 +371,7 @@ export default function NormReferencesClient() {
                                 >
                                   <td className="py-2 px-3 font-medium">
                                     <Link
-                                      className="inline-flex items-center min-h-[44px] min-w-[44px] rounded text-primary-700 dark:text-primary-300 hover:underline focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus:outline-none"
+                                      className="inline-flex items-center min-h-11 min-w-11 rounded text-primary-700 dark:text-primary-300 hover:underline focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus:outline-none"
                                       href={`/requirements/${requirement.uniqueId}/${requirement.versionNumber}`}
                                     >
                                       {requirement.uniqueId}
@@ -392,6 +393,7 @@ export default function NormReferencesClient() {
                                   <td className="py-2 px-3">
                                     <StatusBadge
                                       color={requirement.statusColor}
+                                      iconName={requirement.statusIconName}
                                       label={
                                         (locale === 'sv'
                                           ? requirement.statusNameSv

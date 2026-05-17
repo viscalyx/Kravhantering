@@ -11,6 +11,8 @@
  * name matches the deny-list as a defense-in-depth measure.
  */
 
+import { getClientIp, isValidClientIp } from '@/lib/auth/client-ip'
+
 export type SecurityEventName =
   | 'access_review.cancelled'
   | 'access_review.completed'
@@ -50,6 +52,7 @@ export interface SecurityEventActor {
 }
 
 export interface SecurityEventRequest {
+  ip?: string
   method: string
   path: string
   requestId?: string
@@ -143,12 +146,15 @@ function normalizeRequest(
     if (ua) out.userAgent = ua
     const requestId = req.headers.get('x-request-id')
     if (requestId) out.requestId = requestId
+    const ip = getClientIp(req)
+    if (ip) out.ip = ip
     return out
   }
   const out: SecurityEventRequest = {
     method: input.method,
     path: stripQueryAndFragment(input.path),
   }
+  if (isValidClientIp(input.ip)) out.ip = input.ip
   if (input.userAgent) out.userAgent = input.userAgent
   if (input.requestId) out.requestId = input.requestId
   return out

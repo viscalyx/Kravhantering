@@ -92,12 +92,18 @@ Combines:
 - requirement listing
 - free-text search
 - lookup tables for areas, categories, types, quality characteristics,
-  risk levels, statuses, requirement packages, and transitions
+  risk levels, statuses, specification item statuses, requirement packages,
+  and transitions
 
 Requirement search supports pagination, sorting, archive inclusion, taxonomy
 filters, status/testing filters, norm-reference filters, and requirement-package
 filters. Lookup catalogs ignore requirement-only filters except
 `typeId`, which filters the `quality_characteristics` catalog.
+
+Status, specification item status, and risk-level catalog rows expose nullable
+`iconName` fields. Requirement list/detail version output also carries status
+and risk icon data as additive fields so older clients can keep using the
+existing status and risk names.
 
 This avoids a larger set of narrowly scoped read tools.
 

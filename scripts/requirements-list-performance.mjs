@@ -9,6 +9,7 @@ import {
 } from '../lib/dal/requirements-list-sql.mjs'
 import {
   STATUS_ARCHIVED,
+  STATUS_DRAFT,
   STATUS_PUBLISHED,
   STATUS_REVIEW,
 } from '../lib/requirements/status-constants.mjs'
@@ -422,41 +423,70 @@ SELECT
   r.requirement_id,
   @versionIdBase - ((r.n - 1) * 4 + v.version_number),
   v.version_number,
+  version_state.requirement_status_id,
   CASE
-    WHEN r.n % 10 = 0 AND v.version_number = r.version_count THEN 4
-    WHEN r.n % 10 = 0 THEN 1
-    WHEN r.n % 10 = 1 AND v.version_number = r.version_count THEN 2
-    WHEN r.n % 10 = 1 THEN 1
-    WHEN r.n % 10 = 2 THEN 1
-    WHEN v.version_number = 1 THEN 3
-    WHEN v.version_number = r.version_count AND r.n % 4 = 0 THEN 1
-    WHEN v.version_number = r.version_count AND r.n % 4 = 1 THEN 2
-    ELSE 3
-  END,
-  CASE
-    WHEN r.n % 10 NOT IN (0, 1, 2)
-      AND (
-        v.version_number = 1
-        OR NOT (v.version_number = r.version_count AND r.n % 4 IN (0, 1))
-      )
+    WHEN version_state.requirement_status_id IN (${STATUS_PUBLISHED}, ${STATUS_ARCHIVED})
+      OR (r.n % 10 = 1 AND v.version_number = r.version_count)
       THEN DATEADD(day, -(r.n % 180), @seededAt)
     ELSE NULL
   END,
   CASE
-    WHEN r.n % 10 = 0 AND v.version_number = r.version_count
+    WHEN version_state.requirement_status_id = ${STATUS_ARCHIVED}
       THEN DATEADD(day, -(r.n % 120), @seededAt)
     ELSE NULL
   END,
   CASE
-    WHEN r.n % 10 NOT IN (0, 1, 2)
-      AND v.version_number = r.version_count
-      AND r.n % 4 = 1
+    WHEN r.n % 20 = 1 AND v.version_number = r.version_count
       THEN DATEADD(day, -(r.n % 60), @seededAt)
     ELSE NULL
   END
 FROM #perf_requirements r
 CROSS APPLY (VALUES (1), (2), (3), (4)) AS v(version_number)
+CROSS APPLY (
+  SELECT CASE
+    WHEN r.n % 10 IN (3, 4, 5, 6) AND r.n % 4 IN (0, 1)
+      THEN r.version_count - 1
+    WHEN r.n % 10 IN (3, 4, 5, 6) THEN r.version_count
+  ELSE NULL
+END AS published_version_number
+) AS lifecycle
+CROSS APPLY (
+  SELECT CASE
+    WHEN r.n % 10 = 0 THEN ${STATUS_ARCHIVED}
+    WHEN r.n % 10 = 1 AND v.version_number = r.version_count
+      THEN ${STATUS_REVIEW}
+    WHEN r.n % 20 = 1 THEN ${STATUS_ARCHIVED}
+    WHEN r.n % 10 = 2 THEN ${STATUS_DRAFT}
+    WHEN v.version_number < lifecycle.published_version_number
+      THEN ${STATUS_ARCHIVED}
+    WHEN v.version_number = lifecycle.published_version_number
+      THEN ${STATUS_PUBLISHED}
+    WHEN r.n % 4 = 0 AND v.version_number = r.version_count
+      THEN ${STATUS_DRAFT}
+    WHEN r.n % 4 = 1 AND v.version_number = r.version_count
+      THEN ${STATUS_REVIEW}
+    ELSE ${STATUS_ARCHIVED}
+  END AS requirement_status_id
+) AS version_state
 WHERE v.version_number <= r.version_count;
+
+IF EXISTS (
+  SELECT 1
+  FROM #perf_versions
+  WHERE requirement_status_id = ${STATUS_PUBLISHED}
+  GROUP BY requirement_id
+  HAVING COUNT_BIG(*) > 1
+)
+  THROW 51001, N'Performance fixture generated duplicate Published requirement_versions rows.', 1;
+
+IF EXISTS (
+  SELECT 1
+  FROM #perf_versions
+  WHERE archive_initiated_at IS NOT NULL
+  GROUP BY requirement_id
+  HAVING COUNT_BIG(*) > 1
+)
+  THROW 51002, N'Performance fixture generated duplicate archiving-in-progress requirement_versions rows.', 1;
 
 SET IDENTITY_INSERT requirement_versions ON;
 

@@ -75,7 +75,7 @@ export const POST = secureMutationRoute({
     const db = await getRequestSqlServerDataSource()
     try {
       const normReference = await createNormReference(db, body)
-      recordAdminPrivilegedActionSucceeded(context, {
+      await recordAdminPrivilegedActionSucceeded(context, {
         changedFields: Object.keys(body),
         operation: 'create',
         resourceId: normReference.id,

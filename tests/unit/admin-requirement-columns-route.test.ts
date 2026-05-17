@@ -69,7 +69,12 @@ describe('admin requirement columns route', () => {
     ])
 
     routeState.getRequirementListColumnDefaults.mockResolvedValue(columns)
-    routeState.updateRequirementListColumnDefaults.mockResolvedValue(columns)
+    routeState.updateRequirementListColumnDefaults.mockImplementation(
+      async (_db, _values, options) => {
+        await options?.audit?.({ query: vi.fn() })
+        return columns
+      },
+    )
   })
 
   it('returns the stored column defaults payload', async () => {
@@ -235,8 +240,11 @@ describe('admin requirement columns route', () => {
       { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
       { columnId: 'version', defaultVisible: false, sortOrder: 8 },
     ])
-    routeState.updateRequirementListColumnDefaults.mockResolvedValueOnce(
-      reorderedColumns,
+    routeState.updateRequirementListColumnDefaults.mockImplementationOnce(
+      async (_db, _values, options) => {
+        await options?.audit?.({ query: vi.fn() })
+        return reorderedColumns
+      },
     )
 
     const response = await PUT(
@@ -255,6 +263,7 @@ describe('admin requirement columns route', () => {
     expect(routeState.updateRequirementListColumnDefaults).toHaveBeenCalledWith(
       { db: true },
       reorderedColumns,
+      expect.objectContaining({ audit: expect.any(Function) }),
     )
     expect(body.columns?.map(column => column.columnId)).toEqual([
       'uniqueId',
@@ -281,6 +290,7 @@ describe('admin requirement columns route', () => {
         operation: 'save',
         resourceType: 'requirement_columns',
       },
+      expect.anything(),
     )
   })
 

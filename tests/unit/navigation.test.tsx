@@ -67,8 +67,8 @@ describe('Navigation', () => {
     const settingsLink = screen.getByRole('link', { name: 'admin.settings' })
 
     expect(settingsLink).toHaveAttribute('href', '/admin')
-    expect(settingsLink.className).toContain('min-h-[44px]')
-    expect(settingsLink.className).toContain('min-w-[44px]')
+    expect(settingsLink.className).toContain('min-h-11')
+    expect(settingsLink.className).toContain('min-w-11')
     expect(screen.queryByText('nav.taxonomy')).toBeNull()
     expect(screen.queryByRole('link', { name: 'nav.areas' })).toBeNull()
     expect(screen.getByRole('link', { name: 'nav.catalog' })).toHaveAttribute(

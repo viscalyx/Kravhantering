@@ -106,11 +106,14 @@ function toVersionSummary(
       ? {
           nameSv: version.riskLevel.nameSv,
           nameEn: version.riskLevel.nameEn,
+          color: version.riskLevel.color,
+          iconName: version.riskLevel.iconName,
         }
       : null,
     status: {
       label: getStatusLabel(version, locale),
       color: version.statusColor,
+      iconName: version.statusIconName,
     },
     createdBy: version.createdBy,
     createdAt: version.createdAt,
@@ -274,6 +277,7 @@ export function buildReviewReport(
       ? {
           label: getStatusLabel(reviewVersion, locale),
           color: reviewVersion.statusColor,
+          iconName: reviewVersion.statusIconName,
         }
       : undefined,
   })

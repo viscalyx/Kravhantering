@@ -246,7 +246,7 @@ export function createSuggestionWorkflow({
               resolvedBy: actor.displayName,
               resolvedByHsaId: actor.hsaId,
             })
-            recordHighRiskMutationSucceeded(context, {
+            await recordHighRiskMutationSucceeded(context, {
               action: 'suggestion.resolution.recorded',
               operation: input.operation,
               resolution,
@@ -281,7 +281,7 @@ export function createSuggestionWorkflow({
 
           if (input.operation === 'delete') {
             await deleteSuggestion(db, input.suggestionId)
-            recordHighRiskMutationSucceeded(context, {
+            await recordHighRiskMutationSucceeded(context, {
               action: 'suggestion.deleted',
               operation: input.operation,
               suggestionId: input.suggestionId,

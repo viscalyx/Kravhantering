@@ -103,11 +103,25 @@ runs if the configured target is not local.
    starts it with `next start --hostname 127.0.0.1 --port 3001` loaded
    from [.env.prodlike](../.env.prodlike).
 4. Polls the new [`GET /api/health`](../app/api/health/route.ts)
-   endpoint until the app is ready.
+   endpoint until the app is ready. The DAST gate treats the endpoint as
+   healthy only when it returns HTTP `200` with JSON `{ "status": "ok" }`;
+   any other status or payload keeps the retry loop running and is printed on
+   terminal failure.
 5. Runs [scripts/security/get-session-cookie.mjs](../scripts/security/get-session-cookie.mjs)
    to drive a real OIDC login as the realm test user `ada.admin` and
    obtain the iron-session cookie. The flow mirrors
    [tests/integration/global-setup.ts](../tests/integration/global-setup.ts).
+   Before printing the cookie, the helper validates the final stdout line
+   against a strict CI-safe `name=value` contract. Names may contain only ASCII
+   letters, digits, `_`, and `-`; values may contain only ASCII letters,
+   digits, `.`, `_`, `~`, `*`, `+`, `/`, `=`, and `-`. A mismatch exits
+   non-zero before printing the cookie, so scanner setup fails before ZAP,
+   Nuclei, or Schemathesis can run with a malformed or truncated session
+   header.
+   Each helper fetch has a `15000` ms timeout by default. Set
+   `DAST_FETCH_TIMEOUT_MS` to a positive integer number of milliseconds when
+   a workflow needs a different bound; every redirect hop and the final
+   `/api/auth/me` verification receives its own fresh timeout signal.
 6. Runs the [`zaproxy/action-baseline`](https://github.com/zaproxy/action-baseline)
    action against `http://localhost:3001/sv` with the captured cookie
    injected as a `Cookie` header on every request via ZAP's `replacer`
@@ -402,6 +416,20 @@ unknown tool, stale edit conflict, and sanitized AI-disabled error.
 
 See [docs/mcp-seeded-dast.md](mcp-seeded-dast.md) for local run instructions
 and corpus extension rules.
+
+## Shared prodlike app cleanup
+
+<!-- cSpell:ignore setsid pgid -->
+The DAST, REST API Schemathesis, and MCP seeded workflows use
+[scripts/security/prodlike-app.sh](../scripts/security/prodlike-app.sh) to
+start the prodlike Next.js server under `setsid` so the wrapper, `npx` shims,
+and `next start` Node process share a dedicated process group. Each
+`Stop prodlike app` step reads the workflow-local `app.pgid`, sends `TERM` to
+the process group, waits up to 10 seconds, then sends `KILL` if any process
+remains.
+
+The marker is a process-group ID, not a single child PID. Do not switch these
+workflows back to `app.pid` unless the startup and cleanup model changes.
 
 ## Static security headers
 

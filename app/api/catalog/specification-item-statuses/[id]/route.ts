@@ -20,6 +20,7 @@ import {
   nullableBusinessTextSchema,
   parseRouteParams,
 } from '@/lib/http/validation'
+import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +31,7 @@ const specificationItemStatusUpdateSchema = z
     color: boundedDbStringSchema.optional(),
     descriptionEn: nullableBusinessTextSchema.optional(),
     descriptionSv: nullableBusinessTextSchema.optional(),
+    iconName: nullableOptionalStatusIconNameSchema,
     nameEn: boundedDbStringSchema.optional(),
     nameSv: boundedDbStringSchema.optional(),
     sortOrder: nonNegativeIntegerSchema.optional(),
@@ -64,7 +66,7 @@ export const PUT = secureMutationRoute({
     if (!status) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    recordAdminPrivilegedActionSucceeded(context, {
+    await recordAdminPrivilegedActionSucceeded(context, {
       changedFields: Object.keys(body),
       operation: 'update',
       resourceId: params.id,
@@ -84,7 +86,7 @@ export const DELETE = secureMutationRoute({
       if (deletedCount === 0) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 })
       }
-      recordAdminPrivilegedActionSucceeded(context, {
+      await recordAdminPrivilegedActionSucceeded(context, {
         operation: 'delete',
         resourceId: params.id,
         resourceType: 'specification_item_status',

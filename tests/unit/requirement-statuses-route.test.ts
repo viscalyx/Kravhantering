@@ -96,4 +96,28 @@ describe('requirement-statuses route', () => {
       },
     )
   })
+
+  it('POST rejects non-allowed icon names before creating', async () => {
+    const req = new Request('http://localhost', {
+      method: 'POST',
+      body: JSON.stringify({
+        color: '#22c55e',
+        iconName: 'MadeUpIcon',
+        nameEn: 'New',
+        nameSv: 'Ny',
+        sortOrder: 1,
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const res = await POST(req)
+    const json = (await res.json()) as { error: string }
+
+    expect(res.status).toBe(400)
+    expect(json.error).toBe('Invalid request')
+    expect(mockCreateStatus).not.toHaveBeenCalled()
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
+  })
 })

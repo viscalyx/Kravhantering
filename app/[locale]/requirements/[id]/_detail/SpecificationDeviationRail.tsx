@@ -48,7 +48,7 @@ export default function SpecificationDeviationRail({
       {workflow.deviationStep === null ||
       workflow.deviationStep === 'decided' ? (
         <button
-          className="inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-[44px] min-w-[44px]"
+          className="inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-11 min-w-11"
           disabled={workflow.deviationSaving}
           onClick={workflow.openCreateDialog}
           type="button"
@@ -59,7 +59,7 @@ export default function SpecificationDeviationRail({
       ) : workflow.deviationStep === 'draft' ? (
         <>
           <button
-            className="inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-[44px] min-w-[44px]"
+            className="inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-11 min-w-11"
             disabled={workflow.deviationSaving}
             onClick={workflow.openEditDialog}
             type="button"
@@ -68,7 +68,7 @@ export default function SpecificationDeviationRail({
             {td('editDeviation')}
           </button>
           <button
-            className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 min-h-[44px] min-w-[44px]"
+            className="btn-destructive inline-flex items-center gap-1.5 w-full justify-center"
             disabled={workflow.deviationSaving}
             onClick={event => void workflow.handleDeleteDeviation(event)}
             type="button"

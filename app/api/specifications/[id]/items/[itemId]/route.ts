@@ -108,6 +108,8 @@ export async function GET(
     needsReferenceId: item.needsReferenceId ?? null,
     specificationItemId: item.specificationItemId,
     specificationItemStatusColor: item.specificationItemStatusColor ?? null,
+    specificationItemStatusIconName:
+      item.specificationItemStatusIconName ?? null,
     specificationItemStatusId: item.specificationItemStatusId ?? null,
     specificationItemStatusNameEn: item.specificationItemStatusNameEn ?? null,
     specificationItemStatusNameSv: item.specificationItemStatusNameSv ?? null,

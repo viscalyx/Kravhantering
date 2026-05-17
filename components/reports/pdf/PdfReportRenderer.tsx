@@ -1,5 +1,20 @@
-import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer'
+import {
+  Circle,
+  Document,
+  Ellipse,
+  Line,
+  Page,
+  Path,
+  Polygon,
+  Polyline,
+  Rect,
+  StyleSheet,
+  Svg,
+  Text,
+  View,
+} from '@react-pdf/renderer'
 import { localizedName } from '@/lib/i18n/localized'
+import { getStatusIconNodes } from '@/lib/icons/status-icon-allowlist'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import type {
   DiffSegment,
@@ -373,7 +388,11 @@ function PdfHeader({
           <Text style={styles.headerMeta}>{section.subtitle}</Text>
         )}
         {section.status && (
-          <PdfBadge color={section.status.color} label={section.status.label} />
+          <PdfBadge
+            color={section.status.color}
+            iconName={section.status.iconName}
+            label={section.status.label}
+          />
         )}
       </View>
       <Text style={[styles.headerMeta, { fontSize: 8 }]}>
@@ -428,7 +447,11 @@ function PdfVersionSummary({
           }}
         >
           <Text style={styles.versionLabel}>{label}</Text>
-          <PdfBadge color={version.status.color} label={version.status.label} />
+          <PdfBadge
+            color={version.status.color}
+            iconName={version.status.iconName}
+            label={version.status.label}
+          />
         </View>
       )}
       {version.description && (
@@ -466,6 +489,13 @@ function PdfVersionSummary({
               locale === 'sv' ? 'Kvalitetsegenskap' : 'Quality Characteristic'
             }
             value={getName(version.qualityCharacteristic)}
+          />
+        )}
+        {getName(version.riskLevel) && (
+          <PdfMetadataItem
+            iconName={version.riskLevel?.iconName}
+            label={locale === 'sv' ? 'Risknivå' : 'Risk Level'}
+            value={getName(version.riskLevel)}
           />
         )}
         <PdfMetadataItem
@@ -512,18 +542,21 @@ function PdfVersionSummary({
 }
 
 function PdfMetadataItem({
+  iconName,
   label,
   value,
 }: {
+  iconName?: string | null
   label: string
   value: string | null
 }) {
   if (!value) return null
   return (
-    <Text style={styles.metadataItem}>
+    <View style={[styles.metadataItem, { flexDirection: 'row', gap: 2 }]}>
       <Text style={styles.metadataItemLabel}>{label}: </Text>
-      {value}
-    </Text>
+      <PdfStatusIcon name={iconName} />
+      <Text>{value}</Text>
+    </View>
   )
 }
 
@@ -608,7 +641,11 @@ function PdfTimelineEntry({
     <View style={styles.timelineEntry}>
       <View style={styles.timelineVersion}>
         <Text style={styles.timelineVersionNumber}>v{entry.versionNumber}</Text>
-        <PdfBadge color={entry.status.color} label={entry.status.label} />
+        <PdfBadge
+          color={entry.status.color}
+          iconName={entry.status.iconName}
+          label={entry.status.label}
+        />
       </View>
       <View style={styles.timelineContent}>
         <Text style={styles.timelineMeta}>
@@ -677,6 +714,7 @@ function PdfRequirementTable({
               {col.key === 'status' && row.statusColor ? (
                 <PdfBadge
                   color={row.statusColor}
+                  iconName={row.statusIconName}
                   label={row.cells[col.key] ?? ''}
                 />
               ) : (
@@ -735,20 +773,111 @@ function PdfToc({
   )
 }
 
-function PdfBadge({ label, color }: { label: string; color: string | null }) {
+function PdfStatusIcon({
+  color = '#6b7280',
+  name,
+}: {
+  color?: string
+  name?: string | null
+}) {
+  const iconNodes = getStatusIconNodes(name)
+  if (!iconNodes) return null
+
+  return (
+    <Svg
+      fill="none"
+      height={8}
+      stroke={color}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      viewBox="0 0 24 24"
+      width={8}
+    >
+      {iconNodes.map(([tag, attrs], index) => {
+        const key = `${name}-${tag}-${index}`
+        switch (tag) {
+          case 'circle':
+            return (
+              <Circle
+                cx={attrs.cx}
+                cy={attrs.cy}
+                key={key}
+                r={attrs.r ?? '0'}
+              />
+            )
+          case 'ellipse':
+            return (
+              <Ellipse
+                cx={attrs.cx ?? '0'}
+                cy={attrs.cy ?? '0'}
+                key={key}
+                rx={attrs.rx ?? '0'}
+                ry={attrs.ry ?? '0'}
+              />
+            )
+          case 'line':
+            return (
+              <Line
+                key={key}
+                x1={attrs.x1 ?? '0'}
+                x2={attrs.x2 ?? '0'}
+                y1={attrs.y1 ?? '0'}
+                y2={attrs.y2 ?? '0'}
+              />
+            )
+          case 'rect':
+            return (
+              <Rect
+                height={attrs.height ?? '0'}
+                key={key}
+                rx={attrs.rx}
+                ry={attrs.ry}
+                width={attrs.width ?? '0'}
+                x={attrs.x}
+                y={attrs.y}
+              />
+            )
+          case 'polygon':
+            return <Polygon key={key} points={attrs.points ?? ''} />
+          case 'polyline':
+            return <Polyline key={key} points={attrs.points ?? ''} />
+          case 'path':
+            return <Path d={attrs.d ?? ''} key={key} />
+          default:
+            return null
+        }
+      })}
+    </Svg>
+  )
+}
+
+function PdfBadge({
+  label,
+  color,
+  iconName,
+}: {
+  label: string
+  color: string | null
+  iconName?: string | null
+}) {
   const hex = color ?? '#6b7280'
   return (
-    <Text
+    <View
       style={[
         styles.badge,
         {
+          alignItems: 'center',
           backgroundColor: `${hex}20`,
+          flexDirection: 'row',
+          gap: 2,
           color: hex,
         },
       ]}
     >
-      {label}
-    </Text>
+      <PdfStatusIcon color={hex} name={iconName} />
+      <Text>{label}</Text>
+    </View>
   )
 }
 
@@ -785,9 +914,23 @@ function PdfDeviationSummary({
         {locale === 'sv' ? 'Avvikelse' : 'Deviation'}
       </Text>
       {riskName && (
-        <Text style={{ fontSize: 9, marginBottom: 6, color: '#6b7280' }}>
-          {locale === 'sv' ? 'Risknivå:' : 'Risk Level:'} {riskName}
-        </Text>
+        <View
+          style={{
+            alignItems: 'center',
+            flexDirection: 'row',
+            gap: 2,
+            marginBottom: 6,
+          }}
+        >
+          <Text style={{ fontSize: 9, color: '#6b7280' }}>
+            {locale === 'sv' ? 'Risknivå:' : 'Risk Level:'}
+          </Text>
+          <PdfStatusIcon
+            color={section.riskLevel?.color ?? '#6b7280'}
+            name={section.riskLevel?.iconName}
+          />
+          <Text style={{ fontSize: 9, color: '#6b7280' }}>{riskName}</Text>
+        </View>
       )}
       <Text
         style={{

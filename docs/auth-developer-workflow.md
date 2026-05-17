@@ -450,6 +450,29 @@ hands the id and secret over together per env.
 
 ## Tests
 
+### Integration-test CI dependency
+
+The GitHub Actions integration-test workflow in
+[`.github/workflows/integration-tests.yml`](../.github/workflows/integration-tests.yml)
+brings up a local Keycloak realm before running Playwright. The shared
+`test-server` matrix has both `dev` (`npm run test:integration`) and
+`prodlike` (`npm run test:integration:prodlike`) legs, and both legs use
+the same `npm run idp:up` start step and `npm run idp:down` cleanup step.
+The dedicated `test-prodlike-pruned` job also starts and stops Keycloak
+before running the prodlike suite against the pruned server.
+
+Because CI imports
+[`dev/keycloak/realm-kravhantering-dev.json`](../dev/keycloak/realm-kravhantering-dev.json),
+changes to local realm clients, users, roles, redirect URIs, protocol
+mappers, and claim names affect CI as well as local runs. Recreate or reset
+the local IdP after realm JSON changes before debugging failures.
+
+Before running integration tests locally outside a devcontainer, start
+Keycloak with `npm run idp:up`; stop it with `npm run idp:down` when
+finished. This applies to both the default dev Playwright config and the
+prodlike config. Devcontainer users get the same IdP from the compose stack,
+but still need the current realm imported.
+
 Unit tests stub the resolved actor at the request boundary via
 `attachVerifiedActor()` (see `lib/requirements/auth.ts`); no OIDC round
 trip required. Auth-flow specifics (config validation, session helpers,
@@ -526,6 +549,9 @@ npm run dev | grep '"channel":"security-audit"' | jq .
 Use `jq 'select(.event=="auth.login.failed")'` to filter by event, or
 `select(.outcome=="failure")` to surface only rejections. Tokens, PKCE
 verifiers, `state`, `nonce`, and `code` values are stripped before emit.
+When a valid `X-Forwarded-For` header is present, audit events may include
+`request.ip`; treat it as authoritative only in reverse-proxy paths that own or
+strip the inbound header.
 
 ## Pre-prod smoke test
 

@@ -13,6 +13,7 @@ import {
   idParamSchema,
   nonNegativeIntegerSchema,
 } from '@/lib/http/validation'
+import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
@@ -20,6 +21,7 @@ export const dynamic = 'force-dynamic'
 const updateStatusSchema = z
   .object({
     color: boundedDbStringSchema.optional(),
+    iconName: nullableOptionalStatusIconNameSchema,
     nameEn: boundedDbStringSchema.optional(),
     nameSv: boundedDbStringSchema.optional(),
     sortOrder: nonNegativeIntegerSchema.optional(),
@@ -40,7 +42,7 @@ export const PUT = secureMutationRoute({
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const updated = await updateStatus(db, params.id, body)
-    recordAdminPrivilegedActionSucceeded(context, {
+    await recordAdminPrivilegedActionSucceeded(context, {
       changedFields: Object.keys(body),
       operation: 'update',
       resourceId: params.id,
@@ -57,7 +59,7 @@ export const DELETE = secureMutationRoute({
     const db = await getRequestSqlServerDataSource()
     try {
       await deleteStatus(db, params.id)
-      recordAdminPrivilegedActionSucceeded(context, {
+      await recordAdminPrivilegedActionSucceeded(context, {
         operation: 'delete',
         resourceId: params.id,
         resourceType: 'requirement_status',

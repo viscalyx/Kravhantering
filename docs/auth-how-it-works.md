@@ -8,7 +8,8 @@ This document explains authentication in two separate layers:
 
 It is intentionally not a replacement for the more detailed workflow docs:
 
-- For local Keycloak, test setup, and env-var reference, see
+- For local Keycloak, integration-test CI dependency, test setup, and
+  env-var reference, see
   [auth-developer-workflow.md](./auth-developer-workflow.md).
 
 ## Reading guide
@@ -241,13 +242,14 @@ sequenceDiagram
   detail key is redacted, the audit writer also emits a structured
   `detail-key-redacted` breadcrumb with the source event, actor source, and
   redacted key name.
-- Privacy erasure and data-subject export audit events are emitted to the
-  platform security-log stream, not stored in the application database. They
-  include the handler identity, request id, grouped counts or delivery metadata,
-  and a non-reversible target fingerprint. They must not include the raw target
-  HSA-ID in event detail. Retention or redaction of handler identity in those
-  logs is handled by the platform logging policy because removing it can reduce
-  traceability.
+- Privacy erasure and data-subject export security events are emitted to the
+  platform security-log stream. Privacy erasure execution also writes a
+  database action-audit row for Admin review. Both include the handler
+  identity, request id, grouped counts or delivery metadata, and a
+  non-reversible target fingerprint. They must not include the raw target
+  HSA-ID in event detail. Retention or redaction of handler identity in
+  external security logs is handled by the platform logging policy because
+  removing it can reduce traceability.
 - Privileged Admin Center and reference-data mutations emit
   `admin.privileged_action.succeeded` only after the mutation succeeds. The
   detail contains operation, resource type, optional resource id, item counts,
@@ -265,8 +267,10 @@ sequenceDiagram
 - `actor` identifies the source (`oidc`, `mcp`, or `anonymous`) and may also
   include `sub`, `hsaId`, and `clientId`.
 - `request` includes the HTTP method and path without query strings or
-  fragments, and may also include `requestId` and `userAgent` when those
-  values were present on the incoming request.
+  fragments, and may also include `requestId`, `userAgent`, and a validated
+  `ip` when those values were present on the incoming request. `ip` is derived
+  from the first valid `X-Forwarded-For` candidate and should only be trusted
+  when that header is controlled by the reverse proxy or ingress path.
 - `detail` is optional and is redacted defensively so top-level fields such as
   tokens, secrets, authorization codes, PKCE verifiers, `state`, and `nonce`
   are not emitted. Redaction breadcrumbs use the same `security-audit` channel
@@ -275,6 +279,10 @@ sequenceDiagram
   same stream. Their `detail` payloads carry stable identifiers, counts, and
   action names only; free-text requirement content, motivations, and suggestion
   text are not emitted.
+- Application action audit rows in `action_audit_events` are separate from
+  this stream. They are database records for successful app-owned mutations and
+  authorization denials, include request/correlation IDs and optional validated
+  client IP, and can be viewed by Admins at `/{locale}/admin/audit-log`.
 - The audit writer is intentionally transport-free: it does not push directly
   to Kafka, a webhook, a SIEM, or a database. It writes structured events to
   the process log stream and does not buffer them in the app.

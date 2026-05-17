@@ -84,6 +84,30 @@ describe('risk-levels route', () => {
     ).not.toHaveBeenCalled()
   })
 
+  it('returns 400 for non-allowed icon names before opening the DB', async () => {
+    const response = await POST(
+      new NextRequest('https://example.test/api/risk-levels', {
+        body: JSON.stringify({
+          color: '#dc2626',
+          iconName: 'MadeUpIcon',
+          nameEn: 'High',
+          nameSv: 'Hog',
+          sortOrder: 4,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      }),
+    )
+
+    expect(response.status).toBe(400)
+    await expectInvalidRequest(response, 'iconName')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.createRiskLevel).not.toHaveBeenCalled()
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
+  })
+
   it('returns the created risk level on success', async () => {
     const mockDb = { session: 'db' }
     const payload = {

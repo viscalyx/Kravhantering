@@ -3,7 +3,8 @@
 This document describes the contributor-facing admin center for UI
 terminology, default requirement-list columns, recurring access review,
 privacy erasure and data portability, archiving retention, and reference-data
-entrypoints.
+entrypoints. Admin users also get an action audit-log entrypoint for
+database-backed mutation and authorization-denial review.
 
 For requirement-list interaction details such as resizing, sorting, and
 filtering, see [requirements-ui-behaviour.md](./requirements-ui-behaviour.md).
@@ -22,7 +23,7 @@ the admin center instead.
 
 ## Tabs
 
-The admin center currently has six tabs:
+The admin center currently has six tabs for core administration:
 
 - `Terminology`
 - `Columns`
@@ -30,6 +31,24 @@ The admin center currently has six tabs:
 - `Access review`
 - `Archiving`
 - `Privacy`
+
+Admins also see an `Action audit log` tab. The tab renders the audit-log
+filters, table, pagination, and CSV export directly in the Admin Center.
+
+## Action Audit Log
+
+The action audit log is available at `/{locale}/admin/audit-log` for users with
+the `Admin` role, and also inline from the Admin Center `Action audit log` tab
+at `/{locale}/admin?tab=actionAuditLog`. It reads `action_audit_events`, shows
+the latest 50 events by default, supports filters for actor HSA-ID, action,
+target, decision, and date range, plus client IP when a validated
+`X-Forwarded-For` value was available, and exports the filtered result as CSV.
+
+The database action audit log is separate from the platform `security-audit`
+JSON stream. The database log is intended for application action review and
+privacy/data-subject workflows; the platform stream remains the operational
+security telemetry channel. Reading the audit log, including CSV export, does
+not create another audit row.
 
 ## Terminology
 
@@ -164,10 +183,10 @@ preview group: owner rows, area and package owner assignments, requirement
 versions, deviation creator and decision fields, improvement-suggestion creator
 and resolver fields, specification responsibility, and area/specification
 co-author assignment rows, plus access-review creator, reviewer, completer,
-reviewed-principal, and decision snapshots. The access-review fixture includes
-two completed reviews: one created by the Linnéa HSA identity and one created
-by another user where the Linnéa HSA identity is the reviewer. This lets the
-privacy UI be tested end-to-end with one HSA-ID.
+reviewed-principal, decision snapshots, and action-audit actor snapshots. The
+access-review fixture includes two completed reviews: one created by the Linnéa
+HSA identity and one created by another user where the Linnéa HSA identity is
+the reviewer. This lets the privacy UI be tested end-to-end with one HSA-ID.
 
 The preview groups HSA-ID occurrences by object and field, shows the affected
 objects by name or stable identifier, shows the current actor display snapshot,
@@ -220,13 +239,16 @@ workflow. Their help text tells users not to enter names or other details that
 can identify a living person.
 
 The execution endpoint recomputes matches in a single transaction and rejects
-stale previews. Privacy audit events are emitted to the platform security-log
-stream, not stored in the application database, so they are not part of the
-preview matrix and are not rewritten by this workflow. Those events include the
-handler identity, request id, action counts, and a non-reversible target
-fingerprint; they do not log the raw target HSA-ID. Retention or redaction of
-handler identity in security logs is handled by the platform logging policy,
-because removing it can reduce traceability.
+stale previews. Privacy execution emits both the platform security-log event
+and a database action-audit event. Platform security logs are outside this
+privacy matrix, but `action_audit_events.actor` is included: erasure preserves
+the row and may anonymize or switch only the actor HSA-ID/display-name
+snapshot. Those events include request id, action counts, and a non-reversible
+target fingerprint; they do not log the raw target HSA-ID in details. Client IP
+values in `action_audit_events.client_ip` are not handled by the Privacy
+workflow in this slice.
+Retention or redaction of handler identity in external security logs is handled
+by the platform logging policy, because removing it can reduce traceability.
 
 Signed-in users can export their own data at `/{locale}/privacy`. That
 self-service path sends no target HSA-ID in the request body; the server derives
@@ -341,12 +363,21 @@ It links to the existing stable routes for:
 - requirement packages
 - norm references
 - statuses
+- specification item statuses
+- risk levels
 - quality characteristics
 - business objects
 - implementation types
 
 The admin center does not rename or move those routes. It only centralizes how
 users reach them.
+
+Requirement statuses, specification item statuses, and risk levels can also
+carry a nullable icon selected from the installed Lucide icon catalog through
+the shared status-icon allowlist. The admin pages keep the label visible and
+use the icon only as a decorative cue in tables, badges, steppers, and reports.
+Existing rows without an icon continue to render with text-only labels until an
+admin selects one.
 
 ### Area Owner
 
@@ -369,6 +400,7 @@ If you change any of the following, update this document:
 - privacy-erasure or data-portability policy, actions, or role gating
 - admin entrypoint navigation
 - reference-data navigation structure
+- status, usage-status, or risk-level icon behavior
 
 If you add a new requirement column or property, also update
 [.github/instructions/add-requirement-column.instructions.md](../.github/instructions/add-requirement-column.instructions.md).

@@ -72,6 +72,7 @@ export type CatalogKind =
   | 'types'
   | 'quality_characteristics'
   | 'risk_levels'
+  | 'specification_item_statuses'
   | 'statuses'
   | 'requirement_packages'
   | 'transitions'
@@ -679,7 +680,7 @@ export function createRequirementsService(
               decidedBy: actor.displayName,
               decidedByHsaId: actor.hsaId,
             })
-            recordHighRiskMutationSucceeded(context, {
+            await recordHighRiskMutationSucceeded(context, {
               action: 'deviation.decision.recorded',
               decision: input.decision,
               deviationId: input.deviationId,
@@ -709,7 +710,7 @@ export function createRequirementsService(
 
           // delete
           await deleteDeviation(db, input.deviationId)
-          recordHighRiskMutationSucceeded(context, {
+          await recordHighRiskMutationSucceeded(context, {
             action: 'deviation.deleted',
             deviationId: input.deviationId,
             operation: input.operation,

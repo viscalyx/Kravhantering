@@ -82,6 +82,14 @@ export interface ArchivingRetentionExecutionInput {
   previewToken: string
 }
 
+export interface ArchivingRetentionExecutionInputWithAudit
+  extends ArchivingRetentionExecutionInput {
+  audit?: (
+    executor: QueryExecutor,
+    result: ArchivingRetentionRunResult,
+  ) => Promise<void>
+}
+
 export interface ArchivingRetentionRunResult extends ArchivingRetentionPreview {
   runId: number
   runRequestId: string
@@ -898,7 +906,7 @@ async function insertRun(
 
 export async function executeArchivingRetention(
   db: SqlServerDatabase,
-  input: ArchivingRetentionExecutionInput,
+  input: ArchivingRetentionExecutionInputWithAudit,
   actor: ArchivingRetentionActor,
 ): Promise<ArchivingRetentionRunResult> {
   const runRequestId = randomUUID()
@@ -965,6 +973,7 @@ export async function executeArchivingRetention(
       runRequestId,
       summary: finalSummary,
     }
+    await input.audit?.(tx, result)
   })
   return result
 }

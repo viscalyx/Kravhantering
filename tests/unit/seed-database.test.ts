@@ -210,6 +210,10 @@ describe('seedDatabase', () => {
         rows,
         'access_review_runs',
       ).filter(row => row.reviewer_hsa_id === LINNEA_HSA_ID).length,
+      'action_audit_events.actor': seedRowsFor(
+        rows,
+        'action_audit_events',
+      ).filter(row => row.actor_hsa_id === LINNEA_HSA_ID).length,
       'deviations.created_by': seedRowsFor(rows, 'deviations').filter(
         row => row.created_by_hsa_id === LINNEA_HSA_ID,
       ).length,
@@ -272,6 +276,7 @@ describe('seedDatabase', () => {
       'access_review_runs.completed_by': 1,
       'access_review_runs.created_by': 1,
       'access_review_runs.reviewer': 1,
+      'action_audit_events.actor': 2,
       'deviations.created_by': 1,
       'deviations.decided_by': 1,
       'improvement_suggestions.created_by': 1,
@@ -307,6 +312,11 @@ describe('seedDatabase', () => {
       seedRowsFor(rows, 'specification_co_authors').find(
         row => row.created_by_hsa_id === LINNEA_HSA_ID,
       )?.created_by_display_name,
+    ).toBe(LINNEA_DISPLAY_NAME)
+    expect(
+      seedRowsFor(rows, 'action_audit_events').find(
+        row => row.actor_hsa_id === LINNEA_HSA_ID,
+      )?.actor_display_name,
     ).toBe(LINNEA_DISPLAY_NAME)
     const linneaCompletedRuns = seedRowsFor(rows, 'access_review_runs').filter(
       row =>

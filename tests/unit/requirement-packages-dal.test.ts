@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createRequirementPackage } from '@/lib/dal/requirement-packages'
+import {
+  createRequirementPackage,
+  getLinkedRequirementsForPackage,
+} from '@/lib/dal/requirement-packages'
 
 function createSqlServerDb() {
   const query = vi.fn().mockResolvedValue([
@@ -58,5 +61,54 @@ describe('requirement-packages DAL', () => {
       nameSv: 'Mobil användning',
       updatedAt: '2026-05-02T08:00:00.000Z',
     })
+  })
+
+  it('returns linked requirements with normalized archive review timestamps', async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        archiveInitiatedAt: new Date('2026-05-15T09:30:00.000Z'),
+        description: 'Archiving review requirement',
+        id: 1,
+        statusColor: '#f59e0b',
+        statusId: 2,
+        statusNameEn: 'Review',
+        statusNameSv: 'Granskning',
+        uniqueId: 'REQ-1',
+        versionNumber: 3,
+      },
+      {
+        archiveInitiatedAt: null,
+        description: 'Ordinary review requirement',
+        id: 2,
+        statusColor: '#f59e0b',
+        statusId: 2,
+        statusNameEn: 'Review',
+        statusNameSv: 'Granskning',
+        uniqueId: 'REQ-2',
+        versionNumber: 1,
+      },
+    ])
+    const db = {
+      query,
+    } as unknown as Parameters<typeof getLinkedRequirementsForPackage>[0]
+
+    const result = await getLinkedRequirementsForPackage(db, 7)
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'requirement_versions.archive_initiated_at AS archiveInitiatedAt',
+      ),
+      [7],
+    )
+    expect(result).toMatchObject([
+      {
+        archiveInitiatedAt: '2026-05-15T09:30:00.000Z',
+        uniqueId: 'REQ-1',
+      },
+      {
+        archiveInitiatedAt: null,
+        uniqueId: 'REQ-2',
+      },
+    ])
   })
 })

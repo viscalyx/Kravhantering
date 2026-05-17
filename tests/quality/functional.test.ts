@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { recordActionAuditEvent } from '@/lib/audit/action-audit'
 import {
   createDeviation,
   createDeviationForItemRef,
@@ -43,6 +44,10 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
+  isStatusIconName,
+  STATUS_ICON_NAMES,
+} from '@/lib/icons/status-icon-allowlist'
+import {
   attachVerifiedActor,
   createRequestContext,
   type RequestContext,
@@ -71,11 +76,11 @@ import {
  * Scenario names here must match the QUALITY.md `vitest -t "Scenario N: ..."`
  * invocations verbatim so that spec-referenced commands keep working.
  *
- * Scenario 10 is a pure file-content check and always runs as part of
+ * Scenarios 10 and 15 are pure file-content checks and always run as part of
  * `npm run test`.
  *
- * Scenarios 1-9 and 11-12 exercise lifecycle invariants that require a real
- * SQL Server instance. The harness derives a connection URL automatically from
+ * Scenarios 1-9, 11-12, and 14 exercise lifecycle/audit invariants that
+ * require a real SQL Server instance. The harness derives a connection URL automatically from
  * the standard DB_* environment variables (the same ones used by the dev
  * scripts) and swaps the database name to a dedicated
  * `<DB_NAME>_functional_tests` instance so the development data is never
@@ -87,6 +92,54 @@ import {
 
 const repoRoot = process.cwd()
 const mcpServerPath = join(repoRoot, 'lib', 'mcp', 'server.ts')
+const statusIconAllowlistPath = join(
+  repoRoot,
+  'lib',
+  'icons',
+  'status-icon-allowlist.ts',
+)
+const statusIconSchemaPath = join(
+  repoRoot,
+  'lib',
+  'icons',
+  'status-icon-schema.ts',
+)
+const statusIconMigrationPath = join(
+  repoRoot,
+  'typeorm',
+  'migrations',
+  '0014_status_and_risk_icons.mjs',
+)
+const requirementStatusesRoutePath = join(
+  repoRoot,
+  'app',
+  'api',
+  'requirement-statuses',
+  'route.ts',
+)
+const specificationItemStatusesRoutePath = join(
+  repoRoot,
+  'app',
+  'api',
+  'catalog',
+  'specification-item-statuses',
+  'route.ts',
+)
+const riskLevelsRoutePath = join(
+  repoRoot,
+  'app',
+  'api',
+  'risk-levels',
+  'route.ts',
+)
+const adminCenterDocPath = join(repoRoot, 'docs', 'admin-center.md')
+const databaseSchemaDocPath = join(repoRoot, 'docs', 'database-schema.md')
+const requirementsServicePath = join(
+  repoRoot,
+  'lib',
+  'requirements',
+  'service-requirements.ts',
+)
 const contributorGuidePath = join(
   repoRoot,
   'docs',
@@ -137,6 +190,99 @@ it('Scenario 10: MCP tool inventory matches documentation', () => {
   ).toBe(registerToolCount)
 })
 
+it('Scenario 15: configurable status and risk icons use an allowlist and stay additive', () => {
+  const allowlistSource = readFileSync(statusIconAllowlistPath, 'utf8')
+  const schemaSource = readFileSync(statusIconSchemaPath, 'utf8')
+  const migrationSource = readFileSync(statusIconMigrationPath, 'utf8')
+  const requirementStatusesRouteSource = readFileSync(
+    requirementStatusesRoutePath,
+    'utf8',
+  )
+  const specificationItemStatusesRouteSource = readFileSync(
+    specificationItemStatusesRoutePath,
+    'utf8',
+  )
+  const riskLevelsRouteSource = readFileSync(riskLevelsRoutePath, 'utf8')
+  const adminCenterDoc = readFileSync(adminCenterDocPath, 'utf8')
+  const databaseSchemaDoc = readFileSync(databaseSchemaDocPath, 'utf8')
+  const requirementsServiceSource = readFileSync(
+    requirementsServicePath,
+    'utf8',
+  )
+  const userGuideSource = readFileSync(userGuidePath, 'utf8')
+
+  for (const iconName of [
+    'AlertCircle',
+    'AlertTriangle',
+    'Archive',
+    'CheckCircle2',
+    'Circle',
+    'CircleDot',
+    'Clock',
+    'Eye',
+    'Flag',
+    'Hourglass',
+    'Lock',
+    'PenLine',
+    'Play',
+    'ShieldAlert',
+    'ShieldCheck',
+    'Sparkles',
+    'Star',
+    'ThumbsUp',
+    'XCircle',
+    'Zap',
+  ]) {
+    expect(isStatusIconName(iconName)).toBe(true)
+  }
+  expect(STATUS_ICON_NAMES).toContain('Camera')
+  expect(STATUS_ICON_NAMES).toContain('Wifi')
+  expect(STATUS_ICON_NAMES.length).toBeGreaterThan(1000)
+
+  expect(allowlistSource).toContain("from 'lucide-react/dynamicIconImports'")
+  expect(allowlistSource).toContain('isStatusIconName')
+  expect(allowlistSource).toContain('loadStatusIconNodes')
+  expect(allowlistSource).toContain('collectStatusIconNames')
+  expect(migrationSource).toContain(
+    'ALTER TABLE [requirement_statuses] ADD [icon_name] nvarchar(64) NULL;',
+  )
+  expect(migrationSource).toContain(
+    'ALTER TABLE [specification_item_statuses] ADD [icon_name] nvarchar(64) NULL;',
+  )
+  expect(migrationSource).toContain(
+    'ALTER TABLE [risk_levels] ADD [icon_name] nvarchar(64) NULL;',
+  )
+  expect(migrationSource).toContain(
+    'ALTER TABLE [requirement_statuses] DROP COLUMN [icon_name];',
+  )
+
+  for (const routeSource of [
+    requirementStatusesRouteSource,
+    specificationItemStatusesRouteSource,
+    riskLevelsRouteSource,
+  ]) {
+    expect(routeSource).toContain('nullableOptionalStatusIconNameSchema')
+    expect(routeSource).toContain(
+      'iconName: nullableOptionalStatusIconNameSchema',
+    )
+  }
+  expect(schemaSource).toContain('isStatusIconName')
+
+  expect(requirementsServiceSource).toContain(
+    'statusIconName: version.statusIconName',
+  )
+  expect(requirementsServiceSource).toContain(
+    'iconName: version.riskLevel.iconName',
+  )
+  expect(requirementsServiceSource).toContain('specification_item_statuses')
+  expect(userGuideSource).toContain('specification item statuses')
+  expect(userGuideSource).toContain('iconName')
+  expect(adminCenterDoc).toContain('nullable icon')
+  expect(databaseSchemaDoc).toContain('icon_name')
+  expect(databaseSchemaDoc).toContain('`PenLine`')
+  expect(databaseSchemaDoc).toContain('`ShieldCheck`')
+})
+
 function resolveFunctionalTestsUrl(): string | null {
   const explicit = process.env.SQLSERVER_FUNCTIONAL_TESTS_URL?.trim()
   if (explicit) return explicit
@@ -161,6 +307,7 @@ const FUNCTIONAL_TESTS_URL = resolveFunctionalTestsUrl()
 // Tables that the lifecycle scenarios populate and need cleared between tests.
 // Ordered child → parent so foreign key constraints never reject a DELETE.
 const TRANSACTIONAL_TABLES = [
+  'action_audit_events',
   'requirement_version_requirement_packages',
   'requirement_version_norm_references',
   'specification_local_requirement_requirement_packages',
@@ -1209,5 +1356,144 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(v2Cancel?.id).toBe(v2b.id)
     expect(v2Cancel?.status).toBe(STATUS_DRAFT)
     expect(v2Cancel?.revisionToken).toBe(v2b.revisionToken)
+  })
+
+  it('Scenario 12e: storage constraints reject duplicate archiving targets', async () => {
+    const area = await createArea(appDb())
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Duplicate archive target baseline',
+    )
+    const v2 = await editRequirement(appDb(), published.requirementId, {
+      baseRevisionToken: published.revisionToken,
+      baseVersionId: published.publishedVersionId,
+      description: 'Successor draft with duplicate archive flag attempt',
+    })
+
+    await appDb().query(
+      `UPDATE requirement_versions
+        SET requirement_status_id = @0,
+            archive_initiated_at = @1,
+            revision_token = NEWID()
+        WHERE id = @2`,
+      [STATUS_REVIEW, new Date(), published.publishedVersionId],
+    )
+
+    await expect(
+      appDb().query(
+        `UPDATE requirement_versions
+          SET archive_initiated_at = @0,
+              revision_token = NEWID()
+          WHERE id = @1`,
+        [new Date(), v2.id],
+      ),
+    ).rejects.toThrow(
+      'uq_requirement_versions_archive_initiated_requirement_id',
+    )
+
+    const history = await getVersionHistory(appDb(), published.requirementId)
+    const v1After = history.find(v => v.versionNumber === 1)
+    const v2After = history.find(v => v.versionNumber === 2)
+    expect(v1After?.archiveInitiatedAt).not.toBeNull()
+    expect(v2After?.archiveInitiatedAt).toBeNull()
+  })
+
+  it('Scenario 12f: storage constraints reject duplicate Published versions', async () => {
+    const area = await createArea(appDb())
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Duplicate published baseline',
+    )
+    const v2 = await editRequirement(appDb(), published.requirementId, {
+      baseRevisionToken: published.revisionToken,
+      baseVersionId: published.publishedVersionId,
+      description: 'Successor draft with duplicate published attempt',
+    })
+
+    await expect(
+      appDb().query(
+        `UPDATE requirement_versions
+          SET requirement_status_id = @0,
+              published_at = @1,
+              revision_token = NEWID()
+          WHERE id = @2`,
+        [STATUS_PUBLISHED, new Date(), v2.id],
+      ),
+    ).rejects.toThrow('uq_requirement_versions_published_requirement_id')
+
+    const history = await getVersionHistory(appDb(), published.requirementId)
+    const v1After = history.find(v => v.versionNumber === 1)
+    const v2After = history.find(v => v.versionNumber === 2)
+    expect(v1After?.status).toBe(STATUS_PUBLISHED)
+    expect(v2After?.status).toBe(STATUS_DRAFT)
+  })
+
+  it('Scenario 14: action audit rows fail closed with the business transaction', async () => {
+    await expect(
+      appDb().transaction(async manager => {
+        await recordActionAuditEvent(manager, {
+          action: 'requirement.create',
+          actorDisplayName: 'Functional Test Actor',
+          actorHsaId: 'SE2321000032-functional1',
+          actorKind: 'user',
+          clientIp: '203.0.113.40',
+          decision: 'allowed',
+          details: { operation: 'create', route: '/quality/functional' },
+          requestId: 'quality-request-rollback',
+          targetId: 'rollback-target',
+          targetKind: 'Requirement',
+        })
+        throw new Error('rollback audit transaction')
+      }),
+    ).rejects.toThrow('rollback audit transaction')
+
+    const rollbackRows = (await appDb().query(
+      `SELECT COUNT(*) AS count
+       FROM action_audit_events
+       WHERE request_id = @0`,
+      ['quality-request-rollback'],
+    )) as Array<{ count: number }>
+    expect(Number(rollbackRows[0]?.count ?? 0)).toBe(0)
+
+    await appDb().transaction(async manager => {
+      await recordActionAuditEvent(manager, {
+        action: 'requirement.create',
+        actorDisplayName: 'Functional Test Actor',
+        actorHsaId: 'SE2321000032-functional1',
+        actorKind: 'user',
+        clientIp: '203.0.113.41',
+        decision: 'allowed',
+        details: {
+          operation: 'create',
+          prompt: 'must not be persisted',
+          route: '/quality/functional',
+        },
+        requestId: 'quality-request-commit',
+        targetId: 'commit-target',
+        targetKind: 'Requirement',
+      })
+    })
+
+    const committedRows = (await appDb().query(
+      `SELECT action, client_ip AS clientIp, details_json AS detailsJson
+       FROM action_audit_events
+       WHERE request_id = @0`,
+      ['quality-request-commit'],
+    )) as Array<{
+      action: string
+      clientIp: string | null
+      detailsJson: string | null
+    }>
+    expect(committedRows).toHaveLength(1)
+    expect(committedRows[0]).toEqual(
+      expect.objectContaining({
+        action: 'requirement.create',
+        clientIp: '203.0.113.41',
+      }),
+    )
+    expect(committedRows[0]?.detailsJson).toContain('/quality/functional')
+    expect(committedRows[0]?.detailsJson).not.toContain('must not be persisted')
   })
 })
