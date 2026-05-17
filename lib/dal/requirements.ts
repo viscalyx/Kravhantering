@@ -75,8 +75,11 @@ const REQUIREMENT_VERSION_LIFECYCLE_UNIQUE_INDEXES = [
 
 function getLifecycleUniqueIndexName(error: unknown): string | null {
   const messages: string[] = []
+  const seen = new WeakSet<object>()
   const collect = (value: unknown): void => {
     if (!value || typeof value !== 'object') return
+    if (seen.has(value)) return
+    seen.add(value)
     const record = value as Record<string, unknown>
     if (typeof record.message === 'string') messages.push(record.message)
     collect(record.originalError)

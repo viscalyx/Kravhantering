@@ -4,9 +4,17 @@ import { validationError } from '@/lib/requirements/errors'
 
 /* ── shared request DB mocks ─────────────────────────────────────── */
 
-const routeState = vi.hoisted(() => ({
-  getRequestSqlServerDataSource: vi.fn(() => ({})),
-}))
+const routeState = vi.hoisted(() => {
+  const transactionDb = { query: vi.fn() }
+  const transaction = vi.fn(async (callback: (manager: unknown) => unknown) =>
+    callback(transactionDb),
+  )
+  return {
+    getRequestSqlServerDataSource: vi.fn(() => ({ transaction })),
+    transaction,
+    transactionDb,
+  }
+})
 
 const auditState = vi.hoisted(() => ({
   createAdminPrivilegedAuditContext: vi.fn(async () => ({
@@ -585,6 +593,59 @@ describe('specification-item-statuses catalog routes', () => {
     )
 
     expect(r.status).toBe(201)
+    expect(routeState.transaction).toHaveBeenCalledTimes(1)
+    expect(mockCreateSpecItemStatus).toHaveBeenCalledWith(
+      routeState.transactionDb,
+      expect.objectContaining({
+        color: '#22c55e',
+        nameEn: 'New',
+        nameSv: 'Ny',
+      }),
+    )
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'rest' }),
+      expect.objectContaining({
+        operation: 'create',
+        resourceId: 6,
+        resourceType: 'specification_item_status',
+      }),
+      routeState.transactionDb,
+    )
+  })
+
+  it('POST aborts the transaction when action audit recording fails', async () => {
+    const transactionEvents: string[] = []
+    routeState.transaction.mockImplementationOnce(async callback => {
+      try {
+        const result = await callback(routeState.transactionDb)
+        transactionEvents.push('commit')
+        return result
+      } catch (error) {
+        transactionEvents.push('rollback')
+        throw error
+      }
+    })
+    auditState.recordAdminPrivilegedActionSucceeded.mockRejectedValueOnce(
+      new Error('audit failed'),
+    )
+
+    const r = await postSpecItemStatus(
+      jsonReq('POST', {
+        color: '#22c55e',
+        nameEn: 'New',
+        nameSv: 'Ny',
+      }),
+    )
+
+    expect(r.status).toBe(500)
+    expect(transactionEvents).toEqual(['rollback'])
+    expect(mockCreateSpecItemStatus).toHaveBeenCalledWith(
+      routeState.transactionDb,
+      expect.objectContaining({ nameEn: 'New' }),
+    )
+    expect(auditState.recordAdminPrivilegedActionSucceeded).toHaveBeenCalled()
   })
 
   it('POST rejects non-allowed icon names before creating a status', async () => {

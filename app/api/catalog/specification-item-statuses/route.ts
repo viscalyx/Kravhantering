@@ -57,12 +57,22 @@ export const POST = secureMutationRoute({
   handler: async ({ body, context }) => {
     try {
       const db = await getRequestSqlServerDataSource()
-      const status = await createSpecificationItemStatus(db, body)
-      await recordAdminPrivilegedActionSucceeded(context, {
-        changedFields: Object.keys(body),
-        operation: 'create',
-        resourceId: status.id,
-        resourceType: 'specification_item_status',
+      const status = await db.transaction(async transactionDb => {
+        const createdStatus = await createSpecificationItemStatus(
+          transactionDb,
+          body,
+        )
+        await recordAdminPrivilegedActionSucceeded(
+          context,
+          {
+            changedFields: Object.keys(body),
+            operation: 'create',
+            resourceId: createdStatus.id,
+            resourceType: 'specification_item_status',
+          },
+          transactionDb,
+        )
+        return createdStatus
       })
       return NextResponse.json(status, { status: 201 })
     } catch (error) {

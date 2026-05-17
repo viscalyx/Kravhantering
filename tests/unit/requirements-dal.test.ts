@@ -679,6 +679,27 @@ describe('archiving helpers (atomicity & strict-target rule)', () => {
         message: 'Requirement version lifecycle state is no longer unique',
       })
     })
+
+    it('maps cyclic nested unique index errors without looping', async () => {
+      const { db, query } = createSqlServerDb()
+      const error = uniqueIndexViolation(
+        'uq_requirement_versions_archive_initiated_requirement_id',
+      ) as Error & { cause?: unknown }
+      error.cause = error
+      query
+        .mockResolvedValueOnce([{ id: 21, versionNumber: 1 }])
+        .mockResolvedValueOnce([])
+        .mockRejectedValueOnce(error)
+
+      await expect(initiateArchiving(db, 7)).rejects.toMatchObject({
+        code: 'conflict',
+        details: {
+          indexName: 'uq_requirement_versions_archive_initiated_requirement_id',
+          reason: 'requirement_version_lifecycle_unique_index',
+        },
+        message: 'Requirement version lifecycle state is no longer unique',
+      })
+    })
   })
 
   describe('approveArchiving', () => {

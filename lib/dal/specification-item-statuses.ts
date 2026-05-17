@@ -27,6 +27,11 @@ interface LinkedSpecificationRow {
 
 export type { LinkedSpecificationRow }
 
+type SpecificationItemStatusRepositoryProvider = Pick<
+  SqlServerDatabase,
+  'getRepository'
+>
+
 function map(row: SpecificationItemStatusEntity): SpecificationItemStatusRow {
   return {
     color: row.color,
@@ -138,7 +143,7 @@ export async function getLinkedSpecificationItems(
 }
 
 export async function createSpecificationItemStatus(
-  db: SqlServerDatabase,
+  db: SpecificationItemStatusRepositoryProvider,
   data: {
     nameSv: string
     nameEn: string

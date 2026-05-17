@@ -10,7 +10,7 @@ export type StatusIconNode = readonly [
   Readonly<Record<string, string>>,
 ]
 
-function toPascalIconName(iconName: string) {
+function toPascalIconName(iconName: string): string {
   return iconName
     .split('-')
     .filter(Boolean)
@@ -85,7 +85,9 @@ export async function loadStatusIconNodes(
   return nodes
 }
 
-export async function preloadStatusIconNodes(values: Iterable<unknown>) {
+export async function preloadStatusIconNodes(
+  values: Iterable<unknown>,
+): Promise<void> {
   await Promise.all(Array.from(new Set(values)).map(loadStatusIconNodes))
 }
 
@@ -93,7 +95,7 @@ export function collectStatusIconNames(value: unknown): StatusIconName[] {
   const iconNames = new Set<StatusIconName>()
   const seen = new WeakSet<object>()
 
-  const visit = (candidate: unknown) => {
+  const visit = (candidate: unknown): void => {
     if (!candidate || typeof candidate !== 'object') return
     if (seen.has(candidate)) return
     seen.add(candidate)

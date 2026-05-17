@@ -1212,9 +1212,7 @@ to operate by touch.
 
 **Steps:**
 
-1. Open `/sv/admin`.
-1. Select the `Åtgärdslogg` tab.
-1. Verify the URL is `/sv/admin?tab=actionAuditLog`.
+1. Open `/sv/admin/audit-log`.
 1. Enter `requirement.create` in `Åtgärd`.
 1. Select `Filtrera`.
 1. Select `Exportera CSV`.
@@ -1444,7 +1442,7 @@ partial unexpected changes are made.
 **Steps:**
 
 1. Complete a small privacy execution.
-1. Open `/sv/admin?tab=actionAuditLog`.
+1. Open `/sv/admin/audit-log`.
 1. Filter for privacy-related action names.
 1. Inspect the details.
 

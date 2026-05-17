@@ -42,6 +42,7 @@ describe('StatusStepper', () => {
       {
         id: 10,
         color: '#3b82f6',
+        iconName: 'PenLine',
         nameEn: 'Draft',
         nameSv: 'Utkast',
         sortOrder: 1,
@@ -49,11 +50,18 @@ describe('StatusStepper', () => {
       {
         id: 20,
         color: '#eab308',
+        iconName: 'Eye',
         nameEn: 'Review',
         nameSv: 'Granskning',
         sortOrder: 2,
       },
-      { id: 30, color: '#22c55e', nameEn: 'Published', nameSv: 'Publicerad' },
+      {
+        id: 30,
+        color: '#22c55e',
+        iconName: 'CheckCircle2',
+        nameEn: 'Published',
+        nameSv: 'Publicerad',
+      },
     ]
 
     const { container } = render(
@@ -69,6 +77,29 @@ describe('StatusStepper', () => {
 
     expect(findActiveSlider(container, 'rgb(234, 179, 8)')).toBeTruthy()
     expect(screen.getAllByText('Granskning')).toHaveLength(2)
+  })
+
+  it('renders status icons beside inactive and active step labels', () => {
+    const { container } = render(<StatusStepper currentStatusId={2} />)
+    const inactiveSteps = container.querySelectorAll(
+      '[data-developer-mode-name="status step"]',
+    )
+
+    expect(inactiveSteps).toHaveLength(3)
+    for (const step of inactiveSteps) {
+      const icon = step.querySelector('svg.h-4.w-4')
+      expect(icon).toBeInTheDocument()
+      expect(icon).toHaveAttribute('aria-hidden', 'true')
+    }
+
+    const slider = findActiveSlider(container, 'rgb(234, 179, 8)')
+    const activeLabel = slider?.querySelector('span')
+    const activeIcon = slider?.querySelector('svg.h-4.w-4')
+    expect(activeLabel).toHaveTextContent('Granskning')
+    expect(activeLabel).toHaveClass('font-semibold')
+    expect(activeLabel?.style.paddingLeft).toBe('7px')
+    expect(activeIcon).toBeInTheDocument()
+    expect(activeIcon).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('handles resize observer callbacks with native arguments', () => {

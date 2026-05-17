@@ -720,6 +720,7 @@ export default function RequirementDetailClient({
             <div className="flex items-center gap-2 mb-2 px-1 text-xs text-secondary-500 dark:text-secondary-400">
               {archivedVersionPreferredVersion.statusIconName ? (
                 <StatusIcon
+                  aria-hidden="true"
                   className="h-3.5 w-3.5 shrink-0"
                   name={archivedVersionPreferredVersion.statusIconName}
                   style={{
@@ -729,6 +730,7 @@ export default function RequirementDetailClient({
                 />
               ) : (
                 <AlertCircle
+                  aria-hidden="true"
                   className="h-3.5 w-3.5 shrink-0"
                   style={{
                     color:
@@ -750,6 +752,7 @@ export default function RequirementDetailClient({
           ) : isViewingHistory ? (
             <div className="flex items-center gap-2 mb-2 px-1 text-xs text-secondary-500 dark:text-secondary-400">
               <Clock
+                aria-hidden="true"
                 className="h-3.5 w-3.5 shrink-0"
                 style={{ color: currentStatusColor ?? undefined }}
               />
@@ -766,12 +769,14 @@ export default function RequirementDetailClient({
               <div className="flex items-center gap-2 mb-2 px-1 text-xs text-secondary-500 dark:text-secondary-400">
                 {latest?.statusIconName ? (
                   <StatusIcon
+                    aria-hidden="true"
                     className="h-3.5 w-3.5 shrink-0"
                     name={latest.statusIconName}
                     style={{ color: latest.statusColor ?? undefined }}
                   />
                 ) : (
                   <AlertCircle
+                    aria-hidden="true"
                     className="h-3.5 w-3.5 shrink-0"
                     style={{ color: latest?.statusColor ?? undefined }}
                   />

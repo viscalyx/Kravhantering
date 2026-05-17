@@ -172,7 +172,7 @@ export default function IconPicker({
       <button
         aria-haspopup="dialog"
         aria-label={label}
-        className="inline-flex min-h-10 items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-secondary-800/50 dark:hover:bg-secondary-700"
+        className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-secondary-800/50 dark:hover:bg-secondary-700"
         disabled={disabled}
         id={id}
         onClick={() => setOpen(true)}
@@ -221,7 +221,7 @@ export default function IconPicker({
                     <h2 className="text-sm font-semibold">{t('title')}</h2>
                     <button
                       aria-label={t('close')}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:hover:bg-secondary-800"
+                      className="inline-flex h-9 min-h-[44px] w-9 min-w-[44px] items-center justify-center rounded-lg border hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:hover:bg-secondary-800"
                       onClick={() => setOpen(false)}
                       type="button"
                     >
@@ -246,7 +246,7 @@ export default function IconPicker({
                   </label>
                   <div className="mb-3 flex justify-between">
                     <button
-                      className="rounded-lg border px-3 py-1.5 text-sm hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:hover:bg-secondary-800"
+                      className="min-h-[44px] min-w-[44px] rounded-lg border px-3 py-1.5 text-sm hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:hover:bg-secondary-800"
                       onClick={() => selectIcon(null)}
                       type="button"
                     >
@@ -263,7 +263,7 @@ export default function IconPicker({
                         <button
                           aria-label={formatIconName(iconName)}
                           aria-pressed={selectedValue === iconName}
-                          className="inline-flex aspect-square items-center justify-center rounded-lg border text-secondary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-secondary-200 dark:hover:bg-primary-950/30"
+                          className="inline-flex aspect-square min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border text-secondary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-secondary-200 dark:hover:bg-primary-950/30"
                           data-icon-name={iconName}
                           key={iconName}
                           onClick={() => selectIcon(iconName)}
