@@ -1,4 +1,5 @@
 import { redactSensitiveText } from '@/lib/http/safe-errors'
+import { recordCapacityOtelEvent } from '@/lib/observability/capacity-otel'
 import {
   type RequestCorrelationIds,
   resolveRequestCorrelationIds,
@@ -79,6 +80,8 @@ function writeCapacityLog(
   level: CapacityEventLevel,
   payload: Record<string, CapacityLogValue>,
 ): void {
+  if (process.env.CAPACITY_JSON_LOGS_ENABLED === 'false') return
+
   const serialized = JSON.stringify(payload)
   if (level === 'error') {
     // eslint-disable-next-line no-console
@@ -133,6 +136,7 @@ export function recordCapacityEvent(input: CapacityEventInput): void {
       payload.throttled = metrics.throttled
     }
 
+    recordCapacityOtelEvent(payload)
     writeCapacityLog(level, payload)
   } catch (error) {
     try {

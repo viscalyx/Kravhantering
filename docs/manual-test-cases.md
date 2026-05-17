@@ -92,6 +92,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [DEVTOOLS-01: Developer Mode chip copies a reference](#devtools-01-developer-mode-chip-copies-a-reference)
   - [DEVTOOLS-02: Developer Mode persists across navigation](#devtools-02-developer-mode-persists-across-navigation)
   - [DEVTOOLS-03: specification report controls are annotated](#devtools-03-specification-report-controls-are-annotated)
+  - [OBS-01: local capacity observability dashboard](#obs-01-local-capacity-observability-dashboard)
   - [RES-01: English admin error recovery](#res-01-english-admin-error-recovery)
   - [RES-02: homepage smoke](#res-02-homepage-smoke)
 
@@ -1512,6 +1513,34 @@ without pressing the shortcut again.
 
 **Expected result:** A chip appears with a useful specification-context
 reference.
+
+### OBS-01: local capacity observability dashboard
+
+**Purpose:** Confirm local OpenTelemetry capacity export reaches Grafana LGTM
+without losing the JSON fallback path.
+
+**Users:** `ada.admin`.
+
+**Prerequisites:** Start LGTM with
+`docker compose -f docker-compose.otel.yml up -d`, then start the app with
+`npm run dev`.
+
+**Steps:**
+
+1. Open `/sv/requirements` and sign in if needed.
+1. Open `/sv/specifications/ETJANST-UPP-2026`.
+1. Generate a specification list report or detail report.
+1. Open `http://localhost:3300`.
+1. Open the dashboard `Kravhantering Capacity Observability`.
+1. Inspect event volume, duration, status, item, token, cost, log, and trace
+   panels.
+1. Restart the app with `CAPACITY_JSON_LOGS_ENABLED=false npm run dev`.
+1. Repeat one report action and inspect the terminal output.
+
+**Expected result:** The Grafana dashboard shows capacity metrics, LogRecords,
+and trace drilldowns for the exercised operation. JSON log lines are visible in
+the terminal by default and stop only when `CAPACITY_JSON_LOGS_ENABLED=false`
+is set.
 
 ### RES-01: English admin error recovery
 

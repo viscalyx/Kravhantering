@@ -1472,6 +1472,14 @@ oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
   (millisekunder), status och säkra volymmått. Loggplattformen
   ansvarar för dashboards, larm, retention och
   vidare analys.
+- OpenTelemetry-export för kapacitetsdata är
+  avstängd som standard och kräver
+  `OTEL_SDK_ENABLED=true` samt OTLP-endpoint per
+  miljö. När den är aktiverad skickas samma
+  sanerade kapacitetsdata som traces, metrics och
+  log records. JSON-strömmen är fortsatt aktiv som
+  fallback om inte `CAPACITY_JSON_LOGS_ENABLED=false`
+  sätts efter verifierad OTel-insamling.
 - Säkerhetsrelaterade auth-händelser skrivs som en
   separat JSON-ström märkt
   `channel: "security-audit"`, vilket gör att
