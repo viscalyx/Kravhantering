@@ -1568,7 +1568,7 @@
       },
       "manage": {
         "heading": "Managing",
-        "body": "Add new risk levels using the Create button. Edit existing levels to change name, color, or sort order. Risk levels linked to existing requirements cannot be deleted."
+        "body": "Risk levels are a fixed system set. Edit existing levels to change name, color, icon, or sort order."
       }
     },
     "specificationItemStatuses": {

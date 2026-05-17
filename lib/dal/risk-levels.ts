@@ -1,5 +1,9 @@
 import type { SqlServerDatabase } from '@/lib/db'
+import { conflictError, notFoundError } from '@/lib/requirements/errors'
 import { type RiskLevelEntity, riskLevelEntity } from '@/lib/typeorm/entities'
+
+const SYSTEM_RISK_LEVEL_IDS = [1, 2, 3] as const
+type SystemRiskLevelId = (typeof SYSTEM_RISK_LEVEL_IDS)[number]
 
 export interface RiskLevelRow {
   color: string
@@ -34,19 +38,26 @@ function map(row: RiskLevelEntity): RiskLevelRow {
   }
 }
 
+function isSystemRiskLevelId(id: number): id is SystemRiskLevelId {
+  return SYSTEM_RISK_LEVEL_IDS.includes(id as SystemRiskLevelId)
+}
+
 export async function listRiskLevels(
   db: SqlServerDatabase,
 ): Promise<RiskLevelRow[]> {
   const rows = await db
     .getRepository(riskLevelEntity)
     .find({ order: { sortOrder: 'ASC' } })
-  return rows.map(map)
+  return rows.filter(row => isSystemRiskLevelId(row.id)).map(map)
 }
 
 export async function getRiskLevelById(
   db: SqlServerDatabase,
   id: number,
 ): Promise<RiskLevelRow | null> {
+  if (!isSystemRiskLevelId(id)) {
+    return null
+  }
   const row = await db.getRepository(riskLevelEntity).findOne({ where: { id } })
   return row ? map(row) : null
 }
@@ -101,29 +112,6 @@ export async function getLinkedRequirements(
   )
 }
 
-export async function createRiskLevel(
-  db: SqlServerDatabase,
-  data: {
-    nameSv: string
-    nameEn: string
-    color: string
-    iconName?: string | null
-    sortOrder?: number
-  },
-): Promise<RiskLevelRow> {
-  const repository = db.getRepository(riskLevelEntity)
-  const row = await repository.save(
-    repository.create({
-      nameSv: data.nameSv,
-      nameEn: data.nameEn,
-      color: data.color,
-      iconName: data.iconName ?? null,
-      sortOrder: data.sortOrder ?? 0,
-    }),
-  )
-  return map(row)
-}
-
 export async function updateRiskLevel(
   db: SqlServerDatabase,
   id: number,
@@ -135,6 +123,9 @@ export async function updateRiskLevel(
     sortOrder?: number
   },
 ): Promise<RiskLevelRow | undefined> {
+  if (!isSystemRiskLevelId(id)) {
+    throw conflictError('Only system risk levels can be edited')
+  }
   const repository = db.getRepository(riskLevelEntity)
   const patch: Partial<RiskLevelEntity> = {}
   if (data.nameSv !== undefined) patch.nameSv = data.nameSv
@@ -146,13 +137,6 @@ export async function updateRiskLevel(
     await repository.update(id, patch)
   }
   const row = await repository.findOne({ where: { id } })
+  if (!row) throw notFoundError('Risk level not found')
   return row ? map(row) : undefined
-}
-
-export async function deleteRiskLevel(
-  db: SqlServerDatabase,
-  id: number,
-): Promise<number> {
-  const result = await db.getRepository(riskLevelEntity).delete(id)
-  return result.affected ?? 0
 }

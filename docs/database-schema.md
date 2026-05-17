@@ -734,7 +734,7 @@ Classifies the risk associated with a requirement.
 
 | id | Swedish | English | Color | Icon |
 | ---- | ------- | ------- | ------------------- | ------ |
-| 1 | Låg | Low | `#22c55e` (green) | `ShieldCheck` |
+| 1 | Låg | Low | `#22c55e` (green) | `ArrowDownLeft` |
 | 2 | Medel | Medium | `#eab308` (yellow) | `AlertCircle` |
 | 3 | Hög | High | `#ef4444` (red) | `AlertTriangle` |
 

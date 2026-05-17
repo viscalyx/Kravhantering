@@ -8,8 +8,6 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { okResponse } from './test-helpers'
 
-const confirmMock = vi.fn()
-
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
   useTranslations: (ns?: string) => (key: string) =>
@@ -25,20 +23,12 @@ vi.mock('@/i18n/routing', () => ({
 }))
 
 vi.mock('@/components/ConfirmModal', () => ({
-  useConfirmModal: () => ({ confirm: confirmMock }),
+  useConfirmModal: () => ({ confirm: vi.fn() }),
 }))
 
 vi.mock('@/components/StatusBadge', () => ({
   default: ({ label }: { label: string }) => <span>{label}</span>,
 }))
-
-function notOk() {
-  return new Response(JSON.stringify({ error: 'Bad request' }), {
-    headers: { 'content-type': 'application/json' },
-    status: 400,
-    statusText: 'Bad Request',
-  })
-}
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
@@ -51,6 +41,7 @@ const sampleRiskLevels = [
     nameSv: 'Låg',
     nameEn: 'Low',
     color: '#22c55e',
+    iconName: 'ArrowDownLeft',
     sortOrder: 1,
     linkedRequirementCount: 5,
   },
@@ -59,6 +50,7 @@ const sampleRiskLevels = [
     nameSv: 'Medel',
     nameEn: 'Medium',
     color: '#eab308',
+    iconName: 'AlertCircle',
     sortOrder: 2,
     linkedRequirementCount: 3,
   },
@@ -72,61 +64,60 @@ describe('RiskLevelsClient', () => {
     fetchMock.mockResolvedValue(okResponse({ riskLevels: sampleRiskLevels }))
   })
 
-  it('renders heading and create button', async () => {
+  it('renders risk levels without create or delete actions', async () => {
     render(<RiskLevelsClient />)
+
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'nav.riskLevels',
     )
-    expect(
-      screen.getByRole('button', { name: /common\.create/i }),
-    ).toBeInTheDocument()
-    await waitFor(() => {
-      expect(screen.getByText('Low')).toBeInTheDocument()
-    })
-  })
-
-  it('fetches and displays risk levels', async () => {
-    render(<RiskLevelsClient />)
     await waitFor(() => {
       expect(screen.getByText('Low')).toBeInTheDocument()
     })
     expect(screen.getByText('Medium')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /common\.create/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /common\.delete/i })).toBeNull()
+    expect(
+      screen.getAllByRole('button', { name: /common\.edit/i }),
+    ).toHaveLength(2)
   })
 
   it('shows loading text initially', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
+
     render(<RiskLevelsClient />)
+
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
-  it('opens create form', async () => {
+  it('opens edit form with existing data', async () => {
     render(<RiskLevelsClient />)
     await waitFor(() => {
       expect(screen.getByText('Low')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+
     expect(
-      screen.getByLabelText(/riskLevelAdmin\.name.+SV/),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByLabelText(/riskLevelAdmin\.name.+EN/),
-    ).toBeInTheDocument()
+      (screen.getByLabelText(/riskLevelAdmin\.name.+EN/) as HTMLInputElement)
+        .value,
+    ).toBe('Low')
+    await waitFor(() => {
+      expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
+    })
   })
 
-  it('submits create form', async () => {
+  it('submits edits through PUT', async () => {
     render(<RiskLevelsClient />)
     await waitFor(() => {
       expect(screen.getByText('Low')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    fireEvent.change(screen.getByLabelText(/riskLevelAdmin\.name.+SV/), {
-      target: { value: 'Kritisk' },
-    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
     fireEvent.change(screen.getByLabelText(/riskLevelAdmin\.name.+EN/), {
-      target: { value: 'Critical' },
+      target: { value: 'Very low' },
     })
 
-    fetchMock.mockResolvedValueOnce(okResponse({ id: 3 }))
+    fetchMock.mockResolvedValueOnce(okResponse({ id: 1 }))
     fetchMock.mockResolvedValueOnce(
       okResponse({ riskLevels: sampleRiskLevels }),
     )
@@ -135,27 +126,9 @@ describe('RiskLevelsClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/risk-levels',
-        expect.objectContaining({ method: 'POST' }),
+        '/api/risk-levels/1',
+        expect.objectContaining({ method: 'PUT' }),
       )
-    })
-  })
-
-  it('opens edit form with existing data', async () => {
-    render(<RiskLevelsClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Low')).toBeInTheDocument()
-    })
-    const editButtons = screen.getAllByRole('button', {
-      name: /common\.edit/i,
-    })
-    fireEvent.click(editButtons[0])
-    expect(
-      (screen.getByLabelText(/riskLevelAdmin\.name.+EN/) as HTMLInputElement)
-        .value,
-    ).toBe('Low')
-    await waitFor(() => {
-      expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })
   })
 
@@ -179,7 +152,13 @@ describe('RiskLevelsClient', () => {
           ],
         })
       }
-      if (url === '/api/risk-levels/2') return notOk()
+      if (url === '/api/risk-levels/2') {
+        return new Response(JSON.stringify({ error: 'Bad request' }), {
+          headers: { 'content-type': 'application/json' },
+          status: 400,
+          statusText: 'Bad Request',
+        })
+      }
       return okResponse({})
     })
 
@@ -209,39 +188,18 @@ describe('RiskLevelsClient', () => {
     expect(screen.queryByText('common.noneAvailable')).toBeNull()
   })
 
-  it('closes form on cancel', async () => {
+  it('closes edit form on cancel', async () => {
     render(<RiskLevelsClient />)
     await waitFor(() => {
       expect(screen.getByText('Low')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+    await waitFor(() => {
+      expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
+    })
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
+
     expect(screen.queryByLabelText(/riskLevelAdmin\.name.+SV/)).toBeNull()
-  })
-
-  it('deletes with confirm', async () => {
-    confirmMock.mockResolvedValue(true)
-    render(<RiskLevelsClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Low')).toBeInTheDocument()
-    })
-
-    fetchMock.mockResolvedValueOnce(okResponse({}))
-    fetchMock.mockResolvedValueOnce(okResponse({ riskLevels: [] }))
-
-    const deleteButtons = screen.getAllByRole('button', {
-      name: /common\.delete/i,
-    })
-    fireEvent.click(deleteButtons[0])
-
-    await waitFor(() => {
-      expect(confirmMock).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: 'danger', icon: 'caution' }),
-      )
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/risk-levels/1',
-        expect.objectContaining({ method: 'DELETE' }),
-      )
-    })
   })
 })

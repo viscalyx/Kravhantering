@@ -1336,7 +1336,7 @@ const SEED_DATA = {
     columns: ['id', 'name_sv', 'name_en', 'sort_order', 'color', 'icon_name'],
     pk: ['id'],
     rows: [
-      [1, 'Låg', 'Low', 1, '#22c55e', 'ShieldCheck'],
+      [1, 'Låg', 'Low', 1, '#22c55e', 'ArrowDownLeft'],
       [2, 'Medel', 'Medium', 2, '#eab308', 'AlertCircle'],
       [3, 'Hög', 'High', 3, '#ef4444', 'AlertTriangle'],
     ],

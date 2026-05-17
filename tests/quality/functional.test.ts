@@ -131,6 +131,7 @@ const riskLevelsRoutePath = join(
   'app',
   'api',
   'risk-levels',
+  '[id]',
   'route.ts',
 )
 const adminCenterDocPath = join(repoRoot, 'docs', 'admin-center.md')

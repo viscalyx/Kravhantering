@@ -1568,7 +1568,7 @@
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Lägg till nya risknivåer med Skapa-knappen. Redigera befintliga nivåer för att ändra namn, färg eller sorteringsordning. Risknivåer som är kopplade till befintliga krav kan inte tas bort."
+        "body": "Risknivåer är en fast systemuppsättning. Redigera befintliga nivåer för att ändra namn, färg, ikon eller sorteringsordning."
       }
     },
     "specificationItemStatuses": {
