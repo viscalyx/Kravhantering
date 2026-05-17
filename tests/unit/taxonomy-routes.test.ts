@@ -20,7 +20,7 @@ const auditState = vi.hoisted(() => ({
   createAdminPrivilegedAuditContext: vi.fn(async () => ({
     actor: {
       displayName: 'Ada Admin',
-      hsaId: 'SE2321000032-admin1',
+      hsaId: 'SE5560000001-admin1',
       id: 'admin-sub',
       isAuthenticated: true,
       roles: ['Admin'],
@@ -57,7 +57,7 @@ const authState = vi.hoisted(() => ({
   context: {
     actor: {
       displayName: 'Route Tester',
-      hsaId: 'SE2321000032-route',
+      hsaId: 'SE5560000001-route',
       id: 'route-test',
       isAuthenticated: true,
       roles: ['RequirementsEditor'],
@@ -726,7 +726,7 @@ describe('requirement-specifications routes', () => {
       jsonReq('POST', {
         name: 'A',
         uniqueId: 'A',
-        responsibleHsaId: 'SE2321000032-ada1',
+        responsibleHsaId: 'SE5560000001-ada1',
         responsibleDisplayName: 'Ada Admin',
         canResponsibleGenerateAi: true,
       }),
@@ -736,7 +736,7 @@ describe('requirement-specifications routes', () => {
     expect(mockCreatePkg).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        responsibleHsaId: 'SE2321000032-ada1',
+        responsibleHsaId: 'SE5560000001-ada1',
         responsibleDisplayName: 'Ada Admin',
         canResponsibleGenerateAi: true,
       }),
@@ -747,7 +747,7 @@ describe('requirement-specifications routes', () => {
       jsonReq('POST', {
         name: 'A',
         uniqueId: 'A',
-        responsibleHsaId: 'SE2321000032-ada1',
+        responsibleHsaId: 'SE5560000001-ada1',
       }),
     )
 
@@ -777,7 +777,7 @@ describe('requirement-specifications routes', () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
     const r = await putPkg(
       jsonReq('PUT', {
-        responsibleHsaId: 'SE2321000032-rita1',
+        responsibleHsaId: 'SE5560000001-rita1',
         responsibleDisplayName: 'Rita Reviewer',
         canResponsibleGenerateAi: true,
       }),
@@ -789,7 +789,7 @@ describe('requirement-specifications routes', () => {
       expect.anything(),
       1,
       expect.objectContaining({
-        responsibleHsaId: 'SE2321000032-rita1',
+        responsibleHsaId: 'SE5560000001-rita1',
         responsibleDisplayName: 'Rita Reviewer',
         canResponsibleGenerateAi: true,
       }),

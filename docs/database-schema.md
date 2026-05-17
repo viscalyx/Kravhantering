@@ -1031,9 +1031,9 @@ row; it does not switch or anonymize that standalone owner identity.
 <!-- markdownlint-disable MD013 MD034 -->
 | id | first\_name | last\_name | email | hsa\_id |
 | --- | --- | --- | --- | --- |
-| 1 | Anna | Johansson | anna.johansson@example.com | SE2321000032-annaj |
-| 2 | Erik | Lindberg | erik.lindberg@example.com | SE2321000032-erikl |
-| 3 | Maria | Svensson | maria.svensson@example.com | SE2321000032-marias |
+| 1 | Anna | Johansson | anna.johansson@example.com | SE5560000001-annaj |
+| 2 | Erik | Lindberg | erik.lindberg@example.com | SE5560000001-erikl |
+| 3 | Maria | Svensson | maria.svensson@example.com | SE5560000001-marias |
 <!-- markdownlint-enable MD013 MD034 -->
 
 These owners are assigned to requirement areas via `owner_id`:
@@ -1045,7 +1045,7 @@ Maria (3) → Användbarhet, Drift.
 
 Seed data also includes duplicate display names with different `hsa_id` values
 so tests prove that privacy erasure and authorization disambiguate by HSA-ID,
-not by name. The `SE2321000032-linneab` fixture appears across every privacy
+not by name. The `SE5560000001-linneab` fixture appears across every privacy
 preview group: owner rows, area and package owner assignments, requirement
 versions, deviation creator and decision fields, improvement-suggestion creator
 and resolver fields, specification responsibility, and area/specification
@@ -1305,7 +1305,7 @@ reviewer, and external evidence reference for IdP/repository review records.
 review lifecycle values above.
 
 **Seed note:** Local privacy seed data includes two completed access-review
-runs for `SE2321000032-linneab`: one where that HSA identity created the run
+runs for `SE5560000001-linneab`: one where that HSA identity created the run
 and one created by another user where that HSA identity is the reviewer. The
 same fixture also covers completed-by and item decision/principal snapshots for
 Admin Privacy preview coverage.
@@ -1394,7 +1394,7 @@ without deleting action, target, time, decision, request ID, or correlation ID.
 preview/export/erasure workflow in this slice.
 
 **Seed note:** Development seed data includes allowed, denied, human, and MCP
-audit rows, including validated client IPs and `SE2321000032-linneab` actor
+audit rows, including validated client IPs and `SE5560000001-linneab` actor
 snapshots for privacy preview/export coverage.
 
 ### `archiving_retention_policies`

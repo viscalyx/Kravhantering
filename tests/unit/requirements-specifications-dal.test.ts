@@ -54,7 +54,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationImplementationTypeId: 2,
           specificationLifecycleStatusId: 3,
           businessNeedsReference: 'Strategic need',
-          responsibleHsaId: 'SE2321000032-ada1',
+          responsibleHsaId: 'SE5560000001-ada1',
           responsibleDisplayName: 'Ada Admin',
           canResponsibleGenerateAi: 1,
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
@@ -92,7 +92,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         specificationImplementationTypeId: 2,
         specificationLifecycleStatusId: 3,
         businessNeedsReference: 'Strategic need',
-        responsibleHsaId: 'SE2321000032-ada1',
+        responsibleHsaId: 'SE5560000001-ada1',
         responsibleDisplayName: 'Ada Admin',
         canResponsibleGenerateAi: true,
         createdAt: '2026-04-20T10:00:00.000Z',
@@ -132,7 +132,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         specificationImplementationTypeId: 5,
         specificationLifecycleStatusId: 7,
         businessNeedsReference: null,
-        responsibleHsaId: 'SE2321000032-rita1',
+        responsibleHsaId: 'SE5560000001-rita1',
         responsibleDisplayName: 'Rita Reviewer',
         canResponsibleGenerateAi: 0,
         createdAt: new Date('2026-04-20T09:00:00.000Z'),
@@ -159,7 +159,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       specificationImplementationTypeId: 5,
       specificationLifecycleStatusId: 7,
       businessNeedsReference: null,
-      responsibleHsaId: 'SE2321000032-rita1',
+      responsibleHsaId: 'SE5560000001-rita1',
       responsibleDisplayName: 'Rita Reviewer',
       canResponsibleGenerateAi: false,
       createdAt: '2026-04-20T09:00:00.000Z',
@@ -219,7 +219,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationImplementationTypeId: null,
           specificationLifecycleStatusId: 4,
           businessNeedsReference: 'Need',
-          responsibleHsaId: 'SE2321000032-ada1',
+          responsibleHsaId: 'SE5560000001-ada1',
           responsibleDisplayName: 'Ada Admin',
           canResponsibleGenerateAi: 1,
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
@@ -249,7 +249,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       specificationResponsibilityAreaId: 2,
       specificationLifecycleStatusId: 4,
       businessNeedsReference: 'Need',
-      responsibleHsaId: 'SE2321000032-ada1',
+      responsibleHsaId: 'SE5560000001-ada1',
       responsibleDisplayName: 'Ada Admin',
       canResponsibleGenerateAi: true,
     })
@@ -267,7 +267,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       name: 'Specification Eleven',
       specificationResponsibilityAreaId: 2,
       specificationLifecycleStatusId: 4,
-      responsibleHsaId: 'SE2321000032-ada1',
+      responsibleHsaId: 'SE5560000001-ada1',
       responsibleDisplayName: 'Ada Admin',
       canResponsibleGenerateAi: true,
     })
@@ -289,7 +289,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         null,
         4,
         'Need',
-        'SE2321000032-ada1',
+        'SE5560000001-ada1',
         'Ada Admin',
         1,
         expect.any(Date),
@@ -653,7 +653,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
 
     const result = await graduateSpecificationLocalRequirementToLibrary(db, {
       actorDisplayName: 'Ada Admin',
-      actorHsaId: 'SE2321000032-ada1',
+      actorHsaId: 'SE5560000001-ada1',
       specificationId: 5,
       specificationLocalRequirementId: 41,
       targetRequirementAreaId: 8,
@@ -705,7 +705,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         'Inspection',
         expect.any(Date),
         'Ada Admin',
-        'SE2321000032-ada1',
+        'SE5560000001-ada1',
       ],
     )
     expect(query).toHaveBeenNthCalledWith(
@@ -756,7 +756,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     await expect(
       graduateSpecificationLocalRequirementToLibrary(db, {
         actorDisplayName: 'Ada Admin',
-        actorHsaId: 'SE2321000032-ada1',
+        actorHsaId: 'SE5560000001-ada1',
         specificationId: 5,
         specificationLocalRequirementId: 41,
         targetRequirementAreaId: 8,

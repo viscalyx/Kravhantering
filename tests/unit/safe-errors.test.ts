@@ -11,7 +11,7 @@ describe('safe error helpers', () => {
     const text = [
       'OpenRouter sk-or-v1-secret123 failed',
       'Authorization: Bearer eyJhbGciOi.demo.payload',
-      'employeeHsaId=SE2321000032-12345',
+      'employeeHsaId=SE5560000001-12345',
       'client_secret=supersecret',
       'SELECT token FROM sessions',
     ].join(' ')
@@ -24,7 +24,7 @@ describe('safe error helpers', () => {
     expect(redacted).toContain('client_secret=[REDACTED]')
     expect(redacted).toContain('[SQL_REDACTED]')
     expect(redacted).not.toMatch(
-      /sk-or-v1-|eyJhbGciOi|SE2321000032-12345|supersecret|SELECT/,
+      /sk-or-v1-|eyJhbGciOi|SE5560000001-12345|supersecret|SELECT/,
     )
   })
 

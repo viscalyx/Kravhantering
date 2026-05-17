@@ -8,7 +8,7 @@ import {
 
 // cspell:ignore linneab repoåtkomstgranskning retentionlinked retentionorphan
 
-const LINNEA_HSA_ID = 'SE2321000032-linneab'
+const LINNEA_HSA_ID = 'SE5560000001-linneab'
 const LINNEA_DISPLAY_NAME = 'Linnéa Bergström'
 
 interface SeedInsertRow {
@@ -168,13 +168,13 @@ describe('seedDatabase', () => {
     await seedDatabase(executor)
 
     expect(kalleOwnerHsaIds).toEqual(
-      new Set(['SE2321000032-kalle1', 'SE2321000032-kalle2']),
+      new Set(['SE5560000001-kalle1', 'SE5560000001-kalle2']),
     )
     expect(duplicateNameSuggestionRows).toHaveLength(1)
     expect(duplicateNameSuggestionRows[0]).toEqual(
       expect.arrayContaining([
         'Kalle Svensson',
-        'SE2321000032-kalle2',
+        'SE5560000001-kalle2',
         'Resolved by the second duplicate-name HSA identity.',
       ]),
     )
@@ -412,7 +412,7 @@ describe('seedDatabase', () => {
     )
 
     expect(owners.get(RETENTION_SEED.owner.orphan)).toMatchObject({
-      hsa_id: 'SE2321000032-retentionorphan',
+      hsa_id: 'SE5560000001-retentionorphan',
       updated_at: '2023-01-15 09:00:00',
     })
     expect(
@@ -490,7 +490,7 @@ describe('seedDatabase', () => {
     })
 
     expect(owners.get(RETENTION_SEED.owner.linked)).toMatchObject({
-      hsa_id: 'SE2321000032-retentionlinked',
+      hsa_id: 'SE5560000001-retentionlinked',
     })
     expect(
       seedRowsFor(rows, 'requirement_areas').some(

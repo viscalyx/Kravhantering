@@ -93,7 +93,7 @@ describe('AuthMenu', () => {
         json: async () => ({
           authenticated: true,
           sub: 'user-1',
-          hsaId: 'SE2321000032-admin1',
+          hsaId: 'SE5560000001-admin1',
           givenName: 'Ada',
           familyName: 'Admin',
           name: 'Ada Admin',
@@ -160,7 +160,7 @@ describe('AuthMenu', () => {
         json: async () => ({
           authenticated: true,
           sub: 'user-1',
-          hsaId: 'SE2321000032-admin1',
+          hsaId: 'SE5560000001-admin1',
           givenName: 'Ada',
           familyName: 'Admin',
           name: 'Ada Admin',
@@ -216,7 +216,7 @@ describe('AuthMenu', () => {
         json: async () => ({
           authenticated: true,
           sub: 'user-1',
-          hsaId: 'SE2321000032-admin1',
+          hsaId: 'SE5560000001-admin1',
           givenName: 'Ada',
           familyName: 'Admin',
           name: 'Ada Admin',
@@ -256,7 +256,7 @@ describe('AuthMenu', () => {
       json: async () => ({
         authenticated: true,
         sub: 'user-1',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
         givenName: 'Ada',
         familyName: 'Admin',
         name: 'Ada Admin',
@@ -303,7 +303,7 @@ describe('AuthMenu', () => {
       json: async () => ({
         authenticated: true,
         sub: 'user-1',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
         givenName: 'Ada',
         familyName: 'Admin',
         name: 'Ada Admin',
@@ -338,7 +338,7 @@ describe('AuthMenu', () => {
       json: async () => ({
         authenticated: true,
         sub: 'user-1',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
         givenName: 'Ada',
         familyName: 'Admin',
         name: 'Ada Admin',
@@ -369,7 +369,7 @@ describe('AuthMenu', () => {
       json: async () => ({
         authenticated: true,
         sub: 'user-1',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
         givenName: 'Ada',
         familyName: 'Admin',
         name: 'Ada Admin',
@@ -402,7 +402,7 @@ describe('AuthMenu', () => {
       json: async () => ({
         authenticated: true,
         sub: 'user-1',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
         givenName: 'Ada',
         familyName: 'Admin',
         name: 'Ada Admin',

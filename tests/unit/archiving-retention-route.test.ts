@@ -25,7 +25,7 @@ const routeState = vi.hoisted(() => ({
   recordSecurityEvent: vi.fn(),
   requireHumanActorSnapshot: vi.fn(() => ({
     displayName: 'Disa PrivacyOfficer',
-    hsaId: 'SE2321000032-privacy1',
+    hsaId: 'SE5560000001-privacy1',
   })),
 }))
 
@@ -73,7 +73,7 @@ function privacyContext(roles: string[] = ['PrivacyOfficer']) {
   return {
     actor: {
       displayName: 'Disa PrivacyOfficer',
-      hsaId: 'SE2321000032-privacy1',
+      hsaId: 'SE5560000001-privacy1',
       id: 'privacy-sub',
       isAuthenticated: true,
       roles,
@@ -171,7 +171,7 @@ describe('archiving retention routes', () => {
     )
     expect(
       JSON.stringify(routeState.recordSecurityEvent.mock.calls[0][0].detail),
-    ).not.toContain('SE2321000032')
+    ).not.toContain('SE5560000001')
   })
 
   it('rejects retention preview without PrivacyOfficer', async () => {
@@ -205,7 +205,7 @@ describe('archiving retention routes', () => {
         policyId: 3,
         previewToken: 'token',
       }),
-      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE2321000032-privacy1' },
+      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE5560000001-privacy1' },
     )
     expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -242,7 +242,7 @@ describe('archiving retention routes', () => {
       policyId: 3,
       reason: 'Legal hold for case 2026-05',
       sourceKey: 'owners.identity',
-      subjectId: 'SE2321000032-kalle1',
+      subjectId: 'SE5560000001-kalle1',
       subjectTable: 'owners',
     }
     routeState.createArchivingRetentionException.mockResolvedValueOnce({
@@ -266,7 +266,7 @@ describe('archiving retention routes', () => {
         ...payload,
         expiresAt: null,
       },
-      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE2321000032-privacy1' },
+      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE5560000001-privacy1' },
     )
     expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -280,7 +280,7 @@ describe('archiving retention routes', () => {
     )
     expect(
       JSON.stringify(routeState.recordSecurityEvent.mock.calls[0][0].detail),
-    ).not.toContain('SE2321000032-kalle1')
+    ).not.toContain('SE5560000001-kalle1')
   })
 
   it('rejects retention exceptions without PrivacyOfficer', async () => {
@@ -291,7 +291,7 @@ describe('archiving retention routes', () => {
         policyId: 3,
         reason: 'Legal hold for case 2026-05',
         sourceKey: 'owners.identity',
-        subjectId: 'SE2321000032-kalle1',
+        subjectId: 'SE5560000001-kalle1',
         subjectTable: 'owners',
       }) as never,
     )

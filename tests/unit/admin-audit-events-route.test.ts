@@ -33,7 +33,7 @@ function context(roles: string[] = ['Admin']) {
   return {
     actor: {
       displayName: 'Ada Admin',
-      hsaId: 'SE2321000032-admin1',
+      hsaId: 'SE5560000001-admin1',
       id: 'admin-sub',
       isAuthenticated: true,
       roles,
@@ -55,7 +55,7 @@ const auditEvent = {
   action: 'requirement.create',
   actorClientId: null,
   actorDisplayName: 'Ada Admin',
-  actorHsaId: 'SE2321000032-admin1',
+  actorHsaId: 'SE5560000001-admin1',
   actorKind: 'user',
   clientIp: '203.0.113.30',
   correlationId: 'correlation-1',
@@ -85,7 +85,7 @@ describe('admin audit events route', () => {
     const { GET } = await import('@/app/api/admin/audit-events/route')
     const response = await GET(
       new Request(
-        'http://localhost/api/admin/audit-events?action=requirement.create&actor_hsa_id=SE2321000032-admin1&target_kind=Requirement&target_id=42&decision=allowed&page=2&pageSize=25',
+        'http://localhost/api/admin/audit-events?action=requirement.create&actor_hsa_id=SE5560000001-admin1&target_kind=Requirement&target_id=42&decision=allowed&page=2&pageSize=25',
       ) as never,
     )
 
@@ -95,7 +95,7 @@ describe('admin audit events route', () => {
       routeState.db,
       expect.objectContaining({
         action: 'requirement.create',
-        actorHsaId: 'SE2321000032-admin1',
+        actorHsaId: 'SE5560000001-admin1',
         clientIp: undefined,
         decision: 'allowed',
         page: 2,

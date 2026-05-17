@@ -16,7 +16,7 @@ The request body is:
 ```json
 {
   "delivery": "json",
-  "target": { "hsaId": "SE2321000032-example" }
+  "target": { "hsaId": "SE5560000001-example" }
 }
 ```
 

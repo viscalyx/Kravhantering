@@ -105,7 +105,7 @@ The middleware checks that the Bearer header is present. The MCP HTTP route then
 validates the JWT against the configured issuer JWKS and API audience before any
 MCP transport or tool handler runs. Accepted tokens must contain a real-format
 `employeeHsaId` claim. The committed local MCP service client emits
-`SE2321000032-mcp1`. If a local token lacks that claim, reset or re-import the
+`SE5560000001-mcp1`. If a local token lacks that claim, reset or re-import the
 local Keycloak realm instead of compensating in application code.
 
 Invalid or missing tokens return `401` with `WWW-Authenticate: Bearer` and a

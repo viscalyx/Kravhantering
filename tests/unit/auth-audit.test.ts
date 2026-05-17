@@ -45,7 +45,7 @@ describe('recordSecurityEvent', () => {
     recordSecurityEvent({
       event: 'auth.login.succeeded',
       outcome: 'success',
-      actor: { source: 'oidc', sub: 'user-1', hsaId: 'SE2321000032-rev1' },
+      actor: { source: 'oidc', sub: 'user-1', hsaId: 'SE5560000001-rev1' },
       request: new Request('https://app.example.test/sv/requirements'),
     })
     expect(infoSpy).toHaveBeenCalledTimes(1)
@@ -56,7 +56,7 @@ describe('recordSecurityEvent', () => {
     expect(ev.actor).toEqual({
       source: 'oidc',
       sub: 'user-1',
-      hsaId: 'SE2321000032-rev1',
+      hsaId: 'SE5560000001-rev1',
     })
   })
 

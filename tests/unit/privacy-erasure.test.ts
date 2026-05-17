@@ -6,8 +6,8 @@ import {
   privacyTargetFingerprint,
 } from '@/lib/privacy/erasure'
 
-const TARGET_HSA_ID = 'SE2321000032-kalle1'
-const OTHER_HSA_ID = 'SE2321000032-kalle2'
+const TARGET_HSA_ID = 'SE5560000001-kalle1'
+const OTHER_HSA_ID = 'SE5560000001-kalle2'
 
 type OccurrenceMap = Record<
   string,
@@ -179,7 +179,7 @@ describe('privacy erasure service', () => {
     const preview = await previewPrivacyErasure(db, {
       replacement: {
         displayName: 'John Levi',
-        hsaId: 'SE2321000032-johlju',
+        hsaId: 'SE5560000001-johlju',
       },
       target: { hsaId: TARGET_HSA_ID },
     })
@@ -344,7 +344,7 @@ describe('privacy erasure service', () => {
     const preview = await previewPrivacyErasure(db, {
       replacement: {
         displayName: 'John Levi',
-        hsaId: 'SE2321000032-johlju',
+        hsaId: 'SE5560000001-johlju',
       },
       target: { hsaId: TARGET_HSA_ID },
     })
@@ -440,7 +440,7 @@ describe('privacy erasure service', () => {
     const preview = await previewPrivacyErasure(db, {
       replacement: {
         displayName: 'John Levi',
-        hsaId: 'SE2321000032-johlju',
+        hsaId: 'SE5560000001-johlju',
       },
       target: { hsaId: TARGET_HSA_ID },
     })
@@ -521,7 +521,7 @@ describe('privacy erasure service', () => {
       {
         replacement: {
           displayName: 'John Levi',
-          hsaId: 'SE2321000032-johlju',
+          hsaId: 'SE5560000001-johlju',
         },
         target: { hsaId: TARGET_HSA_ID },
       },
@@ -593,7 +593,7 @@ describe('privacy erasure service', () => {
     const preview = await previewPrivacyErasure(db, {
       replacement: {
         displayName: 'John Levi',
-        hsaId: 'SE2321000032-johlju',
+        hsaId: 'SE5560000001-johlju',
       },
       target: { hsaId: TARGET_HSA_ID },
     })
@@ -608,7 +608,7 @@ describe('privacy erasure service', () => {
       previewToken: preview.previewToken,
       replacement: {
         displayName: 'John Levi',
-        hsaId: 'SE2321000032-johlju',
+        hsaId: 'SE5560000001-johlju',
       },
       target: { hsaId: TARGET_HSA_ID },
     })
@@ -687,7 +687,7 @@ describe('privacy erasure service', () => {
     const preview = await previewPrivacyErasure(db, {
       replacement: {
         displayName: 'John Levi',
-        hsaId: 'SE2321000032-johlju',
+        hsaId: 'SE5560000001-johlju',
       },
       target: { hsaId: TARGET_HSA_ID },
     })
@@ -702,7 +702,7 @@ describe('privacy erasure service', () => {
       previewToken: preview.previewToken,
       replacement: {
         displayName: 'John Levi',
-        hsaId: 'SE2321000032-johlju',
+        hsaId: 'SE5560000001-johlju',
       },
       target: { hsaId: TARGET_HSA_ID },
     })
@@ -758,7 +758,7 @@ describe('privacy erasure service', () => {
       displayName: 'John Levi',
       email: 'john.levi@example.com',
       firstName: 'John Carl',
-      hsaId: 'SE2321000032-johlju',
+      hsaId: 'SE5560000001-johlju',
       lastName: 'Levi',
     }
     const preview = await previewPrivacyErasure(db, {
@@ -779,7 +779,7 @@ describe('privacy erasure service', () => {
         'John Carl',
         'Levi',
         'john.levi@example.com',
-        'SE2321000032-johlju',
+        'SE5560000001-johlju',
         expect.any(Date),
       ],
     )
@@ -814,7 +814,7 @@ describe('privacy erasure service', () => {
       displayName: 'Anna Maria Eriksson',
       email: 'anna.maria.eriksson@example.com',
       firstName: 'Anna Maria',
-      hsaId: 'SE2321000032-johlju',
+      hsaId: 'SE5560000001-johlju',
       lastName: 'Eriksson',
     }
     const preview = await previewPrivacyErasure(db, {
@@ -853,7 +853,7 @@ describe('privacy erasure service', () => {
     })
     const replacement = {
       displayName: 'John Doe',
-      hsaId: 'SE2321000032-johlju',
+      hsaId: 'SE5560000001-johlju',
       lastName: 'Doe',
     }
     const preview = await previewPrivacyErasure(db, {
@@ -870,7 +870,7 @@ describe('privacy erasure service', () => {
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO owners'),
-      ['John', 'Doe', null, 'SE2321000032-johlju', expect.any(Date)],
+      ['John', 'Doe', null, 'SE5560000001-johlju', expect.any(Date)],
     )
   })
 
@@ -884,7 +884,7 @@ describe('privacy erasure service', () => {
     const replacement = {
       displayName: 'John Levi',
       email: 'john.levi@example.com',
-      hsaId: 'SE2321000032-johlju',
+      hsaId: 'SE5560000001-johlju',
     }
     const preview = await previewPrivacyErasure(db, {
       replacement,
@@ -1034,7 +1034,7 @@ describe('privacy erasure service', () => {
       replacement: {
         displayName: 'John Levi',
         email: 'john.levi@example.com',
-        hsaId: 'SE2321000032-johlju',
+        hsaId: 'SE5560000001-johlju',
       },
       target: { hsaId: TARGET_HSA_ID },
     })
@@ -1052,7 +1052,7 @@ describe('privacy erasure service', () => {
         replacement: {
           displayName: 'Jane Levi',
           email: 'jane.levi@example.com',
-          hsaId: 'SE2321000032-johlju',
+          hsaId: 'SE5560000001-johlju',
         },
         target: { hsaId: TARGET_HSA_ID },
       }),

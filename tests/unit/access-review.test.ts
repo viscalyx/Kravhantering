@@ -11,7 +11,7 @@ function accessReviewSnapshot(index: number): AccessReviewPrincipalSnapshot {
     canGenerateAi: index % 2 === 0,
     permissionType: index % 2 === 0 ? 'area_co_author' : 'area_owner',
     principalDisplayName: `Reviewer ${index}`,
-    principalHsaId: `SE2321000032-reviewer${index}`,
+    principalHsaId: `SE5560000001-reviewer${index}`,
     scopeKey: String(index),
     scopeLabel: `Scope ${index}`,
     scopeType: 'requirement_area',
@@ -29,7 +29,7 @@ function accessReviewRunRow(itemCount: number) {
     completedByHsaId: null,
     createdAt: '2026-05-12T12:00:00.000Z',
     createdByDisplayName: 'Ada Admin',
-    createdByHsaId: 'SE2321000032-admin1',
+    createdByHsaId: 'SE5560000001-admin1',
     dueAt: '2026-06-11T12:00:00.000Z',
     externalEvidenceReference: null,
     id: 42,
@@ -39,7 +39,7 @@ function accessReviewRunRow(itemCount: number) {
     periodEnd: '2027-05-12T12:00:00.000Z',
     periodStart: '2026-05-12T12:00:00.000Z',
     reviewerDisplayName: 'Ada Admin',
-    reviewerHsaId: 'SE2321000032-admin1',
+    reviewerHsaId: 'SE5560000001-admin1',
     revokeRequiredCount: 0,
     status: 'in_review',
     updatedAt: '2026-05-12T12:00:00.000Z',
@@ -104,7 +104,7 @@ describe('access review service', () => {
         canGenerateAi: 0,
         permissionType: 'area_owner',
         principalDisplayName: 'Ada Admin',
-        principalHsaId: 'SE2321000032-admin1',
+        principalHsaId: 'SE5560000001-admin1',
         scopeKey: '1',
         scopeLabel: 'INT Integration',
         scopeType: 'requirement_area',
@@ -115,7 +115,7 @@ describe('access review service', () => {
         canGenerateAi: 1,
         permissionType: 'area_co_author',
         principalDisplayName: 'Kalle Svensson',
-        principalHsaId: 'SE2321000032-kalle1',
+        principalHsaId: 'SE5560000001-kalle1',
         scopeKey: '1',
         scopeLabel: 'INT Integration',
         scopeType: 'requirement_area',
@@ -126,7 +126,7 @@ describe('access review service', () => {
         canGenerateAi: true,
         permissionType: 'specification_responsible',
         principalDisplayName: 'Sara Holm',
-        principalHsaId: 'SE2321000032-sara1',
+        principalHsaId: 'SE5560000001-sara1',
         scopeKey: '2',
         scopeLabel: 'SPEC Specification',
         scopeType: 'requirements_specification',
@@ -137,7 +137,7 @@ describe('access review service', () => {
         canGenerateAi: 0,
         permissionType: 'specification_co_author',
         principalDisplayName: 'Linnéa Bergström',
-        principalHsaId: 'SE2321000032-linnea1',
+        principalHsaId: 'SE5560000001-linnea1',
         scopeKey: '2',
         scopeLabel: 'SPEC Specification',
         scopeType: 'requirements_specification',
@@ -170,7 +170,7 @@ describe('access review service', () => {
         ?.canGenerateAi,
     ).toBe(true)
     expect(result.map(item => item.principalHsaId)).not.toContain(
-      'SE2321000032-unrelated',
+      'SE5560000001-unrelated',
     )
   })
 
@@ -185,12 +185,12 @@ describe('access review service', () => {
         {
           reviewer: {
             displayName: 'Ada Admin',
-            hsaId: 'SE2321000032-admin1',
+            hsaId: 'SE5560000001-admin1',
           },
         },
         {
           displayName: 'Rita Reviewer',
-          hsaId: 'SE2321000032-reviewer1',
+          hsaId: 'SE5560000001-reviewer1',
           roles: ['Reviewer'],
         },
       ),
@@ -223,12 +223,12 @@ describe('access review service', () => {
         {
           reviewer: {
             displayName: 'Ada Admin',
-            hsaId: 'SE2321000032-admin1',
+            hsaId: 'SE5560000001-admin1',
           },
         },
         {
           displayName: 'Ada Admin',
-          hsaId: 'SE2321000032-admin1',
+          hsaId: 'SE5560000001-admin1',
           roles: ['Admin'],
         },
       ),
@@ -252,12 +252,12 @@ describe('access review service', () => {
         generatedAt,
         reviewer: {
           displayName: 'Ada Admin',
-          hsaId: 'SE2321000032-admin1',
+          hsaId: 'SE5560000001-admin1',
         },
       },
       {
         displayName: 'Ada Admin',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
         roles: ['Admin'],
       },
     )
@@ -298,12 +298,12 @@ describe('access review service', () => {
         generatedAt,
         reviewer: {
           displayName: 'Ada Admin',
-          hsaId: 'SE2321000032-admin1',
+          hsaId: 'SE5560000001-admin1',
         },
       },
       {
         displayName: 'Ada Admin',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
         roles: ['Admin'],
       },
       { audit },
@@ -329,12 +329,12 @@ describe('access review service', () => {
         generatedAt,
         reviewer: {
           displayName: 'Ada Admin',
-          hsaId: 'SE2321000032-admin1',
+          hsaId: 'SE5560000001-admin1',
         },
       },
       {
         displayName: 'Ada Admin',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
         roles: ['Admin'],
       },
     )
@@ -359,7 +359,7 @@ describe('access review service', () => {
       completedByHsaId: null,
       createdAt: '2026-05-12T12:00:00.000Z',
       createdByDisplayName: 'Ada Admin',
-      createdByHsaId: 'SE2321000032-admin1',
+      createdByHsaId: 'SE5560000001-admin1',
       dueAt: '2026-06-11T12:00:00.000Z',
       externalEvidenceReference: null,
       id: 42,
@@ -369,7 +369,7 @@ describe('access review service', () => {
       periodEnd: '2027-05-12T12:00:00.000Z',
       periodStart: '2026-05-12T12:00:00.000Z',
       reviewerDisplayName: 'Ada Admin',
-      reviewerHsaId: 'SE2321000032-admin1',
+      reviewerHsaId: 'SE5560000001-admin1',
       revokeRequiredCount: 0,
       status: 'in_review',
       updatedAt: '2026-05-12T12:00:00.000Z',
@@ -390,7 +390,7 @@ describe('access review service', () => {
 
     const detail = await cancelAccessReviewRun(db as never, 42, {
       displayName: 'Ada Admin',
-      hsaId: 'SE2321000032-admin1',
+      hsaId: 'SE5560000001-admin1',
       roles: ['Admin'],
     })
 

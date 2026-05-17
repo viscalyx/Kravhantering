@@ -62,7 +62,7 @@ describe('specification-local deviation lifecycle routes', () => {
     routeState.createRequestContext.mockResolvedValue({
       actor: {
         displayName: 'Reviewer',
-        hsaId: 'SE2321000032-reviewer1',
+        hsaId: 'SE5560000001-reviewer1',
         id: 'reviewer-sub',
         isAuthenticated: true,
         roles: ['Reviewer'],
@@ -74,7 +74,7 @@ describe('specification-local deviation lifecycle routes', () => {
     })
     routeState.requireHumanActorSnapshot.mockReturnValue({
       displayName: 'Reviewer',
-      hsaId: 'SE2321000032-reviewer1',
+      hsaId: 'SE5560000001-reviewer1',
     })
   })
 
@@ -209,7 +209,7 @@ describe('specification-local deviation lifecycle routes', () => {
         decision: 1,
         decisionMotivation: 'Looks good',
         decidedBy: 'Reviewer',
-        decidedByHsaId: 'SE2321000032-reviewer1',
+        decidedByHsaId: 'SE5560000001-reviewer1',
       },
     )
   })

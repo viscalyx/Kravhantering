@@ -88,7 +88,7 @@ describe('auth logout security audit events', () => {
   it('emits auth.logout with the signed-in actor on POST', async () => {
     const destroy = vi.fn()
     getSessionMock.mockResolvedValue({
-      hsaId: 'SE2321000032-rev1',
+      hsaId: 'SE5560000001-rev1',
       idToken: 'idt',
       name: 'Review User',
       roles: ['Reviewer'],
@@ -104,7 +104,7 @@ describe('auth logout security audit events', () => {
     expect(events[0].actor).toEqual({
       source: 'oidc',
       sub: 'user-1',
-      hsaId: 'SE2321000032-rev1',
+      hsaId: 'SE5560000001-rev1',
     })
     expect(destroy).toHaveBeenCalledOnce()
   })

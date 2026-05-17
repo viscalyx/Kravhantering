@@ -486,7 +486,7 @@ describe('requirements DAL (SQL Server path)', () => {
         {
           acceptanceCriteria: null,
           createdBy: 'Original Actor',
-          createdByHsaId: 'SE2321000032-original',
+          createdByHsaId: 'SE5560000001-original',
           description: 'Archived text',
           id: 21,
           qualityCharacteristicId: null,
@@ -508,7 +508,7 @@ describe('requirements DAL (SQL Server path)', () => {
           archivedAt: null,
           createdAt: new Date('2026-04-20T08:30:00.000Z'),
           createdBy: 'Original Actor',
-          createdByHsaId: 'SE2321000032-original',
+          createdByHsaId: 'SE5560000001-original',
           description: 'Archived text',
           editedAt: new Date('2026-04-20T08:30:00.000Z'),
           id: 22,
@@ -529,10 +529,10 @@ describe('requirements DAL (SQL Server path)', () => {
     const result = await restoreVersion(db, 7, 21, 'New Actor')
 
     expect(result.createdBy).toBe('Original Actor')
-    expect(result.createdByHsaId).toBe('SE2321000032-original')
+    expect(result.createdByHsaId).toBe('SE5560000001-original')
     const insertParams = query.mock.calls[4]?.[1] ?? []
     expect(insertParams.at(13)).toBe('Original Actor')
-    expect(insertParams.at(14)).toBe('SE2321000032-original')
+    expect(insertParams.at(14)).toBe('SE5560000001-original')
   })
 
   it('reactivates archived requirements atomically and clears the archived flag', async () => {
@@ -543,7 +543,7 @@ describe('requirements DAL (SQL Server path)', () => {
         {
           acceptanceCriteria: null,
           createdBy: 'Original Actor',
-          createdByHsaId: 'SE2321000032-original',
+          createdByHsaId: 'SE5560000001-original',
           description: 'Archived text',
           id: 21,
           qualityCharacteristicId: null,
@@ -565,7 +565,7 @@ describe('requirements DAL (SQL Server path)', () => {
           archivedAt: null,
           createdAt: new Date('2026-04-20T08:30:00.000Z'),
           createdBy: 'Reviewer',
-          createdByHsaId: 'SE2321000032-reviewer1',
+          createdByHsaId: 'SE5560000001-reviewer1',
           description: 'Archived text',
           editedAt: new Date('2026-04-20T08:30:00.000Z'),
           id: 22,
@@ -584,7 +584,7 @@ describe('requirements DAL (SQL Server path)', () => {
       ])
       .mockResolvedValueOnce([])
 
-    await reactivateRequirement(db, 7, 'Reviewer', 'SE2321000032-reviewer1')
+    await reactivateRequirement(db, 7, 'Reviewer', 'SE5560000001-reviewer1')
 
     expect(transaction).toHaveBeenCalledTimes(1)
     expect(query.mock.calls[0]?.[0]).toContain('WITH (UPDLOCK, HOLDLOCK)')

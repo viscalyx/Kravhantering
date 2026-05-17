@@ -37,7 +37,7 @@ vi.mock('@/lib/auth/mcp-token', () => ({
     actor: {
       id: 'mcp-test-actor',
       displayName: 'MCP Test Actor',
-      hsaId: 'SE2321000032-mcp1',
+      hsaId: 'SE5560000001-mcp1',
       isAuthenticated: true,
       roles: ['Admin'],
       source: 'mcp' as const,

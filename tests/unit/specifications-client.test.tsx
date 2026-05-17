@@ -90,7 +90,7 @@ const sampleSpecifications = [
     itemCount: 0,
     requirementAreas: [],
     businessNeedsReference: null,
-    responsibleHsaId: 'SE2321000032-ada1',
+    responsibleHsaId: 'SE5560000001-ada1',
     responsibleDisplayName: 'Ada Admin',
     canResponsibleGenerateAi: true,
   },
@@ -140,7 +140,7 @@ describe('RequirementsSpecificationsClient', () => {
     expect(screen.getByText('Type')).toBeInTheDocument()
     expect(screen.getByText('Development')).toBeInTheDocument()
     expect(screen.getByText('Ada Admin')).toBeInTheDocument()
-    expect(screen.getByText('SE2321000032-ada1')).toBeInTheDocument()
+    expect(screen.getByText('SE5560000001-ada1')).toBeInTheDocument()
   })
 
   it('formats anonymized responsible display names in the table', async () => {
@@ -671,7 +671,7 @@ describe('RequirementsSpecificationsClient', () => {
     fireEvent.change(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
       {
-        target: { value: 'SE2321000032-rita1' },
+        target: { value: 'SE5560000001-rita1' },
       },
     )
     fireEvent.click(
@@ -709,7 +709,7 @@ describe('RequirementsSpecificationsClient', () => {
       JSON.parse(((postCall?.[1] as RequestInit)?.body as string) ?? '{}'),
     ).toMatchObject({
       responsibleDisplayName: 'Rita Reviewer',
-      responsibleHsaId: 'SE2321000032-rita1',
+      responsibleHsaId: 'SE5560000001-rita1',
       canResponsibleGenerateAi: true,
     })
   })
@@ -777,7 +777,7 @@ describe('RequirementsSpecificationsClient', () => {
     fireEvent.change(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
       {
-        target: { value: 'SE2321000032-rita1' },
+        target: { value: 'SE5560000001-rita1' },
       },
     )
 
@@ -813,7 +813,7 @@ describe('RequirementsSpecificationsClient', () => {
     ).toHaveValue('Ada Admin')
     expect(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
-    ).toHaveValue('SE2321000032-ada1')
+    ).toHaveValue('SE5560000001-ada1')
     expect(
       screen.getByRole('checkbox', {
         name: /specification\.canResponsibleGenerateAi/,

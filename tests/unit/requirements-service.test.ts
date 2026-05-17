@@ -264,7 +264,7 @@ function makeContext() {
     actor: {
       id: 'alice',
       displayName: 'alice',
-      hsaId: 'SE2321000032-alice1',
+      hsaId: 'SE5560000001-alice1',
       isAuthenticated: true,
       roles: ['Admin'],
       source: 'oidc' as const,
@@ -714,7 +714,7 @@ describe('createRequirementsService', () => {
       1,
       44,
       'alice',
-      'SE2321000032-alice1',
+      'SE5560000001-alice1',
       expect.objectContaining({ audit: expect.any(Function) }),
     )
     expect(result.result).toMatchObject({ id: 22, versionNumber: 4 })
@@ -1682,7 +1682,7 @@ describe('createRequirementsService', () => {
       mocks.graduateSpecificationLocalRequirementToLibrary,
     ).toHaveBeenCalledWith(expect.anything(), {
       actorDisplayName: 'alice',
-      actorHsaId: 'SE2321000032-alice1',
+      actorHsaId: 'SE5560000001-alice1',
       specificationId: 7,
       specificationLocalRequirementId: 12,
       targetRequirementAreaId: 2,
@@ -1916,7 +1916,7 @@ describe('createRequirementsService', () => {
       decision: 1,
       decisionMotivation: 'Approved by security reviewer',
       decidedBy: 'alice',
-      decidedByHsaId: 'SE2321000032-alice1',
+      decidedByHsaId: 'SE5560000001-alice1',
     })
     expect(emittedSecurityEvents()).toEqual([
       expect.objectContaining({
@@ -1947,7 +1947,7 @@ describe('createRequirementsService', () => {
       resolution: 1,
       resolutionMotivation: 'Implemented in the current draft',
       resolvedBy: 'alice',
-      resolvedByHsaId: 'SE2321000032-alice1',
+      resolvedByHsaId: 'SE5560000001-alice1',
     })
     expect(emittedSecurityEvents()).toEqual([
       expect.objectContaining({

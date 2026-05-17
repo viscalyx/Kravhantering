@@ -7,7 +7,7 @@ const auditState = vi.hoisted(() => ({
   createAdminPrivilegedAuditContext: vi.fn(async () => ({
     actor: {
       displayName: 'Ada Admin',
-      hsaId: 'SE2321000032-admin1',
+      hsaId: 'SE5560000001-admin1',
       id: 'admin-sub',
       isAuthenticated: true,
       roles: ['Admin'],

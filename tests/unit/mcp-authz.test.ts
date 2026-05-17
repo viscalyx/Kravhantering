@@ -214,7 +214,7 @@ async function createClient(service: RequirementsService) {
   })
   attachVerifiedActor(request, {
     displayName: 'MCP Service Account',
-    hsaId: 'SE2321000032-mcp1',
+    hsaId: 'SE5560000001-mcp1',
     id: 'svc-phase3',
     isAuthenticated: true,
     roles: ['Reviewer'],
@@ -239,7 +239,7 @@ function expectContext(fn: ReturnType<typeof vi.fn>, toolName: string): void {
 
   expect(context).toMatchObject({
     actor: {
-      hsaId: 'SE2321000032-mcp1',
+      hsaId: 'SE5560000001-mcp1',
       id: 'svc-phase3',
       roles: ['Reviewer'],
       source: 'mcp',

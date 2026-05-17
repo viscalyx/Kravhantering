@@ -104,18 +104,18 @@ and must not be reused outside local testing.
 <!-- markdownlint-disable MD013 -->
 | Username | Password | Display name | Roles | `employeeHsaId` | Testing purpose |
 | --- | --- | --- | --- | --- | --- |
-| `olle.areaowner` | `devpass` | Olle AreaOwner | None | `SE2321000032-areaowner1` | Area-owner assignment checks. |
-| `cora.coauthor` | `devpass` | Cora CoAuthor | None | `SE2321000032-areaco1` | Requirement-area co-author checks. |
-| `linnea.areaowner` | `devpass` | Linnéa AreaOwner | None | `SE2321000032-linneab` | Broad privacy preview fixture and area ownership checks. |
-| `petra.specresp` | `devpass` | Petra SpecificationResp | None | `SE2321000032-specresp1` | Specification responsibility checks. |
-| `paul.pkgcoauthor` | `devpass` | Paul PkgCoAuthor | None | `SE2321000032-pkgco1` | Requirement-package co-author checks. |
-| `rita.reviewer` | `devpass` | Rita Reviewer | `Reviewer` | `SE2321000032-reviewer1` | Review and decision workflow checks. |
-| `ada.admin` | `devpass` | Ada Admin | `Admin`, `PrivacyOfficer` | `SE2321000032-admin1` | Broad Admin and PrivacyOfficer happy path. |
-| `only.admin` | `devpass` | Only Admin | `Admin` | `SE2321000032-admin2` | Admin-only checks where privacy must be disabled. |
-| `disa.privacy` | `devpass` | Disa PrivacyOfficer | `PrivacyOfficer` | `SE2321000032-privacy1` | Privacy without Admin powers. |
-| `kalle.one` | `devpass` | Kalle Svensson | None | `SE2321000032-kalle1` | Duplicate-name privacy and access-review principal checks. |
-| `kalle.two` | `devpass` | Kalle Svensson | None | `SE2321000032-kalle2` | Duplicate-name privacy checks. |
-| `noah.noroles` | `devpass` | Noah NoRoles | None | `SE2321000032-noroles1` | Negative permission testing. |
+| `olle.areaowner` | `devpass` | Olle AreaOwner | None | `SE5560000001-areaowner1` | Area-owner assignment checks. |
+| `cora.coauthor` | `devpass` | Cora CoAuthor | None | `SE5560000001-areaco1` | Requirement-area co-author checks. |
+| `linnea.areaowner` | `devpass` | Linnéa AreaOwner | None | `SE5560000001-linneab` | Broad privacy preview fixture and area ownership checks. |
+| `petra.specresp` | `devpass` | Petra SpecificationResp | None | `SE5560000001-specresp1` | Specification responsibility checks. |
+| `paul.pkgcoauthor` | `devpass` | Paul PkgCoAuthor | None | `SE5560000001-pkgco1` | Requirement-package co-author checks. |
+| `rita.reviewer` | `devpass` | Rita Reviewer | `Reviewer` | `SE5560000001-reviewer1` | Review and decision workflow checks. |
+| `ada.admin` | `devpass` | Ada Admin | `Admin`, `PrivacyOfficer` | `SE5560000001-admin1` | Broad Admin and PrivacyOfficer happy path. |
+| `only.admin` | `devpass` | Only Admin | `Admin` | `SE5560000001-admin2` | Admin-only checks where privacy must be disabled. |
+| `disa.privacy` | `devpass` | Disa PrivacyOfficer | `PrivacyOfficer` | `SE5560000001-privacy1` | Privacy without Admin powers. |
+| `kalle.one` | `devpass` | Kalle Svensson | None | `SE5560000001-kalle1` | Duplicate-name privacy and access-review principal checks. |
+| `kalle.two` | `devpass` | Kalle Svensson | None | `SE5560000001-kalle2` | Duplicate-name privacy checks. |
+| `noah.noroles` | `devpass` | Noah NoRoles | None | `SE5560000001-noroles1` | Negative permission testing. |
 <!-- markdownlint-enable MD013 -->
 
 ## General setup
@@ -1333,7 +1333,7 @@ without entering a target HSA-ID.
 
 **Steps:**
 
-1. Enter `SE2321000032-linneab` in `HSA-ID att söka efter`.
+1. Enter `SE5560000001-linneab` in `HSA-ID att söka efter`.
 1. Select `Förhandsgranska`.
 1. Review the preview groups.
 
@@ -1354,7 +1354,7 @@ creator snapshots, decisions, access reviews, and audit actor snapshots.
 1. Save or inspect the generated response.
 1. Select `Exportera PDF`.
 
-**Expected result:** Both exports target `SE2321000032-linneab`; filenames use
+**Expected result:** Both exports target `SE5560000001-linneab`; filenames use
 a fingerprint rather than the raw HSA-ID.
 
 ### PRIV-04: duplicate-name privacy search uses HSA-ID only
@@ -1367,9 +1367,9 @@ a fingerprint rather than the raw HSA-ID.
 
 **Steps:**
 
-1. Preview `SE2321000032-kalle1`.
+1. Preview `SE5560000001-kalle1`.
 1. Note the affected rows.
-1. Preview `SE2321000032-kalle2`.
+1. Preview `SE5560000001-kalle2`.
 1. Compare the affected rows.
 
 **Expected result:** The two `Kalle Svensson` users produce distinct HSA-ID

@@ -73,7 +73,7 @@ function context(roles: string[] = ['Admin']) {
   return {
     actor: {
       displayName: 'Ada Admin',
-      hsaId: 'SE2321000032-admin1',
+      hsaId: 'SE5560000001-admin1',
       id: 'admin-sub',
       isAuthenticated: true,
       roles,
@@ -100,7 +100,7 @@ function reviewDetail() {
         permissionType: 'area_co_author',
         principal: {
           displayName: 'Kalle Svensson',
-          hsaId: 'SE2321000032-kalle1',
+          hsaId: 'SE5560000001-kalle1',
         },
         scope: {
           key: '1',
@@ -117,7 +117,7 @@ function reviewDetail() {
       createdAt: '2026-05-12T12:00:00.000Z',
       createdBy: {
         displayName: 'Ada Admin',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
       },
       dueAt: '2026-06-11T12:00:00.000Z',
       externalEvidenceReference: 'IDM-2026',
@@ -126,7 +126,7 @@ function reviewDetail() {
       periodStart: '2026-05-12T12:00:00.000Z',
       reviewer: {
         displayName: 'Ada Admin',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
       },
       status: 'in_review',
       summary: {
@@ -177,7 +177,7 @@ describe('access review routes', () => {
       generatedAt: '2026-05-12T12:30:00.000Z',
       generatedBy: {
         displayName: 'Ada Admin',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
       },
       limitations: [],
       schemaVersion: 'access-review-export.v1',
@@ -210,7 +210,7 @@ describe('access review routes', () => {
         externalEvidenceReference: 'IDM-2026',
         reviewer: {
           displayName: 'Ada Admin',
-          hsaId: 'SE2321000032-admin1',
+          hsaId: 'SE5560000001-admin1',
         },
       }),
       expect.objectContaining({ roles: ['Admin'] }),
@@ -232,7 +232,7 @@ describe('access review routes', () => {
       reviewId: 42,
       status: 'in_review',
     })
-    expect(JSON.stringify(auditArg.detail)).not.toContain('SE2321000032-kalle1')
+    expect(JSON.stringify(auditArg.detail)).not.toContain('SE5560000001-kalle1')
   })
 
   it('rejects manually assigned reviewers on create', async () => {
@@ -241,7 +241,7 @@ describe('access review routes', () => {
       jsonRequest('http://localhost/api/admin/access-reviews', {
         reviewer: {
           displayName: 'Rita Reviewer',
-          hsaId: 'SE2321000032-reviewer1',
+          hsaId: 'SE5560000001-reviewer1',
         },
       }) as never,
     )
@@ -311,7 +311,7 @@ describe('access review routes', () => {
       42,
       7,
       { comment: 'Still needed', decision: 'approved' },
-      expect.objectContaining({ hsaId: 'SE2321000032-admin1' }),
+      expect.objectContaining({ hsaId: 'SE5560000001-admin1' }),
     )
     expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -376,7 +376,7 @@ describe('access review routes', () => {
     expect(routeState.cancelAccessReviewRun).toHaveBeenCalledWith(
       { db: true },
       42,
-      expect.objectContaining({ hsaId: 'SE2321000032-admin1' }),
+      expect.objectContaining({ hsaId: 'SE5560000001-admin1' }),
     )
     expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({

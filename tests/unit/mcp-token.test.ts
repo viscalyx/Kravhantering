@@ -66,7 +66,7 @@ describe('verifyMcpBearerToken', () => {
       payload: {
         sub: 'svc-account',
         roles: ['Admin'],
-        employeeHsaId: 'SE2321000032-mcp1',
+        employeeHsaId: 'SE5560000001-mcp1',
       },
     })
 
@@ -80,7 +80,7 @@ describe('verifyMcpBearerToken', () => {
     expect(result?.actor).toEqual({
       id: 'svc-account',
       displayName: 'svc-account',
-      hsaId: 'SE2321000032-mcp1',
+      hsaId: 'SE5560000001-mcp1',
       isAuthenticated: true,
       roles: ['Admin'],
       source: 'mcp',
@@ -108,7 +108,7 @@ describe('verifyMcpBearerToken', () => {
       payload: {
         sub: 'human-sub',
         roles: ['Reviewer'],
-        employeeHsaId: 'SE2321000032-reviewer1',
+        employeeHsaId: 'SE5560000001-reviewer1',
       },
     })
 
@@ -118,7 +118,7 @@ describe('verifyMcpBearerToken', () => {
         headers: { authorization: 'Bearer abc.def.ghi' },
       }),
     )
-    expect(result?.actor.hsaId).toBe('SE2321000032-reviewer1')
+    expect(result?.actor.hsaId).toBe('SE5560000001-reviewer1')
   })
 
   it('rejects when employeeHsaId is missing', async () => {
@@ -453,7 +453,7 @@ describe('verifyMcpBearerToken security audit events', () => {
       payload: {
         sub: 'svc',
         roles: ['Admin'],
-        employeeHsaId: 'SE2321000032-mcp1',
+        employeeHsaId: 'SE5560000001-mcp1',
         client_id: 'kravhantering-mcp',
         scope: 'mcp:read mcp:write',
       },
@@ -472,7 +472,7 @@ describe('verifyMcpBearerToken security audit events', () => {
     expect(events[0].actor).toEqual({
       source: 'mcp',
       sub: 'svc',
-      hsaId: 'SE2321000032-mcp1',
+      hsaId: 'SE5560000001-mcp1',
       clientId: 'kravhantering-mcp',
     })
     expect(events[0].detail).toEqual({

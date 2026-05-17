@@ -27,7 +27,7 @@ describe('auth me route', () => {
   it('returns unauthenticated responses for expired sessions', async () => {
     getSessionMock.mockResolvedValue({
       sub: 'user-1',
-      hsaId: 'SE2321000032-rev1',
+      hsaId: 'SE5560000001-rev1',
       givenName: 'Alice',
       familyName: 'Reviewer',
       name: 'Alice Reviewer',
@@ -45,7 +45,7 @@ describe('auth me route', () => {
   it('returns authenticated responses with no-store caching', async () => {
     getSessionMock.mockResolvedValue({
       sub: 'user-1',
-      hsaId: 'SE2321000032-rev1',
+      hsaId: 'SE5560000001-rev1',
       givenName: 'Alice',
       familyName: 'Reviewer',
       name: 'Alice Reviewer',
@@ -60,7 +60,7 @@ describe('auth me route', () => {
     await expect(response.json()).resolves.toEqual({
       authenticated: true,
       sub: 'user-1',
-      hsaId: 'SE2321000032-rev1',
+      hsaId: 'SE5560000001-rev1',
       givenName: 'Alice',
       familyName: 'Reviewer',
       name: 'Alice Reviewer',
@@ -73,7 +73,7 @@ describe('auth me route', () => {
   it('never returns raw tokens or login-state secrets from the session', async () => {
     getSessionMock.mockResolvedValue({
       sub: 'user-1',
-      hsaId: 'SE2321000032-rev1',
+      hsaId: 'SE5560000001-rev1',
       givenName: 'Alice',
       familyName: 'Reviewer',
       name: 'Alice Reviewer',
@@ -97,7 +97,7 @@ describe('auth me route', () => {
     expect(body).toEqual({
       authenticated: true,
       sub: 'user-1',
-      hsaId: 'SE2321000032-rev1',
+      hsaId: 'SE5560000001-rev1',
       givenName: 'Alice',
       familyName: 'Reviewer',
       name: 'Alice Reviewer',

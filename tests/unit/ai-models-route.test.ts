@@ -17,7 +17,7 @@ function makeRequest(url = 'http://localhost:3000/api/ai/models') {
   })
   attachVerifiedActor(request, {
     displayName: 'AI User',
-    hsaId: 'SE2321000032-ai1',
+    hsaId: 'SE5560000001-ai1',
     id: 'ai-user',
     isAuthenticated: true,
     roles: ['Admin'],

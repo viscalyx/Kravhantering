@@ -16,7 +16,7 @@ function makeRequest(): Request {
   })
   attachVerifiedActor(request, {
     displayName: 'AI User',
-    hsaId: 'SE2321000032-ai1',
+    hsaId: 'SE5560000001-ai1',
     id: 'ai-user',
     isAuthenticated: true,
     roles: ['Admin'],

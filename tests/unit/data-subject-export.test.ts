@@ -5,8 +5,8 @@ import {
 } from '@/lib/privacy/data-subject-export'
 import { PRIVACY_ERASURE_GROUP_POLICIES } from '@/lib/privacy/erasure'
 
-const TARGET_HSA_ID = 'SE2321000032-kalle1'
-const OTHER_HSA_ID = 'SE2321000032-kalle2'
+const TARGET_HSA_ID = 'SE5560000001-kalle1'
+const OTHER_HSA_ID = 'SE5560000001-kalle2'
 
 type RowMap = Record<string, Array<Record<string, unknown>>>
 
@@ -31,7 +31,7 @@ function createExportDb(rowsByKey: RowMap) {
 function generatedBy() {
   return {
     displayName: 'Disa PrivacyOfficer',
-    hsaId: 'SE2321000032-privacy1',
+    hsaId: 'SE5560000001-privacy1',
     roles: ['PrivacyOfficer'],
     source: 'oidc',
     sub: 'privacy-sub',

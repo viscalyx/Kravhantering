@@ -136,7 +136,7 @@ const initialSpec = {
   lifecycleStatus: { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
   name: 'Authorization and IAM',
   responsibleDisplayName: 'Ada Admin',
-  responsibleHsaId: 'SE2321000032-ada1',
+  responsibleHsaId: 'SE5560000001-ada1',
   specificationImplementationTypeId: 2,
   specificationLifecycleStatusId: 3,
   specificationResponsibilityAreaId: 1,
@@ -263,7 +263,7 @@ describe('RequirementsSpecificationDetailClient', () => {
               lifecycleStatus: { nameEn: 'Development', nameSv: 'Utveckling' },
               name: 'Authorization and IAM',
               responsibleDisplayName: 'Ada Admin',
-              responsibleHsaId: 'SE2321000032-ada1',
+              responsibleHsaId: 'SE5560000001-ada1',
               canResponsibleGenerateAi: true,
               specificationImplementationTypeId: 2,
               specificationLifecycleStatusId: 3,
@@ -486,7 +486,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).not.toBeInTheDocument()
     expect(headerSummary).toHaveTextContent('Platform')
     expect(headerSummary).toHaveTextContent('Ada Admin')
-    expect(headerSummary).toHaveTextContent('SE2321000032-ada1')
+    expect(headerSummary).toHaveTextContent('SE5560000001-ada1')
     expect(headerSummary).toHaveTextContent('Program')
     expect(headerSummary).toHaveTextContent('Shared IAM business case')
     expect(headerSummary).not.toHaveTextContent(

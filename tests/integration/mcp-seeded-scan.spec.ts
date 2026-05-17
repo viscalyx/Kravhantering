@@ -198,7 +198,7 @@ function assertWritableMcpActorToken(token: string) {
   ) {
     throw new Error(
       'MCP seeded scan requires the service token to include a real-format ' +
-        '`employeeHsaId` claim, for example `SE2321000032-mcp1`. ' +
+        '`employeeHsaId` claim, for example `SE5560000001-mcp1`. ' +
         'Reset or re-import the local Keycloak realm from ' +
         '`dev/keycloak/realm-kravhantering-dev.json` before running this scan.',
     )

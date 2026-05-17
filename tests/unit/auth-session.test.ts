@@ -62,7 +62,7 @@ describe('session helpers', () => {
         givenName: 'Alice',
         familyName: 'Reviewer',
         name: 'Alice Reviewer',
-        hsaId: 'SE2321000032-reviewer1',
+        hsaId: 'SE5560000001-reviewer1',
         roles: ['Reviewer'],
         accessTokenExpiresAt: 1,
       } as never),
@@ -73,7 +73,7 @@ describe('session helpers', () => {
         givenName: 'Alice',
         familyName: 'Reviewer',
         name: 'Alice Reviewer',
-        hsaId: 'SE2321000032-reviewer1',
+        hsaId: 'SE5560000001-reviewer1',
         roles: ['Reviewer'],
         accessTokenExpiresAt: 1,
       } as never),
@@ -84,7 +84,7 @@ describe('session helpers', () => {
         givenName: 'Alice',
         familyName: 'Reviewer',
         name: 'Alice Reviewer',
-        hsaId: 'SE2321000032-reviewer1',
+        hsaId: 'SE5560000001-reviewer1',
         roles: ['Reviewer'],
         accessTokenExpiresAt: futureEpochSeconds(),
       } as never),
@@ -101,7 +101,7 @@ describe('session helpers', () => {
     session.givenName = 'Alice'
     session.familyName = 'Reviewer'
     session.name = 'Alice Reviewer'
-    session.hsaId = 'SE2321000032-reviewer1'
+    session.hsaId = 'SE5560000001-reviewer1'
     session.roles = ['Reviewer']
     session.idToken = 'jwt'
     session.accessTokenExpiresAt = futureEpochSeconds()
@@ -117,7 +117,7 @@ describe('session helpers', () => {
     const readRes = new Response()
     const restored = await getSessionFromRequest(readReq, readRes)
     expect(restored.sub).toBe('alice')
-    expect(restored.hsaId).toBe('SE2321000032-reviewer1')
+    expect(restored.hsaId).toBe('SE5560000001-reviewer1')
     expect(restored.roles).toEqual(['Reviewer'])
   })
 

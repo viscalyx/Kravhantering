@@ -236,7 +236,7 @@ describe('archiving retention service', () => {
         policyId: 3,
         previewToken: preview.previewToken,
       },
-      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE2321000032-privacy1' },
+      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE5560000001-privacy1' },
     )
 
     expect(result.runId).toBe(9)
@@ -282,7 +282,7 @@ describe('archiving retention service', () => {
         policyId: 3,
         previewToken: preview.previewToken,
       },
-      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE2321000032-privacy1' },
+      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE5560000001-privacy1' },
     )
 
     expect(result.summary).toMatchObject({
@@ -304,7 +304,7 @@ describe('archiving retention service', () => {
       executeArchivingRetention(
         db as never,
         { policyId: 3, previewToken: 'stale' },
-        { displayName: 'Disa PrivacyOfficer', hsaId: 'SE2321000032-privacy1' },
+        { displayName: 'Disa PrivacyOfficer', hsaId: 'SE5560000001-privacy1' },
       ),
     ).rejects.toMatchObject({
       details: { reason: 'stale_archiving_retention_preview' },
@@ -347,7 +347,7 @@ describe('archiving retention service', () => {
     await executeArchivingRetention(
       db as never,
       { policyId: 3, previewToken: preview.previewToken },
-      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE2321000032-privacy1' },
+      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE5560000001-privacy1' },
     )
     expect(
       query.mock.calls.some(([sql]) => String(sql).includes('DELETE area')),
@@ -369,7 +369,7 @@ describe('archiving retention service', () => {
       'owners.identity': [
         {
           age_basis: new Date('2023-01-15T09:00:00.000Z'),
-          current_display_value: 'SE2321000032-retentionorphan',
+          current_display_value: 'SE5560000001-retentionorphan',
           reference: 'Retention Orphan',
           source_key: 'owners.identity',
           subject_id: '910001',
@@ -568,7 +568,7 @@ describe('archiving retention service', () => {
     await executeArchivingRetention(
       db as never,
       { policyId: 4, previewToken: preview.previewToken },
-      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE2321000032-privacy1' },
+      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE5560000001-privacy1' },
     )
     expect(
       query.mock.calls.some(([sql]) =>
@@ -595,7 +595,7 @@ describe('archiving retention service', () => {
       executeArchivingRetention(
         db as never,
         { policyId: 5, previewToken: preview.previewToken },
-        { displayName: 'Disa PrivacyOfficer', hsaId: 'SE2321000032-privacy1' },
+        { displayName: 'Disa PrivacyOfficer', hsaId: 'SE5560000001-privacy1' },
       ),
     ).rejects.toMatchObject({
       details: { reason: 'missing_archiving_export_confirmation' },
@@ -628,7 +628,7 @@ describe('archiving retention service', () => {
         policyId: 5,
         previewToken: preview.previewToken,
       },
-      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE2321000032-privacy1' },
+      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE5560000001-privacy1' },
     )
     expect(result.runId).toBe(9)
 
@@ -640,7 +640,7 @@ describe('archiving retention service', () => {
           policyId: 5,
           previewToken: preview.previewToken,
         },
-        { displayName: 'Disa PrivacyOfficer', hsaId: 'SE2321000032-privacy1' },
+        { displayName: 'Disa PrivacyOfficer', hsaId: 'SE5560000001-privacy1' },
       ),
     ).rejects.toMatchObject({
       details: { reason: 'missing_archiving_export_confirmation' },
@@ -696,7 +696,7 @@ describe('archiving retention service', () => {
         subjectId: '12',
         subjectTable: 'requirement_areas',
       },
-      { displayName: 'Ada Admin', hsaId: 'SE2321000032-admin1' },
+      { displayName: 'Ada Admin', hsaId: 'SE5560000001-admin1' },
     )
 
     expect(exception).toMatchObject({

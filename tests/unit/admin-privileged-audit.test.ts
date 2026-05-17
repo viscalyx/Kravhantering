@@ -39,7 +39,7 @@ describe('admin privileged action audit', () => {
       accessTokenExpiresAt: 1_900_000_000,
       familyName: 'Admin',
       givenName: 'Ada',
-      hsaId: 'SE2321000032-admin1',
+      hsaId: 'SE5560000001-admin1',
       name: 'Ada Admin',
       roles: ['Admin', 'Reviewer'],
       sub: 'admin-sub',
@@ -62,7 +62,7 @@ describe('admin privileged action audit', () => {
 
     expect(context.actor).toEqual({
       displayName: 'Ada Admin',
-      hsaId: 'SE2321000032-admin1',
+      hsaId: 'SE5560000001-admin1',
       id: 'admin-sub',
       isAuthenticated: true,
       roles: ['Admin', 'Reviewer'],
@@ -83,7 +83,7 @@ describe('admin privileged action audit', () => {
     const context: RequestContext = {
       actor: {
         displayName: 'Ada Admin',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
         id: 'admin-sub',
         isAuthenticated: true,
         roles: ['Admin', 'Reviewer', 'PrivacyOfficer'],
@@ -117,7 +117,7 @@ describe('admin privileged action audit', () => {
       }
       expect(event).toMatchObject({
         actor: {
-          hsaId: 'SE2321000032-admin1',
+          hsaId: 'SE5560000001-admin1',
           source: 'oidc',
           sub: 'admin-sub',
         },
@@ -142,11 +142,11 @@ describe('admin privileged action audit', () => {
         resourceType: 'owner',
       })
       expect(JSON.stringify(event.detail)).not.toContain('Ada Admin')
-      expect(JSON.stringify(event.detail)).not.toContain('SE2321000032-admin1')
+      expect(JSON.stringify(event.detail)).not.toContain('SE5560000001-admin1')
       expect(auditState.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO action_audit_events'),
         expect.arrayContaining([
-          'SE2321000032-admin1',
+          'SE5560000001-admin1',
           'Ada Admin',
           'user',
           null,

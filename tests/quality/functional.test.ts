@@ -438,7 +438,7 @@ function makeContext(headers?: HeadersInit): Promise<RequestContext> {
   attachVerifiedActor(request, {
     id: 'functional-test-actor',
     displayName: 'Functional Test Actor',
-    hsaId: 'SE2321000032-functional1',
+    hsaId: 'SE5560000001-functional1',
     roles: ['Admin'],
     source: 'oidc',
     isAuthenticated: true,
@@ -777,7 +777,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     await requestDeviationReview(appDb(), libraryDeviation.id)
     await recordDecision(appDb(), libraryDeviation.id, {
       decidedBy: 'reviewer',
-      decidedByHsaId: 'SE2321000032-reviewer1',
+      decidedByHsaId: 'SE5560000001-reviewer1',
       decision: DEVIATION_APPROVED,
       decisionMotivation: 'Approved library deviation',
     })
@@ -789,7 +789,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     await requestSpecificationLocalReview(appDb(), localDeviation.id)
     await recordSpecificationLocalDecision(appDb(), localDeviation.id, {
       decidedBy: 'reviewer',
-      decidedByHsaId: 'SE2321000032-reviewer1',
+      decidedByHsaId: 'SE5560000001-reviewer1',
       decision: DEVIATION_APPROVED,
       decisionMotivation: 'Approved local deviation',
     })
@@ -913,7 +913,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       appDb(),
       {
         actorDisplayName: 'Functional Test Actor',
-        actorHsaId: 'SE2321000032-functional1',
+        actorHsaId: 'SE5560000001-functional1',
         specificationId: spec.id,
         specificationLocalRequirementId: localItem.id,
         targetRequirementAreaId: targetArea.id,
@@ -1000,7 +1000,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       expect.objectContaining({
         acceptanceCriteria: 'Copied acceptance',
         createdBy: 'Functional Test Actor',
-        createdByHsaId: 'SE2321000032-functional1',
+        createdByHsaId: 'SE5560000001-functional1',
         description: 'Copied local requirement',
         requirementAreaId: targetArea.id,
         requiresTesting: 1,
@@ -1066,7 +1066,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         resolution: SUGGESTION_RESOLVED,
         resolutionMotivation: 'Should fail before review',
         resolvedBy: 'reviewer',
-        resolvedByHsaId: 'SE2321000032-reviewer1',
+        resolvedByHsaId: 'SE5560000001-reviewer1',
       }),
     ).rejects.toMatchObject({
       code: 'conflict',
@@ -1079,7 +1079,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       resolution: SUGGESTION_RESOLVED,
       resolutionMotivation: 'Reviewed and resolved',
       resolvedBy: 'reviewer',
-      resolvedByHsaId: 'SE2321000032-reviewer1',
+      resolvedByHsaId: 'SE5560000001-reviewer1',
     })
 
     await expect(
@@ -1087,7 +1087,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         resolution: SUGGESTION_DISMISSED,
         resolutionMotivation: 'Second resolution must fail',
         resolvedBy: 'reviewer',
-        resolvedByHsaId: 'SE2321000032-reviewer1',
+        resolvedByHsaId: 'SE5560000001-reviewer1',
       }),
     ).rejects.toMatchObject({
       code: 'conflict',
@@ -1124,7 +1124,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     await requestDeviationReview(appDb(), deviation.id)
     await recordDecision(appDb(), deviation.id, {
       decidedBy: 'reviewer',
-      decidedByHsaId: 'SE2321000032-reviewer1',
+      decidedByHsaId: 'SE5560000001-reviewer1',
       decision: DEVIATION_APPROVED,
       decisionMotivation: 'Approved once',
     })
@@ -1132,7 +1132,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     await expect(
       recordDecision(appDb(), deviation.id, {
         decidedBy: 'reviewer',
-        decidedByHsaId: 'SE2321000032-reviewer1',
+        decidedByHsaId: 'SE5560000001-reviewer1',
         decision: DEVIATION_REJECTED,
         decisionMotivation: 'Second decision must fail',
       }),
@@ -1164,7 +1164,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     await requestSpecificationLocalReview(appDb(), localDeviation.id)
     await recordSpecificationLocalDecision(appDb(), localDeviation.id, {
       decidedBy: 'reviewer',
-      decidedByHsaId: 'SE2321000032-reviewer1',
+      decidedByHsaId: 'SE5560000001-reviewer1',
       decision: DEVIATION_APPROVED,
       decisionMotivation: 'Approved local once',
     })
@@ -1172,7 +1172,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     await expect(
       recordSpecificationLocalDecision(appDb(), localDeviation.id, {
         decidedBy: 'reviewer',
-        decidedByHsaId: 'SE2321000032-reviewer1',
+        decidedByHsaId: 'SE5560000001-reviewer1',
         decision: DEVIATION_REJECTED,
         decisionMotivation: 'Second local decision must fail',
       }),
@@ -1494,7 +1494,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         await recordActionAuditEvent(manager, {
           action: 'requirement.create',
           actorDisplayName: 'Functional Test Actor',
-          actorHsaId: 'SE2321000032-functional1',
+          actorHsaId: 'SE5560000001-functional1',
           actorKind: 'user',
           clientIp: '203.0.113.40',
           decision: 'allowed',
@@ -1519,7 +1519,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       await recordActionAuditEvent(manager, {
         action: 'requirement.create',
         actorDisplayName: 'Functional Test Actor',
-        actorHsaId: 'SE2321000032-functional1',
+        actorHsaId: 'SE5560000001-functional1',
         actorKind: 'user',
         clientIp: '203.0.113.41',
         decision: 'allowed',
