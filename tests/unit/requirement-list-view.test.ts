@@ -123,6 +123,7 @@ describe('requirement list view helpers', () => {
       'needsReference',
       'specificationItemStatus',
       'normReferences',
+      'requirementPackage',
       'suggestionCount',
     ])
     expect(getDefaultVisibleRequirementColumns(columnDefaults)).toEqual([
@@ -151,6 +152,7 @@ describe('requirement list view helpers', () => {
           areaIds: [1],
           descriptionSearch: 'secure',
           needsReferenceIds: [9],
+          requirementPackageIds: [12],
           specificationItemStatusIds: [2],
           qualityCharacteristicIds: [5],
           statuses: [3],
@@ -162,6 +164,7 @@ describe('requirement list view helpers', () => {
       areaIds: undefined,
       descriptionSearch: 'secure',
       needsReferenceIds: undefined,
+      requirementPackageIds: [12],
       specificationItemStatusIds: undefined,
       qualityCharacteristicIds: undefined,
       statuses: undefined,
@@ -308,6 +311,7 @@ describe('requirement list view helpers', () => {
     expect(hasActiveFilters({ qualityCharacteristicIds: [1] })).toBe(true)
     expect(hasActiveFilters({ requiresTesting: ['true'] })).toBe(true)
     expect(hasActiveFilters({ needsReferenceIds: [10] })).toBe(true)
+    expect(hasActiveFilters({ requirementPackageIds: [12] })).toBe(true)
     expect(hasActiveFilters({ specificationItemStatusIds: [1] })).toBe(true)
     expect(hasActiveFilters({ uniqueIdSearch: 'INT' })).toBe(true)
     expect(hasActiveFilters({ descriptionSearch: 'test' })).toBe(true)
@@ -335,6 +339,21 @@ describe('requirement list view helpers', () => {
     ])
     expect(result[0].columnId).toBe('uniqueId')
     expect(result.length).toBe(REQUIREMENT_LIST_COLUMNS.length)
+  })
+
+  it('defines requirementPackage as a hidden, non-sortable list column', () => {
+    expect(
+      REQUIREMENT_LIST_COLUMNS.find(
+        column => column.id === 'requirementPackage',
+      ),
+    ).toMatchObject({
+      canHide: true,
+      canSort: false,
+      defaultVisible: false,
+      labelKey: 'requirementPackage',
+      labelNamespace: 'requirement',
+      resizable: true,
+    })
   })
 
   it('compares rows by description', () => {

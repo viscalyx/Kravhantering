@@ -44,6 +44,8 @@ The behaviors below apply to the requirement list rendered by:
 - Status is filterable and sortable.
 - `riskLevel` is filterable and sortable.
 - `requiresTesting` is filterable, but not sortable.
+- `requirementPackage` is filterable through the requirement-package chip row
+  and can also be shown as an optional, non-sortable table column.
 
 ## Column Visibility
 
@@ -402,6 +404,12 @@ Each suggestion item shows:
 The requirements list table has an optional `suggestionCount`
 column (hidden by default) that shows the total number of
 improvement suggestions for each requirement as a badge.
+
+### Requirement Package Column
+
+The requirements list table has an optional `requirementPackage`
+column (hidden by default) that shows linked requirement package names
+for each requirement in the current locale.
 
 ## Contributor Guardrails
 

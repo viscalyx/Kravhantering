@@ -67,6 +67,11 @@ describe('requirement list SQL builders', () => {
     )
     expect(query.sqlText).toContain('vnr.norm_reference_id IN (@11, @12)')
     expect(query.sqlText).toContain('vus.requirement_package_id IN (@13)')
+    expect(query.sqlText).toContain('AS requirementPackagesJson')
+    expect(query.sqlText).toContain(
+      'JOIN requirement_packages requirement_package',
+    )
+    expect(query.sqlText).toContain('FOR JSON PATH')
     expect(query.sqlText).toContain('OFFSET @14 ROWS FETCH NEXT @15 ROWS ONLY')
     expect(query.sqlText).toContain(
       'effective_status.effective_status_id AS status',

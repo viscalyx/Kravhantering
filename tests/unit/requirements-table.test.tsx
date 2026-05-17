@@ -1243,7 +1243,7 @@ describe('RequirementsTable', () => {
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
     )
 
-    expect(getColumnPickerBadge(container)?.textContent).toBe('6/14')
+    expect(getColumnPickerBadge(container)?.textContent).toBe('6/15')
   })
 
   it('renders the floating pill in a centered square shell', () => {
@@ -3166,6 +3166,7 @@ describe('RequirementsTable', () => {
     const requirementPackageFilter = screen.getByRole('button', {
       name: 'Mobil användning',
     })
+    expect(onFilterChange).not.toHaveBeenCalled()
     expect(requirementPackageFilter).toHaveAttribute(
       'data-requirement-package',
       '1',
@@ -3302,6 +3303,57 @@ describe('RequirementsTable', () => {
         fireEvent.click(normRefOption as Element)
       })
       expect(onVisibleColumnsChange).toHaveBeenCalled()
+    })
+  })
+
+  describe('requirement package column', () => {
+    const requirementPackageColumns = [
+      ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+      'requirementPackage' as const,
+    ]
+
+    it('renders localized requirement package names in the selected locale', () => {
+      const row = makeRow({
+        requirementPackages: [
+          { id: 1, nameEn: 'Mobile use', nameSv: 'Mobil anvandning' },
+          { id: 2, nameEn: 'Data platform', nameSv: 'Dataplattform' },
+        ],
+      })
+      const { rerender } = render(
+        <RequirementsTable
+          locale="sv"
+          rows={[row]}
+          visibleColumns={requirementPackageColumns}
+        />,
+      )
+
+      expect(
+        screen.getByText('Mobil anvandning, Dataplattform'),
+      ).toBeInTheDocument()
+
+      rerender(
+        <RequirementsTable
+          locale="en"
+          rows={[row]}
+          visibleColumns={requirementPackageColumns}
+        />,
+      )
+
+      expect(screen.getByText('Mobile use, Data platform')).toBeInTheDocument()
+    })
+
+    it('renders dash when no requirement packages are linked', () => {
+      const { container } = render(
+        <RequirementsTable
+          locale="sv"
+          rows={[makeRow({ requirementPackages: [] })]}
+          visibleColumns={requirementPackageColumns}
+        />,
+      )
+
+      const cells = container.querySelectorAll('td')
+      const requirementPackageCell = cells[cells.length - 1]
+      expect(requirementPackageCell?.textContent).toBe('—')
     })
   })
 })

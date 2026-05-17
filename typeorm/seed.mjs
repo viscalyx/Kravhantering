@@ -529,9 +529,10 @@ const SEED_DATA = {
       [9, 'requiresTesting', 7, 0, '2026-04-20 20:07:00'],
       [10, 'version', 8, 0, '2026-04-20 20:07:00'],
       [11, 'needsReference', 9, 0, '2026-04-20 20:07:00'],
-      [13, 'riskLevel', 11, 0, '2026-04-20 20:07:00'],
-      [14, 'specificationItemStatus', 12, 0, '2026-04-20 20:07:00'],
-      [15, 'suggestionCount', 13, 0, '2026-04-20 20:07:00'],
+      [16, 'requirementPackage', 11, 0, '2026-04-20 20:07:00'],
+      [13, 'riskLevel', 12, 0, '2026-04-20 20:07:00'],
+      [14, 'specificationItemStatus', 13, 0, '2026-04-20 20:07:00'],
+      [15, 'suggestionCount', 14, 0, '2026-04-20 20:07:00'],
     ],
   },
   requirements_specifications: {

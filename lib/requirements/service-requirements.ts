@@ -114,6 +114,7 @@ export function formatRequirementListItem(
     normReferenceUris: item.normReferenceUris
       ? item.normReferenceUris.split(',')
       : [],
+    requirementPackages: item.requirementPackages,
     suggestionCount: item.suggestionCount,
     uniqueId: item.uniqueId,
     version: {

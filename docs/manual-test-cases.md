@@ -373,8 +373,9 @@ consistently.
 **Steps:**
 
 1. Open the floating column picker.
-1. Enable `Kvalitetsegenskap`, `Test krävs`, and `Version`.
+1. Enable `Kvalitetsegenskap`, `Kravpaket`, `Test krävs`, and `Version`.
 1. Close the picker.
+1. Verify that the `Kravpaket` column shows package names or `—`.
 1. Reload the page.
 
 **Expected result:** The enabled columns remain visible after reload.
@@ -1143,6 +1144,7 @@ reload.
 
 1. Open the `Kolumner` tab.
 1. Move `Kategori` above or below `Område`.
+1. Verify that `Kravpaket` is available as a hidden-by-default column.
 1. Select `Spara`.
 1. Open `/sv/requirements` in a fresh browser context.
 

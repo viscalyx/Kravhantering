@@ -69,6 +69,44 @@ function toNum(value: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+interface RequirementListPackage {
+  id: number
+  nameEn: string
+  nameSv: string
+}
+
+function parseRequirementPackagesJson(
+  value: unknown,
+): RequirementListPackage[] {
+  if (value == null) return []
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(String(value))
+  } catch {
+    return []
+  }
+
+  if (!Array.isArray(parsed)) return []
+
+  const requirementPackages: RequirementListPackage[] = []
+  for (const item of parsed) {
+    if (!item || typeof item !== 'object') continue
+
+    const record = item as Record<string, unknown>
+    const id = Number(record.id)
+    if (!Number.isInteger(id) || id <= 0) continue
+
+    requirementPackages.push({
+      id,
+      nameEn: record.nameEn == null ? '' : String(record.nameEn),
+      nameSv: record.nameSv == null ? '' : String(record.nameSv),
+    })
+  }
+
+  return requirementPackages
+}
+
 const REQUIREMENT_VERSION_LIFECYCLE_UNIQUE_INDEXES = [
   'uq_requirement_versions_archive_initiated_requirement_id',
   'uq_requirement_versions_published_requirement_id',
@@ -188,6 +226,9 @@ export async function listRequirements(
       row.normReferenceIds == null ? null : String(row.normReferenceIds),
     normReferenceUris:
       row.normReferenceUris == null ? null : String(row.normReferenceUris),
+    requirementPackages: parseRequirementPackagesJson(
+      row.requirementPackagesJson,
+    ),
     suggestionCount: Number(row.suggestionCount ?? 0),
   }))
 }

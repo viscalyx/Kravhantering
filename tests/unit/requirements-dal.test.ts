@@ -8,6 +8,7 @@ import {
   getRequirementById,
   getRequirementByUniqueId,
   initiateArchiving,
+  listRequirements,
   reactivateRequirement,
   restoreVersion,
   transitionStatus,
@@ -97,6 +98,44 @@ describe('requirements DAL (SQL Server path)', () => {
       expect.stringContaining('FROM requirements requirement'),
       [42],
     )
+  })
+
+  it('hydrates requirement package names for requirement list rows', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        id: 7,
+        uniqueId: 'SEC-0001',
+        requirementAreaId: 3,
+        isArchived: 0,
+        createdAt: new Date('2026-04-20T08:00:00.000Z'),
+        versionId: 21,
+        revisionToken: '11111111-1111-4111-8111-111111111111',
+        versionNumber: 2,
+        description: 'desc-v2',
+        status: 3,
+        requiresTesting: 1,
+        versionCreatedAt: new Date('2026-04-20T08:30:00.000Z'),
+        maxVersion: 2,
+        requirementPackagesJson: JSON.stringify([
+          { id: 200, nameEn: 'Citizen portal', nameSv: 'Medborgarportal' },
+          { id: 201, nameEn: 'Back office', nameSv: 'Handlaggning' },
+        ]),
+        suggestionCount: 0,
+      },
+    ])
+
+    const rows = await listRequirements(db)
+
+    expect(query.mock.calls[0]?.[0]).toContain('requirementPackagesJson')
+    expect(rows[0]).toMatchObject({
+      id: 7,
+      requirementPackages: [
+        { id: 200, nameEn: 'Citizen portal', nameSv: 'Medborgarportal' },
+        { id: 201, nameEn: 'Back office', nameSv: 'Handlaggning' },
+      ],
+      uniqueId: 'SEC-0001',
+    })
   })
 
   it('rejects unknown requirement area ids before creating a requirement', async () => {
