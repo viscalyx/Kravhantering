@@ -218,9 +218,7 @@ import {
   GET as getSpecItemStatus,
   PUT as putSpecItemStatus,
 } from '@/app/api/catalog/specification-item-statuses/[id]/route'
-import {
-  GET as getSpecItemStatuses,
-} from '@/app/api/catalog/specification-item-statuses/route'
+import { GET as getSpecItemStatuses } from '@/app/api/catalog/specification-item-statuses/route'
 import {
   GET as getTypeCats,
   POST as postTypeCat,

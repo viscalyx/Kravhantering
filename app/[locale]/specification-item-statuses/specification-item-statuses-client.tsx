@@ -221,9 +221,7 @@ export default function SpecificationItemStatusesClient() {
                   })}
                   onSubmit={submit}
                 >
-                  <h2 className="text-lg font-semibold">
-                    {t('editItem')}
-                  </h2>
+                  <h2 className="text-lg font-semibold">{t('editItem')}</h2>
                   <div>
                     <FieldLabelWithHelp
                       help={t('nameSvHelp')}

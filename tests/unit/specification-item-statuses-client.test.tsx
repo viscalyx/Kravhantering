@@ -100,9 +100,7 @@ describe('SpecificationItemStatusesClient', () => {
         name: /specificationItemStatusAdmin\.title/,
       }),
     ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: /common\.create/i }),
-    ).toBeNull()
+    expect(screen.queryByRole('button', { name: /common\.create/i })).toBeNull()
     await waitFor(() => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
     })
@@ -140,9 +138,7 @@ describe('SpecificationItemStatusesClient', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
     })
-    expect(
-      screen.queryByRole('button', { name: /common\.create/i }),
-    ).toBeNull()
+    expect(screen.queryByRole('button', { name: /common\.create/i })).toBeNull()
     expect(
       screen.queryByRole('textbox', {
         name: /specificationItemStatusAdmin\.name.+SV/,
@@ -267,9 +263,7 @@ describe('SpecificationItemStatusesClient', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
     })
-    expect(
-      screen.queryByRole('button', { name: /common\.delete/i }),
-    ).toBeNull()
+    expect(screen.queryByRole('button', { name: /common\.delete/i })).toBeNull()
     expect(confirmMock).not.toHaveBeenCalled()
   })
 

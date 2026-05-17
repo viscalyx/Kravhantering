@@ -18,9 +18,7 @@ function createSqlServerDb() {
   const db = {
     getRepository: vi.fn(() => repository),
     query,
-  } as unknown as Parameters<
-    typeof countLinkedSpecificationItems
-  >[0]
+  } as unknown as Parameters<typeof countLinkedSpecificationItems>[0]
 
   return { db, query, repository }
 }
