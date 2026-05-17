@@ -48,6 +48,7 @@
     "createdAt": "Skapad",
     "updatedAt": "Uppdaterad",
     "error": "Ett fel uppstod",
+    "ownerLoadError": "Kunde inte hämta ägare. Befintliga ägarval behålls om de finns.",
     "share": "Dela",
     "copied": "Kopierad",
     "help": "Hjälp",

@@ -86,6 +86,9 @@ export default function RequirementAreasClient() {
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const [owners, setOwners] = useState<OwnerOption[]>([])
+  const [ownersLoading, setOwnersLoading] = useState(false)
+  const [ownersError, setOwnersError] = useState<string | null>(null)
+  const ownerLoadError = tc('ownerLoadError')
   const formatOwnerName = (value: string | null) =>
     formatActorDisplayName(value, tc('anonymousUser')) ?? '—'
 
@@ -93,14 +96,22 @@ export default function RequirementAreasClient() {
     let cancelled = false
 
     async function fetchOwners() {
+      setOwnersLoading(true)
+      setOwnersError(null)
       try {
         const response = await apiFetch('/api/owners')
-        if (!response.ok || cancelled) return
+        if (cancelled) return
+        if (!response.ok) {
+          setOwnersError(ownerLoadError)
+          return
+        }
         setOwners(
           ((await response.json()) as { owners?: OwnerOption[] }).owners ?? [],
         )
       } catch {
-        if (!cancelled) setOwners([])
+        if (!cancelled) setOwnersError(ownerLoadError)
+      } finally {
+        if (!cancelled) setOwnersLoading(false)
       }
     }
 
@@ -109,7 +120,7 @@ export default function RequirementAreasClient() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [ownerLoadError])
 
   const controller = useCrudAdminResource<Area, AreaForm>({
     confirmDeleteMessage: tc('confirm'),
@@ -233,7 +244,7 @@ export default function RequirementAreasClient() {
             />
             <select
               className={inputClassName}
-              disabled={disabled}
+              disabled={disabled || ownersLoading}
               id="area-owner"
               onChange={event =>
                 setForm(previousForm => ({
@@ -250,6 +261,22 @@ export default function RequirementAreasClient() {
                 </option>
               ))}
             </select>
+            {ownersLoading && (
+              <p
+                className="mt-2 text-sm text-secondary-500 dark:text-secondary-400"
+                role="status"
+              >
+                {tc('loading')}
+              </p>
+            )}
+            {ownersError && (
+              <p
+                className="mt-2 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                role="alert"
+              >
+                {ownersError}
+              </p>
+            )}
           </div>
         </>
       )}

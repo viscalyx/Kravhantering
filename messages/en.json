@@ -48,6 +48,7 @@
     "createdAt": "Created",
     "updatedAt": "Updated",
     "error": "Something went wrong",
+    "ownerLoadError": "Could not load owners. Existing owner choices are kept if available.",
     "share": "Share",
     "copied": "Copied",
     "help": "Help",

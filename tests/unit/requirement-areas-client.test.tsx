@@ -112,6 +112,63 @@ describe('RequirementAreasClient', () => {
     ).toBeInTheDocument()
   })
 
+  it('renders owner options when owner fetch succeeds', async () => {
+    render(<RequirementAreasClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Integration')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'Anna S' })).toBeInTheDocument()
+    })
+    expect(screen.getByRole('option', { name: 'Erik L' })).toBeInTheDocument()
+  })
+
+  it('disables owner select while owner options are loading', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: sampleAreas })
+      }
+      if (url === '/api/owners') return new Promise(() => {})
+      return okJson({})
+    })
+
+    render(<RequirementAreasClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Integration')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    expect(screen.getByRole('combobox', { name: /area\.owner/ })).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+  })
+
+  it('shows an owner loading error when owner fetch fails', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: sampleAreas })
+      }
+      if (url === '/api/owners') return errJson({ error: 'Owners failed' })
+      return okJson({})
+    })
+
+    render(<RequirementAreasClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Integration')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'common.ownerLoadError',
+      )
+    })
+  })
+
   it('submits create form and refreshes list', async () => {
     render(<RequirementAreasClient />)
     await waitFor(() => {

@@ -58,6 +58,11 @@ const sampleRequirementPackages = [
   },
 ]
 
+const sampleOwners = [
+  { id: 1, firstName: 'Anna', lastName: 'Owner' },
+  { id: 2, firstName: 'Erik', lastName: 'Editor' },
+]
+
 const requirementPackageNameSvInput = () =>
   screen.getByRole('textbox', { name: /requirementPackage\.nameSvLabel/ })
 const requirementPackageNameEnInput = () =>
@@ -94,9 +99,13 @@ describe('RequirementPackagesClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchMock.mockResolvedValue(
-      okJson({ requirementPackages: sampleRequirementPackages }),
-    )
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: sampleRequirementPackages })
+      }
+      if (url === '/api/owners/all') return okJson({ owners: sampleOwners })
+      return okJson({})
+    })
   })
 
   it('renders heading and create button', async () => {
@@ -149,6 +158,69 @@ describe('RequirementPackagesClient', () => {
         name: 'common.help: requirementPackage.owner',
       }),
     ).toBeInTheDocument()
+  })
+
+  it('renders owner options when owner fetch succeeds', async () => {
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('option', { name: 'Anna Owner' }),
+      ).toBeInTheDocument()
+    })
+    expect(
+      screen.getByRole('option', { name: 'Erik Editor' }),
+    ).toBeInTheDocument()
+  })
+
+  it('disables owner select while owner options are loading', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: sampleRequirementPackages })
+      }
+      if (url === '/api/owners/all') return new Promise(() => {})
+      return okJson({})
+    })
+
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    expect(
+      screen.getByRole('combobox', { name: /requirementPackage\.owner/ }),
+    ).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+  })
+
+  it('shows an owner loading error when owner fetch fails', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: sampleRequirementPackages })
+      }
+      if (url === '/api/owners/all') return notOk()
+      return okJson({})
+    })
+
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'common.ownerLoadError',
+      )
+    })
   })
 
   it('submits create form', async () => {
