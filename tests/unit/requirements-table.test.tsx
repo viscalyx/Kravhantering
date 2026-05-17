@@ -3166,7 +3166,10 @@ describe('RequirementsTable', () => {
     const requirementPackageFilter = screen.getByRole('button', {
       name: 'Mobil användning',
     })
-    expect(onFilterChange).not.toHaveBeenCalled()
+    expect(onFilterChange).toHaveBeenCalledWith({
+      requirementPackageIds: undefined,
+    })
+    onFilterChange.mockClear()
     expect(requirementPackageFilter).toHaveAttribute(
       'data-requirement-package',
       '1',

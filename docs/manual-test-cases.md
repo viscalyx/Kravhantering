@@ -376,9 +376,12 @@ consistently.
 1. Enable `Kvalitetsegenskap`, `Kravpaket`, `Test krävs`, and `Version`.
 1. Close the picker.
 1. Verify that the `Kravpaket` column shows package names or `—`.
+1. Select a `Kravpaket` filter option, then hide the `Kravpaket` column.
+1. Verify that the `Kravpaket` filter clears when the column is hidden.
 1. Reload the page.
 
-**Expected result:** The enabled columns remain visible after reload.
+**Expected result:** The enabled columns remain visible after reload, and
+filters tied to hidden columns are cleared.
 
 ### REQ-06: reset local catalog view preferences
 

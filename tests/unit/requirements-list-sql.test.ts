@@ -115,6 +115,25 @@ describe('requirement list SQL builders', () => {
     expect(query.parameters).toEqual([0, 10])
   })
 
+  it('orders requirement package JSON by the selected locale', () => {
+    const svQuery = buildRequirementListSql({ locale: 'sv', limit: 10 })
+    const enQuery = buildRequirementListSql({ locale: 'en', limit: 10 })
+    const fallbackQuery = buildRequirementListSql({
+      locale: 'unsupported' as never,
+      limit: 10,
+    })
+
+    expect(svQuery.sqlText).toContain(
+      'LOWER(requirement_package.name_sv) ASC, requirement_package.id ASC',
+    )
+    expect(enQuery.sqlText).toContain(
+      'LOWER(requirement_package.name_en) ASC, requirement_package.id ASC',
+    )
+    expect(fallbackQuery.sqlText).toContain(
+      'LOWER(requirement_package.name_en) ASC, requirement_package.id ASC',
+    )
+  })
+
   it('escapes SQL Server LIKE wildcard characters', () => {
     expect(escapeLike(String.raw`A\%_[B`)).toBe(String.raw`A\\\%\_\[B`)
   })

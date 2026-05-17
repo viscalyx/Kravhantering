@@ -164,7 +164,7 @@ describe('requirement list view helpers', () => {
       areaIds: undefined,
       descriptionSearch: 'secure',
       needsReferenceIds: undefined,
-      requirementPackageIds: [12],
+      requirementPackageIds: undefined,
       specificationItemStatusIds: undefined,
       qualityCharacteristicIds: undefined,
       statuses: undefined,
