@@ -386,11 +386,16 @@ export default function RequirementsClient({
       return
     }
 
-    // If we resolved a uniqueId → numeric id, update selectedId state and refs
+    // Keep selectedId numeric after row/detail refreshes.
     if (resolvedNumericId != null) {
       selectedIdRef.current = resolvedNumericId
       setSelectedId(resolvedNumericId)
-      scrollToIdRef.current = resolvedNumericId
+      // URL-selected uniqueIds need one scroll after hydration. Normal numeric
+      // selection refreshes, such as lifecycle transitions, should preserve
+      // the user's current detail position.
+      if (typeof sid === 'string') {
+        scrollToIdRef.current = resolvedNumericId
+      }
     }
 
     // Batch both updates in one synchronous block to avoid intermediate renders

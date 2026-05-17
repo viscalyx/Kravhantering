@@ -261,6 +261,18 @@ Requirement text and acceptance criteria are the primary content. Classification
 metadata (area, owner, category, type, etc.) must not push the main content
 down.
 
+### Lifecycle Refresh Scroll
+
+- When a requirement status transition refreshes the inline detail pane and the
+  catalog row, the workflow stepper is kept in view with the smallest necessary
+  scroll adjustment.
+- The catalog does not re-center the selected row during this refresh, so the
+  page does not jump down to the version history or improvement-suggestion
+  sections.
+- This applies to transitions such as Draft to Review and Review back to Draft,
+  including cases where active catalog filters require the selected requirement
+  to stay pinned in the list.
+
 ### Area Owner
 
 - The area owner is a property of the area, not of the requirement itself.

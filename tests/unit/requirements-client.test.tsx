@@ -1838,6 +1838,61 @@ describe('RequirementsClient', () => {
     )
   })
 
+  it('preserves inline detail scroll position after a selected requirement refresh', async () => {
+    let listFetchCount = 0
+    const scrollIntoView = vi.fn()
+    const originalGetElementById = document.getElementById.bind(document)
+    const getElementByIdSpy = vi
+      .spyOn(document, 'getElementById')
+      .mockImplementation((elementId: string) => {
+        if (elementId === 'requirement-row-detail-1') {
+          return { scrollIntoView } as unknown as HTMLElement
+        }
+
+        return originalGetElementById(elementId)
+      })
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        listFetchCount += 1
+        return Promise.resolve(
+          okJson({
+            pagination: { hasMore: false },
+            requirements: [makeRequirementRow(1)],
+          }),
+        )
+      }
+
+      if (url === '/api/requirements/1') {
+        return Promise.resolve(okJson(makeRequirementDetail(1)))
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+
+    fireEvent.click(screen.getByText('row-1'))
+    fireEvent.click(await screen.findByText('detail-refresh-1'))
+
+    await waitFor(() => expect(listFetchCount).toBeGreaterThanOrEqual(2))
+
+    expect(scrollIntoView).not.toHaveBeenCalled()
+    getElementByIdSpy.mockRestore()
+  })
+
   it('keeps the mutation response detail visible when a follow-up list refresh is stale', async () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)

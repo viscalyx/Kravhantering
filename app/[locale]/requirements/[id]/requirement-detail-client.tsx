@@ -3,7 +3,7 @@
 import { AlertCircle, Clock, X } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import type { KeyboardEvent, MouseEvent } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationPill from '@/components/DeviationPill'
 import DeviationStepper from '@/components/DeviationStepper'
@@ -101,6 +101,8 @@ export default function RequirementDetailClient({
   const router = useRouter()
   const locale = useLocale()
   const { confirm } = useConfirmModal()
+  const workflowStepperAnchorRef = useRef<HTMLDivElement>(null)
+  const workflowStepperRestoreFrameRef = useRef<number | null>(null)
 
   const {
     loading,
@@ -147,6 +149,64 @@ export default function RequirementDetailClient({
   })
   const { cardRef, connectorHeight, triangleLeft, versionHistoryRef } =
     useVersionPillConnector(selectedVersionNumber)
+
+  const restoreWorkflowStepperVisibility = useCallback(() => {
+    const anchor = workflowStepperAnchorRef.current
+    if (!anchor || typeof window === 'undefined') {
+      return
+    }
+
+    const rect = anchor.getBoundingClientRect()
+    const viewportHeight = Math.max(
+      window.innerHeight,
+      document.documentElement.clientHeight,
+    )
+    const safeTop = inline ? 112 : 16
+    const safeBottom = viewportHeight - 16
+
+    if (rect.top >= safeTop && rect.bottom <= safeBottom) {
+      return
+    }
+
+    anchor.scrollIntoView?.({
+      behavior: 'auto',
+      block: 'nearest',
+      inline: 'nearest',
+    })
+  }, [inline])
+
+  const scheduleWorkflowStepperVisibilityRestore = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (workflowStepperRestoreFrameRef.current !== null) {
+      window.cancelAnimationFrame(workflowStepperRestoreFrameRef.current)
+    }
+
+    workflowStepperRestoreFrameRef.current = window.requestAnimationFrame(
+      () => {
+        workflowStepperRestoreFrameRef.current = window.requestAnimationFrame(
+          () => {
+            workflowStepperRestoreFrameRef.current = null
+            restoreWorkflowStepperVisibility()
+          },
+        )
+      },
+    )
+  }, [restoreWorkflowStepperVisibility])
+
+  useEffect(
+    () => () => {
+      if (
+        typeof window !== 'undefined' &&
+        workflowStepperRestoreFrameRef.current !== null
+      ) {
+        window.cancelAnimationFrame(workflowStepperRestoreFrameRef.current)
+      }
+    },
+    [],
+  )
 
   const localName = useCallback(
     (
@@ -622,6 +682,7 @@ export default function RequirementDetailClient({
         return
       }
       await Promise.all([refreshRequirement(), onChange?.()])
+      scheduleWorkflowStepperVisibilityRestore()
     } finally {
       setIsTransitioning(false)
     }
@@ -713,7 +774,11 @@ export default function RequirementDetailClient({
           </div>
         )}
 
-        <div className={`mb-5 ${inline ? '' : ''}`}>
+        <div
+          className="mb-5 scroll-mt-32"
+          data-requirement-detail-stepper-anchor="true"
+          ref={workflowStepperAnchorRef}
+        >
           {showsArchivedVersionAvailabilityBanner &&
           archivedVersionPreferredVersion &&
           archivedVersionBannerKey ? (
