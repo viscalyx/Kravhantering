@@ -43,11 +43,22 @@ agents can use it reliably.
 - `requirements_list_specifications`
   List all requirements specifications, optionally filtered by name. Returns id,
   `uniqueId` (slug), Swedish and English names, item count, responsibility
-  area, and implementation type for each specification.
+  area, and implementation type for each specification. Copy paths:
+
+  ```text
+  requirements_list_specifications.specifications[].id -> specificationId
+  requirements_list_specifications.specifications[].uniqueId -> specificationSlug
+  ```
+
 - `requirements_get_specification_items`
   List requirements linked to a specific specification, with optional description
   search. Use `specificationId` (numeric) or `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`)
-  from `requirements_list_specifications`.
+  from `requirements_list_specifications`. Copy linked requirement IDs from:
+
+  ```text
+  requirements_get_specification_items.items[].id -> requirementIds
+  ```
+
 - `requirements_list_graduation_target_areas`
   List requirement areas the actor may use when graduating a specific
   specification-local requirement. Use a returned `areas[].id` as
@@ -56,7 +67,13 @@ agents can use it reliably.
   Link one or more requirements to a specification. Requirements must have a
   published version; those without are skipped and returned in `skippedIds`.
   Optionally attach a `needsReferenceText` to all added items. Use
-  `specificationId` or `specificationSlug` to identify the specification.
+  `specificationId` or `specificationSlug` to identify the specification. Copy
+  requirement IDs from:
+
+  ```text
+  requirements_query_catalog.items[].id -> requirementIds
+  ```
+
 - `requirements_graduate_local_requirement`
   Copy an Included specification-local requirement into a chosen library
   requirement area as a new Draft library requirement. The source local
@@ -488,9 +505,14 @@ existing status and risk fields.
 
 > **Note:** Specifications can be identified by `specificationId` (numeric) or
 > `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`) — use whichever is available from
-> `requirements_list_specifications`. `requirementIds` are numeric IDs; use
-> `requirements_query_catalog` or `requirements_get_specification_items` to find
-> them. Requirements must have a published version to be added to a specification.
+> `requirements_list_specifications`: copy
+> `requirements_list_specifications.specifications[].id` -> `specificationId`
+> or `requirements_list_specifications.specifications[].uniqueId` ->
+> `specificationSlug`. For `requirements_add_to_specification`, copy
+> `requirements_query_catalog.items[].id` -> `requirementIds`. For
+> `requirements_remove_from_specification`, copy
+> `requirements_get_specification_items.items[].id` -> `requirementIds`.
+> Requirements must have a published version to be added to a specification.
 > Graduation is copy-only: it creates a new Draft library requirement and leaves
 > the source specification-local requirement unchanged. Graduation requires
 > authorship of the source specification and ownership or co-authorship of the

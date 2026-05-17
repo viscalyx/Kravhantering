@@ -1134,6 +1134,16 @@ export function createKravhanteringMcpServer(
     },
   )
 
+  const specificationIdCopyPath =
+    'Copy requirements_list_specifications.specifications[].id -> specificationId.'
+  const specificationSlugCopyPath =
+    'Copy requirements_list_specifications.specifications[].uniqueId -> specificationSlug.'
+  const specificationIdentifierCopyPaths = `${specificationIdCopyPath} ${specificationSlugCopyPath}`
+  const addRequirementIdsCopyPath =
+    'Copy requirements_query_catalog.items[].id -> requirementIds.'
+  const removeRequirementIdsCopyPath =
+    'Copy requirements_get_specification_items.items[].id -> requirementIds.'
+
   const requirementResourceTemplate = new ResourceTemplate(
     'requirements://requirement/{uniqueId}',
     {
@@ -1451,8 +1461,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: true,
       },
-      description:
-        'List all requirements specifications, optionally filtered by name. Returns id, uniqueId (slug), names, item count, responsibility area, and implementation type for each specification.',
+      description: `List all requirements specifications, optionally filtered by name. Returns id, uniqueId (slug), names, item count, responsibility area, and implementation type for each specification. ${specificationIdentifierCopyPaths}`,
       inputSchema: z
         .object({
           locale: z.enum(['en', 'sv']).default('en'),
@@ -1518,8 +1527,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: true,
       },
-      description:
-        'List requirements (krav) linked to a specific requirements specification, with optional description search. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2") from requirements_list_specifications.',
+      description: `List requirements (krav) linked to a specific requirements specification, with optional description search. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2") from requirements_list_specifications. ${specificationIdentifierCopyPaths}`,
       inputSchema: z
         .object({
           descriptionSearch: z
@@ -1534,12 +1542,14 @@ export function createKravhanteringMcpServer(
             .int()
             .positive()
             .optional()
-            .describe('Numeric ID of the requirements specification.'),
+            .describe(
+              `Numeric ID of the requirements specification. ${specificationIdCopyPath}`,
+            ),
           specificationSlug: z
             .string()
             .optional()
             .describe(
-              'Slug (uniqueId) of the requirements specification, e.g. "SAKLYFT-INFOR-Q2".',
+              `Slug (uniqueId) of the requirements specification, e.g. "SAKLYFT-INFOR-Q2". ${specificationSlugCopyPath}`,
             ),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
@@ -1689,8 +1699,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: false,
       },
-      description:
-        'Link one or more requirements to a requirements specification. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach a needs reference text to all added items. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2").',
+      description: `Link one or more requirements to a requirements specification. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach a needs reference text to all added items. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2"). ${specificationIdentifierCopyPaths} ${addRequirementIdsCopyPath}`,
       inputSchema: z
         .object({
           locale: z.enum(['en', 'sv']).default('en'),
@@ -1705,18 +1714,20 @@ export function createKravhanteringMcpServer(
             .int()
             .positive()
             .optional()
-            .describe('Numeric ID of the requirements specification.'),
+            .describe(
+              `Numeric ID of the requirements specification. ${specificationIdCopyPath}`,
+            ),
           specificationSlug: z
             .string()
             .optional()
             .describe(
-              'Slug (uniqueId) of the requirements specification, e.g. "SAKLYFT-INFOR-Q2".',
+              `Slug (uniqueId) of the requirements specification, e.g. "SAKLYFT-INFOR-Q2". ${specificationSlugCopyPath}`,
             ),
           requirementIds: z
             .array(z.number().int().positive())
             .min(1)
             .describe(
-              'Numeric requirement IDs (not uniqueId strings) to add to the specification.',
+              `Numeric requirement IDs (not uniqueId strings) to add to the specification. ${addRequirementIdsCopyPath}`,
             ),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
@@ -1775,8 +1786,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: false,
       },
-      description:
-        'Unlink one or more requirements from a requirements specification. The requirements themselves are not deleted. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2").',
+      description: `Unlink one or more requirements from a requirements specification. The requirements themselves are not deleted. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2"). ${specificationIdentifierCopyPaths} ${removeRequirementIdsCopyPath}`,
       inputSchema: z
         .object({
           locale: z.enum(['en', 'sv']).default('en'),
@@ -1785,18 +1795,20 @@ export function createKravhanteringMcpServer(
             .int()
             .positive()
             .optional()
-            .describe('Numeric ID of the requirements specification.'),
+            .describe(
+              `Numeric ID of the requirements specification. ${specificationIdCopyPath}`,
+            ),
           specificationSlug: z
             .string()
             .optional()
             .describe(
-              'Slug (uniqueId) of the requirements specification, e.g. "SAKLYFT-INFOR-Q2".',
+              `Slug (uniqueId) of the requirements specification, e.g. "SAKLYFT-INFOR-Q2". ${specificationSlugCopyPath}`,
             ),
           requirementIds: z
             .array(z.number().int().positive())
             .min(1)
             .describe(
-              'Numeric requirement IDs to remove from the specification.',
+              `Numeric requirement IDs to remove from the specification. ${removeRequirementIdsCopyPath}`,
             ),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
