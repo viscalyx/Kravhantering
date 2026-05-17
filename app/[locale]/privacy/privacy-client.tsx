@@ -105,7 +105,7 @@ export default function PrivacyClient({ currentUser }: ComponentProps) {
 
               <div className="flex flex-wrap items-center gap-3">
                 <button
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
                   disabled={dataSubjectExport.downloading !== null}
                   onClick={() =>
                     void dataSubjectExport.download({ delivery: 'json' })
@@ -118,7 +118,7 @@ export default function PrivacyClient({ currentUser }: ComponentProps) {
                     : t('exportJson')}
                 </button>
                 <button
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-secondary-200 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
                   disabled={dataSubjectExport.downloading !== null}
                   onClick={() =>
                     void dataSubjectExport.download({ delivery: 'pdf' })
@@ -143,7 +143,7 @@ export default function PrivacyClient({ currentUser }: ComponentProps) {
           ) : (
             <div className="mt-6">
               <a
-                className="inline-flex min-h-[44px] items-center rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800"
+                className="inline-flex min-h-11 items-center rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800"
                 href={`/api/auth/login?returnTo=/${locale}/privacy`}
               >
                 {t('signIn')}

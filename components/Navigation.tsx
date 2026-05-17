@@ -113,7 +113,7 @@ export default function Navigation() {
           )}
           <Link
             aria-label={ta('settings')}
-            className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 dark:text-secondary-300 ${
+            className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 dark:text-secondary-300 ${
               isAdminActive
                 ? 'bg-primary-50 text-primary-700 shadow-sm dark:bg-primary-950/80 dark:text-primary-300'
                 : 'hover:bg-secondary-100 dark:hover:bg-secondary-800'
@@ -132,7 +132,7 @@ export default function Navigation() {
           <button
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? t('closeMenu') : t('openMenu')}
-            className="md:hidden min-h-[44px] min-w-[44px] rounded-xl p-2 text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800"
+            className="md:hidden min-h-11 min-w-11 rounded-xl p-2 text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800"
             onClick={() => setMobileOpen(!mobileOpen)}
             type="button"
           >

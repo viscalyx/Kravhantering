@@ -152,7 +152,7 @@ function RequirementAreaPills({
         <button
           aria-expanded={expanded}
           aria-label={toggleLabel}
-          className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-primary-300 dark:hover:bg-primary-950/30"
+          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-primary-300 dark:hover:bg-primary-950/30"
           data-specification-requirement-area-pill-toggle="true"
           {...devMarker({
             context: 'specifications',
@@ -405,7 +405,7 @@ export default function RequirementsSpecificationsClient({
       aria-controls={`help-${field}`}
       aria-expanded={openHelp.has(field)}
       aria-label={`${tc('help')}: ${label}`}
-      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
       onClick={() => toggleHelp(field)}
       type="button"
     >
@@ -660,7 +660,7 @@ export default function RequirementsSpecificationsClient({
                 </div>
                 {helpPanel('help.name', 'spec-name')}
                 <input
-                  className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                  className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
                   id="spec-name"
                   onBlur={() => {
                     if (!slugEdited && form.name) {
@@ -699,7 +699,7 @@ export default function RequirementsSpecificationsClient({
                     slugError ? 'spec-unique-id-error' : undefined
                   }
                   aria-invalid={!!slugError}
-                  className={`min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-mono transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50${slugError ? ' border-red-500 focus:ring-red-400/50' : ''}`}
+                  className={`min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-mono transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50${slugError ? ' border-red-500 focus:ring-red-400/50' : ''}`}
                   id="spec-unique-id"
                   onChange={e => {
                     setSlugEdited(true)
@@ -740,7 +740,7 @@ export default function RequirementsSpecificationsClient({
                 </div>
                 {helpPanel('responsibilityAreaHelp', 'spec-area')}
                 <select
-                  className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                  className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
                   id="spec-area"
                   onChange={e =>
                     setForm(f => ({
@@ -778,7 +778,7 @@ export default function RequirementsSpecificationsClient({
                   )}
                   <input
                     autoComplete="off"
-                    className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                    className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
                     id="spec-responsible-name"
                     onChange={e =>
                       setForm(f => {
@@ -814,7 +814,7 @@ export default function RequirementsSpecificationsClient({
                   {helpPanel('responsibleHsaIdHelp', 'spec-responsible-hsa-id')}
                   <input
                     autoComplete="off"
-                    className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 font-mono text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                    className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 font-mono text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
                     id="spec-responsible-hsa-id"
                     onChange={e =>
                       setForm(f => {
@@ -849,7 +849,7 @@ export default function RequirementsSpecificationsClient({
                   'canResponsibleGenerateAiHelp',
                   'spec-can-responsible-generate-ai',
                 )}
-                <div className="flex min-h-[44px] items-center rounded-xl border bg-white px-3.5 py-2.5 transition-all duration-200 dark:bg-secondary-800/50">
+                <div className="flex min-h-11 items-center rounded-xl border bg-white px-3.5 py-2.5 transition-all duration-200 dark:bg-secondary-800/50">
                   <input
                     checked={form.canResponsibleGenerateAi}
                     className="h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50 disabled:cursor-not-allowed disabled:opacity-50"
@@ -880,7 +880,7 @@ export default function RequirementsSpecificationsClient({
                 </div>
                 {helpPanel('implementationTypeHelp', 'spec-impl-type')}
                 <select
-                  className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                  className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
                   id="spec-impl-type"
                   onChange={e =>
                     setForm(f => ({
@@ -910,7 +910,7 @@ export default function RequirementsSpecificationsClient({
                 </div>
                 {helpPanel('lifecycleStatusHelp', 'spec-lifecycle-status')}
                 <select
-                  className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                  className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
                   id="spec-lifecycle-status"
                   onChange={e =>
                     setForm(f => ({
@@ -940,7 +940,7 @@ export default function RequirementsSpecificationsClient({
                 </div>
                 {helpPanel('businessNeedsReferenceHelp', 'spec-business-ref')}
                 <textarea
-                  className="min-h-[44px] w-full resize-none rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                  className="min-h-11 w-full resize-none rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
                   id="spec-business-ref"
                   onChange={e =>
                     setForm(f => ({
@@ -1003,7 +1003,7 @@ export default function RequirementsSpecificationsClient({
                   />
                   <input
                     autoComplete="off"
-                    className="min-h-[44px] w-full rounded-xl border border-secondary-200 bg-white py-2.5 pr-3 pl-10 text-sm text-secondary-900 transition-all duration-200 placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100 dark:placeholder:text-secondary-500"
+                    className="min-h-11 w-full rounded-xl border border-secondary-200 bg-white py-2.5 pr-3 pl-10 text-sm text-secondary-900 transition-all duration-200 placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100 dark:placeholder:text-secondary-500"
                     {...devMarker({
                       context: 'specifications',
                       name: 'text field',

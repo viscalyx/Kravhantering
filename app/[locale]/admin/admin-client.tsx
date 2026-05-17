@@ -941,7 +941,7 @@ function PrivacyErasurePanel() {
 
           <div className="flex flex-wrap items-center gap-3">
             <button
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-secondary-200 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
               disabled={status === 'saving' || !targetHsaId.trim()}
               onClick={runPreview}
               type="button"
@@ -987,7 +987,7 @@ function PrivacyErasurePanel() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                 disabled={
                   status === 'saving' || dataSubjectExport.downloading !== null
                 }
@@ -1002,7 +1002,7 @@ function PrivacyErasurePanel() {
                   : ta('privacy.exportJson')}
               </button>
               <button
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                 disabled={
                   status === 'saving' || dataSubjectExport.downloading !== null
                 }
@@ -1234,7 +1234,7 @@ function PrivacyErasurePanel() {
           {preview.totalCount > 0 && !hasSuccessfulExecution ? (
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-secondary-200/70 bg-white px-4 py-4 dark:border-secondary-700/60 dark:bg-secondary-900">
               <button
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-800 disabled:opacity-60"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-800 disabled:opacity-60"
                 disabled={status === 'saving'}
                 onClick={executeErasure}
                 type="button"
@@ -1515,7 +1515,7 @@ function ArchivingPanel() {
             </p>
           </div>
           <button
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-secondary-200 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
             disabled={retentionStatus === 'saving'}
             onClick={() => void loadRetentionPolicies()}
             type="button"
@@ -1531,7 +1531,7 @@ function ArchivingPanel() {
               {ta('archiving.retention.policy')}
             </span>
             <select
-              className="min-h-[44px] w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+              className="min-h-11 w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
               disabled={retentionStatus === 'saving'}
               onChange={event => {
                 const policyId = Number(event.target.value)
@@ -1551,7 +1551,7 @@ function ArchivingPanel() {
           </label>
           <div className="flex items-end">
             <button
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:opacity-60"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:opacity-60"
               disabled={
                 retentionStatus === 'saving' ||
                 !selectedRetentionPolicy ||
@@ -1648,7 +1648,7 @@ function ArchivingPanel() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                   disabled={
                     retentionStatus === 'saving' ||
                     retentionPreview.summary.candidateCount === 0
@@ -1660,7 +1660,7 @@ function ArchivingPanel() {
                   {ta('archiving.retention.exportJson')}
                 </button>
                 <button
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-800 disabled:opacity-60"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-800 disabled:opacity-60"
                   disabled={
                     retentionStatus === 'saving' ||
                     retentionPreview.summary.candidateCount === 0 ||
@@ -2251,7 +2251,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <button
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
               disabled={isCreateDisabled}
               onClick={createRun}
               type="button"
@@ -2395,7 +2395,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                     displayedRun.status !== 'completed' &&
                     displayedRun.status !== 'cancelled' ? (
                       <button
-                        className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
+                        className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
                         disabled={isDetailLoading || status === 'saving'}
                         onClick={completeRun}
                         type="button"
@@ -2407,7 +2407,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                     {canManage ? (
                       <div className="flex min-w-0 max-w-full flex-nowrap items-center gap-2 overflow-x-auto">
                         <button
-                          className="inline-flex min-h-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                          className="inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                           disabled={
                             isDetailLoading ||
                             status === 'saving' ||
@@ -2424,7 +2424,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                             : ta('accessReview.exportJson')}
                         </button>
                         <button
-                          className="inline-flex min-h-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                          className="inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                           disabled={
                             isDetailLoading ||
                             status === 'saving' ||
@@ -2500,7 +2500,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                                       ? ta('accessReview.rowNeedsReview')
                                       : ta('accessReview.rowApproved')
                                   }
-                                  className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border transition-colors disabled:opacity-60 ${
+                                  className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border transition-colors disabled:opacity-60 ${
                                     canChooseDecision
                                       ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-900/40'
                                       : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-900/40'
@@ -3076,7 +3076,7 @@ export default function AdminClient({
                       aria-controls={`${tab.id}-panel`}
                       aria-disabled={isDisabled ? 'true' : undefined}
                       aria-selected={activeTab === tab.id}
-                      className={`inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
+                      className={`inline-flex min-h-11 min-w-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
                         isDisabled
                           ? 'cursor-not-allowed text-secondary-400 opacity-50 hover:bg-transparent dark:text-secondary-500'
                           : activeTab === tab.id
@@ -3134,7 +3134,7 @@ export default function AdminClient({
                   {(['sv', 'en'] as const).map(locale => (
                     <button
                       aria-pressed={activeLocale === locale}
-                      className={`min-h-[44px] min-w-[44px] rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                      className={`min-h-11 min-w-11 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                         activeLocale === locale
                           ? 'bg-primary-700 text-white'
                           : 'text-secondary-700 hover:bg-white dark:text-secondary-200 dark:hover:bg-secondary-800'
@@ -3153,7 +3153,7 @@ export default function AdminClient({
                   ta('terminologySaveError'),
                 )}
                 <button
-                  className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                  className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
                   disabled={isTerminologySaving}
                   onClick={() => {
                     setTerminology(createShippedTerminology())
@@ -3165,7 +3165,7 @@ export default function AdminClient({
                   {tc('resetToDefault')}
                 </button>
                 <button
-                  className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
+                  className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
                   disabled={isTerminologySaving}
                   onClick={saveTerminology}
                   type="button"
@@ -3276,7 +3276,7 @@ export default function AdminClient({
               <div className="flex flex-wrap items-center gap-3">
                 {renderSaveState(columnSaveState, ta('columnsSaveError'))}
                 <button
-                  className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800 sm:w-auto sm:min-w-[44px]"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800 sm:w-auto sm:min-w-11"
                   disabled={isColumnSaving}
                   onClick={() => {
                     setColumnDefaults(createShippedColumnDefaults())
@@ -3288,7 +3288,7 @@ export default function AdminClient({
                   {tc('resetToDefault')}
                 </button>
                 <button
-                  className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60 sm:w-auto sm:min-w-[44px]"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60 sm:w-auto sm:min-w-11"
                   disabled={isColumnSaving}
                   onClick={saveColumns}
                   type="button"
@@ -3327,7 +3327,7 @@ export default function AdminClient({
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
                       <button
-                        className="inline-flex h-10 w-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-secondary-200 bg-white text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-40 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                        className="inline-flex h-10 w-10 min-h-11 min-w-11 items-center justify-center rounded-full border border-secondary-200 bg-white text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-40 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                         disabled={isColumnSaving || index === 0}
                         onClick={() => moveColumn(column.id, -1)}
                         type="button"
@@ -3336,7 +3336,7 @@ export default function AdminClient({
                         <span className="sr-only">{ta('moveUp')}</span>
                       </button>
                       <button
-                        className="inline-flex h-10 w-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-secondary-200 bg-white text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-40 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                        className="inline-flex h-10 w-10 min-h-11 min-w-11 items-center justify-center rounded-full border border-secondary-200 bg-white text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-40 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                         disabled={
                           isColumnSaving || index === orderedColumns.length - 1
                         }

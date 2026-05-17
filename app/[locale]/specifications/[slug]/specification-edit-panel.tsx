@@ -348,7 +348,7 @@ export default function SpecificationEditPanel({
           {helpPanel('responsibleDisplayNameHelp', 'spec-responsible-name')}
           <input
             autoComplete="off"
-            className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+            className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
             id="spec-responsible-name"
             onChange={event =>
               setForm(current => {
@@ -381,7 +381,7 @@ export default function SpecificationEditPanel({
           {helpPanel('responsibleHsaIdHelp', 'spec-responsible-hsa-id')}
           <input
             autoComplete="off"
-            className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 font-mono text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+            className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 font-mono text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
             id="spec-responsible-hsa-id"
             onChange={event =>
               setForm(current => {
@@ -420,7 +420,7 @@ export default function SpecificationEditPanel({
           'canResponsibleGenerateAiHelp',
           'spec-can-responsible-generate-ai',
         )}
-        <div className="flex min-h-[44px] items-center rounded-xl border bg-white px-3.5 py-2.5 transition-all duration-200 dark:bg-secondary-800/50">
+        <div className="flex min-h-11 items-center rounded-xl border bg-white px-3.5 py-2.5 transition-all duration-200 dark:bg-secondary-800/50">
           <input
             checked={form.canResponsibleGenerateAi}
             className="h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50 disabled:cursor-not-allowed disabled:opacity-50"

@@ -71,7 +71,7 @@ export default function RequirementReportMenu(
         aria-controls={reportMenu.menuId}
         aria-expanded={showReportMenu}
         aria-haspopup="menu"
-        className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
+        className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11"
         {...buttonMarker}
         id={reportMenu.triggerId}
         onClick={() => setShowReportMenu(prev => !prev)}
@@ -95,7 +95,7 @@ export default function RequirementReportMenu(
             props.deviationStep === 'review_requested' ? (
               <>
                 <button
-                  className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                  className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                   {...devMarker({
                     context: detailContext,
                     name: 'report option',
@@ -114,7 +114,7 @@ export default function RequirementReportMenu(
                   {td('printDeviationReviewReport')}
                 </button>
                 <button
-                  className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                  className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                   {...devMarker({
                     context: detailContext,
                     name: 'report option',
@@ -136,7 +136,7 @@ export default function RequirementReportMenu(
             ) : (
               <>
                 <button
-                  className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                  className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                   {...devMarker({
                     context: detailContext,
                     name: 'report option',
@@ -155,7 +155,7 @@ export default function RequirementReportMenu(
                   {t('printHistoryReport')}
                 </button>
                 <button
-                  className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                  className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                   {...devMarker({
                     context: detailContext,
                     name: 'report option',
@@ -175,7 +175,7 @@ export default function RequirementReportMenu(
                 </button>
                 <hr className="my-1 border-0 border-t border-secondary-200 dark:border-secondary-700" />
                 <button
-                  className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                  className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                   {...devMarker({
                     context: detailContext,
                     name: 'report option',
@@ -194,7 +194,7 @@ export default function RequirementReportMenu(
                   {t('printSuggestionHistoryReport')}
                 </button>
                 <button
-                  className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                  className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                   {...devMarker({
                     context: detailContext,
                     name: 'report option',
@@ -217,7 +217,7 @@ export default function RequirementReportMenu(
           ) : (
             <>
               <button
-                className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                 {...devMarker({
                   context: detailContext,
                   name: 'report option',
@@ -236,7 +236,7 @@ export default function RequirementReportMenu(
                 {t('printHistoryReport')}
               </button>
               <button
-                className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                 {...devMarker({
                   context: detailContext,
                   name: 'report option',
@@ -256,7 +256,7 @@ export default function RequirementReportMenu(
               </button>
               <hr className="my-1 border-0 border-t border-secondary-200 dark:border-secondary-700" />
               <button
-                className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                 {...devMarker({
                   context: detailContext,
                   name: 'report option',
@@ -275,7 +275,7 @@ export default function RequirementReportMenu(
                 {t('printSuggestionHistoryReport')}
               </button>
               <button
-                className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                 {...devMarker({
                   context: detailContext,
                   name: 'report option',
@@ -297,7 +297,7 @@ export default function RequirementReportMenu(
                 <>
                   <hr className="my-1 border-0 border-t border-secondary-200 dark:border-secondary-700" />
                   <button
-                    className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                    className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                     {...devMarker({
                       context: detailContext,
                       name: 'report option',
@@ -316,7 +316,7 @@ export default function RequirementReportMenu(
                     {t('printReviewReport')}
                   </button>
                   <button
-                    className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                    className="flex items-center gap-2 w-full px-3 py-2 min-h-11 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                     {...devMarker({
                       context: detailContext,
                       name: 'report option',

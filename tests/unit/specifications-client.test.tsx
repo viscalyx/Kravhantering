@@ -482,8 +482,8 @@ describe('RequirementsSpecificationsClient', () => {
 
       expect(group?.className).toContain('items-center')
       expect(expandButton).toHaveAttribute('aria-expanded', 'false')
-      expect(expandButton.className).toContain('min-h-[44px]')
-      expect(expandButton.className).toContain('min-w-[44px]')
+      expect(expandButton.className).toContain('min-h-11')
+      expect(expandButton.className).toContain('min-w-11')
       expect(list.className).toContain('max-h-6')
       expect(list.className).toContain('overflow-hidden')
 
@@ -607,7 +607,7 @@ describe('RequirementsSpecificationsClient', () => {
     const filterInput = screen.getByRole('textbox', {
       name: 'specification.filterByName',
     })
-    expect(filterInput.className).toContain('min-h-[44px]')
+    expect(filterInput.className).toContain('min-h-11')
 
     fireEvent.click(
       screen.getByRole('button', { name: /specification\.newSpecification/i }),
@@ -632,7 +632,7 @@ describe('RequirementsSpecificationsClient', () => {
         name: /specification\.businessNeedsReference/,
       }),
     ]) {
-      expect(field.className).toContain('min-h-[44px]')
+      expect(field.className).toContain('min-h-11')
     }
 
     expect(
@@ -641,7 +641,7 @@ describe('RequirementsSpecificationsClient', () => {
           name: /specification\.canResponsibleGenerateAi/,
         })
         .closest('div')?.className,
-    ).toContain('min-h-[44px]')
+    ).toContain('min-h-11')
   })
 
   it('submits create form', async () => {

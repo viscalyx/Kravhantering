@@ -446,7 +446,7 @@ export default function RiskLevelsClient() {
                                 >
                                   <td className="py-2 px-3 font-medium">
                                     <Link
-                                      className="inline-flex items-center min-h-[44px] min-w-[44px] text-primary-700 dark:text-primary-300 hover:underline"
+                                      className="inline-flex items-center min-h-11 min-w-11 text-primary-700 dark:text-primary-300 hover:underline"
                                       href={`/requirements/${requirement.uniqueId}/${requirement.versionNumber}`}
                                     >
                                       {requirement.uniqueId}

@@ -78,7 +78,7 @@ describe('RequirementActionRail', () => {
     expect(globalsCss).toContain('hover:bg-red-50')
     expect(globalsCss).toContain('dark:hover:bg-red-950')
     expect(globalsCss).toContain('focus:ring-red-400/50')
-    expect(globalsCss).toContain('min-h-[44px] min-w-[44px]')
+    expect(globalsCss).toContain('min-h-11 min-w-11')
     expect(globalsCss).toContain('.btn-destructive:disabled')
   })
 

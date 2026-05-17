@@ -978,8 +978,8 @@ describe('RequirementDetailClient', () => {
     await screen.findByText('Published requirement')
 
     const closeButton = screen.getByRole('button', { name: 'Close' })
-    expect(closeButton.className).toContain('min-h-[44px]')
-    expect(closeButton.className).toContain('min-w-[44px]')
+    expect(closeButton.className).toContain('min-h-11')
+    expect(closeButton.className).toContain('min-w-11')
     expect(closeButton.className).toContain('focus:outline-none')
     expect(closeButton.className).toContain('focus-visible:ring-2')
     expect(closeButton.className).toContain('focus-visible:ring-offset-2')
@@ -1898,8 +1898,8 @@ describe('RequirementDetailClient', () => {
     )
 
     const closeButton = await screen.findByRole('button', { name: 'Close' })
-    expect(closeButton.className).toContain('min-h-[44px]')
-    expect(closeButton.className).toContain('min-w-[44px]')
+    expect(closeButton.className).toContain('min-h-11')
+    expect(closeButton.className).toContain('min-w-11')
     expect(closeButton.className).toContain('focus-visible:outline-none')
     expect(closeButton.className).toContain('focus-visible:ring-2')
     expect(closeButton.className).toContain('focus-visible:ring-primary-500')
@@ -1985,8 +1985,8 @@ describe('RequirementDetailClient', () => {
       expect(field.className).toContain('dark:border-secondary-700')
       expect(field.className).toContain('dark:text-secondary-100')
     }
-    expect(specificationSelect.className).toContain('min-h-[44px]')
-    expect(needsReferenceSelect.className).toContain('min-h-[44px]')
+    expect(specificationSelect.className).toContain('min-h-11')
+    expect(needsReferenceSelect.className).toContain('min-h-11')
   })
 
   it('ignores stale needs-reference responses when switching specifications quickly', async () => {

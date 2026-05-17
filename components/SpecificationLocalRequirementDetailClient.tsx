@@ -210,7 +210,7 @@ function GraduationTargetAreaModal({
                 </label>
                 <select
                   aria-describedby={targetHelpId}
-                  className="min-h-[44px] w-full rounded-lg border border-secondary-300 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-600 dark:bg-secondary-800/50 dark:text-secondary-100"
+                  className="min-h-11 w-full rounded-lg border border-secondary-300 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-600 dark:bg-secondary-800/50 dark:text-secondary-100"
                   disabled={loading}
                   id={selectId}
                   onChange={event => onSelectArea(event.target.value)}
@@ -242,7 +242,7 @@ function GraduationTargetAreaModal({
 
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button
-                  className="btn-secondary min-h-[44px] w-full justify-center"
+                  className="btn-secondary min-h-11 w-full justify-center"
                   disabled={loading}
                   onClick={onClose}
                   type="button"
@@ -250,7 +250,7 @@ function GraduationTargetAreaModal({
                   {tc('cancel')}
                 </button>
                 <button
-                  className="btn-primary min-h-[44px] w-full justify-center"
+                  className="btn-primary min-h-11 w-full justify-center"
                   disabled={loading || !selectedArea}
                   onClick={() => onSubmit()}
                   type="button"
@@ -505,13 +505,13 @@ export default function SpecificationLocalRequirementDetailClient({
   }, [locale, specificationSlug, requirement?.itemRef])
 
   const railSecondaryButtonClass =
-    'btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px] disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none'
+    'btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11 disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none'
   const railPrimaryButtonClass =
-    'btn-primary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px] disabled:cursor-not-allowed disabled:pointer-events-none'
+    'btn-primary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11 disabled:cursor-not-allowed disabled:pointer-events-none'
   const railDangerButtonClass =
     'btn-destructive inline-flex items-center gap-1.5 w-full justify-center'
   const railAmberButtonClass =
-    'inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-[44px] min-w-[44px]'
+    'inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-11 min-w-11'
 
   const handleEditSubmit = useCallback(
     async (payload: SpecificationLocalRequirementSubmitPayload) => {

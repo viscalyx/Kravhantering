@@ -170,7 +170,7 @@ export default function RequirementActionRail({
       />
       {canAddToSpecification && (
         <button
-          className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
+          className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11"
           {...devMarker({
             context: detailContext,
             name: 'detail action',
@@ -190,7 +190,7 @@ export default function RequirementActionRail({
           aria-controls={shareMenu.menuId}
           aria-expanded={showShareMenu}
           aria-haspopup="menu"
-          className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
+          className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11"
           {...devMarker({
             context: detailContext,
             name: 'share toggle',
@@ -223,7 +223,7 @@ export default function RequirementActionRail({
             role="menu"
           >
             <button
-              className="flex min-h-[44px] min-w-[44px] w-full items-center gap-2 px-3 py-2 text-left text-sm text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-900 dark:text-secondary-100 dark:hover:bg-secondary-700 dark:hover:text-white"
+              className="flex min-h-11 min-w-11 w-full items-center gap-2 px-3 py-2 text-left text-sm text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-900 dark:text-secondary-100 dark:hover:bg-secondary-700 dark:hover:text-white"
               {...devMarker({
                 context: detailContext,
                 name: 'share option',
@@ -242,7 +242,7 @@ export default function RequirementActionRail({
               {t('shareLinkInline')}
             </button>
             <button
-              className="flex min-h-[44px] min-w-[44px] w-full items-center gap-2 px-3 py-2 text-left text-sm text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-900 dark:text-secondary-100 dark:hover:bg-secondary-700 dark:hover:text-white"
+              className="flex min-h-11 min-w-11 w-full items-center gap-2 px-3 py-2 text-left text-sm text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-900 dark:text-secondary-100 dark:hover:bg-secondary-700 dark:hover:text-white"
               {...devMarker({
                 context: detailContext,
                 name: 'share option',

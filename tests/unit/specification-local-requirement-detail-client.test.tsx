@@ -256,10 +256,10 @@ describe('SpecificationLocalRequirementDetailClient', () => {
       'edit local requirement',
     )
     expect(screen.getByRole('button', { name: 'Edit' }).className).toContain(
-      'min-h-[44px]',
+      'min-h-11',
     )
     expect(screen.getByRole('button', { name: 'Edit' }).className).toContain(
-      'min-w-[44px]',
+      'min-w-11',
     )
     expect(printButton.className).toContain('w-full')
     expect(screen.getByRole('button', { name: 'Delete' })).toHaveAttribute(

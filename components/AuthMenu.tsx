@@ -114,7 +114,7 @@ function AuthLogoutButton({
   const buttonTitle = isSubmitting ? loadingLabel : undefined
   const buttonClassName = [
     className,
-    'min-h-[44px] min-w-[44px] focus-visible:outline-none',
+    'min-h-11 min-w-11 focus-visible:outline-none',
     'focus-visible:ring-2 focus-visible:ring-primary-400/60',
     'focus-visible:ring-offset-2 focus-visible:ring-offset-white',
     'disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none',
@@ -244,8 +244,8 @@ export default function AuthMenu({ variant }: ComponentProps) {
         aria-label={t('signIn')}
         className={
           variant === 'desktop'
-            ? 'inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-950'
-            : 'flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-xl px-3.5 py-3 text-sm font-medium text-secondary-700 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-950'
+            ? 'inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-950'
+            : 'flex min-h-11 min-w-11 items-center gap-2 rounded-xl px-3.5 py-3 text-sm font-medium text-secondary-700 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-950'
         }
         href={`/api/auth/login?returnTo=${returnTo}`}
         {...devMarker({ name: 'link', value: 'sign in' })}
@@ -332,7 +332,7 @@ export default function AuthMenu({ variant }: ComponentProps) {
       >
         {userIdentity}
         <Link
-          className="inline-flex min-h-[44px] items-center gap-1.5 self-start rounded-xl px-3 py-2 text-sm font-medium text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800"
+          className="inline-flex min-h-11 items-center gap-1.5 self-start rounded-xl px-3 py-2 text-sm font-medium text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800"
           href="/privacy"
           {...devMarker({ name: 'link', value: 'data export' })}
         >
@@ -485,7 +485,7 @@ export default function AuthMenu({ variant }: ComponentProps) {
                 </div>
               </dl>
               <Link
-                className="mt-4 inline-flex w-full min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-secondary-200 px-3 py-2 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-300 dark:hover:bg-secondary-800"
+                className="mt-4 inline-flex w-full min-h-11 items-center justify-center gap-1.5 rounded-lg border border-secondary-200 px-3 py-2 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-300 dark:hover:bg-secondary-800"
                 href="/privacy"
                 {...devMarker({ name: 'link', value: 'data export' })}
               >
