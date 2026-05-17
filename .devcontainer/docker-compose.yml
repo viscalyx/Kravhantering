@@ -35,6 +35,10 @@ services:
       DB_TRUST_SERVER_CERTIFICATE: ${DB_TRUST_SERVER_CERTIFICATE:-true}
       NODE_ENV: ${NODE_ENV:-development}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-1}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-lgtm:4318}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
+      OTEL_SDK_ENABLED: ${OTEL_SDK_ENABLED:-true}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-kravhantering}
     # Ports are forwarded via devcontainer.json forwardPorts (VS Code handles this)
     # Proper init system for signal handling and zombie process reaping
     init: true
@@ -86,6 +90,16 @@ services:
       - "${KEYCLOAK_HOST_PORT:-8080}:8080"
     volumes:
       - ../dev/keycloak:/opt/keycloak/data/import:ro
+
+  otel-lgtm:
+    image: grafana/otel-lgtm:latest
+    ports:
+      - "${OTEL_GRAFANA_HOST_PORT:-3300}:3000"
+      - "${OTEL_GRPC_HOST_PORT:-4317}:4317"
+      - "${OTEL_HTTP_HOST_PORT:-4318}:4318"
+    volumes:
+      - ../dev/grafana/provisioning/dashboard-provider.yml:/otel-lgtm/grafana/conf/provisioning/dashboards/kravhantering.yml:ro
+      - ../dev/grafana/provisioning/dashboards:/otel-lgtm/grafana/conf/provisioning/dashboards/custom:ro
 
 volumes:
   sqlserver-devcontainer-data:

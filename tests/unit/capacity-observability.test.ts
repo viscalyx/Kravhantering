@@ -8,6 +8,7 @@ import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
 describe('capacity observability', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllEnvs()
   })
 
   it('writes stable JSON events with correlation metadata', () => {
@@ -61,6 +62,24 @@ describe('capacity observability', () => {
 
     const [event] = parseCapacityEvents(infoSpy)
     expect(JSON.stringify(event)).not.toMatch(/sk-or-v1|SELECT token/)
+  })
+
+  it('can disable capacity JSON logs without disabling OTel export', () => {
+    vi.stubEnv('CAPACITY_JSON_LOGS_ENABLED', 'false')
+    const infoSpy = vi
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined)
+
+    recordCapacityEvent({
+      correlationId: 'workflow-1',
+      event: 'capacity.operation.completed',
+      operation: 'reports.specification_items',
+      outcome: 'success',
+      requestId: 'request-1',
+      source: 'rest',
+    })
+
+    expect(parseCapacityEvents(infoSpy)).toEqual([])
   })
 
   it('records operation completion and threshold events', async () => {

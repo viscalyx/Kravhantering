@@ -1,0 +1,14 @@
+apiVersion: 1
+
+providers:
+  - name: Kravhantering capacity observability
+    orgId: 1
+    folder: Kravhantering
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /otel-lgtm/grafana/conf/provisioning/dashboards/custom
+      foldersFromFilesStructure: true
+

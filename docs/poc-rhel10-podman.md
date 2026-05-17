@@ -1286,6 +1286,20 @@ AUTH_SESSION_COOKIE_PASSWORD=<openssl rand -base64 48>
 MSSQL_SA_PASSWORD=<starkt slumpat lösenord>
 ```
 
+OpenTelemetry är avstängt som standard i prodlike- och PoC-körningar.
+Lägg bara till följande i `.env.prodlike.local` om PoC-miljön har en
+beslutad OTLP-collector och retention för traces, metrics och loggar:
+
+```bash
+OTEL_SDK_ENABLED=true
+OTEL_EXPORTER_OTLP_ENDPOINT=https://otel-collector.example.com
+OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+OTEL_SERVICE_NAME=kravhantering
+```
+
+Behåll `CAPACITY_JSON_LOGS_ENABLED=true` tills OTel-insamlingen och
+Grafana-vyerna är verifierade i PoC-miljön.
+
 > **Viktigt — `.env.prodlike.local` läses inte automatiskt av
 > prodlike-skripten.** `build:local-prod` och `start:prodlike` laddar
 > bara `.env.prodlike` via `dotenv -e`, medan
