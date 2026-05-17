@@ -561,7 +561,8 @@ no requirement is created.
 1. Confirm the action if prompted.
 
 **Expected result:** The status stepper shows `Granskning`, and the catalog row
-updates to Review.
+updates to Review. In the inline catalog detail pane, the page stays close to
+the workflow stepper instead of jumping down to `Förbättringsförslag`.
 
 ### LIFE-04: return a review requirement to draft
 
@@ -579,7 +580,8 @@ updates to Review.
 1. Select the action again and confirm.
 
 **Expected result:** Cancelling keeps the review state; confirming returns the
-requirement to `Utkast`.
+requirement to `Utkast`. In the inline catalog detail pane, the page stays close
+to the workflow stepper instead of jumping down to `Förbättringsförslag`.
 
 ### LIFE-05: approve and publish a reviewed requirement
 

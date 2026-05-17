@@ -1507,6 +1507,109 @@ describe('RequirementDetailClient', () => {
     expect(onChange).toHaveBeenCalled()
   })
 
+  it('keeps the workflow stepper visible after a status transition refresh', async () => {
+    const onChange = vi.fn().mockResolvedValue(undefined)
+    const initialRequirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Draft description',
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+    ])
+    const nextRequirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Review description',
+        status: 2,
+        statusColor: '#eab308',
+        statusNameEn: 'Review',
+        statusNameSv: 'Granskning',
+      }),
+    ])
+
+    setupFetch({
+      initialRequirement,
+      transitionNextRequirement: nextRequirement,
+    })
+
+    renderSubject({ inline: true, onChange })
+
+    expect(await screen.findByText('Draft description')).toBeInTheDocument()
+
+    const animationFrameCallbacks: FrameRequestCallback[] = []
+    const scrollIntoView = vi.fn()
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      animationFrameCallbacks.push(cb)
+      return animationFrameCallbacks.length
+    })
+
+    expect(
+      screen
+        .getByTestId('status-stepper')
+        .closest('[data-requirement-detail-stepper-anchor="true"]'),
+    ).toBeTruthy()
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      function getBoundingClientRect(this: HTMLElement) {
+        if (this.dataset.requirementDetailStepperAnchor === 'true') {
+          return {
+            bottom: 24,
+            height: 40,
+            left: 0,
+            right: 640,
+            top: -16,
+            width: 640,
+            x: 0,
+            y: -16,
+            toJSON: () => ({}),
+          } as DOMRect
+        }
+
+        return new DOMRect()
+      },
+    )
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    })
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Send to review' }),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByTestId('status-stepper')).toHaveTextContent(
+        'status:2',
+      ),
+    )
+    await waitFor(() =>
+      expect(animationFrameCallbacks.length).toBeGreaterThan(0),
+    )
+
+    act(() => {
+      while (animationFrameCallbacks.length > 0) {
+        const callback = animationFrameCallbacks.shift()
+        callback?.(performance.now())
+      }
+    })
+
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'auto',
+      block: 'nearest',
+      inline: 'nearest',
+    })
+
+    if (originalScrollIntoView) {
+      Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+        configurable: true,
+        value: originalScrollIntoView,
+      })
+    } else {
+      Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView')
+    }
+  })
+
   it('renders share button and menu with developer mode markers', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
