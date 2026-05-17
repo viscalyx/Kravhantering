@@ -509,7 +509,7 @@ export default function SpecificationLocalRequirementDetailClient({
   const railPrimaryButtonClass =
     'btn-primary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11 disabled:cursor-not-allowed disabled:pointer-events-none'
   const railDangerButtonClass =
-    'btn-destructive inline-flex items-center gap-1.5 w-full justify-center'
+    'btn-destructive inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11'
   const railAmberButtonClass =
     'inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-11 min-w-11'
 
@@ -859,6 +859,8 @@ export default function SpecificationLocalRequirementDetailClient({
     )
   }
 
+  const riskLevelLabel = localName(requirement.riskLevel)?.trim()
+
   const metadata = [
     {
       id: 'area',
@@ -888,16 +890,17 @@ export default function SpecificationLocalRequirementDetailClient({
       id: 'risk-level',
       label: t('riskLevel'),
       markerValue: 'risk level',
-      value: requirement.riskLevel ? (
-        <StatusBadge
-          color={requirement.riskLevel.color}
-          iconName={requirement.riskLevel.iconName}
-          label={localName(requirement.riskLevel) ?? ''}
-          size="sm"
-        />
-      ) : (
-        '—'
-      ),
+      value:
+        requirement.riskLevel && riskLevelLabel ? (
+          <StatusBadge
+            color={requirement.riskLevel.color}
+            iconName={requirement.riskLevel.iconName}
+            label={riskLevelLabel}
+            size="sm"
+          />
+        ) : (
+          '—'
+        ),
     },
     {
       id: 'requires-testing',

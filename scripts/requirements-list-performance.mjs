@@ -436,7 +436,7 @@ SELECT
     ELSE NULL
   END,
   CASE
-    WHEN r.n % 10 = 1 AND v.version_number = r.version_count
+    WHEN r.n % 20 = 1 AND v.version_number = r.version_count
       THEN DATEADD(day, -(r.n % 60), @seededAt)
     ELSE NULL
   END
@@ -444,18 +444,18 @@ FROM #perf_requirements r
 CROSS APPLY (VALUES (1), (2), (3), (4)) AS v(version_number)
 CROSS APPLY (
   SELECT CASE
-    WHEN r.n % 10 NOT IN (0, 1, 2) AND r.n % 4 IN (0, 1)
+    WHEN r.n % 10 IN (3, 4, 5, 6) AND r.n % 4 IN (0, 1)
       THEN r.version_count - 1
-    WHEN r.n % 10 NOT IN (0, 1, 2) THEN r.version_count
-    ELSE NULL
-  END AS published_version_number
+    WHEN r.n % 10 IN (3, 4, 5, 6) THEN r.version_count
+  ELSE NULL
+END AS published_version_number
 ) AS lifecycle
 CROSS APPLY (
   SELECT CASE
     WHEN r.n % 10 = 0 THEN ${STATUS_ARCHIVED}
     WHEN r.n % 10 = 1 AND v.version_number = r.version_count
       THEN ${STATUS_REVIEW}
-    WHEN r.n % 10 = 1 THEN ${STATUS_ARCHIVED}
+    WHEN r.n % 20 = 1 THEN ${STATUS_ARCHIVED}
     WHEN r.n % 10 = 2 THEN ${STATUS_DRAFT}
     WHEN v.version_number < lifecycle.published_version_number
       THEN ${STATUS_ARCHIVED}
