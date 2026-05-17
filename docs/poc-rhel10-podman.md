@@ -73,13 +73,14 @@ Se även:
 - [11. Persistens efter omstart (frivilligt men rekommenderat)](#11-persistens-efter-omstart-frivilligt-men-rekommenderat)
   - [11.1 Kör Next.js-appen som en systemd user-tjänst](#111-kör-nextjs-appen-som-en-systemd-user-tjänst)
   - [11.2 Containrar (db, idp) via Quadlet](#112-containrar-db-idp-via-quadlet)
-- [12. Sammanfattning av låg-privilegierings-vinster](#12-sammanfattning-av-låg-privilegierings-vinster)
-- [13. Beställningar till andra roller](#13-beställningar-till-andra-roller)
-  - [13.1 Beställs hos serverdrift / virtualiseringsdrift](#131-beställs-hos-serverdrift--virtualiseringsdrift)
-  - [13.2 Beställs hos nätverksdrift](#132-beställs-hos-nätverksdrift)
-  - [13.3 Beställs hos PKI-/AD CS-drift](#133-beställs-hos-pki-ad-cs-drift)
-  - [13.4 Beställs hos informationssäkerhet / katalog](#134-beställs-hos-informationssäkerhet--katalog)
-  - [13.5 Hanteras av rollen applikationsdrift själv](#135-hanteras-av-rollen-applikationsdrift-själv)
+- [12. Uppdatera PoC:n med ny kod](#12-uppdatera-poc-med-ny-kod)
+- [13. Sammanfattning av låg-privilegierings-vinster](#13-sammanfattning-av-låg-privilegierings-vinster)
+- [14. Beställningar till andra roller](#14-beställningar-till-andra-roller)
+  - [14.1 Beställs hos serverdrift / virtualiseringsdrift](#141-beställs-hos-serverdrift--virtualiseringsdrift)
+  - [14.2 Beställs hos nätverksdrift](#142-beställs-hos-nätverksdrift)
+  - [14.3 Beställs hos PKI-/AD CS-drift](#143-beställs-hos-pki-ad-cs-drift)
+  - [14.4 Beställs hos informationssäkerhet / katalog](#144-beställs-hos-informationssäkerhet--katalog)
+  - [14.5 Hanteras av rollen applikationsdrift själv](#145-hanteras-av-rollen-applikationsdrift-själv)
 - [Appendix A: Self-signed certifikat för lokal test](#appendix-a-self-signed-certifikat-för-lokal-test)
   - [A.1 Skapa en lokal root-CA (engångssteg per lab-värd)](#a1-skapa-en-lokal-root-ca-engångssteg-per-lab-värd)
   - [A.2 Skapa nyckel + CSR för servern](#a2-skapa-nyckel--csr-för-servern)
@@ -206,7 +207,7 @@ systemctl status ntpd --no-pager
 Om `systemd-timesyncd` eller `ntpd` redan är aktiv, stäng av den
 innan du aktiverar `chronyd` (`sudo systemctl disable --now
 systemd-timesyncd` respektive `ntpd`). Om `chronyd` redan är aktiv
-och pekar mot en intern NTP-källa enligt avsnitt 13.2 räcker det att
+och pekar mot en intern NTP-källa enligt avsnitt 14.2 räcker det att
 lägga till `refclock`-raden nedan vid behov — hoppa annars över
 installationssteget.
 
@@ -781,7 +782,7 @@ rich-rule inte redan finns enligt 6.2).
 
 Kontrollera först vilken IP din SSH-session kommer ifrån — den måste
 ligga i admin-nätet (här `10.20.0.0/24`, justera till ert verkliga
-admin-subnät enligt [13.2](#132-beställs-hos-nätverksdrift)):
+admin-subnät enligt [14.2](#142-beställs-hos-nätverksdrift)):
 
 ```bash
 echo "$SSH_CLIENT"
@@ -1556,10 +1557,9 @@ systemctl --user status kravhantering-app.service
 journalctl --user -u kravhantering-app.service -f
 ```
 
-Vid ny kod eller ändrade produktionsberoenden: stoppa tjänsten, kör
-`npm ci`, `npm run build:local-prod` och `npm prune --omit=dev` igen,
-och starta därefter om `kravhantering-app.service`. Själva
-systemd-tjänsten bygger inte om appen.
+Vid ny kod eller ändrade produktionsberoenden följer du
+[12. Uppdatera PoC:n med ny kod](#12-uppdatera-poc-med-ny-kod).
+Själva systemd-tjänsten bygger inte om appen.
 
 > **Notis (loggar):** Om `journalctl --user -u kravhantering-app.service`
 > svarar med `No journal files were opened due to insufficient
@@ -1744,11 +1744,10 @@ npm run db:wait
 
 # Skapar databasen, kör migreringar och seed:ar.
 npm run db:setup
-```
 
 Volymen `sqlserver-db-data` är namngiven, så datat ligger kvar mellan
-omstarter — `db:wait` + `db:setup` behöver bara köras igen om volymen
-tagits bort eller om nya migreringar tillkommit.
+omstarter. `db:wait` + `db:setup` behöver bara köras igen om volymen
+tagits bort eller när PoC-datat får kastas vid en uppdatering av kod.
 
 `[Install] WantedBy=default.target` i `.container`-filen gör att
 Quadlet startar dem automatiskt vid kommande `systemd --user`-start
@@ -1770,7 +1769,167 @@ Wants=network-online.target kravhantering-db.service kravhantering-idp.service
 Följ upp med `systemctl --user daemon-reload` och `systemctl --user
 restart kravhantering-app.service`.
 
-## 12. Sammanfattning av låg-privilegierings-vinster
+## 12. Uppdatera PoC:n med ny kod
+
+Det här avsnittet används när en befintlig PoC ska uppdateras till
+senaste kod från `origin/main`. Stegen utgår från att installationen
+redan är gjord enligt avsnitt 7-11 och att
+`kravhantering-app.service` kör den byggda, rensade runtime:n.
+
+### Kör som `kravhantering`
+
+Logga in som `kravhantering` enligt [3.1](#31-byta-till-kravhantering-användaren),
+till exempel via ditt admin-konto:
+
+```bash
+ssh <dittadminkonto>@servernamn
+sudo -iu kravhantering
+cd ~/Kravhantering
+```
+
+Stoppa appen innan `node_modules` och `.next` byts ut:
+
+```bash
+systemctl --user stop kravhantering-app.service
+```
+
+Återställ bara den committade realm-filen innan koden hämtas. PoC:n
+gör lokala ändringar i
+`dev/keycloak/realm-kravhantering-dev.json`; de läggs tillbaka längre
+ned. Om andra filer är ändrade, granska dem innan du kör `git pull`.
+
+```bash
+git restore --staged dev/keycloak/realm-kravhantering-dev.json
+git restore dev/keycloak/realm-kravhantering-dev.json
+
+git fetch origin main
+git pull origin main
+```
+
+Installera om hela beroendeträdet. Det behövs även om föregående
+körning avslutades med `npm prune --omit=dev`, eftersom bygget kräver
+dev-beroenden.
+
+```bash
+npm ci
+```
+
+Om PoC-datat får kastas kan databasen återställas till seedat testdata.
+
+> [!CAUTION]
+> npm run db:setup **droppar och skapar om databasen**.
+
+```bash
+# KÖR INTE om befintligt PoC-data behöver sparas.
+# Använd i stället en versionsspecifik uppgraderingsrutin.
+npm run db:wait
+npm run db:setup
+```
+
+Om data ska sparas: avbryt här och ta fram en versionsspecifik
+uppgraderingsrutin som migrerar schemat och uppdaterar befintliga
+data. Kör inte `npm run db:setup` i den situationen.
+
+Lägg tillbaka PoC-värdens redirect-URI:er i realmen efter att den
+committade filen har hämtats från `origin/main`:
+
+```bash
+export POC_HOST="kravhantering.poc.example.com"
+REALM=dev/keycloak/realm-kravhantering-dev.json
+
+cp "$REALM" "$REALM.bak"
+
+jq --arg base "https://$POC_HOST" '
+  (.clients[] | select(.clientId=="kravhantering-local"))
+    |= ( .redirectUris = [ $base + "/api/auth/callback" ]
+       | .webOrigins   = [ $base ]
+       | .attributes."post.logout.redirect.uris" = ($base + "/")
+       )
+' "$REALM.bak" > "$REALM"
+
+jq '.clients[] | select(.clientId=="kravhantering-local")
+     | {redirectUris, webOrigins,
+        postLogout: .attributes."post.logout.redirect.uris"}' "$REALM"
+```
+
+Om uppdateringen innehåller ändringar i realmen, eller om
+`POC_HOST` har ändrats, starta om IdP-tjänsten efter att PoC-URL:erna
+lagts tillbaka:
+
+```bash
+systemctl --user restart kravhantering-idp.service
+```
+
+Bygg om appen med PoC-värdena exporterade i skalet och rensa sedan
+bort dev-beroenden igen:
+
+```bash
+set -a
+. ./.env.prodlike.local
+set +a
+
+# Ska peka på https://<POC_HOST>/auth/..., inte localhost:8080.
+echo "AUTH_OIDC_ISSUER_URL=$AUTH_OIDC_ISSUER_URL"
+
+npm run build:local-prod
+npm prune --omit=dev
+```
+
+Starta appen igen och kontrollera att tjänsten inte hamnar i
+`failed`:
+
+```bash
+systemctl --user restart kravhantering-app.service
+systemctl --user status kravhantering-app.service
+```
+
+### Kontrollera som admin
+
+Logga in som ditt admin-konto när du behöver läsa journalloggar med
+`sudo`:
+
+```bash
+ssh <dittadminkonto>@servernamn
+```
+
+Följ appens startlogg:
+
+```bash
+sudo journalctl _UID=$(id -u kravhantering) \
+  _SYSTEMD_USER_UNIT=kravhantering-app.service \
+  -n 1000 -f -o cat
+```
+
+Appen ska efter en stund skriva något i stil med:
+
+```text
+▲ Next.js 16.x
+- Local:         http://127.0.0.1:3001
+- Network:       http://127.0.0.1:3001
+✓ Ready in 142ms
+```
+
+`systemctl --user status` kan visa `active` innan Next.js har skrivit
+`Ready`, så ge tjänsten några minuter innan du bedömer startförsöket.
+Statusen ska däremot inte vara `failed`.
+
+Följ även databas- och IdP-loggarna om uppdateringen rörde
+databasen, realmen eller container-tjänsterna:
+
+```bash
+sudo journalctl _UID=$(id -u kravhantering) \
+  _SYSTEMD_USER_UNIT=kravhantering-db.service \
+  -n 1000 -f -o cat
+
+sudo journalctl _UID=$(id -u kravhantering) \
+  _SYSTEMD_USER_UNIT=kravhantering-idp.service \
+  -n 1000 -f -o cat
+```
+
+Avsluta live-loggarna med `Ctrl+C` när du sett att tjänsterna startar
+utan återkommande fel.
+
+## 13. Sammanfattning av låg-privilegierings-vinster
 
 - Ingen rot-process binder applikationsportar.
 - Containrar är osynliga utifrån; bara nginx på `443` är publik.
@@ -1779,14 +1938,14 @@ restart kravhantering-app.service`.
 - PoC-användaren saknar `sudo`-rättigheter helt; drift sker via
   separat admin-konto.
 
-## 13. Beställningar till andra roller
+## 14. Beställningar till andra roller
 
 Det här avsnittet sammanfattar vad rollen **applikationsdrift** själv
 gör inne på RHEL 10-servern och vad samma roll behöver **beställa** av
 andra driftroller innan PoC:n kan tas i drift. Använd det som
 checklista när beställningar skickas till respektive team.
 
-### 13.1 Beställs hos serverdrift / virtualiseringsdrift
+### 14.1 Beställs hos serverdrift / virtualiseringsdrift
 
 - **RHEL 10-virtuell maskin** enligt sizing i avsnitt 1: 4 vCPU
   (host-passthrough/CPU-modell matchad mot värd, **ingen** nested
@@ -1807,7 +1966,7 @@ checklista när beställningar skickas till respektive team.
 - **Patch-/uppdateringsfönster** och ansvar för OS-patchning utanför
   applikationsstacken om det inte ligger på applikationsdrift.
 
-### 13.2 Beställs hos nätverksdrift
+### 14.2 Beställs hos nätverksdrift
 
 - **Statisk IPv4-adress** eller DHCP-reservation på det interna
   VLAN:et (avsnitt 1.1) — viktigt så att certifikatets SAN och DNS
@@ -1828,7 +1987,7 @@ checklista när beställningar skickas till respektive team.
   godkända interna tjänster.
 - **Intern NTP-källa** om miljön inte tillåter publika pool-servrar.
 
-### 13.3 Beställs hos PKI-/AD CS-drift
+### 14.3 Beställs hos PKI-/AD CS-drift
 
 - **Servercertifikat** från intern Windows Server PKI (avsnitt 8.1)
   utfärdat på en `WebServer`-baserad mall, baserat på CSR genererad
@@ -1838,14 +1997,14 @@ checklista när beställningar skickas till respektive team.
 - **Förnyelserutin** och kontaktväg för nytt certifikat innan utgång
   (ev. `certmonger`-integration om PKI:n stödjer det).
 
-### 13.4 Beställs hos informationssäkerhet / katalog
+### 14.4 Beställs hos informationssäkerhet / katalog
 
 - **Admin-konto** (separat från PoC-användaren `kravhantering`) med
   SSH-nyckel utlagd för drift och patchning av servern.
 - Eventuell **logg-/SIEM-integration** (journald-forwarding, syslog)
   enligt organisationens krav.
 
-### 13.5 Hanteras av rollen applikationsdrift själv
+### 14.5 Hanteras av rollen applikationsdrift själv
 
 På den levererade RHEL 10-VM:en utför applikationsdrift allt övrigt i
 detta dokument:
