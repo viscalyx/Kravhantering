@@ -721,6 +721,73 @@ describe('requirement-specifications routes', () => {
     )
     expect(r.status).toBe(201)
   })
+  it('POST accepts long existing-style specification slugs', async () => {
+    const r = await postPkg(
+      jsonReq('POST', {
+        name: 'Playwright lifecycle',
+        uniqueId: 'PLAYWRIGHT-LIFECYCLE-2026',
+      }),
+    )
+
+    expect(r.status).toBe(201)
+    expect(mockCreatePkg).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        uniqueId: 'PLAYWRIGHT-LIFECYCLE-2026',
+      }),
+    )
+  })
+  it('POST returns 400 for malformed JSON bodies', async () => {
+    const r = await postPkg(
+      new NextRequest('http://l', {
+        method: 'POST',
+        body: '{',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    expect(r.status).toBe(400)
+    await expect(r.json()).resolves.toMatchObject({
+      error: 'Invalid request',
+      issues: [
+        {
+          code: 'invalid_json',
+          path: '$',
+        },
+      ],
+    })
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockCreatePkg).not.toHaveBeenCalled()
+  })
+  it.each([
+    ['missing name', { uniqueId: 'VALID-SLUG' }, 'name'],
+    ['empty name', { name: '', uniqueId: 'VALID-SLUG' }, 'name'],
+    ['empty uniqueId', { name: 'A', uniqueId: '' }, 'uniqueId'],
+  ])('POST rejects %s', async (_label, body, path) => {
+    const r = await postPkg(jsonReq('POST', body))
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, path)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockCreatePkg).not.toHaveBeenCalled()
+  })
+  it.each([
+    ['lowercase', 'lowercase'],
+    ['spaces', 'VALID SLUG'],
+    ['invalid punctuation', 'VALID_SLUG'],
+    ['repeated hyphens', 'VALID--SLUG'],
+    ['leading hyphen', '-VALID-SLUG'],
+    ['trailing hyphen', 'VALID-SLUG-'],
+    ['numeric only', '123'],
+    ['oversize', 'A'.repeat(451)],
+  ])('POST rejects invalid uniqueId: %s', async (_label, uniqueId) => {
+    const r = await postPkg(jsonReq('POST', { name: 'A', uniqueId }))
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'uniqueId')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockCreatePkg).not.toHaveBeenCalled()
+  })
   it('POST passes responsible person fields through as an HSA-ID/name pair', async () => {
     const r = await postPkg(
       jsonReq('POST', {
@@ -772,6 +839,14 @@ describe('requirement-specifications routes', () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
     const r = await putPkg(jsonReq('PUT', { name: 'X' }), makeParams('1'))
     await expect(r.json()).resolves.toEqual({ id: 1 })
+  })
+  it('PUT rejects invalid updated uniqueId before persistence', async () => {
+    const r = await putPkg(jsonReq('PUT', { uniqueId: '123' }), makeParams('1'))
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'uniqueId')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockUpdatePkg).not.toHaveBeenCalled()
   })
   it('PUT updates responsible person and AI permission fields', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })

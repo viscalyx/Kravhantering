@@ -1189,6 +1189,13 @@ specific procurement or project.
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
+`unique_id` is the stable slug used in specification URLs and API
+payloads. New and updated values must be uppercase ASCII letters,
+digits, and single hyphens between segments, for example
+`ETJANST-UPP-2026`. Leading, trailing, or repeated hyphens are invalid,
+and numeric-only values are rejected because numeric URL segments are
+reserved for database-ID lookups.
+
 **Seed note:** Specification `ETJANST-UPP-2026` has
 `local_requirement_next_sequence = 3` because the seed
 includes `KRAV0001` and `KRAV0002`.
