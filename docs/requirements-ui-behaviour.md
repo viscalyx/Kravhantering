@@ -221,11 +221,14 @@ The behaviors below apply to the requirement list rendered by:
 - The same inline status control is also available for specification-local
   requirements via specification-context item refs (`lib:*` / `local:*`) even though
   specification-local rows do not have a library-backed `requirementsSpecificationItemId`.
-- When a requirement is **added** to a specification, its usage status is
-  automatically set to **Included** (ID 1). The user can change it once
-  work on the requirement begins.
+- When a requirement is **added** to a specification, including a
+  specification-local requirement, its usage status is automatically set to
+  **Included** (ID 1). The user can change it once work on the requirement begins.
+- The inline select offers the configured usage statuses for specification
+  items.
 - Outside the specification detail context (e.g. the main requirements catalog),
-  the column renders a read-only color dot + label or an em dash if unset.
+  the column renders a read-only color dot + label, or an em dash when no
+  specification item status applies to the row.
 - The column supports multi-select filtering via `specificationItemStatusIds`.
 - Client-side filtering in the specification detail matches on `specificationItemStatusId`.
 - Sorting is disabled for this column (`canSort: false`).

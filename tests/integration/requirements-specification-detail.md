@@ -8,7 +8,9 @@ opens from the title action and that the two side-by-side requirement lists
 ("Krav i underlaget" and "Tillgängliga krav") scroll independently without moving
 the page, while keeping the sticky title bar fixed at the top of each panel.
 The page also exposes a left-panel action for creating specification-local
-requirements that exist only inside the current requirements specification.
+requirements that exist only inside the current requirements specification. The
+desktop flow also checks that the editable Usage status column offers the
+configured usage statuses.
 
 ## Data Model
 
@@ -43,7 +45,10 @@ flowchart TD
     M --> N[Assert only scrolled panel moved]
     N --> O[Assert page scrollY stays at 0]
     O --> P[Assert sticky title bar Y unchanged]
-    P --> Q[Test passes]
+    B --> Q[Desktop: enable Usage status column]
+    Q --> R[Verify configured status labels]
+    P --> S[Test passes]
+    R --> S
 ```
 
 ## Test Setup
@@ -53,6 +58,8 @@ flowchart TD
   viewports.
 - The independent-scroll test is desktop-only and reduces the viewport height
   to 560 px after navigation to create overflow conditions.
+- The Usage status option test is desktop-only and clears `localStorage` before
+  navigation so column visibility starts from the default state.
 - Overflow is detected by comparing `scrollHeight` with `clientHeight + 50`.
   If neither panel overflows even after expanding a row, the scroll-sync
   assertion is skipped (see inline comment in the spec).
@@ -164,3 +171,23 @@ flowchart TD
     H --> I[Assert page Y = 0]
     I --> J[Assert right title bar Y unchanged]
 ```
+
+<!-- markdownlint-disable MD013 -->
+## shows configured usage statuses in the editable status column
+<!-- markdownlint-enable MD013 -->
+
+### Purpose: Usage Status Options
+
+Confirms that the requirements specification detail page can show the
+specification item Usage status column and that the inline dropdown contains
+configured statuses such as `Inkluderad` and `Pågående`.
+
+### Step-by-Step Flow: Usage Status Options
+
+1. Clear `localStorage` before navigation.
+2. Navigate to `/sv/specifications/ETJANST-UPP-2026`.
+3. Open the left-panel column picker.
+4. Enable the `specificationItemStatus` column.
+5. Scroll the left table horizontally to the status column.
+6. Read the first Usage status dropdown's option labels.
+7. Assert `Inkluderad` and `Pågående` are present.

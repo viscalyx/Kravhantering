@@ -231,6 +231,9 @@ set any status at any time, with one exception.
   (1).
 - Status changes are recorded with a `status_updated_at`
   timestamp.
+- The status is required for every specification item. It can change
+  among real usage statuses but cannot be cleared to no status through
+  UI, API, DAL, or database workflows.
 - **Guard rule:** The **Deviated** (5) status can only be
   set when the specification item has at least one approved
   deviation. The system rejects the update otherwise.

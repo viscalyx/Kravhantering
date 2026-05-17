@@ -79,7 +79,7 @@ import {
  * Scenarios 10 and 15 are pure file-content checks and always run as part of
  * `npm run test`.
  *
- * Scenarios 1-9, 11-12, and 14 exercise lifecycle/audit invariants that
+ * Scenarios 1-9, 11-12, 14, and 16 exercise lifecycle/audit invariants that
  * require a real SQL Server instance. The harness derives a connection URL automatically from
  * the standard DB_* environment variables (the same ones used by the dev
  * scripts) and swaps the database name to a dedicated
@@ -814,6 +814,61 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(updatedLocal?.specificationItemStatusId).toBe(
       DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
     )
+  })
+
+  it('Scenario 16: requirements specification item usage status cannot be cleared once assigned', async () => {
+    const area = await createArea(appDb())
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Status clearing baseline',
+    )
+    const spec = await createSpecification(appDb(), {
+      name: 'Status clearing specification',
+      uniqueId: 'STATUS-CLEARING-SPECIFICATION',
+    })
+
+    await linkRequirementsToSpecificationAtomically(appDb(), spec.id, {
+      requirementIds: [published.requirementId],
+    })
+
+    const libraryItem = await getSingleSpecificationItem(appDb(), spec.id)
+    if (!libraryItem) {
+      throw new Error('Expected a library specification item')
+    }
+    const localItem = await createSpecificationLocalRequirement(
+      appDb(),
+      spec.id,
+      {
+        description: 'Specification-local status clearing baseline',
+      },
+    )
+
+    expect(libraryItem.specificationItemStatusId).toBe(
+      DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+    )
+    expect(localItem.specificationItemStatusId).toBe(
+      DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+    )
+
+    await expect(
+      updateSpecificationItemFields(appDb(), libraryItem.id, {
+        specificationItemStatusId: null,
+      } as unknown as Parameters<typeof updateSpecificationItemFields>[2]),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Specification item status cannot be cleared',
+    })
+    await expect(
+      updateSpecificationLocalRequirementFields(appDb(), localItem.id, {
+        specificationItemStatusId: null,
+      } as unknown as Parameters<
+        typeof updateSpecificationLocalRequirementFields
+      >[2]),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Specification item status cannot be cleared',
+    })
   })
 
   it('Scenario 13: specification-local graduation is copy-only into a draft library requirement', async () => {

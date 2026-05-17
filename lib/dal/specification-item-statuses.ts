@@ -76,7 +76,6 @@ export async function countLinkedSpecificationItems(
         specification_item_status_id AS statusId,
         COUNT(*) AS count
       FROM requirements_specification_items
-      WHERE specification_item_status_id IS NOT NULL
       GROUP BY specification_item_status_id
 
       UNION ALL
@@ -85,7 +84,6 @@ export async function countLinkedSpecificationItems(
         specification_item_status_id AS statusId,
         COUNT(*) AS count
       FROM specification_local_requirements
-      WHERE specification_item_status_id IS NOT NULL
       GROUP BY specification_item_status_id
     ) linked
     GROUP BY linked.statusId
@@ -93,11 +91,9 @@ export async function countLinkedSpecificationItems(
   const counts: Record<number, number> = {}
   for (const row of rows as Array<{
     count: number
-    statusId: number | null
+    statusId: number
   }>) {
-    if (row.statusId != null) {
-      counts[row.statusId] = row.count
-    }
+    counts[row.statusId] = row.count
   }
   return counts
 }

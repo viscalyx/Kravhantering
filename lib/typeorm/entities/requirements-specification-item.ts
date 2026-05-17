@@ -13,7 +13,7 @@ export interface RequirementsSpecificationItemEntity {
   requirement: RequirementEntity
   requirementsSpecification: RequirementsSpecificationEntity
   requirementVersion: RequirementVersionEntity
-  specificationItemStatus: SpecificationItemStatusEntity | null
+  specificationItemStatus: SpecificationItemStatusEntity
   statusUpdatedAt: Date | null
   unused1: string | null
 }
@@ -123,7 +123,7 @@ export const requirementsSpecificationItemEntity =
             referencedColumnName: 'id',
           },
         ],
-        nullable: true,
+        nullable: false,
         onDelete: 'NO ACTION',
         onUpdate: 'NO ACTION',
       },

@@ -578,6 +578,36 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 15: configu
 ```
 <!-- markdownlint-enable MD013 -->
 
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 16: requirements specification item usage status cannot be cleared once assigned
+
+**Requirement tag:**
+
+<!-- markdownlint-disable MD013 -->
+```text
+[Req: formal — issue #147 prevent clearing specification item usage status]
+```
+<!-- markdownlint-enable MD013 -->
+
+**What happened:** Requirements specification items default to Included when they
+are added to a requirements specification, but the editable Usage status control
+and PATCH/DAL update path previously allowed callers to clear
+`specification_item_status_id` back to null. That makes filtering, reports, and
+deviation follow-up ambiguous.
+
+**The requirement:** Library specification items and specification-local
+requirements must always have a real usage status. They may change among real
+usage statuses, but explicit null status updates must be rejected by update
+paths and by the database schema.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 16: requirements specification item usage status cannot be cleared once assigned"
+```
+<!-- markdownlint-enable MD013 -->
+
 ## AI Session Quality Discipline
 
 1. Read `tests/quality/QUALITY.md` before changing lifecycle, specification, MCP,

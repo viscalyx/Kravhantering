@@ -84,7 +84,7 @@ export interface SpecificationLocalRequirementDetail {
   specificationItemStatusDescriptionEn: string | null
   specificationItemStatusDescriptionSv: string | null
   specificationItemStatusIconName: string | null
-  specificationItemStatusId: number | null
+  specificationItemStatusId: number
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
   uniqueId: string
@@ -111,7 +111,7 @@ interface SpecificationLocalRequirementGraduationRow {
   requiresTesting: boolean
   riskLevelId: number | null
   specificationId: number
-  specificationItemStatusId: number | null
+  specificationItemStatusId: number
   uniqueId: string
   verificationMethod: string | null
 }
@@ -1166,7 +1166,7 @@ function mapSpecificationLocalRequirementDetailFlat(
     specificationItemStatusDescriptionSv: toStr(
       row.specificationItemStatusDescriptionSv,
     ),
-    specificationItemStatusId: toNum(row.specificationItemStatusId),
+    specificationItemStatusId: Number(row.specificationItemStatusId),
     specificationItemStatusNameEn: toStr(row.specificationItemStatusNameEn),
     specificationItemStatusNameSv: toStr(row.specificationItemStatusNameSv),
     qualityCharacteristic:
@@ -1545,7 +1545,7 @@ function mapGraduationSourceRow(
     requiresTesting: toBool(row.requiresTesting),
     riskLevelId: toNum(row.riskLevelId),
     specificationId: Number(row.specificationId),
-    specificationItemStatusId: toNum(row.specificationItemStatusId),
+    specificationItemStatusId: Number(row.specificationItemStatusId),
     uniqueId: String(row.uniqueId ?? ''),
     verificationMethod: toStr(row.verificationMethod),
   }
@@ -1978,7 +1978,7 @@ interface LibrarySpecificationItemFlatRow {
   specificationItemStatusDescriptionEn: string | null
   specificationItemStatusDescriptionSv: string | null
   specificationItemStatusIconName: string | null
-  specificationItemStatusId: number | null
+  specificationItemStatusId: number
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
   statusColor: string | null
@@ -2013,7 +2013,7 @@ function mapLibrarySpecificationItemRow(
       row.specificationItemStatusDescriptionEn ?? null,
     specificationItemStatusDescriptionSv:
       row.specificationItemStatusDescriptionSv ?? null,
-    specificationItemStatusId: row.specificationItemStatusId ?? null,
+    specificationItemStatusId: Number(row.specificationItemStatusId),
     specificationItemStatusNameEn: row.specificationItemStatusNameEn ?? null,
     specificationItemStatusNameSv: row.specificationItemStatusNameSv ?? null,
     uniqueId: row.uniqueId,
@@ -2069,7 +2069,7 @@ interface SpecificationLocalListFlatRow {
   specificationItemStatusDescriptionEn: string | null
   specificationItemStatusDescriptionSv: string | null
   specificationItemStatusIconName: string | null
-  specificationItemStatusId: number | null
+  specificationItemStatusId: number
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
   uniqueId: string
@@ -2095,7 +2095,7 @@ function mapSpecificationLocalRequirementListRow(
       row.specificationItemStatusDescriptionEn ?? null,
     specificationItemStatusDescriptionSv:
       row.specificationItemStatusDescriptionSv ?? null,
-    specificationItemStatusId: row.specificationItemStatusId ?? null,
+    specificationItemStatusId: Number(row.specificationItemStatusId),
     specificationItemStatusNameEn: row.specificationItemStatusNameEn ?? null,
     specificationItemStatusNameSv: row.specificationItemStatusNameSv ?? null,
     specificationLocalRequirementId: Number(row.id),
@@ -2310,7 +2310,7 @@ export async function getSpecificationItemById(
     requirementId: Number(row.requirementId),
     requirementVersionId: Number(row.requirementVersionId),
     needsReferenceId: toNum(row.needsReferenceId),
-    specificationItemStatusId: toNum(row.specificationItemStatusId),
+    specificationItemStatusId: Number(row.specificationItemStatusId),
     note: toStr(row.note),
     statusUpdatedAt: toIso(row.statusUpdatedAt),
     createdAt: toIso(row.createdAt) ?? '',
@@ -2379,20 +2379,29 @@ async function validateSpecificationItemStatus(
   }
 }
 
+type SpecificationItemFieldUpdate = {
+  note?: string | null
+  specificationItemStatusId?: number
+}
+
 export async function updateSpecificationItemFields(
   db: SqlServerDatabase,
   itemId: number,
-  data: { specificationItemStatusId?: number | null; note?: string | null },
+  data: SpecificationItemFieldUpdate,
 ): Promise<void> {
   const setClauses: string[] = []
   const params: unknown[] = []
   let nextStatusId: number | null | undefined
 
   if ('specificationItemStatusId' in data) {
-    nextStatusId = data.specificationItemStatusId ?? null
-    if (nextStatusId != null) {
-      await validateSpecificationItemStatus(db, nextStatusId)
+    if (data.specificationItemStatusId == null) {
+      throw validationError('Specification item status cannot be cleared', {
+        itemId,
+        specificationItemStatusId: data.specificationItemStatusId,
+      })
     }
+    nextStatusId = data.specificationItemStatusId
+    await validateSpecificationItemStatus(db, nextStatusId)
     setClauses.push(`specification_item_status_id = @${params.length}`)
     params.push(nextStatusId)
     setClauses.push(`status_updated_at = @${params.length}`)
@@ -2440,17 +2449,21 @@ export async function updateSpecificationItemFields(
 export async function updateSpecificationLocalRequirementFields(
   db: SqlServerDatabase,
   specificationLocalRequirementId: number,
-  data: { specificationItemStatusId?: number | null; note?: string | null },
+  data: SpecificationItemFieldUpdate,
 ): Promise<void> {
   const setClauses: string[] = []
   const params: unknown[] = []
   let nextStatusId: number | null | undefined
 
   if ('specificationItemStatusId' in data) {
-    nextStatusId = data.specificationItemStatusId ?? null
-    if (nextStatusId != null) {
-      await validateSpecificationItemStatus(db, nextStatusId)
+    if (data.specificationItemStatusId == null) {
+      throw validationError('Specification item status cannot be cleared', {
+        specificationItemStatusId: data.specificationItemStatusId,
+        specificationLocalRequirementId,
+      })
     }
+    nextStatusId = data.specificationItemStatusId
+    await validateSpecificationItemStatus(db, nextStatusId)
     setClauses.push(`specification_item_status_id = @${params.length}`)
     params.push(nextStatusId)
     setClauses.push(`status_updated_at = @${params.length}`)
@@ -2500,7 +2513,7 @@ export async function updateSpecificationItemFieldsByItemRef(
   db: SqlServerDatabase,
   specificationId: number,
   itemRef: string,
-  data: { specificationItemStatusId?: number | null; note?: string | null },
+  data: SpecificationItemFieldUpdate,
 ) {
   const item = await getSpecificationItemByRef(db, specificationId, itemRef)
   if (!item) {

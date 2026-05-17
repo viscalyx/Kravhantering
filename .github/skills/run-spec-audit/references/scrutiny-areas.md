@@ -251,6 +251,21 @@ maintenance rule.
 - **Verify:** `npm exec -- vitest run
   tests/quality/functional.test.ts -t "Scenario 13: specification-local graduation is copy-only into a draft library requirement"`
 
+## 21. Scenario 16: requirements specification item usage status cannot be cleared once assigned
+
+- **Code:** `components/_requirements-table/SpecificationItemStatusSelect.tsx`,
+  `app/api/specifications/[id]/items/[itemId]/route.ts`,
+  `lib/dal/requirements-specifications.ts`, and
+  `typeorm/migrations/0015_require_specification_item_status.mjs`.
+- **Spec:** issue #147 and `docs/lifecycle-workflow.md`
+  ("Specification Item Status").
+- **Req tag:** `[Req: formal — issue #147 prevent clearing specification item usage status]`
+- **Question:** Do library specification items and specification-local
+  requirements always keep a real usage status, while explicit null-clearing
+  attempts are rejected at the UI, API, DAL, and database boundaries?
+- **Verify:** `npm exec -- vitest run
+  tests/quality/functional.test.ts -t "Scenario 16: requirements specification item usage status cannot be cleared once assigned"`
+
 ## Maintenance
 
 This file must stay in sync with `tests/quality/QUALITY.md`:
@@ -263,7 +278,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   references here.
 - See `tests/quality/AGENTS.md` for the authoritative sync rule.
 
-## 21. AI Generation Contracts
+## 22. AI Generation Contracts
 
 - **Code:** `lib/ai/openrouter-client.ts`,
   `lib/ai/requirement-prompt.ts`, `lib/ai/taxonomy.ts`.

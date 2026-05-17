@@ -788,18 +788,18 @@ describe('RequirementsTable', () => {
     expect(statusWrapper?.querySelector('span[aria-hidden="true"]')).toBeNull()
   })
 
-  it('renders the editable specification item status select and forwards changes', () => {
+  it('renders the editable specification item status select with only real status options', () => {
     const onSpecificationItemStatusChange = vi.fn()
     const rows = [
       makeRow({
         hasApprovedDeviation: false,
         itemRef: 'lib:42',
-        specificationItemStatusColor: '#f59e0b',
-        specificationItemStatusDescriptionEn: 'In progress',
-        specificationItemStatusDescriptionSv: 'Pågående',
-        specificationItemStatusId: 2,
-        specificationItemStatusNameEn: 'Ongoing',
-        specificationItemStatusNameSv: 'Pågående',
+        specificationItemStatusColor: '#a3a3a3',
+        specificationItemStatusDescriptionEn: 'Default',
+        specificationItemStatusDescriptionSv: 'Standard',
+        specificationItemStatusId: 1,
+        specificationItemStatusNameEn: 'Included',
+        specificationItemStatusNameSv: 'Inkluderad',
       }),
     ]
 
@@ -814,8 +814,8 @@ describe('RequirementsTable', () => {
             descriptionEn: null,
             descriptionSv: null,
             id: 1,
-            nameEn: 'Open',
-            nameSv: 'Öppen',
+            nameEn: 'Included',
+            nameSv: 'Inkluderad',
             sortOrder: 1,
           },
           {
@@ -838,16 +838,19 @@ describe('RequirementsTable', () => {
     const select = screen.getByRole('combobox', {
       name: 'specificationItemStatus',
     }) as HTMLSelectElement
-    expect(select.value).toBe('2')
+    expect(select.value).toBe('1')
+    expect(
+      Array.from(select.options).map(option => option.textContent),
+    ).not.toContain('—')
+    expect(
+      Array.from(select.options).map(option => option.value),
+    ).not.toContain('')
 
-    fireEvent.change(select, { target: { value: '1' } })
-    expect(onSpecificationItemStatusChange).toHaveBeenCalledWith('lib:42', 1)
+    fireEvent.change(select, { target: { value: '2' } })
+    expect(onSpecificationItemStatusChange).toHaveBeenCalledWith('lib:42', 2)
 
     fireEvent.change(select, { target: { value: '' } })
-    expect(onSpecificationItemStatusChange).toHaveBeenLastCalledWith(
-      'lib:42',
-      null,
-    )
+    expect(onSpecificationItemStatusChange).toHaveBeenCalledTimes(1)
   })
 
   it('toggles sorting from the header button and updates aria-sort', () => {

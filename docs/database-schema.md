@@ -1239,12 +1239,15 @@ version/review/publication lifecycle.
 | `is_testing_required` | integer NOT NULL DEFAULT 0 | Whether the requirement is marked as verifiable |
 | `verification_method` | text | Verification method |
 | `needs_reference_id` | integer FK → `specification_needs_references.(specification_id, id)` | Optional specification-scoped needs reference |
-| `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Usage/implementation status (nullable, SET NULL on status delete) |
+| `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Required usage/implementation status, defaults to Included (ID 1) |
 | `note` | text | Optional specification-scoped note |
 | `status_updated_at` | text (ISO 8601) | When the usage status last changed |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
+
+`specification_item_status_id` is required. UI, API, DAL, and database
+workflows reject clearing an assigned usage status to null.
 
 **Unique indexes:**
 `uq_specification_local_requirements_specification_id_unique_id`,
@@ -1638,12 +1641,15 @@ Links individual requirements (pinned to a specific version) into a specificatio
 | `requirement_id` | integer FK → `requirements.id` | The requirement being included |
 | `requirement_version_id` | integer FK → `requirement_versions.id` | Pinned version snapshot |
 | `needs_reference_id` | integer FK → `specification_needs_references.(specification_id, id)` | Optional specification-scoped needs reference |
-| `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Usage/implementation status (nullable) |
+| `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Required usage/implementation status, defaults to Included (ID 1) |
 | `note` | text | Optional free-text note (nullable) |
 | `status_updated_at` | text (ISO 8601) | When the usage status was last changed (nullable) |
 | `unused_1` | text | Retired legacy column kept for migration compatibility |
 | `created_at` | text (ISO 8601) | When the item was added |
 <!-- markdownlint-enable MD013 -->
+
+`specification_item_status_id` is required. UI, API, DAL, and database
+workflows reject clearing an assigned usage status to null.
 
 **Unique index:** `uq_requirements_specification_items_specification_requirement`.
 
@@ -1900,7 +1906,7 @@ The following table lists every named FK constraint:
 | `fk_specification_local_requirements_requirement_type_id` | `specification_local_requirements` | `requirement_type_id` | `requirement_types.id` | NO ACTION | NO ACTION |
 | `fk_specification_local_requirements_quality_characteristic_id` | `specification_local_requirements` | `quality_characteristic_id` | `quality_characteristics.id` | NO ACTION | NO ACTION |
 | `fk_specification_local_requirements_risk_level_id` | `specification_local_requirements` | `risk_level_id` | `risk_levels.id` | NO ACTION | NO ACTION |
-| `fk_specification_local_requirements_specification_item_status_id` | `specification_local_requirements` | `specification_item_status_id` | `specification_item_statuses.id` | SET NULL | NO ACTION |
+| `fk_specification_local_requirements_specification_item_status_id` | `specification_local_requirements` | `specification_item_status_id` | `specification_item_statuses.id` | NO ACTION | NO ACTION |
 | `fk_specification_local_requirement_deviations_specification_local_requirement_id` | `specification_local_requirement_deviations` | `specification_local_requirement_id` | `specification_local_requirements.id` | CASCADE | NO ACTION |
 | `fk_specification_local_requirement_norm_references_specification_local_requirement_id` | `specification_local_requirement_norm_references` | `specification_local_requirement_id` | `specification_local_requirements.id` | CASCADE | NO ACTION |
 | `fk_specification_local_requirement_norm_references_norm_reference_id` | `specification_local_requirement_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION | NO ACTION |

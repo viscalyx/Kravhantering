@@ -19,6 +19,7 @@ import {
   updateSpecificationItemFieldsByItemRef,
   updateSpecificationLocalRequirement,
 } from '@/lib/dal/requirements-specifications'
+import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 
 function createSqlServerDb() {
   const query =
@@ -566,6 +567,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       uniqueId: 'LOK-001',
       description: 'Created local requirement',
       itemRef: 'local:41',
+      specificationItemStatusId: DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
     })
     expect(updated).toMatchObject({
       id: 41,
@@ -574,6 +576,26 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       requiresTesting: true,
       verificationMethod: 'Checklist',
     })
+    const localInsertCall = query.mock.calls.find(([sql]) =>
+      sql.includes('INSERT INTO specification_local_requirements'),
+    )
+    expect(localInsertCall?.[1]).toEqual([
+      5,
+      'KRAV0001',
+      1,
+      7,
+      'Created local requirement',
+      null,
+      null,
+      null,
+      null,
+      null,
+      0,
+      null,
+      null,
+      DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+      expect.any(Date),
+    ])
   })
 
   it('deletes specification-local requirements on SQL Server', async () => {
@@ -774,7 +796,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(query).toHaveBeenNthCalledWith(
       4,
       expect.stringContaining('INSERT INTO requirements_specification_items'),
-      [5, 7, 101, 33, 1, expect.any(Date)],
+      [5, 7, 101, 33, DEFAULT_SPECIFICATION_ITEM_STATUS_ID, expect.any(Date)],
     )
   })
 
@@ -929,6 +951,68 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       3,
       expect.stringContaining('UPDATE requirements_specification_items'),
       [2, expect.any(String), 'Follow-up', 31],
+    )
+  })
+
+  it('rejects clearing library specification item status before SQL update', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        id: 31,
+        specificationId: 5,
+        requirementId: 7,
+        requirementVersionId: 101,
+        needsReferenceId: null,
+        specificationItemStatusId: 1,
+        note: null,
+        statusUpdatedAt: null,
+        createdAt: new Date('2026-04-20T10:00:00.000Z'),
+      },
+    ])
+
+    await expect(
+      updateSpecificationItemFieldsByItemRef(db, 5, 'lib:31', {
+        specificationItemStatusId: null,
+      } as unknown as Parameters<
+        typeof updateSpecificationItemFieldsByItemRef
+      >[3]),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Specification item status cannot be cleared',
+    })
+
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('FROM requirements_specification_items'),
+      [31],
+    )
+  })
+
+  it('rejects clearing specification-local item status before SQL update', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        id: 41,
+        itemRef: 'local:41',
+        kind: 'specificationLocal',
+      },
+    ])
+
+    await expect(
+      updateSpecificationItemFieldsByItemRef(db, 5, 'local:41', {
+        specificationItemStatusId: null,
+      } as unknown as Parameters<
+        typeof updateSpecificationItemFieldsByItemRef
+      >[3]),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Specification item status cannot be cleared',
+    })
+
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('FROM specification_local_requirements'),
+      [41, 5],
     )
   })
 

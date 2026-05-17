@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+type MinimalLinkedRequirement = { id: number; uniqueId: string }
+
 const routeState = vi.hoisted(() => ({
   createAdminPrivilegedAuditContext: vi.fn(async () => ({
     actor: {
@@ -20,7 +22,9 @@ const routeState = vi.hoisted(() => ({
     requestId: 'request-risk',
     source: 'rest',
   })),
-  getLinkedRequirements: vi.fn(async () => []),
+  getLinkedRequirements: vi.fn(
+    async (): Promise<MinimalLinkedRequirement[]> => [],
+  ),
   getRequestSqlServerDataSource: vi.fn(() => ({})),
   getRiskLevelById: vi.fn(),
   recordAdminPrivilegedActionSucceeded: vi.fn(),

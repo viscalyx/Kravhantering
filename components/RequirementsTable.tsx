@@ -96,10 +96,7 @@ export interface RequirementsTableProps {
   onRowClick?: (id: number) => void
   onSelectionChange?: (ids: Set<number>) => void
   onSortChange?: (value: RequirementSortState) => void
-  onSpecificationItemStatusChange?: (
-    itemRef: string,
-    statusId: number | null,
-  ) => void
+  onSpecificationItemStatusChange?: (itemRef: string, statusId: number) => void
   onVisibleColumnsChange?: (value: RequirementColumnId[]) => void
   pinnedIds?: Set<number>
   qualityCharacteristics?: QualityCharacteristicOption[]
@@ -2398,7 +2395,7 @@ export default function RequirementsTable({
                 locale={locale}
                 onChange={onSpecificationItemStatusChange}
                 statuses={specificationItemStatuses}
-                statusId={statusId}
+                statusId={statusId ?? undefined}
                 tooltip={selectTooltip}
               />
             </td>

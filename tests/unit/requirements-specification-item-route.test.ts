@@ -153,7 +153,11 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
   })
 
   it.each([
-    0, -1, 1.5,
+    0,
+    -1,
+    1.5,
+    null,
+    '2',
   ])('rejects malformed specification item status id %s', async specificationItemStatusId => {
     const request = new NextRequest(
       'http://localhost/api/specifications/ETJANST-UPP-2026/items/lib%3A31',
@@ -173,6 +177,37 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     await expectInvalidRequest(response, 'specificationItemStatusId')
     expect(mocks.getSpecificationBySlug).not.toHaveBeenCalled()
     expect(mocks.updateSpecificationItemFieldsByItemRef).not.toHaveBeenCalled()
+  })
+
+  it('allows note-only item updates without a status field', async () => {
+    mocks.getSpecificationBySlug.mockResolvedValue({ id: 7 })
+    mocks.getSpecificationItemByRef.mockResolvedValue({
+      itemRef: 'lib:31',
+      specificationId: 7,
+      specificationItemId: 31,
+    })
+
+    const request = new NextRequest(
+      'http://localhost/api/specifications/ETJANST-UPP-2026/items/lib%3A31',
+      {
+        body: JSON.stringify({ note: 'Follow-up' }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      },
+    )
+
+    const response = await PATCH(
+      request,
+      makeParams('ETJANST-UPP-2026', 'lib%3A31'),
+    )
+
+    expect(response.status).toBe(200)
+    expect(mocks.updateSpecificationItemFieldsByItemRef).toHaveBeenCalledWith(
+      mockDb,
+      7,
+      'lib:31',
+      { note: 'Follow-up' },
+    )
   })
 
   it('rejects empty patch payloads before resolving the specification', async () => {
