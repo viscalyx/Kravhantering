@@ -113,6 +113,10 @@ export default function RequirementStatusesClient() {
     toForm,
     toPayload,
   })
+  const systemStatusController = {
+    ...controller,
+    items: controller.items.filter(status => status.isSystem),
+  }
 
   const columns: CrudAdminColumn<Status>[] = [
     {
@@ -157,9 +161,10 @@ export default function RequirementStatusesClient() {
 
   return (
     <CrudAdminPanel
-      canDelete={status => !status.isSystem}
+      canCreate={false}
+      canDelete={() => false}
       columns={columns}
-      controller={controller}
+      controller={systemStatusController}
       devContext="statuses"
       renderFormFields={({ disabled, form, inputClassName, setForm }) => (
         <>

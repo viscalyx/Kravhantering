@@ -29,11 +29,13 @@ const submitMock = vi.fn(async (event?: FormEvent<HTMLFormElement>) => {
 
 function PanelHarness({
   canDelete,
+  canCreate = true,
   deleteError = null,
   loading = false,
   submitting = false,
 }: {
   canDelete?: (item: PanelItem) => boolean
+  canCreate?: boolean
   deleteError?: string | null
   loading?: boolean
   submitting?: boolean
@@ -62,6 +64,7 @@ function PanelHarness({
 
   return (
     <CrudAdminPanel
+      canCreate={canCreate}
       canDelete={canDelete}
       columns={[
         {
@@ -109,6 +112,12 @@ describe('CrudAdminPanel', () => {
       screen.getByRole('button', { name: 'common.create' }),
     ).toBeInTheDocument()
     expect(screen.getByText('One')).toBeInTheDocument()
+  })
+
+  it('does not render create controls when canCreate is false', () => {
+    render(<PanelHarness canCreate={false} />)
+
+    expect(screen.queryByRole('button', { name: 'common.create' })).toBeNull()
   })
 
   it('opens the form from the create button', () => {

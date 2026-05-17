@@ -115,6 +115,7 @@ const requirementStatusesRoutePath = join(
   'app',
   'api',
   'requirement-statuses',
+  '[id]',
   'route.ts',
 )
 const specificationItemStatusesRoutePath = join(

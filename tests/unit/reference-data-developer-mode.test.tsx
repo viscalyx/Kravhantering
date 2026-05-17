@@ -170,11 +170,11 @@ const pages: MarkerSpec[] = [
             nameEn: 'Draft',
             color: '#3b82f6',
             sortOrder: 0,
-            isSystem: false,
+            isSystem: true,
           },
         ],
       }),
-    expectedMarkers: ['create button', 'crud table', 'table action'],
+    expectedMarkers: ['crud table', 'table action'],
   },
   {
     label: 'KravunderlagClient (specifications)',
@@ -341,7 +341,11 @@ describe.each(pages)('$label developer-mode markers', spec => {
       const createBtn = container.querySelector(
         `[data-developer-mode-name="create button"][data-developer-mode-context="${spec.context}"]`,
       )
-      expect(createBtn).toHaveAttribute('data-developer-mode-priority', '350')
+      if (spec.expectedMarkers.includes('create button')) {
+        expect(createBtn).toHaveAttribute('data-developer-mode-priority', '350')
+      } else {
+        expect(createBtn).toBeNull()
+      }
 
       const crudTable = container.querySelector(
         `[data-developer-mode-name="crud table"][data-developer-mode-context="${spec.context}"]`,

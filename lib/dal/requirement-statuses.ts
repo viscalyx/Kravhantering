@@ -50,11 +50,11 @@ export async function listStatuses(
 ): Promise<RequirementStatusRecord[]> {
   const rows = await db
     .getRepository(requirementStatusEntity)
-    .find({ order: { sortOrder: 'ASC' } })
+    .find({ order: { sortOrder: 'ASC' }, where: { isSystem: true } })
   return rows.map(mapStatus)
 }
 
-export async function getStatusById(
+async function getStatusById(
   db: SqlServerDatabase,
   id: number,
 ): Promise<RequirementStatusRecord | null> {
@@ -62,31 +62,6 @@ export async function getStatusById(
     .getRepository(requirementStatusEntity)
     .findOne({ where: { id } })
   return row ? mapStatus(row) : null
-}
-
-export async function createStatus(
-  db: SqlServerDatabase,
-  data: {
-    nameSv: string
-    nameEn: string
-    sortOrder: number
-    color: string
-    iconName?: string | null
-    isSystem?: boolean
-  },
-): Promise<RequirementStatusRecord> {
-  const repository = db.getRepository(requirementStatusEntity)
-  const row = await repository.save(
-    repository.create({
-      nameSv: data.nameSv,
-      nameEn: data.nameEn,
-      sortOrder: data.sortOrder,
-      color: data.color,
-      iconName: data.iconName ?? null,
-      isSystem: data.isSystem ?? false,
-    }),
-  )
-  return mapStatus(row)
 }
 
 export async function updateStatus(
@@ -101,6 +76,12 @@ export async function updateStatus(
   },
 ): Promise<RequirementStatusRecord | undefined> {
   const repository = db.getRepository(requirementStatusEntity)
+  const existing = await getStatusById(db, id)
+  if (!existing) throw notFoundError('Status not found')
+  if (!existing.isSystem) {
+    throw conflictError('Only system requirement statuses can be edited')
+  }
+
   const patch: Partial<RequirementStatusEntity> = {}
   if (data.nameSv !== undefined) patch.nameSv = data.nameSv
   if (data.nameEn !== undefined) patch.nameEn = data.nameEn
@@ -112,33 +93,6 @@ export async function updateStatus(
   }
   const row = await repository.findOne({ where: { id } })
   return row ? mapStatus(row) : undefined
-}
-
-export async function deleteStatus(
-  db: SqlServerDatabase,
-  id: number,
-): Promise<void> {
-  const status = await getStatusById(db, id)
-  if (!status) throw notFoundError('Status not found')
-  if (status.isSystem) throw conflictError('Cannot delete a system status')
-
-  const usage = (
-    await db.query(
-      `
-        SELECT COUNT(*) AS count
-        FROM requirement_versions
-        WHERE requirement_status_id = @0
-      `,
-      [id],
-    )
-  )[0]
-  if (usage.count > 0) {
-    throw conflictError(
-      'Cannot delete a status that is in use by requirement versions',
-    )
-  }
-
-  await db.getRepository(requirementStatusEntity).delete(id)
 }
 
 // ─── Transitions ─────────────────────────────────────────────────────────────

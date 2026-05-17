@@ -18,6 +18,7 @@ export interface CrudAdminColumn<TItem> {
 }
 
 interface CrudAdminPanelProps<TItem extends { id: CrudId }, TForm> {
+  canCreate?: boolean
   canDelete?: (item: TItem) => boolean
   columns: CrudAdminColumn<TItem>[]
   controller: CrudAdminResourceController<TItem, TForm>
@@ -39,6 +40,7 @@ const inputClassName =
 
 export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
   canDelete = () => true,
+  canCreate = true,
   columns,
   controller,
   devContext,
@@ -57,20 +59,22 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
           <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
             {title}
           </h1>
-          <button
-            className="btn-primary inline-flex items-center gap-1.5"
-            {...devMarker({
-              context: devContext,
-              name: 'create button',
-              priority: 350,
-            })}
-            disabled={controller.submitting}
-            onClick={controller.openCreate}
-            type="button"
-          >
-            <Plus aria-hidden="true" className="h-4 w-4" />
-            {common('create')}
-          </button>
+          {canCreate && (
+            <button
+              className="btn-primary inline-flex items-center gap-1.5"
+              {...devMarker({
+                context: devContext,
+                name: 'create button',
+                priority: 350,
+              })}
+              disabled={controller.submitting}
+              onClick={controller.openCreate}
+              type="button"
+            >
+              <Plus aria-hidden="true" className="h-4 w-4" />
+              {common('create')}
+            </button>
+          )}
         </div>
 
         {visibleError && (
