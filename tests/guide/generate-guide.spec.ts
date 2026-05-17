@@ -272,6 +272,46 @@ async function setReactInputValue(
   )
 }
 
+async function revealRequirementStatusStepper(page: Page): Promise<void> {
+  await page
+    .locator('[data-developer-mode-name="status stepper"]')
+    .first()
+    .waitFor({ state: 'visible', timeout: 10_000 })
+
+  await page.evaluate(() => {
+    const stepper = document.querySelector<HTMLElement>(
+      '[data-developer-mode-name="status stepper"]',
+    )
+    const target =
+      document.querySelector<HTMLElement>(
+        '[data-requirement-detail-stepper-anchor="true"]',
+      ) ?? stepper
+    if (!target) return
+
+    const stickyBlockers = [
+      '[data-sticky-table-chrome="true"]',
+      '[data-sticky-table-header="true"]',
+    ]
+      .map(selector => document.querySelector<HTMLElement>(selector))
+      .filter((el): el is HTMLElement => el != null)
+
+    const stickyBottom = stickyBlockers.reduce((bottom, el) => {
+      const rect = el.getBoundingClientRect()
+      if (rect.bottom <= 0 || rect.top >= window.innerHeight) return bottom
+      return Math.max(bottom, rect.bottom)
+    }, 0)
+
+    const margin = 8
+    const targetTop = stickyBottom + margin
+    const targetRect = target.getBoundingClientRect()
+    window.scrollTo({
+      top: Math.max(0, window.scrollY + targetRect.top - targetTop),
+      behavior: 'instant',
+    })
+  })
+  await page.waitForTimeout(150)
+}
+
 async function snap(
   page: Page,
   name: string,
@@ -966,30 +1006,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
       await expect(panel).toBeVisible({ timeout: 10_000 })
 
-      // Walk the offsetParent chain to get the stepper's absolute document
-      // position (bypasses inner scroll containers that intercept scrollIntoView),
-      // then scroll window so the stepper sits just below the sticky header.
-      await page.evaluate(() => {
-        const stepper = document.querySelector(
-          '[data-developer-mode-name="status stepper"]',
-        ) as HTMLElement | null
-        if (!stepper) return
-        let top = 0
-        let el: HTMLElement | null = stepper
-        while (el) {
-          top += el.offsetTop
-          el = el.offsetParent as HTMLElement | null
-        }
-        const stickyHeader = document.querySelector(
-          '[data-sticky-table-header="true"]',
-        ) as HTMLElement | null
-        const headerHeight = stickyHeader?.offsetHeight ?? 0
-        window.scrollTo({
-          top: Math.max(0, top - headerHeight - 8),
-          behavior: 'instant',
-        })
-      })
-      await page.waitForTimeout(150)
+      await revealRequirementStatusStepper(page)
       // Remove any stale annotations and blur focus so neither shows in screenshot
       await removeAnnotation(page)
       await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
@@ -1055,27 +1072,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page.getByRole('button', { name: 'Publicera ↗' }),
       ).toBeVisible({ timeout: 15_000 })
 
-      await page.evaluate(() => {
-        const stepper = document.querySelector(
-          '[data-developer-mode-name="status stepper"]',
-        ) as HTMLElement | null
-        if (!stepper) return
-        let top = 0
-        let el: HTMLElement | null = stepper
-        while (el) {
-          top += el.offsetTop
-          el = el.offsetParent as HTMLElement | null
-        }
-        const stickyHeader = document.querySelector(
-          '[data-sticky-table-header="true"]',
-        ) as HTMLElement | null
-        const headerHeight = stickyHeader?.offsetHeight ?? 0
-        window.scrollTo({
-          top: Math.max(0, top - headerHeight - 8),
-          behavior: 'instant',
-        })
-      })
-      await page.waitForTimeout(150)
+      await revealRequirementStatusStepper(page)
 
       await snap(
         page,
@@ -1136,27 +1133,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page.getByRole('button', { name: 'Publicera ↗' }),
       ).toBeHidden({ timeout: 15_000 })
 
-      await page.evaluate(() => {
-        const stepper = document.querySelector(
-          '[data-developer-mode-name="status stepper"]',
-        ) as HTMLElement | null
-        if (!stepper) return
-        let top = 0
-        let el: HTMLElement | null = stepper
-        while (el) {
-          top += el.offsetTop
-          el = el.offsetParent as HTMLElement | null
-        }
-        const stickyHeader = document.querySelector(
-          '[data-sticky-table-header="true"]',
-        ) as HTMLElement | null
-        const headerHeight = stickyHeader?.offsetHeight ?? 0
-        window.scrollTo({
-          top: Math.max(0, top - headerHeight - 8),
-          behavior: 'instant',
-        })
-      })
-      await page.waitForTimeout(150)
+      await revealRequirementStatusStepper(page)
 
       await snap(
         page,
