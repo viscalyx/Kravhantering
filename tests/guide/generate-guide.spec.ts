@@ -5,7 +5,7 @@
  * på svenska. Skärmdumparna sparas i docs/guide/images/ och guiden skrivs
  * till docs/guide/README.md.
  *
- * Kör med: npm run generate-guide
+ * Kör med: npm run generate:guide
  *
  * OBS: Detta är ett engångsskript som muterar databasen (skapar krav,
  * avsteg och förbättringsförslag). Kör `npm run db:setup` för att
@@ -63,6 +63,11 @@ const MOCK_DEVIATION =
   'Tredjeparts­integration stödjer inte MFA för tillfället. Åtgärdas genom IP-begränsning tills leverantören tillhandahåller stöd.'
 const MOCK_SUGGESTION =
   'Överväg att lägga till biometrisk autentisering som ett tredje faktoralternativ i en framtida version.'
+const GUIDE_SPECIFICATION_SLUG = 'ETJANST-UPP-2026'
+const GUIDE_DEVIATION_REQUIREMENT_ID = 'BEH0002'
+const SPECIFICATION_ITEMS_PANEL_SELECTOR =
+  '[data-specification-detail-list-panel="items"]'
+const GUIDE_DEBUG = process.env.GUIDE_DEBUG !== '0'
 
 // ─── Typer ─────────────────────────────────────────────────────────────────
 
@@ -80,6 +85,7 @@ let seq = 0
 let currentSection = ''
 const entries: ScreenshotEntry[] = []
 const sectionIntros = new Map<string, string>()
+let guideRunCompleted = false
 
 function setSectionIntro(text: string) {
   sectionIntros.set(currentSection, text)
@@ -101,6 +107,140 @@ function textEntry(heading: string, description: string) {
 let createdRequirementUniqueId = ''
 
 // ─── Hjälpfunktioner ───────────────────────────────────────────────────────
+
+function compactUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`
+  } catch {
+    return url
+  }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function guideLog(message: string, details: Record<string, unknown> = {}) {
+  if (!GUIDE_DEBUG) return
+  const suffix = Object.entries(details)
+    .filter(([, value]) => value !== undefined && value !== '')
+    .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
+    .join(' ')
+  process.stdout.write(
+    `[guide] ${new Date().toISOString()} ${message}${suffix ? ` ${suffix}` : ''}\n`,
+  )
+}
+
+function attachGuideDiagnostics(page: Page) {
+  page.on('framenavigated', frame => {
+    if (frame !== page.mainFrame()) return
+    guideLog('page:navigated', { url: compactUrl(frame.url()) })
+  })
+
+  page.on('domcontentloaded', () => {
+    guideLog('page:domcontentloaded', { url: compactUrl(page.url()) })
+  })
+
+  page.on('load', () => {
+    guideLog('page:load', { url: compactUrl(page.url()) })
+  })
+
+  page.on('requestfailed', request => {
+    guideLog('request:failed', {
+      method: request.method(),
+      url: compactUrl(request.url()),
+      error: request.failure()?.errorText,
+    })
+  })
+
+  page.on('response', response => {
+    if (response.status() < 400) return
+    guideLog('response:error', {
+      status: response.status(),
+      url: compactUrl(response.url()),
+    })
+  })
+
+  page.on('pageerror', error => {
+    guideLog('page:error', { error: errorMessage(error) })
+  })
+}
+
+function resetGuideImagesDir() {
+  const expectedImagesDir = path.resolve('docs/guide/images')
+  if (IMAGES_DIR !== expectedImagesDir) {
+    throw new Error(
+      `Refusing to clear unexpected guide images dir: ${IMAGES_DIR}`,
+    )
+  }
+
+  guideLog('images:reset:start', { path: IMAGES_DIR })
+  fs.rmSync(IMAGES_DIR, { recursive: true, force: true })
+  fs.mkdirSync(IMAGES_DIR, { recursive: true })
+  guideLog('images:reset:end', { path: IMAGES_DIR })
+}
+
+async function guideStep(
+  page: Page,
+  name: string,
+  body: () => Promise<void>,
+): Promise<void> {
+  const startedAt = Date.now()
+  guideLog('step:start', { name, url: compactUrl(page.url()) })
+  await test.step(name, async () => {
+    try {
+      await body()
+      guideLog('step:end', {
+        name,
+        ms: Date.now() - startedAt,
+        url: compactUrl(page.url()),
+      })
+    } catch (error) {
+      guideLog('step:fail', {
+        name,
+        ms: Date.now() - startedAt,
+        url: compactUrl(page.url()),
+        error: errorMessage(error),
+      })
+      throw error
+    }
+  })
+}
+
+async function guideGoto(
+  page: Page,
+  url: string,
+  options: { networkIdleTimeout?: number; timeout?: number } = {},
+): Promise<void> {
+  const startedAt = Date.now()
+  guideLog('goto:start', { url })
+  try {
+    await page.goto(url, {
+      timeout: options.timeout ?? 45_000,
+      waitUntil: 'domcontentloaded',
+    })
+    guideLog('goto:domcontentloaded', {
+      ms: Date.now() - startedAt,
+      url: compactUrl(page.url()),
+    })
+    await page.waitForLoadState('networkidle', {
+      timeout: options.networkIdleTimeout ?? 10_000,
+    })
+    guideLog('goto:networkidle', {
+      ms: Date.now() - startedAt,
+      url: compactUrl(page.url()),
+    })
+  } catch (error) {
+    guideLog('goto:fail', {
+      ms: Date.now() - startedAt,
+      target: url,
+      url: compactUrl(page.url()),
+      error: errorMessage(error),
+    })
+    throw error
+  }
+}
 
 /**
  * Set a React controlled input/textarea value reliably by using the native
@@ -155,18 +295,36 @@ async function snap(
   seq++
   const filename = `${String(seq).padStart(3, '0')}-${name}.png`
   const filepath = path.join(IMAGES_DIR, filename)
-  if (options.selector) {
-    await page.locator(options.selector).screenshot({
-      path: filepath,
-      animations: 'disabled',
+  guideLog('screenshot:start', {
+    seq,
+    name,
+    selector: options.selector,
+    fullPage: options.selector ? undefined : (options.fullPage ?? true),
+    url: compactUrl(page.url()),
+  })
+  try {
+    if (options.selector) {
+      await page.locator(options.selector).screenshot({
+        path: filepath,
+        animations: 'disabled',
+      })
+    } else {
+      await page.screenshot({
+        path: filepath,
+        fullPage: options.fullPage ?? true,
+        animations: 'disabled',
+      })
+    }
+  } catch (error) {
+    guideLog('screenshot:fail', {
+      seq,
+      name,
+      url: compactUrl(page.url()),
+      error: errorMessage(error),
     })
-  } else {
-    await page.screenshot({
-      path: filepath,
-      fullPage: options.fullPage ?? true,
-      animations: 'disabled',
-    })
+    throw error
   }
+  guideLog('screenshot:end', { seq, file: filename })
   entries.push({ seq, filename, heading, description, section: currentSection })
 }
 
@@ -181,8 +339,7 @@ async function gotoRetry(
   waitMs = 3_000,
 ): Promise<void> {
   for (let attempt = 0; attempt <= retries; attempt++) {
-    await page.goto(url)
-    await page.waitForLoadState('networkidle')
+    await guideGoto(page, url)
     const is404 =
       (await page.locator('text=Sidan kunde inte hittas').count()) > 0
     if (!is404) return
@@ -362,7 +519,7 @@ function buildMarkdown(allEntries: ScreenshotEntry[]): string {
   const date = new Date().toISOString().split('T')[0]
 
   return [
-    `<!-- AUTO-GENERERAD — redigera inte manuellt. Kör: npm run generate-guide -->`,
+    `<!-- AUTO-GENERERAD — redigera inte manuellt. Kör: npm run generate:guide -->`,
     `# Kravhantering — Användarguide`,
     '',
     `> Guiden genererades automatiskt av Playwright ${date}.`,
@@ -383,28 +540,40 @@ test.describe.configure({ mode: 'serial' })
 
 test.describe('Kravhantering — Guidegenerering', () => {
   test.beforeAll(() => {
-    // Wipe images dir so stale screenshots from previous runs don't linger
-    fs.rmSync(IMAGES_DIR, { recursive: true, force: true })
-    fs.mkdirSync(IMAGES_DIR, { recursive: true })
+    resetGuideImagesDir()
   })
 
   test.afterAll(() => {
+    if (!guideRunCompleted) {
+      guideLog('write:readme:skip', {
+        entries: entries.length,
+        reason: 'guide run did not complete',
+      })
+      process.stdout.write(
+        `\n✗ Guidegenerering slutfördes inte; ${README_PATH} uppdaterades inte. Delvisa skärmdumpar finns i ${IMAGES_DIR}\n`,
+      )
+      return
+    }
+
+    guideLog('write:readme:start', { entries: entries.length })
     fs.mkdirSync(path.dirname(README_PATH), { recursive: true })
     fs.writeFileSync(README_PATH, buildMarkdown(entries))
     process.stdout.write(`\n✓ Guide skriven till ${README_PATH}\n`)
     process.stdout.write(
       `✓ ${entries.length} skärmdumpar sparade i ${IMAGES_DIR}\n`,
     )
+    guideLog('write:readme:end', { path: README_PATH, entries: entries.length })
   })
 
   test('Generera användarguide', async ({ page }) => {
+    attachGuideDiagnostics(page)
+    guideLog('run:start', { url: compactUrl(page.url()) })
     // ── Sektion 1: Översikt och navigering ─────────────────────────────────
     currentSection = 'Översikt och navigering'
 
-    await test.step('Startsida', async () => {
+    await guideStep(page, 'Startsida', async () => {
       // Use uniqueIdSearch URL param to pre-filter to a short, readable list
-      await page.goto('/sv/requirements?uniqueIdSearch=INT00')
-      await page.waitForLoadState('networkidle')
+      await guideGoto(page, '/sv/requirements?uniqueIdSearch=INT00')
       await expect(
         page.locator('[data-sticky-table-header="true"]'),
       ).toBeVisible({ timeout: 15_000 })
@@ -421,7 +590,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Navigationsfält', async () => {
+    await guideStep(page, 'Navigationsfält', async () => {
       await snap(
         page,
         'navigering',
@@ -431,10 +600,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Språkväljare', async () => {
+    await guideStep(page, 'Språkväljare', async () => {
       // Navigate to the English locale to show the UI in English
-      await page.goto('/en/requirements?uniqueIdSearch=INT00')
-      await page.waitForLoadState('networkidle')
+      await guideGoto(page, '/en/requirements?uniqueIdSearch=INT00')
       await expect(
         page.locator('[data-sticky-table-header="true"]'),
       ).toBeVisible({ timeout: 10_000 })
@@ -449,16 +617,14 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
       await removeAnnotation(page)
       // Switch back to Swedish for the rest of the guide
-      await page.goto('/sv/requirements')
-      await page.waitForLoadState('networkidle')
+      await guideGoto(page, '/sv/requirements')
     })
 
     // ── Sektion 2: Kravkatalogen ───────────────────────────────────────────
     currentSection = 'Kravkatalogen'
 
-    await test.step('Kravtabell', async () => {
-      await page.goto('/sv/requirements')
-      await page.waitForLoadState('networkidle')
+    await guideStep(page, 'Kravtabell', async () => {
+      await guideGoto(page, '/sv/requirements')
       await expect(
         page.locator('[data-sticky-table-header="true"]'),
       ).toBeVisible({ timeout: 15_000 })
@@ -485,7 +651,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       }
     })
 
-    await test.step('Sök och filtrera', async () => {
+    await guideStep(page, 'Sök och filtrera', async () => {
       const searchInput = page
         .locator(
           'input[type="search"], input[placeholder*="Sök"], input[placeholder*="sök"]',
@@ -505,7 +671,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       }
     })
 
-    await test.step('Kolumnkonfiguration', async () => {
+    await guideStep(page, 'Kolumnkonfiguration', async () => {
       const picker = page.locator('[data-column-picker-trigger="true"]')
       if ((await picker.count()) > 0) {
         await addAnnotation(page, '[data-column-picker-trigger="true"]')
@@ -524,9 +690,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
       }
     })
 
-    await test.step('Filtrering och sortering', async () => {
-      await page.goto('/sv/requirements')
-      await page.waitForLoadState('networkidle')
+    await guideStep(page, 'Filtrering och sortering', async () => {
+      await guideGoto(page, '/sv/requirements')
       await expect(
         page.locator('[data-sticky-table-header="true"]'),
       ).toBeVisible({ timeout: 10_000 })
@@ -568,7 +733,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       })
     })
 
-    await test.step('Inline-detaljvy — öppna', async () => {
+    await guideStep(page, 'Inline-detaljvy — öppna', async () => {
       // IDN0001 column filter is active from the previous step — click the single row to open detail
       await expect(page.locator('tbody tr').first()).toBeVisible({
         timeout: 10_000,
@@ -594,7 +759,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       }
     })
 
-    await test.step('Inline-detaljvy — övre del', async () => {
+    await guideStep(page, 'Inline-detaljvy — övre del', async () => {
       const detailPanel = page.locator('[data-expanded-detail-cell="true"]')
       if ((await detailPanel.count()) > 0) {
         // Temporarily hide förbättringsförslag so the full-page screenshot
@@ -637,7 +802,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       }
     })
 
-    await test.step('Inline-detaljvy — versionsnavigering', async () => {
+    await guideStep(page, 'Inline-detaljvy — versionsnavigering', async () => {
       const detailPanel = page.locator('[data-expanded-detail-cell="true"]')
       if ((await detailPanel.count()) > 0) {
         const expandToggle = page.locator(
@@ -738,7 +903,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
     // ── Sektion 3: Skapa krav ──────────────────────────────────────────────
     currentSection = 'Skapa ett nytt krav'
 
-    await test.step('Formulär — tomt', async () => {
+    await guideStep(page, 'Formulär — tomt', async () => {
       await gotoRetry(page, '/sv/requirements/new')
       await snap(
         page,
@@ -748,7 +913,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Formulär — ifyllt', async () => {
+    await guideStep(page, 'Formulär — ifyllt', async () => {
       await page.waitForSelector('#description', {
         state: 'visible',
         timeout: 15_000,
@@ -773,7 +938,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Krav skapat — inline-detaljvy', async () => {
+    await guideStep(page, 'Krav skapat — inline-detaljvy', async () => {
       await page.click('button[type="submit"]')
       await page.waitForURL(/\/sv\/requirements/, { timeout: 15_000 })
       expect(page.url()).not.toContain('undefined')
@@ -798,31 +963,6 @@ test.describe('Kravhantering — Guidegenerering', () => {
       }
 
       const panel = page.locator('[data-expanded-detail-cell="true"]')
-
-      if (createdRequirementUniqueId) {
-        // Navigate with ?selected= so the panel is open before filtering.
-        // Filter after the panel is open — the selected row stays visible in
-        // the filtered results, so React keeps the panel open.
-        await page.goto(
-          `/sv/requirements?selected=${createdRequirementUniqueId}`,
-        )
-        await page.waitForLoadState('networkidle')
-        await expect(panel).toBeVisible({ timeout: 10_000 })
-
-        const filterBtn = page.getByLabel('Filtrera efter Krav-ID')
-        await filterBtn.click()
-        const filterInput = page.getByRole('textbox', { name: 'Krav-ID' })
-        await filterInput.fill(createdRequirementUniqueId)
-        await filterInput.press('Enter')
-        await expect(page.locator('tbody tr').first()).toBeVisible({
-          timeout: 10_000,
-        })
-        await page.evaluate(() =>
-          (document.activeElement as HTMLElement)?.blur(),
-        )
-        // Give React time to settle selection state after filter re-render
-        await page.waitForTimeout(500)
-      }
 
       await expect(panel).toBeVisible({ timeout: 10_000 })
 
@@ -866,7 +1006,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
     // ── Sektion 4: Kravdetaljer och statusövergångar ───────────────────────
     currentSection = 'Kravdetaljer och statusövergångar'
 
-    await test.step('Statusstegare — närbild', async () => {
+    await guideStep(page, 'Statusstegare — närbild', async () => {
       await snap(
         page,
         'statusstegare',
@@ -876,7 +1016,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Övergång till Granskning', async () => {
+    await guideStep(page, 'Övergång till Granskning', async () => {
       const granskning = page.getByRole('button', { name: 'Granskning ↗' })
       await expect(granskning).toBeVisible({ timeout: 10_000 })
 
@@ -888,23 +1028,25 @@ test.describe('Kravhantering — Guidegenerering', () => {
         { fullPage: false },
       )
 
-      if (createdRequirementUniqueId) {
-        const transitionRes = await page.request.post(
-          `/api/requirement-transitions/${createdRequirementUniqueId}`,
-          { data: { statusId: 2 } },
+      const transitionResPromise = page.waitForResponse(
+        response =>
+          /\/api\/requirement-transitions\//.test(response.url()) &&
+          response.request().method() === 'POST',
+        { timeout: 15_000 },
+      )
+      await granskning.click()
+      const transitionRes = await transitionResPromise
+      if (!transitionRes.ok()) {
+        const body = await transitionRes.text()
+        throw new Error(
+          `Transition to Granskning failed: HTTP ${transitionRes.status()} — ${body.slice(0, 200)}`,
         )
-        if (!transitionRes.ok()) {
-          const body = await transitionRes.text()
-          throw new Error(
-            `Transition to Granskning failed: HTTP ${transitionRes.status()} — ${body.slice(0, 200)}`,
-          )
-        }
       }
 
       const grTarget = createdRequirementUniqueId
         ? `/sv/requirements?selected=${createdRequirementUniqueId}`
         : '/sv/requirements'
-      await page.goto(grTarget)
+      await guideGoto(page, grTarget)
       await expect(
         page.locator('[data-expanded-detail-cell="true"]'),
       ).toBeVisible({ timeout: 10_000 })
@@ -912,21 +1054,6 @@ test.describe('Kravhantering — Guidegenerering', () => {
       await expect(
         page.getByRole('button', { name: 'Publicera ↗' }),
       ).toBeVisible({ timeout: 15_000 })
-
-      if (createdRequirementUniqueId) {
-        const filterBtn = page.getByLabel('Filtrera efter Krav-ID')
-        await filterBtn.click()
-        const filterInput = page.getByRole('textbox', { name: 'Krav-ID' })
-        await filterInput.fill(createdRequirementUniqueId)
-        await filterInput.press('Enter')
-        await expect(page.locator('tbody tr').first()).toBeVisible({
-          timeout: 10_000,
-        })
-        await page.evaluate(() =>
-          (document.activeElement as HTMLElement)?.blur(),
-        )
-        await page.waitForTimeout(500)
-      }
 
       await page.evaluate(() => {
         const stepper = document.querySelector(
@@ -959,7 +1086,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Övergång till Publicerad', async () => {
+    await guideStep(page, 'Övergång till Publicerad', async () => {
       const publicera = page.getByRole('button', { name: 'Publicera ↗' })
       await expect(publicera).toBeVisible({ timeout: 10_000 })
 
@@ -979,30 +1106,28 @@ test.describe('Kravhantering — Guidegenerering', () => {
         { fullPage: false },
       )
 
-      // Dismiss dialog and perform the transition via the API directly to avoid
-      // the same dev-server routing issue as the Granskning transition.
-      await page.keyboard.press('Escape')
+      const transitionResPromise = page.waitForResponse(
+        response =>
+          /\/api\/requirement-transitions\//.test(response.url()) &&
+          response.request().method() === 'POST',
+        { timeout: 15_000 },
+      )
+      await confirmBtn.click()
+      const transitionRes = await transitionResPromise
+      if (!transitionRes.ok()) {
+        const body = await transitionRes.text()
+        throw new Error(
+          `Transition to Publicerad failed: HTTP ${transitionRes.status()} — ${body.slice(0, 200)}`,
+        )
+      }
       await expect(page.locator('[role="dialog"]')).toBeHidden({
         timeout: 5_000,
       })
 
-      if (createdRequirementUniqueId) {
-        const transitionRes = await page.request.post(
-          `/api/requirement-transitions/${createdRequirementUniqueId}`,
-          { data: { statusId: 3 } },
-        )
-        if (!transitionRes.ok()) {
-          const body = await transitionRes.text()
-          throw new Error(
-            `Transition to Publicerad failed: HTTP ${transitionRes.status()} — ${body.slice(0, 200)}`,
-          )
-        }
-      }
-
       const pubTarget = createdRequirementUniqueId
         ? `/sv/requirements?selected=${createdRequirementUniqueId}`
         : '/sv/requirements'
-      await page.goto(pubTarget)
+      await guideGoto(page, pubTarget)
       await expect(
         page.locator('[data-expanded-detail-cell="true"]'),
       ).toBeVisible({ timeout: 10_000 })
@@ -1010,21 +1135,6 @@ test.describe('Kravhantering — Guidegenerering', () => {
       await expect(
         page.getByRole('button', { name: 'Publicera ↗' }),
       ).toBeHidden({ timeout: 15_000 })
-
-      if (createdRequirementUniqueId) {
-        const filterBtn = page.getByLabel('Filtrera efter Krav-ID')
-        await filterBtn.click()
-        const filterInput = page.getByRole('textbox', { name: 'Krav-ID' })
-        await filterInput.fill(createdRequirementUniqueId)
-        await filterInput.press('Enter')
-        await expect(page.locator('tbody tr').first()).toBeVisible({
-          timeout: 10_000,
-        })
-        await page.evaluate(() =>
-          (document.activeElement as HTMLElement)?.blur(),
-        )
-        await page.waitForTimeout(500)
-      }
 
       await page.evaluate(() => {
         const stepper = document.querySelector(
@@ -1063,9 +1173,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
       'Ett **kravunderlag** samlar en uppsättning krav som hör ihop inom ramen för ett specifikt projekt, en leverans eller ett verksamhetsområde. Underlaget fungerar som en spårbar enhet — du kan följa implementationsstatus per krav, begära avsteg och generera granskningsrapporter direkt från underlaget.',
     )
 
-    await test.step('Kravunderlagslista', async () => {
-      await page.goto('/sv/specifications')
-      await page.waitForLoadState('networkidle')
+    await guideStep(page, 'Kravunderlagslista', async () => {
+      await guideGoto(page, '/sv/specifications')
       await snap(
         page,
         'kravunderlagslista',
@@ -1074,7 +1183,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Sök kravunderlag', async () => {
+    await guideStep(page, 'Sök kravunderlag', async () => {
       const searchInput = page
         .locator(
           'input[type="search"], input[placeholder*="Sök"], input[placeholder*="namn"]',
@@ -1094,7 +1203,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       }
     })
 
-    await test.step('Skapa nytt kravunderlag', async () => {
+    await guideStep(page, 'Skapa nytt kravunderlag', async () => {
       const newPkgBtn = page.getByRole('button', { name: 'Nytt kravunderlag' })
       if ((await newPkgBtn.count()) > 0) {
         await newPkgBtn.click()
@@ -1111,9 +1220,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
       }
     })
 
-    await test.step('Kravunderlagsdetalj', async () => {
-      await page.goto('/sv/specifications/ETJANST-UPP-2026')
-      await page.waitForLoadState('networkidle')
+    await guideStep(page, 'Kravunderlagsdetalj', async () => {
+      await guideGoto(page, `/sv/specifications/${GUIDE_SPECIFICATION_SLUG}`)
       await snap(
         page,
         'kravunderlagsdetalj',
@@ -1123,7 +1231,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Lägg till krav i underlag', async () => {
+    await guideStep(page, 'Lägg till krav i underlag', async () => {
       // The page has two tables side by side; right panel = second tbody.
       const rightRows = page.locator('tbody').nth(1).locator('tr')
       const hasRightRows = (await rightRows.count()) > 0
@@ -1179,7 +1287,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       }
     })
 
-    await test.step('Redigera kravunderlag', async () => {
+    await guideStep(page, 'Redigera kravunderlag', async () => {
       const editBtn = page.getByRole('button', { name: /Redigera/i }).first()
       if ((await editBtn.count()) > 0) {
         await editBtn.click()
@@ -1204,9 +1312,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
       'Ett **avsteg** dokumenterar att ett krav i ett kravunderlag inte kan uppfyllas fullt ut som specificerat, och varför. Avstegsprocessen är trestegsbaserad: **Utkast** → **Granskning begärd** → **Beslutad** (godkänd eller avslagen). Nedan visas varje steg i processen.',
     )
 
-    await test.step('Kravunderlag med kravposter', async () => {
-      await page.goto('/sv/specifications/ETJANST-UPP-2026')
-      await page.waitForLoadState('networkidle')
+    await guideStep(page, 'Kravunderlag med kravposter', async () => {
+      await guideGoto(page, `/sv/specifications/${GUIDE_SPECIFICATION_SLUG}`)
 
       await snap(
         page,
@@ -1217,202 +1324,229 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Kravposter — expanderat krav', async () => {
-      // The left panel only renders when specificationItems.length > 0 — wait for it to appear
-      // (it's absent while items are loading or if the specification is empty)
-      await page
-        .locator('[data-specification-detail-list-panel="items"]')
-        .waitFor({ state: 'visible', timeout: 15_000 })
-        .catch(() => {})
+    await guideStep(page, 'Kravposter — expanderat krav', async () => {
+      // The left panel only renders when specificationItems.length > 0.
+      // Guide generation requires the seeded specification fixture.
+      const itemsPanel = page.locator(SPECIFICATION_ITEMS_PANEL_SELECTOR)
+      await expect(
+        itemsPanel,
+        `Guide generation requires seeded specification ${GUIDE_SPECIFICATION_SLUG} with the items panel ${SPECIFICATION_ITEMS_PANEL_SELECTOR}. Run npm run generate:guide or npm run db:setup before generating the guide.`,
+      ).toBeVisible({ timeout: 15_000 })
 
       // Scope to the left panel (items in specification) — right panel is "available" requirements
-      const allRows = page.locator(
-        '[data-specification-detail-list-panel="items"] tbody tr',
-      )
+      const allRows = itemsPanel.locator('tbody tr')
       const rowCount = await allRows.count()
+      expect(
+        rowCount,
+        `Guide generation requires at least one item row in ${SPECIFICATION_ITEMS_PANEL_SELECTOR} for seeded specification ${GUIDE_SPECIFICATION_SLUG}.`,
+      ).toBeGreaterThan(0)
 
-      if (rowCount > 0) {
-        // BEH0002 is seeded without deviations — locate it by identifier text.
-        const firstRow = allRows.filter({ hasText: 'BEH0002' })
-        await firstRow
-          .first()
-          .evaluate((el: Element) => (el as HTMLElement).click())
-        await expect(
-          page.locator('[data-expanded-detail-cell="true"]'),
-        ).toBeVisible({ timeout: 10_000 })
+      // BEH0002 is seeded without deviations — locate it by identifier text.
+      const firstRow = allRows.filter({
+        hasText: GUIDE_DEVIATION_REQUIREMENT_ID,
+      })
+      await expect(
+        firstRow,
+        `Guide generation requires seeded requirement ${GUIDE_DEVIATION_REQUIREMENT_ID} in specification ${GUIDE_SPECIFICATION_SLUG} so the deviation walkthrough can run.`,
+      ).toHaveCount(1)
+      await firstRow
+        .first()
+        .evaluate((el: Element) => (el as HTMLElement).click())
+      await expect(
+        page.locator('[data-expanded-detail-cell="true"]'),
+      ).toBeVisible({ timeout: 10_000 })
 
-        // Wait for the deviation fetch inside the panel to complete —
-        // "Begär ett avsteg" only renders once the fetch returns no existing deviations
-        const deviationBtn = page.getByRole('button', {
-          name: 'Begär ett avsteg',
+      // Wait for the deviation fetch inside the panel to complete —
+      // "Begär ett avsteg" only renders once the fetch returns no existing deviations
+      const deviationBtn = page.getByRole('button', {
+        name: 'Begär ett avsteg',
+      })
+      await expect(
+        deviationBtn,
+        `Guide generation requires ${GUIDE_DEVIATION_REQUIREMENT_ID} to have no active deviation so "Begär ett avsteg" is visible.`,
+      ).toBeVisible({ timeout: 10_000 })
+      // Blur active element so no focus ring appears in the screenshot
+      await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+      await snap(
+        page,
+        'krav-i-kravunderlag-expanderat',
+        'Krav expanderat i underlagskontext',
+        '**Steg 2 — Expandera ett krav.** Klicka på en rad i listan för att öppna kravets detaljpanel. Om inget aktivt avsteg finns visas knappen **"Begär ett avsteg"** — klicka på den för att starta avstegsprocessen.',
+        { fullPage: false },
+      )
+
+      await guideStep(page, 'Avstegsformulär — öppet', async () => {
+        await deviationBtn.click()
+        await expect(page.locator('[role="dialog"]')).toBeVisible({
+          timeout: 5_000,
         })
-        await deviationBtn.waitFor({ state: 'visible', timeout: 10_000 })
-        // Blur active element so no focus ring appears in the screenshot
-        await page.evaluate(() =>
-          (document.activeElement as HTMLElement)?.blur(),
-        )
+
         await snap(
           page,
-          'krav-i-kravunderlag-expanderat',
-          'Krav expanderat i underlagskontext',
-          '**Steg 2 — Expandera ett krav.** Klicka på en rad i listan för att öppna kravets detaljpanel. Om inget aktivt avsteg finns visas knappen **"Begär ett avsteg"** — klicka på den för att starta avstegsprocessen.',
+          'avstegsformular-tomt',
+          'Formulär för avstegsansökan',
+          '**Steg 3 — Fyll i avstegsformuläret.** Ange en motivering som förklarar varför kravet inte kan uppfyllas som specificerat och vilka kompenserande åtgärder som vidtas. Begärande användare registreras automatiskt.',
+          { fullPage: false },
+        )
+      })
+
+      await guideStep(page, 'Avstegsformulär — ifyllt', async () => {
+        await page.locator('#deviation-motivation').fill(MOCK_DEVIATION)
+
+        await snap(
+          page,
+          'avstegsformular-ifyllt',
+          'Avstegsformulär ifyllt',
+          'Klicka på **"Registrera avsteg"** för att spara. Motiveringstexten ingår sedan i avstegsgranskningsrapporten.',
+          { fullPage: false },
+        )
+      })
+
+      await guideStep(page, 'Avsteg registrerat', async () => {
+        const submitBtn = page.getByRole('button', {
+          name: 'Registrera avsteg',
+        })
+        // Ensure button is enabled (fill() should have updated React state)
+        await expect(submitBtn).toBeEnabled({ timeout: 3_000 })
+        // Set up the response listener BEFORE clicking so we don't miss a fast response.
+        // Predicate filters to the POST submit response so this doesn't resolve
+        // on an earlier GET against the same endpoint.
+        const deviationResPromise = page.waitForResponse(
+          response =>
+            /\/api\/specification-item-deviations\//.test(response.url()) &&
+            response.request().method() === 'POST',
+          { timeout: 15_000 },
+        )
+        await submitBtn.click()
+        const deviationRes = await deviationResPromise
+        if (!deviationRes.ok()) {
+          throw new Error(
+            `Deviation POST failed: ${deviationRes.status()} ${await deviationRes.text()}`,
+          )
+        }
+        // Dialog closes on success
+        await expect(page.locator('[role="dialog"]')).not.toBeVisible({
+          timeout: 5_000,
+        })
+        await page.waitForTimeout(500)
+
+        await snap(
+          page,
+          'avsteg-registrerat',
+          'Avsteg registrerat — Utkast',
+          '**Steg 4 — Utkastläge.** Avsteget visas nu i detaljpanelen med sin motivering. I utkastläget kan det fortfarande redigeras eller tas bort. När det är klart, klicka **"Granskning ↗"** för att skicka det till granskning.',
+          { fullPage: false },
+        )
+      })
+
+      await guideStep(page, 'Avsteg — skicka för granskning', async () => {
+        const reviewBtn = page.getByRole('button', { name: /Granskning\s*↗/ })
+        await expect(
+          reviewBtn,
+          `Guide generation expects the draft deviation for ${GUIDE_DEVIATION_REQUIREMENT_ID} to expose the review-request transition.`,
+        ).toBeVisible({ timeout: 10_000 })
+        await reviewBtn.click()
+        // Wait for the button to disappear — confirms the transition has
+        // completed and the stepper has re-rendered to "Granskning"
+        await reviewBtn.waitFor({ state: 'hidden', timeout: 10_000 })
+
+        await snap(
+          page,
+          'avsteg-granskning',
+          'Avsteg — granskning begärd',
+          '**Steg 5 — Granskning begärd.** Avsteget är nu låst för redigering och inväntar beslut. En behörig granskare klickar **"Beslutad ↗"** för att registrera ett beslut, eller **"← Utkast"** för att återföra det om komplettering behövs.',
+          { fullPage: false },
+        )
+      })
+
+      await guideStep(page, 'Avsteg — beslut', async () => {
+        const decidedBtn = page.getByRole('button', { name: /Beslutad\s*↗/ })
+        await expect(
+          decidedBtn,
+          `Guide generation expects the review-requested deviation for ${GUIDE_DEVIATION_REQUIREMENT_ID} to expose the decision transition.`,
+        ).toBeVisible({ timeout: 10_000 })
+        await decidedBtn.click()
+        await expect(page.locator('[role="dialog"]')).toBeVisible({
+          timeout: 5_000,
+        })
+
+        await snap(
+          page,
+          'avsteg-beslut-formular',
+          'Registrera beslut',
+          '**Steg 6 — Registrera beslut.** Granskaren anger en **beslutsmotivering**, vem som fattat beslutet och datum. Välj sedan **"Godkänn"** eller **"Avslå"** för att slutföra beslutet.',
           { fullPage: false },
         )
 
-        await test.step('Avstegsformulär — öppet', async () => {
-          await deviationBtn.click()
-          await expect(page.locator('[role="dialog"]')).toBeVisible({
-            timeout: 5_000,
-          })
-
-          await snap(
-            page,
-            'avstegsformular-tomt',
-            'Formulär för avstegsansökan',
-            '**Steg 3 — Fyll i avstegsformuläret.** Ange en motivering som förklarar varför kravet inte kan uppfyllas som specificerat och vilka kompenserande åtgärder som vidtas. Begärande användare registreras automatiskt.',
-            { fullPage: false },
-          )
+        await page.keyboard.press('Escape')
+        await expect(page.locator('[role="dialog"]')).toBeHidden({
+          timeout: 5_000,
         })
+      })
 
-        await test.step('Avstegsformulär — ifyllt', async () => {
-          await page.locator('#deviation-motivation').fill(MOCK_DEVIATION)
-
-          await snap(
-            page,
-            'avstegsformular-ifyllt',
-            'Avstegsformulär ifyllt',
-            'Klicka på **"Registrera avsteg"** för att spara. Motiveringstexten ingår sedan i avstegsgranskningsrapporten.',
-            { fullPage: false },
-          )
+      await guideStep(page, 'Avsteg — granskningsrapport', async () => {
+        const reportTrigger = page
+          .locator('[data-expanded-detail-cell="true"]')
+          .getByRole('button', { name: t('common.print') })
+        await expect(
+          reportTrigger,
+          `Guide generation expects the report menu trigger to be visible for ${GUIDE_DEVIATION_REQUIREMENT_ID}.`,
+        ).toBeVisible({ timeout: 10_000 })
+        await reportTrigger.click()
+        const reportMenuItem = page.getByRole('menuitem', {
+          name: t('deviation.printDeviationReviewReport'),
         })
-
-        await test.step('Avsteg registrerat', async () => {
-          const submitBtn = page.getByRole('button', {
-            name: 'Registrera avsteg',
-          })
-          // Ensure button is enabled (fill() should have updated React state)
-          await expect(submitBtn).toBeEnabled({ timeout: 3_000 })
-          // Set up the response listener BEFORE clicking so we don't miss a fast response.
-          // Predicate filters to the POST submit response so this doesn't resolve
-          // on an earlier GET against the same endpoint.
-          const deviationResPromise = page.waitForResponse(
-            response =>
-              /\/api\/specification-item-deviations\//.test(response.url()) &&
-              response.request().method() === 'POST',
-            { timeout: 15_000 },
-          )
-          await submitBtn.click()
-          const deviationRes = await deviationResPromise
-          if (!deviationRes.ok()) {
-            throw new Error(
-              `Deviation POST failed: ${deviationRes.status()} ${await deviationRes.text()}`,
-            )
-          }
-          // Dialog closes on success
-          await expect(page.locator('[role="dialog"]')).not.toBeVisible({
-            timeout: 5_000,
-          })
-          await page.waitForTimeout(500)
-
-          await snap(
-            page,
-            'avsteg-registrerat',
-            'Avsteg registrerat — Utkast',
-            '**Steg 4 — Utkastläge.** Avsteget visas nu i detaljpanelen med sin motivering. I utkastläget kan det fortfarande redigeras eller tas bort. När det är klart, klicka **"Granskning ↗"** för att skicka det till granskning.',
-            { fullPage: false },
-          )
-        })
-
-        await test.step('Avsteg — skicka för granskning', async () => {
-          const reviewBtn = page.getByRole('button', { name: /Granskning\s*↗/ })
-          if ((await reviewBtn.count()) > 0) {
-            await reviewBtn.click()
-            // Wait for the button to disappear — confirms the transition has
-            // completed and the stepper has re-rendered to "Granskning"
-            await reviewBtn.waitFor({ state: 'hidden', timeout: 10_000 })
-
-            await snap(
-              page,
-              'avsteg-granskning',
-              'Avsteg — granskning begärd',
-              '**Steg 5 — Granskning begärd.** Avsteget är nu låst för redigering och inväntar beslut. En behörig granskare klickar **"Beslutad ↗"** för att registrera ett beslut, eller **"← Utkast"** för att återföra det om komplettering behövs.',
-              { fullPage: false },
-            )
-          }
-        })
-
-        await test.step('Avsteg — beslut', async () => {
-          const decidedBtn = page.getByRole('button', { name: /Beslutad\s*↗/ })
-          if ((await decidedBtn.count()) > 0) {
-            await decidedBtn.click()
-            await expect(page.locator('[role="dialog"]')).toBeVisible({
-              timeout: 5_000,
-            })
-
-            await snap(
-              page,
-              'avsteg-beslut-formular',
-              'Registrera beslut',
-              '**Steg 6 — Registrera beslut.** Granskaren anger en **beslutsmotivering**, vem som fattat beslutet och datum. Välj sedan **"Godkänn"** eller **"Avslå"** för att slutföra beslutet.',
-              { fullPage: false },
-            )
-
-            await page.keyboard.press('Escape')
-            await expect(page.locator('[role="dialog"]')).toBeHidden({
-              timeout: 5_000,
-            })
-          }
-        })
-
-        await test.step('Avsteg — granskningsrapport', async () => {
-          const reportBtn = page.getByRole('button', {
-            name: /granskningsrapport/i,
-          })
-          if ((await reportBtn.count()) > 0) {
-            await addAnnotation(page, 'button:has-text("granskningsrapport")', {
-              arrowSide: 'left',
-            })
-            await snap(
-              page,
-              'avsteg-rapport-knapp',
-              'Granskningsrapport för avsteg',
-              '**Steg 7 — Granskningsrapport.** När ett beslut har registrerats kan du generera en **granskningsrapport** direkt från detaljpanelen. Rapporten sammanställer kravets text, avstegets motivering och beslutet — i ett format lämpligt för dokumentation och revision. Den kan skrivas ut eller laddas ned som PDF.',
-              { fullPage: false },
-            )
-            await removeAnnotation(page)
-          }
-        })
-      }
+        await expect(
+          reportMenuItem,
+          `Guide generation expects the deviation review report option to be visible for ${GUIDE_DEVIATION_REQUIREMENT_ID}.`,
+        ).toBeVisible({ timeout: 5_000 })
+        await addAnnotation(
+          page,
+          '[data-developer-mode-value="print deviation review"]',
+          { arrowSide: 'left' },
+        )
+        await snap(
+          page,
+          'avsteg-rapport-knapp',
+          'Avsteg — granskningsrapport',
+          '**Steg 7 — Granskningsrapport.** När ett avsteg har skickats till granskning kan du generera en **granskningsrapport** direkt från detaljpanelens rapportmeny. Rapporten sammanställer kravets text, avstegets motivering och beslutsunderlag — i ett format lämpligt för dokumentation och revision. Den kan skrivas ut eller laddas ned som PDF.',
+          { fullPage: false },
+        )
+        await removeAnnotation(page)
+      })
     })
 
     // ── Sektion 7: Förbättringsförslag ────────────────────────────────────
     currentSection = 'Förbättringsförslag'
 
-    await test.step('Förbättringsförslag — lämna förslag på ANV0002', async () => {
-      // Navigate to catalog filtered on ANV0002 — clean requirement with no existing suggestions
-      await page.goto('/sv/requirements?selected=ANV0002')
-      await page.waitForLoadState('networkidle')
-      await expect(
-        page.locator('[data-expanded-detail-cell="true"]'),
-      ).toBeVisible({ timeout: 10_000 })
+    await guideStep(
+      page,
+      'Förbättringsförslag — lämna förslag på ANV0002',
+      async () => {
+        // Navigate to catalog filtered on ANV0002 — clean requirement with no existing suggestions
+        await guideGoto(page, '/sv/requirements?selected=ANV0002')
+        await expect(
+          page.locator('[data-expanded-detail-cell="true"]'),
+        ).toBeVisible({ timeout: 10_000 })
 
-      // Scroll the improvement suggestions section into view
-      const suggSection = page.locator(
-        'section[aria-labelledby="improvementSuggestionsHeading"]',
-      )
-      await suggSection.scrollIntoViewIfNeeded()
-      await page.waitForTimeout(300)
+        // Scroll the improvement suggestions section into view
+        const suggSection = page.locator(
+          'section[aria-labelledby="improvementSuggestionsHeading"]',
+        )
+        await suggSection.scrollIntoViewIfNeeded()
+        await page.waitForTimeout(300)
 
-      await snap(
-        page,
-        'forslag-sektion-tom',
-        'Förbättringsförslag — tom sektion',
-        'Längst ned i inline-detaljvyn finns sektionen **Förbättringsförslag**. En ansvarig för ett kravunderlag (upphandling, projekt, förvaltning) kan lämna ett förslag på förbättring av kravet. Klicka på **"+ Registrera förslag"** för att öppna formuläret.',
-        { fullPage: false },
-      )
-    })
+        await snap(
+          page,
+          'forslag-sektion-tom',
+          'Förbättringsförslag — tom sektion',
+          'Längst ned i inline-detaljvyn finns sektionen **Förbättringsförslag**. En ansvarig för ett kravunderlag (upphandling, projekt, förvaltning) kan lämna ett förslag på förbättring av kravet. Klicka på **"+ Registrera förslag"** för att öppna formuläret.',
+          { fullPage: false },
+        )
+      },
+    )
 
-    await test.step('Förbättringsförslag — formulär öppet', async () => {
+    await guideStep(page, 'Förbättringsförslag — formulär öppet', async () => {
       await page.getByRole('button', { name: /Registrera förslag/i }).click()
       await expect(page.locator('[role="dialog"]')).toBeVisible({
         timeout: 5_000,
@@ -1427,7 +1561,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Förbättringsförslag — formulär ifyllt', async () => {
+    await guideStep(page, 'Förbättringsförslag — formulär ifyllt', async () => {
       await setReactInputValue(page, 'suggestion-content', MOCK_SUGGESTION)
       await setReactInputValue(page, 'suggestion-createdBy', 'Playwright Guide')
 
@@ -1440,56 +1574,62 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Förbättringsförslag — registrerat på ANV0002', async () => {
-      await page.getByRole('button', { name: 'Spara' }).click()
-      await expect(
-        page.getByRole('dialog', { name: /Registrera förslag/i }),
-      ).not.toBeVisible({ timeout: 5_000 })
+    await guideStep(
+      page,
+      'Förbättringsförslag — registrerat på ANV0002',
+      async () => {
+        await page.getByRole('button', { name: 'Spara' }).click()
+        await expect(
+          page.getByRole('dialog', { name: /Registrera förslag/i }),
+        ).not.toBeVisible({ timeout: 5_000 })
 
-      const suggSection = page.locator(
-        'section[aria-labelledby="improvementSuggestionsHeading"]',
-      )
-      await suggSection.scrollIntoViewIfNeeded()
-      await page.waitForTimeout(500)
+        const suggSection = page.locator(
+          'section[aria-labelledby="improvementSuggestionsHeading"]',
+        )
+        await suggSection.scrollIntoViewIfNeeded()
+        await page.waitForTimeout(500)
 
-      await snap(
-        page,
-        'forslag-registrerat',
-        'Förbättringsförslag registrerat',
-        'Det registrerade förslaget visas i sektionen med sin arbetsflödesstatus: **Utkast → Granskning begärd → Granskad**. Förslaget kan redigeras och skickas för granskning via knappen **"Granskning ↗"**.',
-        { fullPage: false },
-      )
-    })
+        await snap(
+          page,
+          'forslag-registrerat',
+          'Förbättringsförslag registrerat',
+          'Det registrerade förslaget visas i sektionen med sin arbetsflödesstatus: **Utkast → Granskning begärd → Granskad**. Förslaget kan redigeras och skickas för granskning via knappen **"Granskning ↗"**.',
+          { fullPage: false },
+        )
+      },
+    )
 
-    await test.step('Förbättringsförslag — flera förslag på IDN0001', async () => {
-      // IDN0001 has multiple seeded improvement suggestions — good for illustrating the list
-      await page.goto('/sv/requirements?selected=IDN0001')
-      await page.waitForLoadState('networkidle')
-      await expect(
-        page.locator('[data-expanded-detail-cell="true"]'),
-      ).toBeVisible({ timeout: 10_000 })
+    await guideStep(
+      page,
+      'Förbättringsförslag — flera förslag på IDN0001',
+      async () => {
+        // IDN0001 has multiple seeded improvement suggestions — good for illustrating the list
+        await guideGoto(page, '/sv/requirements?selected=IDN0001')
+        await expect(
+          page.locator('[data-expanded-detail-cell="true"]'),
+        ).toBeVisible({ timeout: 10_000 })
 
-      const suggSection = page.locator(
-        'section[aria-labelledby="improvementSuggestionsHeading"]',
-      )
-      await suggSection.scrollIntoViewIfNeeded()
-      await page.waitForTimeout(300)
+        const suggSection = page.locator(
+          'section[aria-labelledby="improvementSuggestionsHeading"]',
+        )
+        await suggSection.scrollIntoViewIfNeeded()
+        await page.waitForTimeout(300)
 
-      await snap(
-        page,
-        'forslag-flera',
-        'Flera förbättringsförslag',
-        'Ett krav kan ha flera förbättringsförslag från olika intressenter. Varje förslag hanteras individuellt genom sitt eget arbetsflöde. Listan ger en samlad bild av alla inkomna synpunkter på kravet.',
-        { fullPage: false },
-      )
-    })
+        await snap(
+          page,
+          'forslag-flera',
+          'Flera förbättringsförslag',
+          'Ett krav kan ha flera förbättringsförslag från olika intressenter. Varje förslag hanteras individuellt genom sitt eget arbetsflöde. Listan ger en samlad bild av alla inkomna synpunkter på kravet.',
+          { fullPage: false },
+        )
+      },
+    )
 
     // ── Sektion 9: Administrationscenter ─────────────────────────────────
     currentSection = 'Administrationscenter'
 
-    await test.step('Admin — Benämningar', async () => {
-      await page.goto('/sv/admin')
-      await page.waitForLoadState('networkidle')
+    await guideStep(page, 'Admin — Benämningar', async () => {
+      await guideGoto(page, '/sv/admin')
       await snap(
         page,
         'admin-benamningar',
@@ -1498,7 +1638,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Admin — Kolumner', async () => {
+    await guideStep(page, 'Admin — Kolumner', async () => {
       await page.getByRole('tab', { name: 'Kolumner' }).click()
       await page.waitForTimeout(300)
       await snap(
@@ -1509,7 +1649,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Admin — Referensdata', async () => {
+    await guideStep(page, 'Admin — Referensdata', async () => {
       await page.getByRole('tab', { name: 'Referensdata' }).click()
       await page.waitForTimeout(300)
       await snap(
@@ -1523,9 +1663,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
     // ── Sektion 9: Referensdatahantering ─────────────────────────────────
     currentSection = 'Referensdatahantering'
 
-    await test.step('Kravområden', async () => {
-      await page.goto('/sv/requirement-areas')
-      await page.waitForLoadState('networkidle')
+    await guideStep(page, 'Kravområden', async () => {
+      await guideGoto(page, '/sv/requirement-areas')
       await snap(
         page,
         'kravomraden',
@@ -1534,9 +1673,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Kravstatusar', async () => {
-      await page.goto('/sv/requirement-statuses')
-      await page.waitForLoadState('networkidle')
+    await guideStep(page, 'Kravstatusar', async () => {
+      await guideGoto(page, '/sv/requirement-statuses')
       await snap(
         page,
         'kravstatusar',
@@ -1545,9 +1683,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Risknivåer', async () => {
-      await page.goto('/sv/risk-levels')
-      await page.waitForLoadState('networkidle')
+    await guideStep(page, 'Risknivåer', async () => {
+      await guideGoto(page, '/sv/risk-levels')
       await snap(
         page,
         'risknivåer',
@@ -1556,9 +1693,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Kravtyper', async () => {
-      await page.goto('/sv/requirement-types')
-      await page.waitForLoadState('networkidle')
+    await guideStep(page, 'Kravtyper', async () => {
+      await guideGoto(page, '/sv/requirement-types')
       await snap(
         page,
         'kravtyper',
@@ -1567,9 +1703,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Kvalitetsegenskaper', async () => {
-      await page.goto('/sv/quality-characteristics')
-      await page.waitForLoadState('networkidle')
+    await guideStep(page, 'Kvalitetsegenskaper', async () => {
+      await guideGoto(page, '/sv/quality-characteristics')
       await snap(
         page,
         'kvalitetsegenskaper',
@@ -1578,9 +1713,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Normreferenser', async () => {
-      await page.goto('/sv/norm-references')
-      await page.waitForLoadState('networkidle')
+    await guideStep(page, 'Normreferenser', async () => {
+      await guideGoto(page, '/sv/norm-references')
       await snap(
         page,
         'normreferenser',
@@ -1589,9 +1723,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Ägare', async () => {
-      await page.goto('/sv/owners')
-      await page.waitForLoadState('networkidle')
+    await guideStep(page, 'Ägare', async () => {
+      await guideGoto(page, '/sv/owners')
       await snap(
         page,
         'agare',
@@ -1606,7 +1739,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       'Systemet erbjuder flera rapporttyper för granskning, spårbarhet och beslutsunderlag. Rapporter kan genereras som **utskriftsvänliga HTML-sidor** eller laddas ned som **PDF**. Nedan listas de tillgängliga rapporterna.',
     )
 
-    await test.step('Rapportöversikt', async () => {
+    await guideStep(page, 'Rapportöversikt', async () => {
       textEntry(
         'Historikrapport',
         'Visar tidslinjen för alla ändringar av ett enskilt krav. Rapporten listar varje version i omvänd kronologisk ordning med status, författare, tidsstämplar och utdrag ur kravtexten. Den publicerade versionen (om den finns) visas överst, följd av opublicerade versioner markerade som utkast eller granskning.\n\n' +
@@ -1657,9 +1790,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await test.step('Rapporter från kravkatalogen', async () => {
-      await page.goto('/sv/requirements')
-      await page.waitForLoadState('networkidle')
+    await guideStep(page, 'Rapporter från kravkatalogen', async () => {
+      await guideGoto(page, '/sv/requirements')
       await expect(
         page.locator('[data-sticky-table-header="true"]'),
       ).toBeVisible({ timeout: 10_000 })
@@ -1695,9 +1827,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
       }
     })
 
-    await test.step('Rapporter från kravdetalj', async () => {
-      await page.goto('/sv/requirements/1')
-      await page.waitForLoadState('networkidle')
+    await guideStep(page, 'Rapporter från kravdetalj', async () => {
+      await guideGoto(page, '/sv/requirements/1')
 
       const reportBtn = page
         .getByRole('button', { name: /Skriv ut|Rapport|Print/i })
@@ -1715,5 +1846,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         await page.keyboard.press('Escape')
       }
     })
+
+    guideRunCompleted = true
   })
 })

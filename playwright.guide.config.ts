@@ -11,14 +11,16 @@ const desktopChromium = {
 /**
  * Playwright configuration for generating the user guide.
  *
- * Run with: npm run generate-guide
+ * Run with: npm run generate:guide
  *
  * Outputs:
  *   docs/guide/README.md   — generated markdown guide
  *   docs/guide/images/     — screenshots
  *
  * NOTE: This is a one-shot guide generator, not a repeatable test suite.
- * It mutates the database (creates requirements, deviations, suggestions).
+ * It requires the seeded SQL Server fixtures, mutates the database (creates
+ * requirements, deviations, suggestions), and obtains the authenticated
+ * ada.admin storageState through tests/integration/global-setup.ts.
  * Run `npm run db:setup` to reset the database to seed state afterwards if needed.
  */
 export default defineConfig({
