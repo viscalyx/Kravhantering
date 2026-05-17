@@ -12,6 +12,7 @@ import {
 import {
   DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
   DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
+  isSystemSpecificationItemStatusId,
 } from '@/lib/specification-item-status-constants'
 
 const DEVIATION_APPROVED = 1
@@ -2363,6 +2364,12 @@ async function validateSpecificationItemStatus(
   db: SqlExecutor,
   statusId: number,
 ): Promise<void> {
+  if (!isSystemSpecificationItemStatusId(statusId)) {
+    throw validationError('Invalid specification item status ID', {
+      specificationItemStatusId: statusId,
+    })
+  }
+
   const rows = (await db.query(
     `
       SELECT TOP (1) specification_item_status.id AS id

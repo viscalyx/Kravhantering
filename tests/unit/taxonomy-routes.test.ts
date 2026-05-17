@@ -215,13 +215,11 @@ vi.mock('@/lib/dal/requirement-categories', () => ({
 /* ── imports ─────────────────────────────────────────────────────── */
 
 import {
-  DELETE as deleteSpecItemStatus,
   GET as getSpecItemStatus,
   PUT as putSpecItemStatus,
 } from '@/app/api/catalog/specification-item-statuses/[id]/route'
 import {
   GET as getSpecItemStatuses,
-  POST as postSpecItemStatus,
 } from '@/app/api/catalog/specification-item-statuses/route'
 import {
   GET as getTypeCats,
@@ -583,86 +581,6 @@ describe('specification-item-statuses catalog routes', () => {
     })
   })
 
-  it('POST creates a catalog status with 201', async () => {
-    const r = await postSpecItemStatus(
-      new Request('http://l', {
-        body: '{"nameSv":"Ny","nameEn":"New","color":"#22c55e"}',
-        headers: { 'Content-Type': 'application/json' },
-        method: 'POST',
-      }),
-    )
-
-    expect(r.status).toBe(201)
-    expect(routeState.transaction).toHaveBeenCalledTimes(1)
-    expect(mockCreateSpecItemStatus).toHaveBeenCalledWith(
-      routeState.transactionDb,
-      expect.objectContaining({
-        color: '#22c55e',
-        nameEn: 'New',
-        nameSv: 'Ny',
-      }),
-    )
-    expect(
-      auditState.recordAdminPrivilegedActionSucceeded,
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({ source: 'rest' }),
-      expect.objectContaining({
-        operation: 'create',
-        resourceId: 6,
-        resourceType: 'specification_item_status',
-      }),
-      routeState.transactionDb,
-    )
-  })
-
-  it('POST aborts the transaction when action audit recording fails', async () => {
-    const transactionEvents: string[] = []
-    routeState.transaction.mockImplementationOnce(async callback => {
-      try {
-        const result = await callback(routeState.transactionDb)
-        transactionEvents.push('commit')
-        return result
-      } catch (error) {
-        transactionEvents.push('rollback')
-        throw error
-      }
-    })
-    auditState.recordAdminPrivilegedActionSucceeded.mockRejectedValueOnce(
-      new Error('audit failed'),
-    )
-
-    const r = await postSpecItemStatus(
-      jsonReq('POST', {
-        color: '#22c55e',
-        nameEn: 'New',
-        nameSv: 'Ny',
-      }),
-    )
-
-    expect(r.status).toBe(500)
-    expect(transactionEvents).toEqual(['rollback'])
-    expect(mockCreateSpecItemStatus).toHaveBeenCalledWith(
-      routeState.transactionDb,
-      expect.objectContaining({ nameEn: 'New' }),
-    )
-    expect(auditState.recordAdminPrivilegedActionSucceeded).toHaveBeenCalled()
-  })
-
-  it('POST rejects non-allowed icon names before creating a status', async () => {
-    const r = await postSpecItemStatus(
-      jsonReq('POST', {
-        color: '#22c55e',
-        iconName: 'MadeUpIcon',
-        nameEn: 'New',
-        nameSv: 'Ny',
-      }),
-    )
-
-    expect(r.status).toBe(400)
-    await expect(r.json()).resolves.toMatchObject({ error: 'Invalid request' })
-    expect(mockCreateSpecItemStatus).not.toHaveBeenCalled()
-  })
-
   it('GET by id returns linked specification items', async () => {
     const r = await getSpecItemStatus(
       new NextRequest('http://l', { method: 'GET' }),
@@ -685,51 +603,6 @@ describe('specification-item-statuses catalog routes', () => {
 
     expect(r.status).toBe(404)
     await expect(r.json()).resolves.toEqual({ error: 'Not found' })
-  })
-
-  it('DELETE removes a catalog status', async () => {
-    mockDeleteSpecItemStatus.mockResolvedValue(1)
-    const r = await deleteSpecItemStatus(
-      new NextRequest('http://l', { method: 'DELETE' }),
-      makeParams('5'),
-    )
-
-    expect(r.status).toBe(200)
-    await expect(r.json()).resolves.toEqual({ ok: true })
-  })
-
-  it('DELETE returns 404 without audit when the catalog status is missing', async () => {
-    mockDeleteSpecItemStatus.mockResolvedValue(0)
-    const r = await deleteSpecItemStatus(
-      new NextRequest('http://l', { method: 'DELETE' }),
-      makeParams('404'),
-    )
-
-    expect(r.status).toBe(404)
-    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
-    expect(
-      auditState.recordAdminPrivilegedActionSucceeded,
-    ).not.toHaveBeenCalled()
-  })
-
-  it('DELETE returns 409 when the catalog status is in use', async () => {
-    mockDeleteSpecItemStatus.mockRejectedValue(
-      new Error(
-        'The DELETE statement conflicted with the REFERENCE constraint',
-      ),
-    )
-    const r = await deleteSpecItemStatus(
-      new NextRequest('http://l', { method: 'DELETE' }),
-      makeParams('5'),
-    )
-
-    expect(r.status).toBe(409)
-    await expect(r.json()).resolves.toEqual({
-      error: 'Cannot delete: specification item status is in use',
-    })
-    expect(
-      auditState.recordAdminPrivilegedActionSucceeded,
-    ).not.toHaveBeenCalled()
   })
 })
 

@@ -224,7 +224,7 @@ The behaviors below apply to the requirement list rendered by:
 - When a requirement is **added** to a specification, including a
   specification-local requirement, its usage status is automatically set to
   **Included** (ID 1). The user can change it once work on the requirement begins.
-- The inline select offers the configured usage statuses for specification
+- The inline select offers the fixed usage statuses for specification
   items.
 - Outside the specification detail context (e.g. the main requirements catalog),
   the column renders a read-only color dot + label, or an em dash when no

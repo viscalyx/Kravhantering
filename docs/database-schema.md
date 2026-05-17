@@ -882,9 +882,11 @@ Förvaltning (Management).
 
 ### `specification_item_statuses`
 
-Lookup table for usage/implementation status of individual
+Fixed lookup table for usage/implementation status of individual
 requirements within a specification (e.g. included, in progress,
-implemented, verified).
+implemented, verified). Seed IDs 1-6 are the supported system catalog;
+the rows are editable for labels, descriptions, color, icon, and allowed
+sort order, but statuses are not created or deleted.
 
 | Column | Type | Description |
 | -------- | ------ | ------------- |

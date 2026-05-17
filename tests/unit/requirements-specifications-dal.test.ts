@@ -988,6 +988,38 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     )
   })
 
+  it('rejects custom library specification item status before status lookup', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        id: 31,
+        specificationId: 5,
+        requirementId: 7,
+        requirementVersionId: 101,
+        needsReferenceId: null,
+        specificationItemStatusId: 1,
+        note: null,
+        statusUpdatedAt: null,
+        createdAt: new Date('2026-04-20T10:00:00.000Z'),
+      },
+    ])
+
+    await expect(
+      updateSpecificationItemFieldsByItemRef(db, 5, 'lib:31', {
+        specificationItemStatusId: 7,
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Invalid specification item status ID',
+    })
+
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('FROM requirements_specification_items'),
+      [31],
+    )
+  })
+
   it('rejects clearing specification-local item status before SQL update', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([

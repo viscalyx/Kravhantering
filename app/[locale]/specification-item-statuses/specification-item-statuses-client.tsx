@@ -1,7 +1,6 @@
 'use client'
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useRef, useState } from 'react'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
@@ -158,12 +157,6 @@ export default function SpecificationItemStatusesClient() {
     [tc],
   )
 
-  const openCreate = () => {
-    setLinkedItems([])
-    setLinkedItemsError(null)
-    controller.openCreate()
-  }
-
   const openEdit = (status: SpecificationItemStatus) => {
     controller.openEdit(status)
     void fetchLinkedItems(status.id)
@@ -183,14 +176,6 @@ export default function SpecificationItemStatusesClient() {
     }
   }
 
-  const remove = async (id: number, anchorEl?: HTMLElement) => {
-    const didRemove = await controller.remove(id, anchorEl)
-    if (didRemove && controller.editId === id) {
-      setLinkedItems([])
-      setLinkedItemsError(null)
-    }
-  }
-
   const isSortOrderLocked =
     controller.editId === DEFAULT_SPECIFICATION_ITEM_STATUS_ID ||
     controller.editId === DEVIATED_SPECIFICATION_ITEM_STATUS_ID
@@ -202,20 +187,6 @@ export default function SpecificationItemStatusesClient() {
           <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
             {t('title')}
           </h1>
-          <button
-            className="btn-primary inline-flex items-center gap-1.5"
-            {...devMarker({
-              context: 'specification-item-statuses',
-              name: 'create button',
-              priority: 350,
-            })}
-            disabled={controller.submitting}
-            onClick={openCreate}
-            type="button"
-          >
-            <Plus aria-hidden="true" className="h-4 w-4" />
-            {tc('create')}
-          </button>
         </div>
 
         {(controller.deleteError || controller.loadError) && (
@@ -246,12 +217,12 @@ export default function SpecificationItemStatusesClient() {
                     context: 'specification-item-statuses',
                     name: 'crud form',
                     priority: 340,
-                    value: controller.editId ? 'edit' : 'create',
+                    value: 'edit',
                   })}
                   onSubmit={submit}
                 >
                   <h2 className="text-lg font-semibold">
-                    {controller.editId ? t('editItem') : t('newItem')}
+                    {t('editItem')}
                   </h2>
                   <div>
                     <FieldLabelWithHelp
@@ -574,7 +545,7 @@ export default function SpecificationItemStatusesClient() {
                     </td>
                     <td className="py-3 px-4 text-right">
                       <button
-                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
+                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
                         {...devMarker({
                           context: 'specification-item-statuses',
                           name: 'table action',
@@ -585,26 +556,6 @@ export default function SpecificationItemStatusesClient() {
                         type="button"
                       >
                         {tc('edit')}
-                      </button>
-                      <button
-                        className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
-                        {...devMarker({
-                          context: 'specification-item-statuses',
-                          name: 'table action',
-                          value: 'delete',
-                        })}
-                        disabled={
-                          controller.submitting ||
-                          controller.deletingIds.has(status.id)
-                        }
-                        onClick={event => {
-                          void remove(status.id, event.currentTarget)
-                        }}
-                        type="button"
-                      >
-                        {controller.deletingIds.has(status.id)
-                          ? tc('loading')
-                          : tc('delete')}
                       </button>
                     </td>
                   </tr>

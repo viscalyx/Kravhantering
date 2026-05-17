@@ -124,6 +124,7 @@ const specificationItemStatusesRoutePath = join(
   'api',
   'catalog',
   'specification-item-statuses',
+  '[id]',
   'route.ts',
 )
 const riskLevelsRoutePath = join(

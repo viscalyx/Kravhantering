@@ -372,12 +372,12 @@ It links to the existing stable routes for:
 The admin center does not rename or move those routes. It only centralizes how
 users reach them.
 
-Requirement statuses, specification item statuses, and risk levels can also
-carry a nullable icon selected from the installed Lucide icon catalog through
-the shared status-icon allowlist. The admin pages keep the label visible and
-use the icon only as a decorative cue in tables, badges, steppers, and reports.
-Existing rows without an icon continue to render with text-only labels until an
-admin selects one.
+The fixed system rows for requirement statuses, specification item statuses,
+and risk levels can also carry a nullable icon selected from the installed
+Lucide icon catalog through the shared status-icon allowlist. The admin pages
+keep the label visible and use the icon only as a decorative cue in tables,
+badges, steppers, and reports. Existing rows without an icon continue to render
+with text-only labels until an admin selects one.
 
 ### Area Owner
 
