@@ -1585,6 +1585,49 @@ Själva systemd-tjänsten bygger inte om appen.
 > (`sudo usermod -aG systemd-journal kravhantering` följt av ny
 > SSH-session) om du vill behålla volatil lagring.
 
+#### Valfritt: skriv appens stdout/stderr till fil
+
+`journalctl` är standardvägen för driftloggar och bör fortsatt
+användas när värden har persistent journald eller central loggning.
+För en PoC kan du dessutom lägga appens stdout/stderr i en separat
+fil när det är enklare att följa filen direkt.
+
+Kör först som admin, alltså som `sudo`-användaren från avsnitt 3,
+och skapa en loggkatalog som `kravhantering` får skriva till:
+
+```bash
+sudo mkdir -p /var/log/kravhantering
+sudo chown kravhantering:kravhantering /var/log/kravhantering
+```
+
+Växla sedan till `kravhantering` enligt
+[3.1](#31-byta-till-kravhantering-användaren) och skapa en drop-in
+för appens user-tjänst:
+
+```bash
+systemctl --user edit kravhantering-app.service
+```
+
+Lägg in följande i editorn:
+
+```ini
+[Service]
+StandardOutput=append:/var/log/kravhantering/kravhantering-app.log
+StandardError=append:/var/log/kravhantering/kravhantering-app.log
+```
+
+Läs om user-units, starta om appen och följ filen:
+
+```bash
+systemctl --user daemon-reload
+systemctl --user restart kravhantering-app.service
+tail -n 200 -F /var/log/kravhantering/kravhantering-app.log
+```
+
+Loggning till fil ersätter inte journald eller eventuell
+logg-/SIEM-integration. Om PoC:n får längre livslängd bör retention
+och central loggning hanteras enligt organisationens vanliga rutiner.
+
 `enable --now` startar tjänsten direkt och säkerställer att den
 startas automatiskt vid serverns omstart. Eftersom linger är aktivt
 körs tjänsten även när `kravhantering` inte är inloggad — du kan
