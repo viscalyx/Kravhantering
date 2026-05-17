@@ -68,7 +68,7 @@ const SUCCESS_CLAIMS = {
   sub: 'user-1',
   given_name: 'Alice',
   family_name: 'Reviewer',
-  employeeHsaId: 'SE2321000032-rev1',
+  employeeHsaId: 'SE5560000001-rev1',
   roles: ['Reviewer'],
 }
 
@@ -369,7 +369,7 @@ describe('auth callback security audit events', () => {
     expect(events[0].actor).toEqual({
       source: 'oidc',
       sub: 'user-1',
-      hsaId: 'SE2321000032-rev1',
+      hsaId: 'SE5560000001-rev1',
     })
   })
 

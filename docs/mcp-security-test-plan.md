@@ -50,7 +50,7 @@ Use only disposable local services and non-production credentials.
 1. Start the local SQL Server and app with the normal developer workflow.
 2. Obtain or mint a non-production Bearer token for the configured issuer and
    audience. Tokens must use a real-format `employeeHsaId`, for example
-   `SE2321000032-mcp1` in the local Keycloak realm.
+   `SE5560000001-mcp1` in the local Keycloak realm.
 3. Open MCP Inspector or another MCP client that supports Streamable HTTP.
 4. Configure the server URL as `http://localhost:3000/api/mcp`.
 5. Add the header `Authorization: Bearer <non-production-token>`.

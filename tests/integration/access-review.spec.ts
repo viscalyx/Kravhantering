@@ -13,14 +13,14 @@ function accessReviewDetail(decision = 'pending') {
             ? null
             : {
                 displayName: 'Ada Admin',
-                hsaId: 'SE2321000032-admin1',
+                hsaId: 'SE5560000001-admin1',
               },
         decision,
         id: 7,
         permissionType: 'area_co_author',
         principal: {
           displayName: 'Kalle Svensson',
-          hsaId: 'SE2321000032-kalle1',
+          hsaId: 'SE5560000001-kalle1',
         },
         scope: {
           key: '1',
@@ -37,7 +37,7 @@ function accessReviewDetail(decision = 'pending') {
       createdAt: '2026-05-12T12:00:00.000Z',
       createdBy: {
         displayName: 'Ada Admin',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
       },
       dueAt: '2026-06-11T12:00:00.000Z',
       externalEvidenceReference: 'IDM-2026',
@@ -46,7 +46,7 @@ function accessReviewDetail(decision = 'pending') {
       periodStart: '2026-05-12T12:00:00.000Z',
       reviewer: {
         displayName: 'Ada Admin',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
       },
       status: 'in_review',
       summary: {
@@ -68,7 +68,7 @@ function accessReviewExport() {
     generatedAt: '2026-05-12T12:30:00.000Z',
     generatedBy: {
       displayName: 'Ada Admin',
-      hsaId: 'SE2321000032-admin1',
+      hsaId: 'SE5560000001-admin1',
     },
     limitations: [],
     schemaVersion: 'access-review-export.v1',

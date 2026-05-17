@@ -84,6 +84,7 @@ export default function ImplementationTypesClient() {
       columns={columns}
       controller={controller}
       devContext="implementation types"
+      emptyStateMessage={t('emptyState')}
       renderFormFields={({ disabled, form, inputClassName, setForm }) => (
         <>
           <div>

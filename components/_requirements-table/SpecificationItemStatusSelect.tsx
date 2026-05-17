@@ -8,9 +8,9 @@ interface SpecificationItemStatusSelectProps {
   hasApprovedDeviation: boolean
   itemRef: string
   locale: string
-  onChange: (itemRef: string, statusId: number | null) => void
+  onChange: (itemRef: string, statusId: number) => void
   statuses: SpecificationItemStatusOption[]
-  statusId: number | null | undefined
+  statusId: number | undefined
   tooltip?: string
 }
 
@@ -47,7 +47,10 @@ function SpecificationItemStatusSelectImpl({
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
       const value = event.target.value
-      onChange(itemRef, value === '' ? null : Number(value))
+      if (value === '') {
+        return
+      }
+      onChange(itemRef, Number(value))
     },
     [itemRef, onChange],
   )
@@ -68,7 +71,6 @@ function SpecificationItemStatusSelectImpl({
       title={tooltip}
       value={statusId ?? ''}
     >
-      <option value="">—</option>
       {options.map(option => (
         <option key={option.id} title={option.description} value={option.id}>
           {option.label}

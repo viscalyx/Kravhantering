@@ -12,7 +12,7 @@ function context(overrides: Partial<RequestContext> = {}): RequestContext {
   return {
     actor: {
       displayName: 'Ada Admin',
-      hsaId: 'SE2321000032-admin1',
+      hsaId: 'SE5560000001-admin1',
       id: 'admin-sub',
       isAuthenticated: true,
       roles: ['Admin'],
@@ -40,7 +40,7 @@ describe('action audit helper', () => {
       {
         action: 'requirement.create',
         actorDisplayName: 'Ada Admin',
-        actorHsaId: 'SE2321000032-admin1',
+        actorHsaId: 'SE5560000001-admin1',
         actorKind: 'user',
         clientIp: '203.0.113.21',
         decision: 'allowed',
@@ -52,8 +52,8 @@ describe('action audit helper', () => {
           operation: 'create',
           prompt: 'must not be stored',
           route: '/api/requirements',
-          reviewers: ['ok', 'SE2321000032-reviewer1'],
-          targetHsaId: 'SE2321000032-target1',
+          reviewers: ['ok', 'SE5560000001-reviewer1'],
+          targetHsaId: 'SE5560000001-target1',
           opaque: 'token=abcdef1234567890abcdef1234567890',
         },
         occurredAt: new Date('2026-05-16T09:00:00Z'),
@@ -71,7 +71,7 @@ describe('action audit helper', () => {
     )
     expect(params).toEqual(
       expect.arrayContaining([
-        'SE2321000032-admin1',
+        'SE5560000001-admin1',
         'Ada Admin',
         'user',
         'requirement.create',
@@ -175,7 +175,7 @@ describe('action audit helper', () => {
             action: 'requirement.create',
             actorClientId: null,
             actorDisplayName: 'Ada Admin',
-            actorHsaId: 'SE2321000032-admin1',
+            actorHsaId: 'SE5560000001-admin1',
             actorKind: 'user',
             clientIp: '203.0.113.22',
             correlationId: 'correlation-1',
@@ -206,7 +206,7 @@ describe('action audit helper', () => {
         action: 'requirement.create',
         actorClientId: null,
         actorDisplayName: 'Ada Admin',
-        actorHsaId: 'SE2321000032-admin1',
+        actorHsaId: 'SE5560000001-admin1',
         actorKind: 'user',
         clientIp: '203.0.113.23',
         correlationId: 'correlation-1',

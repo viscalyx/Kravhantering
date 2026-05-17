@@ -23,7 +23,7 @@ export interface SpecificationLocalRequirementEntity {
   riskLevel: RiskLevelEntity | null
   sequenceNumber: number
   specification: RequirementsSpecificationEntity
-  specificationItemStatus: SpecificationItemStatusEntity | null
+  specificationItemStatus: SpecificationItemStatusEntity
   statusUpdatedAt: Date | null
   uniqueId: string
   updatedAt: Date
@@ -206,8 +206,8 @@ export const specificationLocalRequirementEntity =
           foreignKeyConstraintName:
             'fk_specification_local_requirements_specification_item_status_id',
         },
-        nullable: true,
-        onDelete: 'SET NULL',
+        nullable: false,
+        onDelete: 'NO ACTION',
         onUpdate: 'NO ACTION',
       },
     },

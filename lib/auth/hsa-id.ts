@@ -10,7 +10,7 @@
  *     letters `å/ä/ö` and the `@` character are NOT allowed.
  *   - Total length must not exceed 31 characters.
  *
- * Example: `SE2321000032-1003`.
+ * Example: `SE5560000001-1003`.
  *
  * Non-HSA service identifiers are intentionally NOT valid HSA-ids.
  */

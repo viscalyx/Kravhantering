@@ -80,6 +80,26 @@ describe('NormReferencesClient', () => {
     })
   })
 
+  it('renders an empty-state row with a create CTA', async () => {
+    fetchMock.mockResolvedValue(okJson({ normReferences: [] }))
+
+    render(<NormReferencesClient />)
+
+    const emptyState = await screen.findByText('normReference.emptyState')
+    expect(emptyState.closest('td')).toHaveAttribute('colspan', '8')
+
+    const createButtons = screen.getAllByRole('button', {
+      name: /common\.create/i,
+    })
+    expect(createButtons).toHaveLength(2)
+
+    fireEvent.click(createButtons[1])
+
+    expect(
+      await screen.findByRole('textbox', { name: /^normReference\.name/ }),
+    ).toBeInTheDocument()
+  })
+
   it('opens create form and submits it', async () => {
     render(<NormReferencesClient />)
     await waitFor(() => {

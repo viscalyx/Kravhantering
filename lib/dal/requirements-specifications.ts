@@ -1,3 +1,4 @@
+import { validateRequirementTaxonomyReferences } from '@/lib/dal/requirement-reference-validation'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   conflictError,
@@ -12,6 +13,7 @@ import {
 import {
   DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
   DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
+  isSystemSpecificationItemStatusId,
 } from '@/lib/specification-item-status-constants'
 
 const DEVIATION_APPROVED = 1
@@ -84,7 +86,7 @@ export interface SpecificationLocalRequirementDetail {
   specificationItemStatusDescriptionEn: string | null
   specificationItemStatusDescriptionSv: string | null
   specificationItemStatusIconName: string | null
-  specificationItemStatusId: number | null
+  specificationItemStatusId: number
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
   uniqueId: string
@@ -111,7 +113,7 @@ interface SpecificationLocalRequirementGraduationRow {
   requiresTesting: boolean
   riskLevelId: number | null
   specificationId: number
-  specificationItemStatusId: number | null
+  specificationItemStatusId: number
   uniqueId: string
   verificationMethod: string | null
 }
@@ -211,16 +213,6 @@ function formatSpecificationLocalRequirementUniqueId(
   sequenceNumber: number,
 ): string {
   return `KRAV${String(sequenceNumber).padStart(4, '0')}`
-}
-
-function dedupePositiveIntegerIds(values?: number[]): number[] {
-  if (!values?.length) {
-    return []
-  }
-
-  return [...new Set(values)].filter(
-    value => Number.isInteger(value) && value > 0,
-  )
 }
 
 function parseCsvNumberList(value: string | null): number[] {
@@ -970,14 +962,6 @@ async function normalizeSpecificationLocalRequirementInput(
     throw validationError('Description is required')
   }
 
-  if (
-    data.requirementAreaId != null &&
-    (!Number.isInteger(data.requirementAreaId) ||
-      Number(data.requirementAreaId) < 1)
-  ) {
-    throw validationError('requirementAreaId must be a positive integer')
-  }
-
   const requiresTesting = data.requiresTesting ?? false
   const verificationMethod = requiresTesting
     ? (data.verificationMethod?.trim() ?? '')
@@ -1003,22 +987,28 @@ async function normalizeSpecificationLocalRequirementInput(
     }
   }
 
+  const references = await validateRequirementTaxonomyReferences(db, {
+    normReferenceIds: data.normReferenceIds,
+    qualityCharacteristicId: data.qualityCharacteristicId,
+    requirementAreaId: data.requirementAreaId,
+    requirementCategoryId: data.requirementCategoryId,
+    requirementPackageIds: data.requirementPackageIds,
+    requirementTypeId: data.requirementTypeId,
+    riskLevelId: data.riskLevelId,
+  })
+
   return {
     acceptanceCriteria: data.acceptanceCriteria?.trim() || null,
     description,
     needsReferenceId,
-    normReferenceIds: dedupePositiveIntegerIds(data.normReferenceIds),
-    qualityCharacteristicId: normalizeOptionalForeignKeyId(
-      data.qualityCharacteristicId,
-    ),
-    requirementAreaId: normalizeOptionalForeignKeyId(data.requirementAreaId),
-    requirementCategoryId: normalizeOptionalForeignKeyId(
-      data.requirementCategoryId,
-    ),
-    requirementTypeId: normalizeOptionalForeignKeyId(data.requirementTypeId),
+    normReferenceIds: references.normReferenceIds,
+    qualityCharacteristicId: references.qualityCharacteristicId,
+    requirementAreaId: references.requirementAreaId,
+    requirementCategoryId: references.requirementCategoryId,
+    requirementTypeId: references.requirementTypeId,
     requiresTesting,
-    riskLevelId: normalizeOptionalForeignKeyId(data.riskLevelId),
-    requirementPackageIds: dedupePositiveIntegerIds(data.requirementPackageIds),
+    riskLevelId: references.riskLevelId,
+    requirementPackageIds: references.requirementPackageIds,
     verificationMethod,
   }
 }
@@ -1166,7 +1156,7 @@ function mapSpecificationLocalRequirementDetailFlat(
     specificationItemStatusDescriptionSv: toStr(
       row.specificationItemStatusDescriptionSv,
     ),
-    specificationItemStatusId: toNum(row.specificationItemStatusId),
+    specificationItemStatusId: Number(row.specificationItemStatusId),
     specificationItemStatusNameEn: toStr(row.specificationItemStatusNameEn),
     specificationItemStatusNameSv: toStr(row.specificationItemStatusNameSv),
     qualityCharacteristic:
@@ -1545,7 +1535,7 @@ function mapGraduationSourceRow(
     requiresTesting: toBool(row.requiresTesting),
     riskLevelId: toNum(row.riskLevelId),
     specificationId: Number(row.specificationId),
-    specificationItemStatusId: toNum(row.specificationItemStatusId),
+    specificationItemStatusId: Number(row.specificationItemStatusId),
     uniqueId: String(row.uniqueId ?? ''),
     verificationMethod: toStr(row.verificationMethod),
   }
@@ -1978,7 +1968,7 @@ interface LibrarySpecificationItemFlatRow {
   specificationItemStatusDescriptionEn: string | null
   specificationItemStatusDescriptionSv: string | null
   specificationItemStatusIconName: string | null
-  specificationItemStatusId: number | null
+  specificationItemStatusId: number
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
   statusColor: string | null
@@ -2013,7 +2003,7 @@ function mapLibrarySpecificationItemRow(
       row.specificationItemStatusDescriptionEn ?? null,
     specificationItemStatusDescriptionSv:
       row.specificationItemStatusDescriptionSv ?? null,
-    specificationItemStatusId: row.specificationItemStatusId ?? null,
+    specificationItemStatusId: Number(row.specificationItemStatusId),
     specificationItemStatusNameEn: row.specificationItemStatusNameEn ?? null,
     specificationItemStatusNameSv: row.specificationItemStatusNameSv ?? null,
     uniqueId: row.uniqueId,
@@ -2069,7 +2059,7 @@ interface SpecificationLocalListFlatRow {
   specificationItemStatusDescriptionEn: string | null
   specificationItemStatusDescriptionSv: string | null
   specificationItemStatusIconName: string | null
-  specificationItemStatusId: number | null
+  specificationItemStatusId: number
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
   uniqueId: string
@@ -2095,7 +2085,7 @@ function mapSpecificationLocalRequirementListRow(
       row.specificationItemStatusDescriptionEn ?? null,
     specificationItemStatusDescriptionSv:
       row.specificationItemStatusDescriptionSv ?? null,
-    specificationItemStatusId: row.specificationItemStatusId ?? null,
+    specificationItemStatusId: Number(row.specificationItemStatusId),
     specificationItemStatusNameEn: row.specificationItemStatusNameEn ?? null,
     specificationItemStatusNameSv: row.specificationItemStatusNameSv ?? null,
     specificationLocalRequirementId: Number(row.id),
@@ -2310,7 +2300,7 @@ export async function getSpecificationItemById(
     requirementId: Number(row.requirementId),
     requirementVersionId: Number(row.requirementVersionId),
     needsReferenceId: toNum(row.needsReferenceId),
-    specificationItemStatusId: toNum(row.specificationItemStatusId),
+    specificationItemStatusId: Number(row.specificationItemStatusId),
     note: toStr(row.note),
     statusUpdatedAt: toIso(row.statusUpdatedAt),
     createdAt: toIso(row.createdAt) ?? '',
@@ -2363,6 +2353,12 @@ async function validateSpecificationItemStatus(
   db: SqlExecutor,
   statusId: number,
 ): Promise<void> {
+  if (!isSystemSpecificationItemStatusId(statusId)) {
+    throw validationError('Invalid specification item status ID', {
+      specificationItemStatusId: statusId,
+    })
+  }
+
   const rows = (await db.query(
     `
       SELECT TOP (1) specification_item_status.id AS id
@@ -2379,20 +2375,29 @@ async function validateSpecificationItemStatus(
   }
 }
 
+type SpecificationItemFieldUpdate = {
+  note?: string | null
+  specificationItemStatusId?: number
+}
+
 export async function updateSpecificationItemFields(
   db: SqlServerDatabase,
   itemId: number,
-  data: { specificationItemStatusId?: number | null; note?: string | null },
+  data: SpecificationItemFieldUpdate,
 ): Promise<void> {
   const setClauses: string[] = []
   const params: unknown[] = []
   let nextStatusId: number | null | undefined
 
   if ('specificationItemStatusId' in data) {
-    nextStatusId = data.specificationItemStatusId ?? null
-    if (nextStatusId != null) {
-      await validateSpecificationItemStatus(db, nextStatusId)
+    if (data.specificationItemStatusId == null) {
+      throw validationError('Specification item status cannot be cleared', {
+        itemId,
+        specificationItemStatusId: data.specificationItemStatusId,
+      })
     }
+    nextStatusId = data.specificationItemStatusId
+    await validateSpecificationItemStatus(db, nextStatusId)
     setClauses.push(`specification_item_status_id = @${params.length}`)
     params.push(nextStatusId)
     setClauses.push(`status_updated_at = @${params.length}`)
@@ -2440,17 +2445,21 @@ export async function updateSpecificationItemFields(
 export async function updateSpecificationLocalRequirementFields(
   db: SqlServerDatabase,
   specificationLocalRequirementId: number,
-  data: { specificationItemStatusId?: number | null; note?: string | null },
+  data: SpecificationItemFieldUpdate,
 ): Promise<void> {
   const setClauses: string[] = []
   const params: unknown[] = []
   let nextStatusId: number | null | undefined
 
   if ('specificationItemStatusId' in data) {
-    nextStatusId = data.specificationItemStatusId ?? null
-    if (nextStatusId != null) {
-      await validateSpecificationItemStatus(db, nextStatusId)
+    if (data.specificationItemStatusId == null) {
+      throw validationError('Specification item status cannot be cleared', {
+        specificationItemStatusId: data.specificationItemStatusId,
+        specificationLocalRequirementId,
+      })
     }
+    nextStatusId = data.specificationItemStatusId
+    await validateSpecificationItemStatus(db, nextStatusId)
     setClauses.push(`specification_item_status_id = @${params.length}`)
     params.push(nextStatusId)
     setClauses.push(`status_updated_at = @${params.length}`)
@@ -2500,7 +2509,7 @@ export async function updateSpecificationItemFieldsByItemRef(
   db: SqlServerDatabase,
   specificationId: number,
   itemRef: string,
-  data: { specificationItemStatusId?: number | null; note?: string | null },
+  data: SpecificationItemFieldUpdate,
 ) {
   const item = await getSpecificationItemByRef(db, specificationId, itemRef)
   if (!item) {

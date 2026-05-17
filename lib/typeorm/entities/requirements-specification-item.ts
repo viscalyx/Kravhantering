@@ -13,7 +13,7 @@ export interface RequirementsSpecificationItemEntity {
   requirement: RequirementEntity
   requirementsSpecification: RequirementsSpecificationEntity
   requirementVersion: RequirementVersionEntity
-  specificationItemStatus: SpecificationItemStatusEntity | null
+  specificationItemStatus: SpecificationItemStatusEntity
   statusUpdatedAt: Date | null
   unused1: string | null
 }
@@ -136,7 +136,7 @@ export const requirementsSpecificationItemEntity =
           foreignKeyConstraintName:
             'fk_requirements_specification_items_specification_item_status_id',
         },
-        nullable: true,
+        nullable: false,
         onDelete: 'NO ACTION',
         onUpdate: 'NO ACTION',
       },

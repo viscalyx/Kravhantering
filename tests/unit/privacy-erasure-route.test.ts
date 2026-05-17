@@ -12,7 +12,7 @@ const routeState = vi.hoisted(() => ({
   recordSecurityEvent: vi.fn(),
   requireHumanActorSnapshot: vi.fn(() => ({
     displayName: 'Disa PrivacyOfficer',
-    hsaId: 'SE2321000032-privacy1',
+    hsaId: 'SE5560000001-privacy1',
   })),
 }))
 
@@ -62,7 +62,7 @@ function privacyContext(roles: string[] = ['PrivacyOfficer']) {
   return {
     actor: {
       displayName: 'Disa PrivacyOfficer',
-      hsaId: 'SE2321000032-privacy1',
+      hsaId: 'SE5560000001-privacy1',
       id: 'privacy-sub',
       isAuthenticated: true,
       roles,
@@ -114,7 +114,7 @@ describe('privacy erasure routes', () => {
     const { POST } = await import('@/app/api/privacy/erasure-preview/route')
     const response = await POST(
       jsonPost('http://localhost/api/privacy/erasure-preview', {
-        target: { hsaId: 'SE2321000032-kalle1' },
+        target: { hsaId: 'SE5560000001-kalle1' },
       }) as never,
     )
 
@@ -123,19 +123,19 @@ describe('privacy erasure routes', () => {
       { db: true },
       {
         replacement: null,
-        target: { hsaId: 'SE2321000032-kalle1' },
+        target: { hsaId: 'SE5560000001-kalle1' },
       },
     )
     expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         detail: expect.not.objectContaining({
-          targetHsaId: 'SE2321000032-kalle1',
+          targetHsaId: 'SE5560000001-kalle1',
         }),
         event: 'privacy.erasure.previewed',
       }),
     )
     const auditArg = routeState.recordSecurityEvent.mock.calls[0][0]
-    expect(JSON.stringify(auditArg.detail)).not.toContain('SE2321000032-kalle1')
+    expect(JSON.stringify(auditArg.detail)).not.toContain('SE5560000001-kalle1')
   })
 
   it('rejects erasure preview when CSRF validation fails before previewing', async () => {
@@ -145,7 +145,7 @@ describe('privacy erasure routes', () => {
     const { POST } = await import('@/app/api/privacy/erasure-preview/route')
     const response = await POST(
       jsonPost('http://localhost/api/privacy/erasure-preview', {
-        target: { hsaId: 'SE2321000032-kalle1' },
+        target: { hsaId: 'SE5560000001-kalle1' },
       }) as never,
     )
 
@@ -159,7 +159,7 @@ describe('privacy erasure routes', () => {
     const response = await POST(
       jsonPost(
         'http://localhost/api/privacy/erasure-preview',
-        { target: { hsaId: 'SE2321000032-kalle1' } },
+        { target: { hsaId: 'SE5560000001-kalle1' } },
         {
           Origin: 'http://localhost',
           'X-Requested-With': 'XMLHttpRequest',
@@ -182,10 +182,10 @@ describe('privacy erasure routes', () => {
           displayName: 'John Levi',
           email: 'john.levi@example.com',
           firstName: 'John Carl',
-          hsaId: 'SE2321000032-johlju',
+          hsaId: 'SE5560000001-johlju',
           lastName: 'Levi',
         },
-        target: { hsaId: 'SE2321000032-kalle1' },
+        target: { hsaId: 'SE5560000001-kalle1' },
       }) as never,
     )
 
@@ -197,10 +197,10 @@ describe('privacy erasure routes', () => {
           displayName: 'John Levi',
           email: 'john.levi@example.com',
           firstName: 'John Carl',
-          hsaId: 'SE2321000032-johlju',
+          hsaId: 'SE5560000001-johlju',
           lastName: 'Levi',
         },
-        target: { hsaId: 'SE2321000032-kalle1' },
+        target: { hsaId: 'SE5560000001-kalle1' },
       },
     )
   })
@@ -210,7 +210,7 @@ describe('privacy erasure routes', () => {
     const { POST } = await import('@/app/api/privacy/erasure-preview/route')
     const response = await POST(
       jsonPost('http://localhost/api/privacy/erasure-preview', {
-        target: { hsaId: 'SE2321000032-kalle1' },
+        target: { hsaId: 'SE5560000001-kalle1' },
       }) as never,
     )
 
@@ -255,7 +255,7 @@ describe('privacy erasure routes', () => {
     const response = await POST(
       jsonPost('http://localhost/api/privacy/erasure-requests', {
         previewToken: 'preview-token',
-        target: { hsaId: 'SE2321000032-kalle1' },
+        target: { hsaId: 'SE5560000001-kalle1' },
       }) as never,
     )
 
@@ -271,7 +271,7 @@ describe('privacy erasure routes', () => {
     const response = await POST(
       jsonPost('http://localhost/api/privacy/erasure-requests', {
         previewToken: 'preview-token',
-        target: { hsaId: 'SE2321000032-kalle1' },
+        target: { hsaId: 'SE5560000001-kalle1' },
       }) as never,
     )
 
@@ -286,7 +286,7 @@ describe('privacy erasure routes', () => {
         'http://localhost/api/privacy/erasure-requests',
         {
           previewToken: 'preview-token',
-          target: { hsaId: 'SE2321000032-kalle1' },
+          target: { hsaId: 'SE5560000001-kalle1' },
         },
         {
           Origin: 'http://localhost',
@@ -308,7 +308,7 @@ describe('privacy erasure routes', () => {
     const response = await POST(
       jsonPost('http://localhost/api/privacy/erasure-requests', {
         previewToken: 'preview-token',
-        target: { hsaId: 'SE2321000032-kalle1' },
+        target: { hsaId: 'SE5560000001-kalle1' },
       }) as never,
     )
 
@@ -328,7 +328,7 @@ describe('privacy erasure routes', () => {
         action: 'delete',
         groupKey: 'owners.identity',
         reason: 'unsupported_privacy_action',
-        targetHsaId: 'SE2321000032-kalle1',
+        targetHsaId: 'SE5560000001-kalle1',
       }),
     )
     const { POST } = await import('@/app/api/privacy/erasure-requests/route')
@@ -336,7 +336,7 @@ describe('privacy erasure routes', () => {
       jsonPost('http://localhost/api/privacy/erasure-requests', {
         actions: { 'owners.identity': 'delete' },
         previewToken: 'preview-token',
-        target: { hsaId: 'SE2321000032-kalle1' },
+        target: { hsaId: 'SE5560000001-kalle1' },
       }) as never,
     )
     const body = await responseJson(response)
@@ -346,7 +346,7 @@ describe('privacy erasure routes', () => {
       groupKey: 'owners.identity',
       reason: 'unsupported_privacy_action',
     })
-    expect(JSON.stringify(body)).not.toContain('SE2321000032-kalle1')
+    expect(JSON.stringify(body)).not.toContain('SE5560000001-kalle1')
     expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
   })
 
@@ -356,7 +356,7 @@ describe('privacy erasure routes', () => {
         'Replacement requires both a valid HSA-ID and display name',
         {
           reason: 'invalid_replacement',
-          targetHsaId: 'SE2321000032-kalle1',
+          targetHsaId: 'SE5560000001-kalle1',
         },
       ),
     )
@@ -366,34 +366,34 @@ describe('privacy erasure routes', () => {
         previewToken: 'preview-token',
         replacement: {
           displayName: 'John Levi',
-          hsaId: 'SE2321000032-johlju',
+          hsaId: 'SE5560000001-johlju',
         },
-        target: { hsaId: 'SE2321000032-kalle1' },
+        target: { hsaId: 'SE5560000001-kalle1' },
       }) as never,
     )
     const body = await responseJson(response)
 
     expect(response.status).toBe(400)
     expect(body).not.toHaveProperty('details')
-    expect(JSON.stringify(body)).not.toContain('SE2321000032-kalle1')
+    expect(JSON.stringify(body)).not.toContain('SE5560000001-kalle1')
   })
 
   it('sanitizes unexpected privacy execution failures', async () => {
     routeState.executePrivacyErasure.mockRejectedValueOnce(
-      new Error('database failure for SE2321000032-kalle1'),
+      new Error('database failure for SE5560000001-kalle1'),
     )
     const { POST } = await import('@/app/api/privacy/erasure-requests/route')
     const response = await POST(
       jsonPost('http://localhost/api/privacy/erasure-requests', {
         previewToken: 'preview-token',
-        target: { hsaId: 'SE2321000032-kalle1' },
+        target: { hsaId: 'SE5560000001-kalle1' },
       }) as never,
     )
     const body = await responseJson(response)
 
     expect(response.status).toBe(500)
     expect(body).toEqual({ error: 'Failed to execute privacy erasure' })
-    expect(JSON.stringify(body)).not.toContain('SE2321000032-kalle1')
+    expect(JSON.stringify(body)).not.toContain('SE5560000001-kalle1')
   })
 
   it('includes sanitized development debug details for unexpected privacy execution failures', async () => {
@@ -401,14 +401,14 @@ describe('privacy erasure routes', () => {
     try {
       routeState.executePrivacyErasure.mockRejectedValueOnce(
         new Error(
-          'SQL failed for SE2321000032-kalle1 while running SELECT token FROM owners',
+          'SQL failed for SE5560000001-kalle1 while running SELECT token FROM owners',
         ),
       )
       const { POST } = await import('@/app/api/privacy/erasure-requests/route')
       const response = await POST(
         jsonPost('http://localhost/api/privacy/erasure-requests', {
           previewToken: 'preview-token',
-          target: { hsaId: 'SE2321000032-kalle1' },
+          target: { hsaId: 'SE5560000001-kalle1' },
         }) as never,
       )
       const body = await responseJson(response)
@@ -417,7 +417,7 @@ describe('privacy erasure routes', () => {
       expect(body.error).toBe('Failed to execute privacy erasure')
       expect(body.debugMessage).toContain('[HSA_ID_REDACTED]')
       expect(body.debugMessage).toContain('[SQL_REDACTED]')
-      expect(JSON.stringify(body)).not.toContain('SE2321000032-kalle1')
+      expect(JSON.stringify(body)).not.toContain('SE5560000001-kalle1')
       expect(JSON.stringify(body)).not.toContain('SELECT token FROM owners')
     } finally {
       vi.unstubAllEnvs()
@@ -430,7 +430,7 @@ describe('privacy erasure routes', () => {
       jsonPost('http://localhost/api/privacy/erasure-requests', {
         actions: { 'requirement_versions.created_by': 'anonymize' },
         previewToken: 'preview-token',
-        target: { hsaId: 'SE2321000032-kalle1' },
+        target: { hsaId: 'SE5560000001-kalle1' },
       }) as never,
     )
 
@@ -439,7 +439,7 @@ describe('privacy erasure routes', () => {
       { db: true },
       expect.objectContaining({
         previewToken: 'preview-token',
-        target: { hsaId: 'SE2321000032-kalle1' },
+        target: { hsaId: 'SE5560000001-kalle1' },
       }),
     )
     const auditArg = routeState.recordSecurityEvent.mock.calls[0][0]
@@ -453,7 +453,7 @@ describe('privacy erasure routes', () => {
         event: 'privacy.erasure.executed',
       }),
     )
-    expect(JSON.stringify(auditArg.detail)).not.toContain('SE2321000032-kalle1')
+    expect(JSON.stringify(auditArg.detail)).not.toContain('SE5560000001-kalle1')
   })
 
   it('executes erasure with explicit replacement owner names', async () => {
@@ -466,10 +466,10 @@ describe('privacy erasure routes', () => {
           displayName: 'Anna Maria Eriksson',
           email: 'anna.maria.eriksson@example.com',
           firstName: 'Anna Maria',
-          hsaId: 'SE2321000032-johlju',
+          hsaId: 'SE5560000001-johlju',
           lastName: 'Eriksson',
         },
-        target: { hsaId: 'SE2321000032-kalle1' },
+        target: { hsaId: 'SE5560000001-kalle1' },
       }) as never,
     )
 
@@ -481,7 +481,7 @@ describe('privacy erasure routes', () => {
           displayName: 'Anna Maria Eriksson',
           email: 'anna.maria.eriksson@example.com',
           firstName: 'Anna Maria',
-          hsaId: 'SE2321000032-johlju',
+          hsaId: 'SE5560000001-johlju',
           lastName: 'Eriksson',
         },
       }),

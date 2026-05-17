@@ -123,18 +123,18 @@ All accounts use the password `devpass` (clearly dev-only, do not reuse).
 
 | Username | Role(s) | `employeeHsaId` |
 | --- | --- | --- |
-| `olle.areaowner` | _(none)_ | `SE2321000032-areaowner1` |
-| `cora.coauthor` | _(none)_ | `SE2321000032-areaco1` |
-| `linnea.areaowner` | _(none; owns two areas)_ | `SE2321000032-linneab` |
-| `petra.specresp` | _(none)_ | `SE2321000032-specresp1` |
-| `paul.pkgcoauthor` | _(none)_ | `SE2321000032-pkgco1` |
-| `rita.reviewer` | `Reviewer` | `SE2321000032-reviewer1` |
-| `ada.admin` | `Admin`, `PrivacyOfficer` | `SE2321000032-admin1` |
-| `only.admin` | `Admin` | `SE2321000032-admin2` |
-| `disa.privacy` | `PrivacyOfficer` | `SE2321000032-privacy1` |
-| `kalle.one` | _(none — duplicate-name privacy test)_ | `SE2321000032-kalle1` |
-| `kalle.two` | _(none — duplicate-name privacy test)_ | `SE2321000032-kalle2` |
-| `noah.noroles` | _(none — for negative testing)_ | `SE2321000032-noroles1` |
+| `olle.areaowner` | _(none)_ | `SE5560000001-areaowner1` |
+| `cora.coauthor` | _(none)_ | `SE5560000001-areaco1` |
+| `linnea.areaowner` | _(none; owns two areas)_ | `SE5560000001-linneab` |
+| `petra.specresp` | _(none)_ | `SE5560000001-specresp1` |
+| `paul.pkgcoauthor` | _(none)_ | `SE5560000001-pkgco1` |
+| `rita.reviewer` | `Reviewer` | `SE5560000001-reviewer1` |
+| `ada.admin` | `Admin`, `PrivacyOfficer` | `SE5560000001-admin1` |
+| `only.admin` | `Admin` | `SE5560000001-admin2` |
+| `disa.privacy` | `PrivacyOfficer` | `SE5560000001-privacy1` |
+| `kalle.one` | _(none — duplicate-name privacy test)_ | `SE5560000001-kalle1` |
+| `kalle.two` | _(none — duplicate-name privacy test)_ | `SE5560000001-kalle2` |
+| `noah.noroles` | _(none — for negative testing)_ | `SE5560000001-noroles1` |
 
 The realm JSON is imported only when the `idp` container starts **and
 the realm does not already exist** in Keycloak's embedded H2 store. A
@@ -261,7 +261,7 @@ token and userinfo response. The value is sourced from each user's
 - Pattern: `/^SE\d{10}-[A-Za-z0-9]+$/u` — literal `SE`, 10 digits,
   `-`, then one or more ASCII letters/digits.
 - Maximum length: 31 characters.
-- Example: `SE2321000032-1003`.
+- Example: `SE5560000001-1003`.
 
 Login is rejected with 401 when the claim is missing or fails this
 check.
@@ -270,7 +270,7 @@ check.
 
 The `kravhantering-mcp` Keycloak client is configured with the
 `oidc-hardcoded-claim-mapper` protocol mapper that emits
-`employeeHsaId = SE2321000032-mcp1` on the access token used by the MCP
+`employeeHsaId = SE5560000001-mcp1` on the access token used by the MCP
 service-account flow. This gives MCP write workflows a real-format HSA-ID
 for actor stamping in requirement history, deviations, and improvement
 suggestions.

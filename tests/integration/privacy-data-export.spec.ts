@@ -7,7 +7,7 @@ function exportPayload(hsaId: string) {
     generatedAt: '2026-05-12T12:00:00.000Z',
     generatedBy: {
       displayName: 'Ada Admin',
-      hsaId: 'SE2321000032-admin1',
+      hsaId: 'SE5560000001-admin1',
       roles: ['Admin', 'PrivacyOfficer'],
       source: 'oidc',
       sub: 'admin-sub',
@@ -43,7 +43,7 @@ test('admin privacy preview can export JSON and PDF for the preview target', asy
       'hsaId' in body.target &&
       typeof body.target.hsaId === 'string'
         ? body.target.hsaId
-        : 'SE2321000032-admin1'
+        : 'SE5560000001-admin1'
     await route.fulfill({
       contentType: 'application/json',
       json: exportPayload(hsaId),
@@ -53,7 +53,7 @@ test('admin privacy preview can export JSON and PDF for the preview target', asy
   await page.goto('/sv/admin?tab=privacy')
   await page
     .getByRole('textbox', { name: 'HSA-ID att söka efter' })
-    .fill('SE2321000032-linneab')
+    .fill('SE5560000001-linneab')
   await page.getByRole('button', { name: 'Förhandsgranska' }).click()
 
   await expect(
@@ -64,14 +64,14 @@ test('admin privacy preview can export JSON and PDF for the preview target', asy
   await expect.poll(() => exportRequests.length).toBe(1)
   expect(exportRequests[0]).toMatchObject({
     delivery: 'json',
-    target: { hsaId: 'SE2321000032-linneab' },
+    target: { hsaId: 'SE5560000001-linneab' },
   })
 
   await page.getByRole('button', { name: 'Exportera PDF' }).click()
   await expect.poll(() => exportRequests.length).toBe(2)
   expect(exportRequests[1]).toMatchObject({
     delivery: 'pdf',
-    target: { hsaId: 'SE2321000032-linneab' },
+    target: { hsaId: 'SE5560000001-linneab' },
   })
 })
 
@@ -84,7 +84,7 @@ test('self-service privacy page exports the signed-in user without target overri
     exportRequests.push(body)
     await route.fulfill({
       contentType: 'application/json',
-      json: exportPayload('SE2321000032-admin1'),
+      json: exportPayload('SE5560000001-admin1'),
     })
   })
 

@@ -191,7 +191,7 @@ sequenceDiagram
   tolerance.
 - The required MCP identity is `employeeHsaId`. Values must match the HSA-id
   validator. The configured local MCP service client emits
-  `SE2321000032-mcp1`; a missing claim means the IdP realm must be reset or
+  `SE5560000001-mcp1`; a missing claim means the IdP realm must be reset or
   re-imported from the current realm JSON.
 - The current MCP implementation reads `roles` and `scope` directly from the
   access token payload. On success it attaches a verified actor to the active

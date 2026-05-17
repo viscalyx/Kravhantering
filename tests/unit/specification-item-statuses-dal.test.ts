@@ -2,21 +2,75 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   countLinkedSpecificationItems,
   getLinkedSpecificationItems,
+  getSpecificationItemStatusById,
+  listSpecificationItemStatuses,
+  updateSpecificationItemStatus,
 } from '@/lib/dal/specification-item-statuses'
 
 function createSqlServerDb() {
   const query =
     vi.fn<(sql: string, parameters?: unknown[]) => Promise<unknown[]>>()
-  const db = { query } as unknown as Parameters<
-    typeof countLinkedSpecificationItems
-  >[0]
+  const repository = {
+    find: vi.fn(),
+    findOne: vi.fn(),
+    update: vi.fn(),
+  }
+  const db = {
+    getRepository: vi.fn(() => repository),
+    query,
+  } as unknown as Parameters<typeof countLinkedSpecificationItems>[0]
 
-  return { db, query }
+  return { db, query, repository }
 }
+
+const statusEntity = (id: number) => ({
+  color: '#94a3b8',
+  descriptionEn: null,
+  descriptionSv: null,
+  iconName: null,
+  id,
+  nameEn: id === 1 ? 'Included' : 'Custom',
+  nameSv: id === 1 ? 'Inkluderad' : 'Anpassad',
+  sortOrder: id,
+})
 
 describe('specification item statuses DAL', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('lists only seeded system usage statuses', async () => {
+    const { db, repository } = createSqlServerDb()
+    repository.find.mockResolvedValueOnce([statusEntity(1), statusEntity(7)])
+
+    await expect(listSpecificationItemStatuses(db)).resolves.toEqual([
+      {
+        color: '#94a3b8',
+        descriptionEn: null,
+        descriptionSv: null,
+        iconName: null,
+        id: 1,
+        nameEn: 'Included',
+        nameSv: 'Inkluderad',
+        sortOrder: 1,
+      },
+    ])
+  })
+
+  it('does not fetch non-system usage statuses by id', async () => {
+    const { db, repository } = createSqlServerDb()
+
+    await expect(getSpecificationItemStatusById(db, 7)).resolves.toBeNull()
+    expect(repository.findOne).not.toHaveBeenCalled()
+  })
+
+  it('rejects editing non-system usage statuses', async () => {
+    const { db, repository } = createSqlServerDb()
+
+    await expect(
+      updateSpecificationItemStatus(db, 7, { nameEn: 'Custom' }),
+    ).rejects.toThrow('Only system specification item statuses can be edited')
+    expect(repository.update).not.toHaveBeenCalled()
   })
 
   it('counts linked library and specification-local items by status', async () => {

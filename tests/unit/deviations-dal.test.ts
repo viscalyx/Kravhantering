@@ -50,7 +50,7 @@ describe('deviations DAL (SQL Server path)', () => {
         decidedByHsaId: null,
         decidedAt: null,
         createdBy: 'reviewer',
-        createdByHsaId: 'SE2321000032-reviewer1',
+        createdByHsaId: 'SE5560000001-reviewer1',
         createdAt: new Date('2026-04-20T10:00:00.000Z'),
         updatedAt: new Date('2026-04-20T11:00:00.000Z'),
         requirementUniqueId: 'REQ-001',
@@ -88,7 +88,7 @@ describe('deviations DAL (SQL Server path)', () => {
         decidedByHsaId: null,
         decidedAt: null,
         createdBy: 'reviewer',
-        createdByHsaId: 'SE2321000032-reviewer1',
+        createdByHsaId: 'SE5560000001-reviewer1',
         createdAt: '2026-04-20T10:00:00.000Z',
         updatedAt: '2026-04-20T11:00:00.000Z',
         requirementUniqueId: 'REQ-001',
@@ -110,7 +110,7 @@ describe('deviations DAL (SQL Server path)', () => {
       specificationItemId: 3,
       motivation: '  Legacy exception  ',
       createdBy: 'tester',
-      createdByHsaId: 'SE2321000032-tester1',
+      createdByHsaId: 'SE5560000001-tester1',
     })
 
     expect(result).toEqual({ id: 42 })
@@ -121,7 +121,7 @@ describe('deviations DAL (SQL Server path)', () => {
         3,
         'Legacy exception',
         'tester',
-        'SE2321000032-tester1',
+        'SE5560000001-tester1',
         expect.any(Date),
       ],
     )
@@ -234,7 +234,7 @@ describe('deviations DAL (SQL Server path)', () => {
 
     await updateDeviation(db, 7, {
       createdBy: 'editor',
-      createdByHsaId: 'SE2321000032-editor1',
+      createdByHsaId: 'SE5560000001-editor1',
       motivation: '  Updated motivation  ',
     })
 
@@ -246,7 +246,7 @@ describe('deviations DAL (SQL Server path)', () => {
     expect(query.mock.calls[1][1]).toEqual([
       'Updated motivation',
       'editor',
-      'SE2321000032-editor1',
+      'SE5560000001-editor1',
       expect.any(Date),
       7,
     ])
@@ -282,13 +282,13 @@ describe('deviations DAL (SQL Server path)', () => {
 
     await recordDecision(db, 7, {
       decidedBy: 'reviewer',
-      decidedByHsaId: 'SE2321000032-reviewer1',
+      decidedByHsaId: 'SE5560000001-reviewer1',
       decision: DEVIATION_APPROVED,
       decisionMotivation: '  Approved  ',
     })
     await recordSpecificationLocalDecision(db, 9, {
       decidedBy: 'local reviewer',
-      decidedByHsaId: 'SE2321000032-reviewer2',
+      decidedByHsaId: 'SE5560000001-reviewer2',
       decision: DEVIATION_REJECTED,
       decisionMotivation: '  Rejected  ',
     })
@@ -302,7 +302,7 @@ describe('deviations DAL (SQL Server path)', () => {
       DEVIATION_APPROVED,
       'Approved',
       'reviewer',
-      'SE2321000032-reviewer1',
+      'SE5560000001-reviewer1',
       expect.any(Date),
       7,
     ])
@@ -318,7 +318,7 @@ describe('deviations DAL (SQL Server path)', () => {
       DEVIATION_REJECTED,
       'Rejected',
       'local reviewer',
-      'SE2321000032-reviewer2',
+      'SE5560000001-reviewer2',
       expect.any(Date),
       9,
     ])
@@ -371,7 +371,7 @@ describe('deviations DAL (SQL Server path)', () => {
     await expect(
       recordDecision(db, 7, {
         decidedBy: 'reviewer',
-        decidedByHsaId: 'SE2321000032-reviewer1',
+        decidedByHsaId: 'SE5560000001-reviewer1',
         decision: DEVIATION_REJECTED,
         decisionMotivation: 'Second decision',
       }),

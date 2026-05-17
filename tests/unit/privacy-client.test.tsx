@@ -31,7 +31,7 @@ function exportPayload() {
     generatedAt: '2026-05-12T12:00:00.000Z',
     generatedBy: {
       displayName: 'Ada Admin',
-      hsaId: 'SE2321000032-admin1',
+      hsaId: 'SE5560000001-admin1',
       roles: ['Admin'],
       source: 'oidc',
       sub: 'admin-sub',
@@ -40,7 +40,7 @@ function exportPayload() {
     schemaVersion: 'privacy-data-subject-export.v1',
     sources: [],
     subject: {
-      hsaId: 'SE2321000032-admin1',
+      hsaId: 'SE5560000001-admin1',
       targetFingerprint: '0123456789abcdef0123456789abcdef',
     },
     summary: {
@@ -87,14 +87,14 @@ describe('PrivacyClient', () => {
       <PrivacyClient
         currentUser={{
           email: 'ada@example.test',
-          hsaId: 'SE2321000032-admin1',
+          hsaId: 'SE5560000001-admin1',
           name: 'Ada Admin',
         }}
       />,
     )
 
     expect(screen.getByText('Ada Admin')).toBeTruthy()
-    expect(screen.getByText('SE2321000032-admin1')).toBeTruthy()
+    expect(screen.getByText('SE5560000001-admin1')).toBeTruthy()
 
     fireEvent.click(
       screen.getByRole('button', {
@@ -120,7 +120,7 @@ describe('PrivacyClient', () => {
     render(
       <PrivacyClient
         currentUser={{
-          hsaId: 'SE2321000032-admin1',
+          hsaId: 'SE5560000001-admin1',
           name: 'Ada Admin',
         }}
       />,

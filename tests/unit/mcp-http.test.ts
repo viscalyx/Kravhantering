@@ -37,7 +37,7 @@ vi.mock('@/lib/auth/mcp-token', () => ({
     actor: {
       id: 'mcp-test-actor',
       displayName: 'MCP Test Actor',
-      hsaId: 'SE2321000032-mcp1',
+      hsaId: 'SE5560000001-mcp1',
       isAuthenticated: true,
       roles: ['Admin'],
       source: 'mcp' as const,
@@ -354,6 +354,94 @@ describe('handleRequirementsMcpRequest', () => {
       expect(queryInputSchemaText).toContain('requirementPackageIds')
       expect(queryInputSchemaText).toContain('sortBy')
       expect(JSON.stringify(queryTool?.outputSchema)).toContain('pagination')
+    })
+
+    it('describes specification copy paths for MCP clients', async () => {
+      const specificationIdCopyPath =
+        'requirements_list_specifications.specifications[].id -> specificationId'
+      const specificationSlugCopyPath =
+        'requirements_list_specifications.specifications[].uniqueId -> specificationSlug'
+      const addRequirementIdsCopyPath =
+        'requirements_query_catalog.items[].id -> requirementIds'
+      const removeRequirementIdsCopyPath =
+        'requirements_get_specification_items.items[].id -> requirementIds'
+
+      const listSpecificationsTool = getTool('requirements_list_specifications')
+      const getSpecificationItemsTool = getTool(
+        'requirements_get_specification_items',
+      )
+      const addToSpecificationTool = getTool(
+        'requirements_add_to_specification',
+      )
+      const removeFromSpecificationTool = getTool(
+        'requirements_remove_from_specification',
+      )
+
+      expect(listSpecificationsTool?.description).toContain(
+        specificationIdCopyPath,
+      )
+      expect(listSpecificationsTool?.description).toContain(
+        specificationSlugCopyPath,
+      )
+      expect(getSpecificationItemsTool?.description).toContain(
+        specificationIdCopyPath,
+      )
+      expect(getSpecificationItemsTool?.description).toContain(
+        specificationSlugCopyPath,
+      )
+      expect(addToSpecificationTool?.description).toContain(
+        specificationIdCopyPath,
+      )
+      expect(addToSpecificationTool?.description).toContain(
+        specificationSlugCopyPath,
+      )
+      expect(addToSpecificationTool?.description).toContain(
+        addRequirementIdsCopyPath,
+      )
+      expect(removeFromSpecificationTool?.description).toContain(
+        specificationIdCopyPath,
+      )
+      expect(removeFromSpecificationTool?.description).toContain(
+        specificationSlugCopyPath,
+      )
+      expect(removeFromSpecificationTool?.description).toContain(
+        removeRequirementIdsCopyPath,
+      )
+
+      const getSpecificationItemsInputSchemaText = JSON.stringify(
+        getSpecificationItemsTool?.inputSchema,
+      )
+      const addToSpecificationInputSchemaText = JSON.stringify(
+        addToSpecificationTool?.inputSchema,
+      )
+      const removeFromSpecificationInputSchemaText = JSON.stringify(
+        removeFromSpecificationTool?.inputSchema,
+      )
+
+      expect(getSpecificationItemsInputSchemaText).toContain(
+        specificationIdCopyPath,
+      )
+      expect(getSpecificationItemsInputSchemaText).toContain(
+        specificationSlugCopyPath,
+      )
+      expect(addToSpecificationInputSchemaText).toContain(
+        specificationIdCopyPath,
+      )
+      expect(addToSpecificationInputSchemaText).toContain(
+        specificationSlugCopyPath,
+      )
+      expect(addToSpecificationInputSchemaText).toContain(
+        addRequirementIdsCopyPath,
+      )
+      expect(removeFromSpecificationInputSchemaText).toContain(
+        specificationIdCopyPath,
+      )
+      expect(removeFromSpecificationInputSchemaText).toContain(
+        specificationSlugCopyPath,
+      )
+      expect(removeFromSpecificationInputSchemaText).toContain(
+        removeRequirementIdsCopyPath,
+      )
     })
 
     it('describes requirements_get_requirement history edit tokens', async () => {

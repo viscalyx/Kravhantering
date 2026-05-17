@@ -31,7 +31,7 @@
       "firstName": "Olle",
       "lastName": "AreaOwner",
       "attributes": {
-        "hsaId": ["SE2321000032-areaowner1"]
+        "hsaId": ["SE5560000001-areaowner1"]
       },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
@@ -46,7 +46,7 @@
       "firstName": "Cora",
       "lastName": "CoAuthor",
       "attributes": {
-        "hsaId": ["SE2321000032-areaco1"]
+        "hsaId": ["SE5560000001-areaco1"]
       },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
@@ -61,7 +61,7 @@
       "firstName": "Linnéa",
       "lastName": "AreaOwner",
       "attributes": {
-        "hsaId": ["SE2321000032-linneab"]
+        "hsaId": ["SE5560000001-linneab"]
       },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
@@ -76,7 +76,7 @@
       "firstName": "Petra",
       "lastName": "SpecificationResp",
       "attributes": {
-        "hsaId": ["SE2321000032-specresp1"]
+        "hsaId": ["SE5560000001-specresp1"]
       },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
@@ -91,7 +91,7 @@
       "firstName": "Paul",
       "lastName": "PkgCoAuthor",
       "attributes": {
-        "hsaId": ["SE2321000032-pkgco1"]
+        "hsaId": ["SE5560000001-pkgco1"]
       },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
@@ -106,7 +106,7 @@
       "firstName": "Rita",
       "lastName": "Reviewer",
       "attributes": {
-        "hsaId": ["SE2321000032-reviewer1"]
+        "hsaId": ["SE5560000001-reviewer1"]
       },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
@@ -121,7 +121,7 @@
       "firstName": "Ada",
       "lastName": "Admin",
       "attributes": {
-        "hsaId": ["SE2321000032-admin1"]
+        "hsaId": ["SE5560000001-admin1"]
       },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
@@ -136,7 +136,7 @@
       "firstName": "Only",
       "lastName": "Admin",
       "attributes": {
-        "hsaId": ["SE2321000032-admin2"]
+        "hsaId": ["SE5560000001-admin2"]
       },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
@@ -151,7 +151,7 @@
       "firstName": "Disa",
       "lastName": "PrivacyOfficer",
       "attributes": {
-        "hsaId": ["SE2321000032-privacy1"]
+        "hsaId": ["SE5560000001-privacy1"]
       },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
@@ -166,7 +166,7 @@
       "firstName": "Kalle",
       "lastName": "Svensson",
       "attributes": {
-        "hsaId": ["SE2321000032-kalle1"]
+        "hsaId": ["SE5560000001-kalle1"]
       },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
@@ -181,7 +181,7 @@
       "firstName": "Kalle",
       "lastName": "Svensson",
       "attributes": {
-        "hsaId": ["SE2321000032-kalle2"]
+        "hsaId": ["SE5560000001-kalle2"]
       },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
@@ -196,7 +196,7 @@
       "firstName": "Noah",
       "lastName": "NoRoles",
       "attributes": {
-        "hsaId": ["SE2321000032-noroles1"]
+        "hsaId": ["SE5560000001-noroles1"]
       },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
@@ -347,7 +347,7 @@
           "consentRequired": false,
           "config": {
             "claim.name": "employeeHsaId",
-            "claim.value": "SE2321000032-mcp1",
+            "claim.value": "SE5560000001-mcp1",
             "jsonType.label": "String",
             "id.token.claim": "false",
             "access.token.claim": "true",

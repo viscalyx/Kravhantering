@@ -48,7 +48,7 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     name: 'Olle AreaOwner',
     email: 'olle.areaowner@example.test',
     preferred_username: 'olle.areaowner',
-    employeeHsaId: 'SE2321000032-areaowner1',
+    employeeHsaId: 'SE5560000001-areaowner1',
     roles: [],
   },
   AreaCoauthor: {
@@ -58,7 +58,7 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     name: 'Cora CoAuthor',
     email: 'cora.coauthor@example.test',
     preferred_username: 'cora.coauthor',
-    employeeHsaId: 'SE2321000032-areaco1',
+    employeeHsaId: 'SE5560000001-areaco1',
     roles: [],
   },
   TwoAreaOwner: {
@@ -68,7 +68,7 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     name: 'Linnéa AreaOwner',
     email: 'linnea.areaowner@example.test',
     preferred_username: 'linnea.areaowner',
-    employeeHsaId: 'SE2321000032-linneab',
+    employeeHsaId: 'SE5560000001-linneab',
     roles: [],
   },
   SpecificationResp: {
@@ -78,7 +78,7 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     name: 'Petra SpecificationResp',
     email: 'petra.specresp@example.test',
     preferred_username: 'petra.specresp',
-    employeeHsaId: 'SE2321000032-specresp1',
+    employeeHsaId: 'SE5560000001-specresp1',
     roles: [],
   },
   SpecificationCoauthor: {
@@ -88,7 +88,7 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     name: 'Paul PkgCoAuthor',
     email: 'paul.pkgcoauthor@example.test',
     preferred_username: 'paul.pkgcoauthor',
-    employeeHsaId: 'SE2321000032-pkgco1',
+    employeeHsaId: 'SE5560000001-pkgco1',
     roles: [],
   },
   Reviewer: {
@@ -98,7 +98,7 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     name: 'Rita Reviewer',
     email: 'rita.reviewer@example.test',
     preferred_username: 'rita.reviewer',
-    employeeHsaId: 'SE2321000032-reviewer1',
+    employeeHsaId: 'SE5560000001-reviewer1',
     roles: ['Reviewer'],
   },
   Admin: {
@@ -108,7 +108,7 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     name: 'Ada Admin',
     email: 'ada.admin@example.test',
     preferred_username: 'ada.admin',
-    employeeHsaId: 'SE2321000032-admin1',
+    employeeHsaId: 'SE5560000001-admin1',
     roles: ['Admin', 'PrivacyOfficer'],
   },
   AdminOnly: {
@@ -118,7 +118,7 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     name: 'Only Admin',
     email: 'only.admin@example.test',
     preferred_username: 'only.admin',
-    employeeHsaId: 'SE2321000032-admin2',
+    employeeHsaId: 'SE5560000001-admin2',
     roles: ['Admin'],
   },
   PrivacyOfficer: {
@@ -128,7 +128,7 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     name: 'Disa PrivacyOfficer',
     email: 'disa.privacy@example.test',
     preferred_username: 'disa.privacy',
-    employeeHsaId: 'SE2321000032-privacy1',
+    employeeHsaId: 'SE5560000001-privacy1',
     roles: ['PrivacyOfficer'],
   },
   KalleOne: {
@@ -138,7 +138,7 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     name: 'Kalle Svensson',
     email: 'kalle.one@example.test',
     preferred_username: 'kalle.one',
-    employeeHsaId: 'SE2321000032-kalle1',
+    employeeHsaId: 'SE5560000001-kalle1',
     roles: [],
   },
   KalleTwo: {
@@ -148,7 +148,7 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     name: 'Kalle Svensson',
     email: 'kalle.two@example.test',
     preferred_username: 'kalle.two',
-    employeeHsaId: 'SE2321000032-kalle2',
+    employeeHsaId: 'SE5560000001-kalle2',
     roles: [],
   },
   NoRoles: {
@@ -158,7 +158,7 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     name: 'Noah NoRoles',
     email: 'noah.noroles@example.test',
     preferred_username: 'noah.noroles',
-    employeeHsaId: 'SE2321000032-noroles1',
+    employeeHsaId: 'SE5560000001-noroles1',
     roles: [],
   },
 }

@@ -46,7 +46,7 @@ describe('dev Keycloak realm', () => {
 
     expect(mapper?.protocolMapper).toBe('oidc-hardcoded-claim-mapper')
     expect(mapper?.config?.['access.token.claim']).toBe('true')
-    expect(employeeHsaId).toBe('SE2321000032-mcp1')
+    expect(employeeHsaId).toBe('SE5560000001-mcp1')
     expect(isHsaId(employeeHsaId)).toBe(true)
   })
 
@@ -57,7 +57,7 @@ describe('dev Keycloak realm', () => {
     )
     const hsaId = user?.attributes?.hsaId?.[0]
 
-    expect(hsaId).toBe('SE2321000032-linneab')
+    expect(hsaId).toBe('SE5560000001-linneab')
     expect(isHsaId(hsaId)).toBe(true)
   })
 })

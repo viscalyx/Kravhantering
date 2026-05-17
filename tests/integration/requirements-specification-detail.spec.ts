@@ -215,6 +215,56 @@ for (const viewport of viewports) {
 
         expect(Math.round(afterTopBarBox.y)).toBe(Math.round(beforeTopBarBox.y))
       })
+
+      test('shows configured usage statuses in the editable status column', async ({
+        page,
+      }) => {
+        await page.addInitScript(() => {
+          globalThis.localStorage.clear()
+        })
+        await page.goto('/sv/specifications/ETJANST-UPP-2026')
+
+        const leftPanel = page.locator(
+          '[data-specification-detail-list-panel="items"]',
+        )
+        await expect(leftPanel).toBeVisible()
+
+        await leftPanel.locator('[data-column-picker-trigger="true"]').click()
+
+        const popover = page.locator('[data-column-picker-popover="true"]')
+        const statusCheckbox = popover.locator(
+          '[data-column-picker-option="specificationItemStatus"] input[type="checkbox"]',
+        )
+        await expect(popover).toBeVisible()
+        if (!(await statusCheckbox.isChecked())) {
+          await statusCheckbox.check()
+        }
+
+        await leftPanel
+          .locator('[data-requirements-scroll-container="true"]')
+          .evaluate(node => {
+            node.scrollLeft = node.scrollWidth
+          })
+
+        const statusSelect = leftPanel
+          .getByRole('combobox', { name: 'Användningsstatus' })
+          .first()
+        const optionLabels = await statusSelect
+          .locator('option')
+          .evaluateAll(options =>
+            options.map(option => option.textContent?.trim() ?? ''),
+          )
+        const optionValues = await statusSelect
+          .locator('option')
+          .evaluateAll(options =>
+            options.map(option => option.getAttribute('value') ?? ''),
+          )
+
+        expect(optionLabels).toContain('Inkluderad')
+        expect(optionLabels).toContain('Pågående')
+        expect(optionLabels).not.toContain('—')
+        expect(optionValues).not.toContain('')
+      })
     }
   })
 }

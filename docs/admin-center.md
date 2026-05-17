@@ -178,7 +178,7 @@ verify that erasing one HSA-ID does not match the other person by name.
 
 <!-- cspell:ignore linneab -->
 
-Seed data also gives `SE2321000032-linneab` coverage across every privacy
+Seed data also gives `SE5560000001-linneab` coverage across every privacy
 preview group: owner rows, area and package owner assignments, requirement
 versions, deviation creator and decision fields, improvement-suggestion creator
 and resolver fields, specification responsibility, and area/specification
@@ -372,12 +372,12 @@ It links to the existing stable routes for:
 The admin center does not rename or move those routes. It only centralizes how
 users reach them.
 
-Requirement statuses, specification item statuses, and risk levels can also
-carry a nullable icon selected from the installed Lucide icon catalog through
-the shared status-icon allowlist. The admin pages keep the label visible and
-use the icon only as a decorative cue in tables, badges, steppers, and reports.
-Existing rows without an icon continue to render with text-only labels until an
-admin selects one.
+The fixed system rows for requirement statuses, specification item statuses,
+and risk levels can also carry a nullable icon selected from the installed
+Lucide icon catalog through the shared status-icon allowlist. The admin pages
+keep the label visible and use the icon only as a decorative cue in tables,
+badges, steppers, and reports. Existing rows without an icon continue to render
+with text-only labels until an admin selects one.
 
 ### Area Owner
 

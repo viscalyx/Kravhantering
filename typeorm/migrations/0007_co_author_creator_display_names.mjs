@@ -7,18 +7,18 @@ const UP_STATEMENTS = [
   // Seed-only backfill for requirement-area co-author fixture rows.
   `UPDATE [requirement_area_co_authors]
     SET [created_by_display_name] = CASE [created_by_hsa_id]
-      WHEN N'SE2321000032-seed' THEN N'seed'
-      WHEN N'SE2321000032-seeddogfood' THEN N'seed-dogfood'
-      WHEN N'SE2321000032-annaj' THEN N'Anna Johansson'
-      WHEN N'SE2321000032-erikl' THEN N'Erik Lindberg'
-      WHEN N'SE2321000032-marias' THEN N'Maria Svensson'
-      WHEN N'SE2321000032-saraholm' THEN N'Sara Holm'
-      WHEN N'SE2321000032-karlpersson' THEN N'Karl Persson'
-      WHEN N'SE2321000032-linneab' THEN N'Linnéa Bergström'
-      WHEN N'SE2321000032-oscarn' THEN N'Oscar Nilsson'
-      WHEN N'SE2321000032-emmal' THEN N'Emma Lindqvist'
-      WHEN N'SE2321000032-kalle1' THEN N'Kalle Svensson'
-      WHEN N'SE2321000032-kalle2' THEN N'Kalle Svensson'
+      WHEN N'SE5560000001-seed' THEN N'seed'
+      WHEN N'SE5560000001-seeddogfood' THEN N'seed-dogfood'
+      WHEN N'SE5560000001-annaj' THEN N'Anna Johansson'
+      WHEN N'SE5560000001-erikl' THEN N'Erik Lindberg'
+      WHEN N'SE5560000001-marias' THEN N'Maria Svensson'
+      WHEN N'SE5560000001-saraholm' THEN N'Sara Holm'
+      WHEN N'SE5560000001-karlpersson' THEN N'Karl Persson'
+      WHEN N'SE5560000001-linneab' THEN N'Linnéa Bergström'
+      WHEN N'SE5560000001-oscarn' THEN N'Oscar Nilsson'
+      WHEN N'SE5560000001-emmal' THEN N'Emma Lindqvist'
+      WHEN N'SE5560000001-kalle1' THEN N'Kalle Svensson'
+      WHEN N'SE5560000001-kalle2' THEN N'Kalle Svensson'
       ELSE [created_by_display_name]
     END
     WHERE [created_by_hsa_id] IS NOT NULL
@@ -26,18 +26,18 @@ const UP_STATEMENTS = [
   // Seed-only backfill for specification co-author fixture rows.
   `UPDATE [specification_co_authors]
     SET [created_by_display_name] = CASE [created_by_hsa_id]
-      WHEN N'SE2321000032-seed' THEN N'seed'
-      WHEN N'SE2321000032-seeddogfood' THEN N'seed-dogfood'
-      WHEN N'SE2321000032-annaj' THEN N'Anna Johansson'
-      WHEN N'SE2321000032-erikl' THEN N'Erik Lindberg'
-      WHEN N'SE2321000032-marias' THEN N'Maria Svensson'
-      WHEN N'SE2321000032-saraholm' THEN N'Sara Holm'
-      WHEN N'SE2321000032-karlpersson' THEN N'Karl Persson'
-      WHEN N'SE2321000032-linneab' THEN N'Linnéa Bergström'
-      WHEN N'SE2321000032-oscarn' THEN N'Oscar Nilsson'
-      WHEN N'SE2321000032-emmal' THEN N'Emma Lindqvist'
-      WHEN N'SE2321000032-kalle1' THEN N'Kalle Svensson'
-      WHEN N'SE2321000032-kalle2' THEN N'Kalle Svensson'
+      WHEN N'SE5560000001-seed' THEN N'seed'
+      WHEN N'SE5560000001-seeddogfood' THEN N'seed-dogfood'
+      WHEN N'SE5560000001-annaj' THEN N'Anna Johansson'
+      WHEN N'SE5560000001-erikl' THEN N'Erik Lindberg'
+      WHEN N'SE5560000001-marias' THEN N'Maria Svensson'
+      WHEN N'SE5560000001-saraholm' THEN N'Sara Holm'
+      WHEN N'SE5560000001-karlpersson' THEN N'Karl Persson'
+      WHEN N'SE5560000001-linneab' THEN N'Linnéa Bergström'
+      WHEN N'SE5560000001-oscarn' THEN N'Oscar Nilsson'
+      WHEN N'SE5560000001-emmal' THEN N'Emma Lindqvist'
+      WHEN N'SE5560000001-kalle1' THEN N'Kalle Svensson'
+      WHEN N'SE5560000001-kalle2' THEN N'Kalle Svensson'
       ELSE [created_by_display_name]
     END
     WHERE [created_by_hsa_id] IS NOT NULL

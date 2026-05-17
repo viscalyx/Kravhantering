@@ -124,5 +124,5 @@ Check the most relevant sources before writing:
   business-relevant terms.
 - Do not drop important perspectives just because the implementation is thin;
   describe the current maturity honestly.
-- Do not create low-level design documentation unless the user explicitly asks
-  for it.
+- Do not create low-level design documentation that is more suitable for a SAD
+  (Software Architecture Document) unless the user explicitly asks for it.

@@ -96,10 +96,7 @@ export interface RequirementsTableProps {
   onRowClick?: (id: number) => void
   onSelectionChange?: (ids: Set<number>) => void
   onSortChange?: (value: RequirementSortState) => void
-  onSpecificationItemStatusChange?: (
-    itemRef: string,
-    statusId: number | null,
-  ) => void
+  onSpecificationItemStatusChange?: (itemRef: string, statusId: number) => void
   onVisibleColumnsChange?: (value: RequirementColumnId[]) => void
   pinnedIds?: Set<number>
   qualityCharacteristics?: QualityCharacteristicOption[]
@@ -1598,6 +1595,31 @@ export default function RequirementsTable({
     const rl = riskLevels.find(rl => rl.id === id)
     return rl ? getName(rl) : String(id)
   }
+  const requirementPackageLabel = (requirementPackage: FilterOption) => {
+    const primary =
+      locale === 'sv' ? requirementPackage.nameSv : requirementPackage.nameEn
+    const fallback =
+      locale === 'sv' ? requirementPackage.nameEn : requirementPackage.nameSv
+
+    return primary.trim() || fallback.trim() || String(requirementPackage.id)
+  }
+  const rowRequirementPackageLabels = (row: RequirementRow) => {
+    const rowPackages =
+      row.requirementPackages && row.requirementPackages.length > 0
+        ? row.requirementPackages
+        : (row.requirementPackageIds ?? []).map(
+            id =>
+              requirementPackages.find(
+                requirementPackage => requirementPackage.id === id,
+              ) ?? {
+                id,
+                nameEn: String(id),
+                nameSv: String(id),
+              },
+          )
+
+    return rowPackages.map(requirementPackageLabel)
+  }
   const specificationItemStatusLabel = (id: number) => {
     const s = specificationItemStatuses.find(s => s.id === id)
     return s ? getName(s) : String(id)
@@ -1986,6 +2008,7 @@ export default function RequirementsTable({
             value={fv.specificationItemStatusIds ?? []}
           />
         )
+      case 'requirementPackage':
       case 'normReferences':
       case 'version':
       case 'suggestionCount':
@@ -2141,6 +2164,7 @@ export default function RequirementsTable({
             values={fv.specificationItemStatusIds ?? []}
           />
         )
+      case 'requirementPackage':
       case 'normReferences':
       case 'version':
       case 'suggestionCount':
@@ -2398,7 +2422,7 @@ export default function RequirementsTable({
                 locale={locale}
                 onChange={onSpecificationItemStatusChange}
                 statuses={specificationItemStatuses}
-                statusId={statusId}
+                statusId={statusId ?? undefined}
                 tooltip={selectTooltip}
               />
             </td>
@@ -2433,6 +2457,19 @@ export default function RequirementsTable({
               : '—'}
           </td>
         )
+      case 'requirementPackage': {
+        const labels = rowRequirementPackageLabels(row)
+        const label = labels.join(', ')
+
+        return (
+          <td
+            className={`py-2 px-2 truncate text-secondary-600 dark:text-secondary-400 ${archivedContentClass} ${dividerClass}`}
+            title={label || undefined}
+          >
+            {label || '—'}
+          </td>
+        )
+      }
       case 'suggestionCount':
         return (
           <td

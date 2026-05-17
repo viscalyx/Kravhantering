@@ -98,7 +98,7 @@ async function writeSignedInCookie(
   session.givenName = 'Alice'
   session.familyName = 'Reviewer'
   session.name = 'Alice Reviewer'
-  session.hsaId = 'SE2321000032-rev1'
+  session.hsaId = 'SE5560000001-rev1'
   session.roles = ['Reviewer']
   session.accessTokenExpiresAt = accessTokenExpiresAt
   await session.save()
@@ -171,7 +171,7 @@ describe('middleware', () => {
       expect(events).toHaveLength(1)
       expect(events[0]).toMatchObject({
         actor: {
-          hsaId: 'SE2321000032-rev1',
+          hsaId: 'SE5560000001-rev1',
           source: 'oidc',
           sub: 'user-1',
         },

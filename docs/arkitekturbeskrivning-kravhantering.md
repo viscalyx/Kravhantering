@@ -36,8 +36,8 @@
   - [Nuvarande integrationslandskap](#nuvarande-integrationslandskap)
   - [ArchiMate — Applikationssamband (ASCII)](#archimate--applikationssamband-ascii)
 - [5. Applikationsstrukturperspektiv](#5-applikationsstrukturperspektiv)
-  - [Katalogstruktur](#katalogstruktur)
-  - [Skiktad arkitektur](#skiktad-arkitektur)
+  - [Övergripande applikationsförmågor](#övergripande-applikationsförmågor)
+  - [Ansvarsfördelning i lösningen](#ansvarsfördelning-i-lösningen)
   - [Datamodell — kärnrelationer](#datamodell--kärnrelationer)
   - [Taxonomi och tvåspråkig design](#taxonomi-och-tvåspråkig-design)
   - [Effektiv status (beräknas vid fråga)](#effektiv-status-beräknas-vid-fråga)
@@ -200,8 +200,7 @@ graph TB
 │                                OIDC-identitetstjänst    │
 │                                                         │
 │  [Application Component]                                │
-│   RequirementsService (lib/requirements/service.ts)     │
-│   Data Access Layer (lib/dal/)                          │
+│   Verksamhetsregler och datatjänster                    │
 └─────────────────────────────────────────────────────────┘
          │ driftas på
          ▼
@@ -337,11 +336,10 @@ eller en förvaltningsperiod. Processen omfattar:
    i underlaget har en egen användningsstatus.
    Tillgängliga statusar hanteras i
    uppslagstabellen `specification_item_statuses`.
-   Kravstatusar, användningsstatusar och risknivåer kan
-   dessutom ha ett valfritt `icon_name` från den installerade
-   Lucide-katalogen via en gemensam allowlist; ikonen används
-   som visuell hjälp i UI och rapporter medan textetiketten
-   förblir styrande.
+   Kravstatusar, användningsstatusar och den fasta
+   risknivåskalan kan kompletteras med ikon, färg och
+   sortering som visuell hjälp i UI och rapporter.
+   Textetiketten är fortsatt styrande.
 4. **Spåra avsteg** — Om ett krav inte kan uppfyllas
    helt kan ett avsteg registreras (se
    *Avsteghantering* nedan).
@@ -533,20 +531,20 @@ och visar samtliga kravposter i underlaget med:
   *Avviken*) som kan ändras direkt i vyn.
 - **Avsteghantering** — Från en kravpost kan
   användaren registrera, redigera och begära
-  granskning av avsteg. En stepper-komponent
-  (`DeviationStepper`) visar avstegsstatus
+  granskning av avsteg. Vyn visar avstegsstatus
   grafiskt (Utkast → Begärd granskning →
-  Beslutat). Beslutsfattande sker via en
-  dedikerad dialog (`DeviationDecisionModal`).
+  Beslutat) och stödjer beslutsfattande i ett
+  samlat arbetsflöde.
 - **Avsteghistorik** — Alla avsteg för en
   kravpost visas med senaste avsteget
   framhävt och äldre i en expanderbar
-  historiksektion (`DeviationPill`).
+  historiksektion.
 
 ### Administrationscenter
 
-Administrationscentret (`/admin`) erbjuder sex flikar och en
-administratörslänk till åtgärdslogg:
+Administrationscentret (`/admin`) erbjuder sex centrala
+förvaltningsflikar och en administratörsflik för
+åtgärdslogg:
 
 1. **Terminologi** — Hantera visningsnamn för
    kravrelaterade begrepp (singular, plural, bestämd
@@ -554,8 +552,13 @@ administratörslänk till åtgärdslogg:
 2. **Kolumner** — Ange standardkolumner och ordning
    för kravlistan organisationsövergripande.
 3. **Referensdata** — Navigeringsnav till alla
-   referensdatasidor (områden, typer, kategorier,
-   kvalitetskaraktäristiker, statusar, kravpaket).
+   referensdatasidor, bland annat områden, ägare,
+   typer, kravpaket, normreferenser, statusar,
+   risknivåer, kvalitetskaraktäristiker samt
+   underlagsklassningar. Risknivåer är en fast
+   klassningsskala där administratören kan underhålla
+   namn, färg, ikon och ordning men inte lägga till
+   eller ta bort nivåer.
 4. **Dataskydd** — Förhandsgranskning och körning av
    HSA-ID-baserad GDPR-radering. Fliken kräver rollen
    `PrivacyOfficer` (`Dataskyddshandläggare`) och ger inte
@@ -565,15 +568,15 @@ administratörslänk till åtgärdslogg:
 6. **Arkivering** — Policybaserad gallring med förhandsgranskning,
    exportbekräftelse och undantag.
 
-Åtgärdsloggen (`/admin/audit-log`) läser tabellen
-`action_audit_events` och är endast tillgänglig för `Admin`. Den
-databasbaserade åtgärdsloggen visar lyckade mutationer och nekade
-behörighetsbeslut, medan plattformens `security-audit`-ström fortsatt
-är en separat ström för operativa säkerhetshändelser. Åtgärdsloggen
-kan även visa validerad klient-IP från `X-Forwarded-For` när ingress
-eller reverse proxy kontrollerar HTTP-rubriken; IP-värdet hanteras som
-operativ forensisk metadata och ingår inte i dataskyddsflödets
-HSA-ID-baserade matchning.
+Åtgärdsloggen nås både från Admin Center och via
+`/admin/audit-log`. Den är endast tillgänglig för
+`Admin` och visar lyckade mutationer samt nekade
+behörighetsbeslut. Den databaserade åtgärdsloggen är
+separerad från plattformens `security-audit`-ström för
+operativa säkerhetshändelser. När ingress eller reverse
+proxy validerar klient-IP kan loggen även visa detta som
+forensisk metadata; IP-värdet ingår inte i det
+HSA-ID-baserade dataskyddsflödet.
 
 Dataskyddsflödet matchar endast på HSA-ID. Namn visas för
 operatörens kontroll, men namn används inte som nyckel och
@@ -638,9 +641,8 @@ kravkatalogen:
    Statusövergångar.
 
 MCP-servern och REST API:et delar samma
-`RequirementsService`-lager (`lib/requirements/`)
-vilket säkerställer konsekvent affärslogik oavsett
-åtkomstkälla.
+verksamhetsregler och datakontrakt, vilket säkerställer
+konsekvent beteende oavsett åtkomstkälla.
 
 ### OIDC-integration (identitet)
 
@@ -712,13 +714,13 @@ förvaltningens ordinarie it-stöd, inte i applikationen.
 │  └────────────┘                  │                                          │
 │                                  ▼                                          │
 │                      ┌──────────────────────────┐                           │
-│                      │   RequirementsService    │                           │
-│                      │   (Gemensam affärslogik) │                           │
+│                      │   Gemensamma             │                           │
+│                      │   verksamhetsregler      │                           │
 │                      └───────────┬──────────────┘                           │
 │                                  │                                          │
 │                      ┌───────────▼────────────┐                             │
-│                      │   Data Access Layer    │                             │
-│                      │   (lib/dal/)           │                             │
+│                      │   Datatjänster och     │                             │
+│                      │   persistens           │                             │
 │                      └───────────┬────────────┘                             │
 │                                  │                                          │
 │                      ┌───────────▼────────────┐                             │
@@ -745,70 +747,53 @@ identitetsleverantören.
 **Intressenter:** Mjukvaruarkitekt · mjukvaruutveckling
 <!-- markdownlint-enable MD013 -->
 
-### Katalogstruktur
+### Övergripande applikationsförmågor
 
-Applikationen följer Next.js 16 App Router-konventionen
-med locale-baserad routing:
+Applikationen är uppdelad i ett antal tydliga
+förmågor som tillsammans stödjer kravförvaltningen:
 
-```text
-app/
-  [locale]/
-    requirements/         Kravlista och detaljvy
-      [id]/              Enskilt krav
-      reports/           Rapportrendering (print/pdf)
-    admin/               Administrationscenter
-    requirement-areas/         Områdeshantering (CRUD)
-    specifications/           Underlagshantering
-    requirement-packages/       Hantering av kravpaket
-    requirement-statuses/        Statushantering
-    requirement-types/           Typhantering
-    quality-characteristics/  Kvalitetskaraktäristiker
-  api/
-    auth/                Auth-endpoints för inloggning, återanrop, logout, me
-    requirements/        REST-ändpunkter
-    admin/               Admin-API
-    mcp/                 MCP-server
-components/              Delade React-komponenter
-lib/
-  auth/                  OIDC, session, tokenvalidering, CSRF, audit
-  dal/                   Data Access Layer
-  requirements/          Affärslogik (service, auth, errors)
-  mcp/                   MCP-serverkonfiguration
-  reports/               Rapportmallar och datahämtning
-lib/typeorm/entities/    Databasschema (TypeORM-entiteter)
-typeorm/
-  migrations/            TypeORM-migreringar
-  seed.mjs               Testdata
-  migrations/            SQL-migreringar
-messages/
-  en.json                Engelska översättningar
-  sv.json                Svenska översättningar
-```
+1. **Kravkatalog och detaljvyer** — sökning,
+   filtrering, redigering, versionshistorik och
+   rapportuttag för krav.
+2. **Kravunderlag** — urval av krav i ett
+   verksamhetssammanhang, kompletterat med lokala krav,
+   avsteg, risknivåer och användningsstatus.
+3. **Förvaltningsyta** — terminologi, kolumnstandard,
+   referensdata, dataskydd, behörighetsöversyn,
+   arkivering och åtgärdslogg.
+4. **Integrationsyta** — REST-gränssnitt för
+   webbapplikationen, MCP-gränssnitt för godkända
+   AI-klienter samt exportformat för rapportering.
+5. **Gemensam datagrund** — SQL Server lagrar krav,
+   historik, uppdrag, klassningar, rapportunderlag och
+   spårbarhetsinformation.
 
-### Skiktad arkitektur
+Intern katalogstruktur, moduler och detaljerade
+ansvarsgränser beskrivs inte här. De hör hemma i
+utvecklardokumentation eller en separat SAD.
 
-Applikationen implementerar ett tydligt skiktat
-mönster:
+### Ansvarsfördelning i lösningen
 
-1. **Presentationslager** — React-komponenter
-   (`components/`) och sidokomponenter (`app/`).
-2. **Autentiserings- och säkerhetslager** —
-   `middleware.ts`, `app/api/auth/*`, `lib/auth/*` och
-   auth-delen av `app/api/mcp/route.ts` hanterar
-   inloggning, sessioner, tokenvalidering, CSRF och
-   säkerhetsloggning.
-3. **Affärslogiklager** — `RequirementsService`
-   (`lib/requirements/service.ts`) som exponerar
-   fyra huvudoperationer: `queryCatalog`,
-   `getRequirement`, `manageRequirement` och
-   `transitionRequirement`.
-4. **Dataåtkomstlager** — DAL-moduler i `lib/dal/`
-   med en modul per databastabell (t.ex.
-   `requirements.ts`, `owners.ts`,
-   `requirement-areas.ts`).
-5. **Databaslager** — TypeORM-entiteter under
-   `lib/typeorm/entities/` med 15+ tabeller och
-   explicita relationer.
+På översiktsnivå består lösningen av fem arkitektoniska
+ansvar:
+
+1. **Användarupplevelse** — webbytan samlar de
+   arbetsflöden som författare, granskare, förvaltare
+   och administratörer använder.
+2. **Åtkomst och spårbarhet** — identitet,
+   sessionshantering, rollkontroller, dataskyddsflöden
+   och åtgärdsloggning hanteras innan känsliga åtgärder
+   genomförs.
+3. **Verksamhetsregler** — statusövergångar,
+   versionsprinciper, avsteg, förbättringsförslag och
+   arkiveringsregler tillämpas konsekvent för både webb
+   och MCP.
+4. **Dataförvaltning** — datamodellen bevarar
+   versionshistorik, klassningar, ägarskap,
+   kravunderlag och historiska beslut.
+5. **Rapportering och export** — användarna kan ta ut
+   kravlistor, granskningsunderlag, historik och
+   beslutsstöd utan att gå direkt mot databasen.
 
 ### Datamodell — kärnrelationer
 
@@ -831,8 +816,14 @@ erDiagram
     requirement_packages }o--o| owners : "ägs av"
     quality_characteristics }o--o| quality_characteristics : "förälder"
     quality_characteristics }o--|| requirement_types : "kopplad till typ"
+    requirement_areas ||--o{ requirement_area_co_authors : "har medförfattare"
     requirements_specifications ||--o{ requirements_specification_items : "innehåller"
     requirements_specifications ||--o{ specification_local_requirements : "innehåller kravunderlagets unika krav"
+    requirements_specifications }o--o| specification_responsibility_areas : "ansvarsområde"
+    requirements_specifications }o--o| specification_implementation_types : "genomförandetyp"
+    requirements_specifications }o--o| specification_lifecycle_statuses : "livscykelstatus"
+    requirements_specifications ||--o{ specification_needs_references : "behovsreferenser"
+    requirements_specifications ||--o{ specification_co_authors : "har medförfattare"
     requirements_specification_items }o--|| requirements : "pekar på krav"
     requirements_specification_items }o--o| specification_item_statuses : "användningsstatus"
     requirements_specification_items ||--o{ deviations : "har avsteg"
@@ -865,6 +856,9 @@ kravunderlagshistorik. Tabellerna `archiving_retention_*` driver Admin
 Centers arkiveringsflöde med policyer, körningskvitton och undantag/legal hold.
 Tabellen `action_audit_events` saknar främmande nycklar medvetet så att
 åtgärdsrader bevaras även när målobjekt gallras eller anonymiseras.
+Kravunderlag kan klassas med ansvarsområde, genomförandetyp,
+livscykelstatus, behovsreferenser och medförfattare så att samma
+kravkatalog kan användas i flera verksamhetssammanhang.
 
 > **Tillämpningsbarhet via kravpaket.**
 > Tabellen `requirement_packages` hanterar även
@@ -873,8 +867,7 @@ Tabellen `action_audit_events` saknar främmande nycklar medvetet så att
 
 ### Taxonomi och tvåspråkig design
 
-Alla uppslagstabeller (kategorier, typer, statusar,
-kravpaket, kvalitetskaraktäristiker) lagrar
+Uppslagstabeller för krav och kravunderlag lagrar
 användarsynliga texter i separata kolumner per språk:
 `name_sv` och `name_en`. Applikationen väljer rätt
 kolumn baserat på aktivt locale vid frågetillfället.
@@ -883,6 +876,12 @@ Kvalitetskaraktäristikerna följer ISO/IEC 25010:2023
 med 49 poster i en hierarkisk trädstruktur
 (förälder-barn-relationer). Varje post lagrar även
 standardens kapitelnummer i `chapter_id`.
+
+Risknivåer är däremot en fast klassningsskala för
+krav- och underlagsarbete. Administratörer kan anpassa
+etiketter, färger, ikoner och sortering, medan själva
+antalet nivåer hålls stabilt för att bevara jämförbarhet
+i historik och rapporter.
 
 ### Effektiv status (beräknas vid fråga)
 
@@ -982,12 +981,11 @@ Autentiseringsmodellen består av två separata vägar:
 - **Webbgränssnitt** — `/api/auth/login`,
   `/api/auth/callback`, `/api/auth/logout` och
   `/api/auth/me` använder OIDC Authorization Code +
-  PKCE. `lib/auth/oidc.ts` och `app/api/auth/*`
-  ansvarar för discovery, tokenutbyte och
+  PKCE för discovery, tokenutbyte och
   sessionsetablering.
 - **MCP-gränssnitt** — `/api/mcp` kräver Bearer-token
-  när autentisering är aktiv. `lib/auth/mcp-token.ts`
-  verifierar signatur, issuer, audience och
+  när autentisering är aktiv. Token verifieras mot
+  signatur, issuer, audience och
   `employeeHsaId` innan en verifierad aktör kopplas
   till förfrågan.
 
@@ -1017,24 +1015,10 @@ Identitetsmodellen i applikationen utgår från:
   tappar sin separata funktionsavgränsning tills
   policybaserad auktorisering införs.
 
-Arkitekturen använder följande utvidgningspunkter i
-`lib/requirements/auth.ts`:
-
-- **`ActorContext`** — modell för aktörens identitet,
-  autentiseringsstatus, roller och källa
-- **`RequestContext`** — omsluter aktör,
-  förfrågnings-ID, källa (REST/MCP) och verktygsnamn
-- **`AuthorizationService`** — pluggbart gränssnitt för
-  att validera åtgärder
-- **`RequirementsAction`** — typad åtgärdsmodell för
-  operationerna i affärslagret
-
 Det är dock viktigt att skilja på autentisering och
-auktorisering: `createDefaultAuthorizationService()`
-returnerar fortfarande `AllowAllAuthorizationService`,
-vilket innebär att verifierad identitet finns men att
-domänspecifik skrivbehörighet ännu inte begränsas fullt
-ut i tjänstelagret.
+auktorisering: verifierad identitet finns, men
+domänspecifik skrivbehörighet är ännu inte fullt
+finfördelad för alla arbetsflöden.
 
 ### Befintliga säkerhetsmekanismer
 
@@ -1050,10 +1034,10 @@ ut i tjänstelagret.
   genererar ett unikt nonce (16 slumpmässiga bytes,
   base64-kodat) för inline-skript. Produktions-CSP
   kräver nonce för alla skript.
-- **Middleware** — `middleware.ts` hanterar CSP och
-  i18n-routing, omdirigering till inloggning för
-  webbförfrågningar, `401` för otillåtna API-anrop och
-  borttagning av äldre `x-user-*`-headers när
+- **Gemensamt kantskydd** — inkommande förfrågningar
+  får språkstyrning, CSP, inloggningskrav för
+  webbsidor, `401` för otillåtna API-anrop och
+  rensning av äldre användarrelaterade headers när
   autentisering är aktiv.
 
 ### Mållägesriktning för behörighetsstyrning
@@ -1061,9 +1045,9 @@ ut i tjänstelagret.
 Nuvarande arkitektur har lagt grunden för en striktare
 behörighetsmodell genom att identitet, roller,
 förfrågningskontext och säkerhetsloggning redan är på
-plats. Nästa arkitekturella steg är att ersätta
-`AllowAllAuthorizationService` med policybaserad
-behörighetsstyrning i affärslagret.
+plats. Nästa arkitekturella steg är policybaserad
+behörighetsstyrning för krav, kravunderlag och
+förvaltningsytor.
 
 Övergripande riktning:
 
@@ -1075,9 +1059,8 @@ behörighetsstyrning i affärslagret.
   verksamhetsnära tilldelning, inte enbart till breda
   globala roller.
 - **Gemensam policy för REST och MCP** — samma
-  `RequirementsService` och `RequestContext` ska bära
-  behörighetsbeslut oavsett om anropet kommer från
-  webbläsare eller MCP-klient.
+  behörighetsprinciper ska gälla oavsett om anropet
+  kommer från webbläsare eller MCP-klient.
 - **Spårbarhet** — säkerhetsrelaterade händelser är
   redan separerade i ett eget JSON-baserat auditflöde,
   vilket skapar en naturlig grund för central
@@ -1174,19 +1157,15 @@ testskrivning, refaktorisering och arkitekturbeslut. Verktyg som
 eller *Cursor AI* är väl lämpade för detta arbetsflöde.
 
 För att AI-agenten ska kunna hantera flerstegiga uppgifter —
-migreringar, nya fält som berör DAL, service, UI, tester och
+migreringar, ändringar i datamodell, webbyta, tester och
 dokumentation i ett sammanhängande led — bör modellen ha stöd för
 utökat resonemang. Rekommenderade miniminivåer beskrivs som
 *förmågor* snarare än specifika versioner, eftersom modellutbudet
-förändras snabbt. Modellen bör erbjuda utökat flerstegigt resonemang
-(extended thinking), stort kontextfönster för att rymma entiteter,
-tester och migrationer samtidigt, robust kodredigering och
-refaktorering över flera filer, deterministisk reproducerbarhet för
-flerstegiga arbetsflöden samt säkerhets- och guardrails-stöd för
-kodgenerering. Vendor-modeller som *Claude Opus 4*, *GPT-5.4* eller
-*Gemini 2.5 Pro* (med thinking) har historiskt uppfyllt dessa krav,
-men valet bör utvärderas periodiskt snarare än fixeras vid en
-specifik version.
+förändras snabbt. Modellen bör erbjuda utökat flerstegigt resonemang,
+stort kontextfönster, robust kodredigering och refaktorering över
+flera filer samt säkerhets- och guardrails-stöd för kodgenerering.
+Valet bör utvärderas periodiskt snarare än fixeras vid en specifik
+modellversion.
 
 Gemensamma krav för effektiv AI-agentassistans i detta projekt:
 
@@ -1242,7 +1221,7 @@ varje enskild mekanism.
 │   Säkerhetsaudit              OIDC-identitetstjänst          │
 │                                                              │
 │  [Application Component]                                     │
-│   middleware.ts + lib/auth/* + RequirementsService           │
+│   Kantskydd, identitet och verksamhetsregler                 │
 └──────────────────────────────────────────────────────────────┘
          │ skyddas av / driftas på
          ▼
@@ -1330,9 +1309,10 @@ informationssäkerhetsåtgärder i nuvarande version:
 - **CSRF-skydd för cookie-baserade mutationer** —
   muterande anrop måste vara same-origin och bära
   `X-Requested-With: XMLHttpRequest`.
-- **Header-härdning i middleware** — `middleware.ts` tar alltid
-  bort inkommande `x-user-id` och `x-user-roles`.
-  Den äldre header-trust-banan har avlägsnats.
+- **Header-härdning** — applikationen rensar äldre
+  användarrelaterade headers vid kanten. Den tidigare
+  modellen där sådana headers kunde bära identitet är
+  avlägsnad.
 - **Avvisning av ogiltiga sessioner** — Trasiga eller
   manipulerade sessionscookies leder till att
   förfrågan behandlas som utloggad och loggas som
@@ -1351,16 +1331,12 @@ informationssäkerhetsåtgärder i nuvarande version:
   med fält för händelse, förfrågnings-ID, aktör,
   källa, krav-ID, versionsnummer och körtid.
 - **Separat säkerhetsaudit för auth, admin och riskmutationer** —
-  `lib/auth/audit.ts` skriver ett JSON-objekt per
-  säkerhetshändelse till processens loggström med
-  `channel: "security-audit"`. Händelser som
-  `auth.login.succeeded`, `auth.logout`,
-  `auth.token.rejected`, `auth.mcp.token.accepted`,
-  `auth.csrf.rejected`, `auth.authorization.denied`,
-  `requirements.high_risk_mutation.succeeded`,
-  `admin.privileged_action.succeeded` och
-  `access_review.created` kan
-  därmed särskiljas från övriga applikationsloggar.
+  säkerhetshändelser skrivs som strukturerad JSON med
+  egen kanal för att kunna skiljas från övriga
+  applikationsloggar. Exempel är inloggning,
+  tokenvalidering, nekad behörighet, känsliga
+  ändringar av krav, administrativa åtgärder och
+  behörighetsöversyner.
 - **Defensiv redigering av känsliga fält** —
   säkerhetsauditens `detail`-fält filtrerar bort
   tokenvärden, hemligheter, auth-koder,
@@ -1385,11 +1361,9 @@ För produktionsdrift bör följande betraktas som
 arkitekturkrav och säkerhetsinriktning:
 
 - **Fail-closed-konfiguration** — autentisering är
-  obligatorisk i alla byggmål.
-  `ALLOW_INSECURE_OIDC_ISSUER` (exporterad från
-  `@/lib/runtime/build-target`) är en kompileringskonstant
-  bunden till byggmålet — inte en miljövariabel —
-  och endast `true` i `dev`/`local-prod`.
+  obligatorisk i produktionsbyggda miljöer, medan
+  utvecklings- och lokala testkörningar har
+  tydligt avgränsade lättnader för testidentitet.
 - **Separat hemlighetshantering per miljö** —
   klienthemlighet, sessionslösenord och andra
   auth-hemligheter ska tillföras som skyddade
@@ -1400,9 +1374,9 @@ arkitekturkrav och säkerhetsinriktning:
   annan granskningskedja utan att applikationen själv
   byggs om med transportberoenden.
 - **Finfördelad behörighetsstyrning i affärslagret** —
-  nuvarande `AllowAllAuthorizationService` bör ersättas
-  av policystyrd auktorisering så att skrivåtgärder
-  kan nekas konsekvent för både REST och MCP.
+  policystyrd auktorisering bör införas så att
+  skrivåtgärder kan nekas konsekvent för både REST och
+  MCP.
 
 <!-- markdownlint-disable MD013 -->
 <!-- cSpell:words driftplattformar plattformskrav begärandeloggning Självhostad -->
@@ -1522,9 +1496,8 @@ oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
 <!-- markdownlint-enable MD013 -->
 
 > **Byte av plattform** kräver anpassning av
-> container-/ingresskonfiguration och databastjänst
-> (`lib/db.ts`, `docker-compose.sqlserver.yml` och
-> motsvarande miljövariabler). Affärslogik,
+> container-/ingresskonfiguration, databastjänst och
+> miljövariabelkontrakt. Affärslogik,
 > användargränssnitt och databasschema förblir
 > oförändrade.
 >

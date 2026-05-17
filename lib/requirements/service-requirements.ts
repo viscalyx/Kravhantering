@@ -1,8 +1,4 @@
-import {
-  getAreaById,
-  listAreas,
-  type RequirementAreaRow,
-} from '@/lib/dal/requirement-areas'
+import { listAreas, type RequirementAreaRow } from '@/lib/dal/requirement-areas'
 import {
   listCategories,
   type RequirementCategoryRow,
@@ -118,6 +114,7 @@ export function formatRequirementListItem(
     normReferenceUris: item.normReferenceUris
       ? item.normReferenceUris.split(',')
       : [],
+    requirementPackages: item.requirementPackages,
     suggestionCount: item.suggestionCount,
     uniqueId: item.uniqueId,
     version: {
@@ -301,22 +298,6 @@ async function resolveRequirementId(
   }
 
   return requirement.id
-}
-
-async function ensureAreaExists(
-  db: SqlServerDatabase,
-  areaId: number | undefined,
-) {
-  if (areaId == null) {
-    return null
-  }
-
-  const area = await getAreaById(db, areaId)
-  if (!area) {
-    throw notFoundError('Requirement area not found', { areaId })
-  }
-
-  return area
 }
 
 function getLatestOverallVersion(
@@ -797,7 +778,6 @@ export function createRequirementWorkflow({
               )
             }
 
-            await ensureAreaExists(db, payload.areaId)
             const actor = requireHumanActorSnapshot(context)
             const created = await createRequirement(
               db,
@@ -880,9 +860,6 @@ export function createRequirementWorkflow({
                 'Edit operation requires requirement.baseVersionId and requirement.baseRevisionToken',
                 { reason: 'missing_edit_precondition' },
               )
-            }
-            if (payload.areaId != null) {
-              await ensureAreaExists(db, payload.areaId)
             }
             const actor = requireHumanActorSnapshot(context)
             let version: Awaited<ReturnType<typeof editRequirement>>

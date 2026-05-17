@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  createStatus,
   createTransition,
-  deleteStatus,
   deleteTransition,
-  getStatusById,
   getTransitionsFrom,
   listStatuses,
   listTransitions,
@@ -17,10 +14,7 @@ function createSqlServerDb() {
   const repository = {
     find: vi.fn(),
     findOne: vi.fn(),
-    create: vi.fn(input => input),
-    save: vi.fn(),
     update: vi.fn(),
-    delete: vi.fn(),
   }
   const getRepository = vi.fn(() => repository)
   const query =
@@ -37,7 +31,7 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
     vi.clearAllMocks()
   })
 
-  it('listStatuses returns statuses ordered by sortOrder', async () => {
+  it('listStatuses returns all statuses ordered by sortOrder', async () => {
     const { db, repository, getRepository } = createSqlServerDb()
     repository.find.mockResolvedValue([
       {
@@ -49,13 +43,21 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
         isSystem: 1,
       },
       {
+        id: 8,
+        nameEn: 'Custom',
+        nameSv: 'Anpassad',
+        sortOrder: 8,
+        color: 'red',
+        isSystem: 0,
+      },
+      {
         id: 2,
         nameEn: 'Review',
         nameSv: 'Granskning',
         sortOrder: 2,
         color: 'yellow',
-        iconName: 'CheckCircle2',
-        isSystem: 0,
+        iconName: 'Eye',
+        isSystem: 1,
       },
     ])
 
@@ -76,126 +78,69 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
         isSystem: true,
       },
       {
+        id: 8,
+        nameEn: 'Custom',
+        nameSv: 'Anpassad',
+        sortOrder: 8,
+        color: 'red',
+        iconName: null,
+        isSystem: false,
+      },
+      {
         id: 2,
         nameEn: 'Review',
         nameSv: 'Granskning',
         sortOrder: 2,
         color: 'yellow',
-        iconName: 'CheckCircle2',
-        isSystem: false,
+        iconName: 'Eye',
+        isSystem: true,
       },
     ])
   })
 
-  it('getStatusById returns mapped record or null', async () => {
+  it('updateStatus updates a system status and returns the reloaded row', async () => {
     const { db, repository } = createSqlServerDb()
-    repository.findOne.mockResolvedValueOnce({
-      id: 3,
-      nameEn: 'Published',
-      nameSv: 'Publicerad',
-      sortOrder: 3,
-      color: 'green',
-      iconName: 'ShieldCheck',
-      isSystem: 1,
-    })
-    await expect(getStatusById(db, 3)).resolves.toEqual({
-      id: 3,
-      nameEn: 'Published',
-      nameSv: 'Publicerad',
-      sortOrder: 3,
-      color: 'green',
-      iconName: 'ShieldCheck',
-      isSystem: true,
-    })
-    expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 3 } })
-
-    repository.findOne.mockResolvedValueOnce(null)
-    await expect(getStatusById(db, 999)).resolves.toBeNull()
-  })
-
-  it('createStatus persists a non-system status by default', async () => {
-    const { db, repository } = createSqlServerDb()
-    repository.save.mockImplementation(async row => ({ id: 10, ...row }))
-
-    const result = await createStatus(db, {
-      nameEn: 'Draft',
-      nameSv: 'Utkast',
-      sortOrder: 1,
-      color: 'blue',
-    })
-
-    expect(repository.create).toHaveBeenCalledWith({
-      nameEn: 'Draft',
-      nameSv: 'Utkast',
-      sortOrder: 1,
-      color: 'blue',
-      iconName: null,
-      isSystem: false,
-    })
-    expect(repository.save).toHaveBeenCalled()
-    expect(result).toMatchObject({ id: 10, nameEn: 'Draft', isSystem: false })
-  })
-
-  it('updateStatus applies only supplied fields and returns the reloaded row', async () => {
-    const { db, repository } = createSqlServerDb()
-    repository.findOne.mockResolvedValueOnce({
-      id: 5,
-      nameEn: 'Review',
-      nameSv: 'Granskning',
-      sortOrder: 2,
-      color: 'yellow',
-      isSystem: 0,
-    })
+    repository.findOne
+      .mockResolvedValueOnce({
+        id: 5,
+        nameEn: 'Review',
+        nameSv: 'Granskning',
+        sortOrder: 2,
+        color: 'yellow',
+        isSystem: 1,
+      })
+      .mockResolvedValueOnce({
+        id: 5,
+        nameEn: 'Review',
+        nameSv: 'Granskning',
+        sortOrder: 2,
+        color: '#eab308',
+        iconName: 'Eye',
+        isSystem: 1,
+      })
 
     const result = await updateStatus(db, 5, {
-      nameEn: 'Review',
-      color: 'yellow',
+      color: '#eab308',
+      iconName: 'Eye',
     })
 
     expect(repository.update).toHaveBeenCalledWith(5, {
-      nameEn: 'Review',
-      color: 'yellow',
+      color: '#eab308',
+      iconName: 'Eye',
     })
-    expect(result).toMatchObject({ id: 5, nameEn: 'Review', color: 'yellow' })
-  })
-
-  it('updateStatus skips the update call when no fields supplied', async () => {
-    const { db, repository } = createSqlServerDb()
-    repository.findOne.mockResolvedValueOnce({
+    expect(result).toEqual({
       id: 5,
       nameEn: 'Review',
       nameSv: 'Granskning',
       sortOrder: 2,
-      color: 'yellow',
-      isSystem: 0,
+      color: '#eab308',
+      iconName: 'Eye',
+      isSystem: true,
     })
-
-    await updateStatus(db, 5, {})
-
-    expect(repository.update).not.toHaveBeenCalled()
-    expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 5 } })
   })
 
-  it('deleteStatus rejects when status is system-protected', async () => {
-    const { db, repository, query } = createSqlServerDb()
-    repository.findOne.mockResolvedValueOnce({
-      id: 7,
-      nameEn: 'System',
-      nameSv: 'System',
-      sortOrder: 1,
-      color: 'gray',
-      isSystem: 1,
-    })
-
-    await expect(deleteStatus(db, 7)).rejects.toThrow(
-      /Cannot delete a system status/,
-    )
-    expect(query).not.toHaveBeenCalled()
-    expect(repository.delete).not.toHaveBeenCalled()
-  })
-
-  it('deleteStatus rejects when status is in use', async () => {
-    const { db, repository, query } = createSqlServerDb()
+  it('updateStatus rejects non-system statuses', async () => {
+    const { db, repository } = createSqlServerDb()
     repository.findOne.mockResolvedValueOnce({
       id: 8,
       nameEn: 'Custom',
@@ -204,34 +149,28 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
       color: 'red',
       isSystem: 0,
     })
-    query.mockResolvedValueOnce([{ count: 2 }])
 
-    await expect(deleteStatus(db, 8)).rejects.toThrow(/in use/)
-    expect(repository.delete).not.toHaveBeenCalled()
+    await expect(updateStatus(db, 8, { nameEn: 'Custom' })).rejects.toThrow(
+      /Only system requirement statuses can be edited/,
+    )
+    expect(repository.update).not.toHaveBeenCalled()
   })
 
-  it('deleteStatus deletes when status is unused', async () => {
-    const { db, repository, query } = createSqlServerDb()
-    repository.findOne.mockResolvedValueOnce({
-      id: 9,
-      nameEn: 'Custom',
-      nameSv: 'Anpassad',
-      sortOrder: 10,
-      color: 'red',
-      isSystem: 0,
-    })
-    query.mockResolvedValueOnce([{ count: 0 }])
+  it('updateStatus rejects missing statuses', async () => {
+    const { db, repository } = createSqlServerDb()
+    repository.findOne.mockResolvedValueOnce(null)
 
-    await deleteStatus(db, 9)
-
-    expect(repository.delete).toHaveBeenCalledWith(9)
+    await expect(updateStatus(db, 404, { nameEn: 'Missing' })).rejects.toThrow(
+      /Status not found/,
+    )
+    expect(repository.update).not.toHaveBeenCalled()
   })
 
-  it('listTransitions joins raw transition rows with status list', async () => {
+  it('listTransitions joins raw transition rows with the full status list', async () => {
     const { db, repository, query } = createSqlServerDb()
     query.mockResolvedValueOnce([
       { id: 20, fromStatusId: 1, toStatusId: 2 },
-      { id: 21, fromStatusId: 2, toStatusId: 3 },
+      { id: 21, fromStatusId: 2, toStatusId: 8 },
     ])
     repository.find.mockResolvedValueOnce([
       {
@@ -248,15 +187,15 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
         nameSv: 'Granskning',
         sortOrder: 2,
         color: 'yellow',
-        isSystem: 0,
+        isSystem: 1,
       },
       {
-        id: 3,
-        nameEn: 'Published',
-        nameSv: 'Publicerad',
-        sortOrder: 3,
-        color: 'green',
-        isSystem: 1,
+        id: 8,
+        nameEn: 'Custom',
+        nameSv: 'Anpassad',
+        sortOrder: 8,
+        color: 'red',
+        isSystem: 0,
       },
     ])
 
@@ -272,6 +211,13 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
       toStatusId: 2,
       fromStatus: expect.objectContaining({ nameEn: 'Draft' }),
       toStatus: expect.objectContaining({ nameEn: 'Review' }),
+    })
+    expect(result[1]).toMatchObject({
+      id: 21,
+      fromStatusId: 2,
+      toStatusId: 8,
+      fromStatus: expect.objectContaining({ nameEn: 'Review' }),
+      toStatus: expect.objectContaining({ isSystem: false, nameEn: 'Custom' }),
     })
   })
 
@@ -296,7 +242,7 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
         nameSv: 'Granskning',
         sortOrder: 2,
         color: 'yellow',
-        isSystem: 0,
+        isSystem: 1,
       },
       {
         id: 3,

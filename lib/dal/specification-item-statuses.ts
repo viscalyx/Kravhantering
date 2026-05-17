@@ -1,7 +1,9 @@
 import type { SqlServerDatabase } from '@/lib/db'
+import { conflictError } from '@/lib/requirements/errors'
 import {
   DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
   DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
+  isSystemSpecificationItemStatusId,
 } from '@/lib/specification-item-status-constants'
 import {
   type SpecificationItemStatusEntity,
@@ -27,11 +29,6 @@ interface LinkedSpecificationRow {
 
 export type { LinkedSpecificationRow }
 
-type SpecificationItemStatusRepositoryProvider = Pick<
-  SqlServerDatabase,
-  'getRepository'
->
-
 function map(row: SpecificationItemStatusEntity): SpecificationItemStatusRow {
   return {
     color: row.color,
@@ -51,13 +48,16 @@ export async function listSpecificationItemStatuses(
   const rows = await db
     .getRepository(specificationItemStatusEntity)
     .find({ order: { sortOrder: 'ASC' } })
-  return rows.map(map)
+  return rows.filter(row => isSystemSpecificationItemStatusId(row.id)).map(map)
 }
 
 export async function getSpecificationItemStatusById(
   db: SqlServerDatabase,
   id: number,
 ): Promise<SpecificationItemStatusRow | null> {
+  if (!isSystemSpecificationItemStatusId(id)) {
+    return null
+  }
   const row = await db
     .getRepository(specificationItemStatusEntity)
     .findOne({ where: { id } })
@@ -76,7 +76,6 @@ export async function countLinkedSpecificationItems(
         specification_item_status_id AS statusId,
         COUNT(*) AS count
       FROM requirements_specification_items
-      WHERE specification_item_status_id IS NOT NULL
       GROUP BY specification_item_status_id
 
       UNION ALL
@@ -85,7 +84,6 @@ export async function countLinkedSpecificationItems(
         specification_item_status_id AS statusId,
         COUNT(*) AS count
       FROM specification_local_requirements
-      WHERE specification_item_status_id IS NOT NULL
       GROUP BY specification_item_status_id
     ) linked
     GROUP BY linked.statusId
@@ -93,11 +91,9 @@ export async function countLinkedSpecificationItems(
   const counts: Record<number, number> = {}
   for (const row of rows as Array<{
     count: number
-    statusId: number | null
+    statusId: number
   }>) {
-    if (row.statusId != null) {
-      counts[row.statusId] = row.count
-    }
+    counts[row.statusId] = row.count
   }
   return counts
 }
@@ -142,33 +138,6 @@ export async function getLinkedSpecificationItems(
   )
 }
 
-export async function createSpecificationItemStatus(
-  db: SpecificationItemStatusRepositoryProvider,
-  data: {
-    nameSv: string
-    nameEn: string
-    descriptionSv?: string | null
-    descriptionEn?: string | null
-    color: string
-    iconName?: string | null
-    sortOrder?: number
-  },
-): Promise<SpecificationItemStatusRow> {
-  const repository = db.getRepository(specificationItemStatusEntity)
-  const row = await repository.save(
-    repository.create({
-      nameSv: data.nameSv,
-      nameEn: data.nameEn,
-      descriptionSv: data.descriptionSv ?? null,
-      descriptionEn: data.descriptionEn ?? null,
-      color: data.color,
-      iconName: data.iconName ?? null,
-      sortOrder: data.sortOrder ?? 0,
-    }),
-  )
-  return map(row)
-}
-
 export async function updateSpecificationItemStatus(
   db: SqlServerDatabase,
   id: number,
@@ -182,6 +151,10 @@ export async function updateSpecificationItemStatus(
     sortOrder?: number
   },
 ): Promise<SpecificationItemStatusRow | undefined> {
+  if (!isSystemSpecificationItemStatusId(id)) {
+    throw conflictError('Only system specification item statuses can be edited')
+  }
+
   const { sortOrder, ...rest } = data
   const isLockedSortOrder =
     id === DEFAULT_SPECIFICATION_ITEM_STATUS_ID ||
@@ -203,21 +176,4 @@ export async function updateSpecificationItemStatus(
   }
   const row = await repository.findOne({ where: { id } })
   return row ? map(row) : undefined
-}
-
-export async function deleteSpecificationItemStatus(
-  db: SqlServerDatabase,
-  id: number,
-): Promise<number> {
-  if (
-    id === DEFAULT_SPECIFICATION_ITEM_STATUS_ID ||
-    id === DEVIATED_SPECIFICATION_ITEM_STATUS_ID
-  ) {
-    throw new Error('Cannot delete reserved specification item status')
-  }
-
-  const result = await db
-    .getRepository(specificationItemStatusEntity)
-    .delete(id)
-  return result.affected ?? 0
 }

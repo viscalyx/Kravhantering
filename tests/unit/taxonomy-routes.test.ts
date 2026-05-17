@@ -20,7 +20,7 @@ const auditState = vi.hoisted(() => ({
   createAdminPrivilegedAuditContext: vi.fn(async () => ({
     actor: {
       displayName: 'Ada Admin',
-      hsaId: 'SE2321000032-admin1',
+      hsaId: 'SE5560000001-admin1',
       id: 'admin-sub',
       isAuthenticated: true,
       roles: ['Admin'],
@@ -57,7 +57,7 @@ const authState = vi.hoisted(() => ({
   context: {
     actor: {
       displayName: 'Route Tester',
-      hsaId: 'SE2321000032-route',
+      hsaId: 'SE5560000001-route',
       id: 'route-test',
       isAuthenticated: true,
       roles: ['RequirementsEditor'],
@@ -215,14 +215,10 @@ vi.mock('@/lib/dal/requirement-categories', () => ({
 /* ── imports ─────────────────────────────────────────────────────── */
 
 import {
-  DELETE as deleteSpecItemStatus,
   GET as getSpecItemStatus,
   PUT as putSpecItemStatus,
 } from '@/app/api/catalog/specification-item-statuses/[id]/route'
-import {
-  GET as getSpecItemStatuses,
-  POST as postSpecItemStatus,
-} from '@/app/api/catalog/specification-item-statuses/route'
+import { GET as getSpecItemStatuses } from '@/app/api/catalog/specification-item-statuses/route'
 import {
   GET as getTypeCats,
   POST as postTypeCat,
@@ -583,86 +579,6 @@ describe('specification-item-statuses catalog routes', () => {
     })
   })
 
-  it('POST creates a catalog status with 201', async () => {
-    const r = await postSpecItemStatus(
-      new Request('http://l', {
-        body: '{"nameSv":"Ny","nameEn":"New","color":"#22c55e"}',
-        headers: { 'Content-Type': 'application/json' },
-        method: 'POST',
-      }),
-    )
-
-    expect(r.status).toBe(201)
-    expect(routeState.transaction).toHaveBeenCalledTimes(1)
-    expect(mockCreateSpecItemStatus).toHaveBeenCalledWith(
-      routeState.transactionDb,
-      expect.objectContaining({
-        color: '#22c55e',
-        nameEn: 'New',
-        nameSv: 'Ny',
-      }),
-    )
-    expect(
-      auditState.recordAdminPrivilegedActionSucceeded,
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({ source: 'rest' }),
-      expect.objectContaining({
-        operation: 'create',
-        resourceId: 6,
-        resourceType: 'specification_item_status',
-      }),
-      routeState.transactionDb,
-    )
-  })
-
-  it('POST aborts the transaction when action audit recording fails', async () => {
-    const transactionEvents: string[] = []
-    routeState.transaction.mockImplementationOnce(async callback => {
-      try {
-        const result = await callback(routeState.transactionDb)
-        transactionEvents.push('commit')
-        return result
-      } catch (error) {
-        transactionEvents.push('rollback')
-        throw error
-      }
-    })
-    auditState.recordAdminPrivilegedActionSucceeded.mockRejectedValueOnce(
-      new Error('audit failed'),
-    )
-
-    const r = await postSpecItemStatus(
-      jsonReq('POST', {
-        color: '#22c55e',
-        nameEn: 'New',
-        nameSv: 'Ny',
-      }),
-    )
-
-    expect(r.status).toBe(500)
-    expect(transactionEvents).toEqual(['rollback'])
-    expect(mockCreateSpecItemStatus).toHaveBeenCalledWith(
-      routeState.transactionDb,
-      expect.objectContaining({ nameEn: 'New' }),
-    )
-    expect(auditState.recordAdminPrivilegedActionSucceeded).toHaveBeenCalled()
-  })
-
-  it('POST rejects non-allowed icon names before creating a status', async () => {
-    const r = await postSpecItemStatus(
-      jsonReq('POST', {
-        color: '#22c55e',
-        iconName: 'MadeUpIcon',
-        nameEn: 'New',
-        nameSv: 'Ny',
-      }),
-    )
-
-    expect(r.status).toBe(400)
-    await expect(r.json()).resolves.toMatchObject({ error: 'Invalid request' })
-    expect(mockCreateSpecItemStatus).not.toHaveBeenCalled()
-  })
-
   it('GET by id returns linked specification items', async () => {
     const r = await getSpecItemStatus(
       new NextRequest('http://l', { method: 'GET' }),
@@ -685,51 +601,6 @@ describe('specification-item-statuses catalog routes', () => {
 
     expect(r.status).toBe(404)
     await expect(r.json()).resolves.toEqual({ error: 'Not found' })
-  })
-
-  it('DELETE removes a catalog status', async () => {
-    mockDeleteSpecItemStatus.mockResolvedValue(1)
-    const r = await deleteSpecItemStatus(
-      new NextRequest('http://l', { method: 'DELETE' }),
-      makeParams('5'),
-    )
-
-    expect(r.status).toBe(200)
-    await expect(r.json()).resolves.toEqual({ ok: true })
-  })
-
-  it('DELETE returns 404 without audit when the catalog status is missing', async () => {
-    mockDeleteSpecItemStatus.mockResolvedValue(0)
-    const r = await deleteSpecItemStatus(
-      new NextRequest('http://l', { method: 'DELETE' }),
-      makeParams('404'),
-    )
-
-    expect(r.status).toBe(404)
-    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
-    expect(
-      auditState.recordAdminPrivilegedActionSucceeded,
-    ).not.toHaveBeenCalled()
-  })
-
-  it('DELETE returns 409 when the catalog status is in use', async () => {
-    mockDeleteSpecItemStatus.mockRejectedValue(
-      new Error(
-        'The DELETE statement conflicted with the REFERENCE constraint',
-      ),
-    )
-    const r = await deleteSpecItemStatus(
-      new NextRequest('http://l', { method: 'DELETE' }),
-      makeParams('5'),
-    )
-
-    expect(r.status).toBe(409)
-    await expect(r.json()).resolves.toEqual({
-      error: 'Cannot delete: specification item status is in use',
-    })
-    expect(
-      auditState.recordAdminPrivilegedActionSucceeded,
-    ).not.toHaveBeenCalled()
   })
 })
 
@@ -850,12 +721,79 @@ describe('requirement-specifications routes', () => {
     )
     expect(r.status).toBe(201)
   })
+  it('POST accepts long existing-style specification slugs', async () => {
+    const r = await postPkg(
+      jsonReq('POST', {
+        name: 'Playwright lifecycle',
+        uniqueId: 'PLAYWRIGHT-LIFECYCLE-2026',
+      }),
+    )
+
+    expect(r.status).toBe(201)
+    expect(mockCreatePkg).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        uniqueId: 'PLAYWRIGHT-LIFECYCLE-2026',
+      }),
+    )
+  })
+  it('POST returns 400 for malformed JSON bodies', async () => {
+    const r = await postPkg(
+      new NextRequest('http://l', {
+        method: 'POST',
+        body: '{',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    expect(r.status).toBe(400)
+    await expect(r.json()).resolves.toMatchObject({
+      error: 'Invalid request',
+      issues: [
+        {
+          code: 'invalid_json',
+          path: '$',
+        },
+      ],
+    })
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockCreatePkg).not.toHaveBeenCalled()
+  })
+  it.each([
+    ['missing name', { uniqueId: 'VALID-SLUG' }, 'name'],
+    ['empty name', { name: '', uniqueId: 'VALID-SLUG' }, 'name'],
+    ['empty uniqueId', { name: 'A', uniqueId: '' }, 'uniqueId'],
+  ])('POST rejects %s', async (_label, body, path) => {
+    const r = await postPkg(jsonReq('POST', body))
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, path)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockCreatePkg).not.toHaveBeenCalled()
+  })
+  it.each([
+    ['lowercase', 'lowercase'],
+    ['spaces', 'VALID SLUG'],
+    ['invalid punctuation', 'VALID_SLUG'],
+    ['repeated hyphens', 'VALID--SLUG'],
+    ['leading hyphen', '-VALID-SLUG'],
+    ['trailing hyphen', 'VALID-SLUG-'],
+    ['numeric only', '123'],
+    ['oversize', 'A'.repeat(451)],
+  ])('POST rejects invalid uniqueId: %s', async (_label, uniqueId) => {
+    const r = await postPkg(jsonReq('POST', { name: 'A', uniqueId }))
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'uniqueId')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockCreatePkg).not.toHaveBeenCalled()
+  })
   it('POST passes responsible person fields through as an HSA-ID/name pair', async () => {
     const r = await postPkg(
       jsonReq('POST', {
         name: 'A',
         uniqueId: 'A',
-        responsibleHsaId: 'SE2321000032-ada1',
+        responsibleHsaId: 'SE5560000001-ada1',
         responsibleDisplayName: 'Ada Admin',
         canResponsibleGenerateAi: true,
       }),
@@ -865,7 +803,7 @@ describe('requirement-specifications routes', () => {
     expect(mockCreatePkg).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        responsibleHsaId: 'SE2321000032-ada1',
+        responsibleHsaId: 'SE5560000001-ada1',
         responsibleDisplayName: 'Ada Admin',
         canResponsibleGenerateAi: true,
       }),
@@ -876,7 +814,7 @@ describe('requirement-specifications routes', () => {
       jsonReq('POST', {
         name: 'A',
         uniqueId: 'A',
-        responsibleHsaId: 'SE2321000032-ada1',
+        responsibleHsaId: 'SE5560000001-ada1',
       }),
     )
 
@@ -902,11 +840,19 @@ describe('requirement-specifications routes', () => {
     const r = await putPkg(jsonReq('PUT', { name: 'X' }), makeParams('1'))
     await expect(r.json()).resolves.toEqual({ id: 1 })
   })
+  it('PUT rejects invalid updated uniqueId before persistence', async () => {
+    const r = await putPkg(jsonReq('PUT', { uniqueId: '123' }), makeParams('1'))
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'uniqueId')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockUpdatePkg).not.toHaveBeenCalled()
+  })
   it('PUT updates responsible person and AI permission fields', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
     const r = await putPkg(
       jsonReq('PUT', {
-        responsibleHsaId: 'SE2321000032-rita1',
+        responsibleHsaId: 'SE5560000001-rita1',
         responsibleDisplayName: 'Rita Reviewer',
         canResponsibleGenerateAi: true,
       }),
@@ -918,7 +864,7 @@ describe('requirement-specifications routes', () => {
       expect.anything(),
       1,
       expect.objectContaining({
-        responsibleHsaId: 'SE2321000032-rita1',
+        responsibleHsaId: 'SE5560000001-rita1',
         responsibleDisplayName: 'Rita Reviewer',
         canResponsibleGenerateAi: true,
       }),

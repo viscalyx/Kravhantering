@@ -464,12 +464,33 @@ export default function NormReferencesClient() {
               </thead>
               <tbody>
                 {controller.items.length === 0 && (
-                  <tr>
-                    <td
-                      className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
-                      colSpan={8}
-                    >
-                      {t('emptyState')}
+                  <tr
+                    {...devMarker({
+                      context: 'normReferences',
+                      name: 'empty state',
+                      priority: 330,
+                    })}
+                  >
+                    <td className="px-4 py-10 text-center" colSpan={8}>
+                      <div className="flex flex-col items-center justify-center gap-3 text-secondary-500 dark:text-secondary-400">
+                        <p>{t('emptyState')}</p>
+                        <button
+                          className="btn-primary inline-flex items-center gap-1.5"
+                          {...devMarker({
+                            context: 'normReferences',
+                            name: 'empty state create button',
+                            priority: 330,
+                          })}
+                          disabled={controller.submitting}
+                          onClick={event => {
+                            void openCreate(event.currentTarget)
+                          }}
+                          type="button"
+                        >
+                          <Plus aria-hidden="true" className="h-4 w-4" />
+                          {tc('create')}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )}

@@ -31,6 +31,15 @@ const optionalNullableResponsibleDisplayNameSchema = z.preprocess(
   nullableBusinessTextSchema.optional(),
 )
 
+export const specificationSlugSchema = boundedDbStringSchema
+  .regex(/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/, {
+    message:
+      'Expected uppercase letters, digits, and single hyphens between segments',
+  })
+  .refine(value => !/^\d+$/.test(value), {
+    message: 'Expected a non-numeric specification slug',
+  })
+
 function hasResponsibleField(input: object) {
   return (
     Object.hasOwn(input, 'responsibleHsaId') ||
@@ -86,7 +95,7 @@ export const createSpecificationSchema = z
     specificationResponsibilityAreaId: positiveIntegerSchema
       .nullable()
       .optional(),
-    uniqueId: boundedDbStringSchema,
+    uniqueId: specificationSlugSchema,
   })
   .strict()
   .superRefine(validateResponsiblePerson)
@@ -106,7 +115,7 @@ export const updateSpecificationSchema = z
     specificationResponsibilityAreaId: positiveIntegerSchema
       .nullable()
       .optional(),
-    uniqueId: boundedDbStringSchema.optional(),
+    uniqueId: specificationSlugSchema.optional(),
   })
   .strict()
   .superRefine(validateResponsiblePerson)

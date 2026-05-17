@@ -734,7 +734,7 @@ Classifies the risk associated with a requirement.
 
 | id | Swedish | English | Color | Icon |
 | ---- | ------- | ------- | ------------------- | ------ |
-| 1 | Låg | Low | `#22c55e` (green) | `ShieldCheck` |
+| 1 | Låg | Low | `#22c55e` (green) | `ArrowDownLeft` |
 | 2 | Medel | Medium | `#eab308` (yellow) | `AlertCircle` |
 | 3 | Hög | High | `#ef4444` (red) | `AlertTriangle` |
 
@@ -882,9 +882,11 @@ Förvaltning (Management).
 
 ### `specification_item_statuses`
 
-Lookup table for usage/implementation status of individual
+Fixed lookup table for usage/implementation status of individual
 requirements within a specification (e.g. included, in progress,
-implemented, verified).
+implemented, verified). Seed IDs 1-6 are the supported system catalog;
+the rows are editable for labels, descriptions, color, icon, and allowed
+sort order, but statuses are not created or deleted.
 
 | Column | Type | Description |
 | -------- | ------ | ------------- |
@@ -1029,9 +1031,9 @@ row; it does not switch or anonymize that standalone owner identity.
 <!-- markdownlint-disable MD013 MD034 -->
 | id | first\_name | last\_name | email | hsa\_id |
 | --- | --- | --- | --- | --- |
-| 1 | Anna | Johansson | anna.johansson@example.com | SE2321000032-annaj |
-| 2 | Erik | Lindberg | erik.lindberg@example.com | SE2321000032-erikl |
-| 3 | Maria | Svensson | maria.svensson@example.com | SE2321000032-marias |
+| 1 | Anna | Johansson | anna.johansson@example.com | SE5560000001-annaj |
+| 2 | Erik | Lindberg | erik.lindberg@example.com | SE5560000001-erikl |
+| 3 | Maria | Svensson | maria.svensson@example.com | SE5560000001-marias |
 <!-- markdownlint-enable MD013 MD034 -->
 
 These owners are assigned to requirement areas via `owner_id`:
@@ -1043,7 +1045,7 @@ Maria (3) → Användbarhet, Drift.
 
 Seed data also includes duplicate display names with different `hsa_id` values
 so tests prove that privacy erasure and authorization disambiguate by HSA-ID,
-not by name. The `SE2321000032-linneab` fixture appears across every privacy
+not by name. The `SE5560000001-linneab` fixture appears across every privacy
 preview group: owner rows, area and package owner assignments, requirement
 versions, deviation creator and decision fields, improvement-suggestion creator
 and resolver fields, specification responsibility, and area/specification
@@ -1187,6 +1189,13 @@ specific procurement or project.
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
+`unique_id` is the stable slug used in specification URLs and API
+payloads. New and updated values must be uppercase ASCII letters,
+digits, and single hyphens between segments, for example
+`ETJANST-UPP-2026`. Leading, trailing, or repeated hyphens are invalid,
+and numeric-only values are rejected because numeric URL segments are
+reserved for database-ID lookups.
+
 **Seed note:** Specification `ETJANST-UPP-2026` has
 `local_requirement_next_sequence = 3` because the seed
 includes `KRAV0001` and `KRAV0002`.
@@ -1239,12 +1248,15 @@ version/review/publication lifecycle.
 | `is_testing_required` | integer NOT NULL DEFAULT 0 | Whether the requirement is marked as verifiable |
 | `verification_method` | text | Verification method |
 | `needs_reference_id` | integer FK → `specification_needs_references.(specification_id, id)` | Optional specification-scoped needs reference |
-| `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Usage/implementation status (nullable, SET NULL on status delete) |
+| `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Required usage/implementation status, defaults to Included (ID 1) |
 | `note` | text | Optional specification-scoped note |
 | `status_updated_at` | text (ISO 8601) | When the usage status last changed |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
+
+`specification_item_status_id` is required. UI, API, DAL, and database
+workflows reject clearing an assigned usage status to null.
 
 **Unique indexes:**
 `uq_specification_local_requirements_specification_id_unique_id`,
@@ -1300,7 +1312,7 @@ reviewer, and external evidence reference for IdP/repository review records.
 review lifecycle values above.
 
 **Seed note:** Local privacy seed data includes two completed access-review
-runs for `SE2321000032-linneab`: one where that HSA identity created the run
+runs for `SE5560000001-linneab`: one where that HSA identity created the run
 and one created by another user where that HSA identity is the reviewer. The
 same fixture also covers completed-by and item decision/principal snapshots for
 Admin Privacy preview coverage.
@@ -1389,7 +1401,7 @@ without deleting action, target, time, decision, request ID, or correlation ID.
 preview/export/erasure workflow in this slice.
 
 **Seed note:** Development seed data includes allowed, denied, human, and MCP
-audit rows, including validated client IPs and `SE2321000032-linneab` actor
+audit rows, including validated client IPs and `SE5560000001-linneab` actor
 snapshots for privacy preview/export coverage.
 
 ### `archiving_retention_policies`
@@ -1638,12 +1650,15 @@ Links individual requirements (pinned to a specific version) into a specificatio
 | `requirement_id` | integer FK → `requirements.id` | The requirement being included |
 | `requirement_version_id` | integer FK → `requirement_versions.id` | Pinned version snapshot |
 | `needs_reference_id` | integer FK → `specification_needs_references.(specification_id, id)` | Optional specification-scoped needs reference |
-| `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Usage/implementation status (nullable) |
+| `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Required usage/implementation status, defaults to Included (ID 1) |
 | `note` | text | Optional free-text note (nullable) |
 | `status_updated_at` | text (ISO 8601) | When the usage status was last changed (nullable) |
 | `unused_1` | text | Retired legacy column kept for migration compatibility |
 | `created_at` | text (ISO 8601) | When the item was added |
 <!-- markdownlint-enable MD013 -->
+
+`specification_item_status_id` is required. UI, API, DAL, and database
+workflows reject clearing an assigned usage status to null.
 
 **Unique index:** `uq_requirements_specification_items_specification_requirement`.
 
@@ -1900,7 +1915,7 @@ The following table lists every named FK constraint:
 | `fk_specification_local_requirements_requirement_type_id` | `specification_local_requirements` | `requirement_type_id` | `requirement_types.id` | NO ACTION | NO ACTION |
 | `fk_specification_local_requirements_quality_characteristic_id` | `specification_local_requirements` | `quality_characteristic_id` | `quality_characteristics.id` | NO ACTION | NO ACTION |
 | `fk_specification_local_requirements_risk_level_id` | `specification_local_requirements` | `risk_level_id` | `risk_levels.id` | NO ACTION | NO ACTION |
-| `fk_specification_local_requirements_specification_item_status_id` | `specification_local_requirements` | `specification_item_status_id` | `specification_item_statuses.id` | SET NULL | NO ACTION |
+| `fk_specification_local_requirements_specification_item_status_id` | `specification_local_requirements` | `specification_item_status_id` | `specification_item_statuses.id` | NO ACTION | NO ACTION |
 | `fk_specification_local_requirement_deviations_specification_local_requirement_id` | `specification_local_requirement_deviations` | `specification_local_requirement_id` | `specification_local_requirements.id` | CASCADE | NO ACTION |
 | `fk_specification_local_requirement_norm_references_specification_local_requirement_id` | `specification_local_requirement_norm_references` | `specification_local_requirement_id` | `specification_local_requirements.id` | CASCADE | NO ACTION |
 | `fk_specification_local_requirement_norm_references_norm_reference_id` | `specification_local_requirement_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION | NO ACTION |

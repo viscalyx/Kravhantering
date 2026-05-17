@@ -48,6 +48,7 @@
     "createdAt": "Skapad",
     "updatedAt": "Uppdaterad",
     "error": "Ett fel uppstod",
+    "ownerLoadError": "Kunde inte hämta ägare. Befintliga ägarval behålls om de finns.",
     "share": "Dela",
     "copied": "Kopierad",
     "help": "Hjälp",
@@ -61,7 +62,8 @@
     "showLess": "Visa mindre",
     "deleting": "Tar bort…",
     "deletingInProgress": "Borttagning pågår…",
-    "unexpectedError": "Ett oväntat fel uppstod"
+    "unexpectedError": "Ett oväntat fel uppstod",
+    "emptyState": "Inga poster ännu."
   },
   "nav": {
     "catalog": "Kravkatalog",
@@ -282,7 +284,8 @@
       "owner": "Välj den person eller grupp som ansvarar för kravområdet."
     },
     "newArea": "Nytt kravområde",
-    "editArea": "Redigera kravområde"
+    "editArea": "Redigera kravområde",
+    "emptyState": "Inga kravområden ännu. Skapa ditt första kravområde."
   },
   "category": {
     "business": "Verksamhetskrav",
@@ -585,7 +588,8 @@
     "newRequirementPackage": "Nytt kravpaket",
     "editRequirementPackage": "Redigera kravpaket",
     "linkedRequirements": "Kopplade krav",
-    "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}"
+    "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}",
+    "emptyState": "Inga kravpaket ännu. Skapa ditt första kravpaket."
   },
   "normReference": {
     "editNormReference": "Redigera normreferens",
@@ -650,7 +654,8 @@
     "editStatus": "Redigera status",
     "preview": "Förhandsvisning",
     "cannotDeleteSystem": "Systemstatusar kan inte tas bort",
-    "cannotDeleteInUse": "Går inte att ta bort - statusen används av befintliga krav"
+    "cannotDeleteInUse": "Går inte att ta bort - statusen används av befintliga krav",
+    "emptyState": "Inga kravstatusar är tillgängliga."
   },
   "iconPicker": {
     "clear": "Rensa ikon",
@@ -679,7 +684,8 @@
       "lastName": "Ange ägarens efternamn.",
       "hsaId": "Ange ägarens verifierade HSA-ID. Namn är visningskopior; HSA-ID är den varaktiga identitetsnyckeln.",
       "email": "Ange e-postadressen som används för att kontakta ägaren."
-    }
+    },
+    "emptyState": "Inga kravägare ännu. Skapa din första ägare."
   },
   "responsibilityAreaMgmt": {
     "name": "Namn",
@@ -689,7 +695,8 @@
     "nameEnHelp": "Ange det engelska namnet för verksamhetsobjektet.",
     "title": "Verksamhetsobjekt",
     "newItem": "Nytt verksamhetsobjekt",
-    "editItem": "Redigera verksamhetsobjekt"
+    "editItem": "Redigera verksamhetsobjekt",
+    "emptyState": "Inga verksamhetsobjekt ännu. Skapa ditt första verksamhetsobjekt."
   },
   "implementationTypeMgmt": {
     "name": "Namn",
@@ -699,7 +706,8 @@
     "nameEnHelp": "Ange det engelska namnet för genomförandeformen.",
     "title": "Genomförandeformer",
     "newItem": "Ny genomförandeform",
-    "editItem": "Redigera genomförandeform"
+    "editItem": "Redigera genomförandeform",
+    "emptyState": "Inga genomförandeformer ännu. Skapa din första genomförandeform."
   },
   "lifecycleStatusMgmt": {
     "name": "Namn",
@@ -709,7 +717,8 @@
     "newItem": "Ny livscykelstatus",
     "editItem": "Redigera livscykelstatus",
     "nameSvHelp": "Ange det svenska namnet för denna livscykelstatus. Det visas när applikationens språk är svenska.",
-    "nameEnHelp": "Ange det engelska namnet för denna livscykelstatus. Det visas när applikationens språk är engelska."
+    "nameEnHelp": "Ange det engelska namnet för denna livscykelstatus. Det visas när applikationens språk är engelska.",
+    "emptyState": "Inga livscykelstatusar ännu. Skapa din första livscykelstatus."
   },
   "theme": {
     "light": "Ljust",
@@ -1568,7 +1577,7 @@
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Lägg till nya risknivåer med Skapa-knappen. Redigera befintliga nivåer för att ändra namn, färg eller sorteringsordning. Risknivåer som är kopplade till befintliga krav kan inte tas bort."
+        "body": "Risknivåer är en fast systemuppsättning. Redigera befintliga nivåer för att ändra namn, färg, ikon eller sorteringsordning."
       }
     },
     "specificationItemStatuses": {
@@ -1590,7 +1599,8 @@
     "icon": "Ikon",
     "sortOrder": "Sorteringsordning",
     "linkedRequirements": "Kopplade krav",
-    "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}"
+    "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}",
+    "emptyState": "Inga risknivåer är tillgängliga."
   },
   "specificationItemStatusAdmin": {
     "title": "Användningsstatusar",
@@ -1616,7 +1626,8 @@
     "sortOrderHelp": "Ange ett tal som styr visningsordningen. Lägre tal visas först. Reserverade statusar har låst sorteringsordning.",
     "sortOrderLocked": "Sorteringsordningen för denna systemstatus kan inte ändras.",
     "specification": "Underlag",
-    "requirement": "Krav"
+    "requirement": "Krav",
+    "emptyState": "Inga användningsstatusar är tillgängliga."
   },
   "ai": {
     "generateTitle": "AI-kravgenerering",

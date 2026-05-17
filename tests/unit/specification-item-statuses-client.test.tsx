@@ -93,16 +93,14 @@ describe('SpecificationItemStatusesClient', () => {
     )
   })
 
-  it('renders heading and create button', async () => {
+  it('renders heading without create button', async () => {
     render(<SpecificationItemStatusesClient />)
     expect(
       screen.getByRole('heading', {
         name: /specificationItemStatusAdmin\.title/,
       }),
     ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /common\.create/i }),
-    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /common\.create/i })).toBeNull()
     await waitFor(() => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
     })
@@ -135,14 +133,29 @@ describe('SpecificationItemStatusesClient', () => {
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
-  it('opens create form', async () => {
+  it('renders a message-only empty state without create CTA', async () => {
+    fetchMock.mockResolvedValue(okResponse({ statuses: [] }))
+
+    render(<SpecificationItemStatusesClient />)
+
+    const emptyState = await screen.findByText(
+      'specificationItemStatusAdmin.emptyState',
+    )
+    expect(emptyState.closest('td')).toHaveAttribute('colspan', '6')
+    expect(screen.queryByRole('button', { name: /common\.create/i })).toBeNull()
+  })
+
+  it('does not render a create form entry point', async () => {
     render(<SpecificationItemStatusesClient />)
     await waitFor(() => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    expect(statusNameSvInput()).toBeInTheDocument()
-    expect(statusNameEnInput()).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /common\.create/i })).toBeNull()
+    expect(
+      screen.queryByRole('textbox', {
+        name: /specificationItemStatusAdmin\.name.+SV/,
+      }),
+    ).toBeNull()
   })
 
   it('shows collapsible inline help for specification item status fields', async () => {
@@ -150,7 +163,13 @@ describe('SpecificationItemStatusesClient', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+    const editButtons = screen.getAllByRole('button', {
+      name: /common\.edit/i,
+    })
+    fireEvent.click(editButtons[1])
+    await waitFor(() => {
+      expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
+    })
 
     const helpButtons = [
       'common.help: specificationItemStatusAdmin.name (SV)',
@@ -176,24 +195,27 @@ describe('SpecificationItemStatusesClient', () => {
     ).toBeInTheDocument()
   })
 
-  it('submits create form', async () => {
+  it('submits edit form', async () => {
     render(<SpecificationItemStatusesClient />)
     await waitFor(() => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+    const editButtons = screen.getAllByRole('button', {
+      name: /common\.edit/i,
+    })
+    fireEvent.click(editButtons[1])
     fireEvent.change(statusNameSvInput(), { target: { value: 'Ny status' } })
     fireEvent.change(statusNameEnInput(), { target: { value: 'New status' } })
 
-    fetchMock.mockResolvedValueOnce(okResponse({ id: 3 }))
+    fetchMock.mockResolvedValueOnce(okResponse({ id: 1 }))
     fetchMock.mockResolvedValueOnce(okResponse({ statuses: sampleStatuses }))
 
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/catalog/specification-item-statuses',
-        expect.objectContaining({ method: 'POST' }),
+        '/api/catalog/specification-item-statuses/1',
+        expect.objectContaining({ method: 'PUT' }),
       )
     })
   })
@@ -239,7 +261,13 @@ describe('SpecificationItemStatusesClient', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+    const editButtons = screen.getAllByRole('button', {
+      name: /common\.edit/i,
+    })
+    fireEvent.click(editButtons[1])
+    await waitFor(() => {
+      expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
+    })
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
     expect(
       screen.queryByRole('textbox', {
@@ -248,30 +276,13 @@ describe('SpecificationItemStatusesClient', () => {
     ).toBeNull()
   })
 
-  it('deletes with confirm', async () => {
-    confirmMock.mockResolvedValue(true)
+  it('does not render delete controls', async () => {
     render(<SpecificationItemStatusesClient />)
     await waitFor(() => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
     })
-
-    fetchMock.mockResolvedValueOnce(okResponse({}))
-    fetchMock.mockResolvedValueOnce(okResponse({ statuses: [] }))
-
-    const deleteButtons = screen.getAllByRole('button', {
-      name: /common\.delete/i,
-    })
-    fireEvent.click(deleteButtons[1])
-
-    await waitFor(() => {
-      expect(confirmMock).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: 'danger', icon: 'caution' }),
-      )
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/catalog/specification-item-statuses/1',
-        expect.objectContaining({ method: 'DELETE' }),
-      )
-    })
+    expect(screen.queryByRole('button', { name: /common\.delete/i })).toBeNull()
+    expect(confirmMock).not.toHaveBeenCalled()
   })
 
   it('disables sort order field when editing the default status (ID 1)', async () => {

@@ -7,7 +7,7 @@ description: 'Add or modify steps in the Playwright user-guide generator (tests/
 
 `tests/guide/generate-guide.spec.ts` is a single serial Playwright test that clicks
 through the app, takes screenshots, and writes `docs/guide/README.md`.
-Run with `npm run generate-guide`.
+Run with `npm run generate:guide`.
 
 ### Selectors — prefer stable locators
 
@@ -83,6 +83,10 @@ The `snap()` helper already waits for:
 If you add a new async section, add a similar guard in `snap()` or wait explicitly
 before calling it.
 
+The guide emits `[guide]` debug lines for step start/end, navigation events,
+HTTP errors, failed requests, and screenshot start/end. Use those lines first
+when diagnosing a stalled run.
+
 ### Inline-panel row clicks
 
 The sticky table header and resize handles intercept Playwright's normal click
@@ -110,7 +114,10 @@ Mock data constants (`MOCK_DESCRIPTION`, `MOCK_CRITERIA`, etc.) are also in Swed
 ### DB state
 
 The guide mutates the database (creates requirements, suggestions, deviations).
-Run `npm run db:setup` to reset to seed state afterward.
+Run `npm run db:setup` to reset to seed state afterward. The normal
+`npm run generate:guide` command runs `db:setup` first and uses Playwright
+global setup to log in as `ada.admin` and write
+`test-results/auth/admin.json`.
 Seeded requirements useful for guide steps:
 - `IDN0001` — has multiple improvement suggestions; good for showing suggestion lists.
 - `ANV0002` — clean requirement with no suggestions; good for "create first suggestion" demo.

@@ -29,12 +29,16 @@ const submitMock = vi.fn(async (event?: FormEvent<HTMLFormElement>) => {
 
 function PanelHarness({
   canDelete,
+  canCreate = true,
   deleteError = null,
+  empty = false,
   loading = false,
   submitting = false,
 }: {
   canDelete?: (item: PanelItem) => boolean
+  canCreate?: boolean
   deleteError?: string | null
+  empty?: boolean
   loading?: boolean
   submitting?: boolean
 }) {
@@ -47,7 +51,7 @@ function PanelHarness({
     editId: null,
     form,
     formError: null,
-    items: loading ? [] : [{ id: 1, name: 'One' }],
+    items: loading || empty ? [] : [{ id: 1, name: 'One' }],
     loading,
     loadError: null,
     openCreate: () => setShowForm(true),
@@ -62,6 +66,7 @@ function PanelHarness({
 
   return (
     <CrudAdminPanel
+      canCreate={canCreate}
       canDelete={canDelete}
       columns={[
         {
@@ -111,6 +116,12 @@ describe('CrudAdminPanel', () => {
     expect(screen.getByText('One')).toBeInTheDocument()
   })
 
+  it('does not render create controls when canCreate is false', () => {
+    render(<PanelHarness canCreate={false} />)
+
+    expect(screen.queryByRole('button', { name: 'common.create' })).toBeNull()
+  })
+
   it('opens the form from the create button', () => {
     render(<PanelHarness />)
 
@@ -120,6 +131,36 @@ describe('CrudAdminPanel', () => {
       screen.getByRole('heading', { level: 2, name: 'common.create' }),
     ).toBeInTheDocument()
     expect(screen.getByLabelText('Name')).toBeInTheDocument()
+  })
+
+  it('renders an empty row with a create CTA when items are empty', () => {
+    const { container } = render(<PanelHarness empty />)
+
+    const emptyState = screen.getByText('common.emptyState')
+    expect(emptyState).toBeInTheDocument()
+    expect(emptyState.closest('td')).toHaveAttribute('colspan', '2')
+    expect(
+      container.querySelector('[data-developer-mode-name="empty state"]'),
+    ).toHaveAttribute('data-developer-mode-context', 'test admin')
+
+    const createButtons = screen.getAllByRole('button', {
+      name: 'common.create',
+    })
+    expect(createButtons).toHaveLength(2)
+
+    fireEvent.click(createButtons[1])
+
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'common.create' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Name')).toBeInTheDocument()
+  })
+
+  it('omits the empty row CTA when creation is disabled', () => {
+    render(<PanelHarness canCreate={false} empty />)
+
+    expect(screen.getByText('common.emptyState')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.create' })).toBeNull()
   })
 
   it('opens the form when reduced motion is requested', () => {
@@ -163,6 +204,7 @@ describe('CrudAdminPanel', () => {
     rerender(<PanelHarness loading />)
 
     expect(screen.getByText('common.loading')).toBeInTheDocument()
+    expect(screen.queryByText('common.emptyState')).toBeNull()
   })
 
   it('wires row actions and developer-mode markers', () => {

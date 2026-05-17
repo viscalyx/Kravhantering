@@ -44,7 +44,7 @@ const specificationItemRefParamSchema = z
 const patchSpecificationItemSchema = z
   .object({
     note: nullableBusinessTextSchema.optional(),
-    specificationItemStatusId: positiveIntegerSchema.nullable().optional(),
+    specificationItemStatusId: positiveIntegerSchema.optional(),
   })
   .strict()
   .refine(
@@ -110,7 +110,7 @@ export async function GET(
     specificationItemStatusColor: item.specificationItemStatusColor ?? null,
     specificationItemStatusIconName:
       item.specificationItemStatusIconName ?? null,
-    specificationItemStatusId: item.specificationItemStatusId ?? null,
+    specificationItemStatusId: item.specificationItemStatusId,
     specificationItemStatusNameEn: item.specificationItemStatusNameEn ?? null,
     specificationItemStatusNameSv: item.specificationItemStatusNameSv ?? null,
   })

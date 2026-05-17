@@ -484,7 +484,13 @@
     },
     {
       "filename": "tests/guide/generate-guide.spec.ts",
-      "words": ["annot", "sugg"]
+      "words": [
+        "annot",
+        "domcontentloaded",
+        "framenavigated",
+        "requestfailed",
+        "sugg"
+      ]
     }
   ],
   "useGitignore": true,

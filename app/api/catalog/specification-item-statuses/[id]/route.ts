@@ -2,13 +2,11 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
-  deleteSpecificationItemStatus,
   getLinkedSpecificationItems,
   getSpecificationItemStatusById,
   updateSpecificationItemStatus,
 } from '@/lib/dal/specification-item-statuses'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import { isForeignKeyViolation } from '@/lib/http/safe-errors'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -46,13 +44,11 @@ export async function GET(
   if (!parsedParams.ok) return parsedParams.response
   const { id } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
-  const [status, linkedItems] = await Promise.all([
-    getSpecificationItemStatusById(db, id),
-    getLinkedSpecificationItems(db, id),
-  ])
+  const status = await getSpecificationItemStatusById(db, id)
   if (!status) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
+  const linkedItems = await getLinkedSpecificationItems(db, id)
   return NextResponse.json({ status, linkedItems })
 }
 
@@ -73,33 +69,5 @@ export const PUT = secureMutationRoute({
       resourceType: 'specification_item_status',
     })
     return NextResponse.json(status)
-  },
-})
-
-export const DELETE = secureMutationRoute({
-  paramsSchema: idParamSchema,
-  policy: adminMutationPolicy(),
-  handler: async ({ context, params }) => {
-    const db = await getRequestSqlServerDataSource()
-    try {
-      const deletedCount = await deleteSpecificationItemStatus(db, params.id)
-      if (deletedCount === 0) {
-        return NextResponse.json({ error: 'Not found' }, { status: 404 })
-      }
-      await recordAdminPrivilegedActionSucceeded(context, {
-        operation: 'delete',
-        resourceId: params.id,
-        resourceType: 'specification_item_status',
-      })
-      return NextResponse.json({ ok: true })
-    } catch (error) {
-      if (isForeignKeyViolation(error)) {
-        return NextResponse.json(
-          { error: 'Cannot delete: specification item status is in use' },
-          { status: 409 },
-        )
-      }
-      throw error
-    }
   },
 })

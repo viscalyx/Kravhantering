@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   approveArchiving,
   cancelArchiving,
+  createRequirement,
   deleteDraftVersion,
   editRequirement,
   getRequirementById,
   getRequirementByUniqueId,
   initiateArchiving,
+  listRequirements,
   reactivateRequirement,
   restoreVersion,
   transitionStatus,
@@ -96,6 +98,112 @@ describe('requirements DAL (SQL Server path)', () => {
       expect.stringContaining('FROM requirements requirement'),
       [42],
     )
+  })
+
+  it('hydrates requirement package names for requirement list rows', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        id: 7,
+        uniqueId: 'SEC-0001',
+        requirementAreaId: 3,
+        isArchived: 0,
+        createdAt: new Date('2026-04-20T08:00:00.000Z'),
+        versionId: 21,
+        revisionToken: '11111111-1111-4111-8111-111111111111',
+        versionNumber: 2,
+        description: 'desc-v2',
+        status: 3,
+        requiresTesting: 1,
+        versionCreatedAt: new Date('2026-04-20T08:30:00.000Z'),
+        maxVersion: 2,
+        requirementPackagesJson: JSON.stringify([
+          { id: 200, nameEn: 'Citizen portal', nameSv: 'Medborgarportal' },
+          { id: 201, nameEn: 'Back office', nameSv: 'Handlaggning' },
+        ]),
+        suggestionCount: 0,
+      },
+    ])
+
+    const rows = await listRequirements(db)
+
+    expect(query.mock.calls[0]?.[0]).toContain('requirementPackagesJson')
+    expect(rows[0]).toMatchObject({
+      id: 7,
+      requirementPackages: [
+        { id: 200, nameEn: 'Citizen portal', nameSv: 'Medborgarportal' },
+        { id: 201, nameEn: 'Back office', nameSv: 'Handlaggning' },
+      ],
+      uniqueId: 'SEC-0001',
+    })
+  })
+
+  it('rejects unknown requirement area ids before creating a requirement', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query.mockResolvedValueOnce([])
+
+    await expect(
+      createRequirement(db, {
+        description: 'Invalid area requirement',
+        requirementAreaId: 99,
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'requirementAreaId references unknown requirement area id 99',
+      status: 400,
+    })
+
+    expect(transaction).not.toHaveBeenCalled()
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(query.mock.calls[0]?.[0]).toContain('FROM requirement_areas')
+    expect(query.mock.calls[0]?.[1]).toEqual([99])
+  })
+
+  it('rejects unknown norm references before creating a requirement', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query.mockResolvedValueOnce([{ id: 1 }]).mockResolvedValueOnce([])
+
+    await expect(
+      createRequirement(db, {
+        description: 'Invalid norm reference requirement',
+        normReferenceIds: [100],
+        requirementAreaId: 1,
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'normReferenceIds references unknown norm reference id 100',
+      status: 400,
+    })
+
+    expect(transaction).not.toHaveBeenCalled()
+    expect(query.mock.calls.map(([sql]) => String(sql))).toEqual([
+      expect.stringContaining('FROM requirement_areas'),
+      expect.stringContaining('FROM norm_references'),
+    ])
+  })
+
+  it('rejects unknown requirement packages before creating a requirement', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query.mockResolvedValueOnce([{ id: 1 }]).mockResolvedValueOnce([])
+
+    await expect(
+      createRequirement(db, {
+        description: 'Invalid package requirement',
+        requirementAreaId: 1,
+        requirementPackageIds: [200],
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message:
+        'requirementPackageIds references unknown requirement package id 200',
+      status: 400,
+    })
+
+    expect(transaction).not.toHaveBeenCalled()
+    expect(query.mock.calls.map(([sql]) => String(sql))).toEqual([
+      expect.stringContaining('FROM requirement_areas'),
+      expect.stringContaining('FROM requirement_packages'),
+    ])
   })
 
   it('hydrates the requirement, area, versions, joins and specification count', async () => {
@@ -427,6 +535,46 @@ describe('requirements DAL (SQL Server path)', () => {
     expect(query).toHaveBeenCalledTimes(1)
   })
 
+  it('rejects unknown edit references after stale and status checks but before mutations', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          id: 21,
+          revisionToken: '11111111-1111-4111-8111-111111111111',
+          statusId: 1,
+        },
+      ])
+      .mockResolvedValueOnce([])
+
+    await expect(
+      editRequirement(db, 7, {
+        baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+        baseVersionId: 21,
+        description: 'Invalid package edit',
+        requirementPackageIds: [200],
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message:
+        'requirementPackageIds references unknown requirement package id 200',
+      status: 400,
+    })
+
+    const sqlCalls = query.mock.calls.map(([sql]) => String(sql))
+    expect(sqlCalls).toHaveLength(2)
+    expect(sqlCalls[0]).toContain('WITH (UPDLOCK, HOLDLOCK)')
+    expect(sqlCalls[1]).toContain('FROM requirement_packages')
+    expect(
+      sqlCalls.some(sql => sql.includes('UPDATE requirement_versions')),
+    ).toBe(false)
+    expect(
+      sqlCalls.some(sql =>
+        sql.includes('DELETE FROM requirement_version_requirement_packages'),
+      ),
+    ).toBe(false)
+  })
+
   it('rotates the revision token when updating a draft', async () => {
     const { db, query } = createSqlServerDb()
     query
@@ -486,7 +634,7 @@ describe('requirements DAL (SQL Server path)', () => {
         {
           acceptanceCriteria: null,
           createdBy: 'Original Actor',
-          createdByHsaId: 'SE2321000032-original',
+          createdByHsaId: 'SE5560000001-original',
           description: 'Archived text',
           id: 21,
           qualityCharacteristicId: null,
@@ -508,7 +656,7 @@ describe('requirements DAL (SQL Server path)', () => {
           archivedAt: null,
           createdAt: new Date('2026-04-20T08:30:00.000Z'),
           createdBy: 'Original Actor',
-          createdByHsaId: 'SE2321000032-original',
+          createdByHsaId: 'SE5560000001-original',
           description: 'Archived text',
           editedAt: new Date('2026-04-20T08:30:00.000Z'),
           id: 22,
@@ -529,10 +677,10 @@ describe('requirements DAL (SQL Server path)', () => {
     const result = await restoreVersion(db, 7, 21, 'New Actor')
 
     expect(result.createdBy).toBe('Original Actor')
-    expect(result.createdByHsaId).toBe('SE2321000032-original')
+    expect(result.createdByHsaId).toBe('SE5560000001-original')
     const insertParams = query.mock.calls[4]?.[1] ?? []
     expect(insertParams.at(13)).toBe('Original Actor')
-    expect(insertParams.at(14)).toBe('SE2321000032-original')
+    expect(insertParams.at(14)).toBe('SE5560000001-original')
   })
 
   it('reactivates archived requirements atomically and clears the archived flag', async () => {
@@ -543,7 +691,7 @@ describe('requirements DAL (SQL Server path)', () => {
         {
           acceptanceCriteria: null,
           createdBy: 'Original Actor',
-          createdByHsaId: 'SE2321000032-original',
+          createdByHsaId: 'SE5560000001-original',
           description: 'Archived text',
           id: 21,
           qualityCharacteristicId: null,
@@ -565,7 +713,7 @@ describe('requirements DAL (SQL Server path)', () => {
           archivedAt: null,
           createdAt: new Date('2026-04-20T08:30:00.000Z'),
           createdBy: 'Reviewer',
-          createdByHsaId: 'SE2321000032-reviewer1',
+          createdByHsaId: 'SE5560000001-reviewer1',
           description: 'Archived text',
           editedAt: new Date('2026-04-20T08:30:00.000Z'),
           id: 22,
@@ -584,7 +732,7 @@ describe('requirements DAL (SQL Server path)', () => {
       ])
       .mockResolvedValueOnce([])
 
-    await reactivateRequirement(db, 7, 'Reviewer', 'SE2321000032-reviewer1')
+    await reactivateRequirement(db, 7, 'Reviewer', 'SE5560000001-reviewer1')
 
     expect(transaction).toHaveBeenCalledTimes(1)
     expect(query.mock.calls[0]?.[0]).toContain('WITH (UPDLOCK, HOLDLOCK)')

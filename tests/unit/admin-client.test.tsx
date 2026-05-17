@@ -106,7 +106,7 @@ function dataSubjectExportBody() {
     generatedAt: '2026-05-12T12:00:00.000Z',
     generatedBy: {
       displayName: 'Disa PrivacyOfficer',
-      hsaId: 'SE2321000032-privacy1',
+      hsaId: 'SE5560000001-privacy1',
       roles: ['PrivacyOfficer'],
       source: 'oidc',
       sub: 'privacy-sub',
@@ -115,7 +115,7 @@ function dataSubjectExportBody() {
     schemaVersion: 'privacy-data-subject-export.v1',
     sources: [],
     subject: {
-      hsaId: 'SE2321000032-kalle2',
+      hsaId: 'SE5560000001-kalle2',
       targetFingerprint: '0123456789abcdef0123456789abcdef',
     },
     summary: {
@@ -196,7 +196,7 @@ function accessReviewDetail() {
         permissionType: 'area_co_author',
         principal: {
           displayName: 'Kalle Svensson',
-          hsaId: 'SE2321000032-kalle1',
+          hsaId: 'SE5560000001-kalle1',
         },
         scope: {
           key: '1',
@@ -213,7 +213,7 @@ function accessReviewDetail() {
       createdAt: '2026-05-12T12:00:00.000Z',
       createdBy: {
         displayName: 'Ada Admin',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
       },
       dueAt: '2026-06-11T12:00:00.000Z',
       externalEvidenceReference: 'IDM-2026',
@@ -222,7 +222,7 @@ function accessReviewDetail() {
       periodStart: '2026-05-12T12:00:00.000Z',
       reviewer: {
         displayName: 'Ada Admin',
-        hsaId: 'SE2321000032-admin1',
+        hsaId: 'SE5560000001-admin1',
       },
       status: 'in_review',
       summary: {
@@ -244,7 +244,7 @@ function accessReviewExportBody() {
     generatedAt: '2026-05-12T12:30:00.000Z',
     generatedBy: {
       displayName: 'Ada Admin',
-      hsaId: 'SE2321000032-admin1',
+      hsaId: 'SE5560000001-admin1',
     },
     limitations: [],
     schemaVersion: 'access-review-export.v1',
@@ -268,7 +268,7 @@ function actionAuditLogState(
           action: 'requirement.create',
           actorClientId: null,
           actorDisplayName: 'Ada Admin',
-          actorHsaId: 'SE2321000032-admin1',
+          actorHsaId: 'SE5560000001-admin1',
           actorKind: 'user',
           clientIp: '203.0.113.10',
           correlationId: null,
@@ -1039,7 +1039,7 @@ describe('AdminClient', () => {
       id: 8,
       principal: {
         displayName: 'Anna Johansson',
-        hsaId: 'SE2321000032-annaj',
+        hsaId: 'SE5560000001-annaj',
       },
     }
     const kalleItem = baseDetail.items[0]
@@ -1275,7 +1275,7 @@ describe('AdminClient', () => {
           id: 8,
           principal: {
             displayName: 'Anna Johansson',
-            hsaId: 'SE2321000032-annaj',
+            hsaId: 'SE5560000001-annaj',
           },
         },
       ],
@@ -1472,7 +1472,7 @@ describe('AdminClient', () => {
         completedAt: '2026-05-13T12:00:00.000Z',
         completedBy: {
           displayName: 'Ada Admin',
-          hsaId: 'SE2321000032-admin1',
+          hsaId: 'SE5560000001-admin1',
         },
         status: 'completed',
         summary: {
@@ -1890,7 +1890,7 @@ describe('AdminClient', () => {
     ).toBeNull()
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-kalle2' },
+      target: { value: 'SE5560000001-kalle2' },
     })
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
@@ -1903,7 +1903,7 @@ describe('AdminClient', () => {
           body: JSON.stringify({
             replacement: null,
             target: {
-              hsaId: 'SE2321000032-kalle2',
+              hsaId: 'SE5560000001-kalle2',
             },
           }),
           method: 'POST',
@@ -2001,7 +2001,7 @@ describe('AdminClient', () => {
     )
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-kalle2' },
+      target: { value: 'SE5560000001-kalle2' },
     })
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
@@ -2021,7 +2021,7 @@ describe('AdminClient', () => {
         expect.objectContaining({
           body: JSON.stringify({
             delivery: 'json',
-            target: { hsaId: 'SE2321000032-kalle2' },
+            target: { hsaId: 'SE5560000001-kalle2' },
           }),
           method: 'POST',
         }),
@@ -2060,7 +2060,7 @@ describe('AdminClient', () => {
     )
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-kalle2' },
+      target: { value: 'SE5560000001-kalle2' },
     })
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
@@ -2110,7 +2110,7 @@ describe('AdminClient', () => {
     ).toBeNull()
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-johlju' },
+      target: { value: 'SE5560000001-johlju' },
     })
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
@@ -2148,7 +2148,7 @@ describe('AdminClient', () => {
     )
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-12345' },
+      target: { value: 'SE5560000001-12345' },
     })
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
@@ -2239,10 +2239,10 @@ describe('AdminClient', () => {
     )
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-kalle1' },
+      target: { value: 'SE5560000001-kalle1' },
     })
     fireEvent.change(screen.getByLabelText('admin.privacy.replacementHsaId'), {
-      target: { value: 'SE2321000032-johlju' },
+      target: { value: 'SE5560000001-johlju' },
     })
     fireEvent.change(screen.getByLabelText('admin.privacy.replacementName'), {
       target: { value: 'John Carl Levi' },
@@ -2299,10 +2299,10 @@ describe('AdminClient', () => {
         displayName: 'John Carl Levi',
         email: 'john.levi@example.com',
         firstName: 'John Carl',
-        hsaId: 'SE2321000032-johlju',
+        hsaId: 'SE5560000001-johlju',
         lastName: 'Levi',
       },
-      target: { hsaId: 'SE2321000032-kalle1' },
+      target: { hsaId: 'SE5560000001-kalle1' },
     })
 
     expect(screen.getByText('admin.privacy.status')).toBeTruthy()
@@ -2360,7 +2360,7 @@ describe('AdminClient', () => {
 
     const targetInput = screen.getByLabelText('admin.privacy.targetHsaId')
     fireEvent.change(targetInput, {
-      target: { value: 'SE2321000032-kalle1' },
+      target: { value: 'SE5560000001-kalle1' },
     })
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
@@ -2372,7 +2372,7 @@ describe('AdminClient', () => {
     ).toBeTruthy()
 
     fireEvent.change(targetInput, {
-      target: { value: 'SE2321000032-kalle2' },
+      target: { value: 'SE5560000001-kalle2' },
     })
 
     expect(
@@ -2429,7 +2429,7 @@ describe('AdminClient', () => {
     )
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-12345' },
+      target: { value: 'SE5560000001-12345' },
     })
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
@@ -2529,7 +2529,7 @@ describe('AdminClient', () => {
     )
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-kalle1' },
+      target: { value: 'SE5560000001-kalle1' },
     })
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
@@ -2618,7 +2618,7 @@ describe('AdminClient', () => {
     )
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-kalle1' },
+      target: { value: 'SE5560000001-kalle1' },
     })
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
@@ -2709,7 +2709,7 @@ describe('AdminClient', () => {
     )
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-kalle1' },
+      target: { value: 'SE5560000001-kalle1' },
     })
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
@@ -2794,7 +2794,7 @@ describe('AdminClient', () => {
     )
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-kalle1' },
+      target: { value: 'SE5560000001-kalle1' },
     })
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
@@ -2880,10 +2880,10 @@ describe('AdminClient', () => {
     )
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-kalle1' },
+      target: { value: 'SE5560000001-kalle1' },
     })
     fireEvent.change(screen.getByLabelText('admin.privacy.replacementHsaId'), {
-      target: { value: 'SE2321000032-johlju' },
+      target: { value: 'SE5560000001-johlju' },
     })
     fireEvent.change(screen.getByLabelText('admin.privacy.replacementName'), {
       target: { value: 'John Levi' },
@@ -2959,10 +2959,10 @@ describe('AdminClient', () => {
     )
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-kalle1' },
+      target: { value: 'SE5560000001-kalle1' },
     })
     fireEvent.change(screen.getByLabelText('admin.privacy.replacementHsaId'), {
-      target: { value: 'SE2321000032-johlju' },
+      target: { value: 'SE5560000001-johlju' },
     })
     fireEvent.change(screen.getByLabelText('admin.privacy.replacementName'), {
       target: { value: 'John Levi' },
@@ -3037,7 +3037,7 @@ describe('AdminClient', () => {
     )
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-kalle1' },
+      target: { value: 'SE5560000001-kalle1' },
     })
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
@@ -3083,7 +3083,7 @@ describe('AdminClient', () => {
     )
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-kalle1' },
+      target: { value: 'SE5560000001-kalle1' },
     })
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
@@ -3126,10 +3126,10 @@ describe('AdminClient', () => {
     )
 
     fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
-      target: { value: 'SE2321000032-kalle1' },
+      target: { value: 'SE5560000001-kalle1' },
     })
     fireEvent.change(screen.getByLabelText('admin.privacy.replacementHsaId'), {
-      target: { value: 'SE2321000032-johlju' },
+      target: { value: 'SE5560000001-johlju' },
     })
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.privacy.preview' }),

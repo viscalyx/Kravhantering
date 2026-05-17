@@ -251,6 +251,21 @@ maintenance rule.
 - **Verify:** `npm exec -- vitest run
   tests/quality/functional.test.ts -t "Scenario 13: specification-local graduation is copy-only into a draft library requirement"`
 
+## 21. Scenario 16: requirements specification item usage status cannot be cleared once assigned
+
+- **Code:** `components/_requirements-table/SpecificationItemStatusSelect.tsx`,
+  `app/api/specifications/[id]/items/[itemId]/route.ts`,
+  `lib/dal/requirements-specifications.ts`, and
+  `typeorm/migrations/0015_require_specification_item_status.mjs`.
+- **Spec:** issue #147 and `docs/lifecycle-workflow.md`
+  ("Specification Item Status").
+- **Req tag:** `[Req: formal — issue #147 prevent clearing specification item usage status]`
+- **Question:** Do library specification items and specification-local
+  requirements always keep a real usage status, while explicit null-clearing
+  attempts are rejected at the UI, API, DAL, and database boundaries?
+- **Verify:** `npm exec -- vitest run
+  tests/quality/functional.test.ts -t "Scenario 16: requirements specification item usage status cannot be cleared once assigned"`
+
 ## Maintenance
 
 This file must stay in sync with `tests/quality/QUALITY.md`:
@@ -263,7 +278,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   references here.
 - See `tests/quality/AGENTS.md` for the authoritative sync rule.
 
-## 21. AI Generation Contracts
+## 22. AI Generation Contracts
 
 - **Code:** `lib/ai/openrouter-client.ts`,
   `lib/ai/requirement-prompt.ts`, `lib/ai/taxonomy.ts`.
@@ -276,7 +291,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   `json_schema` (when `structured_outputs` is supported)
   and fall back to `json_object`?
 
-## 22. Reference Data Behavioral Contracts
+## 23. Reference Data Behavioral Contracts
 
 - **Code:** `lib/dal/norm-references.ts`, `lib/dal/owners.ts`,
   `lib/dal/specification-implementation-types.ts`,
@@ -291,7 +306,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   (`nameSv` for taxonomy, `normReferenceId` for norm
   references, `lastName`/`firstName` for owners)?
 
-## 23. Scenario 15: configurable status and risk icons use an allowlist and stay additive
+## 24. Scenario 15: configurable status and risk icons use an allowlist and stay additive
 
 - **Code:** `lib/icons/status-icon-allowlist.ts`,
   `lib/icons/status-icon-schema.ts`, `lib/icons/status-icon-components.ts`,
@@ -309,3 +324,18 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   names? Does the migration add nullable columns without backfilling live rows?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 15: configurable status and risk icons use an allowlist and stay additive"`
+
+## 25. Scenario 17: requirements specification MCP tools enforce identifiers and mutation outcomes
+
+- **Code:** `lib/mcp/server.ts` — requirements specification tool schemas
+  and handlers; `lib/requirements/service-specifications.ts` — shared service
+  workflow for listing, item lookup, graduation, add, and remove operations.
+- **Spec:** `docs/mcp-server-contributor-guide.md`,
+  `docs/mcp-server-user-guide.md`, and issue #166.
+- **Req tag:** `[Req: formal — issue #166 specification MCP tools]`
+- **Question:** Do the specification MCP tools reject ambiguous identifiers and
+  malformed input before service delegation, pass locale/response format
+  through consistently, map service errors to MCP `isError` responses, and
+  report real add/remove outcomes without deleting underlying requirements?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 17: requirements specification MCP tools enforce identifiers and mutation outcomes"`

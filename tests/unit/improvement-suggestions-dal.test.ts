@@ -40,7 +40,7 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
         resolvedByHsaId: null,
         resolvedAt: null,
         createdBy: 'reviewer',
-        createdByHsaId: 'SE2321000032-reviewer1',
+        createdByHsaId: 'SE5560000001-reviewer1',
         createdAt: new Date('2026-04-20T10:00:00.000Z'),
         updatedAt: new Date('2026-04-20T12:00:00.000Z'),
         reviewRequestedAt: new Date('2026-04-20T11:00:00.000Z'),
@@ -68,7 +68,7 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
         resolvedByHsaId: null,
         resolvedAt: null,
         createdBy: 'reviewer',
-        createdByHsaId: 'SE2321000032-reviewer1',
+        createdByHsaId: 'SE5560000001-reviewer1',
         createdAt: '2026-04-20T10:00:00.000Z',
         updatedAt: '2026-04-20T12:00:00.000Z',
         reviewRequestedAt: '2026-04-20T11:00:00.000Z',
@@ -90,7 +90,7 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
       requirementVersionId: 9,
       content: '  Improve this  ',
       createdBy: 'tester',
-      createdByHsaId: '  SE2321000032-tester1  ',
+      createdByHsaId: '  SE5560000001-tester1  ',
     })
 
     expect(result).toEqual({ id: 42 })
@@ -102,7 +102,7 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
         9,
         'Improve this',
         'tester',
-        'SE2321000032-tester1',
+        'SE5560000001-tester1',
         expect.any(Date),
         0,
       ],
@@ -136,13 +136,13 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
       resolution: 1,
       resolutionMotivation: '  Applied fix  ',
       resolvedBy: '  alice  ',
-      resolvedByHsaId: '  SE2321000032-alice1  ',
+      resolvedByHsaId: '  SE5560000001-alice1  ',
     })
 
     expect(query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('UPDATE improvement_suggestions'),
-      [1, 'Applied fix', 'alice', 'SE2321000032-alice1', expect.any(Date), 5],
+      [1, 'Applied fix', 'alice', 'SE5560000001-alice1', expect.any(Date), 5],
     )
   })
 

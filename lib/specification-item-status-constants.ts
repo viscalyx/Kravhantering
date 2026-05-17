@@ -9,3 +9,20 @@ export const DEFAULT_SPECIFICATION_ITEM_STATUS_ID = 1
  * Only selectable when the specification item has an approved deviation.
  */
 export const DEVIATED_SPECIFICATION_ITEM_STATUS_ID = 5
+
+/**
+ * Seed IDs for the fixed usage-status catalog.
+ * These rows are editable, but the catalog itself is not extensible.
+ */
+export const SYSTEM_SPECIFICATION_ITEM_STATUS_IDS = [1, 2, 3, 4, 5, 6] as const
+
+export type SystemSpecificationItemStatusId =
+  (typeof SYSTEM_SPECIFICATION_ITEM_STATUS_IDS)[number]
+
+export function isSystemSpecificationItemStatusId(
+  id: number,
+): id is SystemSpecificationItemStatusId {
+  return SYSTEM_SPECIFICATION_ITEM_STATUS_IDS.includes(
+    id as SystemSpecificationItemStatusId,
+  )
+}

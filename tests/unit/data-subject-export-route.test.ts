@@ -60,8 +60,8 @@ vi.mock('@/lib/requirements/auth', async importOriginal => {
   }
 })
 
-const SELF_HSA_ID = 'SE2321000032-self1'
-const OTHER_HSA_ID = 'SE2321000032-other1'
+const SELF_HSA_ID = 'SE5560000001-self1'
+const OTHER_HSA_ID = 'SE5560000001-other1'
 
 function context(roles: string[] = []) {
   return {

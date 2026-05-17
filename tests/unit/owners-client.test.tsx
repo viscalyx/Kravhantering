@@ -43,14 +43,14 @@ describe('OwnersClient', () => {
             firstName: 'Anna',
             lastName: 'S',
             email: 'a@b.com',
-            hsaId: 'SE2321000032-annas',
+            hsaId: 'SE5560000001-annas',
           },
           {
             id: 2,
             firstName: 'Erik',
             lastName: 'L',
             email: 'e@t.com',
-            hsaId: 'SE2321000032-erik1',
+            hsaId: 'SE5560000001-erik1',
           },
         ],
       }),
@@ -137,7 +137,7 @@ describe('OwnersClient', () => {
     fireEvent.change(
       screen.getByRole('textbox', { name: /ownerMgmt\.hsaId/ }),
       {
-        target: { value: 'SE2321000032-new1' },
+        target: { value: 'SE5560000001-new1' },
       },
     )
 
@@ -204,7 +204,7 @@ describe('OwnersClient', () => {
             firstName: 'Updated',
             lastName: 'S',
             email: 'a@b.com',
-            hsaId: 'SE2321000032-annas',
+            hsaId: 'SE5560000001-annas',
           },
         ],
       }),
@@ -253,7 +253,7 @@ describe('OwnersClient', () => {
             firstName: 'Erik',
             lastName: 'L',
             email: 'e@t.com',
-            hsaId: 'SE2321000032-erik1',
+            hsaId: 'SE5560000001-erik1',
           },
         ],
       }),
@@ -324,7 +324,7 @@ describe('OwnersClient', () => {
     fireEvent.change(firstNameInput, { target: { value: 'Test' } })
     fireEvent.change(lastNameInput, { target: { value: 'User' } })
     fireEvent.change(emailInput, { target: { value: 'test@test.com' } })
-    fireEvent.change(hsaInput, { target: { value: 'SE2321000032-test1' } })
+    fireEvent.change(hsaInput, { target: { value: 'SE5560000001-test1' } })
 
     fetchMock.mockImplementationOnce(
       () =>

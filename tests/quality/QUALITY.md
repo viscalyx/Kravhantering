@@ -578,6 +578,109 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 15: configu
 ```
 <!-- markdownlint-enable MD013 -->
 
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 16: requirements specification item usage status cannot be cleared once assigned
+
+**Requirement tag:**
+
+<!-- markdownlint-disable MD013 -->
+```text
+[Req: formal — issue #147 prevent clearing specification item usage status]
+```
+<!-- markdownlint-enable MD013 -->
+
+**What happened:** Requirements specification items default to Included when they
+are added to a requirements specification, but the editable Usage status control
+and PATCH/DAL update path previously allowed callers to clear
+`specification_item_status_id` back to null. That makes filtering, reports, and
+deviation follow-up ambiguous.
+
+**The requirement:** Library specification items and specification-local
+requirements must always have a real usage status. They may change among real
+usage statuses, but explicit null status updates must be rejected by update
+paths and by the database schema.
+
+**Scenario 16 code coverage:** `lib/specification-item-status-constants.ts:1-5`
+defines the Included default. Library item linking sets the default in
+`lib/dal/requirements-specifications.ts:1800-1837`; specification-local
+creation does the same in
+`lib/dal/requirements-specifications.ts:1316-1388`. The status picker sends
+only numeric status IDs from
+`app/[locale]/specifications/[slug]/requirements-specification-detail-client.tsx:722-752`,
+and the PATCH schema accepts only positive integer status IDs in
+`app/api/specifications/[id]/items/[itemId]/route.ts:44-57`. DAL updates
+validate allowed status IDs in
+`lib/dal/requirements-specifications.ts:2363-2387` and reject null clearing in
+`lib/dal/requirements-specifications.ts:2394-2477` before any SQL update. The
+ORM/database boundary is pinned by
+`lib/typeorm/entities/requirements-specification-item.ts:130-142`,
+`lib/typeorm/entities/specification-local-requirement.ts:200-212`, and
+`typeorm/migrations/0015_require_specification_item_status.mjs:1-65`.
+`tests/quality/functional.test.ts:820-873` is the executable Scenario 16 check.
+
+**Required Vitest fragment:**
+
+<!-- markdownlint-disable MD013 -->
+```ts
+await expect(
+  updateSpecificationItemFields(appDb(), libraryItem.id, {
+    specificationItemStatusId: null,
+  } as unknown as Parameters<typeof updateSpecificationItemFields>[2]),
+).rejects.toMatchObject({
+  code: 'validation',
+  message: 'Specification item status cannot be cleared',
+})
+
+await expect(
+  updateSpecificationLocalRequirementFields(appDb(), localItem.id, {
+    specificationItemStatusId: null,
+  } as unknown as Parameters<typeof updateSpecificationLocalRequirementFields>[2]),
+).rejects.toMatchObject({
+  code: 'validation',
+  message: 'Specification item status cannot be cleared',
+})
+```
+<!-- markdownlint-enable MD013 -->
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 16: requirements specification item usage status cannot be cleared once assigned"
+```
+<!-- markdownlint-enable MD013 -->
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 17: requirements specification MCP tools enforce identifiers and mutation outcomes
+
+**Requirement tag:** `[Req: formal — issue #166 specification MCP tools]`
+
+**What happened:** Requirements specification tools are an agent-facing MCP
+contract. `lib/mcp/server.ts:1456-1856` validates the tool inputs and maps them
+to the shared service, while
+`lib/requirements/service-specifications.ts:146-705` owns the service behavior
+for listing specifications, reading linked items, graduation target lookup,
+graduation, adding links, and removing links. If these layers drift, an MCP
+client can send an ambiguous specification identifier, receive an unlocalized
+or unexpected response shape, or believe a requirement was linked or removed
+when the database state says otherwise.
+
+**The requirement:** Requirements specification MCP tools must reject malformed
+locale, response format, identifier, and ID-array inputs before service
+delegation. Valid calls must pass default and explicit locale/response format
+values through to the matching service method. Add/remove tools must report
+actual mutation outcomes: unpublished requirements are skipped and returned in
+`skippedIds`, removed counts reflect actual unlinks, and unlinking never deletes
+the underlying requirements.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 17: requirements specification MCP tools enforce identifiers and mutation outcomes"
+```
+<!-- markdownlint-enable MD013 -->
+
 ## AI Session Quality Discipline
 
 1. Read `tests/quality/QUALITY.md` before changing lifecycle, specification, MCP,

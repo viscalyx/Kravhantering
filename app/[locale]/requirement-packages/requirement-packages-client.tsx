@@ -115,6 +115,9 @@ export default function RequirementPackagesClient() {
   const locale = useLocale()
   const shouldReduceMotion = useReducedMotion()
   const [owners, setOwners] = useState<Owner[]>([])
+  const [ownersLoading, setOwnersLoading] = useState(false)
+  const [ownersError, setOwnersError] = useState<string | null>(null)
+  const ownerLoadError = tc('ownerLoadError')
   const [linkedRequirements, setLinkedRequirements] = useState<
     LinkedRequirement[]
   >([])
@@ -149,14 +152,26 @@ export default function RequirementPackagesClient() {
     let cancelled = false
 
     async function fetchOwners() {
+      setOwnersLoading(true)
+      setOwnersError(null)
       try {
         const response = await apiFetch('/api/owners/all')
-        if (!response.ok || cancelled) return
-        setOwners(
-          ((await response.json()) as { owners?: Owner[] }).owners ?? [],
-        )
+        if (cancelled) return
+        if (!response.ok) {
+          setOwners([])
+          setOwnersError(ownerLoadError)
+          return
+        }
+        const data = (await response.json()) as { owners?: Owner[] }
+        if (cancelled) return
+        setOwners(data.owners ?? [])
       } catch {
-        if (!cancelled) setOwners([])
+        if (!cancelled) {
+          setOwners([])
+          setOwnersError(ownerLoadError)
+        }
+      } finally {
+        if (!cancelled) setOwnersLoading(false)
       }
     }
 
@@ -165,7 +180,7 @@ export default function RequirementPackagesClient() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [ownerLoadError])
 
   const fetchLinkedRequirements = useCallback(
     async (requirementPackageId: number) => {
@@ -394,7 +409,7 @@ export default function RequirementPackagesClient() {
                     />
                     <select
                       className={inputClassName}
-                      disabled={controller.submitting}
+                      disabled={controller.submitting || ownersLoading}
                       id="requirement-package-owner"
                       onChange={event =>
                         controller.setForm(previousForm => ({
@@ -411,6 +426,22 @@ export default function RequirementPackagesClient() {
                         </option>
                       ))}
                     </select>
+                    {ownersLoading && (
+                      <p
+                        className="mt-2 text-sm text-secondary-500 dark:text-secondary-400"
+                        role="status"
+                      >
+                        {tc('loading')}
+                      </p>
+                    )}
+                    {ownersError && (
+                      <p
+                        className="mt-2 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                        role="alert"
+                      >
+                        {ownersError}
+                      </p>
+                    )}
                   </div>
                   {controller.formError && (
                     <p
@@ -577,68 +608,98 @@ export default function RequirementPackagesClient() {
                 </tr>
               </thead>
               <tbody>
-                {controller.items.map(requirementPackage => (
+                {controller.items.length === 0 ? (
                   <tr
-                    className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                    key={requirementPackage.id}
+                    {...devMarker({
+                      context: 'requirementPackages',
+                      name: 'empty state',
+                      priority: 330,
+                    })}
                   >
-                    <td className="py-3 px-4 font-medium">
-                      {getName(requirementPackage)}
-                    </td>
-                    <td
-                      className="py-3 px-4 text-secondary-600 dark:text-secondary-400 max-w-xs truncate"
-                      title={getDescription(requirementPackage) || '—'}
-                    >
-                      {getDescription(requirementPackage) || '—'}
-                    </td>
-                    <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                      {getOwnerName(requirementPackage.owner)}
-                    </td>
-                    <td className="py-3 px-4 text-center text-secondary-600 dark:text-secondary-400">
-                      {t('requirementCount', {
-                        count: requirementPackage.linkedRequirementCount,
-                      })}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
-                        {...devMarker({
-                          context: 'requirementPackages',
-                          name: 'table action',
-                          value: 'edit',
-                        })}
-                        disabled={controller.submitting}
-                        onClick={() => openEdit(requirementPackage)}
-                        type="button"
-                      >
-                        {tc('edit')}
-                      </button>
-                      <button
-                        className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
-                        {...devMarker({
-                          context: 'requirementPackages',
-                          name: 'table action',
-                          value: 'delete',
-                        })}
-                        disabled={
-                          controller.submitting ||
-                          controller.deletingIds.has(requirementPackage.id)
-                        }
-                        onClick={event => {
-                          void remove(
-                            requirementPackage.id,
-                            event.currentTarget,
-                          )
-                        }}
-                        type="button"
-                      >
-                        {controller.deletingIds.has(requirementPackage.id)
-                          ? tc('loading')
-                          : tc('delete')}
-                      </button>
+                    <td className="px-4 py-10 text-center" colSpan={5}>
+                      <div className="flex flex-col items-center justify-center gap-3 text-secondary-500 dark:text-secondary-400">
+                        <p>{t('emptyState')}</p>
+                        <button
+                          className="btn-primary inline-flex items-center gap-1.5"
+                          {...devMarker({
+                            context: 'requirementPackages',
+                            name: 'empty state create button',
+                            priority: 330,
+                          })}
+                          disabled={controller.submitting}
+                          onClick={openCreate}
+                          type="button"
+                        >
+                          <Plus aria-hidden="true" className="h-4 w-4" />
+                          {tc('create')}
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  controller.items.map(requirementPackage => (
+                    <tr
+                      className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
+                      key={requirementPackage.id}
+                    >
+                      <td className="py-3 px-4 font-medium">
+                        {getName(requirementPackage)}
+                      </td>
+                      <td
+                        className="py-3 px-4 text-secondary-600 dark:text-secondary-400 max-w-xs truncate"
+                        title={getDescription(requirementPackage) || '—'}
+                      >
+                        {getDescription(requirementPackage) || '—'}
+                      </td>
+                      <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
+                        {getOwnerName(requirementPackage.owner)}
+                      </td>
+                      <td className="py-3 px-4 text-center text-secondary-600 dark:text-secondary-400">
+                        {t('requirementCount', {
+                          count: requirementPackage.linkedRequirementCount,
+                        })}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
+                          {...devMarker({
+                            context: 'requirementPackages',
+                            name: 'table action',
+                            value: 'edit',
+                          })}
+                          disabled={controller.submitting}
+                          onClick={() => openEdit(requirementPackage)}
+                          type="button"
+                        >
+                          {tc('edit')}
+                        </button>
+                        <button
+                          className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
+                          {...devMarker({
+                            context: 'requirementPackages',
+                            name: 'table action',
+                            value: 'delete',
+                          })}
+                          disabled={
+                            controller.submitting ||
+                            controller.deletingIds.has(requirementPackage.id)
+                          }
+                          onClick={event => {
+                            void remove(
+                              requirementPackage.id,
+                              event.currentTarget,
+                            )
+                          }}
+                          type="button"
+                        >
+                          {controller.deletingIds.has(requirementPackage.id)
+                            ? tc('loading')
+                            : tc('delete')}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

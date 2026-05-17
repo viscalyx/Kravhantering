@@ -48,6 +48,7 @@
     "createdAt": "Created",
     "updatedAt": "Updated",
     "error": "Something went wrong",
+    "ownerLoadError": "Could not load owners. Existing owner choices are kept if available.",
     "share": "Share",
     "copied": "Copied",
     "help": "Help",
@@ -61,7 +62,8 @@
     "showLess": "Show less",
     "deleting": "Deleting…",
     "deletingInProgress": "Deleting in progress…",
-    "unexpectedError": "An unexpected error occurred"
+    "unexpectedError": "An unexpected error occurred",
+    "emptyState": "No items yet."
   },
   "nav": {
     "catalog": "Requirements Catalog",
@@ -282,7 +284,8 @@
       "owner": "Choose the person or group responsible for this requirement area."
     },
     "newArea": "New requirement area",
-    "editArea": "Edit requirement area"
+    "editArea": "Edit requirement area",
+    "emptyState": "No requirement areas yet. Create your first requirement area."
   },
   "category": {
     "business": "Business requirement",
@@ -585,7 +588,8 @@
     "newRequirementPackage": "New requirements package",
     "editRequirementPackage": "Edit requirements package",
     "linkedRequirements": "Linked requirements",
-    "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}"
+    "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}",
+    "emptyState": "No requirements packages yet. Create your first requirements package."
   },
   "normReference": {
     "editNormReference": "Edit norm reference",
@@ -650,7 +654,8 @@
     "editStatus": "Edit status",
     "preview": "Preview",
     "cannotDeleteSystem": "System statuses cannot be deleted",
-    "cannotDeleteInUse": "Cannot delete — status is used by existing requirements"
+    "cannotDeleteInUse": "Cannot delete — status is used by existing requirements",
+    "emptyState": "No requirement statuses are available."
   },
   "iconPicker": {
     "clear": "Clear icon",
@@ -679,7 +684,8 @@
       "lastName": "Enter the owner's family name.",
       "hsaId": "Enter the owner's verified HSA-ID. Names are display snapshots; HSA-ID is the durable identity key.",
       "email": "Enter the email address used to contact this owner."
-    }
+    },
+    "emptyState": "No area owners yet. Create your first owner."
   },
   "responsibilityAreaMgmt": {
     "name": "Name",
@@ -689,7 +695,8 @@
     "nameEnHelp": "Enter the English name for this business object.",
     "title": "Business objects",
     "newItem": "New business object",
-    "editItem": "Edit business object"
+    "editItem": "Edit business object",
+    "emptyState": "No business objects yet. Create your first business object."
   },
   "implementationTypeMgmt": {
     "name": "Name",
@@ -699,7 +706,8 @@
     "nameEnHelp": "Enter the English name for this implementation type.",
     "title": "Implementation types",
     "newItem": "New implementation type",
-    "editItem": "Edit implementation type"
+    "editItem": "Edit implementation type",
+    "emptyState": "No implementation types yet. Create your first implementation type."
   },
   "lifecycleStatusMgmt": {
     "name": "Name",
@@ -709,7 +717,8 @@
     "newItem": "New lifecycle status",
     "editItem": "Edit lifecycle status",
     "nameSvHelp": "Enter the Swedish name for this lifecycle status. It is displayed when the application language is Swedish.",
-    "nameEnHelp": "Enter the English name for this lifecycle status. It is displayed when the application language is English."
+    "nameEnHelp": "Enter the English name for this lifecycle status. It is displayed when the application language is English.",
+    "emptyState": "No lifecycle statuses yet. Create your first lifecycle status."
   },
   "theme": {
     "light": "Light",
@@ -1568,7 +1577,7 @@
       },
       "manage": {
         "heading": "Managing",
-        "body": "Add new risk levels using the Create button. Edit existing levels to change name, color, or sort order. Risk levels linked to existing requirements cannot be deleted."
+        "body": "Risk levels are a fixed system set. Edit existing levels to change name, color, icon, or sort order."
       }
     },
     "specificationItemStatuses": {
@@ -1590,7 +1599,8 @@
     "icon": "Icon",
     "sortOrder": "Sort order",
     "linkedRequirements": "Linked requirements",
-    "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}"
+    "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}",
+    "emptyState": "No risk levels are available."
   },
   "specificationItemStatusAdmin": {
     "title": "Usage statuses",
@@ -1616,7 +1626,8 @@
     "sortOrderHelp": "Enter a number that controls the display order. Lower numbers appear first. Reserved statuses keep a locked sort order.",
     "sortOrderLocked": "The sort order for this system status cannot be changed.",
     "specification": "Specification",
-    "requirement": "Requirement"
+    "requirement": "Requirement",
+    "emptyState": "No usage statuses are available."
   },
   "ai": {
     "generateTitle": "AI Requirement Generation",

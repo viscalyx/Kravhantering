@@ -25,7 +25,7 @@ const spec = {
   canResponsibleGenerateAi: true,
   name: 'Upphandling av e-tjänstplattform',
   responsibleDisplayName: 'Ada Admin',
-  responsibleHsaId: 'SE2321000032-ada1',
+  responsibleHsaId: 'SE5560000001-ada1',
   specificationImplementationTypeId: 2,
   specificationLifecycleStatusId: 3,
   specificationResponsibilityAreaId: 1,
@@ -67,7 +67,7 @@ describe('SpecificationEditPanel', () => {
     ).toHaveValue('Ada Admin')
     expect(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
-    ).toHaveValue('SE2321000032-ada1')
+    ).toHaveValue('SE5560000001-ada1')
     expect(
       screen.getByRole('checkbox', {
         name: /specification\.canResponsibleGenerateAi/,
@@ -164,7 +164,7 @@ describe('SpecificationEditPanel', () => {
       businessNeedsReference: 'Current business need',
       name: 'Nytt kravunderlagsnamn',
       responsibleDisplayName: 'Ada Admin',
-      responsibleHsaId: 'SE2321000032-ada1',
+      responsibleHsaId: 'SE5560000001-ada1',
       canResponsibleGenerateAi: true,
       specificationImplementationTypeId: 2,
       specificationLifecycleStatusId: 3,

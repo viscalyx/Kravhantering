@@ -147,12 +147,23 @@ Transitions a requirement through the lifecycle using `toStatusId`.
 
 Lists all requirements specifications with optional name filtering. Returns the
 numeric `id` and `uniqueId` (slug, e.g. `SAKLYFT-INFOR-Q2`) for each specification.
+Clients should copy these values into later specification-tool inputs:
+
+```text
+requirements_list_specifications.specifications[].id -> specificationId
+requirements_list_specifications.specifications[].uniqueId -> specificationSlug
+```
 
 ### `requirements_get_specification_items`
 
 Lists requirements linked to a specific specification. Accepts `specificationId`
 (numeric) or `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`). Supports optional
-`descriptionSearch` for client-side filtering.
+`descriptionSearch` for client-side filtering. Use the specification copy paths
+above. Returned linked requirement IDs can be copied into removal inputs:
+
+```text
+requirements_get_specification_items.items[].id -> requirementIds
+```
 
 ### `requirements_add_to_specification`
 
@@ -162,7 +173,11 @@ version are skipped and returned in `skippedIds` rather than causing an error â€
 this lets an agent batch-add requirements without needing to pre-filter by
 publish state. An optional `needsReferenceText` is resolved to a
 `specification_needs_references` row (created if needed) and linked to all added
-items.
+items. Use the specification copy paths above, and copy requirement IDs from:
+
+```text
+requirements_query_catalog.items[].id -> requirementIds
+```
 
 ### `requirements_list_graduation_target_areas`
 
@@ -188,7 +203,12 @@ transactional DAL copy operation.
 Unlinks requirements from a specification. Accepts `specificationId` (numeric) or
 `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`). The requirements themselves are not
 deleted. The operation is idempotent â€” removing an ID that is not in the
-specification produces no error.
+specification produces no error. Use the specification copy paths above, and copy
+linked requirement IDs from:
+
+```text
+requirements_get_specification_items.items[].id -> requirementIds
+```
 
 ### `requirements_list_improvement_suggestions`
 

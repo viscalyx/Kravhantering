@@ -7,12 +7,13 @@ import {
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const i18nState = vi.hoisted(() => ({ commonSuffix: '' }))
 const confirmMock = vi.fn()
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
   useTranslations: (ns?: string) => (key: string) =>
-    ns ? `${ns}.${key}` : key,
+    ns ? `${ns}.${key}${ns === 'common' ? i18nState.commonSuffix : ''}` : key,
 }))
 
 vi.mock('@/i18n/routing', () => ({
@@ -58,6 +59,11 @@ const sampleRequirementPackages = [
   },
 ]
 
+const sampleOwners = [
+  { id: 1, firstName: 'Anna', lastName: 'Owner' },
+  { id: 2, firstName: 'Erik', lastName: 'Editor' },
+]
+
 const requirementPackageNameSvInput = () =>
   screen.getByRole('textbox', { name: /requirementPackage\.nameSvLabel/ })
 const requirementPackageNameEnInput = () =>
@@ -94,9 +100,14 @@ describe('RequirementPackagesClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchMock.mockResolvedValue(
-      okJson({ requirementPackages: sampleRequirementPackages }),
-    )
+    i18nState.commonSuffix = ''
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: sampleRequirementPackages })
+      }
+      if (url === '/api/owners/all') return okJson({ owners: sampleOwners })
+      return okJson({})
+    })
   })
 
   it('renders heading and create button', async () => {
@@ -128,6 +139,31 @@ describe('RequirementPackagesClient', () => {
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
+  it('renders an empty-state row with a create CTA', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [] })
+      }
+      if (url === '/api/owners/all') return okJson({ owners: sampleOwners })
+      return okJson({})
+    })
+
+    render(<RequirementPackagesClient />)
+
+    const emptyState = await screen.findByText('requirementPackage.emptyState')
+    expect(emptyState.closest('td')).toHaveAttribute('colspan', '5')
+
+    const createButtons = screen.getAllByRole('button', {
+      name: /common\.create/i,
+    })
+    expect(createButtons).toHaveLength(2)
+
+    fireEvent.click(createButtons[1])
+
+    expect(requirementPackageNameSvInput()).toBeInTheDocument()
+    expect(requirementPackageNameEnInput()).toBeInTheDocument()
+  })
+
   it('opens create form', async () => {
     render(<RequirementPackagesClient />)
     await waitFor(() => {
@@ -149,6 +185,106 @@ describe('RequirementPackagesClient', () => {
         name: 'common.help: requirementPackage.owner',
       }),
     ).toBeInTheDocument()
+  })
+
+  it('renders owner options when owner fetch succeeds', async () => {
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('option', { name: 'Anna Owner' }),
+      ).toBeInTheDocument()
+    })
+    expect(
+      screen.getByRole('option', { name: 'Erik Editor' }),
+    ).toBeInTheDocument()
+  })
+
+  it('disables owner select while owner options are loading', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: sampleRequirementPackages })
+      }
+      if (url === '/api/owners/all') return new Promise(() => {})
+      return okJson({})
+    })
+
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    expect(
+      screen.getByRole('combobox', { name: /requirementPackage\.owner/ }),
+    ).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+  })
+
+  it('shows an owner loading error when owner fetch fails', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: sampleRequirementPackages })
+      }
+      if (url === '/api/owners/all') return notOk()
+      return okJson({})
+    })
+
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'common.ownerLoadError',
+      )
+    })
+  })
+
+  it('clears stale owner options when owner reload fails', async () => {
+    let ownerRequests = 0
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: sampleRequirementPackages })
+      }
+      if (url === '/api/owners/all') {
+        ownerRequests += 1
+        return ownerRequests === 1 ? okJson({ owners: sampleOwners }) : notOk()
+      }
+      return okJson({})
+    })
+
+    const { rerender } = render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+    await waitFor(() => {
+      expect(
+        screen.getByRole('option', { name: 'Anna Owner' }),
+      ).toBeInTheDocument()
+    })
+
+    i18nState.commonSuffix = '.retry'
+    rerender(<RequirementPackagesClient />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'common.ownerLoadError.retry',
+      )
+    })
+    expect(screen.queryByRole('option', { name: 'Anna Owner' })).toBeNull()
+    expect(screen.queryByRole('option', { name: 'Erik Editor' })).toBeNull()
   })
 
   it('submits create form', async () => {

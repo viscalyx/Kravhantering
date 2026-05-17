@@ -720,8 +720,10 @@ export default function KravunderlagDetailClient({
   )
 
   const handleSpecificationItemStatusChange = useCallback(
-    async (itemRef: string, statusId: number | null) => {
+    async (itemRef: string, statusId: number) => {
       if (!spec) return
+      const status = specificationItemStatuses.find(s => s.id === statusId)
+      if (!status) return
       const originalItem =
         specificationItems.find(i => i.itemRef === itemRef) ?? null
 
@@ -729,15 +731,13 @@ export default function KravunderlagDetailClient({
       setSpecificationItems(prev =>
         prev.map(item => {
           if (item.itemRef !== itemRef) return item
-          const status = statusId
-            ? specificationItemStatuses.find(s => s.id === statusId)
-            : null
           return {
             ...item,
             specificationItemStatusId: statusId,
-            specificationItemStatusNameSv: status?.nameSv ?? null,
-            specificationItemStatusNameEn: status?.nameEn ?? null,
-            specificationItemStatusColor: status?.color ?? null,
+            specificationItemStatusNameSv: status.nameSv,
+            specificationItemStatusNameEn: status.nameEn,
+            specificationItemStatusColor: status.color ?? null,
+            specificationItemStatusIconName: status.iconName ?? null,
           }
         }),
       )

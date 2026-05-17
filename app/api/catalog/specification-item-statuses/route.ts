@@ -1,40 +1,10 @@
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   countLinkedSpecificationItems,
-  createSpecificationItemStatus,
   listSpecificationItemStatuses,
 } from '@/lib/dal/specification-item-statuses'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import {
-  INTERNAL_SERVER_ERROR_MESSAGE,
-  isDuplicateKeyError,
-  logSanitizedError,
-} from '@/lib/http/safe-errors'
-import {
-  adminMutationPolicy,
-  secureMutationRoute,
-} from '@/lib/http/secure-mutation-route'
-import {
-  boundedDbStringSchema,
-  nonNegativeIntegerSchema,
-  nullableBusinessTextSchema,
-} from '@/lib/http/validation'
-import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
 import { DEVIATED_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
-
-const specificationItemStatusCreateSchema = z
-  .object({
-    color: boundedDbStringSchema,
-    descriptionEn: nullableBusinessTextSchema.optional(),
-    descriptionSv: nullableBusinessTextSchema.optional(),
-    iconName: nullableOptionalStatusIconNameSchema,
-    nameEn: boundedDbStringSchema,
-    nameSv: boundedDbStringSchema,
-    sortOrder: nonNegativeIntegerSchema.optional(),
-  })
-  .strict()
 
 export async function GET() {
   const db = await getRequestSqlServerDataSource()
@@ -50,44 +20,3 @@ export async function GET() {
     })),
   })
 }
-
-export const POST = secureMutationRoute({
-  bodySchema: specificationItemStatusCreateSchema,
-  policy: adminMutationPolicy(),
-  handler: async ({ body, context }) => {
-    try {
-      const db = await getRequestSqlServerDataSource()
-      const status = await db.transaction(async transactionDb => {
-        const createdStatus = await createSpecificationItemStatus(
-          transactionDb,
-          body,
-        )
-        await recordAdminPrivilegedActionSucceeded(
-          context,
-          {
-            changedFields: Object.keys(body),
-            operation: 'create',
-            resourceId: createdStatus.id,
-            resourceType: 'specification_item_status',
-          },
-          transactionDb,
-        )
-        return createdStatus
-      })
-      return NextResponse.json(status, { status: 201 })
-    } catch (error) {
-      const isDuplicate = isDuplicateKeyError(error)
-      if (!isDuplicate) {
-        logSanitizedError('Failed to create specification item status', error)
-      }
-      return NextResponse.json(
-        {
-          error: isDuplicate
-            ? 'Duplicate entry'
-            : INTERNAL_SERVER_ERROR_MESSAGE,
-        },
-        { status: isDuplicate ? 409 : 500 },
-      )
-    }
-  },
-})

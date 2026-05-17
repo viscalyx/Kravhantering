@@ -84,6 +84,7 @@ export interface RequirementRow {
   pendingVersionStatusIconName?: string | null
   pendingVersionStatusId?: number | null
   requirementPackageIds?: number[]
+  requirementPackages?: FilterOption[]
   specificationItemId?: number
   specificationItemStatusColor?: string | null
   specificationItemStatusDescriptionEn?: string | null
@@ -167,6 +168,7 @@ export const REQUIREMENT_COLUMN_ORDER = [
   'needsReference',
   'specificationItemStatus',
   'normReferences',
+  'requirementPackage',
   'suggestionCount',
 ] as const
 
@@ -393,6 +395,19 @@ export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
     defaultWidthPx: 200,
     id: 'normReferences',
     labelKey: 'normReferences',
+    labelNamespace: 'requirement',
+    maxWidthPx: 400,
+    minWidthPx: 140,
+    resizable: true,
+  },
+  {
+    align: 'left',
+    canHide: true,
+    canSort: false,
+    defaultVisible: false,
+    defaultWidthPx: 200,
+    id: 'requirementPackage',
+    labelKey: 'requirementPackage',
     labelNamespace: 'requirement',
     maxWidthPx: 400,
     minWidthPx: 140,
@@ -663,6 +678,7 @@ export function clearRequirementFiltersForHiddenColumns(
   clearIfHidden('requiresTesting', 'requiresTesting')
   clearIfHidden('needsReference', 'needsReferenceIds')
   clearIfHidden('normReferences', 'normReferenceIds')
+  clearIfHidden('requirementPackage', 'requirementPackageIds')
 
   return nextValues
 }

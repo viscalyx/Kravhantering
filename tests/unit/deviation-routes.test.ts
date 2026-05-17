@@ -72,7 +72,7 @@ describe('deviation mutation routes', () => {
     routeState.createRequestContext.mockResolvedValue({
       actor: {
         displayName: 'Reviewer',
-        hsaId: 'SE2321000032-reviewer1',
+        hsaId: 'SE5560000001-reviewer1',
         id: 'reviewer-sub',
         isAuthenticated: true,
         roles: ['Reviewer'],
@@ -84,7 +84,7 @@ describe('deviation mutation routes', () => {
     })
     routeState.requireHumanActorSnapshot.mockReturnValue({
       displayName: 'Reviewer',
-      hsaId: 'SE2321000032-reviewer1',
+      hsaId: 'SE5560000001-reviewer1',
     })
   })
 
