@@ -28,7 +28,7 @@ describe('risk-levels DAL', () => {
     vi.clearAllMocks()
   })
 
-  it('listRiskLevels returns seeded system risk levels ordered by sortOrder', async () => {
+  it('listRiskLevels returns all risk levels ordered by sortOrder', async () => {
     const { db, repository, getRepository } = createSqlServerDb()
     repository.find.mockResolvedValue([
       {
@@ -64,15 +64,38 @@ describe('risk-levels DAL', () => {
         nameSv: 'Låg',
         sortOrder: 1,
       },
+      {
+        color: '#64748b',
+        iconName: null,
+        id: 99,
+        nameEn: 'Custom',
+        nameSv: 'Anpassad',
+        sortOrder: 99,
+      },
     ])
   })
 
-  it('getRiskLevelById ignores non-system ids', async () => {
+  it('getRiskLevelById returns non-system ids when present', async () => {
     const { db, repository } = createSqlServerDb()
+    repository.findOne.mockResolvedValueOnce({
+      color: '#64748b',
+      iconName: null,
+      id: 99,
+      nameEn: 'Custom',
+      nameSv: 'Anpassad',
+      sortOrder: 99,
+    })
 
-    await expect(getRiskLevelById(db, 99)).resolves.toBeNull()
+    await expect(getRiskLevelById(db, 99)).resolves.toEqual({
+      color: '#64748b',
+      iconName: null,
+      id: 99,
+      nameEn: 'Custom',
+      nameSv: 'Anpassad',
+      sortOrder: 99,
+    })
 
-    expect(repository.findOne).not.toHaveBeenCalled()
+    expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 99 } })
   })
 
   it('updateRiskLevel updates seeded risk levels', async () => {

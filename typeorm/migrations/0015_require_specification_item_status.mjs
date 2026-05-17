@@ -1,4 +1,36 @@
 const UP_STATEMENTS = [
+  `IF NOT EXISTS (
+  SELECT 1 FROM [specification_item_statuses]
+)
+BEGIN
+  SET IDENTITY_INSERT [specification_item_statuses] ON;
+  INSERT INTO [specification_item_statuses] (
+    [id],
+    [name_sv],
+    [name_en],
+    [description_sv],
+    [description_en],
+    [color],
+    [icon_name],
+    [sort_order]
+  )
+  VALUES (
+    1,
+    N'Inkluderad',
+    N'Included',
+    N'Kravet finns i underlaget men inget arbete påbörjat',
+    N'Requirement is in the specification but no work started',
+    N'#94a3b8',
+    N'Circle',
+    1
+  );
+  SET IDENTITY_INSERT [specification_item_statuses] OFF;
+END;`,
+  `IF NOT EXISTS (
+  SELECT 1 FROM [specification_item_statuses]
+  WHERE [id] = 1
+)
+  THROW 51000, N'Cannot require specification item status defaults: Included status id 1 is missing.', 1;`,
   `IF EXISTS (
   SELECT 1 FROM [requirements_specification_items]
   WHERE [specification_item_status_id] IS NULL

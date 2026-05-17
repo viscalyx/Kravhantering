@@ -291,7 +291,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   `json_schema` (when `structured_outputs` is supported)
   and fall back to `json_object`?
 
-## 22. Reference Data Behavioral Contracts
+## 23. Reference Data Behavioral Contracts
 
 - **Code:** `lib/dal/norm-references.ts`, `lib/dal/owners.ts`,
   `lib/dal/specification-implementation-types.ts`,
@@ -306,7 +306,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   (`nameSv` for taxonomy, `normReferenceId` for norm
   references, `lastName`/`firstName` for owners)?
 
-## 23. Scenario 15: configurable status and risk icons use an allowlist and stay additive
+## 24. Scenario 15: configurable status and risk icons use an allowlist and stay additive
 
 - **Code:** `lib/icons/status-icon-allowlist.ts`,
   `lib/icons/status-icon-schema.ts`, `lib/icons/status-icon-components.ts`,

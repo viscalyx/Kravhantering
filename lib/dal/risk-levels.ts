@@ -48,16 +48,13 @@ export async function listRiskLevels(
   const rows = await db
     .getRepository(riskLevelEntity)
     .find({ order: { sortOrder: 'ASC' } })
-  return rows.filter(row => isSystemRiskLevelId(row.id)).map(map)
+  return rows.map(map)
 }
 
 export async function getRiskLevelById(
   db: SqlServerDatabase,
   id: number,
 ): Promise<RiskLevelRow | null> {
-  if (!isSystemRiskLevelId(id)) {
-    return null
-  }
   const row = await db.getRepository(riskLevelEntity).findOne({ where: { id } })
   return row ? map(row) : null
 }

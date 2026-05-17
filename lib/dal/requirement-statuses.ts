@@ -50,7 +50,7 @@ export async function listStatuses(
 ): Promise<RequirementStatusRecord[]> {
   const rows = await db
     .getRepository(requirementStatusEntity)
-    .find({ order: { sortOrder: 'ASC' }, where: { isSystem: true } })
+    .find({ order: { sortOrder: 'ASC' } })
   return rows.map(mapStatus)
 }
 

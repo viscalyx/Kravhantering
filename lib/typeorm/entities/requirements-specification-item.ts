@@ -123,7 +123,7 @@ export const requirementsSpecificationItemEntity =
             referencedColumnName: 'id',
           },
         ],
-        nullable: false,
+        nullable: true,
         onDelete: 'NO ACTION',
         onUpdate: 'NO ACTION',
       },
@@ -136,7 +136,7 @@ export const requirementsSpecificationItemEntity =
           foreignKeyConstraintName:
             'fk_requirements_specification_items_specification_item_status_id',
         },
-        nullable: true,
+        nullable: false,
         onDelete: 'NO ACTION',
         onUpdate: 'NO ACTION',
       },

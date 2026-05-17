@@ -31,7 +31,7 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
     vi.clearAllMocks()
   })
 
-  it('listStatuses returns system statuses ordered by sortOrder', async () => {
+  it('listStatuses returns all statuses ordered by sortOrder', async () => {
     const { db, repository, getRepository } = createSqlServerDb()
     repository.find.mockResolvedValue([
       {
@@ -41,6 +41,14 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
         sortOrder: 1,
         color: 'blue',
         isSystem: 1,
+      },
+      {
+        id: 8,
+        nameEn: 'Custom',
+        nameSv: 'Anpassad',
+        sortOrder: 8,
+        color: 'red',
+        isSystem: 0,
       },
       {
         id: 2,
@@ -58,7 +66,6 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
     expect(getRepository).toHaveBeenCalledWith(requirementStatusEntity)
     expect(repository.find).toHaveBeenCalledWith({
       order: { sortOrder: 'ASC' },
-      where: { isSystem: true },
     })
     expect(result).toEqual([
       {
@@ -69,6 +76,15 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
         color: 'blue',
         iconName: null,
         isSystem: true,
+      },
+      {
+        id: 8,
+        nameEn: 'Custom',
+        nameSv: 'Anpassad',
+        sortOrder: 8,
+        color: 'red',
+        iconName: null,
+        isSystem: false,
       },
       {
         id: 2,
@@ -150,11 +166,11 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
     expect(repository.update).not.toHaveBeenCalled()
   })
 
-  it('listTransitions joins raw transition rows with system status list', async () => {
+  it('listTransitions joins raw transition rows with the full status list', async () => {
     const { db, repository, query } = createSqlServerDb()
     query.mockResolvedValueOnce([
       { id: 20, fromStatusId: 1, toStatusId: 2 },
-      { id: 21, fromStatusId: 2, toStatusId: 3 },
+      { id: 21, fromStatusId: 2, toStatusId: 8 },
     ])
     repository.find.mockResolvedValueOnce([
       {
@@ -174,12 +190,12 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
         isSystem: 1,
       },
       {
-        id: 3,
-        nameEn: 'Published',
-        nameSv: 'Publicerad',
-        sortOrder: 3,
-        color: 'green',
-        isSystem: 1,
+        id: 8,
+        nameEn: 'Custom',
+        nameSv: 'Anpassad',
+        sortOrder: 8,
+        color: 'red',
+        isSystem: 0,
       },
     ])
 
@@ -195,6 +211,13 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
       toStatusId: 2,
       fromStatus: expect.objectContaining({ nameEn: 'Draft' }),
       toStatus: expect.objectContaining({ nameEn: 'Review' }),
+    })
+    expect(result[1]).toMatchObject({
+      id: 21,
+      fromStatusId: 2,
+      toStatusId: 8,
+      fromStatus: expect.objectContaining({ nameEn: 'Review' }),
+      toStatus: expect.objectContaining({ isSystem: false, nameEn: 'Custom' }),
     })
   })
 
