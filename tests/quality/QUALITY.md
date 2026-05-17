@@ -650,6 +650,37 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 16: require
 ```
 <!-- markdownlint-enable MD013 -->
 
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 17: requirements specification MCP tools enforce identifiers and mutation outcomes
+
+**Requirement tag:** `[Req: formal — issue #166 specification MCP tools]`
+
+**What happened:** Requirements specification tools are an agent-facing MCP
+contract. `lib/mcp/server.ts:1456-1856` validates the tool inputs and maps them
+to the shared service, while
+`lib/requirements/service-specifications.ts:146-705` owns the service behavior
+for listing specifications, reading linked items, graduation target lookup,
+graduation, adding links, and removing links. If these layers drift, an MCP
+client can send an ambiguous specification identifier, receive an unlocalized
+or unexpected response shape, or believe a requirement was linked or removed
+when the database state says otherwise.
+
+**The requirement:** Requirements specification MCP tools must reject malformed
+locale, response format, identifier, and ID-array inputs before service
+delegation. Valid calls must pass default and explicit locale/response format
+values through to the matching service method. Add/remove tools must report
+actual mutation outcomes: unpublished requirements are skipped and returned in
+`skippedIds`, removed counts reflect actual unlinks, and unlinking never deletes
+the underlying requirements.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 17: requirements specification MCP tools enforce identifiers and mutation outcomes"
+```
+<!-- markdownlint-enable MD013 -->
+
 ## AI Session Quality Discipline
 
 1. Read `tests/quality/QUALITY.md` before changing lifecycle, specification, MCP,

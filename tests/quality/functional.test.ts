@@ -1,6 +1,16 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 import { recordActionAuditEvent } from '@/lib/audit/action-audit'
 import {
   createDeviation,
@@ -47,12 +57,17 @@ import {
   isStatusIconName,
   STATUS_ICON_NAMES,
 } from '@/lib/icons/status-icon-allowlist'
+import { createKravhanteringMcpServer } from '@/lib/mcp/server'
 import {
   attachVerifiedActor,
   createRequestContext,
   type RequestContext,
 } from '@/lib/requirements/auth'
-import { createRequirementsService } from '@/lib/requirements/service'
+import { RequirementsServiceError } from '@/lib/requirements/errors'
+import {
+  createRequirementsService,
+  type RequirementsService,
+} from '@/lib/requirements/service'
 import {
   STATUS_ARCHIVED,
   STATUS_DRAFT,
@@ -79,8 +94,8 @@ import {
  * Scenarios 10 and 15 are pure file-content checks and always run as part of
  * `npm run test`.
  *
- * Scenarios 1-9, 11-12, 14, and 16 exercise lifecycle/audit invariants that
- * require a real SQL Server instance. The harness derives a connection URL automatically from
+ * Scenarios 1-9, 11-12, 14, 16, and 17 exercise lifecycle/audit/MCP invariants
+ * that require a real SQL Server instance. The harness derives a connection URL automatically from
  * the standard DB_* environment variables (the same ones used by the dev
  * scripts) and swaps the database name to a dedicated
  * `<DB_NAME>_functional_tests` instance so the development data is never
@@ -444,6 +459,152 @@ function makeContext(headers?: HeadersInit): Promise<RequestContext> {
     isAuthenticated: true,
   })
   return createRequestContext(request, 'rest')
+}
+
+function makeMcpRequest() {
+  const request = new Request('https://example.test/api/mcp')
+  attachVerifiedActor(request, {
+    id: 'functional-test-mcp-actor',
+    displayName: 'Functional Test MCP Actor',
+    hsaId: 'SE5560000001-functional-mcp1',
+    roles: ['Admin'],
+    source: 'mcp',
+    isAuthenticated: true,
+  })
+  return request
+}
+
+async function createMcpClientForService(service: RequirementsService) {
+  const server = createKravhanteringMcpServer(service, makeMcpRequest())
+  const [clientTransport, serverTransport] =
+    InMemoryTransport.createLinkedPair()
+  const client = new Client({
+    name: 'functional-quality-client',
+    version: '1.0.0',
+  })
+
+  await server.connect(serverTransport)
+  await client.connect(clientTransport)
+
+  return { client, server }
+}
+
+async function expectMcpToolError(
+  client: Client,
+  name: string,
+  args: Record<string, unknown>,
+  expectedText?: string,
+) {
+  const result = await client.callTool({ arguments: args, name })
+
+  expect(result.isError).toBe(true)
+  if (expectedText) {
+    expect(result.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          text: expect.stringContaining(expectedText),
+        }),
+      ]),
+    )
+  }
+}
+
+function createSpecificationMcpContractService() {
+  const listSpecifications = vi.fn(async () => ({
+    message: 'Specifications',
+    specifications: [
+      {
+        businessNeedsReference: null,
+        id: 7,
+        implementationType: null,
+        itemCount: 1,
+        name: 'IAM Specification',
+        responsibilityArea: null,
+        uniqueId: 'IAM-SPECIFICATION',
+      },
+    ],
+  }))
+  const getSpecificationItems = vi.fn(async () => ({
+    items: [
+      {
+        area: 'Security',
+        category: 'Functional',
+        description: 'Published specification requirement',
+        id: 10,
+        needsReference: null,
+        status: 'Published',
+        type: 'Functional',
+        uniqueId: 'SEC0001',
+      },
+    ],
+    message: 'Specification items',
+    specificationId: 7,
+  }))
+  const listGraduationTargetAreas = vi.fn(async () => ({
+    areas: [{ id: 2, name: 'Security', prefix: 'SEC' }],
+    message: 'Target areas',
+  }))
+  const graduateSpecificationLocalRequirement = vi.fn(async () => ({
+    detail: {
+      area: { id: 2, name: 'Security' },
+      createdAt: '2026-03-08T00:00:00.000Z',
+      id: 2,
+      isArchived: false,
+      specificationCount: 0,
+      uniqueId: 'SEC0002',
+      versions: [{ id: 20, revisionToken: null, versionNumber: 1 }],
+    },
+    message: 'Graduated requirement',
+    requirementResourceUri: 'requirements://requirement/SEC0002?version=1',
+    requirementViewUri:
+      'ui://requirements/requirement-detail/SEC0002?version=1',
+    result: {
+      requirement: {
+        id: 2,
+        requirementAreaId: 2,
+        sequenceNumber: 2,
+        uniqueId: 'SEC0002',
+      },
+      sourceLocalRequirement: {
+        id: 12,
+        specificationId: 7,
+        uniqueId: 'KRAV0001',
+      },
+      version: {
+        id: 20,
+        requirementId: 2,
+        statusId: STATUS_DRAFT,
+        versionNumber: 1,
+      },
+    },
+  }))
+  const addToSpecification = vi.fn(async () => ({
+    addedCount: 1,
+    message: 'Requirement added',
+    skippedCount: 1,
+    skippedIds: [11],
+  }))
+  const removeFromSpecification = vi.fn(async () => ({
+    message: 'Requirement removed',
+    removedCount: 1,
+  }))
+
+  return {
+    addToSpecification,
+    getSpecificationItems,
+    graduateSpecificationLocalRequirement,
+    listGraduationTargetAreas,
+    listSpecifications,
+    removeFromSpecification,
+    service: {
+      addToSpecification,
+      getSpecificationItems,
+      graduateSpecificationLocalRequirement,
+      listGraduationTargetAreas,
+      listSpecifications,
+      removeFromSpecification,
+    } as unknown as RequirementsService,
+  }
 }
 
 async function createArea(
@@ -870,6 +1031,383 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       code: 'validation',
       message: 'Specification item status cannot be cleared',
     })
+  })
+
+  it('Scenario 17: requirements specification MCP tools enforce identifiers and mutation outcomes', async () => {
+    const contract = createSpecificationMcpContractService()
+    const { client, server } = await createMcpClientForService(contract.service)
+
+    const validToolArgs: Record<string, Record<string, unknown>> = {
+      requirements_add_to_specification: {
+        requirementIds: [10],
+        specificationId: 7,
+      },
+      requirements_get_specification_items: { specificationId: 7 },
+      requirements_graduate_local_requirement: {
+        localRequirementId: 12,
+        requirementAreaId: 2,
+        specificationId: 7,
+      },
+      requirements_list_graduation_target_areas: {
+        localRequirementId: 12,
+        specificationId: 7,
+      },
+      requirements_list_specifications: {},
+      requirements_remove_from_specification: {
+        requirementIds: [10],
+        specificationId: 7,
+      },
+    }
+
+    const identifierToolArgs: Record<string, Record<string, unknown>> = {
+      requirements_add_to_specification: { requirementIds: [10] },
+      requirements_get_specification_items: {},
+      requirements_graduate_local_requirement: {
+        localRequirementId: 12,
+        requirementAreaId: 2,
+      },
+      requirements_list_graduation_target_areas: {
+        localRequirementId: 12,
+      },
+      requirements_remove_from_specification: { requirementIds: [10] },
+    }
+
+    try {
+      for (const [tool, validArgs] of Object.entries(validToolArgs)) {
+        await expectMcpToolError(client, tool, {
+          ...validArgs,
+          locale: 'da',
+        })
+        await expectMcpToolError(client, tool, {
+          ...validArgs,
+          responseFormat: 'yaml',
+        })
+      }
+
+      for (const [tool, baseArgs] of Object.entries(identifierToolArgs)) {
+        await expectMcpToolError(
+          client,
+          tool,
+          baseArgs,
+          'Provide exactly one of specificationId or specificationSlug.',
+        )
+        await expectMcpToolError(
+          client,
+          tool,
+          {
+            ...baseArgs,
+            specificationId: 7,
+            specificationSlug: 'IAM-SPECIFICATION',
+          },
+          'Provide exactly one of specificationId or specificationSlug.',
+        )
+      }
+
+      await expectMcpToolError(client, 'requirements_add_to_specification', {
+        requirementIds: [],
+        specificationId: 7,
+      })
+      await expectMcpToolError(
+        client,
+        'requirements_remove_from_specification',
+        {
+          requirementIds: [],
+          specificationId: 7,
+        },
+      )
+      await expectMcpToolError(
+        client,
+        'requirements_list_graduation_target_areas',
+        {
+          localRequirementId: 0,
+          specificationId: 7,
+        },
+      )
+      await expectMcpToolError(
+        client,
+        'requirements_graduate_local_requirement',
+        {
+          localRequirementId: 12,
+          requirementAreaId: 0,
+          specificationId: 7,
+        },
+      )
+
+      await client.callTool({
+        arguments: {},
+        name: 'requirements_list_specifications',
+      })
+      expect(contract.listSpecifications).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          locale: 'en',
+          responseFormat: 'markdown',
+        }),
+      )
+      await client.callTool({
+        arguments: { specificationId: 7 },
+        name: 'requirements_get_specification_items',
+      })
+      expect(contract.getSpecificationItems).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          locale: 'en',
+          responseFormat: 'markdown',
+          specificationId: 7,
+        }),
+      )
+      await client.callTool({
+        arguments: { localRequirementId: 12, specificationId: 7 },
+        name: 'requirements_list_graduation_target_areas',
+      })
+      expect(contract.listGraduationTargetAreas).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          locale: 'en',
+          localRequirementId: 12,
+          responseFormat: 'markdown',
+          specificationId: 7,
+        }),
+      )
+      await client.callTool({
+        arguments: {
+          localRequirementId: 12,
+          requirementAreaId: 2,
+          specificationId: 7,
+        },
+        name: 'requirements_graduate_local_requirement',
+      })
+      expect(
+        contract.graduateSpecificationLocalRequirement,
+      ).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          locale: 'en',
+          localRequirementId: 12,
+          requirementAreaId: 2,
+          responseFormat: 'markdown',
+          specificationId: 7,
+        }),
+      )
+      await client.callTool({
+        arguments: { requirementIds: [10], specificationId: 7 },
+        name: 'requirements_add_to_specification',
+      })
+      expect(contract.addToSpecification).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          locale: 'en',
+          requirementIds: [10],
+          responseFormat: 'markdown',
+          specificationId: 7,
+        }),
+      )
+      await client.callTool({
+        arguments: { requirementIds: [10], specificationId: 7 },
+        name: 'requirements_remove_from_specification',
+      })
+      expect(contract.removeFromSpecification).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          locale: 'en',
+          requirementIds: [10],
+          responseFormat: 'markdown',
+          specificationId: 7,
+        }),
+      )
+
+      await client.callTool({
+        arguments: {
+          locale: 'sv',
+          nameSearch: 'IAM',
+          responseFormat: 'json',
+        },
+        name: 'requirements_list_specifications',
+      })
+      expect(contract.listSpecifications).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          locale: 'sv',
+          nameSearch: 'IAM',
+          responseFormat: 'json',
+        }),
+      )
+      await client.callTool({
+        arguments: {
+          descriptionSearch: 'published',
+          locale: 'sv',
+          responseFormat: 'json',
+          specificationSlug: 'IAM-SPECIFICATION',
+        },
+        name: 'requirements_get_specification_items',
+      })
+      expect(contract.getSpecificationItems).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          descriptionSearch: 'published',
+          locale: 'sv',
+          responseFormat: 'json',
+          specificationSlug: 'IAM-SPECIFICATION',
+        }),
+      )
+      await client.callTool({
+        arguments: {
+          locale: 'sv',
+          localRequirementId: 12,
+          responseFormat: 'json',
+          specificationSlug: 'IAM-SPECIFICATION',
+        },
+        name: 'requirements_list_graduation_target_areas',
+      })
+      expect(contract.listGraduationTargetAreas).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          locale: 'sv',
+          localRequirementId: 12,
+          responseFormat: 'json',
+          specificationSlug: 'IAM-SPECIFICATION',
+        }),
+      )
+      await client.callTool({
+        arguments: {
+          locale: 'sv',
+          localRequirementId: 12,
+          requirementAreaId: 2,
+          responseFormat: 'json',
+          specificationSlug: 'IAM-SPECIFICATION',
+        },
+        name: 'requirements_graduate_local_requirement',
+      })
+      expect(
+        contract.graduateSpecificationLocalRequirement,
+      ).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          locale: 'sv',
+          localRequirementId: 12,
+          requirementAreaId: 2,
+          responseFormat: 'json',
+          specificationSlug: 'IAM-SPECIFICATION',
+        }),
+      )
+      await client.callTool({
+        arguments: {
+          locale: 'sv',
+          needsReferenceText: 'IAM-42',
+          requirementIds: [10, 11],
+          responseFormat: 'json',
+          specificationSlug: 'IAM-SPECIFICATION',
+        },
+        name: 'requirements_add_to_specification',
+      })
+      expect(contract.addToSpecification).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          locale: 'sv',
+          needsReferenceText: 'IAM-42',
+          requirementIds: [10, 11],
+          responseFormat: 'json',
+          specificationSlug: 'IAM-SPECIFICATION',
+        }),
+      )
+      await client.callTool({
+        arguments: {
+          locale: 'sv',
+          requirementIds: [10, 11],
+          responseFormat: 'json',
+          specificationSlug: 'IAM-SPECIFICATION',
+        },
+        name: 'requirements_remove_from_specification',
+      })
+      expect(contract.removeFromSpecification).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          locale: 'sv',
+          requirementIds: [10, 11],
+          responseFormat: 'json',
+          specificationSlug: 'IAM-SPECIFICATION',
+        }),
+      )
+
+      contract.getSpecificationItems.mockRejectedValueOnce(
+        new RequirementsServiceError('not_found', 'Specification not found'),
+      )
+      await expectMcpToolError(
+        client,
+        'requirements_get_specification_items',
+        { specificationId: 999 },
+        'Specification not found',
+      )
+    } finally {
+      await Promise.allSettled([client.close(), server.close()])
+    }
+
+    const area = await createArea(appDb(), {
+      name: 'Scenario 17 Area',
+      prefix: 'S17',
+    })
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Scenario 17 published requirement',
+    )
+    const draft = await createRequirement(appDb(), {
+      description: 'Scenario 17 draft requirement',
+      requirementAreaId: area.id,
+    })
+    const spec = await createSpecification(appDb(), {
+      name: 'Scenario 17 specification',
+      uniqueId: 'SCENARIO-17-SPECIFICATION',
+    })
+    const service = createRequirementsService(appDb())
+
+    const added = await service.addToSpecification(await makeContext(), {
+      locale: 'en',
+      requirementIds: [published.requirementId, draft.requirement.id],
+      responseFormat: 'json',
+      specificationId: spec.id,
+    })
+
+    expect(added.addedCount).toBe(1)
+    expect(added.skippedCount).toBe(1)
+    expect(added.skippedIds).toEqual([draft.requirement.id])
+
+    const linkedRows = (await appDb().query(
+      `SELECT requirement_id AS requirementId
+       FROM requirements_specification_items
+       WHERE requirements_specification_id = @0
+       ORDER BY requirement_id`,
+      [spec.id],
+    )) as Array<{ requirementId: number }>
+    expect(linkedRows).toEqual([{ requirementId: published.requirementId }])
+
+    const removed = await service.removeFromSpecification(await makeContext(), {
+      locale: 'en',
+      requirementIds: [published.requirementId, draft.requirement.id],
+      responseFormat: 'json',
+      specificationId: spec.id,
+    })
+
+    expect(removed.removedCount).toBe(1)
+
+    const remainingLinkRows = (await appDb().query(
+      `SELECT COUNT(*) AS count
+       FROM requirements_specification_items
+       WHERE requirements_specification_id = @0`,
+      [spec.id],
+    )) as Array<{ count: number }>
+    const remainingRequirementRows = (await appDb().query(
+      `SELECT id
+       FROM requirements
+       WHERE id IN (@0, @1)
+       ORDER BY id`,
+      [published.requirementId, draft.requirement.id],
+    )) as Array<{ id: number }>
+
+    expect(Number(remainingLinkRows[0]?.count ?? 0)).toBe(0)
+    expect(remainingRequirementRows.map(row => row.id)).toEqual(
+      [published.requirementId, draft.requirement.id].sort((a, b) => a - b),
+    )
   })
 
   it('Scenario 13: specification-local graduation is copy-only into a draft library requirement', async () => {

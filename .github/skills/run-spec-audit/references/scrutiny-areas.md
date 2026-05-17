@@ -324,3 +324,18 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   names? Does the migration add nullable columns without backfilling live rows?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 15: configurable status and risk icons use an allowlist and stay additive"`
+
+## 25. Scenario 17: requirements specification MCP tools enforce identifiers and mutation outcomes
+
+- **Code:** `lib/mcp/server.ts` — requirements specification tool schemas
+  and handlers; `lib/requirements/service-specifications.ts` — shared service
+  workflow for listing, item lookup, graduation, add, and remove operations.
+- **Spec:** `docs/mcp-server-contributor-guide.md`,
+  `docs/mcp-server-user-guide.md`, and issue #166.
+- **Req tag:** `[Req: formal — issue #166 specification MCP tools]`
+- **Question:** Do the specification MCP tools reject ambiguous identifiers and
+  malformed input before service delegation, pass locale/response format
+  through consistently, map service errors to MCP `isError` responses, and
+  report real add/remove outcomes without deleting underlying requirements?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 17: requirements specification MCP tools enforce identifiers and mutation outcomes"`
