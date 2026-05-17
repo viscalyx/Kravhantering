@@ -166,6 +166,7 @@ export default function RequirementStatusesClient() {
       columns={columns}
       controller={systemStatusController}
       devContext="statuses"
+      emptyStateMessage={t('emptyState')}
       renderFormFields={({ disabled, form, inputClassName, setForm }) => (
         <>
           <div>

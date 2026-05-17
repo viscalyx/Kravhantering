@@ -133,6 +133,18 @@ describe('SpecificationItemStatusesClient', () => {
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
+  it('renders a message-only empty state without create CTA', async () => {
+    fetchMock.mockResolvedValue(okResponse({ statuses: [] }))
+
+    render(<SpecificationItemStatusesClient />)
+
+    const emptyState = await screen.findByText(
+      'specificationItemStatusAdmin.emptyState',
+    )
+    expect(emptyState.closest('td')).toHaveAttribute('colspan', '6')
+    expect(screen.queryByRole('button', { name: /common\.create/i })).toBeNull()
+  })
+
   it('does not render a create form entry point', async () => {
     render(<SpecificationItemStatusesClient />)
     await waitFor(() => {
@@ -155,6 +167,9 @@ describe('SpecificationItemStatusesClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[1])
+    await waitFor(() => {
+      expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
+    })
 
     const helpButtons = [
       'common.help: specificationItemStatusAdmin.name (SV)',
@@ -250,6 +265,9 @@ describe('SpecificationItemStatusesClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[1])
+    await waitFor(() => {
+      expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
+    })
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
     expect(
       screen.queryByRole('textbox', {

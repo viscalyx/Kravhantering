@@ -1162,9 +1162,13 @@ reload.
 1. Create a disposable area with a unique prefix.
 1. Edit its name.
 1. Delete it if deletion is allowed.
+1. Open a reference-data page with no rows, or remove the disposable row if that
+   leaves the table empty.
 
 **Expected result:** Create and edit actions persist, and delete either removes
-the row or shows a clear dependency message.
+the row or shows a clear dependency message. Empty reference-data tables show a
+localized empty-state row; tables with an existing create flow include a `Ny`
+CTA that opens the same create form.
 
 ### ADMIN-04: browser back restores reference-data tab
 

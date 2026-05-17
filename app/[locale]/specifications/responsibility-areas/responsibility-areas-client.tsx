@@ -84,6 +84,7 @@ export default function ResponsibilityAreasClient() {
       columns={columns}
       controller={controller}
       devContext="responsibility areas"
+      emptyStateMessage={t('emptyState')}
       renderFormFields={({ disabled, form, inputClassName, setForm }) => (
         <>
           <div>

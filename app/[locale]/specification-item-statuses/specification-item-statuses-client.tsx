@@ -517,47 +517,66 @@ export default function SpecificationItemStatusesClient() {
                 </tr>
               </thead>
               <tbody>
-                {controller.items.map(status => (
+                {controller.items.length === 0 ? (
                   <tr
-                    className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                    key={status.id}
+                    {...devMarker({
+                      context: 'specification-item-statuses',
+                      name: 'empty state',
+                      priority: 330,
+                    })}
                   >
-                    <td className="py-3 px-4">
-                      <StatusBadge
-                        color={status.color}
-                        iconName={status.iconName}
-                        label={getName(status)}
-                      />
-                    </td>
-                    <td className="py-3 px-4 font-medium">{getName(status)}</td>
-                    <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400 max-w-xs truncate">
-                      {getDescription(status) || '—'}
-                    </td>
-                    <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                      {status.sortOrder}
-                    </td>
-                    <td className="py-3 px-4 text-center text-secondary-600 dark:text-secondary-400">
-                      {t('itemCount', {
-                        count: status.linkedItemCount,
-                      })}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
-                        {...devMarker({
-                          context: 'specification-item-statuses',
-                          name: 'table action',
-                          value: 'edit',
-                        })}
-                        disabled={controller.submitting}
-                        onClick={() => openEdit(status)}
-                        type="button"
-                      >
-                        {tc('edit')}
-                      </button>
+                    <td
+                      className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
+                      colSpan={6}
+                    >
+                      {t('emptyState')}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  controller.items.map(status => (
+                    <tr
+                      className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
+                      key={status.id}
+                    >
+                      <td className="py-3 px-4">
+                        <StatusBadge
+                          color={status.color}
+                          iconName={status.iconName}
+                          label={getName(status)}
+                        />
+                      </td>
+                      <td className="py-3 px-4 font-medium">
+                        {getName(status)}
+                      </td>
+                      <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400 max-w-xs truncate">
+                        {getDescription(status) || '—'}
+                      </td>
+                      <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
+                        {status.sortOrder}
+                      </td>
+                      <td className="py-3 px-4 text-center text-secondary-600 dark:text-secondary-400">
+                        {t('itemCount', {
+                          count: status.linkedItemCount,
+                        })}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          className="text-sm text-primary-700 dark:text-primary-300 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
+                          {...devMarker({
+                            context: 'specification-item-statuses',
+                            name: 'table action',
+                            value: 'edit',
+                          })}
+                          disabled={controller.submitting}
+                          onClick={() => openEdit(status)}
+                          type="button"
+                        >
+                          {tc('edit')}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

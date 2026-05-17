@@ -166,6 +166,7 @@ export default function RequirementAreasClient() {
       columns={columns}
       controller={controller}
       devContext="areas"
+      emptyStateMessage={t('emptyState')}
       renderFormFields={({
         disabled,
         form,

@@ -137,6 +137,31 @@ describe('RequirementPackagesClient', () => {
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
+  it('renders an empty-state row with a create CTA', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [] })
+      }
+      if (url === '/api/owners/all') return okJson({ owners: sampleOwners })
+      return okJson({})
+    })
+
+    render(<RequirementPackagesClient />)
+
+    const emptyState = await screen.findByText('requirementPackage.emptyState')
+    expect(emptyState.closest('td')).toHaveAttribute('colspan', '5')
+
+    const createButtons = screen.getAllByRole('button', {
+      name: /common\.create/i,
+    })
+    expect(createButtons).toHaveLength(2)
+
+    fireEvent.click(createButtons[1])
+
+    expect(requirementPackageNameSvInput()).toBeInTheDocument()
+    expect(requirementPackageNameEnInput()).toBeInTheDocument()
+  })
+
   it('opens create form', async () => {
     render(<RequirementPackagesClient />)
     await waitFor(() => {

@@ -23,6 +23,7 @@ interface CrudAdminPanelProps<TItem extends { id: CrudId }, TForm> {
   columns: CrudAdminColumn<TItem>[]
   controller: CrudAdminResourceController<TItem, TForm>
   devContext: string
+  emptyStateMessage?: ReactNode
   formMaxWidthClassName?: string
   renderFormFields: (props: {
     disabled: boolean
@@ -44,6 +45,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
   columns,
   controller,
   devContext,
+  emptyStateMessage,
   formMaxWidthClassName = 'max-w-lg',
   renderFormFields,
   title,
@@ -172,68 +174,103 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
                   </tr>
                 </thead>
                 <tbody>
-                  {controller.items.map(item => {
-                    const isDeleting = controller.deletingIds.has(item.id)
-                    const rowActionDisabled =
-                      controller.submitting || isDeleting
-
-                    return (
-                      <tr
-                        className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                        key={item.id}
+                  {controller.items.length === 0 ? (
+                    <tr
+                      {...devMarker({
+                        context: devContext,
+                        name: 'empty state',
+                        priority: 330,
+                      })}
+                    >
+                      <td
+                        className="px-4 py-10 text-center"
+                        colSpan={columns.length + 1}
                       >
-                        {columns.map(column => (
-                          <td
-                            className={column.className ?? 'py-3 px-4'}
-                            key={column.key}
-                          >
-                            {column.render(item)}
-                          </td>
-                        ))}
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
-                            {...devMarker({
-                              context: devContext,
-                              name: 'table action',
-                              value: 'edit',
-                            })}
-                            disabled={rowActionDisabled}
-                            onClick={() => controller.openEdit(item)}
-                            type="button"
-                          >
-                            {controller.submitting
-                              ? common('saving')
-                              : common('edit')}
-                          </button>
-                          {canDelete(item) && (
+                        <div className="flex flex-col items-center justify-center gap-3 text-secondary-500 dark:text-secondary-400">
+                          <p>{emptyStateMessage ?? common('emptyState')}</p>
+                          {canCreate && (
                             <button
-                              className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
+                              className="btn-primary inline-flex items-center gap-1.5"
+                              {...devMarker({
+                                context: devContext,
+                                name: 'empty state create button',
+                                priority: 330,
+                              })}
+                              disabled={controller.submitting}
+                              onClick={controller.openCreate}
+                              type="button"
+                            >
+                              <Plus aria-hidden="true" className="h-4 w-4" />
+                              {common('create')}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    controller.items.map(item => {
+                      const isDeleting = controller.deletingIds.has(item.id)
+                      const rowActionDisabled =
+                        controller.submitting || isDeleting
+
+                      return (
+                        <tr
+                          className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
+                          key={item.id}
+                        >
+                          {columns.map(column => (
+                            <td
+                              className={column.className ?? 'py-3 px-4'}
+                              key={column.key}
+                            >
+                              {column.render(item)}
+                            </td>
+                          ))}
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
                               {...devMarker({
                                 context: devContext,
                                 name: 'table action',
-                                value: 'delete',
+                                value: 'edit',
                               })}
                               disabled={rowActionDisabled}
-                              onClick={event => {
-                                void controller.remove(
-                                  item.id,
-                                  event.currentTarget,
-                                )
-                              }}
+                              onClick={() => controller.openEdit(item)}
                               type="button"
                             >
                               {controller.submitting
                                 ? common('saving')
-                                : isDeleting
-                                  ? common('deleting')
-                                  : common('delete')}
+                                : common('edit')}
                             </button>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
+                            {canDelete(item) && (
+                              <button
+                                className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
+                                {...devMarker({
+                                  context: devContext,
+                                  name: 'table action',
+                                  value: 'delete',
+                                })}
+                                disabled={rowActionDisabled}
+                                onClick={event => {
+                                  void controller.remove(
+                                    item.id,
+                                    event.currentTarget,
+                                  )
+                                }}
+                                type="button"
+                              >
+                                {controller.submitting
+                                  ? common('saving')
+                                  : isDeleting
+                                    ? common('deleting')
+                                    : common('delete')}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
                 </tbody>
               </table>
             </div>

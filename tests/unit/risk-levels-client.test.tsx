@@ -89,6 +89,16 @@ describe('RiskLevelsClient', () => {
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
+  it('renders a message-only empty state without create CTA', async () => {
+    fetchMock.mockResolvedValue(okResponse({ riskLevels: [] }))
+
+    render(<RiskLevelsClient />)
+
+    const emptyState = await screen.findByText('riskLevelAdmin.emptyState')
+    expect(emptyState.closest('td')).toHaveAttribute('colspan', '5')
+    expect(screen.queryByRole('button', { name: /common\.create/i })).toBeNull()
+  })
+
   it('opens edit form with existing data', async () => {
     render(<RiskLevelsClient />)
     await waitFor(() => {

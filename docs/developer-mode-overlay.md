@@ -250,6 +250,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   existing `crud form` and `crud table` surfaces. They do not introduce new
   developer-mode markers; verify visible behavior through the surrounding
   status, usage-status, or risk-level page marker.
+- Admin CRUD empty-state rows use the current page context with `empty state`.
+  When the table supports creation, the inline empty-state CTA uses
+  `empty state create button` and opens the same create form as the page header.
 - Requirement specification list print pages expose `report state` markers
   with values `report-print:error`, `report-print:loading`, and
   `report-print:renderer`.
@@ -303,6 +306,8 @@ The current canonical labels include:
 - `crud form`
 - `crud table`
 - `crud-admin-visible-error`
+- `empty state`
+- `empty state create button`
 - `error banner`
 - `text field`
 - `table action`

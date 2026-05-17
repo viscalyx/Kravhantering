@@ -73,7 +73,7 @@ describe('ResponsibilityAreasClient', () => {
     render(<ResponsibilityAreasClient />)
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.create' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.create' })[0])
     fireEvent.change(
       screen.getByRole('textbox', {
         name: /responsibilityAreaMgmt\.nameSvLabel/,

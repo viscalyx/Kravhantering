@@ -489,50 +489,67 @@ export default function RiskLevelsClient() {
                 </tr>
               </thead>
               <tbody>
-                {controller.items.map(riskLevel => (
+                {controller.items.length === 0 ? (
                   <tr
-                    className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                    key={riskLevel.id}
+                    {...devMarker({
+                      context: 'risk-levels',
+                      name: 'empty state',
+                      priority: 330,
+                    })}
                   >
-                    <td className="py-3 px-4">
-                      <span
-                        aria-hidden="true"
-                        className="inline-block w-4 h-4 rounded-full"
-                        style={{ backgroundColor: riskLevel.color }}
-                      />
-                    </td>
-                    <td className="py-3 px-4 font-medium">
-                      <StatusBadge
-                        color={riskLevel.color}
-                        iconName={riskLevel.iconName}
-                        label={getName(riskLevel)}
-                      />
-                    </td>
-                    <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                      {riskLevel.sortOrder}
-                    </td>
-                    <td className="py-3 px-4 text-center text-secondary-600 dark:text-secondary-400">
-                      {t('requirementCount', {
-                        count: riskLevel.linkedRequirementCount,
-                      })}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
-                        {...devMarker({
-                          context: 'risk-levels',
-                          name: 'table action',
-                          value: 'edit',
-                        })}
-                        disabled={controller.submitting}
-                        onClick={() => openEdit(riskLevel)}
-                        type="button"
-                      >
-                        {tc('edit')}
-                      </button>
+                    <td
+                      className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
+                      colSpan={5}
+                    >
+                      {t('emptyState')}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  controller.items.map(riskLevel => (
+                    <tr
+                      className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
+                      key={riskLevel.id}
+                    >
+                      <td className="py-3 px-4">
+                        <span
+                          aria-hidden="true"
+                          className="inline-block w-4 h-4 rounded-full"
+                          style={{ backgroundColor: riskLevel.color }}
+                        />
+                      </td>
+                      <td className="py-3 px-4 font-medium">
+                        <StatusBadge
+                          color={riskLevel.color}
+                          iconName={riskLevel.iconName}
+                          label={getName(riskLevel)}
+                        />
+                      </td>
+                      <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
+                        {riskLevel.sortOrder}
+                      </td>
+                      <td className="py-3 px-4 text-center text-secondary-600 dark:text-secondary-400">
+                        {t('requirementCount', {
+                          count: riskLevel.linkedRequirementCount,
+                        })}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
+                          {...devMarker({
+                            context: 'risk-levels',
+                            name: 'table action',
+                            value: 'edit',
+                          })}
+                          disabled={controller.submitting}
+                          onClick={() => openEdit(riskLevel)}
+                          type="button"
+                        >
+                          {tc('edit')}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
