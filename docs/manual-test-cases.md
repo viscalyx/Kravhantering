@@ -17,18 +17,18 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [AUTH-06: privacy tab is disabled for Admin without PrivacyOfficer](#auth-06-privacy-tab-is-disabled-for-admin-without-privacyofficer)
   - [AUTH-07: PrivacyOfficer can use privacy without Admin powers](#auth-07-privacyofficer-can-use-privacy-without-admin-powers)
   - [AUTH-08: no-role user is denied privileged work](#auth-08-no-role-user-is-denied-privileged-work)
-- [Requirements catalog](#requirements-catalog)
-  - [REQ-01: catalog loads with seeded requirements](#req-01-catalog-loads-with-seeded-requirements)
-  - [REQ-02: language switch keeps the catalog usable](#req-02-language-switch-keeps-the-catalog-usable)
+- [Requirements library](#requirements-library)
+  - [REQ-01: library loads with seeded requirements](#req-01-library-loads-with-seeded-requirements)
+  - [REQ-02: language switch keeps the library usable](#req-02-language-switch-keeps-the-library-usable)
   - [REQ-03: filter by requirement ID and clear filters](#req-03-filter-by-requirement-id-and-clear-filters)
   - [REQ-04: sort by a sortable column](#req-04-sort-by-a-sortable-column)
   - [REQ-05: column picker persists visible columns](#req-05-column-picker-persists-visible-columns)
-  - [REQ-06: reset local catalog view preferences](#req-06-reset-local-catalog-view-preferences)
+  - [REQ-06: reset local library view preferences](#req-06-reset-local-library-view-preferences)
   - [REQ-07: resize a table column](#req-07-resize-a-table-column)
   - [REQ-08: sticky header and floating rail stay usable](#req-08-sticky-header-and-floating-rail-stay-usable)
   - [REQ-09: inline detail pane content order](#req-09-inline-detail-pane-content-order)
-  - [REQ-10: catalog list report entrypoint works](#req-10-catalog-list-report-entrypoint-works)
-  - [REQ-11: localized catalog error recovery](#req-11-localized-catalog-error-recovery)
+  - [REQ-10: library list report entrypoint works](#req-10-library-list-report-entrypoint-works)
+  - [REQ-11: localized library error recovery](#req-11-localized-library-error-recovery)
   - [REQ-12: detail action menus are keyboard accessible](#req-12-detail-action-menus-are-keyboard-accessible)
 - [Requirement creation and lifecycle](#requirement-creation-and-lifecycle)
   - [LIFE-01: create a requirement from the UI](#life-01-create-a-requirement-from-the-ui)
@@ -57,7 +57,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [SPEC-04: delete a specification with confirmation](#spec-04-delete-a-specification-with-confirmation)
   - [SPEC-05: split lists scroll independently](#spec-05-split-lists-scroll-independently)
   - [SPEC-06: add and remove a requirement in specification detail](#spec-06-add-and-remove-a-requirement-in-specification-detail)
-  - [SPEC-07: create a specification-local requirement](#spec-07-create-a-specification-local-requirement)
+  - [SPEC-07: create a unique requirement](#spec-07-create-a-unique-requirement)
   - [SPEC-08: update specification item status](#spec-08-update-specification-item-status)
   - [SPEC-09: generate specification list report](#spec-09-generate-specification-list-report)
 - [Deviations](#deviations)
@@ -69,8 +69,8 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [DEV-06: decided deviations are terminal](#dev-06-decided-deviations-are-terminal)
   - [DEV-07: no-role user cannot decide deviations](#dev-07-no-role-user-cannot-decide-deviations)
 - [Admin Center](#admin-center)
-  - [ADMIN-01: terminology changes apply to the catalog](#admin-01-terminology-changes-apply-to-the-catalog)
-  - [ADMIN-02: requirement column defaults affect new catalog views](#admin-02-requirement-column-defaults-affect-new-catalog-views)
+  - [ADMIN-01: terminology changes apply to the library](#admin-01-terminology-changes-apply-to-the-library)
+  - [ADMIN-02: requirement column defaults affect new library views](#admin-02-requirement-column-defaults-affect-new-library-views)
   - [ADMIN-03: reference-data CRUD page saves changes](#admin-03-reference-data-crud-page-saves-changes)
   - [ADMIN-04: browser back restores reference-data tab](#admin-04-browser-back-restores-reference-data-tab)
   - [ADMIN-05: mobile admin tabs and actions remain usable](#admin-05-mobile-admin-tabs-and-actions-remain-usable)
@@ -136,7 +136,7 @@ Use a clean local environment when a case mutates seeded data.
 
 Useful seeded routes and identifiers:
 
-- Main catalog: `/sv/requirements`.
+- Main library: `/sv/requirements`.
 - New requirement form: `/sv/requirements/new`.
 - Specification list: `/sv/specifications`.
 - Seeded specification detail: `/sv/specifications/ETJANST-UPP-2026`.
@@ -144,7 +144,7 @@ Useful seeded routes and identifiers:
   `/sv/specifications/PLAYWRIGHT-LIFECYCLE-2026`.
 - Admin Center: `/sv/admin`.
 - Privacy self-service: `/sv/privacy`.
-- Common catalog fixture: `INT0001`.
+- Common library fixture: `INT0001`.
 - Deviation fixtures: `PWT0001`, `PWT0002`, `PWT0003`, `PWT0004`.
 - Archive fixtures: `PWT0005` through `PWT0010`.
 
@@ -289,11 +289,11 @@ load as an Admin page for this user.
 **Expected result:** Admin-only surfaces are unavailable or fail with an
 authorization error, and no data changes are saved.
 
-## Requirements catalog
+## Requirements library
 
-### REQ-01: catalog loads with seeded requirements
+### REQ-01: library loads with seeded requirements
 
-**Purpose:** Confirm the main catalog renders a useful baseline.
+**Purpose:** Confirm the main library renders a useful baseline.
 
 **Users:** `ada.admin`.
 
@@ -305,12 +305,12 @@ authorization error, and no data changes are saved.
 1. Verify the page heading and table are visible.
 1. Confirm `Krav-ID`, `Kravtext`, and at least one seeded row are visible.
 
-**Expected result:** The catalog loads without error and shows seeded
+**Expected result:** The library loads without error and shows seeded
 requirements.
 
-### REQ-02: language switch keeps the catalog usable
+### REQ-02: language switch keeps the library usable
 
-**Purpose:** Confirm locale navigation works from the catalog.
+**Purpose:** Confirm locale navigation works from the library.
 
 **Users:** `ada.admin`.
 
@@ -383,7 +383,7 @@ consistently.
 **Expected result:** The enabled columns remain visible after reload, and
 filters tied to hidden columns are cleared.
 
-### REQ-06: reset local catalog view preferences
+### REQ-06: reset local library view preferences
 
 **Purpose:** Confirm the local reset restores admin-managed defaults.
 
@@ -393,7 +393,7 @@ filters tied to hidden columns are cleared.
 
 **Steps:**
 
-1. Open the column picker or catalog action rail.
+1. Open the column picker or library action rail.
 1. Select the reset action.
 1. Reload the page.
 
@@ -453,7 +453,7 @@ scrolling, and the scroll-to-top action returns to the table header.
 **Expected result:** Requirement text appears first, acceptance criteria second,
 then metadata such as area, owner, references, and packages.
 
-### REQ-10: catalog list report entrypoint works
+### REQ-10: library list report entrypoint works
 
 **Purpose:** Confirm the visible list can be exported or printed.
 
@@ -464,13 +464,13 @@ then metadata such as area, owner, references, and packages.
 **Steps:**
 
 1. Apply a simple filter such as `INT`.
-1. Open the report or print menu from the catalog action rail.
+1. Open the report or print menu from the library action rail.
 1. Select the list report option.
 
 **Expected result:** A report route or generated report opens for the filtered
 requirements without losing the current list context.
 
-### REQ-11: localized catalog error recovery
+### REQ-11: localized library error recovery
 
 **Purpose:** Confirm the Swedish recovery panel is understandable.
 
@@ -482,7 +482,7 @@ requirements without losing the current list context.
 
 1. Open `/sv/error-boundary-test`.
 1. Review the recovery panel.
-1. Select `Gå till kravkatalogen`.
+1. Select `Gå till kravbiblioteket`.
 
 **Expected result:** The panel says `Något gick fel`, does not leak stack text,
 and the recovery link returns to `/sv/requirements`.
@@ -560,8 +560,8 @@ no requirement is created.
 1. Select the lifecycle action that moves the draft to `Granskning`.
 1. Confirm the action if prompted.
 
-**Expected result:** The status stepper shows `Granskning`, and the catalog row
-updates to Review. In the inline catalog detail pane, the page stays close to
+**Expected result:** The status stepper shows `Granskning`, and the library row
+updates to Review. In the inline library detail pane, the page stays close to
 the workflow stepper instead of jumping down to `Förbättringsförslag`.
 
 ### LIFE-04: return a review requirement to draft
@@ -580,7 +580,7 @@ the workflow stepper instead of jumping down to `Förbättringsförslag`.
 1. Select the action again and confirm.
 
 **Expected result:** Cancelling keeps the review state; confirming returns the
-requirement to `Utkast`. In the inline catalog detail pane, the page stays close
+requirement to `Utkast`. In the inline library detail pane, the page stays close
 to the workflow stepper instead of jumping down to `Förbättringsförslag`.
 
 ### LIFE-05: approve and publish a reviewed requirement
@@ -595,7 +595,7 @@ to the workflow stepper instead of jumping down to `Förbättringsförslag`.
 
 1. Select the approve or publish lifecycle action.
 1. Confirm the action.
-1. Return to the catalog.
+1. Return to the library.
 
 **Expected result:** The requirement status is `Publicerad`, with published
 date information recorded in the detail view or version history.
@@ -670,7 +670,7 @@ starts.
 1. Select `Godkänn arkivering` again and confirm.
 
 **Expected result:** The requirement becomes `Arkiverad` and leaves the active
-catalog list.
+library list.
 
 ### LIFE-10: cancel archiving after one cancelled cancellation
 
@@ -946,9 +946,9 @@ attached to that panel.
 **Expected result:** The requirement moves between the available and included
 lists as expected.
 
-### SPEC-07: create a specification-local requirement
+### SPEC-07: create a unique requirement
 
-**Purpose:** Confirm a local-only requirement can be created.
+**Purpose:** Confirm a unique requirement can be created.
 
 **Users:** `ada.admin`.
 
@@ -956,12 +956,12 @@ lists as expected.
 
 **Steps:**
 
-1. Select the local requirement creation action.
-1. Fill the local requirement text and metadata.
+1. Select the unique requirement creation action.
+1. Fill the unique requirement text and metadata.
 1. Save.
-1. Expand the new local row.
+1. Expand the new unique row.
 
-**Expected result:** The local requirement appears only inside the current
+**Expected result:** The unique requirement appears only inside the current
 specification and has a local item reference.
 
 ### SPEC-08: update specification item status
@@ -995,7 +995,7 @@ specification and has a local item reference.
 1. Generate the specification list report.
 
 **Expected result:** The report includes specification metadata and the chosen
-library or local requirement rows.
+library or unique requirement rows.
 
 ## Deviations
 
@@ -1119,7 +1119,7 @@ the mutation without changing deviation state.
 
 ## Admin Center
 
-### ADMIN-01: terminology changes apply to the catalog
+### ADMIN-01: terminology changes apply to the library
 
 **Purpose:** Confirm terminology saves and affects visible labels.
 
@@ -1129,15 +1129,15 @@ the mutation without changing deviation state.
 
 **Steps:**
 
-1. On `Benämningar`, change the singular label for categories.
+1. On `Terminologi`, change the singular label for categories.
 1. Select `Spara`.
 1. Open `/sv/requirements`.
 1. Inspect the table headers.
 
-**Expected result:** The changed label appears in the catalog and remains after
+**Expected result:** The changed label appears in the library and remains after
 reload.
 
-### ADMIN-02: requirement column defaults affect new catalog views
+### ADMIN-02: requirement column defaults affect new library views
 
 **Purpose:** Confirm admin-managed column order and defaults are saved.
 
@@ -1153,7 +1153,7 @@ reload.
 1. Select `Spara`.
 1. Open `/sv/requirements` in a fresh browser context.
 
-**Expected result:** The catalog uses the saved organization-wide column order.
+**Expected result:** The library uses the saved organization-wide column order.
 
 ### ADMIN-03: reference-data CRUD page saves changes
 

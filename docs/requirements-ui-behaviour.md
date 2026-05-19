@@ -1,6 +1,7 @@
-# Kravkatalog UI Behaviour
+# Requirements Library UI Behaviour
 
-This document explains the intended behavior of the Kravkatalog list UI so
+This document explains the intended behavior of the Requirements Library list
+UI so
 contributors can change the table without breaking user expectations.
 
 For the admin-managed source of terminology and default column settings, see
@@ -108,7 +109,7 @@ The behaviors below apply to the requirement list rendered by:
 - Sticky headers use their existing column-header markers and remain part of
   the same table surface; no separate recovery control is shown when the page
   scrolls vertically.
-- On the fixed-right rail used by the main requirements catalog, a scroll-to-top
+- On the fixed-right rail used by the main requirements library, a scroll-to-top
   pill appears as its own final action group once the table top has moved above
   the sticky offset. Selecting it scrolls the page back to the table top.
 
@@ -211,7 +212,7 @@ The behaviors below apply to the requirement list rendered by:
 ## Specification Item Usage Status Column
 
 - The `specificationItemStatus` column is hidden by default (`defaultVisible: false`).
-- It is **excluded** from the main requirements catalog and the available-
+- It is **excluded** from the main requirements library and the available-
   requirements panel (right side) in the specification detail view via
   `excludeColumns`. It is only selectable in the specification-items panel (left
   side) of the specification detail view.
@@ -220,15 +221,15 @@ The behaviors below apply to the requirement list rendered by:
   an inline `<select>` dropdown for each item that has a `specificationItemId`.
   Changing the dropdown value calls `PATCH /api/specifications/{id}/items/{itemId}`
   and applies an optimistic update to the local row state.
-- The same inline status control is also available for specification-local
-  requirements via specification-context item refs (`lib:*` / `local:*`) even though
-  specification-local rows do not have a library-backed `requirementsSpecificationItemId`.
+- The same inline status control is also available for unique requirements via
+  specification-context item refs (`lib:*` / `local:*`) even though unique rows
+  do not have a library-backed `requirementsSpecificationItemId`.
 - When a requirement is **added** to a specification, including a
-  specification-local requirement, its usage status is automatically set to
+  unique requirement, its usage status is automatically set to
   **Included** (ID 1). The user can change it once work on the requirement begins.
 - The inline select offers the fixed usage statuses for specification
   items.
-- Outside the specification detail context (e.g. the main requirements catalog),
+- Outside the specification detail context (e.g. the main requirements library),
   the column renders a read-only color dot + label, or an em dash when no
   specification item status applies to the row.
 - The column supports multi-select filtering via `specificationItemStatusIds`.
@@ -264,13 +265,13 @@ down.
 ### Lifecycle Refresh Scroll
 
 - When a requirement status transition refreshes the inline detail pane and the
-  catalog row, the workflow stepper is kept in view with the smallest necessary
+  library row, the workflow stepper is kept in view with the smallest necessary
   scroll adjustment.
-- The catalog does not re-center the selected row during this refresh, so the
+- The library does not re-center the selected row during this refresh, so the
   page does not jump down to the version history or improvement-suggestion
   sections.
 - This applies to transitions such as Draft to Review and Review back to Draft,
-  including cases where active catalog filters require the selected requirement
+  including cases where active library filters require the selected requirement
   to stay pinned in the list.
 
 ### Area Owner
@@ -310,17 +311,17 @@ down.
 - Specification-local rows use short specification-scoped Krav-ID values such as
   `KRAV0001`; the specification context itself disambiguates them.
 - The specification-local inline detail pane now reuses the same core content-card
-  layout as the requirements catalog inline detail view: description first,
+  layout as the requirements library inline detail view: description first,
   acceptance criteria second, then the shared metadata grid, references, and
   requirement packages.
 - When a library requirement is opened from the specification list `Krav i underlaget`,
   its inline detail metadata also includes the specification-specific fields
   **Behovsreferens** and **Användningsstatus** in the same properties grid.
 - The specification-local content card uses the same section spacing and card chrome
-  as the catalog requirement detail card in specification context, so the properties
+  as the library requirement detail card in specification context, so the properties
   block reads with the same vertical rhythm and grouping.
 - The expanded specification-local inline pane also uses the same outer inline inset
-  as the catalog requirement detail (`px-6 py-4`), so the properties card and
+  as the library requirement detail (`px-6 py-4`), so the properties card and
   right-side rail do not sit flush against the expanded row edges.
 - The specification-local inline detail pane does not repeat the row's specification-local
   Krav-ID or unique marker icon in its own header area; that identity stays in
@@ -330,10 +331,10 @@ down.
   closely: deviation pills sit above the card, the right-side action rail
   starts with print and deviation controls, and local edit/delete actions are
   appended in the same vertical rail.
-- That specification-local action rail also uses the same full-width button sizing
-  rhythm as the catalog requirements specification-item rail, including the shared
+- That unique-requirement action rail also uses the same full-width button sizing
+  rhythm as the library requirements specification-item rail, including the shared
   44px minimum touch target and stacked spacing.
-- Edit and Delete for specification-local requirements are only enabled when
+- Edit and Delete for unique requirements are only enabled when
   **Användningsstatus** is **Inkluderad** and there is no pending deviation
   draft or review request. Otherwise the buttons stay disabled and expose a
   tooltip explaining why the action is blocked, while the controls are also
@@ -343,9 +344,9 @@ down.
   disabled unless **Användningsstatus** is **Inkluderad**. Opening the action
   shows a modal target-area picker over a dimmed background, including the
   copy-only outcome text. Pressing the modal's **Graduate** action copies the
-  local requirement into the selected library area as a new Draft library
+  unique requirement into the selected library area as a new Draft library
   requirement, navigates to that new requirement's created Draft version, and
-  leaves the source specification-local row and any local deviations unchanged.
+  leaves the source unique row and any local deviations unchanged.
 
 ## Print List Report Floating Pill
 
@@ -362,9 +363,9 @@ down.
   `?ids=`.
 - Each value is a specification-context item reference:
   - `lib:<specificationItemId>` for a library requirement in the specification
-  - `local:<specificationLocalRequirementId>` for a specification-local requirement
-- This allows the report to include both library and specification-local
-  requirements in one specification list export.
+  - `local:<specificationLocalRequirementId>` for a unique requirement
+- This allows the report to include both library and unique requirements in one
+  specification list export.
 
 ## Combined Review Report Floating Pill
 

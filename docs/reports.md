@@ -57,10 +57,10 @@ Prints the requirements contained in a specific requirements specification as a
 formatted table.
 
 - Available from the print dropdown in the specification detail view
-- Includes both library requirements linked into the specification and
-  specification-local requirements created only for that specification
+- Includes both library requirements linked into the specification and unique
+  requirements created only for that specification
 - Includes specification metadata in the header: specification name, unique ID,
-  responsibility area, implementation type, and business needs reference
+  responsibility area, implementation type, and specification purpose
 - Shows Krav-ID, description (truncated), area, and status columns
 - Print opens a dedicated route; PDF is generated inline in the specification
   detail view (not via a separate route page)
@@ -162,7 +162,7 @@ Specification list reports use a separate prefix
 
 For specification list reports, `refs` contains specification-context item
 references such as `lib:<specificationItemId>` for library requirements and
-`local:<specificationLocalRequirementId>` for specification-local requirements.
+`local:<specificationLocalRequirementId>` for unique requirements.
 
 ## Engines
 
