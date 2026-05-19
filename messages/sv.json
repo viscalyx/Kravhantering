@@ -685,7 +685,7 @@
       "hsaId": "Ange ägarens verifierade HSA-ID. Namn är visningskopior; HSA-ID är den varaktiga identitetsnyckeln.",
       "email": "Ange e-postadressen som används för att kontakta ägaren."
     },
-    "emptyState": "Inga kravägare ännu. Skapa din första ägare."
+    "emptyState": "Inga kravområdesägare ännu. Skapa din första kravområdesägare."
   },
   "responsibilityAreaMgmt": {
     "name": "Namn",

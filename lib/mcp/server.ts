@@ -931,7 +931,9 @@ function createGraduationTargetAreasSchema() {
         .number()
         .int()
         .positive()
-        .describe('Numeric unique requirement ID to inspect.'),
+        .describe(
+          'Numeric ID of the specification-local requirement to inspect; clients must send it as localRequirementId (also called unique requirement in the UI).',
+        ),
       responseFormat: ResponseFormatSchema,
       specificationId: z
         .number()
@@ -967,7 +969,9 @@ function createGraduateLocalRequirementSchema() {
         .number()
         .int()
         .positive()
-        .describe('Numeric unique requirement ID to copy.'),
+        .describe(
+          'Numeric ID of the specification-local requirement to copy; clients must send it as localRequirementId (also called unique requirement in the UI).',
+        ),
       requirementAreaId: z
         .number()
         .int()

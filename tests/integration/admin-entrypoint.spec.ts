@@ -167,7 +167,7 @@ for (const { name, viewport } of viewportVariants) {
       )
     })
 
-    test(`persists terminology and column changes through catalog reloads (${name})`, async ({
+    test(`persists terminology and column changes through library reloads (${name})`, async ({
       page,
     }) => {
       await page.goto('/sv/admin')
