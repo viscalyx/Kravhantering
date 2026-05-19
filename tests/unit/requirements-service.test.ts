@@ -1559,7 +1559,7 @@ describe('createRequirementsService', () => {
     expect(result.areas).toEqual([{ id: 2, name: 'Security', prefix: 'SEC' }])
     expect(JSON.parse(result.message)).toEqual({
       lines: ['1 requirement area(s) can receive the copy.'],
-      title: 'Library Target Areas',
+      title: 'Requirements Library Target Areas',
     })
   })
 
@@ -1586,7 +1586,7 @@ describe('createRequirementsService', () => {
     expect(result.areas).toEqual([])
     expect(JSON.parse(result.message)).toEqual({
       lines: ['0 requirement area(s) can receive the copy.'],
-      title: 'Library Target Areas',
+      title: 'Requirements Library Target Areas',
     })
   })
 
@@ -1696,9 +1696,9 @@ describe('createRequirementsService', () => {
     )
     expect(JSON.parse(result.message)).toEqual({
       lines: [
-        'Specification-local requirement KRAV0001 was copied to SEC0001 as a draft in Security.',
+        'Unique requirement KRAV0001 was copied to SEC0001 as a draft in Security.',
       ],
-      title: 'Requirement Graduated to Library',
+      title: 'Unique Requirement Graduated to Requirements Library',
     })
     expect(emittedSecurityEvents()).toEqual([
       expect.objectContaining({

@@ -104,7 +104,7 @@ describe('requirements route', () => {
       const res = await GET(req as never)
       expect(res.headers.get('Content-Type')).toContain('text/csv')
       expect(res.headers.get('Content-Disposition')).toContain(
-        'kravkatalog.csv',
+        'kravbibliotek.csv',
       )
     })
 

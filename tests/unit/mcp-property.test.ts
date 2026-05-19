@@ -173,7 +173,7 @@ function createService() {
     })),
     graduateSpecificationLocalRequirement: vi.fn(async () => ({
       detail: createDetail('SEC0001'),
-      message: 'Specification-local requirement graduated to library draft',
+      message: 'Unique requirement graduated to library draft',
       requirementResourceUri: 'requirements://requirement/SEC0001?version=1',
       requirementViewUri:
         'ui://requirements/requirement-detail/SEC0001?version=1',
@@ -230,7 +230,7 @@ function createService() {
     queryCatalog: vi.fn(async () => ({
       catalog: 'requirements' as const,
       items: [],
-      message: 'Requirement catalog',
+      message: 'Requirements Library',
       pagination: {
         count: 0,
         hasMore: false,

@@ -22,7 +22,7 @@ const localeMessages = vi.hoisted(() => ({
       'The page could not be rendered. Try again or go back to a safe starting point.',
     eyebrow: 'Unexpected error',
     goToAdmin: 'Go to admin',
-    goToCatalog: 'Go to catalog',
+    goToCatalog: 'Go to requirements library',
     referenceLabel: 'Error reference',
     retry: 'Try again',
     title: 'Something went wrong',
@@ -32,7 +32,7 @@ const localeMessages = vi.hoisted(() => ({
       'Sidan kunde inte visas. Försök igen eller gå tillbaka till en säker startsida.',
     eyebrow: 'Oväntat fel',
     goToAdmin: 'Gå till administration',
-    goToCatalog: 'Gå till kravkatalogen',
+    goToCatalog: 'Gå till kravbiblioteket',
     referenceLabel: 'Felreferens',
     retry: 'Försök igen',
     title: 'Något gick fel',
@@ -63,7 +63,7 @@ describe('ErrorRecoveryPanel', () => {
     vi.clearAllMocks()
   })
 
-  it('renders English fallback copy, retry, digest, and catalog-first links', async () => {
+  it('renders English fallback copy, retry, digest, and library-first links', async () => {
     const retry = vi.fn()
     const user = userEvent.setup()
 
@@ -84,10 +84,9 @@ describe('ErrorRecoveryPanel', () => {
     ).toBeInTheDocument()
     expect(screen.queryByText('do not show this raw message')).toBeNull()
     expect(screen.getByText('digest-123')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Go to catalog' })).toHaveAttribute(
-      'href',
-      '/en/requirements',
-    )
+    expect(
+      screen.getByRole('link', { name: 'Go to requirements library' }),
+    ).toHaveAttribute('href', '/en/requirements')
     expect(screen.getByRole('link', { name: 'Go to admin' })).toHaveAttribute(
       'href',
       '/en/admin',
@@ -116,7 +115,7 @@ describe('ErrorRecoveryPanel', () => {
       screen.getByRole('link', { name: 'Gå till administration' }),
     ).toHaveAttribute('href', '/sv/admin')
     expect(
-      screen.getByRole('link', { name: 'Gå till kravkatalogen' }),
+      screen.getByRole('link', { name: 'Gå till kravbiblioteket' }),
     ).toHaveAttribute('href', '/sv/requirements')
   })
 })
@@ -166,10 +165,9 @@ describe('App Router error boundaries', () => {
       'href',
       '/en/admin',
     )
-    expect(screen.getByRole('link', { name: 'Go to catalog' })).toHaveAttribute(
-      'href',
-      '/en/requirements',
-    )
+    expect(
+      screen.getByRole('link', { name: 'Go to requirements library' }),
+    ).toHaveAttribute('href', '/en/requirements')
   })
 
   it('uses locale-prefixed safe links in the global boundary', () => {

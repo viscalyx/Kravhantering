@@ -72,7 +72,7 @@
       }
     },
     {
-      "name": "graduate local requirement to library",
+      "name": "graduate unique requirement to library",
       "tool": "requirements_graduate_local_requirement",
       "kind": "mutation",
       "arguments": {

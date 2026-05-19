@@ -43,7 +43,7 @@ vi.mock('next-intl', () => ({
       'common.loading': 'Loading',
       'common.no': 'No',
       'common.noResults': 'No results',
-      'common.reactivate': 'Reactivate',
+      'common.reactivate': 'Restore',
       'common.restoreVersion': 'Restore version',
       'common.copied': 'Copied',
       'common.share': 'Share',
@@ -77,7 +77,8 @@ vi.mock('next-intl', () => ({
         'There is no published version of this requirement.',
       'requirement.specificationCount': 'Used in specification',
       'requirement.publishConfirm': 'Publish this requirement?',
-      'requirement.reactivateConfirm': 'Reactivate this requirement?',
+      'requirement.reactivateConfirm':
+        'Restore this requirement? A new draft version will be created.',
       'requirement.reference': 'Reference',
       'requirement.reviewVersionAvailableBanner': values =>
         `Review version v${values?.version} is available`,

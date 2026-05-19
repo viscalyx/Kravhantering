@@ -168,7 +168,7 @@ function createFakeService(
           },
         },
       ],
-      message: 'Requirement catalog',
+      message: 'Requirements Library',
       pagination: {
         count: 1,
         hasMore: false,
@@ -496,7 +496,7 @@ describe('handleRequirementsMcpRequest', () => {
       expect(graduateTool).toBeDefined()
       expect(graduateTool?.description).toContain('Copy an Included')
       expect(graduateTool?.description).toContain(
-        'source local requirement remains unchanged',
+        'source unique requirement remains unchanged',
       )
       expect(graduateTool?.description).toContain(
         'requirements_list_graduation_target_areas',

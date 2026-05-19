@@ -5,7 +5,7 @@ test.describe('localized App Router error boundaries', () => {
     await page.setExtraHTTPHeaders({ 'x-error-boundary-test': '1' })
   })
 
-  test('shows Swedish catalog recovery for a locale client render failure', async ({
+  test('shows Swedish library recovery for a locale client render failure', async ({
     page,
   }) => {
     await test.step('open the gated client-error route', async () => {
@@ -27,9 +27,9 @@ test.describe('localized App Router error boundaries', () => {
       ).toHaveCount(1)
     })
 
-    await test.step('offer catalog-first safe navigation', async () => {
+    await test.step('offer library-first safe navigation', async () => {
       const recoveryLinks = recovery.getByRole('link')
-      await expect(recoveryLinks.first()).toHaveText('Gå till kravkatalogen')
+      await expect(recoveryLinks.first()).toHaveText('Gå till kravbiblioteket')
       await expect(recoveryLinks.first()).toHaveAttribute(
         'href',
         '/sv/requirements',
@@ -65,7 +65,9 @@ test.describe('localized App Router error boundaries', () => {
       const recoveryLinks = recovery.getByRole('link')
       await expect(recoveryLinks.first()).toHaveText('Go to admin')
       await expect(recoveryLinks.first()).toHaveAttribute('href', '/en/admin')
-      await expect(recoveryLinks.nth(1)).toHaveText('Go to catalog')
+      await expect(recoveryLinks.nth(1)).toHaveText(
+        'Go to requirements library',
+      )
       await expect(recoveryLinks.nth(1)).toHaveAttribute(
         'href',
         '/en/requirements',

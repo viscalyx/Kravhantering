@@ -624,8 +624,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
       await snap(
         page,
         'startsida',
-        'Startsida — Kravkatalogen',
-        'Kravhantering öppnas i Kravkatalogen som är programmets centrala nav. Härifrån kan du söka, filtrera och hantera alla krav i systemet.',
+        'Startsida — Kravbiblioteket',
+        'Kravhantering öppnas i Kravbiblioteket som är programmets centrala nav. Härifrån kan du söka, filtrera och hantera alla krav i systemet.',
         { fullPage: false },
       )
     })
@@ -635,7 +635,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'navigering',
         'Navigationsfält',
-        'Det övre navigationsfältet ger åtkomst till alla huvuddelar: **Kravkatalogen** (Krav), **Kravunderlag**, **Admininställningar** (kugghjulsikonen) samt language-väljare och tema (ljust/mörkt läge).',
+        'Det övre navigationsfältet ger åtkomst till alla huvuddelar: **Kravbiblioteket** (Krav), **Kravunderlag**, **Admininställningar** (kugghjulsikonen) samt language-väljare och tema (ljust/mörkt läge).',
         { selector: 'nav[aria-label="Huvudnavigation"]' },
       )
     })
@@ -660,8 +660,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
       await guideGoto(page, '/sv/requirements')
     })
 
-    // ── Sektion 2: Kravkatalogen ───────────────────────────────────────────
-    currentSection = 'Kravkatalogen'
+    // ── Sektion 2: Kravbiblioteket ───────────────────────────────────────────
+    currentSection = 'Kravbiblioteket'
 
     await guideStep(page, 'Kravtabell', async () => {
       await guideGoto(page, '/sv/requirements')
@@ -680,9 +680,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
       }
       await snap(
         page,
-        'kravkatalog',
-        'Kravkatalogen — Översikt',
-        'Kravkatalogen listar alla krav i en sorterbar och filtrerbar tabell. Varje rad visar nyckeluppgifter som ID, kravtext, område, status och risknivå. Kolumnerna kan konfigureras efter behov.',
+        'kravbibliotek',
+        'Kravbiblioteket — Översikt',
+        'Kravbiblioteket listar alla krav i en sorterbar och filtrerbar tabell. Varje rad visar nyckeluppgifter som ID, kravtext, område, status och risknivå. Kolumnerna kan konfigureras efter behov.',
         { fullPage: false },
       )
       if ((await tableSearchInput.count()) > 0) {
@@ -702,7 +702,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         await page.waitForTimeout(600)
         await snap(
           page,
-          'kravkatalog-sok',
+          'kravbibliotek-sok',
           'Sökning och filtrering',
           'Skriv i sökrutan för att filtrera krav i realtid. Du kan även använda avancerade filter för att begränsa listan efter område, status, risknivå, kravtyp och kvalitetsegenskaper.',
         )
@@ -752,7 +752,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
       await removeAnnotation(page)
 
-      // Apply filter IDN0001 — stays active for all remaining catalog screenshots
+      // Apply filter IDN0001 — stays active for all remaining library screenshots
       await filterBtn.click()
       const filterInput = page.getByRole('textbox', { name: 'Krav-ID' })
       await filterInput.fill('IDN0001')
@@ -793,7 +793,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'inline-detaljvy',
           'Inline-detaljvy',
-          'Klicka på en rad i kravkatalogen för att öppna inline-detaljvyn direkt i tabellen. Detta är det primära arbetsflödet — du behöver inte lämna katalogen för att se eller hantera ett krav.\n\n' +
+          'Klicka på en rad i kravbiblioteket för att öppna inline-detaljvyn direkt i tabellen. Detta är det primära arbetsflödet — du behöver inte lämna biblioteket för att se eller hantera ett krav.\n\n' +
             'Du kan också öppna kravets detaljsida direkt via kravets stabila ID: `http://localhost:3000/sv/requirements/IDN0001`. Lägg till versionsnumret efter ID:t för att visa en specifik version: `http://localhost:3000/sv/requirements/IDN0001/10`.',
         )
       }
@@ -869,7 +869,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
             page,
             'versioner-fler',
             'Versionshistorik',
-            'Redigering av ett publicerat krav samt återställning av ett arkiverat krav skapar en ny version. Versionshistoriken visar alla versioner med tidsstämplar, status och vem som gjorde ändringen. Du kan navigera till äldre versioner för att se den historiska lydelsen.\n\nNär ett krav har fler versioner än vad som ryms i vyn visas en knapp med "+N" som visar hur många dolda versioner det finns. Klicka på den för att expandera och se alla versioner.',
+            'Redigering av ett publicerat krav samt återskapande av ett arkiverat krav skapar en ny version. Versionshistoriken visar alla versioner med tidsstämplar, status och vem som gjorde ändringen. Du kan navigera till äldre versioner för att se den historiska lydelsen.\n\nNär ett krav har fler versioner än vad som ryms i vyn visas en knapp med "+N" som visar hur många dolda versioner det finns. Klicka på den för att expandera och se alla versioner.',
           )
           await removeAnnotation(page)
 
@@ -949,7 +949,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'nytt-krav-tomt',
         'Skapa krav — tomt formulär',
-        'Navigera till "Skapa nytt krav" via knappen i katalogen. Formuläret innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier, område, kategori, typ, risknivå, kvalitetsegenskaper, verifieringsmetod, normreferenser och kravpaket.',
+        'Navigera till "Skapa nytt krav" via knappen i kravbiblioteket. Formuläret innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier, område, kategori, typ, risknivå, kvalitetsegenskaper, verifieringsmetod, normreferenser och kravpaket.',
       )
     })
 
@@ -1015,7 +1015,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'krav-skapat',
         'Krav skapat',
-        'Efter att formuläret sparats återgår applikationen till kravkatalogen med det nyss skapade kravet öppet i inline-detaljvyn. Kravet startar i status **Utkast**.',
+        'Efter att formuläret sparats återgår applikationen till kravbiblioteket med det nyss skapade kravet öppet i inline-detaljvyn. Kravet startar i status **Utkast**.',
         { fullPage: false },
       )
     })
@@ -1249,7 +1249,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
             page,
             'lagg-till-krav-modal',
             'Lägg till krav — behovsreferens',
-            'När du lägger till krav i ett underlag kan du koppla en **behovsreferens** till dem. En behovsreferens är en fritext som beskriver det verksamhetsbehov eller funktionella krav som kravet ska uppfylla i det här underlaget — t.ex. ett ärendenummer, ett mål eller ett avsnitt i en kravspecifikation. Du kan välja en befintlig referens eller skriva en ny. Fältet är valfritt.',
+            'När du lägger till krav i ett kravunderlag kan du koppla en **behovsreferens** till kravtillämpningen. En behovsreferens är en fritext som förklarar varför kravet behövs i just det här kravunderlaget och kan ge stöd för när kravet ska verifieras — t.ex. ett ärendenummer, ett mål eller ett avsnitt i ett kravunderlag. Du kan välja en befintlig referens eller skriva en ny. Fältet är valfritt.',
             { fullPage: false },
           )
 
@@ -1500,7 +1500,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       page,
       'Förbättringsförslag — lämna förslag på ANV0002',
       async () => {
-        // Navigate to catalog filtered on ANV0002 — clean requirement with no existing suggestions
+        // Navigate to library filtered on ANV0002 — clean requirement with no existing suggestions
         await guideGoto(page, '/sv/requirements?selected=ANV0002')
         await expect(
           page.locator('[data-expanded-detail-cell="true"]'),
@@ -1605,13 +1605,13 @@ test.describe('Kravhantering — Guidegenerering', () => {
     // ── Sektion 9: Administrationscenter ─────────────────────────────────
     currentSection = 'Administrationscenter'
 
-    await guideStep(page, 'Admin — Benämningar', async () => {
+    await guideStep(page, 'Admin — Terminologi', async () => {
       await guideGoto(page, '/sv/admin')
       await snap(
         page,
-        'admin-benamningar',
-        'Admin — Benämningar',
-        'Administrationscenterets flik **Benämningar** låter dig anpassa gränssnittsetiketter för domänspecifika termer. Till exempel kan "Kravtext" byta namn till en term som passar din organisations vokabulär.',
+        'admin-terminologi',
+        'Admin — Terminologi',
+        'Administrationscenterets flik **Terminologi** låter dig anpassa gränssnittsetiketter för domänspecifika termer. Till exempel kan "Kravtext" byta namn till en term som passar din organisations vokabulär.',
       )
     })
 
@@ -1622,7 +1622,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'admin-kolumner',
         'Admin — Kolumnhantering',
-        'Fliken **Kolumner** konfigurerar vilka kolumner som visas som standard i kravkatalogen och deras ordning. Ändringar gäller för alla användare. Du kan också ange standardvyer för olika kontexter.',
+        'Fliken **Kolumner** konfigurerar vilka kolumner som visas som standard i kravbiblioteket och deras ordning. Ändringar gäller för alla användare. Du kan också ange standardvyer för olika kontexter.',
       )
     })
 
@@ -1666,7 +1666,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'risknivåer',
         'Risknivåer',
-        'Risknivåer klassificerar kravets kritikalitet. Varje nivå kan tilldelas en färg för visuell identifiering i katalogen och detaljvyer. Färgkodningen gör det enkelt att snabbt bedöma ett kravs vikt.',
+        'Risknivåer klassificerar kravets kritikalitet. Varje nivå kan tilldelas en färg för visuell identifiering i kravbiblioteket och detaljvyer. Färgkodningen gör det enkelt att snabbt bedöma ett kravs vikt.',
       )
     })
 
@@ -1733,8 +1733,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
       textEntry(
         'Kombinerad granskningsrapport',
-        'En samlad rapport för flera krav som har status *Granskning*. Rapporten genereras genom att markera flera krav i katalogen. Den innehåller en innehållsförteckning med sidnummer, grupperad efter rapporttyp (arkiveringsförfrågningar först, sedan granskningsändringar). Varje krav börjar på en ny sida.\n\n' +
-          '**Åtkomst:** Flytande verktygsfält i kravkatalogen när minst ett markerat krav har status *Granskning*.\n\n' +
+        'En samlad rapport för flera krav som har status *Granskning*. Rapporten genereras genom att markera flera krav i kravbiblioteket. Den innehåller en innehållsförteckning med sidnummer, grupperad efter rapporttyp (arkiveringsförfrågningar först, sedan granskningsändringar). Varje krav börjar på en ny sida.\n\n' +
+          '**Åtkomst:** Flytande verktygsfält i kravbiblioteket när minst ett markerat krav har status *Granskning*.\n\n' +
           '**Rutt:** `/requirements/reports/print/review-combined?ids=...` (utskrift) · `/requirements/reports/pdf/review-combined?ids=...` (PDF)',
       )
 
@@ -1747,14 +1747,14 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
       textEntry(
         'Kravlista',
-        'Skriver ut de krav som för närvarande visas i kravkatalogen som en formaterad tabell med Krav-ID, kravtext (trunkerad), område och status. Rubriken visar antal krav och tidsstämpel.\n\n' +
-          '**Åtkomst:** Utskriftsknappen i kravkatalogens verktygsfält (alltid tillgänglig).\n\n' +
+        'Skriver ut de krav som för närvarande visas i kravbiblioteket som en formaterad tabell med Krav-ID, kravtext (trunkerad), område och status. Rubriken visar antal krav och tidsstämpel.\n\n' +
+          '**Åtkomst:** Utskriftsknappen i kravbibliotekets verktygsfält (alltid tillgänglig).\n\n' +
           '**Rutt:** `/requirements/reports/print/list?ids=...` (utskrift) · `/requirements/reports/pdf/list?ids=...` (PDF)',
       )
 
       textEntry(
         'Kravlista — Kravunderlag',
-        'Skriver ut kraven som ingår i ett specifikt kravunderlag som en formaterad tabell. Rapporten inkluderar underlagets metadata (namn, ID, verksamhetsområde, genomförandeform, behovsreferens) som rubrik.\n\n' +
+        'Skriver ut kraven som ingår i ett specifikt kravunderlag som en formaterad tabell. Rapporten inkluderar underlagets metadata (namn, ID, verksamhetsområde, genomförandeform, underlagssyfte) som rubrik.\n\n' +
           '**Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält.\n\n' +
           '**Rutt:** `/specifications/[slug]/reports/print/list?refs=...` (utskrift) · PDF genereras direkt i vyn.',
       )
@@ -1767,7 +1767,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await guideStep(page, 'Rapporter från kravkatalogen', async () => {
+    await guideStep(page, 'Rapporter från kravbiblioteket', async () => {
       await guideGoto(page, '/sv/requirements')
       await expect(
         page.locator('[data-sticky-table-header="true"]'),
@@ -1783,9 +1783,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
         await addAnnotation(page, '[data-developer-mode-value="print"]')
         await snap(
           page,
-          'rapporter-kravkatalog',
-          'Rapportgenerering från katalogen',
-          'Markera ett eller flera krav i katalogen för att aktivera rapportknappar i verktygsfältet. Du kan generera PDF-rapporter för granskningsunderlag, avstegsöversikter, ändringshistorik och mer.',
+          'rapporter-kravbibliotek',
+          'Rapportgenerering från kravbiblioteket',
+          'Markera ett eller flera krav i kravbiblioteket för att aktivera rapportknappar i verktygsfältet. Du kan generera PDF-rapporter för granskningsunderlag, avstegsöversikter, ändringshistorik och mer.',
           { fullPage: false },
         )
         await removeAnnotation(page)
@@ -1795,9 +1795,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
         await addAnnotation(page, '[data-developer-mode-value="print"]')
         await snap(
           page,
-          'rapporter-kravkatalog',
+          'rapporter-kravbibliotek',
           'Rapporter',
-          'Markera krav i katalogen för att aktivera rapportfunktionerna. Systemet stödjer PDF- och utskriftsrapporter för granskning, avstegsöversikter och ändringshistorik.',
+          'Markera krav i kravbiblioteket för att aktivera rapportfunktionerna. Systemet stödjer PDF- och utskriftsrapporter för granskning, avstegsöversikter och ändringshistorik.',
           { fullPage: false },
         )
         await removeAnnotation(page)
