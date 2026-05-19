@@ -867,7 +867,8 @@ export default function RequirementsClient({
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = locale === 'sv' ? 'kravkatalog.csv' : 'requirements.csv'
+      a.download =
+        locale === 'sv' ? 'kravbibliotek.csv' : 'requirements-library.csv'
       a.click()
       URL.revokeObjectURL(url)
     } catch {

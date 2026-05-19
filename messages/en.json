@@ -33,7 +33,7 @@
     "hideFilters": "Hide filters",
     "ascending": "ascending",
     "descending": "descending",
-    "reactivate": "Reactivate",
+    "reactivate": "Restore",
     "archive": "Archive",
     "sortBy": "Sort by {label}",
     "sortDirectionTooltip": "{label}: currently sorted {current}. Click to sort {next}.",
@@ -66,7 +66,7 @@
     "emptyState": "No items yet."
   },
   "nav": {
-    "catalog": "Requirements Catalog",
+    "catalog": "Requirements Library",
     "areas": "Areas",
     "specifications": "Requirements Specifications",
     "requirementPackages": "Requirements packages",
@@ -78,7 +78,7 @@
     "responsibilityAreas": "Business objects",
     "implementationTypes": "Implementation types",
     "lifecycleStatuses": "Lifecycle statuses",
-    "areaOwners": "Area owners",
+    "areaOwners": "Requirement area owners",
     "normReferences": "Norm references",
     "specificationItemStatuses": "Usage statuses",
     "admin": "Admin",
@@ -126,14 +126,14 @@
   "notFound": {
     "title": "404",
     "description": "Page not found",
-    "goHome": "Go to catalog"
+    "goHome": "Go to requirements library"
   },
   "errorBoundary": {
     "eyebrow": "Unexpected error",
     "title": "Something went wrong",
     "description": "The page could not be rendered. Try again or go back to a safe starting point.",
     "retry": "Try again",
-    "goToCatalog": "Go to catalog",
+    "goToCatalog": "Go to requirements library",
     "goToAdmin": "Go to admin",
     "referenceLabel": "Error reference"
   },
@@ -192,7 +192,7 @@
     "restoreBlockedByPendingWork": "Cannot restore while there is a pending draft or review version",
     "deleteDraftConfirm": "Are you sure you want to delete this draft? The draft will be permanently removed.",
     "publishConfirm": "Are you sure you want to publish this requirement? Please confirm that it has gone through the proper review process before making it available.",
-    "reactivateConfirm": "Are you sure you want to reactivate this requirement?",
+    "reactivateConfirm": "Are you sure you want to restore this requirement? A new draft version will be created.",
     "transitionToGranskning": "Review ↗",
     "transitionToPublicerad": "Publish ↗",
     "transitionToUtkast": "← Draft",
@@ -239,8 +239,8 @@
     "downloadListReportPdf": "Download Requirements List (PDF)",
     "reviewReportAllMustBeReview": "All selected requirements must be in Review status to generate the report",
     "editNotAllowedStatusReview": "This requirement cannot be edited because it is in Review status. Return it to Draft status first.",
-    "editNotAllowedStatusArchived": "This requirement is Archived and must be restored or reactivated before it can be edited.",
-    "editPublishedVersionNotice": "This requirement is Published. Saving will create a new Draft version — the published version remains active until the new draft completes the review process and is published.",
+    "editNotAllowedStatusArchived": "This requirement is Archived and must be restored before it can be edited.",
+    "editPublishedVersionNotice": "This requirement is Published. Saving will create a new Draft version — the published requirement version stays in effect until the new draft completes the review process and is published.",
     "staleEditConflict": "This requirement changed while you were editing.",
     "staleEditConflictHelp": "Your changes are still here. Open the latest saved version to compare, or reload the editor before trying again.",
     "staleEditViewLatest": "View latest",
@@ -264,7 +264,7 @@
     "normRefTypeSuggestionStrategicGuideline": "Strategic guideline",
     "typePlaceholder": "E.g. Law, Standard, Regulation",
     "specificationLocalBadge": "Unique",
-    "specificationLocalTooltip": "This row is a specification-local requirement. It exists only in this requirements specification and does not appear in the requirements catalog.",
+    "specificationLocalTooltip": "This row is a unique requirement. It exists only in this specification and does not appear in the requirements library.",
     "requirementPackageHelp": "<strong>Select one or more requirements packages that apply to this requirement.</strong>\nRequirements packages group requirements for a specific area of concern, such as mobile use, data migration, integrations with other systems, case management, usability, cloud operations, normal operations, high load, or disaster recovery."
   },
   "requirementsTable": {
@@ -317,15 +317,15 @@
     "lifecycleStatus": "Lifecycle status",
     "lifecycleStatusHelp": "Choose the lifecycle status that best describes the current phase of the specification.",
     "needsReference": "Needs reference",
-    "needsReferenceHelp": "Optionally attach an existing or new needs reference when linking the requirement to a specification.",
+    "needsReferenceHelp": "Describe why the requirement application is needed in the specification. The reference can also support when and how the requirement should be verified.",
     "newSpecification": "New requirements specification",
     "editSpecification": "Edit requirements specification",
     "filterByName": "Filter by name",
     "filterByNamePlaceholder": "Search specification name",
     "linkedRequirements": "Linked requirements",
-    "businessNeedsReference": "Business needs reference",
-    "businessNeedsReferencePlaceholder": "Free text linking the specification to a business need or functional requirement",
-    "businessNeedsReferenceHelp": "Use this field to capture the business need, initiative, or functional reference that this specification supports. Do not enter names or other details that can identify a living person.",
+    "businessNeedsReference": "Specification purpose",
+    "businessNeedsReferencePlaceholder": "Free text describing why the specification exists or what capability it supports",
+    "businessNeedsReferenceHelp": "Use this field to capture the specification purpose, for example the business need, initiative, or capability this specification supports. Do not enter names or other details that can identify a living person.",
     "uniqueId": "Specification ID",
     "uniqueIdPlaceholder": "E.g. MY-SPECIFICATION",
     "uniqueIdHelp": "Used in URL and as short identifier",
@@ -340,28 +340,28 @@
     "selectSpecificationHelp": "Choose the requirements specification that should receive this requirement.",
     "removeSelected": "Remove selected ({count})",
     "removeConfirm": "Are you sure you want to remove {count, plural, one {1 requirement} other {# requirements}} from this specification?",
-    "removeSpecificationLocalConfirmTitle": "Delete local requirements",
-    "removeSpecificationLocalConfirm": "Are you sure you want to permanently delete {count, plural, one {1 local requirement} other {# local requirements}} from this specification? They cannot be restored.",
+    "removeSpecificationLocalConfirmTitle": "Delete unique requirements",
+    "removeSpecificationLocalConfirm": "Are you sure you want to permanently delete {count, plural, one {1 unique requirement} other {# unique requirements}} from this specification? They cannot be restored.",
     "removeMixedConfirmTitle": "Remove selected items",
-    "removeMixedConfirm": "Are you sure you want to remove {libraryCount, plural, one {1 library requirement} other {# library requirements}} from this specification and permanently delete {specificationLocalCount, plural, one {1 local requirement} other {# local requirements}}? Deleted local requirements cannot be restored.",
+    "removeMixedConfirm": "Are you sure you want to remove {libraryCount, plural, one {1 library requirement} other {# library requirements}} from this specification and permanently delete {specificationLocalCount, plural, one {1 unique requirement} other {# unique requirements}}? Deleted unique requirements cannot be restored.",
     "noItems": "No requirements are linked to this specification.",
     "specificationNotFound": "Requirement specification not found.",
     "backToSpecifications": "Back to specifications",
     "downloadFilename": "specification.csv",
-    "newLocalRequirement": "New local requirement",
-    "editLocalRequirement": "Edit local requirement",
-    "localRequirementNotFound": "Local requirement not found in this specification.",
-    "localRequirementActionDisabledTooltip": "This local requirement can only be edited or removed when Usage status is Included and no deviation is pending.",
-    "graduateLocalRequirement": "Graduate to library",
+    "newLocalRequirement": "New unique requirement",
+    "editLocalRequirement": "Edit unique requirement",
+    "localRequirementNotFound": "Unique requirement not found in this specification.",
+    "localRequirementActionDisabledTooltip": "This unique requirement can only be edited or removed when Usage status is Included and no deviation is pending.",
+    "graduateLocalRequirement": "Graduate to Requirements Library",
     "graduateLocalRequirementTargetLabel": "Requirement area",
-    "graduateLocalRequirementTargetHelp": "Choose the library area where the copied draft requirement should be created.",
-    "graduateLocalRequirementConfirmTitle": "Graduate local requirement",
-    "graduateLocalRequirementConfirm": "Create a new draft library requirement from this local requirement? The local requirement stays in this specification.",
+    "graduateLocalRequirementTargetHelp": "Choose the requirement area in the Requirements Library where the copied draft requirement should be created.",
+    "graduateLocalRequirementConfirmTitle": "Graduate unique requirement",
+    "graduateLocalRequirementConfirm": "Create a new draft requirement in the Requirements Library from this unique requirement? The unique requirement stays in this specification.",
     "graduateLocalRequirementConfirmText": "Graduate",
-    "graduateLocalRequirementDisabledTooltip": "This local requirement can only be graduated when Usage status is Included.",
-    "graduateLocalRequirementFailed": "Could not graduate the local requirement.",
-    "deleteLocalRequirementConfirmTitle": "Delete local requirement",
-    "deleteLocalRequirementConfirm": "Are you sure you want to permanently delete this local requirement? It cannot be restored.",
+    "graduateLocalRequirementDisabledTooltip": "This unique requirement can only be graduated when Usage status is Included.",
+    "graduateLocalRequirementFailed": "Could not graduate the unique requirement.",
+    "deleteLocalRequirementConfirmTitle": "Delete unique requirement",
+    "deleteLocalRequirementConfirm": "Are you sure you want to permanently delete this unique requirement? It cannot be restored.",
     "versionPinned": "Version {version} (published)",
     "addToSpecificationSuccess": "The requirement has been added to the specification.",
     "alreadyInSpecification": "This requirement is already in the specification.",
@@ -543,7 +543,7 @@
       "responsibilityArea": "Responsibility area",
       "implementationType": "Implementation type",
       "lifecycleStatus": "Lifecycle status",
-      "businessNeedsReference": "Business needs reference"
+      "businessNeedsReference": "Specification purpose"
     },
     "printLabels": {
       "description": "Description",
@@ -685,7 +685,7 @@
       "hsaId": "Enter the owner's verified HSA-ID. Names are display snapshots; HSA-ID is the durable identity key.",
       "email": "Enter the email address used to contact this owner."
     },
-    "emptyState": "No area owners yet. Create your first owner."
+    "emptyState": "No requirement area owners yet. Create your first owner."
   },
   "responsibilityAreaMgmt": {
     "name": "Name",
@@ -851,7 +851,7 @@
         "specificationLocalDeviations": "Specification-local deviations",
         "improvementSuggestions": "Improvement suggestions",
         "specifications": "Specifications",
-        "areaCoAuthors": "Area co-authors",
+        "areaCoAuthors": "Requirement area co-authors",
         "specificationCoAuthors": "Specification co-authors",
         "accessReviewRuns": "Access review rounds",
         "accessReviewItems": "Access review rows",
@@ -1003,8 +1003,8 @@
         "revoke_required": "Revoke required"
       },
       "permissionTypes": {
-        "area_co_author": "Area co-author",
-        "area_owner": "Area owner",
+        "area_co_author": "Requirement area co-author",
+        "area_owner": "Requirement area owner",
         "specification_co_author": "Specification co-author",
         "specification_responsible": "Specification responsible"
       }
@@ -1140,12 +1140,12 @@
         "skipped": "Skipped {count} {requirementWord} with no published version: {ids}."
       },
       "graduationTargets": {
-        "title": "Library Target Areas",
+        "title": "Requirements Library Target Areas",
         "summary": "{count} requirement area(s) can receive the copy."
       },
       "graduate": {
-        "title": "Requirement Graduated to Library",
-        "summary": "Specification-local requirement {sourceUniqueId} was copied to {requirementUniqueId} as a draft in {targetAreaName}."
+        "title": "Unique Requirement Graduated to Requirements Library",
+        "summary": "Unique requirement {sourceUniqueId} was copied to {requirementUniqueId} as a draft in {targetAreaName}."
       },
       "remove": {
         "count": "Removed {count} {requirementWord} from specification {reference}."
@@ -1162,10 +1162,10 @@
   },
   "help": {
     "requirements": {
-      "title": "Requirements Catalog",
+      "title": "Requirements Library",
       "overview": {
         "heading": "Overview",
-        "body": "The catalog is the main workspace for finding, tracking, and opening requirements. It shows every requirement you have access to, its current state, and lets you continue working without leaving the list."
+        "body": "The requirements library is the main workspace for finding, tracking, and opening requirements. It shows every requirement you have access to, its current state, and lets you continue working without leaving the list."
       },
       "inlineDetail": {
         "heading": "Inline detail view",
@@ -1192,7 +1192,7 @@
         },
         "category": {
           "heading": "Category",
-          "body": "Classifies the requirement as Business, IT, or Supplier. This supports filtering in the catalog and makes it easier to assign responsibility to the right team or stakeholder group."
+          "body": "Classifies the requirement as Business, IT, or Supplier. This supports filtering in the library and makes it easier to assign responsibility to the right team or stakeholder group."
         },
         "type": {
           "heading": "Type",
@@ -1249,7 +1249,7 @@
           },
           "published": {
             "title": "Published",
-            "description": "This is the active version that currently applies."
+            "description": "This is the published requirement version that currently applies."
           },
           "archivingReview": {
             "title": "Archiving review",
@@ -1274,7 +1274,7 @@
       },
       "lifecycle": {
         "heading": "Requirement process",
-        "body": "Draft: you can write, edit, delete the latest draft, and send it to review. Review: the content is locked for editing until you send it back to Draft or publish it. Published: this is the active version; you can add it to specifications, share or print it, and start editing, which creates a new draft while the published version stays in effect. When you choose Archive, the requirement first enters an archiving review where you can approve or cancel the archiving. Archived: the requirement is read-only and cannot be edited or added to specifications; restore it to create a new draft."
+        "body": "Draft: you can write, edit, delete the latest draft, and send it to review. Review: the content is locked for editing until you send it back to Draft or publish it. Published: this is the published requirement version; you can add it to specifications, share or print it, and start editing, which creates a new draft while the published requirement version stays in effect. When you choose Archive, the requirement first enters an archiving review where you can approve or cancel the archiving. Archived: the requirement is read-only and cannot be edited or added to specifications; restore it to create a new draft."
       },
       "actions": {
         "heading": "Actions",
@@ -1348,7 +1348,7 @@
       },
       "needsReference": {
         "heading": "Needs reference",
-        "body": "Each requirement in the specification can have a needs reference — a free-text link to the overarching business need or functional requirement it fulfils. Set it when adding requirements or edit it inline."
+        "body": "Each requirement application in the specification can have a needs reference — free text that explains why the requirement is needed in this specific specification. It can also support when the requirement should be verified. Set it when adding requirements or edit it inline."
       },
       "export": {
         "heading": "Exporting",
@@ -1400,11 +1400,11 @@
       },
       "columns": {
         "heading": "Default columns",
-        "body": "Set which columns appear by default in the requirements catalog and in what order. Users can still override column visibility per session. Locked columns are always shown."
+        "body": "Set which columns appear by default in the requirements library and in what order. Users can still override column visibility per session. Locked columns are always shown."
       },
       "referenceData": {
         "heading": "Reference data",
-        "body": "Quick links to manage areas, types, requirements packages, statuses, quality characteristics, business objects, implementation types, and area owners."
+        "body": "Quick links to manage areas, types, requirements packages, statuses, quality characteristics, business objects, implementation types, and requirement area owners."
       },
       "privacy": {
         "heading": "Privacy erasure",
@@ -1462,7 +1462,7 @@
       },
       "scope": {
         "heading": "Scope",
-        "body": "The app inventories area owners, area co-authors, specification responsibles, specification co-authors, and their app-managed AI permissions. Global IdP roles, source-code access, and external client provisioning are reviewed in their source tools."
+        "body": "The app inventories requirement area owners, requirement area co-authors, specification responsibles, specification co-authors, and their app-managed AI permissions. Global IdP roles, source-code access, and external client provisioning are reviewed in their source tools."
       },
       "decisions": {
         "heading": "Decisions",
@@ -1550,8 +1550,8 @@
     "owners": {
       "title": "Area Owners",
       "overview": {
-        "heading": "What are area owners?",
-        "body": "Area owners are the named individuals responsible for requirements in a specific requirement area. They are listed on the area and on each requirement's detail page."
+        "heading": "What are requirement area owners?",
+        "body": "Requirement area owners are the named individuals responsible for requirements in a specific requirement area. They are listed on the requirement area and on each requirement's detail page."
       },
       "manage": {
         "heading": "Managing",

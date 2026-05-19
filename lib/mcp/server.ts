@@ -931,7 +931,7 @@ function createGraduationTargetAreasSchema() {
         .number()
         .int()
         .positive()
-        .describe('Numeric specification-local requirement ID to inspect.'),
+        .describe('Numeric unique requirement ID to inspect.'),
       responseFormat: ResponseFormatSchema,
       specificationId: z
         .number()
@@ -967,7 +967,7 @@ function createGraduateLocalRequirementSchema() {
         .number()
         .int()
         .positive()
-        .describe('Numeric specification-local requirement ID to copy.'),
+        .describe('Numeric unique requirement ID to copy.'),
       requirementAreaId: z
         .number()
         .int()
@@ -1258,10 +1258,10 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List/search paginated requirements or fetch lookup catalogs: areas, categories, types, quality_characteristics, risk_levels, specification_item_statuses, statuses, requirement_packages, and transitions. Requirement filters, sorting, limit, and offset apply only when catalog is "requirements".',
+        'List/search paginated requirements in the requirements library or fetch lookup catalogs: areas, categories, types, quality_characteristics, risk_levels, specification_item_statuses, statuses, requirement_packages, and transitions. Requirement filters, sorting, limit, and offset apply only when catalog is "requirements".',
       inputSchema: createQueryCatalogSchema(),
       outputSchema: QueryCatalogOutputSchema,
-      title: 'Query Requirements Catalog',
+      title: 'Query Requirements Library',
     },
     async input => {
       try {
@@ -1620,7 +1620,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List the requirement areas this actor may use as targets when copying an Included specification-local requirement into the library. Use requirements_list_specifications and requirements_get_specification_items to identify the source, pass the same specificationId or specificationSlug plus localRequirementId here, then use one returned areas[].id value as requirements_graduate_local_requirement requirementAreaId.',
+        'List the requirement areas this actor may use as targets when copying an Included unique requirement into the library. Use requirements_list_specifications and requirements_get_specification_items to identify the source, pass the same specificationId or specificationSlug plus localRequirementId here, then use one returned areas[].id value as requirements_graduate_local_requirement requirementAreaId.',
       inputSchema: createGraduationTargetAreasSchema(),
       outputSchema: GraduationTargetAreasOutputSchema,
       title: 'List Graduation Target Areas',
@@ -1654,7 +1654,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: false,
       },
       description:
-        'Copy an Included specification-local requirement into a chosen library requirement area as a new Draft library requirement. The source local requirement remains unchanged in its requirements specification, and deviations stay attached to the local requirement. Use requirements_list_specifications and requirements_get_specification_items to identify the source, then call requirements_list_graduation_target_areas and use one returned areas[].id value as requirementAreaId.',
+        'Copy an Included unique requirement into a chosen library requirement area as a new Draft library requirement. The source unique requirement remains unchanged in its specification, and deviations stay attached to the unique requirement. Use requirements_list_specifications and requirements_get_specification_items to identify the source, then call requirements_list_graduation_target_areas and use one returned areas[].id value as requirementAreaId.',
       inputSchema: createGraduateLocalRequirementSchema(),
       outputSchema: GraduateLocalRequirementOutputSchema,
       title: 'Graduate Local Requirement to Library',

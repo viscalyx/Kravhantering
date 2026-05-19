@@ -1276,7 +1276,7 @@ const DOGFOOD_SPECIFICATIONS = [
   },
 ]
 
-// Business-needs references attached to each specification
+// Specification purpose values attached to each specification
 const DOGFOOD_NEEDS_REFS = [
   // KH
   {
