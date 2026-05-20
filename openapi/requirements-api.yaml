@@ -693,12 +693,40 @@ components:
         uniqueId: { type: string, nullable: true }
     DeleteDraftResult:
       type: object
-      required: [deleted]
+      required:
+        - deleted
       additionalProperties: false
       properties:
         deleted:
-          type: string
-          enum: [requirement, version]
+          type: array
+          minItems: 1
+          maxItems: 2
+          items:
+            oneOf:
+              - type: object
+                required:
+                  - type
+                  - requirementUniqueId
+                  - versionNumber
+                additionalProperties: false
+                properties:
+                  type:
+                    type: string
+                    enum: [draftRequirementVersion]
+                  requirementUniqueId: { type: string }
+                  versionNumber:
+                    type: integer
+                    minimum: 1
+              - type: object
+                required:
+                  - type
+                  - requirementUniqueId
+                additionalProperties: false
+                properties:
+                  type:
+                    type: string
+                    enum: [requirement]
+                  requirementUniqueId: { type: string }
     RequirementVersion:
       type: object
       additionalProperties: true

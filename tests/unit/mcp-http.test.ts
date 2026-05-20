@@ -478,6 +478,11 @@ describe('handleRequirementsMcpRequest', () => {
       expect(manageInputSchemaText).toContain(
         'requirement.versions[0].revisionToken',
       )
+      const manageOutputSchemaText = JSON.stringify(manageTool?.outputSchema)
+      expect(manageOutputSchemaText).toContain('draftRequirementVersion')
+      expect(manageOutputSchemaText).toContain('requirement')
+      expect(manageOutputSchemaText).toContain('requirementUniqueId')
+      expect(manageOutputSchemaText).toContain('versionNumber')
     })
 
     it('describes requirements_transition_requirement revision output', async () => {
@@ -1077,6 +1082,53 @@ describe('handleRequirementsMcpRequest', () => {
         }),
       }),
     )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns the canonical delete-draft result from manage_requirement', async () => {
+    const fakeService = createFakeService()
+    fakeService.manageRequirement.mockResolvedValueOnce({
+      message: 'Draft Deleted',
+      operation: 'delete_draft',
+      result: {
+        deleted: [
+          {
+            requirementUniqueId: 'BEH0024',
+            type: 'draftRequirementVersion',
+            versionNumber: 10,
+          },
+          { requirementUniqueId: 'BEH0024', type: 'requirement' },
+        ],
+      },
+    })
+    serviceState.getService.mockReturnValue(fakeService)
+
+    const { client, transport } = await createClient()
+
+    const result = await client.callTool({
+      arguments: {
+        operation: 'delete_draft',
+        uniqueId: 'BEH0024',
+      },
+      name: 'requirements_manage_requirement',
+    })
+
+    expect(result.isError).not.toBe(true)
+    expect(result.structuredContent).toMatchObject({
+      operation: 'delete_draft',
+      result: {
+        deleted: [
+          {
+            requirementUniqueId: 'BEH0024',
+            type: 'draftRequirementVersion',
+            versionNumber: 10,
+          },
+          { requirementUniqueId: 'BEH0024', type: 'requirement' },
+        ],
+      },
+    })
 
     await client.close()
     await transport.close()

@@ -34,7 +34,11 @@ agents can use it reliably.
   version. For `operation: "edit"`, first fetch the requirement with
   `view: "history"` and pass `requirement.versions[0].id` and
   `requirement.versions[0].revisionToken` back as
-  `requirement.baseVersionId` and `requirement.baseRevisionToken`.
+  `requirement.baseVersionId` and `requirement.baseRevisionToken`. A
+  successful `operation: "delete_draft"` returns `result.deleted` as an
+  ordered deletion ledger. It contains a `draftRequirementVersion` item with
+  `requirementUniqueId` and `versionNumber`, followed by a `requirement` item
+  when the parent requirement row was also deleted.
 - `requirements_transition_requirement`
   Move a requirement through the lifecycle using a target status ID.
 

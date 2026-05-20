@@ -1039,29 +1039,31 @@ export function createRequirementWorkflow({
           if (input.operation === 'delete_draft') {
             const result = await deleteDraftVersion(db, requirementId, {
               audit: async (executor, deleteResult) => {
+                const deletedDraft = deleteResult.deleted.find(
+                  item => item.type === 'draftRequirementVersion',
+                )
                 const requirementUniqueId =
-                  deleteResult.deletedUniqueId ??
-                  (await getRequirementUniqueIdForAudit(
-                    executor,
-                    requirementId,
-                  )) ??
-                  input.uniqueId
+                  deletedDraft?.requirementUniqueId ?? input.uniqueId
                 await recordRequirementMutationAudit(executor, context, {
                   action: 'requirement.draft.deleted',
-                  deleted: deleteResult.deleted,
+                  deletedTypes: deleteResult.deleted.map(item => item.type),
+                  deletedVersionNumber: deletedDraft?.versionNumber,
                   operation: input.operation,
                   requirementId,
                   requirementUniqueId,
                 })
               },
             })
+            const requirementDeleted = result.deleted.some(
+              item => item.type === 'requirement',
+            )
             const detail = await getRequirementById(db, requirementId)
             return {
               detail: detail ? formatRequirementDetail(detail) : undefined,
               message: createServiceMessage(
                 'Draft Deleted',
                 [
-                  result.deleted === 'requirement'
+                  requirementDeleted
                     ? 'Requirement removed'
                     : 'Draft version removed',
                 ],

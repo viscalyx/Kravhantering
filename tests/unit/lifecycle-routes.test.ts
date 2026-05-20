@@ -48,7 +48,16 @@ describe('lifecycle routes', () => {
   describe('delete-draft', () => {
     it('POST returns result on success', async () => {
       mockManageRequirement.mockResolvedValue({
-        result: { deleted: 'requirement', deletedUniqueId: 'BEH0024' },
+        result: {
+          deleted: [
+            {
+              requirementUniqueId: 'BEH0024',
+              type: 'draftRequirementVersion',
+              versionNumber: 10,
+            },
+            { requirementUniqueId: 'BEH0024', type: 'requirement' },
+          ],
+        },
       })
 
       const { POST } = await import(
@@ -64,7 +73,16 @@ describe('lifecycle routes', () => {
         params: Promise.resolve({ id: '1' }),
       })
       const json = await res.json()
-      expect(json).toEqual({ deleted: 'requirement' })
+      expect(json).toEqual({
+        deleted: [
+          {
+            requirementUniqueId: 'BEH0024',
+            type: 'draftRequirementVersion',
+            versionNumber: 10,
+          },
+          { requirementUniqueId: 'BEH0024', type: 'requirement' },
+        ],
+      })
       expect(mockManageRequirement).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ id: 1, operation: 'delete_draft' }),

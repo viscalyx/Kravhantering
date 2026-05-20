@@ -140,6 +140,35 @@ const GraduationTargetAreasOutputSchema = z
   })
   .strict()
 
+const DeletedDraftRequirementVersionOutputSchema = z
+  .object({
+    type: z.literal('draftRequirementVersion'),
+    requirementUniqueId: z.string(),
+    versionNumber: z.number().int().positive(),
+  })
+  .strict()
+
+const DeletedRequirementOutputSchema = z
+  .object({
+    type: z.literal('requirement'),
+    requirementUniqueId: z.string(),
+  })
+  .strict()
+
+const DeleteDraftResultOutputSchema = z
+  .object({
+    deleted: z
+      .array(
+        z.discriminatedUnion('type', [
+          DeletedDraftRequirementVersionOutputSchema,
+          DeletedRequirementOutputSchema,
+        ]),
+      )
+      .min(1)
+      .max(2),
+  })
+  .strict()
+
 const ManageRequirementOutputSchema = z
   .object({
     detail: RequirementDetailOutputSchema.optional().describe(
@@ -148,9 +177,9 @@ const ManageRequirementOutputSchema = z
     message: z.string(),
     operation: z.string(),
     result: z
-      .record(z.string(), z.unknown())
+      .union([DeleteDraftResultOutputSchema, z.record(z.string(), z.unknown())])
       .describe(
-        'Operation result. Edit results include the updated version id.',
+        'Operation result. Edit results include the updated version id. Delete-draft results include a deleted array with the draftRequirementVersion entry first and the parent requirement entry second when the requirement was also deleted.',
       ),
   })
   .strict()

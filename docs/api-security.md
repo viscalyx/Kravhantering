@@ -20,6 +20,12 @@ Covered in Phase 5:
   delete-draft, restore, reactivate, and transition routes.
 - Read-only requirement catalog routes used by the requirements UI.
 
+The delete-draft success contract intentionally reports the same deletion-ledger
+payload for both outcomes: `deleted` is an ordered array with the
+`draftRequirementVersion` entry first. When deleting that draft also deletes the
+parent requirement row, the array includes a second `requirement` entry for the
+same `requirementUniqueId`.
+
 Deferred from Phase 5:
 
 - CSV export, MCP, AI routes, admin catalog mutations, specifications,

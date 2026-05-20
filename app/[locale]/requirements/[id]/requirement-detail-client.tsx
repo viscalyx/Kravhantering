@@ -23,7 +23,10 @@ import {
   STATUS_PUBLISHED,
   STATUS_REVIEW,
 } from '@/lib/requirements/status-constants.mjs'
-import type { RequirementDetailResponse } from '@/lib/requirements/types'
+import type {
+  DeleteDraftResult,
+  RequirementDetailResponse,
+} from '@/lib/requirements/types'
 import AddToSpecificationDialog from './_detail/AddToSpecificationDialog'
 import ImprovementSuggestionsSection from './_detail/ImprovementSuggestionsSection'
 import { getLocalizedName } from './_detail/localized-name'
@@ -610,8 +613,51 @@ export default function RequirementDetailClient({
 
   const handleDeleteDraft = async (event?: MouseEvent<HTMLButtonElement>) => {
     const anchorEl = event?.currentTarget
+    let dangerDescription: string | undefined
+
+    const deleteWouldRemoveRequirement =
+      req?.versions.length === 1 && req.versions[0]?.status === STATUS_DRAFT
+    if (deleteWouldRemoveRequirement) {
+      try {
+        const suggestionsRes = await apiFetch(
+          `/api/requirement-suggestions/${req.id}`,
+        )
+        if (!suggestionsRes.ok) {
+          throw new Error(
+            (await readResponseMessage(suggestionsRes)) ??
+              suggestionsRes.statusText,
+          )
+        }
+        const data = (await suggestionsRes.json()) as {
+          suggestions?: unknown[]
+        }
+        const suggestionCount = Array.isArray(data.suggestions)
+          ? data.suggestions.length
+          : 0
+        if (suggestionCount > 0) {
+          dangerDescription = t('deleteDraftCascadeWarning', {
+            count: suggestionCount,
+          })
+        }
+      } catch (error) {
+        console.error(
+          'Failed to check improvement suggestions before deleting draft:',
+          error,
+        )
+        await confirm({
+          anchorEl,
+          icon: 'caution',
+          message: t('deleteDraftSuggestionCheckFailed'),
+          showCancel: false,
+          variant: 'danger',
+        })
+        return
+      }
+    }
+
     if (
       !(await confirm({
+        dangerDescription,
         message: t('deleteDraftConfirm'),
         variant: 'danger',
         icon: 'caution',
@@ -624,11 +670,14 @@ export default function RequirementDetailClient({
       { method: 'POST' },
     )
     if (res.ok) {
-      const data = (await res.json()) as { deleted?: string }
-      if (data.deleted === 'requirement') {
-        await onChange?.()
+      const data = (await res.json()) as DeleteDraftResult
+      const requirementDeleted = data.deleted.some(
+        item => item.type === 'requirement',
+      )
+      if (requirementDeleted) {
         if (onClose) onClose()
         else router.push('/requirements')
+        await onChange?.()
       } else {
         await Promise.all([refreshRequirement(), onChange?.()])
       }

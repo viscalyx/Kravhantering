@@ -1320,8 +1320,11 @@ informationssäkerhetsåtgärder i nuvarande version:
 
 #### Datatillgänglighet, spårbarhet och säkerhetsloggning
 
-- **Mjuk radering** — Krav arkiveras med
-  `is_archived`-flagga. Ingen data raderas permanent.
+- **Mjuk radering för etablerade krav** — Krav som har
+  etablerade kravversioner arkiveras med `is_archived`-flagga.
+  Ett senaste utkast kan däremot raderas permanent innan det blir
+  en etablerad kravversion; om inga kravversioner återstår raderas
+  även kravets huvudrad.
 - **Fullständig revisionshistorik** — Varje ändring
   av kravinnehåll skapar en ny versionsrad.
   Tidsstämplar spårar skapande (`created_at`),

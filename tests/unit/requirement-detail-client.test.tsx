@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requirement-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import type {
+  DeleteDraftResult,
   RequirementDetailResponse,
   RequirementLocalizedEntity,
   RequirementVersionDetail,
@@ -30,7 +31,7 @@ vi.mock('next-intl', () => ({
   useTranslations: (namespace: string) => {
     const translations: Record<
       string,
-      string | ((values?: Record<string, string>) => string)
+      string | ((values?: Record<string, number | string>) => string)
     > = {
       'common.archive': 'Archive',
       'common.archiveTooltip': 'Archive requirement',
@@ -64,6 +65,10 @@ vi.mock('next-intl', () => ({
       'requirement.backToLatest': 'Back to latest',
       'requirement.category': 'Category',
       'requirement.deleteDraftConfirm': 'Delete this draft?',
+      'requirement.deleteDraftCascadeWarning': values =>
+        `Deleting this draft will also delete the requirement and ${values?.count} linked improvement suggestions.`,
+      'requirement.deleteDraftSuggestionCheckFailed':
+        'Linked improvement suggestions could not be checked. The draft was not deleted.',
       'requirement.description': 'Description',
       'requirement.draftVersionAvailableBanner': values =>
         `Draft version v${values?.version} is available`,
@@ -103,7 +108,7 @@ vi.mock('next-intl', () => ({
       'specification.needsReference': 'Needs reference',
     }
 
-    return (key: string, values?: Record<string, string>) => {
+    return (key: string, values?: Record<string, number | string>) => {
       const entry = translations[`${namespace}.${key}`]
       if (typeof entry === 'function') return entry(values)
       return entry ?? `${namespace}.${key}`
@@ -405,7 +410,15 @@ function setupFetch({
   addToSpecificationHandler,
   archiveHandler,
   deleteDraftNextRequirement,
-  deleteDraftResponse = { deleted: 'version' },
+  deleteDraftResponse = {
+    deleted: [
+      {
+        requirementUniqueId: 'REQ-123',
+        type: 'draftRequirementVersion',
+        versionNumber: 2,
+      },
+    ],
+  },
   deviations = [],
   initialRequirement,
   needsReferencesHandler,
@@ -416,6 +429,7 @@ function setupFetch({
   restoreHandler,
   restoreNextRequirement,
   suggestions = [],
+  suggestionsHandler,
   transitionNextRequirement,
 }: {
   addToSpecificationHandler?: (
@@ -424,7 +438,7 @@ function setupFetch({
   ) => Promise<Response> | Response
   archiveHandler?: (init?: RequestInit) => Promise<Response> | Response
   deleteDraftNextRequirement?: ReturnType<typeof makeRequirement>
-  deleteDraftResponse?: { deleted?: string }
+  deleteDraftResponse?: DeleteDraftResult
   deviations?: RequirementDetailTestDeviation[]
   initialRequirement: ReturnType<typeof makeRequirement>
   needsReferencesHandler?: (
@@ -446,6 +460,7 @@ function setupFetch({
   restoreHandler?: (init?: RequestInit) => Promise<Response> | Response
   restoreNextRequirement?: ReturnType<typeof makeRequirement>
   suggestions?: RequirementDetailTestSuggestion[]
+  suggestionsHandler?: () => Promise<Response> | Response
   transitionNextRequirement?: ReturnType<typeof makeRequirement>
 }) {
   let currentRequirement = structuredClone(initialRequirement)
@@ -581,6 +596,9 @@ function setupFetch({
         url === `/api/requirement-suggestions/${currentRequirement.id}` &&
         method === 'GET'
       ) {
+        if (suggestionsHandler) {
+          return suggestionsHandler()
+        }
         return response({ suggestions })
       }
 
@@ -1452,6 +1470,235 @@ describe('RequirementDetailClient', () => {
       ),
     )
     expect(onChange).toHaveBeenCalled()
+  })
+
+  it('shows a red cascade warning before deleting the only draft when improvement suggestions exist', async () => {
+    const initialRequirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Only draft with suggestions',
+        editedAt: '2026-03-02',
+        requiresTesting: false,
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+    ])
+    const suggestionsHandler = vi.fn(() =>
+      response({
+        suggestions: [
+          {
+            content: 'Improve contrast',
+            createdAt: '2026-03-02',
+            createdBy: 'Reviewer',
+            id: 1,
+            isReviewRequested: 0,
+            requirementVersionId: 1,
+            resolution: null,
+            resolutionMotivation: null,
+            resolvedAt: null,
+            resolvedBy: null,
+          },
+          {
+            content: 'Clarify mobile acceptance criteria',
+            createdAt: '2026-03-03',
+            createdBy: 'Reviewer',
+            id: 2,
+            isReviewRequested: 1,
+            requirementVersionId: 1,
+            resolution: null,
+            resolutionMotivation: null,
+            resolvedAt: null,
+            resolvedBy: null,
+          },
+        ],
+      }),
+    )
+
+    setupFetch({
+      initialRequirement,
+      suggestionsHandler,
+    })
+
+    renderSubject({ defaultVersion: 1 })
+
+    expect(
+      await screen.findByText('Only draft with suggestions'),
+    ).toBeInTheDocument()
+    await waitFor(() => expect(suggestionsHandler).toHaveBeenCalledTimes(1))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+
+    await screen.findByText('Delete this draft?')
+    expect(suggestionsHandler).toHaveBeenCalledTimes(2)
+    expect(
+      screen.getByText(
+        'Deleting this draft will also delete the requirement and 2 linked improvement suggestions.',
+      ),
+    ).toHaveClass('text-red-700')
+  })
+
+  it('leaves the detail view when deleting the only draft also deletes the requirement', async () => {
+    const onChange = vi.fn()
+    const initialRequirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Only draft',
+        editedAt: '2026-03-02',
+        requiresTesting: false,
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+    ])
+
+    setupFetch({
+      deleteDraftResponse: {
+        deleted: [
+          {
+            requirementUniqueId: 'REQ-123',
+            type: 'draftRequirementVersion',
+            versionNumber: 1,
+          },
+          { requirementUniqueId: 'REQ-123', type: 'requirement' },
+        ],
+      },
+      initialRequirement,
+    })
+
+    renderSubject({ defaultVersion: 1, onChange })
+
+    expect(await screen.findByText('Only draft')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(screen.getByText('Delete this draft?')).toBeInTheDocument()
+    expect(
+      screen.queryByText(/linked improvement suggestions/),
+    ).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    expect(routerPush).toHaveBeenCalledWith('/requirements')
+  })
+
+  it('closes inline detail before refreshing parents after deleting the whole requirement', async () => {
+    const onChange = vi.fn()
+    const onClose = vi.fn()
+    const initialRequirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Only draft',
+        editedAt: '2026-03-02',
+        requiresTesting: false,
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+    ])
+
+    setupFetch({
+      deleteDraftResponse: {
+        deleted: [
+          {
+            requirementUniqueId: 'REQ-123',
+            type: 'draftRequirementVersion',
+            versionNumber: 1,
+          },
+          { requirementUniqueId: 'REQ-123', type: 'requirement' },
+        ],
+      },
+      initialRequirement,
+    })
+
+    renderSubject({ defaultVersion: 1, onChange, onClose })
+
+    expect(await screen.findByText('Only draft')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    expect(onClose.mock.invocationCallOrder[0]).toBeLessThan(
+      onChange.mock.invocationCallOrder[0],
+    )
+    expect(routerPush).not.toHaveBeenCalled()
+  })
+
+  it('does not run the delete-draft suggestion pre-check when another version remains', async () => {
+    const initialRequirement = makeRequirement([
+      makeVersion(2, {
+        description: 'Draft description',
+        editedAt: '2026-03-02',
+        requiresTesting: false,
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+      makeVersion(1, {
+        description: 'Published description',
+        publishedAt: '2026-03-03',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    const suggestionsHandler = vi.fn(() => response({ suggestions: [] }))
+
+    setupFetch({
+      initialRequirement,
+      suggestionsHandler,
+    })
+
+    renderSubject({ defaultVersion: 2 })
+
+    expect(await screen.findByText('Draft description')).toBeInTheDocument()
+    await waitFor(() => expect(suggestionsHandler).toHaveBeenCalledTimes(1))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+
+    expect(screen.getByText('Delete this draft?')).toBeInTheDocument()
+    expect(suggestionsHandler).toHaveBeenCalledTimes(1)
+  })
+
+  it('blocks delete-draft when linked improvement suggestions cannot be checked', async () => {
+    const initialRequirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Only draft',
+        editedAt: '2026-03-02',
+        requiresTesting: false,
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+    ])
+    const suggestionsHandler = vi.fn(() =>
+      response({ error: 'suggestion lookup failed' }, false),
+    )
+    const fetchMock = setupFetch({
+      initialRequirement,
+      suggestionsHandler,
+    })
+
+    renderSubject({ defaultVersion: 1 })
+
+    expect(await screen.findByText('Only draft')).toBeInTheDocument()
+    await waitFor(() => expect(suggestionsHandler).toHaveBeenCalledTimes(1))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+
+    expect(
+      await screen.findByText(
+        'Linked improvement suggestions could not be checked. The draft was not deleted.',
+      ),
+    ).toBeInTheDocument()
+    expect(suggestionsHandler).toHaveBeenCalledTimes(2)
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/requirements/123/delete-draft',
+      expect.objectContaining({ method: 'POST' }),
+    )
   })
 
   it('requires confirmation for review transitions back to draft and forward to published', async () => {
