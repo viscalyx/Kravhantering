@@ -96,3 +96,18 @@ export interface RequirementVersionResponse {
   uniqueId: string
   version: RequirementVersionDetail
 }
+
+export type DeletedRequirementObject =
+  | {
+      type: 'draftRequirementVersion'
+      requirementUniqueId: string
+      versionNumber: number
+    }
+  | {
+      type: 'requirement'
+      requirementUniqueId: string
+    }
+
+export interface DeleteDraftResult {
+  deleted: DeletedRequirementObject[]
+}

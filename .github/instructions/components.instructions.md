@@ -16,7 +16,7 @@ applyTo: 'components/**/*.tsx'
 
 - Components in `components/` are typically `'use client'` islands that receive data as props from server pages in `app/`.
 - Keep them focused on interactivity. Data fetching and heavy processing belong in the server page.
-- Reference examples: `KravkatalogClient`, `RequirementDetailClient`.
+- Reference examples: `RequirementsClient`, `RequirementDetailClient`.
 
 ## Required
 

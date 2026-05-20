@@ -56,36 +56,73 @@ describe('requirements DAL (SQL Server path)', () => {
     vi.clearAllMocks()
   })
 
-  it('preserves the unique ID for audit before deleting the final requirement row', async () => {
+  it('returns the canonical result when deleting the final draft and requirement row', async () => {
     const { db, query } = createSqlServerDb()
     const audit = vi.fn(async () => undefined)
     query
-      .mockResolvedValueOnce([{ id: 21, statusId: 1 }])
+      .mockResolvedValueOnce([{ id: 21, statusId: 1, versionNumber: 10 }])
+      .mockResolvedValueOnce([{ uniqueId: 'SEC-0001' }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ count: 0 }])
-      .mockResolvedValueOnce([{ uniqueId: 'SEC-0001' }])
       .mockResolvedValueOnce([])
 
     const result = await deleteDraftVersion(db, 7, { audit })
 
     expect(result).toEqual({
-      deleted: 'requirement',
-      deletedUniqueId: 'SEC-0001',
+      deleted: [
+        {
+          requirementUniqueId: 'SEC-0001',
+          type: 'draftRequirementVersion',
+          versionNumber: 10,
+        },
+        { requirementUniqueId: 'SEC-0001', type: 'requirement' },
+      ],
     })
     expect(audit).toHaveBeenCalledWith(
       expect.objectContaining({ query: expect.any(Function) }),
       result,
     )
     const sqlCalls = query.mock.calls.map(([sql]) => String(sql))
-    expect(sqlCalls[5]).toContain(
+    expect(sqlCalls[0]).toContain('version_number AS versionNumber')
+    expect(sqlCalls[1]).toContain(
       'SELECT TOP (1) unique_id AS uniqueId FROM requirements WHERE id = @0',
     )
     expect(sqlCalls[6]).toBe('DELETE FROM requirements WHERE id = @0')
     const auditOrder = audit.mock.invocationCallOrder[0] ?? 0
     const parentDeleteOrder = query.mock.invocationCallOrder[6] ?? 0
     expect(auditOrder).toBeLessThan(parentDeleteOrder)
+  })
+
+  it('returns the canonical result when deleting a draft version only', async () => {
+    const { db, query } = createSqlServerDb()
+    const audit = vi.fn(async () => undefined)
+    query
+      .mockResolvedValueOnce([{ id: 21, statusId: 1, versionNumber: 3 }])
+      .mockResolvedValueOnce([{ uniqueId: 'SEC-0001' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ count: 1 }])
+
+    const result = await deleteDraftVersion(db, 7, { audit })
+
+    expect(result).toEqual({
+      deleted: [
+        {
+          requirementUniqueId: 'SEC-0001',
+          type: 'draftRequirementVersion',
+          versionNumber: 3,
+        },
+      ],
+    })
+    expect(audit).toHaveBeenCalledWith(
+      expect.objectContaining({ query: expect.any(Function) }),
+      result,
+    )
+    const sqlCalls = query.mock.calls.map(([sql]) => String(sql))
+    expect(sqlCalls).not.toContain('DELETE FROM requirements WHERE id = @0')
   })
 
   it('returns null when the requirement does not exist', async () => {

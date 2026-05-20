@@ -48,6 +48,38 @@ Draft regardless of the Published status it had prior to
 being archived, and must go through the full
 Review → Published cycle again.
 
+### Deleting Drafts
+
+The latest Draft version can be deleted before it becomes an
+established business-history version. The delete-draft result is the
+same deletion ledger for REST and MCP: `deleted` is an ordered array
+with the `draftRequirementVersion` entry first, including its
+`requirementUniqueId` and numeric `versionNumber`. If no versions
+remain and the parent requirement row is deleted, the array includes a
+second `requirement` entry for the same `requirementUniqueId`.
+
+```json
+{
+  "deleted": [
+    {
+      "type": "draftRequirementVersion",
+      "requirementUniqueId": "BEH0024",
+      "versionNumber": 10
+    },
+    {
+      "type": "requirement",
+      "requirementUniqueId": "BEH0024"
+    }
+  ]
+}
+```
+
+When the parent requirement remains, the `requirement` item is omitted.
+
+Deleted draft version numbers may be reused by a later draft for the
+same requirement. If the deleted draft was the only version, the
+requirement itself is deleted instead of being archived.
+
 ### Two-Step Archiving
 
 Archiving a published requirement is a two-step review

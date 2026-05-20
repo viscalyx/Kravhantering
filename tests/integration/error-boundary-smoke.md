@@ -5,7 +5,7 @@
 
 This suite verifies that unexpected App Router client render failures show a
 localized recovery surface instead of raw framework output. It covers the
-catalog default path and the admin/reference-data path, including retry
+library default path and the admin/reference-data path, including retry
 affordances, safe navigation links, and suppression of raw technical error
 messages.
 
@@ -17,7 +17,7 @@ flowchart TD
     B --> C{Client error trigger}
     C -- /sv/error-boundary-test --> D[Locale boundary renders Swedish copy]
     C -- /en/admin/error-boundary-test --> E[Locale boundary renders English copy]
-    D --> F[Catalog link is primary]
+    D --> F[Library link is primary]
     E --> G[Admin link is primary]
     F --> H[Test passes]
     G --> H
@@ -42,15 +42,15 @@ flowchart TD
 - Assertions are scoped to the `role="alert"` recovery surface so the suite
   checks the actual fallback UI instead of unrelated navigation chrome.
 
-## shows Swedish catalog recovery for a locale client render failure
+## shows Swedish library recovery for a locale client render failure
 
-### Purpose: Catalog Recovery
+### Purpose: Library Recovery
 
 Verifies that a non-admin client render failure under `/sv` renders Swedish
 recovery copy, hides the raw thrown message, exposes a retry button, and
-prioritizes the requirements catalog as the safe destination.
+prioritizes the requirements library as the safe destination.
 
-### Step-by-Step Flow: Catalog Recovery
+### Step-by-Step Flow: Library Recovery
 
 1. Navigate to `/sv/error-boundary-test`.
 1. Locate the error recovery alert.
@@ -60,7 +60,7 @@ prioritizes the requirements catalog as the safe destination.
 1. Assert the first recovery link is `/sv/requirements`.
 1. Assert the second recovery link is `/sv/admin`.
 
-### Sequence Diagram: Catalog Recovery
+### Sequence Diagram: Library Recovery
 
 ```mermaid
 sequenceDiagram

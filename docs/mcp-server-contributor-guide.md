@@ -136,6 +136,12 @@ Edit calls must first fetch the requirement with `view: "history"` and copy
 tokens to `409 Conflict` details with `reason: "stale_requirement_edit"` and
 the latest requirement snapshot.
 
+Delete-draft results use one canonical shape across REST and MCP:
+`result.deleted` is an ordered deletion ledger. It contains a
+`draftRequirementVersion` item with `requirementUniqueId` and `versionNumber`,
+followed by a `requirement` item for the same `requirementUniqueId` when the
+parent requirement row was also deleted.
+
 The shared service also supports `reactivate` for REST parity, but that
 operation is intentionally not exposed as an MCP tool operation in v1.
 

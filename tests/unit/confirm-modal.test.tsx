@@ -44,12 +44,14 @@ function rect({
 function Trigger({
   anchorMode = 'button',
   defaultCancel = false,
+  dangerDescription,
   icon,
   label,
   showCancel,
   variant,
 }: {
   anchorMode?: 'button' | 'none'
+  dangerDescription?: string
   defaultCancel?: boolean
   icon?: LucideIcon
   label: string
@@ -69,6 +71,7 @@ function Trigger({
               anchorMode === 'none'
                 ? null
                 : (e.currentTarget as HTMLButtonElement),
+            dangerDescription,
             defaultCancel,
             icon,
             message: `Message for ${label}`,
@@ -272,6 +275,34 @@ describe('ConfirmModal', () => {
       expect(screen.getByTestId('above-anchor-result')).toHaveTextContent(
         'true',
       ),
+    )
+  })
+
+  it('renders danger descriptions in red and announces them with the dialog description', async () => {
+    render(
+      <ConfirmModalProvider>
+        <Trigger
+          dangerDescription="This will also delete linked improvement suggestions."
+          label="danger-description"
+          variant="danger"
+        />
+      </ConfirmModalProvider>,
+    )
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'danger-description' }),
+    )
+
+    const dialog = await screen.findByRole('alertdialog')
+    const warning = screen.getByText(
+      'This will also delete linked improvement suggestions.',
+    )
+
+    expect(warning).toHaveClass('text-red-700')
+    expect(warning).toHaveAttribute('id', 'confirm-modal-danger-description')
+    expect(dialog).toHaveAttribute(
+      'aria-describedby',
+      expect.stringContaining('confirm-modal-danger-description'),
     )
   })
 

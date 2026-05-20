@@ -194,7 +194,7 @@ export async function GET(request: NextRequest) {
 
       const csv = exportToCsv(headers, data)
 
-      const filename = isSv ? 'kravkatalog.csv' : 'requirements.csv'
+      const filename = isSv ? 'kravbibliotek.csv' : 'requirements-library.csv'
 
       return new NextResponse(csv, {
         headers: {

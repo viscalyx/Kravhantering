@@ -26,7 +26,8 @@ export interface HighRiskMutationAuditDetail {
   action: string
   addedCount?: number
   decision?: number
-  deleted?: string
+  deletedTypes?: readonly string[]
+  deletedVersionNumber?: number
   deviationId?: number
   locale?: string
   localRequirementId?: number

@@ -34,7 +34,11 @@ agents can use it reliably.
   version. For `operation: "edit"`, first fetch the requirement with
   `view: "history"` and pass `requirement.versions[0].id` and
   `requirement.versions[0].revisionToken` back as
-  `requirement.baseVersionId` and `requirement.baseRevisionToken`.
+  `requirement.baseVersionId` and `requirement.baseRevisionToken`. A
+  successful `operation: "delete_draft"` returns `result.deleted` as an
+  ordered deletion ledger. It contains a `draftRequirementVersion` item with
+  `requirementUniqueId` and `versionNumber`, followed by a `requirement` item
+  when the parent requirement row was also deleted.
 - `requirements_transition_requirement`
   Move a requirement through the lifecycle using a target status ID.
 
@@ -61,7 +65,7 @@ agents can use it reliably.
 
 - `requirements_list_graduation_target_areas`
   List requirement areas the actor may use when graduating a specific
-  specification-local requirement. Use a returned `areas[].id` as
+  unique requirement. Use a returned `areas[].id` as
   `requirementAreaId` for `requirements_graduate_local_requirement`.
 - `requirements_add_to_specification`
   Link one or more requirements to a specification. Requirements must have a
@@ -75,8 +79,8 @@ agents can use it reliably.
   ```
 
 - `requirements_graduate_local_requirement`
-  Copy an Included specification-local requirement into a chosen library
-  requirement area as a new Draft library requirement. The source local
+  Copy an Included unique requirement into a chosen library
+  requirement area as a new Draft library requirement. The source unique
   requirement remains unchanged in the specification, and deviations stay with
   that source row.
 - `requirements_remove_from_specification`
@@ -499,8 +503,8 @@ existing status and risk fields.
 - `Search for requirements about login in specification SAKLYFT-INFOR-Q2.`
 - `Add requirements INT0001 and INT0002 to specification SAKLYFT-INFOR-Q2.`
 - `Add requirement INT0005 to specification GDPR-FORV-2026 with needs reference text "Behov 4.1".` <!-- markdownlint-disable-line MD013 -->
-- `List graduation target areas for local requirement 41 in SAKLYFT-INFOR-Q2.`
-- `Graduate local requirement 41 from specification SAKLYFT-INFOR-Q2 into requirement area 3.` <!-- markdownlint-disable-line MD013 -->
+- `List graduation target areas for unique requirement 41 in SAKLYFT-INFOR-Q2.`
+- `Graduate unique requirement 41 from specification SAKLYFT-INFOR-Q2 into requirement area 3.` <!-- markdownlint-disable-line MD013 -->
 - `Remove requirement INT0003 from specification SAKLYFT-INFOR-Q2.`
 
 > **Note:** Specifications can be identified by `specificationId` (numeric) or
@@ -514,7 +518,7 @@ existing status and risk fields.
 > `requirements_get_specification_items.items[].id` -> `requirementIds`.
 > Requirements must have a published version to be added to a specification.
 > Graduation is copy-only: it creates a new Draft library requirement and leaves
-> the source specification-local requirement unchanged. Graduation requires
+> the source unique requirement unchanged. Graduation requires
 > authorship of the source specification and ownership or co-authorship of the
 > target requirement area. Use `requirements_list_graduation_target_areas` before
 > graduating so the target `requirementAreaId` comes from the actor's allowed

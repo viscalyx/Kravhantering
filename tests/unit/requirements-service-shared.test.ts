@@ -46,7 +46,7 @@ describe('requirements service shared utilities', () => {
         },
       ),
     ).toBe(
-      'Specification-local requirement KRAV0001 was copied to SEC0001 as a draft in Security.',
+      'Unique requirement KRAV0001 was copied to SEC0001 as a draft in Security.',
     )
   })
 })

@@ -411,7 +411,15 @@ describe('createRequirementsService', () => {
       await options?.audit?.({ query: mocks.auditQuery }, undefined)
     })
     mocks.deleteDraftVersion.mockImplementation(async (_db, _id, options) => {
-      const result = { deleted: 'version' as const }
+      const result = {
+        deleted: [
+          {
+            requirementUniqueId: 'INT0001',
+            type: 'draftRequirementVersion' as const,
+            versionNumber: 2,
+          },
+        ],
+      }
       await options?.audit?.({ query: mocks.auditQuery }, result)
       return result
     })
@@ -1081,7 +1089,16 @@ describe('createRequirementsService', () => {
   })
 
   it('deletes a draft', async () => {
-    mocks.deleteDraftVersion.mockResolvedValue({ deleted: 'requirement' })
+    mocks.deleteDraftVersion.mockResolvedValue({
+      deleted: [
+        {
+          requirementUniqueId: 'INT0001',
+          type: 'draftRequirementVersion',
+          versionNumber: 2,
+        },
+        { requirementUniqueId: 'INT0001', type: 'requirement' },
+      ],
+    })
     mocks.getRequirementById
       .mockResolvedValueOnce(makeRequirementRecord())
       .mockResolvedValueOnce(null)
@@ -1559,7 +1576,7 @@ describe('createRequirementsService', () => {
     expect(result.areas).toEqual([{ id: 2, name: 'Security', prefix: 'SEC' }])
     expect(JSON.parse(result.message)).toEqual({
       lines: ['1 requirement area(s) can receive the copy.'],
-      title: 'Library Target Areas',
+      title: 'Requirements Library Target Areas',
     })
   })
 
@@ -1586,7 +1603,7 @@ describe('createRequirementsService', () => {
     expect(result.areas).toEqual([])
     expect(JSON.parse(result.message)).toEqual({
       lines: ['0 requirement area(s) can receive the copy.'],
-      title: 'Library Target Areas',
+      title: 'Requirements Library Target Areas',
     })
   })
 
@@ -1696,9 +1713,9 @@ describe('createRequirementsService', () => {
     )
     expect(JSON.parse(result.message)).toEqual({
       lines: [
-        'Specification-local requirement KRAV0001 was copied to SEC0001 as a draft in Security.',
+        'Unique requirement KRAV0001 was copied to SEC0001 as a draft in Security.',
       ],
-      title: 'Requirement Graduated to Library',
+      title: 'Unique Requirement Graduated to Requirements Library',
     })
     expect(emittedSecurityEvents()).toEqual([
       expect.objectContaining({
@@ -1797,8 +1814,14 @@ describe('createRequirementsService', () => {
   it('uses the delete-draft result unique ID for final-requirement audit events', async () => {
     mocks.deleteDraftVersion.mockImplementation(async (_db, _id, options) => {
       const result = {
-        deleted: 'requirement' as const,
-        deletedUniqueId: 'SEC-0001',
+        deleted: [
+          {
+            requirementUniqueId: 'SEC-0001',
+            type: 'draftRequirementVersion' as const,
+            versionNumber: 10,
+          },
+          { requirementUniqueId: 'SEC-0001', type: 'requirement' as const },
+        ],
       }
       await options?.audit?.({ query: mocks.auditQuery }, result)
       return result
@@ -1821,7 +1844,8 @@ describe('createRequirementsService', () => {
       expect.objectContaining({
         detail: expect.objectContaining({
           action: 'requirement.draft.deleted',
-          deleted: 'requirement',
+          deletedTypes: ['draftRequirementVersion', 'requirement'],
+          deletedVersionNumber: 10,
           operation: 'delete_draft',
           requirementId: 1,
           requirementUniqueId: 'SEC-0001',

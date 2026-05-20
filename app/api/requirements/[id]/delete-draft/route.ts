@@ -7,6 +7,7 @@ import {
 import { refOrPositiveIntegerSegmentSchema } from '@/lib/http/validation'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { toHttpErrorPayload } from '@/lib/requirements/service'
+import type { DeleteDraftResult } from '@/lib/requirements/types'
 import { parseRequirementRef } from '../../parse-requirement-ref'
 
 export const dynamic = 'force-dynamic'
@@ -14,6 +15,35 @@ export const dynamic = 'force-dynamic'
 const requirementRefParamsSchema = z
   .object({
     id: refOrPositiveIntegerSegmentSchema,
+  })
+  .strict()
+
+const deletedDraftRequirementVersionSchema = z
+  .object({
+    type: z.literal('draftRequirementVersion'),
+    requirementUniqueId: z.string(),
+    versionNumber: z.number().int().positive(),
+  })
+  .strict()
+
+const deletedRequirementSchema = z
+  .object({
+    type: z.literal('requirement'),
+    requirementUniqueId: z.string(),
+  })
+  .strict()
+
+const deleteDraftResultSchema = z
+  .object({
+    deleted: z
+      .array(
+        z.discriminatedUnion('type', [
+          deletedDraftRequirementVersionSchema,
+          deletedRequirementSchema,
+        ]),
+      )
+      .min(1)
+      .max(2),
   })
   .strict()
 
@@ -38,7 +68,10 @@ export const POST = secureMutationRoute({
         ...ref,
         operation: 'delete_draft',
       })
-      return NextResponse.json(result.result)
+      const deleteResult: DeleteDraftResult = deleteDraftResultSchema.parse(
+        result.result,
+      )
+      return NextResponse.json(deleteResult)
     } catch (error) {
       const { body, status } = toHttpErrorPayload(error)
       return NextResponse.json(body, { status })

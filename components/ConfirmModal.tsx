@@ -27,6 +27,7 @@ interface ConfirmOptions {
   anchorEl?: HTMLElement | null
   cancelText?: string
   confirmText?: string
+  dangerDescription?: string
   defaultCancel?: boolean
   icon?: IconPreset | LucideIcon
   message: string
@@ -228,6 +229,14 @@ function ConfirmModalInner({
 
   const titleId = 'confirm-modal-title'
   const messageId = 'confirm-modal-message'
+  const dangerDescriptionId = 'confirm-modal-danger-description'
+  const describedBy =
+    [
+      modal?.title ? messageId : undefined,
+      modal?.dangerDescription ? dangerDescriptionId : undefined,
+    ]
+      .filter(Boolean)
+      .join(' ') || undefined
 
   return (
     <AnimatePresence>
@@ -247,7 +256,7 @@ function ConfirmModalInner({
 
           {/* Dialog */}
           <motion.div
-            aria-describedby={modal.title ? messageId : undefined}
+            aria-describedby={describedBy}
             aria-labelledby={modal.title ? titleId : messageId}
             aria-modal="true"
             className="fixed z-50 w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-white dark:bg-secondary-900 shadow-2xl"
@@ -286,6 +295,14 @@ function ConfirmModalInner({
                   >
                     {modal.message}
                   </p>
+                  {modal.dangerDescription && (
+                    <p
+                      className="mt-3 text-sm font-medium text-red-700 dark:text-red-400"
+                      id={dangerDescriptionId}
+                    >
+                      {modal.dangerDescription}
+                    </p>
+                  )}
                 </div>
               </div>
 

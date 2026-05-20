@@ -33,24 +33,24 @@ const translations: Record<string, string> = {
   'deviation.title': 'Deviation',
   'specification.deleteLocalRequirementConfirm': 'Delete this requirement?',
   'specification.deleteLocalRequirementConfirmTitle':
-    'Delete local requirement',
+    'Delete unique requirement',
   'specification.localRequirementActionDisabledTooltip':
-    'This local requirement can only be edited or removed when Usage status is Included and no deviation is pending.',
+    'This unique requirement can only be edited or removed when Usage status is Included and no deviation is pending.',
   'specification.graduateLocalRequirement': 'Graduate to library',
   'specification.graduateLocalRequirementConfirm':
-    'Create a new draft library requirement from this local requirement? The local requirement stays in this specification.',
+    'Create a new draft library requirement from this unique requirement? The unique requirement stays in this specification.',
   'specification.graduateLocalRequirementConfirmText': 'Graduate',
   'specification.graduateLocalRequirementConfirmTitle':
-    'Graduate local requirement',
+    'Graduate unique requirement',
   'specification.graduateLocalRequirementDisabledTooltip':
-    'This local requirement can only be graduated when Usage status is Included.',
+    'This unique requirement can only be graduated when Usage status is Included.',
   'specification.graduateLocalRequirementFailed':
-    'Could not graduate the local requirement.',
+    'Could not graduate the unique requirement.',
   'specification.graduateLocalRequirementTargetHelp':
     'Choose the library area where the copied draft requirement should be created.',
   'specification.graduateLocalRequirementTargetLabel': 'Requirement area',
-  'specification.editLocalRequirement': 'Edit local requirement',
-  'specification.localRequirementNotFound': 'Local requirement not found',
+  'specification.editLocalRequirement': 'Edit unique requirement',
+  'specification.localRequirementNotFound': 'Unique requirement not found',
   'specification.needsReference': 'Needs reference',
   'requirement.acceptanceCriteria': 'Acceptance criteria',
   'requirement.area': 'Area',
@@ -59,8 +59,7 @@ const translations: Record<string, string> = {
   'requirement.normReferences': 'Norm references',
   'requirement.specificationItemStatus': 'Specification item status',
   'requirement.specificationLocalBadge': 'Unique',
-  'requirement.specificationLocalTooltip':
-    'This row is a specification-local requirement.',
+  'requirement.specificationLocalTooltip': 'This row is a unique requirement.',
   'requirement.qualityCharacteristic': 'Quality characteristic',
   'requirement.requiresTesting': 'Requires testing',
   'requirement.riskLevel': 'Risk level',
@@ -341,7 +340,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
   })
 
-  it('graduates an Included local requirement into the selected library area', async () => {
+  it('graduates an Included unique requirement into the selected library area', async () => {
     const onChange = vi.fn()
     vi.mocked(fetch)
       .mockImplementationOnce(() =>
@@ -408,13 +407,13 @@ describe('SpecificationLocalRequirementDetailClient', () => {
       await screen.findByRole('button', { name: 'Graduate to library' }),
     )
     const dialog = screen.getByRole('dialog', {
-      name: 'Graduate local requirement',
+      name: 'Graduate unique requirement',
     })
     expect(dialog).toHaveAttribute('aria-modal', 'true')
     expect(dialog.parentElement?.firstElementChild).toHaveClass('bg-black/45')
     expect(
       screen.getByText(
-        'Create a new draft library requirement from this local requirement? The local requirement stays in this specification.',
+        'Create a new draft library requirement from this unique requirement? The unique requirement stays in this specification.',
       ),
     ).toBeInTheDocument()
     expect(screen.getByLabelText('Requirement area')).toBeInTheDocument()
@@ -443,7 +442,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
         okJson({
           acceptanceCriteria: 'Specification local acceptance',
           createdAt: '2026-04-01T00:00:00.000Z',
-          description: 'Locked local requirement',
+          description: 'Locked unique requirement',
           id: 1,
           itemRef: 'local:1',
           needsReference: 'Need A',
@@ -480,7 +479,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     )
 
     expect(
-      await screen.findByText('Locked local requirement'),
+      await screen.findByText('Locked unique requirement'),
     ).toBeInTheDocument()
     const editButton = await screen.findByRole('button', { name: 'Edit' })
     const deleteButton = screen.getByRole('button', { name: 'Delete' })
@@ -496,15 +495,15 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(deleteButton.className).not.toContain('disabled:text-secondary-400')
     expect(editButton.parentElement).toHaveAttribute(
       'title',
-      'This local requirement can only be edited or removed when Usage status is Included and no deviation is pending.',
+      'This unique requirement can only be edited or removed when Usage status is Included and no deviation is pending.',
     )
     expect(deleteButton.parentElement).toHaveAttribute(
       'title',
-      'This local requirement can only be edited or removed when Usage status is Included and no deviation is pending.',
+      'This unique requirement can only be edited or removed when Usage status is Included and no deviation is pending.',
     )
     expect(graduateButton.parentElement).toHaveAttribute(
       'title',
-      'This local requirement can only be graduated when Usage status is Included.',
+      'This unique requirement can only be graduated when Usage status is Included.',
     )
   })
 
@@ -581,7 +580,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(deleteButton.className).not.toContain('disabled:text-secondary-400')
     expect(editButton.parentElement).toHaveAttribute(
       'title',
-      'This local requirement can only be edited or removed when Usage status is Included and no deviation is pending.',
+      'This unique requirement can only be edited or removed when Usage status is Included and no deviation is pending.',
     )
   })
 })

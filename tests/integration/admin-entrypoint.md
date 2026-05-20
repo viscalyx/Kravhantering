@@ -4,7 +4,7 @@
 > [`admin-entrypoint.spec.ts`](tests/integration/admin-entrypoint.spec.ts)
 
 This suite verifies the administration centre entrypoint: navigating from the
-requirements catalogue, persisting terminology and column-order changes across
+requirements library, persisting terminology and column-order changes across
 page reloads, preserving the selected reference-data tab in browser history,
 touch-target accessibility on mobile, and locale-specific page loads.
 
@@ -101,12 +101,12 @@ sequenceDiagram
     Note over P: ✓ h1 = "Administrationscenter"
 ```
 
-## persists terminology and column changes through catalog reloads
+## persists terminology and column changes through library reloads
 
 ### Purpose: Persist Changes
 
 Confirms that renaming a terminology entry and reordering columns in the admin
-centre are immediately reflected in the requirements catalogue and survive a
+centre are immediately reflected in the requirements library and survive a
 hard page reload.
 
 ### Step-by-Step Flow: Persist Changes
@@ -115,7 +115,7 @@ hard page reload.
 1. Read the current singular label for "Kategorier".
 1. Switch to the Kolumner tab and read the current column order.
 1. Compute a target order that swaps `area` and `category`.
-1. Switch to the Benämningar tab, append `" test"` to the category label,
+1. Switch to the Terminologi tab, append `" test"` to the category label,
    and click "Spara". Assert "Sparat" appears.
 1. Switch to the Kolumner tab, apply the target order via `setAdminColumnOrder`,
    and click "Spara". Assert "Sparat" appears.
@@ -214,7 +214,7 @@ correctly.
 ### Step-by-Step Flow: Mobile Touch Targets
 
 1. Navigate to `/sv/admin` on the `375×812` mobile viewport.
-1. Locate the Benämningar, Kolumner, and Referensdata tabs and the tablist.
+1. Locate the Terminologi, Kolumner, and Referensdata tabs and the tablist.
 1. Assert the tablist `scrollWidth` exceeds its `clientWidth` (tabs overflow
    horizontally and are scrollable).
 1. Assert each of the three tabs meets the 44×44 px touch-target minimum.

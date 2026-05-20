@@ -160,19 +160,19 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Specification-local inline detail views in specification context use the
   `requirements specification detail` context with
   `detail pane: specification-local requirement`.
-- The shared requirement-content card inside both catalog requirement
+- The shared requirement-content card inside both library requirement
   details and specification-local inline details exposes the same
   `detail section` markers for requirement text, acceptance criteria,
   metadata, references, and requirement packages. Specification-local
   requirement-package and reference chips also inherit the same marker naming
-  pattern as the catalog detail card.
+  pattern as the library detail card.
 - Specification-local inline detail views also expose the same
   `report print button` surface on the right-side action rail as the
   specification-item detail layout, while their local edit/delete controls
   continue to use `detail action`.
 - Specification-local inline detail actions now use `detail action` markers
   for the right-side edit, delete, and graduate-to-library buttons, mirroring
-  the catalog detail-card action column pattern.
+  the library detail-card action column pattern.
 - The specification-local right-side action rail now mirrors the specification-item
   rail's stacked button sizing and spacing. Opening the graduation target-area
   picker adds the shared `dialog` marker with value
@@ -184,19 +184,19 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   In either disabled state the controls are visually muted, but this
   state change does not add any new developer-mode markers.
 - Specification-local inline details now also use the same outer inset as the
-  catalog inline detail surface; this is a layout-only alignment change
+  library inline detail surface; this is a layout-only alignment change
   and does not add any new developer-mode markers.
-- Specification-context catalog requirement details expose the specification report
+- Specification-context library requirement details expose the specification report
   trigger as `report print button: specification reports`. Its specification menu
   entries use `report option` values `print history`,
   `download history pdf`, `print suggestion history`,
   `download suggestion history pdf`, `print deviation review`, and
   `download deviation review pdf` when those report paths are available.
-- Specification-context catalog requirement details may expose the extra
+- Specification-context library requirement details may expose the extra
   `detail section` values `needs reference` and `specification item status`
   when the requirement is opened from `Krav i kravunderlag`.
 - The specification-detail header may visually regroup the title,
-  business-needs reference, responsible person, and short metadata summary into
+  specification purpose, responsible person, and short metadata summary into
   a compact layout where the metadata row sits to the right of the title on
   wide screens and the metadata cards stay on one horizontal row. That layout
   does not introduce any separate developer-mode marker beyond the existing edit
@@ -227,7 +227,7 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   into a viewport-locked full-width shell, but that layout change does
   not add any new developer-mode markers beyond the existing table
   surfaces.
-- The fixed-right rail on the main requirements catalog can also expose
+- The fixed-right rail on the main requirements library can also expose
   a `requirements table` marker for `table action: scroll to top`; it
   remains the last grouped pill in that rail when shown.
 - Bulk-add failures from the specification-detail available-requirements

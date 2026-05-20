@@ -1,13 +1,13 @@
 <!-- AUTO-GENERERAD — redigera inte manuellt. Kör: npm run generate:guide -->
 # Kravhantering — Användarguide
 
-> Guiden genererades automatiskt av Playwright 2026-05-17.
+> Guiden genererades automatiskt av Playwright 2026-05-19.
 > Alla skärmdumpar visar det svenska gränssnittet.
 
 ## Innehållsförteckning
 
 1. [Översikt och navigering](#översikt-och-navigering)
-2. [Kravkatalogen](#kravkatalogen)
+2. [Kravbiblioteket](#kravbiblioteket)
 3. [Skapa ett nytt krav](#skapa-ett-nytt-krav)
 4. [Kravdetaljer och statusövergångar](#kravdetaljer-och-statusövergångar)
 5. [Kravunderlag](#kravunderlag)
@@ -19,16 +19,16 @@
 
 ## Översikt och navigering
 
-### Startsida — Kravkatalogen
+### Startsida — Kravbiblioteket
 
-Kravhantering öppnas i Kravkatalogen som är programmets centrala nav. Härifrån
+Kravhantering öppnas i Kravbiblioteket som är programmets centrala nav. Härifrån
 kan du söka, filtrera och hantera alla krav i systemet.
 
-![Startsida — Kravkatalogen](images/001-startsida.png)
+![Startsida — Kravbiblioteket](images/001-startsida.png)
 
 ### Navigationsfält
 
-Det övre navigationsfältet ger åtkomst till alla huvuddelar: **Kravkatalogen**
+Det övre navigationsfältet ger åtkomst till alla huvuddelar: **Kravbiblioteket**
 (Krav), **Kravunderlag**, **Admininställningar** (kugghjulsikonen) samt
 language-väljare och tema (ljust/mörkt läge).
 
@@ -44,15 +44,15 @@ användaren själv väljer för varje krav.
 
 ![Språkväljare](images/003-sprakväljare.png)
 
-## Kravkatalogen
+## Kravbiblioteket
 
-### Kravkatalogen — Översikt
+### Kravbiblioteket — Översikt
 
-Kravkatalogen listar alla krav i en sorterbar och filtrerbar tabell. Varje rad
+Kravbiblioteket listar alla krav i en sorterbar och filtrerbar tabell. Varje rad
 visar nyckeluppgifter som ID, kravtext, område, status och risknivå. Kolumnerna
 kan konfigureras efter behov.
 
-![Kravkatalogen — Översikt](images/004-kravkatalog.png)
+![Kravbiblioteket — Översikt](images/004-kravbibliotek.png)
 
 ### Kolumnkonfiguration
 
@@ -80,8 +80,8 @@ utanför för att tillämpa filtret. Tryck Esc för att stänga filterfältet.
 
 ### Inline-detaljvy
 
-Klicka på en rad i kravkatalogen för att öppna inline-detaljvyn direkt i
-tabellen. Detta är det primära arbetsflödet — du behöver inte lämna katalogen
+Klicka på en rad i kravbiblioteket för att öppna inline-detaljvyn direkt i
+tabellen. Detta är det primära arbetsflödet — du behöver inte lämna biblioteket
 för att se eller hantera ett krav.
 
 Du kan också öppna kravets detaljsida direkt via kravets stabila ID:
@@ -119,10 +119,10 @@ följer en översikt av varje egenskap och hur den stödjer kravets livscykel.
 
 ### Versionshistorik
 
-Redigering av ett publicerat krav samt återställning av ett arkiverat krav
-skapar en ny version. Versionshistoriken visar alla versioner med tidsstämplar,
-status och vem som gjorde ändringen. Du kan navigera till äldre versioner för
-att se den historiska lydelsen.
+Redigering av ett publicerat krav samt återskapande av ett arkiverat krav skapar
+en ny version. Versionshistoriken visar alla versioner med tidsstämplar, status
+och vem som gjorde ändringen. Du kan navigera till äldre versioner för att se
+den historiska lydelsen.
 
 När ett krav har fler versioner än vad som ryms i vyn visas en knapp med "+N"
 som visar hur många dolda versioner det finns. Klicka på den för att expandera
@@ -150,10 +150,10 @@ det tillfället. Användbara för revision och spårbarhet.
 
 ### Skapa krav — tomt formulär
 
-Navigera till "Skapa nytt krav" via knappen i katalogen. Formuläret innehåller
-fält för alla kravegenskaper: kravtext, acceptanskriterier, område, kategori,
-typ, risknivå, kvalitetsegenskaper, verifieringsmetod, normreferenser och
-kravpaket.
+Navigera till "Skapa nytt krav" via knappen i kravbiblioteket. Formuläret
+innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier, område,
+kategori, typ, risknivå, kvalitetsegenskaper, verifieringsmetod, normreferenser
+och kravpaket.
 
 ![Skapa krav — tomt formulär](images/013-nytt-krav-tomt.png)
 
@@ -167,7 +167,7 @@ asterisk (*). Klicka på "Spara" när formuläret är komplett.
 
 ### Krav skapat
 
-Efter att formuläret sparats återgår applikationen till kravkatalogen med det
+Efter att formuläret sparats återgår applikationen till kravbiblioteket med det
 nyss skapade kravet öppet i inline-detaljvyn. Kravet startar i status
 **Utkast**.
 
@@ -263,11 +263,12 @@ markerat.
 
 ### Lägg till krav — behovsreferens
 
-När du lägger till krav i ett underlag kan du koppla en **behovsreferens** till
-dem. En behovsreferens är en fritext som beskriver det verksamhetsbehov eller
-funktionella krav som kravet ska uppfylla i det här underlaget — t.ex. ett
-ärendenummer, ett mål eller ett avsnitt i en kravspecifikation. Du kan välja en
-befintlig referens eller skriva en ny. Fältet är valfritt.
+När du lägger till krav i ett kravunderlag kan du koppla en **behovsreferens**
+till kravtillämpningen. En behovsreferens är en fritext som förklarar varför
+kravet behövs i just det här kravunderlaget och kan ge stöd för när kravet ska
+verifieras — t.ex. ett ärendenummer, ett mål eller ett avsnitt i ett
+kravunderlag. Du kan välja en befintlig referens eller skriva en ny. Fältet är
+valfritt.
 
 ![Lägg till krav — behovsreferens](images/026-lagg-till-krav-modal.png)
 
@@ -395,18 +396,18 @@ alla inkomna synpunkter på kravet.
 
 ## Administrationscenter
 
-### Admin — Benämningar
+### Admin — Terminologi
 
-Administrationscenterets flik **Benämningar** låter dig anpassa
+Administrationscenterets flik **Terminologi** låter dig anpassa
 gränssnittsetiketter för domänspecifika termer. Till exempel kan "Kravtext" byta
 namn till en term som passar din organisations vokabulär.
 
-![Admin — Benämningar](images/041-admin-benamningar.png)
+![Admin — Terminologi](images/041-admin-terminologi.png)
 
 ### Admin — Kolumnhantering
 
 Fliken **Kolumner** konfigurerar vilka kolumner som visas som standard i
-kravkatalogen och deras ordning. Ändringar gäller för alla användare. Du kan
+kravbiblioteket och deras ordning. Ändringar gäller för alla användare. Du kan
 också ange standardvyer för olika kontexter.
 
 ![Admin — Kolumnhantering](images/042-admin-kolumner.png)
@@ -440,8 +441,8 @@ ryggraden i arbetsflödet. Övriga statusar kan anpassas.
 ### Risknivåer
 
 Risknivåer klassificerar kravets kritikalitet. Varje nivå kan tilldelas en färg
-för visuell identifiering i katalogen och detaljvyer. Färgkodningen gör det
-enkelt att snabbt bedöma ett kravs vikt.
+för visuell identifiering i kravbiblioteket och detaljvyer. Färgkodningen gör
+det enkelt att snabbt bedöma ett kravs vikt.
 
 ![Risknivåer](images/046-risknivåer.png)
 
@@ -511,12 +512,12 @@ publicerad/arkiverad version finns noteras detta.
 ### Kombinerad granskningsrapport
 
 En samlad rapport för flera krav som har status *Granskning*. Rapporten
-genereras genom att markera flera krav i katalogen. Den innehåller en
+genereras genom att markera flera krav i kravbiblioteket. Den innehåller en
 innehållsförteckning med sidnummer, grupperad efter rapporttyp
 (arkiveringsförfrågningar först, sedan granskningsändringar). Varje krav börjar
 på en ny sida.
 
-**Åtkomst:** Flytande verktygsfält i kravkatalogen när minst ett markerat krav
+**Åtkomst:** Flytande verktygsfält i kravbiblioteket när minst ett markerat krav
 har status *Granskning*.
 
 **Rutt:** `/requirements/reports/print/review-combined?ids=...` (utskrift) ·
@@ -537,11 +538,11 @@ avsteget är i status *Granskning begärd* eller *Beslutad*).
 
 ### Kravlista
 
-Skriver ut de krav som för närvarande visas i kravkatalogen som en formaterad
+Skriver ut de krav som för närvarande visas i kravbiblioteket som en formaterad
 tabell med Krav-ID, kravtext (trunkerad), område och status. Rubriken visar
 antal krav och tidsstämpel.
 
-**Åtkomst:** Utskriftsknappen i kravkatalogens verktygsfält (alltid
+**Åtkomst:** Utskriftsknappen i kravbibliotekets verktygsfält (alltid
 tillgänglig).
 
 **Rutt:** `/requirements/reports/print/list?ids=...` (utskrift) ·
@@ -551,7 +552,7 @@ tillgänglig).
 
 Skriver ut kraven som ingår i ett specifikt kravunderlag som en formaterad
 tabell. Rapporten inkluderar underlagets metadata (namn, ID, verksamhetsområde,
-genomförandeform, behovsreferens) som rubrik.
+genomförandeform, underlagssyfte) som rubrik.
 
 **Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält.
 
@@ -570,13 +571,13 @@ begärd* (gul), *Beslutad* (grön), *Avvisad* (röd).
 **Rutt:** `/requirements/reports/print/suggestion-history/[id]` (utskrift) ·
 `/requirements/reports/pdf/suggestion-history/[id]` (PDF)
 
-### Rapportgenerering från katalogen
+### Rapportgenerering från kravbiblioteket
 
-Markera ett eller flera krav i katalogen för att aktivera rapportknappar i
+Markera ett eller flera krav i kravbiblioteket för att aktivera rapportknappar i
 verktygsfältet. Du kan generera PDF-rapporter för granskningsunderlag,
 avstegsöversikter, ändringshistorik och mer.
 
-![Rapportgenerering från katalogen](images/058-rapporter-kravkatalog.png)
+![Rapportgenerering från kravbiblioteket](images/058-rapporter-kravbibliotek.png)
 
 ### Rapporter från kravdetaljsidan
 

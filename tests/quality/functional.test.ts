@@ -916,7 +916,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       appDb(),
       spec.id,
       {
-        description: 'Specification-local requirement',
+        description: 'Unique requirement',
       },
     )
 
@@ -1430,7 +1430,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       spec.id,
       {
         acceptanceCriteria: 'Copied acceptance',
-        description: 'Copied local requirement',
+        description: 'Copied unique requirement',
         normReferenceIds: [normReference.id],
         requirementAreaId: sourceArea.id,
         requirementPackageIds: [requirementPackage.id],
@@ -1539,7 +1539,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         acceptanceCriteria: 'Copied acceptance',
         createdBy: 'Functional Test Actor',
         createdByHsaId: 'SE5560000001-functional1',
-        description: 'Copied local requirement',
+        description: 'Copied unique requirement',
         requirementAreaId: targetArea.id,
         requiresTesting: 1,
         statusId: STATUS_DRAFT,

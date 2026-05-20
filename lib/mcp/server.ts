@@ -140,6 +140,35 @@ const GraduationTargetAreasOutputSchema = z
   })
   .strict()
 
+const DeletedDraftRequirementVersionOutputSchema = z
+  .object({
+    type: z.literal('draftRequirementVersion'),
+    requirementUniqueId: z.string(),
+    versionNumber: z.number().int().positive(),
+  })
+  .strict()
+
+const DeletedRequirementOutputSchema = z
+  .object({
+    type: z.literal('requirement'),
+    requirementUniqueId: z.string(),
+  })
+  .strict()
+
+const DeleteDraftResultOutputSchema = z
+  .object({
+    deleted: z
+      .array(
+        z.discriminatedUnion('type', [
+          DeletedDraftRequirementVersionOutputSchema,
+          DeletedRequirementOutputSchema,
+        ]),
+      )
+      .min(1)
+      .max(2),
+  })
+  .strict()
+
 const ManageRequirementOutputSchema = z
   .object({
     detail: RequirementDetailOutputSchema.optional().describe(
@@ -148,9 +177,9 @@ const ManageRequirementOutputSchema = z
     message: z.string(),
     operation: z.string(),
     result: z
-      .record(z.string(), z.unknown())
+      .union([DeleteDraftResultOutputSchema, z.record(z.string(), z.unknown())])
       .describe(
-        'Operation result. Edit results include the updated version id.',
+        'Operation result. Edit results include the updated version id. Delete-draft results include a deleted array with the draftRequirementVersion entry first and the parent requirement entry second when the requirement was also deleted.',
       ),
   })
   .strict()
@@ -931,7 +960,9 @@ function createGraduationTargetAreasSchema() {
         .number()
         .int()
         .positive()
-        .describe('Numeric specification-local requirement ID to inspect.'),
+        .describe(
+          'Numeric ID of the specification-local requirement to inspect; clients must send it as localRequirementId (also called unique requirement in the UI).',
+        ),
       responseFormat: ResponseFormatSchema,
       specificationId: z
         .number()
@@ -967,7 +998,9 @@ function createGraduateLocalRequirementSchema() {
         .number()
         .int()
         .positive()
-        .describe('Numeric specification-local requirement ID to copy.'),
+        .describe(
+          'Numeric ID of the specification-local requirement to copy; clients must send it as localRequirementId (also called unique requirement in the UI).',
+        ),
       requirementAreaId: z
         .number()
         .int()
@@ -1258,10 +1291,10 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List/search paginated requirements or fetch lookup catalogs: areas, categories, types, quality_characteristics, risk_levels, specification_item_statuses, statuses, requirement_packages, and transitions. Requirement filters, sorting, limit, and offset apply only when catalog is "requirements".',
+        'List/search paginated requirements in the requirements library or fetch lookup catalogs: areas, categories, types, quality_characteristics, risk_levels, specification_item_statuses, statuses, requirement_packages, and transitions. Requirement filters, sorting, limit, and offset apply only when catalog is "requirements".',
       inputSchema: createQueryCatalogSchema(),
       outputSchema: QueryCatalogOutputSchema,
-      title: 'Query Requirements Catalog',
+      title: 'Query Requirements Library',
     },
     async input => {
       try {
@@ -1620,7 +1653,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List the requirement areas this actor may use as targets when copying an Included specification-local requirement into the library. Use requirements_list_specifications and requirements_get_specification_items to identify the source, pass the same specificationId or specificationSlug plus localRequirementId here, then use one returned areas[].id value as requirements_graduate_local_requirement requirementAreaId.',
+        'List the requirement areas this actor may use as targets when copying an Included unique requirement into the library. Use requirements_list_specifications and requirements_get_specification_items to identify the source, pass the same specificationId or specificationSlug plus localRequirementId here, then use one returned areas[].id value as requirements_graduate_local_requirement requirementAreaId.',
       inputSchema: createGraduationTargetAreasSchema(),
       outputSchema: GraduationTargetAreasOutputSchema,
       title: 'List Graduation Target Areas',
@@ -1654,7 +1687,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: false,
       },
       description:
-        'Copy an Included specification-local requirement into a chosen library requirement area as a new Draft library requirement. The source local requirement remains unchanged in its requirements specification, and deviations stay attached to the local requirement. Use requirements_list_specifications and requirements_get_specification_items to identify the source, then call requirements_list_graduation_target_areas and use one returned areas[].id value as requirementAreaId.',
+        'Copy an Included unique requirement into a chosen library requirement area as a new Draft library requirement. The source unique requirement remains unchanged in its specification, and deviations stay attached to the unique requirement. Use requirements_list_specifications and requirements_get_specification_items to identify the source, then call requirements_list_graduation_target_areas and use one returned areas[].id value as requirementAreaId.',
       inputSchema: createGraduateLocalRequirementSchema(),
       outputSchema: GraduateLocalRequirementOutputSchema,
       title: 'Graduate Local Requirement to Library',

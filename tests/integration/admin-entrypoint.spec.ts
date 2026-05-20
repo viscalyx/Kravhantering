@@ -167,7 +167,7 @@ for (const { name, viewport } of viewportVariants) {
       )
     })
 
-    test(`persists terminology and column changes through catalog reloads (${name})`, async ({
+    test(`persists terminology and column changes through library reloads (${name})`, async ({
       page,
     }) => {
       await page.goto('/sv/admin')
@@ -182,7 +182,7 @@ for (const { name, viewport } of viewportVariants) {
       const originalOrder = await getAdminColumnOrder(page)
       const targetOrder = swapColumns(originalOrder, 'area', 'category')
 
-      await page.getByRole('tab', { name: 'Benämningar' }).click()
+      await page.getByRole('tab', { name: 'Terminologi' }).click()
       await categorySingularInput.fill(renamedCategoryLabel)
       await page.getByRole('button', { name: 'Spara' }).click()
       await expect(page.getByText('Sparat')).toBeVisible()
@@ -299,7 +299,7 @@ for (const { name, viewport } of viewportVariants) {
       }) => {
         await page.goto('/sv/admin')
 
-        const terminologyTab = page.getByRole('tab', { name: 'Benämningar' })
+        const terminologyTab = page.getByRole('tab', { name: 'Terminologi' })
         const columnsTab = page.getByRole('tab', { name: 'Kolumner' })
         const referenceDataTab = page.getByRole('tab', {
           name: 'Referensdata',

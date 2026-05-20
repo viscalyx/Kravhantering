@@ -57,7 +57,7 @@ function createService() {
   const queryCatalog = vi.fn(async (_context: RequestContext) => ({
     catalog: 'requirements' as const,
     items: [],
-    message: 'Requirement catalog',
+    message: 'Requirements Library',
     pagination: {
       count: 0,
       hasMore: false,

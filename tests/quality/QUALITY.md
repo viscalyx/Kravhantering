@@ -149,7 +149,7 @@ because the historical record itself mutates.
 
 **The requirement:** Draft versions may be edited in place. Published edits
 must create a new draft. Review content must return to draft before editing.
-Archived content must be restored or reactivated before editing.
+Archived content must be restored before editing.
 
 **How to verify:**
 
@@ -204,7 +204,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 5: archived
 "Deviated" directly, specification dashboards and reports imply an approved risk
 exception that never happened.
 
-**The requirement:** Library items and specification-local requirements
+**The requirement:** Library items and unique requirements
 may enter the Deviated state only after an approved deviation decision
 exists for that exact item kind.
 
@@ -516,9 +516,9 @@ joins, and leaves the original local row untouched. Without this fitness
 scenario, a later implementation could silently revert to the old replace/link
 idea and move or delete evidence from the source specification.
 
-**The requirement:** Graduation must be copy-only. The source
-specification-local requirement, its usage status, note, source area hint, and
-local deviations remain unchanged; the target library requirement is a new
+**The requirement:** Graduation must be copy-only. The source unique
+requirement, its usage status, note, source area hint, and local deviations
+remain unchanged; the target library requirement is a new
 Draft in the chosen requirement area, even when that target differs from the
 source hint.
 

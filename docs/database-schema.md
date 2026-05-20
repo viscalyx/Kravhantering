@@ -1,7 +1,7 @@
 # Database Schema Documentation
 
 This document describes the complete database schema for
-**Kravkatalog** — a requirements management system built
+**Kravbibliotek** — a requirements management system built
 on Microsoft SQL Server using TypeORM.
 
 The schema is defined by TypeORM entities under

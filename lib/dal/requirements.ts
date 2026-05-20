@@ -26,6 +26,7 @@ import {
   STATUS_PUBLISHED,
   STATUS_REVIEW,
 } from '@/lib/requirements/status-constants.mjs'
+import type { DeleteDraftResult } from '@/lib/requirements/types'
 import {
   buildRequirementCountSql,
   buildRequirementListSql,
@@ -369,11 +370,6 @@ interface CreateRequirementResult {
   version: VersionInsertedRow
 }
 
-interface DeleteDraftVersionResult {
-  deleted: 'requirement' | 'version'
-  deletedUniqueId?: string
-}
-
 function mapRequirement(row: Record<string, unknown>): RequirementInsertedRow {
   return {
     id: Number(row.id),
@@ -544,6 +540,7 @@ interface VersionLite {
   riskLevelId: number | null
   statusId: number
   verificationMethod: string | null
+  versionNumber: number
 }
 
 async function getLatestVersionLite(
@@ -556,6 +553,7 @@ async function getLatestVersionLite(
     `SELECT TOP (1)
         id,
         revision_token AS revisionToken,
+        version_number AS versionNumber,
         requirement_status_id AS statusId,
         archive_initiated_at AS archiveInitiatedAt,
         description,
@@ -578,6 +576,7 @@ async function getLatestVersionLite(
   return {
     id: Number(row.id),
     revisionToken: String(row.revisionToken ?? '').toLowerCase(),
+    versionNumber: Number(row.versionNumber),
     statusId: Number(row.statusId),
     archiveInitiatedAt: toIso(row.archiveInitiatedAt),
     description: String(row.description ?? ''),
@@ -977,9 +976,9 @@ export async function cancelArchiving(
 export async function deleteDraftVersion(
   db: SqlServerDatabase,
   requirementId: number,
-  options: RequirementMutationAuditOptions<DeleteDraftVersionResult> = {},
-): Promise<DeleteDraftVersionResult> {
-  let result: DeleteDraftVersionResult = { deleted: 'version' }
+  options: RequirementMutationAuditOptions<DeleteDraftResult> = {},
+): Promise<DeleteDraftResult> {
+  let result: DeleteDraftResult | undefined
 
   await db.transaction(async manager => {
     const tx: SqlServerTxExecutor = {
@@ -989,6 +988,12 @@ export async function deleteDraftVersion(
     if (!latest || !isRequirementDraftStatus(latest.statusId)) {
       throw conflictError('Only draft versions can be deleted')
     }
+
+    const requirementRows = (await tx.query(
+      `SELECT TOP (1) unique_id AS uniqueId FROM requirements WHERE id = @0`,
+      [requirementId],
+    )) as Array<Record<string, unknown>>
+    const requirementUniqueId = String(requirementRows[0]?.uniqueId ?? '')
 
     await tx.query(
       `DELETE FROM requirement_version_requirement_packages WHERE requirement_version_id = @0`,
@@ -1006,26 +1011,29 @@ export async function deleteDraftVersion(
       `SELECT COUNT(*) AS [count] FROM requirement_versions WHERE requirement_id = @0`,
       [requirementId],
     )) as Array<Record<string, unknown>>
-    if (Number(remainingRows[0]?.count ?? 0) === 0) {
-      const requirementRows = (await tx.query(
-        `SELECT TOP (1) unique_id AS uniqueId FROM requirements WHERE id = @0`,
-        [requirementId],
-      )) as Array<Record<string, unknown>>
-      const deletedUniqueId = requirementRows[0]?.uniqueId
-      result =
-        deletedUniqueId == null
-          ? { deleted: 'requirement' }
-          : {
-              deleted: 'requirement',
-              deletedUniqueId: String(deletedUniqueId),
-            }
-      await options.audit?.(tx, result)
-      await tx.query(`DELETE FROM requirements WHERE id = @0`, [requirementId])
-      return
+    const requirementDeleted = Number(remainingRows[0]?.count ?? 0) === 0
+    const deleted: DeleteDraftResult['deleted'] = [
+      {
+        type: 'draftRequirementVersion',
+        requirementUniqueId,
+        versionNumber: latest.versionNumber,
+      },
+    ]
+    if (requirementDeleted) {
+      deleted.push({ type: 'requirement', requirementUniqueId })
+    }
+    result = {
+      deleted,
     }
     await options.audit?.(tx, result)
+    if (requirementDeleted) {
+      await tx.query(`DELETE FROM requirements WHERE id = @0`, [requirementId])
+    }
   })
 
+  if (!result) {
+    throw conflictError('Only draft versions can be deleted')
+  }
   return result
 }
 

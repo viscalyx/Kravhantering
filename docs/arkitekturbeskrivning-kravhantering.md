@@ -23,7 +23,7 @@
   - [ArchiMate — Verksamhetsprocess (ASCII)](#archimate--verksamhetsprocess-ascii)
 - [3. Applikationsanvändningsperspektiv](#3-applikationsanvändningsperspektiv)
   - [Hur applikationen används](#hur-applikationen-används)
-  - [Kravkatalogen — listvyn](#kravkatalogen--listvyn)
+  - [Kravbiblioteket — listvyn](#kravbiblioteket--listvyn)
   - [Detaljvyn](#detaljvyn)
   - [Underlagsvyn](#underlagsvyn)
   - [Administrationscenter](#administrationscenter)
@@ -190,7 +190,7 @@ graph TB
 │             << Application Layer >>                     │
 │                                                         │
 │  [Application Service]        [Application Service]     │
-│   Kravkatalog (UI)             REST API                 │
+│   Kravbibliotek (UI)             REST API                 │
 │                                                         │
 │  [Application Service]        [Application Service]     │
 │   MCP-server (AI)              Auth/OIDC-integration    │
@@ -238,7 +238,7 @@ stateDiagram-v2
     Granskning --> Utkast : Avslå (returnera)
     Publicerad --> Granskning : Initiera arkivering
     Granskning --> Arkiverad : Godkänn arkivering
-    Arkiverad --> Utkast : Återaktivera
+    Arkiverad --> Utkast : Återskapa
 
     note right of Utkast
         Författaren redigerar
@@ -251,8 +251,8 @@ stateDiagram-v2
     end note
 
     note right of Publicerad
-        Kravet är aktivt
-        och giltigt
+        Kravversionen är publicerad
+        och används
     end note
 
     note left of Arkiverad
@@ -316,7 +316,7 @@ flowchart TD
 | --- | --- |
 | Kravförfattare | Skapar och redigerar krav, skickar för granskning |
 | Granskare | Godkänner eller avslår krav och arkiveringsförfrågningar |
-| Förvaltare | Hanterar livscykel, initierar arkivering, återaktiverar |
+| Förvaltare | Hanterar livscykel, initierar arkivering, återskapar arkiverade kravversioner |
 | Administratör | Konfigurerar taxonomi, terminologi, kolumnstandard |
 <!-- markdownlint-enable MD013 -->
 
@@ -452,7 +452,7 @@ gransknings- och beslutsprocesserna:
 │       │                          │  krav        │        │
 │       │                          └──────────────┘        │
 │       │                                 │                │
-│       │<────────────────────────────────┘ återaktivera   │
+│       │<────────────────────────────────┘ återskapa      │
 └──────────────────────────────────────────────────────────┘
          │              │              │            │
    [Assigned to]  [Assigned to]  [Assigned to]  [Assigned]
@@ -472,10 +472,10 @@ gransknings- och beslutsprocesserna:
 ### Hur applikationen används
 
 Kravhantering nås via webbläsare och presenterar
-kravkatalogen som primär arbetsyta. Nedan beskrivs de
+kravbiblioteket som primär arbetsyta. Nedan beskrivs de
 huvudsakliga användningsmönstren.
 
-### Kravkatalogen — listvyn
+### Kravbiblioteket — listvyn
 
 Huvudvyn (`/requirements`) visar samtliga krav i en
 tabellvy med:
@@ -629,14 +629,14 @@ identitetsintegration:
 
 MCP-servern (`/api/mcp`) exponerar fyra verktyg som
 gör det möjligt för AI-agenter att interagera med
-kravkatalogen:
+kravbiblioteket:
 
 1. `requirements_query_catalog` — Lista krav eller
    uppslagstabeller.
 2. `requirements_get_requirement` — Hämta detalj,
    specifik version eller fullständig historik.
 3. `requirements_manage_requirement` — Skapa,
-   redigera, arkivera, radera utkast, återställ.
+   redigera, arkivera, radera utkast, återskapa version.
 4. `requirements_transition_requirement` —
    Statusövergångar.
 
@@ -752,7 +752,7 @@ identitetsleverantören.
 Applikationen är uppdelad i ett antal tydliga
 förmågor som tillsammans stödjer kravförvaltningen:
 
-1. **Kravkatalog och detaljvyer** — sökning,
+1. **Kravbibliotek och detaljvyer** — sökning,
    filtrering, redigering, versionshistorik och
    rapportuttag för krav.
 2. **Kravunderlag** — urval av krav i ett
@@ -858,7 +858,7 @@ Tabellen `action_audit_events` saknar främmande nycklar medvetet så att
 åtgärdsrader bevaras även när målobjekt gallras eller anonymiseras.
 Kravunderlag kan klassas med ansvarsområde, genomförandetyp,
 livscykelstatus, behovsreferenser och medförfattare så att samma
-kravkatalog kan användas i flera verksamhetssammanhang.
+kravbibliotek kan användas i flera verksamhetssammanhang.
 
 > **Tillämpningsbarhet via kravpaket.**
 > Tabellen `requirement_packages` hanterar även
@@ -1255,7 +1255,7 @@ när de används:
 | Beroende | Roll i lösningen | Berörd information eller åtkomst | Redovisning till beställaren |
 | --- | --- | --- | --- |
 | Extern OIDC-/IdP-tjänst, till exempel PhenixID i målmiljö och Keycloak i lokal utveckling | Autentisering, tokenutbyte, JWKS-hämtning och utloggning | Identitetsattribut som `sub`, namn, e-post, `employeeHsaId`, roller och metadata om token | IdP-ägare, tillitsnivå/MFA-krav, geografisk behandling, incidentkontakt, tillgänglighetskrav och ansvar för identitetslivscykel |
-| SQL Server-drift eller databastjänst | Persistens för kravkatalog, historik, taxonomi, referensdata och audit | Kravdata, ägaruppgifter, avvikelser, förbättringsförslag, UI-konfiguration och säkerhetsaudit | Driftansvarig, backup/restore, kryptering, åtkomst till databas, RTO/RPO, loggskydd och geografisk lagring |
+| SQL Server-drift eller databastjänst | Persistens för kravbibliotek, historik, taxonomi, referensdata och audit | Kravdata, ägaruppgifter, avvikelser, förbättringsförslag, UI-konfiguration och säkerhetsaudit | Driftansvarig, backup/restore, kryptering, åtkomst till databas, RTO/RPO, loggskydd och geografisk lagring |
 | OpenRouter och valda modellleverantörer | AI-generering av krav, lista över modeller och nyckel-/kredituppslag | Ämne, instruktioner, bilder, taxonomi, AI-svar, modellval och metadata om användning | Ska redovisas när AI är aktiverat med `OPENROUTER_API_KEY`; ange modell-leverantör, datapolicy, retention, egress, sekretessklassning och revisionsstatus |
 | MCP-klienter och AI-agenter | Godkända tekniska klienter till `/api/mcp` | Läsning och mutation av krav, historik, statusövergångar och eventuellt AI-generering | Klientägare, `client_id`, syntetiskt eller personbundet HSA-id, behörighetsomfång, hantering av token, loggkrav och notifieringsansvar |
 | Driftplattform, reverse proxy, logg- och SIEM-tjänster | Runtime, TLS-terminering, hemlighetshantering, begärandeloggning och säkerhetsaudit | Metadata om trafik, säkerhetsloggar, driftloggar, sessionscookies i transit och skyddade miljöparametrar | Plattformsägare, geografisk driftplats, loggretention, åtkomst till loggar/hemligheter, incidentväg och tekniska säkerhetskrav |
@@ -1320,8 +1320,11 @@ informationssäkerhetsåtgärder i nuvarande version:
 
 #### Datatillgänglighet, spårbarhet och säkerhetsloggning
 
-- **Mjuk radering** — Krav arkiveras med
-  `is_archived`-flagga. Ingen data raderas permanent.
+- **Mjuk radering för etablerade krav** — Krav som har
+  etablerade kravversioner arkiveras med `is_archived`-flagga.
+  Ett senaste utkast kan däremot raderas permanent innan det blir
+  en etablerad kravversion; om inga kravversioner återstår raderas
+  även kravets huvudrad.
 - **Fullständig revisionshistorik** — Varje ändring
   av kravinnehåll skapar en ny versionsrad.
   Tidsstämplar spårar skapande (`created_at`),

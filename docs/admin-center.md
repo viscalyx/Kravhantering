@@ -287,10 +287,10 @@ excluded by `has_specification_item_history`.
 
 Requirements specifications outside `Förvaltning` and older than the policy age
 require an anonymized JSON archive export before deletion. The export includes
-the specification metadata, needs references, local requirements, linked catalog
-requirements, the pinned requirement-version properties, taxonomy labels,
-packages, norm references and deviations. Person fields in the export are
-written as `null`; the database is not anonymized by this flow.
+the specification metadata, needs references, unique requirements, linked
+library requirements, the pinned requirement-version properties, taxonomy
+labels, packages, norm references and deviations. Person fields in the export
+are written as `null`; the database is not anonymized by this flow.
 
 The retention run emits security-audit events with policy key, counts, request
 id and export confirmation fingerprint, but not raw target HSA-ID values or

@@ -33,7 +33,7 @@
     "hideFilters": "Dölj filter",
     "ascending": "stigande",
     "descending": "fallande",
-    "reactivate": "Återaktivera",
+    "reactivate": "Återskapa",
     "archive": "Arkivera",
     "sortBy": "Sortera efter {label}",
     "sortDirectionTooltip": "{label}: sorterad {current}. Klicka för att sortera {next}.",
@@ -66,7 +66,7 @@
     "emptyState": "Inga poster ännu."
   },
   "nav": {
-    "catalog": "Kravkatalog",
+    "catalog": "Kravbibliotek",
     "areas": "Områden",
     "specifications": "Kravunderlag",
     "requirementPackages": "Kravpaket",
@@ -78,7 +78,7 @@
     "responsibilityAreas": "Verksamhetsobjekt",
     "implementationTypes": "Genomförandeformer",
     "lifecycleStatuses": "Livscykelstatusar",
-    "areaOwners": "Områdesägare",
+    "areaOwners": "Kravområdesägare",
     "normReferences": "Normreferenser",
     "specificationItemStatuses": "Användningsstatusar",
     "admin": "Administration",
@@ -126,14 +126,14 @@
   "notFound": {
     "title": "404",
     "description": "Sidan kunde inte hittas",
-    "goHome": "Gå till kravkatalogen"
+    "goHome": "Gå till kravbiblioteket"
   },
   "errorBoundary": {
     "eyebrow": "Oväntat fel",
     "title": "Något gick fel",
     "description": "Sidan kunde inte visas. Försök igen eller gå tillbaka till en säker startsida.",
     "retry": "Försök igen",
-    "goToCatalog": "Gå till kravkatalogen",
+    "goToCatalog": "Gå till kravbiblioteket",
     "goToAdmin": "Gå till administration",
     "referenceLabel": "Felreferens"
   },
@@ -189,10 +189,12 @@
     "cancelArchivingTooltip": "Avbryt arkivering och återgå till Publicerad status",
     "archiveBlockedByPendingWork": "Kan inte arkivera medan det finns en väntande utkast- eller granskningsversion",
     "editBlockedByPendingWork": "Kan inte redigera medan det finns en väntande utkast- eller granskningsversion",
-    "restoreBlockedByPendingWork": "Kan inte återställa medan det finns en väntande utkast- eller granskningsversion",
+    "restoreBlockedByPendingWork": "Kan inte återskapa medan det finns en väntande utkast- eller granskningsversion",
     "deleteDraftConfirm": "Är du säker på att du vill ta bort detta utkast? Utkastet raderas permanent.",
+    "deleteDraftCascadeWarning": "Detta raderar även kravet och {count, plural, one {# kopplat förbättringsförslag} other {# kopplade förbättringsförslag}}. Det går inte att ångra.",
+    "deleteDraftSuggestionCheckFailed": "Kopplade förbättringsförslag kunde inte kontrolleras. Utkastet raderades inte.",
     "publishConfirm": "Är du säker på att du vill publicera detta krav? Bekräfta att det har genomgått korrekt granskningsprocess innan det görs tillgängligt.",
-    "reactivateConfirm": "Är du säker på att du vill återaktivera detta krav?",
+    "reactivateConfirm": "Är du säker på att du vill återskapa detta krav? En ny utkastversion skapas.",
     "transitionToGranskning": "Granskning ↗",
     "transitionToPublicerad": "Publicera ↗",
     "transitionToUtkast": "← Utkast",
@@ -239,8 +241,8 @@
     "downloadListReportPdf": "Ladda ner kravlista (PDF)",
     "reviewReportAllMustBeReview": "Alla valda krav måste ha status Granskning för att generera rapporten",
     "editNotAllowedStatusReview": "Detta krav kan inte redigeras eftersom det har status Granskning. Återställ det till Utkast-status först.",
-    "editNotAllowedStatusArchived": "Detta krav är Arkiverat och måste återställas eller återaktiveras innan det kan redigeras.",
-    "editPublishedVersionNotice": "Detta krav är Publicerat. Att spara skapar en ny version i Utkast — den publicerade versionen förblir aktiv tills det nya utkastet genomgått granskningsprocessen och publicerats.",
+    "editNotAllowedStatusArchived": "Detta krav är Arkiverat och måste återskapas innan det kan redigeras.",
+    "editPublishedVersionNotice": "Detta krav är Publicerat. Att spara skapar en ny version i Utkast — den publicerade kravversionen fortsätter gälla tills det nya utkastet genomgått granskningsprocessen och publicerats.",
     "staleEditConflict": "Kravet ändrades medan du redigerade.",
     "staleEditConflictHelp": "Dina ändringar finns kvar här. Öppna den senaste sparade versionen för att jämföra, eller ladda om redigeraren innan du försöker igen.",
     "staleEditViewLatest": "Visa senaste",
@@ -317,15 +319,15 @@
     "lifecycleStatus": "Livscykelstatus",
     "lifecycleStatusHelp": "Välj den livscykelstatus som bäst beskriver underlagets nuvarande fas.",
     "needsReference": "Behovsreferens",
-    "needsReferenceHelp": "Lägg vid behov till en befintlig eller ny behovsreferens när kravet kopplas till ett underlag.",
+    "needsReferenceHelp": "Beskriv varför kravtillämpningen behövs i kravunderlaget. Referensen kan också ge stöd för när och hur kravet ska verifieras.",
     "newSpecification": "Nytt kravunderlag",
     "editSpecification": "Redigera kravunderlag",
     "filterByName": "Filtrera på namn",
     "filterByNamePlaceholder": "Sök namn på kravunderlag",
     "linkedRequirements": "Kopplade krav",
-    "businessNeedsReference": "Verksamhetsbehovsreferens",
-    "businessNeedsReferencePlaceholder": "Fritext för att koppla underlaget till ett verksamhetsbehov eller funktionellt krav",
-    "businessNeedsReferenceHelp": "Använd fältet för att ange det verksamhetsbehov, initiativ eller den funktionella referens som underlaget stödjer. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
+    "businessNeedsReference": "Underlagssyfte",
+    "businessNeedsReferencePlaceholder": "Beskriv varför kravunderlaget finns eller vilken förmåga det ska stödja",
+    "businessNeedsReferenceHelp": "Använd fältet för att ange underlagets syfte, till exempel vilket verksamhetsbehov, initiativ eller vilken förmåga underlaget stödjer. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "uniqueId": "Kravunderlag-ID",
     "uniqueIdPlaceholder": "T.ex. MITT-UNDERLAG",
     "uniqueIdHelp": "Används i URL och som kortidentifierare",
@@ -352,11 +354,11 @@
     "editLocalRequirement": "Redigera unikt krav",
     "localRequirementNotFound": "Det unika kravet hittades inte i detta kravunderlag.",
     "localRequirementActionDisabledTooltip": "Det unika kravet kan bara redigeras eller tas bort när användningsstatus är Inkluderad och ingen avvikelse väntar.",
-    "graduateLocalRequirement": "Lyft till kravkatalogen",
+    "graduateLocalRequirement": "Lyft till kravbiblioteket",
     "graduateLocalRequirementTargetLabel": "Kravområde",
-    "graduateLocalRequirementTargetHelp": "Välj kravområdet i kravkatalogen där det kopierade utkastet ska skapas.",
+    "graduateLocalRequirementTargetHelp": "Välj kravområdet i kravbiblioteket där det kopierade utkastet ska skapas.",
     "graduateLocalRequirementConfirmTitle": "Lyft unikt krav",
-    "graduateLocalRequirementConfirm": "Skapa ett nytt utkast i kravkatalogen från detta unika krav? Det unika kravet ligger kvar i kravunderlaget.",
+    "graduateLocalRequirementConfirm": "Skapa ett nytt utkast i kravbiblioteket från detta unika krav? Det unika kravet ligger kvar i kravunderlaget.",
     "graduateLocalRequirementConfirmText": "Lyft",
     "graduateLocalRequirementDisabledTooltip": "Det unika kravet kan bara lyftas när användningsstatus är Inkluderad.",
     "graduateLocalRequirementFailed": "Det gick inte att lyfta det unika kravet.",
@@ -543,7 +545,7 @@
       "responsibilityArea": "Verksamhetsobjekt",
       "implementationType": "Genomförandeform",
       "lifecycleStatus": "Livscykelstatus",
-      "businessNeedsReference": "Verksamhetsbehovsreferens"
+      "businessNeedsReference": "Underlagssyfte"
     },
     "printLabels": {
       "description": "Beskrivning",
@@ -685,7 +687,7 @@
       "hsaId": "Ange ägarens verifierade HSA-ID. Namn är visningskopior; HSA-ID är den varaktiga identitetsnyckeln.",
       "email": "Ange e-postadressen som används för att kontakta ägaren."
     },
-    "emptyState": "Inga kravägare ännu. Skapa din första ägare."
+    "emptyState": "Inga kravområdesägare ännu. Skapa din första kravområdesägare."
   },
   "responsibilityAreaMgmt": {
     "name": "Namn",
@@ -734,12 +736,12 @@
   "admin": {
     "title": "Administrationscenter",
     "loading": "Laddar administrationscenter...",
-    "description": "Hantera centrala administrationsinställningar för systemet, inklusive benämningar, kolumner, åtkomstgranskningar och integritetsrelaterade funktioner.",
+    "description": "Hantera centrala administrationsinställningar för systemet, inklusive terminologi, kolumner, åtkomstgranskningar och integritetsrelaterade funktioner.",
     "settings": "Inställningar",
     "adminCenter": "Administrationscenter",
-    "adminCenterDescription": "Uppdatera benämningar och standardkolumner.",
-    "terminology": "Benämningar",
-    "terminologyDescription": "Ändra singular, plural och bestämd plural för de benämningar som redan används i gränssnittet.",
+    "adminCenterDescription": "Uppdatera terminologi och standardkolumner.",
+    "terminology": "Terminologi",
+    "terminologyDescription": "Ändra singular, plural och bestämd plural för den terminologi som redan används i gränssnittet.",
     "columns": "Kolumner",
     "columnsDescription": "Styr standardordning och synlighet för kravlistans kolumner.",
     "referenceData": "Referensdata",
@@ -1003,8 +1005,8 @@
         "revoke_required": "Återkalla"
       },
       "permissionTypes": {
-        "area_co_author": "Områdesmedförfattare",
-        "area_owner": "Områdesägare",
+        "area_co_author": "Kravområdesmedförfattare",
+        "area_owner": "Kravområdesägare",
         "specification_co_author": "Medförfattare för kravunderlag",
         "specification_responsible": "Ansvarig för kravunderlag"
       }
@@ -1020,7 +1022,7 @@
     "locked": "Låst",
     "saved": "Sparat",
     "columnsSaveError": "Det gick inte att spara kolumninställningarna.",
-    "terminologySaveError": "Det gick inte att spara benämningarna.",
+    "terminologySaveError": "Det gick inte att spara terminologin.",
     "areasDescription": "Hantera områden och deras prefix.",
     "typesDescription": "Visa typer och deras kvalitetsstruktur.",
     "requirementPackagesDescription": "Hantera kravpaket som kan kopplas till krav.",
@@ -1140,12 +1142,12 @@
         "skipped": "Hoppade över {count} {requirementWord} utan publicerad version: {ids}."
       },
       "graduationTargets": {
-        "title": "Målområden för kravkatalogen",
+        "title": "Målområden för kravbiblioteket",
         "summary": "{count} kravområde(n) kan ta emot kopian."
       },
       "graduate": {
-        "title": "Lokalt krav kopierat till kravkatalogen",
-        "summary": "Det lokala kravet {sourceUniqueId} kopierades till {requirementUniqueId} som utkast i {targetAreaName}."
+        "title": "Unikt krav kopierat till kravbiblioteket",
+        "summary": "Det unika kravet {sourceUniqueId} kopierades till {requirementUniqueId} som utkast i {targetAreaName}."
       },
       "remove": {
         "count": "Tog bort {count} {requirementWord} från kravunderlag {reference}."
@@ -1162,10 +1164,10 @@
   },
   "help": {
     "requirements": {
-      "title": "Kravkatalog",
+      "title": "Kravbibliotek",
       "overview": {
         "heading": "Översikt",
-        "body": "Kravkatalogen är arbetsytan för att hitta, följa upp och öppna krav. Här ser du alla krav som du har tillgång till, deras aktuella läge och kan fortsätta arbetet utan att lämna listan."
+        "body": "Kravbiblioteket är arbetsytan för att hitta, följa upp och öppna krav. Här ser du alla krav som du har tillgång till, deras aktuella läge och kan fortsätta arbetet utan att lämna listan."
       },
       "inlineDetail": {
         "heading": "Detaljvy i listan",
@@ -1249,7 +1251,7 @@
           },
           "published": {
             "title": "Publicerad",
-            "description": "Detta är den gällande versionen som just nu används."
+            "description": "Detta är den publicerade kravversionen som just nu används."
           },
           "archivingReview": {
             "title": "Arkiveringsgranskning",
@@ -1274,7 +1276,7 @@
       },
       "lifecycle": {
         "heading": "Kravets process",
-        "body": "Utkast: du kan skriva, redigera, ta bort det senaste utkastet och skicka det till granskning. Granskning: innehållet är låst för redigering tills du skickar tillbaka det till Utkast eller publicerar det. Publicerad: detta är den aktiva versionen; du kan lägga till den i kravunderlag, dela eller skriva ut den och starta redigering, vilket skapar ett nytt utkast medan den publicerade versionen fortsätter att gälla. När du väljer Arkivera går kravet först in i en arkiveringsgranskning där du kan godkänna eller avbryta arkiveringen. Arkiverad: kravet är skrivskyddat och kan inte redigeras eller läggas till i kravunderlag; återställ det för att skapa ett nytt utkast."
+        "body": "Utkast: du kan skriva, redigera, ta bort det senaste utkastet och skicka det till granskning. Granskning: innehållet är låst för redigering tills du skickar tillbaka det till Utkast eller publicerar det. Publicerad: detta är den publicerade kravversionen; du kan lägga till den i kravunderlag, dela eller skriva ut den och starta redigering, vilket skapar ett nytt utkast medan den publicerade kravversionen fortsätter att gälla. När du väljer Arkivera går kravet först in i en arkiveringsgranskning där du kan godkänna eller avbryta arkiveringen. Arkiverad: kravet är skrivskyddat och kan inte redigeras eller läggas till i kravunderlag; återskapa det för att skapa ett nytt utkast."
       },
       "actions": {
         "heading": "Åtgärder",
@@ -1348,7 +1350,7 @@
       },
       "needsReference": {
         "heading": "Behovsreferens",
-        "body": "Varje krav i underlaget kan ha en behovsreferens - en fritext som kopplar kravet till det övergripande verksamhetsbehov eller funktionella krav det uppfyller. Ange den när du lägger till krav eller redigera den inline."
+        "body": "Varje kravtillämpning i underlaget kan ha en behovsreferens - en fritext som förklarar varför kravet behövs i just detta kravunderlag. Den kan också ge stöd när kravet ska verifieras. Ange den när du lägger till krav eller redigera den inline."
       },
       "export": {
         "heading": "Exportera",
@@ -1395,16 +1397,16 @@
     "admin": {
       "title": "Administrationscenter",
       "terminology": {
-        "heading": "Benämningar",
-        "body": "Åsidosätt singular-, plural- och bestämd pluralform för de benämningar som används i gränssnittet, t.ex. område, kategori, typ. Ändringar träder i kraft omedelbart utan omladdning av sidan."
+        "heading": "Terminologi",
+        "body": "Åsidosätt singular-, plural- och bestämd pluralform för den terminologi som används i gränssnittet, t.ex. område, kategori, typ. Ändringar träder i kraft omedelbart utan omladdning av sidan."
       },
       "columns": {
         "heading": "Standardkolumner",
-        "body": "Ange vilka kolumner som visas som standard i kravkatalogen och i vilken ordning. Användare kan fortfarande ändra kolumnsynligheten per session. Låsta kolumner visas alltid."
+        "body": "Ange vilka kolumner som visas som standard i kravbiblioteket och i vilken ordning. Användare kan fortfarande ändra kolumnsynligheten per session. Låsta kolumner visas alltid."
       },
       "referenceData": {
         "heading": "Referensdata",
-        "body": "Snabblänkar till hantering av områden, typer, kravpaket, statusar, kvalitetsegenskaper, verksamhetsobjekt, genomförandeformer och områdesägare."
+        "body": "Snabblänkar till hantering av områden, typer, kravpaket, statusar, kvalitetsegenskaper, verksamhetsobjekt, genomförandeformer och kravområdesägare."
       },
       "privacy": {
         "heading": "Dataskyddsradering",
@@ -1462,7 +1464,7 @@
       },
       "scope": {
         "heading": "Omfattning",
-        "body": "Applikationen inventerar områdesägare, områdesmedförfattare, ansvariga för kravunderlag, medförfattare för kravunderlag och deras AI-behörigheter i applikationen. Globala roller, källkodsåtkomst och extern klientåtkomst granskas i sina källverktyg."
+        "body": "Applikationen inventerar kravområdesägare, kravområdesmedförfattare, ansvariga för kravunderlag, medförfattare för kravunderlag och deras AI-behörigheter i applikationen. Globala roller, källkodsåtkomst och extern klientåtkomst granskas i sina källverktyg."
       },
       "decisions": {
         "heading": "Beslut",
@@ -1548,10 +1550,10 @@
       }
     },
     "owners": {
-      "title": "Områdesägare",
+      "title": "Kravområdesägare",
       "overview": {
-        "heading": "Vad är områdesägare?",
-        "body": "Områdesägare är de namngivna personer som är ansvariga för krav inom ett specifikt kravområde. De visas på området och på varje kravs detaljsida."
+        "heading": "Vad är kravområdesägare?",
+        "body": "Kravområdesägare är de namngivna personer som är ansvariga för krav inom ett specifikt kravområde. De visas på kravområdet och på varje kravs detaljsida."
       },
       "manage": {
         "heading": "Hantera",
