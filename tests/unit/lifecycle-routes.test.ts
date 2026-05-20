@@ -48,7 +48,7 @@ describe('lifecycle routes', () => {
   describe('delete-draft', () => {
     it('POST returns result on success', async () => {
       mockManageRequirement.mockResolvedValue({
-        result: { deleted: 'version' },
+        result: { deleted: 'requirement', deletedUniqueId: 'BEH0024' },
       })
 
       const { POST } = await import(
@@ -64,7 +64,7 @@ describe('lifecycle routes', () => {
         params: Promise.resolve({ id: '1' }),
       })
       const json = await res.json()
-      expect(json).toEqual({ deleted: 'version' })
+      expect(json).toEqual({ deleted: 'requirement' })
       expect(mockManageRequirement).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ id: 1, operation: 'delete_draft' }),

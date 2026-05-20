@@ -17,6 +17,12 @@ const requirementRefParamsSchema = z
   })
   .strict()
 
+const deleteDraftResultSchema = z
+  .object({
+    deleted: z.enum(['requirement', 'version']),
+  })
+  .loose()
+
 export const POST = secureMutationRoute({
   paramsSchema: requirementRefParamsSchema,
   policy: requirementsMutationPolicy<
@@ -38,7 +44,8 @@ export const POST = secureMutationRoute({
         ...ref,
         operation: 'delete_draft',
       })
-      return NextResponse.json(result.result)
+      const deleteResult = deleteDraftResultSchema.parse(result.result)
+      return NextResponse.json({ deleted: deleteResult.deleted })
     } catch (error) {
       const { body, status } = toHttpErrorPayload(error)
       return NextResponse.json(body, { status })
