@@ -50,6 +50,7 @@ function stackLock() {
 function fakeFs() {
   return {
     existsSync: filePath => String(filePath).endsWith('.oci.tar.gz'),
+    mkdtempSync: vi.fn(() => '/workspace/tmp/container-oci-verify/verify-ci'),
     mkdirSync: vi.fn(),
     readFileSync: vi.fn(() => JSON.stringify(stackLock())),
     rmSync: vi.fn(),
@@ -63,6 +64,12 @@ describe('container OCI archive helpers', () => {
     expect(parseArgs(['export', '--lock-file', 'lock.json'])).toMatchObject({
       command: 'export',
       lockFile: 'lock.json',
+    })
+    expect(
+      parseArgs(['verify', '--verify-root', 'tmp/container-oci-verify']),
+    ).toMatchObject({
+      command: 'verify',
+      verifyRoot: 'tmp/container-oci-verify',
     })
     expect(archiveFileName('app-runtime')).toBe('app-runtime.oci.tar.gz')
     expect(imageReference(stackLock().services[0])).toBe(
@@ -132,7 +139,7 @@ describe('container OCI archive helpers', () => {
       fsImpl,
       outputDir: 'tmp/oci',
       spawnSync,
-      verifyRoot: '/tmp/verify-oci',
+      verifyRoot: 'tmp/verify-oci',
     })
 
     expect(results.map(result => result.actualDigest)).toEqual([
@@ -140,10 +147,53 @@ describe('container OCI archive helpers', () => {
       'sha256:db-job',
     ])
     expect(commands).toEqual([
-      'podman --root /tmp/verify-oci/root --runroot /tmp/verify-oci/run load --input tmp/oci/app-runtime.oci.tar.gz',
-      'podman --root /tmp/verify-oci/root --runroot /tmp/verify-oci/run load --input tmp/oci/db-job.oci.tar.gz',
+      'podman --root /workspace/tmp/verify-oci/root --runroot /workspace/tmp/verify-oci/run load --input tmp/oci/app-runtime.oci.tar.gz',
+      'podman --root /workspace/tmp/verify-oci/root --runroot /workspace/tmp/verify-oci/run load --input tmp/oci/db-job.oci.tar.gz',
     ])
     expect(fsImpl.rmSync).not.toHaveBeenCalled()
+  })
+
+  it('does not let temporary Podman store cleanup failures mask digest verification', () => {
+    const fsImpl = fakeFs()
+    const commands = []
+    const consoleObj = { info: vi.fn() }
+    fsImpl.rmSync.mockImplementation(() => {
+      throw Object.assign(new Error('EACCES, permission denied'), {
+        code: 'EACCES',
+      })
+    })
+    const spawnSync = vi.fn((command, args) => {
+      commands.push(`${command} ${args.join(' ')}`)
+      return { status: 0 }
+    })
+    const execFileSync = vi.fn((command, args) => {
+      expect(command).toBe('podman')
+      const joinedArgs = args.join(' ')
+      return joinedArgs.includes('db-job') ? 'sha256:db-job\n' : 'app-runtime\n'
+    })
+
+    const results = verifyOciArchives({
+      consoleObj,
+      cwd: '/workspace',
+      execFileSync,
+      fsImpl,
+      outputDir: 'tmp/oci',
+      spawnSync,
+    })
+
+    expect(results.map(result => result.actualDigest)).toEqual([
+      'sha256:app-runtime',
+      'sha256:db-job',
+    ])
+    expect(commands).toEqual([
+      'podman --root /workspace/tmp/container-oci-verify/verify-ci/root --runroot /workspace/tmp/container-oci-verify/verify-ci/run load --input tmp/oci/app-runtime.oci.tar.gz',
+      'podman --root /workspace/tmp/container-oci-verify/verify-ci/root --runroot /workspace/tmp/container-oci-verify/verify-ci/run load --input tmp/oci/db-job.oci.tar.gz',
+    ])
+    expect(fsImpl.rmSync).toHaveBeenCalledTimes(2)
+    expect(consoleObj.info).toHaveBeenCalledTimes(2)
+    expect(consoleObj.info).toHaveBeenCalledWith(
+      'Ignoring OCI verification store cleanup failure for /workspace/tmp/container-oci-verify/verify-ci: EACCES, permission denied. Podman may leave rootless storage files that Node cannot remove; the archive verification result is preserved.',
+    )
   })
 
   it('fails when an archive digest does not match the stack lock', () => {
@@ -154,7 +204,7 @@ describe('container OCI archive helpers', () => {
         fsImpl: fakeFs(),
         outputDir: 'tmp/oci',
         spawnSync: () => ({ status: 0 }),
-        verifyRoot: '/tmp/verify-oci',
+        verifyRoot: 'tmp/verify-oci',
       }),
     ).toThrow('does not match sha256:app-runtime')
   })
@@ -170,6 +220,7 @@ describe('container OCI archive helpers', () => {
     expect(workflow).toContain('--skip-build')
     expect(workflow).toContain('container:oci:export')
     expect(workflow).toContain('container:oci:verify')
+    expect(workflow).toContain('--verify-root tmp/container-oci-verify')
     expect(workflow).toContain('retention-days: 2')
     expect(workflow).toContain('retention-days: 7')
     expect(workflow).not.toContain('pull_request_target')

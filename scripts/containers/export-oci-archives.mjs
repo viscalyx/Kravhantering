@@ -1,17 +1,17 @@
 import childProcess from 'node:child_process'
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DEFAULT_STACK_LOCK_PATH, findService } from './generate-stack-lock.mjs'
 
 export const DEFAULT_OCI_OUTPUT_DIR = 'tmp/container-oci-archives'
+export const DEFAULT_OCI_VERIFY_ROOT = 'tmp/container-oci-verify'
 export const DEFAULT_PODMAN_STORAGE_DRIVER = 'vfs'
 export const PROJECT_ARCHIVE_SERVICES = ['app-runtime', 'db-job']
 
 const USAGE = `Usage:
   node scripts/containers/export-oci-archives.mjs export [--lock-file <path>] [--output-dir <path>]
-  node scripts/containers/export-oci-archives.mjs verify [--lock-file <path>] [--output-dir <path>]`
+  node scripts/containers/export-oci-archives.mjs verify [--lock-file <path>] [--output-dir <path>] [--verify-root <path>]`
 
 function readNonEmpty(value) {
   if (typeof value !== 'string') return undefined
@@ -51,6 +51,7 @@ export function parseArgs(args) {
     command,
     lockFile: readNonEmpty(options['lock-file']) ?? DEFAULT_STACK_LOCK_PATH,
     outputDir: readNonEmpty(options['output-dir']) ?? DEFAULT_OCI_OUTPUT_DIR,
+    verifyRoot: readNonEmpty(options['verify-root']),
   }
 }
 
@@ -160,18 +161,53 @@ export function exportOciArchives(options = {}) {
 }
 
 function createVerifyWorkspace(options = {}) {
+  const cwd = options.cwd ?? process.cwd()
   const fsImpl = options.fsImpl ?? fs
-  const baseDir =
-    options.verifyRoot ??
-    fsImpl.mkdtempSync(path.join(os.tmpdir(), 'kravhantering-oci-verify-'))
+  const requestedVerifyRoot = readNonEmpty(options.verifyRoot)
+  const baseDir = requestedVerifyRoot
+    ? path.resolve(cwd, requestedVerifyRoot)
+    : createTemporaryVerifyWorkspace(cwd, fsImpl)
   const root = path.join(baseDir, 'root')
   const runroot = path.join(baseDir, 'run')
   fsImpl.mkdirSync(root, { recursive: true })
   fsImpl.mkdirSync(runroot, { recursive: true })
   return {
     baseDir,
-    created: !options.verifyRoot,
+    created: !requestedVerifyRoot,
     podmanGlobalArgs: ['--root', root, '--runroot', runroot],
+  }
+}
+
+function createTemporaryVerifyWorkspace(cwd, fsImpl) {
+  const parentDir = path.resolve(cwd, DEFAULT_OCI_VERIFY_ROOT)
+  fsImpl.mkdirSync(parentDir, { recursive: true })
+  return fsImpl.mkdtempSync(path.join(parentDir, 'verify-'))
+}
+
+function formatErrorMessage(error) {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function writeInfo(consoleObj, message) {
+  const writer =
+    typeof consoleObj.info === 'function' ? consoleObj.info : consoleObj.log
+  if (typeof writer === 'function') {
+    writer.call(consoleObj, message)
+  }
+}
+
+function removeTemporaryVerifyWorkspace(
+  workspace,
+  fsImpl,
+  consoleObj = console,
+) {
+  try {
+    fsImpl.rmSync(workspace.baseDir, { force: true, recursive: true })
+  } catch (error) {
+    writeInfo(
+      consoleObj,
+      `Ignoring OCI verification store cleanup failure for ${workspace.baseDir}: ${formatErrorMessage(error)}. Podman may leave rootless storage files that Node cannot remove; the archive verification result is preserved.`,
+    )
   }
 }
 
@@ -220,7 +256,7 @@ export function verifyOciArchives(options = {}) {
       results.push({ ...plan, actualDigest })
     } finally {
       if (workspace.created) {
-        fsImpl.rmSync(workspace.baseDir, { force: true, recursive: true })
+        removeTemporaryVerifyWorkspace(workspace, fsImpl, options.consoleObj)
       }
     }
   }
@@ -253,6 +289,7 @@ export async function main(args, dependencies = {}) {
         cwd,
         lockFile: parsed.lockFile,
         outputDir: parsed.outputDir,
+        verifyRoot: parsed.verifyRoot,
       })
       for (const result of results) {
         consoleObj.log(`Verified ${result.archivePath}`)

@@ -134,7 +134,10 @@ jobs:
         run: npm run container:oci:export -- --output-dir tmp/container-pr-artifacts/oci
 
       - name: Verify OCI archives
-        run: npm run container:oci:verify -- --output-dir tmp/container-pr-artifacts/oci
+        run: |
+          npm run container:oci:verify -- \
+            --output-dir tmp/container-pr-artifacts/oci \
+            --verify-root tmp/container-oci-verify
 
       - name: Run release smoke tests
         run: npm run test:release-smoke

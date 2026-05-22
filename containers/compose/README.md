@@ -151,7 +151,9 @@ project images:
 
 ```bash
 npm run container:oci:export -- --output-dir tmp/container-pr-artifacts/oci
-npm run container:oci:verify -- --output-dir tmp/container-pr-artifacts/oci
+npm run container:oci:verify -- \
+  --output-dir tmp/container-pr-artifacts/oci \
+  --verify-root tmp/container-oci-verify
 ```
 
 Verification loads each archive into an isolated Podman store and compares the
