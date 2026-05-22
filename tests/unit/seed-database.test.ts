@@ -1,10 +1,16 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { seedDatabase, seedPositionDetail } from '../../typeorm/seed.mjs'
+import { seedDemoDatabase } from '../../typeorm/seed.mjs'
 import {
   RETENTION_HISTORY_ONLY_VERSION_IDS,
   RETENTION_POSITIVE_SOURCE_KEYS,
   RETENTION_SEED,
 } from '../../typeorm/seed-archiving-retention-build.mjs'
+import {
+  seedPositionDetail,
+  seedRequiredDatabase,
+} from '../../typeorm/seed-required.mjs'
 
 // cspell:ignore linneab repoåtkomstgranskning retentionlinked retentionorphan
 
@@ -48,7 +54,19 @@ function rowById(rows: Record<string, unknown>[]) {
   return new Map(rows.map(row => [row.id, row]))
 }
 
-describe('seedDatabase', () => {
+describe('seed profiles', () => {
+  it('keeps the required seed module free of demo-only builders', () => {
+    const requiredSeedSource = readFileSync(
+      path.join(process.cwd(), 'typeorm/seed-required.mjs'),
+      'utf8',
+    )
+
+    expect(requiredSeedSource).not.toContain('seed-dogfood')
+    expect(requiredSeedSource).not.toContain('seed-archiving-retention-build')
+    expect(requiredSeedSource).not.toContain('appendDogfoodSeed')
+    expect(requiredSeedSource).not.toContain('appendArchivingRetentionSeed')
+  })
+
   it('reports seed failures without serializing the full seed row', async () => {
     const executor = {
       query: vi.fn(async () => {
@@ -56,9 +74,9 @@ describe('seedDatabase', () => {
       }),
     }
 
-    const error = await seedDatabase(executor).then(
+    const error = await seedRequiredDatabase(executor).then(
       () => {
-        throw new Error('Expected seedDatabase to reject')
+        throw new Error('Expected seedRequiredDatabase to reject')
       },
       caught => caught,
     )
@@ -84,7 +102,7 @@ describe('seedDatabase', () => {
   it('seeds the inline ISO quality characteristics model', async () => {
     const { executor, rows } = collectSeedInsertRows()
 
-    await seedDatabase(executor)
+    await seedRequiredDatabase(executor)
 
     const qualityCharacteristics = seedRowsFor(rows, 'quality_characteristics')
     expect(qualityCharacteristics).toHaveLength(49)
@@ -142,6 +160,22 @@ describe('seedDatabase', () => {
     }
   })
 
+  it('keeps required seed data to system and lookup tables', async () => {
+    const { executor, rows } = collectSeedInsertRows()
+
+    await seedRequiredDatabase(executor)
+
+    expect(seedRowsFor(rows, 'requirement_statuses').length).toBeGreaterThan(0)
+    expect(seedRowsFor(rows, 'quality_characteristics')).toHaveLength(49)
+    expect(seedRowsFor(rows, 'archiving_retention_policies')).toHaveLength(4)
+    expect(seedRowsFor(rows, 'owners')).toHaveLength(0)
+    expect(seedRowsFor(rows, 'requirement_areas')).toHaveLength(0)
+    expect(seedRowsFor(rows, 'requirements')).toHaveLength(0)
+    expect(seedRowsFor(rows, 'requirement_versions')).toHaveLength(0)
+    expect(seedRowsFor(rows, 'requirements_specifications')).toHaveLength(0)
+    expect(seedRowsFor(rows, 'action_audit_events')).toHaveLength(0)
+  })
+
   it('seeds duplicate-name privacy data with distinct HSA-ID decisions', async () => {
     const kalleOwnerHsaIds = new Set<unknown>()
     const duplicateNameSuggestionRows: unknown[][] = []
@@ -165,7 +199,7 @@ describe('seedDatabase', () => {
       }),
     }
 
-    await seedDatabase(executor)
+    await seedDemoDatabase(executor)
 
     expect(kalleOwnerHsaIds).toEqual(
       new Set(['SE5560000001-kalle1', 'SE5560000001-kalle2']),
@@ -183,7 +217,7 @@ describe('seedDatabase', () => {
   it('seeds Linnea privacy data with decisions and improvement suggestions', async () => {
     const { executor, rows } = collectSeedInsertRows()
 
-    await seedDatabase(executor)
+    await seedDemoDatabase(executor)
 
     const owners = seedRowsFor(rows, 'owners')
     const linneaOwnerIds = new Set(
@@ -365,7 +399,7 @@ describe('seedDatabase', () => {
   it('seeds deterministic archiving retention fixtures for every active policy source', async () => {
     const { executor, rows } = collectSeedInsertRows()
 
-    await seedDatabase(executor)
+    await seedDemoDatabase(executor)
 
     expect(RETENTION_POSITIVE_SOURCE_KEYS).toEqual([
       'owners.identity',

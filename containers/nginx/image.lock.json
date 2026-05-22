@@ -1,0 +1,8 @@
+{
+  "name": "nginx",
+  "role": "tls-proxy",
+  "image": "docker.io/library/nginx",
+  "tag": "stable-alpine",
+  "digest": "sha256:c819f83c54b0361f5557601bf5eb4943d09360e7a7fdf426afc466570f45874d",
+  "source": "https://hub.docker.com/_/nginx"
+}

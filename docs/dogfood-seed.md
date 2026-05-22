@@ -1,7 +1,9 @@
 # Dogfood seed: Kravhantering för Kravhantering
 
-This document describes the dogfood dataset that is appended to the base seed
-in `typeorm/seed.mjs`. The dataset captures the Krav that the Kravhantering
+This document describes the dogfood dataset that is appended to the optional
+demo seed profile in `typeorm/seed.mjs`. The required production seed profile
+lives separately in `typeorm/seed-required.mjs` and does not import this
+dataset. The dogfood dataset captures the Krav that the Kravhantering
 application places on itself — technical, functional, UX, deployment and
 development requirements — and the two Kravunderlag that group them.
 
@@ -11,9 +13,9 @@ The data lives in two pure ES modules:
   owners, norm references, requirement packages and the `DOGFOOD_KRAV` list.
 - [typeorm/seed-dogfood-build.mjs](../typeorm/seed-dogfood-build.mjs) — the
   builder `appendDogfoodSeed(SEED_DATA)` that mutates the base `SEED_DATA`
-  shape (`{ table: { columns, rows } }`) in place. `seed.mjs` calls it once at
-  module top-level, so the runtime in `seedDatabase()` does not need any
-  changes.
+  shape (`{ table: { columns, rows } }`) in place. `seed.mjs` calls it once
+  when the demo-capable module is imported, and `seedDemoDatabase()` selects
+  the affected tables when `npm run db:seed:demo` runs.
 
 Unit coverage lives in
 [tests/unit/dogfood-seed.test.ts](../tests/unit/dogfood-seed.test.ts).
@@ -115,8 +117,11 @@ const { appendDogfoodSeed } = await import('./seed-dogfood-build.mjs')
 appendDogfoodSeed(SEED_DATA)
 ```
 
-The mutation happens before `seedDatabase()` is exported, so the existing
-runtime in `scripts/db-sqlserver-admin.mjs` picks up the augmented dataset
-without any further changes. Re-running `appendDogfoodSeed` on the same
-`SEED_DATA` object is idempotent for primary-keyed lookup tables, but the
-function is intended to run exactly once (which is what `seed.mjs` does).
+The mutation happens before `seedDemoDatabase()` is exported, so
+`scripts/db-sqlserver-admin.mjs seed:demo` dynamically imports `seed.mjs` and
+picks up the augmented dataset. `scripts/db-sqlserver-admin.mjs seed:required`
+dynamically imports `seed-required.mjs` instead, so production-like required
+seed runs do not import dogfood, smoke-test, or demo builders.
+Re-running `appendDogfoodSeed` on the same `SEED_DATA` object is idempotent for
+primary-keyed lookup tables, but the function is intended to run exactly once
+(which is what `seed.mjs` does).

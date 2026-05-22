@@ -232,7 +232,7 @@ discovers the right issuer:
 stringData:
   AUTH_ISSUER: 'https://keycloak-<workspace>.<cluster-domain>/realms/kravhantering-dev'
   NEXT_PUBLIC_SITE_URL: 'https://next-dev-<workspace>.<cluster-domain>'
-  # ...plus AUTH_CLIENT_ID / AUTH_CLIENT_SECRET / ANALYTICS_HASH_SECRET
+  # ...plus AUTH_CLIENT_ID / AUTH_CLIENT_SECRET
   # as documented in /workspace/.env.example
 ```
 

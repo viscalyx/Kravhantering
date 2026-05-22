@@ -16,6 +16,7 @@ import LanguageSwitcher from '@/components/LanguageSwitcher'
 import Logo from '@/components/Logo'
 import ThemeToggle from '@/components/ThemeToggle'
 import { Link, usePathname } from '@/i18n/routing'
+import type { BuildMetadata } from '@/lib/build-metadata'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 const primaryNavItems = [
@@ -27,7 +28,11 @@ const primaryNavItems = [
   },
 ]
 
-export default function Navigation() {
+interface ComponentProps {
+  buildMetadata?: BuildMetadata | null
+}
+
+export default function Navigation({ buildMetadata = null }: ComponentProps) {
   const t = useTranslations('nav')
   const tc = useTranslations('common')
   const ta = useTranslations('admin')
@@ -39,6 +44,9 @@ export default function Navigation() {
     content: helpContent,
     isOpen: helpOpen,
   } = useHelp()
+  const buildVersionTitle = buildMetadata
+    ? tc('buildVersionTooltip', { version: buildMetadata.version })
+    : undefined
 
   return (
     <nav
@@ -53,7 +61,13 @@ export default function Navigation() {
       <div className="container-custom flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
         <Link
           className="flex items-center gap-2.5 font-bold text-lg text-primary-700 dark:text-primary-300"
+          {...devMarker({
+            context: 'navigation',
+            name: 'link',
+            value: 'app title',
+          })}
           href="/requirements"
+          title={buildVersionTitle}
         >
           <span className="contents">
             <Logo className="h-8 w-8" />

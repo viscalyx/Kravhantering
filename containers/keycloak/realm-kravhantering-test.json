@@ -1,0 +1,150 @@
+{
+  "realm": "kravhantering-test",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": false,
+  "roles": {
+    "realm": [
+      { "name": "Reviewer" },
+      { "name": "Admin" },
+      { "name": "PrivacyOfficer" }
+    ]
+  },
+  "users": [
+    {
+      "username": "release-smoke-user",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Release",
+      "lastName": "SmokeUser",
+      "email": "release-smoke-user@example.test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "release-smoke-user-not-for-production",
+          "temporary": false
+        }
+      ],
+      "attributes": {
+        "hsaId": ["SE5560000001-smoke1"]
+      },
+      "realmRoles": []
+    },
+    {
+      "username": "release-smoke-admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Release",
+      "lastName": "SmokeAdmin",
+      "email": "release-smoke-admin@example.test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "release-smoke-admin-not-for-production",
+          "temporary": false
+        }
+      ],
+      "attributes": {
+        "hsaId": ["SE5560000001-smoke2"]
+      },
+      "realmRoles": ["Admin"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "kravhantering-app",
+      "name": "Kravhantering application",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "container-demo-app-secret-not-for-production",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["https://kravhantering.test/api/auth/callback"],
+      "webOrigins": ["https://kravhantering.test"],
+      "attributes": {
+        "post.logout.redirect.uris": "https://kravhantering.test/",
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "roles-as-json-array",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "employeeHsaId-claim",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "hsaId",
+            "claim.name": "employeeHsaId",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "kravhantering-mcp",
+      "name": "Kravhantering MCP",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "container-demo-mcp-secret-not-for-production",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "attributes": {
+        "access.token.lifespan": "3600"
+      },
+      "protocolMappers": [
+        {
+          "name": "mcp-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "kravhantering-app",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "mcp-employeeHsaId",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "employeeHsaId",
+            "claim.value": "SE5560000001-mcp1",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ]
+}

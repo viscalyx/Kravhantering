@@ -14,6 +14,7 @@ import { HelpProvider } from '@/components/HelpPanel'
 import LocaleStorageSync from '@/components/LocaleStorageSync'
 import Navigation from '@/components/Navigation'
 import { routing } from '@/i18n/routing'
+import { readBuildMetadata } from '@/lib/build-metadata'
 import '@/app/globals.css'
 
 type Params = Promise<{ locale: string }>
@@ -73,6 +74,7 @@ export default async function LocaleLayout({
 
   setRequestLocale(locale)
   const messages = await getMessages({ locale })
+  const buildMetadata = readBuildMetadata()
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
@@ -82,7 +84,7 @@ export default async function LocaleLayout({
             <LocaleStorageSync />
             <AuthExpiryGuard />
             <div className="flex flex-col min-h-screen">
-              <Navigation />
+              <Navigation buildMetadata={buildMetadata} />
               <main className="flex-1">{children}</main>
               <Footer />
             </div>

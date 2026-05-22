@@ -13,6 +13,14 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t('catalog') }
 }
 
+function isMissingSqlServerConfigurationError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (error.message.includes('SQLSERVER_DATABASE_URL or DATABASE_URL') ||
+      error.message.includes('No SQL Server connection string is configured'))
+  )
+}
+
 export default async function RequirementsPage() {
   let initialColumnDefaults = DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS
 
@@ -21,10 +29,12 @@ export default async function RequirementsPage() {
       await getRequestSqlServerDataSource(),
     )
   } catch (error) {
-    console.error(
-      'Failed to load requirement column defaults for requirements page',
-      formatUiSettingsLoadError(error),
-    )
+    if (!isMissingSqlServerConfigurationError(error)) {
+      console.error(
+        'Failed to load requirement column defaults for requirements page',
+        formatUiSettingsLoadError(error),
+      )
+    }
   }
 
   return <RequirementsClient initialColumnDefaults={initialColumnDefaults} />

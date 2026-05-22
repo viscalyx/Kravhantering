@@ -3,7 +3,7 @@
 // Public entry point: appendArchivingRetentionSeed(SEED_DATA)
 //
 // The rows use a dedicated 910000+ ID range and RETENTION-SEED labels so they
-// are easy to recognize in the Admin UI after a local db:seed run.
+// are easy to recognize in the Admin UI after a local db:seed:demo run.
 
 const OLD_730_TS = '2023-01-15 09:00:00'
 const OLD_365_TS = '2024-01-15 09:00:00'

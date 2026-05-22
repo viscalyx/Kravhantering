@@ -42,6 +42,7 @@
     "editTooltip": "Edit the requirement content",
     "close": "Close",
     "version": "Version",
+    "buildVersionTooltip": "Version {version}",
     "versions": "Versions",
     "resetToDefault": "Reset to default",
     "restoreVersion": "Restore version",

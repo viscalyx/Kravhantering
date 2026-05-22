@@ -170,6 +170,7 @@ const ALLOWED_UNAUTH_NON_API_PREFIXES = ['/_next/', '/favicon']
 const ALLOWED_UNAUTH_EXACT = new Set([
   '/api/health',
   '/api/ready',
+  '/auth/error',
   '/favicon.ico',
   '/robots.txt',
   '/sitemap.xml',
@@ -366,7 +367,8 @@ function applyPageHeaders(
   // next-intl's middleware here so it does not 307 `/` to `/<defaultLocale>`
   // before the root page can run.
   const response =
-    request.nextUrl.pathname === '/'
+    request.nextUrl.pathname === '/' ||
+    request.nextUrl.pathname === '/auth/error'
       ? NextResponse.next()
       : intlMiddleware(request)
 

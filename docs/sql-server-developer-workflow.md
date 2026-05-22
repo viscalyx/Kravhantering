@@ -105,15 +105,21 @@ DATABASE_READONLY_URL=...
 | `npm run db:wait` | Poll the configured SQL Server endpoint until it responds |
 | `npm run db:health` | Run a simple `SELECT 1` health probe |
 | `npm run db:browse` | Print a read-only VS Code SQLTools connection block |
-| `npm run db:setup` | Wait, reset, run TypeORM migrations, seed, and configure the read-only login |
+| `npm run db:setup` | Wait, reset, run TypeORM migrations, seed required + demo profiles, and configure the read-only login |
 | `npm run db:migrate` | Run TypeORM migrations only |
-| `npm run db:seed` | Apply `typeorm/seed.mjs` only |
+| `npm run db:seed:required` | Apply only required system and lookup seed data |
+| `npm run db:seed:demo` | Apply optional demo, PoC, smoke-test, and integration seed data |
 | `npm run db:reset` | Drop and recreate the database |
 <!-- markdownlint-enable MD013 -->
 
 Under the hood `scripts/db-sqlserver-admin.mjs` builds a TypeORM `DataSource`,
-applies the migrations in `typeorm/migrations/`, and seeds via
+applies the migrations in `typeorm/migrations/`, and seeds via the required
+profile in `typeorm/seed-required.mjs` or the demo-capable profile in
 `typeorm/seed.mjs`.
+
+Use `npm run db:migrate` plus `npm run db:seed:required` for an empty
+production-like database. Add `npm run db:seed:demo` only when you need the
+local development, integration-test, PoC, guide, or smoke-test fixtures.
 
 ## Requirement List Performance Baseline
 
@@ -262,6 +268,11 @@ necessary. That means:
 - preserve ordering assumptions that tests or guides rely on
 - document every unavoidable change explicitly
 
-Seed inserts in `typeorm/seed.mjs` must be idempotent: guard with
-`IF NOT EXISTS` (or composite-PK equivalent) and wrap identity-bearing tables
-in `SET IDENTITY_INSERT [table] ON/OFF` so the seed can be re-run safely.
+Seed inserts in `typeorm/seed.mjs` must be idempotent in both profiles: guard
+with `IF NOT EXISTS` (or composite-PK equivalent) and wrap identity-bearing
+tables in `SET IDENTITY_INSERT [table] ON/OFF` so the seed can be re-run
+safely.
+
+Put new system or lookup rows that the app needs to boot in the required
+profile. Put examples, screenshots, privacy exercises, Playwright fixtures,
+PoC scenarios, dogfood Krav, and other disposable data in the demo profile.

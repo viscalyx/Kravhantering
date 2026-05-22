@@ -3,6 +3,11 @@ pids
 *.pid
 *.seed
 *.pid.lock
+container-stack.lock.json
+container-stack.compose.yml
+container-status.txt
+container-status.json
+hashes.sha256
 
 # Coverage directory used by tools like istanbul
 coverage/
@@ -59,6 +64,7 @@ certificates
 .next
 out
 build/
+/public/build.json
 
 bundled
 

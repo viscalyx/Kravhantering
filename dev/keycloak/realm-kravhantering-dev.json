@@ -206,23 +206,20 @@
   ],
   "clients": [
     {
-      "clientId": "kravhantering-local",
-      "name": "Kravhantering App Local (prodlike)",
+      "clientId": "kravhantering-prodlike",
+      "name": "Kravhantering App Prodlike",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
-      "secret": "local-kc-app-secret",
+      "secret": "prodlike-kc-app-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "implicitFlowEnabled": false,
-      "redirectUris": [
-        "http://localhost:3001/api/auth/callback",
-        "http://127.0.0.1:3001/api/auth/callback"
-      ],
-      "webOrigins": ["http://localhost:3001", "http://127.0.0.1:3001"],
+      "redirectUris": ["http://localhost:3001/api/auth/callback"],
+      "webOrigins": ["http://localhost:3001"],
       "attributes": {
-        "post.logout.redirect.uris": "http://localhost:3001/##http://127.0.0.1:3001/",
+        "post.logout.redirect.uris": "http://localhost:3001/",
         "pkce.code.challenge.method": "S256"
       },
       "protocolMappers": [
@@ -267,20 +264,10 @@
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "implicitFlowEnabled": false,
-      "redirectUris": [
-        "http://localhost:3000/api/auth/callback",
-        "http://127.0.0.1:3000/api/auth/callback",
-        "http://localhost:3001/api/auth/callback",
-        "http://127.0.0.1:3001/api/auth/callback"
-      ],
-      "webOrigins": [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001"
-      ],
+      "redirectUris": ["http://localhost:3000/api/auth/callback"],
+      "webOrigins": ["http://localhost:3000"],
       "attributes": {
-        "post.logout.redirect.uris": "http://localhost:3000/##http://127.0.0.1:3000/##http://localhost:3001/##http://127.0.0.1:3001/",
+        "post.logout.redirect.uris": "http://localhost:3000/",
         "pkce.code.challenge.method": "S256"
       },
       "protocolMappers": [

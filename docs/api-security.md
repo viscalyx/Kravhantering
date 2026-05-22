@@ -20,6 +20,12 @@ Covered in Phase 5:
   delete-draft, restore, reactivate, and transition routes.
 - Read-only requirement catalog routes used by the requirements UI.
 
+Operational probes stay outside the OpenAPI/Schemathesis contract. `/api/health`
+is a liveness check, and `/api/ready` is a public readiness check for
+container orchestration. `/api/ready` returns only `ready` or `not_ready`,
+uses `Cache-Control: no-store`, and logs sanitized dependency failures on the
+server instead of exposing topology in the HTTP response.
+
 The delete-draft success contract intentionally reports the same deletion-ledger
 payload for both outcomes: `deleted` is an ordered array with the
 `draftRequirementVersion` entry first. When deleting that draft also deletes the

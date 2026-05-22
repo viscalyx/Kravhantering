@@ -48,5 +48,24 @@ these locations:
 - When running integration tests locally, ensure the IdP and database are
   available (see `npm run idp:up` and `npm run db:setup`).
 
+## Release smoke tests
+
+- Location: [tests/release-smoke](tests/release-smoke)
+- Config: [playwright.release-smoke.config.ts](../playwright.release-smoke.config.ts)
+- Run against a started container stack with:
+
+```bash
+npm run container:release-smoke:up
+npm run test:release-smoke
+npm run container:release-smoke:down
+```
+
+The suite signs in as `release-smoke-user` through the container Keycloak realm
+and verifies HTTPS, nginx, session reuse, seeded SQL Server reads, one
+CSRF-protected write, static assets and `/build.json`.
+
+In the devcontainer, stack startup trusts the generated container CA for Node
+and Chromium. Other runners must trust `tmp/container-tls/ca.crt` themselves.
+
 If you'd like this file expanded (e.g., a short how-to for writing new
 Playwright specs, or CI troubleshooting steps), say which section to grow.

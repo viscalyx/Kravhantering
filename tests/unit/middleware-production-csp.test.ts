@@ -152,12 +152,13 @@ describe('middleware production CSP', () => {
     }
   })
 
-  it('passes public API routes without page CSP headers', async () => {
+  it.each([
+    '/api/health',
+    '/api/ready',
+  ])('passes public API route %s without page CSP headers', async path => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await middleware(
-        buildRequest('http://localhost/api/health'),
-      )
+      const response = await middleware(buildRequest(`http://localhost${path}`))
 
       expect(response.status).toBe(200)
       expect(response.headers.get('content-security-policy')).toBeNull()

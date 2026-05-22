@@ -67,8 +67,6 @@ components:
           value: /home/user/.nvm
         - name: NEXT_PUBLIC_SITE_URL
           value: http://localhost:3000
-        - name: OWNERS_API_URL
-          value: ''
         - name: NEXT_PUBLIC_DEFAULT_MODEL
           value: ''
         - name: AUTH_OIDC_CLIENT_ID

@@ -5,8 +5,8 @@
 //
 // This builder is intentionally pure: it never queries the database and never
 // looks at I/O. It only mutates the in-memory SEED_DATA object so that the
-// existing seedDatabase() runtime in seed.mjs picks up the new rows without
-// further changes.
+// seedDemoDatabase() runtime in seed.mjs picks up the new rows without further
+// changes.
 
 import {
   AREA_PREFIX_BY_ID,

@@ -13,6 +13,14 @@ function isEdgeRuntime() {
   )
 }
 
+function isMissingSqlServerConfigurationError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (error.message.includes('SQLSERVER_DATABASE_URL or DATABASE_URL') ||
+      error.message.includes('No SQL Server connection string is configured'))
+  )
+}
+
 export default getRequestConfig(async ({ requestLocale }) => {
   let locale = await requestLocale
 
@@ -42,10 +50,12 @@ export default getRequestConfig(async ({ requestLocale }) => {
       ),
     }
   } catch (error) {
-    console.error(
-      'Failed to load UI terminology for request config',
-      formatUiSettingsLoadError(error),
-    )
+    if (!isMissingSqlServerConfigurationError(error)) {
+      console.error(
+        'Failed to load UI terminology for request config',
+        formatUiSettingsLoadError(error),
+      )
+    }
 
     return {
       locale,

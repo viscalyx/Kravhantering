@@ -150,6 +150,28 @@ describe('middleware', () => {
     }
   })
 
+  it('allows the auth error page without a signed-in session', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    intlMiddlewareMock.mockClear()
+    try {
+      const response = await middleware(
+        buildRequest(
+          'http://localhost/auth/error?code=login_state_cookie_missing',
+          {
+            accept: 'text/html',
+          },
+        ),
+      )
+      expect(response.status).toBe(200)
+      expect(response.headers.get('location')).toBeNull()
+      expect(response.headers.get('X-Request-Id')).toBeTruthy()
+      expect(response.headers.get('X-Correlation-Id')).toBeTruthy()
+      expect(intlMiddlewareMock).not.toHaveBeenCalled()
+    } finally {
+      restore()
+    }
+  })
+
   it('redirects expired browser sessions to /api/auth/login and audits expiry', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
@@ -366,12 +388,13 @@ describe('middleware', () => {
     }
   })
 
-  it('passes through exact public health routes', async () => {
+  it.each([
+    '/api/health',
+    '/api/ready',
+  ])('passes through exact public probe route %s', async path => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await middleware(
-        buildRequest('http://localhost/api/health'),
-      )
+      const response = await middleware(buildRequest(`http://localhost${path}`))
       expect(response.status).toBe(200)
     } finally {
       restore()
