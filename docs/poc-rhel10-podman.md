@@ -19,6 +19,11 @@
 <!-- cSpell:ignore servercert konfig konfigfilen extfile Acreateserial -->
 <!-- cSpell:ignore mappern tokenvalideringen committade -->
 
+> **Ny standardväg:** Den containerbaserade PoC-/demo-modellen dokumenteras i
+> [container-poc-demo.md](./container-poc-demo.md). Den här äldre RHEL-sidan
+> beskriver en separat låg-privilegierad PoC med prodlike-app utanför den nya
+> containerbaserade demo-profilen och är inte standardvägen för fas 11.
+
 Denna sida beskriver vilka förutsättningar som måste finnas på en
 **Red Hat Enterprise Linux 10**-server för att köra en enkel
 Proof-of-Concept (PoC) av Kravhantering. PoC:n återanvänder de

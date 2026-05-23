@@ -78,9 +78,12 @@ To update it manually:
 1. Choose the new upstream Keycloak tag.
 2. Resolve the current manifest digest from Quay.
 3. Update `tag` and `digest` together in `image.lock.json`.
-4. In a later phase, run `scripts/containers/generate-stack-lock.mjs` to
+4. Run `npm run container:stack-lock:check` after generating a stack lock to
    verify that the stack lock copies this vendor entry exactly.
-5. Run the release smoke test when that flow exists.
+5. Verify the updated image with the local release-smoke flow:
+   `npm run container:release-smoke:up`,
+   `npm run test:release-smoke`, and
+   `npm run container:release-smoke:down`.
 
 ## Update Rules
 

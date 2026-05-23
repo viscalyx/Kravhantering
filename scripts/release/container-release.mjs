@@ -6,11 +6,13 @@ import { fileURLToPath } from 'node:url'
 export const APP_RUNTIME_PACKAGE = 'kravhantering-app-runtime'
 export const DB_JOB_PACKAGE = 'kravhantering-db-job'
 export const DEFAULT_RELEASE_OUTPUT_DIR = 'tmp/container-release-artifacts'
+export const DEPLOYMENT_BUNDLE_SCHEMA_VERSION = 1
 
 const USAGE = `Usage:
   node scripts/release/container-release.mjs plan --gitversion-json <path> --output <path> [--github-env <path>] [--changed-files <path>]
   node scripts/release/container-release.mjs digests --plan <path> --app-metadata <path> --db-job-metadata <path> --output <path> [--github-env <path>]
   node scripts/release/container-release.mjs notes --plan <path> --metadata <path> --hashes <path> --output <path>
+  node scripts/release/container-release.mjs bundle --plan <path> --metadata <path> --stack-lock <path> --output-dir <path> [--build-json <path>] [--hashes <path>] [--sbom-dir <path>]
   node scripts/release/container-release.mjs ensure-tag --plan <path>`
 
 const RELEVANT_PATH_PREFIXES = [
@@ -26,6 +28,7 @@ const RELEVANT_PATH_PREFIXES = [
   'package-lock.json',
   'package.json',
   'public/',
+  'docs/rhel10-production-deploy.md',
   'scripts/build-metadata.js',
   'scripts/containers/',
   'scripts/db-sqlserver-admin.mjs',
@@ -34,6 +37,23 @@ const RELEVANT_PATH_PREFIXES = [
   'typeorm/migrations/',
   'typeorm/seed-required.mjs',
   'typeorm/seed-runner.mjs',
+]
+
+export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
+  {
+    source: 'docs/rhel10-production-deploy.md',
+    target: 'docs/rhel10-production-deploy.md',
+  },
+  {
+    source: 'docs/adr/0001-release-artifact-production-deployment.md',
+    target: 'docs/adr/0001-release-artifact-production-deployment.md',
+  },
+  { source: 'containers/production/compose', target: 'compose' },
+  { source: 'containers/production/env', target: 'env' },
+  { source: 'containers/production/keycloak', target: 'keycloak' },
+  { source: 'containers/production/nginx', target: 'nginx' },
+  { source: 'containers/production/sqlserver', target: 'sqlserver' },
+  { source: 'containers/production/systemd', target: 'systemd' },
 ]
 
 function readNonEmpty(value) {
@@ -336,6 +356,176 @@ export function releaseMetadataEnv(metadata) {
   }
 }
 
+export function deploymentBundleBaseName(version) {
+  const normalized = readNonEmpty(version) ?? '0.0.0-local'
+  return `kravhantering-production-deploy-${normalized}`
+}
+
+export function deploymentBundleArchiveName(version) {
+  return `${deploymentBundleBaseName(version)}.tar.gz`
+}
+
+function digestRef(service) {
+  if (!service?.image || !service.digest) return undefined
+  return `${service.image}@${service.digest}`
+}
+
+function serviceByName(stackLock, name) {
+  return stackLock.services?.find(service => service.name === name)
+}
+
+export function createDeploymentBundleManifest({
+  files = [],
+  generatedAt,
+  metadata,
+  plan,
+  stackLock,
+} = {}) {
+  const timestamp = readNonEmpty(generatedAt) ?? new Date().toISOString()
+  const services = {
+    appRuntime: serviceByName(stackLock, 'app-runtime'),
+    dbJob: serviceByName(stackLock, 'db-job'),
+    keycloak: serviceByName(stackLock, 'keycloak'),
+    nginx: serviceByName(stackLock, 'nginx'),
+    sqlserver: serviceByName(stackLock, 'sqlserver'),
+  }
+
+  return {
+    schemaVersion: DEPLOYMENT_BUNDLE_SCHEMA_VERSION,
+    name: deploymentBundleBaseName(plan.version),
+    version: plan.version,
+    commitSha: plan.commitSha,
+    generatedAt: timestamp,
+    sourceRelease: {
+      tag: plan.releaseTagName,
+      workflowRun: `https://github.com/${plan.repository}/actions/runs/${plan.runId}`,
+    },
+    images: {
+      appRuntime: metadata.appRuntime?.ref ?? digestRef(services.appRuntime),
+      dbJob: metadata.dbJob?.ref ?? digestRef(services.dbJob),
+      nginx: digestRef(services.nginx),
+      sqlserver: digestRef(services.sqlserver),
+      keycloak: digestRef(services.keycloak),
+    },
+    supportedTopologies: [
+      'app-node-external-sql-external-idp',
+      'single-node-internal-sql-internal-keycloak',
+    ],
+    files: [...files].sort(),
+  }
+}
+
+function copyBundleEntry(entry, bundleRoot, options = {}) {
+  const cwd = options.cwd ?? process.cwd()
+  const fsImpl = options.fsImpl ?? fs
+  const source = path.resolve(cwd, entry.source)
+  const target = path.resolve(bundleRoot, entry.target)
+
+  fsImpl.mkdirSync(path.dirname(target), { recursive: true })
+  fsImpl.cpSync(source, target, { recursive: true })
+}
+
+function copyOptionalFile(source, target, options = {}) {
+  const cwd = options.cwd ?? process.cwd()
+  const fsImpl = options.fsImpl ?? fs
+  const absoluteSource = path.resolve(cwd, source)
+  if (!fsImpl.existsSync(absoluteSource)) return false
+
+  const absoluteTarget = path.resolve(target)
+  fsImpl.mkdirSync(path.dirname(absoluteTarget), { recursive: true })
+  fsImpl.copyFileSync(absoluteSource, absoluteTarget)
+  return true
+}
+
+function listFilesRecursive(root, options = {}) {
+  const fsImpl = options.fsImpl ?? fs
+  const files = []
+
+  function visit(dir) {
+    for (const entry of fsImpl.readdirSync(dir, { withFileTypes: true })) {
+      const absolute = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        visit(absolute)
+        continue
+      }
+      if (entry.isFile()) {
+        files.push(path.relative(root, absolute).replaceAll(path.sep, '/'))
+      }
+    }
+  }
+
+  visit(root)
+  return files.sort()
+}
+
+export function stageProductionDeploymentBundle(options = {}) {
+  const cwd = options.cwd ?? process.cwd()
+  const fsImpl = options.fsImpl ?? fs
+  const outputDir =
+    readNonEmpty(options.outputDir) ??
+    path.join(DEFAULT_RELEASE_OUTPUT_DIR, 'deployment')
+  const plan = options.plan
+  const metadata = options.metadata
+  const stackLock = options.stackLock
+
+  if (!plan || !metadata || !stackLock) {
+    throw new Error('plan, metadata and stackLock are required.')
+  }
+
+  const bundleName = deploymentBundleBaseName(plan.version)
+  const bundleRoot = path.resolve(cwd, outputDir, bundleName)
+  fsImpl.rmSync(bundleRoot, { force: true, recursive: true })
+  fsImpl.mkdirSync(bundleRoot, { recursive: true })
+
+  for (const entry of DEPLOYMENT_BUNDLE_STATIC_ENTRIES) {
+    copyBundleEntry(entry, bundleRoot, { cwd, fsImpl })
+  }
+
+  const dynamicFiles = [
+    [options.stackLockPath, 'container-stack.lock.json'],
+    [options.metadataPath, 'release-metadata.json'],
+    [options.buildJsonPath, 'public/build.json'],
+    [options.hashesPath, 'hashes.sha256'],
+  ]
+  const sbomDir = readNonEmpty(options.sbomDir)
+  if (sbomDir) {
+    dynamicFiles.push(
+      [
+        path.join(sbomDir, 'app-runtime.spdx.json'),
+        'sbom/app-runtime.spdx.json',
+      ],
+      [path.join(sbomDir, 'db-job.spdx.json'), 'sbom/db-job.spdx.json'],
+    )
+  }
+
+  for (const [source, target] of dynamicFiles) {
+    if (!readNonEmpty(source)) continue
+    copyOptionalFile(source, path.join(bundleRoot, target), { cwd, fsImpl })
+  }
+
+  const filesBeforeManifest = listFilesRecursive(bundleRoot, { fsImpl })
+  const manifest = createDeploymentBundleManifest({
+    files: [...filesBeforeManifest, 'DEPLOYMENT-MANIFEST.json'],
+    generatedAt: options.generatedAt,
+    metadata,
+    plan,
+    stackLock,
+  })
+  writeJsonFile(
+    path.join(bundleRoot, 'DEPLOYMENT-MANIFEST.json'),
+    manifest,
+    fsImpl,
+  )
+
+  return {
+    archiveName: deploymentBundleArchiveName(plan.version),
+    bundleName,
+    bundleRoot,
+    files: listFilesRecursive(bundleRoot, { fsImpl }),
+    manifest,
+  }
+}
+
 function hashesToMarkdown(content) {
   const lines = changedFilesFromText(content)
   return lines.length
@@ -362,6 +552,11 @@ export function renderReleaseNotes(plan, metadata, hashesContent) {
     '',
     ...metadata.appRuntime.tags.map(tag => `- \`${tag}\``),
     ...metadata.dbJob.tags.map(tag => `- \`${tag}\``),
+    '',
+    '## Production Deployment Bundle',
+    '',
+    `- \`${deploymentBundleArchiveName(plan.version)}\``,
+    `- \`${deploymentBundleArchiveName(plan.version)}.sha256\``,
     '',
     '## Checksums',
     '',
@@ -484,6 +679,30 @@ export async function main(args, dependencies = {}) {
         fsImpl,
       )
       consoleObj.log(`Wrote ${options.output}`)
+      return 0
+    }
+
+    if (command === 'bundle') {
+      const plan = readJsonFile(options.plan, fsImpl)
+      const metadata = readJsonFile(options.metadata, fsImpl)
+      const stackLock = readJsonFile(options['stack-lock'], fsImpl)
+      const result = stageProductionDeploymentBundle({
+        buildJsonPath: options['build-json'],
+        cwd: dependencies.cwd,
+        fsImpl,
+        generatedAt: options['generated-at'],
+        hashesPath: options.hashes,
+        metadata,
+        metadataPath: options.metadata,
+        outputDir: options['output-dir'],
+        plan,
+        sbomDir: options['sbom-dir'],
+        stackLock,
+        stackLockPath: options['stack-lock'],
+      })
+      consoleObj.log(
+        `Staged ${path.relative(dependencies.cwd ?? process.cwd(), result.bundleRoot)}`,
+      )
       return 0
     }
 

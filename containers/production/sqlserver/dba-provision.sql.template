@@ -1,0 +1,52 @@
+/*
+  cSpell:words datawriter
+
+  SQL Server pre-provisioning template for the external database path.
+
+  Replace every value in angle brackets before running. The migration/job
+  principal needs db_owner because TypeORM migrations create and alter schema.
+  The app principal needs read/write data roles for normal runtime traffic.
+*/
+
+USE [master];
+GO
+
+IF DB_ID(N'<database-name>') IS NULL
+BEGIN
+  DECLARE @createSql nvarchar(max) =
+    N'CREATE DATABASE ' + QUOTENAME(N'<database-name>') + N';';
+  EXEC sp_executesql @createSql;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = N'<db-job-login>')
+BEGIN
+  CREATE LOGIN [<db-job-login>] WITH PASSWORD = '<db-job-password>';
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = N'<app-login>')
+BEGIN
+  CREATE LOGIN [<app-login>] WITH PASSWORD = '<app-password>';
+END
+GO
+
+USE [<database-name>];
+GO
+
+IF DATABASE_PRINCIPAL_ID(N'<db-job-login>') IS NULL
+BEGIN
+  CREATE USER [<db-job-login>] FOR LOGIN [<db-job-login>];
+END
+GO
+
+IF DATABASE_PRINCIPAL_ID(N'<app-login>') IS NULL
+BEGIN
+  CREATE USER [<app-login>] FOR LOGIN [<app-login>];
+END
+GO
+
+ALTER ROLE [db_owner] ADD MEMBER [<db-job-login>];
+ALTER ROLE [db_datareader] ADD MEMBER [<app-login>];
+ALTER ROLE [db_datawriter] ADD MEMBER [<app-login>];
+GO

@@ -48,6 +48,10 @@ The generated files are runtime artifacts and are ignored by Git:
 
 ## Local Podman Stack
 
+For the short local PoC/demo runbook, see
+[docs/container-poc-demo.md](../../docs/container-poc-demo.md). This file keeps
+the lower-level Compose contract and troubleshooting details.
+
 Phase 7 runs the generated Compose stack with Podman Compose. The devcontainer
 image installs Podman tooling, but nested Podman support requires either the
 opt-in elevated devcontainer profile or a host shell with Podman available.

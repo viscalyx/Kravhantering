@@ -1,0 +1,94 @@
+# cSpell:words fullchain privkey
+
+name: kravhantering-single-node
+
+services:
+  sqlserver:
+    image: ${SQLSERVER_IMAGE_REF:?set SQLSERVER_IMAGE_REF}
+    env_file:
+      - /etc/kravhantering/sqlserver.env
+    ports:
+      - "${SQLSERVER_HOST_PORT:-127.0.0.1:15433}:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      - kravhantering-internal
+    restart: unless-stopped
+
+  keycloak:
+    image: ${KEYCLOAK_IMAGE_REF:?set KEYCLOAK_IMAGE_REF}
+    command: ["start", "--import-realm"]
+    env_file:
+      - /etc/kravhantering/keycloak.env
+    volumes:
+      - /etc/kravhantering/keycloak/realm-kravhantering-production.json:/opt/keycloak/data/import/realm-kravhantering-production.json:ro,Z
+      - keycloak-data:/opt/keycloak/data
+    networks:
+      - kravhantering-internal
+    restart: unless-stopped
+
+  db-bootstrap:
+    image: ${DB_JOB_IMAGE_REF:?set DB_JOB_IMAGE_REF}
+    command: ["bootstrap"]
+    env_file:
+      - /etc/kravhantering/db-job.env
+    networks:
+      - kravhantering-internal
+    restart: "no"
+
+  db-migrate:
+    image: ${DB_JOB_IMAGE_REF:?set DB_JOB_IMAGE_REF}
+    command: ["migrate"]
+    env_file:
+      - /etc/kravhantering/db-job.env
+    networks:
+      - kravhantering-internal
+    restart: "no"
+
+  db-seed-required:
+    image: ${DB_JOB_IMAGE_REF:?set DB_JOB_IMAGE_REF}
+    command: ["seed:required"]
+    env_file:
+      - /etc/kravhantering/db-job.env
+    networks:
+      - kravhantering-internal
+    restart: "no"
+
+  app-runtime:
+    image: ${APP_RUNTIME_IMAGE_REF:?set APP_RUNTIME_IMAGE_REF}
+    env_file:
+      - /etc/kravhantering/app.env
+    environment:
+      NODE_EXTRA_CA_CERTS: /run/kravhantering/tls/ca.crt
+    volumes:
+      - /etc/kravhantering/tls/ca.crt:/run/kravhantering/tls/ca.crt:ro,Z
+    networks:
+      - kravhantering-internal
+    restart: unless-stopped
+
+  nginx:
+    image: ${NGINX_IMAGE_REF:?set NGINX_IMAGE_REF}
+    depends_on:
+      - app-runtime
+      - keycloak
+    ports:
+      - "${NGINX_HTTPS_BIND:-443:443}"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro,Z
+      - ./nginx/conf.d/single-node-tls.conf:/etc/nginx/conf.d/default.conf:ro,Z
+      - /etc/kravhantering/tls/fullchain.pem:/etc/nginx/tls/fullchain.pem:ro,Z
+      - /etc/kravhantering/tls/privkey.pem:/etc/nginx/tls/privkey.pem:ro,Z
+    networks:
+      kravhantering-internal:
+        aliases:
+          - ${PUBLIC_HOSTNAME:?set PUBLIC_HOSTNAME}
+    restart: unless-stopped
+
+networks:
+  kravhantering-internal:
+
+volumes:
+  sqlserver-data:
+    name: kravhantering-sqlserver-data
+  keycloak-data:
+    name: kravhantering-keycloak-data

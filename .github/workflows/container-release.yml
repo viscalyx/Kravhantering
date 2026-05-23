@@ -297,6 +297,30 @@ jobs:
             tmp/container-release-artifacts/sbom/app-runtime.spdx.json \
             tmp/container-release-artifacts/sbom/db-job.spdx.json || true
 
+      - name: Stage production deployment bundle
+        if: always()
+        run: |
+          node scripts/release/container-release.mjs bundle \
+            --plan tmp/container-release-artifacts/metadata/release-plan.json \
+            --metadata tmp/container-release-artifacts/metadata/release-metadata.json \
+            --stack-lock container-stack.lock.json \
+            --build-json public/build.json \
+            --hashes hashes.sha256 \
+            --sbom-dir tmp/container-release-artifacts/sbom \
+            --output-dir tmp/container-release-artifacts/deployment
+
+      - name: Archive production deployment bundle
+        if: always()
+        run: |
+          set -euo pipefail
+          bundle="kravhantering-production-deploy-${RELEASE_VERSION}"
+          archive="tmp/container-release-artifacts/${bundle}.tar.gz"
+          tar -C tmp/container-release-artifacts/deployment \
+            -czf "${archive}" \
+            "${bundle}"
+          sha256sum "${archive}" | tee "${archive}.sha256"
+          cat "${archive}.sha256" >> hashes.sha256
+
       - name: Write release notes
         if: always()
         run: |
@@ -385,6 +409,8 @@ jobs:
             tmp/container-release-artifacts/metadata/release-metadata.json \
             tmp/container-release-artifacts/sbom/app-runtime.spdx.json \
             tmp/container-release-artifacts/sbom/db-job.spdx.json \
+            tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz \
+            tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz.sha256 \
             --clobber
 
       - name: Upload release runtime artifacts
@@ -415,4 +441,15 @@ jobs:
           name: container-release-playwright-${{ github.run_id }}
           path: tmp/container-release-artifacts/playwright/
           if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload release deployment bundle
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: container-release-deployment-${{ github.run_id }}
+          path: |
+            tmp/container-release-artifacts/kravhantering-production-deploy-*.tar.gz
+            tmp/container-release-artifacts/kravhantering-production-deploy-*.tar.gz.sha256
+          if-no-files-found: warn
           retention-days: 30

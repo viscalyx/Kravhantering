@@ -25,6 +25,43 @@ Local and release-smoke stack startup honor `--lock-file`. When the stack builds
 local images, `run-local-stack.mjs` passes that path to
 `generate-stack-lock.mjs` before `generate-compose.mjs` reads it.
 
+## Release Evidence
+
+GitHub Release notes are the first place to find the tested release version,
+the GHCR digest references for `app-runtime` and `db-job`, and the published
+checksums. Stable releases use normal GitHub Releases; preview releases are
+marked as pre-releases and are kept as part of the audit trail.
+
+Each trusted run also writes runtime evidence:
+
+- `container-stack.lock.json` lists the exact image name, tag, digest, source
+  and role for `app-runtime`, `db-job`, nginx, SQL Server and Keycloak.
+- `container-stack.compose.yml` is the generated Compose file that the smoke
+  test started.
+- `hashes.sha256` contains checksums for saved runtime evidence.
+- `public/build.json` contains the app version, commit SHA, build time and
+  image tag embedded in the tested app image.
+
+The workflow uploads these artifact groups:
+
+- `container-release-runtime-*` for Compose, stack lock, status, build
+  metadata and hashes.
+- `container-release-metadata-*` for GitVersion, release metadata, release
+  notes and SBOM files.
+- `container-release-playwright-*` for the release-smoke report,
+  screenshots, traces and test results.
+- `container-release-deployment-*` for the production deployment bundle and
+  its flat checksum.
+
+The production deployment bundle is also uploaded to GitHub Releases as:
+
+- `kravhantering-production-deploy-<version>.tar.gz`
+- `kravhantering-production-deploy-<version>.tar.gz.sha256`
+
+See [rhel10-production-deploy.md](./rhel10-production-deploy.md) for the
+clean-host RHEL 10 install, planned-downtime upgrade and rollback workflow
+that uses only release assets plus digest-preserved internal registry images.
+
 ## Public GHCR Packages
 
 The packages should be public if users must be able to pull the release
