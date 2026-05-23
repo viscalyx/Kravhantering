@@ -28,11 +28,14 @@ const ENV_LOCAL_FILES = [
 ]
 
 const USAGE = `Usage:
-  node scripts/containers/run-local-stack.mjs up [--mode <test|demo|release-smoke>] [--run-id <id>] [--skip-build]
+  node scripts/containers/run-local-stack.mjs up [--mode <test|demo|release-smoke>] [--run-id <id>] [--skip-build] [--release-images-from-lock]
   node scripts/containers/run-local-stack.mjs down [--mode <test|demo|release-smoke>]
 
 Options:
   --compose-file <path>  Generated Compose file path
+  --lock-file <path>     Stack lock file path
+  --release-images-from-lock
+                         Pull app-runtime and db-job by digest from the stack lock
   --run-id <id>          Stable run id for ephemeral modes
   --skip-build           Reuse already built Docker images and load them into Podman
   --state-file <path>    Local state file path
@@ -50,6 +53,7 @@ function readNonEmpty(value) {
 export function parseArgs(args) {
   const [command = '', ...rest] = args
   const options = {}
+  let releaseImagesFromLock = false
   let skipBuild = false
 
   for (let index = 0; index < rest.length; index += 1) {
@@ -61,6 +65,10 @@ export function parseArgs(args) {
 
     if (key === 'skip-build') {
       skipBuild = true
+      continue
+    }
+    if (key === 'release-images-from-lock') {
+      releaseImagesFromLock = true
       continue
     }
 
@@ -80,7 +88,9 @@ export function parseArgs(args) {
   return {
     command,
     composeFile: readNonEmpty(options['compose-file']) ?? DEFAULT_COMPOSE_FILE,
+    lockFile: readNonEmpty(options['lock-file']) ?? DEFAULT_LOCK_FILE,
     mode,
+    releaseImagesFromLock,
     runId: readNonEmpty(options['run-id']),
     skipBuild,
     sqlServerHostPort: readNonEmpty(options['sqlserver-host-port']),
@@ -99,6 +109,10 @@ function readEnvImageConfig(env, prefix, defaults) {
 
 function imageReference(image) {
   return `${image.image}:${image.tag}`
+}
+
+function imageDigestReference(image) {
+  return `${image.image}@${image.digest}`
 }
 
 export function createLocalStackConfig(options = {}) {
@@ -136,6 +150,7 @@ export function createLocalStackConfig(options = {}) {
     lockFile: options.lockFile ?? DEFAULT_LOCK_FILE,
     mode,
     projectName,
+    releaseImagesFromLock: options.releaseImagesFromLock ?? false,
     runId,
     skipBuild: options.skipBuild ?? false,
     sqlServerHostPort,
@@ -312,6 +327,40 @@ function inspectImageId(image, options = {}) {
   return id.startsWith('sha256:') ? id : `sha256:${id}`
 }
 
+function readStackLock(config, options = {}) {
+  const cwd = options.cwd ?? process.cwd()
+  const fsImpl = options.fsImpl ?? fs
+  return JSON.parse(
+    fsImpl.readFileSync(path.resolve(cwd, config.lockFile), 'utf8'),
+  )
+}
+
+function lockedProjectService(config, serviceName, options = {}) {
+  const stackLock = readStackLock(config, options)
+  const service = stackLock.services?.find(item => item.name === serviceName)
+
+  if (!service?.image || !service.tag || !service.digest || !service.source) {
+    throw new Error(`Missing ${serviceName} image lock in ${config.lockFile}.`)
+  }
+
+  return service
+}
+
+function withReleaseImagesFromLock(config, options = {}) {
+  if (!config.releaseImagesFromLock) return config
+
+  const appRuntimeImage = lockedProjectService(config, 'app-runtime', options)
+  const dbJobImage = lockedProjectService(config, 'db-job', options)
+
+  return {
+    ...config,
+    appRuntimeImage,
+    appRuntimeImageReference: imageDigestReference(appRuntimeImage),
+    dbJobImage,
+    dbJobImageReference: imageDigestReference(dbJobImage),
+  }
+}
+
 function writeState(config, options = {}) {
   const cwd = options.cwd ?? process.cwd()
   const fsImpl = options.fsImpl ?? fs
@@ -486,10 +535,7 @@ function assertContainerRunning(config, service, options = {}) {
 }
 
 function lockedVendorImageReference(config, serviceName, options = {}) {
-  const cwd = options.cwd ?? process.cwd()
-  const fsImpl = options.fsImpl ?? fs
-  const lockPath = path.resolve(cwd, config.lockFile)
-  const stackLock = JSON.parse(fsImpl.readFileSync(lockPath, 'utf8'))
+  const stackLock = readStackLock(config, options)
   const service = stackLock.services?.find(item => item.name === serviceName)
 
   if (!service?.image || !service.digest) {
@@ -497,6 +543,15 @@ function lockedVendorImageReference(config, serviceName, options = {}) {
   }
 
   return `${service.image}@${service.digest}`
+}
+
+function pullReleaseProjectImages(config, options = {}) {
+  for (const imageRef of [
+    config.appRuntimeImageReference,
+    config.dbJobImageReference,
+  ]) {
+    runCommand('podman', ['pull', imageRef], options)
+  }
 }
 
 function demoSeedMountArgs(options = {}) {
@@ -613,10 +668,11 @@ function runNginx(config, options = {}) {
 }
 
 async function up(config, options = {}) {
+  const runtimeConfig = withReleaseImagesFromLock(config, options)
   runCommand('podman', ['--version'], options)
   runCommand('podman', ['compose', 'version'], options)
   runCommand('podman', ['info'], options)
-  const cleanedProjects = cleanupConflictingTestStacks(config, options)
+  const cleanedProjects = cleanupConflictingTestStacks(runtimeConfig, options)
   const consoleObj = options.consoleObj ?? console
   for (const projectName of cleanedProjects) {
     consoleObj.log(`Removed previous local ephemeral stack (${projectName}).`)
@@ -624,90 +680,109 @@ async function up(config, options = {}) {
   ensureEnvLocalFiles(options)
   runCommand(
     'node',
-    ['scripts/containers/generate-tls.mjs', '--output-dir', config.tlsDir],
-    options,
-  )
-  if (!config.skipBuild) {
-    runCommand('npm', ['run', 'container:build:app-runtime'], options)
-    runCommand('npm', ['run', 'container:build:db-job'], options)
-  }
-  await loadDockerImageIntoPodman(config.appRuntimeImageReference, options)
-  await loadDockerImageIntoPodman(config.dbJobImageReference, options)
-
-  const appDigest = inspectImageId(config.appRuntimeImageReference, options)
-  const dbJobDigest = inspectImageId(config.dbJobImageReference, options)
-  runCommand(
-    'node',
     [
-      'scripts/containers/generate-stack-lock.mjs',
-      'generate',
-      '--app-image',
-      config.appRuntimeImage.image,
-      '--app-tag',
-      config.appRuntimeImage.tag,
-      '--app-digest',
-      appDigest,
-      '--app-source',
-      config.appRuntimeImage.source,
-      '--db-job-image',
-      config.dbJobImage.image,
-      '--db-job-tag',
-      config.dbJobImage.tag,
-      '--db-job-digest',
-      dbJobDigest,
-      '--db-job-source',
-      config.dbJobImage.source,
+      'scripts/containers/generate-tls.mjs',
+      '--output-dir',
+      runtimeConfig.tlsDir,
     ],
     options,
   )
+  if (!runtimeConfig.releaseImagesFromLock && !runtimeConfig.skipBuild) {
+    runCommand('npm', ['run', 'container:build:app-runtime'], options)
+    runCommand('npm', ['run', 'container:build:db-job'], options)
+  }
+  if (runtimeConfig.releaseImagesFromLock) {
+    pullReleaseProjectImages(runtimeConfig, options)
+  } else {
+    await loadDockerImageIntoPodman(
+      runtimeConfig.appRuntimeImageReference,
+      options,
+    )
+    await loadDockerImageIntoPodman(runtimeConfig.dbJobImageReference, options)
+
+    const appDigest = inspectImageId(
+      runtimeConfig.appRuntimeImageReference,
+      options,
+    )
+    const dbJobDigest = inspectImageId(
+      runtimeConfig.dbJobImageReference,
+      options,
+    )
+    runCommand(
+      'node',
+      [
+        'scripts/containers/generate-stack-lock.mjs',
+        'generate',
+        '--app-image',
+        runtimeConfig.appRuntimeImage.image,
+        '--app-tag',
+        runtimeConfig.appRuntimeImage.tag,
+        '--app-digest',
+        appDigest,
+        '--app-source',
+        runtimeConfig.appRuntimeImage.source,
+        '--db-job-image',
+        runtimeConfig.dbJobImage.image,
+        '--db-job-tag',
+        runtimeConfig.dbJobImage.tag,
+        '--db-job-digest',
+        dbJobDigest,
+        '--db-job-source',
+        runtimeConfig.dbJobImage.source,
+      ],
+      options,
+    )
+  }
   runCommand(
     'node',
     [
       'scripts/containers/generate-compose.mjs',
       '--mode',
-      'pr',
+      runtimeConfig.releaseImagesFromLock ? 'release' : 'pr',
+      '--lock-file',
+      runtimeConfig.lockFile,
       '--project-name',
-      config.projectName,
+      runtimeConfig.projectName,
       '--sqlserver-volume-name',
-      config.sqlServerVolumeName,
+      runtimeConfig.sqlServerVolumeName,
       '--sqlserver-host-port',
-      config.sqlServerHostPort,
+      runtimeConfig.sqlServerHostPort,
       '--tls-dir',
-      config.tlsDir,
+      runtimeConfig.tlsDir,
     ],
     options,
   )
 
-  writeState(config, options)
+  writeState(runtimeConfig, options)
   runCommand(
     'podman',
-    podmanComposeArgs(config, ['up', '-d', 'sqlserver', 'keycloak']),
+    podmanComposeArgs(runtimeConfig, ['up', '-d', 'sqlserver', 'keycloak']),
     options,
   )
-  assertContainerRunning(config, 'sqlserver', options)
-  runWait('sqlserver', config, options)
+  assertContainerRunning(runtimeConfig, 'sqlserver', options)
+  runWait('sqlserver', runtimeConfig, options)
 
   for (const service of ['db-bootstrap', 'db-migrate', 'db-seed-required']) {
-    runDatabaseJob(service, config, options)
+    runDatabaseJob(service, runtimeConfig, options)
   }
-  if (config.mode === 'demo' || config.mode === 'release-smoke') {
-    runDatabaseJob('db-seed-demo', config, options)
+  if (runtimeConfig.mode === 'demo' || runtimeConfig.mode === 'release-smoke') {
+    runDatabaseJob('db-seed-demo', runtimeConfig, options)
   }
 
-  runAppRuntime(config, options)
-  runNginx(config, options)
-  runWait('nginx', config, options)
-  runWait('keycloak', config, options)
-  runWait('health', config, options)
-  runWait('ready', config, options)
+  runAppRuntime(runtimeConfig, options)
+  runNginx(runtimeConfig, options)
+  runWait('nginx', runtimeConfig, options)
+  runWait('keycloak', runtimeConfig, options)
+  runWait('health', runtimeConfig, options)
+  runWait('ready', runtimeConfig, options)
   runCommand(
     'node',
     [
       'scripts/containers/collect-status.mjs',
       '--compose-file',
-      config.composeFile,
+      runtimeConfig.composeFile,
       '--project-name',
-      config.projectName,
+      runtimeConfig.projectName,
     ],
     options,
   )

@@ -36,6 +36,7 @@
     "container:release-smoke:down": "node scripts/containers/run-local-stack.mjs down --mode release-smoke",
     "container:oci:export": "node scripts/containers/export-oci-archives.mjs export",
     "container:oci:verify": "node scripts/containers/export-oci-archives.mjs verify",
+    "container:release": "node scripts/release/container-release.mjs",
     "container:status": "node scripts/containers/collect-status.mjs",
     "container:hashes": "node scripts/containers/write-hashes.mjs",
     "prebuild:local-prod": "node ./scripts/prebuild.js",

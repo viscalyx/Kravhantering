@@ -641,4 +641,110 @@ describe('container stack helpers', () => {
     expect(seedDemoIndex).toBeGreaterThan(-1)
     expect(appRuntimeIndex).toBeGreaterThan(seedDemoIndex)
   })
+
+  it('uses digest-locked release images from the stack lock without local build or load', async () => {
+    const commands = []
+    const spawned = []
+    const dependencies = {
+      consoleObj: {
+        error: vi.fn(),
+        log: vi.fn(),
+      },
+      execFileSync: vi.fn((command, args) => {
+        expect(command).toBe('podman')
+        const joinedArgs = args.join(' ')
+        if (joinedArgs === 'ps --all --format {{.Names}}\t{{.Ports}}') {
+          return ''
+        }
+        if (joinedArgs.includes('inspect --format {{.State.Running}}')) {
+          return 'true\n'
+        }
+        throw new Error(`Unexpected podman args: ${joinedArgs}`)
+      }),
+      fsImpl: {
+        existsSync: filePath => String(filePath).includes('.env.'),
+        mkdirSync: vi.fn(),
+        readFileSync: vi.fn(filePath =>
+          String(filePath).endsWith('container-stack.lock.json')
+            ? JSON.stringify({
+                services: [
+                  {
+                    digest: 'sha256:app-runtime-release',
+                    image: 'ghcr.io/viscalyx/kravhantering-app-runtime',
+                    name: 'app-runtime',
+                    source: 'ghcr-release',
+                    tag: '1.2.3',
+                  },
+                  {
+                    digest: 'sha256:db-job-release',
+                    image: 'ghcr.io/viscalyx/kravhantering-db-job',
+                    name: 'db-job',
+                    source: 'ghcr-release',
+                    tag: '1.2.3',
+                  },
+                  {
+                    digest: 'sha256:nginx',
+                    image: 'docker.io/library/nginx',
+                    name: 'nginx',
+                  },
+                ],
+              })
+            : '',
+        ),
+        writeFileSync: vi.fn(),
+      },
+      spawn: vi.fn((command, args) => {
+        spawned.push(`${command} ${args.join(' ')}`)
+        return fakeProcess()
+      }),
+      spawnSync: vi.fn((command, args) => {
+        commands.push(`${command} ${args.join(' ')}`)
+        return { status: 0 }
+      }),
+    }
+
+    await expect(
+      runLocalStackMain(
+        [
+          'up',
+          '--mode',
+          'release-smoke',
+          '--run-id',
+          'release',
+          '--release-images-from-lock',
+        ],
+        dependencies,
+      ),
+    ).resolves.toBe(0)
+
+    const commandText = commands.join('\n')
+    expect(commandText).not.toContain('container:build:app-runtime')
+    expect(commandText).not.toContain('generate-stack-lock.mjs generate')
+    expect(spawned).toEqual([])
+    expect(commands).toContain(
+      'podman pull ghcr.io/viscalyx/kravhantering-app-runtime@sha256:app-runtime-release',
+    )
+    expect(commands).toContain(
+      'podman pull ghcr.io/viscalyx/kravhantering-db-job@sha256:db-job-release',
+    )
+    expect(commandText).toContain('generate-compose.mjs --mode release')
+    expect(
+      commands.some(command =>
+        command.endsWith(
+          'ghcr.io/viscalyx/kravhantering-db-job@sha256:db-job-release seed:required',
+        ),
+      ),
+    ).toBe(true)
+    expect(
+      commands.some(
+        command =>
+          command.includes(
+            'podman run --name kravhantering-container-stack-release-smoke-release_app-runtime_1 --detach',
+          ) &&
+          command.includes(
+            'ghcr.io/viscalyx/kravhantering-app-runtime@sha256:app-runtime-release',
+          ),
+      ),
+    ).toBe(true)
+  })
 })

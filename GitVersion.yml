@@ -1,0 +1,24 @@
+mode: ContinuousDelivery
+tag-prefix: '[vV]'
+major-version-bump-message: '\+semver:\s?(breaking|major)|BREAKING CHANGE:'
+minor-version-bump-message: '\+semver:\s?(feature|minor)|^feat(\([^)]+\))?!?:'
+patch-version-bump-message: '\+semver:\s?(fix|patch)|^(fix|perf)(\([^)]+\))?!?:'
+no-bump-message: '\+semver:\s?(none|skip)'
+branches:
+  main:
+    regex: ^main$
+    mode: ContinuousDelivery
+    label: preview
+    increment: Inherit
+  pull-request:
+    regex: ^(pull|pull\-requests|pr)[/-]
+    mode: ContinuousDelivery
+    label: PullRequest
+    increment: Inherit
+  tag:
+    regex: ^v?\d+\.\d+\.\d+$
+    mode: ContinuousDelivery
+    label: ''
+    increment: None
+ignore:
+  sha: []
