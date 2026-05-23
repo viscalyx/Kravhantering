@@ -52,4 +52,15 @@ describe('GitHub Actions workflow security', () => {
 
     expect(unpinnedReferences).toEqual([])
   })
+
+  it('excludes the Podman-specific app env example from dotenv-linter', () => {
+    const qualityChecks = readFileSync(
+      path.join(WORKFLOWS_DIR, 'quality-checks.yml'),
+      'utf8',
+    )
+
+    expect(qualityChecks).toContain(
+      'dotenv_linter_flags: . --exclude containers/app/.env.app.example',
+    )
+  })
 })
