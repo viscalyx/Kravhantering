@@ -48,6 +48,34 @@ describe('trusted container release helpers', () => {
     ])
   })
 
+  it('strips GitVersion build metadata from preview release tags', () => {
+    const plan = createReleasePlan({
+      changedFiles: ['containers/app/Dockerfile'],
+      env: env(),
+      gitVersion: {
+        FullSemVer: '1.2.0-preview.4+Branch.main.Sha.abcdef',
+      },
+    })
+
+    expect(plan).toMatchObject({
+      releaseTagName: 'v1.2.0-preview.4',
+      version: '1.2.0-preview.4',
+    })
+    expect(plan.tags).toEqual([
+      'main-1234567890ab',
+      'sha-1234567890abcdef1234567890abcdef12345678',
+      '1.2.0-preview.4',
+    ])
+    for (const tag of [
+      plan.releaseTagName,
+      ...plan.tags,
+      ...plan.appRuntimeTags,
+      ...plan.dbJobTags,
+    ]) {
+      expect(tag).not.toContain('+')
+    }
+  })
+
   it('keeps docs-only main pushes as snapshots without preview releases', () => {
     const plan = createReleasePlan({
       changedFiles: ['docs/prompt.md', 'tests/unit/example.test.ts'],
@@ -151,6 +179,8 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain('id-token: write')
     expect(workflow).toContain('attestations: write')
     expect(workflow).toContain('fetch-depth: 0')
+    expect(workflow).not.toContain('Install latest npm')
+    expect(workflow).not.toContain('npm install -g npm@latest')
     expect(workflow).not.toContain('verify-ghcr-public')
     expect(workflow).toContain('cosign sign --yes')
     expect(workflow).toContain('attest-build-provenance')

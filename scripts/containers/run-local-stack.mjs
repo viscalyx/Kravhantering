@@ -713,6 +713,8 @@ async function up(config, options = {}) {
       [
         'scripts/containers/generate-stack-lock.mjs',
         'generate',
+        '--lock-file',
+        runtimeConfig.lockFile,
         '--app-image',
         runtimeConfig.appRuntimeImage.image,
         '--app-tag',

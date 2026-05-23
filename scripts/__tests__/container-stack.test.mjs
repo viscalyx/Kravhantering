@@ -173,7 +173,7 @@ describe('container stack helpers', () => {
         existsSync: filePath => String(filePath).includes('.env.'),
         mkdirSync: vi.fn(),
         readFileSync: vi.fn(filePath =>
-          String(filePath).endsWith('container-stack.lock.json')
+          String(filePath).endsWith('custom-stack.lock.json')
             ? JSON.stringify({
                 services: [
                   {
@@ -199,21 +199,37 @@ describe('container stack helpers', () => {
 
     await expect(
       runLocalStackMain(
-        ['up', '--mode', 'release-smoke', '--run-id', '99', '--skip-build'],
+        [
+          'up',
+          '--mode',
+          'release-smoke',
+          '--run-id',
+          '99',
+          '--skip-build',
+          '--lock-file',
+          'tmp/custom-stack.lock.json',
+        ],
         dependencies,
       ),
     ).resolves.toBe(0)
 
-    expect(commands.join('\n')).not.toContain('container:build:app-runtime')
-    expect(commands.join('\n')).not.toContain('container:build:db-job')
+    const commandText = commands.join('\n')
+    expect(commandText).not.toContain('container:build:app-runtime')
+    expect(commandText).not.toContain('container:build:db-job')
     expect(spawned).toContain(
       'docker save localhost/kravhantering/app-runtime:pr-7-99-deadbeef',
     )
     expect(spawned).toContain(
       'docker save localhost/kravhantering/db-job:pr-7-99-deadbeef',
     )
-    expect(commands.join('\n')).toContain('--app-tag pr-7-99-deadbeef')
-    expect(commands.join('\n')).toContain('--db-job-tag pr-7-99-deadbeef')
+    expect(commandText).toContain(
+      'generate-stack-lock.mjs generate --lock-file tmp/custom-stack.lock.json',
+    )
+    expect(commandText).toContain(
+      'generate-compose.mjs --mode pr --lock-file tmp/custom-stack.lock.json',
+    )
+    expect(commandText).toContain('--app-tag pr-7-99-deadbeef')
+    expect(commandText).toContain('--db-job-tag pr-7-99-deadbeef')
     expect(
       commands.some(command =>
         command.endsWith(

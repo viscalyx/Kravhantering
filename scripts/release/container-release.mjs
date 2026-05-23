@@ -155,6 +155,10 @@ function gitVersionValue(gitVersion, key, fallback) {
   return readNonEmpty(gitVersion?.[key]) ?? fallback
 }
 
+function versionWithoutBuildMetadata(version) {
+  return version.replace(/\+.*/u, '')
+}
+
 function csv(values) {
   return values.join(',')
 }
@@ -190,11 +194,12 @@ export function createReleasePlan(input = {}) {
     changedFiles.length === 0 ? false : changedFiles.some(isReleaseRelevantPath)
   const shouldCreatePreviewRelease =
     !isStableRelease && isMain && hasRelevantChange
-  const version =
+  const rawVersion =
     (isStableRelease ? stableVersionFromRef(ref, refName) : undefined) ??
     gitVersionValue(gitVersion, 'FullSemVer', undefined) ??
     gitVersionValue(gitVersion, 'SemVer', undefined) ??
     '0.0.0-local'
+  const version = versionWithoutBuildMetadata(rawVersion)
   const releaseTagName =
     isStableRelease || shouldCreatePreviewRelease ? `v${version}` : ''
   const appRuntimeImage = `ghcr.io/${owner}/${APP_RUNTIME_PACKAGE}`
