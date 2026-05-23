@@ -96,6 +96,12 @@ sequenceDiagram
 - The login-state cookie is separate from the main session cookie and has a
   much shorter lifetime. Its only job is to carry the PKCE verifier, `state`,
   `nonce`, `returnTo`, and `issuedAt` across the IdP round-trip.
+- If `/api/auth/callback` cannot read that login-state cookie, browser
+  navigations are redirected to `/auth/error` instead of seeing raw JSON.
+  JSON clients that explicitly ask for `application/json` still receive a
+  structured error. The server log includes sanitized diagnostics for TLS,
+  Secure-cookie handling, callback host configuration, and the stable
+  `login_state_cookie_missing` code.
 - In [`app/api/auth/callback/route.ts`](../app/api/auth/callback/route.ts),
   the callback URL is rebuilt from the configured public redirect URI before
   the code exchange. This avoids host/origin mismatches when Next.js is
@@ -359,9 +365,9 @@ flowchart LR
   is now a build-target constant that is `true` only for `dev` and `local-prod`.
   The `local-prod` target (booted via `npm run start:prodlike` on port
   `3001`) authenticates against a dedicated dev-only Keycloak client
-  (`kravhantering-local`) wired up in [`.env.prodlike`](../.env.prodlike);
+  (`kravhantering-prodlike`) wired up in [`.env.prodlike`](../.env.prodlike);
   see the
-  [Prodlike local client](./auth-developer-workflow.md#prodlike-local-client-kravhantering-local)
+  [Prodlike local client](./auth-developer-workflow.md#prodlike-local-client-kravhantering-prodlike)
   section in the developer workflow for the full client/redirect/secret
   contract. These auth-related build-target constants (including the
   insecure-issuer allowance) are baked into the bundle when the build target is

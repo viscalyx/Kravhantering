@@ -1,5 +1,5 @@
 ---
-applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed.mjs,docs/database-schema.md,docs/arkitekturbeskrivning-kravhantering.md}"
+applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,docs/database-schema.md,docs/arkitekturbeskrivning-kravhantering.md}"
 ---
 
 # Database Schema Changes
@@ -9,7 +9,8 @@ applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed.mjs,docs
 - The sole database stack is SQL Server + TypeORM.
 - Schema is defined by TypeORM entities under `lib/typeorm/entities/`.
 - Migrations live in `typeorm/migrations/` (one `.mjs` file per migration).
-- Seed data lives in `typeorm/seed.mjs` and is applied by `npm run db:seed`.
+- Seed data lives in `typeorm/seed.mjs` and is applied by the explicit
+  `npm run db:seed:required` and `npm run db:seed:demo` profiles.
 - Preserve current seed-data meaning and identifiers wherever possible. Document unavoidable drift explicitly.
 
 ## Standard

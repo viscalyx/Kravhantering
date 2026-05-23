@@ -170,6 +170,7 @@ const ALLOWED_UNAUTH_NON_API_PREFIXES = ['/_next/', '/favicon']
 const ALLOWED_UNAUTH_EXACT = new Set([
   '/api/health',
   '/api/ready',
+  '/auth/error',
   '/favicon.ico',
   '/robots.txt',
   '/sitemap.xml',
@@ -294,7 +295,7 @@ async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
   if (isAllowedWithoutAuth(pathname)) return null
 
   // /api/mcp/* is a non-browser endpoint; require a bearer token. Token
-  // validity is checked inside the MCP route handler (Phase 5a).
+  // validity is checked inside the MCP route handler.
   if (isMcpPath(pathname)) {
     const auth = request.headers.get('authorization') ?? ''
     if (!/^Bearer\s+\S+/i.test(auth)) {
@@ -366,7 +367,8 @@ function applyPageHeaders(
   // next-intl's middleware here so it does not 307 `/` to `/<defaultLocale>`
   // before the root page can run.
   const response =
-    request.nextUrl.pathname === '/'
+    request.nextUrl.pathname === '/' ||
+    request.nextUrl.pathname === '/auth/error'
       ? NextResponse.next()
       : intlMiddleware(request)
 

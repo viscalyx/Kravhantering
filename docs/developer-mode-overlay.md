@@ -108,6 +108,8 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   scanner needs to distinguish one control family.
 - Navigation help triggers use the `navigation` context with button
   values `help toggle open` and `help toggle closed`.
+- The app title link in the navigation uses `navigation > link: app title`
+  and carries the build-version tooltip when generated metadata is available.
 - Auth account-detail rows keep their developer-mode values in English
   as `user info name`, `user info email`, `user info subject`, and
   `user info session expires` even when the visible labels are
@@ -120,6 +122,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Auth expiry and expired-authentication warnings use the shared
   `dialog` marker from `ConfirmModal`; they do not add a separate auth-specific
   developer-mode surface.
+- Auth callback failures expose the `authentication` context with
+  `auth callback error: <code>` on the public `/auth/error` surface. The retry
+  control uses `link: retry sign in`.
 - Requirement specification form save errors and specification-list load errors
   stay
   inside the existing `specifications` form/table surfaces; they do not add

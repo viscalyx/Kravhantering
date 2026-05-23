@@ -1,9 +1,8 @@
 # MCP Seeded HTTP Security Gate
 
-Phase 6 adds a repo-owned MCP seeded HTTP gate. It runs against the same
-prodlike localhost stack as the REST API security workflow and exercises the
-real `/api/mcp` Streamable HTTP endpoint with a local Keycloak
-service-account Bearer token.
+The repo-owned MCP seeded HTTP gate runs against the same prodlike localhost
+stack as the REST API security workflow and exercises the real `/api/mcp`
+Streamable HTTP endpoint with a local Keycloak service-account Bearer token.
 
 This is not a paid vendor DAST scan, not ZAP API scan, and not a general
 crawler. MCP tool calls are JSON-RPC payloads on one route, so the useful
@@ -11,7 +10,7 @@ signal comes from a known request corpus and explicit assertions.
 
 ## Scope
 
-Covered by Phase 6:
+Covered by this workflow:
 
 - Missing and invalid Bearer tokens return `401` with `WWW-Authenticate:
   Bearer` and a JSON-RPC error body.
@@ -24,17 +23,17 @@ Covered by Phase 6:
 - OpenRouter env vars are unset for the scan; AI generation must return the
   sanitized MCP error instead of succeeding.
 
-Out of scope for Phase 6:
+Out of scope for this workflow:
 
 - HAR generation, production targets, production secrets, role-matrix DAST,
   active scanning, ZAP API scans, new MCP tools, schema changes, UI changes,
   RBAC rollout, and live OpenRouter provider calls.
-- Closing issue `#119`. This phase creates more seeded MCP coverage for that
+- Closing issue `#119`. This work creates more seeded MCP coverage for that
   later work.
 
-Nuclei still owns the unauthenticated `/api/mcp` exposure check added in
-Phase 4. The Phase 3 MCP unit/property tests remain the primary protocol and
-authorization seam contract.
+Nuclei still owns the unauthenticated `/api/mcp` exposure check. The MCP
+unit/property tests remain the primary protocol and authorization seam
+contract.
 
 ## OpenRouter Policy
 

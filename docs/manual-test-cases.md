@@ -17,6 +17,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [AUTH-06: privacy tab is disabled for Admin without PrivacyOfficer](#auth-06-privacy-tab-is-disabled-for-admin-without-privacyofficer)
   - [AUTH-07: PrivacyOfficer can use privacy without Admin powers](#auth-07-privacyofficer-can-use-privacy-without-admin-powers)
   - [AUTH-08: no-role user is denied privileged work](#auth-08-no-role-user-is-denied-privileged-work)
+  - [AUTH-09: auth callback failure shows a browser error page](#auth-09-auth-callback-failure-shows-a-browser-error-page)
 - [Requirements library](#requirements-library)
   - [REQ-01: library loads with seeded requirements](#req-01-library-loads-with-seeded-requirements)
   - [REQ-02: language switch keeps the library usable](#req-02-language-switch-keeps-the-library-usable)
@@ -94,6 +95,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [DEVTOOLS-03: specification report controls are annotated](#devtools-03-specification-report-controls-are-annotated)
   - [RES-01: English admin error recovery](#res-01-english-admin-error-recovery)
   - [RES-02: homepage smoke](#res-02-homepage-smoke)
+  - [RES-03: readiness and build metadata](#res-03-readiness-and-build-metadata)
 
 ## Configured users
 
@@ -289,6 +291,26 @@ load as an Admin page for this user.
 **Expected result:** Admin-only surfaces are unavailable or fail with an
 authorization error, and no data changes are saved.
 
+### AUTH-09: auth callback failure shows a browser error page
+
+**Purpose:** Confirm browser users do not see raw JSON when the OIDC callback
+cannot find its short-lived login-state cookie.
+
+**Users:** None; use a signed-out browser or private window.
+
+**Prerequisites:** App is running.
+
+**Steps:**
+
+1. Open `/auth/error?code=login_state_cookie_missing&locale=sv`.
+1. Inspect the visible page and the primary action.
+
+**Expected result:** The page explains that the sign-in could not be completed,
+shows the `login_state_cookie_missing` error code, and offers a sign-in retry.
+In deployed or production-like environments, the server log for the original
+callback failure should contain sanitized diagnostics for TLS, Secure-cookie
+handling, and callback host configuration.
+
 ## Requirements library
 
 ### REQ-01: library loads with seeded requirements
@@ -376,12 +398,13 @@ consistently.
 1. Enable `Kvalitetsegenskap`, `Kravpaket`, `Test krävs`, and `Version`.
 1. Close the picker.
 1. Verify that the `Kravpaket` column shows package names or `—`.
-1. Select a `Kravpaket` filter option, then hide the `Kravpaket` column.
-1. Verify that the `Kravpaket` filter clears when the column is hidden.
+1. Select a `Kravpaket` chip filter option, then hide the `Kravpaket` column.
+1. Verify that the chip stays selected and the list remains filtered.
 1. Reload the page.
 
-**Expected result:** The enabled columns remain visible after reload, and
-filters tied to hidden columns are cleared.
+**Expected result:** The enabled columns remain visible after reload, header
+filters tied to hidden columns are cleared, and the `Kravpaket` chip filter is
+preserved independently of the optional column.
 
 ### REQ-06: reset local library view preferences
 
@@ -1547,3 +1570,23 @@ text, and links back to `/en/admin`.
 
 **Expected result:** The page responds with a non-empty title or a valid login
 redirect.
+
+### RES-03: readiness and build metadata
+
+**Purpose:** Confirm runtime probes and build metadata are available.
+
+**Users:** Any signed-in user for the UI check; API probe does not require a
+session.
+
+**Prerequisites:** App is running with SQL Server and Keycloak reachable.
+
+**Steps:**
+
+1. Request `/api/health`.
+1. Request `/api/ready`.
+1. Open `/sv/requirements`.
+1. Hover the app title in the header.
+
+**Expected result:** `/api/health` returns `{ "status": "ok" }`,
+`/api/ready` returns `{ "status": "ready" }`, and the header title tooltip
+shows the generated app version when build metadata exists.

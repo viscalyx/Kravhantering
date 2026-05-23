@@ -15,8 +15,12 @@ const helpState = vi.hoisted(() => ({
 }))
 
 vi.mock('next-intl', () => ({
-  useTranslations: (namespace?: string) => (key: string) =>
-    namespace ? `${namespace}.${key}` : key,
+  useTranslations:
+    (namespace?: string) =>
+    (key: string, values?: Record<string, string | number>) => {
+      const label = namespace ? `${namespace}.${key}` : key
+      return values?.version ? `${label} ${values.version}` : label
+    },
   useLocale: () => 'en',
 }))
 
@@ -59,6 +63,32 @@ describe('Navigation', () => {
       isOpen: false,
       toggle: vi.fn(),
     }
+  })
+
+  it('exposes build version on the app title tooltip', () => {
+    render(
+      <Navigation
+        buildMetadata={{
+          builtAt: '2026-05-21T19:00:00.000Z',
+          commitSha: 'abc123',
+          imageTag: 'registry.example/app:1.2.3',
+          version: '1.2.3',
+        }}
+      />,
+    )
+
+    const appTitle = screen.getByRole('link', { name: 'common.appName' })
+
+    expect(appTitle).toHaveAttribute(
+      'title',
+      'common.buildVersionTooltip 1.2.3',
+    )
+    expect(appTitle).toHaveAttribute(
+      'data-developer-mode-context',
+      'navigation',
+    )
+    expect(appTitle).toHaveAttribute('data-developer-mode-name', 'link')
+    expect(appTitle).toHaveAttribute('data-developer-mode-value', 'app title')
   })
 
   it('shows a global settings link and removes reference data from the desktop navigation', () => {

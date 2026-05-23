@@ -17,11 +17,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
 
       - name: Guard privacy display-name enforcement test
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const protectedFiles = [
@@ -67,7 +69,7 @@ jobs:
             );
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -96,7 +98,7 @@ jobs:
       # Must use the action to get the executable as it is not installed, and have
       # not a secure download URL to fetch it from.
       - name: Run dotenv-linter root check
-        uses: dotenv-linter/action-dotenv-linter@v3
+        uses: dotenv-linter/action-dotenv-linter@afde61cfda2ecffe7bea35837b6f20b956c88689 # v3
         with:
           dotenv_linter_flags: .
           filter_mode: nofilter
@@ -105,7 +107,7 @@ jobs:
       # Must use the action to get the executable as it is not installed, and have
       # not a secure download URL to fetch it from.
       - name: Run dotenv-linter devcontainer check
-        uses: dotenv-linter/action-dotenv-linter@v3
+        uses: dotenv-linter/action-dotenv-linter@afde61cfda2ecffe7bea35837b6f20b956c88689 # v3
         with:
           dotenv_linter_flags: .devcontainer --recursive
           filter_mode: nofilter
@@ -116,7 +118,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: test-results
           path: ./test-results
@@ -124,7 +126,7 @@ jobs:
 
       - name: Upload code coverage
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: code-coverage
           path: ./coverage
@@ -132,7 +134,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: always()
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6
         with:
           file: ./coverage/lcov.info
           fail_ci_if_error: false

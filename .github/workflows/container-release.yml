@@ -1,0 +1,455 @@
+name: Container Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v[0-9]*.[0-9]*.[0-9]*']
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  attestations: write
+  contents: write
+  id-token: write
+  packages: write
+
+jobs:
+  trusted-release:
+    name: Publish and Smoke Test Trusted Container Stack
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    env:
+      NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+      PODMAN_COMPOSE_PROVIDER: podman-compose
+      STORAGE_DRIVER: vfs
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Setup .NET for GitVersion
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Restore GitVersion tool
+        run: dotnet tool restore
+
+      - name: Compute GitVersion
+        run: |
+          set -euo pipefail
+          mkdir -p tmp/container-release-artifacts/metadata
+          dotnet tool run dotnet-gitversion /output json \
+            > tmp/container-release-artifacts/metadata/gitversion.json
+
+      - name: Compute trusted release plan
+        env:
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+        run: |
+          node scripts/release/container-release.mjs plan \
+            --gitversion-json tmp/container-release-artifacts/metadata/gitversion.json \
+            --output tmp/container-release-artifacts/metadata/release-plan.json \
+            --github-env "${GITHUB_ENV}"
+
+      - name: Write host build metadata artifact
+        run: node scripts/prebuild.js
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Install container runtime tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y podman podman-compose libnss3-tools
+          sudo sysctl net.ipv4.ip_unprivileged_port_start=0
+          echo "127.0.0.1 kravhantering.test" | sudo tee -a /etc/hosts
+          podman --version
+          podman compose version
+          podman info
+          docker --version
+          docker buildx version
+          docker info
+          docker buildx ls
+
+      - name: Prepare Docker Buildx builder
+        run: |
+          set -euo pipefail
+          docker buildx create --name kravhantering-release-builder --use ||
+            docker buildx use kravhantering-release-builder
+          docker buildx inspect --bootstrap
+
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+
+      - name: Build and publish app-runtime image
+        run: |
+          set -euo pipefail
+          mkdir -p tmp/container-release-artifacts/metadata
+          IFS=',' read -ra tags <<< "${APP_RUNTIME_TAGS_CSV}"
+          tag_args=()
+          for tag in "${tags[@]}"; do
+            tag_args+=(--tag "${tag}")
+          done
+          docker buildx build \
+            --file containers/app/Dockerfile \
+            --target app-runtime \
+            --platform linux/amd64 \
+            --metadata-file tmp/container-release-artifacts/metadata/app-runtime-buildx.json \
+            --build-arg BUILD_VERSION="${RELEASE_VERSION}" \
+            --build-arg BUILD_COMMIT_SHA="${GITHUB_SHA}" \
+            --build-arg BUILD_TIME="$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")" \
+            --build-arg BUILD_IMAGE_TAG="${APP_RUNTIME_PRIMARY_TAG}" \
+            --build-arg NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL}" \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.version=${RELEASE_VERSION}" \
+            "${tag_args[@]}" \
+            --push \
+            .
+
+      - name: Build and publish db-job image
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra tags <<< "${DB_JOB_TAGS_CSV}"
+          tag_args=()
+          for tag in "${tags[@]}"; do
+            tag_args+=(--tag "${tag}")
+          done
+          docker buildx build \
+            --file containers/app/Dockerfile \
+            --target db-job \
+            --platform linux/amd64 \
+            --metadata-file tmp/container-release-artifacts/metadata/db-job-buildx.json \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.version=${RELEASE_VERSION}" \
+            "${tag_args[@]}" \
+            --push \
+            .
+
+      - name: Record published image digests
+        run: |
+          node scripts/release/container-release.mjs digests \
+            --plan tmp/container-release-artifacts/metadata/release-plan.json \
+            --app-metadata tmp/container-release-artifacts/metadata/app-runtime-buildx.json \
+            --db-job-metadata tmp/container-release-artifacts/metadata/db-job-buildx.json \
+            --output tmp/container-release-artifacts/metadata/release-metadata.json \
+            --github-env "${GITHUB_ENV}"
+
+      - name: Generate release stack lock
+        run: |
+          node scripts/containers/generate-stack-lock.mjs generate \
+            --release-version "${RELEASE_VERSION}" \
+            --commit-sha "${GITHUB_SHA}" \
+            --app-image "${APP_RUNTIME_IMAGE}" \
+            --app-tag "${APP_RUNTIME_PRIMARY_TAG_NAME}" \
+            --app-digest "${APP_RUNTIME_DIGEST}" \
+            --app-source ghcr-release \
+            --db-job-image "${DB_JOB_IMAGE}" \
+            --db-job-tag "${DB_JOB_PRIMARY_TAG_NAME}" \
+            --db-job-digest "${DB_JOB_DIGEST}" \
+            --db-job-source ghcr-release
+          node scripts/containers/generate-stack-lock.mjs check
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+
+      - name: Sign published image digests
+        run: |
+          cosign sign --yes "${APP_RUNTIME_DIGEST_REF}"
+          cosign sign --yes "${DB_JOB_DIGEST_REF}"
+
+      - name: Generate app-runtime SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: ${{ env.APP_RUNTIME_DIGEST_REF }}
+          format: spdx-json
+          output-file: tmp/container-release-artifacts/sbom/app-runtime.spdx.json
+          upload-artifact: false
+
+      - name: Generate db-job SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: ${{ env.DB_JOB_DIGEST_REF }}
+          format: spdx-json
+          output-file: tmp/container-release-artifacts/sbom/db-job.spdx.json
+          upload-artifact: false
+
+      - name: Attest app-runtime provenance
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-name: ${{ env.APP_RUNTIME_IMAGE }}
+          subject-digest: ${{ env.APP_RUNTIME_DIGEST }}
+          push-to-registry: true
+
+      - name: Attest db-job provenance
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-name: ${{ env.DB_JOB_IMAGE }}
+          subject-digest: ${{ env.DB_JOB_DIGEST }}
+          push-to-registry: true
+
+      - name: Attest app-runtime SBOM
+        uses: actions/attest-sbom@bd218ad0dbcb3e146bd073d1d9c6d78e08aa8a0b # v2
+        with:
+          subject-name: ${{ env.APP_RUNTIME_IMAGE }}
+          subject-digest: ${{ env.APP_RUNTIME_DIGEST }}
+          sbom-path: tmp/container-release-artifacts/sbom/app-runtime.spdx.json
+          push-to-registry: true
+
+      - name: Attest db-job SBOM
+        uses: actions/attest-sbom@bd218ad0dbcb3e146bd073d1d9c6d78e08aa8a0b # v2
+        with:
+          subject-name: ${{ env.DB_JOB_IMAGE }}
+          subject-digest: ${{ env.DB_JOB_DIGEST }}
+          sbom-path: tmp/container-release-artifacts/sbom/db-job.spdx.json
+          push-to-registry: true
+
+      - name: Verify signatures and attestations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/container-release.yml@${GITHUB_REF}"
+          for ref in "${APP_RUNTIME_DIGEST_REF}" "${DB_JOB_DIGEST_REF}"; do
+            cosign verify \
+              --certificate-identity "${identity}" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              "${ref}"
+            gh attestation verify "oci://${ref}" --repo "${GITHUB_REPOSITORY}"
+          done
+
+      - name: Create per-container local env files
+        run: npm run container:env:local
+
+      - name: Start release stack from verified GHCR digests
+        run: |
+          node scripts/containers/run-local-stack.mjs up \
+            --mode release-smoke \
+            --run-id "${CONTAINER_STACK_RUN_ID}" \
+            --release-images-from-lock
+
+      - name: Trust generated CA for browser runner
+        run: bash .devcontainer/trust-container-ca.sh
+
+      - name: Run release smoke tests
+        run: npm run test:release-smoke
+        env:
+          CI: true
+
+      - name: Collect status before shutdown on failure
+        if: failure()
+        run: |
+          node scripts/containers/collect-status.mjs \
+            --project-name "${CONTAINER_PROJECT_NAME}" \
+            --output-text container-status-before-down.txt \
+            --output-json container-status-before-down.json \
+            --tail 160 || true
+
+      - name: Stop container stack
+        if: always()
+        run: node scripts/containers/run-local-stack.mjs down --mode release-smoke || true
+
+      - name: Collect status after shutdown on failure
+        if: failure()
+        run: |
+          node scripts/containers/collect-status.mjs \
+            --project-name "${CONTAINER_PROJECT_NAME}" \
+            --output-text container-status-after-down.txt \
+            --output-json container-status-after-down.json \
+            --tail 160 || true
+
+      - name: Write artifact hashes
+        if: always()
+        run: |
+          node scripts/containers/write-hashes.mjs \
+            --output hashes.sha256 \
+            container-stack.lock.json \
+            container-stack.compose.yml \
+            container-status.txt \
+            container-status.json \
+            container-status-before-down.txt \
+            container-status-before-down.json \
+            container-status-after-down.txt \
+            container-status-after-down.json \
+            public/build.json \
+            tmp/container-release-artifacts/metadata/gitversion.json \
+            tmp/container-release-artifacts/metadata/release-plan.json \
+            tmp/container-release-artifacts/metadata/release-metadata.json \
+            tmp/container-release-artifacts/sbom/app-runtime.spdx.json \
+            tmp/container-release-artifacts/sbom/db-job.spdx.json || true
+
+      - name: Stage production deployment bundle
+        if: always()
+        run: |
+          node scripts/release/container-release.mjs bundle \
+            --plan tmp/container-release-artifacts/metadata/release-plan.json \
+            --metadata tmp/container-release-artifacts/metadata/release-metadata.json \
+            --stack-lock container-stack.lock.json \
+            --build-json public/build.json \
+            --hashes hashes.sha256 \
+            --sbom-dir tmp/container-release-artifacts/sbom \
+            --output-dir tmp/container-release-artifacts/deployment
+
+      - name: Archive production deployment bundle
+        if: always()
+        run: |
+          set -euo pipefail
+          bundle="kravhantering-production-deploy-${RELEASE_VERSION}"
+          archive="tmp/container-release-artifacts/${bundle}.tar.gz"
+          tar -C tmp/container-release-artifacts/deployment \
+            -czf "${archive}" \
+            "${bundle}"
+          sha256sum "${archive}" | tee "${archive}.sha256"
+          cat "${archive}.sha256" >> hashes.sha256
+
+      - name: Write release notes
+        if: always()
+        run: |
+          node scripts/release/container-release.mjs notes \
+            --plan tmp/container-release-artifacts/metadata/release-plan.json \
+            --metadata tmp/container-release-artifacts/metadata/release-metadata.json \
+            --hashes hashes.sha256 \
+            --output tmp/container-release-artifacts/release-notes.md
+
+      - name: Stage release artifacts
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p \
+            tmp/container-release-artifacts/runtime \
+            tmp/container-release-artifacts/playwright
+
+          for file in \
+            container-stack.lock.json \
+            container-stack.compose.yml \
+            container-status.txt \
+            container-status.json \
+            container-status-before-down.txt \
+            container-status-before-down.json \
+            container-status-after-down.txt \
+            container-status-after-down.json \
+            public/build.json \
+            hashes.sha256; do
+            if [ -f "${file}" ]; then
+              cp "${file}" tmp/container-release-artifacts/runtime/
+            fi
+          done
+
+          if [ -d playwright-report-release-smoke ]; then
+            cp -R \
+              playwright-report-release-smoke \
+              tmp/container-release-artifacts/playwright/html
+          fi
+          if [ -d test-results/release-smoke ]; then
+            cp -R \
+              test-results/release-smoke \
+              tmp/container-release-artifacts/playwright/test-results
+          fi
+
+      - name: Create preview tag when needed
+        if: env.RELEASE_CREATE_GITHUB_RELEASE == 'true' && env.RELEASE_PRERELEASE == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          node scripts/release/container-release.mjs ensure-tag \
+            --plan tmp/container-release-artifacts/metadata/release-plan.json
+
+      - name: Publish GitHub Release
+        if: env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release_flags=()
+          if [ "${RELEASE_PRERELEASE}" = "true" ]; then
+            release_flags+=(--prerelease --latest=false)
+          else
+            release_flags+=(--latest=true)
+          fi
+
+          if gh release view "${RELEASE_TAG_NAME}" >/dev/null 2>&1; then
+            gh release edit "${RELEASE_TAG_NAME}" \
+              --title "${RELEASE_TAG_NAME}" \
+              --notes-file tmp/container-release-artifacts/release-notes.md \
+              "${release_flags[@]}"
+          else
+            gh release create "${RELEASE_TAG_NAME}" \
+              --title "${RELEASE_TAG_NAME}" \
+              --notes-file tmp/container-release-artifacts/release-notes.md \
+              "${release_flags[@]}"
+          fi
+
+          gh release upload "${RELEASE_TAG_NAME}" \
+            container-stack.lock.json \
+            container-stack.compose.yml \
+            hashes.sha256 \
+            public/build.json \
+            tmp/container-release-artifacts/metadata/release-metadata.json \
+            tmp/container-release-artifacts/sbom/app-runtime.spdx.json \
+            tmp/container-release-artifacts/sbom/db-job.spdx.json \
+            tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz \
+            tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz.sha256 \
+            --clobber
+
+      - name: Upload release runtime artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: container-release-runtime-${{ github.run_id }}
+          path: tmp/container-release-artifacts/runtime/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload release metadata artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: container-release-metadata-${{ github.run_id }}
+          path: |
+            tmp/container-release-artifacts/metadata/
+            tmp/container-release-artifacts/sbom/
+            tmp/container-release-artifacts/release-notes.md
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload release Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: container-release-playwright-${{ github.run_id }}
+          path: tmp/container-release-artifacts/playwright/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload release deployment bundle
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: container-release-deployment-${{ github.run_id }}
+          path: |
+            tmp/container-release-artifacts/kravhantering-production-deploy-*.tar.gz
+            tmp/container-release-artifacts/kravhantering-production-deploy-*.tar.gz.sha256
+          if-no-files-found: warn
+          retention-days: 30

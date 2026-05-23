@@ -2,7 +2,6 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { DataSource } from 'typeorm'
-import { seedDatabase } from '../typeorm/seed.mjs'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 export const MIGRATIONS_DIR = resolve(SCRIPT_DIR, '../typeorm/migrations')
@@ -49,6 +48,20 @@ function getMigrationClasses() {
   return cachedMigrationClassesPromise
 }
 
+export async function loadSeedProfile(profile) {
+  if (profile === 'required') {
+    const module = await import('../typeorm/seed-required.mjs')
+    return module.seedRequiredDatabase
+  }
+
+  if (profile === 'demo') {
+    const module = await import('../typeorm/seed.mjs')
+    return module.seedDemoDatabase
+  }
+
+  throw new Error(`Unsupported SQL Server seed profile: ${profile}`)
+}
+
 export const DEFAULT_BROWSE_CONNECTION_NAME =
   'Kravhantering SQL Server (read-only)'
 export const DEFAULT_CONNECTION_TIMEOUT_MS = 15_000
@@ -57,7 +70,7 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000
 export const DEFAULT_WAIT_RETRY_MS = 1_000
 export const DEFAULT_WAIT_TIMEOUT_MS = 30_000
 const USAGE =
-  'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|migrate|seed|setup|browse-config>'
+  'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migrate|seed:required|seed:demo|setup|browse-config>'
 
 export function stripWrappingQuotes(value) {
   if (
@@ -402,6 +415,184 @@ export async function resetSqlServerDatabase(connectionString, options = {}) {
   )
 }
 
+function requireSqlServerPasswordPolicySafe(password, username, context) {
+  if (containsSqlServerLoginName(password, username)) {
+    throw new Error(
+      `${context} failed for ${username}: password contains the login name. SQL Server password policy commonly rejects that.`,
+    )
+  }
+}
+
+function bootstrapPrincipalFromEnv(env, options) {
+  const username = env[options.userEnv]?.trim() || options.defaultUsername
+  const password = env[options.passwordEnv] ?? options.defaultPassword
+
+  if (!username || !password) {
+    throw new Error(
+      `${options.userEnv} and ${options.passwordEnv} are required for SQL Server bootstrap.`,
+    )
+  }
+
+  requireSqlServerPasswordPolicySafe(
+    password,
+    username,
+    'SQL Server bootstrap login setup',
+  )
+
+  return {
+    password,
+    roles: options.roles,
+    username,
+  }
+}
+
+export function createBootstrapAdminConnectionString(
+  connectionString,
+  env = process.env,
+  options = {},
+) {
+  const adminUsername = env.DB_BOOTSTRAP_ADMIN_USER?.trim() || 'sa'
+  const adminPassword = env.DB_BOOTSTRAP_ADMIN_PASSWORD ?? env.MSSQL_SA_PASSWORD
+
+  if (!adminUsername || !adminPassword) {
+    throw new Error(
+      'DB_BOOTSTRAP_ADMIN_USER and DB_BOOTSTRAP_ADMIN_PASSWORD (or MSSQL_SA_PASSWORD) are required for SQL Server bootstrap.',
+    )
+  }
+
+  const url = new URL(connectionString)
+  url.username = adminUsername
+  url.password = adminPassword
+  url.pathname = `/${encodeURIComponent(options.database ?? 'master')}`
+  return url.toString()
+}
+
+function buildBootstrapLoginSql(principals) {
+  return principals
+    .map(principal => {
+      const escapedLoginName = quoteSqlServerIdentifier(principal.username)
+      const escapedLoginNameLiteral = `N'${escapeSqlServerStringLiteral(principal.username)}'`
+      const escapedPassword = `'${escapeSqlServerStringLiteral(principal.password)}'`
+      return `
+      IF EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = ${escapedLoginNameLiteral})
+      BEGIN
+        ALTER LOGIN ${escapedLoginName} WITH PASSWORD = ${escapedPassword}
+      END
+      ELSE
+      BEGIN
+        CREATE LOGIN ${escapedLoginName} WITH PASSWORD = ${escapedPassword}
+      END`
+    })
+    .join('\n')
+}
+
+function buildBootstrapUserSql(principals) {
+  return principals
+    .map(principal => {
+      const escapedUserName = quoteSqlServerIdentifier(principal.username)
+      const escapedUserNameLiteral = `N'${escapeSqlServerStringLiteral(principal.username)}'`
+      const roleSql = principal.roles
+        .map(role => {
+          const escapedRole = quoteSqlServerIdentifier(role)
+          const escapedRoleLiteral = `N'${escapeSqlServerStringLiteral(role)}'`
+          return `
+      IF NOT EXISTS (
+        SELECT 1
+        FROM sys.database_role_members AS members
+        INNER JOIN sys.database_principals AS roles
+          ON members.role_principal_id = roles.principal_id
+        INNER JOIN sys.database_principals AS principals
+          ON members.member_principal_id = principals.principal_id
+        WHERE roles.name = ${escapedRoleLiteral}
+          AND principals.name = ${escapedUserNameLiteral}
+      )
+      BEGIN
+        ALTER ROLE ${escapedRole} ADD MEMBER ${escapedUserName}
+      END`
+        })
+        .join('\n')
+
+      return `
+      IF DATABASE_PRINCIPAL_ID(${escapedUserNameLiteral}) IS NULL
+      BEGIN
+        CREATE USER ${escapedUserName} FOR LOGIN ${escapedUserName}
+      END
+${roleSql}`
+    })
+    .join('\n')
+}
+
+export async function bootstrapSqlServerDatabase(
+  connectionString,
+  options = {},
+) {
+  const connectImpl = options.connectImpl ?? defaultConnect
+  const env = options.env ?? process.env
+  const parsed = parseSqlServerConnectionString(connectionString, env)
+  const adminConnectionString = createBootstrapAdminConnectionString(
+    connectionString,
+    env,
+  )
+  const adminDatabaseConnectionString = createBootstrapAdminConnectionString(
+    connectionString,
+    env,
+    { database: parsed.database },
+  )
+  const principals = [
+    bootstrapPrincipalFromEnv(env, {
+      defaultPassword: parsed.password,
+      defaultUsername: parsed.username,
+      passwordEnv: 'DB_PASSWORD',
+      roles: ['db_owner'],
+      userEnv: 'DB_USER',
+    }),
+    bootstrapPrincipalFromEnv(env, {
+      defaultPassword: env.DB_BOOTSTRAP_APP_PASSWORD,
+      defaultUsername: env.DB_BOOTSTRAP_APP_USER,
+      passwordEnv: 'DB_BOOTSTRAP_APP_PASSWORD',
+      roles: ['db_datareader', 'db_datawriter'],
+      userEnv: 'DB_BOOTSTRAP_APP_USER',
+    }),
+  ]
+
+  await withPool(
+    adminConnectionString,
+    connectImpl,
+    async pool => {
+      const request = pool.request()
+      request.input('databaseName', parsed.database)
+
+      await request.query(`
+      IF DB_ID(@databaseName) IS NULL
+      BEGIN
+        DECLARE @createSql nvarchar(max) =
+          N'CREATE DATABASE ' + QUOTENAME(@databaseName) + N';'
+        EXEC sp_executesql @createSql
+      END
+
+${buildBootstrapLoginSql(principals)}
+    `)
+    },
+    env,
+  )
+
+  await withPool(
+    adminDatabaseConnectionString,
+    connectImpl,
+    async pool => {
+      await pool.request().query(buildBootstrapUserSql(principals))
+    },
+    env,
+  )
+
+  return {
+    appUser: principals[1].username,
+    database: parsed.database,
+    jobUser: principals[0].username,
+    server: parsed.server,
+  }
+}
+
 export async function runSqlServerMigrations(connectionString, options = {}) {
   const DataSourceCtor = options.dataSourceCtor ?? DataSource
   const env = options.env ?? process.env
@@ -460,7 +651,23 @@ export async function ensureReadonlySqlServerAccess(
   const escapedPassword = `'${escapeSqlServerStringLiteral(readonly.password)}'`
   const escapedUserName = quoteSqlServerIdentifier(readonly.username)
   const escapedUserNameLiteral = `N'${escapeSqlServerStringLiteral(readonly.username)}'`
-  const masterConnectionString = createMasterConnectionString(connectionString)
+  let masterConnectionString
+  let databaseConnectionString
+
+  try {
+    masterConnectionString = createBootstrapAdminConnectionString(
+      connectionString,
+      env,
+    )
+    databaseConnectionString = createBootstrapAdminConnectionString(
+      connectionString,
+      env,
+      { database: main.database },
+    )
+  } catch {
+    masterConnectionString = createMasterConnectionString(connectionString)
+    databaseConnectionString = connectionString
+  }
 
   try {
     await withPool(
@@ -489,7 +696,7 @@ export async function ensureReadonlySqlServerAccess(
 
   try {
     await withPool(
-      connectionString,
+      databaseConnectionString,
       connectImpl,
       async pool => {
         await pool.request().query(`
@@ -533,6 +740,19 @@ export async function ensureReadonlySqlServerAccess(
 export async function seedSqlServerDatabase(connectionString, options = {}) {
   const DataSourceCtor = options.dataSourceCtor ?? DataSource
   const env = options.env ?? process.env
+  const profile = options.profile ?? 'required'
+  const injectedSeedProfile =
+    profile === 'required'
+      ? (options.seedRequiredDatabaseImpl ?? options.seedDatabaseImpl)
+      : profile === 'demo'
+        ? (options.seedDemoDatabaseImpl ?? options.seedDatabaseImpl)
+        : null
+  if (profile !== 'required' && profile !== 'demo') {
+    throw new Error(`Unsupported SQL Server seed profile: ${profile}`)
+  }
+  const seedProfile =
+    injectedSeedProfile ??
+    (await (options.loadSeedProfileImpl ?? loadSeedProfile)(profile))
   const migrationClasses = await getMigrationClasses()
   const dataSource = new DataSourceCtor(
     buildMigrationDataSourceOptions(connectionString, migrationClasses, env),
@@ -542,20 +762,21 @@ export async function seedSqlServerDatabase(connectionString, options = {}) {
   let insertedRows = 0
 
   try {
-    insertedRows = await seedDatabase(dataSource)
+    insertedRows = await seedProfile(dataSource)
   } finally {
     if (typeof dataSource.destroy === 'function') {
       await dataSource.destroy()
     }
   }
 
-  const readonlyAccess = await ensureReadonlySqlServerAccess(
-    connectionString,
-    options,
-  )
+  const readonlyAccess =
+    options.configureReadonlyAccess === false
+      ? { configured: false }
+      : await ensureReadonlySqlServerAccess(connectionString, options)
 
   return {
     insertedRows,
+    profile,
     readonlyAccessConfigured: readonlyAccess.configured,
   }
 }
@@ -663,7 +884,16 @@ export async function main(args, dependencies = {}) {
   }
 
   if (
-    !['health', 'wait', 'reset', 'migrate', 'seed', 'setup'].includes(command)
+    ![
+      'health',
+      'wait',
+      'reset',
+      'bootstrap',
+      'migrate',
+      'seed:required',
+      'seed:demo',
+      'setup',
+    ].includes(command)
   ) {
     consoleObj.error(USAGE)
     return 1
@@ -738,6 +968,24 @@ export async function main(args, dependencies = {}) {
     }
   }
 
+  if (command === 'bootstrap') {
+    try {
+      const result = await bootstrapSqlServerDatabase(
+        connectionString,
+        dependencies,
+      )
+      consoleObj.log(
+        `SQL Server database bootstrap completed (${result.server}/${result.database}; job user ${result.jobUser}; app user ${result.appUser}).`,
+      )
+      return 0
+    } catch (error) {
+      consoleObj.error(
+        error instanceof Error ? error.message : 'SQL Server bootstrap failed.',
+      )
+      return 1
+    }
+  }
+
   if (command === 'migrate') {
     try {
       const result = await runSqlServerMigrations(
@@ -756,11 +1004,15 @@ export async function main(args, dependencies = {}) {
     }
   }
 
-  if (command === 'seed') {
+  if (command === 'seed:required' || command === 'seed:demo') {
+    const profile = command === 'seed:required' ? 'required' : 'demo'
     try {
-      const result = await seedSqlServerDatabase(connectionString, dependencies)
+      const result = await seedSqlServerDatabase(connectionString, {
+        ...dependencies,
+        profile,
+      })
       consoleObj.log(
-        `SQL Server seed completed (${result.insertedRows} inserted row${result.insertedRows === 1 ? '' : 's'}).`,
+        `SQL Server ${profile} seed completed (${result.insertedRows} inserted row${result.insertedRows === 1 ? '' : 's'}).`,
       )
       if (result.readonlyAccessConfigured) {
         consoleObj.log(
@@ -770,7 +1022,9 @@ export async function main(args, dependencies = {}) {
       return 0
     } catch (error) {
       consoleObj.error(
-        error instanceof Error ? error.message : 'SQL Server seed failed.',
+        error instanceof Error
+          ? error.message
+          : `SQL Server ${profile} seed failed.`,
       )
       return 1
     }
@@ -782,20 +1036,38 @@ export async function main(args, dependencies = {}) {
 
     try {
       consoleObj.log(
-        'Step 1/4: waiting for SQL Server to accept connections...',
+        'Step 1/6: waiting for SQL Server to accept connections...',
       )
       await waitForSqlServer(masterConnectionString, dependencies)
-      consoleObj.log('Step 2/4: resetting SQL Server database...')
+      consoleObj.log('Step 2/6: resetting SQL Server database...')
       await resetSqlServerDatabase(connectionString, dependencies)
-      consoleObj.log('Step 3/4: applying SQL Server migrations...')
+      consoleObj.log('Step 3/6: applying SQL Server migrations...')
       await runSqlServerMigrations(connectionString, dependencies)
-      consoleObj.log(
-        'Step 4/4: seeding SQL Server data and configuring read-only access...',
+      consoleObj.log('Step 4/6: seeding required SQL Server data...')
+      const requiredResult = await seedSqlServerDatabase(connectionString, {
+        ...dependencies,
+        configureReadonlyAccess: false,
+        profile: 'required',
+      })
+      consoleObj.log('Step 5/6: seeding demo SQL Server data...')
+      const demoResult = await seedSqlServerDatabase(connectionString, {
+        ...dependencies,
+        configureReadonlyAccess: false,
+        profile: 'demo',
+      })
+      consoleObj.log('Step 6/6: configuring read-only database access...')
+      const readonlyAccess = await ensureReadonlySqlServerAccess(
+        connectionString,
+        dependencies,
       )
-      const result = await seedSqlServerDatabase(connectionString, dependencies)
       consoleObj.log(
-        `SQL Server setup completed (${result.insertedRows} inserted row${result.insertedRows === 1 ? '' : 's'}).`,
+        `SQL Server setup completed (${requiredResult.insertedRows} required seed row${requiredResult.insertedRows === 1 ? '' : 's'}, ${demoResult.insertedRows} demo seed row${demoResult.insertedRows === 1 ? '' : 's'}).`,
       )
+      if (readonlyAccess.configured) {
+        consoleObj.log(
+          'Configured read-only database access for browse tooling.',
+        )
+      }
       return 0
     } catch (error) {
       const message =

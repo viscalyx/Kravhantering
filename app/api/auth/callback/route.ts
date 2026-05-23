@@ -15,6 +15,7 @@ import {
 } from '@/lib/auth/session'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import { parseSearchParams } from '@/lib/http/validation'
+import { USE_INSECURE_COOKIE } from '@/lib/runtime/build-target'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,25 @@ const LOCALE_FREE_ALLOWED_PATHS = new Set(['/'])
 
 const ACCESS_TOKEN_EXPIRY_FALLBACK_SECONDS = 300
 const SESSION_COOKIE_SAFE_MAX_LENGTH = 3800
+const LOGIN_STATE_COOKIE_MISSING_CODE = 'login_state_cookie_missing'
+
+interface AuthCallbackFailureBody {
+  code: string
+  detail: string
+  error: string
+  reason?: string
+}
+
+interface AuthCallbackFailureOptions {
+  code: string
+  detail: string
+  internalReason?: string
+  logDetail?: Record<string, unknown>
+  logError?: unknown
+  returnTo?: string
+  status?: number
+  title?: string
+}
 
 const oidcCallbackQuerySchema = z
   .object({
@@ -78,6 +98,127 @@ function recordLoginFailure(
   })
 }
 
+function wantsJsonCallbackResponse(request: NextRequest): boolean {
+  const accept = request.headers.get('accept') ?? ''
+  if (accept.includes('application/json')) return true
+  if (request.headers.get('sec-fetch-dest') === 'document') return false
+  if (accept.includes('text/html')) return false
+  return true
+}
+
+function pathLocale(raw: string | null | undefined): string {
+  const pathOnly = raw?.split(/[?#]/, 1)[0] ?? ''
+  const first = pathOnly.split('/')[1]
+  return first && (routing.locales as readonly string[]).includes(first)
+    ? first
+    : routing.defaultLocale
+}
+
+function createAuthCallbackFailureResponse(
+  request: NextRequest,
+  options: AuthCallbackFailureOptions,
+): NextResponse<AuthCallbackFailureBody> | NextResponse {
+  const status = options.status ?? 400
+  const title = options.title ?? 'OIDC callback failed'
+
+  logSanitizedError(title, options.logError ?? new Error(options.detail), {
+    code: options.code,
+    ...(options.internalReason ? { reason: options.internalReason } : {}),
+    ...(options.logDetail ?? {}),
+  })
+
+  if (wantsJsonCallbackResponse(request)) {
+    return NextResponse.json(
+      {
+        error: title,
+        code: options.code,
+        detail: options.detail,
+        ...(options.internalReason ? { reason: options.internalReason } : {}),
+      },
+      { status },
+    )
+  }
+
+  const locale = pathLocale(options.returnTo)
+  const errorUrl = new URL('/auth/error', request.url)
+  errorUrl.searchParams.set('code', options.code)
+  errorUrl.searchParams.set('locale', locale)
+  return NextResponse.redirect(errorUrl, { status: 302 })
+}
+
+function isLocalBrowserHost(host: string): boolean {
+  const ipv6End = host.indexOf(']')
+  const hostname =
+    host.startsWith('[') && ipv6End > 0
+      ? host.slice(1, ipv6End)
+      : (host.split(':')[0] ?? '')
+  return (
+    hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
+  )
+}
+
+function buildLoginStateFailureDiagnostics(
+  request: NextRequest,
+  cfg: ReturnType<typeof getAuthConfig>,
+): Record<string, unknown> {
+  const incomingUrl = new URL(request.url)
+  const configuredCallbackUrl = new URL(cfg.redirectUri)
+  const forwardedProto = request.headers.get('x-forwarded-proto') ?? undefined
+  const forwardedHost = request.headers.get('x-forwarded-host') ?? undefined
+  const effectiveProtocol = (forwardedProto ?? incomingUrl.protocol).replace(
+    /:$/,
+    '',
+  )
+  const effectiveHost = forwardedHost ?? incomingUrl.host
+  const secureCookiesRequired = !USE_INSECURE_COOKIE
+  const loginStateCookiePresent = (request.headers.get('cookie') ?? '')
+    .split(';')
+    .some(part => part.trim().startsWith(`${cfg.cookieName}_login=`))
+
+  let likelyCause = 'login_state_expired_or_missing'
+  if (
+    secureCookiesRequired &&
+    effectiveProtocol !== 'https' &&
+    !isLocalBrowserHost(effectiveHost)
+  ) {
+    likelyCause = 'secure_cookie_not_sent_without_tls'
+  } else if (effectiveHost !== configuredCallbackUrl.host) {
+    likelyCause = 'callback_host_mismatch'
+  }
+
+  return {
+    secureCookiesRequired,
+    incomingProtocol: incomingUrl.protocol.replace(/:$/, ''),
+    incomingHost: incomingUrl.host,
+    configuredCallbackProtocol: configuredCallbackUrl.protocol.replace(
+      /:$/,
+      '',
+    ),
+    configuredCallbackHost: configuredCallbackUrl.host,
+    ...(forwardedProto ? { forwardedProto } : {}),
+    ...(forwardedHost ? { forwardedHost } : {}),
+    loginStateCookiePresent,
+    likelyCause,
+  }
+}
+
+function createMissingLoginStateResponse(
+  request: NextRequest,
+  cfg: ReturnType<typeof getAuthConfig>,
+  internalReason: string,
+  returnTo: string | undefined,
+): NextResponse<AuthCallbackFailureBody> | NextResponse {
+  return createAuthCallbackFailureResponse(request, {
+    code: LOGIN_STATE_COOKIE_MISSING_CODE,
+    detail:
+      'Login state cookie is missing or expired. Retry the login flow. The cause may be incorrect TLS, Secure cookie handling, or callback host configuration.',
+    internalReason,
+    logDetail: buildLoginStateFailureDiagnostics(request, cfg),
+    returnTo,
+    title: 'Login callback failed',
+  })
+}
+
 function buildMissingNameReason(
   givenNameMissing: boolean,
   familyNameMissing: boolean,
@@ -127,6 +268,13 @@ export async function GET(request: NextRequest) {
     oidcCallbackQuerySchema,
   )
   if (!parsedQuery.ok) {
+    if (!wantsJsonCallbackResponse(request)) {
+      return createAuthCallbackFailureResponse(request, {
+        code: 'invalid_callback_request',
+        detail: 'OIDC callback request was malformed.',
+        title: 'Login callback failed',
+      })
+    }
     return parsedQuery.response
   }
   const cfg = getAuthConfig()
@@ -144,27 +292,36 @@ export async function GET(request: NextRequest) {
 
   const loginState = await getLoginState()
   if (!loginState.codeVerifier) {
-    recordLoginFailure(request, 'code_verifier_missing')
+    const reason = 'code_verifier_missing'
+    recordLoginFailure(request, reason)
     loginState.destroy()
-    return NextResponse.json(
-      { error: 'Login session expired or missing. Please retry.' },
-      { status: 400 },
+    return createMissingLoginStateResponse(
+      request,
+      cfg,
+      reason,
+      loginState.returnTo,
     )
   }
   if (!loginState.state) {
-    recordLoginFailure(request, 'state_missing')
+    const reason = 'state_missing'
+    recordLoginFailure(request, reason)
     loginState.destroy()
-    return NextResponse.json(
-      { error: 'Login session expired or missing. Please retry.' },
-      { status: 400 },
+    return createMissingLoginStateResponse(
+      request,
+      cfg,
+      reason,
+      loginState.returnTo,
     )
   }
   if (!loginState.nonce) {
-    recordLoginFailure(request, 'nonce_missing')
+    const reason = 'nonce_missing'
+    recordLoginFailure(request, reason)
     loginState.destroy()
-    return NextResponse.json(
-      { error: 'Login session expired or missing. Please retry.' },
-      { status: 400 },
+    return createMissingLoginStateResponse(
+      request,
+      cfg,
+      reason,
+      loginState.returnTo,
     )
   }
 
@@ -173,13 +330,12 @@ export async function GET(request: NextRequest) {
       error: parsedQuery.data.error,
     })
     loginState.destroy()
-    return NextResponse.json(
-      {
-        error: 'OIDC callback failed',
-        detail: parsedQuery.data.error_description || parsedQuery.data.error,
-      },
-      { status: 400 },
-    )
+    return createAuthCallbackFailureResponse(request, {
+      code: 'oidc_error',
+      detail: parsedQuery.data.error_description || parsedQuery.data.error,
+      internalReason: parsedQuery.data.error,
+      returnTo: loginState.returnTo,
+    })
   }
 
   const config = await getOidcConfiguration()
@@ -209,24 +365,30 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     loginState.destroy()
-    logSanitizedError('OIDC token exchange failed', error)
     recordLoginFailure(request, 'token_exchange_failed', {
       errorName: error instanceof Error ? error.name : 'Error',
     })
-    return NextResponse.json(
-      { error: 'OIDC callback failed', detail: 'Token exchange failed' },
-      { status: 400 },
-    )
+    return createAuthCallbackFailureResponse(request, {
+      code: 'token_exchange_failed',
+      detail: 'Token exchange failed',
+      internalReason: error instanceof Error ? error.name : 'Error',
+      logError: error,
+      logDetail: {
+        errorName: error instanceof Error ? error.name : 'Error',
+      },
+      returnTo: loginState.returnTo,
+    })
   }
 
   const claims = tokens.claims()
   if (!claims || typeof claims.sub !== 'string' || claims.sub === '') {
     loginState.destroy()
     recordLoginFailure(request, 'sub_claim_missing')
-    return NextResponse.json(
-      { error: 'ID token missing required `sub` claim.' },
-      { status: 400 },
-    )
+    return createAuthCallbackFailureResponse(request, {
+      code: 'sub_claim_missing',
+      detail: 'ID token missing required `sub` claim.',
+      returnTo: loginState.returnTo,
+    })
   }
 
   const claimRecord = claims as Record<string, unknown>
@@ -238,17 +400,18 @@ export async function GET(request: NextRequest) {
     typeof familyNameRaw !== 'string' || familyNameRaw.trim() === ''
   if (givenNameMissing || familyNameMissing) {
     loginState.destroy()
-    recordLoginFailure(
-      request,
-      buildMissingNameReason(givenNameMissing, familyNameMissing),
+    const missingNameReason = buildMissingNameReason(
+      givenNameMissing,
+      familyNameMissing,
     )
-    return NextResponse.json(
-      {
-        error:
-          'ID token missing required `given_name` and/or `family_name` claim.',
-      },
-      { status: 400 },
-    )
+    recordLoginFailure(request, missingNameReason)
+    return createAuthCallbackFailureResponse(request, {
+      code: 'required_name_claim_missing',
+      detail:
+        'ID token missing required `given_name` and/or `family_name` claim.',
+      internalReason: missingNameReason,
+      returnTo: loginState.returnTo,
+    })
   }
   const givenName = (givenNameRaw as string).trim()
   const familyName = (familyNameRaw as string).trim()
@@ -264,13 +427,12 @@ export async function GET(request: NextRequest) {
       request,
       hsaIdRaw === undefined ? 'hsa_id_missing' : 'hsa_id_invalid',
     )
-    return NextResponse.json(
-      {
-        error: 'ID token missing or has invalid `employeeHsaId` claim.',
-        detail,
-      },
-      { status: 401 },
-    )
+    return createAuthCallbackFailureResponse(request, {
+      code: hsaIdRaw === undefined ? 'hsa_id_missing' : 'hsa_id_invalid',
+      detail: `ID token missing or has invalid \`employeeHsaId\` claim: ${detail}`,
+      returnTo: loginState.returnTo,
+      status: 401,
+    })
   }
   const hsaId = hsaIdRaw
 

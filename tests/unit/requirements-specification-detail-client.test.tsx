@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsSpecificationDetailClient from '@/app/[locale]/specifications/[slug]/requirements-specification-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
+import type { FilterOption } from '@/lib/requirements/list-view'
 import type { SpecificationPreloadError } from '@/lib/specifications/preload-types'
 
 const requirementsTableMock = vi.fn()
@@ -39,23 +40,30 @@ vi.mock('@/components/RequirementsTable', () => ({
       id: string
       onClick?: () => void
     }[]
+    filterValues?: { requirementPackageIds?: number[] }
     hasMore?: boolean
     loadingMore?: boolean
+    onFilterChange?: (values: { requirementPackageIds?: number[] }) => void
     onLoadMore?: () => void | Promise<void>
     onSelectionChange?: (ids: Set<number>) => void
-    rows: { id: number; itemRef?: string }[]
+    requirementPackages?: { id: number; nameEn: string; nameSv: string }[]
+    rows: { id: number; itemRef?: string; requirementPackageIds?: number[] }[]
     stickyTopOffsetClassName?: string
     stickyTitle?: ReactNode
     stickyTitleActions?: ReactNode
     visibleColumns?: string[]
   }) => {
     requirementsTableMock(props)
+    const tableKind = props.onLoadMore ? 'available' : 'items'
     return (
       <div
         data-floating-action-rail-placement={
           props.floatingActionRailPlacement ?? 'fixed-right'
         }
       >
+        <div data-testid={`requirements-table-${tableKind}-rows`}>
+          {props.rows.map(row => row.itemRef ?? row.id).join(',')}
+        </div>
         <div data-testid="requirements-table-sticky-title">
           {props.stickyTitle}
         </div>
@@ -75,6 +83,29 @@ vi.mock('@/components/RequirementsTable', () => ({
             {action.icon}
           </button>
         ))}
+        {props.requirementPackages?.map(requirementPackage => {
+          const current = props.filterValues?.requirementPackageIds ?? []
+          const active = current.includes(requirementPackage.id)
+          return (
+            <button
+              aria-label={`filter-package-${tableKind}-${requirementPackage.id}`}
+              aria-pressed={active}
+              key={`${tableKind}-package-${requirementPackage.id}`}
+              onClick={() => {
+                const next = active
+                  ? current.filter(id => id !== requirementPackage.id)
+                  : [...current, requirementPackage.id]
+                props.onFilterChange?.({
+                  ...props.filterValues,
+                  requirementPackageIds: next.length > 0 ? next : undefined,
+                })
+              }}
+              type="button"
+            >
+              {requirementPackage.nameEn}
+            </button>
+          )
+        })}
         {props.hasMore ? (
           <button
             aria-label="load-more-available"
@@ -211,7 +242,7 @@ function createInitialData() {
     },
     errors: [] as SpecificationPreloadError[],
     leftNormReferenceOptions: [],
-    requirementPackages: [],
+    requirementPackages: [] as FilterOption[],
     rightNormReferenceOptions: [],
     spec: initialSpec,
     specificationImplementationTypes: [
@@ -671,6 +702,67 @@ describe('RequirementsSpecificationDetailClient', () => {
         '[data-specification-detail-list-panel="available"]',
       ),
     ).toBeTruthy()
+  })
+
+  it('filters specification items when a requirement package chip is selected', async () => {
+    const requirementPackages = [
+      { id: 1, nameEn: 'Mobile use', nameSv: 'Mobil användning' },
+      { id: 2, nameEn: 'Operations', nameSv: 'Drift' },
+    ]
+    const firstItem = {
+      ...initialSpecificationItem,
+      requirementPackageIds: [1],
+    }
+    const secondItem = {
+      ...initialSpecificationItem,
+      id: 102,
+      itemRef: 'lib:32',
+      requirementPackageIds: [2],
+      specificationItemId: 32,
+      uniqueId: 'BEH0002',
+      version: {
+        ...initialSpecificationItem.version,
+        description: 'Operational monitoring should be in place.',
+      },
+    }
+
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      requirementPackages,
+      specificationItems: [firstItem, secondItem],
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('requirements-table-items-rows'),
+      ).toHaveTextContent('lib:31,lib:32')
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'filter-package-items-1' }),
+    )
+
+    await waitFor(() => {
+      const latestItemsProps = [...requirementsTableMock.mock.calls]
+        .reverse()
+        .find(([props]) => !props.onLoadMore)?.[0] as
+        | {
+            filterValues?: { requirementPackageIds?: number[] }
+            rows: { id: number }[]
+          }
+        | undefined
+
+      expect(latestItemsProps?.filterValues).toEqual({
+        requirementPackageIds: [1],
+      })
+      expect(latestItemsProps?.rows.map(row => row.id)).toEqual([101])
+    })
+    expect(
+      screen.getByTestId('requirements-table-items-rows'),
+    ).toHaveTextContent('lib:31')
+    expect(
+      screen.getByTestId('requirements-table-items-rows'),
+    ).not.toHaveTextContent('lib:32')
   })
 
   it('keeps the add dialog open and shows inline errors when adding requirements fails', async () => {

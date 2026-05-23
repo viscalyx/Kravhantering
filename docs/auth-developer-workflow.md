@@ -20,6 +20,13 @@ If the dev server cannot reach the IdP, requests fail loudly instead of
 falling back to an unauthenticated mode. Bring up Keycloak first with
 `npm run idp:up` (or via the devcontainer compose).
 
+`GET /api/ready` is intentionally public so container wait scripts can call it
+before a browser session exists. It validates the runtime configuration,
+performs a read-only SQL Server probe, and checks OIDC discovery for the
+configured issuer with a short timeout. The response is deliberately terse:
+`{ "status": "ready" }` on success or `{ "status": "not_ready" }` on failure.
+Detailed dependency names are written only to server logs.
+
 ## Local IdP (Keycloak)
 
 <!-- cSpell:ignore socat -->
@@ -198,7 +205,7 @@ npm run test:integration -- tests/integration/admin-entrypoint.spec.ts
 ```
 <!-- markdownlint-enable MD013 -->
 
-### Prodlike local client (`kravhantering-local`)
+### Prodlike local client (`kravhantering-prodlike`)
 
 The realm ships a second confidential web client dedicated to the
 `local-prod` build target / `npm run start:prodlike` (port `3001`),
@@ -208,20 +215,25 @@ local Keycloak without needing a real OIDC provider.
 
 Source of truth:
 [`dev/keycloak/realm-kravhantering-dev.json`](../dev/keycloak/realm-kravhantering-dev.json)
-(the `kravhantering-local` entry under `clients`).
+(the `kravhantering-prodlike` entry under `clients`).
 
 <!-- markdownlint-disable MD013 -->
 | Field | Value |
 | --- | --- |
-| `clientId` | `kravhantering-local` |
-| `secret` | `local-kc-app-secret` (clearly dev-only — never reuse) |
+| `clientId` | `kravhantering-prodlike` |
+| `secret` | `prodlike-kc-app-secret` (clearly dev-only — never reuse) |
 | `publicClient` | `false` (confidential web client) |
-| Redirect URIs | `http://localhost:3001/api/auth/callback`, `http://127.0.0.1:3001/api/auth/callback` |
-| `webOrigins` | `http://localhost:3001`, `http://127.0.0.1:3001` |
-| Post-logout redirect URIs | `http://localhost:3001/`, `http://127.0.0.1:3001/` |
+| Redirect URIs | `http://localhost:3001/api/auth/callback` |
+| `webOrigins` | `http://localhost:3001` |
+| Post-logout redirect URIs | `http://localhost:3001/` |
 | PKCE | S256 |
 | Claim mappers | `roles` (realm-role array) and `employeeHsaId`, identical to `kravhantering-app` |
 <!-- markdownlint-enable MD013 -->
+
+The committed dev realm intentionally uses `localhost` only. If a local
+override points the app at `127.0.0.1`, update the override to `localhost`
+or add a matching per-developer Keycloak registration outside the committed
+realm.
 
 The values are loaded from
 [`.env.prodlike`](../.env.prodlike) by `npm run build:local-prod` and
@@ -229,8 +241,8 @@ The values are loaded from
 
 ```dotenv
 AUTH_OIDC_ISSUER_URL=http://localhost:8080/realms/kravhantering-dev
-AUTH_OIDC_CLIENT_ID=kravhantering-local
-AUTH_OIDC_CLIENT_SECRET=local-kc-app-secret
+AUTH_OIDC_CLIENT_ID=kravhantering-prodlike
+AUTH_OIDC_CLIENT_SECRET=prodlike-kc-app-secret
 AUTH_OIDC_REDIRECT_URI=http://localhost:3001/api/auth/callback
 AUTH_OIDC_POST_LOGOUT_REDIRECT_URI=http://localhost:3001/
 AUTH_OIDC_API_AUDIENCE=kravhantering-app
@@ -241,6 +253,58 @@ The matching build-target side lives in
 Like the dev client, the seeded users above (and the `Reviewer`, `Admin`,
 `PrivacyOfficer` roles + `employeeHsaId` claim) work unchanged because both
 clients live in the same realm and share the same protocol mappers.
+
+### Container stack realm (`kravhantering-test`)
+
+The production-like container stack has its own Keycloak realm file:
+[`containers/keycloak/realm-kravhantering-test.json`](../containers/keycloak/realm-kravhantering-test.json).
+It is not generated from, or reused from,
+[`dev/keycloak/realm-kravhantering-dev.json`](../dev/keycloak/realm-kravhantering-dev.json).
+
+The realm is intended for nginx-backed container smoke tests and local
+PoC/demo runs. It targets this public issuer URL:
+
+```text
+https://kravhantering.test/auth/realms/kravhantering-test
+```
+
+The matching app container values are:
+
+```dotenv
+AUTH_OIDC_ISSUER_URL=https://kravhantering.test/auth/realms/kravhantering-test
+AUTH_OIDC_CLIENT_ID=kravhantering-app
+AUTH_OIDC_CLIENT_SECRET=container-demo-app-secret-not-for-production
+AUTH_OIDC_REDIRECT_URI=https://kravhantering.test/api/auth/callback
+AUTH_OIDC_POST_LOGOUT_REDIRECT_URI=https://kravhantering.test/
+AUTH_OIDC_API_AUDIENCE=kravhantering-app
+```
+
+Keycloak itself should use `KC_HOSTNAME=https://kravhantering.test/auth` and
+`KC_PROXY_HEADERS=xforwarded`, matching the static nginx config under
+`containers/nginx/`.
+
+The container stack helpers in
+[`containers/compose/README.md`](../containers/compose/README.md) generate the
+runtime Compose file and wait for this issuer through nginx:
+
+```bash
+NODE_EXTRA_CA_CERTS=tmp/container-tls/ca.crt npm run container:wait -- keycloak
+```
+
+The container realm contains only the clients, roles, claim mappers, and
+minimal users needed for the container stack:
+
+<!-- markdownlint-disable MD013 -->
+| Username | Role(s) | `employeeHsaId` | Password |
+| --- | --- | --- | --- |
+| `release-smoke-user` | _(none)_ | `SE5560000001-smoke1` | `release-smoke-user-not-for-production` |
+| `release-smoke-admin` | `Admin` | `SE5560000001-smoke2` | `release-smoke-admin-not-for-production` |
+<!-- markdownlint-enable MD013 -->
+
+The committed client secrets and smoke-user passwords are public demo values.
+They are unsafe for exposed operation and must be replaced with runtime
+secrets before any environment is reachable outside a local or CI smoke-test
+context.
 
 ### Roles claim
 
@@ -316,8 +380,8 @@ Generate a fresh cookie password with `openssl rand -base64 48`.
 These values target the `dev` build target on port `3000`. For the
 `local-prod` build target on port `3001` (`npm run start:prodlike`),
 the values live in [`.env.prodlike`](../.env.prodlike) and point at
-the dedicated `kravhantering-local` Keycloak client described in the
-[Prodlike local client](#prodlike-local-client-kravhantering-local)
+the dedicated `kravhantering-prodlike` Keycloak client described in the
+[Prodlike local client](#prodlike-local-client-kravhantering-prodlike)
 section above.
 
 ## Environment variable reference
@@ -368,6 +432,24 @@ lifetime.
 | `AUTH_SESSION_COOKIE_NAME` | no | `kravhantering_session` | Cookie name. Override only if you need to coexist with another deployment on the same host. |
 | `AUTH_SESSION_TTL_SECONDS` | no | `28800` (8 h) | Absolute encrypted-cookie lifetime. The cached access-token expiry normally forces a new sign-in sooner. |
 <!-- markdownlint-enable MD013 -->
+
+### Login-state callback failures
+
+`/api/auth/login` writes a separate short-lived
+`${AUTH_SESSION_COOKIE_NAME}_login` cookie that carries PKCE verifier,
+`state`, `nonce`, and `returnTo` across the IdP redirect. If the browser does
+not send that cookie back to `/api/auth/callback`, the callback records
+`auth.login.failed` and logs a sanitized server-side diagnostic with
+`code=login_state_cookie_missing`. Browser users are redirected to
+`/auth/error`; JSON clients that explicitly request `application/json` receive
+a structured JSON error.
+
+In `local-prod` and `prod`, cookies are created with the `Secure` flag. On a
+non-`localhost` PoC host, running the app over plain `http://` means the browser
+will not return the login-state cookie, so the login fails at callback time.
+Fix the environment rather than weakening cookie flags: terminate TLS on the
+public host, make `AUTH_OIDC_REDIRECT_URI` use that exact `https://` callback
+URL, and ensure the IdP client registration uses the same callback host.
 
 ### Session and token timeouts
 
@@ -544,6 +626,13 @@ locally:
 
 ```bash
 npm run dev | grep '"channel":"security-audit"' | jq .
+```
+
+For the built prodlike target, use the same filter against the prodlike
+launcher:
+
+```bash
+npm run start:prodlike | grep '"channel":"security-audit"' | jq .
 ```
 
 Use `jq 'select(.event=="auth.login.failed")'` to filter by event, or

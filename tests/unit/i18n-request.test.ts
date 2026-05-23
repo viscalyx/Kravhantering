@@ -115,4 +115,33 @@ describe('i18n request config', () => {
       consoleErrorSpy.mockRestore()
     }
   })
+
+  it('falls back quietly when SQL Server is not configured during static generation', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    getRequestSqlServerDataSourceMock.mockRejectedValueOnce(
+      new Error(
+        'SQLSERVER_DATABASE_URL or DATABASE_URL, or DB_HOST/DB_PORT/DB_NAME with DB_USER/DB_PASSWORD must be configured for SQL Server access.',
+      ),
+    )
+
+    try {
+      const getRequestConfig = (await import('@/i18n/request')).default as ({
+        requestLocale,
+      }: {
+        requestLocale: Promise<string>
+      }) => Promise<{ locale: string; messages: Record<string, unknown> }>
+
+      const result = await getRequestConfig({
+        requestLocale: Promise.resolve('en'),
+      })
+
+      expect(result.locale).toBe('en')
+      expect(result.messages.__dbTerminologyApplied).toBeUndefined()
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
 })

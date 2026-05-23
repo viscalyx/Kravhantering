@@ -1,0 +1,111 @@
+name: "{{projectName}}"
+
+services:
+  sqlserver:
+    image: "{{sqlServerImage}}"
+    env_file:
+      - ./containers/sqlserver/.env.sqlserver.local
+    ports:
+      - "{{sqlServerHostPort}}:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1"
+        ]
+      interval: 5s
+      retries: 20
+      start_period: 10s
+      timeout: 5s
+
+  keycloak:
+    image: "{{keycloakImage}}"
+    command: ["start", "--import-realm"]
+    env_file:
+      - ./containers/keycloak/.env.keycloak.local
+    volumes:
+      - ./containers/keycloak/realm-kravhantering-test.json:/opt/keycloak/data/import/realm-kravhantering-test.json:ro
+
+  nginx:
+    image: "{{nginxImage}}"
+    depends_on:
+      - keycloak
+    ports:
+      - "443:443"
+    volumes:
+      - ./containers/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./containers/nginx/conf.d:/etc/nginx/conf.d:ro
+      - "{{tlsDir}}/kravhantering.test.crt:/etc/nginx/tls/kravhantering.test.crt:ro"
+      - "{{tlsDir}}/kravhantering.test.key:/etc/nginx/tls/kravhantering.test.key:ro"
+    networks:
+      default:
+        aliases:
+          - kravhantering.test
+
+  db-bootstrap:
+    image: "{{dbJobImage}}"
+    command: ["bootstrap"]
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    env_file:
+      - ./containers/db-job/.env.db-job.local
+    restart: "no"
+
+  db-migrate:
+    image: "{{dbJobImage}}"
+    command: ["migrate"]
+    depends_on:
+      db-bootstrap:
+        condition: service_completed_successfully
+    env_file:
+      - ./containers/db-job/.env.db-job.local
+    restart: "no"
+
+  db-seed-required:
+    image: "{{dbJobImage}}"
+    command: ["seed:required"]
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    env_file:
+      - ./containers/db-job/.env.db-job.local
+    restart: "no"
+
+  db-seed-demo:
+    image: "{{dbJobImage}}"
+    command: ["seed:demo"]
+    depends_on:
+      db-seed-required:
+        condition: service_completed_successfully
+    env_file:
+      - ./containers/db-job/.env.db-job.local
+    volumes:
+      - ./typeorm/seed.mjs:/workspace/typeorm/seed.mjs:ro
+      - ./typeorm/seed-dogfood.mjs:/workspace/typeorm/seed-dogfood.mjs:ro
+      - ./typeorm/seed-dogfood-build.mjs:/workspace/typeorm/seed-dogfood-build.mjs:ro
+      - ./typeorm/seed-archiving-retention-build.mjs:/workspace/typeorm/seed-archiving-retention-build.mjs:ro
+    profiles:
+      - demo
+      - release-smoke
+    restart: "no"
+
+  app-runtime:
+    image: "{{appRuntimeImage}}"
+    depends_on:
+      db-seed-required:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_started
+    env_file:
+      - ./containers/app/.env.app.local
+    environment:
+      NODE_EXTRA_CA_CERTS: /run/kravhantering/tls/ca.crt
+    volumes:
+      - "{{tlsDir}}/ca.crt:/run/kravhantering/tls/ca.crt:ro"
+
+volumes:
+  sqlserver-data:
+    name: "{{sqlServerVolumeName}}"

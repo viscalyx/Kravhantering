@@ -42,8 +42,23 @@ vi.mock('@/i18n/routing', () => ({
 
 function buildCallbackRequest(
   url = 'http://localhost/api/auth/callback?code=abc&state=state',
+  init: {
+    accept?: string
+    cookie?: string
+    forwardedHost?: string
+    forwardedProto?: string
+    secFetchDest?: string
+  } = {},
 ): NextRequest {
-  return new NextRequest(url)
+  const headers = new Headers()
+  if (init.accept) headers.set('accept', init.accept)
+  if (init.cookie) headers.set('cookie', init.cookie)
+  if (init.forwardedHost) headers.set('x-forwarded-host', init.forwardedHost)
+  if (init.forwardedProto) {
+    headers.set('x-forwarded-proto', init.forwardedProto)
+  }
+  if (init.secFetchDest) headers.set('sec-fetch-dest', init.secFetchDest)
+  return new NextRequest(url, { headers })
 }
 
 function freshLoginState(overrides: Partial<typeof loginStateMock> = {}) {
@@ -83,10 +98,12 @@ function mockAuthEnv() {
 }
 
 describe('auth callback security audit events', () => {
+  let errorSpy: ReturnType<typeof vi.spyOn>
   let infoSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     mockAuthEnv()
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     getLoginStateMock.mockReset()
     getSessionMock.mockReset()
@@ -184,7 +201,9 @@ describe('auth callback security audit events', () => {
     expect(response.status).toBe(400)
     await expect(response.json()).resolves.toEqual({
       error: 'OIDC callback failed',
+      code: 'oidc_error',
       detail: 'Denied',
+      reason: 'access_denied',
     })
     expect(authorizationCodeGrantMock).not.toHaveBeenCalled()
     expect(loginState.destroy).toHaveBeenCalledOnce()
@@ -204,12 +223,71 @@ describe('auth callback security audit events', () => {
     getLoginStateMock.mockResolvedValue(loginState)
     getSessionMock.mockResolvedValue(freshPriorSession())
     const GET = await importGet()
-    await GET(buildCallbackRequest())
+    const response = await GET(
+      buildCallbackRequest(
+        'http://localhost:3000/api/auth/callback?code=abc&state=sensitive-state-value',
+        {
+          accept: 'application/json',
+          cookie: 'kravhantering_session_login=sealed-cookie-value',
+        },
+      ),
+    )
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'login_state_cookie_missing',
+      error: 'Login callback failed',
+      reason: 'code_verifier_missing',
+    })
     const events = emittedSecurityEvents()
     expect(events).toHaveLength(1)
     expect(events[0].event).toBe('auth.login.failed')
     expect((events[0].detail as Record<string, unknown>).reason).toBe(
       'code_verifier_missing',
+    )
+    expect(loginState.destroy).toHaveBeenCalledOnce()
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Login callback failed',
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          code: 'login_state_cookie_missing',
+          configuredCallbackHost: 'localhost:3000',
+          configuredCallbackProtocol: 'http',
+          incomingHost: 'localhost:3000',
+          incomingProtocol: 'http',
+          likelyCause: 'login_state_expired_or_missing',
+          loginStateCookiePresent: true,
+          reason: 'code_verifier_missing',
+          secureCookiesRequired: false,
+        }),
+      }),
+    )
+    const serializedErrorCalls = JSON.stringify(errorSpy.mock.calls)
+    expect(serializedErrorCalls).not.toContain('abc')
+    expect(serializedErrorCalls).not.toContain('sensitive-state-value')
+    expect(serializedErrorCalls).not.toContain('sealed-cookie-value')
+  })
+
+  it('redirects browser callbacks with missing login state to the auth error page', async () => {
+    const loginState = freshLoginState({
+      codeVerifier: '' as never,
+      returnTo: '/en/specifications',
+    })
+    getLoginStateMock.mockResolvedValue(loginState)
+    getSessionMock.mockResolvedValue(freshPriorSession())
+
+    const GET = await importGet()
+    const response = await GET(
+      buildCallbackRequest(
+        'http://poc.example.test/api/auth/callback?code=abc',
+        {
+          accept: 'text/html',
+          secFetchDest: 'document',
+        },
+      ),
+    )
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get('location')).toBe(
+      'http://poc.example.test/auth/error?code=login_state_cookie_missing&locale=en',
     )
     expect(loginState.destroy).toHaveBeenCalledOnce()
   })

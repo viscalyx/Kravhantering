@@ -75,11 +75,11 @@ Issue `#106` (Nuclei alongside OWASP ZAP) and issue `#119` (deeper ZAP
 scanning) are DAST expansion work. They are intentionally not part of the
 repository and supply-chain gate.
 
-Phase 4 implements `#106` in the existing pull-request DAST workflow by adding
-Nuclei beside ZAP against the same localhost prodlike app. Issue `#119` remains
-later DAST expansion because it introduces API scanning, role matrices, full
-active scans, OpenAPI generation, workflow refactoring, throwaway realms, and
-runtime scan guards.
+The pull-request DAST workflow implements `#106` by adding Nuclei beside ZAP
+against the same localhost prodlike app. Issue `#119` remains later DAST
+expansion because it introduces API scanning, role matrices, full active scans,
+OpenAPI generation, workflow refactoring, throwaway realms, and runtime scan
+guards.
 
 ## Pull-request DAST workflow
 
@@ -283,10 +283,10 @@ Markdown output remains in the artifact.
 Workflow file:
 [.github/workflows/security-api.yml](../.github/workflows/security-api.yml).
 
-Phase 5 adds a repo-owned OpenAPI contract and Schemathesis scan for the
-authenticated requirements REST API. The scan runs only against
-`http://localhost:3001` after starting the same disposable SQL Server,
-Keycloak, and prodlike Next.js stack used by the PR DAST workflow.
+The repo-owned OpenAPI contract and Schemathesis scan cover the authenticated
+requirements REST API. The scan runs only against `http://localhost:3001` after
+starting the same disposable SQL Server, Keycloak, and prodlike Next.js stack
+used by the PR DAST workflow.
 
 The static contract lives in
 [openapi/requirements-api.yaml](../openapi/requirements-api.yaml). It is not
@@ -294,7 +294,7 @@ served by the app and does not add a runtime `/openapi` route.
 
 ### API scan scope
 
-Covered in Phase 5:
+Covered by this scan:
 
 - `/api/auth/me`
 - Requirement list, detail, create, edit, archive, version read,
@@ -307,15 +307,15 @@ both outcomes: `deleted` is an ordered array with the
 deleted, the array includes a second `requirement` entry for the same
 `requirementUniqueId`.
 
-Deferred from Phase 5:
+Deferred from this scan:
 
 - CSV export, MCP, AI routes, admin catalog mutations, specifications,
   deviations, and improvement suggestions.
 - ZAP API scan, role-matrix DAST, full active scans, and paid vendor scanners
   that require service-specific CI secrets.
 
-Those deferred items are later issue `#119` work. Phase 5 creates the API
-contract and bounded property-test foundation, but does not close `#119`.
+Those deferred items are later issue `#119` work. The API contract and bounded
+property-test foundation do not close `#119`.
 
 ### API workflow steps
 
@@ -339,7 +339,7 @@ contract and bounded property-test foundation, but does not close `#119`.
 The mutating scan requests include the masked local session cookie,
 `Origin: http://localhost:3001`, and
 `X-Requested-With: XMLHttpRequest`. Schemathesis output sanitization stays
-enabled. HAR export is intentionally not used in Phase 5.
+enabled. HAR export is intentionally not used by this workflow.
 
 The root `schemathesis.toml` disables coverage probes for unexpected HTTP
 methods. Next.js constructs a web `Request` before application middleware runs,
@@ -361,15 +361,15 @@ addition rules.
 Workflow file:
 [.github/workflows/security-mcp.yml](../.github/workflows/security-mcp.yml).
 
-Phase 6 adds a repo-owned MCP seeded HTTP security gate. It starts the
-prodlike localhost stack, obtains a local Keycloak service-account token, and
-uses the MCP Streamable HTTP client against `http://localhost:3001/api/mcp`.
+The MCP seeded-HTTP security gate starts the prodlike localhost stack, obtains
+a local Keycloak service-account token, and uses the MCP Streamable HTTP client
+against `http://localhost:3001/api/mcp`.
 
 This is not a paid vendor DAST scan. HAR generation, role-matrix DAST, ZAP API
 scan, active scans, production targets, and production secrets remain out of
-scope for this workflow. The Nuclei template from Phase 4 remains the
-unauthenticated `/api/mcp` exposure check, while the Phase 3 MCP unit/property
-tests remain the main protocol contract.
+scope for this workflow. The Nuclei template remains the unauthenticated
+`/api/mcp` exposure check, while the MCP unit/property tests remain the main
+protocol contract.
 
 The workflow deliberately does not call live OpenRouter endpoints. OpenRouter
 is an external service, so CI validates this repository's request construction,

@@ -145,7 +145,7 @@ describe('requirement list view helpers', () => {
     ).toEqual(['uniqueId', 'description', 'type', 'status'])
   })
 
-  it('clears hidden column filters while keeping locked-column filters intact', () => {
+  it('clears hidden column filters while keeping locked and chip-row filters intact', () => {
     expect(
       clearRequirementFiltersForHiddenColumns(
         {
@@ -164,7 +164,7 @@ describe('requirement list view helpers', () => {
       areaIds: undefined,
       descriptionSearch: 'secure',
       needsReferenceIds: undefined,
-      requirementPackageIds: undefined,
+      requirementPackageIds: [12],
       specificationItemStatusIds: undefined,
       qualityCharacteristicIds: undefined,
       statuses: undefined,

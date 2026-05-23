@@ -3166,10 +3166,7 @@ describe('RequirementsTable', () => {
     const requirementPackageFilter = screen.getByRole('button', {
       name: 'Mobil användning',
     })
-    expect(onFilterChange).toHaveBeenCalledWith({
-      requirementPackageIds: undefined,
-    })
-    onFilterChange.mockClear()
+    expect(onFilterChange).not.toHaveBeenCalled()
     expect(requirementPackageFilter).toHaveAttribute(
       'data-requirement-package',
       '1',
@@ -3195,6 +3192,11 @@ describe('RequirementsTable', () => {
     expect(
       screen.getByRole('button', { name: 'Mobil användning' }),
     ).toHaveAttribute('aria-pressed', 'false')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mobil användning' }))
+    expect(onFilterChange).toHaveBeenCalledWith({
+      requirementPackageIds: [1],
+    })
   })
 
   it('renders the infinite-scroll sentinel when hasMore and onLoadMore are set', () => {

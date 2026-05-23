@@ -6,9 +6,10 @@ on Microsoft SQL Server using TypeORM.
 
 The schema is defined by TypeORM entities under
 [`lib/typeorm/entities/`](../lib/typeorm/entities/). Migrations live in
-[`typeorm/migrations/`](../typeorm/migrations/) and seed data in
-[`typeorm/seed.mjs`](../typeorm/seed.mjs). The developer setup, browse
-workflow, and CLI reference live in
+[`typeorm/migrations/`](../typeorm/migrations/) and seed profiles in
+[`typeorm/seed.mjs`](../typeorm/seed.mjs). Required seed data contains system
+and lookup rows; demo seed data contains optional examples and test fixtures.
+The developer setup, browse workflow, and CLI reference live in
 [sql-server-developer-workflow.md](./sql-server-developer-workflow.md).
 
 ---

@@ -208,14 +208,14 @@ function createService() {
 async function createClient(service: RequirementsService) {
   const request = new Request('https://example.test/api/mcp', {
     headers: {
-      'x-correlation-id': 'corr-phase3',
-      'x-request-id': 'req-phase3',
+      'x-correlation-id': 'corr-mcp-authz',
+      'x-request-id': 'req-mcp-authz',
     },
   })
   attachVerifiedActor(request, {
     displayName: 'MCP Service Account',
     hsaId: 'SE5560000001-mcp1',
-    id: 'svc-phase3',
+    id: 'svc-mcp-authz',
     isAuthenticated: true,
     roles: ['Reviewer'],
     source: 'mcp',
@@ -240,12 +240,12 @@ function expectContext(fn: ReturnType<typeof vi.fn>, toolName: string): void {
   expect(context).toMatchObject({
     actor: {
       hsaId: 'SE5560000001-mcp1',
-      id: 'svc-phase3',
+      id: 'svc-mcp-authz',
       roles: ['Reviewer'],
       source: 'mcp',
     },
-    correlationId: 'corr-phase3',
-    requestId: 'req-phase3',
+    correlationId: 'corr-mcp-authz',
+    requestId: 'req-mcp-authz',
     source: 'mcp',
     toolName,
   })

@@ -81,6 +81,7 @@ const developerModeReactNoopPathAbsolute = fileURLToPath(
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   typedRoutes: true,
+  output: 'standalone',
   compress: true,
   poweredByHeader: false,
   generateEtags: true,
@@ -89,7 +90,9 @@ const nextConfig: NextConfig = {
     : [],
   compiler: {
     removeConsole:
-      resolvedBuildTarget !== 'dev' ? { exclude: ['error'] } : false,
+      resolvedBuildTarget !== 'dev'
+        ? { exclude: ['error', 'warn', 'info'] }
+        : false,
   },
   images: {
     formats: ['image/webp', 'image/avif'],

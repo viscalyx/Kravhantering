@@ -156,3 +156,35 @@ describe('next.config Developer Mode wiring', () => {
     expect(warn).not.toHaveBeenCalled()
   })
 })
+
+describe('next.config console pruning', () => {
+  it('preserves structured production log levels in built targets', async () => {
+    const config = await loadNextConfig({
+      BUILD_TARGET: 'local-prod',
+      NODE_ENV: 'production',
+    })
+
+    expect(config.compiler?.removeConsole).toEqual({
+      exclude: ['error', 'warn', 'info'],
+    })
+  })
+
+  it('keeps development console output untouched', async () => {
+    const config = await loadNextConfig({
+      NODE_ENV: 'development',
+    })
+
+    expect(config.compiler?.removeConsole).toBe(false)
+  })
+})
+
+describe('next.config container output', () => {
+  it('emits a standalone server bundle for production images', async () => {
+    const config = await loadNextConfig({
+      BUILD_TARGET: 'prod',
+      NODE_ENV: 'production',
+    })
+
+    expect(config.output).toBe('standalone')
+  })
+})

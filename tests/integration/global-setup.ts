@@ -1,11 +1,12 @@
-import { existsSync } from 'node:fs'
-import { mkdir } from 'node:fs/promises'
-import { dirname } from 'node:path'
-import { type FullConfig, request as playwrightRequest } from '@playwright/test'
+import type { FullConfig } from '@playwright/test'
 import {
-  describeKeycloakLoginFormActionError,
-  extractKeycloakLoginFormAction,
-} from '@/scripts/lib/keycloak-login-form.mjs'
+  findMissingRoleFiles as findMissingRoleFilesForRoles,
+  getPlaywrightBaseUrl,
+  loginAndSaveStorageState,
+  type RoleSpec,
+} from '@/tests/support/playwright-auth'
+
+export type { RoleSpec } from '@/tests/support/playwright-auth'
 
 /**
  * Default Playwright role used by integration specs that do not opt into a
@@ -13,13 +14,6 @@ import {
  * role -> storageState mapping.
  */
 export const DEFAULT_INTEGRATION_ROLE = 'admin'
-
-export interface RoleSpec {
-  filePath: string
-  password: string
-  role: string
-  username: string
-}
 
 export const ROLES: ReadonlyArray<RoleSpec> = [
   {
@@ -53,78 +47,9 @@ export const ROLES: ReadonlyArray<RoleSpec> = [
  */
 export function findMissingRoleFiles(
   roles: ReadonlyArray<RoleSpec> = ROLES,
-  fileExists: (path: string) => boolean = existsSync,
+  fileExists?: (path: string) => boolean,
 ): string[] {
-  return roles.filter(spec => !fileExists(spec.filePath)).map(s => s.filePath)
-}
-
-function getBaseUrl(config: FullConfig): string {
-  const fromEnv = process.env.PLAYWRIGHT_BASE_URL
-  if (fromEnv) return fromEnv.replace(/\/$/, '')
-  const projectBaseUrl = config.projects[0]?.use?.baseURL
-  if (projectBaseUrl) return projectBaseUrl.replace(/\/$/, '')
-  return 'http://localhost:3000'
-}
-
-/**
- * Drives a real Keycloak login over HTTP using Playwright's request context.
- * The flow follows the production redirect chain unchanged:
- *   1. GET  /api/auth/login                  -> 302 to Keycloak /authorize
- *   2. GET  Keycloak /authorize              -> 200 with login form
- *   3. POST Keycloak login form              -> 302 to /api/auth/callback?code=...
- *   4. GET  /api/auth/callback?code=...      -> 302 to / with iron-session cookie
- *
- * Saves the resulting cookie jar via `request.storageState({ path })` so each
- * test worker can reuse the session via `test.use({ storageState })`.
- */
-async function loginAndSaveStorageState(
-  baseUrl: string,
-  spec: RoleSpec,
-): Promise<void> {
-  await mkdir(dirname(spec.filePath), { recursive: true })
-
-  const context = await playwrightRequest.newContext({
-    baseURL: baseUrl,
-    ignoreHTTPSErrors: true,
-  })
-
-  const loginPage = await context.get('/api/auth/login')
-  if (!loginPage.ok()) {
-    throw new Error(
-      `Failed to start login flow at ${baseUrl}/api/auth/login: ${loginPage.status()} ${loginPage.statusText()}`,
-    )
-  }
-  const loginHtml = await loginPage.text()
-
-  const formAction = extractKeycloakLoginFormAction(loginHtml)
-  if (!formAction) {
-    throw new Error(describeKeycloakLoginFormActionError(loginPage.url()))
-  }
-  const resolvedFormAction = new URL(formAction, loginPage.url()).toString()
-
-  const callbackResponse = await context.post(resolvedFormAction, {
-    form: {
-      username: spec.username,
-      password: spec.password,
-      credentialId: '',
-    },
-  })
-  if (!callbackResponse.ok()) {
-    throw new Error(
-      `Keycloak credential submission for ${spec.username} returned ${callbackResponse.status()} ${callbackResponse.statusText()} (final URL ${callbackResponse.url()})`,
-    )
-  }
-
-  const me = await context.get('/api/auth/me')
-  const meBody = (await me.json()) as { authenticated?: boolean }
-  if (!meBody.authenticated) {
-    throw new Error(
-      `Login flow finished but /api/auth/me reported authenticated=false for ${spec.username}`,
-    )
-  }
-
-  await context.storageState({ path: spec.filePath })
-  await context.dispose()
+  return findMissingRoleFilesForRoles(roles, fileExists)
 }
 
 export default async function globalSetup(config: FullConfig): Promise<void> {
@@ -167,10 +92,12 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
     }
   }
 
-  const baseUrl = getBaseUrl(config)
+  const baseUrl = getPlaywrightBaseUrl(config, 'http://localhost:3000')
   for (const spec of ROLES) {
     try {
-      await loginAndSaveStorageState(baseUrl, spec)
+      await loginAndSaveStorageState(baseUrl, spec, {
+        ignoreHTTPSErrors: true,
+      })
       console.info(
         `[playwright global-setup] Stored ${spec.role} session at ${spec.filePath}`,
       )

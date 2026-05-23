@@ -230,10 +230,10 @@ discovers the right issuer:
 
 ```yaml
 stringData:
-  AUTH_ISSUER: 'https://keycloak-<workspace>.<cluster-domain>/realms/kravhantering-dev'
+  AUTH_OIDC_ISSUER_URL: 'https://keycloak-<workspace>.<cluster-domain>/realms/kravhantering-dev'
+  AUTH_OIDC_CLIENT_ID: 'kravhantering-app'
+  AUTH_OIDC_CLIENT_SECRET: '<client-secret>'
   NEXT_PUBLIC_SITE_URL: 'https://next-dev-<workspace>.<cluster-domain>'
-  # ...plus AUTH_CLIENT_ID / AUTH_CLIENT_SECRET / ANALYTICS_HASH_SECRET
-  # as documented in /workspace/.env.example
 ```
 
 The route hostnames are visible in the Dev Spaces dashboard under
@@ -460,8 +460,9 @@ Then run the `oc logs` command as soon as the `workspace...` pod appears.
 - **`db-setup` fails** — check the `db` container log in the workspace
   pod. `MSSQL_SA_PASSWORD` must satisfy the SQL Server complexity
   policy (≥ 8 chars, mixed case, digit, symbol).
-- **Login redirect loops** — `AUTH_ISSUER` and `NEXT_PUBLIC_SITE_URL`
-  must match the public route hostnames of the current workspace.
+- **Login redirect loops** — `AUTH_OIDC_ISSUER_URL` and
+  `NEXT_PUBLIC_SITE_URL` must match the public route hostnames of the current
+  workspace.
   Update the Secret and restart the workspace.
 - **OOMKilled** — increase `memoryLimit` on the `tools` component or
   raise the namespace quota.

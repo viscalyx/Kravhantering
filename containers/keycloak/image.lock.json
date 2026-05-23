@@ -1,0 +1,8 @@
+{
+  "name": "keycloak",
+  "role": "identity-provider",
+  "image": "quay.io/keycloak/keycloak",
+  "tag": "26.6.1",
+  "digest": "sha256:dea26401d06341095cc4ea9d66896200b55de5ca1daa1d2fcbe58493afa6e0ad",
+  "source": "https://quay.io/repository/keycloak/keycloak"
+}

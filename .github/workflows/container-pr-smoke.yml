@@ -1,0 +1,253 @@
+name: Container PR Smoke
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  container-smoke:
+    name: Build and Smoke Test Container Stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      APP_RUNTIME_IMAGE: localhost/kravhantering/app-runtime
+      DB_JOB_IMAGE: localhost/kravhantering/db-job
+      NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+      PODMAN_COMPOSE_PROVIDER: podman-compose
+      STORAGE_DRIVER: vfs
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install latest npm
+        run: |
+          npm install -g npm@latest
+          npm --version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Install container runtime tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y podman podman-compose libnss3-tools
+          sudo sysctl net.ipv4.ip_unprivileged_port_start=0
+          echo "127.0.0.1 kravhantering.test" | sudo tee -a /etc/hosts
+          podman --version
+          podman compose version
+          podman info
+          docker --version
+          docker buildx version
+          docker info
+          docker buildx ls
+
+      - name: Prepare Docker Buildx builder
+        run: |
+          set -euo pipefail
+          docker buildx create --name kravhantering-pr-builder --use ||
+            docker buildx use kravhantering-pr-builder
+          docker buildx inspect --bootstrap
+
+      - name: Compute PR image metadata
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          short_sha="${GITHUB_SHA::12}"
+          image_tag="pr-${PR_NUMBER}-${GITHUB_RUN_ID}-${short_sha}"
+          package_version="$(node -p "require('./package.json').version")"
+          build_time="$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")"
+
+          {
+            echo "APP_RUNTIME_SOURCE=pr-build"
+            echo "APP_RUNTIME_TAG=${image_tag}"
+            echo "BUILD_COMMIT_SHA=${GITHUB_SHA}"
+            echo "BUILD_IMAGE_TAG=${APP_RUNTIME_IMAGE}:${image_tag}"
+            echo "BUILD_TIME=${build_time}"
+            echo "BUILD_VERSION=${package_version}-pr.${PR_NUMBER}.${GITHUB_RUN_ID}"
+            echo "CONTAINER_PROJECT_NAME=kravhantering-container-stack-release-smoke-${GITHUB_RUN_ID}"
+            echo "CONTAINER_STACK_RUN_ID=${GITHUB_RUN_ID}"
+            echo "DB_JOB_SOURCE=pr-build"
+            echo "DB_JOB_TAG=${image_tag}"
+            echo "RELEASE_SMOKE_RUN_ID=${GITHUB_RUN_ID}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Write host build metadata artifact
+        run: node scripts/prebuild.js
+
+      - name: Build app-runtime image
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --file containers/app/Dockerfile \
+            --target app-runtime \
+            --platform linux/amd64 \
+            --tag "${APP_RUNTIME_IMAGE}:${APP_RUNTIME_TAG}" \
+            --build-arg BUILD_VERSION="${BUILD_VERSION}" \
+            --build-arg BUILD_COMMIT_SHA="${BUILD_COMMIT_SHA}" \
+            --build-arg BUILD_TIME="${BUILD_TIME}" \
+            --build-arg BUILD_IMAGE_TAG="${BUILD_IMAGE_TAG}" \
+            --build-arg NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL}" \
+            --load \
+            .
+
+      - name: Build db-job image
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --file containers/app/Dockerfile \
+            --target db-job \
+            --platform linux/amd64 \
+            --tag "${DB_JOB_IMAGE}:${DB_JOB_TAG}" \
+            --load \
+            .
+
+      - name: Create per-container local env files
+        run: npm run container:env:local
+
+      - name: Start container stack
+        run: |
+          set -euo pipefail
+          node scripts/containers/run-local-stack.mjs up \
+            --mode release-smoke \
+            --run-id "${CONTAINER_STACK_RUN_ID}" \
+            --skip-build
+
+      - name: Trust generated CA for browser runner
+        run: bash .devcontainer/trust-container-ca.sh
+
+      - name: Export OCI archives
+        run: npm run container:oci:export -- --output-dir tmp/container-pr-artifacts/oci
+
+      - name: Verify OCI archives
+        run: |
+          npm run container:oci:verify -- \
+            --output-dir tmp/container-pr-artifacts/oci \
+            --verify-root "/tmp/kh-oci-${CONTAINER_STACK_RUN_ID}"
+
+      - name: Run release smoke tests
+        run: npm run test:release-smoke
+        env:
+          CI: true
+
+      - name: Collect status before shutdown on failure
+        if: failure()
+        run: |
+          node scripts/containers/collect-status.mjs \
+            --project-name "${CONTAINER_PROJECT_NAME}" \
+            --output-text container-status-before-down.txt \
+            --output-json container-status-before-down.json \
+            --tail 160 || true
+
+      - name: Stop container stack
+        if: always()
+        run: node scripts/containers/run-local-stack.mjs down --mode release-smoke || true
+
+      - name: Collect status after shutdown on failure
+        if: failure()
+        run: |
+          node scripts/containers/collect-status.mjs \
+            --project-name "${CONTAINER_PROJECT_NAME}" \
+            --output-text container-status-after-down.txt \
+            --output-json container-status-after-down.json \
+            --tail 160 || true
+
+      - name: Write artifact hashes
+        if: always()
+        run: |
+          node scripts/containers/write-hashes.mjs \
+            --output hashes.sha256 \
+            container-stack.lock.json \
+            container-stack.compose.yml \
+            container-status.txt \
+            container-status.json \
+            container-status-before-down.txt \
+            container-status-before-down.json \
+            container-status-after-down.txt \
+            container-status-after-down.json \
+            public/build.json \
+            tmp/container-pr-artifacts/oci/app-runtime.oci.tar.gz \
+            tmp/container-pr-artifacts/oci/db-job.oci.tar.gz || true
+
+      - name: Stage runtime artifacts
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p \
+            tmp/container-pr-artifacts/runtime \
+            tmp/container-pr-artifacts/playwright
+
+          for file in \
+            container-stack.lock.json \
+            container-stack.compose.yml \
+            container-status.txt \
+            container-status.json \
+            container-status-before-down.txt \
+            container-status-before-down.json \
+            container-status-after-down.txt \
+            container-status-after-down.json \
+            public/build.json \
+            hashes.sha256; do
+            if [ -f "${file}" ]; then
+              cp "${file}" tmp/container-pr-artifacts/runtime/
+            fi
+          done
+
+          if [ -d playwright-report-release-smoke ]; then
+            cp -R \
+              playwright-report-release-smoke \
+              tmp/container-pr-artifacts/playwright/html
+          fi
+          if [ -d test-results/release-smoke ]; then
+            cp -R \
+              test-results/release-smoke \
+              tmp/container-pr-artifacts/playwright/test-results
+          fi
+
+      - name: Upload runtime artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: container-pr-runtime-${{ github.run_id }}
+          path: tmp/container-pr-artifacts/runtime/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: container-pr-playwright-${{ github.run_id }}
+          path: tmp/container-pr-artifacts/playwright/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload OCI archives
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: container-pr-oci-${{ github.run_id }}
+          path: tmp/container-pr-artifacts/oci/*.oci.tar.gz
+          if-no-files-found: ignore
+          retention-days: 2

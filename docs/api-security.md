@@ -2,9 +2,10 @@
 
 <!-- cSpell:ignore Schemathesis -->
 
-Phase 5 adds a repo-owned REST API contract and a bounded Schemathesis scan.
-The scan runs against the same local prodlike app shape used by the DAST
-workflow: SQL Server, Keycloak, and Next.js on `http://localhost:3001`.
+The repo-owned REST API security scan uses a static REST API contract and a
+bounded Schemathesis scan. The scan runs against the same local prodlike app
+shape used by the DAST workflow: SQL Server, Keycloak, and Next.js on
+`http://localhost:3001`.
 
 ## Scope
 
@@ -13,12 +14,18 @@ The static contract lives in
 current JSON behavior for the browser-backed requirements REST API. The file is
 not served by the app and does not add a runtime `/openapi` route.
 
-Covered in Phase 5:
+Covered by this contract:
 
 - `/api/auth/me`
 - Requirement list, detail, create, edit, archive, version read,
   delete-draft, restore, reactivate, and transition routes.
 - Read-only requirement catalog routes used by the requirements UI.
+
+Operational probes stay outside the OpenAPI/Schemathesis contract. `/api/health`
+is a liveness check, and `/api/ready` is a public readiness check for
+container orchestration. `/api/ready` returns only `ready` or `not_ready`,
+uses `Cache-Control: no-store`, and logs sanitized dependency failures on the
+server instead of exposing topology in the HTTP response.
 
 The delete-draft success contract intentionally reports the same deletion-ledger
 payload for both outcomes: `deleted` is an ordered array with the
@@ -26,7 +33,7 @@ payload for both outcomes: `deleted` is an ordered array with the
 parent requirement row, the array includes a second `requirement` entry for the
 same `requirementUniqueId`.
 
-Deferred from Phase 5:
+Deferred from this contract:
 
 - CSV export, MCP, AI routes, admin catalog mutations, specifications,
   deviations, improvement suggestions, and Admin Center access-review routes
@@ -130,7 +137,7 @@ The mutating scan requests include:
 - `X-Requested-With: XMLHttpRequest`
 
 The cookie is masked in workflow logs. Schemathesis output sanitization remains
-enabled and HAR export is intentionally not used in Phase 5.
+enabled and HAR export is intentionally not used by this workflow.
 
 The repository `schemathesis.toml` disables coverage probes for unexpected HTTP
 methods. Next.js constructs a web `Request` before application middleware runs,

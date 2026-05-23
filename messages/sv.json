@@ -42,6 +42,7 @@
     "editTooltip": "Redigera kravets innehåll",
     "close": "Stäng",
     "version": "Version",
+    "buildVersionTooltip": "Version {version}",
     "versions": "Versioner",
     "resetToDefault": "Återställ standardvy",
     "restoreVersion": "Återskapa version",

@@ -19,6 +19,12 @@
 <!-- cSpell:ignore servercert konfig konfigfilen extfile Acreateserial -->
 <!-- cSpell:ignore mappern tokenvalideringen committade -->
 
+>[!IMPORTANT]
+> **Ny standardväg:** Den containerbaserade PoC-/demo-modellen dokumenteras i
+> [container-poc-demo.md](./container-poc-demo.md). Den här äldre RHEL-sidan
+> beskriver en separat låg-privilegierad PoC med prodlike-app utanför den nya
+> containerbaserade demo-profilen och är inte längre standardvägen.
+
 Denna sida beskriver vilka förutsättningar som måste finnas på en
 **Red Hat Enterprise Linux 10**-server för att köra en enkel
 Proof-of-Concept (PoC) av Kravhantering. PoC:n återanvänder de
@@ -1343,19 +1349,19 @@ startats (t.ex. vid en senare justering av JSON-filen) krävs en
 realmen ska läsas in.
 
 Klienten som används av prodlike-skripten heter
-`kravhantering-local` och har som standard följande fält pekande mot
-`http://localhost:3001` / `http://127.0.0.1:3001`:
+`kravhantering-prodlike` och har som standard följande fält pekande mot
+`http://localhost:3001`:
 
 - `clients[].redirectUris` — t.ex. `http://localhost:3001/api/auth/callback`
 - `clients[].webOrigins` — t.ex. `http://localhost:3001`
 - `clients[].attributes."post.logout.redirect.uris"` —
-  `##`-separerad lista, t.ex. `http://localhost:3001/##http://127.0.0.1:3001/`
+  t.ex. `http://localhost:3001/`
 
-För PoC:n ska samtliga ovan ersättas av en enda PoC-URL (samma DNS-namn
-som certifikatet i 8.1 utfärdats för). Sätt först miljövariabeln
-`POC_HOST` och kör sedan en `jq`-uppdatering på plats — det hanterar
-både listorna och `##`-strängen utan att du behöver redigera JSON för
-hand:
+För PoC:n ska samtliga ovan på `kravhantering-prodlike` ersättas av en enda
+PoC-URL (samma DNS-namn som certifikatet i 8.1 utfärdats för). Sätt först
+miljövariabeln `POC_HOST` och kör sedan en `jq`-uppdatering på plats — det
+hanterar både listorna och post-logout-strängen utan att du behöver redigera
+JSON för hand:
 
 ```bash
 # Som kravhantering, i ~/Kravhantering/
@@ -1367,16 +1373,15 @@ REALM=dev/keycloak/realm-kravhantering-dev.json
 cp "$REALM" "$REALM.bak"
 
 jq --arg base "https://$POC_HOST" '
-  (.clients[] | select(.clientId=="kravhantering-local"))
+  (.clients[] | select(.clientId=="kravhantering-prodlike"))
     |= ( .redirectUris = [ $base + "/api/auth/callback" ]
        | .webOrigins   = [ $base ]
        | .attributes."post.logout.redirect.uris" = ($base + "/")
        )
 ' "$REALM.bak" > "$REALM"
 
-# Verifiera att ingen localhost-/127.0.0.1-URL finns kvar för
-# kravhantering-local
-jq '.clients[] | select(.clientId=="kravhantering-local")
+# Verifiera att ingen localhost-URL finns kvar för kravhantering-prodlike
+jq '.clients[] | select(.clientId=="kravhantering-prodlike")
      | {redirectUris, webOrigins,
         postLogout: .attributes."post.logout.redirect.uris"}' "$REALM"
 ```
@@ -1391,9 +1396,9 @@ Förväntat resultat (med `POC_HOST=kravhantering.poc.example.com`):
 }
 ```
 
-Den andra klienten i realmen, `kravhantering-app`, används av
-dev-servern på port 3000/3001 och behöver inte ändras för PoC:n
-— prodlike-skripten använder bara `kravhantering-local`.
+Den andra klienten i realmen, `kravhantering-app`, används av dev-servern på
+port 3000 och behöver inte ändras för PoC:n — prodlike-skripten använder bara
+`kravhantering-prodlike`.
 
 **MCP-klienten (`kravhantering-mcp`) fungerar i prodlike utan
 extra åtgärder.** Den är en service-account-klient
@@ -1402,7 +1407,7 @@ av PoC-värdnamnet. Audience-mappern på `kravhantering-mcp` sätter
 `aud=kravhantering-app` på MCP-tokens, och `.env.prodlike` sätter
 `AUTH_OIDC_API_AUDIENCE=kravhantering-app` så att tokenvalideringen i
 [`lib/auth/mcp-token.ts`](../lib/auth/mcp-token.ts) accepterar dem
-även när inloggade användare går via `kravhantering-local`. Externa
+även när inloggade användare går via `kravhantering-prodlike`. Externa
 MCP-klienter hämtar token från `${AUTH_OIDC_ISSUER_URL}/protocol/openid-connect/token`
 med `client_id=kravhantering-mcp` och secret från realmen — secret-värdet
 `dev-only-mcp-secret` i den committade realmen ska bytas mot ett
@@ -1883,14 +1888,14 @@ REALM=dev/keycloak/realm-kravhantering-dev.json
 cp "$REALM" "$REALM.bak"
 
 jq --arg base "https://$POC_HOST" '
-  (.clients[] | select(.clientId=="kravhantering-local"))
+  (.clients[] | select(.clientId=="kravhantering-prodlike"))
     |= ( .redirectUris = [ $base + "/api/auth/callback" ]
        | .webOrigins   = [ $base ]
        | .attributes."post.logout.redirect.uris" = ($base + "/")
        )
 ' "$REALM.bak" > "$REALM"
 
-jq '.clients[] | select(.clientId=="kravhantering-local")
+jq '.clients[] | select(.clientId=="kravhantering-prodlike")
      | {redirectUris, webOrigins,
         postLogout: .attributes."post.logout.redirect.uris"}' "$REALM"
 ```

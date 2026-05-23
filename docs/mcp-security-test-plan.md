@@ -2,17 +2,18 @@
 
 ## Purpose
 
-Phase 3 hardens the MCP server without changing the public tool surface. The
-tests verify that `/api/mcp` stays authenticated, exposes only the documented
-tools, validates tool input with Zod, delegates authorization-sensitive work to
-the requirements service, and does not leak sensitive error details.
+The MCP security test layer hardens the MCP server without changing the public
+tool surface. The tests verify that `/api/mcp` stays authenticated, exposes
+only the documented tools, validates tool input with Zod, delegates
+authorization-sensitive work to the requirements service, and does not leak
+sensitive error details.
 
 This is a repo-owned unit and transport test layer. It must pass before later
 authenticated DAST phases scan `/api/mcp`.
 
 ## Automated Coverage
 
-Run the focused Phase 3 suite with:
+Run the focused MCP security suite with:
 
 ```sh
 npm exec -- vitest run \
@@ -67,11 +68,12 @@ secrets for this smoke check.
 
 ## Non-Goals
 
-- No new MCP tools or resource URIs.
-- No database schema, seed, migration, UI, REST route, or GitHub workflow
-  changes.
-- No browser CSRF checks on `/api/mcp`; it remains Bearer-token scoped.
-- No RBAC policy rollout. Phase 3 proves MCP passes correct context into the
-  shared service. Role policy activation remains later RBAC work.
-- No external DAST. Authenticated dynamic scanning of `/api/mcp` belongs after
-  this unit/transport hardening layer is green.
+- New MCP tools or resource URIs stay out of scope.
+- Database schema, seed, migration, UI, REST route, and GitHub workflow changes
+  are not part of this pass.
+- Browser CSRF checks on `/api/mcp` are excluded; it remains Bearer-token
+  scoped.
+- RBAC policy rollout is deferred; these tests prove MCP passes correct context
+  into the shared service, and role policy activation remains later RBAC work.
+- External DAST is deferred. Authenticated dynamic scanning of `/api/mcp`
+  belongs after this unit/transport hardening layer is green.

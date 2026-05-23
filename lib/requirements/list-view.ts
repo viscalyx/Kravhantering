@@ -678,7 +678,6 @@ export function clearRequirementFiltersForHiddenColumns(
   clearIfHidden('requiresTesting', 'requiresTesting')
   clearIfHidden('needsReference', 'needsReferenceIds')
   clearIfHidden('normReferences', 'normReferenceIds')
-  clearIfHidden('requirementPackage', 'requirementPackageIds')
 
   return nextValues
 }

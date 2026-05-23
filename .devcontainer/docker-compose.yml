@@ -35,6 +35,16 @@ services:
       DB_TRUST_SERVER_CERTIFICATE: ${DB_TRUST_SERVER_CERTIFICATE:-true}
       NODE_ENV: ${NODE_ENV:-development}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-1}
+    extra_hosts:
+      # The release-smoke runner reaches nginx through Podman's published
+      # 443 port on the devcontainer loopback address.
+      - "kravhantering.test:127.0.0.1"
+    devices:
+      # Required by rootless Podman when it uses fuse-overlayfs for nested
+      # local container storage (e.g. for the release-smoke container stack).
+      - /dev/fuse:/dev/fuse
+      # Required by slirp4netns for rootless Podman networking.
+      - /dev/net/tun:/dev/net/tun
     # Ports are forwarded via devcontainer.json forwardPorts (VS Code handles this)
     # Proper init system for signal handling and zombie process reaping
     init: true
