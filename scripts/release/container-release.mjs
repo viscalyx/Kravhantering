@@ -45,6 +45,10 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
     target: 'docs/rhel10-production-deploy.md',
   },
   {
+    source: 'docs/rhel10-production-single-node-internal-deploy.md',
+    target: 'docs/rhel10-production-single-node-internal-deploy.md',
+  },
+  {
     source: 'docs/adr/0001-release-artifact-production-deployment.md',
     target: 'docs/adr/0001-release-artifact-production-deployment.md',
   },

@@ -7,11 +7,13 @@ Red Hat Enterprise Linux 10 host from released artifacts only. The target host
 does not need a repository clone, development dependencies, GitHub Actions
 checkout, Playwright assets, or source-tree helper scripts.
 
-The primary production topology is an app node that runs nginx and
+This enterprise production topology is an app node that runs nginx and
 `app-runtime` in a rootless Podman Compose network. SQL Server and the IdP are
-external services. A full single-node variant is also supported for controlled
-installations where SQL Server and Keycloak run in the same Podman Compose
-network as the app.
+external services.
+
+For the controlled all-in-one internal topology where SQL Server and Keycloak
+run on the same RHEL host, use
+[rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md).
 
 ## Release Inputs
 
@@ -29,20 +31,71 @@ The internal container registry must contain digest-preserved mirrors for:
 - `app-runtime`
 - `db-job`
 - nginx
-- SQL Server, only for the single-node internal variant
-- Keycloak, only for the single-node internal variant
 
 Digest-preserved means the image digest in the internal registry is the same
 `sha256:<digest>` value listed in `container-stack.lock.json`. Mirroring
 mechanics are outside this guide; this guide assumes the internal repository
 and registry already contain the approved release assets.
 
+## Configuration BoM
+
+Before editing templates, record these site values. The names below are
+planning names; the later sections map them to the exact environment variables
+and external IdP settings.
+
+- `VERSION`: the release version to install, for example `1.2.3`.
+- `APP_HOST`: the public DNS name without `https://`, for example
+  `kravhantering.example.internal`. Use the same value in app URLs, IdP
+  redirect/logout settings, IdP web origins, TLS certificate SANs and smoke
+  checks.
+- `SQLSERVER_HOST`, `DB_NAME`, `APP_DB_USER`, `APP_DB_PASSWORD`,
+  `DB_JOB_USER` and `DB_JOB_PASSWORD`: the external SQL Server connection
+  values from the DBA. The app runtime and db-job passwords must be different.
+- `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET`: the external
+  IdP client values. `OIDC_CLIENT_SECRET` must match the confidential client
+  secret configured in the IdP.
+- `SESSION_COOKIE_PASSWORD`: a random value with at least 32 characters for
+  encrypted browser sessions.
+- `MCP_CLIENT_ID`: the service-account client id when MCP service tokens are
+  used. The default is `kravhantering-mcp`.
+- `OPENROUTER_API_KEY`, `OPENROUTER_MGMT_API_KEY` and
+  `NEXT_PUBLIC_DEFAULT_MODEL`: optional AI values. Leave them empty unless AI
+  requirement generation is approved for the environment.
+
+### Generate Unique Secrets
+
+Use the site's approved secret manager or password generator whenever possible.
+Generate one value per secret and store each value in the deployment secret
+store before editing `/etc/kravhantering`.
+
+For OIDC client secrets, session-cookie passwords and optional MCP client
+secrets, a good command-line fallback is:
+
+```bash
+openssl rand -base64 48
+```
+
+Run the command separately for each secret. Do not reuse one generated value
+for unrelated settings.
+
+For SQL Server login passwords, use the DBA-approved password generator and
+the site's SQL Server password policy. If the operator must generate one on the
+host, generate a long password and verify it contains uppercase, lowercase,
+digit and symbol characters:
+
+```bash
+LC_ALL=C tr -dc 'A-Za-z0-9!%+=_.-' </dev/urandom | head -c 32
+printf '\n'
+```
+
+Regenerate the SQL password if it contains the login name or does not satisfy
+the site password policy.
+
 ## Clean RHEL 10 Host
 
 Install the host as a minimal RHEL 10 server. Recommended baseline:
 
 - 4 vCPU and 8 GiB RAM for an app node
-- 8 vCPU and 16 GiB RAM for the single-node internal variant
 - separate XFS-backed storage for container data and backups
 - registered RHEL repositories
 - outbound access to the internal release repository and internal registry
@@ -52,7 +105,7 @@ Install the host as a minimal RHEL 10 server. Recommended baseline:
 Install runtime packages as an administrator:
 
 ```bash
-sudo dnf install -y podman podman-compose tar gzip coreutils
+sudo dnf install -y podman podman-compose tar gzip coreutils jq
 podman --version
 PODMAN_COMPOSE_PROVIDER=podman-compose podman compose version
 ```
@@ -70,18 +123,15 @@ Create immutable release and mutable configuration directories:
 sudo install -d -o root -g root -m 0755 /opt/kravhantering/releases
 sudo install -d -o root -g root -m 0755 /etc/kravhantering
 sudo install -d -o root -g kravhantering -m 0750 /etc/kravhantering/tls
-sudo install -d -o root -g kravhantering -m 0750 /etc/kravhantering/keycloak
 ```
 
 Release files live under `/opt/kravhantering/releases/<version>`.
-Site-specific environment files, certificates and realm files live under
-`/etc/kravhantering`.
+Site-specific environment files and certificates live under `/etc/kravhantering`.
 
-The bundled Compose files mount release templates, TLS material and the
-single-node Keycloak realm as `:ro,Z` bind mounts. `ro` keeps those host files
-read-only inside the containers, and `Z` gives each private bind mount an
-SELinux label that Podman containers can read on RHEL. The named SQL Server and
-Keycloak data volumes do not use `Z`; Podman owns those volumes.
+The bundled Compose files keep bind mounts read-only. Because the stack runs as
+the rootless `kravhantering` user and the mounted files are root-owned under
+`/opt` and `/etc`, apply SELinux labels as an administrator instead of relying
+on Podman `:Z` relabeling at container start.
 
 If this host terminates TLS directly on port 443, allow rootless Podman to bind
 that port. Skip this step when the host only receives HTTP traffic from a
@@ -96,15 +146,28 @@ sudo sysctl --system
 ## Install a Release
 
 Download the deployment bundle and checksum from the internal release
-repository:
+repository. Set `RELEASE_DOWNLOAD_URL` to the per-version directory that hosts
+the approved release artifacts.
+
+>[!NOTE]
+>Sites should use the internal release repository by default. The official
+>GitHub release is an explicit opt-in source when that is approved for the
+>deployment. GitHub release tags use the `v${VERSION}` path segment.
 
 ```bash
 VERSION=1.2.3
+
+# Default: internal release repository.
+RELEASE_DOWNLOAD_URL="https://release.example.internal/kravhantering/${VERSION}"
+
+# Opt-in: official GitHub release.
+# RELEASE_DOWNLOAD_URL="https://github.com/viscalyx/Kravhantering/releases/download/v${VERSION}"
+
 mkdir -p "/tmp/kravhantering-${VERSION}"
 cd "/tmp/kravhantering-${VERSION}"
 
-curl -O "https://release.example.internal/kravhantering/${VERSION}/kravhantering-production-deploy-${VERSION}.tar.gz"
-curl -O "https://release.example.internal/kravhantering/${VERSION}/kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
+curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz"
+curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
 sha256sum -c "kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
 ```
 
@@ -144,22 +207,60 @@ sudo install -o root -g kravhantering -m 0640 \
 Edit the copied files with environment-specific values. Do not edit files
 under `/opt/kravhantering/current`; they are release artifacts.
 
+Label the release-owned nginx configuration files for container bind mounts.
+Run this once per installed release:
+
+```bash
+sudo chcon -R -t container_file_t \
+  "/opt/kravhantering/releases/${VERSION}/nginx"
+```
+
 ## Image References
 
 Set image references in `/etc/kravhantering/release.env` to internal registry
-refs that preserve the release digests:
+refs that preserve the release digests from the installed release lock. First,
+load the locked digest values:
 
-```env
-APP_RUNTIME_IMAGE_REF=registry.example.internal/kravhantering-app-runtime@sha256:<digest>
-DB_JOB_IMAGE_REF=registry.example.internal/kravhantering-db-job@sha256:<digest>
-NGINX_IMAGE_REF=registry.example.internal/nginx@sha256:<digest>
+```bash
+LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
+service_digest() {
+  jq -r --arg name "$1" \
+    '.services[] | select(.name == $name) | .digest' "$LOCK_FILE"
+}
+
+APP_RUNTIME_DIGEST="$(service_digest app-runtime)"
+DB_JOB_DIGEST="$(service_digest db-job)"
+NGINX_DIGEST="$(service_digest nginx)"
+
+update_ref() {
+  sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
+}
 ```
 
-For the single-node internal variant, also set:
+Default: update `/etc/kravhantering/release.env` for the internal registry
+mirror:
 
-```env
-SQLSERVER_IMAGE_REF=registry.example.internal/mssql/server@sha256:<digest>
-KEYCLOAK_IMAGE_REF=registry.example.internal/keycloak/keycloak@sha256:<digest>
+```bash
+update_ref APP_RUNTIME_IMAGE_REF \
+  "registry.example.internal/kravhantering-app-runtime@${APP_RUNTIME_DIGEST}"
+update_ref DB_JOB_IMAGE_REF \
+  "registry.example.internal/kravhantering-db-job@${DB_JOB_DIGEST}"
+update_ref NGINX_IMAGE_REF \
+  "registry.example.internal/nginx@${NGINX_DIGEST}"
+```
+
+Opt-in: if the site is explicitly approved to pull from public upstream
+registries, the project images can use the official GHCR release packages.
+nginx is a vendor image and should use the digest-locked upstream image ref
+from the release lock:
+
+```bash
+update_ref APP_RUNTIME_IMAGE_REF \
+  "ghcr.io/viscalyx/kravhantering-app-runtime@${APP_RUNTIME_DIGEST}"
+update_ref DB_JOB_IMAGE_REF \
+  "ghcr.io/viscalyx/kravhantering-db-job@${DB_JOB_DIGEST}"
+update_ref NGINX_IMAGE_REF \
+  "docker.io/library/nginx@${NGINX_DIGEST}"
 ```
 
 Pull the images as the service user:
@@ -173,13 +274,8 @@ set +a
 podman pull "$APP_RUNTIME_IMAGE_REF"
 podman pull "$DB_JOB_IMAGE_REF"
 podman pull "$NGINX_IMAGE_REF"
-```
 
-For the single-node internal variant:
-
-```bash
-podman pull "$SQLSERVER_IMAGE_REF"
-podman pull "$KEYCLOAK_IMAGE_REF"
+exit
 ```
 
 ## External SQL Server Primary Path
@@ -217,9 +313,29 @@ DB_PORT=1433
 DB_NAME=kravhantering
 DB_USER=kravhantering_job
 DB_PASSWORD=<db-job-password>
+DB_CONNECTION_TIMEOUT_MS=15000
+DB_REQUEST_TIMEOUT_MS=30000
 DB_ENCRYPT=true
 DB_TRUST_SERVER_CERTIFICATE=false
 ```
+
+`DB_CONNECTION_TIMEOUT_MS` is the time allowed to open each SQL Server
+connection. Raise it when the external database is slow to accept connections
+or the network path is occasionally slow. Lower it only if failed connection
+attempts should return faster.
+
+`DB_REQUEST_TIMEOUT_MS` is the time allowed for each SQL statement during
+migrations and required seed. Raise it when schema changes or seed operations
+legitimately take longer on the target database. Lower it only if stuck SQL
+statements should fail faster.
+
+Both values are db-job client settings. The shown values match the built-in
+defaults and can be kept unless the site needs different timeout limits.
+
+`DB_PASSWORD` in `db-job.env` is the password for the migration/seed login,
+normally `kravhantering_job`. The DBA should provision this login with a unique
+generated SQL Server password that satisfies the site password policy and does
+not contain the login name. Do not reuse the app runtime password.
 
 Do not keep `DB_BOOTSTRAP_*` values in `db-job.env` for the normal
 DBA-pre-provisioned path.
@@ -247,9 +363,49 @@ AUTH_OIDC_CLIENT_SECRET=<client-secret>
 AUTH_OIDC_REDIRECT_URI=https://kravhantering.example.internal/api/auth/callback
 AUTH_OIDC_POST_LOGOUT_REDIRECT_URI=https://kravhantering.example.internal/
 AUTH_OIDC_ROLES_CLAIM=roles
+AUTH_OIDC_SCOPES=openid profile email
 AUTH_OIDC_API_AUDIENCE=kravhantering-app
+AUTH_SESSION_COOKIE_NAME=kravhantering_session
 AUTH_SESSION_COOKIE_PASSWORD=<at-least-32-random-characters>
+AUTH_SESSION_TTL_SECONDS=28800
+MCP_CLIENT_ID=kravhantering-mcp
+
+NEXT_PUBLIC_DEFAULT_MODEL=
+OPENROUTER_API_KEY=
+OPENROUTER_MGMT_API_KEY=
 ```
+
+The app only requires `AUTH_OIDC_CLIENT_SECRET` to be non-empty and to match
+the client secret configured in the IdP. For production, use a high-entropy
+IdP-generated secret or generate one with a command such as
+`openssl rand -base64 48`. `AUTH_SESSION_COOKIE_PASSWORD` is separate and must
+be at least 32 characters.
+
+Keep `AUTH_OIDC_SCOPES=openid profile email` unless the IdP needs additional
+scopes to release the required claims. `openid` must always be present. Keep
+`AUTH_SESSION_COOKIE_NAME=kravhantering_session` unless this host must serve
+another deployment on the same browser cookie scope. Changing the cookie name
+signs out existing browser sessions.
+
+Keep `AUTH_SESSION_TTL_SECONDS=28800` for an eight-hour absolute session-cookie
+lifetime unless the site has approved another browser-session lifetime. It is
+not an idle timeout; the shortest of this value, the IdP SSO session lifetime
+and the access-token lifetime controls when the user must re-authenticate.
+
+`MCP_CLIENT_ID=kravhantering-mcp` is used when issuing service-account tokens
+for MCP clients. Keep it aligned with the IdP service-account client id, or
+leave the default when MCP service tokens are not used. It is not a secret.
+
+Leave `NEXT_PUBLIC_DEFAULT_MODEL`, `OPENROUTER_API_KEY` and
+`OPENROUTER_MGMT_API_KEY` empty unless AI requirement generation is approved
+for the environment. To enable AI, set `OPENROUTER_API_KEY` to the approved
+OpenRouter API key. `NEXT_PUBLIC_DEFAULT_MODEL` is optional; leave it empty if
+the deployment should not preselect a site default model. The UI will use a
+saved favorite or the first available model, and backend calls that receive no
+model fall back to the built-in default. Set `OPENROUTER_MGMT_API_KEY` only if
+the app should display organization credit information.
+`NEXT_PUBLIC_DEFAULT_MODEL` is public client configuration; do not put secrets
+in it.
 
 For Keycloak, the client must emit the realm roles and `hsaId` user attribute
 as the `roles` and `employeeHsaId` claims. The bundle's
@@ -269,8 +425,8 @@ When the external IdP is Keycloak, create or update a realm with:
 - realm roles `Reviewer`, `Admin` and `PrivacyOfficer`
 - mapper that emits realm roles as a multivalued `roles` claim
 - mapper that emits the user `hsaId` attribute as `employeeHsaId`
-- optional service-account client `kravhantering-mcp` with an audience mapper
-  for `kravhantering-app`
+- optional service-account client `kravhantering-mcp` with its own generated
+  client secret and an audience mapper for `kravhantering-app`
 
 Do not import the release-smoke realm into production. The smoke-test realm
 contains public test credentials.
@@ -286,6 +442,7 @@ sudo install -o root -g kravhantering -m 0640 fullchain.pem \
   /etc/kravhantering/tls/fullchain.pem
 sudo install -o root -g kravhantering -m 0640 privkey.pem \
   /etc/kravhantering/tls/privkey.pem
+sudo chcon -R -t container_file_t /etc/kravhantering/tls
 ```
 
 Validate the external database and IdP, then run migration and required seed
@@ -364,72 +521,6 @@ systemctl --user enable --now kravhantering-compose.service
 The service runs `podman compose up -d` from `/opt/kravhantering/current` and
 `podman compose down` on stop.
 
-## Single-Node Internal Variant
-
-Use this variant only when the approved deployment model is one RHEL host that
-runs nginx, app-runtime, SQL Server, Keycloak and db-job in the same Podman
-Compose network.
-
-Copy the extra templates:
-
-```bash
-REALM_TEMPLATE=/opt/kravhantering/current/keycloak
-REALM_TEMPLATE="${REALM_TEMPLATE}/realm-kravhantering-production.template.json"
-
-sudo install -o root -g kravhantering -m 0640 \
-  /opt/kravhantering/current/env/sqlserver.env.template \
-  /etc/kravhantering/sqlserver.env
-sudo install -o root -g kravhantering -m 0640 \
-  /opt/kravhantering/current/env/keycloak.env.template \
-  /etc/kravhantering/keycloak.env
-sudo install -o root -g kravhantering -m 0640 \
-  "$REALM_TEMPLATE" \
-  /etc/kravhantering/keycloak/realm-kravhantering-production.json
-```
-
-Replace every placeholder secret, hostname and redirect URI in those files.
-For the internal Keycloak issuer, set app values like:
-
-```env
-DB_HOST=sqlserver
-DB_TRUST_SERVER_CERTIFICATE=true
-NEXT_PUBLIC_SITE_URL=https://kravhantering.example.internal
-AUTH_OIDC_ISSUER_URL=https://kravhantering.example.internal/auth/realms/kravhantering-production
-AUTH_OIDC_REDIRECT_URI=https://kravhantering.example.internal/api/auth/callback
-AUTH_OIDC_POST_LOGOUT_REDIRECT_URI=https://kravhantering.example.internal/
-```
-
-Install TLS cert, private key and the issuing CA certificate:
-
-```bash
-sudo install -o root -g kravhantering -m 0640 fullchain.pem \
-  /etc/kravhantering/tls/fullchain.pem
-sudo install -o root -g kravhantering -m 0640 privkey.pem \
-  /etc/kravhantering/tls/privkey.pem
-sudo install -o root -g kravhantering -m 0640 ca.crt \
-  /etc/kravhantering/tls/ca.crt
-```
-
-Start SQL Server and Keycloak, then run the one-time database jobs:
-
-```bash
-sudo -iu kravhantering
-cd /opt/kravhantering/current
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml up -d sqlserver keycloak
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml run --rm db-bootstrap
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml run --rm db-migrate
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml run --rm db-seed-required
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml up -d app-runtime nginx
-```
-
-Do not run `db-seed-demo` in production.
-
 ## Planned-Downtime Upgrade
 
 Use planned downtime unless a future release explicitly documents rolling
@@ -454,10 +545,6 @@ compatibility.
 9. Start the app nodes with the new release.
 10. Check `/api/health`, `/api/ready`, sign-in and a read-only UI workflow.
 11. Re-enable traffic.
-
-For the single-node internal variant, stop `nginx` and `app-runtime` first,
-leave SQL Server and Keycloak running, run the database jobs, then start the
-new `app-runtime` and `nginx`.
 
 ## Rollback
 

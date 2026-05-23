@@ -1,0 +1,19 @@
+# cSpell:words oneshot
+
+[Unit]
+Description=Kravhantering single-node Podman Compose stack
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/kravhantering/current
+Environment=PODMAN_COMPOSE_PROVIDER=podman-compose
+ExecStart=/usr/bin/podman compose --env-file /etc/kravhantering/release.env -f compose/single-node.compose.yml up -d
+ExecStop=/usr/bin/podman compose --env-file /etc/kravhantering/release.env -f compose/single-node.compose.yml down
+TimeoutStartSec=180
+TimeoutStopSec=90
+
+[Install]
+WantedBy=default.target
