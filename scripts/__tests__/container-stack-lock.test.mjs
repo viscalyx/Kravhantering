@@ -80,6 +80,7 @@ describe('container stack lock generation', () => {
 
     const stackLock = createStackLockFromCliOptions({
       cwd,
+      env: {},
       cliOptions: {
         'app-runtime-digest': 'sha256:app',
         'app-runtime-image': 'localhost/kravhantering/app-runtime',
@@ -184,6 +185,7 @@ describe('container stack lock generation', () => {
           log: message => messages.push(`log:${message}`),
         },
         cwd,
+        env: {},
         execFileSync: () => 'cafef00d\n',
       },
     )
