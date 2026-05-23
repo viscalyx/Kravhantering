@@ -34,6 +34,11 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'npm'
 
+      - name: Install latest npm
+        run: |
+          npm install -g npm@latest
+          npm --version
+
       - name: Install dependencies
         run: npm ci
 
@@ -137,7 +142,7 @@ jobs:
         run: |
           npm run container:oci:verify -- \
             --output-dir tmp/container-pr-artifacts/oci \
-            --verify-root tmp/container-oci-verify
+            --verify-root "/tmp/kh-oci-${CONTAINER_STACK_RUN_ID}"
 
       - name: Run release smoke tests
         run: npm run test:release-smoke

@@ -153,7 +153,7 @@ project images:
 npm run container:oci:export -- --output-dir tmp/container-pr-artifacts/oci
 npm run container:oci:verify -- \
   --output-dir tmp/container-pr-artifacts/oci \
-  --verify-root tmp/container-oci-verify
+  --verify-root "/tmp/kh-oci-$CONTAINER_STACK_RUN_ID"
 ```
 
 Verification loads each archive into an isolated Podman store and compares the

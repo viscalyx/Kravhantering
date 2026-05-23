@@ -50,7 +50,7 @@ function stackLock() {
 function fakeFs() {
   return {
     existsSync: filePath => String(filePath).endsWith('.oci.tar.gz'),
-    mkdtempSync: vi.fn(() => '/workspace/tmp/container-oci-verify/verify-ci'),
+    mkdtempSync: vi.fn(() => '/tmp/kh-oci-verify/verify-ci'),
     mkdirSync: vi.fn(),
     readFileSync: vi.fn(() => JSON.stringify(stackLock())),
     rmSync: vi.fn(),
@@ -66,10 +66,10 @@ describe('container OCI archive helpers', () => {
       lockFile: 'lock.json',
     })
     expect(
-      parseArgs(['verify', '--verify-root', 'tmp/container-oci-verify']),
+      parseArgs(['verify', '--verify-root', '/tmp/kh-oci-verify']),
     ).toMatchObject({
       command: 'verify',
-      verifyRoot: 'tmp/container-oci-verify',
+      verifyRoot: '/tmp/kh-oci-verify',
     })
     expect(archiveFileName('app-runtime')).toBe('app-runtime.oci.tar.gz')
     expect(imageReference(stackLock().services[0])).toBe(
@@ -186,14 +186,27 @@ describe('container OCI archive helpers', () => {
       'sha256:db-job',
     ])
     expect(commands).toEqual([
-      'podman --root /workspace/tmp/container-oci-verify/verify-ci/root --runroot /workspace/tmp/container-oci-verify/verify-ci/run load --input tmp/oci/app-runtime.oci.tar.gz',
-      'podman --root /workspace/tmp/container-oci-verify/verify-ci/root --runroot /workspace/tmp/container-oci-verify/verify-ci/run load --input tmp/oci/db-job.oci.tar.gz',
+      'podman --root /tmp/kh-oci-verify/verify-ci/root --runroot /tmp/kh-oci-verify/verify-ci/run load --input tmp/oci/app-runtime.oci.tar.gz',
+      'podman --root /tmp/kh-oci-verify/verify-ci/root --runroot /tmp/kh-oci-verify/verify-ci/run load --input tmp/oci/db-job.oci.tar.gz',
     ])
     expect(fsImpl.rmSync).toHaveBeenCalledTimes(2)
     expect(consoleObj.info).toHaveBeenCalledTimes(2)
     expect(consoleObj.info).toHaveBeenCalledWith(
-      'Ignoring OCI verification store cleanup failure for /workspace/tmp/container-oci-verify/verify-ci: EACCES, permission denied. Podman may leave rootless storage files that Node cannot remove; the archive verification result is preserved.',
+      'Ignoring OCI verification store cleanup failure for /tmp/kh-oci-verify/verify-ci: EACCES, permission denied. Podman may leave rootless storage files that Node cannot remove; the archive verification result is preserved.',
     )
+  })
+
+  it('rejects verification stores whose runroot path exceeds Podman limits', () => {
+    expect(() =>
+      verifyOciArchives({
+        cwd: '/home/runner/work/Kravhantering/Kravhantering',
+        execFileSync: () => 'sha256:app-runtime\n',
+        fsImpl: fakeFs(),
+        outputDir: 'tmp/oci',
+        spawnSync: () => ({ status: 0 }),
+        verifyRoot: 'tmp/container-oci-verify',
+      }),
+    ).toThrow('Podman requires 50 or fewer')
   })
 
   it('fails when an archive digest does not match the stack lock', () => {
@@ -217,10 +230,14 @@ describe('container OCI archive helpers', () => {
 
     expect(workflow).toContain('pull_request:')
     expect(workflow).toContain('contents: read')
+    expect(workflow).toContain('npm install -g npm@latest')
     expect(workflow).toContain('--skip-build')
     expect(workflow).toContain('container:oci:export')
     expect(workflow).toContain('container:oci:verify')
-    expect(workflow).toContain('--verify-root tmp/container-oci-verify')
+    expect(workflow).toContain(
+      '--verify-root "/tmp/kh-oci-${CONTAINER_STACK_RUN_ID}"',
+    )
+    expect(workflow).not.toContain('--verify-root tmp/container-oci-verify')
     expect(workflow).toContain('retention-days: 2')
     expect(workflow).toContain('retention-days: 7')
     expect(workflow).not.toContain('pull_request_target')

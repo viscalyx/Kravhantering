@@ -5,8 +5,9 @@ import { fileURLToPath } from 'node:url'
 import { DEFAULT_STACK_LOCK_PATH, findService } from './generate-stack-lock.mjs'
 
 export const DEFAULT_OCI_OUTPUT_DIR = 'tmp/container-oci-archives'
-export const DEFAULT_OCI_VERIFY_ROOT = 'tmp/container-oci-verify'
+export const DEFAULT_OCI_VERIFY_ROOT = '/tmp/kh-oci-verify'
 export const DEFAULT_PODMAN_STORAGE_DRIVER = 'vfs'
+export const MAX_PODMAN_RUNROOT_LENGTH = 50
 export const PROJECT_ARCHIVE_SERVICES = ['app-runtime', 'db-job']
 
 const USAGE = `Usage:
@@ -169,6 +170,7 @@ function createVerifyWorkspace(options = {}) {
     : createTemporaryVerifyWorkspace(cwd, fsImpl)
   const root = path.join(baseDir, 'root')
   const runroot = path.join(baseDir, 'run')
+  validateRunrootLength(runroot)
   fsImpl.mkdirSync(root, { recursive: true })
   fsImpl.mkdirSync(runroot, { recursive: true })
   return {
@@ -182,6 +184,13 @@ function createTemporaryVerifyWorkspace(cwd, fsImpl) {
   const parentDir = path.resolve(cwd, DEFAULT_OCI_VERIFY_ROOT)
   fsImpl.mkdirSync(parentDir, { recursive: true })
   return fsImpl.mkdtempSync(path.join(parentDir, 'verify-'))
+}
+
+function validateRunrootLength(runroot) {
+  if (runroot.length <= MAX_PODMAN_RUNROOT_LENGTH) return
+  throw new Error(
+    `OCI verification runroot path is ${runroot.length} characters, but Podman requires ${MAX_PODMAN_RUNROOT_LENGTH} or fewer. Pass --verify-root /tmp/kh-oci-verify or another shorter path.`,
+  )
 }
 
 function formatErrorMessage(error) {
