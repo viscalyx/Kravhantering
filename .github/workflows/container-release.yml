@@ -177,6 +177,9 @@ jobs:
           cosign sign --yes "${APP_RUNTIME_DIGEST_REF}"
           cosign sign --yes "${DB_JOB_DIGEST_REF}"
 
+      - name: Prepare SBOM artifact directory
+        run: mkdir -p tmp/container-release-artifacts/sbom
+
       - name: Generate app-runtime SBOM
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
