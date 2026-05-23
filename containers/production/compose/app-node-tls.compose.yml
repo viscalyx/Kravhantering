@@ -15,11 +15,13 @@ services:
     image: ${NGINX_IMAGE_REF:?set NGINX_IMAGE_REF}
     depends_on:
       - app-runtime
+    environment:
+      NGINX_RESOLVER: ${NGINX_RESOLVER:-10.89.0.1}
     ports:
       - "${NGINX_HTTPS_BIND:-443:443}"
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ../nginx/conf.d/app-node-tls.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../nginx/templates/app-node-tls.conf.template:/etc/nginx/templates/default.conf.template:ro
       - /etc/kravhantering/tls/fullchain.pem:/etc/nginx/tls/fullchain.pem:ro
       - /etc/kravhantering/tls/privkey.pem:/etc/nginx/tls/privkey.pem:ro
     networks:
@@ -28,3 +30,4 @@ services:
 
 networks:
   kravhantering-internal:
+    name: kravhantering-app-node_kravhantering-internal

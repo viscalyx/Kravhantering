@@ -33,10 +33,12 @@ Expected mounted files:
 The committed site config for `kravhantering.test` proxies:
 
 - `/` to `http://app-runtime:3000`.
+- `/auth/error` to `http://app-runtime:3000`.
 - `/auth/` to `http://keycloak:8080/`.
 
 The `/auth` path redirects to `/auth/` before proxying so Keycloak receives
-consistent realm paths.
+consistent realm paths. `/auth/error` is an exact app-runtime exception for
+OIDC callback failures; keep it before the broader `/auth/` Keycloak location.
 
 Private keys and generated CA material must be short-lived runtime files and
 must not be saved as artifacts.

@@ -1,6 +1,7 @@
 # RHEL 10 Production Deployment From Release Artifacts
 
-<!-- cSpell:words coreutils datawriter fullchain privkey -->
+<!-- cSpell:words coreutils datawriter firewalld fullchain nameserver privkey -->
+<!-- cSpell:words ipv4 resolv -->
 
 This guide describes how to install and upgrade Kravhantering on a clean
 Red Hat Enterprise Linux 10 host from released artifacts only. The target host
@@ -143,6 +144,28 @@ printf '%s\n' 'net.ipv4.ip_unprivileged_port_start=443' \
 sudo sysctl --system
 ```
 
+When this host terminates TLS directly, also open HTTPS in the host firewall:
+
+```bash
+sudo firewall-cmd --add-service=https
+sudo firewall-cmd --permanent --add-service=https
+```
+
+If the site requires a narrower allow-list, add a source-restricted rule
+instead of the global HTTPS service. Replace `10.10.1.0/24` with the approved
+load-balancer, admin or monitoring subnet:
+
+```bash
+HTTPS_SOURCE_CIDR=10.10.1.0/24
+FIREWALL_HTTPS_RULE="rule family=\"ipv4\" source address=\"${HTTPS_SOURCE_CIDR}\""
+FIREWALL_HTTPS_RULE="${FIREWALL_HTTPS_RULE} service name=\"https\" accept"
+
+sudo firewall-cmd \
+  --add-rich-rule="$FIREWALL_HTTPS_RULE"
+sudo firewall-cmd \
+  --permanent --add-rich-rule="$FIREWALL_HTTPS_RULE"
+```
+
 ## Install a Release
 
 Download the deployment bundle and checksum from the internal release
@@ -278,6 +301,19 @@ podman pull "$NGINX_IMAGE_REF"
 exit
 ```
 
+Set `NGINX_RESOLVER` in `/etc/kravhantering/release.env` to the Podman DNS
+resolver that nginx should use for dynamic `app-runtime` lookups:
+
+```env
+NGINX_RESOLVER=10.89.0.1
+```
+
+The shown value is the common rootless Podman resolver. nginx uses it to
+re-resolve the upstream app container after `app-runtime` restarts, instead of
+keeping a stale container IP. If the deployment network uses a different
+resolver, the startup flow below shows how to print the actual resolver from
+inside the Compose network before nginx starts.
+
 ## External SQL Server Primary Path
 
 The preferred production path is DBA-pre-provisioned SQL Server. The DBA or
@@ -353,6 +389,13 @@ Register a confidential OIDC web client in the external IdP. The app requires:
 - `employeeHsaId` claim on ID token, access token and userinfo
 - optional MCP service client audience for `kravhantering-app`
 
+Provision at least one initial application administrator in the IdP before the
+first sign-in. This is not an IdP platform administrator account; it is a
+normal application user with a real `employeeHsaId` value and the
+Kravhantering realm or group roles needed for launch. For the broad bootstrap
+case, assign `Reviewer`, `Admin` and `PrivacyOfficer`, then reduce access
+through the site's normal identity-governance process if needed.
+
 Set `/etc/kravhantering/app.env`:
 
 ```env
@@ -410,7 +453,8 @@ in it.
 For Keycloak, the client must emit the realm roles and `hsaId` user attribute
 as the `roles` and `employeeHsaId` claims. The bundle's
 `keycloak/realm-kravhantering-production.template.json` shows the expected
-mapper shape.
+mapper shape and declares `hsaId` as a managed Keycloak user-profile
+attribute.
 
 ### Keycloak Appendix
 
@@ -423,10 +467,18 @@ When the external IdP is Keycloak, create or update a realm with:
 - web origin `https://<app-host>`
 - post-logout redirect URI `https://<app-host>/`
 - realm roles `Reviewer`, `Admin` and `PrivacyOfficer`
+- managed user-profile attribute `hsaId` with administrator view/edit
+  permissions
+- at least one initial application administrator user with a real `hsaId`
+  attribute and the `Reviewer`, `Admin` and `PrivacyOfficer` realm roles
 - mapper that emits realm roles as a multivalued `roles` claim
 - mapper that emits the user `hsaId` attribute as `employeeHsaId`
 - optional service-account client `kravhantering-mcp` with its own generated
   client secret and an audience mapper for `kravhantering-app`
+
+For an already-initialized Keycloak realm, update the user-profile setting
+through the Keycloak admin console or admin API. Replacing the realm template
+and restarting Keycloak only affects a first import, not a live realm.
 
 Do not import the release-smoke realm into production. The smoke-test realm
 contains public test credentials.
@@ -463,12 +515,24 @@ podman run --rm --env-file /etc/kravhantering/db-job.env \
   "$DB_JOB_IMAGE_REF" seed:required
 ```
 
-Start the app node:
+Start `app-runtime`, confirm the nginx resolver from inside the Compose
+network, then start the app node:
 
 ```bash
+APP_NODE_NETWORK=kravhantering-app-node_kravhantering-internal
+
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/app-node-tls.compose.yml up -d app-runtime
+podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
+  "$NGINX_IMAGE_REF" -c "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+
 podman compose --env-file /etc/kravhantering/release.env \
   -f compose/app-node-tls.compose.yml up -d
 ```
+
+If the printed resolver differs from `NGINX_RESOLVER`, update
+`/etc/kravhantering/release.env`, reload it in the shell, and rerun
+`podman compose up -d` before checking readiness.
 
 Check readiness through nginx:
 
@@ -477,6 +541,15 @@ curl --fail --silent --show-error \
   https://kravhantering.example.internal/api/health
 curl --fail --silent --show-error \
   https://kravhantering.example.internal/api/ready
+```
+
+If the host uses a self-signed certificate, or the operator workstation does
+not yet trust the issuing CA, use `--insecure` for a manual readiness probe
+only:
+
+```bash
+curl --insecure --fail --silent --show-error \
+  https://kravhantering.example.internal/api/health
 ```
 
 ## App Node Behind a TLS-Terminating Load Balancer
@@ -496,12 +569,98 @@ Start with the HTTP Compose file:
 ```bash
 sudo -iu kravhantering
 cd /opt/kravhantering/current
+set -a
+. /etc/kravhantering/release.env
+set +a
+
+APP_NODE_NETWORK=kravhantering-app-node_kravhantering-internal
+
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/app-node-http.compose.yml up -d app-runtime
+podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
+  "$NGINX_IMAGE_REF" -c "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+
 podman compose --env-file /etc/kravhantering/release.env \
   -f compose/app-node-http.compose.yml up -d
 ```
 
+If the printed resolver differs from `NGINX_RESOLVER`, update
+`/etc/kravhantering/release.env`, reload it in the shell, and rerun
+`podman compose up -d`.
+
 The app-facing public URLs in `app.env` must still use the external HTTPS
 origin exposed by the load balancer.
+
+## Operate Individual App-Node Services
+
+Run day-2 service control as the rootless service user from the active release
+directory. Use the TLS Compose file unless this node is behind a
+TLS-terminating load balancer:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+COMPOSE_FILE=compose/app-node-tls.compose.yml
+# COMPOSE_FILE=compose/app-node-http.compose.yml
+
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" ps
+```
+
+Restart an existing long-running container when only the process needs to
+reload mounted files or reconnect to dependencies:
+
+```bash
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" restart app-runtime
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" restart nginx
+```
+
+Use `restart` for cases such as reloading nginx after replacing mounted TLS
+certificate files. Use `up -d --force-recreate SERVICE` instead when an env
+file, image ref, bind mount, or Compose definition changed and the container
+must be recreated:
+
+```bash
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" up -d --force-recreate app-runtime
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" up -d --force-recreate nginx
+```
+
+Take down and bring up one service without stopping the whole app node:
+
+```bash
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" stop nginx
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" up -d nginx
+```
+
+For app maintenance, stop nginx first to stop browser traffic, then stop or
+recreate `app-runtime`:
+
+```bash
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" stop nginx app-runtime
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" up -d app-runtime nginx
+```
+
+Stop and remove both app-node containers only for full-node maintenance:
+
+```bash
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" down
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" up -d
+```
+
+Do not use `podman compose down -v` in production unless an approved procedure
+explicitly calls for deleting Compose-managed volumes. The `db-job` image is
+not a long-running service; run database jobs with the documented
+`podman run --rm` commands.
 
 ## Optional User Systemd Wrapper
 
@@ -545,6 +704,16 @@ compatibility.
 9. Start the app nodes with the new release.
 10. Check `/api/health`, `/api/ready`, sign-in and a read-only UI workflow.
 11. Re-enable traffic.
+
+## Troubleshooting Readiness
+
+- If `/api/health` works from the host but not from a remote client, check the
+  node firewall, load balancer and route rules. When this host terminates TLS,
+  HTTPS on port 443 must be allowed from the approved source networks.
+- If `/api/health` and `/api/ready` return `502` after restarting
+  `app-runtime` on an older release, restart nginx so it resolves the new
+  container IP. Current release packages render nginx with `NGINX_RESOLVER`
+  and dynamic upstream `resolve` entries to avoid stale upstream IPs.
 
 ## Rollback
 

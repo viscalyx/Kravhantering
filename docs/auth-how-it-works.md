@@ -102,6 +102,10 @@ sequenceDiagram
   structured error. The server log includes sanitized diagnostics for TLS,
   Secure-cookie handling, callback host configuration, and the stable
   `login_state_cookie_missing` code.
+- Browser error redirects use the public origin from `AUTH_OIDC_REDIRECT_URI`,
+  not the inbound request URL. This keeps failed callback paths from exposing
+  internal bind hosts such as `0.0.0.0:3000` when standalone Next.js runs
+  behind nginx or another reverse proxy.
 - In [`app/api/auth/callback/route.ts`](../app/api/auth/callback/route.ts),
   the callback URL is rebuilt from the configured public redirect URI before
   the code exchange. This avoids host/origin mismatches when Next.js is
@@ -403,6 +407,9 @@ flowchart LR
   shortening token/session lifetimes instead of storing browser access tokens.
 - Issue ID tokens that include the required claims:
   `sub`, `given_name`, `family_name`, and `employeeHsaId`.
+- For Keycloak realms, keep the underlying user attribute named `hsaId` and
+  map it to the token claim `employeeHsaId`. Newer Keycloak admin consoles
+  expose that field through the realm user-profile configuration.
 - Emit global role information in a way that resolves to the canonical app
   roles `Reviewer`, `Admin`, and `PrivacyOfficer`. For the least friction,
   emit those exact values on a `roles` claim. `PrivacyOfficer` is only for

@@ -28,6 +28,29 @@ function env(overrides = {}) {
   }
 }
 
+function readWorkspaceFile(relativePath) {
+  return fs.readFileSync(path.join(process.cwd(), relativePath), 'utf8')
+}
+
+function expectNginxTemplateSyntax(content) {
+  let depth = 0
+  for (const rawLine of content.split(/\r?\n/u)) {
+    const line = rawLine.trim()
+    if (!line || line.startsWith('#')) continue
+    if (line.endsWith('{')) {
+      depth += 1
+      continue
+    }
+    if (line === '}') {
+      depth -= 1
+      expect(depth).toBeGreaterThanOrEqual(0)
+      continue
+    }
+    expect(line).toMatch(/;$/u)
+  }
+  expect(depth).toBe(0)
+}
+
 describe('trusted container release helpers', () => {
   it('creates main snapshot tags and preview releases for relevant changes', () => {
     const plan = createReleasePlan({
@@ -176,7 +199,66 @@ describe('trusted container release helpers', () => {
     expect(notes).toContain(
       'kravhantering-production-deploy-1.2.0-preview.4.tar.gz',
     )
+    expect(notes).toContain(
+      'Single-node TLS CA guidance installs `ca.crt` as readable public trust material',
+    )
+    expect(notes).toContain(
+      'Production nginx templates use dynamic Podman DNS resolution',
+    )
     expect(notes).not.toContain('GHCR package visibility')
+  })
+
+  it('keeps production TLS CA guidance readable for app-runtime', () => {
+    const singleNodeGuide = readWorkspaceFile(
+      'docs/rhel10-production-single-node-internal-deploy.md',
+    )
+
+    expect(singleNodeGuide).toMatch(
+      /sudo install -o root -g kravhantering -m 0644 ca\.crt \\\n\s+\/etc\/kravhantering\/tls\/ca\.crt/u,
+    )
+    expect(singleNodeGuide).toMatch(
+      /sudo install -o root -g kravhantering -m 0644 \\\n\s+"\$\{TLS_DIR\}\/local-root-ca\.crt" "\$\{TLS_DIR\}\/ca\.crt"/u,
+    )
+    expect(singleNodeGuide).toContain(
+      'sudo chmod 0644 /etc/kravhantering/tls/ca.crt',
+    )
+    expect(singleNodeGuide).not.toMatch(/-m 0640 ca\.crt/u)
+  })
+
+  it('ships nginx templates with dynamic upstream DNS resolution', () => {
+    const nginxResolverPlaceholder = '$' + '{NGINX_RESOLVER}'
+    const templates = [
+      'containers/production/nginx/templates/app-node-http.conf.template',
+      'containers/production/nginx/templates/app-node-tls.conf.template',
+      'containers/production/nginx/templates/single-node-tls.conf.template',
+    ]
+
+    for (const template of templates) {
+      const content = readWorkspaceFile(template)
+      expectNginxTemplateSyntax(
+        content.replaceAll(nginxResolverPlaceholder, '10.89.0.1'),
+      )
+      expect(content).toContain(
+        `resolver ${nginxResolverPlaceholder} valid=10s ipv6=off;`,
+      )
+      expect(content).toContain('resolver_timeout 5s;')
+      expect(content).toContain('server app-runtime:3000 resolve;')
+      expect(content).toContain('proxy_pass http://app_runtime_upstream')
+      expect(content).not.toContain('proxy_pass http://app-runtime:3000')
+    }
+
+    const singleNode = readWorkspaceFile(
+      'containers/production/nginx/templates/single-node-tls.conf.template',
+    )
+    expect(singleNode).toContain('server keycloak:8080 resolve;')
+    expect(singleNode).toContain('proxy_pass http://keycloak_upstream/;')
+    expect(singleNode).toContain('return 308 /auth/;')
+    expect(singleNode).toContain('location = /auth/error')
+
+    const releaseEnv = readWorkspaceFile(
+      'containers/production/env/release.env.template',
+    )
+    expect(releaseEnv).toContain('NGINX_RESOLVER=10.89.0.1')
   })
 
   it('stages the production deployment bundle with manifest and templates', () => {
@@ -269,6 +351,12 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain('compose/app-node-tls.compose.yml')
       expect(result.files).toContain('compose/single-node.compose.yml')
       expect(result.files).toContain('docs/rhel10-production-deploy.md')
+      expect(result.files).toContain(
+        'docs/rhel10-production-single-node-internal-deploy.md',
+      )
+      expect(result.files).not.toContain(
+        'docs/adr/0001-release-artifact-production-deployment.md',
+      )
       expect(result.files).toContain('env/app.env.template')
       expect(result.files).toContain(
         'systemd/kravhantering-single-node-compose.service',
@@ -276,6 +364,10 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain(
         'keycloak/realm-kravhantering-production.template.json',
       )
+      expect(result.files).toContain(
+        'nginx/templates/single-node-tls.conf.template',
+      )
+      expect(result.files).not.toContain('nginx/conf.d/single-node-tls.conf')
       for (const file of result.files.filter(
         bundledFile =>
           bundledFile.startsWith('compose/') && bundledFile.endsWith('.yml'),
@@ -286,6 +378,9 @@ describe('trusted container release helpers', () => {
         )
         expect(compose).not.toContain(':ro,Z')
         expect(compose).not.toMatch(/-\s+\.\/nginx\//)
+        expect(compose).toContain('NGINX_RESOLVER')
+        expect(compose).toContain('/etc/nginx/templates/default.conf.template')
+        expect(compose).not.toContain('/etc/nginx/conf.d/default.conf')
       }
       const singleNodeCompose = fs.readFileSync(
         path.join(result.bundleRoot, 'compose/single-node.compose.yml'),

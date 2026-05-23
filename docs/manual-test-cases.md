@@ -303,10 +303,14 @@ cannot find its short-lived login-state cookie.
 **Steps:**
 
 1. Open `/auth/error?code=login_state_cookie_missing&locale=sv`.
+1. In a single-node internal deployment, repeat the check through the public
+   application origin, for example
+   `https://kravhantering.example.internal/auth/error?code=hsa_id_missing&locale=sv`.
 1. Inspect the visible page and the primary action.
 
 **Expected result:** The page explains that the sign-in could not be completed,
-shows the `login_state_cookie_missing` error code, and offers a sign-in retry.
+shows the supplied error code, and offers a sign-in retry. The single-node
+check shows the Kravhantering error page, not the Keycloak 404 page.
 In deployed or production-like environments, the server log for the original
 callback failure should contain sanitized diagnostics for TLS, Secure-cookie
 handling, and callback host configuration.
