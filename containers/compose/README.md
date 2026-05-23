@@ -52,9 +52,10 @@ For the short local PoC/demo runbook, see
 [docs/container-poc-demo.md](../../docs/container-poc-demo.md). This file keeps
 the lower-level Compose contract and troubleshooting details.
 
-Phase 7 runs the generated Compose stack with Podman Compose. The devcontainer
-image installs Podman tooling, but nested Podman support requires either the
-opt-in elevated devcontainer profile or a host shell with Podman available.
+The local Podman workflow runs the generated Compose stack with Podman Compose.
+The devcontainer image installs Podman tooling, but nested Podman support
+requires either the opt-in elevated devcontainer profile or a host shell with
+Podman available.
 The elevated profile exposes `/dev/fuse` and `/dev/net/tun` for rootless
 Podman storage and networking. The devcontainer image installs
 `netavark`/`aardvark-dns` for service-name DNS and sets `STORAGE_DRIVER=vfs`

@@ -381,8 +381,8 @@ Current behavior:
   headers as a stand-in for a logged-in user; `middleware.ts` strips both
   headers from every inbound request before any handler runs.
 - The MCP HTTP route additionally verifies a Bearer JWT against the IdP's
-  JWKS (Phase 5a). The verified actor is attached to the in-flight
-  `Request` object via an in-process `WeakMap<Request, ActorContext>` in
+  JWKS. The verified actor is attached to the in-flight `Request` object
+  via an in-process `WeakMap<Request, ActorContext>` in
   `lib/requirements/auth.ts` (`attachVerifiedActor`). The MCP server
   picks it up through `createRequestContext(request, 'mcp', ...)` without
   trusting any request header. Tests can use the same seam to inject

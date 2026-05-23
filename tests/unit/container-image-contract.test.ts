@@ -145,7 +145,7 @@ describe('container image contract', () => {
     }
   })
 
-  it('installs Podman tooling for the phase 7 local stack', () => {
+  it('installs Podman tooling for the local container stack', () => {
     const dockerfile = readWorkspaceFile('.devcontainer/Dockerfile')
     const defaultCompose = readWorkspaceFile('.devcontainer/docker-compose.yml')
     const elevatedCompose = readWorkspaceFile(

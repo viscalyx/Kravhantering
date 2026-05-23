@@ -295,7 +295,7 @@ async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
   if (isAllowedWithoutAuth(pathname)) return null
 
   // /api/mcp/* is a non-browser endpoint; require a bearer token. Token
-  // validity is checked inside the MCP route handler (Phase 5a).
+  // validity is checked inside the MCP route handler.
   if (isMcpPath(pathname)) {
     const auth = request.headers.get('authorization') ?? ''
     if (!/^Bearer\s+\S+/i.test(auth)) {

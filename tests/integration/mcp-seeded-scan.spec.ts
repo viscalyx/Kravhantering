@@ -256,7 +256,7 @@ async function createMcpClient(targetUrl: URL, token: string) {
     },
   })
   const client = new Client({
-    name: 'phase-6-mcp-seeded-scan',
+    name: 'mcp-seeded-scan',
     version: '1.0.0',
   })
   await client.connect(transport)
@@ -324,13 +324,13 @@ test.describe('MCP seeded HTTP security gate', () => {
     const targetUrl = getMcpUrl(testInfo)
     const context = await playwrightRequest.newContext({ baseURL: baseUrl })
     const initializeBody = {
-      id: 'phase-6-auth-negative',
+      id: 'mcp-auth-negative',
       jsonrpc: '2.0',
       method: 'initialize',
       params: {
         capabilities: {},
         clientInfo: {
-          name: 'phase-6-negative',
+          name: 'mcp-negative',
           version: '1.0.0',
         },
         protocolVersion: '2025-03-26',
@@ -353,7 +353,7 @@ test.describe('MCP seeded HTTP security gate', () => {
       const invalid = await context.post(targetUrl.pathname, {
         data: initializeBody,
         headers: {
-          Authorization: 'Bearer invalid.phase6.token',
+          Authorization: 'Bearer invalid.mcp.token',
         },
       })
       expect(invalid.status()).toBe(401)
@@ -529,10 +529,10 @@ test.describe('MCP seeded HTTP security gate', () => {
           operation: 'create',
           requirement: {
             acceptanceCriteria:
-              'The Phase 6 seeded MCP scan can create disposable data.',
+              'The seeded MCP scan can create disposable data.',
             areaId,
-            createdBy: 'phase-6-mcp-seeded-scan',
-            description: `Phase 6 disposable MCP requirement ${Date.now()}`,
+            createdBy: 'mcp-seeded-scan',
+            description: `Disposable MCP requirement ${Date.now()}`,
             requiresTesting: false,
           },
           responseFormat: 'json',
@@ -574,7 +574,7 @@ test.describe('MCP seeded HTTP security gate', () => {
           requirement: {
             baseRevisionToken,
             baseVersionId,
-            description: 'Phase 6 disposable MCP requirement edited',
+            description: 'Disposable MCP requirement edited',
           },
           responseFormat: 'json',
           uniqueId: disposableUniqueId,
@@ -601,7 +601,7 @@ test.describe('MCP seeded HTTP security gate', () => {
           requirement: {
             baseRevisionToken,
             baseVersionId,
-            description: 'Phase 6 stale edit must not overwrite',
+            description: 'Stale edit must not overwrite',
           },
           responseFormat: 'json',
           uniqueId: disposableUniqueId,
@@ -664,8 +664,8 @@ test.describe('MCP seeded HTTP security gate', () => {
         client,
         'requirements_manage_improvement_suggestion',
         {
-          content: 'Phase 6 disposable MCP improvement suggestion',
-          createdBy: 'phase-6-mcp-seeded-scan',
+          content: 'Disposable MCP improvement suggestion',
+          createdBy: 'mcp-seeded-scan',
           operation: 'create',
           requirementId: disposableId,
           responseFormat: 'json',
@@ -677,7 +677,7 @@ test.describe('MCP seeded HTTP security gate', () => {
         'suggestion result',
       )
       await callToolOk(client, 'requirements_manage_improvement_suggestion', {
-        content: 'Phase 6 disposable MCP improvement suggestion edited',
+        content: 'Disposable MCP improvement suggestion edited',
         operation: 'edit',
         responseFormat: 'json',
         suggestionId,
@@ -693,7 +693,7 @@ test.describe('MCP seeded HTTP security gate', () => {
         arguments: {
           areaId,
           locale: 'en',
-          topic: 'Phase 6 OpenRouter disabled smoke',
+          topic: 'OpenRouter disabled smoke',
         },
         name: 'requirements_generate_requirements',
       })
