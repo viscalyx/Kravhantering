@@ -11,12 +11,16 @@
 const fs = require('node:fs')
 const { writeBuildMetadata } = require('./build-metadata')
 
-console.info('🧹 Cleaning Next.js build artifacts...')
-if (fs.existsSync('.next')) {
-  fs.rmSync('.next', { recursive: true, force: true })
-}
-if (fs.existsSync('out')) {
-  fs.rmSync('out', { recursive: true, force: true })
+const metadataOnly = process.argv.includes('--metadata-only')
+
+if (!metadataOnly) {
+  console.info('🧹 Cleaning Next.js build artifacts...')
+  if (fs.existsSync('.next')) {
+    fs.rmSync('.next', { recursive: true, force: true })
+  }
+  if (fs.existsSync('out')) {
+    fs.rmSync('out', { recursive: true, force: true })
+  }
 }
 
 const metadata = writeBuildMetadata()

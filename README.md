@@ -222,7 +222,12 @@ for setup, migrations, seeding, and the developer browse workflow.
 Start the devcontainers by opening the project in VS Code and accepting the
 prompt to "Reopen in Container". The devcontainer includes the local
 *SQL Server Developer* container, so you can run the full application and
-database stack without any additional setup.
+database stack without any additional setup. It also installs the .NET SDK
+and restores the GitVersion local tool from `.config/dotnet-tools.json` with
+`dotnet tool restore`, matching the release workflow. `npm run dev`,
+`npm run dev:https`, and prodlike builds write `public/build.json` with the
+GitVersion `SemVer` value when the local tool is available, so the header title
+tooltip shows the same semantic version locally.
 
 ### Cloud development with Red Hat OpenShift Dev Spaces
 

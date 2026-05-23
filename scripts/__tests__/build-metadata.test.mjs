@@ -4,6 +4,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
+// cSpell:ignore FULLSEMVER showvariable
+
 const require = createRequire(import.meta.url)
 const {
   UNKNOWN_COMMIT_SHA,
@@ -19,6 +21,24 @@ function makeProject(version = '0.1.0') {
   const packageJsonPath = path.join(dir, 'package.json')
   fs.writeFileSync(packageJsonPath, JSON.stringify({ version }))
   return { dir, packageJsonPath }
+}
+
+function addDotnetToolManifest(dir) {
+  const configDir = path.join(dir, '.config')
+  fs.mkdirSync(configDir, { recursive: true })
+  fs.writeFileSync(
+    path.join(configDir, 'dotnet-tools.json'),
+    JSON.stringify({
+      isRoot: true,
+      tools: {
+        'gitversion.tool': {
+          commands: ['dotnet-gitversion'],
+          version: '6.7.0',
+        },
+      },
+      version: 1,
+    }),
+  )
 }
 
 afterEach(() => {
@@ -69,6 +89,44 @@ describe('build metadata generator', () => {
       commitSha: 'deadbeef',
       imageTag: 'local-dev',
       version: '1.0.0-preview.1',
+    })
+  })
+
+  it('uses local GitVersion SemVer when the dotnet tool manifest exists', () => {
+    const { dir, packageJsonPath } = makeProject('0.1.0')
+    addDotnetToolManifest(dir)
+    const calls = []
+
+    const metadata = createBuildMetadata({
+      cwd: dir,
+      env: { HOME: '/home/vscode' },
+      execFileSync: (command, args) => {
+        calls.push({ args, command })
+        if (args[0] === 'tool') return '0.2.0-example.7\n'
+        if (args[0] === 'rev-parse') return 'deadbeef\n'
+        throw new Error(`Unexpected command: ${command}`)
+      },
+      now: () => new Date('2026-05-21T20:30:00.000Z'),
+      packageJsonPath,
+    })
+
+    expect(metadata).toEqual({
+      builtAt: '2026-05-21T20:30:00.000Z',
+      commitSha: 'deadbeef',
+      imageTag: 'local-dev',
+      version: '0.2.0-example.7',
+    })
+    expect(calls[0]).toMatchObject({
+      args: [
+        'tool',
+        'run',
+        'dotnet-gitversion',
+        '/output',
+        'json',
+        '/showvariable',
+        'SemVer',
+      ],
+      command: '/home/vscode/.dotnet/dotnet',
     })
   })
 

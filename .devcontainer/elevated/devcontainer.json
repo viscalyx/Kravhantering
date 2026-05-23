@@ -18,6 +18,9 @@
       "nvmVersion": "latest",
       "npmVersion": "latest"
     },
+    "ghcr.io/devcontainers/features/dotnet:2": {
+      "version": "8.0"
+    },
     "ghcr.io/devcontainers/features/git:1": {
       "ppa": true,
       "version": "latest"
@@ -223,7 +226,7 @@
 
   // Use 'postCreateCommand' to run commands after the container is created
   // Do not use this git configuration command here, as it will prevent ssh-agent forwarding
-  "postCreateCommand": "npm install && npx playwright install --with-deps && bash .devcontainer/link-playwright-chrome.sh && bash .devcontainer/trust-container-ca.sh",
+  "postCreateCommand": "npm install && dotnet tool restore && npx playwright install --with-deps && bash .devcontainer/link-playwright-chrome.sh && bash .devcontainer/trust-container-ca.sh",
 
   // Copy .devcontainer/.env.example to .devcontainer/.env before the first rebuild.
   // Use 'postStartCommand' to run commands after the container starts and every time it starts

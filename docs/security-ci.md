@@ -361,7 +361,7 @@ addition rules.
 Workflow file:
 [.github/workflows/security-mcp.yml](../.github/workflows/security-mcp.yml).
 
-The MCP seeded HTTP security gate starts the prodlike localhost stack, obtains
+The MCP seeded-HTTP security gate starts the prodlike localhost stack, obtains
 a local Keycloak service-account token, and uses the MCP Streamable HTTP client
 against `http://localhost:3001/api/mcp`.
 

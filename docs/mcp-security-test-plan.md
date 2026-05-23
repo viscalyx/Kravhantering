@@ -68,11 +68,12 @@ secrets for this smoke check.
 
 ## Non-Goals
 
-- No new MCP tools or resource URIs.
-- No database schema, seed, migration, UI, REST route, or GitHub workflow
-  changes.
-- No browser CSRF checks on `/api/mcp`; it remains Bearer-token scoped.
-- No RBAC policy rollout. These tests prove MCP passes correct context into
-  the shared service. Role policy activation remains later RBAC work.
-- No external DAST. Authenticated dynamic scanning of `/api/mcp` belongs after
-  this unit/transport hardening layer is green.
+- New MCP tools or resource URIs stay out of scope.
+- Database schema, seed, migration, UI, REST route, and GitHub workflow changes
+  are not part of this pass.
+- Browser CSRF checks on `/api/mcp` are excluded; it remains Bearer-token
+  scoped.
+- RBAC policy rollout is deferred; these tests prove MCP passes correct context
+  into the shared service, and role policy activation remains later RBAC work.
+- External DAST is deferred. Authenticated dynamic scanning of `/api/mcp`
+  belongs after this unit/transport hardening layer is green.

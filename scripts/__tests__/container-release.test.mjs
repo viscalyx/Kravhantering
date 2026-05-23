@@ -309,10 +309,10 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain('--release-images-from-lock')
     expect(workflow).toContain('container-release.mjs bundle')
     expect(workflow).toContain(
-      'kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz',
+      `kravhantering-production-deploy-\${RELEASE_VERSION}.tar.gz`,
     )
     expect(workflow).toContain(
-      'container-release-deployment-${{ github.run_id }}',
+      `container-release-deployment-\${{ github.run_id }}`,
     )
     expect(workflow).toContain('npm run test:release-smoke')
     expect(workflow).not.toContain('pull_request_target')

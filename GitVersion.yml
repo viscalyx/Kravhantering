@@ -9,7 +9,21 @@ branches:
     regex: ^main$
     mode: ContinuousDelivery
     label: preview
-    increment: Inherit
+    increment: Patch
+  feature:
+    regex: ^(?:f|features?)[/-](?<BranchName>.+)
+    mode: ContinuousDelivery
+    label: '{BranchName}'
+    increment: Minor
+    source-branches:
+      - main
+  fix:
+    regex: ^fix[/-](?<BranchName>.+)
+    mode: ContinuousDelivery
+    label: '{BranchName}'
+    increment: Patch
+    source-branches:
+      - main
   pull-request:
     regex: ^(pull|pull\-requests|pr)[/-]
     mode: ContinuousDelivery

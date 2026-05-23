@@ -46,7 +46,45 @@ BEGIN
 END
 GO
 
-ALTER ROLE [db_owner] ADD MEMBER [<db-job-login>];
-ALTER ROLE [db_datareader] ADD MEMBER [<app-login>];
-ALTER ROLE [db_datawriter] ADD MEMBER [<app-login>];
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.database_role_members AS members
+  INNER JOIN sys.database_principals AS roles
+    ON members.role_principal_id = roles.principal_id
+  INNER JOIN sys.database_principals AS principals
+    ON members.member_principal_id = principals.principal_id
+  WHERE roles.name = N'db_owner'
+    AND principals.name = N'<db-job-login>'
+)
+BEGIN
+  ALTER ROLE [db_owner] ADD MEMBER [<db-job-login>];
+END
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.database_role_members AS members
+  INNER JOIN sys.database_principals AS roles
+    ON members.role_principal_id = roles.principal_id
+  INNER JOIN sys.database_principals AS principals
+    ON members.member_principal_id = principals.principal_id
+  WHERE roles.name = N'db_datareader'
+    AND principals.name = N'<app-login>'
+)
+BEGIN
+  ALTER ROLE [db_datareader] ADD MEMBER [<app-login>];
+END
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.database_role_members AS members
+  INNER JOIN sys.database_principals AS roles
+    ON members.role_principal_id = roles.principal_id
+  INNER JOIN sys.database_principals AS principals
+    ON members.member_principal_id = principals.principal_id
+  WHERE roles.name = N'db_datawriter'
+    AND principals.name = N'<app-login>'
+)
+BEGIN
+  ALTER ROLE [db_datawriter] ADD MEMBER [<app-login>];
+END
 GO

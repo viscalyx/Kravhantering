@@ -30,6 +30,9 @@ services:
   db-bootstrap:
     image: ${DB_JOB_IMAGE_REF:?set DB_JOB_IMAGE_REF}
     command: ["bootstrap"]
+    depends_on:
+      sqlserver:
+        condition: service_started
     env_file:
       - /etc/kravhantering/db-job.env
     networks:
@@ -39,6 +42,9 @@ services:
   db-migrate:
     image: ${DB_JOB_IMAGE_REF:?set DB_JOB_IMAGE_REF}
     command: ["migrate"]
+    depends_on:
+      db-bootstrap:
+        condition: service_completed_successfully
     env_file:
       - /etc/kravhantering/db-job.env
     networks:
@@ -48,6 +54,9 @@ services:
   db-seed-required:
     image: ${DB_JOB_IMAGE_REF:?set DB_JOB_IMAGE_REF}
     command: ["seed:required"]
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
     env_file:
       - /etc/kravhantering/db-job.env
     networks:
@@ -56,6 +65,11 @@ services:
 
   app-runtime:
     image: ${APP_RUNTIME_IMAGE_REF:?set APP_RUNTIME_IMAGE_REF}
+    depends_on:
+      db-seed-required:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_started
     env_file:
       - /etc/kravhantering/app.env
     environment:
