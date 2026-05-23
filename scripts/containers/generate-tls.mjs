@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 export const DEFAULT_TLS_DIR = 'tmp/container-tls'
 export const DEFAULT_HOSTNAME = 'kravhantering.test'
+const SAFE_HOSTNAME_PATTERN = /^[A-Za-z0-9._-]+$/u
 
 const USAGE = `Usage:
   node scripts/containers/generate-tls.mjs [options]
@@ -17,6 +18,21 @@ function readNonEmpty(value) {
   if (typeof value !== 'string') return undefined
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : undefined
+}
+
+export function sanitizeHostname(value = DEFAULT_HOSTNAME) {
+  const hostname = readNonEmpty(value) ?? DEFAULT_HOSTNAME
+  if (
+    !SAFE_HOSTNAME_PATTERN.test(hostname) ||
+    hostname.includes('/') ||
+    hostname.includes('\\') ||
+    hostname.includes('..')
+  ) {
+    throw new Error(
+      `Invalid TLS hostname "${hostname}". Use only letters, numbers, dots, hyphens, and underscores, without path separators or "..".`,
+    )
+  }
+  return hostname
 }
 
 export function parseArgs(args) {
@@ -38,23 +54,27 @@ export function parseArgs(args) {
   }
 
   return {
-    hostname: readNonEmpty(options.hostname) ?? DEFAULT_HOSTNAME,
+    hostname: sanitizeHostname(
+      readNonEmpty(options.hostname) ?? DEFAULT_HOSTNAME,
+    ),
     outputDir: readNonEmpty(options['output-dir']) ?? DEFAULT_TLS_DIR,
   }
 }
 
 export function tlsFilePlan(outputDir, hostname = DEFAULT_HOSTNAME) {
+  const sanitizedHostname = sanitizeHostname(hostname)
   return {
     caCert: path.join(outputDir, 'ca.crt'),
     caKey: path.join(outputDir, 'ca.key'),
-    csr: path.join(outputDir, `${hostname}.csr`),
-    ext: path.join(outputDir, `${hostname}.ext`),
-    serverCert: path.join(outputDir, `${hostname}.crt`),
-    serverKey: path.join(outputDir, `${hostname}.key`),
+    csr: path.join(outputDir, `${sanitizedHostname}.csr`),
+    ext: path.join(outputDir, `${sanitizedHostname}.ext`),
+    serverCert: path.join(outputDir, `${sanitizedHostname}.crt`),
+    serverKey: path.join(outputDir, `${sanitizedHostname}.key`),
   }
 }
 
 export function opensslCommandPlan(files, hostname = DEFAULT_HOSTNAME) {
+  const sanitizedHostname = sanitizeHostname(hostname)
   return [
     [
       'openssl',
@@ -68,7 +88,7 @@ export function opensslCommandPlan(files, hostname = DEFAULT_HOSTNAME) {
         '7',
         '-nodes',
         '-subj',
-        `/CN=${hostname} local CA`,
+        `/CN=${sanitizedHostname} local CA`,
         '-keyout',
         files.caKey,
         '-out',
@@ -83,7 +103,7 @@ export function opensslCommandPlan(files, hostname = DEFAULT_HOSTNAME) {
         'rsa:2048',
         '-nodes',
         '-subj',
-        `/CN=${hostname}`,
+        `/CN=${sanitizedHostname}`,
         '-keyout',
         files.serverKey,
         '-out',
@@ -115,16 +135,17 @@ export function opensslCommandPlan(files, hostname = DEFAULT_HOSTNAME) {
 }
 
 export function writeOpenSslExtFile(filePath, hostname, fsImpl = fs) {
+  const sanitizedHostname = sanitizeHostname(hostname)
   fsImpl.writeFileSync(
     filePath,
-    `subjectAltName=DNS:${hostname}\nextendedKeyUsage=serverAuth\n`,
+    `subjectAltName=DNS:${sanitizedHostname}\nextendedKeyUsage=serverAuth\n`,
   )
 }
 
 export function generateTlsFiles(options = {}) {
   const fsImpl = options.fsImpl ?? fs
   const execFileSync = options.execFileSync ?? childProcess.execFileSync
-  const hostname = options.hostname ?? DEFAULT_HOSTNAME
+  const hostname = sanitizeHostname(options.hostname)
   const outputDir = options.outputDir ?? DEFAULT_TLS_DIR
   const files = tlsFilePlan(outputDir, hostname)
 

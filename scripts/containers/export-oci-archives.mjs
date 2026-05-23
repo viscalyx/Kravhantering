@@ -30,6 +30,16 @@ function normalizeDigest(value) {
   return digest.startsWith('sha256:') ? digest : `sha256:${digest}`
 }
 
+function requireServiceDigest(serviceName, service) {
+  const digest = readNonEmpty(service.digest)
+  if (!digest) {
+    throw new Error(
+      `container-stack.lock.json service "${serviceName}" is missing digest.`,
+    )
+  }
+  return normalizeDigest(digest)
+}
+
 export function parseArgs(args) {
   const [command = '', ...rest] = args
   const options = {}
@@ -78,7 +88,7 @@ export function buildArchivePlans(stackLock, outputDir) {
 
     return {
       archivePath: path.join(outputDir, archiveFileName(serviceName)),
-      digest: normalizeDigest(service.digest),
+      digest: requireServiceDigest(serviceName, service),
       imageRef: imageReference(service),
       rawArchivePath: path.join(outputDir, `${serviceName}.oci.tar`),
       serviceName,

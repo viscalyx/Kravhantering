@@ -93,6 +93,15 @@ describe('container OCI archive helpers', () => {
     ])
   })
 
+  it('fails fast when an archived service has no digest', () => {
+    const invalidStackLock = stackLock()
+    delete invalidStackLock.services[0].digest
+
+    expect(() => buildArchivePlans(invalidStackLock, 'tmp/oci')).toThrow(
+      'container-stack.lock.json service "app-runtime" is missing digest.',
+    )
+  })
+
   it('exports separate compressed OCI archives with Podman', () => {
     const fsImpl = fakeFs()
     const commands = []
@@ -227,16 +236,28 @@ describe('container OCI archive helpers', () => {
       path.join(process.cwd(), '.github/workflows/container-pr-smoke.yml'),
       'utf8',
     )
+    const runIdExpression = '$' + '{CONTAINER_STACK_RUN_ID}'
 
     expect(workflow).toContain('pull_request:')
     expect(workflow).toContain('contents: read')
+    expect(workflow).toContain(
+      'uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd',
+    )
+    expect(workflow).toContain('persist-credentials: false')
+    expect(workflow).toContain(
+      'uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e',
+    )
+    expect(workflow).toContain(
+      'uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a',
+    )
+    expect(workflow).not.toContain('actions/checkout@v6')
+    expect(workflow).not.toContain('actions/setup-node@v6')
+    expect(workflow).not.toContain('actions/upload-artifact@v7')
     expect(workflow).toContain('npm install -g npm@latest')
     expect(workflow).toContain('--skip-build')
     expect(workflow).toContain('container:oci:export')
     expect(workflow).toContain('container:oci:verify')
-    expect(workflow).toContain(
-      '--verify-root "/tmp/kh-oci-${CONTAINER_STACK_RUN_ID}"',
-    )
+    expect(workflow).toContain(`--verify-root "/tmp/kh-oci-${runIdExpression}"`)
     expect(workflow).not.toContain('--verify-root tmp/container-oci-verify')
     expect(workflow).toContain('retention-days: 2')
     expect(workflow).toContain('retention-days: 7')

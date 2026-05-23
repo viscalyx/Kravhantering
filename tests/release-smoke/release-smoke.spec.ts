@@ -97,7 +97,7 @@ test.describe('Release smoke container flow', () => {
     await test.step('open the requirements library and capture page evidence', async () => {
       const requirementsResponsePromise = page.waitForResponse(
         response =>
-          response.url().includes('/api/requirements?') &&
+          new URL(response.url()).pathname === '/api/requirements' &&
           response.status() === 200,
       )
 

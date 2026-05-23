@@ -23,12 +23,23 @@ function isSensitivePath(filePath) {
   )
 }
 
+function assertPathInsideCwd(cwd, absolutePath, originalPath) {
+  const relativeToCwd = path.relative(cwd, absolutePath)
+  if (
+    relativeToCwd === '..' ||
+    relativeToCwd.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativeToCwd)
+  ) {
+    throw new Error(`Refusing to hash file outside workspace: ${originalPath}`)
+  }
+}
+
 export function hashFileContent(content) {
   return crypto.createHash('sha256').update(content).digest('hex')
 }
 
 export function buildHashLines(files, options = {}) {
-  const cwd = options.cwd ?? process.cwd()
+  const cwd = path.resolve(options.cwd ?? process.cwd())
   const fsImpl = options.fsImpl ?? fs
   const lines = []
 
@@ -39,6 +50,7 @@ export function buildHashLines(files, options = {}) {
     }
 
     const absolutePath = path.resolve(cwd, relativePath)
+    assertPathInsideCwd(cwd, absolutePath, file)
     if (!fsImpl.existsSync(absolutePath)) continue
 
     const hash = hashFileContent(fsImpl.readFileSync(absolutePath))

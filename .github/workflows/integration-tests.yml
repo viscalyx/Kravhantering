@@ -35,10 +35,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -86,7 +86,7 @@ jobs:
 
       - name: Upload test results (${{ matrix.server }})
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: playwright-report-${{ matrix.server }}
           path: playwright-report-${{ matrix.server }}/
@@ -94,7 +94,7 @@ jobs:
 
       - name: Upload test results XML (${{ matrix.server }})
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: playwright-junit-${{ matrix.server }}
           path: test-results/${{ matrix.server }}/playwright-junit.xml
@@ -115,10 +115,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -228,7 +228,7 @@ jobs:
 
       - name: Upload pruned server log
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: prodlike-pruned-server-log
           path: test-results/prodlike-pruned/server.log
@@ -236,7 +236,7 @@ jobs:
 
       - name: Upload test results (prodlike-pruned)
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: playwright-report-prodlike-pruned
           path: playwright-report-prodlike/
@@ -244,7 +244,7 @@ jobs:
 
       - name: Upload test results XML (prodlike-pruned)
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: playwright-junit-prodlike-pruned
           path: test-results/prodlike/playwright-junit.xml

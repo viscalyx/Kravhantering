@@ -66,10 +66,15 @@ function createBuildMetadata(options = {}) {
 function writeBuildMetadata(options = {}) {
   const outputPath = options.outputPath ?? DEFAULT_OUTPUT_PATH
   const fsImpl = options.fsImpl ?? fs
+  const outputBase = options.cwd ?? process.cwd()
+  const resolvedOutputPath = path.resolve(outputBase, outputPath)
   const metadata = createBuildMetadata(options)
 
-  fsImpl.mkdirSync(path.dirname(outputPath), { recursive: true })
-  fsImpl.writeFileSync(outputPath, `${JSON.stringify(metadata, null, 2)}\n`)
+  fsImpl.mkdirSync(path.dirname(resolvedOutputPath), { recursive: true })
+  fsImpl.writeFileSync(
+    resolvedOutputPath,
+    `${JSON.stringify(metadata, null, 2)}\n`,
+  )
   return metadata
 }
 

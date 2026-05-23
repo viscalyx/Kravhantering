@@ -6,12 +6,14 @@ import {
   collectContainerStatus,
   extractMountedPaths,
   parseComposePsJson,
+  parseArgs as parseStatusArgs,
   redactSensitiveText,
 } from '../containers/collect-status.mjs'
 import {
   generateTlsFiles,
   opensslCommandPlan,
   parseArgs as parseTlsArgs,
+  sanitizeHostname,
   tlsFilePlan,
 } from '../containers/generate-tls.mjs'
 import {
@@ -322,6 +324,27 @@ describe('container stack helpers', () => {
     })
     expect(commands).toHaveLength(3)
     expect(commands[0][1]).toContain('/CN=kravhantering.test local CA')
+    expect(sanitizeHostname('kravhantering.test')).toBe('kravhantering.test')
+  })
+
+  it('rejects unsafe TLS hostnames before deriving file paths', () => {
+    expect(() => parseTlsArgs(['--hostname', '../secret'])).toThrow(
+      'Invalid TLS hostname',
+    )
+    expect(() => tlsFilePlan('tmp/tls', 'kravhantering.test/secret')).toThrow(
+      'Invalid TLS hostname',
+    )
+    expect(() =>
+      generateTlsFiles({
+        execFileSync: vi.fn(),
+        fsImpl: {
+          mkdirSync: vi.fn(),
+          writeFileSync: vi.fn(),
+        },
+        hostname: 'kravhantering..test',
+        outputDir: 'tmp/tls',
+      }),
+    ).toThrow('Invalid TLS hostname')
   })
 
   it('generates TLS through injectable fs and exec dependencies', () => {
@@ -407,6 +430,26 @@ describe('container stack helpers', () => {
     ).toEqual([`${hashFileContent('status')}  container-status.txt`])
     expect(() => buildHashLines(['tmp/container-tls/server.key'])).toThrow(
       'Refusing to hash sensitive runtime file',
+    )
+    expect(() =>
+      buildHashLines(['../outside.txt'], {
+        cwd: '/workspace',
+        fsImpl,
+      }),
+    ).toThrow('Refusing to hash file outside workspace')
+  })
+
+  it('validates status log tail length at the CLI boundary', () => {
+    expect(parseStatusArgs([]).tail).toBe(80)
+    expect(parseStatusArgs(['--tail', '160']).tail).toBe(160)
+    expect(() => parseStatusArgs(['--tail', '0'])).toThrow(
+      '--tail must be a positive integer.',
+    )
+    expect(() => parseStatusArgs(['--tail', 'many'])).toThrow(
+      '--tail must be a positive integer.',
+    )
+    expect(() => parseStatusArgs(['--tail', '12many'])).toThrow(
+      '--tail must be a positive integer.',
     )
   })
 

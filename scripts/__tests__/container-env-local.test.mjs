@@ -82,6 +82,16 @@ describe('container local env writer', () => {
     ])
   })
 
+  it('keeps container app OIDC scopes unquoted for Podman env-file parsing', () => {
+    const content = fs.readFileSync(
+      path.join(process.cwd(), 'containers/app/.env.app.example'),
+      'utf8',
+    )
+
+    expect(content).toContain('AUTH_OIDC_SCOPES=openid profile email')
+    expect(content).not.toContain('AUTH_OIDC_SCOPES="openid profile email"')
+  })
+
   it('keeps runtime overrides scoped to a single container', () => {
     const cwd = makeProject()
 

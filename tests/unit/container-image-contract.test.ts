@@ -147,6 +147,7 @@ describe('container image contract', () => {
 
   it('installs Podman tooling for the phase 7 local stack', () => {
     const dockerfile = readWorkspaceFile('.devcontainer/Dockerfile')
+    const defaultCompose = readWorkspaceFile('.devcontainer/docker-compose.yml')
     const elevatedCompose = readWorkspaceFile(
       '.devcontainer/elevated/docker-compose.yml',
     )
@@ -164,6 +165,8 @@ describe('container image contract', () => {
     }
     expect(dockerfile).toContain('ENV STORAGE_DRIVER=vfs')
     expect(dockerfile).toContain('network_backend = "netavark"')
+    expect(defaultCompose).toContain('/dev/fuse:/dev/fuse')
+    expect(defaultCompose).toContain('/dev/net/tun:/dev/net/tun')
     expect(elevatedCompose).toContain('/dev/fuse:/dev/fuse')
     expect(elevatedCompose).toContain('/dev/net/tun:/dev/net/tun')
   })

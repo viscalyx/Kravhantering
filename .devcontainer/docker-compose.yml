@@ -41,7 +41,7 @@ services:
       - "kravhantering.test:127.0.0.1"
     devices:
       # Required by rootless Podman when it uses fuse-overlayfs for nested
-      # local container storage inside the opt-in elevated devcontainer.
+      # local container storage (e.g. for the release-smoke container stack).
       - /dev/fuse:/dev/fuse
       # Required by slirp4netns for rootless Podman networking.
       - /dev/net/tun:/dev/net/tun

@@ -110,4 +110,22 @@ describe('build metadata generator', () => {
     expect(raw.endsWith('\n')).toBe(true)
     expect(JSON.parse(raw)).toEqual(metadata)
   })
+
+  it('resolves relative output paths from the configured cwd', () => {
+    const { dir, packageJsonPath } = makeProject('0.4.0')
+    const outputPath = path.join('relative-build-output', 'build.json')
+
+    const metadata = writeBuildMetadata({
+      cwd: dir,
+      env: {},
+      execFileSync: () => 'facefeed\n',
+      now: () => new Date('2026-05-21T23:00:00.000Z'),
+      outputPath,
+      packageJsonPath,
+    })
+
+    const raw = fs.readFileSync(path.join(dir, outputPath), 'utf8')
+    expect(JSON.parse(raw)).toEqual(metadata)
+    expect(fs.existsSync(path.join(process.cwd(), outputPath))).toBe(false)
+  })
 })

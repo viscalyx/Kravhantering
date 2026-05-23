@@ -256,13 +256,19 @@ export function parseArgs(args) {
     index += 1
   }
 
+  const rawTail = options.tail ?? '80'
+  const tail = Number.parseInt(rawTail, 10)
+  if (!/^\d+$/u.test(rawTail) || !Number.isFinite(tail) || tail <= 0) {
+    throw new Error('--tail must be a positive integer.')
+  }
+
   return {
     composeFile: readNonEmpty(options['compose-file']) ?? DEFAULT_COMPOSE_FILE,
     lockFile: readNonEmpty(options['lock-file']) ?? DEFAULT_LOCK_FILE,
     outputJson: readNonEmpty(options['output-json']) ?? DEFAULT_STATUS_JSON,
     outputText: readNonEmpty(options['output-text']) ?? DEFAULT_STATUS_TEXT,
     projectName: readNonEmpty(options['project-name']),
-    tail: Number.parseInt(options.tail ?? '80', 10),
+    tail,
   }
 }
 
