@@ -9,6 +9,22 @@ Cosign keyless signing, and creates GitHub Artifact Attestations for provenance
 and SBOM. The release smoke test then starts Podman Compose from the verified
 digest references, not from mutable tags.
 
+## Reproducibility
+
+The workflow uses the Node version from `.nvmrc` and installs dependencies with
+`npm ci` using the npm bundled with that pinned runtime. Do not add
+`npm install -g npm@latest` to this workflow. If npm must be upgraded
+explicitly, pin the exact npm version and document the reason here.
+
+Preview releases use GitVersion's `FullSemVer` or `SemVer` value, but Docker
+image tags and GitHub preview tag names strip SemVer build metadata from the
+first `+` onward. For example, `1.2.0-preview.4+Branch.main.Sha.abcdef`
+becomes `1.2.0-preview.4`.
+
+Local and release-smoke stack startup honor `--lock-file`. When the stack builds
+local images, `run-local-stack.mjs` passes that path to
+`generate-stack-lock.mjs` before `generate-compose.mjs` reads it.
+
 ## Public GHCR Packages
 
 The packages should be public if users must be able to pull the release
