@@ -29,6 +29,7 @@ const RELEVANT_PATH_PREFIXES = [
   'package.json',
   'public/',
   'docs/rhel10-production-deploy.md',
+  'docs/rhel10-production-single-node-internal-deploy.md',
   'scripts/build-metadata.js',
   'scripts/containers/',
   'scripts/db-sqlserver-admin.mjs',

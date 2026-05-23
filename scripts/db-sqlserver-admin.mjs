@@ -56,6 +56,11 @@ function getMigrationClasses() {
 export async function loadSeedProfile(profile, options = {}) {
   if (profile === 'required') {
     const seedFile = options.requiredSeedPath ?? REQUIRED_SEED_FILE
+    if (!existsSync(seedFile)) {
+      throw new Error(
+        `Required seed file is missing: ${seedFile}. Provide a valid --requiredSeedPath or create the default required seed file at ${REQUIRED_SEED_FILE}.`,
+      )
+    }
     const module = await import(pathToFileURL(seedFile).href)
     return module.seedRequiredDatabase
   }

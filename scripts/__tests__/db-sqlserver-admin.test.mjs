@@ -504,6 +504,13 @@ describe('db-sqlserver-admin.mjs', () => {
     ).rejects.toThrow(
       'seed:demo is not available in the production db-job image',
     )
+    await expect(
+      loadSeedProfile('required', {
+        requiredSeedPath: '/tmp/missing-seed-required.mjs',
+      }),
+    ).rejects.toThrow(
+      'Required seed file is missing: /tmp/missing-seed-required.mjs. Provide a valid --requiredSeedPath',
+    )
     await expect(loadSeedProfile('unknown')).rejects.toThrow(
       'Unsupported SQL Server seed profile: unknown',
     )
