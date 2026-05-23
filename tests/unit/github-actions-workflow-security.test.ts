@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest'
 const WORKFLOWS_DIR = path.join(process.cwd(), '.github', 'workflows')
 const FULL_COMMIT_SHA = /^[a-f0-9]{40}$/iu
 const USES_LINE = /^\s*uses:\s*([^#\s]+)(?:\s+#\s*(.+))?\s*$/u
+const PERSIST_CREDENTIALS_FALSE_LINE =
+  /^\s*persist-credentials:\s*['"]?false['"]?(?:\s+#.*)?$/iu
 
 function workflowFiles() {
   return readdirSync(WORKFLOWS_DIR)
@@ -20,8 +22,29 @@ function isLocalOrContainerReference(reference: string) {
   )
 }
 
+function disablesCheckoutCredentialPersistence(
+  lines: string[],
+  usesLineIndex: number,
+) {
+  const usesLineIndent = lines[usesLineIndex].search(/\S/u)
+
+  for (
+    let lineIndex = usesLineIndex + 1;
+    lineIndex < lines.length;
+    lineIndex += 1
+  ) {
+    const line = lines[lineIndex]
+    if (!line.trim() || line.trimStart().startsWith('#')) continue
+
+    if (line.search(/\S/u) < usesLineIndent) return false
+    if (PERSIST_CREDENTIALS_FALSE_LINE.test(line)) return true
+  }
+
+  return false
+}
+
 describe('GitHub Actions workflow security', () => {
-  it('pins external actions to commit SHAs with Dependabot-readable version comments', () => {
+  it('pins external actions and hardens checkout credentials', () => {
     const unpinnedReferences: string[] = []
 
     for (const fileName of workflowFiles()) {
@@ -46,6 +69,15 @@ describe('GitHub Actions workflow security', () => {
 
         if (!ref || !FULL_COMMIT_SHA.test(ref) || !versionComment) {
           unpinnedReferences.push(`${relativePath}:${index + 1} ${reference}`)
+        }
+
+        if (
+          reference.startsWith('actions/checkout') &&
+          !disablesCheckoutCredentialPersistence(lines, index)
+        ) {
+          unpinnedReferences.push(
+            `${relativePath}:${index + 1} ${reference} missing persist-credentials: false`,
+          )
         }
       })
     }
