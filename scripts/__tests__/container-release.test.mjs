@@ -278,8 +278,9 @@ describe('trusted container release helpers', () => {
       expect(singleNodeCompose).not.toContain('\n  db-migrate:')
       expect(singleNodeCompose).not.toContain('\n  db-seed-required:')
       const appRuntimeBlock =
-        singleNodeCompose.match(/\n {2}app-runtime:[\s\S]*?\n\n {2}nginx:/)?.[0] ??
-        ''
+        singleNodeCompose.match(
+          /\n {2}app-runtime:[\s\S]*?\n\n {2}nginx:/,
+        )?.[0] ?? ''
       expect(appRuntimeBlock).toContain('sqlserver:')
       expect(appRuntimeBlock).not.toContain('db-seed-required')
       expect(result.manifest).toMatchObject({
