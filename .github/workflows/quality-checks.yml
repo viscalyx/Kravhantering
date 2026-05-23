@@ -100,9 +100,7 @@ jobs:
       - name: Run dotenv-linter root check
         uses: dotenv-linter/action-dotenv-linter@afde61cfda2ecffe7bea35837b6f20b956c88689 # v3
         with:
-          # Podman --env-file preserves quotes, so the app container example
-          # intentionally keeps AUTH_OIDC_SCOPES unquoted.
-          dotenv_linter_flags: . --exclude containers/app/.env.app.example
+          dotenv_linter_flags: .
           filter_mode: nofilter
           fail_level: any
 

@@ -24,7 +24,17 @@ function makeProject() {
     fs.mkdirSync(directory, { recursive: true })
     fs.writeFileSync(
       path.join(directory, fileName),
-      `# Example for ${container}\nCOMMON=value\n${container.toUpperCase().replace('-', '_')}_ONLY=yes\n`,
+      [
+        `# Example for ${container}`,
+        'COMMON=value',
+        `${container.toUpperCase().replace('-', '_')}_ONLY=yes`,
+        container === 'app'
+          ? 'AUTH_OIDC_SCOPES="openid profile email"'
+          : undefined,
+        '',
+      ]
+        .filter(line => line !== undefined)
+        .join('\n'),
     )
   }
   return dir
@@ -82,14 +92,24 @@ describe('container local env writer', () => {
     ])
   })
 
-  it('keeps container app OIDC scopes unquoted for Podman env-file parsing', () => {
-    const content = fs.readFileSync(
+  it('keeps committed app OIDC scopes quoted but emits Podman-safe local scopes', () => {
+    const exampleContent = fs.readFileSync(
       path.join(process.cwd(), 'containers/app/.env.app.example'),
       'utf8',
     )
+    const cwd = makeProject()
 
-    expect(content).toContain('AUTH_OIDC_SCOPES=openid profile email')
-    expect(content).not.toContain('AUTH_OIDC_SCOPES="openid profile email"')
+    writeEnvLocalFiles({ container: 'app', cwd })
+    const localContent = fs.readFileSync(
+      path.join(cwd, 'containers/app/.env.app.local'),
+      'utf8',
+    )
+
+    expect(exampleContent).toContain('AUTH_OIDC_SCOPES="openid profile email"')
+    expect(localContent).toContain('AUTH_OIDC_SCOPES=openid profile email')
+    expect(localContent).not.toContain(
+      'AUTH_OIDC_SCOPES="openid profile email"',
+    )
   })
 
   it('keeps runtime overrides scoped to a single container', () => {

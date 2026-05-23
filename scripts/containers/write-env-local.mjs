@@ -74,19 +74,35 @@ export function parseArgs(args) {
   return { container, force, overrides }
 }
 
-export function buildEnvLocalContent(exampleContent, overrides) {
+function stripMatchingQuotes(value) {
+  const trimmed = value.trim()
+  if (trimmed.length < 2) return value
+  const quote = trimmed[0]
+  return (quote === '"' || quote === "'") && trimmed.at(-1) === quote
+    ? trimmed.slice(1, -1)
+    : value
+}
+
+function normalizeEnvLocalValue(key, value, options = {}) {
+  if (options.container === 'app' && key === 'AUTH_OIDC_SCOPES') {
+    return stripMatchingQuotes(value)
+  }
+  return value
+}
+
+export function buildEnvLocalContent(exampleContent, overrides, options = {}) {
   const remaining = new Map(overrides)
   const lines = exampleContent.split(/\r?\n/)
   const rendered = lines.map(line => {
     const match = line.match(/^([A-Z][A-Z0-9_]*)=(.*)$/)
-    if (!match || !remaining.has(match[1])) {
+    if (!match) {
       return line
     }
 
     const key = match[1]
-    const value = remaining.get(key)
+    const value = remaining.has(key) ? remaining.get(key) : match[2]
     remaining.delete(key)
-    return `${key}=${value}`
+    return `${key}=${normalizeEnvLocalValue(key, value, options)}`
   })
 
   if (remaining.size > 0) {
@@ -95,7 +111,7 @@ export function buildEnvLocalContent(exampleContent, overrides) {
     }
     rendered.push('# Runtime overrides supplied by write-env-local.mjs.')
     for (const [key, value] of remaining.entries()) {
-      rendered.push(`${key}=${value}`)
+      rendered.push(`${key}=${normalizeEnvLocalValue(key, value, options)}`)
     }
   }
 
@@ -143,6 +159,7 @@ export function planEnvLocalWrites(options) {
       content: buildEnvLocalContent(
         fsImpl.readFileSync(examplePath, 'utf8'),
         overrides,
+        { container },
       ),
     }
   })
