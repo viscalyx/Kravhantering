@@ -304,6 +304,7 @@ describe('trusted container release helpers', () => {
     expect(workflow).not.toContain('npm install -g npm@latest')
     expect(workflow).not.toContain('verify-ghcr-public')
     expect(workflow).toContain('cosign sign --yes')
+    expect(workflow).toContain('mkdir -p tmp/container-release-artifacts/sbom')
     expect(workflow).toContain('attest-build-provenance')
     expect(workflow).toContain('attest-sbom')
     expect(workflow).toContain('--release-images-from-lock')
