@@ -21,53 +21,17 @@ services:
     env_file:
       - /etc/kravhantering/keycloak.env
     volumes:
-      - /etc/kravhantering/keycloak/realm-kravhantering-production.json:/opt/keycloak/data/import/realm-kravhantering-production.json:ro,Z
+      - /etc/kravhantering/keycloak/realm-kravhantering-production.json:/opt/keycloak/data/import/realm-kravhantering-production.json:ro
       - keycloak-data:/opt/keycloak/data
     networks:
       - kravhantering-internal
     restart: unless-stopped
 
-  db-bootstrap:
-    image: ${DB_JOB_IMAGE_REF:?set DB_JOB_IMAGE_REF}
-    command: ["bootstrap"]
-    depends_on:
-      sqlserver:
-        condition: service_started
-    env_file:
-      - /etc/kravhantering/db-job.env
-    networks:
-      - kravhantering-internal
-    restart: "no"
-
-  db-migrate:
-    image: ${DB_JOB_IMAGE_REF:?set DB_JOB_IMAGE_REF}
-    command: ["migrate"]
-    depends_on:
-      db-bootstrap:
-        condition: service_completed_successfully
-    env_file:
-      - /etc/kravhantering/db-job.env
-    networks:
-      - kravhantering-internal
-    restart: "no"
-
-  db-seed-required:
-    image: ${DB_JOB_IMAGE_REF:?set DB_JOB_IMAGE_REF}
-    command: ["seed:required"]
-    depends_on:
-      db-migrate:
-        condition: service_completed_successfully
-    env_file:
-      - /etc/kravhantering/db-job.env
-    networks:
-      - kravhantering-internal
-    restart: "no"
-
   app-runtime:
     image: ${APP_RUNTIME_IMAGE_REF:?set APP_RUNTIME_IMAGE_REF}
     depends_on:
-      db-seed-required:
-        condition: service_completed_successfully
+      sqlserver:
+        condition: service_started
       keycloak:
         condition: service_started
     env_file:
@@ -75,7 +39,7 @@ services:
     environment:
       NODE_EXTRA_CA_CERTS: /run/kravhantering/tls/ca.crt
     volumes:
-      - /etc/kravhantering/tls/ca.crt:/run/kravhantering/tls/ca.crt:ro,Z
+      - /etc/kravhantering/tls/ca.crt:/run/kravhantering/tls/ca.crt:ro
     networks:
       - kravhantering-internal
     restart: unless-stopped
@@ -88,10 +52,10 @@ services:
     ports:
       - "${NGINX_HTTPS_BIND:-443:443}"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro,Z
-      - ./nginx/conf.d/single-node-tls.conf:/etc/nginx/conf.d/default.conf:ro,Z
-      - /etc/kravhantering/tls/fullchain.pem:/etc/nginx/tls/fullchain.pem:ro,Z
-      - /etc/kravhantering/tls/privkey.pem:/etc/nginx/tls/privkey.pem:ro,Z
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../nginx/conf.d/single-node-tls.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/kravhantering/tls/fullchain.pem:/etc/nginx/tls/fullchain.pem:ro
+      - /etc/kravhantering/tls/privkey.pem:/etc/nginx/tls/privkey.pem:ro
     networks:
       kravhantering-internal:
         aliases:

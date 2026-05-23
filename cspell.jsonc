@@ -576,7 +576,15 @@
     "slirp",
     "netns",
     "uidmap",
-    "overlayfs"
+    "overlayfs",
+    "urandom",
+    "chcon",
+    "newkey",
+    "keyout",
+    "extfile",
+    "CAcreateserial",
+    "showcerts",
+    "noout"
   ],
   "flagWords": [],
   "ignorePaths": [

@@ -5,6 +5,11 @@ import { DataSource } from 'typeorm'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 export const MIGRATIONS_DIR = resolve(SCRIPT_DIR, '../typeorm/migrations')
+export const REQUIRED_SEED_FILE = resolve(
+  SCRIPT_DIR,
+  '../typeorm/seed-required.mjs',
+)
+export const DEMO_SEED_FILE = resolve(SCRIPT_DIR, '../typeorm/seed.mjs')
 
 /**
  * Discover migration filenames in `typeorm/migrations/` (sorted by filename so
@@ -48,14 +53,26 @@ function getMigrationClasses() {
   return cachedMigrationClassesPromise
 }
 
-export async function loadSeedProfile(profile) {
+export async function loadSeedProfile(profile, options = {}) {
   if (profile === 'required') {
-    const module = await import('../typeorm/seed-required.mjs')
+    const seedFile = options.requiredSeedPath ?? REQUIRED_SEED_FILE
+    if (!existsSync(seedFile)) {
+      throw new Error(
+        `Required seed file is missing: ${seedFile}. Provide a valid --requiredSeedPath or create the default required seed file at ${REQUIRED_SEED_FILE}.`,
+      )
+    }
+    const module = await import(pathToFileURL(seedFile).href)
     return module.seedRequiredDatabase
   }
 
   if (profile === 'demo') {
-    const module = await import('../typeorm/seed.mjs')
+    const seedFile = options.demoSeedPath ?? DEMO_SEED_FILE
+    if (!existsSync(seedFile)) {
+      throw new Error(
+        'seed:demo is not available in the production db-job image. Demo seed data is local/demo or release-smoke only. Use seed:required for production.',
+      )
+    }
+    const module = await import(pathToFileURL(seedFile).href)
     return module.seedDemoDatabase
   }
 

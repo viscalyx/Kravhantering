@@ -59,8 +59,9 @@ The production deployment bundle is also uploaded to GitHub Releases as:
 - `kravhantering-production-deploy-<version>.tar.gz.sha256`
 
 See [rhel10-production-deploy.md](./rhel10-production-deploy.md) for the
-clean-host RHEL 10 install, planned-downtime upgrade and rollback workflow
-that uses only release assets plus digest-preserved internal registry images.
+enterprise app-node workflow with external SQL Server and external IdP. See
+[rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md)
+for the controlled all-in-one internal workflow.
 
 ## Public GHCR Packages
 

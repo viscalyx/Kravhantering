@@ -29,6 +29,7 @@ const RELEVANT_PATH_PREFIXES = [
   'package.json',
   'public/',
   'docs/rhel10-production-deploy.md',
+  'docs/rhel10-production-single-node-internal-deploy.md',
   'scripts/build-metadata.js',
   'scripts/containers/',
   'scripts/db-sqlserver-admin.mjs',
@@ -43,6 +44,10 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
   {
     source: 'docs/rhel10-production-deploy.md',
     target: 'docs/rhel10-production-deploy.md',
+  },
+  {
+    source: 'docs/rhel10-production-single-node-internal-deploy.md',
+    target: 'docs/rhel10-production-single-node-internal-deploy.md',
   },
   {
     source: 'docs/adr/0001-release-artifact-production-deployment.md',

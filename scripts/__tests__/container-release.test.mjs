@@ -124,8 +124,28 @@ describe('trusted container release helpers', () => {
     expect(isReleaseRelevantPath('containers/app/Dockerfile')).toBe(true)
     expect(isReleaseRelevantPath('package-lock.json')).toBe(true)
     expect(isReleaseRelevantPath('docs/rhel10-production-deploy.md')).toBe(true)
+    expect(
+      isReleaseRelevantPath(
+        'docs/rhel10-production-single-node-internal-deploy.md',
+      ),
+    ).toBe(true)
     expect(isReleaseRelevantPath('docs/prompt-faser.md')).toBe(false)
     expect(isReleaseRelevantPath('tests/unit/example.test.ts')).toBe(false)
+  })
+
+  it('treats bundled single-node deployment docs as release-relevant', () => {
+    const plan = createReleasePlan({
+      changedFiles: ['docs/rhel10-production-single-node-internal-deploy.md'],
+      env: env(),
+      gitVersion,
+    })
+
+    expect(plan).toMatchObject({
+      createGitHubRelease: true,
+      hasRelevantChange: true,
+      releaseTagName: 'v1.2.0-preview.4',
+      shouldCreatePreviewRelease: true,
+    })
   })
 
   it('renders release notes with GHCR refs and checksums', () => {
@@ -251,8 +271,38 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain('docs/rhel10-production-deploy.md')
       expect(result.files).toContain('env/app.env.template')
       expect(result.files).toContain(
+        'systemd/kravhantering-single-node-compose.service',
+      )
+      expect(result.files).toContain(
         'keycloak/realm-kravhantering-production.template.json',
       )
+      for (const file of result.files.filter(
+        bundledFile =>
+          bundledFile.startsWith('compose/') && bundledFile.endsWith('.yml'),
+      )) {
+        const compose = fs.readFileSync(
+          path.join(result.bundleRoot, file),
+          'utf8',
+        )
+        expect(compose).not.toContain(':ro,Z')
+        expect(compose).not.toMatch(/-\s+\.\/nginx\//)
+      }
+      const singleNodeCompose = fs.readFileSync(
+        path.join(result.bundleRoot, 'compose/single-node.compose.yml'),
+        'utf8',
+      )
+      expect(singleNodeCompose).not.toContain(
+        'condition: service_completed_successfully',
+      )
+      expect(singleNodeCompose).not.toContain('\n  db-bootstrap:')
+      expect(singleNodeCompose).not.toContain('\n  db-migrate:')
+      expect(singleNodeCompose).not.toContain('\n  db-seed-required:')
+      const appRuntimeBlock =
+        singleNodeCompose.match(
+          /\n {2}app-runtime:[\s\S]*?\n\n {2}nginx:/,
+        )?.[0] ?? ''
+      expect(appRuntimeBlock).toContain('sqlserver:')
+      expect(appRuntimeBlock).not.toContain('db-seed-required')
       expect(result.manifest).toMatchObject({
         commitSha: plan.commitSha,
         images: {
@@ -311,6 +361,9 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain('container-release.mjs bundle')
     expect(workflow).toContain(
       `kravhantering-production-deploy-\${RELEASE_VERSION}.tar.gz`,
+    )
+    expect(workflow).toContain(
+      `( cd "\${artifact_dir}" && sha256sum "\${bundle}.tar.gz" )`,
     )
     expect(workflow).toContain(
       `container-release-deployment-\${{ github.run_id }}`,

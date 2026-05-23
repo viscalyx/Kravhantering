@@ -1,0 +1,871 @@
+# RHEL 10 Single-Node Internal Deployment From Release Artifacts
+
+<!-- cSpell:words coreutils datawriter fullchain privkey -->
+<!-- cSpell:words serverAuth subjectAltName -->
+
+This guide describes how to install and upgrade Kravhantering on one clean
+Red Hat Enterprise Linux 10 host from released artifacts only, with nginx,
+`app-runtime`, SQL Server, Keycloak and `db-job` in one rootless Podman Compose
+network.
+
+Use this topology only when an all-in-one internal deployment model is
+approved. For the enterprise topology with external SQL Server and external
+IdP, use [rhel10-production-deploy.md](./rhel10-production-deploy.md).
+
+## Release Inputs
+
+The internal release repository must provide these files from the same release:
+
+- `kravhantering-production-deploy-<version>.tar.gz`
+- `kravhantering-production-deploy-<version>.tar.gz.sha256`
+- `container-stack.lock.json`
+- `public/build.json`
+- `release-metadata.json`
+- SBOM files for `app-runtime` and `db-job`
+
+The internal container registry must contain digest-preserved mirrors for:
+
+- `app-runtime`
+- `db-job`
+- nginx
+- SQL Server
+- Keycloak
+
+Digest-preserved means the image digest in the internal registry is the same
+`sha256:<digest>` value listed in `container-stack.lock.json`.
+
+## Configuration BoM
+
+Before editing templates, record these site values. The names below are
+planning names; the later sections map them to the exact environment variables
+and realm JSON fields.
+
+- `VERSION`: the release version to install, for example `1.2.3`.
+- `APP_HOST`: the public DNS name without `https://`, for example
+  `kravhantering.example.internal`. Use the same value in `PUBLIC_HOSTNAME`,
+  app URLs, `KC_HOSTNAME`, realm redirect/logout settings, realm web origins,
+  TLS certificate SANs and smoke checks.
+- `MSSQL_SA_PASSWORD`: the SQL Server `sa` password. For a fresh single-node
+  SQL Server container, use the same value in `MSSQL_SA_PASSWORD` and
+  `DB_BOOTSTRAP_ADMIN_PASSWORD`.
+- `DB_JOB_PASSWORD`: the generated SQL Server password for the
+  `kravhantering_job` migration/seed login.
+- `APP_DB_PASSWORD`: the generated SQL Server password for the
+  `kravhantering_app` runtime login. Use the same value in
+  `DB_BOOTSTRAP_APP_PASSWORD` and app `DB_PASSWORD`.
+- `OIDC_APP_CLIENT_SECRET`: the generated secret for the `kravhantering-app`
+  OIDC client. Use the same value in `AUTH_OIDC_CLIENT_SECRET` and the realm
+  JSON `kravhantering-app` client `secret`.
+- `SESSION_COOKIE_PASSWORD`: a random value with at least 32 characters for
+  encrypted browser sessions.
+- `KEYCLOAK_ADMIN_USER` and `KEYCLOAK_ADMIN_PASSWORD`: the Keycloak bootstrap
+  admin account. Choose the username and a strong unique password for this
+  deployment.
+- `MCP_CLIENT_SECRET` and `MCP_SERVICE_EMPLOYEE_HSA_ID`: optional MCP
+  service-account values for the realm JSON when MCP service tokens are used.
+  `MCP_CLIENT_SECRET` must be a separate generated secret, not the
+  `OIDC_APP_CLIENT_SECRET` value.
+- `OPENROUTER_API_KEY`, `OPENROUTER_MGMT_API_KEY` and
+  `NEXT_PUBLIC_DEFAULT_MODEL`: optional AI values. Leave them empty unless AI
+  requirement generation is approved for the environment.
+
+### Generate Unique Secrets
+
+Use the site's approved secret manager or password generator whenever possible.
+Generate one value per secret and store each value in the deployment secret
+store before editing `/etc/kravhantering`.
+
+For OIDC client secrets, session-cookie passwords, Keycloak admin passwords and
+optional MCP client secrets, a good command-line fallback is:
+
+```bash
+openssl rand -base64 48
+```
+
+Run the command separately for each secret. Do not reuse one generated value
+for unrelated settings.
+
+For SQL Server login passwords, use the site's SQL Server password policy. If
+the operator must generate one on the host, generate a long password and verify
+it contains uppercase, lowercase, digit and symbol characters:
+
+```bash
+LC_ALL=C tr -dc 'A-Za-z0-9!%+=_.-' </dev/urandom | head -c 32
+printf '\n'
+```
+
+Regenerate the SQL password if it contains the login name or does not satisfy
+the site password policy.
+
+## Clean RHEL 10 Host
+
+Install the host as a minimal RHEL 10 server. Recommended baseline:
+
+- 8 vCPU and 16 GiB RAM
+- separate XFS-backed storage for container data and backups
+- registered RHEL repositories
+- outbound access to the internal release repository and internal registry
+- inbound access only from the load balancer, admin network and approved
+  monitoring systems
+
+Install runtime packages as an administrator:
+
+```bash
+sudo dnf install -y podman podman-compose tar gzip coreutils jq
+podman --version
+PODMAN_COMPOSE_PROVIDER=podman-compose podman compose version
+```
+
+Create a dedicated rootless service user:
+
+```bash
+sudo useradd --create-home --shell /bin/bash kravhantering
+sudo loginctl enable-linger kravhantering
+```
+
+Create immutable release and mutable configuration directories:
+
+```bash
+sudo install -d -o root -g root -m 0755 /opt/kravhantering/releases
+sudo install -d -o root -g root -m 0755 /etc/kravhantering
+sudo install -d -o root -g kravhantering -m 0750 /etc/kravhantering/tls
+sudo install -d -o root -g kravhantering -m 0750 /etc/kravhantering/keycloak
+```
+
+Release files live under `/opt/kravhantering/releases/<version>`.
+Site-specific environment files, certificates and realm files live under
+`/etc/kravhantering`.
+
+The bundled Compose files keep bind mounts read-only. Because the stack runs as
+the rootless `kravhantering` user and the mounted files are root-owned under
+`/opt` and `/etc`, apply SELinux labels as an administrator instead of relying
+on Podman `:Z` relabeling at container start.
+
+If this host terminates TLS directly on port 443, allow rootless Podman to bind
+that port:
+
+```bash
+printf '%s\n' 'net.ipv4.ip_unprivileged_port_start=443' \
+  | sudo tee /etc/sysctl.d/90-kravhantering-rootless-ports.conf
+sudo sysctl --system
+```
+
+## Install a Release
+
+Download the deployment bundle and checksum from the internal release
+repository. Set `RELEASE_DOWNLOAD_URL` to the per-version directory that hosts
+the approved release artifacts.
+
+>[!NOTE]
+>Sites should use the internal release repository by default. The official
+>GitHub release is an explicit opt-in source when that is approved for the
+>deployment. GitHub release tags use the `v${VERSION}` path segment.
+
+```bash
+VERSION=1.2.3
+
+# Default: internal release repository.
+RELEASE_DOWNLOAD_URL="https://release.example.internal/kravhantering/${VERSION}"
+
+# Opt-in: official GitHub release.
+# RELEASE_DOWNLOAD_URL="https://github.com/viscalyx/Kravhantering/releases/download/v${VERSION}"
+
+mkdir -p "/tmp/kravhantering-${VERSION}"
+cd "/tmp/kravhantering-${VERSION}"
+
+curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz"
+curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
+sha256sum -c "kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
+```
+
+Install the bundle:
+
+```bash
+sudo install -d -o root -g root -m 0755 \
+  "/opt/kravhantering/releases/${VERSION}"
+sudo tar -xzf "kravhantering-production-deploy-${VERSION}.tar.gz" \
+  -C "/opt/kravhantering/releases/${VERSION}" \
+  --strip-components=1
+sudo ln -sfn "/opt/kravhantering/releases/${VERSION}" \
+  /opt/kravhantering/current
+```
+
+Review the release manifest before creating local configuration:
+
+```bash
+less /opt/kravhantering/current/DEPLOYMENT-MANIFEST.json
+less /opt/kravhantering/current/container-stack.lock.json
+```
+
+Copy templates into `/etc/kravhantering` on first install:
+
+```bash
+REALM_TEMPLATE=/opt/kravhantering/current/keycloak
+REALM_TEMPLATE="${REALM_TEMPLATE}/realm-kravhantering-production.template.json"
+
+sudo install -o root -g kravhantering -m 0640 \
+  /opt/kravhantering/current/env/release.env.template \
+  /etc/kravhantering/release.env
+sudo install -o root -g kravhantering -m 0640 \
+  /opt/kravhantering/current/env/app.env.template \
+  /etc/kravhantering/app.env
+sudo install -o root -g kravhantering -m 0640 \
+  /opt/kravhantering/current/env/db-job.env.template \
+  /etc/kravhantering/db-job.env
+sudo install -o root -g kravhantering -m 0640 \
+  /opt/kravhantering/current/env/sqlserver.env.template \
+  /etc/kravhantering/sqlserver.env
+sudo install -o root -g kravhantering -m 0640 \
+  /opt/kravhantering/current/env/keycloak.env.template \
+  /etc/kravhantering/keycloak.env
+sudo install -o root -g kravhantering -m 0640 \
+  "$REALM_TEMPLATE" \
+  /etc/kravhantering/keycloak/realm-kravhantering-production.json
+```
+
+Edit the copied files with environment-specific values. Do not edit files
+under `/opt/kravhantering/current`; they are release artifacts.
+
+Label the release-owned nginx configuration files for container bind mounts.
+Run this once per installed release:
+
+```bash
+sudo chcon -R -t container_file_t \
+  "/opt/kravhantering/releases/${VERSION}/nginx"
+```
+
+## Image References
+
+Set image references in `/etc/kravhantering/release.env` to internal registry
+refs that preserve the release digests from the installed release lock. First,
+load the locked digest values:
+
+```bash
+LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
+service_digest() {
+  jq -r --arg name "$1" \
+    '.services[] | select(.name == $name) | .digest' "$LOCK_FILE"
+}
+
+APP_RUNTIME_DIGEST="$(service_digest app-runtime)"
+DB_JOB_DIGEST="$(service_digest db-job)"
+NGINX_DIGEST="$(service_digest nginx)"
+SQLSERVER_DIGEST="$(service_digest sqlserver)"
+KEYCLOAK_DIGEST="$(service_digest keycloak)"
+
+update_ref() {
+  sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
+}
+```
+
+Default: update `/etc/kravhantering/release.env` for the internal registry
+mirror:
+
+```bash
+update_ref APP_RUNTIME_IMAGE_REF \
+  "registry.example.internal/kravhantering-app-runtime@${APP_RUNTIME_DIGEST}"
+update_ref DB_JOB_IMAGE_REF \
+  "registry.example.internal/kravhantering-db-job@${DB_JOB_DIGEST}"
+update_ref NGINX_IMAGE_REF \
+  "registry.example.internal/nginx@${NGINX_DIGEST}"
+update_ref SQLSERVER_IMAGE_REF \
+  "registry.example.internal/mssql/server@${SQLSERVER_DIGEST}"
+update_ref KEYCLOAK_IMAGE_REF \
+  "registry.example.internal/keycloak/keycloak@${KEYCLOAK_DIGEST}"
+```
+
+Opt-in: if the site is explicitly approved to pull from public upstream
+registries, the project images can use the official GHCR release packages.
+nginx, SQL Server and Keycloak are vendor images and should use the
+digest-locked upstream image refs from the release lock:
+
+```bash
+update_ref APP_RUNTIME_IMAGE_REF \
+  "ghcr.io/viscalyx/kravhantering-app-runtime@${APP_RUNTIME_DIGEST}"
+update_ref DB_JOB_IMAGE_REF \
+  "ghcr.io/viscalyx/kravhantering-db-job@${DB_JOB_DIGEST}"
+update_ref NGINX_IMAGE_REF \
+  "docker.io/library/nginx@${NGINX_DIGEST}"
+update_ref SQLSERVER_IMAGE_REF \
+  "mcr.microsoft.com/mssql/server@${SQLSERVER_DIGEST}"
+update_ref KEYCLOAK_IMAGE_REF \
+  "quay.io/keycloak/keycloak@${KEYCLOAK_DIGEST}"
+```
+
+Pull the images as the service user:
+
+```bash
+sudo -iu kravhantering
+set -a
+. /etc/kravhantering/release.env
+set +a
+
+podman pull "$APP_RUNTIME_IMAGE_REF"
+podman pull "$DB_JOB_IMAGE_REF"
+podman pull "$NGINX_IMAGE_REF"
+podman pull "$SQLSERVER_IMAGE_REF"
+podman pull "$KEYCLOAK_IMAGE_REF"
+
+exit
+```
+
+## Configure Single-Node Services
+
+Replace every placeholder secret, hostname and redirect URI in the copied
+files. Keep `/opt/kravhantering/current` immutable; all site-specific values
+belong under `/etc/kravhantering`. Run these edits from the administrator
+shell, not from the `kravhantering` service-user shell used for image pulls.
+
+### `/etc/kravhantering/release.env`
+
+Set `PUBLIC_HOSTNAME` to the public DNS name without `https://`. This must be
+the same hostname used by `NEXT_PUBLIC_SITE_URL`, `KC_HOSTNAME`, redirect URIs
+and the TLS certificate SAN:
+
+```env
+PUBLIC_HOSTNAME=kravhantering.example.internal
+```
+
+`PUBLIC_HOSTNAME` is used by the single-node Compose file as an nginx network
+alias so containers can resolve the browser-facing issuer URL internally.
+
+### `/etc/kravhantering/sqlserver.env`
+
+Set the SQL Server administrator password and confirm the edition:
+
+```env
+ACCEPT_EULA=Y
+MSSQL_PID=Standard
+MSSQL_SA_PASSWORD=<strong-sqlserver-sa-password>
+```
+
+SQL Server requires a strong administrator password. Use at least 8 characters
+from at least three of these categories: uppercase letters, lowercase letters,
+numbers and non-alphanumeric symbols. Avoid the username, service name,
+hostname, product name, dictionary words and reused operational passwords.
+
+Do not keep `DB_CONNECTION_TIMEOUT_MS` or `DB_REQUEST_TIMEOUT_MS` in
+`sqlserver.env`. The SQL Server container does not use them; they belong to
+`db-job.env` if the site wants explicit client-side timeout values.
+
+### `/etc/kravhantering/db-job.env`
+
+Set `db-job` to connect to the internal SQL Server service and keep the
+bootstrap values, because `db-bootstrap` creates the database and principals
+through the SQL Server admin login:
+
+```env
+DB_HOST=sqlserver
+DB_PORT=1433
+DB_NAME=kravhantering
+DB_CONNECTION_TIMEOUT_MS=15000
+DB_REQUEST_TIMEOUT_MS=30000
+DB_ENCRYPT=true
+DB_TRUST_SERVER_CERTIFICATE=true
+DB_USER=kravhantering_job
+DB_PASSWORD=<db-job-password>
+DB_BOOTSTRAP_ADMIN_USER=sa
+DB_BOOTSTRAP_ADMIN_PASSWORD=<same-as-MSSQL_SA_PASSWORD>
+DB_BOOTSTRAP_APP_USER=kravhantering_app
+DB_BOOTSTRAP_APP_PASSWORD=<app-runtime-password>
+```
+
+`DB_CONNECTION_TIMEOUT_MS` is the time allowed to open each SQL Server
+connection. Raise it when the SQL Server container is slow to accept
+connections after start, or when the host/storage is under heavy load. Lower it
+only if failed connection attempts should return faster.
+
+`DB_REQUEST_TIMEOUT_MS` is the time allowed for each SQL statement during
+bootstrap, migrations and seed. Raise it when schema changes or seed operations
+legitimately take longer on the target host. Lower it only if stuck SQL
+statements should fail faster.
+
+Both values are db-job client settings, not SQL Server container settings. The
+shown values match the built-in defaults and can be kept unless the site needs
+different timeout limits.
+
+`DB_PASSWORD` is the password for the `DB_USER` login, normally
+`kravhantering_job`. Choose a unique generated SQL Server login password for
+this job-only account. It must satisfy the same SQL Server password policy as
+the administrator password and must not contain the login name
+`kravhantering_job`. Do not reuse `MSSQL_SA_PASSWORD` or the app runtime
+password.
+
+`DB_BOOTSTRAP_APP_PASSWORD` is the password that `db-bootstrap` assigns to the
+app runtime login `DB_BOOTSTRAP_APP_USER`, normally `kravhantering_app`. Set it
+to a different unique generated SQL Server login password and use the same
+value as `DB_PASSWORD` in `app.env`. It must satisfy the same SQL Server
+password policy and must not contain the login name `kravhantering_app`.
+
+For a fresh single-node SQL Server container, `sa` is the available admin
+login, so `DB_BOOTSTRAP_ADMIN_PASSWORD` must be the same value as
+`MSSQL_SA_PASSWORD` in `sqlserver.env`. If the site has deliberately
+pre-created a different SQL Server admin login before running `db-bootstrap`,
+set `DB_BOOTSTRAP_ADMIN_USER` and `DB_BOOTSTRAP_ADMIN_PASSWORD` to that login
+instead.
+
+### `/etc/kravhantering/app.env`
+
+Set the app runtime to use the internal SQL Server service, the app principal
+created by `db-bootstrap`, and the public Keycloak issuer through nginx:
+
+```env
+NEXT_PUBLIC_SITE_URL=https://kravhantering.example.internal
+DB_HOST=sqlserver
+DB_PORT=1433
+DB_NAME=kravhantering
+DB_USER=kravhantering_app
+DB_PASSWORD=<same-as-DB_BOOTSTRAP_APP_PASSWORD>
+DB_ENCRYPT=true
+DB_TRUST_SERVER_CERTIFICATE=true
+AUTH_OIDC_ISSUER_URL=https://kravhantering.example.internal/auth/realms/kravhantering-production
+AUTH_OIDC_REDIRECT_URI=https://kravhantering.example.internal/api/auth/callback
+AUTH_OIDC_POST_LOGOUT_REDIRECT_URI=https://kravhantering.example.internal/
+AUTH_OIDC_CLIENT_ID=kravhantering-app
+AUTH_OIDC_CLIENT_SECRET=<same-as-realm-kravhantering-app-secret>
+AUTH_OIDC_ROLES_CLAIM=roles
+AUTH_OIDC_SCOPES=openid profile email
+AUTH_OIDC_API_AUDIENCE=kravhantering-app
+AUTH_SESSION_COOKIE_NAME=kravhantering_session
+AUTH_SESSION_COOKIE_PASSWORD=<at-least-32-random-characters>
+AUTH_SESSION_TTL_SECONDS=28800
+MCP_CLIENT_ID=kravhantering-mcp
+
+NEXT_PUBLIC_DEFAULT_MODEL=
+OPENROUTER_API_KEY=
+OPENROUTER_MGMT_API_KEY=
+```
+
+Generate `AUTH_SESSION_COOKIE_PASSWORD` as a random value with at least 32
+characters. Keep `AUTH_OIDC_CLIENT_SECRET` equal to the `kravhantering-app`
+client `secret` field in
+`/etc/kravhantering/keycloak/realm-kravhantering-production.json`.
+
+The app only requires `AUTH_OIDC_CLIENT_SECRET` to be non-empty and to match
+the realm client secret. For production, use a high-entropy generated secret,
+for example `openssl rand -base64 48`, and paste the exact same value into
+`app.env` and the realm JSON. Use the same strength for the optional
+`kravhantering-mcp` client secret, but generate a separate value for that
+client.
+
+Keep `AUTH_OIDC_SCOPES=openid profile email` unless the Keycloak realm needs
+additional scopes to release required claims. `openid` must always be present.
+Keep `AUTH_SESSION_COOKIE_NAME=kravhantering_session` unless this host must
+serve another deployment on the same browser cookie scope. Changing the cookie
+name signs out existing browser sessions.
+
+Keep `AUTH_SESSION_TTL_SECONDS=28800` for an eight-hour absolute session-cookie
+lifetime unless the site has approved another browser-session lifetime. It is
+not an idle timeout; the shortest of this value, the Keycloak SSO session
+lifetime and the access-token lifetime controls when the user must
+re-authenticate.
+
+`MCP_CLIENT_ID=kravhantering-mcp` is used when issuing service-account tokens
+for MCP clients. Keep it aligned with the `kravhantering-mcp` client id in the
+realm JSON, or leave the default when MCP service tokens are not used. It is not
+a secret.
+
+Leave `NEXT_PUBLIC_DEFAULT_MODEL`, `OPENROUTER_API_KEY` and
+`OPENROUTER_MGMT_API_KEY` empty unless AI requirement generation is approved
+for the environment. To enable AI, set `OPENROUTER_API_KEY` to the approved
+OpenRouter API key. `NEXT_PUBLIC_DEFAULT_MODEL` is optional; leave it empty if
+the deployment should not preselect a site default model. The UI will use a
+saved favorite or the first available model, and backend calls that receive no
+model fall back to the built-in default. Set `OPENROUTER_MGMT_API_KEY` only if
+the app should display organization credit information.
+`NEXT_PUBLIC_DEFAULT_MODEL` is public client configuration; do not put secrets
+in it.
+
+### `/etc/kravhantering/keycloak.env`
+
+Set Keycloak's public hostname and administrator account:
+
+```env
+KC_HEALTH_ENABLED=true
+KC_HOSTNAME=https://kravhantering.example.internal/auth
+KC_HTTP_ENABLED=true
+KC_HTTP_PORT=8080
+KC_PROXY_HEADERS=xforwarded
+KEYCLOAK_ADMIN=<keycloak-admin-user>
+KEYCLOAK_ADMIN_PASSWORD=<keycloak-admin-password>
+```
+
+Keep the `KC_*` defaults unless the single-node network or nginx proxy setup
+changes. They enable Keycloak health endpoints, keep Keycloak listening on HTTP
+port 8080 inside the Podman network, and tell Keycloak to trust the
+`X-Forwarded-*` headers sent by nginx. `KC_HOSTNAME` must stay on the same
+public host as `PUBLIC_HOSTNAME`, with the `https://` scheme and `/auth` path.
+
+`KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` create the bootstrap Keycloak
+administrator when the Keycloak data volume is empty. The username is local to
+Keycloak administration; it does not need to match an app user, SQL login or
+realm role. Choose any approved admin username and a strong unique password,
+store it in the deployment secret store, and do not leave the template
+placeholder values in place.
+
+The only values that normally need site-specific changes are:
+
+```env
+KC_HOSTNAME=https://kravhantering.example.internal/auth
+KEYCLOAK_ADMIN=<keycloak-admin-user>
+KEYCLOAK_ADMIN_PASSWORD=<keycloak-admin-password>
+```
+
+### `/etc/kravhantering/keycloak/realm-kravhantering-production.json`
+
+Update the imported realm before first Keycloak startup:
+
+- Set the `kravhantering-app` client `secret` to the same value as
+  `AUTH_OIDC_CLIENT_SECRET` in `app.env`.
+- Set the `kravhantering-app` `redirectUris` entry to
+  `https://kravhantering.example.internal/api/auth/callback`.
+- Set the `kravhantering-app` `webOrigins` entry to
+  `https://kravhantering.example.internal`.
+- Set `post.logout.redirect.uris` to
+  `https://kravhantering.example.internal/`.
+- Set the `kravhantering-mcp` client `secret` to a separate generated secret if
+  the MCP service client is used. Do not reuse `AUTH_OIDC_CLIENT_SECRET`.
+- Review the hardcoded MCP `employeeHsaId` claim and replace it with the
+  approved service identity if needed.
+
+The realm must keep emitting realm roles as a multivalued `roles` claim and
+the user `hsaId` attribute as `employeeHsaId`.
+
+These are the realm JSON values that normally need site-specific changes:
+
+```json
+{
+  "clients": [
+    {
+      "clientId": "kravhantering-app",
+      "secret": "<same-as-AUTH_OIDC_CLIENT_SECRET>",
+      "redirectUris": [
+        "https://kravhantering.example.internal/api/auth/callback"
+      ],
+      "webOrigins": ["https://kravhantering.example.internal"],
+      "attributes": {
+        "post.logout.redirect.uris": "https://kravhantering.example.internal/"
+      }
+    },
+    {
+      "clientId": "kravhantering-mcp",
+      "secret": "<production-mcp-client-secret>",
+      "protocolMappers": [
+        {
+          "name": "mcp-service-hsa-id",
+          "config": {
+            "claim.value": "<approved-service-employeeHsaId>"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+## TLS Materials
+
+Install the server certificate, private key and issuing CA certificate:
+
+```bash
+sudo install -o root -g kravhantering -m 0640 fullchain.pem \
+  /etc/kravhantering/tls/fullchain.pem
+sudo install -o root -g kravhantering -m 0640 privkey.pem \
+  /etc/kravhantering/tls/privkey.pem
+sudo install -o root -g kravhantering -m 0640 ca.crt \
+  /etc/kravhantering/tls/ca.crt
+```
+
+`fullchain.pem` and `privkey.pem` are mounted by nginx. `ca.crt` is mounted by
+`app-runtime` through `NODE_EXTRA_CA_CERTS` so the app can trust the internal
+Keycloak issuer through nginx.
+
+For a temporary isolated lab host, Appendix A shows how to create these files
+with a local root CA. Do not use that local self-signed flow for a shared
+production service unless the deployment explicitly approves the exception.
+
+## SELinux Labels for Bind Mounts
+
+The single-node stack bind-mounts the Keycloak realm file, TLS files and
+release-owned nginx configuration into rootless containers. After editing the
+realm JSON and installing TLS files, label those paths for container reads:
+
+```bash
+sudo chcon -R -t container_file_t /etc/kravhantering/keycloak
+sudo chcon -R -t container_file_t /etc/kravhantering/tls
+```
+
+Repeat these commands after replacing the realm JSON or TLS files.
+
+## Start the Single-Node Stack
+
+Start SQL Server and Keycloak first, then run the database bootstrap,
+migration and required seed jobs once for the release:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+set -a
+. /etc/kravhantering/release.env
+set +a
+
+STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml up -d sqlserver keycloak
+
+podman run --rm --network "$STACK_NETWORK" \
+  --env-file /etc/kravhantering/db-job.env \
+  "$DB_JOB_IMAGE_REF" wait
+podman run --rm --network "$STACK_NETWORK" \
+  --env-file /etc/kravhantering/db-job.env \
+  "$DB_JOB_IMAGE_REF" bootstrap
+podman run --rm --network "$STACK_NETWORK" \
+  --env-file /etc/kravhantering/db-job.env \
+  "$DB_JOB_IMAGE_REF" migrate
+podman run --rm --network "$STACK_NETWORK" \
+  --env-file /etc/kravhantering/db-job.env \
+  "$DB_JOB_IMAGE_REF" seed:required
+
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml up -d
+```
+
+Do not run `seed:demo` in production. The production `db-job` image contains
+only the required seed entrypoint; demo seed data is local/demo and
+release-smoke-only.
+
+The Compose file intentionally contains only long-running services. The
+database jobs are release operations run with `podman run --rm` against the
+Compose network in the order shown. This keeps normal operations simple:
+
+```bash
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml up -d
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml down
+```
+
+Check readiness through nginx:
+
+```bash
+curl --fail --silent --show-error \
+  https://kravhantering.example.internal/api/health
+curl --fail --silent --show-error \
+  https://kravhantering.example.internal/api/ready
+```
+
+## Optional User Systemd Wrapper
+
+Manual `podman compose` is the primary operational workflow. If the site wants
+user-systemd autostart, copy the template:
+
+```bash
+sudo -iu kravhantering
+mkdir -p ~/.config/systemd/user
+SERVICE_TEMPLATE=/opt/kravhantering/current/systemd
+SERVICE_TEMPLATE="${SERVICE_TEMPLATE}/kravhantering-single-node-compose.service"
+cp "$SERVICE_TEMPLATE" \
+  ~/.config/systemd/user/kravhantering-compose.service
+systemctl --user daemon-reload
+systemctl --user enable --now kravhantering-compose.service
+```
+
+The service runs `podman compose up -d` with `compose/single-node.compose.yml`
+from `/opt/kravhantering/current` and `podman compose down` on stop.
+
+## Planned-Downtime Upgrade
+
+Use planned downtime unless a future release explicitly documents rolling
+compatibility.
+
+1. Confirm the target release bundle, checksum and mirrored image digests.
+2. Confirm a tested SQL Server backup, volume snapshot or restore point.
+3. Drain or disable traffic to the host.
+4. Stop `nginx` and `app-runtime`; leave SQL Server and Keycloak running:
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   podman compose --env-file /etc/kravhantering/release.env \
+     -f compose/single-node.compose.yml stop nginx app-runtime
+   ```
+
+5. Install the new release bundle under `/opt/kravhantering/releases`.
+6. Update `/opt/kravhantering/current` to the new release.
+7. Update `/etc/kravhantering/release.env` image refs to the new digests.
+8. Run the database jobs once with the `podman run --rm` commands from
+   [Start the Single-Node Stack](#start-the-single-node-stack), using the new
+   `DB_JOB_IMAGE_REF`.
+9. Start the stack with `podman compose up -d` from the new release.
+10. Check `/api/health`, `/api/ready`, sign-in and a read-only UI workflow.
+11. Re-enable traffic.
+
+## Rollback
+
+Rollback after a migration requires restoring the SQL Server backup, volume
+snapshot or restore point taken before the upgrade. The supported sequence is:
+
+1. Disable traffic.
+2. Stop `nginx` and `app-runtime`.
+3. Restore SQL Server to the pre-upgrade restore point.
+4. Point `/opt/kravhantering/current` back to the previous release directory.
+5. Restore the previous `/etc/kravhantering/release.env` image refs.
+6. Start the stack with `podman compose up -d` from the previous release.
+7. Verify `/api/health`, `/api/ready` and sign-in before enabling traffic.
+
+Do not rely on app-only image rollback after schema migration unless the
+specific release notes explicitly say it is supported.
+
+## Operational Evidence
+
+Keep these files with the deployment record:
+
+- deployment bundle checksum
+- `DEPLOYMENT-MANIFEST.json`
+- `container-stack.lock.json`
+- `public/build.json`
+- `release-metadata.json`
+- SQL backup, volume snapshot or restore-point reference
+- final `/etc/kravhantering/release.env` image refs
+- readiness check results
+
+Do not archive `/etc/kravhantering/*.env`, private keys or raw container
+inspect output in general release evidence stores.
+
+## Appendix A: Local Self-Signed TLS Certificate
+
+Use this appendix only for an isolated lab or temporary validation host where
+an approved internal certificate is not available. Do not use a locally
+self-signed certificate for a shared production service unless the deployment
+has explicitly approved that exception.
+
+The local root CA private key can issue certificates for internal names. Keep
+it on the lab host only, restrict it to root, and delete it when the temporary
+environment is retired.
+
+The generated files match the single-node production Compose mounts:
+
+- `/etc/kravhantering/tls/fullchain.pem`
+- `/etc/kravhantering/tls/privkey.pem`
+- `/etc/kravhantering/tls/ca.crt`
+
+Create a local root CA:
+
+```bash
+APP_HOST=kravhantering.example.internal
+TLS_DIR=/etc/kravhantering/tls
+ROOT_CA_SUBJECT="/C=SE/O=Viscalyx/CN=Kravhantering Lab Root CA"
+
+sudo install -d -o root -g kravhantering -m 0750 "$TLS_DIR"
+
+sudo openssl genrsa -out "${TLS_DIR}/local-root-ca.key" 4096
+sudo chmod 0600 "${TLS_DIR}/local-root-ca.key"
+
+sudo openssl req -x509 -new -nodes -sha256 -days 3650 \
+  -key "${TLS_DIR}/local-root-ca.key" \
+  -out "${TLS_DIR}/local-root-ca.crt" \
+  -subj "$ROOT_CA_SUBJECT"
+sudo chmod 0644 "${TLS_DIR}/local-root-ca.crt"
+```
+
+Create the server certificate request. Set `APP_HOST` to the public DNS name
+used by `NEXT_PUBLIC_SITE_URL`, redirect URIs and browser access. Add more
+`DNS.N` or `IP.N` entries before generating the certificate if the same host
+must be reached by additional approved names.
+
+```bash
+sudo tee "${TLS_DIR}/kravhantering.cnf" >/dev/null <<EOF
+[req]
+default_bits = 2048
+prompt = no
+default_md = sha256
+distinguished_name = dn
+req_extensions = req_ext
+
+[dn]
+C = SE
+O = Viscalyx
+CN = ${APP_HOST}
+
+[req_ext]
+subjectAltName = @alt_names
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+
+[alt_names]
+DNS.1 = ${APP_HOST}
+EOF
+
+sudo openssl req -new -newkey rsa:2048 -nodes \
+  -keyout "${TLS_DIR}/privkey.pem" \
+  -out "${TLS_DIR}/kravhantering.csr" \
+  -config "${TLS_DIR}/kravhantering.cnf"
+
+sudo chown root:kravhantering "${TLS_DIR}/privkey.pem"
+sudo chmod 0640 "${TLS_DIR}/privkey.pem"
+```
+
+Sign the server certificate with the local root CA. The `-extfile` and
+`-extensions` flags copy the SAN values into the issued certificate.
+
+```bash
+sudo openssl x509 -req -sha256 -days 825 \
+  -in "${TLS_DIR}/kravhantering.csr" \
+  -CA "${TLS_DIR}/local-root-ca.crt" \
+  -CAkey "${TLS_DIR}/local-root-ca.key" \
+  -CAcreateserial \
+  -extfile "${TLS_DIR}/kravhantering.cnf" \
+  -extensions req_ext \
+  -out "${TLS_DIR}/server.crt"
+
+sudo chmod 0644 "${TLS_DIR}/server.crt"
+```
+
+Build the full chain for nginx and install the CA certificate used by the app
+runtime trust mount:
+
+```bash
+sudo sh -c "cat '${TLS_DIR}/server.crt' \
+  '${TLS_DIR}/local-root-ca.crt' > '${TLS_DIR}/fullchain.pem'"
+sudo chown root:kravhantering "${TLS_DIR}/fullchain.pem"
+sudo chmod 0640 "${TLS_DIR}/fullchain.pem"
+
+sudo install -o root -g kravhantering -m 0640 \
+  "${TLS_DIR}/local-root-ca.crt" "${TLS_DIR}/ca.crt"
+```
+
+Trust the local root CA on the RHEL host so local tools such as `curl`,
+`openssl` and Node.js can verify the certificate:
+
+```bash
+sudo cp "${TLS_DIR}/local-root-ca.crt" \
+  /etc/pki/ca-trust/source/anchors/kravhantering-local-root-ca.crt
+sudo update-ca-trust extract
+```
+
+Review the certificate before starting the stack:
+
+```bash
+openssl x509 -in "${TLS_DIR}/fullchain.pem" \
+  -noout -subject -issuer -dates -ext subjectAltName
+openssl verify -CAfile "${TLS_DIR}/ca.crt" "${TLS_DIR}/server.crt"
+```
+
+After the stack is running, verify the TLS handshake from an internal client:
+
+```bash
+openssl s_client -connect "${APP_HOST}:443" \
+  -servername "$APP_HOST" -showcerts </dev/null
+```
+
+Browsers and client operating systems that connect to the site will warn until
+`local-root-ca.crt` is imported into their trust store:
+
+- Windows: import it into Trusted Root Certification Authorities.
+- macOS: add it to System Keychain and set it to Always Trust.
+- RHEL or Fedora: copy it to `/etc/pki/ca-trust/source/anchors/` and run
+  `update-ca-trust extract`.
+- Debian or Ubuntu: copy it to `/usr/local/share/ca-certificates/` and run
+  `update-ca-certificates`.
+- Firefox: import it under Authorities in the Firefox certificate settings.

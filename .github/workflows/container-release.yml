@@ -317,11 +317,13 @@ jobs:
         run: |
           set -euo pipefail
           bundle="kravhantering-production-deploy-${RELEASE_VERSION}"
-          archive="tmp/container-release-artifacts/${bundle}.tar.gz"
+          artifact_dir="tmp/container-release-artifacts"
+          archive="${artifact_dir}/${bundle}.tar.gz"
           tar -C tmp/container-release-artifacts/deployment \
             -czf "${archive}" \
             "${bundle}"
-          sha256sum "${archive}" | tee "${archive}.sha256"
+          ( cd "${artifact_dir}" && sha256sum "${bundle}.tar.gz" ) |
+            tee "${archive}.sha256"
           cat "${archive}.sha256" >> hashes.sha256
 
       - name: Write release notes
