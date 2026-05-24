@@ -124,7 +124,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.12.4",
     "@types/oidc-provider": "^9.5.0",
-    "@types/react": "^19.2.14",
+    "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "@viscalyx/developer-mode-core": "^0.2.2",
     "@viscalyx/developer-mode-react": "^0.2.0",
