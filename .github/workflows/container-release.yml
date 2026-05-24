@@ -211,7 +211,7 @@ jobs:
           push-to-registry: true
 
       - name: Attest app-runtime SBOM
-        uses: actions/attest-sbom@bd218ad0dbcb3e146bd073d1d9c6d78e08aa8a0b # v2
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
         with:
           subject-name: ${{ env.APP_RUNTIME_IMAGE }}
           subject-digest: ${{ env.APP_RUNTIME_DIGEST }}
@@ -219,7 +219,7 @@ jobs:
           push-to-registry: true
 
       - name: Attest db-job SBOM
-        uses: actions/attest-sbom@bd218ad0dbcb3e146bd073d1d9c6d78e08aa8a0b # v2
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
         with:
           subject-name: ${{ env.DB_JOB_IMAGE }}
           subject-digest: ${{ env.DB_JOB_DIGEST }}
