@@ -418,7 +418,8 @@ describe('auth callback security audit events', () => {
     process.env.AUTH_OIDC_REDIRECT_URI =
       'https://kravhantering.example.internal/api/auth/callback'
     resetAuthConfigForTests()
-    getLoginStateMock.mockResolvedValue(freshLoginState())
+    const loginState = freshLoginState()
+    getLoginStateMock.mockResolvedValue(loginState)
     getSessionMock.mockResolvedValue(freshPriorSession())
     const { employeeHsaId, ...rest } = SUCCESS_CLAIMS
     void employeeHsaId
@@ -439,6 +440,7 @@ describe('auth callback security audit events', () => {
       ),
     )
 
+    expect(loginState.destroy).toHaveBeenCalledOnce()
     expect(response.status).toBe(302)
     expect(response.headers.get('location')).toBe(
       'https://kravhantering.example.internal/auth/error?code=hsa_id_missing&locale=sv',
