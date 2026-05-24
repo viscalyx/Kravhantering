@@ -99,7 +99,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@react-pdf/renderer": "^4.5.1",
     "@tailwindcss/typography": "^0.5.19",
-    "framer-motion": "^12.39.0",
+    "framer-motion": "^12.40.0",
     "iron-session": "^8.0.4",
     "jose": "^6.2.3",
     "lucide-react": "^1.16.0",
