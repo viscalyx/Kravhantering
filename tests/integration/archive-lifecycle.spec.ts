@@ -148,7 +148,6 @@ async function getPlaywrightSqlServerDataSource(): Promise<DataSource> {
   const dataSource = createSqlServerDataSource({
     entities: sqlServerEntities,
     env,
-    name: 'archive-lifecycle-fixtures',
     url,
   })
 

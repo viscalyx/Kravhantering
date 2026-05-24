@@ -29,7 +29,6 @@ export interface BuildSqlServerDataSourceOptions {
   env?: SqlServerRuntimeEnv
   logging?: DataSourceOptions['logging']
   migrations?: DataSourceOptions['migrations']
-  name?: string
   readonly?: boolean
   url?: string
 }
@@ -184,9 +183,6 @@ export function buildSqlServerDataSourceOptions(
   return {
     type: 'mssql',
     url,
-    name:
-      options.name ??
-      (options.readonly ? 'kravhantering-readonly' : 'kravhantering-main'),
     synchronize: false,
     logging,
     entities: options.entities ?? [],
