@@ -106,15 +106,37 @@ export function isDemoUser(user, document = {}) {
   )
 }
 
+function findDuplicateUsernames(users) {
+  const seen = new Set()
+  const duplicates = new Set()
+  for (const user of users) {
+    const username = user?.username
+    if (typeof username !== 'string') continue
+    if (seen.has(username)) {
+      duplicates.add(username)
+    } else {
+      seen.add(username)
+    }
+  }
+  return [...duplicates].sort((left, right) => left.localeCompare(right))
+}
+
 export function normalizeDemoUsersDocument(document) {
   if (document?.schemaVersion !== DEMO_USERS_SCHEMA_VERSION) {
     throw new Error(
       `Unsupported demo users schema version: ${document?.schemaVersion}`,
     )
   }
+  const users = document.users ?? []
+  const duplicateUsernames = findDuplicateUsernames(users)
+  if (duplicateUsernames.length > 0) {
+    throw new Error(
+      `Demo users document contains duplicate username(s): ${duplicateUsernames.join(', ')}`,
+    )
+  }
   return {
     ...document,
-    users: (document.users ?? []).map(normalizeDemoUser),
+    users: users.map(normalizeDemoUser),
   }
 }
 

@@ -6,6 +6,25 @@ function readWorkspaceFile(relativePath: string) {
   return readFileSync(path.join(process.cwd(), relativePath), 'utf8')
 }
 
+function listPublicPngFiles() {
+  const publicRoot = path.join(process.cwd(), 'public')
+
+  function walk(directory: string): string[] {
+    return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+      const absolutePath = path.join(directory, entry.name)
+      if (entry.isDirectory()) {
+        return walk(absolutePath)
+      }
+      if (!entry.isFile() || !entry.name.endsWith('.png')) {
+        return []
+      }
+      return [path.relative(publicRoot, absolutePath).replaceAll(path.sep, '/')]
+    })
+  }
+
+  return walk(publicRoot).sort()
+}
+
 function parseJsoncWithLineComments(content: string) {
   return JSON.parse(
     content
@@ -67,9 +86,7 @@ describe('container image contract', () => {
   })
 
   it('keeps public PNG assets limited to deployed application content', () => {
-    const publicPngFiles = readdirSync(path.join(process.cwd(), 'public'))
-      .filter(fileName => fileName.endsWith('.png'))
-      .sort()
+    const publicPngFiles = listPublicPngFiles()
 
     expect(publicPngFiles).toEqual(['logo-small.png'])
   })

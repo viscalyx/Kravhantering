@@ -6,6 +6,7 @@ import {
   DEMO_USER_MARKER_VALUE,
   main,
   mergeDemoUsersIntoRealm,
+  normalizeDemoUsersDocument,
   syncLiveDemoUsers,
 } from '../keycloak-demo-users.mjs'
 
@@ -104,6 +105,25 @@ describe('keycloak-demo-users', () => {
     expect(merged.users[1]?.attributes?.[DEMO_USER_MARKER_ATTRIBUTE]).toEqual([
       DEMO_USER_MARKER_VALUE,
     ])
+  })
+
+  it('rejects duplicate usernames before merging or syncing', () => {
+    const document = buildDemoUsersDocument(devRealm, {
+      generatedAt: '2026-05-24T00:00:00.000Z',
+    })
+
+    expect(() =>
+      normalizeDemoUsersDocument({
+        ...document,
+        users: [
+          ...document.users,
+          {
+            ...document.users[0],
+            firstName: 'Duplicate',
+          },
+        ],
+      }),
+    ).toThrow('Demo users document contains duplicate username(s): ada.admin')
   })
 
   it('syncs live Keycloak users by adding, updating, adopting, and deleting demo users', async () => {
