@@ -15,6 +15,8 @@ Use this topology only when an all-in-one internal deployment model is
 approved. For the enterprise topology with external SQL Server and external
 IdP, use [rhel10-production-deploy.md](./rhel10-production-deploy.md).
 
+![Kravhantering Infographic Single Node Access Flow](images/infographic-single-node-access-flow.png)
+
 ## Release Inputs
 
 The internal release repository must provide these files from the same release:

@@ -74,6 +74,10 @@ The production deployment bundle is also uploaded to GitHub Releases as:
 - `kravhantering-production-deploy-<version>.tar.gz`
 - `kravhantering-production-deploy-<version>.tar.gz.sha256`
 
+Markdown files in the deployment bundle bring along local image links. Keep
+release-guide diagrams under `docs/images/`; do not store documentation-only
+images in `public/`, which is copied into the application runtime image.
+
 See [rhel10-production-deploy.md](./rhel10-production-deploy.md) for the
 enterprise app-node workflow with external SQL Server and external IdP. See
 [rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md)
