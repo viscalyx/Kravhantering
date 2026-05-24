@@ -27,7 +27,7 @@ Local helper value:
 - `SQLSERVER_HOST_PORT` can be used by future local Compose generation when a
   host port is needed.
 
-For local PoC/demo runs, prefer a loopback-only value such as
+For local test runs, prefer a loopback-only value such as
 `127.0.0.1:1433` so SQL Server is not exposed on every host interface.
 
 ## Runtime Volume
@@ -35,17 +35,15 @@ For local PoC/demo runs, prefer a loopback-only value such as
 The SQL Server data directory is `/var/opt/mssql`. Compose generation should
 mount a named volume there so database files survive container restarts.
 
-PR, pre-release, and release smoke-test flows should use a run-specific
-volume and remove it after collecting logs and status. Local PoC/demo may use
-a stable named volume and should document a reset command in the later
-Compose phase.
+PR, pre-release, release smoke-test, and local test flows should use a
+run-specific volume and remove it after collecting logs and status.
 
 The SQL Server container remains the database engine only. Migrations,
 required seed, demo seed, and release-smoke data stay in the `db-job` flow.
 
 ## Sensitive Values
 
-These values are sensitive outside local demo and smoke-test contexts:
+These values are sensitive outside local test and smoke-test contexts:
 
 - `MSSQL_SA_PASSWORD`
 

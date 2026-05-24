@@ -160,6 +160,11 @@ describe('trusted container release helpers', () => {
         'docs/rhel10-production-single-node-internal-deploy.md',
       ),
     ).toBe(true)
+    expect(isReleaseRelevantPath('typeorm/seed-dogfood.mjs')).toBe(true)
+    expect(isReleaseRelevantPath('scripts/keycloak-demo-users.mjs')).toBe(true)
+    expect(
+      isReleaseRelevantPath('dev/keycloak/realm-kravhantering-dev.json'),
+    ).toBe(true)
     expect(isReleaseRelevantPath('docs/prompt-faser.md')).toBe(false)
     expect(isReleaseRelevantPath('tests/unit/example.test.ts')).toBe(false)
   })
@@ -563,6 +568,12 @@ describe('trusted container release helpers', () => {
         'keycloak/realm-kravhantering-production.template.json',
       )
       expect(result.files).toContain(
+        'keycloak/demo-users.not-for-production.json',
+      )
+      expect(result.files).toContain('demo-seed/seed.mjs')
+      expect(result.files).toContain('demo-seed/seed-dogfood.mjs')
+      expect(result.files).toContain('scripts/keycloak-demo-users.mjs')
+      expect(result.files).toContain(
         'nginx/templates/single-node-tls.conf.template',
       )
       expect(result.files).not.toContain('nginx/conf.d/single-node-tls.conf')
@@ -590,6 +601,25 @@ describe('trusted container release helpers', () => {
       expect(singleNodeCompose).not.toContain('\n  db-bootstrap:')
       expect(singleNodeCompose).not.toContain('\n  db-migrate:')
       expect(singleNodeCompose).not.toContain('\n  db-seed-required:')
+      const demoUsers = JSON.parse(
+        fs.readFileSync(
+          path.join(
+            result.bundleRoot,
+            'keycloak/demo-users.not-for-production.json',
+          ),
+          'utf8',
+        ),
+      )
+      expect(demoUsers.users).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            username: 'ada.admin',
+          }),
+        ]),
+      )
+      expect(demoUsers.users[0]?.attributes).toHaveProperty(
+        'kravhanteringDemoUser',
+      )
       const appRuntimeBlock =
         singleNodeCompose.match(
           /\n {2}app-runtime:[\s\S]*?\n\n {2}nginx:/,

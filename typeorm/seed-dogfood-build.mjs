@@ -11,7 +11,7 @@
 import {
   AREA_PREFIX_BY_ID,
   DOGFOOD_AREAS,
-  DOGFOOD_KH_POC_INDEXES,
+  DOGFOOD_KH_INFOR_INDEXES,
   DOGFOOD_KRAV,
   DOGFOOD_NEEDS_REFS,
   DOGFOOD_NORMS,
@@ -24,7 +24,7 @@ import {
   REQUIREMENT_ID_BASE,
   SEED_TS,
   SPEC_KH,
-  SPEC_KH_POC,
+  SPEC_KH_INFOR,
   SPECIFICATION_ITEM_ID_BASE,
   SPECIFICATION_LOCAL_ID_BASE,
   VERSION_ID_BASE,
@@ -328,24 +328,24 @@ export function appendDogfoodSeed(SEED_DATA) {
   )
   for (const row of specifications.rows) {
     const id = row[specIdIdx]
-    if (id === SPEC_KH || id === SPEC_KH_POC) {
+    if (id === SPEC_KH || id === SPEC_KH_INFOR) {
       row[specSeqIdx] = (specLocalSeq[id] || 0) + 1
     }
   }
 
   // ---- requirements_specification_items -----------------------------------------
-  // Every Krav gets linked to KH; a curated subset is also linked to KH-POC.
+  // Every Krav gets linked to KH; a curated subset is also linked to KH-INFOR.
   const items = tableSection(SEED_DATA, 'requirements_specification_items')
-  const pocIndexSet = new Set(DOGFOOD_KH_POC_INDEXES)
+  const inforIndexSet = new Set(DOGFOOD_KH_INFOR_INDEXES)
   // Needs-references are specification-scoped: an item's needs_reference_id must
   // belong to the same specification. Build per-specification lists.
   const khNeedsRefIds = []
-  const khPocNeedsRefIds = []
+  const khInforNeedsRefIds = []
   for (let i = 0; i < DOGFOOD_NEEDS_REFS.length; i += 1) {
     const id = needsRefIds[i]
     if (DOGFOOD_NEEDS_REFS[i].spec === SPEC_KH) khNeedsRefIds.push(id)
-    else if (DOGFOOD_NEEDS_REFS[i].spec === SPEC_KH_POC)
-      khPocNeedsRefIds.push(id)
+    else if (DOGFOOD_NEEDS_REFS[i].spec === SPEC_KH_INFOR)
+      khInforNeedsRefIds.push(id)
   }
   let nextItemId = SPECIFICATION_ITEM_ID_BASE + 1
   for (let i = 0; i < minted.length; i += 1) {
@@ -367,24 +367,24 @@ export function appendDogfoodSeed(SEED_DATA) {
       SEED_TS, // status_updated_at
     ])
   }
-  for (const idx of DOGFOOD_KH_POC_INDEXES) {
-    if (!pocIndexSet.has(idx)) continue
+  for (const idx of DOGFOOD_KH_INFOR_INDEXES) {
+    if (!inforIndexSet.has(idx)) continue
     const m = minted[idx]
     if (!m) {
       throw new Error(
-        `Dogfood seed: KH-POC index ${idx} has no minted requirement`,
+        `Dogfood seed: KH-INFOR index ${idx} has no minted requirement`,
       )
     }
     items.rows.push([
       nextItemId++,
-      SPEC_KH_POC,
+      SPEC_KH_INFOR,
       m.requirementId,
       m.versionId,
       null,
       null,
       SEED_TS,
-      // For PoC we mark most items as "Inkluderad" since work hasn't started
-      // there yet; the specification locals override with their own status.
+      // For the controlled introduction we mark most items as "Inkluderad";
+      // the specification locals override with their own status.
       ID.itemStatus.inkluderad,
       null,
       SEED_TS,
@@ -395,7 +395,7 @@ export function appendDogfoodSeed(SEED_DATA) {
     requirementsAdded: minted.length,
     specificationsAdded: DOGFOOD_SPECIFICATIONS.length,
     specificationLocalsAdded: DOGFOOD_SPECIFICATION_LOCALS.length,
-    specificationItemsAdded: minted.length + DOGFOOD_KH_POC_INDEXES.length,
+    specificationItemsAdded: minted.length + DOGFOOD_KH_INFOR_INDEXES.length,
     needsRefsAdded: DOGFOOD_NEEDS_REFS.length,
   }
 }

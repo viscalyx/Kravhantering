@@ -5,6 +5,7 @@ import {
   buildReadonlyBrowseConfig,
   createBootstrapAdminConnectionString,
   createMssqlConfig,
+  DEMO_RESET_TABLES,
   ensureReadonlySqlServerAccess,
   formatReadonlyBrowseConfig,
   getSqlServerDatabaseUrl,
@@ -15,6 +16,7 @@ import {
   MIGRATIONS_DIR,
   main,
   parseSqlServerConnectionString,
+  resetDemoSqlServerData,
   resetSqlServerDatabase,
   runSqlServerMigrations,
   seedSqlServerDatabase,
@@ -416,6 +418,7 @@ describe('db-sqlserver-admin.mjs', () => {
 
   it('runs the selected SQL Server seed profile through an injected DataSource', async () => {
     let dataSourceOptions
+    const query = vi.fn(async () => undefined)
     const destroy = vi.fn(async () => undefined)
     const initialize = vi.fn(async () => undefined)
     const seedDemoDatabaseImpl = vi.fn(async () => 7)
@@ -425,6 +428,7 @@ describe('db-sqlserver-admin.mjs', () => {
       }
       destroy = destroy
       initialize = initialize
+      query = query
     }
 
     const result = await seedSqlServerDatabase(
@@ -442,8 +446,12 @@ describe('db-sqlserver-admin.mjs', () => {
     expect(seedDemoDatabaseImpl).toHaveBeenCalledWith(
       expect.any(FakeDataSource),
     )
+    expect(query).toHaveBeenCalledWith(
+      'DELETE FROM [requirement_version_requirement_packages]',
+    )
     expect(destroy).toHaveBeenCalled()
     expect(result).toEqual({
+      demoResetTables: DEMO_RESET_TABLES.length,
       insertedRows: 7,
       profile: 'demo',
       readonlyAccessConfigured: false,
@@ -501,9 +509,7 @@ describe('db-sqlserver-admin.mjs', () => {
     await expect(loadSeedProfile('demo')).resolves.toBeTypeOf('function')
     await expect(
       loadSeedProfile('demo', { demoSeedPath: '/tmp/missing-seed-demo.mjs' }),
-    ).rejects.toThrow(
-      'seed:demo is not available in the production db-job image',
-    )
+    ).rejects.toThrow('seed:demo requires demo seed files mounted')
     await expect(
       loadSeedProfile('required', {
         requiredSeedPath: '/tmp/missing-seed-required.mjs',
@@ -544,6 +550,7 @@ describe('db-sqlserver-admin.mjs', () => {
     expect(loadedSeedProfile).toHaveBeenCalledWith(expect.any(FakeDataSource))
     expect(dataSourceOptions.type).toBe('mssql')
     expect(result).toEqual({
+      demoResetTables: 0,
       insertedRows: 9,
       profile: 'required',
       readonlyAccessConfigured: false,
@@ -556,6 +563,7 @@ describe('db-sqlserver-admin.mjs', () => {
     class FakeDataSource {
       destroy = vi.fn(async () => undefined)
       initialize = vi.fn(async () => undefined)
+      query = vi.fn(async () => undefined)
     }
 
     const requiredExitCode = await main(['seed:required'], {
@@ -594,6 +602,28 @@ describe('db-sqlserver-admin.mjs', () => {
     expect(log).toHaveBeenCalledWith(
       'SQL Server demo seed completed (4 inserted rows).',
     )
+    expect(log).toHaveBeenCalledWith(
+      `SQL Server demo seed reset ${DEMO_RESET_TABLES.length} non-required tables before seeding.`,
+    )
+  })
+
+  it('keeps demo reset tables aligned with the demo seed profile', async () => {
+    const { DEMO_SEED_TABLES } = await import('../../typeorm/seed.mjs')
+
+    expect(DEMO_RESET_TABLES).toEqual([...DEMO_SEED_TABLES].reverse())
+  })
+
+  it('clears non-required demo tables before reseeding', async () => {
+    const query = vi.fn(async () => undefined)
+
+    await expect(
+      resetDemoSqlServerData({ query }, { demoResetTables: ['requirements'] }),
+    ).resolves.toEqual({ tablesCleared: 1 })
+
+    expect(query).toHaveBeenNthCalledWith(1, 'DELETE FROM [requirements]')
+    expect(query.mock.calls[1]?.[0]).toContain(
+      "DBCC CHECKIDENT ('requirements'",
+    )
   })
 
   it('runs setup with required seed before demo seed', async () => {
@@ -625,6 +655,7 @@ describe('db-sqlserver-admin.mjs', () => {
     class FakeDataSource {
       destroy = vi.fn(async () => undefined)
       initialize = vi.fn(async () => undefined)
+      query = vi.fn(async () => undefined)
       runMigrations = runMigrations
     }
 

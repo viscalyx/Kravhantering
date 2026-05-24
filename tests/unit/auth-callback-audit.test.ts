@@ -277,7 +277,7 @@ describe('auth callback security audit events', () => {
     const GET = await importGet()
     const response = await GET(
       buildCallbackRequest(
-        'http://poc.example.test/api/auth/callback?code=abc',
+        'http://test.example.test/api/auth/callback?code=abc',
         {
           accept: 'text/html',
           secFetchDest: 'document',

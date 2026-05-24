@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   AREA_PREFIX_BY_ID,
   DOGFOOD_AREAS,
-  DOGFOOD_KH_POC_INDEXES,
+  DOGFOOD_KH_INFOR_INDEXES,
   DOGFOOD_KRAV,
   DOGFOOD_NORMS,
   DOGFOOD_OWNERS,
@@ -11,7 +11,7 @@ import {
   DOGFOOD_SPECIFICATIONS,
   ID,
   SPEC_KH,
-  SPEC_KH_POC,
+  SPEC_KH_INFOR,
 } from '../../typeorm/seed-dogfood.mjs'
 import { appendDogfoodSeed } from '../../typeorm/seed-dogfood-build.mjs'
 
@@ -240,22 +240,22 @@ describe('dogfood seed inventory', () => {
     expect(DOGFOOD_SPECIFICATIONS).toHaveLength(2)
   })
 
-  it('specification-local entries reference Krav that are also in KH-POC', () => {
-    const poc = new Set(DOGFOOD_KH_POC_INDEXES)
-    expect(poc.size).toBe(DOGFOOD_KH_POC_INDEXES.length)
-    for (const idx of DOGFOOD_KH_POC_INDEXES) {
+  it('specification-local entries reference Krav that are also in KH-INFOR', () => {
+    const infor = new Set(DOGFOOD_KH_INFOR_INDEXES)
+    expect(infor.size).toBe(DOGFOOD_KH_INFOR_INDEXES.length)
+    for (const idx of DOGFOOD_KH_INFOR_INDEXES) {
       expect(idx).toBeGreaterThanOrEqual(0)
       expect(idx).toBeLessThan(DOGFOOD_KRAV.length)
     }
     for (const pl of DOGFOOD_SPECIFICATION_LOCALS) {
-      expect(poc.has(pl.kravIdx)).toBe(true)
+      expect(infor.has(pl.kravIdx)).toBe(true)
       expect(DOGFOOD_KRAV[pl.kravIdx]).toBeDefined()
     }
   })
 })
 
 describe('appendDogfoodSeed', () => {
-  it('produces KH and KH-POC specifications with expected items and all v1 Publicerad', () => {
+  it('produces KH and KH-INFOR specifications with expected items and all v1 Publicerad', () => {
     const seed = emptySeed()
     const summary = appendDogfoodSeed(seed)
 
@@ -264,20 +264,20 @@ describe('appendDogfoodSeed', () => {
 
     const pkgs = seed.requirements_specifications.rows
     const kh = pkgs.find(r => r[0] === SPEC_KH)
-    const khPoc = pkgs.find(r => r[0] === SPEC_KH_POC)
+    const khInfor = pkgs.find(r => r[0] === SPEC_KH_INFOR)
     expect(kh).toBeDefined()
-    expect(khPoc).toBeDefined()
+    expect(khInfor).toBeDefined()
     expect(kh?.[6]).toBe('KH')
-    expect(khPoc?.[6]).toBe('KH-POC')
+    expect(khInfor?.[6]).toBe('KH-INFOR')
     expect(kh?.[8]).toBe(ID.specLifecycle.utveckling)
-    expect(khPoc?.[8]).toBe(ID.specLifecycle.inforande)
+    expect(khInfor?.[8]).toBe(ID.specLifecycle.inforande)
 
     const items = seed.requirements_specification_items.rows
     expect(items.filter(r => r[1] === SPEC_KH)).toHaveLength(
       DOGFOOD_KRAV.length,
     )
-    expect(items.filter(r => r[1] === SPEC_KH_POC)).toHaveLength(
-      DOGFOOD_KH_POC_INDEXES.length,
+    expect(items.filter(r => r[1] === SPEC_KH_INFOR)).toHaveLength(
+      DOGFOOD_KH_INFOR_INDEXES.length,
     )
 
     // All dogfood requirement_versions are v1 + Publicerad
@@ -303,10 +303,10 @@ describe('appendDogfoodSeed', () => {
     const intCount = DOGFOOD_KRAV.filter(k => k.area === 1).length
     expect(intArea?.[5]).toBe(39 + intCount)
 
-    // Specification locals appended for KH-POC only
+    // Specification locals appended for KH-INFOR only
     const locals = seed.specification_local_requirements.rows
     expect(locals.filter(r => r[1] === SPEC_KH)).toHaveLength(0)
-    expect(locals.filter(r => r[1] === SPEC_KH_POC)).toHaveLength(
+    expect(locals.filter(r => r[1] === SPEC_KH_INFOR)).toHaveLength(
       DOGFOOD_SPECIFICATION_LOCALS.length,
     )
   })

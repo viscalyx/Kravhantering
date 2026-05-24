@@ -12,7 +12,6 @@ export const DEFAULT_TLS_DIR = './tmp/container-tls'
 export const DEFAULT_PODMAN_COMPOSE_PROVIDER = 'podman-compose'
 export const DEFAULT_PODMAN_STORAGE_DRIVER = 'vfs'
 export const DEFAULT_TEST_SQLSERVER_HOST_PORT = '127.0.0.1:15433'
-export const DEFAULT_DEMO_SQLSERVER_HOST_PORT = '127.0.0.1:15434'
 export const DEFAULT_RELEASE_SMOKE_SQLSERVER_HOST_PORT = '127.0.0.1:15435'
 export const LOCAL_APP_IMAGE_NAME = 'localhost/kravhantering/app-runtime'
 export const LOCAL_DB_JOB_IMAGE_NAME = 'localhost/kravhantering/db-job'
@@ -28,8 +27,8 @@ const ENV_LOCAL_FILES = [
 ]
 
 const USAGE = `Usage:
-  node scripts/containers/run-local-stack.mjs up [--mode <test|demo|release-smoke>] [--run-id <id>] [--skip-build] [--release-images-from-lock]
-  node scripts/containers/run-local-stack.mjs down [--mode <test|demo|release-smoke>]
+  node scripts/containers/run-local-stack.mjs up [--mode <test|release-smoke>] [--run-id <id>] [--skip-build] [--release-images-from-lock]
+  node scripts/containers/run-local-stack.mjs down [--mode <test|release-smoke>]
 
 Options:
   --compose-file <path>  Generated Compose file path
@@ -41,8 +40,8 @@ Options:
   --state-file <path>    Local state file path
   --sqlserver-host-port <value>
   --tls-dir <path>       Runtime TLS directory
-  --mode <test|demo|release-smoke>
-                         test and release-smoke use run-specific volumes; demo is stable`
+  --mode <test|release-smoke>
+                         test and release-smoke use run-specific volumes`
 
 function readNonEmpty(value) {
   if (typeof value !== 'string') return undefined
@@ -81,7 +80,7 @@ export function parseArgs(args) {
   }
 
   const mode = readNonEmpty(options.mode) ?? 'test'
-  if (!['test', 'demo', 'release-smoke'].includes(mode)) {
+  if (!['test', 'release-smoke'].includes(mode)) {
     throw new Error(`Unsupported local stack mode: ${mode}`)
   }
 
@@ -121,15 +120,13 @@ export function createLocalStackConfig(options = {}) {
   const runId =
     options.runId ??
     `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-  const suffix = mode === 'demo' ? 'demo' : `${mode}-${runId}`
+  const suffix = `${mode}-${runId}`
   const projectName = `kravhantering-container-stack-${suffix}`
   const sqlServerHostPort =
     options.sqlServerHostPort ??
-    (mode === 'demo'
-      ? DEFAULT_DEMO_SQLSERVER_HOST_PORT
-      : mode === 'release-smoke'
-        ? DEFAULT_RELEASE_SMOKE_SQLSERVER_HOST_PORT
-        : DEFAULT_TEST_SQLSERVER_HOST_PORT)
+    (mode === 'release-smoke'
+      ? DEFAULT_RELEASE_SMOKE_SQLSERVER_HOST_PORT
+      : DEFAULT_TEST_SQLSERVER_HOST_PORT)
   const appRuntimeImage = readEnvImageConfig(env, 'APP_RUNTIME', {
     image: LOCAL_APP_IMAGE_NAME,
     source: 'local-build',
@@ -437,7 +434,7 @@ function projectNameFromContainerName(name) {
 }
 
 function isEphemeralMode(mode) {
-  return mode !== 'demo'
+  return ['test', 'release-smoke'].includes(mode)
 }
 
 export function parseLocalTestProjectsFromPs(psText, currentProjectName) {
@@ -767,7 +764,7 @@ async function up(config, options = {}) {
   for (const service of ['db-bootstrap', 'db-migrate', 'db-seed-required']) {
     runDatabaseJob(service, runtimeConfig, options)
   }
-  if (runtimeConfig.mode === 'demo' || runtimeConfig.mode === 'release-smoke') {
+  if (runtimeConfig.mode === 'release-smoke') {
     runDatabaseJob('db-seed-demo', runtimeConfig, options)
   }
 

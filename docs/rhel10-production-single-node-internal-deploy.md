@@ -655,6 +655,86 @@ These are the realm JSON values that normally need site-specific changes:
 }
 ```
 
+### Optional Test and Development Demo Users
+
+Use this only for disposable test or development environments. The release
+bundle includes `keycloak/demo-users.not-for-production.json`, generated from
+the repository's dev Keycloak realm so new documented test users are carried
+into future release artifacts. The users use non-production credentials and
+must never be imported into a production realm.
+
+Keycloak imports the realm JSON only when the `keycloak-data` volume is empty.
+Before first startup, or before intentionally recreating an empty Keycloak
+volume, merge the generated demo users into the realm import file:
+
+```bash
+sudo cp \
+  /etc/kravhantering/keycloak/realm-kravhantering-production.json \
+  /tmp/realm-kravhantering-production.json
+sudo chown kravhantering:kravhantering \
+  /tmp/realm-kravhantering-production.json
+
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+set -a
+. /etc/kravhantering/release.env
+set +a
+
+DEMO_USERS_FILE=$PWD/keycloak/demo-users.not-for-production.json
+DEMO_USERS_TARGET=/workspace/keycloak/demo-users.not-for-production.json
+SCRIPT_FILE=$PWD/scripts/keycloak-demo-users.mjs
+SCRIPT_TARGET=/workspace/scripts/keycloak-demo-users.mjs
+REALM_FILE=/tmp/realm-kravhantering-production.json
+REALM_TARGET=/workspace/keycloak/realm-kravhantering-production.json
+
+podman run --rm --pull=never --entrypoint node --user 0:0 \
+  --volume "$SCRIPT_FILE:$SCRIPT_TARGET:ro" \
+  --volume "$DEMO_USERS_FILE:$DEMO_USERS_TARGET:ro" \
+  --volume "$REALM_FILE:$REALM_TARGET:rw" \
+  "$DB_JOB_IMAGE_REF" \
+  "$SCRIPT_TARGET" merge-file \
+  --users "$DEMO_USERS_TARGET" \
+  --realm-file "$REALM_TARGET"
+
+exit
+
+sudo install -o root -g kravhantering -m 0640 \
+  /tmp/realm-kravhantering-production.json \
+  /etc/kravhantering/keycloak/realm-kravhantering-production.json
+sudo rm -f /tmp/realm-kravhantering-production.json
+sudo chcon -R -t container_file_t /etc/kravhantering/keycloak
+```
+
+If the Keycloak volume already exists, changing the realm JSON is not enough.
+After `keycloak` is running, reconcile the live realm through the Keycloak
+admin API. The sync adds, updates and removes generated demo users, adopts
+same-username users into the demo set and preserves unrelated users:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+set -a
+. /etc/kravhantering/release.env
+set +a
+
+STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+DEMO_USERS_FILE=$PWD/keycloak/demo-users.not-for-production.json
+DEMO_USERS_TARGET=/workspace/keycloak/demo-users.not-for-production.json
+SCRIPT_FILE=$PWD/scripts/keycloak-demo-users.mjs
+SCRIPT_TARGET=/workspace/scripts/keycloak-demo-users.mjs
+
+podman run --rm --pull=never --network "$STACK_NETWORK" \
+  --entrypoint node --user 0:0 \
+  --env-file /etc/kravhantering/keycloak.env \
+  --volume "$SCRIPT_FILE:$SCRIPT_TARGET:ro" \
+  --volume "$DEMO_USERS_FILE:$DEMO_USERS_TARGET:ro" \
+  "$DB_JOB_IMAGE_REF" \
+  "$SCRIPT_TARGET" sync-live \
+  --users "$DEMO_USERS_TARGET" \
+  --base-url http://keycloak:8080 \
+  --realm kravhantering-production
+```
+
 ## TLS Materials
 
 Install the server certificate, private key and issuing CA certificate:
@@ -737,7 +817,37 @@ podman run --rm --network "$STACK_NETWORK" \
 podman run --rm --network "$STACK_NETWORK" \
   --env-file /etc/kravhantering/db-job.env \
   "$DB_JOB_IMAGE_REF" seed:required
+```
 
+Optional, test and development only: run `seed:demo` before the first full
+stack start when the database is disposable and should match the release's
+current demo fixtures. This command is destructive: it removes all non-required
+database rows before inserting bundled demo data. Skip it for production or any
+database that contains data to keep.
+
+```bash
+DEMO=$PWD/demo-seed
+TYPEORM=/workspace/typeorm
+DOG=seed-dogfood.mjs
+DOG_BUILD=seed-dogfood-build.mjs
+RET_BUILD=seed-archiving-retention-build.mjs
+
+podman run --rm --network "$STACK_NETWORK" \
+  --env-file /etc/kravhantering/db-job.env \
+  --volume "$DEMO/seed.mjs:$TYPEORM/seed.mjs:ro" \
+  --volume "$DEMO/$DOG:$TYPEORM/$DOG:ro" \
+  --volume "$DEMO/$DOG_BUILD:$TYPEORM/$DOG_BUILD:ro" \
+  --volume "$DEMO/$RET_BUILD:$TYPEORM/$RET_BUILD:ro" \
+  "$DB_JOB_IMAGE_REF" seed:demo
+```
+
+The production `db-job` image still contains only migrations and required seed
+code; demo seed files are mounted from the release bundle only for this
+explicit command.
+
+Start the long-running services:
+
+```bash
 podman compose --env-file /etc/kravhantering/release.env \
   -f compose/single-node.compose.yml up -d
 ```
@@ -745,10 +855,6 @@ podman compose --env-file /etc/kravhantering/release.env \
 If the printed resolver differs from `NGINX_RESOLVER`, update
 `/etc/kravhantering/release.env`, reload it in the shell, and rerun
 `podman compose up -d` before checking readiness.
-
-Do not run `seed:demo` in production. The production `db-job` image contains
-only the required seed entrypoint; demo seed data is local/demo and
-release-smoke-only.
 
 The Compose file intentionally contains only long-running services. The
 database jobs are release operations run with `podman run --rm` against the
@@ -1072,6 +1178,29 @@ configuration change.
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
      "$DB_JOB_IMAGE_REF" seed:required
+   ```
+
+   For disposable test and development deployments that use bundled demo users,
+   rerun the live sync from
+   [Optional Test and Development Demo Users](#optional-test-and-development-demo-users)
+   while `keycloak` is running. For disposable test and development databases
+   that should match the new release's current fixtures, rerun the destructive
+   demo seed after `seed:required`:
+
+   ```bash
+   DEMO=$PWD/demo-seed
+   TYPEORM=/workspace/typeorm
+   DOG=seed-dogfood.mjs
+   DOG_BUILD=seed-dogfood-build.mjs
+   RET_BUILD=seed-archiving-retention-build.mjs
+
+   podman run --rm --network "$STACK_NETWORK" \
+     --env-file /etc/kravhantering/db-job.env \
+     --volume "$DEMO/seed.mjs:$TYPEORM/seed.mjs:ro" \
+     --volume "$DEMO/$DOG:$TYPEORM/$DOG:ro" \
+     --volume "$DEMO/$DOG_BUILD:$TYPEORM/$DOG_BUILD:ro" \
+     --volume "$DEMO/$RET_BUILD:$TYPEORM/$RET_BUILD:ro" \
+     "$DB_JOB_IMAGE_REF" seed:demo
    ```
 
    If the printed resolver differs from `NGINX_RESOLVER`, update

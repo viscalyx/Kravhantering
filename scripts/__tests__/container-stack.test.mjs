@@ -41,7 +41,7 @@ describe('container stack helpers', () => {
     return subprocess
   }
 
-  it('plans run-specific test and release-smoke stack names with stable demo stack names', () => {
+  it('plans run-specific test and release-smoke stack names', () => {
     const testConfig = createLocalStackConfig({
       mode: 'test',
       runId: 'abc123',
@@ -50,11 +50,6 @@ describe('container stack helpers', () => {
       mode: 'release-smoke',
       runId: 'smoke123',
     })
-    const demoConfig = createLocalStackConfig({
-      mode: 'demo',
-      runId: 'ignored',
-    })
-
     expect(testConfig).toMatchObject({
       projectName: 'kravhantering-container-stack-test-abc123',
       sqlServerHostPort: '127.0.0.1:15433',
@@ -66,11 +61,6 @@ describe('container stack helpers', () => {
       sqlServerHostPort: DEFAULT_RELEASE_SMOKE_SQLSERVER_HOST_PORT,
       sqlServerVolumeName:
         'kravhantering-container-stack-release-smoke-smoke123-sqlserver-data',
-    })
-    expect(demoConfig).toMatchObject({
-      projectName: 'kravhantering-container-stack-demo',
-      sqlServerHostPort: '127.0.0.1:15434',
-      sqlServerVolumeName: 'kravhantering-container-stack-demo-sqlserver-data',
     })
     expect(podmanComposeArgs(testConfig, ['up', '-d', 'sqlserver'])).toEqual([
       'compose',
@@ -93,7 +83,7 @@ describe('container stack helpers', () => {
       parseLocalStackArgs([
         'up',
         '--mode',
-        'demo',
+        'test',
         '--skip-build',
         '--run-id',
         'run1',
@@ -102,7 +92,7 @@ describe('container stack helpers', () => {
       ]),
     ).toMatchObject({
       command: 'up',
-      mode: 'demo',
+      mode: 'test',
       runId: 'run1',
       skipBuild: true,
       sqlServerHostPort: '127.0.0.1:16000',

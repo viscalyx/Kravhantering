@@ -1,6 +1,6 @@
 // Dogfood seed: realistic Krav describing the Kravhantering application itself
 // plus a "Kravhantering" Kravunderlag (uniqueId KH) that contains them all and a
-// smaller "Kravhantering PoC införande" specification (uniqueId KH-POC).
+// smaller controlled-introduction specification (uniqueId KH-INFOR).
 //
 // Strategy:
 // - All new IDs use offsets well above the existing seed's max IDs to avoid
@@ -142,7 +142,7 @@ const ID = {
 
 // Dogfood specification IDs (chosen high to avoid clashing with future seed growth)
 const SPEC_KH = 1001
-const SPEC_KH_POC = 1002
+const SPEC_KH_INFOR = 1002
 
 // Starting IDs for generated rows
 const REQUIREMENT_ID_BASE = 10000
@@ -1250,9 +1250,9 @@ const DOGFOOD_KRAV = [
   // KRAV-INSERT-MARKER (do not remove; used during file authoring)
 ]
 
-// Two specifications: the main "Kravhantering" specification (KH) and a smaller PoC
-// specification (KH-POC) that holds a curated subset for demonstrating the Införande
-// lifecycle.
+// Two specifications: the main "Kravhantering" specification (KH) and a
+// smaller controlled-introduction specification (KH-INFOR) that holds a
+// curated subset for demonstrating the Införande lifecycle.
 const DOGFOOD_SPECIFICATIONS = [
   {
     id: SPEC_KH,
@@ -1265,14 +1265,14 @@ const DOGFOOD_SPECIFICATIONS = [
       'Standardiserat kravarbete för plattformen Kravhantering: ett gemensamt kravunderlag som beskriver vad applikationen själv ska kunna, så att förändringar prövas mot ett dogfooded kravregister.',
   },
   {
-    id: SPEC_KH_POC,
-    uniqueId: 'KH-POC',
-    name: 'Kravhantering PoC införande',
+    id: SPEC_KH_INFOR,
+    uniqueId: 'KH-INFOR',
+    name: 'Kravhantering kontrollerat införande',
     responsibility: ID.specRespArea.projekt,
     impl: ID.specImpl.utveckling,
     lifecycle: ID.specLifecycle.inforande,
     businessNeeds:
-      'Pilot-införande av Kravhantering hos en första förvaltning. Underlaget pekar ut den delmängd Krav som krävs för PoC och innehåller underlagslokala varianter där PoC behöver justerade acceptanskriterier.',
+      'Kontrollerat införande av Kravhantering hos en första förvaltning. Underlaget pekar ut den delmängd Krav som krävs för införandet och innehåller underlagslokala varianter där testmiljön behöver justerade acceptanskriterier.',
   },
 ]
 
@@ -1295,52 +1295,53 @@ const DOGFOOD_NEEDS_REFS = [
     spec: SPEC_KH,
     text: 'Reproducerbar utvecklings- och driftmiljö så att teamet kan dogfooda applikationen lokalt.',
   },
-  // KH-POC
+  // KH-INFOR
   {
-    spec: SPEC_KH_POC,
-    text: 'PoC-införande hos en pilotförvaltning för att validera kravregistrets arbetssätt på riktig data.',
+    spec: SPEC_KH_INFOR,
+    text: 'Kontrollerat införande hos en första förvaltning för att validera kravregistrets arbetssätt på realistisk data.',
   },
   {
-    spec: SPEC_KH_POC,
-    text: 'Begränsad omfattning under införande — endast de Krav som behövs för PoC ingår.',
+    spec: SPEC_KH_INFOR,
+    text: 'Begränsad omfattning under införande — endast de Krav som behövs för test- och utvecklingsmiljön ingår.',
   },
 ]
 
-// Specification-local requirements: PoC-specific tweaks of a few Krav. Each entry
-// references the dogfood Krav by its 0-based index in DOGFOOD_KRAV (so the
-// builder can resolve the matching requirement_area_id, category, etc.).
-// kravIdx must point to a Krav that is also linked into KH-POC via
-// DOGFOOD_KH_POC_INDEXES below.
+// Specification-local requirements: controlled-introduction tweaks of a few
+// Krav. Each entry references the dogfood Krav by its 0-based index in
+// DOGFOOD_KRAV (so the builder can resolve the matching requirement_area_id,
+// category, etc.). kravIdx must point to a Krav that is also linked into
+// KH-INFOR via DOGFOOD_KH_INFOR_INDEXES below.
 const DOGFOOD_SPECIFICATION_LOCALS = [
   {
-    spec: SPEC_KH_POC,
+    spec: SPEC_KH_INFOR,
     kravIdx: 3, // ARK middleware krav
     descSuffix:
-      ' I PoC-leveransen accepteras även anonymt åtkomliga hälso-endpoints under /api/health/*.',
+      ' I det kontrollerade införandet accepteras även anonymt åtkomliga hälso-endpoints under /api/health/*.',
     acSuffix:
-      ' Under PoC tillåts dessutom undantag för en intern statussida som visas utan inloggning.',
-    note: 'PoC-undantag för statussida tas bort i full produktionssättning.',
-    needsRefOffset: 4, // index into DOGFOOD_NEEDS_REFS (KH-POC: PoC-införande)
+      ' Under kontrollerat införande tillåts dessutom undantag för en intern statussida som visas utan inloggning.',
+    note: 'Införandeundantag för statussida tas bort i full produktionssättning.',
+    needsRefOffset: 4, // index into DOGFOOD_NEEDS_REFS (KH-INFOR: införande)
     item: ID.itemStatus.avviken,
   },
   {
-    spec: SPEC_KH_POC,
+    spec: SPEC_KH_INFOR,
     kravIdx: 23, // ANV ConfirmModal anchor krav
     descSuffix:
-      ' I PoC ska minst destruktiva åtgärder (radera, arkivera) använda anchorEl-positioneringen.',
+      ' I det kontrollerade införandet ska minst destruktiva åtgärder (radera, arkivera) använda anchorEl-positioneringen.',
     acSuffix:
-      ' Övriga ja/nej-bekräftelser får i PoC visas som centrerad modal utan anchorEl.',
-    note: 'PoC-anpassning för att minska scope; full anchorEl-täckning planeras i nästa version.',
-    needsRefOffset: 5, // KH-POC: Begränsad omfattning
+      ' Övriga ja/nej-bekräftelser får i testmiljön visas som centrerad modal utan anchorEl.',
+    note: 'Införandeanpassning för att minska scope; full anchorEl-täckning planeras i nästa version.',
+    needsRefOffset: 5, // KH-INFOR: Begränsad omfattning
     item: ID.itemStatus.pagaende,
   },
 ]
 
 // Indexes (0-based into DOGFOOD_KRAV) of Krav that should also appear in
-// KH-POC. Picked to cover de Krav som faktiskt är nödvändiga för en PoC:
+// KH-INFOR. Picked to cover de Krav som faktiskt är nödvändiga för ett
+// kontrollerat införande:
 // arkitektur, integration, säkerhet, identitet, behörighet, lagring/version,
 // loggning, drift, data, kvalitetssäkring, rapportering.
-const DOGFOOD_KH_POC_INDEXES = [
+const DOGFOOD_KH_INFOR_INDEXES = [
   0, // ARK App Router
   3, // ARK middleware
   4, // INT MCP
@@ -1363,7 +1364,7 @@ const DOGFOOD_KH_POC_INDEXES = [
 export {
   AREA_PREFIX_BY_ID,
   DOGFOOD_AREAS,
-  DOGFOOD_KH_POC_INDEXES,
+  DOGFOOD_KH_INFOR_INDEXES,
   DOGFOOD_KRAV,
   DOGFOOD_NEEDS_REFS,
   DOGFOOD_NORMS,
@@ -1376,7 +1377,7 @@ export {
   REQUIREMENT_ID_BASE,
   SEED_TS,
   SPEC_KH,
-  SPEC_KH_POC,
+  SPEC_KH_INFOR,
   SPECIFICATION_ITEM_ID_BASE,
   SPECIFICATION_LOCAL_ID_BASE,
   VERSION_ID_BASE,

@@ -88,7 +88,6 @@ services:
       - ./typeorm/seed-dogfood-build.mjs:/workspace/typeorm/seed-dogfood-build.mjs:ro
       - ./typeorm/seed-archiving-retention-build.mjs:/workspace/typeorm/seed-archiving-retention-build.mjs:ro
     profiles:
-      - demo
       - release-smoke
     restart: "no"
 
