@@ -17,6 +17,8 @@ run on the same RHEL host, use
 [rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md).
 For upgrades and rollback, use
 [rhel10-production-upgrade.md](./rhel10-production-upgrade.md).
+To uninstall a first install of this topology, use
+[rhel10-production-uninstall.md](./rhel10-production-uninstall.md).
 
 <!-- markdownlint-disable MD013 -->
 ![Kravhantering Infographic Production Access and Service Flow](images/infographic-production-access-and-service-flow.png)
@@ -500,7 +502,7 @@ When the external IdP is Keycloak, create or update a realm with:
 
 For an already-initialized Keycloak realm, update the user-profile setting
 through the Keycloak admin console or admin API. Replacing the realm template
-and restarting Keycloak only affects a first import, not a live realm.
+and restarting Keycloak only affects a first import, not a running realm.
 
 Do not import the release-smoke realm into production. The smoke-test realm
 contains public test credentials.
@@ -758,6 +760,11 @@ Use the standalone
 [RHEL 10 production planned-downtime upgrade guide](./rhel10-production-upgrade.md)
 to upgrade or roll back the enterprise topology. This deployment guide keeps
 the first-install and day-2 app-node operations in one place.
+
+Use
+[RHEL 10 production uninstall](./rhel10-production-uninstall.md)
+to reverse a first install. Do not use the upgrade rollback checklist as an
+uninstall procedure.
 
 ## Troubleshooting Readiness
 

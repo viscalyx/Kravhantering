@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   bootstrapSqlServerDatabase,
+  clearDemoSqlServerData,
   buildReadonlyBrowseConfig,
   createBootstrapAdminConnectionString,
   createMssqlConfig,
@@ -626,6 +627,77 @@ describe('db-sqlserver-admin.mjs', () => {
     )
   })
 
+  it('clears non-required demo tables without loading demo seed files', async () => {
+    const query = vi.fn(async () => undefined)
+    const destroy = vi.fn(async () => undefined)
+    const initialize = vi.fn(async () => undefined)
+    const loadSeedProfileImpl = vi.fn()
+    class FakeDataSource {
+      destroy = destroy
+      initialize = initialize
+      query = query
+    }
+
+    await expect(
+      clearDemoSqlServerData(
+        'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
+        {
+          dataSourceCtor: FakeDataSource,
+          demoResetTables: ['requirements'],
+          loadSeedProfileImpl,
+        },
+      ),
+    ).resolves.toEqual({ tablesCleared: 1 })
+
+    expect(initialize).toHaveBeenCalled()
+    expect(query).toHaveBeenNthCalledWith(1, 'DELETE FROM [requirements]')
+    expect(loadSeedProfileImpl).not.toHaveBeenCalled()
+    expect(destroy).toHaveBeenCalled()
+  })
+
+  it('requires explicit confirmation before clearing demo data through the CLI', async () => {
+    const error = vi.fn()
+
+    const exitCode = await main(['demo:clear'], {
+      consoleObj: { error, log: vi.fn() },
+      env: {},
+    })
+
+    expect(exitCode).toBe(1)
+    expect(error).toHaveBeenCalledWith(
+      'demo:clear requires --confirm-clear-non-required-data. This clears non-required SQL Server data.',
+    )
+  })
+
+  it('clears demo data through the CLI with explicit confirmation', async () => {
+    const error = vi.fn()
+    const log = vi.fn()
+    class FakeDataSource {
+      destroy = vi.fn(async () => undefined)
+      initialize = vi.fn(async () => undefined)
+      query = vi.fn(async () => undefined)
+    }
+
+    const exitCode = await main(
+      ['demo:clear', '--confirm-clear-non-required-data'],
+      {
+        consoleObj: { error, log },
+        dataSourceCtor: FakeDataSource,
+        demoResetTables: ['requirements'],
+        env: {
+          SQLSERVER_DATABASE_URL:
+            'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
+        },
+      },
+    )
+
+    expect(exitCode).toBe(0)
+    expect(error).not.toHaveBeenCalled()
+    expect(log).toHaveBeenCalledWith(
+      'SQL Server demo data cleared (1 non-required table).',
+    )
+  })
+
   it('runs setup with required seed before demo seed', async () => {
     const events = []
     const error = vi.fn()
@@ -760,7 +832,7 @@ describe('db-sqlserver-admin.mjs', () => {
 
     expect(exitCode).toBe(1)
     expect(error).toHaveBeenCalledWith(
-      'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migrate|seed:required|seed:demo|setup|browse-config>',
+      'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migrate|seed:required|seed:demo|demo:clear|setup|browse-config>',
     )
   })
 
@@ -777,7 +849,7 @@ describe('db-sqlserver-admin.mjs', () => {
 
     expect(exitCode).toBe(1)
     expect(error).toHaveBeenCalledWith(
-      'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migrate|seed:required|seed:demo|setup|browse-config>',
+      'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migrate|seed:required|seed:demo|demo:clear|setup|browse-config>',
     )
   })
 

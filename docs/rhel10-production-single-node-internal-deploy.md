@@ -5,6 +5,7 @@
 <!-- cSpell:words readlink -->
 <!-- cSpell:words ipv4 -->
 <!-- cSpell:words serverAuth subjectAltName -->
+<!-- cSpell:words Mountpoint -->
 
 This guide describes how to install and operate Kravhantering on one clean
 Red Hat Enterprise Linux 10 host from released artifacts only, with nginx,
@@ -16,6 +17,8 @@ approved. For the enterprise topology with external SQL Server and external
 IdP, use [rhel10-production-deploy.md](./rhel10-production-deploy.md).
 For upgrades and rollback, use
 [rhel10-production-single-node-internal-upgrade.md](./rhel10-production-single-node-internal-upgrade.md).
+To uninstall a first install of this topology, use
+[rhel10-production-single-node-internal-uninstall.md](./rhel10-production-single-node-internal-uninstall.md).
 
 ![Kravhantering Infographic Single Node Access Flow](images/infographic-single-node-access-flow.png)
 
@@ -748,11 +751,11 @@ sudo chcon -R -t container_file_t /etc/kravhantering/keycloak
 ```
 
 If the Keycloak volume already exists, changing the realm JSON is not enough.
-After `keycloak` is running, reconcile the live realm as the `kravhantering`
-host user. The container reads the Keycloak admin credentials from
-`/etc/kravhantering/keycloak.env`. The sync adds, updates and removes
-generated demo users, adopts same-username users into the demo set and
-preserves unrelated users:
+After `keycloak` is running, reconcile the running Keycloak realm as the
+`kravhantering` host user. The container reads the Keycloak admin credentials
+from `/etc/kravhantering/keycloak.env`. The sync adds, updates and removes
+generated demo users, adopts same-username users into the demo set and preserves
+unrelated users:
 
 ```bash
 sudo -iu kravhantering
@@ -773,7 +776,7 @@ podman run --rm --pull=never --network "$STACK_NETWORK" \
   --volume "$SCRIPT_FILE:$SCRIPT_TARGET:ro" \
   --volume "$DEMO_USERS_FILE:$DEMO_USERS_TARGET:ro" \
   "$DB_JOB_IMAGE_REF" \
-  "$SCRIPT_TARGET" sync-live \
+  "$SCRIPT_TARGET" demo-users:sync \
   --users "$DEMO_USERS_TARGET" \
   --base-url http://keycloak:8080 \
   --realm kravhantering-production
@@ -1055,7 +1058,8 @@ The realm import file is mainly a first-start bootstrap input. On an initialized
 Keycloak data volume, changing
 `/etc/kravhantering/keycloak/realm-kravhantering-production.json` and
 restarting Keycloak is not a general realm update mechanism; use the Keycloak
-admin API or console for live realm changes unless release notes say otherwise.
+admin API or console for running realm changes unless release notes say
+otherwise.
 
 Stop and remove all long-running containers only for full-stack maintenance:
 
@@ -1104,6 +1108,11 @@ Use the standalone
 [RHEL 10 single-node internal planned-downtime upgrade guide](./rhel10-production-single-node-internal-upgrade.md)
 to upgrade or roll back the all-in-one internal topology. This deployment
 guide keeps the first-install and day-2 single-node operations in one place.
+
+Use
+[RHEL 10 single-node internal uninstall](./rhel10-production-single-node-internal-uninstall.md)
+to reverse a first install. Do not use the upgrade rollback checklist as an
+uninstall procedure.
 
 ## Troubleshooting Readiness
 

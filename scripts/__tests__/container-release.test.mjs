@@ -158,6 +158,9 @@ describe('trusted container release helpers', () => {
     expect(isReleaseRelevantPath('docs/rhel10-production-upgrade.md')).toBe(
       true,
     )
+    expect(isReleaseRelevantPath('docs/rhel10-production-uninstall.md')).toBe(
+      true,
+    )
     expect(
       isReleaseRelevantPath(
         'docs/rhel10-production-single-node-internal-deploy.md',
@@ -166,6 +169,11 @@ describe('trusted container release helpers', () => {
     expect(
       isReleaseRelevantPath(
         'docs/rhel10-production-single-node-internal-upgrade.md',
+      ),
+    ).toBe(true)
+    expect(
+      isReleaseRelevantPath(
+        'docs/rhel10-production-single-node-internal-uninstall.md',
       ),
     ).toBe(true)
     expect(isReleaseRelevantPath('typeorm/seed-dogfood.mjs')).toBe(true)
@@ -551,11 +559,15 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain('compose/single-node.compose.yml')
       expect(result.files).toContain('docs/rhel10-production-deploy.md')
       expect(result.files).toContain('docs/rhel10-production-upgrade.md')
+      expect(result.files).toContain('docs/rhel10-production-uninstall.md')
       expect(result.files).toContain(
         'docs/rhel10-production-single-node-internal-deploy.md',
       )
       expect(result.files).toContain(
         'docs/rhel10-production-single-node-internal-upgrade.md',
+      )
+      expect(result.files).toContain(
+        'docs/rhel10-production-single-node-internal-uninstall.md',
       )
       expect(result.files).toContain(
         'docs/images/infographic-production-access-and-service-flow.png',

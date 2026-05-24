@@ -10,6 +10,8 @@ For a first install, use
 [rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md).
 For the enterprise topology with external SQL Server and external IdP, use
 [rhel10-production-upgrade.md](./rhel10-production-upgrade.md).
+To uninstall a first install, use
+[rhel10-production-single-node-internal-uninstall.md](./rhel10-production-single-node-internal-uninstall.md).
 
 ## Planned-Downtime Upgrade
 
@@ -203,9 +205,9 @@ configuration change.
    ```
 
    For disposable test and development deployments that use bundled demo users,
-   rerun the live realm sync as the `kravhantering` host user while `keycloak`
-   is running. The container reads the Keycloak admin credentials from
-   `/etc/kravhantering/keycloak.env`. The sync adds, updates and removes
+   rerun the running Keycloak realm sync as the `kravhantering` host user while
+   `keycloak` is running. The container reads the Keycloak admin credentials
+   from `/etc/kravhantering/keycloak.env`. The sync adds, updates and removes
    generated demo users, adopts same-username users into the demo set and
    preserves unrelated users:
 
@@ -228,7 +230,7 @@ configuration change.
      --volume "$SCRIPT_FILE:$SCRIPT_TARGET:ro" \
      --volume "$DEMO_USERS_FILE:$DEMO_USERS_TARGET:ro" \
      "$DB_JOB_IMAGE_REF" \
-     "$SCRIPT_TARGET" sync-live \
+     "$SCRIPT_TARGET" demo-users:sync \
      --users "$DEMO_USERS_TARGET" \
      --base-url http://keycloak:8080 \
      --realm kravhantering-production

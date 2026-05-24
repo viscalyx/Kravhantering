@@ -83,6 +83,8 @@ See [rhel10-production-deploy.md](./rhel10-production-deploy.md) for the
 enterprise app-node workflow with external SQL Server and external IdP. See
 [rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md)
 for the controlled all-in-one internal workflow.
+The bundle also includes the matching uninstall guides for reversing a first
+install.
 
 ## Public GHCR Packages
 

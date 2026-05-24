@@ -2,12 +2,13 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   buildDemoUsersDocument,
+  clearDemoUsers,
   DEMO_USER_MARKER_ATTRIBUTE,
   DEMO_USER_MARKER_VALUE,
   main,
   mergeDemoUsersIntoRealm,
   normalizeDemoUsersDocument,
-  syncLiveDemoUsers,
+  syncDemoUsers,
 } from '../keycloak-demo-users.mjs'
 
 function response(data, status = 200) {
@@ -126,7 +127,7 @@ describe('keycloak-demo-users', () => {
     ).toThrow('Demo users document contains duplicate username(s): ada.admin')
   })
 
-  it('syncs live Keycloak users by adding, updating, adopting, and deleting demo users', async () => {
+  it('syncs running Keycloak users by adding, updating, adopting, and deleting demo users', async () => {
     const document = buildDemoUsersDocument(devRealm, {
       generatedAt: '2026-05-24T00:00:00.000Z',
     })
@@ -167,7 +168,7 @@ describe('keycloak-demo-users', () => {
     })
 
     await expect(
-      syncLiveDemoUsers({
+      syncDemoUsers({
         adminPassword: 'admin-password',
         adminUser: 'admin',
         document,
@@ -224,6 +225,41 @@ describe('keycloak-demo-users', () => {
     ])
   })
 
+  it('clears only marked demo users from running Keycloak', async () => {
+    const calls = []
+    const responses = [
+      response({ access_token: 'admin-token' }),
+      response([
+        {
+          attributes: {
+            [DEMO_USER_MARKER_ATTRIBUTE]: [DEMO_USER_MARKER_VALUE],
+          },
+          id: 'u-demo',
+          username: 'ada.admin',
+        },
+        { attributes: {}, id: 'u-site', username: 'site.admin' },
+      ]),
+      noContent(),
+    ]
+    const fetchImpl = vi.fn(async (url, options = {}) => {
+      calls.push({ method: options.method ?? 'GET', url })
+      const next = responses.shift()
+      if (!next) throw new Error(`Unexpected fetch call: ${url}`)
+      return next
+    })
+
+    await expect(
+      clearDemoUsers({
+        adminPassword: 'admin-password',
+        adminUser: 'admin',
+        fetchImpl,
+      }),
+    ).resolves.toEqual({ deleted: 1 })
+
+    expect(calls.map(call => call.method)).toEqual(['POST', 'GET', 'DELETE'])
+    expect(calls[2]?.url).toContain('/users/u-demo')
+  })
+
   it('generates and merges through the CLI with injectable filesystem', async () => {
     const files = new Map([
       ['dev-realm.json', JSON.stringify(devRealm)],
@@ -257,5 +293,123 @@ describe('keycloak-demo-users', () => {
 
     expect(JSON.parse(files.get('realm.json')).users).toHaveLength(2)
     expect(consoleObj.error).not.toHaveBeenCalled()
+  })
+
+  it('syncs running Keycloak demo users through the CLI', async () => {
+    const document = buildDemoUsersDocument(devRealm, {
+      generatedAt: '2026-05-24T00:00:00.000Z',
+    })
+    const files = new Map([['users.json', JSON.stringify(document)]])
+    const fsImpl = {
+      readFileSync: vi.fn(filePath => files.get(filePath)),
+    }
+    const consoleObj = { error: vi.fn(), log: vi.fn() }
+    const responses = [
+      response({ access_token: 'admin-token' }),
+      response([]),
+      noContent(),
+      response([{ id: 'u-ada', username: 'ada.admin' }]),
+      noContent(),
+      response({ id: 'role-admin', name: 'Admin' }),
+      response({ id: 'role-privacy', name: 'PrivacyOfficer' }),
+      response([]),
+      noContent(),
+      noContent(),
+      response([{ id: 'u-rita', username: 'rita.reviewer' }]),
+      noContent(),
+      response({ id: 'role-reviewer', name: 'Reviewer' }),
+      response([]),
+      noContent(),
+    ]
+    const fetchImpl = vi.fn(async () => {
+      const next = responses.shift()
+      if (!next) throw new Error('Unexpected fetch call')
+      return next
+    })
+
+    await expect(
+      main(['demo-users:sync', '--users', 'users.json'], {
+        consoleObj,
+        env: {
+          KEYCLOAK_ADMIN: 'admin',
+          KEYCLOAK_ADMIN_PASSWORD: 'admin-password',
+        },
+        fetchImpl,
+        fsImpl,
+      }),
+    ).resolves.toBe(0)
+
+    expect(consoleObj.error).not.toHaveBeenCalled()
+    expect(consoleObj.log).toHaveBeenCalledWith(
+      'Synced demo users (created 2, updated 0, adopted 0, deleted 0).',
+    )
+  })
+
+  it('requires confirmation before clearing demo users through the CLI', async () => {
+    const consoleObj = { error: vi.fn(), log: vi.fn() }
+
+    await expect(
+      main(['demo-users:clear'], {
+        consoleObj,
+        env: {
+          KEYCLOAK_ADMIN: 'admin',
+          KEYCLOAK_ADMIN_PASSWORD: 'admin-password',
+        },
+      }),
+    ).resolves.toBe(1)
+
+    expect(consoleObj.error).toHaveBeenCalledWith(
+      'demo-users:clear requires --confirm-clear-demo-users. This deletes marked Keycloak demo users.',
+    )
+  })
+
+  it('clears demo users through the CLI with explicit confirmation', async () => {
+    const consoleObj = { error: vi.fn(), log: vi.fn() }
+    const responses = [
+      response({ access_token: 'admin-token' }),
+      response([
+        {
+          attributes: {
+            [DEMO_USER_MARKER_ATTRIBUTE]: [DEMO_USER_MARKER_VALUE],
+          },
+          id: 'u-demo',
+          username: 'ada.admin',
+        },
+      ]),
+      noContent(),
+    ]
+    const fetchImpl = vi.fn(async () => {
+      const next = responses.shift()
+      if (!next) throw new Error('Unexpected fetch call')
+      return next
+    })
+
+    await expect(
+      main(['demo-users:clear', '--confirm-clear-demo-users'], {
+        consoleObj,
+        env: {
+          KEYCLOAK_ADMIN: 'admin',
+          KEYCLOAK_ADMIN_PASSWORD: 'admin-password',
+        },
+        fetchImpl,
+      }),
+    ).resolves.toBe(0)
+
+    expect(consoleObj.error).not.toHaveBeenCalled()
+    expect(consoleObj.log).toHaveBeenCalledWith(
+      'Cleared demo users (deleted 1).',
+    )
+  })
+
+  it('rejects the removed sync-live command', async () => {
+    const consoleObj = { error: vi.fn(), log: vi.fn() }
+
+    await expect(
+      main(['sync-live', '--users', 'users.json'], { consoleObj }),
+    ).resolves.toBe(1)
+
+    expect(consoleObj.error).toHaveBeenLastCalledWith(
+      expect.stringContaining('demo-users:sync'),
+    )
   })
 })
