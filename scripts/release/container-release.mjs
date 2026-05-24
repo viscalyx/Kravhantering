@@ -28,6 +28,7 @@ const RELEVANT_PATH_PREFIXES = [
   'package-lock.json',
   'package.json',
   'public/',
+  'docs/images/',
   'docs/rhel10-production-deploy.md',
   'docs/rhel10-production-single-node-internal-deploy.md',
   'scripts/build-metadata.js',
@@ -426,6 +427,96 @@ function copyBundleEntry(entry, bundleRoot, options = {}) {
   fsImpl.cpSync(source, target, { recursive: true })
 }
 
+const MARKDOWN_IMAGE_PATTERN =
+  /!\[[^\]\n]*\]\((?<target><[^>\n]+>|[^)\s\n]+)(?:\s+(?:"[^"]*"|'[^']*'))?\)/gu
+const MARKDOWN_REMOTE_TARGET_PATTERN = /^[a-z][a-z0-9+.-]*:/iu
+
+function normalizeBundleRelativePath(value) {
+  const normalized = path.posix.normalize(String(value).replaceAll('\\', '/'))
+  if (
+    normalized === '.' ||
+    normalized.startsWith('../') ||
+    path.posix.isAbsolute(normalized)
+  ) {
+    return undefined
+  }
+  return normalized
+}
+
+function markdownImageTargets(content) {
+  return [...String(content).matchAll(MARKDOWN_IMAGE_PATTERN)]
+    .map(match => match.groups?.target?.trim())
+    .filter(Boolean)
+}
+
+function markdownLocalAssetTarget(target) {
+  let localTarget = target.trim()
+  if (localTarget.startsWith('<') && localTarget.endsWith('>')) {
+    localTarget = localTarget.slice(1, -1).trim()
+  }
+
+  localTarget = localTarget.replace(/[?#].*$/u, '')
+  if (
+    !localTarget ||
+    localTarget.startsWith('/') ||
+    localTarget.startsWith('#') ||
+    MARKDOWN_REMOTE_TARGET_PATTERN.test(localTarget)
+  ) {
+    return undefined
+  }
+  return localTarget
+}
+
+export function resolveBundledMarkdownAssets(entry, content) {
+  const sourcePath = normalizeBundleRelativePath(entry.source)
+  const targetPath = normalizeBundleRelativePath(entry.target)
+  if (!sourcePath?.endsWith('.md') || !targetPath?.endsWith('.md')) {
+    return []
+  }
+
+  const assetsByTarget = new Map()
+  const sourceDir = path.posix.dirname(sourcePath)
+  const targetDir = path.posix.dirname(targetPath)
+
+  for (const rawTarget of markdownImageTargets(content)) {
+    const localTarget = markdownLocalAssetTarget(rawTarget)
+    if (!localTarget) continue
+
+    const source = normalizeBundleRelativePath(
+      path.posix.join(sourceDir, localTarget),
+    )
+    const target = normalizeBundleRelativePath(
+      path.posix.join(targetDir, localTarget),
+    )
+    if (!source || !target) {
+      throw new Error(
+        `Bundled Markdown asset link escapes the bundle root: ${rawTarget}`,
+      )
+    }
+    if (source.startsWith('public/')) {
+      throw new Error(
+        `Bundled Markdown ${sourcePath} links to ${source}. Move release documentation images under docs/.`,
+      )
+    }
+    assetsByTarget.set(target, { source, target })
+  }
+
+  return [...assetsByTarget.values()]
+}
+
+function copyBundleMarkdownAssets(entry, bundleRoot, options = {}) {
+  if (!String(entry.source).endsWith('.md')) return
+
+  const cwd = options.cwd ?? process.cwd()
+  const fsImpl = options.fsImpl ?? fs
+  const source = path.resolve(cwd, entry.source)
+  const content = fsImpl.readFileSync(source, 'utf8')
+
+  for (const asset of resolveBundledMarkdownAssets(entry, content)) {
+    copyBundleEntry(asset, bundleRoot, { cwd, fsImpl })
+  }
+}
+
 function copyOptionalFile(source, target, options = {}) {
   const cwd = options.cwd ?? process.cwd()
   const fsImpl = options.fsImpl ?? fs
@@ -480,6 +571,7 @@ export function stageProductionDeploymentBundle(options = {}) {
 
   for (const entry of DEPLOYMENT_BUNDLE_STATIC_ENTRIES) {
     copyBundleEntry(entry, bundleRoot, { cwd, fsImpl })
+    copyBundleMarkdownAssets(entry, bundleRoot, { cwd, fsImpl })
   }
 
   const dynamicFiles = [

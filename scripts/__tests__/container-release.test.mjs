@@ -11,6 +11,7 @@ import {
   ensureGitTag,
   isReleaseRelevantPath,
   renderReleaseNotes,
+  resolveBundledMarkdownAssets,
   selectPreviousReleaseTag,
   stageProductionDeploymentBundle,
 } from '../release/container-release.mjs'
@@ -148,6 +149,11 @@ describe('trusted container release helpers', () => {
   it('identifies release-relevant paths conservatively', () => {
     expect(isReleaseRelevantPath('containers/app/Dockerfile')).toBe(true)
     expect(isReleaseRelevantPath('package-lock.json')).toBe(true)
+    expect(
+      isReleaseRelevantPath(
+        'docs/images/infographic-production-access-and-service-flow.png',
+      ),
+    ).toBe(true)
     expect(isReleaseRelevantPath('docs/rhel10-production-deploy.md')).toBe(true)
     expect(
       isReleaseRelevantPath(
@@ -156,6 +162,40 @@ describe('trusted container release helpers', () => {
     ).toBe(true)
     expect(isReleaseRelevantPath('docs/prompt-faser.md')).toBe(false)
     expect(isReleaseRelevantPath('tests/unit/example.test.ts')).toBe(false)
+  })
+
+  it('resolves local Markdown images for bundled deployment docs', () => {
+    const assets = resolveBundledMarkdownAssets(
+      {
+        source: 'docs/rhel10-production-deploy.md',
+        target: 'docs/rhel10-production-deploy.md',
+      },
+      [
+        '![Local](images/diagram.png)',
+        '![Remote](https://example.test/diagram.png)',
+        '![Absolute](/diagram.png)',
+        '![With title](images/diagram.png "Diagram")',
+      ].join('\n'),
+    )
+
+    expect(assets).toEqual([
+      {
+        source: 'docs/images/diagram.png',
+        target: 'docs/images/diagram.png',
+      },
+    ])
+  })
+
+  it('rejects release documentation images sourced from public', () => {
+    expect(() =>
+      resolveBundledMarkdownAssets(
+        {
+          source: 'docs/rhel10-production-deploy.md',
+          target: 'docs/rhel10-production-deploy.md',
+        },
+        '![Public](../public/diagram.png)',
+      ),
+    ).toThrow('Move release documentation images under docs/')
   })
 
   it('treats bundled single-node deployment docs as release-relevant', () => {
@@ -499,6 +539,18 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain('docs/rhel10-production-deploy.md')
       expect(result.files).toContain(
         'docs/rhel10-production-single-node-internal-deploy.md',
+      )
+      expect(result.files).toContain(
+        'docs/images/infographic-production-access-and-service-flow.png',
+      )
+      expect(result.files).toContain(
+        'docs/images/infographic-single-node-access-flow.png',
+      )
+      expect(result.files).not.toContain(
+        'public/infographic-production-access-and-service-flow.png',
+      )
+      expect(result.files).not.toContain(
+        'public/infographic-single-node-access-flow.png',
       )
       expect(result.files).not.toContain(
         'docs/adr/0001-release-artifact-production-deployment.md',
