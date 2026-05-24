@@ -116,7 +116,7 @@ printf 'S1q!%s\n' "$(openssl rand -hex 14)"
 Regenerate the SQL password if it contains the login name or does not satisfy
 the site password policy.
 
-## Clean RHEL 10 Host
+## Prepare RHEL 10 Host
 
 Install the host as a minimal RHEL 10 server. Recommended baseline:
 
