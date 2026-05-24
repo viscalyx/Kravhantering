@@ -3,7 +3,7 @@
 <!-- cSpell:words coreutils datawriter firewalld fullchain nameserver privkey -->
 <!-- cSpell:words ipv4 resolv -->
 
-This guide describes how to install and upgrade Kravhantering on a clean
+This guide describes how to install and operate Kravhantering on a clean
 Red Hat Enterprise Linux 10 host from released artifacts only. The target host
 does not need a repository clone, development dependencies, GitHub Actions
 checkout, Playwright assets, or source-tree helper scripts.
@@ -15,6 +15,8 @@ external services.
 For the controlled all-in-one internal topology where SQL Server and Keycloak
 run on the same RHEL host, use
 [rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md).
+For upgrades and rollback, use
+[rhel10-production-upgrade.md](./rhel10-production-upgrade.md).
 
 <!-- markdownlint-disable MD013 -->
 ![Kravhantering Infographic Production Access and Service Flow](images/infographic-production-access-and-service-flow.png)
@@ -44,28 +46,45 @@ and registry already contain the approved release assets.
 
 ## Configuration BoM
 
-Before editing templates, record these site values. The names below are
-planning names; the later sections map them to the exact environment variables
-and external IdP settings.
+Before editing templates, record these site values. The table separates values
+that must be planned from defaults or derived values that usually only need
+verification.
 
-- `VERSION`: the release version to install, for example `1.2.3`.
-- `APP_HOST`: the public DNS name without `https://`, for example
-  `kravhantering.example.internal`. Use the same value in app URLs, IdP
-  redirect/logout settings, IdP web origins, TLS certificate SANs and smoke
-  checks.
-- `SQLSERVER_HOST`, `DB_NAME`, `APP_DB_USER`, `APP_DB_PASSWORD`,
-  `DB_JOB_USER` and `DB_JOB_PASSWORD`: the external SQL Server connection
-  values from the DBA. The app runtime and db-job passwords must be different.
-- `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET`: the external
-  IdP client values. `OIDC_CLIENT_SECRET` must match the confidential client
-  secret configured in the IdP.
-- `SESSION_COOKIE_PASSWORD`: a random value with at least 32 characters for
-  encrypted browser sessions.
-- `MCP_CLIENT_ID`: the service-account client id when MCP service tokens are
-  used. The default is `kravhantering-mcp`.
-- `OPENROUTER_API_KEY`, `OPENROUTER_MGMT_API_KEY` and
-  `NEXT_PUBLIC_DEFAULT_MODEL`: optional AI values. Leave them empty unless AI
-  requirement generation is approved for the environment.
+<!-- markdownlint-disable MD013 -->
+| Name | Applies to | Default / derived value | Plan or record when |
+| --- | --- | --- | --- |
+| `VERSION` | Release artifact names | No default | Always record the release version to install, for example `1.2.3`. |
+| `APP_HOST` | App URLs, IdP redirect/logout settings, IdP web origins, TLS certificate SANs and smoke checks | No default | Always record the public DNS name without `https://`, for example `kravhantering.example.internal`. |
+| `NEXT_PUBLIC_SITE_URL` | `NEXT_PUBLIC_SITE_URL` in `app.env` | `https://<APP_HOST>` | Verify after choosing `APP_HOST`; plan only if the public URL cannot use the normal scheme and host. |
+| `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Plan only if the rootless Podman network uses a different DNS resolver. |
+| `SQLSERVER_HOST` | `DB_HOST` in `app.env` and `db-job.env` | No default | Always obtain the external SQL Server host from the DBA. |
+| `DB_PORT` | `DB_PORT` in `app.env` and `db-job.env` | `1433` | Plan only if the DBA provides another SQL Server port. |
+| `DB_NAME` | `DB_NAME` in `app.env` and `db-job.env` | `kravhantering` | Plan only if the DBA provisions a different database name. |
+| `APP_DB_USER` | `DB_USER` in `app.env` | `kravhantering_app` | Plan only if the DBA provisions a different app runtime login/user. |
+| `APP_DB_PASSWORD` | `DB_PASSWORD` in `app.env` | No default | Always obtain or generate a unique app runtime SQL Server password. If the deployment operator generates it, use the SQL Server password fallback in [Generate Unique Secrets](#generate-unique-secrets). |
+| `DB_JOB_USER` | `DB_USER` in `db-job.env` | `kravhantering_job` | Plan only if the DBA provisions a different migration/seed login/user. |
+| `DB_JOB_PASSWORD` | `DB_PASSWORD` in `db-job.env` | No default | Always obtain or generate a unique db-job SQL Server password. Must differ from `APP_DB_PASSWORD`. If the deployment operator generates it, use the SQL Server password fallback in [Generate Unique Secrets](#generate-unique-secrets). |
+| `DB_PASSWORD` | `app.env` and `db-job.env` | Maps to `APP_DB_PASSWORD` in `app.env` and `DB_JOB_PASSWORD` in `db-job.env` | No separate value to plan; verify each file receives the correct password. |
+| `DB_ENCRYPT` | `DB_ENCRYPT` in `app.env` and `db-job.env` | `true` | Plan only if the DBA-approved production SQL Server contract explicitly differs. |
+| `DB_TRUST_SERVER_CERTIFICATE` | `DB_TRUST_SERVER_CERTIFICATE` in `app.env` and `db-job.env` | `false` | Plan only if the site has an approved exception to trust the presented SQL Server certificate directly. |
+| `DB_CONNECTION_TIMEOUT_MS` | `DB_CONNECTION_TIMEOUT_MS` in `db-job.env` | `15000` | Plan only if the external database or network path needs a different connection timeout. |
+| `DB_REQUEST_TIMEOUT_MS` | `DB_REQUEST_TIMEOUT_MS` in `db-job.env` | `30000` | Plan only if migrations or required seed need a different SQL statement timeout. |
+| `OIDC_ISSUER_URL` | `AUTH_OIDC_ISSUER_URL` in `app.env` | No default | Always obtain the external IdP issuer URL. |
+| `OIDC_CLIENT_ID` | `AUTH_OIDC_CLIENT_ID` in `app.env` | `kravhantering-app` | Plan only if the IdP client id differs. |
+| `OIDC_CLIENT_SECRET` | `AUTH_OIDC_CLIENT_SECRET` in `app.env` | No default | Always obtain or generate the external IdP confidential client secret. If the IdP does not generate one, use the opaque-secret fallback in [Generate Unique Secrets](#generate-unique-secrets). |
+| `AUTH_OIDC_REDIRECT_URI` | `AUTH_OIDC_REDIRECT_URI` in `app.env` and IdP redirect settings | `https://<APP_HOST>/api/auth/callback` | Verify after choosing `APP_HOST`; plan only if the IdP registration must differ. |
+| `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` | `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` in `app.env` and IdP logout settings | `https://<APP_HOST>/` | Verify after choosing `APP_HOST`; plan only if the IdP registration must differ. |
+| `AUTH_OIDC_ROLES_CLAIM` | `AUTH_OIDC_ROLES_CLAIM` in `app.env` | `roles` | Plan only if the IdP emits application roles in another claim. |
+| `AUTH_OIDC_SCOPES` | `AUTH_OIDC_SCOPES` in `app.env` | `openid profile email` | Plan only if the IdP needs additional scopes to release required claims. |
+| `AUTH_OIDC_API_AUDIENCE` | `AUTH_OIDC_API_AUDIENCE` in `app.env` | `kravhantering-app` | Plan only if the IdP audience differs from the client id. |
+| `AUTH_SESSION_COOKIE_NAME` | `AUTH_SESSION_COOKIE_NAME` in `app.env` | `kravhantering_session` | Plan only if this host serves another deployment on the same browser cookie scope. |
+| `SESSION_COOKIE_PASSWORD` | `AUTH_SESSION_COOKIE_PASSWORD` in `app.env` | No default | Always generate with the opaque-secret fallback in [Generate Unique Secrets](#generate-unique-secrets). |
+| `AUTH_SESSION_TTL_SECONDS` | `AUTH_SESSION_TTL_SECONDS` in `app.env` | `28800` | Plan only if another absolute browser-session lifetime is approved. |
+| `MCP_CLIENT_ID` | `MCP_CLIENT_ID` in `app.env` | `kravhantering-mcp` | Plan only if MCP service tokens use a different service-account client id. |
+| `OPENROUTER_API_KEY` | `OPENROUTER_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation is approved. |
+| `OPENROUTER_MGMT_API_KEY` | `OPENROUTER_MGMT_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation and organization credit display are approved. |
+| `NEXT_PUBLIC_DEFAULT_MODEL` | `NEXT_PUBLIC_DEFAULT_MODEL` in `app.env` | Empty | Plan only if the deployment should preselect a public default AI model. |
+<!-- markdownlint-enable MD013 -->
 
 ### Generate Unique Secrets
 
@@ -85,12 +104,11 @@ for unrelated settings.
 
 For SQL Server login passwords, use the DBA-approved password generator and
 the site's SQL Server password policy. If the operator must generate one on the
-host, generate a long password and verify it contains uppercase, lowercase,
+host, this fallback creates a 32-character password with uppercase, lowercase,
 digit and symbol characters:
 
 ```bash
-LC_ALL=C tr -dc 'A-Za-z0-9!%+=_.-' </dev/urandom | head -c 32
-printf '\n'
+printf 'S1q!%s\n' "$(openssl rand -hex 14)"
 ```
 
 Regenerate the SQL password if it contains the login name or does not satisfy
@@ -424,9 +442,9 @@ OPENROUTER_MGMT_API_KEY=
 
 The app only requires `AUTH_OIDC_CLIENT_SECRET` to be non-empty and to match
 the client secret configured in the IdP. For production, use a high-entropy
-IdP-generated secret or generate one with a command such as
-`openssl rand -base64 48`. `AUTH_SESSION_COOKIE_PASSWORD` is separate and must
-be at least 32 characters.
+IdP-generated secret or the fallback in
+[Generate Unique Secrets](#generate-unique-secrets).
+`AUTH_SESSION_COOKIE_PASSWORD` is separate and must be at least 32 characters.
 
 Keep `AUTH_OIDC_SCOPES=openid profile email` unless the IdP needs additional
 scopes to release the required claims. `openid` must always be present. Keep
@@ -517,12 +535,20 @@ podman run --rm --env-file /etc/kravhantering/db-job.env \
   "$DB_JOB_IMAGE_REF" migrate
 podman run --rm --env-file /etc/kravhantering/db-job.env \
   "$DB_JOB_IMAGE_REF" seed:required
+
+exit
 ```
 
 Start `app-runtime`, confirm the nginx resolver from inside the Compose
 network, then start the app node:
 
 ```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+set -a
+. /etc/kravhantering/release.env
+set +a
+
 APP_NODE_NETWORK=kravhantering-app-node_kravhantering-internal
 
 podman compose --env-file /etc/kravhantering/release.env \
@@ -532,11 +558,13 @@ podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
 
 podman compose --env-file /etc/kravhantering/release.env \
   -f compose/app-node-tls.compose.yml up -d
+
+exit
 ```
 
 If the printed resolver differs from `NGINX_RESOLVER`, update
-`/etc/kravhantering/release.env`, reload it in the shell, and rerun
-`podman compose up -d` before checking readiness.
+`/etc/kravhantering/release.env` and rerun the app-node start command before
+checking readiness.
 
 Check readiness through nginx:
 
@@ -586,11 +614,12 @@ podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
 
 podman compose --env-file /etc/kravhantering/release.env \
   -f compose/app-node-http.compose.yml up -d
+
+exit
 ```
 
 If the printed resolver differs from `NGINX_RESOLVER`, update
-`/etc/kravhantering/release.env`, reload it in the shell, and rerun
-`podman compose up -d`.
+`/etc/kravhantering/release.env` and rerun the app-node start command.
 
 The app-facing public URLs in `app.env` must still use the external HTTPS
 origin exposed by the load balancer.
@@ -609,16 +638,25 @@ COMPOSE_FILE=compose/app-node-tls.compose.yml
 
 podman compose --env-file /etc/kravhantering/release.env \
   -f "$COMPOSE_FILE" ps
+
+exit
 ```
 
 Restart an existing long-running container when only the process needs to
 reload mounted files or reconnect to dependencies:
 
 ```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+COMPOSE_FILE=compose/app-node-tls.compose.yml
+# COMPOSE_FILE=compose/app-node-http.compose.yml
+
 podman compose --env-file /etc/kravhantering/release.env \
   -f "$COMPOSE_FILE" restart app-runtime
 podman compose --env-file /etc/kravhantering/release.env \
   -f "$COMPOSE_FILE" restart nginx
+
+exit
 ```
 
 Use `restart` for cases such as reloading nginx after replacing mounted TLS
@@ -627,38 +665,66 @@ file, image ref, bind mount, or Compose definition changed and the container
 must be recreated:
 
 ```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+COMPOSE_FILE=compose/app-node-tls.compose.yml
+# COMPOSE_FILE=compose/app-node-http.compose.yml
+
 podman compose --env-file /etc/kravhantering/release.env \
   -f "$COMPOSE_FILE" up -d --force-recreate app-runtime
 podman compose --env-file /etc/kravhantering/release.env \
   -f "$COMPOSE_FILE" up -d --force-recreate nginx
+
+exit
 ```
 
 Take down and bring up one service without stopping the whole app node:
 
 ```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+COMPOSE_FILE=compose/app-node-tls.compose.yml
+# COMPOSE_FILE=compose/app-node-http.compose.yml
+
 podman compose --env-file /etc/kravhantering/release.env \
   -f "$COMPOSE_FILE" stop nginx
 podman compose --env-file /etc/kravhantering/release.env \
   -f "$COMPOSE_FILE" up -d nginx
+
+exit
 ```
 
 For app maintenance, stop nginx first to stop browser traffic, then stop or
 recreate `app-runtime`:
 
 ```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+COMPOSE_FILE=compose/app-node-tls.compose.yml
+# COMPOSE_FILE=compose/app-node-http.compose.yml
+
 podman compose --env-file /etc/kravhantering/release.env \
   -f "$COMPOSE_FILE" stop nginx app-runtime
 podman compose --env-file /etc/kravhantering/release.env \
   -f "$COMPOSE_FILE" up -d app-runtime nginx
+
+exit
 ```
 
 Stop and remove both app-node containers only for full-node maintenance:
 
 ```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+COMPOSE_FILE=compose/app-node-tls.compose.yml
+# COMPOSE_FILE=compose/app-node-http.compose.yml
+
 podman compose --env-file /etc/kravhantering/release.env \
   -f "$COMPOSE_FILE" down
 podman compose --env-file /etc/kravhantering/release.env \
   -f "$COMPOSE_FILE" up -d
+
+exit
 ```
 
 Do not use `podman compose down -v` in production unless an approved procedure
@@ -679,35 +745,19 @@ cp /opt/kravhantering/current/systemd/kravhantering-compose.service \
   ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now kravhantering-compose.service
+
+exit
 ```
 
 The service runs `podman compose up -d` from `/opt/kravhantering/current` and
 `podman compose down` on stop.
 
-## Planned-Downtime Upgrade
+## Upgrade And Rollback
 
-Use planned downtime unless a future release explicitly documents rolling
-compatibility.
-
-1. Confirm the target release bundle, checksum and mirrored image digests.
-2. Confirm a tested SQL Server backup or restore point.
-3. Drain or disable traffic to all app nodes.
-4. Stop the app nodes:
-
-   ```bash
-   sudo -iu kravhantering
-   cd /opt/kravhantering/current
-   podman compose --env-file /etc/kravhantering/release.env \
-     -f compose/app-node-tls.compose.yml down
-   ```
-
-5. Install the new release bundle under `/opt/kravhantering/releases`.
-6. Update `/opt/kravhantering/current` to the new release.
-7. Update `/etc/kravhantering/release.env` image refs to the new digests.
-8. Run `db-job migrate` and `seed:required` once.
-9. Start the app nodes with the new release.
-10. Check `/api/health`, `/api/ready`, sign-in and a read-only UI workflow.
-11. Re-enable traffic.
+Use the standalone
+[RHEL 10 production planned-downtime upgrade guide](./rhel10-production-upgrade.md)
+to upgrade or roll back the enterprise topology. This deployment guide keeps
+the first-install and day-2 app-node operations in one place.
 
 ## Troubleshooting Readiness
 
@@ -718,22 +768,6 @@ compatibility.
   `app-runtime` on an older release, restart nginx so it resolves the new
   container IP. Current release packages render nginx with `NGINX_RESOLVER`
   and dynamic upstream `resolve` entries to avoid stale upstream IPs.
-
-## Rollback
-
-Rollback after a migration requires restoring the database backup or restore
-point taken before the upgrade. The supported sequence is:
-
-1. Disable traffic.
-2. Stop app nodes.
-3. Restore SQL Server to the pre-upgrade restore point.
-4. Point `/opt/kravhantering/current` back to the previous release directory.
-5. Restore the previous `/etc/kravhantering/release.env` image refs.
-6. Start the previous app nodes.
-7. Verify `/api/health`, `/api/ready` and sign-in before enabling traffic.
-
-Do not rely on app-only image rollback after schema migration unless the
-specific release notes explicitly say it is supported.
 
 ## Controlled Bootstrap Alternative
 
@@ -754,6 +788,8 @@ podman run --rm --env-file /etc/kravhantering/db-job.env \
   "$DB_JOB_IMAGE_REF" migrate
 podman run --rm --env-file /etc/kravhantering/db-job.env \
   "$DB_JOB_IMAGE_REF" seed:required
+
+exit
 ```
 
 After bootstrap, remove `DB_BOOTSTRAP_ADMIN_USER` and

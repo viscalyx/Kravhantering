@@ -155,9 +155,17 @@ describe('trusted container release helpers', () => {
       ),
     ).toBe(true)
     expect(isReleaseRelevantPath('docs/rhel10-production-deploy.md')).toBe(true)
+    expect(isReleaseRelevantPath('docs/rhel10-production-upgrade.md')).toBe(
+      true,
+    )
     expect(
       isReleaseRelevantPath(
         'docs/rhel10-production-single-node-internal-deploy.md',
+      ),
+    ).toBe(true)
+    expect(
+      isReleaseRelevantPath(
+        'docs/rhel10-production-single-node-internal-upgrade.md',
       ),
     ).toBe(true)
     expect(isReleaseRelevantPath('typeorm/seed-dogfood.mjs')).toBe(true)
@@ -203,9 +211,9 @@ describe('trusted container release helpers', () => {
     ).toThrow('Move release documentation images under docs/')
   })
 
-  it('treats bundled single-node deployment docs as release-relevant', () => {
+  it('treats bundled single-node upgrade docs as release-relevant', () => {
     const plan = createReleasePlan({
-      changedFiles: ['docs/rhel10-production-single-node-internal-deploy.md'],
+      changedFiles: ['docs/rhel10-production-single-node-internal-upgrade.md'],
       env: env(),
       gitVersion,
     })
@@ -542,8 +550,12 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain('compose/app-node-tls.compose.yml')
       expect(result.files).toContain('compose/single-node.compose.yml')
       expect(result.files).toContain('docs/rhel10-production-deploy.md')
+      expect(result.files).toContain('docs/rhel10-production-upgrade.md')
       expect(result.files).toContain(
         'docs/rhel10-production-single-node-internal-deploy.md',
+      )
+      expect(result.files).toContain(
+        'docs/rhel10-production-single-node-internal-upgrade.md',
       )
       expect(result.files).toContain(
         'docs/images/infographic-production-access-and-service-flow.png',
