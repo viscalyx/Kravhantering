@@ -4,12 +4,14 @@ import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
   APP_RUNTIME_PACKAGE,
+  createReleaseChangelog,
   createReleaseMetadata,
   createReleasePlan,
   deploymentBundleArchiveName,
   ensureGitTag,
   isReleaseRelevantPath,
   renderReleaseNotes,
+  selectPreviousReleaseTag,
   stageProductionDeploymentBundle,
 } from '../release/container-release.mjs'
 
@@ -171,7 +173,132 @@ describe('trusted container release helpers', () => {
     })
   })
 
-  it('renders release notes with GHCR refs and checksums', () => {
+  it('selects the previous stable release without using prereleases', () => {
+    const plan = createReleasePlan({
+      changedFiles: [],
+      env: env({
+        GITHUB_REF: 'refs/tags/v1.2.3',
+        GITHUB_REF_NAME: 'v1.2.3',
+      }),
+      gitVersion,
+    })
+
+    expect(
+      selectPreviousReleaseTag(plan, [
+        { isPrerelease: false, tagName: 'v1.2.3' },
+        { isPrerelease: true, tagName: 'v1.2.2-preview.5' },
+        { isPrerelease: false, tagName: 'v1.2.2' },
+      ]),
+    ).toBe('v1.2.2')
+  })
+
+  it('selects the previous preview release without using stable releases', () => {
+    const plan = createReleasePlan({
+      changedFiles: ['containers/app/Dockerfile'],
+      env: env(),
+      gitVersion,
+    })
+
+    expect(
+      selectPreviousReleaseTag(plan, [
+        { isPrerelease: true, tagName: 'v1.2.0-preview.4' },
+        { isPrerelease: false, tagName: 'v1.1.9' },
+        { isPrerelease: true, tagName: 'v1.2.0-preview.3' },
+      ]),
+    ).toBe('v1.2.0-preview.3')
+  })
+
+  it('excludes the current release tag when rerunning notes', () => {
+    const plan = createReleasePlan({
+      changedFiles: ['containers/app/Dockerfile'],
+      env: env(),
+      gitVersion,
+    })
+
+    expect(
+      selectPreviousReleaseTag(plan, [
+        { isPrerelease: true, tagName: 'v1.2.0-preview.4' },
+        { isPrerelease: true, tagName: 'v1.2.0-preview.3' },
+      ]),
+    ).toBe('v1.2.0-preview.3')
+  })
+
+  it('uses all reachable first-parent commits when no same-kind release exists', () => {
+    const plan = createReleasePlan({
+      changedFiles: [],
+      env: env({
+        GITHUB_REF: 'refs/tags/v1.2.3',
+        GITHUB_REF_NAME: 'v1.2.3',
+      }),
+      gitVersion,
+    })
+    const execFileSync = vi.fn((command, args) => {
+      if (command === 'gh' && args[0] === 'release') {
+        return JSON.stringify([
+          { isPrerelease: true, tagName: 'v1.2.3-preview.7' },
+        ])
+      }
+      if (command === 'git') {
+        expect(args).toContain(plan.commitSha)
+        return 'abc1234\t2026-05-23\tAda Lovelace\tfeat: first release\n'
+      }
+      throw new Error(`Unexpected command: ${command}`)
+    })
+
+    const changelog = createReleaseChangelog(plan, { execFileSync })
+
+    expect(changelog.previousTagName).toBeUndefined()
+    expect(changelog.generatedNotesNotice).toContain(
+      'No previous stable GitHub Release was found',
+    )
+    expect(changelog.commits).toEqual([
+      {
+        author: 'Ada Lovelace',
+        date: '2026-05-23',
+        shortSha: 'abc1234',
+        subject: 'feat: first release',
+      },
+    ])
+    expect(
+      execFileSync.mock.calls.some(
+        ([command, args]) => command === 'gh' && args[0] === 'api',
+      ),
+    ).toBe(false)
+  })
+
+  it('keeps exact commits when GitHub-generated notes fail', () => {
+    const plan = createReleasePlan({
+      changedFiles: ['containers/app/Dockerfile'],
+      env: env(),
+      gitVersion,
+    })
+    const execFileSync = vi.fn((command, args) => {
+      if (command === 'gh' && args[0] === 'release') {
+        return JSON.stringify([
+          { isPrerelease: true, tagName: 'v1.2.0-preview.3' },
+        ])
+      }
+      if (command === 'gh' && args[0] === 'api') {
+        throw new Error('release notes API failed')
+      }
+      if (command === 'git') {
+        expect(args).toContain(`v1.2.0-preview.3..${plan.commitSha}`)
+        return 'def5678\t2026-05-24\tGrace Hopper\tfix: smoke notes\n'
+      }
+      throw new Error(`Unexpected command: ${command}`)
+    })
+
+    const changelog = createReleaseChangelog(plan, { execFileSync })
+
+    expect(changelog.previousTagName).toBe('v1.2.0-preview.3')
+    expect(changelog.generatedNotesNotice).toContain(
+      'GitHub-generated release notes were unavailable',
+    )
+    expect(changelog.commits).toHaveLength(1)
+    expect(changelog.commits[0].subject).toBe('fix: smoke notes')
+  })
+
+  it('renders release notes with generated changes, exact commits, GHCR refs and checksums', () => {
     const plan = createReleasePlan({
       changedFiles: ['containers/app/Dockerfile'],
       env: env(),
@@ -187,8 +314,27 @@ describe('trusted container release helpers', () => {
       plan,
       metadata,
       'abc123  container-stack.lock.json\n',
+      {
+        commits: [
+          {
+            author: 'Ada Lovelace',
+            date: '2026-05-23',
+            shortSha: 'abc1234',
+            subject: 'feat: release notes',
+          },
+        ],
+        generatedNotes: "## What's Changed\n\n- feat: release notes (#228)",
+        previousTagName: 'v1.2.0-preview.3',
+      },
     )
 
+    expect(notes).toContain("## What's Changed")
+    expect(notes).toContain('- feat: release notes (#228)')
+    expect(notes).toContain('## Exact Commit Range')
+    expect(notes).toContain(`Range: \`v1.2.0-preview.3..${plan.commitSha}\``)
+    expect(notes).toContain(
+      '- `abc1234` 2026-05-23 Ada Lovelace - feat: release notes',
+    )
     expect(notes).toContain(
       'ghcr.io/viscalyx/kravhantering-app-runtime@sha256:app',
     )
@@ -454,6 +600,7 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain('attest-sbom')
     expect(workflow).toContain('--release-images-from-lock')
     expect(workflow).toContain('container-release.mjs bundle')
+    expect(workflow).toContain('GH_TOKEN: $' + '{{ github.token }}')
     expect(workflow).toContain(
       `kravhantering-production-deploy-\${RELEASE_VERSION}.tar.gz`,
     )
@@ -465,5 +612,15 @@ describe('trusted container release helpers', () => {
     )
     expect(workflow).toContain('npm run test:release-smoke')
     expect(workflow).not.toContain('pull_request_target')
+  })
+
+  it('configures generated release note categories with a catch-all', () => {
+    const releaseConfig = readWorkspaceFile('.github/release.yml')
+
+    expect(releaseConfig).toContain('ignore-for-release')
+    expect(releaseConfig).toContain('title: Security and Privacy')
+    expect(releaseConfig).toContain('title: Containers and Infrastructure')
+    expect(releaseConfig).toContain('title: Other Changes')
+    expect(releaseConfig).toContain('- "*"')
   })
 })

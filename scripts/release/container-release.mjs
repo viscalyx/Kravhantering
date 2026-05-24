@@ -534,16 +534,218 @@ function hashesToMarkdown(content) {
     : '- No hashes recorded.'
 }
 
-export function renderReleaseNotes(plan, metadata, hashesContent) {
+function parseJsonText(content, fallback) {
+  try {
+    return JSON.parse(content)
+  } catch {
+    return fallback
+  }
+}
+
+function cleanSingleLine(value) {
+  return String(value ?? '')
+    .replace(/\s+/gu, ' ')
+    .trim()
+}
+
+function isSameReleaseKind(plan, release) {
+  const isPrerelease = release?.isPrerelease === true
+  return plan.prerelease ? isPrerelease : !isPrerelease
+}
+
+export function selectPreviousReleaseTag(plan, releases = []) {
+  if (!plan.releaseTagName) return undefined
+  const match = releases.find(
+    release =>
+      release?.tagName &&
+      release.tagName !== plan.releaseTagName &&
+      release.isDraft !== true &&
+      isSameReleaseKind(plan, release),
+  )
+  return readNonEmpty(match?.tagName)
+}
+
+export function readPublishedGitHubReleases(plan, options = {}) {
+  if (!plan.repository) return []
+  const output = execText(
+    'gh',
+    [
+      'release',
+      'list',
+      '--repo',
+      plan.repository,
+      '--limit',
+      '100',
+      '--exclude-drafts',
+      '--json',
+      'tagName,isPrerelease,isDraft,publishedAt',
+    ],
+    options,
+  )
+  const releases = parseJsonText(output, [])
+  return Array.isArray(releases) ? releases : []
+}
+
+export function readFirstParentCommits(plan, previousTagName, options = {}) {
+  if (!plan.releaseTagName) return []
+  const range = previousTagName
+    ? `${previousTagName}..${plan.commitSha}`
+    : plan.commitSha
+  const output = execText(
+    'git',
+    [
+      'log',
+      '--first-parent',
+      '--reverse',
+      '--date=short',
+      '--format=%h%x09%ad%x09%an%x09%s',
+      range,
+    ],
+    options,
+  )
+
+  return changedFilesFromText(output).map(line => {
+    const [shortSha, date, author, ...subjectParts] = line.split('\t')
+    return {
+      author: readNonEmpty(author) ?? 'unknown',
+      date: readNonEmpty(date) ?? 'unknown-date',
+      shortSha: readNonEmpty(shortSha) ?? 'unknown',
+      subject: readNonEmpty(subjectParts.join('\t')) ?? '(no subject)',
+    }
+  })
+}
+
+export function readGeneratedReleaseNotes(plan, previousTagName, options = {}) {
+  if (!plan.releaseTagName || !previousTagName) return undefined
+  const output = execText(
+    'gh',
+    [
+      'api',
+      `repos/${plan.repository}/releases/generate-notes`,
+      '--method',
+      'POST',
+      '-f',
+      `tag_name=${plan.releaseTagName}`,
+      '-f',
+      `target_commitish=${plan.commitSha}`,
+      '-f',
+      `previous_tag_name=${previousTagName}`,
+      '-f',
+      'configuration_file_path=.github/release.yml',
+    ],
+    options,
+  )
+  const response = parseJsonText(output, {})
+  return readNonEmpty(response?.body)
+}
+
+export function createReleaseChangelog(plan, options = {}) {
+  if (!plan.releaseTagName) {
+    return {
+      commits: [],
+      generatedNotes: undefined,
+      generatedNotesNotice: undefined,
+      previousTagName: undefined,
+    }
+  }
+
+  let previousTagName
+  let generatedNotes
+  let generatedNotesNotice
+
+  try {
+    previousTagName = selectPreviousReleaseTag(
+      plan,
+      readPublishedGitHubReleases(plan, options),
+    )
+  } catch (error) {
+    generatedNotesNotice = `GitHub release lookup was unavailable: ${cleanSingleLine(error instanceof Error ? error.message : error)}`
+  }
+
+  const commits = readFirstParentCommits(plan, previousTagName, options)
+
+  if (!previousTagName) {
+    generatedNotesNotice =
+      generatedNotesNotice ??
+      `No previous ${plan.prerelease ? 'preview' : 'stable'} GitHub Release was found; the exact commit list covers all first-parent commits reachable from this release.`
+    return {
+      commits,
+      generatedNotes,
+      generatedNotesNotice,
+      previousTagName,
+    }
+  }
+
+  try {
+    generatedNotes = readGeneratedReleaseNotes(plan, previousTagName, options)
+  } catch (error) {
+    generatedNotesNotice = `GitHub-generated release notes were unavailable: ${cleanSingleLine(error instanceof Error ? error.message : error)}`
+  }
+
+  return {
+    commits,
+    generatedNotes,
+    generatedNotesNotice,
+    previousTagName,
+  }
+}
+
+function renderGeneratedNotesSection(changelog) {
+  const generatedNotes = readNonEmpty(changelog?.generatedNotes)
+  if (generatedNotes) {
+    return /^##\s+What's Changed\b/mu.test(generatedNotes)
+      ? generatedNotes
+      : `## What's Changed\n\n${generatedNotes}`
+  }
+
+  const notice = readNonEmpty(changelog?.generatedNotesNotice)
+  if (!notice) return undefined
+
+  return `## What's Changed\n\n${notice}`
+}
+
+function renderExactCommitRange(plan, changelog) {
+  if (!changelog) return undefined
+  const lines = [
+    '## Exact Commit Range',
+    '',
+    changelog.previousTagName
+      ? `Previous same-kind release: \`${changelog.previousTagName}\``
+      : 'Previous same-kind release: none',
+    changelog.previousTagName
+      ? `Range: \`${changelog.previousTagName}..${plan.commitSha}\``
+      : `Range: first-parent history through \`${plan.commitSha}\``,
+    '',
+  ]
+
+  if (changelog.commits.length === 0) {
+    lines.push('- No first-parent commits found in this range.')
+  } else {
+    lines.push(
+      ...changelog.commits.map(
+        commit =>
+          `- \`${commit.shortSha}\` ${commit.date} ${commit.author} - ${commit.subject}`,
+      ),
+    )
+  }
+
+  return lines.join('\n')
+}
+
+export function renderReleaseNotes(plan, metadata, hashesContent, changelog) {
   const releaseKind = plan.isStableRelease
     ? 'Stable release'
     : 'Preview release'
+  const generatedNotesSection = renderGeneratedNotesSection(changelog)
+  const exactCommitRange = renderExactCommitRange(plan, changelog)
   const lines = [
     `# ${releaseKind} ${plan.version}`,
     '',
     `Commit: \`${plan.commitSha}\``,
     `Workflow run: https://github.com/${plan.repository}/actions/runs/${plan.runId}`,
     '',
+    ...(generatedNotesSection ? [generatedNotesSection, ''] : []),
+    ...(exactCommitRange ? [exactCommitRange, ''] : []),
     '## Public GHCR Images',
     '',
     `- app-runtime: \`${metadata.appRuntime.ref}\``,
@@ -679,9 +881,14 @@ export async function main(args, dependencies = {}) {
       const hashes = fsImpl.existsSync(options.hashes)
         ? fsImpl.readFileSync(options.hashes, 'utf8')
         : ''
+      const changelog = createReleaseChangelog(plan, {
+        cwd: dependencies.cwd,
+        env,
+        execFileSync: dependencies.execFileSync,
+      })
       writeTextFile(
         options.output,
-        renderReleaseNotes(plan, metadata, hashes),
+        renderReleaseNotes(plan, metadata, hashes, changelog),
         fsImpl,
       )
       consoleObj.log(`Wrote ${options.output}`)
