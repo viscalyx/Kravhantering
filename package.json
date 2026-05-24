@@ -142,7 +142,7 @@
     "rimraf": "^6.1.3",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.7"
   },
   "//purge:install": [
     "Two-phase install: first install rebuilds node_modules with a (possibly corrupt) lockfile,",
