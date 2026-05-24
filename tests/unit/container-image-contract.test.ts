@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -64,6 +64,14 @@ describe('container image contract', () => {
     expect(target).not.toContain('typeorm/')
     expect(target).not.toContain('tests/')
     expect(target).not.toContain('docs/')
+  })
+
+  it('keeps public PNG assets limited to deployed application content', () => {
+    const publicPngFiles = readdirSync(path.join(process.cwd(), 'public'))
+      .filter(fileName => fileName.endsWith('.png'))
+      .sort()
+
+    expect(publicPngFiles).toEqual(['logo-small.png'])
   })
 
   it('sets the public site URL during the standalone app build', () => {
