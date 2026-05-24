@@ -197,14 +197,14 @@ jobs:
           upload-artifact: false
 
       - name: Attest app-runtime provenance
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
           subject-name: ${{ env.APP_RUNTIME_IMAGE }}
           subject-digest: ${{ env.APP_RUNTIME_DIGEST }}
           push-to-registry: true
 
       - name: Attest db-job provenance
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
           subject-name: ${{ env.DB_JOB_IMAGE }}
           subject-digest: ${{ env.DB_JOB_DIGEST }}
