@@ -48,9 +48,10 @@ The generated files are runtime artifacts and are ignored by Git:
 
 ## Local Podman Stack
 
-For the short local PoC/demo runbook, see
-[docs/container-poc-demo.md](../../docs/container-poc-demo.md). This file keeps
-the lower-level Compose contract and troubleshooting details.
+This file keeps the lower-level Compose contract and troubleshooting details.
+For the release-artifact deployment flow and optional test and development
+demo-data commands, see
+[docs/rhel10-production-single-node-internal-deploy.md](../../docs/rhel10-production-single-node-internal-deploy.md).
 
 The local Podman workflow runs the generated Compose stack with Podman Compose.
 The devcontainer image installs Podman tooling, but nested Podman support
@@ -83,12 +84,6 @@ Start a fresh test stack without Playwright:
 npm run container:local:up
 ```
 
-Start a local demo stack with a stable SQL Server volume:
-
-```bash
-npm run container:local:demo
-```
-
 Start a fresh release-smoke stack with demo seed data:
 
 ```bash
@@ -109,11 +104,9 @@ npm run container:local:down
 ```
 
 The test and release-smoke modes use run-specific SQL Server volumes and remove
-them during shutdown. Demo mode uses a stable named volume so local PoC/demo
-data can survive restarts. To avoid colliding with the existing developer SQL
+them during shutdown. To avoid colliding with the existing developer SQL
 Server on `1433`, local stack SQL Server binds to `127.0.0.1:15433` in test
-mode, `127.0.0.1:15434` in demo mode and `127.0.0.1:15435` in
-release-smoke mode by default.
+mode and `127.0.0.1:15435` in release-smoke mode by default.
 
 The local orchestration does the same explicit ordering intended for CI:
 
@@ -123,7 +116,7 @@ The local orchestration does the same explicit ordering intended for CI:
 4. Generate `container-stack.lock.json` and `container-stack.compose.yml`.
 5. Start SQL Server and Keycloak.
 6. Run `db-bootstrap`, `db-migrate` and `db-seed-required`.
-7. Run `db-seed-demo` only for demo and release-smoke modes.
+7. Run `db-seed-demo` only for release-smoke mode.
 8. Start `app-runtime` and nginx, then wait for nginx, Keycloak discovery,
    `/api/health` and `/api/ready`.
 

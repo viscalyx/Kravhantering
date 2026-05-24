@@ -75,8 +75,9 @@ The production deployment bundle is also uploaded to GitHub Releases as:
 - `kravhantering-production-deploy-<version>.tar.gz.sha256`
 
 Markdown files in the deployment bundle bring along local image links. Keep
-release-guide diagrams under `docs/images/`; do not store documentation-only
-images in `public/`, which is copied into the application runtime image.
+release-guide diagrams under `docs/images/`. Use `public/` only for content
+that the deployed Next.js application intentionally serves at runtime, because
+the app-runtime image copies that directory into the container.
 
 See [rhel10-production-deploy.md](./rhel10-production-deploy.md) for the
 enterprise app-node workflow with external SQL Server and external IdP. See

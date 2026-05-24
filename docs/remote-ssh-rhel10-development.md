@@ -304,7 +304,7 @@ proxy, override the issuer URL so it matches the issuer returned by
 Keycloak discovery:
 
 ```dotenv
-AUTH_OIDC_ISSUER_URL=https://<poc-host>/auth/realms/kravhantering-dev
+AUTH_OIDC_ISSUER_URL=https://<remote-dev-host>/auth/realms/kravhantering-dev
 ```
 
 Do this only when Keycloak advertises the public `/auth` URL. OIDC
@@ -518,7 +518,7 @@ curl -s \
 They must match exactly. When reusing the prod-like Keycloak behind the
 RHEL reverse proxy, put the public issuer URL in `.env.development.local`,
 for example
-`https://<poc-host>/auth/realms/kravhantering-dev`, and restart
+`https://<remote-dev-host>/auth/realms/kravhantering-dev`, and restart
 `npm run dev`.
 
 If the app cannot connect to SQL Server, check:

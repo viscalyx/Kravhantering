@@ -55,12 +55,12 @@ The realm contains:
   `release-smoke-admin`.
 
 Client secrets and smoke-user passwords in this file are public demo values
-only. They are safe to commit for local demo and release-smoke wiring, but
+only. They are safe to commit for local test and release-smoke wiring, but
 unsafe for any exposed environment.
 
 ## Sensitive Values
 
-These values are sensitive outside local demo and smoke-test contexts:
+These values are sensitive outside local test and smoke-test contexts:
 
 - `KEYCLOAK_ADMIN_PASSWORD`
 - Realm client secrets in `realm-kravhantering-test.json`.
@@ -93,5 +93,5 @@ To update it manually:
   `.env.*.local` Git ignore pattern.
 - `realm-kravhantering-test.json` must target
   `https://kravhantering.test/auth/realms/kravhantering-test`.
-- Do not reuse the dev realm for the release-smoke or PoC/demo container
+- Do not reuse the dev realm for the release-smoke or local test container
   stack.

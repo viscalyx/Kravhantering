@@ -32,7 +32,6 @@
     "container:tls:generate": "node scripts/containers/generate-tls.mjs",
     "container:wait": "node scripts/containers/wait-for.mjs",
     "container:local:up": "node scripts/containers/run-local-stack.mjs up --mode test",
-    "container:local:demo": "node scripts/containers/run-local-stack.mjs up --mode demo",
     "container:local:down": "node scripts/containers/run-local-stack.mjs down",
     "container:release-smoke:up": "node scripts/containers/run-local-stack.mjs up --mode release-smoke && bash .devcontainer/trust-container-ca.sh",
     "container:release-smoke:down": "node scripts/containers/run-local-stack.mjs down --mode release-smoke",

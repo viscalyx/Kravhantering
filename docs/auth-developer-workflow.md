@@ -262,7 +262,7 @@ It is not generated from, or reused from,
 [`dev/keycloak/realm-kravhantering-dev.json`](../dev/keycloak/realm-kravhantering-dev.json).
 
 The realm is intended for nginx-backed container smoke tests and local
-PoC/demo runs. It targets this public issuer URL:
+test runs. It targets this public issuer URL:
 
 ```text
 https://kravhantering.test/auth/realms/kravhantering-test
@@ -455,7 +455,7 @@ standalone Next.js deployments this prevents failed callbacks from redirecting
 the browser to an internal bind host such as `https://0.0.0.0:3000`.
 
 In `local-prod` and `prod`, cookies are created with the `Secure` flag. On a
-non-`localhost` PoC host, running the app over plain `http://` means the browser
+non-`localhost` test host, running the app over plain `http://` means the browser
 will not return the login-state cookie, so the login fails at callback time.
 Fix the environment rather than weakening cookie flags: terminate TLS on the
 public host, make `AUTH_OIDC_REDIRECT_URI` use that exact `https://` callback

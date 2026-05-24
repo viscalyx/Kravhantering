@@ -10,6 +10,32 @@ export const REQUIRED_SEED_FILE = resolve(
   '../typeorm/seed-required.mjs',
 )
 export const DEMO_SEED_FILE = resolve(SCRIPT_DIR, '../typeorm/seed.mjs')
+export const DEMO_RESET_TABLES = Object.freeze([
+  'requirement_version_requirement_packages',
+  'specification_local_requirement_requirement_packages',
+  'requirement_packages',
+  'requirement_version_norm_references',
+  'deviations',
+  'requirements_specification_items',
+  'improvement_suggestions',
+  'requirement_versions',
+  'specification_local_requirement_norm_references',
+  'specification_local_requirement_deviations',
+  'specification_local_requirements',
+  'requirements',
+  'specification_needs_references',
+  'action_audit_events',
+  'access_review_items',
+  'access_review_runs',
+  'specification_co_authors',
+  'requirements_specifications',
+  'requirement_area_co_authors',
+  'requirement_areas',
+  'archiving_retention_exceptions',
+  'archiving_retention_runs',
+  'owners',
+  'norm_references',
+])
 
 /**
  * Discover migration filenames in `typeorm/migrations/` (sorted by filename so
@@ -69,7 +95,7 @@ export async function loadSeedProfile(profile, options = {}) {
     const seedFile = options.demoSeedPath ?? DEMO_SEED_FILE
     if (!existsSync(seedFile)) {
       throw new Error(
-        'seed:demo is not available in the production db-job image. Demo seed data is local/demo or release-smoke only. Use seed:required for production.',
+        'seed:demo requires demo seed files mounted into /workspace/typeorm. The production db-job image contains only required seed data. Use seed:required for production.',
       )
     }
     const module = await import(pathToFileURL(seedFile).href)
@@ -777,8 +803,13 @@ export async function seedSqlServerDatabase(connectionString, options = {}) {
 
   await dataSource.initialize()
   let insertedRows = 0
+  let resetTables = 0
 
   try {
+    if (profile === 'demo') {
+      const result = await resetDemoSqlServerData(dataSource, options)
+      resetTables = result.tablesCleared
+    }
     insertedRows = await seedProfile(dataSource)
   } finally {
     if (typeof dataSource.destroy === 'function') {
@@ -792,9 +823,87 @@ export async function seedSqlServerDatabase(connectionString, options = {}) {
       : await ensureReadonlySqlServerAccess(connectionString, options)
 
   return {
+    demoResetTables: resetTables,
     insertedRows,
     profile,
     readonlyAccessConfigured: readonlyAccess.configured,
+  }
+}
+
+function assertSafeTableName(table) {
+  if (!/^[a-z][a-z0-9_]*$/u.test(table)) {
+    throw new Error(`Unsafe SQL Server table name for demo reset: ${table}`)
+  }
+}
+
+async function reseedIdentityIfPresent(query, table) {
+  assertSafeTableName(table)
+  await query(
+    `IF EXISTS (
+       SELECT 1 FROM sys.identity_columns ic
+       JOIN sys.tables t ON t.object_id = ic.object_id
+       WHERE t.name = '${table}'
+     )
+     AND (SELECT last_value FROM sys.identity_columns ic
+       JOIN sys.tables t ON t.object_id = ic.object_id
+       WHERE t.name = '${table}') IS NOT NULL
+       DBCC CHECKIDENT ('${table}', RESEED, 0) WITH NO_INFOMSGS`,
+  )
+}
+
+export async function resetDemoSqlServerData(executor, options = {}) {
+  const tables = options.demoResetTables ?? DEMO_RESET_TABLES
+  const runner =
+    typeof executor?.createQueryRunner === 'function'
+      ? executor.createQueryRunner()
+      : null
+  const target = runner ?? executor
+  const query = target?.query
+    ? (sql, params) =>
+        params === undefined ? target.query(sql) : target.query(sql, params)
+    : null
+  if (!query) {
+    throw new Error(
+      'resetDemoSqlServerData requires a DataSource, QueryRunner, or EntityManager with a .query method',
+    )
+  }
+
+  let startedTransaction = false
+  if (runner) {
+    await runner.connect()
+    if (typeof runner.startTransaction === 'function') {
+      await runner.startTransaction()
+      startedTransaction = true
+    }
+  }
+
+  try {
+    for (const table of tables) {
+      assertSafeTableName(table)
+      await query(`DELETE FROM [${table}]`)
+      await reseedIdentityIfPresent(query, table)
+    }
+    if (startedTransaction && runner) {
+      await runner.commitTransaction()
+      startedTransaction = false
+    }
+  } catch (error) {
+    if (startedTransaction && runner) {
+      try {
+        await runner.rollbackTransaction()
+      } finally {
+        startedTransaction = false
+      }
+    }
+    throw error
+  } finally {
+    if (runner) {
+      await runner.release()
+    }
+  }
+
+  return {
+    tablesCleared: tables.length,
   }
 }
 
@@ -1031,6 +1140,11 @@ export async function main(args, dependencies = {}) {
       consoleObj.log(
         `SQL Server ${profile} seed completed (${result.insertedRows} inserted row${result.insertedRows === 1 ? '' : 's'}).`,
       )
+      if (profile === 'demo') {
+        consoleObj.log(
+          `SQL Server demo seed reset ${result.demoResetTables} non-required table${result.demoResetTables === 1 ? '' : 's'} before seeding.`,
+        )
+      }
       if (result.readonlyAccessConfigured) {
         consoleObj.log(
           'Configured read-only database access for browse tooling.',

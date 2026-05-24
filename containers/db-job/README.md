@@ -40,10 +40,10 @@ The image installs only the dependency subset needed by the one-shot job:
 `mssql`, `typeorm`, and `reflect-metadata`. It deliberately does not include
 the Next.js application dependency tree.
 
-`seed:demo` remains a local development command in the source tree. The local
-container stack runs it only in demo/release-smoke profiles by mounting the
-demo seed files read-only from the workspace. Demo/test data must not be baked
-into this production `db-job` image.
+`seed:demo` remains a local development and release-smoke command in the
+source tree. The local container stack runs it only in release-smoke mode by
+mounting the demo seed files read-only from the workspace. Demo/test data must
+not be baked into this production `db-job` image.
 
 ## Environment Variables
 
@@ -73,7 +73,7 @@ Required for `bootstrap`:
 
 ## Sensitive Values
 
-These values are sensitive outside local demo and smoke-test contexts:
+These values are sensitive outside local test and smoke-test contexts:
 
 - `DB_PASSWORD`
 - `DB_READONLY_PASSWORD`

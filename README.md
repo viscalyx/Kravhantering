@@ -8,11 +8,11 @@ contains a web application for managing requirements
 >[!TIP]
 >Se längre ner för en svensk översikt.
 
-![Infographics English](public/infographic-english.png)
+![Infographics English](docs/images/infographic-english.png)
 
 ## Högnivåöversikt (Svenska)
 
-![Infographics Swedish](public/infographic-swedish.png)
+![Infographics Swedish](docs/images/infographic-swedish.png)
 
 ## Requirements Process
 

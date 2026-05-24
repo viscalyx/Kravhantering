@@ -1,9 +1,28 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 function readWorkspaceFile(relativePath: string) {
   return readFileSync(path.join(process.cwd(), relativePath), 'utf8')
+}
+
+function listPublicPngFiles() {
+  const publicRoot = path.join(process.cwd(), 'public')
+
+  function walk(directory: string): string[] {
+    return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+      const absolutePath = path.join(directory, entry.name)
+      if (entry.isDirectory()) {
+        return walk(absolutePath)
+      }
+      if (!entry.isFile() || !entry.name.endsWith('.png')) {
+        return []
+      }
+      return [path.relative(publicRoot, absolutePath).replaceAll(path.sep, '/')]
+    })
+  }
+
+  return walk(publicRoot).sort()
 }
 
 function parseJsoncWithLineComments(content: string) {
@@ -64,6 +83,12 @@ describe('container image contract', () => {
     expect(target).not.toContain('typeorm/')
     expect(target).not.toContain('tests/')
     expect(target).not.toContain('docs/')
+  })
+
+  it('keeps public PNG assets limited to deployed application content', () => {
+    const publicPngFiles = listPublicPngFiles()
+
+    expect(publicPngFiles).toEqual(['logo-small.png'])
   })
 
   it('sets the public site URL during the standalone app build', () => {

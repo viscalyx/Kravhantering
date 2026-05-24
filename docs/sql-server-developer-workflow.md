@@ -108,7 +108,7 @@ DATABASE_READONLY_URL=...
 | `npm run db:setup` | Wait, reset, run TypeORM migrations, seed required + demo profiles, and configure the read-only login |
 | `npm run db:migrate` | Run TypeORM migrations only |
 | `npm run db:seed:required` | Apply only required system and lookup seed data |
-| `npm run db:seed:demo` | Apply optional demo, PoC, smoke-test, and integration seed data |
+| `npm run db:seed:demo` | Reset non-required rows, then apply optional demo, smoke-test, guide, and integration seed data |
 | `npm run db:reset` | Drop and recreate the database |
 <!-- markdownlint-enable MD013 -->
 
@@ -119,7 +119,9 @@ profile in `typeorm/seed-required.mjs` or the demo-capable profile in
 
 Use `npm run db:migrate` plus `npm run db:seed:required` for an empty
 production-like database. Add `npm run db:seed:demo` only when you need the
-local development, integration-test, PoC, guide, or smoke-test fixtures.
+local development, integration-test, guide, or smoke-test fixtures. The demo
+profile is destructive: it clears non-required data before reseeding the
+current fixtures.
 
 ## Requirement List Performance Baseline
 
@@ -268,11 +270,12 @@ necessary. That means:
 - preserve ordering assumptions that tests or guides rely on
 - document every unavoidable change explicitly
 
-Seed inserts in `typeorm/seed.mjs` must be idempotent in both profiles: guard
-with `IF NOT EXISTS` (or composite-PK equivalent) and wrap identity-bearing
-tables in `SET IDENTITY_INSERT [table] ON/OFF` so the seed can be re-run
-safely.
+Seed inserts in `typeorm/seed-required.mjs` must be idempotent: guard with
+`IF NOT EXISTS` (or composite-PK equivalent) and wrap identity-bearing tables
+in `SET IDENTITY_INSERT [table] ON/OFF` so the required seed can be re-run
+safely. The demo profile in `typeorm/seed.mjs` is reseeded from a clean
+non-required data set by `npm run db:seed:demo`.
 
 Put new system or lookup rows that the app needs to boot in the required
 profile. Put examples, screenshots, privacy exercises, Playwright fixtures,
-PoC scenarios, dogfood Krav, and other disposable data in the demo profile.
+dogfood Krav and other disposable data in the demo profile.

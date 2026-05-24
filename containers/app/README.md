@@ -119,7 +119,7 @@ Optional application values:
 
 ## Sensitive Values
 
-These values are sensitive outside local demo and smoke-test contexts:
+These values are sensitive outside local test and smoke-test contexts:
 
 - `DB_PASSWORD`
 - `AUTH_OIDC_CLIENT_SECRET`

@@ -2,6 +2,11 @@ import childProcess from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  buildDemoUsersDocument,
+  DEFAULT_DEMO_USERS_PATH,
+  DEFAULT_DEV_REALM_PATH,
+} from '../keycloak-demo-users.mjs'
 
 export const APP_RUNTIME_PACKAGE = 'kravhantering-app-runtime'
 export const DB_JOB_PACKAGE = 'kravhantering-db-job'
@@ -31,11 +36,17 @@ const RELEVANT_PATH_PREFIXES = [
   'docs/images/',
   'docs/rhel10-production-deploy.md',
   'docs/rhel10-production-single-node-internal-deploy.md',
+  'dev/keycloak/realm-kravhantering-dev.json',
   'scripts/build-metadata.js',
   'scripts/containers/',
   'scripts/db-sqlserver-admin.mjs',
+  'scripts/keycloak-demo-users.mjs',
   'scripts/prebuild.js',
   'scripts/release/',
+  'typeorm/seed.mjs',
+  'typeorm/seed-archiving-retention-build.mjs',
+  'typeorm/seed-dogfood.mjs',
+  'typeorm/seed-dogfood-build.mjs',
   'typeorm/migrations/',
   'typeorm/seed-required.mjs',
   'typeorm/seed-runner.mjs',
@@ -56,6 +67,23 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
   { source: 'containers/production/nginx', target: 'nginx' },
   { source: 'containers/production/sqlserver', target: 'sqlserver' },
   { source: 'containers/production/systemd', target: 'systemd' },
+  {
+    source: 'scripts/keycloak-demo-users.mjs',
+    target: 'scripts/keycloak-demo-users.mjs',
+  },
+  { source: 'typeorm/seed.mjs', target: 'demo-seed/seed.mjs' },
+  {
+    source: 'typeorm/seed-dogfood.mjs',
+    target: 'demo-seed/seed-dogfood.mjs',
+  },
+  {
+    source: 'typeorm/seed-dogfood-build.mjs',
+    target: 'demo-seed/seed-dogfood-build.mjs',
+  },
+  {
+    source: 'typeorm/seed-archiving-retention-build.mjs',
+    target: 'demo-seed/seed-archiving-retention-build.mjs',
+  },
 ]
 
 function readNonEmpty(value) {
@@ -573,6 +601,16 @@ export function stageProductionDeploymentBundle(options = {}) {
     copyBundleEntry(entry, bundleRoot, { cwd, fsImpl })
     copyBundleMarkdownAssets(entry, bundleRoot, { cwd, fsImpl })
   }
+
+  const demoUsersDocument = buildDemoUsersDocument(
+    readJsonFile(path.resolve(cwd, DEFAULT_DEV_REALM_PATH), fsImpl),
+    { generatedAt: options.generatedAt },
+  )
+  writeJsonFile(
+    path.join(bundleRoot, DEFAULT_DEMO_USERS_PATH),
+    demoUsersDocument,
+    fsImpl,
+  )
 
   const dynamicFiles = [
     [options.stackLockPath, 'container-stack.lock.json'],
