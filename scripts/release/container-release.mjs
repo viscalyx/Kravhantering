@@ -35,7 +35,11 @@ const RELEVANT_PATH_PREFIXES = [
   'public/',
   'docs/images/',
   'docs/rhel10-production-deploy.md',
+  'docs/rhel10-production-uninstall.md',
+  'docs/rhel10-production-upgrade.md',
   'docs/rhel10-production-single-node-internal-deploy.md',
+  'docs/rhel10-production-single-node-internal-uninstall.md',
+  'docs/rhel10-production-single-node-internal-upgrade.md',
   'dev/keycloak/realm-kravhantering-dev.json',
   'scripts/build-metadata.js',
   'scripts/containers/',
@@ -58,8 +62,24 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
     target: 'docs/rhel10-production-deploy.md',
   },
   {
+    source: 'docs/rhel10-production-upgrade.md',
+    target: 'docs/rhel10-production-upgrade.md',
+  },
+  {
+    source: 'docs/rhel10-production-uninstall.md',
+    target: 'docs/rhel10-production-uninstall.md',
+  },
+  {
     source: 'docs/rhel10-production-single-node-internal-deploy.md',
     target: 'docs/rhel10-production-single-node-internal-deploy.md',
+  },
+  {
+    source: 'docs/rhel10-production-single-node-internal-upgrade.md',
+    target: 'docs/rhel10-production-single-node-internal-upgrade.md',
+  },
+  {
+    source: 'docs/rhel10-production-single-node-internal-uninstall.md',
+    target: 'docs/rhel10-production-single-node-internal-uninstall.md',
   },
   { source: 'containers/production/compose', target: 'compose' },
   { source: 'containers/production/env', target: 'env' },

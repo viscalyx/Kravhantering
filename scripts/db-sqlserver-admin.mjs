@@ -113,7 +113,8 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000
 export const DEFAULT_WAIT_RETRY_MS = 1_000
 export const DEFAULT_WAIT_TIMEOUT_MS = 30_000
 const USAGE =
-  'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migrate|seed:required|seed:demo|setup|browse-config>'
+  'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migrate|seed:required|seed:demo|demo:clear|setup|browse-config>'
+const CONFIRM_CLEAR_NON_REQUIRED_DATA_FLAG = '--confirm-clear-non-required-data'
 
 export function stripWrappingQuotes(value) {
   if (
@@ -830,6 +831,26 @@ export async function seedSqlServerDatabase(connectionString, options = {}) {
   }
 }
 
+export async function clearDemoSqlServerData(connectionString, options = {}) {
+  const DataSourceCtor = options.dataSourceCtor ?? DataSource
+  const env = options.env ?? process.env
+  const migrationClasses = await getMigrationClasses()
+  const dataSource = new DataSourceCtor(
+    buildMigrationDataSourceOptions(connectionString, migrationClasses, env),
+  )
+  let initialized = false
+
+  try {
+    await dataSource.initialize()
+    initialized = true
+    return await resetDemoSqlServerData(dataSource, options)
+  } finally {
+    if (initialized && typeof dataSource.destroy === 'function') {
+      await dataSource.destroy()
+    }
+  }
+}
+
 function assertSafeTableName(table) {
   if (!/^[a-z][a-z0-9_]*$/u.test(table)) {
     throw new Error(`Unsafe SQL Server table name for demo reset: ${table}`)
@@ -1018,10 +1039,21 @@ export async function main(args, dependencies = {}) {
       'migrate',
       'seed:required',
       'seed:demo',
+      'demo:clear',
       'setup',
     ].includes(command)
   ) {
     consoleObj.error(USAGE)
+    return 1
+  }
+
+  if (
+    command === 'demo:clear' &&
+    !args.includes(CONFIRM_CLEAR_NON_REQUIRED_DATA_FLAG)
+  ) {
+    consoleObj.error(
+      `demo:clear requires ${CONFIRM_CLEAR_NON_REQUIRED_DATA_FLAG}. This clears non-required SQL Server data.`,
+    )
     return 1
   }
 
@@ -1156,6 +1188,26 @@ export async function main(args, dependencies = {}) {
         error instanceof Error
           ? error.message
           : `SQL Server ${profile} seed failed.`,
+      )
+      return 1
+    }
+  }
+
+  if (command === 'demo:clear') {
+    try {
+      const result = await clearDemoSqlServerData(
+        connectionString,
+        dependencies,
+      )
+      consoleObj.log(
+        `SQL Server demo data cleared (${result.tablesCleared} non-required table${result.tablesCleared === 1 ? '' : 's'}).`,
+      )
+      return 0
+    } catch (error) {
+      consoleObj.error(
+        error instanceof Error
+          ? error.message
+          : 'SQL Server demo clear failed.',
       )
       return 1
     }

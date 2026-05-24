@@ -16,8 +16,10 @@ export const MANAGED_REALM_ROLES = ['Reviewer', 'Admin', 'PrivacyOfficer']
 const USAGE = `Usage:
   node scripts/keycloak-demo-users.mjs generate --dev-realm <path> --output <path>
   node scripts/keycloak-demo-users.mjs merge-file --users <path> --realm-file <path> [--output <path>]
-  node scripts/keycloak-demo-users.mjs sync-live --users <path> [--base-url <url>] [--realm <realm>] [--admin-user <user>] [--admin-password <password>]
+  node scripts/keycloak-demo-users.mjs demo-users:sync --users <path> [--base-url <url>] [--realm <realm>] [--admin-user <user>] [--admin-password <password>]
+  node scripts/keycloak-demo-users.mjs demo-users:clear --confirm-clear-demo-users [--base-url <url>] [--realm <realm>] [--admin-user <user>] [--admin-password <password>]
   node scripts/keycloak-demo-users.mjs sync --users <path> --realm-file <path> [--output <path>] [--base-url <url>] [--realm <realm>] [--admin-user <user>] [--admin-password <password>]`
+const BOOLEAN_OPTIONS = new Set(['confirm-clear-demo-users'])
 
 function readJsonFile(filePath, fsImpl = fs) {
   return JSON.parse(fsImpl.readFileSync(filePath, 'utf8'))
@@ -164,6 +166,10 @@ function parseArgs(args) {
     const key = arg.slice(2)
     const value = rest[index + 1]
     if (!value || value.startsWith('--')) {
+      if (BOOLEAN_OPTIONS.has(key)) {
+        options[key] = true
+        continue
+      }
       throw new Error(`Missing value for --${key}.`)
     }
     options[key] = value
@@ -399,10 +405,10 @@ async function syncRealmRoles(options, token, user, keycloakUser, roleCache) {
   }
 }
 
-export async function syncLiveDemoUsers(options) {
+export async function syncDemoUsers(options) {
   const fetchImpl = options.fetchImpl ?? globalThis.fetch
   if (typeof fetchImpl !== 'function') {
-    throw new Error('syncLiveDemoUsers requires fetch.')
+    throw new Error('syncDemoUsers requires fetch.')
   }
   const normalizedOptions = {
     adminPassword: requireOption(options.adminPassword, 'adminPassword'),
@@ -477,6 +483,41 @@ export async function syncLiveDemoUsers(options) {
   return summary
 }
 
+export async function clearDemoUsers(options) {
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch
+  if (typeof fetchImpl !== 'function') {
+    throw new Error('clearDemoUsers requires fetch.')
+  }
+  const normalizedOptions = {
+    adminPassword: requireOption(options.adminPassword, 'adminPassword'),
+    adminUser: requireOption(options.adminUser, 'adminUser'),
+    baseUrl: readNonEmpty(options.baseUrl) ?? DEFAULT_KEYCLOAK_BASE_URL,
+    fetchImpl,
+    realm: readNonEmpty(options.realm) ?? DEFAULT_KEYCLOAK_REALM,
+  }
+  const token = await fetchAdminToken(normalizedOptions)
+  const existingUsers = await listRealmUsers(normalizedOptions, token)
+  let deleted = 0
+
+  for (const existingUser of existingUsers) {
+    if (!isDemoUser(existingUser)) continue
+    await keycloakNoContent(
+      normalizedOptions.fetchImpl,
+      endpoint(
+        normalizedOptions.baseUrl,
+        `/admin/realms/${encodeURIComponent(normalizedOptions.realm)}/users/${existingUser.id}`,
+      ),
+      {
+        headers: authHeaders(token),
+        method: 'DELETE',
+      },
+    )
+    deleted += 1
+  }
+
+  return { deleted }
+}
+
 export async function main(args, dependencies = {}) {
   const consoleObj = dependencies.consoleObj ?? console
   const fsImpl = dependencies.fsImpl ?? fs
@@ -515,9 +556,9 @@ export async function main(args, dependencies = {}) {
       if (command === 'merge-file') return 0
     }
 
-    if (command === 'sync-live' || command === 'sync') {
+    if (command === 'demo-users:sync' || command === 'sync') {
       const usersPath = requireOption(options.users, '--users')
-      const summary = await syncLiveDemoUsers({
+      const summary = await syncDemoUsers({
         adminPassword: options['admin-password'] ?? env.KEYCLOAK_ADMIN_PASSWORD,
         adminUser: options['admin-user'] ?? env.KEYCLOAK_ADMIN,
         baseUrl: options['base-url'],
@@ -528,6 +569,23 @@ export async function main(args, dependencies = {}) {
       consoleObj.log(
         `Synced demo users (created ${summary.created}, updated ${summary.updated}, adopted ${summary.adopted}, deleted ${summary.deleted}).`,
       )
+      return 0
+    }
+
+    if (command === 'demo-users:clear') {
+      if (options['confirm-clear-demo-users'] !== true) {
+        throw new Error(
+          'demo-users:clear requires --confirm-clear-demo-users. This deletes marked Keycloak demo users.',
+        )
+      }
+      const summary = await clearDemoUsers({
+        adminPassword: options['admin-password'] ?? env.KEYCLOAK_ADMIN_PASSWORD,
+        adminUser: options['admin-user'] ?? env.KEYCLOAK_ADMIN,
+        baseUrl: options['base-url'],
+        fetchImpl: dependencies.fetchImpl,
+        realm: options.realm,
+      })
+      consoleObj.log(`Cleared demo users (deleted ${summary.deleted}).`)
       return 0
     }
 
