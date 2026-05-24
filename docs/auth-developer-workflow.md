@@ -330,6 +330,11 @@ token and userinfo response. The value is sourced from each user's
 Login is rejected with 401 when the claim is missing or fails this
 check.
 
+The production Keycloak realm template also declares `hsaId` as a managed
+user-profile attribute with administrator view/edit permissions. That keeps the
+attribute visible in newer Keycloak admin consoles and aligns the stored user
+attribute with the `employeeHsaId` protocol mapper.
+
 ### MCP service-account HSA-id
 
 The `kravhantering-mcp` Keycloak client is configured with the
@@ -443,6 +448,11 @@ not send that cookie back to `/api/auth/callback`, the callback records
 `code=login_state_cookie_missing`. Browser users are redirected to
 `/auth/error`; JSON clients that explicitly request `application/json` receive
 a structured JSON error.
+
+Browser error redirects are anchored to the public origin in
+`AUTH_OIDC_REDIRECT_URI`, not the inbound request URL. In production-like
+standalone Next.js deployments this prevents failed callbacks from redirecting
+the browser to an internal bind host such as `https://0.0.0.0:3000`.
 
 In `local-prod` and `prod`, cookies are created with the `Secure` flag. On a
 non-`localhost` PoC host, running the app over plain `http://` means the browser

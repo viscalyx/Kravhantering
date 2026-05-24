@@ -328,6 +328,8 @@ jobs:
 
       - name: Write release notes
         if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           node scripts/release/container-release.mjs notes \
             --plan tmp/container-release-artifacts/metadata/release-plan.json \

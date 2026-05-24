@@ -1,0 +1,58 @@
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+  categories:
+    - title: Breaking Changes and SemVer
+      labels:
+        - Semver-Major
+        - Semver-Minor
+        - Semver-Patch
+        - breaking-change
+    - title: Security and Privacy
+      labels:
+        - security
+        - privacy-guardrail-approved
+    - title: Features
+      labels:
+        - enhancement
+        - future
+        - proposal
+    - title: Fixes
+      labels:
+        - bug
+    - title: UI and Accessibility
+      labels:
+        - ui/ux
+        - accessibility
+    - title: Database and Data
+      labels:
+        - database
+    - title: MCP and AI
+      labels:
+        - mcp
+        - ai
+    - title: Containers and Infrastructure
+      labels:
+        - infrastructure
+        - docker_compose
+        - devcontainers_package_manager
+    - title: CI and Quality
+      labels:
+        - ci
+        - quality
+        - tests
+    - title: Dependencies
+      labels:
+        - dependencies
+        - github_actions
+        - javascript
+    - title: Documentation
+      labels:
+        - documentation
+    - title: Refactoring
+      labels:
+        - refactor
+    - title: Other Changes
+      labels:
+        - "*"

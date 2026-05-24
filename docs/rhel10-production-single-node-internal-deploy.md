@@ -1,6 +1,9 @@
 # RHEL 10 Single-Node Internal Deployment From Release Artifacts
 
-<!-- cSpell:words coreutils datawriter fullchain privkey -->
+<!-- cSpell:words coreutils datawriter firewalld fullchain nameserver privkey -->
+<!-- cSpell:words resolv -->
+<!-- cSpell:words readlink -->
+<!-- cSpell:words ipv4 -->
 <!-- cSpell:words serverAuth subjectAltName -->
 
 This guide describes how to install and upgrade Kravhantering on one clean
@@ -11,6 +14,8 @@ network.
 Use this topology only when an all-in-one internal deployment model is
 approved. For the enterprise topology with external SQL Server and external
 IdP, use [rhel10-production-deploy.md](./rhel10-production-deploy.md).
+
+![Kravhantering Infographic Single Node Access Flow](images/infographic-single-node-access-flow.png)
 
 ## Release Inputs
 
@@ -148,6 +153,29 @@ that port:
 printf '%s\n' 'net.ipv4.ip_unprivileged_port_start=443' \
   | sudo tee /etc/sysctl.d/90-kravhantering-rootless-ports.conf
 sudo sysctl --system
+```
+
+Open HTTPS in the host firewall. Use this when any approved client, load
+balancer or monitoring source may reach the application over HTTPS:
+
+```bash
+sudo firewall-cmd --add-service=https
+sudo firewall-cmd --permanent --add-service=https
+```
+
+If the site requires a narrower allow-list, add a source-restricted rule
+instead of the global HTTPS service. Replace `10.10.1.0/24` with the approved
+load-balancer, admin or monitoring subnet:
+
+```bash
+HTTPS_SOURCE_CIDR=10.10.1.0/24
+FIREWALL_HTTPS_RULE="rule family=\"ipv4\" source address=\"${HTTPS_SOURCE_CIDR}\""
+FIREWALL_HTTPS_RULE="${FIREWALL_HTTPS_RULE} service name=\"https\" accept"
+
+sudo firewall-cmd \
+  --add-rich-rule="$FIREWALL_HTTPS_RULE"
+sudo firewall-cmd \
+  --permanent --add-rich-rule="$FIREWALL_HTTPS_RULE"
 ```
 
 ## Install a Release
@@ -329,6 +357,19 @@ PUBLIC_HOSTNAME=kravhantering.example.internal
 `PUBLIC_HOSTNAME` is used by the single-node Compose file as an nginx network
 alias so containers can resolve the browser-facing issuer URL internally.
 
+Set `NGINX_RESOLVER` to the Podman DNS resolver that nginx should use for
+dynamic `app-runtime` and Keycloak lookups:
+
+```env
+NGINX_RESOLVER=10.89.0.1
+```
+
+The shown value is the common rootless Podman resolver. nginx uses it to
+re-resolve upstream container names after `app-runtime` or Keycloak restarts,
+instead of keeping a stale container IP. If the deployment network uses a
+different resolver, the startup flow below shows how to print the actual
+resolver from inside the Compose network before nginx starts.
+
 ### `/etc/kravhantering/sqlserver.env`
 
 Set the SQL Server administrator password and confirm the edition:
@@ -503,6 +544,13 @@ realm role. Choose any approved admin username and a strong unique password,
 store it in the deployment secret store, and do not leave the template
 placeholder values in place.
 
+After the stack is running, the bundled Keycloak admin console is available
+through nginx at `https://kravhantering.example.internal/auth/admin/`. From the
+application origin, the same console is reachable as `../auth/admin/`.
+The exact application path `/auth/error` remains handled by the app runtime so
+failed OIDC callbacks can show the Kravhantering error page even though the
+rest of `/auth/` is proxied to Keycloak.
+
 The only values that normally need site-specific changes are:
 
 ```env
@@ -527,6 +575,50 @@ Update the imported realm before first Keycloak startup:
   the MCP service client is used. Do not reuse `AUTH_OIDC_CLIENT_SECRET`.
 - Review the hardcoded MCP `employeeHsaId` claim and replace it with the
   approved service identity if needed.
+
+The production realm template already declares `hsaId` as a managed Keycloak
+user-profile attribute. Keep that attribute named exactly `hsaId`, with
+administrator view/edit permissions, so Keycloak can store it on application
+users and the existing protocol mapper can emit it as the `employeeHsaId`
+claim. In the Keycloak console, the setting is under **Realm settings**,
+**User profile**; after it exists, edit each application user on the user
+details page.
+
+Optional: add an initial application administrator user before first Keycloak
+startup. This is separate from the `KEYCLOAK_ADMIN` bootstrap account, which
+only administers Keycloak. The application user must have a real
+`hsaId` attribute and can be assigned all Kravhantering realm roles:
+
+```json
+{
+  "users": [
+    {
+      "username": "ada.admin",
+      "enabled": true,
+      "email": "ada.admin@example.internal",
+      "emailVerified": true,
+      "firstName": "Ada",
+      "lastName": "Admin",
+      "attributes": {
+        "hsaId": ["SE5560000001-admin1"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "devpass",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["Reviewer", "Admin", "PrivacyOfficer"]
+    }
+  ]
+}
+```
+
+Use a one-time password from the deployment secret store and replace it through
+normal identity administration after first sign-in. Sites may also skip the
+`users` block and create application users through the Keycloak admin console
+at `../auth/admin/` after startup.
 
 The realm must keep emitting realm roles as a multivalued `roles` claim and
 the user `hsaId` attribute as `employeeHsaId`.
@@ -572,13 +664,15 @@ sudo install -o root -g kravhantering -m 0640 fullchain.pem \
   /etc/kravhantering/tls/fullchain.pem
 sudo install -o root -g kravhantering -m 0640 privkey.pem \
   /etc/kravhantering/tls/privkey.pem
-sudo install -o root -g kravhantering -m 0640 ca.crt \
+sudo install -o root -g kravhantering -m 0644 ca.crt \
   /etc/kravhantering/tls/ca.crt
 ```
 
 `fullchain.pem` and `privkey.pem` are mounted by nginx. `ca.crt` is mounted by
 `app-runtime` through `NODE_EXTRA_CA_CERTS` so the app can trust the internal
-Keycloak issuer through nginx.
+Keycloak issuer through nginx. Keep `privkey.pem` restricted to `0640`.
+Install `ca.crt` as `0644` because it is public trust material and the
+non-root Node.js process inside `app-runtime` must be able to read it.
 
 For a temporary isolated lab host, Appendix A shows how to create these files
 with a local root CA. Do not use that local self-signed flow for a shared
@@ -597,6 +691,20 @@ sudo chcon -R -t container_file_t /etc/kravhantering/tls
 
 Repeat these commands after replacing the realm JSON or TLS files.
 
+If `/api/ready` fails at OIDC discovery after replacing `ca.crt`, confirm the
+CA file mode and restart `app-runtime` so Node.js reloads
+`NODE_EXTRA_CA_CERTS`:
+
+```bash
+sudo chmod 0644 /etc/kravhantering/tls/ca.crt
+sudo chcon -R -t container_file_t /etc/kravhantering/tls
+
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml restart app-runtime
+```
+
 ## Start the Single-Node Stack
 
 Start SQL Server and Keycloak first, then run the database bootstrap,
@@ -614,6 +722,9 @@ STACK_NETWORK=kravhantering-single-node_kravhantering-internal
 podman compose --env-file /etc/kravhantering/release.env \
   -f compose/single-node.compose.yml up -d sqlserver keycloak
 
+podman run --rm --network "$STACK_NETWORK" --entrypoint /bin/sh \
+  "$NGINX_IMAGE_REF" -c "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+
 podman run --rm --network "$STACK_NETWORK" \
   --env-file /etc/kravhantering/db-job.env \
   "$DB_JOB_IMAGE_REF" wait
@@ -630,6 +741,10 @@ podman run --rm --network "$STACK_NETWORK" \
 podman compose --env-file /etc/kravhantering/release.env \
   -f compose/single-node.compose.yml up -d
 ```
+
+If the printed resolver differs from `NGINX_RESOLVER`, update
+`/etc/kravhantering/release.env`, reload it in the shell, and rerun
+`podman compose up -d` before checking readiness.
 
 Do not run `seed:demo` in production. The production `db-job` image contains
 only the required seed entrypoint; demo seed data is local/demo and
@@ -655,6 +770,102 @@ curl --fail --silent --show-error \
   https://kravhantering.example.internal/api/ready
 ```
 
+If the host uses the temporary self-signed certificate from Appendix A, or the
+operator workstation does not yet trust the issuing CA, use `--insecure` for a
+manual readiness probe only:
+
+```bash
+curl --insecure --fail --silent --show-error \
+  https://kravhantering.example.internal/api/health
+```
+
+## Operate Individual Services
+
+Run day-2 service control as the rootless service user from the active release
+directory:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+COMPOSE_FILE=compose/single-node.compose.yml
+
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" ps
+```
+
+Restart an existing long-running container when only the process needs to
+reload mounted files or reconnect to dependencies:
+
+```bash
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" restart app-runtime
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" restart nginx
+```
+
+Use `restart` for cases such as replacing `ca.crt` for `app-runtime` or
+reloading nginx after replacing the mounted TLS certificate files. Use
+`up -d --force-recreate SERVICE` instead when an env file, image ref, bind
+mount, or Compose definition changed and the container must be recreated:
+
+```bash
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" up -d --force-recreate app-runtime
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" up -d --force-recreate nginx
+```
+
+Take down and bring up one service without stopping the whole stack:
+
+```bash
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" stop nginx
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" up -d nginx
+```
+
+For app maintenance, stop nginx first to stop browser traffic, then stop or
+recreate `app-runtime`:
+
+```bash
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" stop nginx app-runtime
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" up -d app-runtime nginx
+```
+
+`sqlserver` and `keycloak` are stateful services in this topology. Restart or
+recreate them only during a planned maintenance window. Stopping either one
+makes login, readiness, and normal application traffic unavailable until the
+service is healthy again:
+
+```bash
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" restart keycloak
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" restart sqlserver
+```
+
+The realm import file is mainly a first-start bootstrap input. On an initialized
+Keycloak data volume, changing
+`/etc/kravhantering/keycloak/realm-kravhantering-production.json` and
+restarting Keycloak is not a general realm update mechanism; use the Keycloak
+admin API or console for live realm changes unless release notes say otherwise.
+
+Stop and remove all long-running containers only for full-stack maintenance:
+
+```bash
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" down
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" up -d
+```
+
+Do not use `podman compose down -v` in production unless the approved procedure
+explicitly calls for deleting the named SQL Server and Keycloak data volumes.
+The `db-job` image is not a long-running service; run database jobs with the
+documented `podman run --rm` commands.
+
 ## Optional User Systemd Wrapper
 
 Manual `podman compose` is the primary operational workflow. If the site wants
@@ -677,29 +888,253 @@ from `/opt/kravhantering/current` and `podman compose down` on stop.
 ## Planned-Downtime Upgrade
 
 Use planned downtime unless a future release explicitly documents rolling
-compatibility.
+compatibility. Keep the existing `/etc/kravhantering/*.env` files and realm
+JSON during upgrade. The first-install template-copy steps are intentionally
+not part of this checklist unless the release notes require a specific
+configuration change.
 
 1. Confirm the target release bundle, checksum and mirrored image digests.
+   Download the target bundle and checksum from the approved release source:
+
+   ```bash
+   VERSION=1.2.4
+
+   # Default: internal release repository.
+   RELEASE_DOWNLOAD_URL="https://release.example.internal/kravhantering/${VERSION}"
+
+   # Opt-in: official GitHub release artifact.
+   # RELEASE_DOWNLOAD_URL="https://github.com/viscalyx/Kravhantering/releases/download/v${VERSION}"
+
+   mkdir -p "/tmp/kravhantering-${VERSION}"
+   cd "/tmp/kravhantering-${VERSION}"
+
+   curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz"
+   curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
+   curl -fLO "${RELEASE_DOWNLOAD_URL}/container-stack.lock.json"
+   sha256sum -c "kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
+   jq -r '.services[] | "\(.name) \(.digest)"' container-stack.lock.json
+   ```
+
+   Verify that the internal registry has digest-preserved mirrors for every
+   image named in the target release `container-stack.lock.json`.
+
 2. Confirm a tested SQL Server backup, volume snapshot or restore point.
+   Complete the site-approved restore procedure before the window begins and
+   record the backup, snapshot or restore-point identifier. Do not continue
+   unless the restore point covers the database state before any target-release
+   migration runs.
+
 3. Drain or disable traffic to the host.
-4. Stop `nginx` and `app-runtime`; leave SQL Server and Keycloak running:
+   Use the site's load balancer, reverse proxy or firewall procedure so no new
+   browser traffic reaches `PUBLIC_HOSTNAME`. Keep administrative access to the
+   host available for the remaining steps.
+
+4. Stop `nginx` and `app-runtime`; leave SQL Server and Keycloak running.
+   Run this as the rootless service user from the current release directory:
 
    ```bash
    sudo -iu kravhantering
    cd /opt/kravhantering/current
    podman compose --env-file /etc/kravhantering/release.env \
      -f compose/single-node.compose.yml stop nginx app-runtime
+   exit
    ```
 
 5. Install the new release bundle under `/opt/kravhantering/releases`.
+   Extract the verified bundle and label the release-owned nginx files:
+
+   ```bash
+   cd "/tmp/kravhantering-${VERSION}"
+   sudo install -d -o root -g root -m 0755 \
+     "/opt/kravhantering/releases/${VERSION}"
+   sudo tar -xzf "kravhantering-production-deploy-${VERSION}.tar.gz" \
+     -C "/opt/kravhantering/releases/${VERSION}" \
+     --strip-components=1
+   sudo chcon -R -t container_file_t \
+     "/opt/kravhantering/releases/${VERSION}/nginx"
+   ```
+
+   Review the release manifest and lock file before switching `current`:
+
+   ```bash
+   less "/opt/kravhantering/releases/${VERSION}/DEPLOYMENT-MANIFEST.json"
+   less "/opt/kravhantering/releases/${VERSION}/container-stack.lock.json"
+   ```
+
 6. Update `/opt/kravhantering/current` to the new release.
+   Move the symlink only after the target release has been extracted and
+   labelled:
+
+   ```bash
+   sudo ln -sfn "/opt/kravhantering/releases/${VERSION}" \
+     /opt/kravhantering/current
+   readlink -f /opt/kravhantering/current
+   ```
+
 7. Update `/etc/kravhantering/release.env` image refs to the new digests.
-8. Run the database jobs once with the `podman run --rm` commands from
-   [Start the Single-Node Stack](#start-the-single-node-stack), using the new
-   `DB_JOB_IMAGE_REF`.
-9. Start the stack with `podman compose up -d` from the new release.
+   Load the target digests from the new release lock file:
+
+   ```bash
+   LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
+   service_digest() {
+     jq -r --arg name "$1" \
+       '.services[] | select(.name == $name) | .digest' "$LOCK_FILE"
+   }
+
+   APP_RUNTIME_DIGEST="$(service_digest app-runtime)"
+   DB_JOB_DIGEST="$(service_digest db-job)"
+   NGINX_DIGEST="$(service_digest nginx)"
+   SQLSERVER_DIGEST="$(service_digest sqlserver)"
+   KEYCLOAK_DIGEST="$(service_digest keycloak)"
+
+   update_ref() {
+     sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
+   }
+   ```
+
+   Update the image refs for the internal registry mirror:
+
+   ```bash
+   update_ref APP_RUNTIME_IMAGE_REF \
+     "registry.example.internal/kravhantering-app-runtime@${APP_RUNTIME_DIGEST}"
+   update_ref DB_JOB_IMAGE_REF \
+     "registry.example.internal/kravhantering-db-job@${DB_JOB_DIGEST}"
+   update_ref NGINX_IMAGE_REF \
+     "registry.example.internal/nginx@${NGINX_DIGEST}"
+   update_ref SQLSERVER_IMAGE_REF \
+     "registry.example.internal/mssql/server@${SQLSERVER_DIGEST}"
+   update_ref KEYCLOAK_IMAGE_REF \
+     "registry.example.internal/keycloak/keycloak@${KEYCLOAK_DIGEST}"
+   ```
+
+   Opt-in: if the site is explicitly approved to pull from public upstream
+   registries, use the source registry refs instead:
+
+   ```bash
+   update_ref APP_RUNTIME_IMAGE_REF \
+     "ghcr.io/viscalyx/kravhantering-app-runtime@${APP_RUNTIME_DIGEST}"
+   update_ref DB_JOB_IMAGE_REF \
+     "ghcr.io/viscalyx/kravhantering-db-job@${DB_JOB_DIGEST}"
+   update_ref NGINX_IMAGE_REF \
+     "docker.io/library/nginx@${NGINX_DIGEST}"
+   update_ref SQLSERVER_IMAGE_REF \
+     "mcr.microsoft.com/mssql/server@${SQLSERVER_DIGEST}"
+   update_ref KEYCLOAK_IMAGE_REF \
+     "quay.io/keycloak/keycloak@${KEYCLOAK_DIGEST}"
+   ```
+
+   Pull the target images as the service user:
+
+   ```bash
+   sudo -iu kravhantering
+   set -a
+   . /etc/kravhantering/release.env
+   set +a
+
+   podman pull "$APP_RUNTIME_IMAGE_REF"
+   podman pull "$DB_JOB_IMAGE_REF"
+   podman pull "$NGINX_IMAGE_REF"
+   podman pull "$SQLSERVER_IMAGE_REF"
+   podman pull "$KEYCLOAK_IMAGE_REF"
+
+   exit
+   ```
+
+8. Run the database jobs once from the new release.
+   First ensure SQL Server, Keycloak and the Compose network exist for the new
+   release, then run the job sequence with the new `DB_JOB_IMAGE_REF`. Do not
+   run `seed:demo` in production.
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   set -a
+   . /etc/kravhantering/release.env
+   set +a
+
+   STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+
+   podman compose --env-file /etc/kravhantering/release.env \
+     -f compose/single-node.compose.yml up -d sqlserver keycloak
+
+   podman run --rm --network "$STACK_NETWORK" --entrypoint /bin/sh \
+     "$NGINX_IMAGE_REF" -c "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+
+   podman run --rm --network "$STACK_NETWORK" \
+     --env-file /etc/kravhantering/db-job.env \
+     "$DB_JOB_IMAGE_REF" wait
+   podman run --rm --network "$STACK_NETWORK" \
+     --env-file /etc/kravhantering/db-job.env \
+     "$DB_JOB_IMAGE_REF" bootstrap
+   podman run --rm --network "$STACK_NETWORK" \
+     --env-file /etc/kravhantering/db-job.env \
+     "$DB_JOB_IMAGE_REF" migrate
+   podman run --rm --network "$STACK_NETWORK" \
+     --env-file /etc/kravhantering/db-job.env \
+     "$DB_JOB_IMAGE_REF" seed:required
+   ```
+
+   If the printed resolver differs from `NGINX_RESOLVER`, update
+   `/etc/kravhantering/release.env` and reload it before starting nginx.
+
+9. Start the stack from the new release.
+   Start all long-running services with the same Compose command used after a
+   first install:
+
+   ```bash
+   podman compose --env-file /etc/kravhantering/release.env \
+     -f compose/single-node.compose.yml up -d
+   ```
+
 10. Check `/api/health`, `/api/ready`, sign-in and a read-only UI workflow.
+    Check readiness through nginx, then sign in through the browser and open an
+    existing read-only requirement view:
+
+    ```bash
+    curl --fail --silent --show-error \
+      https://kravhantering.example.internal/api/health
+    curl --fail --silent --show-error \
+      https://kravhantering.example.internal/api/ready
+    ```
+
+    If the host uses the temporary self-signed certificate from Appendix A, or
+    the operator workstation does not yet trust the issuing CA, use
+    `--insecure` for a manual readiness probe only:
+
+    ```bash
+    curl --insecure --fail --silent --show-error \
+      https://kravhantering.example.internal/api/health
+    ```
+
 11. Re-enable traffic.
+    Put the host back into the load balancer, reverse proxy or firewall
+    rotation only after the readiness probes and read-only workflow succeed.
+    Add the final bundle checksum, image refs, restore-point reference and
+    readiness results to the [Operational Evidence](#operational-evidence)
+    record.
+
+## Troubleshooting Readiness
+
+- If `/api/health` works from the host but not from a remote client, check
+  firewalld and confirm HTTPS is allowed on port 443 for the approved source
+  networks.
+- If `/api/ready` returns `503` and app logs show
+  `NODE_EXTRA_CA_CERTS` permission denied, fix the CA trust mount:
+
+  ```bash
+  sudo chmod 0644 /etc/kravhantering/tls/ca.crt
+  sudo chcon -R -t container_file_t /etc/kravhantering/tls
+
+  sudo -iu kravhantering
+  cd /opt/kravhantering/current
+  podman compose --env-file /etc/kravhantering/release.env \
+    -f compose/single-node.compose.yml restart app-runtime
+  ```
+
+- If `/api/health` and `/api/ready` return `502` after restarting
+  `app-runtime` on an older release, restart nginx so it resolves the new
+  container IP. Current release packages render nginx with `NGINX_RESOLVER`
+  and dynamic upstream `resolve` entries to avoid stale upstream IPs.
 
 ## Rollback
 
@@ -831,7 +1266,7 @@ sudo sh -c "cat '${TLS_DIR}/server.crt' \
 sudo chown root:kravhantering "${TLS_DIR}/fullchain.pem"
 sudo chmod 0640 "${TLS_DIR}/fullchain.pem"
 
-sudo install -o root -g kravhantering -m 0640 \
+sudo install -o root -g kravhantering -m 0644 \
   "${TLS_DIR}/local-root-ca.crt" "${TLS_DIR}/ca.crt"
 ```
 

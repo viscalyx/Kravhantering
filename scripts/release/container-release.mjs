@@ -28,6 +28,7 @@ const RELEVANT_PATH_PREFIXES = [
   'package-lock.json',
   'package.json',
   'public/',
+  'docs/images/',
   'docs/rhel10-production-deploy.md',
   'docs/rhel10-production-single-node-internal-deploy.md',
   'scripts/build-metadata.js',
@@ -48,10 +49,6 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
   {
     source: 'docs/rhel10-production-single-node-internal-deploy.md',
     target: 'docs/rhel10-production-single-node-internal-deploy.md',
-  },
-  {
-    source: 'docs/adr/0001-release-artifact-production-deployment.md',
-    target: 'docs/adr/0001-release-artifact-production-deployment.md',
   },
   { source: 'containers/production/compose', target: 'compose' },
   { source: 'containers/production/env', target: 'env' },
@@ -430,6 +427,96 @@ function copyBundleEntry(entry, bundleRoot, options = {}) {
   fsImpl.cpSync(source, target, { recursive: true })
 }
 
+const MARKDOWN_IMAGE_PATTERN =
+  /!\[[^\]\n]*\]\((?<target><[^>\n]+>|[^)\s\n]+)(?:\s+(?:"[^"]*"|'[^']*'))?\)/gu
+const MARKDOWN_REMOTE_TARGET_PATTERN = /^[a-z][a-z0-9+.-]*:/iu
+
+function normalizeBundleRelativePath(value) {
+  const normalized = path.posix.normalize(String(value).replaceAll('\\', '/'))
+  if (
+    normalized === '.' ||
+    normalized.startsWith('../') ||
+    path.posix.isAbsolute(normalized)
+  ) {
+    return undefined
+  }
+  return normalized
+}
+
+function markdownImageTargets(content) {
+  return [...String(content).matchAll(MARKDOWN_IMAGE_PATTERN)]
+    .map(match => match.groups?.target?.trim())
+    .filter(Boolean)
+}
+
+function markdownLocalAssetTarget(target) {
+  let localTarget = target.trim()
+  if (localTarget.startsWith('<') && localTarget.endsWith('>')) {
+    localTarget = localTarget.slice(1, -1).trim()
+  }
+
+  localTarget = localTarget.replace(/[?#].*$/u, '')
+  if (
+    !localTarget ||
+    localTarget.startsWith('/') ||
+    localTarget.startsWith('#') ||
+    MARKDOWN_REMOTE_TARGET_PATTERN.test(localTarget)
+  ) {
+    return undefined
+  }
+  return localTarget
+}
+
+export function resolveBundledMarkdownAssets(entry, content) {
+  const sourcePath = normalizeBundleRelativePath(entry.source)
+  const targetPath = normalizeBundleRelativePath(entry.target)
+  if (!sourcePath?.endsWith('.md') || !targetPath?.endsWith('.md')) {
+    return []
+  }
+
+  const assetsByTarget = new Map()
+  const sourceDir = path.posix.dirname(sourcePath)
+  const targetDir = path.posix.dirname(targetPath)
+
+  for (const rawTarget of markdownImageTargets(content)) {
+    const localTarget = markdownLocalAssetTarget(rawTarget)
+    if (!localTarget) continue
+
+    const source = normalizeBundleRelativePath(
+      path.posix.join(sourceDir, localTarget),
+    )
+    const target = normalizeBundleRelativePath(
+      path.posix.join(targetDir, localTarget),
+    )
+    if (!source || !target) {
+      throw new Error(
+        `Bundled Markdown asset link escapes the bundle root: ${rawTarget}`,
+      )
+    }
+    if (source.startsWith('public/')) {
+      throw new Error(
+        `Bundled Markdown ${sourcePath} links to ${source}. Move release documentation images under docs/.`,
+      )
+    }
+    assetsByTarget.set(target, { source, target })
+  }
+
+  return [...assetsByTarget.values()]
+}
+
+function copyBundleMarkdownAssets(entry, bundleRoot, options = {}) {
+  if (!String(entry.source).endsWith('.md')) return
+
+  const cwd = options.cwd ?? process.cwd()
+  const fsImpl = options.fsImpl ?? fs
+  const source = path.resolve(cwd, entry.source)
+  const content = fsImpl.readFileSync(source, 'utf8')
+
+  for (const asset of resolveBundledMarkdownAssets(entry, content)) {
+    copyBundleEntry(asset, bundleRoot, { cwd, fsImpl })
+  }
+}
+
 function copyOptionalFile(source, target, options = {}) {
   const cwd = options.cwd ?? process.cwd()
   const fsImpl = options.fsImpl ?? fs
@@ -484,6 +571,7 @@ export function stageProductionDeploymentBundle(options = {}) {
 
   for (const entry of DEPLOYMENT_BUNDLE_STATIC_ENTRIES) {
     copyBundleEntry(entry, bundleRoot, { cwd, fsImpl })
+    copyBundleMarkdownAssets(entry, bundleRoot, { cwd, fsImpl })
   }
 
   const dynamicFiles = [
@@ -538,16 +626,218 @@ function hashesToMarkdown(content) {
     : '- No hashes recorded.'
 }
 
-export function renderReleaseNotes(plan, metadata, hashesContent) {
+function parseJsonText(content, fallback) {
+  try {
+    return JSON.parse(content)
+  } catch {
+    return fallback
+  }
+}
+
+function cleanSingleLine(value) {
+  return String(value ?? '')
+    .replace(/\s+/gu, ' ')
+    .trim()
+}
+
+function isSameReleaseKind(plan, release) {
+  const isPrerelease = release?.isPrerelease === true
+  return plan.prerelease ? isPrerelease : !isPrerelease
+}
+
+export function selectPreviousReleaseTag(plan, releases = []) {
+  if (!plan.releaseTagName) return undefined
+  const match = releases.find(
+    release =>
+      release?.tagName &&
+      release.tagName !== plan.releaseTagName &&
+      release.isDraft !== true &&
+      isSameReleaseKind(plan, release),
+  )
+  return readNonEmpty(match?.tagName)
+}
+
+export function readPublishedGitHubReleases(plan, options = {}) {
+  if (!plan.repository) return []
+  const output = execText(
+    'gh',
+    [
+      'release',
+      'list',
+      '--repo',
+      plan.repository,
+      '--limit',
+      '100',
+      '--exclude-drafts',
+      '--json',
+      'tagName,isPrerelease,isDraft,publishedAt',
+    ],
+    options,
+  )
+  const releases = parseJsonText(output, [])
+  return Array.isArray(releases) ? releases : []
+}
+
+export function readFirstParentCommits(plan, previousTagName, options = {}) {
+  if (!plan.releaseTagName) return []
+  const range = previousTagName
+    ? `${previousTagName}..${plan.commitSha}`
+    : plan.commitSha
+  const output = execText(
+    'git',
+    [
+      'log',
+      '--first-parent',
+      '--reverse',
+      '--date=short',
+      '--format=%h%x09%ad%x09%an%x09%s',
+      range,
+    ],
+    options,
+  )
+
+  return changedFilesFromText(output).map(line => {
+    const [shortSha, date, author, ...subjectParts] = line.split('\t')
+    return {
+      author: readNonEmpty(author) ?? 'unknown',
+      date: readNonEmpty(date) ?? 'unknown-date',
+      shortSha: readNonEmpty(shortSha) ?? 'unknown',
+      subject: readNonEmpty(subjectParts.join('\t')) ?? '(no subject)',
+    }
+  })
+}
+
+export function readGeneratedReleaseNotes(plan, previousTagName, options = {}) {
+  if (!plan.releaseTagName || !previousTagName) return undefined
+  const output = execText(
+    'gh',
+    [
+      'api',
+      `repos/${plan.repository}/releases/generate-notes`,
+      '--method',
+      'POST',
+      '-f',
+      `tag_name=${plan.releaseTagName}`,
+      '-f',
+      `target_commitish=${plan.commitSha}`,
+      '-f',
+      `previous_tag_name=${previousTagName}`,
+      '-f',
+      'configuration_file_path=.github/release.yml',
+    ],
+    options,
+  )
+  const response = parseJsonText(output, {})
+  return readNonEmpty(response?.body)
+}
+
+export function createReleaseChangelog(plan, options = {}) {
+  if (!plan.releaseTagName) {
+    return {
+      commits: [],
+      generatedNotes: undefined,
+      generatedNotesNotice: undefined,
+      previousTagName: undefined,
+    }
+  }
+
+  let previousTagName
+  let generatedNotes
+  let generatedNotesNotice
+
+  try {
+    previousTagName = selectPreviousReleaseTag(
+      plan,
+      readPublishedGitHubReleases(plan, options),
+    )
+  } catch (error) {
+    generatedNotesNotice = `GitHub release lookup was unavailable: ${cleanSingleLine(error instanceof Error ? error.message : error)}`
+  }
+
+  const commits = readFirstParentCommits(plan, previousTagName, options)
+
+  if (!previousTagName) {
+    generatedNotesNotice =
+      generatedNotesNotice ??
+      `No previous ${plan.prerelease ? 'preview' : 'stable'} GitHub Release was found; the exact commit list covers all first-parent commits reachable from this release.`
+    return {
+      commits,
+      generatedNotes,
+      generatedNotesNotice,
+      previousTagName,
+    }
+  }
+
+  try {
+    generatedNotes = readGeneratedReleaseNotes(plan, previousTagName, options)
+  } catch (error) {
+    generatedNotesNotice = `GitHub-generated release notes were unavailable: ${cleanSingleLine(error instanceof Error ? error.message : error)}`
+  }
+
+  return {
+    commits,
+    generatedNotes,
+    generatedNotesNotice,
+    previousTagName,
+  }
+}
+
+function renderGeneratedNotesSection(changelog) {
+  const generatedNotes = readNonEmpty(changelog?.generatedNotes)
+  if (generatedNotes) {
+    return /^##\s+What's Changed\b/mu.test(generatedNotes)
+      ? generatedNotes
+      : `## What's Changed\n\n${generatedNotes}`
+  }
+
+  const notice = readNonEmpty(changelog?.generatedNotesNotice)
+  if (!notice) return undefined
+
+  return `## What's Changed\n\n${notice}`
+}
+
+function renderExactCommitRange(plan, changelog) {
+  if (!changelog) return undefined
+  const lines = [
+    '## Exact Commit Range',
+    '',
+    changelog.previousTagName
+      ? `Previous same-kind release: \`${changelog.previousTagName}\``
+      : 'Previous same-kind release: none',
+    changelog.previousTagName
+      ? `Range: \`${changelog.previousTagName}..${plan.commitSha}\``
+      : `Range: first-parent history through \`${plan.commitSha}\``,
+    '',
+  ]
+
+  if (changelog.commits.length === 0) {
+    lines.push('- No first-parent commits found in this range.')
+  } else {
+    lines.push(
+      ...changelog.commits.map(
+        commit =>
+          `- \`${commit.shortSha}\` ${commit.date} ${commit.author} - ${commit.subject}`,
+      ),
+    )
+  }
+
+  return lines.join('\n')
+}
+
+export function renderReleaseNotes(plan, metadata, hashesContent, changelog) {
   const releaseKind = plan.isStableRelease
     ? 'Stable release'
     : 'Preview release'
+  const generatedNotesSection = renderGeneratedNotesSection(changelog)
+  const exactCommitRange = renderExactCommitRange(plan, changelog)
   const lines = [
     `# ${releaseKind} ${plan.version}`,
     '',
     `Commit: \`${plan.commitSha}\``,
     `Workflow run: https://github.com/${plan.repository}/actions/runs/${plan.runId}`,
     '',
+    ...(generatedNotesSection ? [generatedNotesSection, ''] : []),
+    ...(exactCommitRange ? [exactCommitRange, ''] : []),
     '## Public GHCR Images',
     '',
     `- app-runtime: \`${metadata.appRuntime.ref}\``,
@@ -562,6 +852,11 @@ export function renderReleaseNotes(plan, metadata, hashesContent) {
     '',
     `- \`${deploymentBundleArchiveName(plan.version)}\``,
     `- \`${deploymentBundleArchiveName(plan.version)}.sha256\``,
+    '',
+    '## Operational Notes',
+    '',
+    '- Single-node TLS CA guidance installs `ca.crt` as readable public trust material while keeping private keys restricted.',
+    '- Production nginx templates use dynamic Podman DNS resolution for app-runtime and Keycloak upstreams to avoid stale container IPs after restarts.',
     '',
     '## Checksums',
     '',
@@ -678,9 +973,14 @@ export async function main(args, dependencies = {}) {
       const hashes = fsImpl.existsSync(options.hashes)
         ? fsImpl.readFileSync(options.hashes, 'utf8')
         : ''
+      const changelog = createReleaseChangelog(plan, {
+        cwd: dependencies.cwd,
+        env,
+        execFileSync: dependencies.execFileSync,
+      })
       writeTextFile(
         options.output,
-        renderReleaseNotes(plan, metadata, hashes),
+        renderReleaseNotes(plan, metadata, hashes, changelog),
         fsImpl,
       )
       consoleObj.log(`Wrote ${options.output}`)

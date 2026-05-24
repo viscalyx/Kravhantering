@@ -140,7 +140,7 @@ function createAuthCallbackFailureResponse(
   }
 
   const locale = pathLocale(options.returnTo)
-  const errorUrl = new URL('/auth/error', request.url)
+  const errorUrl = new URL('/auth/error', getAuthConfig().redirectUri)
   errorUrl.searchParams.set('code', options.code)
   errorUrl.searchParams.set('locale', locale)
   return NextResponse.redirect(errorUrl, { status: 302 })

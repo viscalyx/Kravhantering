@@ -266,7 +266,7 @@ describe('auth callback security audit events', () => {
     expect(serializedErrorCalls).not.toContain('sealed-cookie-value')
   })
 
-  it('redirects browser callbacks with missing login state to the auth error page', async () => {
+  it('redirects browser callbacks with missing login state to the public auth error page', async () => {
     const loginState = freshLoginState({
       codeVerifier: '' as never,
       returnTo: '/en/specifications',
@@ -287,7 +287,7 @@ describe('auth callback security audit events', () => {
 
     expect(response.status).toBe(302)
     expect(response.headers.get('location')).toBe(
-      'http://poc.example.test/auth/error?code=login_state_cookie_missing&locale=en',
+      'http://localhost:3000/auth/error?code=login_state_cookie_missing&locale=en',
     )
     expect(loginState.destroy).toHaveBeenCalledOnce()
   })
@@ -412,6 +412,39 @@ describe('auth callback security audit events', () => {
     expect(
       (emittedSecurityEvents()[0].detail as Record<string, unknown>).reason,
     ).toBe('hsa_id_missing')
+  })
+
+  it('redirects browser claim failures to the configured public auth error origin', async () => {
+    process.env.AUTH_OIDC_REDIRECT_URI =
+      'https://kravhantering.example.internal/api/auth/callback'
+    resetAuthConfigForTests()
+    const loginState = freshLoginState()
+    getLoginStateMock.mockResolvedValue(loginState)
+    getSessionMock.mockResolvedValue(freshPriorSession())
+    const { employeeHsaId, ...rest } = SUCCESS_CLAIMS
+    void employeeHsaId
+    authorizationCodeGrantMock.mockResolvedValue({
+      claims: () => rest,
+      expiresIn: () => 3600,
+      id_token: 'idt',
+    })
+
+    const GET = await importGet()
+    const response = await GET(
+      buildCallbackRequest(
+        'https://0.0.0.0:3000/api/auth/callback?code=abc&state=state',
+        {
+          accept: 'text/html',
+          secFetchDest: 'document',
+        },
+      ),
+    )
+
+    expect(loginState.destroy).toHaveBeenCalledOnce()
+    expect(response.status).toBe(302)
+    expect(response.headers.get('location')).toBe(
+      'https://kravhantering.example.internal/auth/error?code=hsa_id_missing&locale=sv',
+    )
   })
 
   it('emits auth.login.failed with reason=hsa_id_invalid', async () => {

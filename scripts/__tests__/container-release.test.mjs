@@ -4,12 +4,15 @@ import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
   APP_RUNTIME_PACKAGE,
+  createReleaseChangelog,
   createReleaseMetadata,
   createReleasePlan,
   deploymentBundleArchiveName,
   ensureGitTag,
   isReleaseRelevantPath,
   renderReleaseNotes,
+  resolveBundledMarkdownAssets,
+  selectPreviousReleaseTag,
   stageProductionDeploymentBundle,
 } from '../release/container-release.mjs'
 
@@ -26,6 +29,29 @@ function env(overrides = {}) {
     GITHUB_SHA: '1234567890abcdef1234567890abcdef12345678',
     ...overrides,
   }
+}
+
+function readWorkspaceFile(relativePath) {
+  return fs.readFileSync(path.join(process.cwd(), relativePath), 'utf8')
+}
+
+function expectNginxTemplateSyntax(content) {
+  let depth = 0
+  for (const rawLine of content.split(/\r?\n/u)) {
+    const line = rawLine.trim()
+    if (!line || line.startsWith('#')) continue
+    if (line.endsWith('{')) {
+      depth += 1
+      continue
+    }
+    if (line === '}') {
+      depth -= 1
+      expect(depth).toBeGreaterThanOrEqual(0)
+      continue
+    }
+    expect(line).toMatch(/;$/u)
+  }
+  expect(depth).toBe(0)
 }
 
 describe('trusted container release helpers', () => {
@@ -123,6 +149,11 @@ describe('trusted container release helpers', () => {
   it('identifies release-relevant paths conservatively', () => {
     expect(isReleaseRelevantPath('containers/app/Dockerfile')).toBe(true)
     expect(isReleaseRelevantPath('package-lock.json')).toBe(true)
+    expect(
+      isReleaseRelevantPath(
+        'docs/images/infographic-production-access-and-service-flow.png',
+      ),
+    ).toBe(true)
     expect(isReleaseRelevantPath('docs/rhel10-production-deploy.md')).toBe(true)
     expect(
       isReleaseRelevantPath(
@@ -131,6 +162,40 @@ describe('trusted container release helpers', () => {
     ).toBe(true)
     expect(isReleaseRelevantPath('docs/prompt-faser.md')).toBe(false)
     expect(isReleaseRelevantPath('tests/unit/example.test.ts')).toBe(false)
+  })
+
+  it('resolves local Markdown images for bundled deployment docs', () => {
+    const assets = resolveBundledMarkdownAssets(
+      {
+        source: 'docs/rhel10-production-deploy.md',
+        target: 'docs/rhel10-production-deploy.md',
+      },
+      [
+        '![Local](images/diagram.png)',
+        '![Remote](https://example.test/diagram.png)',
+        '![Absolute](/diagram.png)',
+        '![With title](images/diagram.png "Diagram")',
+      ].join('\n'),
+    )
+
+    expect(assets).toEqual([
+      {
+        source: 'docs/images/diagram.png',
+        target: 'docs/images/diagram.png',
+      },
+    ])
+  })
+
+  it('rejects release documentation images sourced from public', () => {
+    expect(() =>
+      resolveBundledMarkdownAssets(
+        {
+          source: 'docs/rhel10-production-deploy.md',
+          target: 'docs/rhel10-production-deploy.md',
+        },
+        '![Public](../public/diagram.png)',
+      ),
+    ).toThrow('Move release documentation images under docs/')
   })
 
   it('treats bundled single-node deployment docs as release-relevant', () => {
@@ -148,7 +213,132 @@ describe('trusted container release helpers', () => {
     })
   })
 
-  it('renders release notes with GHCR refs and checksums', () => {
+  it('selects the previous stable release without using prereleases', () => {
+    const plan = createReleasePlan({
+      changedFiles: [],
+      env: env({
+        GITHUB_REF: 'refs/tags/v1.2.3',
+        GITHUB_REF_NAME: 'v1.2.3',
+      }),
+      gitVersion,
+    })
+
+    expect(
+      selectPreviousReleaseTag(plan, [
+        { isPrerelease: false, tagName: 'v1.2.3' },
+        { isPrerelease: true, tagName: 'v1.2.2-preview.5' },
+        { isPrerelease: false, tagName: 'v1.2.2' },
+      ]),
+    ).toBe('v1.2.2')
+  })
+
+  it('selects the previous preview release without using stable releases', () => {
+    const plan = createReleasePlan({
+      changedFiles: ['containers/app/Dockerfile'],
+      env: env(),
+      gitVersion,
+    })
+
+    expect(
+      selectPreviousReleaseTag(plan, [
+        { isPrerelease: true, tagName: 'v1.2.0-preview.4' },
+        { isPrerelease: false, tagName: 'v1.1.9' },
+        { isPrerelease: true, tagName: 'v1.2.0-preview.3' },
+      ]),
+    ).toBe('v1.2.0-preview.3')
+  })
+
+  it('excludes the current release tag when rerunning notes', () => {
+    const plan = createReleasePlan({
+      changedFiles: ['containers/app/Dockerfile'],
+      env: env(),
+      gitVersion,
+    })
+
+    expect(
+      selectPreviousReleaseTag(plan, [
+        { isPrerelease: true, tagName: 'v1.2.0-preview.4' },
+        { isPrerelease: true, tagName: 'v1.2.0-preview.3' },
+      ]),
+    ).toBe('v1.2.0-preview.3')
+  })
+
+  it('uses all reachable first-parent commits when no same-kind release exists', () => {
+    const plan = createReleasePlan({
+      changedFiles: [],
+      env: env({
+        GITHUB_REF: 'refs/tags/v1.2.3',
+        GITHUB_REF_NAME: 'v1.2.3',
+      }),
+      gitVersion,
+    })
+    const execFileSync = vi.fn((command, args) => {
+      if (command === 'gh' && args[0] === 'release') {
+        return JSON.stringify([
+          { isPrerelease: true, tagName: 'v1.2.3-preview.7' },
+        ])
+      }
+      if (command === 'git') {
+        expect(args).toContain(plan.commitSha)
+        return 'abc1234\t2026-05-23\tAda Lovelace\tfeat: first release\n'
+      }
+      throw new Error(`Unexpected command: ${command}`)
+    })
+
+    const changelog = createReleaseChangelog(plan, { execFileSync })
+
+    expect(changelog.previousTagName).toBeUndefined()
+    expect(changelog.generatedNotesNotice).toContain(
+      'No previous stable GitHub Release was found',
+    )
+    expect(changelog.commits).toEqual([
+      {
+        author: 'Ada Lovelace',
+        date: '2026-05-23',
+        shortSha: 'abc1234',
+        subject: 'feat: first release',
+      },
+    ])
+    expect(
+      execFileSync.mock.calls.some(
+        ([command, args]) => command === 'gh' && args[0] === 'api',
+      ),
+    ).toBe(false)
+  })
+
+  it('keeps exact commits when GitHub-generated notes fail', () => {
+    const plan = createReleasePlan({
+      changedFiles: ['containers/app/Dockerfile'],
+      env: env(),
+      gitVersion,
+    })
+    const execFileSync = vi.fn((command, args) => {
+      if (command === 'gh' && args[0] === 'release') {
+        return JSON.stringify([
+          { isPrerelease: true, tagName: 'v1.2.0-preview.3' },
+        ])
+      }
+      if (command === 'gh' && args[0] === 'api') {
+        throw new Error('release notes API failed')
+      }
+      if (command === 'git') {
+        expect(args).toContain(`v1.2.0-preview.3..${plan.commitSha}`)
+        return 'def5678\t2026-05-24\tGrace Hopper\tfix: smoke notes\n'
+      }
+      throw new Error(`Unexpected command: ${command}`)
+    })
+
+    const changelog = createReleaseChangelog(plan, { execFileSync })
+
+    expect(changelog.previousTagName).toBe('v1.2.0-preview.3')
+    expect(changelog.generatedNotesNotice).toContain(
+      'GitHub-generated release notes were unavailable',
+    )
+    expect(changelog.commits).toHaveLength(1)
+    expect(changelog.commits[0].subject).toBe('fix: smoke notes')
+  })
+
+  it('renders release notes with generated changes, exact commits, GHCR refs and checksums', () => {
     const plan = createReleasePlan({
       changedFiles: ['containers/app/Dockerfile'],
       env: env(),
@@ -164,8 +354,27 @@ describe('trusted container release helpers', () => {
       plan,
       metadata,
       'abc123  container-stack.lock.json\n',
+      {
+        commits: [
+          {
+            author: 'Ada Lovelace',
+            date: '2026-05-23',
+            shortSha: 'abc1234',
+            subject: 'feat: release notes',
+          },
+        ],
+        generatedNotes: "## What's Changed\n\n- feat: release notes (#228)",
+        previousTagName: 'v1.2.0-preview.3',
+      },
     )
 
+    expect(notes).toContain("## What's Changed")
+    expect(notes).toContain('- feat: release notes (#228)')
+    expect(notes).toContain('## Exact Commit Range')
+    expect(notes).toContain(`Range: \`v1.2.0-preview.3..${plan.commitSha}\``)
+    expect(notes).toContain(
+      '- `abc1234` 2026-05-23 Ada Lovelace - feat: release notes',
+    )
     expect(notes).toContain(
       'ghcr.io/viscalyx/kravhantering-app-runtime@sha256:app',
     )
@@ -176,7 +385,66 @@ describe('trusted container release helpers', () => {
     expect(notes).toContain(
       'kravhantering-production-deploy-1.2.0-preview.4.tar.gz',
     )
+    expect(notes).toContain(
+      'Single-node TLS CA guidance installs `ca.crt` as readable public trust material',
+    )
+    expect(notes).toContain(
+      'Production nginx templates use dynamic Podman DNS resolution',
+    )
     expect(notes).not.toContain('GHCR package visibility')
+  })
+
+  it('keeps production TLS CA guidance readable for app-runtime', () => {
+    const singleNodeGuide = readWorkspaceFile(
+      'docs/rhel10-production-single-node-internal-deploy.md',
+    )
+
+    expect(singleNodeGuide).toMatch(
+      /sudo install -o root -g kravhantering -m 0644 ca\.crt \\\n\s+\/etc\/kravhantering\/tls\/ca\.crt/u,
+    )
+    expect(singleNodeGuide).toMatch(
+      /sudo install -o root -g kravhantering -m 0644 \\\n\s+"\$\{TLS_DIR\}\/local-root-ca\.crt" "\$\{TLS_DIR\}\/ca\.crt"/u,
+    )
+    expect(singleNodeGuide).toContain(
+      'sudo chmod 0644 /etc/kravhantering/tls/ca.crt',
+    )
+    expect(singleNodeGuide).not.toMatch(/-m 0640 ca\.crt/u)
+  })
+
+  it('ships nginx templates with dynamic upstream DNS resolution', () => {
+    const nginxResolverPlaceholder = '$' + '{NGINX_RESOLVER}'
+    const templates = [
+      'containers/production/nginx/templates/app-node-http.conf.template',
+      'containers/production/nginx/templates/app-node-tls.conf.template',
+      'containers/production/nginx/templates/single-node-tls.conf.template',
+    ]
+
+    for (const template of templates) {
+      const content = readWorkspaceFile(template)
+      expectNginxTemplateSyntax(
+        content.replaceAll(nginxResolverPlaceholder, '10.89.0.1'),
+      )
+      expect(content).toContain(
+        `resolver ${nginxResolverPlaceholder} valid=10s ipv6=off;`,
+      )
+      expect(content).toContain('resolver_timeout 5s;')
+      expect(content).toContain('server app-runtime:3000 resolve;')
+      expect(content).toContain('proxy_pass http://app_runtime_upstream')
+      expect(content).not.toContain('proxy_pass http://app-runtime:3000')
+    }
+
+    const singleNode = readWorkspaceFile(
+      'containers/production/nginx/templates/single-node-tls.conf.template',
+    )
+    expect(singleNode).toContain('server keycloak:8080 resolve;')
+    expect(singleNode).toContain('proxy_pass http://keycloak_upstream/;')
+    expect(singleNode).toContain('return 308 /auth/;')
+    expect(singleNode).toContain('location = /auth/error')
+
+    const releaseEnv = readWorkspaceFile(
+      'containers/production/env/release.env.template',
+    )
+    expect(releaseEnv).toContain('NGINX_RESOLVER=10.89.0.1')
   })
 
   it('stages the production deployment bundle with manifest and templates', () => {
@@ -269,6 +537,24 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain('compose/app-node-tls.compose.yml')
       expect(result.files).toContain('compose/single-node.compose.yml')
       expect(result.files).toContain('docs/rhel10-production-deploy.md')
+      expect(result.files).toContain(
+        'docs/rhel10-production-single-node-internal-deploy.md',
+      )
+      expect(result.files).toContain(
+        'docs/images/infographic-production-access-and-service-flow.png',
+      )
+      expect(result.files).toContain(
+        'docs/images/infographic-single-node-access-flow.png',
+      )
+      expect(result.files).not.toContain(
+        'public/infographic-production-access-and-service-flow.png',
+      )
+      expect(result.files).not.toContain(
+        'public/infographic-single-node-access-flow.png',
+      )
+      expect(result.files).not.toContain(
+        'docs/adr/0001-release-artifact-production-deployment.md',
+      )
       expect(result.files).toContain('env/app.env.template')
       expect(result.files).toContain(
         'systemd/kravhantering-single-node-compose.service',
@@ -276,6 +562,10 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain(
         'keycloak/realm-kravhantering-production.template.json',
       )
+      expect(result.files).toContain(
+        'nginx/templates/single-node-tls.conf.template',
+      )
+      expect(result.files).not.toContain('nginx/conf.d/single-node-tls.conf')
       for (const file of result.files.filter(
         bundledFile =>
           bundledFile.startsWith('compose/') && bundledFile.endsWith('.yml'),
@@ -286,6 +576,9 @@ describe('trusted container release helpers', () => {
         )
         expect(compose).not.toContain(':ro,Z')
         expect(compose).not.toMatch(/-\s+\.\/nginx\//)
+        expect(compose).toContain('NGINX_RESOLVER')
+        expect(compose).toContain('/etc/nginx/templates/default.conf.template')
+        expect(compose).not.toContain('/etc/nginx/conf.d/default.conf')
       }
       const singleNodeCompose = fs.readFileSync(
         path.join(result.bundleRoot, 'compose/single-node.compose.yml'),
@@ -359,6 +652,7 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain('attest-sbom')
     expect(workflow).toContain('--release-images-from-lock')
     expect(workflow).toContain('container-release.mjs bundle')
+    expect(workflow).toContain('GH_TOKEN: $' + '{{ github.token }}')
     expect(workflow).toContain(
       `kravhantering-production-deploy-\${RELEASE_VERSION}.tar.gz`,
     )
@@ -370,5 +664,15 @@ describe('trusted container release helpers', () => {
     )
     expect(workflow).toContain('npm run test:release-smoke')
     expect(workflow).not.toContain('pull_request_target')
+  })
+
+  it('configures generated release note categories with a catch-all', () => {
+    const releaseConfig = readWorkspaceFile('.github/release.yml')
+
+    expect(releaseConfig).toContain('ignore-for-release')
+    expect(releaseConfig).toContain('title: Security and Privacy')
+    expect(releaseConfig).toContain('title: Containers and Infrastructure')
+    expect(releaseConfig).toContain('title: Other Changes')
+    expect(releaseConfig).toContain('- "*"')
   })
 })

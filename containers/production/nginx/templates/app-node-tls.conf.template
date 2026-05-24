@@ -5,6 +5,14 @@ map $http_upgrade $connection_upgrade {
     '' close;
 }
 
+resolver ${NGINX_RESOLVER} valid=10s ipv6=off;
+resolver_timeout 5s;
+
+upstream app_runtime_upstream {
+    zone app_runtime_upstream 64k;
+    server app-runtime:3000 resolve;
+}
+
 server {
     listen 443 ssl;
     http2 on;
@@ -15,22 +23,8 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers off;
 
-    location = /auth {
-        return 308 /auth/;
-    }
-
-    location /auth/ {
-        proxy_pass http://keycloak:8080/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto https;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Port 443;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-
     location / {
-        proxy_pass http://app-runtime:3000;
+        proxy_pass http://app_runtime_upstream;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto https;

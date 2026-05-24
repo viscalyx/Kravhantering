@@ -32,6 +32,22 @@ the GHCR digest references for `app-runtime` and `db-job`, and the published
 checksums. Stable releases use normal GitHub Releases; preview releases are
 marked as pre-releases and are kept as part of the audit trail.
 
+Release notes also include automatic change notes. Stable releases compare
+against the previous published non-prerelease GitHub Release. Preview releases
+compare against the previous published prerelease GitHub Release. When no
+previous release of the same kind exists, the workflow does not let GitHub pick
+another release kind as the changelog boundary; it records all first-parent
+commits reachable from the release commit instead.
+
+The workflow asks GitHub to generate the `What's Changed` section with
+`.github/release.yml`. That file groups pull requests by repository labels and
+uses `Other Changes` as a catch-all so unlabeled merged work still appears.
+Only pull requests labeled `ignore-for-release` are excluded from the generated
+section. Every release note also includes an `Exact Commit Range` section with
+the first-parent commits in the selected range, including short SHA, date,
+author and subject. If GitHub-generated notes are unavailable, the release still
+publishes with the exact commit list and the runtime evidence below.
+
 Each trusted run also writes runtime evidence:
 
 - `container-stack.lock.json` lists the exact image name, tag, digest, source
@@ -57,6 +73,10 @@ The production deployment bundle is also uploaded to GitHub Releases as:
 
 - `kravhantering-production-deploy-<version>.tar.gz`
 - `kravhantering-production-deploy-<version>.tar.gz.sha256`
+
+Markdown files in the deployment bundle bring along local image links. Keep
+release-guide diagrams under `docs/images/`; do not store documentation-only
+images in `public/`, which is copied into the application runtime image.
 
 See [rhel10-production-deploy.md](./rhel10-production-deploy.md) for the
 enterprise app-node workflow with external SQL Server and external IdP. See
