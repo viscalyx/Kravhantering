@@ -702,8 +702,18 @@ describe('trusted container release helpers', () => {
     expect(workflow).not.toContain('verify-ghcr-public')
     expect(workflow).toContain('cosign sign --yes')
     expect(workflow).toContain('mkdir -p tmp/container-release-artifacts/sbom')
-    expect(workflow).toContain('attest-build-provenance')
-    expect(workflow).toContain('attest-sbom')
+    expect(workflow).toContain('Attest app-runtime provenance')
+    expect(workflow).toContain('Attest db-job provenance')
+    expect(workflow).toContain('Attest app-runtime SBOM')
+    expect(workflow).toContain('Attest db-job SBOM')
+    expect(workflow.match(/uses: actions\/attest@/g)).toHaveLength(4)
+    expect(workflow).toContain(
+      'sbom-path: tmp/container-release-artifacts/sbom/app-runtime.spdx.json',
+    )
+    expect(workflow).toContain(
+      'sbom-path: tmp/container-release-artifacts/sbom/db-job.spdx.json',
+    )
+    expect(workflow).toContain('push-to-registry: true')
     expect(workflow).toContain('--release-images-from-lock')
     expect(workflow).toContain('container-release.mjs bundle')
     expect(workflow).toContain('GH_TOKEN: $' + '{{ github.token }}')

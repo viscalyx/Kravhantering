@@ -77,6 +77,11 @@ const developerModeCoreNoopPathAbsolute = fileURLToPath(
 const developerModeReactNoopPathAbsolute = fileURLToPath(
   new URL(developerModeReactNoopPathRelative, import.meta.url),
 )
+const expoSqliteUnavailablePathRelative =
+  './lib/runtime/expo-sqlite-unavailable.ts'
+const expoSqliteUnavailablePathAbsolute = fileURLToPath(
+  new URL(expoSqliteUnavailablePathRelative, import.meta.url),
+)
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -97,7 +102,11 @@ const nextConfig: NextConfig = {
   images: {
     formats: ['image/webp', 'image/avif'],
   },
-  serverExternalPackages: ['mermaid'],
+  // TypeORM v1 imports its driver factory eagerly. Keep the package external
+  // on the server and alias the unused Expo SQLite dependency below so
+  // Turbopack does not require the Expo-only optional package for this SQL
+  // Server application.
+  serverExternalPackages: ['mermaid', 'typeorm'],
   allowedDevOrigins: ['0.0.0.0', '127.0.0.1'],
   // Turbopack-equivalent of the webpack alias block below. Next.js 16
   // uses Turbopack for `next build`, so the `webpack(config)` hook is
@@ -106,6 +115,7 @@ const nextConfig: NextConfig = {
   // developer-mode no-op modules. Keep both blocks in sync.
   turbopack: {
     resolveAlias: {
+      'expo-sqlite': expoSqliteUnavailablePathRelative,
       ...(resolvedBuildTarget !== 'dev'
         ? { '@/lib/runtime/build-target': buildTargetModulePathRelative }
         : {}),
@@ -135,6 +145,8 @@ const nextConfig: NextConfig = {
       config.resolve.alias['@viscalyx/developer-mode-react'] =
         developerModeReactNoopPathAbsolute
     }
+
+    config.resolve.alias['expo-sqlite'] = expoSqliteUnavailablePathAbsolute
 
     return config
   },

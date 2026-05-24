@@ -11,6 +11,7 @@ const NOOP_ALIASES = {
   '@viscalyx/developer-mode-react':
     './lib/runtime/developer-mode-react-noop.tsx',
 }
+const EXPO_SQLITE_UNAVAILABLE_ALIAS = './lib/runtime/expo-sqlite-unavailable.ts'
 
 const IGNORED_PRODUCTION_WARNING =
   'ENABLE_DEVELOPER_MODE=true was ignored because NODE_ENV=production. ' +
@@ -186,5 +187,34 @@ describe('next.config container output', () => {
     })
 
     expect(config.output).toBe('standalone')
+  })
+})
+
+describe('next.config TypeORM bundling', () => {
+  it('keeps TypeORM external to the server bundle', async () => {
+    const config = await loadNextConfig({
+      BUILD_TARGET: 'prod',
+      NODE_ENV: 'production',
+    })
+
+    expect(config.serverExternalPackages).toEqual(
+      expect.arrayContaining(['typeorm']),
+    )
+  })
+
+  it('aliases expo-sqlite to a local unavailable stub for both builders', async () => {
+    const config = await loadNextConfig({
+      BUILD_TARGET: 'prod',
+      NODE_ENV: 'production',
+    })
+
+    expect(getTurbopackAliases(config)).toMatchObject({
+      'expo-sqlite': EXPO_SQLITE_UNAVAILABLE_ALIAS,
+    })
+    expect(getWebpackAliases(config)).toMatchObject({
+      'expo-sqlite': expect.stringMatching(
+        /lib[/\\]runtime[/\\]expo-sqlite-unavailable\.ts$/,
+      ),
+    })
   })
 })
