@@ -16,7 +16,9 @@ For the controlled all-in-one internal topology where SQL Server and Keycloak
 run on the same RHEL host, use
 [rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md).
 
+<!-- markdownlint-disable MD013 -->
 ![Kravhantering Infographic Production Access and Service Flow](images/infographic-production-access-and-service-flow.png)
+<!-- markdownlint-enable MD013 -->
 
 ## Release Inputs
 
