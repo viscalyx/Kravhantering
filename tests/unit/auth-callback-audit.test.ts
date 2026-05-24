@@ -416,7 +416,7 @@ describe('auth callback security audit events', () => {
 
   it('redirects browser claim failures to the configured public auth error origin', async () => {
     process.env.AUTH_OIDC_REDIRECT_URI =
-      'https://pc05.viscalyx.se/api/auth/callback'
+      'https://kravhantering.example.internal/api/auth/callback'
     resetAuthConfigForTests()
     getLoginStateMock.mockResolvedValue(freshLoginState())
     getSessionMock.mockResolvedValue(freshPriorSession())
@@ -441,7 +441,7 @@ describe('auth callback security audit events', () => {
 
     expect(response.status).toBe(302)
     expect(response.headers.get('location')).toBe(
-      'https://pc05.viscalyx.se/auth/error?code=hsa_id_missing&locale=sv',
+      'https://kravhantering.example.internal/auth/error?code=hsa_id_missing&locale=sv',
     )
   })
 

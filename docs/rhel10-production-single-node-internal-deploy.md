@@ -699,7 +699,8 @@ sudo chcon -R -t container_file_t /etc/kravhantering/tls
 
 sudo -iu kravhantering
 cd /opt/kravhantering/current
-podman restart kravhantering-single-node_app-runtime_1
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml restart app-runtime
 ```
 
 ## Start the Single-Node Stack
@@ -773,7 +774,7 @@ manual readiness probe only:
 
 ```bash
 curl --insecure --fail --silent --show-error \
-  https://pc05.viscalyx.se/api/health
+  https://kravhantering.example.internal/api/health
 ```
 
 ## Operate Individual Services
@@ -1100,7 +1101,7 @@ configuration change.
 
     ```bash
     curl --insecure --fail --silent --show-error \
-      https://pc05.viscalyx.se/api/health
+      https://kravhantering.example.internal/api/health
     ```
 
 11. Re-enable traffic.
@@ -1124,7 +1125,8 @@ configuration change.
 
   sudo -iu kravhantering
   cd /opt/kravhantering/current
-  podman restart kravhantering-single-node_app-runtime_1
+  podman compose --env-file /etc/kravhantering/release.env \
+    -f compose/single-node.compose.yml restart app-runtime
   ```
 
 - If `/api/health` and `/api/ready` return `502` after restarting
