@@ -655,6 +655,31 @@ describe('db-sqlserver-admin.mjs', () => {
     expect(destroy).toHaveBeenCalled()
   })
 
+  it('does not destroy demo clear DataSource when initialization fails', async () => {
+    const destroy = vi.fn(async () => undefined)
+    const initialize = vi.fn(async () => {
+      throw new Error('connection failed')
+    })
+    class FakeDataSource {
+      destroy = destroy
+      initialize = initialize
+      query = vi.fn(async () => undefined)
+    }
+
+    await expect(
+      clearDemoSqlServerData(
+        'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
+        {
+          dataSourceCtor: FakeDataSource,
+          demoResetTables: ['requirements'],
+        },
+      ),
+    ).rejects.toThrow('connection failed')
+
+    expect(initialize).toHaveBeenCalled()
+    expect(destroy).not.toHaveBeenCalled()
+  })
+
   it('requires explicit confirmation before clearing demo data through the CLI', async () => {
     const error = vi.fn()
 

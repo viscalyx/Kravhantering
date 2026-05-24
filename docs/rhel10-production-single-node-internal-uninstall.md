@@ -9,7 +9,7 @@ upgrade rollback guide. For release rollback after migration, use
 [rhel10-production-single-node-internal-upgrade.md](./rhel10-production-single-node-internal-upgrade.md).
 
 The default flow copies host-side material to an administrator-controlled
-staging area, performs gallring from that staging copy into a smaller long-term
+staging area, performs culling from that staging copy into a smaller long-term
 evidence archive, and then removes the install from the host.
 
 Best-effort file archives are not a tested SQL Server backup, volume snapshot

@@ -838,13 +838,14 @@ export async function clearDemoSqlServerData(connectionString, options = {}) {
   const dataSource = new DataSourceCtor(
     buildMigrationDataSourceOptions(connectionString, migrationClasses, env),
   )
-
-  await dataSource.initialize()
+  let initialized = false
 
   try {
+    await dataSource.initialize()
+    initialized = true
     return await resetDemoSqlServerData(dataSource, options)
   } finally {
-    if (typeof dataSource.destroy === 'function') {
+    if (initialized && typeof dataSource.destroy === 'function') {
       await dataSource.destroy()
     }
   }
