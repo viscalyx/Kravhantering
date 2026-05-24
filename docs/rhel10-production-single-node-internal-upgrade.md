@@ -170,8 +170,18 @@ configuration change.
 
 8. Run the database jobs once from the new release.
    First ensure SQL Server, Keycloak and the Compose network exist for the new
-   release, then run the job sequence with the new `DB_JOB_IMAGE_REF`. Do not
-   run `seed:demo` in production.
+   release, then run the job sequence with the new `DB_JOB_IMAGE_REF`. Use the
+   DBA-pre-provisioned production sequence by default, matching
+   [rhel10-production-upgrade.md](./rhel10-production-upgrade.md), and skip
+   `bootstrap`.
+
+   Set `RUN_BOOTSTRAP=true` only for the controlled internal/single-node
+   bootstrap `db-job.env` that still includes `DB_BOOTSTRAP_ADMIN_*` and
+   `DB_BOOTSTRAP_APP_*`, and only when the window intentionally performs SQL
+   Server password provisioning or rotation. For DBA-pre-provisioned production
+   environments where the `DB_BOOTSTRAP_*` values have been removed, leave
+   `RUN_BOOTSTRAP=false` to avoid unintended `ALTER LOGIN` password rotations.
+   Do not run `seed:demo` in production.
 
    ```bash
    sudo -iu kravhantering
@@ -181,6 +191,7 @@ configuration change.
    set +a
 
    STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+   RUN_BOOTSTRAP=false
 
    podman compose --env-file /etc/kravhantering/release.env \
      -f compose/single-node.compose.yml up -d sqlserver keycloak
@@ -191,9 +202,11 @@ configuration change.
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
      "$DB_JOB_IMAGE_REF" wait
-   podman run --rm --network "$STACK_NETWORK" \
-     --env-file /etc/kravhantering/db-job.env \
-     "$DB_JOB_IMAGE_REF" bootstrap
+   if [ "$RUN_BOOTSTRAP" = "true" ]; then
+     podman run --rm --network "$STACK_NETWORK" \
+       --env-file /etc/kravhantering/db-job.env \
+       "$DB_JOB_IMAGE_REF" bootstrap
+   fi
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
      "$DB_JOB_IMAGE_REF" migrate

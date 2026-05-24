@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   bootstrapSqlServerDatabase,
-  clearDemoSqlServerData,
   buildReadonlyBrowseConfig,
+  clearDemoSqlServerData,
   createBootstrapAdminConnectionString,
   createMssqlConfig,
   DEMO_RESET_TABLES,
