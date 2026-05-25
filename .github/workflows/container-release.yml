@@ -121,6 +121,7 @@ jobs:
             --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             --label "org.opencontainers.image.version=${RELEASE_VERSION}" \
+            --provenance=false \
             "${tag_args[@]}" \
             --push \
             .
@@ -141,6 +142,7 @@ jobs:
             --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             --label "org.opencontainers.image.version=${RELEASE_VERSION}" \
+            --provenance=false \
             "${tag_args[@]}" \
             --push \
             .
@@ -271,7 +273,10 @@ jobs:
 
       - name: Stop container stack
         if: always()
-        run: node scripts/containers/run-local-stack.mjs down --mode release-smoke || true
+        run: |
+          node scripts/containers/run-local-stack.mjs down \
+            --mode release-smoke \
+            --run-id "${CONTAINER_STACK_RUN_ID}" || true
 
       - name: Collect status after shutdown on failure
         if: failure()

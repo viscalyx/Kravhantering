@@ -373,10 +373,14 @@ export function extractBuildxManifestDigest(metadata) {
 }
 
 export function extractBuildxImageId(metadata) {
+  const descriptorAnnotations =
+    metadata?.['containerimage.descriptor']?.annotations ??
+    metadata?.containerimage?.descriptor?.annotations
   const imageId =
     readNonEmpty(metadata?.['containerimage.config.digest']) ??
     readNonEmpty(metadata?.containerimage?.config?.digest) ??
-    readNonEmpty(metadata?.containerimage?.configDigest)
+    readNonEmpty(metadata?.containerimage?.configDigest) ??
+    readNonEmpty(descriptorAnnotations?.['config.digest'])
   if (!imageId) {
     throw new Error('Buildx metadata is missing containerimage.config.digest.')
   }
