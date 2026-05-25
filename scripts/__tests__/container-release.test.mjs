@@ -61,6 +61,17 @@ function buildxMetadata(manifestDigest, imageId) {
   }
 }
 
+function buildxMetadataWithDescriptorAnnotation(manifestDigest, imageId) {
+  return {
+    'containerimage.descriptor': {
+      annotations: {
+        'config.digest': imageId,
+      },
+    },
+    'containerimage.digest': manifestDigest,
+  }
+}
+
 describe('trusted container release helpers', () => {
   it('creates main snapshot tags and preview releases for relevant changes', () => {
     const plan = createReleasePlan({
@@ -190,6 +201,35 @@ describe('trusted container release helpers', () => {
     ).toBe(true)
     expect(isReleaseRelevantPath('docs/prompt-faser.md')).toBe(false)
     expect(isReleaseRelevantPath('tests/unit/example.test.ts')).toBe(false)
+  })
+
+  it('reads Buildx image IDs from descriptor annotations', () => {
+    const plan = createReleasePlan({
+      changedFiles: ['containers/app/Dockerfile'],
+      env: env(),
+      gitVersion,
+    })
+
+    const metadata = createReleaseMetadata(
+      plan,
+      buildxMetadataWithDescriptorAnnotation(
+        'sha256:app-manifest',
+        'sha256:app-image',
+      ),
+      buildxMetadataWithDescriptorAnnotation(
+        'sha256:dbjob-manifest',
+        'sha256:dbjob-image',
+      ),
+    )
+
+    expect(metadata.appRuntime).toMatchObject({
+      imageId: 'sha256:app-image',
+      manifestDigest: 'sha256:app-manifest',
+    })
+    expect(metadata.dbJob).toMatchObject({
+      imageId: 'sha256:dbjob-image',
+      manifestDigest: 'sha256:dbjob-manifest',
+    })
   })
 
   it('resolves local Markdown images for bundled deployment docs', () => {
@@ -735,6 +775,7 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain('Attest app-runtime SBOM')
     expect(workflow).toContain('Attest db-job SBOM')
     expect(workflow.match(/uses: actions\/attest@/g)).toHaveLength(4)
+    expect(workflow.match(/--provenance=false/g)).toHaveLength(2)
     expect(workflow).toContain(
       'sbom-path: tmp/container-release-artifacts/sbom/app-runtime.spdx.json',
     )
@@ -743,6 +784,9 @@ describe('trusted container release helpers', () => {
     )
     expect(workflow).toContain('push-to-registry: true')
     expect(workflow).toContain('--release-images-from-lock')
+    expect(workflow).toContain(
+      '--run-id "$' + '{CONTAINER_STACK_RUN_ID}" || true',
+    )
     expect(workflow).toContain('container-release.mjs identities')
     expect(workflow).toContain('APP_RUNTIME_MANIFEST_DIGEST_REF')
     expect(workflow).toContain('DB_JOB_MANIFEST_DIGEST_REF')

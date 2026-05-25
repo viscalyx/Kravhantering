@@ -12,6 +12,12 @@ verify runtime equivalence after internal-registry mirroring or offline image
 transport. The release smoke test starts Podman Compose from verified GHCR
 manifest digest references, not from mutable tags.
 
+The Buildx publish steps disable BuildKit's default registry provenance
+attestations with `--provenance=false`. The workflow publishes provenance and
+SBOM evidence explicitly through GitHub Artifact Attestations, while keeping the
+Buildx metadata shape stable enough to record both `manifestDigest` and
+`imageId`.
+
 ## Reproducibility
 
 The workflow uses the Node version from `.nvmrc` and installs dependencies with

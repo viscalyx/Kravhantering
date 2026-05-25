@@ -1,0 +1,2070 @@
+2026-05-25T18:29:31.5446844Z Current runner version: '2.334.0'
+2026-05-25T18:29:31.5481694Z ##[group]Runner Image Provisioner
+2026-05-25T18:29:31.5482897Z Hosted Compute Agent
+2026-05-25T18:29:31.5483748Z Version: 20260213.493
+2026-05-25T18:29:31.5484560Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-05-25T18:29:31.5485721Z Build Date: 2026-02-13T00:28:41Z
+2026-05-25T18:29:31.5486642Z Worker ID: {f937a2fa-818f-4489-9ea4-08f861cd589b}
+2026-05-25T18:29:31.5487637Z Azure Region: eastus
+2026-05-25T18:29:31.5488612Z ##[endgroup]
+2026-05-25T18:29:31.5490603Z ##[group]Operating System
+2026-05-25T18:29:31.5491803Z Ubuntu
+2026-05-25T18:29:31.5492478Z 24.04.4
+2026-05-25T18:29:31.5493174Z LTS
+2026-05-25T18:29:31.5493774Z ##[endgroup]
+2026-05-25T18:29:31.5494679Z ##[group]Runner Image
+2026-05-25T18:29:31.5495533Z Image: ubuntu-24.04
+2026-05-25T18:29:31.5496397Z Version: 20260518.149.1
+2026-05-25T18:29:31.5498231Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260518.149/images/ubuntu/Ubuntu2404-Readme.md
+2026-05-25T18:29:31.5500659Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260518.149
+2026-05-25T18:29:31.5502386Z ##[endgroup]
+2026-05-25T18:29:31.5504371Z ##[group]GITHUB_TOKEN Permissions
+2026-05-25T18:29:31.5506932Z Attestations: write
+2026-05-25T18:29:31.5507657Z Contents: write
+2026-05-25T18:29:31.5508572Z Metadata: read
+2026-05-25T18:29:31.5509270Z Packages: write
+2026-05-25T18:29:31.5510057Z ##[endgroup]
+2026-05-25T18:29:31.5513259Z Secret source: Actions
+2026-05-25T18:29:31.5514300Z Prepare workflow directory
+2026-05-25T18:29:31.6060363Z Prepare all required actions
+2026-05-25T18:29:31.6114577Z Getting action download info
+2026-05-25T18:29:31.9369351Z Download action repository 'actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd' (SHA:de0fac2e4500dabe0009e67214ff5f5447ce83dd)
+2026-05-25T18:29:32.0637512Z Download action repository 'actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e' (SHA:48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e)
+2026-05-25T18:29:32.1517640Z Download action repository 'actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7' (SHA:c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7)
+2026-05-25T18:29:32.3322073Z Download action repository 'sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6' (SHA:6f9f17788090df1f26f669e9d70d6ae9567deba6)
+2026-05-25T18:29:32.4229984Z Download action repository 'anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610' (SHA:e22c389904149dbc22b58101806040fa8d37a610)
+2026-05-25T18:29:32.5585685Z Download action repository 'actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26' (SHA:59d89421af93a897026c735860bf21b6eb4f7b26)
+2026-05-25T18:29:32.6938893Z Download action repository 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a' (SHA:043fb46d1a93c77aae656e7c1c64a875d1fc6a0a)
+2026-05-25T18:29:33.0623680Z Complete job name: Publish and Smoke Test Trusted Container Stack
+2026-05-25T18:29:33.1705807Z ##[group]Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+2026-05-25T18:29:33.1707311Z with:
+2026-05-25T18:29:33.1707991Z   fetch-depth: 0
+2026-05-25T18:29:33.1708715Z   persist-credentials: false
+2026-05-25T18:29:33.1709585Z   repository: viscalyx/Kravhantering
+2026-05-25T18:29:33.1710725Z   token: ***
+2026-05-25T18:29:33.1711579Z   ssh-strict: true
+2026-05-25T18:29:33.1712300Z   ssh-user: git
+2026-05-25T18:29:33.1712973Z   clean: true
+2026-05-25T18:29:33.1713707Z   sparse-checkout-cone-mode: true
+2026-05-25T18:29:33.1714589Z   fetch-tags: false
+2026-05-25T18:29:33.1715299Z   show-progress: true
+2026-05-25T18:29:33.1716012Z   lfs: false
+2026-05-25T18:29:33.1716706Z   submodules: false
+2026-05-25T18:29:33.1717443Z   set-safe-directory: true
+2026-05-25T18:29:33.1718398Z env:
+2026-05-25T18:29:33.1719177Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:29:33.1720275Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:29:33.1721385Z   STORAGE_DRIVER: vfs
+2026-05-25T18:29:33.1722106Z ##[endgroup]
+2026-05-25T18:29:33.2706049Z Syncing repository: viscalyx/Kravhantering
+2026-05-25T18:29:33.2708827Z ##[group]Getting Git version info
+2026-05-25T18:29:33.2710113Z Working directory is '/home/runner/work/Kravhantering/Kravhantering'
+2026-05-25T18:29:33.2712273Z [command]/usr/bin/git version
+2026-05-25T18:29:33.2730546Z git version 2.54.0
+2026-05-25T18:29:33.2784433Z ##[endgroup]
+2026-05-25T18:29:33.2798597Z Temporarily overriding HOME='/home/runner/work/_temp/0023c4f8-6f5a-48b1-ab6a-1de841fcd0ae' before making global git config changes
+2026-05-25T18:29:33.2802292Z Adding repository directory to the temporary git global config as a safe directory
+2026-05-25T18:29:33.2805409Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Kravhantering/Kravhantering
+2026-05-25T18:29:33.2844452Z Deleting the contents of '/home/runner/work/Kravhantering/Kravhantering'
+2026-05-25T18:29:33.2848242Z ##[group]Initializing the repository
+2026-05-25T18:29:33.2853116Z [command]/usr/bin/git init /home/runner/work/Kravhantering/Kravhantering
+2026-05-25T18:29:33.2923851Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-05-25T18:29:33.2926474Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-05-25T18:29:33.2928606Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-05-25T18:29:33.2930628Z hint: call:
+2026-05-25T18:29:33.2931934Z hint:
+2026-05-25T18:29:33.2933256Z hint: 	git config --global init.defaultBranch <name>
+2026-05-25T18:29:33.2934858Z hint:
+2026-05-25T18:29:33.2936417Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-05-25T18:29:33.2939084Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-05-25T18:29:33.2941293Z hint:
+2026-05-25T18:29:33.2942300Z hint: 	git branch -m <name>
+2026-05-25T18:29:33.2943483Z hint:
+2026-05-25T18:29:33.2945308Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-05-25T18:29:33.2947142Z Initialized empty Git repository in /home/runner/work/Kravhantering/Kravhantering/.git/
+2026-05-25T18:29:33.2950023Z [command]/usr/bin/git remote add origin https://github.com/viscalyx/Kravhantering
+2026-05-25T18:29:33.2977814Z ##[endgroup]
+2026-05-25T18:29:33.2979692Z ##[group]Disabling automatic garbage collection
+2026-05-25T18:29:33.2981674Z [command]/usr/bin/git config --local gc.auto 0
+2026-05-25T18:29:33.3012436Z ##[endgroup]
+2026-05-25T18:29:33.3014261Z ##[group]Setting up auth
+2026-05-25T18:29:33.3015633Z Removing SSH command configuration
+2026-05-25T18:29:33.3019986Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-05-25T18:29:33.3055941Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-05-25T18:29:33.3354354Z Removing HTTP extra header
+2026-05-25T18:29:33.3361398Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-05-25T18:29:33.3394768Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-05-25T18:29:33.3618435Z Removing includeIf entries pointing to credentials config files
+2026-05-25T18:29:33.3624996Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-05-25T18:29:33.3659002Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-05-25T18:29:33.3894652Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-b78b0f01-1307-4591-916a-58e1ca5bf9ce.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-05-25T18:29:33.3933272Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/Kravhantering/Kravhantering/.git.path /home/runner/work/_temp/git-credentials-b78b0f01-1307-4591-916a-58e1ca5bf9ce.config
+2026-05-25T18:29:33.3965324Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/Kravhantering/Kravhantering/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-b78b0f01-1307-4591-916a-58e1ca5bf9ce.config
+2026-05-25T18:29:33.3999093Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-b78b0f01-1307-4591-916a-58e1ca5bf9ce.config
+2026-05-25T18:29:33.4039028Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-b78b0f01-1307-4591-916a-58e1ca5bf9ce.config
+2026-05-25T18:29:33.4066074Z ##[endgroup]
+2026-05-25T18:29:33.4067341Z ##[group]Fetching the repository
+2026-05-25T18:29:33.4074900Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+2026-05-25T18:29:36.5277348Z From https://github.com/viscalyx/Kravhantering
+2026-05-25T18:29:36.5278398Z  * [new branch]      backup-using-cloudflare-and-d1 -> origin/backup-using-cloudflare-and-d1
+2026-05-25T18:29:36.5279650Z  * [new branch]      backup-using-sqlite-and-next -> origin/backup-using-sqlite-and-next
+2026-05-25T18:29:36.5280648Z  * [new branch]      backup-with-color-themes -> origin/backup-with-color-themes
+2026-05-25T18:29:36.5282300Z  * [new branch]      dependabot/docker_compose/dot-devcontainer/keycloak/keycloak-26.6.2 -> origin/dependabot/docker_compose/dot-devcontainer/keycloak/keycloak-26.6.2
+2026-05-25T18:29:36.5284133Z  * [new branch]      dependabot/github_actions/actions/attest-build-provenance-4.1.0 -> origin/dependabot/github_actions/actions/attest-build-provenance-4.1.0
+2026-05-25T18:29:36.5285755Z  * [new branch]      dependabot/github_actions/actions/attest-sbom-4.1.0 -> origin/dependabot/github_actions/actions/attest-sbom-4.1.0
+2026-05-25T18:29:36.5287380Z  * [new branch]      dependabot/github_actions/sigstore/cosign-installer-4.1.2 -> origin/dependabot/github_actions/sigstore/cosign-installer-4.1.2
+2026-05-25T18:29:36.5288949Z  * [new branch]      dependabot/npm_and_yarn/framer-motion-12.40.0 -> origin/dependabot/npm_and_yarn/framer-motion-12.40.0
+2026-05-25T18:29:36.5290151Z  * [new branch]      dependabot/npm_and_yarn/qs-6.15.2 -> origin/dependabot/npm_and_yarn/qs-6.15.2
+2026-05-25T18:29:36.5290985Z  * [new branch]      dependabot/npm_and_yarn/types/react-19.2.15 -> origin/dependabot/npm_and_yarn/types/react-19.2.15
+2026-05-25T18:29:36.5291994Z  * [new branch]      dependabot/npm_and_yarn/vitest-4.1.7 -> origin/dependabot/npm_and_yarn/vitest-4.1.7
+2026-05-25T18:29:36.5292995Z  * [new branch]      dependabot/npm_and_yarn/vitest/coverage-v8-4.1.7 -> origin/dependabot/npm_and_yarn/vitest/coverage-v8-4.1.7
+2026-05-25T18:29:36.5293777Z  * [new branch]      main               -> origin/main
+2026-05-25T18:29:36.5294615Z  * [new tag]         v0.1.0-preview.106 -> v0.1.0-preview.106
+2026-05-25T18:29:36.5295278Z  * [new tag]         v0.1.0-preview.107 -> v0.1.0-preview.107
+2026-05-25T18:29:36.5295904Z  * [new tag]         v0.1.0-preview.108 -> v0.1.0-preview.108
+2026-05-25T18:29:36.5296478Z  * [new tag]         v0.1.0-preview.109 -> v0.1.0-preview.109
+2026-05-25T18:29:36.5297079Z  * [new tag]         v0.1.0-preview.110 -> v0.1.0-preview.110
+2026-05-25T18:29:36.5370742Z [command]/usr/bin/git branch --list --remote origin/main
+2026-05-25T18:29:36.5399966Z   origin/main
+2026-05-25T18:29:36.5410066Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+2026-05-25T18:29:36.5434293Z 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:29:36.5439344Z ##[endgroup]
+2026-05-25T18:29:36.5440037Z ##[group]Determining the checkout info
+2026-05-25T18:29:36.5440787Z ##[endgroup]
+2026-05-25T18:29:36.5445920Z [command]/usr/bin/git sparse-checkout disable
+2026-05-25T18:29:36.5490394Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-05-25T18:29:36.5522523Z ##[group]Checking out the ref
+2026-05-25T18:29:36.5523243Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-05-25T18:29:36.6761790Z Switched to a new branch 'main'
+2026-05-25T18:29:36.6762682Z branch 'main' set up to track 'origin/main'.
+2026-05-25T18:29:36.6779941Z ##[endgroup]
+2026-05-25T18:29:36.6828652Z [command]/usr/bin/git log -1 --format=%H
+2026-05-25T18:29:36.6855461Z 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:29:36.6865288Z ##[group]Removing auth
+2026-05-25T18:29:36.6865787Z Removing SSH command configuration
+2026-05-25T18:29:36.6870224Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-05-25T18:29:36.6903705Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-05-25T18:29:36.7135928Z Removing HTTP extra header
+2026-05-25T18:29:36.7139800Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-05-25T18:29:36.7170982Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-05-25T18:29:36.7409596Z Removing includeIf entries pointing to credentials config files
+2026-05-25T18:29:36.7414677Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-05-25T18:29:36.7443387Z includeif.gitdir:/home/runner/work/Kravhantering/Kravhantering/.git.path
+2026-05-25T18:29:36.7444304Z includeif.gitdir:/home/runner/work/Kravhantering/Kravhantering/.git/worktrees/*.path
+2026-05-25T18:29:36.7444770Z includeif.gitdir:/github/workspace/.git.path
+2026-05-25T18:29:36.7445108Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-05-25T18:29:36.7455030Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/Kravhantering/Kravhantering/.git.path
+2026-05-25T18:29:36.7479457Z /home/runner/work/_temp/git-credentials-b78b0f01-1307-4591-916a-58e1ca5bf9ce.config
+2026-05-25T18:29:36.7493719Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/Kravhantering/Kravhantering/.git.path /home/runner/work/_temp/git-credentials-b78b0f01-1307-4591-916a-58e1ca5bf9ce.config
+2026-05-25T18:29:36.7528839Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/Kravhantering/Kravhantering/.git/worktrees/*.path
+2026-05-25T18:29:36.7553627Z /home/runner/work/_temp/git-credentials-b78b0f01-1307-4591-916a-58e1ca5bf9ce.config
+2026-05-25T18:29:36.7574758Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/Kravhantering/Kravhantering/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-b78b0f01-1307-4591-916a-58e1ca5bf9ce.config
+2026-05-25T18:29:36.7609482Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-05-25T18:29:36.7637443Z /github/runner_temp/git-credentials-b78b0f01-1307-4591-916a-58e1ca5bf9ce.config
+2026-05-25T18:29:36.7647636Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-b78b0f01-1307-4591-916a-58e1ca5bf9ce.config
+2026-05-25T18:29:36.7685071Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-05-25T18:29:36.7706983Z /github/runner_temp/git-credentials-b78b0f01-1307-4591-916a-58e1ca5bf9ce.config
+2026-05-25T18:29:36.7714149Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-b78b0f01-1307-4591-916a-58e1ca5bf9ce.config
+2026-05-25T18:29:36.7745972Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-05-25T18:29:36.7972167Z Removing credentials config '/home/runner/work/_temp/git-credentials-b78b0f01-1307-4591-916a-58e1ca5bf9ce.config'
+2026-05-25T18:29:36.8011343Z ##[endgroup]
+2026-05-25T18:29:36.8214245Z ##[group]Run actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+2026-05-25T18:29:36.8214788Z with:
+2026-05-25T18:29:36.8214997Z   node-version-file: .nvmrc
+2026-05-25T18:29:36.8215223Z   cache: npm
+2026-05-25T18:29:36.8215426Z   check-latest: false
+2026-05-25T18:29:36.8215816Z   token: ***
+2026-05-25T18:29:36.8216041Z   package-manager-cache: true
+2026-05-25T18:29:36.8216275Z env:
+2026-05-25T18:29:36.8216508Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:29:36.8216838Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:29:36.8217105Z   STORAGE_DRIVER: vfs
+2026-05-25T18:29:36.8217317Z ##[endgroup]
+2026-05-25T18:29:36.9666801Z Resolved .nvmrc as 24
+2026-05-25T18:29:36.9727002Z Found in cache @ /opt/hostedtoolcache/node/24.15.0/x64
+2026-05-25T18:29:36.9730841Z ##[group]Environment details
+2026-05-25T18:29:37.3123714Z node: v24.15.0
+2026-05-25T18:29:37.3123995Z npm: 11.12.1
+2026-05-25T18:29:37.3124208Z yarn: 1.22.22
+2026-05-25T18:29:37.3125077Z ##[endgroup]
+2026-05-25T18:29:37.3142676Z [command]/opt/hostedtoolcache/node/24.15.0/x64/bin/npm config get cache
+2026-05-25T18:29:37.4290133Z /home/runner/.npm
+2026-05-25T18:29:37.5111885Z npm cache is not found
+2026-05-25T18:29:37.5271744Z ##[group]Run actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7
+2026-05-25T18:29:37.5272140Z with:
+2026-05-25T18:29:37.5272331Z   cache: false
+2026-05-25T18:29:37.5272512Z env:
+2026-05-25T18:29:37.5272755Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:29:37.5273068Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:29:37.5273333Z   STORAGE_DRIVER: vfs
+2026-05-25T18:29:37.5273528Z ##[endgroup]
+2026-05-25T18:29:37.6548504Z The global.json wasn't found in the root directory. No .NET version will be installed.
+2026-05-25T18:29:37.6549111Z The 'dotnet-version' output will not be set.
+2026-05-25T18:29:37.6652659Z ##[group]Run npm ci
+2026-05-25T18:29:37.6652939Z [36;1mnpm ci[0m
+2026-05-25T18:29:37.6698308Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:29:37.6698569Z env:
+2026-05-25T18:29:37.6698815Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:29:37.6699176Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:29:37.6699438Z   STORAGE_DRIVER: vfs
+2026-05-25T18:29:37.6699646Z ##[endgroup]
+2026-05-25T18:29:53.9412912Z
+2026-05-25T18:29:53.9415552Z added 687 packages, and audited 688 packages in 16s
+2026-05-25T18:29:53.9415973Z
+2026-05-25T18:29:53.9416254Z 178 packages are looking for funding
+2026-05-25T18:29:53.9416691Z   run `npm fund` for details
+2026-05-25T18:29:53.9428347Z
+2026-05-25T18:29:53.9428640Z found 0 vulnerabilities
+2026-05-25T18:29:54.0215332Z ##[group]Run dotnet tool restore
+2026-05-25T18:29:54.0215767Z [36;1mdotnet tool restore[0m
+2026-05-25T18:29:54.0252804Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:29:54.0253047Z env:
+2026-05-25T18:29:54.0253302Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:29:54.0253637Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:29:54.0253920Z   STORAGE_DRIVER: vfs
+2026-05-25T18:29:54.0254118Z ##[endgroup]
+2026-05-25T18:29:57.8430421Z Tool 'gitversion.tool' (version '6.7.0') was restored. Available commands: dotnet-gitversion
+2026-05-25T18:29:57.8435518Z
+2026-05-25T18:29:57.8437365Z Restore was successful.
+2026-05-25T18:29:57.8573750Z ##[group]Run set -euo pipefail
+2026-05-25T18:29:57.8574082Z [36;1mset -euo pipefail[0m
+2026-05-25T18:29:57.8574393Z [36;1mmkdir -p tmp/container-release-artifacts/metadata[0m
+2026-05-25T18:29:57.8574806Z [36;1mdotnet tool run dotnet-gitversion /output json \[0m
+2026-05-25T18:29:57.8575207Z [36;1m  > tmp/container-release-artifacts/metadata/gitversion.json[0m
+2026-05-25T18:29:57.8610787Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:29:57.8611032Z env:
+2026-05-25T18:29:57.8611458Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:29:57.8611801Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:29:57.8612068Z   STORAGE_DRIVER: vfs
+2026-05-25T18:29:57.8612267Z ##[endgroup]
+2026-05-25T18:29:58.8539267Z ##[group]Run node scripts/release/container-release.mjs plan \
+2026-05-25T18:29:58.8539905Z [36;1mnode scripts/release/container-release.mjs plan \[0m
+2026-05-25T18:29:58.8540382Z [36;1m  --gitversion-json tmp/container-release-artifacts/metadata/gitversion.json \[0m
+2026-05-25T18:29:58.8540944Z [36;1m  --output tmp/container-release-artifacts/metadata/release-plan.json \[0m
+2026-05-25T18:29:58.8542205Z [36;1m  --github-env "${GITHUB_ENV}"[0m
+2026-05-25T18:29:58.8577041Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:29:58.8577278Z env:
+2026-05-25T18:29:58.8577528Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:29:58.8577852Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:29:58.8578117Z   STORAGE_DRIVER: vfs
+2026-05-25T18:29:58.8578390Z   GITHUB_EVENT_BEFORE: 397191cba0d3c2cef349bb00896867823a6b40e8
+2026-05-25T18:29:58.8578705Z ##[endgroup]
+2026-05-25T18:29:58.9008212Z Wrote tmp/container-release-artifacts/metadata/release-plan.json
+2026-05-25T18:29:58.9082307Z ##[group]Run node scripts/prebuild.js
+2026-05-25T18:29:58.9082608Z [36;1mnode scripts/prebuild.js[0m
+2026-05-25T18:29:58.9117212Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:29:58.9117455Z env:
+2026-05-25T18:29:58.9117707Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:29:58.9118037Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:29:58.9118304Z   STORAGE_DRIVER: vfs
+2026-05-25T18:29:58.9118602Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:29:58.9118974Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:29:58.9119408Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:29:58.9119828Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:29:58.9120795Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:29:58.9122064Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:29:58.9122496Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:29:58.9122876Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:29:58.9123265Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:29:58.9123670Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:29:58.9123957Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:29:58.9124259Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:29:58.9124605Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:29:58.9124982Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:29:58.9125815Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:29:58.9126646Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:29:58.9126915Z   RELEASE_IS_STABLE: false
+2026-05-25T18:29:58.9127141Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:29:58.9127370Z   RELEASE_PRERELEASE: true
+2026-05-25T18:29:58.9127591Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:29:58.9127835Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:29:58.9128090Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:29:58.9128322Z ##[endgroup]
+2026-05-25T18:29:58.9432479Z 🧹 Cleaning Next.js build artifacts...
+2026-05-25T18:29:58.9439522Z 📦 Wrote public/build.json for version 0.1.0-preview.111
+2026-05-25T18:29:58.9517614Z ##[group]Run npx playwright install --with-deps chromium
+2026-05-25T18:29:58.9518003Z [36;1mnpx playwright install --with-deps chromium[0m
+2026-05-25T18:29:58.9551606Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:29:58.9551848Z env:
+2026-05-25T18:29:58.9552099Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:29:58.9552435Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:29:58.9552700Z   STORAGE_DRIVER: vfs
+2026-05-25T18:29:58.9552995Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:29:58.9553537Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:29:58.9553961Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:29:58.9554398Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:29:58.9555374Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:29:58.9556320Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:29:58.9556757Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:29:58.9557138Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:29:58.9557513Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:29:58.9557916Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:29:58.9558207Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:29:58.9558510Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:29:58.9558858Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:29:58.9559339Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:29:58.9560198Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:29:58.9561016Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:29:58.9561453Z   RELEASE_IS_STABLE: false
+2026-05-25T18:29:58.9561681Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:29:58.9561902Z   RELEASE_PRERELEASE: true
+2026-05-25T18:29:58.9562125Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:29:58.9562375Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:29:58.9562634Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:29:58.9562876Z ##[endgroup]
+2026-05-25T18:29:59.6775680Z Installing dependencies...
+2026-05-25T18:29:59.6856733Z Switching to root user to install dependencies...
+2026-05-25T18:29:59.7783064Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-05-25T18:29:59.8123953Z Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+2026-05-25T18:29:59.8125383Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+2026-05-25T18:29:59.8126772Z Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+2026-05-25T18:29:59.8149177Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+2026-05-25T18:29:59.8193826Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+2026-05-25T18:29:59.8218418Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+2026-05-25T18:29:59.8482636Z Get:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease [1825 B]
+2026-05-25T18:29:59.9800828Z Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [155 kB]
+2026-05-25T18:29:59.9908491Z Get:10 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [126 kB]
+2026-05-25T18:30:00.0323468Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [2007 kB]
+2026-05-25T18:30:00.0478074Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [355 kB]
+2026-05-25T18:30:00.0495960Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [177 kB]
+2026-05-25T18:30:00.0505871Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1692 kB]
+2026-05-25T18:30:00.0615841Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [329 kB]
+2026-05-25T18:30:00.0652205Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Components [387 kB]
+2026-05-25T18:30:00.0689156Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [3202 kB]
+2026-05-25T18:30:00.0882659Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [740 kB]
+2026-05-25T18:30:00.0915968Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [44.7 kB]
+2026-05-25T18:30:00.0929136Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [10.9 kB]
+2026-05-25T18:30:00.1487660Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Components [940 B]
+2026-05-25T18:30:00.1501305Z Get:22 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 Components [5744 B]
+2026-05-25T18:30:00.1511981Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Components [10.5 kB]
+2026-05-25T18:30:00.1642747Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1698 kB]
+2026-05-25T18:30:00.1772429Z Get:25 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [267 kB]
+2026-05-25T18:30:00.1787206Z Get:26 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Components [42.4 kB]
+2026-05-25T18:30:00.1803473Z Get:27 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1191 kB]
+2026-05-25T18:30:00.1874895Z Get:28 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [230 kB]
+2026-05-25T18:30:00.1911038Z Get:29 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [74.2 kB]
+2026-05-25T18:30:00.1942264Z Get:30 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [2997 kB]
+2026-05-25T18:30:00.2078554Z Get:31 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [697 kB]
+2026-05-25T18:30:00.2126404Z Get:32 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [39.3 kB]
+2026-05-25T18:30:00.2139507Z Get:33 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse Translation-en [8784 B]
+2026-05-25T18:30:00.2874305Z Get:34 https://dl.google.com/linux/chrome-stable/deb stable/main amd64 Packages [1220 B]
+2026-05-25T18:30:04.9586451Z Fetched 16.9 MB in 2s (8343 kB/s)
+2026-05-25T18:30:05.7315273Z Reading package lists...
+2026-05-25T18:30:05.7579203Z Reading package lists...
+2026-05-25T18:30:05.9285580Z Building dependency tree...
+2026-05-25T18:30:05.9292204Z Reading state information...
+2026-05-25T18:30:06.0924914Z libasound2t64 is already the newest version (1.2.11-1ubuntu0.2).
+2026-05-25T18:30:06.0925718Z libasound2t64 set to manually installed.
+2026-05-25T18:30:06.0926451Z libatk-bridge2.0-0t64 is already the newest version (2.52.0-1build1).
+2026-05-25T18:30:06.0927231Z libatk-bridge2.0-0t64 set to manually installed.
+2026-05-25T18:30:06.0927992Z libatk1.0-0t64 is already the newest version (2.52.0-1build1).
+2026-05-25T18:30:06.0928623Z libatk1.0-0t64 set to manually installed.
+2026-05-25T18:30:06.0929325Z libatspi2.0-0t64 is already the newest version (2.52.0-1build1).
+2026-05-25T18:30:06.0929943Z libatspi2.0-0t64 set to manually installed.
+2026-05-25T18:30:06.0930635Z libcairo2 is already the newest version (1.18.0-3build1).
+2026-05-25T18:30:06.0931453Z libcairo2 set to manually installed.
+2026-05-25T18:30:06.0932138Z libcups2t64 is already the newest version (2.4.7-1.2ubuntu7.9).
+2026-05-25T18:30:06.0932783Z libcups2t64 set to manually installed.
+2026-05-25T18:30:06.0933467Z libdbus-1-3 is already the newest version (1.14.10-4ubuntu4.1).
+2026-05-25T18:30:06.0934082Z libdbus-1-3 set to manually installed.
+2026-05-25T18:30:06.0935194Z libdrm2 is already the newest version (2.4.125-1ubuntu0.1~24.04.1).
+2026-05-25T18:30:06.0935841Z libdrm2 set to manually installed.
+2026-05-25T18:30:06.0936538Z libgbm1 is already the newest version (25.2.8-0ubuntu0.24.04.1).
+2026-05-25T18:30:06.0937147Z libgbm1 set to manually installed.
+2026-05-25T18:30:06.0937825Z libglib2.0-0t64 is already the newest version (2.80.0-6ubuntu3.8).
+2026-05-25T18:30:06.0938345Z libglib2.0-0t64 set to manually installed.
+2026-05-25T18:30:06.0938792Z libnspr4 is already the newest version (2:4.35-1.1build1).
+2026-05-25T18:30:06.0939335Z libnspr4 set to manually installed.
+2026-05-25T18:30:06.0939757Z libnss3 is already the newest version (2:3.98-1ubuntu0.1).
+2026-05-25T18:30:06.0940209Z libnss3 set to manually installed.
+2026-05-25T18:30:06.0940644Z libpango-1.0-0 is already the newest version (1.52.1+ds-1build1).
+2026-05-25T18:30:06.0941048Z libpango-1.0-0 set to manually installed.
+2026-05-25T18:30:06.0941719Z libx11-6 is already the newest version (2:1.8.7-1build1).
+2026-05-25T18:30:06.0942099Z libx11-6 set to manually installed.
+2026-05-25T18:30:06.0942468Z libxcb1 is already the newest version (1.15-1ubuntu2).
+2026-05-25T18:30:06.0942829Z libxcb1 set to manually installed.
+2026-05-25T18:30:06.0943258Z libxcomposite1 is already the newest version (1:0.4.5-1build3).
+2026-05-25T18:30:06.0943673Z libxcomposite1 set to manually installed.
+2026-05-25T18:30:06.0944096Z libxdamage1 is already the newest version (1:1.1.6-1build1).
+2026-05-25T18:30:06.0944473Z libxdamage1 set to manually installed.
+2026-05-25T18:30:06.0944881Z libxext6 is already the newest version (2:1.3.4-1build2).
+2026-05-25T18:30:06.0945248Z libxext6 set to manually installed.
+2026-05-25T18:30:06.0945647Z libxfixes3 is already the newest version (1:6.0.0-2build1).
+2026-05-25T18:30:06.0946029Z libxfixes3 set to manually installed.
+2026-05-25T18:30:06.0946435Z libxkbcommon0 is already the newest version (1.6.0-1build1).
+2026-05-25T18:30:06.0946824Z libxkbcommon0 set to manually installed.
+2026-05-25T18:30:06.0947243Z libxrandr2 is already the newest version (2:1.5.2-2build1).
+2026-05-25T18:30:06.0947600Z libxrandr2 set to manually installed.
+2026-05-25T18:30:06.0947994Z xvfb is already the newest version (2:21.1.12-1ubuntu1.5).
+2026-05-25T18:30:06.0948548Z fonts-noto-color-emoji is already the newest version (2.047-0ubuntu0.24.04.1).
+2026-05-25T18:30:06.0949101Z libfontconfig1 is already the newest version (2.15.0-1.1ubuntu2).
+2026-05-25T18:30:06.0949515Z libfontconfig1 set to manually installed.
+2026-05-25T18:30:06.0949988Z libfreetype6 is already the newest version (2.13.2+dfsg-1ubuntu0.1).
+2026-05-25T18:30:06.0950396Z libfreetype6 set to manually installed.
+2026-05-25T18:30:06.0950819Z fonts-liberation is already the newest version (1:2.1.5-3).
+2026-05-25T18:30:06.0951400Z fonts-liberation set to manually installed.
+2026-05-25T18:30:06.0951803Z The following additional packages will be installed:
+2026-05-25T18:30:06.0952141Z   xfonts-encodings xfonts-utils
+2026-05-25T18:30:06.0952415Z Recommended packages:
+2026-05-25T18:30:06.0952686Z   fonts-ipafont-mincho fonts-tlwg-loma
+2026-05-25T18:30:06.1124759Z The following NEW packages will be installed:
+2026-05-25T18:30:06.1125291Z   fonts-freefont-ttf fonts-ipafont-gothic fonts-tlwg-loma-otf fonts-unifont
+2026-05-25T18:30:06.1130371Z   fonts-wqy-zenhei xfonts-cyrillic xfonts-encodings xfonts-scalable
+2026-05-25T18:30:06.1130779Z   xfonts-utils
+2026-05-25T18:30:06.1313163Z 0 upgraded, 9 newly installed, 0 to remove and 16 not upgraded.
+2026-05-25T18:30:06.1313847Z Need to get 21.1 MB of archives.
+2026-05-25T18:30:06.1314600Z After this operation, 79.5 MB of additional disk space will be used.
+2026-05-25T18:30:06.1315421Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-05-25T18:30:06.1575926Z Get:2 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-ipafont-gothic all 00303-21ubuntu1 [3513 kB]
+2026-05-25T18:30:06.1907078Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 fonts-freefont-ttf all 20211204+svn4273-2 [5641 kB]
+2026-05-25T18:30:06.2384058Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-tlwg-loma-otf all 1:0.7.3-1 [107 kB]
+2026-05-25T18:30:06.2459680Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-unifont all 1:15.1.01-1build1 [2993 kB]
+2026-05-25T18:30:06.2747153Z Get:6 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-wqy-zenhei all 0.9.45-8 [7472 kB]
+2026-05-25T18:30:06.3348184Z Get:7 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-encodings all 1:1.0.5-0ubuntu2 [578 kB]
+2026-05-25T18:30:06.3474949Z Get:8 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-utils amd64 1:7.7+6build3 [94.4 kB]
+2026-05-25T18:30:06.3551883Z Get:9 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 xfonts-cyrillic all 1:1.0.5+nmu1 [384 kB]
+2026-05-25T18:30:06.3690904Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-scalable all 1:1.0.3-1.3 [304 kB]
+2026-05-25T18:30:06.6258514Z Fetched 21.1 MB in 0s (84.1 MB/s)
+2026-05-25T18:30:06.6478781Z Selecting previously unselected package fonts-ipafont-gothic.
+2026-05-25T18:30:06.6693801Z (Reading database ...
+2026-05-25T18:30:06.6694640Z (Reading database ... 5%
+2026-05-25T18:30:06.6695096Z (Reading database ... 10%
+2026-05-25T18:30:06.6695499Z (Reading database ... 15%
+2026-05-25T18:30:06.6695871Z (Reading database ... 20%
+2026-05-25T18:30:06.6696128Z (Reading database ... 25%
+2026-05-25T18:30:06.6696360Z (Reading database ... 30%
+2026-05-25T18:30:06.6696602Z (Reading database ... 35%
+2026-05-25T18:30:06.6696860Z (Reading database ... 40%
+2026-05-25T18:30:06.6697096Z (Reading database ... 45%
+2026-05-25T18:30:06.6697339Z (Reading database ... 50%
+2026-05-25T18:30:06.6732574Z (Reading database ... 55%
+2026-05-25T18:30:06.8063733Z (Reading database ... 60%
+2026-05-25T18:30:07.0105903Z (Reading database ... 65%
+2026-05-25T18:30:07.2029217Z (Reading database ... 70%
+2026-05-25T18:30:07.3603003Z (Reading database ... 75%
+2026-05-25T18:30:07.5077013Z (Reading database ... 80%
+2026-05-25T18:30:07.6584434Z (Reading database ... 85%
+2026-05-25T18:30:07.7567142Z (Reading database ... 90%
+2026-05-25T18:30:07.9269519Z (Reading database ... 95%
+2026-05-25T18:30:07.9270005Z (Reading database ... 100%
+2026-05-25T18:30:07.9270694Z (Reading database ... 202288 files and directories currently installed.)
+2026-05-25T18:30:07.9315052Z Preparing to unpack .../0-fonts-ipafont-gothic_00303-21ubuntu1_all.deb ...
+2026-05-25T18:30:07.9408378Z Unpacking fonts-ipafont-gothic (00303-21ubuntu1) ...
+2026-05-25T18:30:08.1743739Z Selecting previously unselected package fonts-freefont-ttf.
+2026-05-25T18:30:08.1873855Z Preparing to unpack .../1-fonts-freefont-ttf_20211204+svn4273-2_all.deb ...
+2026-05-25T18:30:08.1880775Z Unpacking fonts-freefont-ttf (20211204+svn4273-2) ...
+2026-05-25T18:30:08.2679105Z Selecting previously unselected package fonts-tlwg-loma-otf.
+2026-05-25T18:30:08.2809339Z Preparing to unpack .../2-fonts-tlwg-loma-otf_1%3a0.7.3-1_all.deb ...
+2026-05-25T18:30:08.2815818Z Unpacking fonts-tlwg-loma-otf (1:0.7.3-1) ...
+2026-05-25T18:30:08.3021404Z Selecting previously unselected package fonts-unifont.
+2026-05-25T18:30:08.3145420Z Preparing to unpack .../3-fonts-unifont_1%3a15.1.01-1build1_all.deb ...
+2026-05-25T18:30:08.3152124Z Unpacking fonts-unifont (1:15.1.01-1build1) ...
+2026-05-25T18:30:08.4233159Z Selecting previously unselected package fonts-wqy-zenhei.
+2026-05-25T18:30:08.4363183Z Preparing to unpack .../4-fonts-wqy-zenhei_0.9.45-8_all.deb ...
+2026-05-25T18:30:08.4462328Z Unpacking fonts-wqy-zenhei (0.9.45-8) ...
+2026-05-25T18:30:09.0530516Z Selecting previously unselected package xfonts-encodings.
+2026-05-25T18:30:09.0662629Z Preparing to unpack .../5-xfonts-encodings_1%3a1.0.5-0ubuntu2_all.deb ...
+2026-05-25T18:30:09.0671682Z Unpacking xfonts-encodings (1:1.0.5-0ubuntu2) ...
+2026-05-25T18:30:09.0963945Z Selecting previously unselected package xfonts-utils.
+2026-05-25T18:30:09.1088589Z Preparing to unpack .../6-xfonts-utils_1%3a7.7+6build3_amd64.deb ...
+2026-05-25T18:30:09.1095375Z Unpacking xfonts-utils (1:7.7+6build3) ...
+2026-05-25T18:30:09.1402283Z Selecting previously unselected package xfonts-cyrillic.
+2026-05-25T18:30:09.1528037Z Preparing to unpack .../7-xfonts-cyrillic_1%3a1.0.5+nmu1_all.deb ...
+2026-05-25T18:30:09.1535013Z Unpacking xfonts-cyrillic (1:1.0.5+nmu1) ...
+2026-05-25T18:30:09.1861952Z Selecting previously unselected package xfonts-scalable.
+2026-05-25T18:30:09.1986696Z Preparing to unpack .../8-xfonts-scalable_1%3a1.0.3-1.3_all.deb ...
+2026-05-25T18:30:09.1993456Z Unpacking xfonts-scalable (1:1.0.3-1.3) ...
+2026-05-25T18:30:09.2407317Z Setting up fonts-wqy-zenhei (0.9.45-8) ...
+2026-05-25T18:30:09.2521571Z Setting up fonts-freefont-ttf (20211204+svn4273-2) ...
+2026-05-25T18:30:09.2539788Z Setting up fonts-tlwg-loma-otf (1:0.7.3-1) ...
+2026-05-25T18:30:09.2555619Z Setting up xfonts-encodings (1:1.0.5-0ubuntu2) ...
+2026-05-25T18:30:09.2571411Z Setting up fonts-ipafont-gothic (00303-21ubuntu1) ...
+2026-05-25T18:30:09.2638034Z update-alternatives: using /usr/share/fonts/opentype/ipafont-gothic/ipag.ttf to provide /usr/share/fonts/truetype/fonts-japanese-gothic.ttf (fonts-japanese-gothic.ttf) in auto mode
+2026-05-25T18:30:09.2652346Z Setting up fonts-unifont (1:15.1.01-1build1) ...
+2026-05-25T18:30:09.2668309Z Setting up xfonts-utils (1:7.7+6build3) ...
+2026-05-25T18:30:09.2706753Z Setting up xfonts-cyrillic (1:1.0.5+nmu1) ...
+2026-05-25T18:30:09.3000608Z Setting up xfonts-scalable (1:1.0.3-1.3) ...
+2026-05-25T18:30:09.3277879Z Processing triggers for man-db (2.12.0-4build2) ...
+2026-05-25T18:30:09.3298384Z Not building database; man-db/auto-update is not 'true'.
+2026-05-25T18:30:09.3310275Z Processing triggers for fontconfig (2.15.0-1.1ubuntu2) ...
+2026-05-25T18:30:09.9868755Z
+2026-05-25T18:30:09.9869413Z Running kernel seems to be up-to-date.
+2026-05-25T18:30:09.9869779Z
+2026-05-25T18:30:09.9870023Z No services need to be restarted.
+2026-05-25T18:30:09.9870293Z
+2026-05-25T18:30:09.9870529Z No containers need to be restarted.
+2026-05-25T18:30:09.9870788Z
+2026-05-25T18:30:09.9872636Z No user sessions are running outdated binaries.
+2026-05-25T18:30:09.9872988Z
+2026-05-25T18:30:09.9873500Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-05-25T18:30:10.8571312Z Downloading Chrome for Testing 148.0.7778.96 (playwright chromium v1223) from https://cdn.playwright.dev/builds/cft/148.0.7778.96/linux64/chrome-linux64.zip
+2026-05-25T18:30:11.8338650Z |                                                                                |   0% of 175.4 MiB
+2026-05-25T18:30:12.1826518Z |■■■■■■■■                                                                        |  10% of 175.4 MiB
+2026-05-25T18:30:12.2743462Z |■■■■■■■■■■■■■■■■                                                                |  20% of 175.4 MiB
+2026-05-25T18:30:12.3613982Z |■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 175.4 MiB
+2026-05-25T18:30:12.4185210Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 175.4 MiB
+2026-05-25T18:30:12.4919797Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 175.4 MiB
+2026-05-25T18:30:12.5673385Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 175.4 MiB
+2026-05-25T18:30:12.6398495Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 175.4 MiB
+2026-05-25T18:30:12.7107292Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 175.4 MiB
+2026-05-25T18:30:12.7927446Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 175.4 MiB
+2026-05-25T18:30:12.8499316Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 175.4 MiB
+2026-05-25T18:30:15.7411257Z Chrome for Testing 148.0.7778.96 (playwright chromium v1223) downloaded to /home/runner/.cache/ms-playwright/chromium-1223
+2026-05-25T18:30:15.7415807Z Downloading FFmpeg (playwright ffmpeg v1011) from https://cdn.playwright.dev/dbazure/download/playwright/builds/ffmpeg/1011/ffmpeg-linux.zip
+2026-05-25T18:30:16.6962103Z |                                                                                |   0% of 2.3 MiB
+2026-05-25T18:30:16.7130360Z |■■■■■■■■                                                                        |  10% of 2.3 MiB
+2026-05-25T18:30:16.7249871Z |■■■■■■■■■■■■■■■■                                                                |  20% of 2.3 MiB
+2026-05-25T18:30:16.7282446Z |■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 2.3 MiB
+2026-05-25T18:30:16.7337973Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 2.3 MiB
+2026-05-25T18:30:16.7397798Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 2.3 MiB
+2026-05-25T18:30:16.7408996Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 2.3 MiB
+2026-05-25T18:30:16.7455235Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 2.3 MiB
+2026-05-25T18:30:16.7468354Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 2.3 MiB
+2026-05-25T18:30:16.7503122Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 2.3 MiB
+2026-05-25T18:30:16.7516495Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 2.3 MiB
+2026-05-25T18:30:16.8074388Z FFmpeg (playwright ffmpeg v1011) downloaded to /home/runner/.cache/ms-playwright/ffmpeg-1011
+2026-05-25T18:30:16.8077485Z Downloading Chrome Headless Shell 148.0.7778.96 (playwright chromium-headless-shell v1223) from https://cdn.playwright.dev/builds/cft/148.0.7778.96/linux64/chrome-headless-shell-linux64.zip
+2026-05-25T18:30:17.7713947Z |                                                                                |   0% of 113.2 MiB
+2026-05-25T18:30:17.9400017Z |■■■■■■■■                                                                        |  10% of 113.2 MiB
+2026-05-25T18:30:18.0552642Z |■■■■■■■■■■■■■■■■                                                                |  20% of 113.2 MiB
+2026-05-25T18:30:18.1115551Z |■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 113.2 MiB
+2026-05-25T18:30:18.1763356Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 113.2 MiB
+2026-05-25T18:30:18.2145913Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 113.2 MiB
+2026-05-25T18:30:18.2493453Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 113.2 MiB
+2026-05-25T18:30:18.3051577Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 113.2 MiB
+2026-05-25T18:30:18.3387919Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 113.2 MiB
+2026-05-25T18:30:18.3909108Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 113.2 MiB
+2026-05-25T18:30:18.4460609Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 113.2 MiB
+2026-05-25T18:30:20.5993099Z Chrome Headless Shell 148.0.7778.96 (playwright chromium-headless-shell v1223) downloaded to /home/runner/.cache/ms-playwright/chromium_headless_shell-1223
+2026-05-25T18:30:20.6361417Z ##[group]Run set -euo pipefail
+2026-05-25T18:30:20.6361915Z [36;1mset -euo pipefail[0m
+2026-05-25T18:30:20.6362303Z [36;1msudo apt-get update[0m
+2026-05-25T18:30:20.6363211Z [36;1msudo apt-get install -y podman podman-compose libnss3-tools[0m
+2026-05-25T18:30:20.6363952Z [36;1msudo sysctl net.ipv4.ip_unprivileged_port_start=0[0m
+2026-05-25T18:30:20.6364418Z [36;1mecho "127.0.0.1 kravhantering.test" | sudo tee -a /etc/hosts[0m
+2026-05-25T18:30:20.6364789Z [36;1mpodman --version[0m
+2026-05-25T18:30:20.6365027Z [36;1mpodman compose version[0m
+2026-05-25T18:30:20.6365260Z [36;1mpodman info[0m
+2026-05-25T18:30:20.6365473Z [36;1mdocker --version[0m
+2026-05-25T18:30:20.6365692Z [36;1mdocker buildx version[0m
+2026-05-25T18:30:20.6365916Z [36;1mdocker info[0m
+2026-05-25T18:30:20.6366106Z [36;1mdocker buildx ls[0m
+2026-05-25T18:30:20.6403158Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:30:20.6403408Z env:
+2026-05-25T18:30:20.6403693Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:30:20.6404021Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:30:20.6404289Z   STORAGE_DRIVER: vfs
+2026-05-25T18:30:20.6404587Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:30:20.6404955Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:30:20.6405385Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:30:20.6405835Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:30:20.6406786Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:30:20.6407761Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:30:20.6408191Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:30:20.6408591Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:30:20.6408976Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:30:20.6409380Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:30:20.6409671Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:30:20.6409974Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:30:20.6410326Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:30:20.6410694Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:30:20.6411738Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:30:20.6412563Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:30:20.6412820Z   RELEASE_IS_STABLE: false
+2026-05-25T18:30:20.6413049Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:30:20.6413269Z   RELEASE_PRERELEASE: true
+2026-05-25T18:30:20.6413500Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:30:20.6413744Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:30:20.6414007Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:30:20.6414419Z ##[endgroup]
+2026-05-25T18:30:20.7091748Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-05-25T18:30:20.7415164Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+2026-05-25T18:30:20.7416673Z Hit:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease
+2026-05-25T18:30:20.7420187Z Hit:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease
+2026-05-25T18:30:20.7425895Z Hit:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease
+2026-05-25T18:30:20.7503723Z Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+2026-05-25T18:30:20.7530214Z Hit:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease
+2026-05-25T18:30:20.7857940Z Hit:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease
+2026-05-25T18:30:22.0405855Z Reading package lists...
+2026-05-25T18:30:22.0725111Z Reading package lists...
+2026-05-25T18:30:22.2467806Z Building dependency tree...
+2026-05-25T18:30:22.2474752Z Reading state information...
+2026-05-25T18:30:22.4096387Z podman is already the newest version (4.9.3+ds1-1ubuntu0.2).
+2026-05-25T18:30:22.4097334Z libnss3-tools is already the newest version (2:3.98-1ubuntu0.1).
+2026-05-25T18:30:22.4098165Z The following additional packages will be installed:
+2026-05-25T18:30:22.4098732Z   python3-dotenv
+2026-05-25T18:30:22.4260646Z The following NEW packages will be installed:
+2026-05-25T18:30:22.4261458Z   podman-compose python3-dotenv
+2026-05-25T18:30:22.4438148Z 0 upgraded, 2 newly installed, 0 to remove and 16 not upgraded.
+2026-05-25T18:30:22.4438614Z Need to get 60.9 kB of archives.
+2026-05-25T18:30:22.4439086Z After this operation, 305 kB of additional disk space will be used.
+2026-05-25T18:30:22.4439858Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-05-25T18:30:22.4702500Z Get:2 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 python3-dotenv all 1.0.1-1 [22.3 kB]
+2026-05-25T18:30:22.4798683Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 podman-compose all 1.0.6-1 [38.6 kB]
+2026-05-25T18:30:22.7473929Z Fetched 60.9 kB in 0s (1291 kB/s)
+2026-05-25T18:30:22.7688698Z Selecting previously unselected package python3-dotenv.
+2026-05-25T18:30:22.7746432Z (Reading database ...
+2026-05-25T18:30:22.7746880Z (Reading database ... 5%
+2026-05-25T18:30:22.7747169Z (Reading database ... 10%
+2026-05-25T18:30:22.7747433Z (Reading database ... 15%
+2026-05-25T18:30:22.7747672Z (Reading database ... 20%
+2026-05-25T18:30:22.7747910Z (Reading database ... 25%
+2026-05-25T18:30:22.7748150Z (Reading database ... 30%
+2026-05-25T18:30:22.7748402Z (Reading database ... 35%
+2026-05-25T18:30:22.7748666Z (Reading database ... 40%
+2026-05-25T18:30:22.7748913Z (Reading database ... 45%
+2026-05-25T18:30:22.7749155Z (Reading database ... 50%
+2026-05-25T18:30:22.7760245Z (Reading database ... 55%
+2026-05-25T18:30:22.7873449Z (Reading database ... 60%
+2026-05-25T18:30:22.7907746Z (Reading database ... 65%
+2026-05-25T18:30:22.7933466Z (Reading database ... 70%
+2026-05-25T18:30:22.7960332Z (Reading database ... 75%
+2026-05-25T18:30:22.7995765Z (Reading database ... 80%
+2026-05-25T18:30:22.8015094Z (Reading database ... 85%
+2026-05-25T18:30:22.8203276Z (Reading database ... 90%
+2026-05-25T18:30:22.8443763Z (Reading database ... 95%
+2026-05-25T18:30:22.8444102Z (Reading database ... 100%
+2026-05-25T18:30:22.8444572Z (Reading database ... 202555 files and directories currently installed.)
+2026-05-25T18:30:22.8485855Z Preparing to unpack .../python3-dotenv_1.0.1-1_all.deb ...
+2026-05-25T18:30:22.8495570Z Unpacking python3-dotenv (1.0.1-1) ...
+2026-05-25T18:30:22.8737029Z Selecting previously unselected package podman-compose.
+2026-05-25T18:30:22.8857911Z Preparing to unpack .../podman-compose_1.0.6-1_all.deb ...
+2026-05-25T18:30:22.8865194Z Unpacking podman-compose (1.0.6-1) ...
+2026-05-25T18:30:22.9312806Z Setting up python3-dotenv (1.0.1-1) ...
+2026-05-25T18:30:23.0864981Z Setting up podman-compose (1.0.6-1) ...
+2026-05-25T18:30:23.2082687Z Processing triggers for man-db (2.12.0-4build2) ...
+2026-05-25T18:30:23.2098672Z Not building database; man-db/auto-update is not 'true'.
+2026-05-25T18:30:23.7420064Z
+2026-05-25T18:30:23.7420731Z Running kernel seems to be up-to-date.
+2026-05-25T18:30:23.7422535Z
+2026-05-25T18:30:23.7422802Z No services need to be restarted.
+2026-05-25T18:30:23.7423065Z
+2026-05-25T18:30:23.7423304Z No containers need to be restarted.
+2026-05-25T18:30:23.7423580Z
+2026-05-25T18:30:23.7423885Z No user sessions are running outdated binaries.
+2026-05-25T18:30:23.7424090Z
+2026-05-25T18:30:23.7424413Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-05-25T18:30:24.6191373Z net.ipv4.ip_unprivileged_port_start = 0
+2026-05-25T18:30:24.6262921Z 127.0.0.1 kravhantering.test
+2026-05-25T18:30:24.6411430Z podman version 4.9.3
+2026-05-25T18:30:24.6993627Z [4m>>>> Executing external compose provider "podman-compose". Please refer to the documentation for details. <<<<
+2026-05-25T18:30:24.6994696Z
+2026-05-25T18:30:24.7803394Z [0mpodman-compose version: 1.0.6
+2026-05-25T18:30:24.7842569Z ['podman', '--version', '']
+2026-05-25T18:30:24.7996104Z using podman version: 4.9.3
+2026-05-25T18:30:24.7996575Z podman --version
+2026-05-25T18:30:24.8124951Z podman version 4.9.3
+2026-05-25T18:30:24.8134846Z exit code: 0
+2026-05-25T18:30:24.8135245Z podman-compose version 1.0.6
+2026-05-25T18:30:26.3271975Z host:
+2026-05-25T18:30:26.3272872Z   arch: amd64
+2026-05-25T18:30:26.3273227Z   buildahVersion: 1.33.7
+2026-05-25T18:30:26.3273595Z   cgroupControllers:
+2026-05-25T18:30:26.3273906Z   - cpu
+2026-05-25T18:30:26.3274188Z   - memory
+2026-05-25T18:30:26.3274438Z   - pids
+2026-05-25T18:30:26.3274714Z   cgroupManager: systemd
+2026-05-25T18:30:26.3275028Z   cgroupVersion: v2
+2026-05-25T18:30:26.3275308Z   conmon:
+2026-05-25T18:30:26.3275663Z     package: conmon_2.1.10+ds1-1build2_amd64
+2026-05-25T18:30:26.3276099Z     path: /usr/bin/conmon
+2026-05-25T18:30:26.3276549Z     version: 'conmon version 2.1.10, commit: unknown'
+2026-05-25T18:30:26.3276985Z   cpuUtilization:
+2026-05-25T18:30:26.3277284Z     idlePercent: 88.95
+2026-05-25T18:30:26.3277599Z     systemPercent: 3.76
+2026-05-25T18:30:26.3277904Z     userPercent: 7.29
+2026-05-25T18:30:26.3278198Z   cpus: 4
+2026-05-25T18:30:26.3278477Z   databaseBackend: sqlite
+2026-05-25T18:30:26.3278804Z   distribution:
+2026-05-25T18:30:26.3279095Z     codename: noble
+2026-05-25T18:30:26.3279413Z     distribution: ubuntu
+2026-05-25T18:30:26.3279735Z     version: "24.04"
+2026-05-25T18:30:26.3280045Z   eventLogger: journald
+2026-05-25T18:30:26.3280362Z   freeLocks: 2048
+2026-05-25T18:30:26.3280671Z   hostname: runnervmg397c
+2026-05-25T18:30:26.3280994Z   idMappings:
+2026-05-25T18:30:26.3281422Z     gidmap:
+2026-05-25T18:30:26.3281682Z     - container_id: 0
+2026-05-25T18:30:26.3281990Z       host_id: 1001
+2026-05-25T18:30:26.3282253Z       size: 1
+2026-05-25T18:30:26.3282527Z     - container_id: 1
+2026-05-25T18:30:26.3282815Z       host_id: 165536
+2026-05-25T18:30:26.3283085Z       size: 65536
+2026-05-25T18:30:26.3283342Z     uidmap:
+2026-05-25T18:30:26.3283636Z     - container_id: 0
+2026-05-25T18:30:26.3283918Z       host_id: 1001
+2026-05-25T18:30:26.3284176Z       size: 1
+2026-05-25T18:30:26.3284441Z     - container_id: 1
+2026-05-25T18:30:26.3284723Z       host_id: 165536
+2026-05-25T18:30:26.3285005Z       size: 65536
+2026-05-25T18:30:26.3285276Z   kernel: 6.17.0-1013-azure
+2026-05-25T18:30:26.3285604Z   linkmode: dynamic
+2026-05-25T18:30:26.3285888Z   logDriver: journald
+2026-05-25T18:30:26.3286174Z   memFree: 11178295296
+2026-05-25T18:30:26.3286458Z   memTotal: 16766427136
+2026-05-25T18:30:26.3286772Z   networkBackend: netavark
+2026-05-25T18:30:26.3287093Z   networkBackendInfo:
+2026-05-25T18:30:26.3287397Z     backend: netavark
+2026-05-25T18:30:26.3287663Z     dns:
+2026-05-25T18:30:26.3287986Z       package: aardvark-dns_1.4.0-5_amd64
+2026-05-25T18:30:26.3288537Z       path: /usr/lib/podman/aardvark-dns
+2026-05-25T18:30:26.3289002Z       version: aardvark-dns 1.4.0
+2026-05-25T18:30:26.3289426Z     package: netavark_1.4.0-4_amd64
+2026-05-25T18:30:26.3290161Z     path: /usr/lib/podman/netavark
+2026-05-25T18:30:26.3290572Z     version: netavark 1.4.0
+2026-05-25T18:30:26.3290901Z   ociRuntime:
+2026-05-25T18:30:26.3291313Z     name: crun
+2026-05-25T18:30:26.3291621Z     package: crun_1.14.1-1_amd64
+2026-05-25T18:30:26.3291960Z     path: /usr/bin/crun
+2026-05-25T18:30:26.3292268Z     version: |-
+2026-05-25T18:30:26.3292557Z       crun version 1.14.1
+2026-05-25T18:30:26.3292982Z       commit: de537a7965bfbe9992e2cfae0baeb56a08128171
+2026-05-25T18:30:26.3293461Z       rundir: /run/user/1001/crun
+2026-05-25T18:30:26.3293806Z       spec: 1.0.0
+2026-05-25T18:30:26.3294294Z       +SYSTEMD +SELINUX +APPARMOR +CAP +SECCOMP +EBPF +WASM:wasmedge +YAJL
+2026-05-25T18:30:26.3294893Z   os: linux
+2026-05-25T18:30:26.3295160Z   pasta:
+2026-05-25T18:30:26.3295472Z     executable: /usr/bin/pasta
+2026-05-25T18:30:26.3296119Z     package: passt_0.0~git20240220.1e6f92b-1_amd64
+2026-05-25T18:30:26.3296515Z     version: |
+2026-05-25T18:30:26.3296802Z       pasta unknown version
+2026-05-25T18:30:26.3297377Z       Copyright Red Hat
+2026-05-25T18:30:26.3297796Z       GNU General Public License, version 2 or later
+2026-05-25T18:30:26.3298374Z         <https://www.gnu.org/licenses/old-licenses/gpl-2.0.html>
+2026-05-25T18:30:26.3299043Z       This is free software: you are free to change and redistribute it.
+2026-05-25T18:30:26.3299681Z       There is NO WARRANTY, to the extent permitted by law.
+2026-05-25T18:30:26.3300195Z   remoteSocket:
+2026-05-25T18:30:26.3300532Z     exists: false
+2026-05-25T18:30:26.3301019Z     path: /run/user/1001/podman/podman.sock
+2026-05-25T18:30:26.3301639Z   security:
+2026-05-25T18:30:26.3301916Z     apparmorEnabled: false
+2026-05-25T18:30:26.3302848Z     capabilities: CAP_CHOWN,CAP_DAC_OVERRIDE,CAP_FOWNER,CAP_FSETID,CAP_KILL,CAP_NET_BIND_SERVICE,CAP_SETFCAP,CAP_SETGID,CAP_SETPCAP,CAP_SETUID,CAP_SYS_CHROOT
+2026-05-25T18:30:26.3303478Z     rootless: true
+2026-05-25T18:30:26.3303681Z     seccompEnabled: true
+2026-05-25T18:30:26.3304002Z     seccompProfilePath: /usr/share/containers/seccomp.json
+2026-05-25T18:30:26.3304340Z     selinuxEnabled: false
+2026-05-25T18:30:26.3304559Z   serviceIsRemote: false
+2026-05-25T18:30:26.3304773Z   slirp4netns:
+2026-05-25T18:30:26.3305007Z     executable: /usr/bin/slirp4netns
+2026-05-25T18:30:26.3305316Z     package: slirp4netns_1.2.1-1build2_amd64
+2026-05-25T18:30:26.3305579Z     version: |-
+2026-05-25T18:30:26.3305798Z       slirp4netns version 1.2.1
+2026-05-25T18:30:26.3306110Z       commit: 09e31e92fa3d2a1d3ca261adaeb012c8d75a8194
+2026-05-25T18:30:26.3306400Z       libslirp: 4.7.0
+2026-05-25T18:30:26.3306632Z       SLIRP_CONFIG_VERSION_MAX: 4
+2026-05-25T18:30:26.3306874Z       libseccomp: 2.5.5
+2026-05-25T18:30:26.3307086Z   swapFree: 3221221376
+2026-05-25T18:30:26.3307280Z   swapTotal: 3221221376
+2026-05-25T18:30:26.3307484Z   uptime: 0h 4m 47.00s
+2026-05-25T18:30:26.3307674Z   variant: ""
+2026-05-25T18:30:26.3307859Z plugins:
+2026-05-25T18:30:26.3308046Z   authorization: null
+2026-05-25T18:30:26.3308234Z   log:
+2026-05-25T18:30:26.3308416Z   - k8s-file
+2026-05-25T18:30:26.3308595Z   - none
+2026-05-25T18:30:26.3308771Z   - passthrough
+2026-05-25T18:30:26.3308961Z   - journald
+2026-05-25T18:30:26.3309130Z   network:
+2026-05-25T18:30:26.3309301Z   - bridge
+2026-05-25T18:30:26.3309462Z   - macvlan
+2026-05-25T18:30:26.3309643Z   - ipvlan
+2026-05-25T18:30:26.3309814Z   volume:
+2026-05-25T18:30:26.3309979Z   - local
+2026-05-25T18:30:26.3310152Z registries:
+2026-05-25T18:30:26.3310321Z   search:
+2026-05-25T18:30:26.3310491Z   - docker.io
+2026-05-25T18:30:26.3310671Z   - quay.io
+2026-05-25T18:30:26.3310831Z store:
+2026-05-25T18:30:26.3311357Z   configFile: /home/runner/.config/containers/storage.conf
+2026-05-25T18:30:26.3311722Z   containerStore:
+2026-05-25T18:30:26.3311912Z     number: 0
+2026-05-25T18:30:26.3312098Z     paused: 0
+2026-05-25T18:30:26.3312274Z     running: 0
+2026-05-25T18:30:26.3312463Z     stopped: 0
+2026-05-25T18:30:26.3312659Z   graphDriverName: vfs
+2026-05-25T18:30:26.3312870Z   graphOptions: {}
+2026-05-25T18:30:26.3313382Z   graphRoot: /home/runner/.local/share/containers/storage
+2026-05-25T18:30:26.3313710Z   graphRootAllocated: 154894188544
+2026-05-25T18:30:26.3313954Z   graphRootUsed: 60987392000
+2026-05-25T18:30:26.3314179Z   graphStatus: {}
+2026-05-25T18:30:26.3314377Z   imageCopyTmpDir: /var/tmp
+2026-05-25T18:30:26.3314595Z   imageStore:
+2026-05-25T18:30:26.3314773Z     number: 0
+2026-05-25T18:30:26.3314977Z   runRoot: /run/user/1001/containers
+2026-05-25T18:30:26.3315224Z   transientStore: false
+2026-05-25T18:30:26.3315546Z   volumePath: /home/runner/.local/share/containers/storage/volumes
+2026-05-25T18:30:26.3315866Z version:
+2026-05-25T18:30:26.3316050Z   APIVersion: 4.9.3
+2026-05-25T18:30:26.3316237Z   Built: 0
+2026-05-25T18:30:26.3316452Z   BuiltTime: Thu Jan  1 00:00:00 1970
+2026-05-25T18:30:26.3316691Z   GitCommit: ""
+2026-05-25T18:30:26.3317004Z   GoVersion: go1.22.2
+2026-05-25T18:30:26.3317214Z   Os: linux
+2026-05-25T18:30:26.3317392Z   OsArch: linux/amd64
+2026-05-25T18:30:26.3317592Z   Version: 4.9.3
+2026-05-25T18:30:26.3317712Z
+2026-05-25T18:30:26.3794947Z Docker version 28.0.4, build b8034c0
+2026-05-25T18:30:26.5213031Z github.com/docker/buildx v0.34.0 3e73561e39785683b31b05eeab1ef645be44ca42
+2026-05-25T18:30:26.6512267Z Client: Docker Engine - Community
+2026-05-25T18:30:26.6512761Z  Version:    28.0.4
+2026-05-25T18:30:26.6513098Z  Context:    default
+2026-05-25T18:30:26.6513421Z  Debug Mode: false
+2026-05-25T18:30:26.6513714Z  Plugins:
+2026-05-25T18:30:26.6513973Z   buildx: Docker Buildx (Docker Inc.)
+2026-05-25T18:30:26.6514248Z     Version:  v0.34.0
+2026-05-25T18:30:26.6514573Z     Path:     /usr/libexec/docker/cli-plugins/docker-buildx
+2026-05-25T18:30:26.6514942Z   compose: Docker Compose (Docker Inc.)
+2026-05-25T18:30:26.6515203Z     Version:  v2.38.2
+2026-05-25T18:30:26.6515545Z     Path:     /usr/libexec/docker/cli-plugins/docker-compose
+2026-05-25T18:30:26.6515780Z
+2026-05-25T18:30:26.6515870Z Server:
+2026-05-25T18:30:26.6516055Z  Containers: 0
+2026-05-25T18:30:26.6516255Z   Running: 0
+2026-05-25T18:30:26.6516447Z   Paused: 0
+2026-05-25T18:30:26.6516631Z   Stopped: 0
+2026-05-25T18:30:26.6516816Z  Images: 6
+2026-05-25T18:30:26.6517001Z  Server Version: 28.0.4
+2026-05-25T18:30:26.6517226Z  Storage Driver: overlay2
+2026-05-25T18:30:26.6517451Z   Backing Filesystem: extfs
+2026-05-25T18:30:26.6517687Z   Supports d_type: true
+2026-05-25T18:30:26.6517898Z   Using metacopy: false
+2026-05-25T18:30:26.6518104Z   Native Overlay Diff: false
+2026-05-25T18:30:26.6518330Z   userxattr: false
+2026-05-25T18:30:26.6518548Z  Logging Driver: json-file
+2026-05-25T18:30:26.6518769Z  Cgroup Driver: systemd
+2026-05-25T18:30:26.6518975Z  Cgroup Version: 2
+2026-05-25T18:30:26.6519159Z  Plugins:
+2026-05-25T18:30:26.6519345Z   Volume: local
+2026-05-25T18:30:26.6519613Z   Network: bridge host ipvlan macvlan null overlay
+2026-05-25T18:30:26.6520047Z   Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog
+2026-05-25T18:30:26.6520405Z  Swarm: inactive
+2026-05-25T18:30:26.6520806Z  Runtimes: io.containerd.runc.v2 runc
+2026-05-25T18:30:26.6521376Z  Default Runtime: runc
+2026-05-25T18:30:26.6521854Z  Init Binary: docker-init
+2026-05-25T18:30:26.6522398Z  containerd version: 77c84241c7cbdd9b4eca2591793e3d4f4317c590
+2026-05-25T18:30:26.6522871Z  runc version: v1.3.5-0-g488fc13e
+2026-05-25T18:30:26.6523197Z  init version: de40ad0
+2026-05-25T18:30:26.6523584Z  Security Options:
+2026-05-25T18:30:26.6523950Z   apparmor
+2026-05-25T18:30:26.6537353Z   seccomp
+2026-05-25T18:30:26.6537736Z    Profile: builtin
+2026-05-25T18:30:26.6538033Z   cgroupns
+2026-05-25T18:30:26.6538362Z  Kernel Version: 6.17.0-1013-azure
+2026-05-25T18:30:26.6538771Z  Operating System: Ubuntu 24.04.4 LTS
+2026-05-25T18:30:26.6539127Z  OSType: linux
+2026-05-25T18:30:26.6539392Z  Architecture: x86_64
+2026-05-25T18:30:26.6539677Z  CPUs: 4
+2026-05-25T18:30:26.6539943Z  Total Memory: 15.61GiB
+2026-05-25T18:30:26.6540251Z  Name: runnervmg397c
+2026-05-25T18:30:26.6540609Z  ID: 030b3de5-f6f5-43f2-8bdc-0a866a274328
+2026-05-25T18:30:26.6541022Z  Docker Root Dir: /var/lib/docker
+2026-05-25T18:30:26.6542038Z  Debug Mode: false
+2026-05-25T18:30:26.6542346Z  Username: githubactions
+2026-05-25T18:30:26.6542653Z  Experimental: false
+2026-05-25T18:30:26.6542960Z  Insecure Registries:
+2026-05-25T18:30:26.6543305Z   ::1/128
+2026-05-25T18:30:26.6543544Z   127.0.0.0/8
+2026-05-25T18:30:26.6543846Z  Live Restore Enabled: false
+2026-05-25T18:30:26.6544007Z
+2026-05-25T18:30:26.7222908Z NAME/NODE     DRIVER/ENDPOINT   STATUS    BUILDKIT   PLATFORMS
+2026-05-25T18:30:26.7223659Z default*      docker
+2026-05-25T18:30:26.7224333Z  \_ default    \_ default       running   v0.20.2    linux/amd64 (+3), linux/386
+2026-05-25T18:30:26.7286662Z ##[group]Run set -euo pipefail
+2026-05-25T18:30:26.7286952Z [36;1mset -euo pipefail[0m
+2026-05-25T18:30:26.7287305Z [36;1mdocker buildx create --name kravhantering-release-builder --use ||[0m
+2026-05-25T18:30:26.7287745Z [36;1m  docker buildx use kravhantering-release-builder[0m
+2026-05-25T18:30:26.7288093Z [36;1mdocker buildx inspect --bootstrap[0m
+2026-05-25T18:30:26.7323918Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:30:26.7324153Z env:
+2026-05-25T18:30:26.7324412Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:30:26.7324735Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:30:26.7324997Z   STORAGE_DRIVER: vfs
+2026-05-25T18:30:26.7325287Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:30:26.7325653Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:30:26.7326080Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:30:26.7326547Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:30:26.7327488Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:30:26.7328457Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:30:26.7328883Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:30:26.7329266Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:30:26.7329657Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:30:26.7330057Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:30:26.7330348Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:30:26.7330640Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:30:26.7330993Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:30:26.7331624Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:30:26.7332460Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:30:26.7333306Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:30:26.7333565Z   RELEASE_IS_STABLE: false
+2026-05-25T18:30:26.7333792Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:30:26.7334011Z   RELEASE_PRERELEASE: true
+2026-05-25T18:30:26.7334230Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:30:26.7334475Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:30:26.7334732Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:30:26.7334971Z ##[endgroup]
+2026-05-25T18:30:26.7917031Z kravhantering-release-builder
+2026-05-25T18:30:26.8438635Z #1 [internal] booting buildkit
+2026-05-25T18:30:26.9945815Z #1 pulling image moby/buildkit:buildx-stable-1
+2026-05-25T18:30:31.6837907Z #1 pulling image moby/buildkit:buildx-stable-1 4.8s done
+2026-05-25T18:30:31.8339021Z #1 creating container buildx_buildkit_kravhantering-release-builder0
+2026-05-25T18:30:31.9038317Z #1 creating container buildx_buildkit_kravhantering-release-builder0 0.2s done
+2026-05-25T18:30:31.9057355Z #1 DONE 5.1s
+2026-05-25T18:30:31.9329442Z Name:          kravhantering-release-builder
+2026-05-25T18:30:31.9330483Z Driver:        docker-container
+2026-05-25T18:30:31.9331076Z Last Activity: 2026-05-25 18:30:26 +0000 UTC
+2026-05-25T18:30:31.9331615Z
+2026-05-25T18:30:31.9331735Z Nodes:
+2026-05-25T18:30:31.9332231Z Name:                  kravhantering-release-builder0
+2026-05-25T18:30:31.9332846Z Endpoint:              unix:///var/run/docker.sock
+2026-05-25T18:30:31.9333384Z Status:                running
+2026-05-25T18:30:31.9334058Z BuildKit daemon flags: --allow-insecure-entitlement=network.host
+2026-05-25T18:30:31.9334677Z BuildKit version:      v0.30.0
+2026-05-25T18:30:31.9335385Z Platforms:             linux/amd64, linux/amd64/v2, linux/amd64/v3, linux/386
+2026-05-25T18:30:31.9336223Z Labels:
+2026-05-25T18:30:31.9336673Z  org.mobyproject.buildkit.worker.executor:         oci
+2026-05-25T18:30:31.9337366Z  org.mobyproject.buildkit.worker.hostname:         4bb31f40d45f
+2026-05-25T18:30:31.9338038Z  org.mobyproject.buildkit.worker.network:          host
+2026-05-25T18:30:31.9338639Z  org.mobyproject.buildkit.worker.oci.process-mode: sandbox
+2026-05-25T18:30:31.9339083Z  org.mobyproject.buildkit.worker.selinux.enabled:  false
+2026-05-25T18:30:31.9339515Z  org.mobyproject.buildkit.worker.snapshotter:      overlayfs
+2026-05-25T18:30:31.9339862Z GC Policy rule#0:
+2026-05-25T18:30:31.9340081Z  All:            false
+2026-05-25T18:30:31.9340479Z  Filters:        type==source.local,type==exec.cachemount,type==source.git.checkout
+2026-05-25T18:30:31.9340875Z  Keep Duration:  48h0m0s
+2026-05-25T18:30:31.9341434Z  Max Used Space: 488.3MiB
+2026-05-25T18:30:31.9341675Z GC Policy rule#1:
+2026-05-25T18:30:31.9341877Z  All:            false
+2026-05-25T18:30:31.9342087Z  Keep Duration:  1440h0m0s
+2026-05-25T18:30:31.9342320Z  Reserved Space: 9.313GiB
+2026-05-25T18:30:31.9342531Z  Max Used Space: 93.13GiB
+2026-05-25T18:30:31.9342733Z  Min Free Space: 27.01GiB
+2026-05-25T18:30:31.9342942Z GC Policy rule#2:
+2026-05-25T18:30:31.9343125Z  All:            false
+2026-05-25T18:30:31.9343329Z  Reserved Space: 9.313GiB
+2026-05-25T18:30:31.9343563Z  Max Used Space: 93.13GiB
+2026-05-25T18:30:31.9343770Z  Min Free Space: 27.01GiB
+2026-05-25T18:30:31.9343986Z GC Policy rule#3:
+2026-05-25T18:30:31.9344183Z  All:            true
+2026-05-25T18:30:31.9344386Z  Reserved Space: 9.313GiB
+2026-05-25T18:30:31.9344601Z  Max Used Space: 93.13GiB
+2026-05-25T18:30:31.9344799Z  Min Free Space: 27.01GiB
+2026-05-25T18:30:31.9430224Z ##[group]Run echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+2026-05-25T18:30:31.9430842Z [36;1mecho "${GHCR_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin[0m
+2026-05-25T18:30:31.9466177Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:30:31.9466416Z env:
+2026-05-25T18:30:31.9466664Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:30:31.9467002Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:30:31.9467260Z   STORAGE_DRIVER: vfs
+2026-05-25T18:30:31.9467558Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:30:31.9467917Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:30:31.9468356Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:30:31.9468796Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:30:31.9469776Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:30:31.9470730Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:30:31.9471362Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:30:31.9471790Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:30:31.9472178Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:30:31.9472581Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:30:31.9472874Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:30:31.9473380Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:30:31.9473726Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:30:31.9474102Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:30:31.9474931Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:30:31.9475738Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:30:31.9475991Z   RELEASE_IS_STABLE: false
+2026-05-25T18:30:31.9476215Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:30:31.9476448Z   RELEASE_PRERELEASE: true
+2026-05-25T18:30:31.9476667Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:30:31.9476912Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:30:31.9477170Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:30:31.9477949Z   GHCR_TOKEN: ***
+2026-05-25T18:30:31.9478161Z ##[endgroup]
+2026-05-25T18:30:32.1055762Z
+2026-05-25T18:30:32.1056090Z Login Succeeded
+2026-05-25T18:30:32.1057372Z WARNING! Your credentials are stored unencrypted in '/home/runner/.docker/config.json'.
+2026-05-25T18:30:32.1058299Z Configure a credential helper to remove this warning. See
+2026-05-25T18:30:32.1058953Z https://docs.docker.com/go/credential-store/
+2026-05-25T18:30:32.1059281Z
+2026-05-25T18:30:32.1100240Z ##[group]Run set -euo pipefail
+2026-05-25T18:30:32.1100541Z [36;1mset -euo pipefail[0m
+2026-05-25T18:30:32.1100835Z [36;1mmkdir -p tmp/container-release-artifacts/metadata[0m
+2026-05-25T18:30:32.1101632Z [36;1mIFS=',' read -ra tags <<< "${APP_RUNTIME_TAGS_CSV}"[0m
+2026-05-25T18:30:32.1101925Z [36;1mtag_args=()[0m
+2026-05-25T18:30:32.1102140Z [36;1mfor tag in "${tags[@]}"; do[0m
+2026-05-25T18:30:32.1102385Z [36;1m  tag_args+=(--tag "${tag}")[0m
+2026-05-25T18:30:32.1102623Z [36;1mdone[0m
+2026-05-25T18:30:32.1102812Z [36;1mdocker buildx build \[0m
+2026-05-25T18:30:32.1103073Z [36;1m  --file containers/app/Dockerfile \[0m
+2026-05-25T18:30:32.1103368Z [36;1m  --target app-runtime \[0m
+2026-05-25T18:30:32.1103616Z [36;1m  --platform linux/amd64 \[0m
+2026-05-25T18:30:32.1104060Z [36;1m  --metadata-file tmp/container-release-artifacts/metadata/app-runtime-buildx.json \[0m
+2026-05-25T18:30:32.1104539Z [36;1m  --build-arg BUILD_VERSION="${RELEASE_VERSION}" \[0m
+2026-05-25T18:30:32.1104922Z [36;1m  --build-arg BUILD_COMMIT_SHA="${GITHUB_SHA}" \[0m
+2026-05-25T18:30:32.1105293Z [36;1m  --build-arg BUILD_TIME="$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")" \[0m
+2026-05-25T18:30:32.1105704Z [36;1m  --build-arg BUILD_IMAGE_TAG="${APP_RUNTIME_PRIMARY_TAG}" \[0m
+2026-05-25T18:30:32.1106101Z [36;1m  --build-arg NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL}" \[0m
+2026-05-25T18:30:32.1106613Z [36;1m  --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \[0m
+2026-05-25T18:30:32.1107153Z [36;1m  --label "org.opencontainers.image.revision=${GITHUB_SHA}" \[0m
+2026-05-25T18:30:32.1107591Z [36;1m  --label "org.opencontainers.image.version=${RELEASE_VERSION}" \[0m
+2026-05-25T18:30:32.1107939Z [36;1m  "${tag_args[@]}" \[0m
+2026-05-25T18:30:32.1108153Z [36;1m  --push \[0m
+2026-05-25T18:30:32.1108350Z [36;1m  .[0m
+2026-05-25T18:30:32.1143469Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:30:32.1143702Z env:
+2026-05-25T18:30:32.1143950Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:30:32.1144274Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:30:32.1144539Z   STORAGE_DRIVER: vfs
+2026-05-25T18:30:32.1144829Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:30:32.1145199Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:30:32.1145624Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:30:32.1146046Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:30:32.1146972Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:30:32.1148132Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:30:32.1148549Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:30:32.1148928Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:30:32.1149310Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:30:32.1149718Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:30:32.1150006Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:30:32.1150308Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:30:32.1150660Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:30:32.1151027Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:30:32.1152158Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:30:32.1152987Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:30:32.1153271Z   RELEASE_IS_STABLE: false
+2026-05-25T18:30:32.1153504Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:30:32.1153727Z   RELEASE_PRERELEASE: true
+2026-05-25T18:30:32.1154153Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:30:32.1154403Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:30:32.1154665Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:30:32.1154903Z ##[endgroup]
+2026-05-25T18:30:32.4096925Z #0 building with "kravhantering-release-builder" instance using docker-container driver
+2026-05-25T18:30:32.4097473Z
+2026-05-25T18:30:32.4097702Z #1 [internal] load build definition from Dockerfile
+2026-05-25T18:30:32.4098104Z #1 transferring dockerfile: 3.57kB done
+2026-05-25T18:30:32.4098376Z #1 DONE 0.0s
+2026-05-25T18:30:32.4098487Z
+2026-05-25T18:30:32.4098762Z #2 [auth] docker/dockerfile:pull token for registry-1.docker.io
+2026-05-25T18:30:32.4099133Z #2 DONE 0.0s
+2026-05-25T18:30:32.4099246Z
+2026-05-25T18:30:32.4099594Z #3 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+2026-05-25T18:30:32.5222178Z #3 DONE 0.3s
+2026-05-25T18:30:32.7031725Z
+2026-05-25T18:30:32.7033288Z #4 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+2026-05-25T18:30:32.7035042Z #4 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e done
+2026-05-25T18:30:32.7036308Z #4 sha256:96918c57e42509b97f10c074d80672ecdbd3bb7dcd38c1bd95960cf291207416 11.98MB / 11.98MB 0.1s done
+2026-05-25T18:30:32.7037625Z #4 extracting sha256:96918c57e42509b97f10c074d80672ecdbd3bb7dcd38c1bd95960cf291207416 0.1s done
+2026-05-25T18:30:32.7038294Z #4 DONE 0.2s
+2026-05-25T18:30:32.9198828Z
+2026-05-25T18:30:32.9199630Z #5 [auth] library/node:pull token for registry-1.docker.io
+2026-05-25T18:30:32.9200042Z #5 DONE 0.0s
+2026-05-25T18:30:32.9200173Z
+2026-05-25T18:30:32.9200840Z #6 [internal] load metadata for docker.io/library/node:24-bookworm-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf
+2026-05-25T18:30:33.0022876Z #6 DONE 0.2s
+2026-05-25T18:30:33.1364568Z
+2026-05-25T18:30:33.1367093Z #7 [dependencies 1/4] FROM docker.io/library/node:24-bookworm-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf
+2026-05-25T18:30:33.1369992Z #7 resolve docker.io/library/node:24-bookworm-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf done
+2026-05-25T18:30:33.1372273Z #7 sha256:06d464f614a98416f8f326dcd40292b0a96bf6a56a6fba9e2f98ed770cdacf11 449B / 449B 0.0s done
+2026-05-25T18:30:33.1374166Z #7 sha256:b2b95943836ce3dea08d21af828b011a0645bdca70cd53536131ccd295ef3def 1.71MB / 1.71MB 0.0s done
+2026-05-25T18:30:33.1376367Z #7 sha256:9bea510bd805f72c63e2d093c23fca1da9b02127c4849c121b6117a45d4d2ba7 3.31kB / 3.31kB 0.0s done
+2026-05-25T18:30:33.2509806Z #7 ...
+2026-05-25T18:30:33.2510232Z
+2026-05-25T18:30:33.2510536Z #8 [internal] load build context
+2026-05-25T18:30:33.2512136Z #8 transferring context: 4.26MB 0.2s done
+2026-05-25T18:30:33.2512542Z #8 DONE 0.2s
+2026-05-25T18:30:33.2512720Z
+2026-05-25T18:30:33.2513787Z #7 [dependencies 1/4] FROM docker.io/library/node:24-bookworm-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf
+2026-05-25T18:30:33.2515336Z #7 sha256:e008f534e95cab9dfc584b72c1beb5ccd5b4e7b6b73973a6fd6791f0d8e2ac29 50.09MB / 50.09MB 0.2s done
+2026-05-25T18:30:33.2517290Z #7 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 28.23MB / 28.23MB 0.1s done
+2026-05-25T18:30:33.2518542Z #7 extracting sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531
+2026-05-25T18:30:33.9281873Z #7 extracting sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 0.7s done
+2026-05-25T18:30:33.9282653Z #7 DONE 0.9s
+2026-05-25T18:30:34.0838488Z
+2026-05-25T18:30:34.0840481Z #7 [dependencies 1/4] FROM docker.io/library/node:24-bookworm-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf
+2026-05-25T18:30:34.0842417Z #7 extracting sha256:9bea510bd805f72c63e2d093c23fca1da9b02127c4849c121b6117a45d4d2ba7 done
+2026-05-25T18:30:34.0844086Z #7 extracting sha256:e008f534e95cab9dfc584b72c1beb5ccd5b4e7b6b73973a6fd6791f0d8e2ac29
+2026-05-25T18:30:34.9230799Z #7 extracting sha256:e008f534e95cab9dfc584b72c1beb5ccd5b4e7b6b73973a6fd6791f0d8e2ac29 1.0s done
+2026-05-25T18:30:34.9232030Z #7 DONE 1.9s
+2026-05-25T18:30:35.1110787Z
+2026-05-25T18:30:35.1112504Z #7 [dependencies 1/4] FROM docker.io/library/node:24-bookworm-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf
+2026-05-25T18:30:35.1113803Z #7 extracting sha256:b2b95943836ce3dea08d21af828b011a0645bdca70cd53536131ccd295ef3def 0.0s done
+2026-05-25T18:30:35.1114582Z #7 extracting sha256:06d464f614a98416f8f326dcd40292b0a96bf6a56a6fba9e2f98ed770cdacf11 done
+2026-05-25T18:30:35.1115040Z #7 DONE 1.9s
+2026-05-25T18:30:35.1115165Z
+2026-05-25T18:30:35.1115334Z #9 [app-runtime 2/5] WORKDIR /app
+2026-05-25T18:30:35.3037042Z #9 ...
+2026-05-25T18:30:35.3037274Z
+2026-05-25T18:30:35.3038444Z #10 [dependencies 2/4] WORKDIR /workspace
+2026-05-25T18:30:35.3038909Z #10 DONE 0.3s
+2026-05-25T18:30:35.4639492Z
+2026-05-25T18:30:35.4640307Z #9 [app-runtime 2/5] WORKDIR /app
+2026-05-25T18:30:35.4640786Z #9 DONE 0.3s
+2026-05-25T18:30:35.4640944Z
+2026-05-25T18:30:35.4641359Z #11 [dependencies 3/4] COPY package.json package-lock.json ./
+2026-05-25T18:30:35.4641722Z #11 DONE 0.0s
+2026-05-25T18:30:35.4641838Z
+2026-05-25T18:30:35.4642004Z #12 [dependencies 4/4] RUN npm ci
+2026-05-25T18:30:51.6586929Z #12 16.34
+2026-05-25T18:30:51.6587999Z #12 16.34 added 682 packages, and audited 683 packages in 16s
+2026-05-25T18:30:51.6590793Z #12 16.34
+2026-05-25T18:30:51.8129949Z #12 16.34 178 packages are looking for funding
+2026-05-25T18:30:51.8130597Z #12 16.35   run `npm fund` for details
+2026-05-25T18:30:51.8131002Z #12 16.35
+2026-05-25T18:30:51.8131563Z #12 16.35 found 0 vulnerabilities
+2026-05-25T18:30:51.8131959Z #12 16.35 npm notice
+2026-05-25T18:30:51.8132610Z #12 16.35 npm notice New minor version of npm available! 11.13.0 -> 11.15.0
+2026-05-25T18:30:51.8133563Z #12 16.35 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.15.0
+2026-05-25T18:30:51.8134423Z #12 16.35 npm notice To update run: npm install -g npm@11.15.0
+2026-05-25T18:30:51.8134924Z #12 16.35 npm notice
+2026-05-25T18:30:52.8547278Z #12 DONE 17.5s
+2026-05-25T18:30:53.0059011Z
+2026-05-25T18:30:53.0059735Z #13 [app-build 1/2] COPY . .
+2026-05-25T18:30:53.3438603Z #13 DONE 0.5s
+2026-05-25T18:30:53.4937621Z
+2026-05-25T18:30:53.4938302Z #14 [app-build 2/2] RUN npm run build
+2026-05-25T18:30:53.4938897Z #14 0.149
+2026-05-25T18:30:53.4939507Z #14 0.149 > kravhantering@0.1.0 prebuild
+2026-05-25T18:30:53.4940142Z #14 0.149 > node ./scripts/prebuild.js
+2026-05-25T18:30:53.4940512Z #14 0.149
+2026-05-25T18:30:53.6783255Z #14 0.178 🧹 Cleaning Next.js build artifacts...
+2026-05-25T18:30:53.6784838Z #14 0.180 📦 Wrote public/build.json for version 0.1.0-preview.111
+2026-05-25T18:30:53.6785386Z #14 0.183
+2026-05-25T18:30:53.6785791Z #14 0.183 > kravhantering@0.1.0 build
+2026-05-25T18:30:53.6786530Z #14 0.183 > cross-env NODE_ENV=production BUILD_TARGET=prod next build
+2026-05-25T18:30:53.6787075Z #14 0.183
+2026-05-25T18:30:53.9655870Z #14 0.621 ▲ Next.js 16.2.6 (Turbopack)
+2026-05-25T18:30:54.1596850Z #14 0.622
+2026-05-25T18:30:54.1598759Z #14 0.624 ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+2026-05-25T18:30:54.1600040Z #14 0.665   Creating an optimized production build ...
+2026-05-25T18:31:28.1233413Z #14 34.78 ✓ Compiled successfully in 33.9s
+2026-05-25T18:31:28.2832468Z #14 34.78   Running TypeScript ...
+2026-05-25T18:31:40.2537929Z #14 46.91   Finished TypeScript in 12.1s ...
+2026-05-25T18:31:40.4068018Z #14 46.91   Collecting page data using 3 workers ...
+2026-05-25T18:31:41.3022998Z #14 47.96   Generating static pages using 3 workers (0/76) ...
+2026-05-25T18:31:41.4567684Z #14 48.11   Generating static pages using 3 workers (19/76)
+2026-05-25T18:31:41.5592056Z #14 48.21   Generating static pages using 3 workers (38/76)
+2026-05-25T18:31:41.7349067Z #14 48.39   Generating static pages using 3 workers (57/76)
+2026-05-25T18:31:41.9175664Z #14 48.57 ✓ Generating static pages using 3 workers (76/76) in 615ms
+2026-05-25T18:31:42.0735484Z #14 48.58   Finalizing page optimization ...
+2026-05-25T18:31:43.2790907Z #14 49.93
+2026-05-25T18:31:43.4335156Z #14 49.94 Route (app)
+2026-05-25T18:31:43.4335818Z #14 49.94 ┌ ƒ /
+2026-05-25T18:31:43.4337286Z #14 49.94 ├ ƒ /_not-found
+2026-05-25T18:31:43.4337884Z #14 49.94 ├ ƒ /[locale]/admin
+2026-05-25T18:31:43.4338428Z #14 49.94 ├ ƒ /[locale]/admin/audit-log
+2026-05-25T18:31:43.4339073Z #14 49.94 ├ ƒ /[locale]/admin/error-boundary-test
+2026-05-25T18:31:43.4339740Z #14 49.94 ├ ƒ /[locale]/error-boundary-test
+2026-05-25T18:31:43.4340376Z #14 49.94 ├ ƒ /[locale]/norm-references
+2026-05-25T18:31:43.4340881Z #14 49.94 ├ ƒ /[locale]/owners
+2026-05-25T18:31:43.4341547Z #14 49.94 ├ ƒ /[locale]/privacy
+2026-05-25T18:31:43.4342135Z #14 49.94 ├ ƒ /[locale]/quality-characteristics
+2026-05-25T18:31:43.4342749Z #14 49.94 ├ ƒ /[locale]/requirement-areas
+2026-05-25T18:31:43.4343391Z #14 49.94 ├ ƒ /[locale]/requirement-packages
+2026-05-25T18:31:43.4344003Z #14 49.94 ├ ƒ /[locale]/requirement-statuses
+2026-05-25T18:31:43.4344581Z #14 49.94 ├ ƒ /[locale]/requirement-types
+2026-05-25T18:31:43.4345172Z #14 49.94 ├ ƒ /[locale]/requirements
+2026-05-25T18:31:43.4345618Z #14 49.94 ├ ƒ /[locale]/requirements/[id]
+2026-05-25T18:31:43.4346019Z #14 49.94 ├ ƒ /[locale]/requirements/[id]/[version]
+2026-05-25T18:31:43.4346453Z #14 49.94 ├ ƒ /[locale]/requirements/[id]/edit
+2026-05-25T18:31:43.4346917Z #14 49.94 ├ ƒ /[locale]/requirements/[id]/versions/[version]
+2026-05-25T18:31:43.4347333Z #14 49.94 ├ ƒ /[locale]/requirements/new
+2026-05-25T18:31:43.4347858Z #14 49.94 ├ ƒ /[locale]/requirements/reports/pdf/deviation-review/[id]
+2026-05-25T18:31:43.4348390Z #14 49.94 ├ ƒ /[locale]/requirements/reports/pdf/history/[id]
+2026-05-25T18:31:43.4348841Z #14 49.94 ├ ƒ /[locale]/requirements/reports/pdf/list
+2026-05-25T18:31:43.4349332Z #14 49.94 ├ ƒ /[locale]/requirements/reports/pdf/review-combined
+2026-05-25T18:31:43.4349852Z #14 49.94 ├ ƒ /[locale]/requirements/reports/pdf/review/[id]
+2026-05-25T18:31:43.4350400Z #14 49.94 ├ ƒ /[locale]/requirements/reports/pdf/suggestion-history/[id]
+2026-05-25T18:31:43.4350964Z #14 49.94 ├ ƒ /[locale]/requirements/reports/print/deviation-review/[id]
+2026-05-25T18:31:43.4351697Z #14 49.94 ├ ƒ /[locale]/requirements/reports/print/history/[id]
+2026-05-25T18:31:43.4352169Z #14 49.94 ├ ƒ /[locale]/requirements/reports/print/list
+2026-05-25T18:31:43.4352661Z #14 49.94 ├ ƒ /[locale]/requirements/reports/print/review-combined
+2026-05-25T18:31:43.4353152Z #14 49.94 ├ ƒ /[locale]/requirements/reports/print/review/[id]
+2026-05-25T18:31:43.4354058Z #14 49.94 ├ ƒ /[locale]/requirements/reports/print/suggestion-history/[id]
+2026-05-25T18:31:43.4354494Z #14 49.94 ├ ƒ /[locale]/risk-levels
+2026-05-25T18:31:43.4354889Z #14 49.94 ├ ƒ /[locale]/specification-item-statuses
+2026-05-25T18:31:43.4355284Z #14 49.94 ├ ƒ /[locale]/specifications
+2026-05-25T18:31:43.4355685Z #14 49.94 ├ ƒ /[locale]/specifications/[slug]
+2026-05-25T18:31:43.4356166Z #14 49.94 ├ ƒ /[locale]/specifications/[slug]/reports/print/list
+2026-05-25T18:31:43.4356655Z #14 49.94 ├ ƒ /[locale]/specifications/implementation-types
+2026-05-25T18:31:43.4357121Z #14 49.94 ├ ƒ /[locale]/specifications/lifecycle-statuses
+2026-05-25T18:31:43.4357588Z #14 49.94 ├ ƒ /[locale]/specifications/responsibility-areas
+2026-05-25T18:31:43.4357976Z #14 49.94 ├ ƒ /api/admin/access-reviews
+2026-05-25T18:31:43.4358342Z #14 49.94 ├ ƒ /api/admin/access-reviews/[id]
+2026-05-25T18:31:43.4358742Z #14 49.94 ├ ƒ /api/admin/access-reviews/[id]/cancel
+2026-05-25T18:31:43.4359160Z #14 49.94 ├ ƒ /api/admin/access-reviews/[id]/complete
+2026-05-25T18:31:43.4359590Z #14 49.94 ├ ƒ /api/admin/access-reviews/[id]/export
+2026-05-25T18:31:43.4360034Z #14 49.94 ├ ƒ /api/admin/access-reviews/[id]/items/[itemId]
+2026-05-25T18:31:43.4360447Z #14 49.94 ├ ƒ /api/admin/archiving/exceptions
+2026-05-25T18:31:43.4360823Z #14 49.94 ├ ƒ /api/admin/archiving/exports
+2026-05-25T18:31:43.4361579Z #14 49.94 ├ ƒ /api/admin/archiving/policies
+2026-05-25T18:31:43.4361952Z #14 49.94 ├ ƒ /api/admin/archiving/preview
+2026-05-25T18:31:43.4362300Z #14 49.94 ├ ƒ /api/admin/archiving/runs
+2026-05-25T18:31:43.4362639Z #14 49.94 ├ ƒ /api/admin/audit-events
+2026-05-25T18:31:43.4362999Z #14 49.94 ├ ƒ /api/admin/requirement-columns
+2026-05-25T18:31:43.4363365Z #14 49.94 ├ ƒ /api/admin/terminology
+2026-05-25T18:31:43.4363669Z #14 49.94 ├ ƒ /api/ai/credits
+2026-05-25T18:31:43.4364023Z #14 49.94 ├ ƒ /api/ai/generate-requirements
+2026-05-25T18:31:43.4364348Z #14 49.94 ├ ƒ /api/ai/models
+2026-05-25T18:31:43.4364661Z #14 49.94 ├ ƒ /api/ai/system-prompt
+2026-05-25T18:31:43.4364997Z #14 49.94 ├ ƒ /api/auth/callback
+2026-05-25T18:31:43.4365279Z #14 49.94 ├ ƒ /api/auth/login
+2026-05-25T18:31:43.4365573Z #14 49.94 ├ ƒ /api/auth/logout
+2026-05-25T18:31:43.4365862Z #14 49.94 ├ ƒ /api/auth/me
+2026-05-25T18:31:43.4366251Z #14 49.94 ├ ƒ /api/catalog/specification-item-statuses
+2026-05-25T18:31:43.4366737Z #14 49.94 ├ ƒ /api/catalog/specification-item-statuses/[id]
+2026-05-25T18:31:43.4367124Z #14 49.94 ├ ƒ /api/deviations/[id]
+2026-05-25T18:31:43.4367472Z #14 49.94 ├ ƒ /api/deviations/[id]/decision
+2026-05-25T18:31:43.4367868Z #14 49.94 ├ ƒ /api/deviations/[id]/request-review
+2026-05-25T18:31:43.4368286Z #14 49.94 ├ ƒ /api/deviations/[id]/revert-to-draft
+2026-05-25T18:31:43.4368613Z #14 49.94 ├ ƒ /api/health
+2026-05-25T18:31:43.4368966Z #14 49.94 ├ ƒ /api/improvement-suggestions/[id]
+2026-05-25T18:31:43.4369425Z #14 49.94 ├ ƒ /api/improvement-suggestions/[id]/request-review
+2026-05-25T18:31:43.4369911Z #14 49.94 ├ ƒ /api/improvement-suggestions/[id]/resolution
+2026-05-25T18:31:43.4370410Z #14 49.94 ├ ƒ /api/improvement-suggestions/[id]/revert-to-draft
+2026-05-25T18:31:43.4370758Z #14 49.94 ├ ƒ /api/mcp
+2026-05-25T18:31:43.4371056Z #14 49.94 ├ ƒ /api/norm-references
+2026-05-25T18:31:43.4371580Z #14 49.94 ├ ƒ /api/norm-references/[id]
+2026-05-25T18:31:43.4371879Z #14 49.94 ├ ƒ /api/owners
+2026-05-25T18:31:43.4372165Z #14 49.94 ├ ƒ /api/owners/[id]
+2026-05-25T18:31:43.4372451Z #14 49.94 ├ ƒ /api/owners/all
+2026-05-25T18:31:43.4372808Z #14 49.94 ├ ƒ /api/privacy/data-subject-export
+2026-05-25T18:31:43.4373193Z #14 49.94 ├ ƒ /api/privacy/erasure-preview
+2026-05-25T18:31:43.4373560Z #14 49.94 ├ ƒ /api/privacy/erasure-requests
+2026-05-25T18:31:43.4373929Z #14 49.94 ├ ƒ /api/quality-characteristics
+2026-05-25T18:31:43.4374312Z #14 49.94 ├ ƒ /api/quality-characteristics/[id]
+2026-05-25T18:31:43.4374631Z #14 49.94 ├ ƒ /api/ready
+2026-05-25T18:31:43.4374939Z #14 49.94 ├ ƒ /api/requirement-areas
+2026-05-25T18:31:43.4375288Z #14 49.94 ├ ƒ /api/requirement-areas/[id]
+2026-05-25T18:31:43.4375820Z #14 49.94 ├ ƒ /api/requirement-categories
+2026-05-25T18:31:43.4376172Z #14 49.94 ├ ƒ /api/requirement-packages
+2026-05-25T18:31:43.4376540Z #14 49.94 ├ ƒ /api/requirement-packages/[id]
+2026-05-25T18:31:43.4376906Z #14 49.94 ├ ƒ /api/requirement-statuses
+2026-05-25T18:31:43.4377256Z #14 49.94 ├ ƒ /api/requirement-statuses/[id]
+2026-05-25T18:31:43.4377658Z #14 49.94 ├ ƒ /api/requirement-suggestions/[id]
+2026-05-25T18:31:43.4378200Z #14 49.94 ├ ƒ /api/requirement-transitions/[id]
+2026-05-25T18:31:43.4378562Z #14 49.94 ├ ƒ /api/requirement-types
+2026-05-25T18:31:43.4378884Z #14 49.94 ├ ƒ /api/requirements
+2026-05-25T18:31:43.4379205Z #14 49.94 ├ ƒ /api/requirements/[id]
+2026-05-25T18:31:43.4379578Z #14 49.94 ├ ƒ /api/requirements/[id]/delete-draft
+2026-05-25T18:31:43.4379978Z #14 49.94 ├ ƒ /api/requirements/[id]/reactivate
+2026-05-25T18:31:43.4380348Z #14 49.94 ├ ƒ /api/requirements/[id]/restore
+2026-05-25T18:31:43.4380763Z #14 49.94 ├ ƒ /api/requirements/[id]/versions/[version]
+2026-05-25T18:31:43.4381303Z #14 49.94 ├ ƒ /api/risk-levels
+2026-05-25T18:31:43.4381628Z #14 49.94 ├ ƒ /api/risk-levels/[id]
+2026-05-25T18:31:43.4382036Z #14 49.94 ├ ƒ /api/specification-implementation-types
+2026-05-25T18:31:43.4382510Z #14 49.94 ├ ƒ /api/specification-implementation-types/[id]
+2026-05-25T18:31:43.4382982Z #14 49.94 ├ ƒ /api/specification-item-deviations/[itemId]
+2026-05-25T18:31:43.4383576Z #14 49.94 ├ ƒ /api/specification-lifecycle-statuses
+2026-05-25T18:31:43.4384029Z #14 49.94 ├ ƒ /api/specification-lifecycle-statuses/[id]
+2026-05-25T18:31:43.4384487Z #14 49.94 ├ ƒ /api/specification-local-deviations/[id]
+2026-05-25T18:31:43.4384968Z #14 49.94 ├ ƒ /api/specification-local-deviations/[id]/decision
+2026-05-25T18:31:43.4385499Z #14 49.94 ├ ƒ /api/specification-local-deviations/[id]/request-review
+2026-05-25T18:31:43.4386086Z #14 49.94 ├ ƒ /api/specification-local-deviations/[id]/revert-to-draft
+2026-05-25T18:31:43.4386618Z #14 49.94 ├ ƒ /api/specification-responsibility-areas
+2026-05-25T18:31:43.4387105Z #14 49.94 ├ ƒ /api/specification-responsibility-areas/[id]
+2026-05-25T18:31:43.4387509Z #14 49.94 ├ ƒ /api/specifications
+2026-05-25T18:31:43.4387849Z #14 49.94 ├ ƒ /api/specifications/[id]
+2026-05-25T18:31:43.4388237Z #14 49.94 ├ ƒ /api/specifications/[id]/deviations
+2026-05-25T18:31:43.4388634Z #14 49.94 ├ ƒ /api/specifications/[id]/items
+2026-05-25T18:31:43.4389053Z #14 49.94 ├ ƒ /api/specifications/[id]/items/[itemId]
+2026-05-25T18:31:43.4389497Z #14 49.94 ├ ƒ /api/specifications/[id]/local-requirements
+2026-05-25T18:31:43.4390059Z #14 49.94 ├ ƒ /api/specifications/[id]/local-requirements/[localRequirementId]
+2026-05-25T18:31:43.4390724Z #14 49.94 ├ ƒ /api/specifications/[id]/local-requirements/[localRequirementId]/graduate
+2026-05-25T18:31:43.4391705Z #14 49.94 ├ ƒ /api/specifications/[id]/local-requirements/[localRequirementId]/graduation-target-areas
+2026-05-25T18:31:43.4392316Z #14 49.94 ├ ƒ /api/specifications/[id]/needs-references
+2026-05-25T18:31:43.4392745Z #14 49.94 ├ ƒ /api/specifications/[id]/report-items
+2026-05-25T18:31:43.4393094Z #14 49.94 ├ ƒ /auth/error
+2026-05-25T18:31:43.4393367Z #14 49.94 ├ ○ /robots.txt
+2026-05-25T18:31:43.4393628Z #14 49.94 └ ○ /sitemap.xml
+2026-05-25T18:31:43.4393843Z #14 49.94
+2026-05-25T18:31:43.4394011Z #14 49.94
+2026-05-25T18:31:43.4394280Z #14 49.94 ƒ Proxy (Middleware)
+2026-05-25T18:31:43.4394499Z #14 49.94
+2026-05-25T18:31:43.4394844Z #14 49.94 ○  (Static)   prerendered as static content
+2026-05-25T18:31:43.4395269Z #14 49.94 ƒ  (Dynamic)  server-rendered on demand
+2026-05-25T18:31:43.4395525Z #14 49.94
+2026-05-25T18:31:43.7167432Z #14 DONE 50.4s
+2026-05-25T18:31:44.3338049Z
+2026-05-25T18:31:44.3339356Z #15 [app-runtime 3/5] COPY --from=app-build --chown=node:node /workspace/.next/standalone ./
+2026-05-25T18:31:45.3206820Z #15 DONE 1.0s
+2026-05-25T18:31:45.4717631Z
+2026-05-25T18:31:45.4718807Z #16 [app-runtime 4/5] COPY --from=app-build --chown=node:node /workspace/.next/static ./.next/static
+2026-05-25T18:31:45.6325194Z #16 DONE 0.3s
+2026-05-25T18:31:45.8042584Z
+2026-05-25T18:31:45.8044135Z #17 [app-runtime 5/5] COPY --from=app-build --chown=node:node /workspace/public ./public
+2026-05-25T18:31:45.8044858Z #17 DONE 0.0s
+2026-05-25T18:31:45.8045033Z
+2026-05-25T18:31:45.8045217Z #18 exporting to image
+2026-05-25T18:31:45.8045582Z #18 exporting layers
+2026-05-25T18:31:48.1512467Z #18 exporting layers 2.5s done
+2026-05-25T18:31:48.3594792Z #18 ...
+2026-05-25T18:31:48.3594985Z
+2026-05-25T18:31:48.3595375Z #19 [auth] viscalyx/kravhantering-app-runtime:pull,push token for ghcr.io
+2026-05-25T18:31:48.3595769Z #19 DONE 0.0s
+2026-05-25T18:31:48.3595887Z
+2026-05-25T18:31:48.3596007Z #18 exporting to image
+2026-05-25T18:31:48.3596581Z #18 exporting manifest sha256:4ab7925fb5c7691d446670fc0a93ba82844ba75dbedada0acef07708eca027e2 done
+2026-05-25T18:31:48.3597369Z #18 exporting config sha256:c5f717b16568117ce5e22a9d48ec922529c1eddee20c8dd5f508b606a8f3492b done
+2026-05-25T18:31:48.3598201Z #18 exporting attestation manifest sha256:a39a6dc92e9ed16d97a4165135f9aba8d77505a15c4652898adc000ccbdb46cb done
+2026-05-25T18:31:48.3599052Z #18 exporting manifest list sha256:5da9f7da87b332b4351cfcb8a5dfb9a0eb8ee5168514b08b95c7e2fcd781afc3 done
+2026-05-25T18:31:48.3599527Z #18 pushing layers
+2026-05-25T18:31:50.3984886Z #18 pushing layers 2.2s done
+2026-05-25T18:31:50.3987244Z #18 pushing manifest for ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071@sha256:5da9f7da87b332b4351cfcb8a5dfb9a0eb8ee5168514b08b95c7e2fcd781afc3
+2026-05-25T18:31:51.2169462Z #18 pushing manifest for ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071@sha256:5da9f7da87b332b4351cfcb8a5dfb9a0eb8ee5168514b08b95c7e2fcd781afc3 0.8s done
+2026-05-25T18:31:51.4420276Z #18 pushing layers 0.1s done
+2026-05-25T18:31:51.4421948Z #18 pushing manifest for ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d@sha256:5da9f7da87b332b4351cfcb8a5dfb9a0eb8ee5168514b08b95c7e2fcd781afc3
+2026-05-25T18:31:51.6412333Z #18 pushing manifest for ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d@sha256:5da9f7da87b332b4351cfcb8a5dfb9a0eb8ee5168514b08b95c7e2fcd781afc3 0.3s done
+2026-05-25T18:31:51.8600232Z #18 pushing layers 0.1s done
+2026-05-25T18:31:51.8601540Z #18 pushing manifest for ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111@sha256:5da9f7da87b332b4351cfcb8a5dfb9a0eb8ee5168514b08b95c7e2fcd781afc3
+2026-05-25T18:31:52.0128970Z #18 pushing manifest for ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111@sha256:5da9f7da87b332b4351cfcb8a5dfb9a0eb8ee5168514b08b95c7e2fcd781afc3 0.3s done
+2026-05-25T18:31:52.0130302Z #18 DONE 6.4s
+2026-05-25T18:31:52.0355521Z
+2026-05-25T18:31:52.0356247Z #20 resolving provenance for metadata file
+2026-05-25T18:31:52.0356709Z #20 DONE 0.0s
+2026-05-25T18:31:52.0491387Z ##[group]Run set -euo pipefail
+2026-05-25T18:31:52.0491914Z [36;1mset -euo pipefail[0m
+2026-05-25T18:31:52.0492350Z [36;1mIFS=',' read -ra tags <<< "${DB_JOB_TAGS_CSV}"[0m
+2026-05-25T18:31:52.0492811Z [36;1mtag_args=()[0m
+2026-05-25T18:31:52.0493137Z [36;1mfor tag in "${tags[@]}"; do[0m
+2026-05-25T18:31:52.0493545Z [36;1m  tag_args+=(--tag "${tag}")[0m
+2026-05-25T18:31:52.0493911Z [36;1mdone[0m
+2026-05-25T18:31:52.0494203Z [36;1mdocker buildx build \[0m
+2026-05-25T18:31:52.0494619Z [36;1m  --file containers/app/Dockerfile \[0m
+2026-05-25T18:31:52.0495052Z [36;1m  --target db-job \[0m
+2026-05-25T18:31:52.0495411Z [36;1m  --platform linux/amd64 \[0m
+2026-05-25T18:31:52.0496067Z [36;1m  --metadata-file tmp/container-release-artifacts/metadata/db-job-buildx.json \[0m
+2026-05-25T18:31:52.0497037Z [36;1m  --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \[0m
+2026-05-25T18:31:52.0497934Z [36;1m  --label "org.opencontainers.image.revision=${GITHUB_SHA}" \[0m
+2026-05-25T18:31:52.0498651Z [36;1m  --label "org.opencontainers.image.version=${RELEASE_VERSION}" \[0m
+2026-05-25T18:31:52.0499211Z [36;1m  "${tag_args[@]}" \[0m
+2026-05-25T18:31:52.0499545Z [36;1m  --push \[0m
+2026-05-25T18:31:52.0499843Z [36;1m  .[0m
+2026-05-25T18:31:52.0551695Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:31:52.0552071Z env:
+2026-05-25T18:31:52.0552424Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:31:52.0552943Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:31:52.0553337Z   STORAGE_DRIVER: vfs
+2026-05-25T18:31:52.0553775Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:31:52.0554361Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:31:52.0555029Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:31:52.0555772Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:31:52.0557356Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:31:52.0558991Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:31:52.0559707Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:31:52.0560321Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:31:52.0560942Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:31:52.0561909Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:31:52.0562356Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:31:52.0562843Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:31:52.0563416Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:31:52.0564036Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:31:52.0565490Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:31:52.0566864Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:31:52.0567262Z   RELEASE_IS_STABLE: false
+2026-05-25T18:31:52.0567607Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:31:52.0567949Z   RELEASE_PRERELEASE: true
+2026-05-25T18:31:52.0568282Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:31:52.0568669Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:31:52.0569064Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:31:52.0569427Z ##[endgroup]
+2026-05-25T18:31:52.1641900Z #0 building with "kravhantering-release-builder" instance using docker-container driver
+2026-05-25T18:31:52.1642563Z
+2026-05-25T18:31:52.1643047Z #1 [internal] load build definition from Dockerfile
+2026-05-25T18:31:52.3001389Z #1 transferring dockerfile: 3.57kB done
+2026-05-25T18:31:52.3001934Z #1 DONE 0.0s
+2026-05-25T18:31:52.3002682Z
+2026-05-25T18:31:52.3003434Z #2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+2026-05-25T18:31:52.3004324Z #2 DONE 0.1s
+2026-05-25T18:31:52.3004700Z
+2026-05-25T18:31:52.3005787Z #3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+2026-05-25T18:31:52.3008051Z #3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e done
+2026-05-25T18:31:52.3009058Z #3 CACHED
+2026-05-25T18:31:52.3009223Z
+2026-05-25T18:31:52.3010678Z #4 [internal] load metadata for docker.io/library/node:24-bookworm-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf
+2026-05-25T18:31:52.4949040Z #4 DONE 0.0s
+2026-05-25T18:31:52.4949509Z
+2026-05-25T18:31:52.4950814Z #5 [db-job-dependencies 1/4] FROM docker.io/library/node:24-bookworm-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf
+2026-05-25T18:31:52.4952961Z #5 resolve docker.io/library/node:24-bookworm-slim@sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf done
+2026-05-25T18:31:52.4953855Z #5 DONE 0.0s
+2026-05-25T18:31:52.4954021Z
+2026-05-25T18:31:52.4954322Z #6 [db-job-dependencies 2/4] WORKDIR /workspace
+2026-05-25T18:31:52.4954722Z #6 CACHED
+2026-05-25T18:31:52.4955292Z
+2026-05-25T18:31:52.4955527Z #7 [internal] load build context
+2026-05-25T18:31:52.4956048Z #7 transferring context: 1.44kB 0.0s done
+2026-05-25T18:31:52.4956455Z #7 DONE 0.0s
+2026-05-25T18:31:52.4956623Z
+2026-05-25T18:31:52.4957167Z #8 [db-job-dependencies 3/4] COPY package.json package-lock.json ./
+2026-05-25T18:31:52.4957719Z #8 CACHED
+2026-05-25T18:31:52.4957872Z
+2026-05-25T18:31:52.4958252Z #9 [db-job-dependencies 4/4] RUN <<'EOF' (set -eu...)
+2026-05-25T18:31:56.9466711Z #9 4.602
+2026-05-25T18:31:56.9467365Z #9 4.602 added 99 packages in 4s
+2026-05-25T18:31:57.0989095Z #9 4.604 npm notice
+2026-05-25T18:31:57.0989903Z #9 4.604 npm notice New minor version of npm available! 11.13.0 -> 11.15.0
+2026-05-25T18:31:57.0990894Z #9 4.604 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.15.0
+2026-05-25T18:31:57.0991927Z #9 4.604 npm notice To update run: npm install -g npm@11.15.0
+2026-05-25T18:31:57.0992434Z #9 4.604 npm notice
+2026-05-25T18:31:57.2681887Z #9 DONE 4.9s
+2026-05-25T18:31:58.1287220Z
+2026-05-25T18:31:58.1288551Z #10 [db-job 3/8] COPY --from=db-job-dependencies --chown=node:node /workspace/node_modules ./node_modules
+2026-05-25T18:31:59.9168726Z #10 DONE 1.8s
+2026-05-25T18:32:00.0329728Z
+2026-05-25T18:32:00.0330704Z #11 [db-job 4/8] COPY --chown=node:node package.json package-lock.json ./
+2026-05-25T18:32:00.0331567Z #11 DONE 0.1s
+2026-05-25T18:32:00.2231466Z
+2026-05-25T18:32:00.2232668Z #12 [db-job 5/8] COPY --chown=node:node scripts/db-sqlserver-admin.mjs ./scripts/db-sqlserver-admin.mjs
+2026-05-25T18:32:00.2233452Z #12 DONE 0.0s
+2026-05-25T18:32:00.2233633Z
+2026-05-25T18:32:00.2234196Z #13 [db-job 6/8] COPY --chown=node:node typeorm/migrations ./typeorm/migrations
+2026-05-25T18:32:00.2234776Z #13 DONE 0.0s
+2026-05-25T18:32:00.2234944Z
+2026-05-25T18:32:00.2235583Z #14 [db-job 7/8] COPY --chown=node:node typeorm/seed-required.mjs ./typeorm/seed-required.mjs
+2026-05-25T18:32:00.2236217Z #14 DONE 0.0s
+2026-05-25T18:32:00.2236375Z
+2026-05-25T18:32:00.2236993Z #15 [db-job 8/8] COPY --chown=node:node typeorm/seed-runner.mjs ./typeorm/seed-runner.mjs
+2026-05-25T18:32:00.2237601Z #15 DONE 0.0s
+2026-05-25T18:32:00.2237772Z
+2026-05-25T18:32:00.2237944Z #16 exporting to image
+2026-05-25T18:32:00.2238294Z #16 exporting layers
+2026-05-25T18:32:02.8596395Z #16 exporting layers 2.8s done
+2026-05-25T18:32:03.0325983Z #16 ...
+2026-05-25T18:32:03.0326145Z
+2026-05-25T18:32:03.0326515Z #17 [auth] viscalyx/kravhantering-db-job:pull,push token for ghcr.io
+2026-05-25T18:32:03.0326903Z #17 DONE 0.0s
+2026-05-25T18:32:03.0327022Z
+2026-05-25T18:32:03.0327143Z #16 exporting to image
+2026-05-25T18:32:03.0328119Z #16 exporting manifest sha256:bfddc633121bb681c44cb1284a86eaeee0e725dc9a2729ded9a4013035ddcc8b done
+2026-05-25T18:32:03.0328941Z #16 exporting config sha256:65a5c393f795dcd41e0942e55799914e7a0e84a1571745fe3dd173ae50903403 done
+2026-05-25T18:32:03.0329781Z #16 exporting attestation manifest sha256:468e788231b92463739018e15d508e992f107dcbd08cdaabc69acf27dd07e1fa done
+2026-05-25T18:32:03.0330634Z #16 exporting manifest list sha256:2102c570f7fffb843e1e35ef08518e98c95ecde7174f9f4288018d375f007cbc done
+2026-05-25T18:32:03.0331383Z #16 pushing layers
+2026-05-25T18:32:05.8107739Z #16 pushing layers 2.9s done
+2026-05-25T18:32:05.8109609Z #16 pushing manifest for ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071@sha256:2102c570f7fffb843e1e35ef08518e98c95ecde7174f9f4288018d375f007cbc
+2026-05-25T18:32:06.5872782Z #16 pushing manifest for ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071@sha256:2102c570f7fffb843e1e35ef08518e98c95ecde7174f9f4288018d375f007cbc 0.8s done
+2026-05-25T18:32:06.8240307Z #16 pushing layers 0.1s done
+2026-05-25T18:32:06.8241692Z #16 pushing manifest for ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d@sha256:2102c570f7fffb843e1e35ef08518e98c95ecde7174f9f4288018d375f007cbc
+2026-05-25T18:32:06.9723191Z #16 pushing manifest for ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d@sha256:2102c570f7fffb843e1e35ef08518e98c95ecde7174f9f4288018d375f007cbc 0.3s done
+2026-05-25T18:32:07.0760802Z #16 pushing layers 0.1s done
+2026-05-25T18:32:07.0762370Z #16 pushing manifest for ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111@sha256:2102c570f7fffb843e1e35ef08518e98c95ecde7174f9f4288018d375f007cbc
+2026-05-25T18:32:07.4353634Z #16 pushing manifest for ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111@sha256:2102c570f7fffb843e1e35ef08518e98c95ecde7174f9f4288018d375f007cbc 0.4s done
+2026-05-25T18:32:07.4354788Z #16 DONE 7.4s
+2026-05-25T18:32:07.4569428Z
+2026-05-25T18:32:07.4569966Z #18 resolving provenance for metadata file
+2026-05-25T18:32:07.4570299Z #18 DONE 0.0s
+2026-05-25T18:32:07.4678951Z ##[group]Run node scripts/release/container-release.mjs identities \
+2026-05-25T18:32:07.4679722Z [36;1mnode scripts/release/container-release.mjs identities \[0m
+2026-05-25T18:32:07.4680460Z [36;1m  --plan tmp/container-release-artifacts/metadata/release-plan.json \[0m
+2026-05-25T18:32:07.4681639Z [36;1m  --app-metadata tmp/container-release-artifacts/metadata/app-runtime-buildx.json \[0m
+2026-05-25T18:32:07.4682595Z [36;1m  --db-job-metadata tmp/container-release-artifacts/metadata/db-job-buildx.json \[0m
+2026-05-25T18:32:07.4683415Z [36;1m  --output tmp/container-release-artifacts/metadata/release-metadata.json \[0m
+2026-05-25T18:32:07.4684050Z [36;1m  --github-env "${GITHUB_ENV}"[0m
+2026-05-25T18:32:07.4733673Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:32:07.4734037Z env:
+2026-05-25T18:32:07.4734389Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:32:07.4734895Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:32:07.4735352Z   STORAGE_DRIVER: vfs
+2026-05-25T18:32:07.4735783Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:32:07.4736358Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:32:07.4737039Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:07.4737741Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:07.4739347Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:32:07.4740997Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:32:07.4741953Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:07.4742575Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:07.4743205Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:32:07.4743879Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:32:07.4744332Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:32:07.4744816Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:32:07.4745254Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:32:07.4745635Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:07.4746476Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:32:07.4747293Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:32:07.4747545Z   RELEASE_IS_STABLE: false
+2026-05-25T18:32:07.4747763Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:32:07.4747979Z   RELEASE_PRERELEASE: true
+2026-05-25T18:32:07.4748196Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:32:07.4748439Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:32:07.4748702Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:07.4748932Z ##[endgroup]
+2026-05-25T18:32:07.5150317Z Buildx metadata is missing containerimage.config.digest.
+2026-05-25T18:32:07.5152819Z Usage:
+2026-05-25T18:32:07.5153617Z   node scripts/release/container-release.mjs plan --gitversion-json <path> --output <path> [--github-env <path>] [--changed-files <path>]
+2026-05-25T18:32:07.5154923Z   node scripts/release/container-release.mjs identities --plan <path> --app-metadata <path> --db-job-metadata <path> --output <path> [--github-env <path>]
+2026-05-25T18:32:07.5156097Z   node scripts/release/container-release.mjs notes --plan <path> --metadata <path> --hashes <path> --output <path>
+2026-05-25T18:32:07.5157771Z   node scripts/release/container-release.mjs bundle --plan <path> --metadata <path> --stack-lock <path> --output-dir <path> [--build-json <path>] [--hashes <path>] [--sbom-dir <path>]
+2026-05-25T18:32:07.5159132Z   node scripts/release/container-release.mjs ensure-tag --plan <path>
+2026-05-25T18:32:07.5240252Z ##[error]Process completed with exit code 1.
+2026-05-25T18:32:07.5328067Z ##[group]Run node scripts/containers/collect-status.mjs \
+2026-05-25T18:32:07.5328468Z [36;1mnode scripts/containers/collect-status.mjs \[0m
+2026-05-25T18:32:07.5328807Z [36;1m  --project-name "${CONTAINER_PROJECT_NAME}" \[0m
+2026-05-25T18:32:07.5329167Z [36;1m  --output-text container-status-before-down.txt \[0m
+2026-05-25T18:32:07.5329536Z [36;1m  --output-json container-status-before-down.json \[0m
+2026-05-25T18:32:07.5329838Z [36;1m  --tail 160 || true[0m
+2026-05-25T18:32:07.5364744Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:32:07.5364992Z env:
+2026-05-25T18:32:07.5365229Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:32:07.5365559Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:32:07.5365814Z   STORAGE_DRIVER: vfs
+2026-05-25T18:32:07.5366111Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:32:07.5366475Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:32:07.5366940Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:07.5367367Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:07.5368310Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:32:07.5369342Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:32:07.5369756Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:07.5370129Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:07.5370504Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:32:07.5370902Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:32:07.5371424Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:32:07.5371721Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:32:07.5372075Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:32:07.5372442Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:07.5373270Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:32:07.5374087Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:32:07.5374326Z   RELEASE_IS_STABLE: false
+2026-05-25T18:32:07.5374546Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:32:07.5374757Z   RELEASE_PRERELEASE: true
+2026-05-25T18:32:07.5374969Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:32:07.5375204Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:32:07.5375449Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:07.5375674Z ##[endgroup]
+2026-05-25T18:32:08.9358441Z Wrote container-status-before-down.txt
+2026-05-25T18:32:08.9359877Z Wrote container-status-before-down.json
+2026-05-25T18:32:08.9436922Z ##[group]Run node scripts/containers/run-local-stack.mjs down --mode release-smoke || true
+2026-05-25T18:32:08.9437562Z [36;1mnode scripts/containers/run-local-stack.mjs down --mode release-smoke || true[0m
+2026-05-25T18:32:08.9472848Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:32:08.9473276Z env:
+2026-05-25T18:32:08.9473519Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:32:08.9473838Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:32:08.9474090Z   STORAGE_DRIVER: vfs
+2026-05-25T18:32:08.9474381Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:32:08.9474740Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:32:08.9475166Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:08.9475607Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:08.9476575Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:32:08.9477522Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:32:08.9477936Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:08.9478313Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:08.9478687Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:32:08.9479099Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:32:08.9479394Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:32:08.9479693Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:32:08.9480043Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:32:08.9480423Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:08.9481571Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:32:08.9482396Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:32:08.9482642Z   RELEASE_IS_STABLE: false
+2026-05-25T18:32:08.9482857Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:32:08.9483091Z   RELEASE_PRERELEASE: true
+2026-05-25T18:32:08.9483313Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:32:08.9483553Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:32:08.9483803Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:08.9484034Z ##[endgroup]
+2026-05-25T18:32:10.3700273Z Wrote container-status.txt
+2026-05-25T18:32:10.3701996Z Wrote container-status.json
+2026-05-25T18:32:10.4069247Z Wrote hashes.sha256
+2026-05-25T18:32:10.4300373Z [4m>>>> Executing external compose provider "podman-compose". Please refer to the documentation for details. <<<<
+2026-05-25T18:32:10.4301304Z
+2026-05-25T18:32:10.5150548Z [0mpodman-compose version: 1.0.6
+2026-05-25T18:32:10.5190114Z ['podman', '--version', '']
+2026-05-25T18:32:10.5348131Z using podman version: 4.9.3
+2026-05-25T18:32:10.5348748Z missing files:  ['container-stack.compose.yml']
+2026-05-25T18:32:10.5477656Z Error: executing podman-compose -f container-stack.compose.yml --project-name kravhantering-container-stack-release-smoke-mpljmoev-3y2709 down --remove-orphans --volumes: exit status 1
+2026-05-25T18:32:10.5511347Z podman compose -f container-stack.compose.yml --project-name kravhantering-container-stack-release-smoke-mpljmoev-3y2709 down --remove-orphans --volumes failed with 1
+2026-05-25T18:32:10.5512457Z Usage:
+2026-05-25T18:32:10.5513423Z   node scripts/containers/run-local-stack.mjs up [--mode <test|release-smoke>] [--run-id <id>] [--skip-build] [--release-images-from-lock]
+2026-05-25T18:32:10.5514233Z   node scripts/containers/run-local-stack.mjs down [--mode <test|release-smoke>]
+2026-05-25T18:32:10.5514554Z
+2026-05-25T18:32:10.5514641Z Options:
+2026-05-25T18:32:10.5515348Z   --compose-file <path>  Generated Compose file path
+2026-05-25T18:32:10.5515712Z   --lock-file <path>     Stack lock file path
+2026-05-25T18:32:10.5516003Z   --release-images-from-lock
+2026-05-25T18:32:10.5516426Z                          Pull app-runtime and db-job by manifest digest from the stack lock
+2026-05-25T18:32:10.5517055Z   --run-id <id>          Stable run id for ephemeral modes
+2026-05-25T18:32:10.5517558Z   --skip-build           Reuse already built Docker images and load them into Podman
+2026-05-25T18:32:10.5518009Z   --state-file <path>    Local state file path
+2026-05-25T18:32:10.5518354Z   --sqlserver-host-port <value>
+2026-05-25T18:32:10.5518692Z   --tls-dir <path>       Runtime TLS directory
+2026-05-25T18:32:10.5518998Z   --mode <test|release-smoke>
+2026-05-25T18:32:10.5519357Z                          test and release-smoke use run-specific volumes
+2026-05-25T18:32:10.5589810Z ##[group]Run node scripts/containers/collect-status.mjs \
+2026-05-25T18:32:10.5590235Z [36;1mnode scripts/containers/collect-status.mjs \[0m
+2026-05-25T18:32:10.5590602Z [36;1m  --project-name "${CONTAINER_PROJECT_NAME}" \[0m
+2026-05-25T18:32:10.5590971Z [36;1m  --output-text container-status-after-down.txt \[0m
+2026-05-25T18:32:10.5591938Z [36;1m  --output-json container-status-after-down.json \[0m
+2026-05-25T18:32:10.5592368Z [36;1m  --tail 160 || true[0m
+2026-05-25T18:32:10.5628158Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:32:10.5628408Z env:
+2026-05-25T18:32:10.5628644Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:32:10.5628975Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:32:10.5629235Z   STORAGE_DRIVER: vfs
+2026-05-25T18:32:10.5629519Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:32:10.5629881Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:32:10.5630338Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:10.5630764Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:10.5631919Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:32:10.5632902Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:32:10.5633325Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:10.5633711Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:10.5634093Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:32:10.5634493Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:32:10.5634784Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:32:10.5635085Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:32:10.5635439Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:32:10.5635805Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:10.5636633Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:32:10.5637444Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:32:10.5637687Z   RELEASE_IS_STABLE: false
+2026-05-25T18:32:10.5637918Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:32:10.5638142Z   RELEASE_PRERELEASE: true
+2026-05-25T18:32:10.5638361Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:32:10.5638601Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:32:10.5638853Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:10.5639085Z ##[endgroup]
+2026-05-25T18:32:11.9718916Z Wrote container-status-after-down.txt
+2026-05-25T18:32:11.9720244Z Wrote container-status-after-down.json
+2026-05-25T18:32:11.9802872Z ##[group]Run node scripts/containers/write-hashes.mjs \
+2026-05-25T18:32:11.9803489Z [36;1mnode scripts/containers/write-hashes.mjs \[0m
+2026-05-25T18:32:11.9803931Z [36;1m  --output hashes.sha256 \[0m
+2026-05-25T18:32:11.9804351Z [36;1m  container-stack.lock.json \[0m
+2026-05-25T18:32:11.9804764Z [36;1m  container-stack.compose.yml \[0m
+2026-05-25T18:32:11.9805186Z [36;1m  container-status.txt \[0m
+2026-05-25T18:32:11.9805562Z [36;1m  container-status.json \[0m
+2026-05-25T18:32:11.9806228Z [36;1m  container-status-before-down.txt \[0m
+2026-05-25T18:32:11.9806703Z [36;1m  container-status-before-down.json \[0m
+2026-05-25T18:32:11.9807169Z [36;1m  container-status-after-down.txt \[0m
+2026-05-25T18:32:11.9807646Z [36;1m  container-status-after-down.json \[0m
+2026-05-25T18:32:11.9808081Z [36;1m  public/build.json \[0m
+2026-05-25T18:32:11.9808609Z [36;1m  tmp/container-release-artifacts/metadata/gitversion.json \[0m
+2026-05-25T18:32:11.9809347Z [36;1m  tmp/container-release-artifacts/metadata/release-plan.json \[0m
+2026-05-25T18:32:11.9810071Z [36;1m  tmp/container-release-artifacts/metadata/release-metadata.json \[0m
+2026-05-25T18:32:11.9810800Z [36;1m  tmp/container-release-artifacts/sbom/app-runtime.spdx.json \[0m
+2026-05-25T18:32:11.9811804Z [36;1m  tmp/container-release-artifacts/sbom/db-job.spdx.json || true[0m
+2026-05-25T18:32:11.9848384Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:32:11.9848642Z env:
+2026-05-25T18:32:11.9848900Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:32:11.9849231Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:32:11.9849517Z   STORAGE_DRIVER: vfs
+2026-05-25T18:32:11.9849815Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:32:11.9850227Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:32:11.9850649Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:11.9851289Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:11.9852239Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:32:11.9853178Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:32:11.9853592Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:11.9853976Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:11.9854350Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:32:11.9854753Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:32:11.9855034Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:32:11.9855330Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:32:11.9855672Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:32:11.9856044Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:11.9856866Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:32:11.9857668Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:32:11.9857914Z   RELEASE_IS_STABLE: false
+2026-05-25T18:32:11.9858127Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:32:11.9858345Z   RELEASE_PRERELEASE: true
+2026-05-25T18:32:11.9858561Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:32:11.9858799Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:32:11.9859048Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:11.9859277Z ##[endgroup]
+2026-05-25T18:32:12.0256351Z Wrote hashes.sha256
+2026-05-25T18:32:12.0328575Z ##[group]Run node scripts/release/container-release.mjs bundle \
+2026-05-25T18:32:12.0329030Z [36;1mnode scripts/release/container-release.mjs bundle \[0m
+2026-05-25T18:32:12.0329494Z [36;1m  --plan tmp/container-release-artifacts/metadata/release-plan.json \[0m
+2026-05-25T18:32:12.0330034Z [36;1m  --metadata tmp/container-release-artifacts/metadata/release-metadata.json \[0m
+2026-05-25T18:32:12.0330482Z [36;1m  --stack-lock container-stack.lock.json \[0m
+2026-05-25T18:32:12.0330789Z [36;1m  --build-json public/build.json \[0m
+2026-05-25T18:32:12.0331058Z [36;1m  --hashes hashes.sha256 \[0m
+2026-05-25T18:32:12.0331663Z [36;1m  --sbom-dir tmp/container-release-artifacts/sbom \[0m
+2026-05-25T18:32:12.0332236Z [36;1m  --output-dir tmp/container-release-artifacts/deployment[0m
+2026-05-25T18:32:12.0366827Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:32:12.0367093Z env:
+2026-05-25T18:32:12.0367345Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:32:12.0367718Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:32:12.0367982Z   STORAGE_DRIVER: vfs
+2026-05-25T18:32:12.0368277Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:32:12.0368640Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:32:12.0369060Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:12.0369481Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:12.0370430Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:32:12.0371684Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:32:12.0372100Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:12.0372474Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:12.0372865Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:32:12.0373262Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:32:12.0373549Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:32:12.0373838Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:32:12.0374185Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:32:12.0374554Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:12.0375380Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:32:12.0376198Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:32:12.0376443Z   RELEASE_IS_STABLE: false
+2026-05-25T18:32:12.0376661Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:32:12.0376875Z   RELEASE_PRERELEASE: true
+2026-05-25T18:32:12.0377092Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:32:12.0377335Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:32:12.0377590Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:12.0377833Z ##[endgroup]
+2026-05-25T18:32:12.0765865Z ENOENT: no such file or directory, open 'tmp/container-release-artifacts/metadata/release-metadata.json'
+2026-05-25T18:32:12.0767176Z Usage:
+2026-05-25T18:32:12.0767926Z   node scripts/release/container-release.mjs plan --gitversion-json <path> --output <path> [--github-env <path>] [--changed-files <path>]
+2026-05-25T18:32:12.0768973Z   node scripts/release/container-release.mjs identities --plan <path> --app-metadata <path> --db-job-metadata <path> --output <path> [--github-env <path>]
+2026-05-25T18:32:12.0769949Z   node scripts/release/container-release.mjs notes --plan <path> --metadata <path> --hashes <path> --output <path>
+2026-05-25T18:32:12.0771604Z   node scripts/release/container-release.mjs bundle --plan <path> --metadata <path> --stack-lock <path> --output-dir <path> [--build-json <path>] [--hashes <path>] [--sbom-dir <path>]
+2026-05-25T18:32:12.0772537Z   node scripts/release/container-release.mjs ensure-tag --plan <path>
+2026-05-25T18:32:12.0808101Z ##[error]Process completed with exit code 1.
+2026-05-25T18:32:12.0830589Z ##[group]Run set -euo pipefail
+2026-05-25T18:32:12.0830877Z [36;1mset -euo pipefail[0m
+2026-05-25T18:32:12.0831471Z [36;1mbundle="kravhantering-production-deploy-${RELEASE_VERSION}"[0m
+2026-05-25T18:32:12.0831881Z [36;1martifact_dir="tmp/container-release-artifacts"[0m
+2026-05-25T18:32:12.0832216Z [36;1marchive="${artifact_dir}/${bundle}.tar.gz"[0m
+2026-05-25T18:32:12.0832558Z [36;1mtar -C tmp/container-release-artifacts/deployment \[0m
+2026-05-25T18:32:12.0833072Z [36;1m  -czf "${archive}" \[0m
+2026-05-25T18:32:12.0833310Z [36;1m  "${bundle}"[0m
+2026-05-25T18:32:12.0833586Z [36;1m( cd "${artifact_dir}" && sha256sum "${bundle}.tar.gz" ) |[0m
+2026-05-25T18:32:12.0833924Z [36;1m  tee "${archive}.sha256"[0m
+2026-05-25T18:32:12.0834193Z [36;1mcat "${archive}.sha256" >> hashes.sha256[0m
+2026-05-25T18:32:12.0868699Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:32:12.0868953Z env:
+2026-05-25T18:32:12.0869196Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:32:12.0869557Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:32:12.0869815Z   STORAGE_DRIVER: vfs
+2026-05-25T18:32:12.0870109Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:32:12.0870486Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:32:12.0870927Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:12.0871675Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:12.0872637Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:32:12.0873590Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:32:12.0874011Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:12.0874379Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:12.0874769Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:32:12.0875166Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:32:12.0875455Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:32:12.0875747Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:32:12.0876098Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:32:12.0876468Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:12.0877287Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:32:12.0878098Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:32:12.0878340Z   RELEASE_IS_STABLE: false
+2026-05-25T18:32:12.0878566Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:32:12.0878789Z   RELEASE_PRERELEASE: true
+2026-05-25T18:32:12.0879005Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:32:12.0879254Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:32:12.0879504Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:12.0879745Z ##[endgroup]
+2026-05-25T18:32:12.0952060Z tar: tmp/container-release-artifacts/deployment: Cannot open: No such file or directory
+2026-05-25T18:32:12.0952903Z tar: Error is not recoverable: exiting now
+2026-05-25T18:32:12.0968123Z ##[error]Process completed with exit code 2.
+2026-05-25T18:32:12.0997315Z ##[group]Run node scripts/release/container-release.mjs notes \
+2026-05-25T18:32:12.0998003Z [36;1mnode scripts/release/container-release.mjs notes \[0m
+2026-05-25T18:32:12.0998710Z [36;1m  --plan tmp/container-release-artifacts/metadata/release-plan.json \[0m
+2026-05-25T18:32:12.0999567Z [36;1m  --metadata tmp/container-release-artifacts/metadata/release-metadata.json \[0m
+2026-05-25T18:32:12.1000241Z [36;1m  --hashes hashes.sha256 \[0m
+2026-05-25T18:32:12.1000777Z [36;1m  --output tmp/container-release-artifacts/release-notes.md[0m
+2026-05-25T18:32:12.1047120Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:32:12.1047496Z env:
+2026-05-25T18:32:12.1047851Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:32:12.1048385Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:32:12.1048803Z   STORAGE_DRIVER: vfs
+2026-05-25T18:32:12.1049263Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:32:12.1049898Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:32:12.1050609Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:12.1051757Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:12.1053374Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:32:12.1055059Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:32:12.1055767Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:12.1056384Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:12.1057028Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:32:12.1057713Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:32:12.1058174Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:32:12.1058670Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:32:12.1059273Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:32:12.1059910Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:12.1061511Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:32:12.1062919Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:32:12.1063305Z   RELEASE_IS_STABLE: false
+2026-05-25T18:32:12.1063673Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:32:12.1064013Z   RELEASE_PRERELEASE: true
+2026-05-25T18:32:12.1064346Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:32:12.1064735Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:32:12.1065129Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:12.1065749Z   GH_TOKEN: ***
+2026-05-25T18:32:12.1066041Z ##[endgroup]
+2026-05-25T18:32:12.1444739Z ENOENT: no such file or directory, open 'tmp/container-release-artifacts/metadata/release-metadata.json'
+2026-05-25T18:32:12.1445635Z Usage:
+2026-05-25T18:32:12.1446603Z   node scripts/release/container-release.mjs plan --gitversion-json <path> --output <path> [--github-env <path>] [--changed-files <path>]
+2026-05-25T18:32:12.1447638Z   node scripts/release/container-release.mjs identities --plan <path> --app-metadata <path> --db-job-metadata <path> --output <path> [--github-env <path>]
+2026-05-25T18:32:12.1448622Z   node scripts/release/container-release.mjs notes --plan <path> --metadata <path> --hashes <path> --output <path>
+2026-05-25T18:32:12.1449741Z   node scripts/release/container-release.mjs bundle --plan <path> --metadata <path> --stack-lock <path> --output-dir <path> [--build-json <path>] [--hashes <path>] [--sbom-dir <path>]
+2026-05-25T18:32:12.1450640Z   node scripts/release/container-release.mjs ensure-tag --plan <path>
+2026-05-25T18:32:12.1486037Z ##[error]Process completed with exit code 1.
+2026-05-25T18:32:12.1517531Z ##[group]Run set -euo pipefail
+2026-05-25T18:32:12.1518001Z [36;1mset -euo pipefail[0m
+2026-05-25T18:32:12.1518354Z [36;1mmkdir -p \[0m
+2026-05-25T18:32:12.1518738Z [36;1m  tmp/container-release-artifacts/runtime \[0m
+2026-05-25T18:32:12.1519297Z [36;1m  tmp/container-release-artifacts/playwright[0m
+2026-05-25T18:32:12.1519750Z [36;1m[0m
+2026-05-25T18:32:12.1520011Z [36;1mfor file in \[0m
+2026-05-25T18:32:12.1520360Z [36;1m  container-stack.lock.json \[0m
+2026-05-25T18:32:12.1520792Z [36;1m  container-stack.compose.yml \[0m
+2026-05-25T18:32:12.1521450Z [36;1m  container-status.txt \[0m
+2026-05-25T18:32:12.1521832Z [36;1m  container-status.json \[0m
+2026-05-25T18:32:12.1522270Z [36;1m  container-status-before-down.txt \[0m
+2026-05-25T18:32:12.1522766Z [36;1m  container-status-before-down.json \[0m
+2026-05-25T18:32:12.1523249Z [36;1m  container-status-after-down.txt \[0m
+2026-05-25T18:32:12.1523718Z [36;1m  container-status-after-down.json \[0m
+2026-05-25T18:32:12.1524175Z [36;1m  public/build.json \[0m
+2026-05-25T18:32:12.1524828Z [36;1m  hashes.sha256; do[0m
+2026-05-25T18:32:12.1525180Z [36;1m  if [ -f "${file}" ]; then[0m
+2026-05-25T18:32:12.1525655Z [36;1m    cp "${file}" tmp/container-release-artifacts/runtime/[0m
+2026-05-25T18:32:12.1526137Z [36;1m  fi[0m
+2026-05-25T18:32:12.1526319Z [36;1mdone[0m
+2026-05-25T18:32:12.1526488Z [36;1m[0m
+2026-05-25T18:32:12.1526729Z [36;1mif [ -d playwright-report-release-smoke ]; then[0m
+2026-05-25T18:32:12.1527022Z [36;1m  cp -R \[0m
+2026-05-25T18:32:12.1527255Z [36;1m    playwright-report-release-smoke \[0m
+2026-05-25T18:32:12.1527588Z [36;1m    tmp/container-release-artifacts/playwright/html[0m
+2026-05-25T18:32:12.1527881Z [36;1mfi[0m
+2026-05-25T18:32:12.1528092Z [36;1mif [ -d test-results/release-smoke ]; then[0m
+2026-05-25T18:32:12.1528372Z [36;1m  cp -R \[0m
+2026-05-25T18:32:12.1528597Z [36;1m    test-results/release-smoke \[0m
+2026-05-25T18:32:12.1528961Z [36;1m    tmp/container-release-artifacts/playwright/test-results[0m
+2026-05-25T18:32:12.1529291Z [36;1mfi[0m
+2026-05-25T18:32:12.1563967Z shell: /usr/bin/bash -e {0}
+2026-05-25T18:32:12.1564207Z env:
+2026-05-25T18:32:12.1564462Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:32:12.1564784Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:32:12.1565051Z   STORAGE_DRIVER: vfs
+2026-05-25T18:32:12.1565341Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:32:12.1565707Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:32:12.1566132Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:12.1566566Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:12.1567518Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:32:12.1568476Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:32:12.1568907Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:12.1569399Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:12.1569834Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:32:12.1570461Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:32:12.1570897Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:32:12.1571445Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:32:12.1571803Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:32:12.1572186Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:12.1573029Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:32:12.1574067Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:32:12.1574333Z   RELEASE_IS_STABLE: false
+2026-05-25T18:32:12.1574564Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:32:12.1574800Z   RELEASE_PRERELEASE: true
+2026-05-25T18:32:12.1575040Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:32:12.1575303Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:32:12.1575558Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:12.1575810Z ##[endgroup]
+2026-05-25T18:32:12.1828451Z ##[group]Run actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+2026-05-25T18:32:12.1828835Z with:
+2026-05-25T18:32:12.1829057Z   name: container-release-runtime-26414495189
+2026-05-25T18:32:12.1829372Z   path: tmp/container-release-artifacts/runtime/
+2026-05-25T18:32:12.1829655Z   if-no-files-found: ignore
+2026-05-25T18:32:12.1829880Z   retention-days: 30
+2026-05-25T18:32:12.1830133Z   compression-level: 6
+2026-05-25T18:32:12.1830338Z   overwrite: false
+2026-05-25T18:32:12.1830540Z   include-hidden-files: false
+2026-05-25T18:32:12.1830766Z   archive: true
+2026-05-25T18:32:12.1831238Z env:
+2026-05-25T18:32:12.1831474Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:32:12.1831802Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:32:12.1832067Z   STORAGE_DRIVER: vfs
+2026-05-25T18:32:12.1832365Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:32:12.1832728Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:32:12.1833178Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:12.1833610Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:12.1834561Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:32:12.1835558Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:32:12.1835993Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:12.1836383Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:12.1836769Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:32:12.1837179Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:32:12.1837464Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:32:12.1837768Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:32:12.1838115Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:32:12.1838491Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:12.1839331Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:32:12.1840153Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:32:12.1840400Z   RELEASE_IS_STABLE: false
+2026-05-25T18:32:12.1840618Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:32:12.1840846Z   RELEASE_PRERELEASE: true
+2026-05-25T18:32:12.1841207Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:32:12.1841462Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:32:12.1841720Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:12.1841956Z ##[endgroup]
+2026-05-25T18:32:12.3253639Z With the provided path, there will be 8 files uploaded
+2026-05-25T18:32:12.3258340Z Artifact name is valid!
+2026-05-25T18:32:12.3258996Z Root directory input is valid!
+2026-05-25T18:32:12.4077139Z Uploading artifact: container-release-runtime-26414495189.zip
+2026-05-25T18:32:12.4116127Z Beginning upload of artifact content to blob storage
+2026-05-25T18:32:12.4917686Z Uploaded bytes 3369
+2026-05-25T18:32:12.5066647Z Finished uploading artifact content to blob storage!
+2026-05-25T18:32:12.5067701Z SHA256 digest of uploaded artifact is dae9fb3c8ac211a39608390d2ef829014c40bb62f1e2dad1c41f718cee79dd4f
+2026-05-25T18:32:12.5068717Z Finalizing artifact upload
+2026-05-25T18:32:12.6410673Z Artifact container-release-runtime-26414495189 successfully finalized. Artifact ID 7203201703
+2026-05-25T18:32:12.6412470Z Artifact container-release-runtime-26414495189 has been successfully uploaded! Final size is 3369 bytes. Artifact ID is 7203201703
+2026-05-25T18:32:12.6414951Z Artifact download URL: https://github.com/viscalyx/Kravhantering/actions/runs/26414495189/artifacts/7203201703
+2026-05-25T18:32:12.6541906Z ##[group]Run actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+2026-05-25T18:32:12.6542318Z with:
+2026-05-25T18:32:12.6542561Z   name: container-release-metadata-26414495189
+2026-05-25T18:32:12.6543344Z   path: tmp/container-release-artifacts/metadata/
+tmp/container-release-artifacts/sbom/
+tmp/container-release-artifacts/release-notes.md
+
+2026-05-25T18:32:12.6543959Z   if-no-files-found: warn
+2026-05-25T18:32:12.6544190Z   retention-days: 30
+2026-05-25T18:32:12.6544407Z   compression-level: 6
+2026-05-25T18:32:12.6544624Z   overwrite: false
+2026-05-25T18:32:12.6544834Z   include-hidden-files: false
+2026-05-25T18:32:12.6545270Z   archive: true
+2026-05-25T18:32:12.6545463Z env:
+2026-05-25T18:32:12.6545695Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:32:12.6546025Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:32:12.6546296Z   STORAGE_DRIVER: vfs
+2026-05-25T18:32:12.6546593Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:32:12.6546982Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:32:12.6547410Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:12.6547875Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:12.6548844Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:32:12.6549805Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:32:12.6550232Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:12.6550617Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:12.6551013Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:32:12.6551720Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:32:12.6552047Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:32:12.6552355Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:32:12.6552719Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:32:12.6553096Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:12.6553933Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:32:12.6554746Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:32:12.6554996Z   RELEASE_IS_STABLE: false
+2026-05-25T18:32:12.6555227Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:32:12.6555457Z   RELEASE_PRERELEASE: true
+2026-05-25T18:32:12.6555682Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:32:12.6555932Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:32:12.6556188Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:12.6556432Z ##[endgroup]
+2026-05-25T18:32:12.7935247Z Multiple search paths detected. Calculating the least common ancestor of all paths
+2026-05-25T18:32:12.7938053Z The least common ancestor is /home/runner/work/Kravhantering/Kravhantering/tmp/container-release-artifacts. This will be the root directory of the artifact
+2026-05-25T18:32:12.7938905Z With the provided path, there will be 4 files uploaded
+2026-05-25T18:32:12.7942110Z Artifact name is valid!
+2026-05-25T18:32:12.7942684Z Root directory input is valid!
+2026-05-25T18:32:12.8747600Z Uploading artifact: container-release-metadata-26414495189.zip
+2026-05-25T18:32:12.8791047Z Beginning upload of artifact content to blob storage
+2026-05-25T18:32:12.9632194Z Uploaded bytes 8563
+2026-05-25T18:32:12.9792921Z Finished uploading artifact content to blob storage!
+2026-05-25T18:32:12.9794598Z SHA256 digest of uploaded artifact is b45eaddd89631cef1abf9b929d3fdbd57af9df4306a73f08f460fe6836cdfc82
+2026-05-25T18:32:12.9795496Z Finalizing artifact upload
+2026-05-25T18:32:13.1192889Z Artifact container-release-metadata-26414495189 successfully finalized. Artifact ID 7203201797
+2026-05-25T18:32:13.1194576Z Artifact container-release-metadata-26414495189 has been successfully uploaded! Final size is 8563 bytes. Artifact ID is 7203201797
+2026-05-25T18:32:13.1196538Z Artifact download URL: https://github.com/viscalyx/Kravhantering/actions/runs/26414495189/artifacts/7203201797
+2026-05-25T18:32:13.1325705Z ##[group]Run actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+2026-05-25T18:32:13.1326100Z with:
+2026-05-25T18:32:13.1326377Z   name: container-release-playwright-26414495189
+2026-05-25T18:32:13.1326744Z   path: tmp/container-release-artifacts/playwright/
+2026-05-25T18:32:13.1327220Z   if-no-files-found: ignore
+2026-05-25T18:32:13.1327454Z   retention-days: 30
+2026-05-25T18:32:13.1327669Z   compression-level: 6
+2026-05-25T18:32:13.1327883Z   overwrite: false
+2026-05-25T18:32:13.1328091Z   include-hidden-files: false
+2026-05-25T18:32:13.1328329Z   archive: true
+2026-05-25T18:32:13.1328521Z env:
+2026-05-25T18:32:13.1328758Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:32:13.1329093Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:32:13.1329361Z   STORAGE_DRIVER: vfs
+2026-05-25T18:32:13.1329653Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:32:13.1330025Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:32:13.1330509Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:13.1330946Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:13.1332350Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:32:13.1333336Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:32:13.1333768Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:13.1334152Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:13.1334549Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:32:13.1334965Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:32:13.1335267Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:32:13.1335577Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:32:13.1335949Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:32:13.1336336Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:13.1337174Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:32:13.1338030Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:32:13.1338290Z   RELEASE_IS_STABLE: false
+2026-05-25T18:32:13.1338522Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:32:13.1338757Z   RELEASE_PRERELEASE: true
+2026-05-25T18:32:13.1338986Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:32:13.1339249Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:32:13.1339515Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:13.1339762Z ##[endgroup]
+2026-05-25T18:32:13.2724849Z No files were found with the provided path: tmp/container-release-artifacts/playwright/. No artifacts will be uploaded.
+2026-05-25T18:32:13.2842848Z ##[group]Run actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+2026-05-25T18:32:13.2843246Z with:
+2026-05-25T18:32:13.2843482Z   name: container-release-deployment-26414495189
+2026-05-25T18:32:13.2844244Z   path: tmp/container-release-artifacts/kravhantering-production-deploy-*.tar.gz
+tmp/container-release-artifacts/kravhantering-production-deploy-*.tar.gz.sha256
+
+2026-05-25T18:32:13.2844946Z   if-no-files-found: warn
+2026-05-25T18:32:13.2845176Z   retention-days: 30
+2026-05-25T18:32:13.2845394Z   compression-level: 6
+2026-05-25T18:32:13.2845607Z   overwrite: false
+2026-05-25T18:32:13.2845814Z   include-hidden-files: false
+2026-05-25T18:32:13.2846054Z   archive: true
+2026-05-25T18:32:13.2846248Z env:
+2026-05-25T18:32:13.2846487Z   NEXT_PUBLIC_SITE_URL: https://kravhantering.test
+2026-05-25T18:32:13.2846816Z   PODMAN_COMPOSE_PROVIDER: podman-compose
+2026-05-25T18:32:13.2847088Z   STORAGE_DRIVER: vfs
+2026-05-25T18:32:13.2847412Z   APP_RUNTIME_IMAGE: ghcr.io/viscalyx/kravhantering-app-runtime
+2026-05-25T18:32:13.2847787Z   APP_RUNTIME_PACKAGE: kravhantering-app-runtime
+2026-05-25T18:32:13.2848212Z   APP_RUNTIME_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:13.2848825Z   APP_RUNTIME_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:13.2849771Z   APP_RUNTIME_TAGS_CSV: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-app-runtime:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-app-runtime:0.1.0-preview.111
+2026-05-25T18:32:13.2850743Z   BUILD_COMMIT_SHA: 5aea2c12b0712438d41b1b992b1e954cb6d97b3d
+2026-05-25T18:32:13.2851386Z   BUILD_IMAGE_TAG: ghcr.io/viscalyx/kravhantering-app-runtime:main-5aea2c12b071
+2026-05-25T18:32:13.2851986Z   BUILD_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:13.2852392Z   CONTAINER_PROJECT_NAME: kravhantering-container-stack-release-smoke-26414495189
+2026-05-25T18:32:13.2852823Z   CONTAINER_STACK_RUN_ID: 26414495189
+2026-05-25T18:32:13.2853149Z   DB_JOB_IMAGE: ghcr.io/viscalyx/kravhantering-db-job
+2026-05-25T18:32:13.2853467Z   DB_JOB_PACKAGE: kravhantering-db-job
+2026-05-25T18:32:13.2853836Z   DB_JOB_PRIMARY_TAG: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071
+2026-05-25T18:32:13.2854227Z   DB_JOB_PRIMARY_TAG_NAME: main-5aea2c12b071
+2026-05-25T18:32:13.2855064Z   DB_JOB_TAGS_CSV: ghcr.io/viscalyx/kravhantering-db-job:main-5aea2c12b071,ghcr.io/viscalyx/kravhantering-db-job:sha-5aea2c12b0712438d41b1b992b1e954cb6d97b3d,ghcr.io/viscalyx/kravhantering-db-job:0.1.0-preview.111
+2026-05-25T18:32:13.2855890Z   RELEASE_CREATE_GITHUB_RELEASE: true
+2026-05-25T18:32:13.2856152Z   RELEASE_IS_STABLE: false
+2026-05-25T18:32:13.2856386Z   RELEASE_MAKE_LATEST: false
+2026-05-25T18:32:13.2856616Z   RELEASE_PRERELEASE: true
+2026-05-25T18:32:13.2856868Z   RELEASE_SMOKE_RUN_ID: 26414495189
+2026-05-25T18:32:13.2857138Z   RELEASE_TAG_NAME: v0.1.0-preview.111
+2026-05-25T18:32:13.2857406Z   RELEASE_VERSION: 0.1.0-preview.111
+2026-05-25T18:32:13.2857659Z ##[endgroup]
+2026-05-25T18:32:13.4228321Z With the provided path, there will be 1 file uploaded
+2026-05-25T18:32:13.4233266Z Artifact name is valid!
+2026-05-25T18:32:13.4233797Z Root directory input is valid!
+2026-05-25T18:32:13.5147024Z Uploading artifact: container-release-deployment-26414495189.zip
+2026-05-25T18:32:13.5183035Z Beginning upload of artifact content to blob storage
+2026-05-25T18:32:13.5915209Z Uploaded bytes 238
+2026-05-25T18:32:13.6278179Z Finished uploading artifact content to blob storage!
+2026-05-25T18:32:13.6279070Z SHA256 digest of uploaded artifact is 6d3f145a1ded4c2f5cd0c26a25121b37918dac95f4be3b9e9743c750e7c83c7a
+2026-05-25T18:32:13.6279888Z Finalizing artifact upload
+2026-05-25T18:32:13.7648872Z Artifact container-release-deployment-26414495189 successfully finalized. Artifact ID 7203201938
+2026-05-25T18:32:13.7650017Z Artifact container-release-deployment-26414495189 has been successfully uploaded! Final size is 238 bytes. Artifact ID is 7203201938
+2026-05-25T18:32:13.7654143Z Artifact download URL: https://github.com/viscalyx/Kravhantering/actions/runs/26414495189/artifacts/7203201938
+2026-05-25T18:32:13.7801322Z Post job cleanup.
+2026-05-25T18:32:13.8628097Z [command]/usr/bin/git version
+2026-05-25T18:32:13.8696473Z git version 2.54.0
+2026-05-25T18:32:13.8734021Z Temporarily overriding HOME='/home/runner/work/_temp/43e83340-d233-45fc-a65e-2862db12d05c' before making global git config changes
+2026-05-25T18:32:13.8735943Z Adding repository directory to the temporary git global config as a safe directory
+2026-05-25T18:32:13.8756884Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Kravhantering/Kravhantering
+2026-05-25T18:32:13.8777240Z Removing SSH command configuration
+2026-05-25T18:32:13.8784561Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-05-25T18:32:13.8822333Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-05-25T18:32:13.9058167Z Removing HTTP extra header
+2026-05-25T18:32:13.9063530Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-05-25T18:32:13.9097755Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-05-25T18:32:13.9326849Z Removing includeIf entries pointing to credentials config files
+2026-05-25T18:32:13.9333938Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-05-25T18:32:13.9366247Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-05-25T18:32:13.9732707Z Cleaning up orphan processes
+2026-05-25T18:32:14.0184412Z Terminate orphan process: pid (3806) (catatonit)
