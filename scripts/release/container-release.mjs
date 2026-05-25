@@ -2,12 +2,12 @@ import childProcess from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { assertStackLockSchema } from '../containers/generate-stack-lock.mjs'
 import {
   buildDemoUsersDocument,
   DEFAULT_DEMO_USERS_PATH,
   DEFAULT_DEV_REALM_PATH,
 } from '../keycloak-demo-users.mjs'
-import { assertStackLockSchema } from '../containers/generate-stack-lock.mjs'
 
 export const APP_RUNTIME_PACKAGE = 'kravhantering-app-runtime'
 export const DB_JOB_PACKAGE = 'kravhantering-db-job'
@@ -378,9 +378,7 @@ export function extractBuildxImageId(metadata) {
     readNonEmpty(metadata?.containerimage?.config?.digest) ??
     readNonEmpty(metadata?.containerimage?.configDigest)
   if (!imageId) {
-    throw new Error(
-      'Buildx metadata is missing containerimage.config.digest.',
-    )
+    throw new Error('Buildx metadata is missing containerimage.config.digest.')
   }
   return imageId
 }
@@ -390,7 +388,8 @@ export function createReleaseMetadata(
   appBuildxMetadata,
   dbJobBuildxMetadata,
 ) {
-  const appRuntimeManifestDigest = extractBuildxManifestDigest(appBuildxMetadata)
+  const appRuntimeManifestDigest =
+    extractBuildxManifestDigest(appBuildxMetadata)
   const appRuntimeImageId = extractBuildxImageId(appBuildxMetadata)
   const dbJobManifestDigest = extractBuildxManifestDigest(dbJobBuildxMetadata)
   const dbJobImageId = extractBuildxImageId(dbJobBuildxMetadata)

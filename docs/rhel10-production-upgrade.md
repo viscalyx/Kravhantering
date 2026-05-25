@@ -44,9 +44,10 @@ place.
    curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
    curl -fLO "${RELEASE_DOWNLOAD_URL}/container-stack.lock.json"
    sha256sum -c "kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
-   jq -r \
-     '.services[] | "\(.name) manifest=\(.manifestDigest) imageId=\(.imageId)"' \
-     container-stack.lock.json
+   jq -r '
+     .services[]
+     | "\(.name) manifest=\(.manifestDigest) imageId=\(.imageId)"
+   ' container-stack.lock.json
    ```
 
    Ensure the site has approved image refs for every app-node image named in

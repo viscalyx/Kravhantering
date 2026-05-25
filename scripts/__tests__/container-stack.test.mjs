@@ -155,6 +155,14 @@ describe('container stack helpers', () => {
         if (joinedArgs.includes('inspect --format {{.State.Running}}')) {
           return 'true\n'
         }
+        if (
+          joinedArgs.includes('image inspect') &&
+          joinedArgs.includes('{{.Digest}}')
+        ) {
+          return joinedArgs.includes('db-job')
+            ? 'sha256:db-job-manifest-pr\n'
+            : 'sha256:app-runtime-manifest-pr\n'
+        }
         return joinedArgs.includes('db-job')
           ? 'sha256:db-job-pr\n'
           : 'sha256:app-runtime-pr\n'
@@ -221,7 +229,15 @@ describe('container stack helpers', () => {
       'generate-compose.mjs --mode pr --lock-file tmp/custom-stack.lock.json',
     )
     expect(commandText).toContain('--app-tag pr-7-99-deadbeef')
+    expect(commandText).toContain(
+      '--app-manifest-digest sha256:app-runtime-manifest-pr',
+    )
+    expect(commandText).toContain('--app-image-id sha256:app-runtime-pr')
     expect(commandText).toContain('--db-job-tag pr-7-99-deadbeef')
+    expect(commandText).toContain(
+      '--db-job-manifest-digest sha256:db-job-manifest-pr',
+    )
+    expect(commandText).toContain('--db-job-image-id sha256:db-job-pr')
     expect(
       commands.some(command =>
         command.endsWith(
@@ -481,7 +497,7 @@ describe('container stack helpers', () => {
       existsSync: () => true,
       readFileSync: filePath =>
         String(filePath).endsWith('lock.json')
-          ? JSON.stringify({ services: [] })
+          ? JSON.stringify({ schemaVersion: 2, services: [] })
           : '- ./containers/nginx/nginx.conf:/etc/nginx/nginx.conf:ro',
     }
 
@@ -513,6 +529,12 @@ describe('container stack helpers', () => {
         }
         if (joinedArgs.includes('inspect --format {{.State.Running}}')) {
           return 'true\n'
+        }
+        if (
+          joinedArgs.includes('image inspect') &&
+          joinedArgs.includes('{{.Digest}}')
+        ) {
+          return 'sha256:local-manifest\n'
         }
         return 'sha256:local-image\n'
       }),
@@ -602,6 +624,12 @@ describe('container stack helpers', () => {
         }
         if (joinedArgs.includes('inspect --format {{.State.Running}}')) {
           return 'true\n'
+        }
+        if (
+          joinedArgs.includes('image inspect') &&
+          joinedArgs.includes('{{.Digest}}')
+        ) {
+          return 'sha256:local-manifest\n'
         }
         return 'sha256:local-image\n'
       }),

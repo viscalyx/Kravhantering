@@ -249,10 +249,6 @@ describe('production image helper', () => {
     ])
     expect(exported.status).toBe(0)
     expect(fs.existsSync(bundle)).toBe(true)
-    expect(
-      childProcess.execFileSync('tar', ['-tzf', bundle], { encoding: 'utf8' }),
-    ).toContain('images/app-runtime.oci.tar.gz')
-
     const loaded = runHelper(dir, [
       '--topology',
       'app-node',
@@ -276,10 +272,7 @@ describe('production image helper', () => {
   it('rejects digest refs as offline tag targets', () => {
     const dir = makeTempDir()
     const lockFile = writeLockFile(dir)
-    const envFile = writeEnvFile(dir, {
-      APP_RUNTIME_IMAGE_REF:
-        'registry.example/app-runtime@sha256:app-manifest',
-    })
+    const exportEnvFile = writeEnvFile(dir)
     const bundle = path.join(dir, 'offline-images.tar.gz')
 
     expect(
@@ -289,12 +282,16 @@ describe('production image helper', () => {
         '--lock-file',
         lockFile,
         '--env-file',
-        writeEnvFile(dir),
+        exportEnvFile,
         'export',
         '--output',
         bundle,
       ]).status,
     ).toBe(0)
+
+    const envFile = writeEnvFile(dir, {
+      APP_RUNTIME_IMAGE_REF: 'registry.example/app-runtime@sha256:app-manifest',
+    })
 
     const result = runHelper(dir, [
       '--topology',

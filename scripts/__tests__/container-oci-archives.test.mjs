@@ -10,11 +10,17 @@ import {
   verifyOciArchives,
 } from '../containers/export-oci-archives.mjs'
 
-function service(name, image, tag, imageId) {
+function service(
+  name,
+  image,
+  tag,
+  imageId,
+  manifestDigest = `${imageId}-manifest`,
+) {
   return {
     imageId,
     image,
-    manifestDigest: imageId,
+    manifestDigest,
     name,
     role: name === 'db-job' ? 'database-job' : 'application',
     source: 'pr-build',
@@ -60,7 +66,8 @@ function fakeFs() {
 
 describe('container OCI archive helpers', () => {
   it('plans project image archive paths and parses CLI options', () => {
-    const plans = buildArchivePlans(stackLock(), 'tmp/oci')
+    const lock = stackLock()
+    const plans = buildArchivePlans(lock, 'tmp/oci')
 
     expect(parseArgs(['export', '--lock-file', 'lock.json'])).toMatchObject({
       command: 'export',
@@ -76,6 +83,10 @@ describe('container OCI archive helpers', () => {
     expect(imageReference(stackLock().services[0])).toBe(
       'localhost/kravhantering/app-runtime:pr-7-99-deadbeef',
     )
+    expect(lock.services[0]).toMatchObject({
+      imageId: 'sha256:app-runtime',
+      manifestDigest: 'sha256:app-runtime-manifest',
+    })
     expect(plans).toEqual([
       {
         archivePath: 'tmp/oci/app-runtime.oci.tar.gz',

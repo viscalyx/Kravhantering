@@ -184,7 +184,9 @@ export function collectContainerStatus(options = {}) {
     if (!fsImpl.existsSync(path.resolve(cwd, lockFile))) {
       return { services: [] }
     }
-    const parsed = JSON.parse(fsImpl.readFileSync(path.resolve(cwd, lockFile), 'utf8'))
+    const parsed = JSON.parse(
+      fsImpl.readFileSync(path.resolve(cwd, lockFile), 'utf8'),
+    )
     assertStackLockSchema(parsed, lockFile)
     return parsed
   })()

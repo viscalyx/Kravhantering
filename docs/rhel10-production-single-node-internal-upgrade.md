@@ -40,9 +40,10 @@ configuration change.
    curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
    curl -fLO "${RELEASE_DOWNLOAD_URL}/container-stack.lock.json"
    sha256sum -c "kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
-   jq -r \
-     '.services[] | "\(.name) manifest=\(.manifestDigest) imageId=\(.imageId)"' \
-     container-stack.lock.json
+   jq -r '
+     .services[]
+     | "\(.name) manifest=\(.manifestDigest) imageId=\(.imageId)"
+   ' container-stack.lock.json
    ```
 
    Ensure the site has approved image refs for every single-node image named in
@@ -118,7 +119,7 @@ configuration change.
    update_ref NGINX_IMAGE_REF \
      "registry.example.internal/nginx:stable-alpine"
    update_ref SQLSERVER_IMAGE_REF \
-     "registry.example.internal/mssql/server:2022-latest"
+     "registry.example.internal/mssql/server:2025-latest"
    update_ref KEYCLOAK_IMAGE_REF \
      "registry.example.internal/keycloak/keycloak:26.2"
    ```

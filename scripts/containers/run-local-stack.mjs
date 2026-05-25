@@ -325,6 +325,37 @@ function inspectImageId(image, options = {}) {
   return id.startsWith('sha256:') ? id : `sha256:${id}`
 }
 
+function normalizeDigest(value) {
+  const digest = readNonEmpty(value)
+  if (!digest || digest === '<none>' || digest === '<no value>') {
+    return undefined
+  }
+  const sha = digest.includes('@')
+    ? digest.slice(digest.lastIndexOf('@') + 1)
+    : digest
+  return sha.startsWith('sha256:') ? sha : `sha256:${sha}`
+}
+
+function inspectImageDigest(command, image, format, options = {}) {
+  return normalizeDigest(
+    execText(command, ['image', 'inspect', image, '--format', format], options),
+  )
+}
+
+function inspectManifestDigest(image, options = {}) {
+  for (const command of ['podman', 'docker']) {
+    for (const format of ['{{.Digest}}', '{{index .RepoDigests 0}}']) {
+      try {
+        const digest = inspectImageDigest(command, image, format, options)
+        if (digest) return digest
+      } catch {
+        // Try the next inspect source/format before failing.
+      }
+    }
+  }
+  throw new Error(`Unable to inspect manifest digest for ${image}.`)
+}
+
 function readStackLock(config, options = {}) {
   const cwd = options.cwd ?? process.cwd()
   const fsImpl = options.fsImpl ?? fs
@@ -710,7 +741,15 @@ async function up(config, options = {}) {
       runtimeConfig.appRuntimeImageReference,
       options,
     )
+    const appManifestDigest = inspectManifestDigest(
+      runtimeConfig.appRuntimeImageReference,
+      options,
+    )
     const dbJobImageId = inspectImageId(
+      runtimeConfig.dbJobImageReference,
+      options,
+    )
+    const dbJobManifestDigest = inspectManifestDigest(
       runtimeConfig.dbJobImageReference,
       options,
     )
@@ -726,7 +765,7 @@ async function up(config, options = {}) {
         '--app-tag',
         runtimeConfig.appRuntimeImage.tag,
         '--app-manifest-digest',
-        appImageId,
+        appManifestDigest,
         '--app-image-id',
         appImageId,
         '--app-source',
@@ -736,7 +775,7 @@ async function up(config, options = {}) {
         '--db-job-tag',
         runtimeConfig.dbJobImage.tag,
         '--db-job-manifest-digest',
-        dbJobImageId,
+        dbJobManifestDigest,
         '--db-job-image-id',
         dbJobImageId,
         '--db-job-source',
