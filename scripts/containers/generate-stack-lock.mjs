@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export const STACK_LOCK_SCHEMA_VERSION = 1
+export const STACK_LOCK_SCHEMA_VERSION = 2
 export const DEFAULT_STACK_LOCK_PATH = 'container-stack.lock.json'
 export const GENERATED_BY = 'scripts/containers/generate-stack-lock.mjs'
 
@@ -27,12 +27,13 @@ export const SERVICE_FIELDS = [
   'role',
   'image',
   'tag',
-  'digest',
+  'manifestDigest',
+  'imageId',
   'source',
 ]
 
 const USAGE = `Usage:
-  node scripts/containers/generate-stack-lock.mjs generate --app-digest <digest> --db-job-digest <digest> [options]
+  node scripts/containers/generate-stack-lock.mjs generate --app-manifest-digest <digest> --app-image-id <id> --db-job-manifest-digest <digest> --db-job-image-id <id> [options]
   node scripts/containers/generate-stack-lock.mjs check [--lock-file container-stack.lock.json]
 
 Generate options:
@@ -42,12 +43,16 @@ Generate options:
   --generated-at <iso-time>    Deterministic generation timestamp
   --app-image <image>          app-runtime image name
   --app-tag <tag>              app-runtime tag metadata
-  --app-digest <digest>        app-runtime digest
+  --app-manifest-digest <digest>
+                               app-runtime registry manifest digest
+  --app-image-id <id>          app-runtime image ID
   --app-source <source>        app-runtime source metadata
                                 --app-runtime-* aliases are also accepted
   --db-job-image <image>       db-job image name
   --db-job-tag <tag>           db-job tag metadata
-  --db-job-digest <digest>     db-job digest
+  --db-job-manifest-digest <digest>
+                               db-job registry manifest digest
+  --db-job-image-id <id>       db-job image ID
   --db-job-source <source>     db-job source metadata`
 
 function readNonEmpty(value) {
@@ -67,6 +72,17 @@ function writeTextFile(filePath, content, fsImpl = fs) {
 
 export function formatStackLockJson(stackLock) {
   return `${JSON.stringify(stackLock, null, 2)}\n`
+}
+
+export function assertStackLockSchema(
+  stackLock,
+  context = 'container-stack.lock.json',
+) {
+  if (stackLock?.schemaVersion !== STACK_LOCK_SCHEMA_VERSION) {
+    throw new Error(
+      `${context} must use schemaVersion ${STACK_LOCK_SCHEMA_VERSION}.`,
+    )
+  }
 }
 
 export function normalizeServiceRecord(record, context) {
@@ -99,7 +115,8 @@ function createProjectService(name, role, options) {
       role,
       image: options.image,
       tag: options.tag,
-      digest: options.digest,
+      manifestDigest: options.manifestDigest,
+      imageId: options.imageId,
       source: options.source,
     },
     name,
@@ -160,6 +177,7 @@ function assertExactServiceMatch(actual, expected) {
 }
 
 export function checkVendorLocks(stackLock, vendorLocks) {
+  assertStackLockSchema(stackLock)
   if (!Array.isArray(stackLock.services)) {
     throw new Error('container-stack.lock.json must contain services[].')
   }
@@ -249,14 +267,23 @@ function projectServiceOptions(prefix, options, env, defaults) {
         prefix === 'app' ? 'APP_RUNTIME_TAG' : '',
       ]) ??
       defaults.tag,
-    digest:
+    manifestDigest:
       envValue(
         options,
-        optionPrefixes.map(name => `${name}-digest`),
+        optionPrefixes.map(name => `${name}-manifest-digest`),
       ) ??
       envValue(env, [
-        `${envPrefix}_DIGEST`,
-        prefix === 'app' ? 'APP_RUNTIME_DIGEST' : '',
+        `${envPrefix}_MANIFEST_DIGEST`,
+        prefix === 'app' ? 'APP_RUNTIME_MANIFEST_DIGEST' : '',
+      ]),
+    imageId:
+      envValue(
+        options,
+        optionPrefixes.map(name => `${name}-image-id`),
+      ) ??
+      envValue(env, [
+        `${envPrefix}_IMAGE_ID`,
+        prefix === 'app' ? 'APP_RUNTIME_IMAGE_ID' : '',
       ]),
     source:
       envValue(

@@ -2,6 +2,7 @@ import childProcess from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { assertStackLockSchema } from './generate-stack-lock.mjs'
 
 export const DEFAULT_COMPOSE_FILE = 'container-stack.compose.yml'
 export const DEFAULT_LOCK_FILE = 'container-stack.lock.json'
@@ -85,7 +86,7 @@ export function buildStatusDocument(status) {
     'Images:',
     ...status.images.map(
       service =>
-        `- ${service.name}: ${service.image}:${service.tag} ${service.digest}`,
+        `- ${service.name}: ${service.image}:${service.tag} manifest ${service.manifestDigest} image ID ${service.imageId}`,
     ),
     '',
     'Mounted paths:',
@@ -179,9 +180,14 @@ export function collectContainerStatus(options = {}) {
   const composeText = fsImpl.existsSync(path.resolve(cwd, composeFile))
     ? fsImpl.readFileSync(path.resolve(cwd, composeFile), 'utf8')
     : ''
-  const stackLock = fsImpl.existsSync(path.resolve(cwd, lockFile))
-    ? JSON.parse(fsImpl.readFileSync(path.resolve(cwd, lockFile), 'utf8'))
-    : { services: [] }
+  const stackLock = (() => {
+    if (!fsImpl.existsSync(path.resolve(cwd, lockFile))) {
+      return { services: [] }
+    }
+    const parsed = JSON.parse(fsImpl.readFileSync(path.resolve(cwd, lockFile), 'utf8'))
+    assertStackLockSchema(parsed, lockFile)
+    return parsed
+  })()
   let psText = ''
   let ps = []
 

@@ -17,13 +17,14 @@ function writeJson(filePath, value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`)
 }
 
-function vendorLock(name, role, image, tag, digest) {
+function vendorLock(name, role, image, tag, manifestDigest, imageId) {
   return {
     name,
     role,
     image,
     tag,
-    digest,
+    manifestDigest,
+    imageId,
     source: `https://example.test/${name}`,
   }
 }
@@ -42,7 +43,8 @@ function makeProject() {
       'tls-proxy',
       'docker.io/library/nginx',
       'stable',
-      'sha256:nginx',
+      'sha256:nginx-manifest',
+      'sha256:nginx-image',
     ),
   )
   writeJson(
@@ -52,7 +54,8 @@ function makeProject() {
       'database',
       'mcr.microsoft.com/mssql/server',
       '2025-latest',
-      'sha256:sqlserver',
+      'sha256:sqlserver-manifest',
+      'sha256:sqlserver-image',
     ),
   )
   writeJson(
@@ -62,7 +65,8 @@ function makeProject() {
       'identity-provider',
       'quay.io/keycloak/keycloak',
       '26.6.1',
-      'sha256:keycloak',
+      'sha256:keycloak-manifest',
+      'sha256:keycloak-image',
     ),
   )
   return dir
@@ -82,11 +86,13 @@ describe('container stack lock generation', () => {
       cwd,
       env: {},
       cliOptions: {
-        'app-runtime-digest': 'sha256:app',
+        'app-runtime-image-id': 'sha256:app-image',
         'app-runtime-image': 'localhost/kravhantering/app-runtime',
+        'app-runtime-manifest-digest': 'sha256:app-manifest',
         'app-runtime-tag': 'pr-1-run-deadbeef',
-        'db-job-digest': 'sha256:dbjob',
+        'db-job-image-id': 'sha256:dbjob-image',
         'db-job-image': 'localhost/kravhantering/db-job',
+        'db-job-manifest-digest': 'sha256:dbjob-manifest',
         'db-job-tag': 'pr-1-run-deadbeef',
         'generated-at': '2026-05-22T10:00:00.000Z',
         'release-version': '0.1.0-pr.1',
@@ -95,7 +101,7 @@ describe('container stack lock generation', () => {
     })
 
     expect(stackLock).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       releaseVersion: '0.1.0-pr.1',
       commitSha: 'deadbeef',
       generatedAt: '2026-05-22T10:00:00.000Z',
@@ -107,7 +113,8 @@ describe('container stack lock generation', () => {
         role: 'application',
         image: 'localhost/kravhantering/app-runtime',
         tag: 'pr-1-run-deadbeef',
-        digest: 'sha256:app',
+        manifestDigest: 'sha256:app-manifest',
+        imageId: 'sha256:app-image',
         source: 'local-build',
       },
       {
@@ -115,7 +122,8 @@ describe('container stack lock generation', () => {
         role: 'database-job',
         image: 'localhost/kravhantering/db-job',
         tag: 'pr-1-run-deadbeef',
-        digest: 'sha256:dbjob',
+        manifestDigest: 'sha256:dbjob-manifest',
+        imageId: 'sha256:dbjob-image',
         source: 'local-build',
       },
       ...readVendorLocks({ cwd }),
@@ -130,29 +138,35 @@ describe('container stack lock generation', () => {
         'tls-proxy',
         'docker.io/library/nginx',
         'stable',
-        'a',
+        'sha256:nginx-manifest',
+        'sha256:nginx-image',
       ),
     ]
 
-    expect(() => checkVendorLocks({ services: [] }, vendorLocks)).toThrow(
-      'missing "nginx"',
-    )
+    expect(() =>
+      checkVendorLocks({ schemaVersion: 1, services: [] }, vendorLocks),
+    ).toThrow('must use schemaVersion 2')
+    expect(() =>
+      checkVendorLocks({ schemaVersion: 2, services: [] }, vendorLocks),
+    ).toThrow('missing "nginx"')
     expect(() =>
       checkVendorLocks(
         {
+          schemaVersion: 2,
           services: [
             {
               ...vendorLocks[0],
-              digest: 'different',
+              manifestDigest: 'different',
             },
           ],
         },
         vendorLocks,
       ),
-    ).toThrow('differs from image.lock.json at "digest"')
+    ).toThrow('differs from image.lock.json at "manifestDigest"')
     expect(() =>
       checkVendorLocks(
         {
+          schemaVersion: 2,
           services: [
             {
               ...vendorLocks[0],
@@ -172,10 +186,14 @@ describe('container stack lock generation', () => {
     const generateExitCode = await main(
       [
         'generate',
-        '--app-digest',
-        'sha256:app',
-        '--db-job-digest',
-        'sha256:dbjob',
+        '--app-manifest-digest',
+        'sha256:app-manifest',
+        '--app-image-id',
+        'sha256:app-image',
+        '--db-job-manifest-digest',
+        'sha256:dbjob-manifest',
+        '--db-job-image-id',
+        'sha256:dbjob-image',
         '--generated-at',
         '2026-05-22T11:00:00.000Z',
       ],

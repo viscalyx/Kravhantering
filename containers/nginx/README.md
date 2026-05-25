@@ -53,13 +53,14 @@ nginx has no env file in this phase. These mounted values are sensitive:
 
 ## Image Lock Updates
 
-`image.lock.json` pins the upstream image by tag and digest.
+`image.lock.json` pins the upstream image by tag, manifest digest and image ID.
 
 To update it manually:
 
 1. Choose the new official nginx tag.
-2. Resolve the current manifest digest from Docker Hub.
-3. Update `tag` and `digest` together in `image.lock.json`.
+2. Resolve the current manifest digest and image ID from Docker Hub.
+3. Update `tag`, `manifestDigest` and `imageId` together in
+   `image.lock.json`.
 4. Run `npm run container:stack-lock:check` after generating a stack lock to
    verify that the stack lock copies this vendor entry exactly.
 5. Verify the updated image with the local release-smoke flow:

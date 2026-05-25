@@ -3,6 +3,7 @@
   "role": "database",
   "image": "mcr.microsoft.com/mssql/server",
   "tag": "2025-latest",
-  "digest": "sha256:cee0f4db03b5192de777d37a22455949d1c2c230bb48c0a732b88b0933117a72",
+  "manifestDigest": "sha256:cee0f4db03b5192de777d37a22455949d1c2c230bb48c0a732b88b0933117a72",
+  "imageId": "sha256:964e981595960c1df0599ac318130d8f67c3518960755a7c0f03909dcc1dae5a",
   "source": "https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/about"
 }

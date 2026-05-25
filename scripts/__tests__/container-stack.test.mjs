@@ -165,10 +165,12 @@ describe('container stack helpers', () => {
         readFileSync: vi.fn(filePath =>
           String(filePath).endsWith('custom-stack.lock.json')
             ? JSON.stringify({
+                schemaVersion: 2,
                 services: [
                   {
-                    digest: 'sha256:nginx',
+                    imageId: 'sha256:nginx-image',
                     image: 'docker.io/library/nginx',
+                    manifestDigest: 'sha256:nginx',
                     name: 'nginx',
                   },
                 ],
@@ -391,8 +393,9 @@ describe('container stack helpers', () => {
       generatedAt: '2026-05-22T00:00:00.000Z',
       images: [
         {
-          digest: 'sha256:app',
+          imageId: 'sha256:app-image',
           image: 'localhost/kravhantering/app-runtime',
+          manifestDigest: 'sha256:app-manifest',
           name: 'app-runtime',
           tag: 'local',
         },
@@ -519,10 +522,12 @@ describe('container stack helpers', () => {
         readFileSync: vi.fn(filePath =>
           String(filePath).endsWith('container-stack.lock.json')
             ? JSON.stringify({
+                schemaVersion: 2,
                 services: [
                   {
-                    digest: 'sha256:nginx',
+                    imageId: 'sha256:nginx-image',
                     image: 'docker.io/library/nginx',
+                    manifestDigest: 'sha256:nginx',
                     name: 'nginx',
                   },
                 ],
@@ -606,10 +611,12 @@ describe('container stack helpers', () => {
         readFileSync: vi.fn(filePath =>
           String(filePath).endsWith('container-stack.lock.json')
             ? JSON.stringify({
+                schemaVersion: 2,
                 services: [
                   {
-                    digest: 'sha256:nginx',
+                    imageId: 'sha256:nginx-image',
                     image: 'docker.io/library/nginx',
+                    manifestDigest: 'sha256:nginx',
                     name: 'nginx',
                   },
                 ],
@@ -648,7 +655,7 @@ describe('container stack helpers', () => {
     expect(appRuntimeIndex).toBeGreaterThan(seedDemoIndex)
   })
 
-  it('uses digest-locked release images from the stack lock without local build or load', async () => {
+  it('uses manifest-locked release images from the stack lock without local build or load', async () => {
     const commands = []
     const spawned = []
     const dependencies = {
@@ -673,24 +680,28 @@ describe('container stack helpers', () => {
         readFileSync: vi.fn(filePath =>
           String(filePath).endsWith('container-stack.lock.json')
             ? JSON.stringify({
+                schemaVersion: 2,
                 services: [
                   {
-                    digest: 'sha256:app-runtime-release',
+                    imageId: 'sha256:app-runtime-image',
                     image: 'ghcr.io/viscalyx/kravhantering-app-runtime',
+                    manifestDigest: 'sha256:app-runtime-release',
                     name: 'app-runtime',
                     source: 'ghcr-release',
                     tag: '1.2.3',
                   },
                   {
-                    digest: 'sha256:db-job-release',
+                    imageId: 'sha256:db-job-image',
                     image: 'ghcr.io/viscalyx/kravhantering-db-job',
+                    manifestDigest: 'sha256:db-job-release',
                     name: 'db-job',
                     source: 'ghcr-release',
                     tag: '1.2.3',
                   },
                   {
-                    digest: 'sha256:nginx',
+                    imageId: 'sha256:nginx-image',
                     image: 'docker.io/library/nginx',
+                    manifestDigest: 'sha256:nginx',
                     name: 'nginx',
                   },
                 ],

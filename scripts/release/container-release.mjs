@@ -7,15 +7,16 @@ import {
   DEFAULT_DEMO_USERS_PATH,
   DEFAULT_DEV_REALM_PATH,
 } from '../keycloak-demo-users.mjs'
+import { assertStackLockSchema } from '../containers/generate-stack-lock.mjs'
 
 export const APP_RUNTIME_PACKAGE = 'kravhantering-app-runtime'
 export const DB_JOB_PACKAGE = 'kravhantering-db-job'
 export const DEFAULT_RELEASE_OUTPUT_DIR = 'tmp/container-release-artifacts'
-export const DEPLOYMENT_BUNDLE_SCHEMA_VERSION = 1
+export const DEPLOYMENT_BUNDLE_SCHEMA_VERSION = 2
 
 const USAGE = `Usage:
   node scripts/release/container-release.mjs plan --gitversion-json <path> --output <path> [--github-env <path>] [--changed-files <path>]
-  node scripts/release/container-release.mjs digests --plan <path> --app-metadata <path> --db-job-metadata <path> --output <path> [--github-env <path>]
+  node scripts/release/container-release.mjs identities --plan <path> --app-metadata <path> --db-job-metadata <path> --output <path> [--github-env <path>]
   node scripts/release/container-release.mjs notes --plan <path> --metadata <path> --hashes <path> --output <path>
   node scripts/release/container-release.mjs bundle --plan <path> --metadata <path> --stack-lock <path> --output-dir <path> [--build-json <path>] [--hashes <path>] [--sbom-dir <path>]
   node scripts/release/container-release.mjs ensure-tag --plan <path>`
@@ -87,6 +88,7 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
   { source: 'containers/production/nginx', target: 'nginx' },
   { source: 'containers/production/sqlserver', target: 'sqlserver' },
   { source: 'containers/production/systemd', target: 'systemd' },
+  { source: 'containers/production/bin', target: 'bin' },
   {
     source: 'scripts/keycloak-demo-users.mjs',
     target: 'scripts/keycloak-demo-users.mjs',
@@ -360,14 +362,27 @@ function readChangedFilesFile(filePath, fsImpl = fs) {
   return changedFilesFromText(fsImpl.readFileSync(filePath, 'utf8'))
 }
 
-export function extractBuildxDigest(metadata) {
-  const digest =
+export function extractBuildxManifestDigest(metadata) {
+  const manifestDigest =
     readNonEmpty(metadata?.['containerimage.digest']) ??
     readNonEmpty(metadata?.containerimage?.digest)
-  if (!digest) {
+  if (!manifestDigest) {
     throw new Error('Buildx metadata is missing containerimage.digest.')
   }
-  return digest
+  return manifestDigest
+}
+
+export function extractBuildxImageId(metadata) {
+  const imageId =
+    readNonEmpty(metadata?.['containerimage.config.digest']) ??
+    readNonEmpty(metadata?.containerimage?.config?.digest) ??
+    readNonEmpty(metadata?.containerimage?.configDigest)
+  if (!imageId) {
+    throw new Error(
+      'Buildx metadata is missing containerimage.config.digest.',
+    )
+  }
+  return imageId
 }
 
 export function createReleaseMetadata(
@@ -375,20 +390,24 @@ export function createReleaseMetadata(
   appBuildxMetadata,
   dbJobBuildxMetadata,
 ) {
-  const appRuntimeDigest = extractBuildxDigest(appBuildxMetadata)
-  const dbJobDigest = extractBuildxDigest(dbJobBuildxMetadata)
+  const appRuntimeManifestDigest = extractBuildxManifestDigest(appBuildxMetadata)
+  const appRuntimeImageId = extractBuildxImageId(appBuildxMetadata)
+  const dbJobManifestDigest = extractBuildxManifestDigest(dbJobBuildxMetadata)
+  const dbJobImageId = extractBuildxImageId(dbJobBuildxMetadata)
   return {
     appRuntime: {
-      digest: appRuntimeDigest,
+      imageId: appRuntimeImageId,
       image: plan.appRuntimeImage,
-      ref: `${plan.appRuntimeImage}@${appRuntimeDigest}`,
+      manifestDigest: appRuntimeManifestDigest,
+      manifestRef: `${plan.appRuntimeImage}@${appRuntimeManifestDigest}`,
       tags: plan.appRuntimeTags,
     },
     commitSha: plan.commitSha,
     dbJob: {
-      digest: dbJobDigest,
+      imageId: dbJobImageId,
       image: plan.dbJobImage,
-      ref: `${plan.dbJobImage}@${dbJobDigest}`,
+      manifestDigest: dbJobManifestDigest,
+      manifestRef: `${plan.dbJobImage}@${dbJobManifestDigest}`,
       tags: plan.dbJobTags,
     },
     generatedAt: new Date().toISOString(),
@@ -399,10 +418,12 @@ export function createReleaseMetadata(
 
 export function releaseMetadataEnv(metadata) {
   return {
-    APP_RUNTIME_DIGEST: metadata.appRuntime.digest,
-    APP_RUNTIME_DIGEST_REF: metadata.appRuntime.ref,
-    DB_JOB_DIGEST: metadata.dbJob.digest,
-    DB_JOB_DIGEST_REF: metadata.dbJob.ref,
+    APP_RUNTIME_IMAGE_ID: metadata.appRuntime.imageId,
+    APP_RUNTIME_MANIFEST_DIGEST: metadata.appRuntime.manifestDigest,
+    APP_RUNTIME_MANIFEST_DIGEST_REF: metadata.appRuntime.manifestRef,
+    DB_JOB_IMAGE_ID: metadata.dbJob.imageId,
+    DB_JOB_MANIFEST_DIGEST: metadata.dbJob.manifestDigest,
+    DB_JOB_MANIFEST_DIGEST_REF: metadata.dbJob.manifestRef,
   }
 }
 
@@ -415,9 +436,13 @@ export function deploymentBundleArchiveName(version) {
   return `${deploymentBundleBaseName(version)}.tar.gz`
 }
 
-function digestRef(service) {
-  if (!service?.image || !service.digest) return undefined
-  return `${service.image}@${service.digest}`
+function manifestRef(service) {
+  if (!service?.image || !service.manifestDigest) return undefined
+  return `${service.image}@${service.manifestDigest}`
+}
+
+function imageId(service) {
+  return readNonEmpty(service?.imageId)
 }
 
 function serviceByName(stackLock, name) {
@@ -431,6 +456,7 @@ export function createDeploymentBundleManifest({
   plan,
   stackLock,
 } = {}) {
+  assertStackLockSchema(stackLock)
   const timestamp = readNonEmpty(generatedAt) ?? new Date().toISOString()
   const services = {
     appRuntime: serviceByName(stackLock, 'app-runtime'),
@@ -451,11 +477,19 @@ export function createDeploymentBundleManifest({
       workflowRun: `https://github.com/${plan.repository}/actions/runs/${plan.runId}`,
     },
     images: {
-      appRuntime: metadata.appRuntime?.ref ?? digestRef(services.appRuntime),
-      dbJob: metadata.dbJob?.ref ?? digestRef(services.dbJob),
-      nginx: digestRef(services.nginx),
-      sqlserver: digestRef(services.sqlserver),
-      keycloak: digestRef(services.keycloak),
+      appRuntime:
+        metadata.appRuntime?.manifestRef ?? manifestRef(services.appRuntime),
+      dbJob: metadata.dbJob?.manifestRef ?? manifestRef(services.dbJob),
+      nginx: manifestRef(services.nginx),
+      sqlserver: manifestRef(services.sqlserver),
+      keycloak: manifestRef(services.keycloak),
+    },
+    imageIds: {
+      appRuntime: metadata.appRuntime?.imageId ?? imageId(services.appRuntime),
+      dbJob: metadata.dbJob?.imageId ?? imageId(services.dbJob),
+      nginx: imageId(services.nginx),
+      sqlserver: imageId(services.sqlserver),
+      keycloak: imageId(services.keycloak),
     },
     supportedTopologies: [
       'app-node-external-sql-external-idp',
@@ -898,8 +932,8 @@ export function renderReleaseNotes(plan, metadata, hashesContent, changelog) {
     ...(exactCommitRange ? [exactCommitRange, ''] : []),
     '## Public GHCR Images',
     '',
-    `- app-runtime: \`${metadata.appRuntime.ref}\``,
-    `- db-job: \`${metadata.dbJob.ref}\``,
+    `- app-runtime: \`${metadata.appRuntime.manifestRef}\``,
+    `- db-job: \`${metadata.dbJob.manifestRef}\``,
     '',
     '## Tags',
     '',
@@ -1008,7 +1042,7 @@ export async function main(args, dependencies = {}) {
       return 0
     }
 
-    if (command === 'digests') {
+    if (command === 'identities' || command === 'digests') {
       const plan = readJsonFile(options.plan, fsImpl)
       const metadata = createReleaseMetadata(
         plan,

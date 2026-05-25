@@ -7,7 +7,7 @@ runtime Compose file from a `container-stack.lock.json` artifact instead.
 ## Generated Files
 
 Generate a stack lock after `app-runtime` and `db-job` have been built and
-their image digests are known:
+their manifest digests and image IDs are known:
 
 <!-- markdownlint-disable MD013 -->
 ```bash
@@ -16,10 +16,12 @@ npm run container:stack-lock:generate -- \
   --commit-sha "$(git rev-parse HEAD)" \
   --app-image localhost/kravhantering/app-runtime \
   --app-tag pr-1-run-deadbeef \
-  --app-digest sha256:<app-runtime-digest> \
+  --app-manifest-digest sha256:<app-runtime-manifest-digest> \
+  --app-image-id sha256:<app-runtime-image-id> \
   --db-job-image localhost/kravhantering/db-job \
   --db-job-tag pr-1-run-deadbeef \
-  --db-job-digest sha256:<db-job-digest>
+  --db-job-manifest-digest sha256:<db-job-manifest-digest> \
+  --db-job-image-id sha256:<db-job-image-id>
 ```
 <!-- markdownlint-enable MD013 -->
 
@@ -30,14 +32,14 @@ npm run container:stack-lock:check
 ```
 
 Generate a PR-mode Compose file with local project image tags and
-digest-locked vendor images:
+manifest-locked vendor images:
 
 ```bash
 npm run container:compose:generate:pr
 ```
 
 Generate a release-mode Compose file where `app-runtime`, `db-job`, nginx,
-SQL Server and Keycloak are all digest-locked:
+SQL Server and Keycloak are all manifest-locked:
 
 ```bash
 npm run container:compose:generate:release
@@ -155,7 +157,7 @@ npm run container:oci:verify -- \
 ```
 
 Verification loads each archive into an isolated Podman store and compares the
-loaded image ID with the digest recorded in `container-stack.lock.json`.
+loaded image ID with the `imageId` recorded in `container-stack.lock.json`.
 Workflow uploads keep OCI archives separate from the longer-lived Playwright,
 status, Compose, stack-lock, build-metadata and hash artifacts.
 

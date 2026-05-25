@@ -21,7 +21,7 @@ JSON during upgrade. The first-install template-copy steps are intentionally
 not part of this checklist unless the release notes require a specific
 configuration change.
 
-1. Confirm the target release bundle, checksum and mirrored image digests.
+1. Confirm the target release bundle, checksum and locked image identities.
    Download the target bundle and checksum from the approved release source:
 
    ```bash
@@ -40,11 +40,14 @@ configuration change.
    curl -fLO "${RELEASE_DOWNLOAD_URL}/kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
    curl -fLO "${RELEASE_DOWNLOAD_URL}/container-stack.lock.json"
    sha256sum -c "kravhantering-production-deploy-${VERSION}.tar.gz.sha256"
-   jq -r '.services[] | "\(.name) \(.digest)"' container-stack.lock.json
+   jq -r \
+     '.services[] | "\(.name) manifest=\(.manifestDigest) imageId=\(.imageId)"' \
+     container-stack.lock.json
    ```
 
-   Verify that the internal registry has digest-preserved mirrors for every
-   image named in the target release `container-stack.lock.json`.
+   Ensure the site has approved image refs for every single-node image named in
+   the target release lock. Internal-registry refs do not need to preserve the
+   upstream manifest digest, but they must resolve to the locked `imageId`.
 
 2. Confirm a tested SQL Server backup, volume snapshot or restore point.
    Complete the site-approved restore procedure before the window begins and
@@ -99,62 +102,60 @@ configuration change.
    readlink -f /opt/kravhantering/current
    ```
 
-7. Update `/etc/kravhantering/release.env` image refs to the new digests.
-   Load the target digests from the new release lock file:
+7. Update `/etc/kravhantering/release.env` image refs and verify image IDs.
+   Internal registry refs normally use tags that include the release version or
+   a site-controlled promotion tag:
 
    ```bash
-   LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
-   service_digest() {
-     jq -r --arg name "$1" \
-       '.services[] | select(.name == $name) | .digest' "$LOCK_FILE"
-   }
-
-   APP_RUNTIME_DIGEST="$(service_digest app-runtime)"
-   DB_JOB_DIGEST="$(service_digest db-job)"
-   NGINX_DIGEST="$(service_digest nginx)"
-   SQLSERVER_DIGEST="$(service_digest sqlserver)"
-   KEYCLOAK_DIGEST="$(service_digest keycloak)"
-
    update_ref() {
      sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
    }
-   ```
 
-   Update the image refs for the internal registry mirror:
-
-   ```bash
    update_ref APP_RUNTIME_IMAGE_REF \
-     "registry.example.internal/kravhantering-app-runtime@${APP_RUNTIME_DIGEST}"
+     "registry.example.internal/kravhantering-app-runtime:${VERSION}"
    update_ref DB_JOB_IMAGE_REF \
-     "registry.example.internal/kravhantering-db-job@${DB_JOB_DIGEST}"
+     "registry.example.internal/kravhantering-db-job:${VERSION}"
    update_ref NGINX_IMAGE_REF \
-     "registry.example.internal/nginx@${NGINX_DIGEST}"
+     "registry.example.internal/nginx:stable-alpine"
    update_ref SQLSERVER_IMAGE_REF \
-     "registry.example.internal/mssql/server@${SQLSERVER_DIGEST}"
+     "registry.example.internal/mssql/server:2022-latest"
    update_ref KEYCLOAK_IMAGE_REF \
-     "registry.example.internal/keycloak/keycloak@${KEYCLOAK_DIGEST}"
+     "registry.example.internal/keycloak/keycloak:26.2"
    ```
 
    Opt-in: if the site is explicitly approved to pull from public upstream
-   registries, use the source registry refs instead:
+   registries, use the locked `manifestDigest` values from the release lock:
 
    ```bash
+   LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
+   service_manifest_digest() {
+     jq -r --arg name "$1" \
+       '.services[] | select(.name == $name) | .manifestDigest' "$LOCK_FILE"
+   }
+
+   APP_RUNTIME_MANIFEST_DIGEST="$(service_manifest_digest app-runtime)"
+   DB_JOB_MANIFEST_DIGEST="$(service_manifest_digest db-job)"
+   NGINX_MANIFEST_DIGEST="$(service_manifest_digest nginx)"
+   SQLSERVER_MANIFEST_DIGEST="$(service_manifest_digest sqlserver)"
+   KEYCLOAK_MANIFEST_DIGEST="$(service_manifest_digest keycloak)"
+
    update_ref APP_RUNTIME_IMAGE_REF \
-     "ghcr.io/viscalyx/kravhantering-app-runtime@${APP_RUNTIME_DIGEST}"
+     "ghcr.io/viscalyx/kravhantering-app-runtime@${APP_RUNTIME_MANIFEST_DIGEST}"
    update_ref DB_JOB_IMAGE_REF \
-     "ghcr.io/viscalyx/kravhantering-db-job@${DB_JOB_DIGEST}"
+     "ghcr.io/viscalyx/kravhantering-db-job@${DB_JOB_MANIFEST_DIGEST}"
    update_ref NGINX_IMAGE_REF \
-     "docker.io/library/nginx@${NGINX_DIGEST}"
+     "docker.io/library/nginx@${NGINX_MANIFEST_DIGEST}"
    update_ref SQLSERVER_IMAGE_REF \
-     "mcr.microsoft.com/mssql/server@${SQLSERVER_DIGEST}"
+     "mcr.microsoft.com/mssql/server@${SQLSERVER_MANIFEST_DIGEST}"
    update_ref KEYCLOAK_IMAGE_REF \
-     "quay.io/keycloak/keycloak@${KEYCLOAK_DIGEST}"
+     "quay.io/keycloak/keycloak@${KEYCLOAK_MANIFEST_DIGEST}"
    ```
 
-   Pull the target images as the service user:
+   Pull and verify the target images as the service user:
 
    ```bash
    sudo -iu kravhantering
+   cd /opt/kravhantering/current
    set -a
    . /etc/kravhantering/release.env
    set +a
@@ -165,8 +166,43 @@ configuration change.
    podman pull "$SQLSERVER_IMAGE_REF"
    podman pull "$KEYCLOAK_IMAGE_REF"
 
+   bin/kravhantering-images.sh --topology single-node \
+     --lock-file container-stack.lock.json \
+     --env-file /etc/kravhantering/release.env \
+     verify
+
    exit
    ```
+
+   Offline path: create the image transport bundle on a connected staging or
+   mirror host with the same target `release.env` refs, copy it to the offline
+   host, then load it instead of pulling:
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   bin/kravhantering-images.sh --topology single-node \
+     --lock-file container-stack.lock.json \
+     --env-file /etc/kravhantering/release.env \
+     export --output "/tmp/kravhantering-images-${VERSION}-single-node.tar.gz"
+   exit
+
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   bin/kravhantering-images.sh --topology single-node \
+     --lock-file container-stack.lock.json \
+     --env-file /etc/kravhantering/release.env \
+     load --bundle "/tmp/kravhantering-images-${VERSION}-single-node.tar.gz"
+   exit
+   ```
+
+   Offline load requires tag-style `release.env` refs so the loaded image IDs
+   can be tagged to the configured targets. On offline-only hosts, those refs
+   may use a non-resolvable local or fake registry hostname because
+   `podman tag` only creates local image metadata for the later
+   `release.env`-driven
+   `podman run` and `podman compose` commands. Do not run the pull block above
+   on an offline host that uses non-resolvable refs.
 
 8. Run the database jobs once from the new release.
    First ensure SQL Server, Keycloak and the Compose network exist for the new

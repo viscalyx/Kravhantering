@@ -33,7 +33,7 @@ The internal release repository must provide these files from the same release:
 - `release-metadata.json`
 - SBOM files for `app-runtime` and `db-job`
 
-The internal container registry must contain digest-preserved mirrors for:
+The site must provide approved runtime image refs for:
 
 - `app-runtime`
 - `db-job`
@@ -41,8 +41,15 @@ The internal container registry must contain digest-preserved mirrors for:
 - SQL Server
 - Keycloak
 
-Digest-preserved means the image digest in the internal registry is the same
-`sha256:<digest>` value listed in `container-stack.lock.json`.
+The refs normally point at an internal registry and usually use tags. They do
+not need to preserve the upstream manifest digest. Each configured ref must
+resolve to the locked `imageId` in `container-stack.lock.json` when inspected
+with Podman. Direct online pulls from upstream registries may use the locked
+`manifestDigest` refs when explicitly approved. Offline hosts must use tag-style
+refs so loaded images can be tagged to the local `release.env` targets. For
+offline-only hosts, the registry hostname in those refs may be a
+non-resolvable local or fake name because `podman tag` only creates local image
+metadata. Do not run `podman pull` for non-resolvable offline refs.
 
 ## Configuration BoM
 
@@ -309,66 +316,63 @@ sudo chcon -R -t container_file_t \
 
 ## Image References
 
-Set image references in `/etc/kravhantering/release.env` to internal registry
-refs that preserve the release digests from the installed release lock. First,
-load the locked digest values:
+Set image references in `/etc/kravhantering/release.env` to the site's
+approved runtime refs. Internal registry refs normally use tags that include
+the release version or a site-controlled promotion tag:
 
 ```bash
-LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
-service_digest() {
-  jq -r --arg name "$1" \
-    '.services[] | select(.name == $name) | .digest' "$LOCK_FILE"
-}
-
-APP_RUNTIME_DIGEST="$(service_digest app-runtime)"
-DB_JOB_DIGEST="$(service_digest db-job)"
-NGINX_DIGEST="$(service_digest nginx)"
-SQLSERVER_DIGEST="$(service_digest sqlserver)"
-KEYCLOAK_DIGEST="$(service_digest keycloak)"
-
 update_ref() {
   sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
 }
-```
 
-Default: update `/etc/kravhantering/release.env` for the internal registry
-mirror:
-
-```bash
 update_ref APP_RUNTIME_IMAGE_REF \
-  "registry.example.internal/kravhantering-app-runtime@${APP_RUNTIME_DIGEST}"
+  "registry.example.internal/kravhantering-app-runtime:${VERSION}"
 update_ref DB_JOB_IMAGE_REF \
-  "registry.example.internal/kravhantering-db-job@${DB_JOB_DIGEST}"
+  "registry.example.internal/kravhantering-db-job:${VERSION}"
 update_ref NGINX_IMAGE_REF \
-  "registry.example.internal/nginx@${NGINX_DIGEST}"
+  "registry.example.internal/nginx:stable-alpine"
 update_ref SQLSERVER_IMAGE_REF \
-  "registry.example.internal/mssql/server@${SQLSERVER_DIGEST}"
+  "registry.example.internal/mssql/server:2022-latest"
 update_ref KEYCLOAK_IMAGE_REF \
-  "registry.example.internal/keycloak/keycloak@${KEYCLOAK_DIGEST}"
+  "registry.example.internal/keycloak/keycloak:26.2"
 ```
 
 Opt-in: if the site is explicitly approved to pull from public upstream
 registries, the project images can use the official GHCR release packages.
-nginx, SQL Server and Keycloak are vendor images and should use the
-digest-locked upstream image refs from the release lock:
+nginx, SQL Server and Keycloak are vendor images and should use the locked
+`manifestDigest` refs from the release lock:
 
 ```bash
+LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
+service_manifest_digest() {
+  jq -r --arg name "$1" \
+    '.services[] | select(.name == $name) | .manifestDigest' "$LOCK_FILE"
+}
+
+APP_RUNTIME_MANIFEST_DIGEST="$(service_manifest_digest app-runtime)"
+DB_JOB_MANIFEST_DIGEST="$(service_manifest_digest db-job)"
+NGINX_MANIFEST_DIGEST="$(service_manifest_digest nginx)"
+SQLSERVER_MANIFEST_DIGEST="$(service_manifest_digest sqlserver)"
+KEYCLOAK_MANIFEST_DIGEST="$(service_manifest_digest keycloak)"
+
 update_ref APP_RUNTIME_IMAGE_REF \
-  "ghcr.io/viscalyx/kravhantering-app-runtime@${APP_RUNTIME_DIGEST}"
+  "ghcr.io/viscalyx/kravhantering-app-runtime@${APP_RUNTIME_MANIFEST_DIGEST}"
 update_ref DB_JOB_IMAGE_REF \
-  "ghcr.io/viscalyx/kravhantering-db-job@${DB_JOB_DIGEST}"
+  "ghcr.io/viscalyx/kravhantering-db-job@${DB_JOB_MANIFEST_DIGEST}"
 update_ref NGINX_IMAGE_REF \
-  "docker.io/library/nginx@${NGINX_DIGEST}"
+  "docker.io/library/nginx@${NGINX_MANIFEST_DIGEST}"
 update_ref SQLSERVER_IMAGE_REF \
-  "mcr.microsoft.com/mssql/server@${SQLSERVER_DIGEST}"
+  "mcr.microsoft.com/mssql/server@${SQLSERVER_MANIFEST_DIGEST}"
 update_ref KEYCLOAK_IMAGE_REF \
-  "quay.io/keycloak/keycloak@${KEYCLOAK_DIGEST}"
+  "quay.io/keycloak/keycloak@${KEYCLOAK_MANIFEST_DIGEST}"
 ```
 
-Pull the images as the service user:
+Pull or verify the images as the service user. For internal registry or direct
+online pulls:
 
 ```bash
 sudo -iu kravhantering
+cd /opt/kravhantering/current
 set -a
 . /etc/kravhantering/release.env
 set +a
@@ -379,8 +383,46 @@ podman pull "$NGINX_IMAGE_REF"
 podman pull "$SQLSERVER_IMAGE_REF"
 podman pull "$KEYCLOAK_IMAGE_REF"
 
+bin/kravhantering-images.sh --topology single-node \
+  --lock-file container-stack.lock.json \
+  --env-file /etc/kravhantering/release.env \
+  verify
+
 exit
 ```
+
+For offline transport, first create the image bundle on a connected staging or
+mirror host that uses the same `release.env` refs:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+bin/kravhantering-images.sh --topology single-node \
+  --lock-file container-stack.lock.json \
+  --env-file /etc/kravhantering/release.env \
+  export --output "/tmp/kravhantering-images-${VERSION}-single-node.tar.gz"
+exit
+
+sha256sum "/tmp/kravhantering-images-${VERSION}-single-node.tar.gz"
+```
+
+Copy that tarball to the offline host. Ensure `/etc/kravhantering/release.env`
+contains tag-style target refs, then load, tag and verify:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+bin/kravhantering-images.sh --topology single-node \
+  --lock-file container-stack.lock.json \
+  --env-file /etc/kravhantering/release.env \
+  load --bundle "/tmp/kravhantering-images-${VERSION}-single-node.tar.gz"
+exit
+```
+
+Those offline target refs do not need to point at a real registry. They only
+need to be stable local image names that the later `release.env`-driven
+`podman run` and `podman compose` commands will use. Do not run the pull block
+above on an offline host that uses non-resolvable refs.
 
 ## Configure Single-Node Services
 
