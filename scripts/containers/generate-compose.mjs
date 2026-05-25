@@ -1,7 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { DEFAULT_STACK_LOCK_PATH, findService } from './generate-stack-lock.mjs'
+import {
+  assertStackLockSchema,
+  DEFAULT_STACK_LOCK_PATH,
+  findService,
+} from './generate-stack-lock.mjs'
 
 export const DEFAULT_TEMPLATE_PATH =
   'containers/compose/container-stack.template.yml'
@@ -73,7 +77,7 @@ function requireService(stackLock, name) {
 
 export function imageReference(service, mode) {
   if (VENDOR_SERVICE_NAMES.has(service.name)) {
-    return `${service.image}@${service.digest}`
+    return `${service.image}@${service.manifestDigest}`
   }
 
   if (!PROJECT_SERVICE_NAMES.has(service.name)) {
@@ -87,13 +91,14 @@ export function imageReference(service, mode) {
   }
 
   if (mode === 'release') {
-    return `${service.image}@${service.digest}`
+    return `${service.image}@${service.manifestDigest}`
   }
 
   throw new Error(`Unsupported Compose generation mode: ${mode}`)
 }
 
 export function buildComposeValues(stackLock, options = {}) {
+  assertStackLockSchema(stackLock)
   const mode = options.mode ?? 'pr'
   const services = {
     appRuntime: requireService(stackLock, 'app-runtime'),

@@ -2,6 +2,10 @@ import type { DataSource, DataSourceOptions } from 'typeorm'
 import { DataSource as TypeOrmDataSource } from 'typeorm'
 
 const DEFAULT_CONNECT_TIMEOUT_MS = 15_000
+const DEFAULT_POOL_ACQUIRE_TIMEOUT_MS = 15_000
+const DEFAULT_POOL_IDLE_TIMEOUT_MS = 30_000
+const DEFAULT_POOL_MAX = 10
+const DEFAULT_POOL_MIN = 1
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000
 
 export interface SqlServerRuntimeEnv extends NodeJS.ProcessEnv {
@@ -13,6 +17,10 @@ export interface SqlServerRuntimeEnv extends NodeJS.ProcessEnv {
   DB_LOGGING?: string
   DB_NAME?: string
   DB_PASSWORD?: string
+  DB_POOL_ACQUIRE_TIMEOUT_MS?: string
+  DB_POOL_IDLE_TIMEOUT_MS?: string
+  DB_POOL_MAX?: string
+  DB_POOL_MIN?: string
   DB_PORT?: string
   DB_READONLY_PASSWORD?: string
   DB_READONLY_USER?: string
@@ -29,7 +37,6 @@ export interface BuildSqlServerDataSourceOptions {
   env?: SqlServerRuntimeEnv
   logging?: DataSourceOptions['logging']
   migrations?: DataSourceOptions['migrations']
-  name?: string
   readonly?: boolean
   url?: string
 }
@@ -184,9 +191,6 @@ export function buildSqlServerDataSourceOptions(
   return {
     type: 'mssql',
     url,
-    name:
-      options.name ??
-      (options.readonly ? 'kravhantering-readonly' : 'kravhantering-main'),
     synchronize: false,
     logging,
     entities: options.entities ?? [],
@@ -195,17 +199,35 @@ export function buildSqlServerDataSourceOptions(
       env.DB_CONNECTION_TIMEOUT_MS,
       DEFAULT_CONNECT_TIMEOUT_MS,
     ),
+    invalidWhereValuesBehavior: {
+      null: 'throw',
+      undefined: 'throw',
+    },
+    pool: {
+      acquireTimeoutMillis: parseInteger(
+        env.DB_POOL_ACQUIRE_TIMEOUT_MS,
+        DEFAULT_POOL_ACQUIRE_TIMEOUT_MS,
+      ),
+      idleTimeoutMillis: parseInteger(
+        env.DB_POOL_IDLE_TIMEOUT_MS,
+        DEFAULT_POOL_IDLE_TIMEOUT_MS,
+      ),
+      max: parseInteger(env.DB_POOL_MAX, DEFAULT_POOL_MAX),
+      min: parseInteger(env.DB_POOL_MIN, DEFAULT_POOL_MIN),
+    },
     requestTimeout: parseInteger(
       env.DB_REQUEST_TIMEOUT_MS,
       DEFAULT_REQUEST_TIMEOUT_MS,
     ),
     options: {
+      abortTransactionOnError: true,
       enableArithAbort: true,
       encrypt: parseBoolean(env.DB_ENCRYPT, true),
       trustServerCertificate: parseBoolean(
         env.DB_TRUST_SERVER_CERTIFICATE,
         false,
       ),
+      useUTC: true,
       // When the host is an IP address, override the TLS SNI servername so
       // tedious does not pass the IP literal to `tls.connect`.  RFC 6066
       // forbids IP addresses as SNI values, and Node.js otherwise emits

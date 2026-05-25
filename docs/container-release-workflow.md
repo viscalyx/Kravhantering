@@ -3,11 +3,14 @@
 The trusted container flow runs from `.github/workflows/container-release.yml`
 for `main`, stable `vX.Y.Z` tags, and manual workflow runs.
 
-The workflow builds `app-runtime` and `db-job`, publishes them to GHCR, locks
-each image to a digest in `container-stack.lock.json`, signs the digest with
-Cosign keyless signing, and creates GitHub Artifact Attestations for provenance
-and SBOM. The release smoke test then starts Podman Compose from the verified
-digest references, not from mutable tags.
+The workflow builds `app-runtime` and `db-job`, publishes them to GHCR, and
+records two image identities in `container-stack.lock.json`. The
+`manifestDigest` is the registry manifest digest used for Cosign keyless
+signing, GitHub Artifact Attestations, SBOM subjects and GHCR release smoke
+tests. The `imageId` is the container image ID used by production operators to
+verify runtime equivalence after internal-registry mirroring or offline image
+transport. The release smoke test starts Podman Compose from verified GHCR
+manifest digest references, not from mutable tags.
 
 ## Reproducibility
 
@@ -28,9 +31,9 @@ local images, `run-local-stack.mjs` passes that path to
 ## Release Evidence
 
 GitHub Release notes are the first place to find the tested release version,
-the GHCR digest references for `app-runtime` and `db-job`, and the published
-checksums. Stable releases use normal GitHub Releases; preview releases are
-marked as pre-releases and are kept as part of the audit trail.
+the GHCR manifest digest references for `app-runtime` and `db-job`, and the
+published checksums. Stable releases use normal GitHub Releases; preview
+releases are marked as pre-releases and are kept as part of the audit trail.
 
 Release notes also include automatic change notes. Stable releases compare
 against the previous published non-prerelease GitHub Release. Preview releases
@@ -50,8 +53,9 @@ publishes with the exact commit list and the runtime evidence below.
 
 Each trusted run also writes runtime evidence:
 
-- `container-stack.lock.json` lists the exact image name, tag, digest, source
-  and role for `app-runtime`, `db-job`, nginx, SQL Server and Keycloak.
+- `container-stack.lock.json` lists the exact image name, tag,
+  `manifestDigest`, `imageId`, source and role for `app-runtime`, `db-job`,
+  nginx, SQL Server and Keycloak.
 - `container-stack.compose.yml` is the generated Compose file that the smoke
   test started.
 - `hashes.sha256` contains checksums for saved runtime evidence.
@@ -68,6 +72,12 @@ The workflow uploads these artifact groups:
   screenshots, traces and test results.
 - `container-release-deployment-*` for the production deployment bundle and
   its flat checksum.
+
+The production deployment bundle includes `bin/kravhantering-images.sh`, a
+Bash and jq helper for explicit operator verification. It can verify configured
+`release.env` image refs against locked image IDs, export a transport bundle
+from a connected staging or mirror host, and load and tag that bundle on an
+offline host.
 
 The production deployment bundle is also uploaded to GitHub Releases as:
 
@@ -132,8 +142,8 @@ current workflow identity. Do not create a `COSIGN_PRIVATE_KEY`,
 
 ## Verification
 
-Release notes contain exact digest references and checksums. A user can verify a
-published app image with:
+Release notes contain exact manifest digest references and checksums. A user
+can verify a published app image with:
 
 <!-- markdownlint-disable MD013 -->
 ```bash
@@ -148,5 +158,8 @@ gh attestation verify \
 ```
 <!-- markdownlint-enable MD013 -->
 
-Use the corresponding `db-job` reference from the release notes to verify the
-`db-job` image.
+Use the corresponding `db-job` manifest digest reference from the release notes
+to verify the `db-job` image. Production runtime verification is separate:
+after choosing site-specific image refs in `release.env`, run the bundled
+`bin/kravhantering-images.sh verify` command for the target topology to compare
+Podman image inspect `.Id` values with the locked `imageId` values.

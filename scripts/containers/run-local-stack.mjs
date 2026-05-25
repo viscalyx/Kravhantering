@@ -2,6 +2,7 @@ import childProcess from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { assertStackLockSchema } from './generate-stack-lock.mjs'
 
 // cSpell:ignore noheading
 
@@ -34,7 +35,7 @@ Options:
   --compose-file <path>  Generated Compose file path
   --lock-file <path>     Stack lock file path
   --release-images-from-lock
-                         Pull app-runtime and db-job by digest from the stack lock
+                         Pull app-runtime and db-job by manifest digest from the stack lock
   --run-id <id>          Stable run id for ephemeral modes
   --skip-build           Reuse already built Docker images and load them into Podman
   --state-file <path>    Local state file path
@@ -110,8 +111,8 @@ function imageReference(image) {
   return `${image.image}:${image.tag}`
 }
 
-function imageDigestReference(image) {
-  return `${image.image}@${image.digest}`
+function imageManifestDigestReference(image) {
+  return `${image.image}@${image.manifestDigest}`
 }
 
 export function createLocalStackConfig(options = {}) {
@@ -324,19 +325,58 @@ function inspectImageId(image, options = {}) {
   return id.startsWith('sha256:') ? id : `sha256:${id}`
 }
 
+function normalizeDigest(value) {
+  const digest = readNonEmpty(value)
+  if (!digest || digest === '<none>' || digest === '<no value>') {
+    return undefined
+  }
+  const sha = digest.includes('@')
+    ? digest.slice(digest.lastIndexOf('@') + 1)
+    : digest
+  return sha.startsWith('sha256:') ? sha : `sha256:${sha}`
+}
+
+function inspectImageDigest(command, image, format, options = {}) {
+  return normalizeDigest(
+    execText(command, ['image', 'inspect', image, '--format', format], options),
+  )
+}
+
+function inspectManifestDigest(image, options = {}) {
+  for (const command of ['podman', 'docker']) {
+    for (const format of ['{{.Digest}}', '{{index .RepoDigests 0}}']) {
+      try {
+        const digest = inspectImageDigest(command, image, format, options)
+        if (digest) return digest
+      } catch {
+        // Try the next inspect source/format before failing.
+      }
+    }
+  }
+  throw new Error(`Unable to inspect manifest digest for ${image}.`)
+}
+
 function readStackLock(config, options = {}) {
   const cwd = options.cwd ?? process.cwd()
   const fsImpl = options.fsImpl ?? fs
-  return JSON.parse(
+  const stackLock = JSON.parse(
     fsImpl.readFileSync(path.resolve(cwd, config.lockFile), 'utf8'),
   )
+  assertStackLockSchema(stackLock, config.lockFile)
+  return stackLock
 }
 
 function lockedProjectService(config, serviceName, options = {}) {
   const stackLock = readStackLock(config, options)
   const service = stackLock.services?.find(item => item.name === serviceName)
 
-  if (!service?.image || !service.tag || !service.digest || !service.source) {
+  if (
+    !service?.image ||
+    !service.tag ||
+    !service.manifestDigest ||
+    !service.imageId ||
+    !service.source
+  ) {
     throw new Error(`Missing ${serviceName} image lock in ${config.lockFile}.`)
   }
 
@@ -352,9 +392,9 @@ function withReleaseImagesFromLock(config, options = {}) {
   return {
     ...config,
     appRuntimeImage,
-    appRuntimeImageReference: imageDigestReference(appRuntimeImage),
+    appRuntimeImageReference: imageManifestDigestReference(appRuntimeImage),
     dbJobImage,
-    dbJobImageReference: imageDigestReference(dbJobImage),
+    dbJobImageReference: imageManifestDigestReference(dbJobImage),
   }
 }
 
@@ -535,11 +575,11 @@ function lockedVendorImageReference(config, serviceName, options = {}) {
   const stackLock = readStackLock(config, options)
   const service = stackLock.services?.find(item => item.name === serviceName)
 
-  if (!service?.image || !service.digest) {
+  if (!service?.image || !service.manifestDigest) {
     throw new Error(`Missing ${serviceName} image lock in ${config.lockFile}.`)
   }
 
-  return `${service.image}@${service.digest}`
+  return `${service.image}@${service.manifestDigest}`
 }
 
 function pullReleaseProjectImages(config, options = {}) {
@@ -697,11 +737,19 @@ async function up(config, options = {}) {
     )
     await loadDockerImageIntoPodman(runtimeConfig.dbJobImageReference, options)
 
-    const appDigest = inspectImageId(
+    const appImageId = inspectImageId(
       runtimeConfig.appRuntimeImageReference,
       options,
     )
-    const dbJobDigest = inspectImageId(
+    const appManifestDigest = inspectManifestDigest(
+      runtimeConfig.appRuntimeImageReference,
+      options,
+    )
+    const dbJobImageId = inspectImageId(
+      runtimeConfig.dbJobImageReference,
+      options,
+    )
+    const dbJobManifestDigest = inspectManifestDigest(
       runtimeConfig.dbJobImageReference,
       options,
     )
@@ -716,16 +764,20 @@ async function up(config, options = {}) {
         runtimeConfig.appRuntimeImage.image,
         '--app-tag',
         runtimeConfig.appRuntimeImage.tag,
-        '--app-digest',
-        appDigest,
+        '--app-manifest-digest',
+        appManifestDigest,
+        '--app-image-id',
+        appImageId,
         '--app-source',
         runtimeConfig.appRuntimeImage.source,
         '--db-job-image',
         runtimeConfig.dbJobImage.image,
         '--db-job-tag',
         runtimeConfig.dbJobImage.tag,
-        '--db-job-digest',
-        dbJobDigest,
+        '--db-job-manifest-digest',
+        dbJobManifestDigest,
+        '--db-job-image-id',
+        dbJobImageId,
         '--db-job-source',
         runtimeConfig.dbJobImage.source,
       ],

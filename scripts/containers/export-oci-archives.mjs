@@ -2,7 +2,11 @@ import childProcess from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { DEFAULT_STACK_LOCK_PATH, findService } from './generate-stack-lock.mjs'
+import {
+  assertStackLockSchema,
+  DEFAULT_STACK_LOCK_PATH,
+  findService,
+} from './generate-stack-lock.mjs'
 
 export const DEFAULT_OCI_OUTPUT_DIR = 'tmp/container-oci-archives'
 export const DEFAULT_OCI_VERIFY_ROOT = '/tmp/kh-oci-verify'
@@ -24,20 +28,20 @@ function readJsonFile(filePath, fsImpl = fs) {
   return JSON.parse(fsImpl.readFileSync(filePath, 'utf8'))
 }
 
-function normalizeDigest(value) {
-  const digest = readNonEmpty(value)
-  if (!digest) return undefined
-  return digest.startsWith('sha256:') ? digest : `sha256:${digest}`
+function normalizeImageId(value) {
+  const imageId = readNonEmpty(value)
+  if (!imageId) return undefined
+  return imageId.startsWith('sha256:') ? imageId : `sha256:${imageId}`
 }
 
-function requireServiceDigest(serviceName, service) {
-  const digest = readNonEmpty(service.digest)
-  if (!digest) {
+function requireServiceImageId(serviceName, service) {
+  const imageId = readNonEmpty(service.imageId)
+  if (!imageId) {
     throw new Error(
-      `container-stack.lock.json service "${serviceName}" is missing digest.`,
+      `container-stack.lock.json service "${serviceName}" is missing imageId.`,
     )
   }
-  return normalizeDigest(digest)
+  return normalizeImageId(imageId)
 }
 
 export function parseArgs(args) {
@@ -80,6 +84,7 @@ export function archiveFileName(serviceName) {
 }
 
 export function buildArchivePlans(stackLock, outputDir) {
+  assertStackLockSchema(stackLock)
   return PROJECT_ARCHIVE_SERVICES.map(serviceName => {
     const service = findService(stackLock, serviceName)
     if (!service) {
@@ -88,7 +93,7 @@ export function buildArchivePlans(stackLock, outputDir) {
 
     return {
       archivePath: path.join(outputDir, archiveFileName(serviceName)),
-      digest: requireServiceDigest(serviceName, service),
+      imageId: requireServiceImageId(serviceName, service),
       imageRef: imageReference(service),
       rawArchivePath: path.join(outputDir, `${serviceName}.oci.tar`),
       serviceName,
@@ -253,7 +258,7 @@ export function verifyOciArchives(options = {}) {
         [...workspace.podmanGlobalArgs, 'load', '--input', plan.archivePath],
         options,
       )
-      const actualDigest = normalizeDigest(
+      const actualImageId = normalizeImageId(
         execPodman(
           [
             ...workspace.podmanGlobalArgs,
@@ -267,12 +272,12 @@ export function verifyOciArchives(options = {}) {
         ),
       )
 
-      if (actualDigest !== plan.digest) {
+      if (actualImageId !== plan.imageId) {
         throw new Error(
-          `${plan.serviceName} OCI archive digest ${actualDigest} does not match ${plan.digest}.`,
+          `${plan.serviceName} OCI archive image ID ${actualImageId} does not match ${plan.imageId}.`,
         )
       }
-      results.push({ ...plan, actualDigest })
+      results.push({ ...plan, actualImageId })
     } finally {
       if (workspace.created) {
         removeTemporaryVerifyWorkspace(workspace, fsImpl, options.consoleObj)

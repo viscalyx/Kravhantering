@@ -9,62 +9,68 @@ import {
   renderTemplate,
 } from '../containers/generate-compose.mjs'
 
-function service(name, role, image, tag, digest) {
+function service(name, role, image, tag, manifestDigest, imageId) {
   return {
     name,
     role,
     image,
     tag,
-    digest,
+    manifestDigest,
+    imageId,
     source: `https://example.test/${name}`,
   }
 }
 
 function stackLock() {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     services: [
       service(
         'app-runtime',
         'application',
         'localhost/kravhantering/app-runtime',
         'pr-12-99-deadbeef',
-        'sha256:app',
+        'sha256:app-manifest',
+        'sha256:app-image',
       ),
       service(
         'db-job',
         'database-job',
         'localhost/kravhantering/db-job',
         'pr-12-99-deadbeef',
-        'sha256:dbjob',
+        'sha256:dbjob-manifest',
+        'sha256:dbjob-image',
       ),
       service(
         'nginx',
         'tls-proxy',
         'docker.io/library/nginx',
         'stable-alpine',
-        'sha256:nginx',
+        'sha256:nginx-manifest',
+        'sha256:nginx-image',
       ),
       service(
         'sqlserver',
         'database',
         'mcr.microsoft.com/mssql/server',
         '2025-latest',
-        'sha256:sqlserver',
+        'sha256:sqlserver-manifest',
+        'sha256:sqlserver-image',
       ),
       service(
         'keycloak',
         'identity-provider',
         'quay.io/keycloak/keycloak',
         '26.6.1',
-        'sha256:keycloak',
+        'sha256:keycloak-manifest',
+        'sha256:keycloak-image',
       ),
     ],
   }
 }
 
 describe('container Compose generation', () => {
-  it('uses local tags for project images in PR mode and digests for vendors', () => {
+  it('uses local tags for project images in PR mode and manifest digests for vendors', () => {
     const values = buildComposeValues(stackLock(), { mode: 'pr' })
 
     expect(values.appRuntimeImage).toBe(
@@ -73,23 +79,25 @@ describe('container Compose generation', () => {
     expect(values.dbJobImage).toBe(
       'localhost/kravhantering/db-job:pr-12-99-deadbeef',
     )
-    expect(values.nginxImage).toBe('docker.io/library/nginx@sha256:nginx')
+    expect(values.nginxImage).toBe(
+      'docker.io/library/nginx@sha256:nginx-manifest',
+    )
     expect(values.sqlServerImage).toBe(
-      'mcr.microsoft.com/mssql/server@sha256:sqlserver',
+      'mcr.microsoft.com/mssql/server@sha256:sqlserver-manifest',
     )
     expect(values.keycloakImage).toBe(
-      'quay.io/keycloak/keycloak@sha256:keycloak',
+      'quay.io/keycloak/keycloak@sha256:keycloak-manifest',
     )
   })
 
-  it('uses digest references for project images in release mode', () => {
+  it('uses manifest digest references for project images in release mode', () => {
     const values = buildComposeValues(stackLock(), { mode: 'release' })
 
     expect(values.appRuntimeImage).toBe(
-      'localhost/kravhantering/app-runtime@sha256:app',
+      'localhost/kravhantering/app-runtime@sha256:app-manifest',
     )
     expect(values.dbJobImage).toBe(
-      'localhost/kravhantering/db-job@sha256:dbjob',
+      'localhost/kravhantering/db-job@sha256:dbjob-manifest',
     )
   })
 
@@ -108,12 +116,14 @@ describe('container Compose generation', () => {
 
     expect(compose).toContain('name: "kravhantering-test-run"')
     expect(compose).toContain(
-      'image: "localhost/kravhantering/app-runtime@sha256:app"',
+      'image: "localhost/kravhantering/app-runtime@sha256:app-manifest"',
     )
     expect(compose).toContain(
-      'image: "localhost/kravhantering/db-job@sha256:dbjob"',
+      'image: "localhost/kravhantering/db-job@sha256:dbjob-manifest"',
     )
-    expect(compose).toContain('image: "docker.io/library/nginx@sha256:nginx"')
+    expect(compose).toContain(
+      'image: "docker.io/library/nginx@sha256:nginx-manifest"',
+    )
     expect(compose).toContain('- ./containers/app/.env.app.local')
     expect(compose).toContain('- ./containers/sqlserver/.env.sqlserver.local')
     expect(compose).toContain('"127.0.0.1:15433:1433"')

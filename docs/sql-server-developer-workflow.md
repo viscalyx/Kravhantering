@@ -95,6 +95,28 @@ DATABASE_URL=...
 DATABASE_READONLY_URL=...
 ```
 
+The Next.js runtime builds one shared TypeORM `DataSource` per process. The
+runtime DataSource keeps SQL Server behavior explicit:
+
+- `synchronize` is disabled.
+- TypeORM high-level where clauses throw on `null` or `undefined` values.
+- SQL Server date/time values use UTC.
+- SQL Server transactions use `XACT_ABORT` through
+  `abortTransactionOnError=true`.
+- Connection and request timeouts are explicit.
+- Connection pool sizing and idle/acquire timeouts are explicit.
+
+Runtime pool defaults are conservative for a single app process:
+
+<!-- markdownlint-disable MD013 -->
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DB_POOL_MAX` | `10` | Maximum SQL Server connections in the TypeORM runtime pool |
+| `DB_POOL_MIN` | `1` | Minimum SQL Server connections kept in the TypeORM runtime pool |
+| `DB_POOL_IDLE_TIMEOUT_MS` | `30000` | Time before an idle runtime pool connection is eligible for eviction |
+| `DB_POOL_ACQUIRE_TIMEOUT_MS` | `15000` | Time a runtime request may wait for a pool connection |
+<!-- markdownlint-enable MD013 -->
+
 ## SQL Server Admin Commands
 
 <!-- markdownlint-disable MD013 -->

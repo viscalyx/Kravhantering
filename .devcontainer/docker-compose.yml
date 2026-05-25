@@ -81,7 +81,7 @@ services:
     # — changes made via the admin UI on http://localhost:8080 are NOT
     # persisted across restarts.
     # https://www.keycloak.org/docs/latest/upgrading/
-    image: quay.io/keycloak/keycloak:26.6.1
+    image: quay.io/keycloak/keycloak:26.6.2
     command:
       - start-dev
       - --import-realm

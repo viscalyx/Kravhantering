@@ -10,10 +10,17 @@ import {
   verifyOciArchives,
 } from '../containers/export-oci-archives.mjs'
 
-function service(name, image, tag, digest) {
+function service(
+  name,
+  image,
+  tag,
+  imageId,
+  manifestDigest = `${imageId}-manifest`,
+) {
   return {
-    digest,
+    imageId,
     image,
+    manifestDigest,
     name,
     role: name === 'db-job' ? 'database-job' : 'application',
     source: 'pr-build',
@@ -23,7 +30,7 @@ function service(name, image, tag, digest) {
 
 function stackLock() {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     services: [
       service(
         'app-runtime',
@@ -59,7 +66,8 @@ function fakeFs() {
 
 describe('container OCI archive helpers', () => {
   it('plans project image archive paths and parses CLI options', () => {
-    const plans = buildArchivePlans(stackLock(), 'tmp/oci')
+    const lock = stackLock()
+    const plans = buildArchivePlans(lock, 'tmp/oci')
 
     expect(parseArgs(['export', '--lock-file', 'lock.json'])).toMatchObject({
       command: 'export',
@@ -75,17 +83,21 @@ describe('container OCI archive helpers', () => {
     expect(imageReference(stackLock().services[0])).toBe(
       'localhost/kravhantering/app-runtime:pr-7-99-deadbeef',
     )
+    expect(lock.services[0]).toMatchObject({
+      imageId: 'sha256:app-runtime',
+      manifestDigest: 'sha256:app-runtime-manifest',
+    })
     expect(plans).toEqual([
       {
         archivePath: 'tmp/oci/app-runtime.oci.tar.gz',
-        digest: 'sha256:app-runtime',
+        imageId: 'sha256:app-runtime',
         imageRef: 'localhost/kravhantering/app-runtime:pr-7-99-deadbeef',
         rawArchivePath: 'tmp/oci/app-runtime.oci.tar',
         serviceName: 'app-runtime',
       },
       {
         archivePath: 'tmp/oci/db-job.oci.tar.gz',
-        digest: 'sha256:db-job',
+        imageId: 'sha256:db-job',
         imageRef: 'localhost/kravhantering/db-job:pr-7-99-deadbeef',
         rawArchivePath: 'tmp/oci/db-job.oci.tar',
         serviceName: 'db-job',
@@ -93,12 +105,12 @@ describe('container OCI archive helpers', () => {
     ])
   })
 
-  it('fails fast when an archived service has no digest', () => {
+  it('fails fast when an archived service has no image ID', () => {
     const invalidStackLock = stackLock()
-    delete invalidStackLock.services[0].digest
+    delete invalidStackLock.services[0].imageId
 
     expect(() => buildArchivePlans(invalidStackLock, 'tmp/oci')).toThrow(
-      'container-stack.lock.json service "app-runtime" is missing digest.',
+      'container-stack.lock.json service "app-runtime" is missing imageId.',
     )
   })
 
@@ -129,7 +141,7 @@ describe('container OCI archive helpers', () => {
     ])
   })
 
-  it('loads archives into an isolated Podman store and checks image digests', () => {
+  it('loads archives into an isolated Podman store and checks image IDs', () => {
     const commands = []
     const fsImpl = fakeFs()
     const spawnSync = vi.fn((command, args) => {
@@ -151,7 +163,7 @@ describe('container OCI archive helpers', () => {
       verifyRoot: 'tmp/verify-oci',
     })
 
-    expect(results.map(result => result.actualDigest)).toEqual([
+    expect(results.map(result => result.actualImageId)).toEqual([
       'sha256:app-runtime',
       'sha256:db-job',
     ])
@@ -162,7 +174,7 @@ describe('container OCI archive helpers', () => {
     expect(fsImpl.rmSync).not.toHaveBeenCalled()
   })
 
-  it('does not let temporary Podman store cleanup failures mask digest verification', () => {
+  it('does not let temporary Podman store cleanup failures mask image ID verification', () => {
     const fsImpl = fakeFs()
     const commands = []
     const consoleObj = { info: vi.fn() }
@@ -190,7 +202,7 @@ describe('container OCI archive helpers', () => {
       spawnSync,
     })
 
-    expect(results.map(result => result.actualDigest)).toEqual([
+    expect(results.map(result => result.actualImageId)).toEqual([
       'sha256:app-runtime',
       'sha256:db-job',
     ])
@@ -218,7 +230,7 @@ describe('container OCI archive helpers', () => {
     ).toThrow('Podman requires 50 or fewer')
   })
 
-  it('fails when an archive digest does not match the stack lock', () => {
+  it('fails when an archive image ID does not match the stack lock', () => {
     expect(() =>
       verifyOciArchives({
         cwd: '/workspace',
@@ -228,7 +240,7 @@ describe('container OCI archive helpers', () => {
         spawnSync: () => ({ status: 0 }),
         verifyRoot: 'tmp/verify-oci',
       }),
-    ).toThrow('does not match sha256:app-runtime')
+    ).toThrow('image ID sha256:wrong does not match sha256:app-runtime')
   })
 
   it('keeps the PR workflow fork-safe and artifact-scoped', () => {

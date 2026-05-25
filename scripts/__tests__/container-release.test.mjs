@@ -54,6 +54,13 @@ function expectNginxTemplateSyntax(content) {
   expect(depth).toBe(0)
 }
 
+function buildxMetadata(manifestDigest, imageId) {
+  return {
+    'containerimage.config.digest': imageId,
+    'containerimage.digest': manifestDigest,
+  }
+}
+
 describe('trusted container release helpers', () => {
   it('creates main snapshot tags and preview releases for relevant changes', () => {
     const plan = createReleasePlan({
@@ -367,8 +374,8 @@ describe('trusted container release helpers', () => {
     })
     const metadata = createReleaseMetadata(
       plan,
-      { 'containerimage.digest': 'sha256:app' },
-      { 'containerimage.digest': 'sha256:dbjob' },
+      buildxMetadata('sha256:app-manifest', 'sha256:app-image'),
+      buildxMetadata('sha256:dbjob-manifest', 'sha256:dbjob-image'),
     )
 
     const notes = renderReleaseNotes(
@@ -397,10 +404,10 @@ describe('trusted container release helpers', () => {
       '- `abc1234` 2026-05-23 Ada Lovelace - feat: release notes',
     )
     expect(notes).toContain(
-      'ghcr.io/viscalyx/kravhantering-app-runtime@sha256:app',
+      'ghcr.io/viscalyx/kravhantering-app-runtime@sha256:app-manifest',
     )
     expect(notes).toContain(
-      'ghcr.io/viscalyx/kravhantering-db-job@sha256:dbjob',
+      'ghcr.io/viscalyx/kravhantering-db-job@sha256:dbjob-manifest',
     )
     expect(notes).toContain('abc123  container-stack.lock.json')
     expect(notes).toContain(
@@ -466,6 +473,14 @@ describe('trusted container release helpers', () => {
       'containers/production/env/release.env.template',
     )
     expect(releaseEnv).toContain('NGINX_RESOLVER=10.89.0.1')
+    expect(releaseEnv).toContain(
+      [
+        'APP_RUNTIME_IMAGE_REF=registry.example.internal',
+        '/kravhantering-app-runtime:replace-with-release-tag',
+      ].join(''),
+    )
+    expect(releaseEnv).toContain('replace-with-release-manifest-digest')
+    expect(releaseEnv).not.toContain('replace-with-release-digest')
   })
 
   it('stages the production deployment bundle with manifest and templates', () => {
@@ -481,46 +496,52 @@ describe('trusted container release helpers', () => {
       })
       const metadata = createReleaseMetadata(
         plan,
-        { 'containerimage.digest': 'sha256:app' },
-        { 'containerimage.digest': 'sha256:dbjob' },
+        buildxMetadata('sha256:app-manifest', 'sha256:app-image'),
+        buildxMetadata('sha256:dbjob-manifest', 'sha256:dbjob-image'),
       )
       const stackLock = {
+        schemaVersion: 2,
         services: [
           {
-            digest: 'sha256:app',
+            imageId: 'sha256:app-image',
             image: 'ghcr.io/viscalyx/kravhantering-app-runtime',
+            manifestDigest: 'sha256:app-manifest',
             name: 'app-runtime',
             role: 'application',
             source: 'ghcr-release',
             tag: '1.2.3',
           },
           {
-            digest: 'sha256:dbjob',
+            imageId: 'sha256:dbjob-image',
             image: 'ghcr.io/viscalyx/kravhantering-db-job',
+            manifestDigest: 'sha256:dbjob-manifest',
             name: 'db-job',
             role: 'database-job',
             source: 'ghcr-release',
             tag: '1.2.3',
           },
           {
-            digest: 'sha256:nginx',
+            imageId: 'sha256:nginx-image',
             image: 'docker.io/library/nginx',
+            manifestDigest: 'sha256:nginx-manifest',
             name: 'nginx',
             role: 'tls-proxy',
             source: 'docker-hub',
             tag: 'stable',
           },
           {
-            digest: 'sha256:sql',
+            imageId: 'sha256:sql-image',
             image: 'mcr.microsoft.com/mssql/server',
+            manifestDigest: 'sha256:sql-manifest',
             name: 'sqlserver',
             role: 'database',
             source: 'mcr',
             tag: '2025-latest',
           },
           {
-            digest: 'sha256:keycloak',
+            imageId: 'sha256:keycloak-image',
             image: 'quay.io/keycloak/keycloak',
+            manifestDigest: 'sha256:keycloak-manifest',
             name: 'keycloak',
             role: 'identity-provider',
             source: 'quay',
@@ -585,6 +606,7 @@ describe('trusted container release helpers', () => {
         'docs/adr/0001-release-artifact-production-deployment.md',
       )
       expect(result.files).toContain('env/app.env.template')
+      expect(result.files).toContain('bin/kravhantering-images.sh')
       expect(result.files).toContain(
         'systemd/kravhantering-single-node-compose.service',
       )
@@ -652,9 +674,15 @@ describe('trusted container release helpers', () => {
       expect(appRuntimeBlock).not.toContain('db-seed-required')
       expect(result.manifest).toMatchObject({
         commitSha: plan.commitSha,
+        schemaVersion: 2,
         images: {
-          appRuntime: 'ghcr.io/viscalyx/kravhantering-app-runtime@sha256:app',
-          nginx: 'docker.io/library/nginx@sha256:nginx',
+          appRuntime:
+            'ghcr.io/viscalyx/kravhantering-app-runtime@sha256:app-manifest',
+          nginx: 'docker.io/library/nginx@sha256:nginx-manifest',
+        },
+        imageIds: {
+          appRuntime: 'sha256:app-image',
+          nginx: 'sha256:nginx-image',
         },
         supportedTopologies: [
           'app-node-external-sql-external-idp',
@@ -702,9 +730,26 @@ describe('trusted container release helpers', () => {
     expect(workflow).not.toContain('verify-ghcr-public')
     expect(workflow).toContain('cosign sign --yes')
     expect(workflow).toContain('mkdir -p tmp/container-release-artifacts/sbom')
-    expect(workflow).toContain('attest-build-provenance')
-    expect(workflow).toContain('attest-sbom')
+    expect(workflow).toContain('Attest app-runtime provenance')
+    expect(workflow).toContain('Attest db-job provenance')
+    expect(workflow).toContain('Attest app-runtime SBOM')
+    expect(workflow).toContain('Attest db-job SBOM')
+    expect(workflow.match(/uses: actions\/attest@/g)).toHaveLength(4)
+    expect(workflow).toContain(
+      'sbom-path: tmp/container-release-artifacts/sbom/app-runtime.spdx.json',
+    )
+    expect(workflow).toContain(
+      'sbom-path: tmp/container-release-artifacts/sbom/db-job.spdx.json',
+    )
+    expect(workflow).toContain('push-to-registry: true')
     expect(workflow).toContain('--release-images-from-lock')
+    expect(workflow).toContain('container-release.mjs identities')
+    expect(workflow).toContain('APP_RUNTIME_MANIFEST_DIGEST_REF')
+    expect(workflow).toContain('DB_JOB_MANIFEST_DIGEST_REF')
+    expect(workflow).toContain('APP_RUNTIME_IMAGE_ID')
+    expect(workflow).toContain('DB_JOB_IMAGE_ID')
+    expect(workflow).not.toContain('APP_RUNTIME_DIGEST_REF')
+    expect(workflow).not.toContain('DB_JOB_DIGEST_REF')
     expect(workflow).toContain('container-release.mjs bundle')
     expect(workflow).toContain('GH_TOKEN: $' + '{{ github.token }}')
     expect(workflow).toContain(

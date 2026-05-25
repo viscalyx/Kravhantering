@@ -3,6 +3,7 @@
   "role": "identity-provider",
   "image": "quay.io/keycloak/keycloak",
   "tag": "26.6.1",
-  "digest": "sha256:dea26401d06341095cc4ea9d66896200b55de5ca1daa1d2fcbe58493afa6e0ad",
+  "manifestDigest": "sha256:dea26401d06341095cc4ea9d66896200b55de5ca1daa1d2fcbe58493afa6e0ad",
+  "imageId": "sha256:341246805bcf19aaeb668a201a576a030846acdf67133329a75dc7dcb1be1839",
   "source": "https://quay.io/repository/keycloak/keycloak"
 }

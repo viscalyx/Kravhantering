@@ -715,7 +715,6 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     await runSqlServerMigrations(FUNCTIONAL_TESTS_URL)
     const dataSource = createAppDataSource({
       url: FUNCTIONAL_TESTS_URL,
-      name: 'functional-tests',
     })
     await dataSource.initialize()
     db = dataSource

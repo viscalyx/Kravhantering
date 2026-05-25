@@ -4,7 +4,6 @@ import { sqlServerEntities } from '@/lib/typeorm/entities'
 import { createSqlServerDataSource } from '@/lib/typeorm/sqlserver-config'
 
 interface AppDataSourceOptions {
-  name?: string
   readonly?: boolean
   url?: string
 }
@@ -14,7 +13,6 @@ export function createAppDataSource(
 ): DataSource {
   return createSqlServerDataSource({
     entities: sqlServerEntities,
-    name: options.name ?? 'kravhantering-app',
     readonly: options.readonly ?? false,
     url: options.url,
   })
@@ -25,7 +23,6 @@ export function createReadonlyBrowseDataSource(
 ): DataSource {
   return createAppDataSource({
     ...options,
-    name: options.name ?? 'kravhantering-readonly-browse',
     readonly: true,
   })
 }
