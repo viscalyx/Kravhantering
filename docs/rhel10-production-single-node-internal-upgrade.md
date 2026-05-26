@@ -46,9 +46,9 @@ configuration change.
    ' container-stack.lock.json
    ```
 
-   Ensure the site has approved image refs for every single-node image named in
-   the target release lock. Internal-registry refs do not need to preserve the
-   upstream manifest digest, but they must resolve to the locked `imageId`.
+   Ensure the site has approved tag-style image refs for every single-node
+   image named in the target release lock. Each configured ref must resolve to
+   the locked `imageId`.
 
 2. Confirm a tested SQL Server backup, volume snapshot or restore point.
    Complete the site-approved restore procedure before the window begins and
@@ -104,53 +104,75 @@ configuration change.
    ```
 
 7. Update `/etc/kravhantering/release.env` image refs and verify image IDs.
-   Internal registry refs normally use tags that include the release version or
-   a site-controlled promotion tag:
+   Production runtime refs must use tag-style `image:tag` values. Derive the
+   public upstream refs from the target release lock:
 
    ```bash
    update_ref() {
      sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
    }
 
-   update_ref APP_RUNTIME_IMAGE_REF \
-     "registry.example.internal/kravhantering-app-runtime:${VERSION}"
-   update_ref DB_JOB_IMAGE_REF \
-     "registry.example.internal/kravhantering-db-job:${VERSION}"
-   update_ref NGINX_IMAGE_REF \
-     "registry.example.internal/nginx:stable-alpine"
-   update_ref SQLSERVER_IMAGE_REF \
-     "registry.example.internal/mssql/server:2025-latest"
-   update_ref KEYCLOAK_IMAGE_REF \
-     "registry.example.internal/keycloak/keycloak:26.2"
-   ```
-
-   Opt-in: if the site is explicitly approved to pull from public upstream
-   registries, use the locked `manifestDigest` values from the release lock:
-
-   ```bash
    LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
-   service_manifest_digest() {
+   service_image() {
      jq -r --arg name "$1" \
-       '.services[] | select(.name == $name) | .manifestDigest' "$LOCK_FILE"
+       '.services[] | select(.name == $name) | .image' "$LOCK_FILE"
+   }
+   service_tag() {
+     jq -r --arg name "$1" \
+       '.services[] | select(.name == $name) | .tag' "$LOCK_FILE"
+   }
+   service_ref() {
+     printf '%s:%s\n' "$(service_image "$1")" "$(service_tag "$1")"
    }
 
-   APP_RUNTIME_MANIFEST_DIGEST="$(service_manifest_digest app-runtime)"
-   DB_JOB_MANIFEST_DIGEST="$(service_manifest_digest db-job)"
-   NGINX_MANIFEST_DIGEST="$(service_manifest_digest nginx)"
-   SQLSERVER_MANIFEST_DIGEST="$(service_manifest_digest sqlserver)"
-   KEYCLOAK_MANIFEST_DIGEST="$(service_manifest_digest keycloak)"
+   update_ref APP_RUNTIME_IMAGE_REF \
+     "$(service_ref app-runtime)"
+   update_ref DB_JOB_IMAGE_REF \
+     "$(service_ref db-job)"
+   update_ref NGINX_IMAGE_REF \
+     "$(service_ref nginx)"
+   update_ref SQLSERVER_IMAGE_REF \
+     "$(service_ref sqlserver)"
+   update_ref KEYCLOAK_IMAGE_REF \
+     "$(service_ref keycloak)"
+   ```
+
+   If the site pulls from an internal registry mirror that preserves repository
+   paths, rewrite only the registry host while keeping the locked tags:
+
+   ```bash
+   TARGET_IMAGE_REGISTRY=registry.example.internal
+   LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
+   service_image() {
+     jq -r --arg name "$1" \
+       '.services[] | select(.name == $name) | .image' "$LOCK_FILE"
+   }
+   service_tag() {
+     jq -r --arg name "$1" \
+       '.services[] | select(.name == $name) | .tag' "$LOCK_FILE"
+   }
+   mirror_ref() {
+     local image
+     image="$(service_image "$1")"
+     printf '%s/%s:%s\n' \
+       "$TARGET_IMAGE_REGISTRY" "${image#*/}" "$(service_tag "$1")"
+   }
 
    update_ref APP_RUNTIME_IMAGE_REF \
-     "ghcr.io/viscalyx/kravhantering-app-runtime@${APP_RUNTIME_MANIFEST_DIGEST}"
+     "$(mirror_ref app-runtime)"
    update_ref DB_JOB_IMAGE_REF \
-     "ghcr.io/viscalyx/kravhantering-db-job@${DB_JOB_MANIFEST_DIGEST}"
+     "$(mirror_ref db-job)"
    update_ref NGINX_IMAGE_REF \
-     "docker.io/library/nginx@${NGINX_MANIFEST_DIGEST}"
+     "$(mirror_ref nginx)"
    update_ref SQLSERVER_IMAGE_REF \
-     "mcr.microsoft.com/mssql/server@${SQLSERVER_MANIFEST_DIGEST}"
+     "$(mirror_ref sqlserver)"
    update_ref KEYCLOAK_IMAGE_REF \
-     "quay.io/keycloak/keycloak@${KEYCLOAK_MANIFEST_DIGEST}"
+     "$(mirror_ref keycloak)"
    ```
+
+   If the internal mirror uses a custom repository layout, set the five
+   `*_IMAGE_REF` values manually to site-approved tag refs, then run the
+   verification below. Each ref must resolve to the locked `imageId`.
 
    Pull and verify the target images as the service user:
 
@@ -175,35 +197,187 @@ configuration change.
    exit
    ```
 
-   Offline path: create the image transport bundle on a connected staging or
-   mirror host with the same target `release.env` refs, copy it to the offline
-   host, then load it instead of pulling:
+   Optional offline upgrade transfer: after the source host has completed this
+   step, create a topology-specific offline upgrade bundle that contains the
+   installed release directory and local verified image archives. Run this as
+   the administrator on the connected source host:
+
+   ```bash
+   TOPOLOGY=single-node
+   OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
+   OFFLINE_BUNDLE="${OFFLINE_ROOT}.tar.gz"
+   IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
+
+   test ! -e "$OFFLINE_ROOT" || {
+     echo "Offline staging directory already exists: $OFFLINE_ROOT" >&2
+     exit 1
+   }
+
+   sudo install -d -o root -g root -m 0755 \
+     "$OFFLINE_ROOT" "$OFFLINE_ROOT/release"
+   sudo install -d -o kravhantering -g kravhantering -m 0755 \
+     "$OFFLINE_ROOT/images"
+   sudo cp -a "/opt/kravhantering/releases/${VERSION}" \
+     "$OFFLINE_ROOT/release/"
+   ```
+
+   Export the already-present, verified local images into the offline staging
+   directory as the service user:
 
    ```bash
    sudo -iu kravhantering
+   VERSION=1.2.4
+   TOPOLOGY=single-node
+   OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
+   IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
    cd /opt/kravhantering/current
    bin/kravhantering-images.sh --topology single-node \
      --lock-file container-stack.lock.json \
      --env-file /etc/kravhantering/release.env \
-     export --output "/tmp/kravhantering-images-${VERSION}-single-node.tar.gz"
-   exit
-
-   sudo -iu kravhantering
-   cd /opt/kravhantering/current
-   bin/kravhantering-images.sh --topology single-node \
-     --lock-file container-stack.lock.json \
-     --env-file /etc/kravhantering/release.env \
-     load --bundle "/tmp/kravhantering-images-${VERSION}-single-node.tar.gz"
+     export --output "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
    exit
    ```
 
-   Offline load requires tag-style `release.env` refs so the loaded image IDs
-   can be tagged to the configured targets. On offline-only hosts, those refs
-   may use a non-resolvable local or fake registry hostname because
-   `podman tag` only creates local image metadata for the later
-   `release.env`-driven
-   `podman run` and `podman compose` commands. Do not run the pull block above
-   on an offline host that uses non-resolvable refs.
+   Add a manifest, checksums and the final movable tarball:
+
+   ```bash
+   set -a
+   . /etc/kravhantering/release.env
+   set +a
+
+   CURRENT_TARGET="$(readlink -f /opt/kravhantering/current)"
+   jq -n \
+     --arg version "$VERSION" \
+     --arg topology "$TOPOLOGY" \
+     --arg currentTarget "$CURRENT_TARGET" \
+     --arg imageBundle "images/$IMAGE_BUNDLE_NAME" \
+     --arg appRuntime "$APP_RUNTIME_IMAGE_REF" \
+     --arg dbJob "$DB_JOB_IMAGE_REF" \
+     --arg nginx "$NGINX_IMAGE_REF" \
+     --arg sqlserver "$SQLSERVER_IMAGE_REF" \
+     --arg keycloak "$KEYCLOAK_IMAGE_REF" \
+     '{
+       schemaVersion: 1,
+       kind: "kravhantering-offline-upgrade",
+       version: $version,
+       topology: $topology,
+       sourceCurrentTarget: $currentTarget,
+       imageBundle: $imageBundle,
+       imageRefs: {
+         "app-runtime": $appRuntime,
+         "db-job": $dbJob,
+         nginx: $nginx,
+         sqlserver: $sqlserver,
+         keycloak: $keycloak
+       }
+     }' | sudo tee "$OFFLINE_ROOT/offline-upgrade-manifest.json" >/dev/null
+
+   sudo sh -c "cd '$OFFLINE_ROOT' && \
+     sha256sum offline-upgrade-manifest.json \
+       release/$VERSION/container-stack.lock.json \
+       images/$IMAGE_BUNDLE_NAME > hashes.sha256"
+
+   sudo tar -czf "$OFFLINE_BUNDLE" \
+     -C "$(dirname "$OFFLINE_ROOT")" "$(basename "$OFFLINE_ROOT")"
+   sudo chown "$(id -u):$(id -g)" "$OFFLINE_BUNDLE"
+   sha256sum "$OFFLINE_BUNDLE"
+   ```
+
+   Copy `$OFFLINE_BUNDLE` to the offline host with the site's approved
+   transfer method, for example `scp`.
+
+   On the offline host, unpack and verify the offline upgrade bundle in a
+   temporary staging directory:
+
+   ```bash
+   TOPOLOGY=single-node
+   OFFLINE_BUNDLE="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}.tar.gz"
+   OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
+
+   test ! -e "$OFFLINE_ROOT" || {
+     echo "Offline staging directory already exists: $OFFLINE_ROOT" >&2
+     exit 1
+   }
+
+   mkdir -p "$OFFLINE_ROOT"
+   tar -xzf "$OFFLINE_BUNDLE" -C "$OFFLINE_ROOT" --strip-components=1
+   (cd "$OFFLINE_ROOT" && sha256sum -c hashes.sha256)
+   ```
+
+   Install the release directory and move `current` on the offline host. Fail
+   fast if the release directory already exists:
+
+   ```bash
+   test ! -e "/opt/kravhantering/releases/${VERSION}" || {
+     echo "Release directory already exists:" \
+       "/opt/kravhantering/releases/${VERSION}" >&2
+     exit 1
+   }
+
+   sudo install -d -o root -g root -m 0755 /opt/kravhantering/releases
+   sudo cp -a "$OFFLINE_ROOT/release/${VERSION}" \
+     "/opt/kravhantering/releases/${VERSION}"
+   sudo chown -R root:root "/opt/kravhantering/releases/${VERSION}"
+   sudo chcon -R -t container_file_t \
+     "/opt/kravhantering/releases/${VERSION}/nginx"
+   sudo ln -sfn "/opt/kravhantering/releases/${VERSION}" \
+     /opt/kravhantering/current
+   readlink -f /opt/kravhantering/current
+   ```
+
+   Update only the `*_IMAGE_REF` values in the offline host's
+   `/etc/kravhantering/release.env`. By default this preserves the source image
+   refs. Set `TARGET_IMAGE_REGISTRY` to a non-resolvable local or fake registry
+   hostname when the offline host must never reference the source registry:
+
+   ```bash
+   TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
+   MANIFEST="$OFFLINE_ROOT/offline-upgrade-manifest.json"
+
+   update_ref() {
+     sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
+   }
+   source_ref() {
+     jq -r --arg name "$1" '.imageRefs[$name]' "$MANIFEST"
+   }
+   target_ref() {
+     local ref path tag
+     ref="$(source_ref "$1")"
+     if [ -z "$TARGET_IMAGE_REGISTRY" ]; then
+       printf '%s\n' "$ref"
+       return
+     fi
+     tag="${ref##*:}"
+     path="${ref%:*}"
+     printf '%s/%s:%s\n' "$TARGET_IMAGE_REGISTRY" "${path#*/}" "$tag"
+   }
+
+   update_ref APP_RUNTIME_IMAGE_REF "$(target_ref app-runtime)"
+   update_ref DB_JOB_IMAGE_REF "$(target_ref db-job)"
+   update_ref NGINX_IMAGE_REF "$(target_ref nginx)"
+   update_ref SQLSERVER_IMAGE_REF "$(target_ref sqlserver)"
+   update_ref KEYCLOAK_IMAGE_REF "$(target_ref keycloak)"
+   ```
+
+   Load, tag and verify the images as the rootless service user:
+
+   ```bash
+   sudo -iu kravhantering
+   VERSION=1.2.4
+   TOPOLOGY=single-node
+   OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
+   IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
+   cd /opt/kravhantering/current
+   bin/kravhantering-images.sh --topology single-node \
+     --lock-file container-stack.lock.json \
+     --env-file /etc/kravhantering/release.env \
+     load --bundle "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
+   bin/kravhantering-images.sh --topology single-node \
+     --lock-file container-stack.lock.json \
+     --env-file /etc/kravhantering/release.env \
+     verify
+   exit
+   ```
 
 8. Run the database jobs once from the new release.
    First ensure SQL Server, Keycloak and the Compose network exist for the new

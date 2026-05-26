@@ -519,7 +519,10 @@ describe('trusted container release helpers', () => {
         '/kravhantering-app-runtime:replace-with-release-tag',
       ].join(''),
     )
-    expect(releaseEnv).toContain('replace-with-release-manifest-digest')
+    expect(releaseEnv).toContain(
+      'ghcr.io/viscalyx/kravhantering-app-runtime:replace-with-release-tag',
+    )
+    expect(releaseEnv).not.toContain('replace-with-release-manifest-digest')
     expect(releaseEnv).not.toContain('replace-with-release-digest')
   })
 
