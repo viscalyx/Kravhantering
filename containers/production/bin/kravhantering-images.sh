@@ -16,7 +16,8 @@ Usage:
 Options:
   --lock-file <path>  Release container-stack.lock.json path
   --env-file <path>   release.env path with *_IMAGE_REF values
-  --output <path>     Exported offline image bundle path
+  --output <path>     Exported offline image bundle path. Export verifies and
+                      saves local images; pull images before running export.
   --bundle <path>     Offline image bundle to load
 USAGE
 }
@@ -107,6 +108,7 @@ verify_service() {
   local service="$1"
   local image_ref expected actual
   image_ref="$(image_ref_for_service "$service")"
+  require_tag_ref "$service" "$image_ref"
   expected="$(locked_image_id "$service")"
   actual="$(actual_image_id "$image_ref")"
   if [[ "$actual" != "$expected" ]]; then
@@ -125,7 +127,7 @@ require_tag_ref() {
   local service="$1"
   local image_ref="$2"
   if [[ "$image_ref" == *@sha256:* ]]; then
-    fail "$service uses digest ref $image_ref; offline load requires a tag-style *_IMAGE_REF retag target."
+    fail "$service uses digest ref $image_ref; production runtime refs must use tag-style image:tag values."
   fi
 }
 
@@ -165,7 +167,6 @@ export_images() {
   for service in "${SERVICES[@]}"; do
     local image_ref
     image_ref="$(image_ref_for_service "$service")"
-    podman pull "$image_ref"
     verify_service "$service"
     podman save --format oci-archive \
       --output "$work_dir/images/${service}.oci.tar" \

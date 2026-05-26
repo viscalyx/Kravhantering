@@ -230,7 +230,7 @@ describe('production image helper', () => {
     )
   })
 
-  it('exports, loads, tags, and verifies an offline image bundle', () => {
+  it('exports local images, loads, tags, and verifies an offline image bundle', () => {
     const dir = makeTempDir()
     const lockFile = writeLockFile(dir)
     const envFile = writeEnvFile(dir)
@@ -248,6 +248,7 @@ describe('production image helper', () => {
       bundle,
     ])
     expect(exported.status).toBe(0)
+    expect(exported.log).not.toContain('pull ')
     expect(fs.existsSync(bundle)).toBe(true)
     const loaded = runHelper(dir, [
       '--topology',
@@ -269,7 +270,7 @@ describe('production image helper', () => {
     expect(loaded.stdout).toContain('Verified app-runtime')
   })
 
-  it('rejects digest refs as offline tag targets', () => {
+  it('rejects digest refs as production runtime refs', () => {
     const dir = makeTempDir()
     const lockFile = writeLockFile(dir)
     const exportEnvFile = writeEnvFile(dir)
@@ -306,6 +307,8 @@ describe('production image helper', () => {
     ])
 
     expect(result.status).not.toBe(0)
-    expect(result.stderr).toContain('offline load requires a tag-style')
+    expect(result.stderr).toContain(
+      'production runtime refs must use tag-style',
+    )
   })
 })

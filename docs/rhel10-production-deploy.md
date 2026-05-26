@@ -41,15 +41,11 @@ The site must provide approved runtime image refs for:
 - `db-job`
 - nginx
 
-The refs normally point at an internal registry and usually use tags. They do
-not need to preserve the upstream manifest digest. Each configured ref must
-resolve to the locked `imageId` in `container-stack.lock.json` when inspected
-with Podman. Direct online pulls from upstream registries may use the locked
-`manifestDigest` refs when explicitly approved. Offline hosts must use tag-style
-refs so loaded images can be tagged to the local `release.env` targets. For
-offline-only hosts, the registry hostname in those refs may be a
-non-resolvable local or fake name because `podman tag` only creates local image
-metadata. Do not run `podman pull` for non-resolvable offline refs.
+The refs must use tag-style `image:tag` values, whether they point at the
+public upstream registries, an internal registry mirror, or a non-resolvable
+local/fake registry name for offline use. Each configured ref must resolve to
+the locked `imageId` in `container-stack.lock.json` when inspected with Podman.
+Do not run `podman pull` for non-resolvable offline refs.
 Mirroring and offline transport mechanics are outside this guide's
 prerequisites; the bundled image helper provides the verification and transport
 commands in the steps below.
@@ -273,47 +269,69 @@ sudo chcon -R -t container_file_t \
 ## Image References
 
 Set image references in `/etc/kravhantering/release.env` to the site's
-approved runtime refs. Internal registry refs normally use tags that include
-the release version or a site-controlled promotion tag:
+approved runtime refs. Production runtime refs must use tag-style `image:tag`
+values. Derive the public upstream refs from the release lock:
 
 ```bash
 update_ref() {
   sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
 }
 
-update_ref APP_RUNTIME_IMAGE_REF \
-  "registry.example.internal/kravhantering-app-runtime:${VERSION}"
-update_ref DB_JOB_IMAGE_REF \
-  "registry.example.internal/kravhantering-db-job:${VERSION}"
-update_ref NGINX_IMAGE_REF \
-  "registry.example.internal/nginx:stable-alpine"
-```
-
-Opt-in for online direct pulls: if the site is explicitly approved to pull from
-public upstream registries, use the locked `manifestDigest` values from the
-release lock:
-
-```bash
 LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
-service_manifest_digest() {
+service_image() {
   jq -r --arg name "$1" \
-    '.services[] | select(.name == $name) | .manifestDigest' "$LOCK_FILE"
+    '.services[] | select(.name == $name) | .image' "$LOCK_FILE"
+}
+service_tag() {
+  jq -r --arg name "$1" \
+    '.services[] | select(.name == $name) | .tag' "$LOCK_FILE"
+}
+service_ref() {
+  printf '%s:%s\n' "$(service_image "$1")" "$(service_tag "$1")"
 }
 
-APP_RUNTIME_MANIFEST_DIGEST="$(service_manifest_digest app-runtime)"
-DB_JOB_MANIFEST_DIGEST="$(service_manifest_digest db-job)"
-NGINX_MANIFEST_DIGEST="$(service_manifest_digest nginx)"
-
 update_ref APP_RUNTIME_IMAGE_REF \
-  "ghcr.io/viscalyx/kravhantering-app-runtime@${APP_RUNTIME_MANIFEST_DIGEST}"
+  "$(service_ref app-runtime)"
 update_ref DB_JOB_IMAGE_REF \
-  "ghcr.io/viscalyx/kravhantering-db-job@${DB_JOB_MANIFEST_DIGEST}"
+  "$(service_ref db-job)"
 update_ref NGINX_IMAGE_REF \
-  "docker.io/library/nginx@${NGINX_MANIFEST_DIGEST}"
+  "$(service_ref nginx)"
 ```
 
-Pull or verify the images as the service user. For internal registry or direct
-online pulls:
+If the site pulls from an internal registry mirror that preserves repository
+paths, rewrite only the registry host while keeping the locked tags:
+
+```bash
+TARGET_IMAGE_REGISTRY=registry.example.internal
+LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
+service_image() {
+  jq -r --arg name "$1" \
+    '.services[] | select(.name == $name) | .image' "$LOCK_FILE"
+}
+service_tag() {
+  jq -r --arg name "$1" \
+    '.services[] | select(.name == $name) | .tag' "$LOCK_FILE"
+}
+mirror_ref() {
+  local image
+  image="$(service_image "$1")"
+  printf '%s/%s:%s\n' \
+    "$TARGET_IMAGE_REGISTRY" "${image#*/}" "$(service_tag "$1")"
+}
+
+update_ref APP_RUNTIME_IMAGE_REF \
+  "$(mirror_ref app-runtime)"
+update_ref DB_JOB_IMAGE_REF \
+  "$(mirror_ref db-job)"
+update_ref NGINX_IMAGE_REF \
+  "$(mirror_ref nginx)"
+```
+
+If the internal mirror uses a custom repository layout, set the three
+`*_IMAGE_REF` values manually to site-approved tag refs, then run the
+verification below. Each ref must resolve to the locked `imageId`.
+
+Pull and verify the images as the service user:
 
 ```bash
 sudo -iu kravhantering
@@ -334,8 +352,10 @@ bin/kravhantering-images.sh --topology app-node \
 exit
 ```
 
-For offline transport, first create the image bundle on a connected staging or
-mirror host that uses the same `release.env` refs:
+For image-only offline transport during first install, first create the image
+bundle on a connected staging or mirror host after pulling and verifying the
+same `release.env` refs. The export command saves already-present local images
+and does not pull from a registry:
 
 ```bash
 sudo -iu kravhantering
@@ -350,7 +370,8 @@ sha256sum "/tmp/kravhantering-images-${VERSION}-app-node.tar.gz"
 ```
 
 Copy that tarball to the offline host. Ensure `/etc/kravhantering/release.env`
-contains tag-style target refs, then load, tag and verify:
+contains the tag-style refs that should exist locally after load, then load,
+tag and verify:
 
 ```bash
 sudo -iu kravhantering
@@ -362,10 +383,11 @@ bin/kravhantering-images.sh --topology app-node \
 exit
 ```
 
-Those offline target refs do not need to point at a real registry. They only
-need to be stable local image names that the later `release.env`-driven
-`podman run` and `podman compose` commands will use. Do not run the pull block
-above on an offline host that uses non-resolvable refs.
+Those offline target refs may preserve the source registry host, or they may
+use a non-resolvable local or fake registry hostname. They only need to be
+stable local image names that the later `release.env`-driven `podman run` and
+`podman compose` commands will use. Do not run the pull block above on an
+offline host that uses non-resolvable refs.
 
 Set `NGINX_RESOLVER` in `/etc/kravhantering/release.env` to the Podman DNS
 resolver that nginx should use for dynamic `app-runtime` lookups:

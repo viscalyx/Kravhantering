@@ -8,9 +8,10 @@ records two image identities in `container-stack.lock.json`. The
 `manifestDigest` is the registry manifest digest used for Cosign keyless
 signing, GitHub Artifact Attestations, SBOM subjects and GHCR release smoke
 tests. The `imageId` is the container image ID used by production operators to
-verify runtime equivalence after internal-registry mirroring or offline image
-transport. The release smoke test starts Podman Compose from verified GHCR
-manifest digest references, not from mutable tags.
+verify runtime equivalence after tag-based pulls, internal-registry mirroring
+or offline image transport. The release smoke test starts Podman Compose from
+verified GHCR manifest digest references, but production deployment and upgrade
+guides use tag-style runtime refs and verify them against locked image IDs.
 
 The Buildx publish steps disable BuildKit's default registry provenance
 attestations with `--provenance=false`. The workflow publishes provenance and
@@ -81,9 +82,9 @@ The workflow uploads these artifact groups:
 
 The production deployment bundle includes `bin/kravhantering-images.sh`, a
 Bash and jq helper for explicit operator verification. It can verify configured
-`release.env` image refs against locked image IDs, export a transport bundle
-from a connected staging or mirror host, and load and tag that bundle on an
-offline host.
+tag-style `release.env` image refs against locked image IDs, export already
+present verified local images into a transport bundle, and load and tag that
+bundle on an offline host.
 
 The production deployment bundle is also uploaded to GitHub Releases as:
 
@@ -166,6 +167,9 @@ gh attestation verify \
 
 Use the corresponding `db-job` manifest digest reference from the release notes
 to verify the `db-job` image. Production runtime verification is separate:
-after choosing site-specific image refs in `release.env`, run the bundled
+after choosing site-specific tag-style image refs in `release.env`, pull those
+refs when the host can reach the registry, then run the bundled
 `bin/kravhantering-images.sh verify` command for the target topology to compare
-Podman image inspect `.Id` values with the locked `imageId` values.
+Podman image inspect `.Id` values with the locked `imageId` values. For offline
+transport, export only after the source host has already pulled and verified
+the local refs.
