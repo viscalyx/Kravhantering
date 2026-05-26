@@ -174,7 +174,7 @@ describe('production Keycloak realm template', () => {
       attribute => attribute.name === 'hsaId',
     )
 
-    expect(userProfile?.unmanagedAttributePolicy).toBe('DISABLED')
+    expect(userProfile?.unmanagedAttributePolicy).toBeUndefined()
     expect(userProfile?.groups?.map(group => group.name)).toContain(
       'user-metadata',
     )
