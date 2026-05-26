@@ -81,19 +81,33 @@ image_ref_for_service() {
   printf '%s\n' "$value"
 }
 
-locked_image_id() {
+locked_service_field() {
   local service="$1"
-  local image_id
-  image_id="$(jq -r --arg name "$service" '
+  local field="$2"
+  local value
+  value="$(jq -r --arg name "$service" --arg field "$field" '
     if .schemaVersion != 2 then
       error("container-stack.lock.json must use schemaVersion 2")
     else
-      .services[] | select(.name == $name) | .imageId
+      .services[] | select(.name == $name) | .[$field]
     end
   ' "$LOCK_FILE")"
-  [[ "$image_id" != "null" && -n "$image_id" ]] ||
-    fail "$LOCK_FILE is missing imageId for $service."
-  normalize_sha256 "$image_id"
+  [[ "$value" != "null" && -n "$value" ]] ||
+    fail "$LOCK_FILE is missing $field for $service."
+  printf '%s\n' "$value"
+}
+
+locked_image_id() {
+  local service="$1"
+  normalize_sha256 "$(locked_service_field "$service" imageId)"
+}
+
+locked_manifest_ref() {
+  local service="$1"
+  local image digest
+  image="$(locked_service_field "$service" image)"
+  digest="$(locked_service_field "$service" manifestDigest)"
+  printf '%s@%s\n' "$image" "$(normalize_sha256 "$digest")"
 }
 
 actual_image_id() {
@@ -106,13 +120,15 @@ actual_image_id() {
 
 verify_service() {
   local service="$1"
-  local image_ref expected actual
+  local image_ref expected actual env_prefix locked_ref
   image_ref="$(image_ref_for_service "$service")"
   require_tag_ref "$service" "$image_ref"
   expected="$(locked_image_id "$service")"
   actual="$(actual_image_id "$image_ref")"
   if [[ "$actual" != "$expected" ]]; then
-    fail "$service image ID $actual does not match locked $expected for $image_ref."
+    env_prefix="$(service_env_prefix "$service")"
+    locked_ref="$(locked_manifest_ref "$service")"
+    fail "$service image ID $actual does not match locked $expected for $image_ref. The tag may have moved since the release lock was created; pull the locked manifest $locked_ref and tag it to $image_ref, or set ${env_prefix}_IMAGE_REF to a site mirror tag that resolves to the locked image ID."
   fi
   printf 'Verified %s (%s)\n' "$service" "$image_ref"
 }

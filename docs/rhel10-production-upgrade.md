@@ -115,8 +115,11 @@ place.
 
 7. Update `/etc/kravhantering/release.env` image refs and verify image IDs on
    every app node.
-   Production runtime refs must use tag-style `image:tag` values. Derive the
-   public upstream refs from the target release lock:
+   Production runtime refs must use tag-style `image:tag` values. Prefer
+   release-specific internal mirror tags for third-party images so moving
+   public tags cannot drift after release. For connected staging only, derive
+   the public upstream refs from the target release lock and verify them
+   immediately:
 
    ```bash
    update_ref() {

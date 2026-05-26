@@ -57,7 +57,8 @@ nginx has no env file in this phase. These mounted values are sensitive:
 
 To update it manually:
 
-1. Choose the new official nginx tag.
+1. Choose the new official nginx tag. Prefer a version-specific Alpine tag and
+   avoid moving tags such as `stable-alpine` for release locks.
 2. Resolve the current manifest digest and image ID from Docker Hub.
 3. Update `tag`, `manifestDigest` and `imageId` together in
    `image.lock.json`.
