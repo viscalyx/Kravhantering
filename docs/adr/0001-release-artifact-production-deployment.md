@@ -14,5 +14,7 @@ mirror refs. Operators pull those tag refs when registry access is available,
 or load an offline image bundle and tag the loaded image IDs to the configured
 refs. Operators verify the configured runtime image refs against the locked
 image IDs before first start and upgrade migrations. This keeps the runtime
-contract reviewable and repeatable while leaving site-specific secrets,
-certificates and registry operations under operations control.
+contract reviewable and repeatable even when third-party upstream tags move
+after release. Production sites should prefer release-specific internal mirror
+tags for vendor images while leaving site-specific secrets, certificates and
+registry operations under operations control.

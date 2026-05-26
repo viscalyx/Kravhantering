@@ -56,7 +56,8 @@ any exposed environment.
 
 To update it manually:
 
-1. Choose the new Microsoft SQL Server tag.
+1. Choose the new Microsoft SQL Server tag. Prefer a version- or CU-specific
+   tag and avoid moving tags such as `2025-latest` for release locks.
 2. Resolve the current manifest digest and image ID from Microsoft Artifact
    Registry.
 3. Update `tag`, `manifestDigest` and `imageId` together in

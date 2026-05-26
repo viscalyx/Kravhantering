@@ -228,6 +228,10 @@ describe('production image helper', () => {
     expect(result.stderr).toContain(
       'nginx image ID sha256:wrong-nginx does not match locked sha256:nginx-image',
     )
+    expect(result.stderr).toContain(
+      'pull the locked manifest registry.example/nginx@sha256:nginx-manifest',
+    )
+    expect(result.stderr).toContain('set NGINX_IMAGE_REF to a site mirror tag')
   })
 
   it('exports local images, loads, tags, and verifies an offline image bundle', () => {

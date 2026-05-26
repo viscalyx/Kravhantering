@@ -1,0 +1,57 @@
+name: Vendor Image Updates
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: Vendor image to check
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - nginx
+          - sqlserver
+          - keycloak
+      include-current:
+        description: Also refresh the current lane tag and immutable digests
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    - cron: '17 5 * * 1'
+
+concurrency:
+  group: ${{ github.workflow }}-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  vendor-image-updates:
+    name: Check Vendor Image Locks
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      GH_TOKEN: ${{ secrets.VENDOR_IMAGE_UPDATE_TOKEN || github.token }}
+      VENDOR_IMAGE_UPDATE_IMAGE: ${{ github.event.inputs.image || 'all' }}
+      VENDOR_IMAGE_UPDATE_INCLUDE_CURRENT: ${{ github.event.inputs['include-current'] || 'false' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Create or update vendor image PRs
+        run: node .github/workflows/vendor-image-updates.mjs

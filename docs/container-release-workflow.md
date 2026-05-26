@@ -38,6 +38,49 @@ Local and release-smoke stack startup honor `--lock-file`. When the stack builds
 local images, `run-local-stack.mjs` passes that path to
 `generate-stack-lock.mjs` before `generate-compose.mjs` reads it.
 
+## Vendor Image Lock Updates
+
+`.github/workflows/vendor-image-updates.yml` checks nginx, SQL Server and
+Keycloak upstream tags weekly from `main` and can also be run manually with
+`workflow_dispatch`. Manual runs may select `all`, `nginx`, `sqlserver` or
+`keycloak`; the `include-current` input also refreshes the immutable digest
+metadata for the current selected lane.
+
+The updater uses one branch and one ready-for-review PR per image lane. A lane
+is the image name plus the target major line, or the SQL Server product year:
+
+- `automation/vendor-image/keycloak-26`
+- `automation/vendor-image/keycloak-27`
+- `automation/vendor-image/nginx-1`
+- `automation/vendor-image/sqlserver-2025`
+
+Within a lane, newer patch and minor releases update the existing PR instead
+of opening another PR. For example, a Keycloak `26.7.1` release updates the
+open `keycloak-26` PR, while a later `27.0.0` release opens or updates the
+separate `keycloak-27` PR. Each weekly run recreates the branch from current
+`main` and force-pushes the current proposal, keeping the PR conversation while
+removing stale commits. When `main` already contains the lane update, or when
+`main` has advanced past an older lane, the workflow closes the stale PR and
+deletes the branch.
+
+The updater resolves `linux/amd64` registry manifests and records both the
+platform manifest digest and the image config digest in the matching
+`containers/<image>/image.lock.json` file. Keycloak updates also keep
+`docker-compose.idp.yml`, both devcontainer Compose files and the developer
+auth documentation on the same tag. SQL Server updates keep
+`docker-compose.sqlserver.yml` and both devcontainer Compose files on the same
+tag. nginx currently has no static devcontainer or integration-test Compose
+reference outside the generated stack.
+
+The updater workflow does not run the full test suite. It creates or updates
+the PR, and the normal PR workflows validate the change. To make those PR
+workflows run automatically from automation-created PRs, configure a
+`VENDOR_IMAGE_UPDATE_TOKEN` secret from a fine-scoped PAT or GitHub App token
+that can push branches and create pull requests. If the secret is absent, the
+workflow falls back to `github.token`; that fallback can update branches and
+PRs when repository settings allow it, but GitHub may suppress downstream PR
+workflow runs that are triggered by the built-in token.
+
 ## Release Evidence
 
 GitHub Release notes are the first place to find the tested release version,
@@ -173,6 +216,8 @@ to verify the `db-job` image. Production runtime verification is separate:
 after choosing site-specific tag-style image refs in `release.env`, pull those
 refs when the host can reach the registry, then run the bundled
 `bin/kravhantering-images.sh verify` command for the target topology to compare
-Podman image inspect `.Id` values with the locked `imageId` values. For offline
-transport, export only after the source host has already pulled and verified
-the local refs.
+Podman image inspect `.Id` values with the locked `imageId` values. Third-party
+upstream tags can move after release, so production sites should prefer
+release-specific internal mirror tags and treat the lock file as the source of
+truth. For offline transport, export only after the source host has already
+pulled and verified the local refs.

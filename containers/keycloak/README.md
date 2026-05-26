@@ -75,7 +75,8 @@ any exposed environment.
 
 To update it manually:
 
-1. Choose the new upstream Keycloak tag.
+1. Choose the new upstream Keycloak tag. Prefer a version-specific tag and keep
+   verification against the locked image ID as the runtime source of truth.
 2. Resolve the current manifest digest and image ID from Quay.
 3. Update `tag`, `manifestDigest` and `imageId` together in
    `image.lock.json`.

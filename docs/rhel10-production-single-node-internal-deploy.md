@@ -47,6 +47,10 @@ public upstream registries, an internal registry mirror, or a non-resolvable
 local/fake registry name for offline use. Each configured ref must resolve to
 the locked `imageId` in `container-stack.lock.json` when inspected with Podman.
 Do not run `podman pull` for non-resolvable offline refs.
+For third-party images, prefer release-specific internal mirror tags instead
+of moving public tags such as `stable-alpine` or `2025-latest`. The lock file,
+not the tag text, is the source of truth; `bin/kravhantering-images.sh verify`
+fails if a tag now resolves to another image ID.
 
 ## Configuration BoM
 
@@ -384,7 +388,9 @@ sudo chcon -R -t container_file_t \
 
 Set image references in `/etc/kravhantering/release.env` to the site's
 approved runtime refs. Production runtime refs must use tag-style `image:tag`
-values. Derive the public upstream refs from the release lock:
+values. Prefer release-specific internal mirror tags for third-party images.
+For connected staging only, derive the public upstream refs from the release
+lock and verify them immediately:
 
 ```bash
 update_ref() {
