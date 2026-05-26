@@ -25,7 +25,7 @@ configuration change.
    Download the target bundle and checksum from the approved release source:
 
    ```bash
-   VERSION=1.2.4
+   VERSION=1.2.4 # Change to the version being deployed.
 
    # Default: internal release repository.
    RELEASE_DOWNLOAD_URL="https://release.example.internal/kravhantering/${VERSION}"
@@ -229,7 +229,7 @@ configuration change.
 
    ```bash
    sudo -iu kravhantering
-   VERSION=1.2.4
+   VERSION=1.2.4 # Change to the version being deployed.
    TOPOLOGY=single-node
    OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
    IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
@@ -366,7 +366,7 @@ configuration change.
 
    ```bash
    sudo -iu kravhantering
-   VERSION=1.2.4
+   VERSION=1.2.4 # Change to the version being deployed.
    TOPOLOGY=single-node
    OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
    IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"

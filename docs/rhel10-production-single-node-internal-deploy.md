@@ -312,7 +312,7 @@ the approved release artifacts.
 >deployment. GitHub release tags use the `v${VERSION}` path segment.
 
 ```bash
-VERSION=1.2.3
+VERSION=1.2.3 # Change to the version being deployed.
 
 # Default: internal release repository.
 RELEASE_DOWNLOAD_URL="https://release.example.internal/kravhantering/${VERSION}"
@@ -489,27 +489,46 @@ and does not pull from a registry:
 
 ```bash
 sudo -iu kravhantering
+VERSION=1.2.3 # Change to the version being deployed.
+IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-single-node.tar.gz"
 cd /opt/kravhantering/current
 bin/kravhantering-images.sh --topology single-node \
   --lock-file container-stack.lock.json \
   --env-file /etc/kravhantering/release.env \
-  export --output "/tmp/kravhantering-images-${VERSION}-single-node.tar.gz"
+  export --output "/tmp/$IMAGE_BUNDLE_NAME"
 exit
 
-sha256sum "/tmp/kravhantering-images-${VERSION}-single-node.tar.gz"
+VERSION=1.2.3 # Change to the version being deployed.
+IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-single-node.tar.gz"
+(
+  cd /tmp
+  sha256sum "$IMAGE_BUNDLE_NAME" > "${IMAGE_BUNDLE_NAME}.sha256"
+)
 ```
 
-Copy that tarball to the offline host. Ensure `/etc/kravhantering/release.env`
-contains the tag-style refs that should exist locally after load, then load,
-tag and verify:
+Copy that tarball and its `.sha256` sidecar to `/tmp` on the offline host.
+Verify the transferred bundle before loading it. Ensure
+`/etc/kravhantering/release.env` contains the tag-style refs that should exist
+locally after load, then load, tag and verify:
+
+```bash
+VERSION=1.2.3 # Change to the version being deployed.
+IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-single-node.tar.gz"
+(
+  cd /tmp
+  sha256sum -c "${IMAGE_BUNDLE_NAME}.sha256"
+)
+```
 
 ```bash
 sudo -iu kravhantering
+VERSION=1.2.3 # Change to the version being deployed.
+IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-single-node.tar.gz"
 cd /opt/kravhantering/current
 bin/kravhantering-images.sh --topology single-node \
   --lock-file container-stack.lock.json \
   --env-file /etc/kravhantering/release.env \
-  load --bundle "/tmp/kravhantering-images-${VERSION}-single-node.tar.gz"
+  load --bundle "/tmp/$IMAGE_BUNDLE_NAME"
 exit
 ```
 

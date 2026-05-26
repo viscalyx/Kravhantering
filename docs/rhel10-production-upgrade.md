@@ -29,7 +29,7 @@ place.
    Download the target bundle and checksum from the approved release source:
 
    ```bash
-   VERSION=1.2.4
+   VERSION=1.2.4 # Change to the version being deployed.
 
    # Default: internal release repository.
    RELEASE_DOWNLOAD_URL="https://release.example.internal/kravhantering/${VERSION}"
@@ -230,7 +230,7 @@ place.
 
    ```bash
    sudo -iu kravhantering
-   VERSION=1.2.4
+   VERSION=1.2.4 # Change to the version being deployed.
    TOPOLOGY=app-node
    OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
    IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
@@ -361,7 +361,7 @@ place.
 
    ```bash
    sudo -iu kravhantering
-   VERSION=1.2.4
+   VERSION=1.2.4 # Change to the version being deployed.
    TOPOLOGY=app-node
    OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
    IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
@@ -483,7 +483,7 @@ point taken before the upgrade. The supported sequence is:
    on every app node.
 
    ```bash
-   PREVIOUS_VERSION=1.2.3
+   PREVIOUS_VERSION=1.2.3 # Change to the previous version being restored.
 
    sudo ln -sfn "/opt/kravhantering/releases/${PREVIOUS_VERSION}" \
      /opt/kravhantering/current
