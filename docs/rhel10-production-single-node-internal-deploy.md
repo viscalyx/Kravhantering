@@ -6,6 +6,7 @@
 <!-- cSpell:words ipv4 -->
 <!-- cSpell:words serverAuth subjectAltName -->
 <!-- cSpell:words Mountpoint -->
+<!-- cSpell:words fcontext graphroot restorecon semanage tempdb -->
 
 This guide describes how to install and operate Kravhantering on one clean
 Red Hat Enterprise Linux 10 host from released artifacts only, with nginx,
@@ -188,6 +189,75 @@ Treat the inspect output as authoritative when the host uses customized
 rootless Podman storage or when `/home/kravhantering` is backed by separate
 container storage. Include this location in the site's backup, restore and
 volume-snapshot procedures.
+
+#### Change the Rootless Storage Location
+
+If `/home` is intentionally small, quota-limited or mounted with stronger
+hardening than the database workload can tolerate, move the rootless Podman
+storage root before creating the stack. This keeps the Compose volume name
+unchanged while placing images, container layers and named volumes on a larger
+site-approved filesystem.
+
+Create and label the new storage root as an administrator. Replace
+`/var/lib/kravhantering/podman-storage` with the approved XFS-backed mount
+point for this host:
+
+```bash
+sudo install -d -o kravhantering -g kravhantering -m 0700 \
+  /var/lib/kravhantering/podman-storage
+sudo semanage fcontext -a -t container_var_lib_t \
+  '/var/lib/kravhantering/podman-storage(/.*)?'
+sudo restorecon -Rv /var/lib/kravhantering/podman-storage
+```
+
+Create a per-user Podman storage override for the `kravhantering` service
+user before running `podman compose up` for the first time:
+
+```bash
+sudo -iu kravhantering
+mkdir -p ~/.config/containers
+printf '%s\n' \
+  '[storage]' \
+  'driver = "overlay"' \
+  'graphroot = "/var/lib/kravhantering/podman-storage"' \
+  > ~/.config/containers/storage.conf
+podman info --format '{{ .Store.GraphRoot }}'
+exit
+```
+
+The `podman info` output must show the new path before the stack creates
+volumes. After first start, run `podman volume inspect` again and record the
+actual SQL Server mountpoint from the new storage root. If SQL Server data
+already exists, do not move only the `_data` directory; use a tested SQL Server
+backup and restore, a volume snapshot restore or another approved storage
+migration plan.
+
+#### SQL Server Volume Sizing
+
+For initial planning, a Requirements Library with 10,000 requirements and one
+or two requirement versions per requirement should normally stay well below
+1 GiB for application database rows and indexes when descriptions, acceptance
+criteria and verification methods are ordinary short text. Size the filesystem
+for SQL Server operations, not only for that logical row estimate: the volume
+also holds database files, transaction logs, indexes, system databases and
+`tempdb`.
+
+Use 10 GiB as a practical floor for the SQL Server Podman volume on a
+production host. Prefer 20-50 GiB when the site expects long version history,
+many requirements specifications, local requirements, deviations, improvement
+suggestions, action audit log rows or long growth periods between maintenance
+windows. Keep SQL Server backups and volume snapshots on separate storage.
+
+After a representative import or seed, measure the actual volume usage:
+
+```bash
+sudo -iu kravhantering
+SQLSERVER_VOLUME_PATH=$(
+  podman volume inspect kravhantering-sqlserver-data --format '{{ .Mountpoint }}'
+)
+du -sh "$SQLSERVER_VOLUME_PATH"
+exit
+```
 
 The bundled Compose files keep bind mounts read-only. Because the stack runs as
 the rootless `kravhantering` user and the mounted files are root-owned under
