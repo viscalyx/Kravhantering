@@ -6,6 +6,7 @@ import path from 'node:path'
 
 const MAIN_BRANCH = 'main'
 const BRANCH_PREFIX = 'automation/vendor-image'
+const OPEN_PR_LIST_LIMIT = '1000'
 const PLATFORM = {
   architecture: 'amd64',
   os: 'linux',
@@ -549,7 +550,7 @@ function listOpenAutomationPrs(config) {
     '--json',
     'number,headRefName,title',
     '--limit',
-    '100',
+    OPEN_PR_LIST_LIMIT,
   ])
   const prefix = `${BRANCH_PREFIX}/${config.name}-`
   return JSON.parse(output).filter(pr => pr.headRefName?.startsWith(prefix))
@@ -564,7 +565,7 @@ function findOpenPr(branch) {
     '--json',
     'number,headRefName,title',
     '--limit',
-    '100',
+    OPEN_PR_LIST_LIMIT,
   ])
   return JSON.parse(output).find(pr => pr.headRefName === branch) ?? null
 }
