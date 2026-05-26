@@ -276,13 +276,12 @@ export function createReleasePlan(input = {}) {
     isStableRelease || shouldCreatePreviewRelease ? `v${version}` : ''
   const appRuntimeImage = `ghcr.io/${owner}/${APP_RUNTIME_PACKAGE}`
   const dbJobImage = `ghcr.io/${owner}/${DB_JOB_PACKAGE}`
-  const baseTags = isStableRelease
+  const commitTags = [`main-${shortSha}`, `sha-${sha}`]
+  const tags = isStableRelease
     ? [version]
-    : [`main-${shortSha}`, `sha-${sha}`]
-  const tags =
-    shouldCreatePreviewRelease && !baseTags.includes(version)
-      ? [...baseTags, version]
-      : baseTags
+    : shouldCreatePreviewRelease
+      ? [version, ...commitTags]
+      : commitTags
 
   return {
     appRuntimeImage,

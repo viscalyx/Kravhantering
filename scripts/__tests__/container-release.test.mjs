@@ -73,7 +73,7 @@ function buildxMetadataWithDescriptorAnnotation(manifestDigest, imageId) {
 }
 
 describe('trusted container release helpers', () => {
-  it('creates main snapshot tags and preview releases for relevant changes', () => {
+  it('creates semantic-version primary tags for preview releases', () => {
     const plan = createReleasePlan({
       changedFiles: ['app/[locale]/page.tsx', 'docs/notes.md'],
       env: env(),
@@ -89,10 +89,14 @@ describe('trusted container release helpers', () => {
       version: '1.2.0-preview.4',
     })
     expect(plan.tags).toEqual([
+      '1.2.0-preview.4',
       'main-1234567890ab',
       'sha-1234567890abcdef1234567890abcdef12345678',
-      '1.2.0-preview.4',
     ])
+    expect(plan.tag).toBe('1.2.0-preview.4')
+    expect(plan.appRuntimeTags[0]).toBe(
+      `ghcr.io/viscalyx/${APP_RUNTIME_PACKAGE}:1.2.0-preview.4`,
+    )
   })
 
   it('strips GitVersion build metadata from preview release tags', () => {
@@ -109,9 +113,9 @@ describe('trusted container release helpers', () => {
       version: '1.2.0-preview.4',
     })
     expect(plan.tags).toEqual([
+      '1.2.0-preview.4',
       'main-1234567890ab',
       'sha-1234567890abcdef1234567890abcdef12345678',
-      '1.2.0-preview.4',
     ])
     for (const tag of [
       plan.releaseTagName,
