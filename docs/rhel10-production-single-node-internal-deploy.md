@@ -21,6 +21,13 @@ For upgrades and rollback, use
 To uninstall a first install of this topology, use
 [rhel10-production-single-node-internal-uninstall.md](./rhel10-production-single-node-internal-uninstall.md).
 
+>[!IMPORTANT]
+>For offline deployment, first follow
+>[rhel10-production-single-node-internal-offline.md](./rhel10-production-single-node-internal-offline.md).
+>The offline guide prepares the transferable bundle before this deployment
+>guide starts and tells you where to resume these regular deployment steps on
+>the offline host.
+
 ![Kravhantering Infographic Single Node Access Flow](images/infographic-single-node-access-flow.png)
 
 ## Release Inputs
@@ -42,11 +49,9 @@ The site must provide approved runtime image refs for:
 - SQL Server
 - Keycloak
 
-The refs must use tag-style `image:tag` values, whether they point at the
-public upstream registries, an internal registry mirror, or a non-resolvable
-local/fake registry name for offline use. Each configured ref must resolve to
+The refs must use tag-style `image:tag` values that point at public upstream
+registries or an internal registry mirror. Each configured ref must resolve to
 the locked `imageId` in `container-stack.lock.json` when inspected with Podman.
-Do not run `podman pull` for non-resolvable offline refs.
 For third-party images, prefer release-specific internal mirror tags instead
 of moving public tags such as `stable-alpine` or `2025-latest`. The lock file,
 not the tag text, is the source of truth; `bin/kravhantering-images.sh verify`
@@ -481,62 +486,6 @@ bin/kravhantering-images.sh --topology single-node \
 
 exit
 ```
-
-For image-only offline transport during first install, first create the image
-bundle on a connected staging or mirror host after pulling and verifying the
-same `release.env` refs. The export command saves already-present local images
-and does not pull from a registry:
-
-```bash
-sudo -iu kravhantering
-VERSION=1.2.3 # Change to the version being deployed.
-IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-single-node.tar.gz"
-cd /opt/kravhantering/current
-bin/kravhantering-images.sh --topology single-node \
-  --lock-file container-stack.lock.json \
-  --env-file /etc/kravhantering/release.env \
-  export --output "/tmp/$IMAGE_BUNDLE_NAME"
-exit
-
-VERSION=1.2.3 # Change to the version being deployed.
-IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-single-node.tar.gz"
-(
-  cd /tmp
-  sha256sum "$IMAGE_BUNDLE_NAME" > "${IMAGE_BUNDLE_NAME}.sha256"
-)
-```
-
-Copy that tarball and its `.sha256` sidecar to `/tmp` on the offline host.
-Verify the transferred bundle before loading it. Ensure
-`/etc/kravhantering/release.env` contains the tag-style refs that should exist
-locally after load, then load, tag and verify:
-
-```bash
-VERSION=1.2.3 # Change to the version being deployed.
-IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-single-node.tar.gz"
-(
-  cd /tmp
-  sha256sum -c "${IMAGE_BUNDLE_NAME}.sha256"
-)
-```
-
-```bash
-sudo -iu kravhantering
-VERSION=1.2.3 # Change to the version being deployed.
-IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-single-node.tar.gz"
-cd /opt/kravhantering/current
-bin/kravhantering-images.sh --topology single-node \
-  --lock-file container-stack.lock.json \
-  --env-file /etc/kravhantering/release.env \
-  load --bundle "/tmp/$IMAGE_BUNDLE_NAME"
-exit
-```
-
-Those offline target refs may preserve the source registry host, or they may
-use a non-resolvable local or fake registry hostname. They only need to be
-stable local image names that the later `release.env`-driven `podman run` and
-`podman compose` commands will use. Do not run the pull block above on an
-offline host that uses non-resolvable refs.
 
 ## Configure Single-Node Services
 

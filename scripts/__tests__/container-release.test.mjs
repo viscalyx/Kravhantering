@@ -177,6 +177,9 @@ describe('trusted container release helpers', () => {
       ),
     ).toBe(true)
     expect(isReleaseRelevantPath('docs/rhel10-production-deploy.md')).toBe(true)
+    expect(isReleaseRelevantPath('docs/rhel10-production-offline.md')).toBe(
+      true,
+    )
     expect(isReleaseRelevantPath('docs/rhel10-production-upgrade.md')).toBe(
       true,
     )
@@ -186,6 +189,11 @@ describe('trusted container release helpers', () => {
     expect(
       isReleaseRelevantPath(
         'docs/rhel10-production-single-node-internal-deploy.md',
+      ),
+    ).toBe(true)
+    expect(
+      isReleaseRelevantPath(
+        'docs/rhel10-production-single-node-internal-offline.md',
       ),
     ).toBe(true)
     expect(
@@ -626,10 +634,14 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain('compose/app-node-tls.compose.yml')
       expect(result.files).toContain('compose/single-node.compose.yml')
       expect(result.files).toContain('docs/rhel10-production-deploy.md')
+      expect(result.files).toContain('docs/rhel10-production-offline.md')
       expect(result.files).toContain('docs/rhel10-production-upgrade.md')
       expect(result.files).toContain('docs/rhel10-production-uninstall.md')
       expect(result.files).toContain(
         'docs/rhel10-production-single-node-internal-deploy.md',
+      )
+      expect(result.files).toContain(
+        'docs/rhel10-production-single-node-internal-offline.md',
       )
       expect(result.files).toContain(
         'docs/rhel10-production-single-node-internal-upgrade.md',

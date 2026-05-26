@@ -1,0 +1,434 @@
+# RHEL 10 Single-Node Internal Offline Deployment And Upgrade
+
+<!-- cSpell:words coreutils fLO readlink resolv -->
+
+This guide describes how to prepare and import offline release artifacts for
+the single-node internal RHEL 10 production topology, where nginx,
+`app-runtime`, SQL Server, Keycloak and `db-job` run in one rootless Podman
+Compose network.
+
+Use this guide before starting an offline first install with
+[rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md),
+or before the downtime window for an offline planned upgrade with
+[rhel10-production-single-node-internal-upgrade.md](./rhel10-production-single-node-internal-upgrade.md).
+
+## Connected Export Host
+
+The connected export host only prepares transferable artifacts. Do not create
+the `kravhantering` service user there, and do not create production
+`/opt/kravhantering` or `/etc/kravhantering` directories there.
+
+The export host needs:
+
+- outbound access to the approved release repository
+- outbound access to the approved image registry or mirror
+- `podman`, `tar`, `gzip`, `coreutils`, `jq` and `curl`
+- one operator account that runs all `podman pull`, verify and export commands
+
+Podman image storage is per user. Pull, verify and export images with the same
+connected-host account.
+
+### Create The Offline Bundle
+
+Set the release version and download source:
+
+```bash
+VERSION=1.2.3 # Change to the version being deployed.
+TOPOLOGY=single-node
+
+# Default: internal release repository.
+RELEASE_DOWNLOAD_URL="https://release.example.internal/kravhantering/${VERSION}"
+
+# Opt-in: official GitHub release.
+# RELEASE_DOWNLOAD_URL="https://github.com/viscalyx/Kravhantering/releases/download/v${VERSION}"
+
+OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
+OFFLINE_WORK="/tmp/kravhantering-offline-work-${VERSION}-${TOPOLOGY}"
+OFFLINE_BUNDLE="${OFFLINE_ROOT}.tar.gz"
+RELEASE_ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
+IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
+
+test ! -e "$OFFLINE_ROOT" || {
+  echo "Offline staging directory already exists: $OFFLINE_ROOT" >&2
+  exit 1
+}
+test ! -e "$OFFLINE_WORK" || {
+  echo "Offline work directory already exists: $OFFLINE_WORK" >&2
+  exit 1
+}
+
+mkdir -p "$OFFLINE_ROOT/release" "$OFFLINE_ROOT/images" "$OFFLINE_WORK"
+cd "$OFFLINE_ROOT/release"
+
+curl -fLO "${RELEASE_DOWNLOAD_URL}/${RELEASE_ARCHIVE}"
+curl -fLO "${RELEASE_DOWNLOAD_URL}/${RELEASE_ARCHIVE}.sha256"
+sha256sum -c "${RELEASE_ARCHIVE}.sha256"
+
+tar -xzf "$RELEASE_ARCHIVE" -C "$OFFLINE_WORK" --strip-components=1
+cp "$OFFLINE_WORK/env/release.env.template" "$OFFLINE_ROOT/release.env"
+```
+
+Set image refs in the staging `release.env`. For a connected export host that
+pulls public upstream refs directly, derive refs from the release lock:
+
+```bash
+update_ref() {
+  sed -i "s#^${1}=.*#${1}=${2}#" "$OFFLINE_ROOT/release.env"
+}
+
+LOCK_FILE="$OFFLINE_WORK/container-stack.lock.json"
+service_image() {
+  jq -r --arg name "$1" \
+    '.services[] | select(.name == $name) | .image' "$LOCK_FILE"
+}
+service_tag() {
+  jq -r --arg name "$1" \
+    '.services[] | select(.name == $name) | .tag' "$LOCK_FILE"
+}
+service_ref() {
+  printf '%s:%s\n' "$(service_image "$1")" "$(service_tag "$1")"
+}
+
+update_ref APP_RUNTIME_IMAGE_REF \
+  "$(service_ref app-runtime)"
+update_ref DB_JOB_IMAGE_REF \
+  "$(service_ref db-job)"
+update_ref NGINX_IMAGE_REF \
+  "$(service_ref nginx)"
+update_ref SQLSERVER_IMAGE_REF \
+  "$(service_ref sqlserver)"
+update_ref KEYCLOAK_IMAGE_REF \
+  "$(service_ref keycloak)"
+```
+
+If the connected export host pulls from an internal mirror that preserves
+repository paths, rewrite only the registry host:
+
+```bash
+TARGET_IMAGE_REGISTRY=registry.example.internal
+LOCK_FILE="$OFFLINE_WORK/container-stack.lock.json"
+service_image() {
+  jq -r --arg name "$1" \
+    '.services[] | select(.name == $name) | .image' "$LOCK_FILE"
+}
+service_tag() {
+  jq -r --arg name "$1" \
+    '.services[] | select(.name == $name) | .tag' "$LOCK_FILE"
+}
+mirror_ref() {
+  local image
+  image="$(service_image "$1")"
+  printf '%s/%s:%s\n' \
+    "$TARGET_IMAGE_REGISTRY" "${image#*/}" "$(service_tag "$1")"
+}
+
+update_ref APP_RUNTIME_IMAGE_REF \
+  "$(mirror_ref app-runtime)"
+update_ref DB_JOB_IMAGE_REF \
+  "$(mirror_ref db-job)"
+update_ref NGINX_IMAGE_REF \
+  "$(mirror_ref nginx)"
+update_ref SQLSERVER_IMAGE_REF \
+  "$(mirror_ref sqlserver)"
+update_ref KEYCLOAK_IMAGE_REF \
+  "$(mirror_ref keycloak)"
+```
+
+If the mirror uses a custom repository layout, edit the five `*_IMAGE_REF`
+values in `$OFFLINE_ROOT/release.env` manually before continuing.
+
+Pull, verify and export the images with the same connected-host account:
+
+```bash
+set -a
+. "$OFFLINE_ROOT/release.env"
+set +a
+
+podman pull "$APP_RUNTIME_IMAGE_REF"
+podman pull "$DB_JOB_IMAGE_REF"
+podman pull "$NGINX_IMAGE_REF"
+podman pull "$SQLSERVER_IMAGE_REF"
+podman pull "$KEYCLOAK_IMAGE_REF"
+
+"$OFFLINE_WORK/bin/kravhantering-images.sh" --topology single-node \
+  --lock-file "$OFFLINE_WORK/container-stack.lock.json" \
+  --env-file "$OFFLINE_ROOT/release.env" \
+  verify
+
+"$OFFLINE_WORK/bin/kravhantering-images.sh" --topology single-node \
+  --lock-file "$OFFLINE_WORK/container-stack.lock.json" \
+  --env-file "$OFFLINE_ROOT/release.env" \
+  export --output "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
+```
+
+Write the offline manifest, checksums and movable bundle:
+
+```bash
+jq -n \
+  --arg version "$VERSION" \
+  --arg topology "$TOPOLOGY" \
+  --arg releaseArchive "release/$RELEASE_ARCHIVE" \
+  --arg releaseChecksum "release/${RELEASE_ARCHIVE}.sha256" \
+  --arg imageBundle "images/$IMAGE_BUNDLE_NAME" \
+  --arg appRuntime "$APP_RUNTIME_IMAGE_REF" \
+  --arg dbJob "$DB_JOB_IMAGE_REF" \
+  --arg nginx "$NGINX_IMAGE_REF" \
+  --arg sqlserver "$SQLSERVER_IMAGE_REF" \
+  --arg keycloak "$KEYCLOAK_IMAGE_REF" \
+  '{
+    schemaVersion: 1,
+    kind: "kravhantering-offline-bundle",
+    version: $version,
+    topology: $topology,
+    releaseArchive: $releaseArchive,
+    releaseChecksum: $releaseChecksum,
+    imageBundle: $imageBundle,
+    imageRefs: {
+      "app-runtime": $appRuntime,
+      "db-job": $dbJob,
+      nginx: $nginx,
+      sqlserver: $sqlserver,
+      keycloak: $keycloak
+    }
+  }' > "$OFFLINE_ROOT/offline-manifest.json"
+
+(
+  cd "$OFFLINE_ROOT"
+  sha256sum offline-manifest.json \
+    "release/$RELEASE_ARCHIVE" \
+    "release/${RELEASE_ARCHIVE}.sha256" \
+    "images/$IMAGE_BUNDLE_NAME" \
+    > hashes.sha256
+)
+
+tar -czf "$OFFLINE_BUNDLE" \
+  -C "$(dirname "$OFFLINE_ROOT")" "$(basename "$OFFLINE_ROOT")"
+sha256sum "$OFFLINE_BUNDLE"
+```
+
+Transfer `$OFFLINE_BUNDLE` to `/tmp` on the offline host with the site's
+approved transfer procedure.
+
+## First Install Import
+
+Before importing, complete
+[Prepare RHEL 10 Host](./rhel10-production-single-node-internal-deploy.md#prepare-rhel-10-host)
+on the offline host. Do not run the regular guide's connected
+`Install a Release` or `Image References` sections.
+
+Unpack and verify the offline bundle:
+
+```bash
+VERSION=1.2.3 # Change to the version being deployed.
+TOPOLOGY=single-node
+OFFLINE_BUNDLE="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}.tar.gz"
+OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
+RELEASE_ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
+IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
+
+test ! -e "$OFFLINE_ROOT" || {
+  echo "Offline staging directory already exists: $OFFLINE_ROOT" >&2
+  exit 1
+}
+
+mkdir -p "$OFFLINE_ROOT"
+tar -xzf "$OFFLINE_BUNDLE" -C "$OFFLINE_ROOT" --strip-components=1
+(cd "$OFFLINE_ROOT" && sha256sum -c hashes.sha256)
+(cd "$OFFLINE_ROOT/release" && sha256sum -c "${RELEASE_ARCHIVE}.sha256")
+```
+
+Install the release and copy first-install templates:
+
+```bash
+test ! -e "/opt/kravhantering/releases/${VERSION}" || {
+  echo "Release directory already exists:" \
+    "/opt/kravhantering/releases/${VERSION}" >&2
+  exit 1
+}
+
+sudo install -d -o root -g root -m 0755 \
+  "/opt/kravhantering/releases/${VERSION}"
+sudo tar -xzf "$OFFLINE_ROOT/release/$RELEASE_ARCHIVE" \
+  -C "/opt/kravhantering/releases/${VERSION}" \
+  --strip-components=1
+sudo ln -sfn "/opt/kravhantering/releases/${VERSION}" \
+  /opt/kravhantering/current
+
+REALM_TEMPLATE=/opt/kravhantering/current/keycloak
+REALM_TEMPLATE="${REALM_TEMPLATE}/realm-kravhantering-production.template.json"
+
+sudo install -o root -g kravhantering -m 0640 \
+  /opt/kravhantering/current/env/release.env.template \
+  /etc/kravhantering/release.env
+sudo install -o root -g kravhantering -m 0640 \
+  /opt/kravhantering/current/env/app.env.template \
+  /etc/kravhantering/app.env
+sudo install -o root -g kravhantering -m 0640 \
+  /opt/kravhantering/current/env/db-job.env.template \
+  /etc/kravhantering/db-job.env
+sudo install -o root -g kravhantering -m 0640 \
+  /opt/kravhantering/current/env/sqlserver.env.template \
+  /etc/kravhantering/sqlserver.env
+sudo install -o root -g kravhantering -m 0640 \
+  /opt/kravhantering/current/env/keycloak.env.template \
+  /etc/kravhantering/keycloak.env
+sudo install -o root -g kravhantering -m 0640 \
+  "$REALM_TEMPLATE" \
+  /etc/kravhantering/keycloak/realm-kravhantering-production.json
+
+sudo chcon -R -t container_file_t \
+  "/opt/kravhantering/releases/${VERSION}/nginx"
+```
+
+Set offline image refs. By default this preserves the source refs recorded in
+the offline manifest. Set `TARGET_IMAGE_REGISTRY` before running the block if
+the offline host should use a local or non-resolvable registry hostname:
+
+```bash
+TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
+MANIFEST="$OFFLINE_ROOT/offline-manifest.json"
+
+update_ref() {
+  sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
+}
+source_ref() {
+  jq -r --arg name "$1" '.imageRefs[$name]' "$MANIFEST"
+}
+target_ref() {
+  local ref path tag
+  ref="$(source_ref "$1")"
+  if [ -z "$TARGET_IMAGE_REGISTRY" ]; then
+    printf '%s\n' "$ref"
+    return
+  fi
+  tag="${ref##*:}"
+  path="${ref%:*}"
+  printf '%s/%s:%s\n' "$TARGET_IMAGE_REGISTRY" "${path#*/}" "$tag"
+}
+
+update_ref APP_RUNTIME_IMAGE_REF "$(target_ref app-runtime)"
+update_ref DB_JOB_IMAGE_REF "$(target_ref db-job)"
+update_ref NGINX_IMAGE_REF "$(target_ref nginx)"
+update_ref SQLSERVER_IMAGE_REF "$(target_ref sqlserver)"
+update_ref KEYCLOAK_IMAGE_REF "$(target_ref keycloak)"
+```
+
+Load, tag and verify the images as the rootless service user:
+
+```bash
+sudo -iu kravhantering
+VERSION=1.2.3 # Change to the version being deployed.
+TOPOLOGY=single-node
+OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
+IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
+cd /opt/kravhantering/current
+bin/kravhantering-images.sh --topology single-node \
+  --lock-file container-stack.lock.json \
+  --env-file /etc/kravhantering/release.env \
+  load --bundle "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
+exit
+```
+
+Resume the regular deployment guide at
+[Configure Single-Node Services](./rhel10-production-single-node-internal-deploy.md#configure-single-node-services).
+Keep the copied `/etc/kravhantering/release.env` and edit only the normal
+site-specific values from the regular guide.
+
+## Upgrade Import
+
+Create and transfer the offline bundle before the downtime window. During the
+window, follow the regular upgrade guide for backup, traffic drain and service
+stop. Then use this section instead of the connected artifact install and
+image-pull steps.
+
+Unpack and verify the offline bundle:
+
+```bash
+VERSION=1.2.4 # Change to the version being deployed.
+TOPOLOGY=single-node
+OFFLINE_BUNDLE="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}.tar.gz"
+OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
+RELEASE_ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
+IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
+
+test ! -e "$OFFLINE_ROOT" || {
+  echo "Offline staging directory already exists: $OFFLINE_ROOT" >&2
+  exit 1
+}
+
+mkdir -p "$OFFLINE_ROOT"
+tar -xzf "$OFFLINE_BUNDLE" -C "$OFFLINE_ROOT" --strip-components=1
+(cd "$OFFLINE_ROOT" && sha256sum -c hashes.sha256)
+(cd "$OFFLINE_ROOT/release" && sha256sum -c "${RELEASE_ARCHIVE}.sha256")
+```
+
+Install the target release and move `current`:
+
+```bash
+test ! -e "/opt/kravhantering/releases/${VERSION}" || {
+  echo "Release directory already exists:" \
+    "/opt/kravhantering/releases/${VERSION}" >&2
+  exit 1
+}
+
+sudo install -d -o root -g root -m 0755 \
+  "/opt/kravhantering/releases/${VERSION}"
+sudo tar -xzf "$OFFLINE_ROOT/release/$RELEASE_ARCHIVE" \
+  -C "/opt/kravhantering/releases/${VERSION}" \
+  --strip-components=1
+sudo chcon -R -t container_file_t \
+  "/opt/kravhantering/releases/${VERSION}/nginx"
+sudo ln -sfn "/opt/kravhantering/releases/${VERSION}" \
+  /opt/kravhantering/current
+readlink -f /opt/kravhantering/current
+```
+
+Update only the image refs in the existing `/etc/kravhantering/release.env`:
+
+```bash
+TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
+MANIFEST="$OFFLINE_ROOT/offline-manifest.json"
+
+update_ref() {
+  sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
+}
+source_ref() {
+  jq -r --arg name "$1" '.imageRefs[$name]' "$MANIFEST"
+}
+target_ref() {
+  local ref path tag
+  ref="$(source_ref "$1")"
+  if [ -z "$TARGET_IMAGE_REGISTRY" ]; then
+    printf '%s\n' "$ref"
+    return
+  fi
+  tag="${ref##*:}"
+  path="${ref%:*}"
+  printf '%s/%s:%s\n' "$TARGET_IMAGE_REGISTRY" "${path#*/}" "$tag"
+}
+
+update_ref APP_RUNTIME_IMAGE_REF "$(target_ref app-runtime)"
+update_ref DB_JOB_IMAGE_REF "$(target_ref db-job)"
+update_ref NGINX_IMAGE_REF "$(target_ref nginx)"
+update_ref SQLSERVER_IMAGE_REF "$(target_ref sqlserver)"
+update_ref KEYCLOAK_IMAGE_REF "$(target_ref keycloak)"
+```
+
+Load, tag and verify the images as the rootless service user:
+
+```bash
+sudo -iu kravhantering
+VERSION=1.2.4 # Change to the version being deployed.
+TOPOLOGY=single-node
+OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
+IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
+cd /opt/kravhantering/current
+bin/kravhantering-images.sh --topology single-node \
+  --lock-file container-stack.lock.json \
+  --env-file /etc/kravhantering/release.env \
+  load --bundle "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
+exit
+```
+
+Resume the regular upgrade guide at the database job step. Continue with the
+single-node database job and stack-start sequence from the regular guide.
