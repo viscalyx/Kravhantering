@@ -151,7 +151,10 @@ custom repository layout. Edit the five `*_IMAGE_REF` values in
 ### Pull, Verify And Export Images
 
 After completing exactly one image-ref alternative above, pull, verify and
-export the images with the same connected-host account:
+export the images with the same connected-host account. Do not prefix the
+helper commands with `sudo`; they must use the same Podman image store as the
+pull commands. The `bash` invocation also works when `/tmp` is mounted
+`noexec`:
 
 ```bash
 set -a
@@ -164,12 +167,12 @@ podman pull "$NGINX_IMAGE_REF"
 podman pull "$SQLSERVER_IMAGE_REF"
 podman pull "$KEYCLOAK_IMAGE_REF"
 
-"$OFFLINE_WORK/bin/kravhantering-images.sh" --topology single-node \
+bash "$OFFLINE_WORK/bin/kravhantering-images.sh" --topology single-node \
   --lock-file "$OFFLINE_WORK/container-stack.lock.json" \
   --env-file "$OFFLINE_ROOT/release.env" \
   verify
 
-"$OFFLINE_WORK/bin/kravhantering-images.sh" --topology single-node \
+bash "$OFFLINE_WORK/bin/kravhantering-images.sh" --topology single-node \
   --lock-file "$OFFLINE_WORK/container-stack.lock.json" \
   --env-file "$OFFLINE_ROOT/release.env" \
   export --output "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
