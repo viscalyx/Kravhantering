@@ -12,6 +12,8 @@ Use this guide before starting an offline first install with
 or before the downtime window for an offline planned upgrade with
 [rhel10-production-single-node-internal-upgrade.md](./rhel10-production-single-node-internal-upgrade.md).
 
+![Offline Release Bundle Journey](images/offline-release-bundle-journey.png)
+
 ## Connected Export Host
 
 The connected export host only prepares transferable artifacts. Do not create

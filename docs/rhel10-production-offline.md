@@ -14,6 +14,8 @@ downtime window for an offline planned upgrade with
 The connected export host prepares one app-node offline bundle per release.
 Use the same bundle on every offline app node for that release.
 
+![Offline Release Bundle Journey](images/offline-release-bundle-journey.png)
+
 ## Connected Export Host
 
 The connected export host only prepares transferable artifacts. Do not create
