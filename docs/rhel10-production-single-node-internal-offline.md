@@ -220,11 +220,26 @@ jq -n \
 
 tar -czf "$OFFLINE_BUNDLE" \
   -C "$(dirname "$OFFLINE_ROOT")" "$(basename "$OFFLINE_ROOT")"
-sha256sum "$OFFLINE_BUNDLE"
+(
+  cd "$(dirname "$OFFLINE_BUNDLE")"
+  sha256sum "$(basename "$OFFLINE_BUNDLE")" \
+    > "$(basename "$OFFLINE_BUNDLE").sha256"
+)
 ```
 
-Transfer `$OFFLINE_BUNDLE` to `/tmp` on the offline host with the site's
-approved transfer procedure.
+Optional: after the `.tar.gz` and `.sha256` files exist, remove the staging
+directories to reclaim `/tmp` space on the connected export host. Keep
+`$OFFLINE_BUNDLE` and `${OFFLINE_BUNDLE}.sha256`; those are the files to
+transfer:
+
+```bash
+test -f "$OFFLINE_BUNDLE"
+test -f "${OFFLINE_BUNDLE}.sha256"
+rm -rf -- "$OFFLINE_ROOT" "$OFFLINE_WORK"
+```
+
+Transfer `$OFFLINE_BUNDLE` and `${OFFLINE_BUNDLE}.sha256` to `/tmp` on the
+offline host with the site's approved transfer procedure.
 
 ## First Install Import
 
@@ -249,6 +264,10 @@ test ! -e "$OFFLINE_ROOT" || {
 }
 
 mkdir -p "$OFFLINE_ROOT"
+(
+  cd "$(dirname "$OFFLINE_BUNDLE")"
+  sha256sum -c "$(basename "$OFFLINE_BUNDLE").sha256"
+)
 tar -xzf "$OFFLINE_BUNDLE" -C "$OFFLINE_ROOT" --strip-components=1
 (cd "$OFFLINE_ROOT" && sha256sum -c hashes.sha256)
 (cd "$OFFLINE_ROOT/release" && sha256sum -c "${RELEASE_ARCHIVE}.sha256")
@@ -374,6 +393,10 @@ test ! -e "$OFFLINE_ROOT" || {
 }
 
 mkdir -p "$OFFLINE_ROOT"
+(
+  cd "$(dirname "$OFFLINE_BUNDLE")"
+  sha256sum -c "$(basename "$OFFLINE_BUNDLE").sha256"
+)
 tar -xzf "$OFFLINE_BUNDLE" -C "$OFFLINE_ROOT" --strip-components=1
 (cd "$OFFLINE_ROOT" && sha256sum -c hashes.sha256)
 (cd "$OFFLINE_ROOT/release" && sha256sum -c "${RELEASE_ARCHIVE}.sha256")
