@@ -148,7 +148,10 @@ Use this when the connected export host pulls from an internal mirror with a
 custom repository layout. Edit the five `*_IMAGE_REF` values in
 `$OFFLINE_ROOT/release.env` manually before continuing.
 
-Pull, verify and export the images with the same connected-host account:
+### Pull, Verify And Export Images
+
+After completing exactly one image-ref alternative above, pull, verify and
+export the images with the same connected-host account:
 
 ```bash
 set -a
