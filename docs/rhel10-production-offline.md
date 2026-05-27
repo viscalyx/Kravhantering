@@ -70,8 +70,14 @@ tar -xzf "$RELEASE_ARCHIVE" -C "$OFFLINE_WORK" --strip-components=1
 cp "$OFFLINE_WORK/env/release.env.template" "$OFFLINE_ROOT/release.env"
 ```
 
-Set image refs in the staging `release.env`. For a connected export host that
-pulls public upstream refs directly, derive refs from the release lock:
+Set image refs in the staging `release.env` before pulling images. Choose
+exactly one of alternatives A, B or C, depending on the repository layout the
+connected export host can pull from.
+
+#### Alternative A: Public Upstream Refs
+
+Use this when the connected export host is approved to pull public upstream
+refs directly. Derive refs from the release lock:
 
 ```bash
 update_ref() {
@@ -99,8 +105,10 @@ update_ref NGINX_IMAGE_REF \
   "$(service_ref nginx)"
 ```
 
-If the connected export host pulls from an internal mirror that preserves
-repository paths, rewrite only the registry host:
+#### Alternative B: Internal Mirror With Preserved Paths
+
+Use this when the connected export host pulls from an internal mirror that
+preserves repository paths. Rewrite only the registry host:
 
 ```bash
 TARGET_IMAGE_REGISTRY=registry.example.internal
@@ -128,8 +136,11 @@ update_ref NGINX_IMAGE_REF \
   "$(mirror_ref nginx)"
 ```
 
-If the mirror uses a custom repository layout, edit the three `*_IMAGE_REF`
-values in `$OFFLINE_ROOT/release.env` manually before continuing.
+#### Alternative C: Custom Repository Layout
+
+Use this when the connected export host pulls from an internal mirror with a
+custom repository layout. Edit the three `*_IMAGE_REF` values in
+`$OFFLINE_ROOT/release.env` manually before continuing.
 
 Pull, verify and export the images with the same connected-host account:
 
