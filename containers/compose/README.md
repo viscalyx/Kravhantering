@@ -53,7 +53,7 @@ The generated files are runtime artifacts and are ignored by Git:
 This file keeps the lower-level Compose contract and troubleshooting details.
 For the release-artifact deployment flow and optional test and development
 demo-data commands, see
-[docs/rhel10-production-single-node-internal-deploy.md](../../docs/rhel10-production-single-node-internal-deploy.md).
+[docs/rhel10-production-single-node-self-contained-deploy.md](../../docs/rhel10-production-single-node-self-contained-deploy.md).
 
 The local Podman workflow runs the generated Compose stack with Podman Compose.
 The devcontainer image installs Podman tooling, but nested Podman support

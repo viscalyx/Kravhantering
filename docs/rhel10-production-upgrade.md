@@ -8,8 +8,8 @@ external IdP.
 
 For a first install, use
 [rhel10-production-deploy.md](./rhel10-production-deploy.md). For the
-all-in-one internal topology, use
-[rhel10-production-single-node-internal-upgrade.md](./rhel10-production-single-node-internal-upgrade.md).
+self-contained single-node topology, use
+[rhel10-production-single-node-self-contained-upgrade.md](./rhel10-production-single-node-self-contained-upgrade.md).
 To uninstall a first install, use
 [rhel10-production-uninstall.md](./rhel10-production-uninstall.md).
 

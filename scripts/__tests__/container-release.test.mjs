@@ -188,22 +188,22 @@ describe('trusted container release helpers', () => {
     )
     expect(
       isReleaseRelevantPath(
-        'docs/rhel10-production-single-node-internal-deploy.md',
+        'docs/rhel10-production-single-node-self-contained-deploy.md',
       ),
     ).toBe(true)
     expect(
       isReleaseRelevantPath(
-        'docs/rhel10-production-single-node-internal-offline.md',
+        'docs/rhel10-production-single-node-self-contained-offline.md',
       ),
     ).toBe(true)
     expect(
       isReleaseRelevantPath(
-        'docs/rhel10-production-single-node-internal-upgrade.md',
+        'docs/rhel10-production-single-node-self-contained-upgrade.md',
       ),
     ).toBe(true)
     expect(
       isReleaseRelevantPath(
-        'docs/rhel10-production-single-node-internal-uninstall.md',
+        'docs/rhel10-production-single-node-self-contained-uninstall.md',
       ),
     ).toBe(true)
     expect(isReleaseRelevantPath('typeorm/seed-dogfood.mjs')).toBe(true)
@@ -280,7 +280,9 @@ describe('trusted container release helpers', () => {
 
   it('treats bundled single-node upgrade docs as release-relevant', () => {
     const plan = createReleasePlan({
-      changedFiles: ['docs/rhel10-production-single-node-internal-upgrade.md'],
+      changedFiles: [
+        'docs/rhel10-production-single-node-self-contained-upgrade.md',
+      ],
       env: env(),
       gitVersion,
     })
@@ -476,7 +478,7 @@ describe('trusted container release helpers', () => {
 
   it('keeps production TLS CA guidance readable for app-runtime', () => {
     const singleNodeGuide = readWorkspaceFile(
-      'docs/rhel10-production-single-node-internal-deploy.md',
+      'docs/rhel10-production-single-node-self-contained-deploy.md',
     )
 
     expect(singleNodeGuide).toMatch(
@@ -638,16 +640,16 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain('docs/rhel10-production-upgrade.md')
       expect(result.files).toContain('docs/rhel10-production-uninstall.md')
       expect(result.files).toContain(
-        'docs/rhel10-production-single-node-internal-deploy.md',
+        'docs/rhel10-production-single-node-self-contained-deploy.md',
       )
       expect(result.files).toContain(
-        'docs/rhel10-production-single-node-internal-offline.md',
+        'docs/rhel10-production-single-node-self-contained-offline.md',
       )
       expect(result.files).toContain(
-        'docs/rhel10-production-single-node-internal-upgrade.md',
+        'docs/rhel10-production-single-node-self-contained-upgrade.md',
       )
       expect(result.files).toContain(
-        'docs/rhel10-production-single-node-internal-uninstall.md',
+        'docs/rhel10-production-single-node-self-contained-uninstall.md',
       )
       expect(result.files).toContain(
         'docs/images/infographic-production-access-and-service-flow.png',

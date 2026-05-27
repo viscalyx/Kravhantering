@@ -12,9 +12,9 @@ This enterprise production topology is an app node that runs nginx and
 `app-runtime` in a rootless Podman Compose network. SQL Server and the IdP are
 external services.
 
-For the controlled all-in-one internal topology where SQL Server and Keycloak
-run on the same RHEL host, use
-[rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md).
+For the self-contained single-node topology where SQL Server and Keycloak run
+on the same RHEL host, use
+[rhel10-production-single-node-self-contained-deploy.md](./rhel10-production-single-node-self-contained-deploy.md).
 For upgrades and rollback, use
 [rhel10-production-upgrade.md](./rhel10-production-upgrade.md).
 To uninstall a first install of this topology, use

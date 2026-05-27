@@ -1,21 +1,22 @@
-# RHEL 10 Single-Node Internal Planned-Downtime Upgrade
+# RHEL 10 Self-Contained Single-Node Planned-Downtime Upgrade
 
 <!-- cSpell:words readlink resolv -->
 
-This guide describes how to upgrade and roll back the single-node internal
-RHEL 10 production topology from released artifacts, with nginx, `app-runtime`,
-SQL Server, Keycloak and `db-job` in one rootless Podman Compose network.
+This guide describes how to upgrade and roll back the self-contained
+single-node RHEL 10 production topology from released artifacts, with nginx,
+`app-runtime`, SQL Server, Keycloak and `db-job` in one rootless Podman Compose
+network.
 
 For a first install, use
-[rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md).
+[rhel10-production-single-node-self-contained-deploy.md](./rhel10-production-single-node-self-contained-deploy.md).
 For the enterprise topology with external SQL Server and external IdP, use
 [rhel10-production-upgrade.md](./rhel10-production-upgrade.md).
 To uninstall a first install, use
-[rhel10-production-single-node-internal-uninstall.md](./rhel10-production-single-node-internal-uninstall.md).
+[rhel10-production-single-node-self-contained-uninstall.md](./rhel10-production-single-node-self-contained-uninstall.md).
 
 >[!IMPORTANT]
 >For offline upgrades, first follow
->[rhel10-production-single-node-internal-offline.md](./rhel10-production-single-node-internal-offline.md).
+>[rhel10-production-single-node-self-contained-offline.md](./rhel10-production-single-node-self-contained-offline.md).
 >The offline guide prepares the transferable bundle before the downtime window
 >and tells you which connected artifact and image steps it replaces on the
 >offline host.
@@ -214,7 +215,7 @@ configuration change.
    [rhel10-production-upgrade.md](./rhel10-production-upgrade.md), and skip
    `bootstrap`.
 
-   Set `RUN_BOOTSTRAP=true` only for the controlled internal/single-node
+   Set `RUN_BOOTSTRAP=true` only for the self-contained single-node
    bootstrap `db-job.env` that still includes `DB_BOOTSTRAP_ADMIN_*` and
    `DB_BOOTSTRAP_APP_*`, and only when the window intentionally performs SQL
    Server password provisioning or rotation. For DBA-pre-provisioned production
@@ -347,7 +348,7 @@ configuration change.
     ```
 
     If the host uses the temporary self-signed certificate from
-    [Appendix A: Local Self-Signed TLS Certificate](./rhel10-production-single-node-internal-deploy.md#appendix-a-local-self-signed-tls-certificate),
+    [Appendix A: Local Self-Signed TLS Certificate](./rhel10-production-single-node-self-contained-deploy.md#appendix-a-local-self-signed-tls-certificate),
     or the operator workstation does not yet trust the issuing CA, use
     `--insecure` for a manual readiness probe only:
 
@@ -361,7 +362,7 @@ configuration change.
     rotation only after the readiness probes and read-only workflow succeed.
     Add the final bundle checksum, image refs, restore-point reference and
     readiness results to the
-    [Operational Evidence](./rhel10-production-single-node-internal-deploy.md#operational-evidence)
+    [Operational Evidence](./rhel10-production-single-node-self-contained-deploy.md#operational-evidence)
     record.
 
 ## Rollback

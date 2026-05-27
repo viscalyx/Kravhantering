@@ -1,16 +1,16 @@
-# RHEL 10 Single-Node Internal Offline Deployment And Upgrade
+# RHEL 10 Self-Contained Single-Node Offline Deployment And Upgrade
 
 <!-- cSpell:words coreutils fLO readlink resolv -->
 
 This guide describes how to prepare and import offline release artifacts for
-the single-node internal RHEL 10 production topology, where nginx,
+the self-contained single-node RHEL 10 production topology, where nginx,
 `app-runtime`, SQL Server, Keycloak and `db-job` run in one rootless Podman
 Compose network.
 
 Use this guide before starting an offline first install with
-[rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md),
+[rhel10-production-single-node-self-contained-deploy.md](./rhel10-production-single-node-self-contained-deploy.md),
 or before the downtime window for an offline planned upgrade with
-[rhel10-production-single-node-internal-upgrade.md](./rhel10-production-single-node-internal-upgrade.md).
+[rhel10-production-single-node-self-contained-upgrade.md](./rhel10-production-single-node-self-contained-upgrade.md).
 
 ![Offline Release Bundle Journey](images/offline-release-bundle-journey.png)
 
@@ -246,7 +246,7 @@ offline host with the site's approved transfer procedure.
 ## First Install Import
 
 Before importing, complete
-[Prepare RHEL 10 Host](./rhel10-production-single-node-internal-deploy.md#prepare-rhel-10-host)
+[Prepare RHEL 10 Host](./rhel10-production-single-node-self-contained-deploy.md#prepare-rhel-10-host)
 on the offline host. Do not run the regular guide's connected
 `Install a Release` or `Image References` sections.
 
@@ -368,7 +368,7 @@ exit
 ```
 
 Resume the regular deployment guide at
-[Configure Single-Node Services](./rhel10-production-single-node-internal-deploy.md#configure-single-node-services).
+[Configure Single-Node Services](./rhel10-production-single-node-self-contained-deploy.md#configure-single-node-services).
 Keep the copied `/etc/kravhantering/release.env` and edit only the normal
 site-specific values from the regular guide.
 

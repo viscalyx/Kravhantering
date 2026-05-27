@@ -1,4 +1,4 @@
-# RHEL 10 Single-Node Internal Deployment From Release Artifacts
+# RHEL 10 Self-Contained Single-Node Deployment From Release Artifacts
 
 <!-- cSpell:words coreutils datawriter firewalld fullchain nameserver privkey -->
 <!-- cSpell:words resolv -->
@@ -13,17 +13,18 @@ Red Hat Enterprise Linux 10 host from released artifacts only, with nginx,
 `app-runtime`, SQL Server, Keycloak and `db-job` in one rootless Podman Compose
 network.
 
-Use this topology only when an all-in-one internal deployment model is
-approved. For the enterprise topology with external SQL Server and external
-IdP, use [rhel10-production-deploy.md](./rhel10-production-deploy.md).
+Use this topology when the production site must run without external SQL Server
+or external IdP dependencies at runtime. For the enterprise topology with
+external SQL Server and external IdP, use
+[rhel10-production-deploy.md](./rhel10-production-deploy.md).
 For upgrades and rollback, use
-[rhel10-production-single-node-internal-upgrade.md](./rhel10-production-single-node-internal-upgrade.md).
+[rhel10-production-single-node-self-contained-upgrade.md](./rhel10-production-single-node-self-contained-upgrade.md).
 To uninstall a first install of this topology, use
-[rhel10-production-single-node-internal-uninstall.md](./rhel10-production-single-node-internal-uninstall.md).
+[rhel10-production-single-node-self-contained-uninstall.md](./rhel10-production-single-node-self-contained-uninstall.md).
 
 >[!IMPORTANT]
 >For offline deployment, first follow
->[rhel10-production-single-node-internal-offline.md](./rhel10-production-single-node-internal-offline.md).
+>[rhel10-production-single-node-self-contained-offline.md](./rhel10-production-single-node-self-contained-offline.md).
 >The offline guide prepares the transferable bundle before this deployment
 >guide starts and tells you where to resume these regular deployment steps on
 >the offline host.
@@ -1210,12 +1211,13 @@ from `/opt/kravhantering/current` and `podman compose down` on stop.
 ## Upgrade And Rollback
 
 Use the standalone
-[RHEL 10 single-node internal planned-downtime upgrade guide](./rhel10-production-single-node-internal-upgrade.md)
-to upgrade or roll back the all-in-one internal topology. This deployment
-guide keeps the first-install and day-2 single-node operations in one place.
+[RHEL 10 self-contained single-node planned-downtime upgrade guide](./rhel10-production-single-node-self-contained-upgrade.md)
+to upgrade or roll back the self-contained single-node topology. This
+deployment guide keeps the first-install and day-2 single-node operations in
+one place.
 
 Use
-[RHEL 10 single-node internal uninstall](./rhel10-production-single-node-internal-uninstall.md)
+[RHEL 10 self-contained single-node uninstall](./rhel10-production-single-node-self-contained-uninstall.md)
 to reverse a first install. Do not use the upgrade rollback checklist as an
 uninstall procedure.
 
