@@ -7,7 +7,7 @@ the self-contained single-node RHEL 10 production topology, where nginx,
 `app-runtime`, SQL Server, Keycloak and `db-job` run in one rootless Podman
 Compose network.
 
-Use this guide before starting an offline first install with
+Use this guide before starting an offline-first install with
 [rhel10-production-single-node-self-contained-deploy.md](./rhel10-production-single-node-self-contained-deploy.md),
 or before the downtime window for an offline planned upgrade with
 [rhel10-production-single-node-self-contained-upgrade.md](./rhel10-production-single-node-self-contained-upgrade.md).

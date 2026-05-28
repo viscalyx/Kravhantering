@@ -6,7 +6,7 @@ This guide describes how to prepare and import offline release artifacts for
 the enterprise RHEL 10 production topology, where each app node runs nginx and
 `app-runtime` while SQL Server and the IdP are external services.
 
-Use this guide before starting an offline first install with
+Use this guide before starting an offline-first install with
 [rhel10-production-deploy.md](./rhel10-production-deploy.md), or before the
 downtime window for an offline planned upgrade with
 [rhel10-production-upgrade.md](./rhel10-production-upgrade.md).
