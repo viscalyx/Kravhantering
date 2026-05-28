@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { SqlServerDatabase } from '@/lib/db'
 import {
   collectDeviationForReport,
   type ReportDataError,
@@ -72,6 +73,11 @@ function reportVersion(id: number) {
   }
 }
 
+function createReportDb(): SqlServerDatabase {
+  // This ReportDataError test only needs collectDeviationForReport to forward db into mocked DAL calls.
+  return {} as Partial<SqlServerDatabase> as SqlServerDatabase
+}
+
 describe('report data server helpers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -103,7 +109,7 @@ describe('report data server helpers', () => {
     ])
 
     await expect(
-      collectDeviationForReport({} as never, 42, '55', 'sv'),
+      collectDeviationForReport(createReportDb(), 42, '55', 'sv'),
     ).rejects.toMatchObject({
       message: 'Requirement version 999 not found for requirement 42',
       name: 'ReportDataError',
