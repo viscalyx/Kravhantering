@@ -8,6 +8,17 @@ const routeState = vi.hoisted(() => ({
   isSignedIn: vi.fn(),
   recordDeniedActionAuditEvent: vi.fn(),
   recordSecurityEvent: vi.fn(),
+  renderPdfResponse: vi.fn((_document, _filename) =>
+    Promise.resolve(
+      new Response('%PDF', {
+        headers: {
+          'Cache-Control': 'no-store',
+          'Content-Disposition': 'attachment; filename="export.pdf"',
+          'Content-Type': 'application/pdf',
+        },
+      }),
+    ),
+  ),
   requireHumanActorSnapshot: vi.fn(
     (context: { actor: { displayName: string; hsaId: string } }) => ({
       displayName: context.actor.displayName,
@@ -48,6 +59,14 @@ vi.mock('@/lib/http/safe-errors', async importOriginal => {
 
 vi.mock('@/lib/privacy/data-subject-export', () => ({
   collectDataSubjectExport: routeState.collectDataSubjectExport,
+}))
+
+vi.mock('@/components/privacy/DataSubjectExportPdfRenderer', () => ({
+  default: () => null,
+}))
+
+vi.mock('@/lib/pdf/server-response', () => ({
+  renderPdfResponse: routeState.renderPdfResponse,
 }))
 
 vi.mock('@/lib/requirements/auth', async importOriginal => {
@@ -132,6 +151,7 @@ describe('data-subject export route', () => {
     routeState.createRequestContext.mockResolvedValue(context())
     routeState.getSessionFromRequest.mockResolvedValue(signedSession())
     routeState.isSignedIn.mockReturnValue(true)
+    routeState.renderPdfResponse.mockClear()
     routeState.collectDataSubjectExport.mockImplementation((_db, input) =>
       Promise.resolve(exportPayload(input.target.hsaId)),
     )
@@ -173,17 +193,26 @@ describe('data-subject export route', () => {
     const response = await POST(
       jsonPost({
         delivery: 'pdf',
+        locale: 'en',
         target: { hsaId: OTHER_HSA_ID },
       }) as never,
     )
 
     expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Type')).toBe('application/pdf')
     expect(routeState.collectDataSubjectExport).toHaveBeenCalledWith(
       { db: true },
       expect.objectContaining({
         selfSession: null,
         target: { hsaId: OTHER_HSA_ID },
       }),
+    )
+    expect(routeState.renderPdfResponse).toHaveBeenCalledWith(
+      expect.any(Object),
+      'data-subject-export-fingerprint-2026-05-12.pdf',
+    )
+    expect(routeState.renderPdfResponse.mock.calls[0][0].props.locale).toBe(
+      'en',
     )
   })
 

@@ -379,7 +379,7 @@ down.
 - Always visible in the list view as a Printer icon pill.
 - Opens a dropdown with two options:
   - "Print Requirements List" — opens the print engine route
-  - "Download Requirements List (PDF)" — opens the PDF engine route
+  - "Download Requirements List (PDF)" — downloads the server PDF route
 - Passes the IDs of all currently visible rows as `?ids=` query params.
 - The report shows Krav-ID, description, area, and status columns.
 
@@ -392,6 +392,8 @@ down.
   - `local:<specificationLocalRequirementId>` for a unique requirement
 - This allows the report to include both library and unique requirements in one
   specification list export.
+- PDF uses the matching server route
+  `/[locale]/specifications/[slug]/reports/pdf/list?refs=...`.
 
 ## Combined Review Report Floating Pill
 
@@ -410,9 +412,12 @@ down.
 - Always shows "Print History Report" and "Download History Report (PDF)".
 - Shows "Print Review Report" and "Download Review Report (PDF)" only when
   the current version has Review status.
-- Detail view report URLs use `window.open` with the locale prefix.
-- List view report URLs use `next-intl` `Link` without the locale prefix
-  (the router adds it automatically).
+- Print report URLs use `window.open` with the locale prefix.
+- PDF report URLs are fetched as blobs from the server route; a temporary
+  progress dialog appears only when generation takes longer than two seconds.
+- List view print report URLs use `next-intl` `Link` without the locale prefix
+  (the router adds it automatically); list view PDF downloads use the shared
+  blob download helper.
 
 For report architecture details, see [reports.md](./reports.md).
 

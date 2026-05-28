@@ -130,7 +130,7 @@ graph TB
 
     subgraph "Utgående format"
         CSV["CSV-export"]
-        PDF["PDF-rapporter<br/>react-pdf · webbläsarutskrift"]
+        PDF["PDF-rapporter<br/>Node-renderad react-pdf · webbläsarutskrift"]
     end
 
     UI -->|HTTP| API
@@ -591,10 +591,12 @@ hjälptexterna förbjuder personidentifierande uppgifter där.
 
 - **CSV-export** — Filtrerade kravlistor exporteras
   som CSV via `format=csv` på API:et.
-- **PDF-rapporter** — Genereras på klientsidan via
-  `@react-pdf/renderer` (automatisk nedladdning) eller
-  via webbläsarens utskriftsfunktion (HTML/CSS med
-  `@media print`).
+- **PDF-rapporter** — Genereras i Node-route handlers med
+  `@react-pdf/renderer` och returneras som nedladdningsbara binära PDF-svar,
+  eller via webbläsarens utskriftsfunktion (HTML/CSS med `@media print`).
+  Webbläsaren importerar inte React-PDF, vilket gör rapportflödet kompatibelt
+  med strikt Content Security Policy utan `unsafe-eval` eller
+  `wasm-unsafe-eval`.
 
 ### Språkväxling
 
@@ -730,7 +732,7 @@ förvaltningens ordinarie it-stöd, inte i applikationen.
 │                                                                             │
 │  << Application Interfaces >>                                               │
 │  ┌───────────┐  ┌──────────┐  ┌──────────────────────────┐                  │
-│  │ JSON/REST │  │ CSV      │  │ PDF (react-pdf / print)  │                  │
+│  │ JSON/REST │  │ CSV      │  │ PDF (server / print)     │                  │
 │  └───────────┘  └──────────┘  └──────────────────────────┘                  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```

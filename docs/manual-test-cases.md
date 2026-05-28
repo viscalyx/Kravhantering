@@ -1388,13 +1388,16 @@ as `INT0001`.
    searchable icon picker.
 1. Open `/sv/requirements`, then open a requirement detail page and version
    history.
-1. Use the report menu to open a print report and a PDF report.
+1. Use the report menu to open a print report and download a PDF report.
+1. Confirm the PDF download either starts quickly or shows the temporary
+   `Genererar PDF...` dialog if generation takes longer than a few seconds.
 1. Switch dark mode on and repeat the table/detail visual check.
 
 **Expected result:** Lucide catalog icons can be selected, clearing stores no
-icon, labels remain readable, and the configured icons appear consistently in
+icon, labels remain readable, the configured icons appear consistently in
 tables, badges, the status stepper, version history, print reports, and PDF
-reports.
+reports, and the browser console has no Content Security Policy or WebAssembly
+errors while downloading the PDF.
 
 ## Privacy and data portability
 
@@ -1446,8 +1449,9 @@ creator snapshots, decisions, access reviews, and audit actor snapshots.
 1. Save or inspect the generated response.
 1. Select `Exportera PDF`.
 
-**Expected result:** Both exports target `SE5560000001-linneab`; filenames use
-a fingerprint rather than the raw HSA-ID.
+**Expected result:** Both exports target `SE5560000001-linneab`; PDF delivery
+downloads a binary PDF response, and filenames use a fingerprint rather than
+the raw HSA-ID.
 
 ### PRIV-04: duplicate-name privacy search uses HSA-ID only
 

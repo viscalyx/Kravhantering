@@ -1,6 +1,7 @@
 'use client'
 
-import { createElement, useCallback, useEffect, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import { accessReviewExportFilename } from '@/lib/access-review/export-filenames'
 import type {
   AccessReviewDelivery,
@@ -21,6 +22,7 @@ interface DownloadOptions {
 
 interface UseAccessReviewExportDownloadResult {
   clearError: () => void
+  dialog: ReactNode
   download: (options: DownloadOptions) => Promise<void>
   downloading: AccessReviewDelivery | null
   error: string | null
@@ -34,6 +36,7 @@ export function useAccessReviewExportDownload({
     null,
   )
   const [error, setError] = useState<string | null>(null)
+  const pdfDownload = useServerPdfDownload()
   const clearError = useCallback(() => setError(null), [])
 
   useEffect(() => {
@@ -47,6 +50,19 @@ export function useAccessReviewExportDownload({
       setError(null)
 
       try {
+        if (delivery === 'pdf') {
+          await pdfDownload.download({
+            fallbackFilename: `access-review-${reviewId}.pdf`,
+            init: {
+              body: JSON.stringify({ delivery, locale }),
+              headers: { 'Content-Type': 'application/json' },
+              method: 'POST',
+            },
+            url: `/api/admin/access-reviews/${reviewId}/export`,
+          })
+          return
+        }
+
         const response = await apiFetch(
           `/api/admin/access-reviews/${reviewId}/export`,
           {
@@ -64,38 +80,26 @@ export function useAccessReviewExportDownload({
         const exportData = (await response.json()) as AccessReviewExportV1
         const filename = accessReviewExportFilename(exportData, delivery)
 
-        if (delivery === 'json') {
-          downloadBlob(
-            new Blob([JSON.stringify(exportData, null, 2)], {
-              type: 'application/json;charset=utf-8',
-            }),
-            filename,
-          )
-          return
-        }
-
-        const { pdf } = await import('@react-pdf/renderer')
-        const { default: AccessReviewExportPdfRenderer } = await import(
-          './AccessReviewExportPdfRenderer'
+        downloadBlob(
+          new Blob([JSON.stringify(exportData, null, 2)], {
+            type: 'application/json;charset=utf-8',
+          }),
+          filename,
         )
-        const element = createElement(AccessReviewExportPdfRenderer, {
-          exportData,
-          locale,
-        })
-        const blob = await pdf(
-          element as unknown as React.ReactElement<
-            import('@react-pdf/renderer').DocumentProps
-          >,
-        ).toBlob()
-        downloadBlob(blob, filename)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Export failed')
       } finally {
         setDownloading(null)
       }
     },
-    [locale, reviewId],
+    [locale, pdfDownload, reviewId],
   )
 
-  return { clearError, download, downloading, error }
+  return {
+    clearError,
+    dialog: pdfDownload.dialog,
+    download,
+    downloading: downloading ?? (pdfDownload.downloading ? 'pdf' : null),
+    error: error ?? pdfDownload.error,
+  }
 }

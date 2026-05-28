@@ -32,7 +32,7 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementsTable from '@/components/RequirementsTable'
-import { usePdfDownload } from '@/components/reports/pdf/usePdfDownload'
+import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import SpecificationLocalRequirementDetailClient from '@/components/SpecificationLocalRequirementDetailClient'
 import SpecificationLocalRequirementForm, {
   type SpecificationLocalRequirementSubmitPayload,
@@ -45,9 +45,6 @@ import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
-import { fetchSpecificationItemsForReport } from '@/lib/reports/data/fetch-specification-items'
-import { buildListReport } from '@/lib/reports/templates/list-template'
-import type { ReportModel } from '@/lib/reports/types'
 import {
   type AreaOption,
   buildRequirementListParams,
@@ -292,17 +289,7 @@ export default function KravunderlagDetailClient({
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [addModalLoading, setAddModalLoading] = useState(false)
   const [addModalError, setAddModalError] = useState<string | null>(null)
-
-  // PDF export state
-  const [pdfModel, setPdfModel] = useState<ReportModel | null>(null)
-  const [pdfFilename, setPdfFilename] = useState(
-    'requirement-specification.pdf',
-  )
-  const { download: downloadPdf } = usePdfDownload({
-    model: pdfModel,
-    locale,
-    filename: pdfFilename,
-  })
+  const pdfDownload = useServerPdfDownload()
 
   const availableRequirementsParams = useMemo(
     () =>
@@ -1342,44 +1329,25 @@ export default function KravunderlagDetailClient({
     URL.revokeObjectURL(url)
   }, [filteredSpecificationItems, locale, t])
 
-  useEffect(() => {
-    if (pdfModel) {
-      void downloadPdf()
-      setPdfModel(null)
-    }
-  }, [pdfModel, downloadPdf])
-
-  const handleDownloadPdf = useCallback(async () => {
+  const handleDownloadPdf = useCallback(() => {
     if (!spec) return
-    const itemRefs = filteredSpecificationItems
-      .map(row => row.itemRef)
-      .filter((value): value is string => typeof value === 'string')
-    if (itemRefs.length === 0) return
-    const requirements = await fetchSpecificationItemsForReport(
-      specificationSlug,
-      itemRefs,
-    )
+    const refs = buildItemRefsQuery(filteredSpecificationItems)
+    if (!refs) return
     const label = tr('listPdfFilenameLabel')
-    const raw = `${label} ${spec.name} ${spec.uniqueId}.pdf`
-    setPdfFilename(
-      raw
-        .replace(/[/\\:*?"<>|]+/g, '-')
-        .replace(/\s+/g, ' ')
-        .trim(),
-    )
-    const pickName = (obj: { nameSv: string; nameEn: string } | null) =>
-      obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null
-    setPdfModel(
-      buildListReport(requirements, locale, {
-        name: spec.name,
-        uniqueId: spec.uniqueId,
-        governanceObjectType: pickName(spec.governanceObjectType),
-        implementationType: pickName(spec.implementationType),
-        lifecycleStatus: pickName(spec.lifecycleStatus),
-        businessNeedsReference: spec.businessNeedsReference,
-      }),
-    )
-  }, [filteredSpecificationItems, locale, specificationSlug, spec, tr])
+    void pdfDownload.download({
+      fallbackFilename: `${label} ${spec.name} ${spec.uniqueId}.pdf`,
+      url: `/${locale}/specifications/${encodeURIComponent(
+        specificationSlug,
+      )}/reports/pdf/list?refs=${refs}`,
+    })
+  }, [
+    filteredSpecificationItems,
+    locale,
+    pdfDownload,
+    specificationSlug,
+    spec,
+    tr,
+  ])
 
   const specName = spec ? spec.name : '…'
 
@@ -2581,6 +2549,7 @@ export default function KravunderlagDetailClient({
       {addModal}
       {createLocalRequirementModal}
       {needsReferenceFormModal}
+      {pdfDownload.dialog}
     </>
   )
 }

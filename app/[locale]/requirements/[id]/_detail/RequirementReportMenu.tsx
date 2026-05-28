@@ -3,6 +3,7 @@
 import { Printer } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useState } from 'react'
+import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { STATUS_REVIEW } from '@/lib/requirements/status-constants.mjs'
 import type { DeviationStep } from './types'
@@ -35,6 +36,7 @@ export default function RequirementReportMenu(
   const tc = useTranslations('common')
   const td = useTranslations('deviation')
   const [showReportMenu, setShowReportMenu] = useState(false)
+  const pdfDownload = useServerPdfDownload()
   const reportMenu = useDetailActionMenu({
     idPrefix: 'requirement-report-menu',
     isOpen: showReportMenu,
@@ -48,6 +50,11 @@ export default function RequirementReportMenu(
   const openReport = (url: string) => {
     reportMenu.closeMenu({ restoreFocus: true })
     window.open(url, '_blank')
+  }
+
+  const downloadPdf = (url: string, fallbackFilename: string) => {
+    reportMenu.closeMenu({ restoreFocus: true })
+    void pdfDownload.download({ fallbackFilename, url })
   }
 
   const buttonMarker =
@@ -122,8 +129,9 @@ export default function RequirementReportMenu(
                     value: 'download deviation review pdf',
                   })}
                   onClick={() =>
-                    openReport(
+                    downloadPdf(
                       `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?spec=${props.specificationSlug}&item=${props.specificationItemId}`,
+                      `deviation-review-report-${requirementId}.pdf`,
                     )
                   }
                   role="menuitem"
@@ -163,8 +171,9 @@ export default function RequirementReportMenu(
                     value: 'download history pdf',
                   })}
                   onClick={() =>
-                    openReport(
+                    downloadPdf(
                       `/${locale}/requirements/reports/pdf/history/${requirementId}`,
+                      `history-report-${requirementId}.pdf`,
                     )
                   }
                   role="menuitem"
@@ -202,8 +211,9 @@ export default function RequirementReportMenu(
                     value: 'download suggestion history pdf',
                   })}
                   onClick={() =>
-                    openReport(
+                    downloadPdf(
                       `/${locale}/requirements/reports/pdf/suggestion-history/${requirementId}`,
+                      `suggestion-history-report-${requirementId}.pdf`,
                     )
                   }
                   role="menuitem"
@@ -244,8 +254,9 @@ export default function RequirementReportMenu(
                   value: 'download history pdf',
                 })}
                 onClick={() =>
-                  openReport(
+                  downloadPdf(
                     `/${locale}/requirements/reports/pdf/history/${requirementId}`,
+                    `history-report-${requirementId}.pdf`,
                   )
                 }
                 role="menuitem"
@@ -283,8 +294,9 @@ export default function RequirementReportMenu(
                   value: 'download suggestion history pdf',
                 })}
                 onClick={() =>
-                  openReport(
+                  downloadPdf(
                     `/${locale}/requirements/reports/pdf/suggestion-history/${requirementId}`,
+                    `suggestion-history-report-${requirementId}.pdf`,
                   )
                 }
                 role="menuitem"
@@ -324,8 +336,9 @@ export default function RequirementReportMenu(
                       value: 'download review pdf',
                     })}
                     onClick={() =>
-                      openReport(
+                      downloadPdf(
                         `/${locale}/requirements/reports/pdf/review/${requirementId}`,
+                        `review-report-${requirementId}.pdf`,
                       )
                     }
                     role="menuitem"
@@ -340,6 +353,7 @@ export default function RequirementReportMenu(
           )}
         </div>
       )}
+      {pdfDownload.dialog}
     </div>
   )
 }

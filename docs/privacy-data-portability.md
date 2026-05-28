@@ -2,7 +2,7 @@
 
 Kravhantering supports GDPR Article 20 data portability through a JSON export
 for one registered HSA-ID. The JSON payload is the source of truth. PDF export
-is a readable client-side rendering of the same payload.
+returns a readable server-rendered binary PDF of the same payload.
 
 ## Entry Points
 
@@ -26,8 +26,10 @@ allowed. Exporting any other HSA-ID requires `PrivacyOfficer`.
 
 ## Export Schema
 
-The route always returns JSON with `Cache-Control: no-store`. The current schema
-version is `privacy-data-subject-export.v1`.
+`delivery: "json"` returns JSON with `Cache-Control: no-store`;
+`delivery: "pdf"` returns `application/pdf` with attachment headers and
+`Cache-Control: no-store`. The current JSON schema version is
+`privacy-data-subject-export.v1`.
 
 Top-level fields:
 

@@ -210,9 +210,10 @@ been changed.
 
 After preview, the handler can export the same HSA-ID scope as JSON or PDF.
 The JSON payload is the authoritative machine-readable format and uses schema
-version `privacy-data-subject-export.v1`; the PDF is a readable rendering of
-that payload. Download filenames use a non-reversible target fingerprint and
-date, not the raw HSA-ID. The export route checks authorization server-side:
+version `privacy-data-subject-export.v1`; the PDF is rendered server-side and
+returned as `application/pdf` with attachment headers. Download filenames use a
+non-reversible target fingerprint and date, not the raw HSA-ID. The export
+route checks authorization server-side:
 the signed-in user may export their own HSA-ID, while cross-user export requires
 `PrivacyOfficer`.
 
@@ -345,8 +346,10 @@ marks it as `cancelled` and keeps the snapshot rows as historical evidence
 instead of hard-deleting them.
 
 The JSON export uses schema version `access-review-export.v1` and is the
-authoritative evidence payload. The PDF button renders the same payload
-client-side for human review. Export responses use `Cache-Control: no-store`.
+authoritative evidence payload. The PDF button requests a server-rendered PDF
+of the same payload for human review. Export responses use
+`Cache-Control: no-store`; PDF delivery returns `application/pdf` with
+attachment headers.
 Audit events are emitted for run creation, item decisions, cancellation,
 completion, and export. Audit detail contains review id, counts, delivery,
 decision, and status

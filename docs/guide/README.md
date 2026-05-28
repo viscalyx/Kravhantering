@@ -562,8 +562,8 @@ genomförandeform, underlagssyfte) som rubrik.
 
 **Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält.
 
-**Rutt:** `/specifications/[slug]/reports/print/list?refs=...` (utskrift) · PDF
-genereras direkt i vyn.
+**Rutt:** `/specifications/[slug]/reports/print/list?refs=...` (utskrift) ·
+`/specifications/[slug]/reports/pdf/list?refs=...` (PDF)
 
 ### Ändringsförslagshistorik
 
