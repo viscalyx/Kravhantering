@@ -122,7 +122,6 @@ describe('requirements specification report pages', () => {
       expect(fetchSpecificationItemsForReportMock).toHaveBeenCalledWith(
         'ETJANST-UPP-2026',
         ['lib:1', 'local:2'],
-        'en',
       )
     })
     await waitFor(() => {

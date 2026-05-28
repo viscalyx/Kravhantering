@@ -1358,7 +1358,6 @@ export default function KravunderlagDetailClient({
     const requirements = await fetchSpecificationItemsForReport(
       specificationSlug,
       itemRefs,
-      locale,
     )
     const label = tr('listPdfFilenameLabel')
     const raw = `${label} ${spec.name} ${spec.uniqueId}.pdf`

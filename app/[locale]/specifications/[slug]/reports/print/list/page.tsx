@@ -62,7 +62,7 @@ export default function PrintListReportPage() {
       }
       const [requirements, specRes] = await Promise.all([
         slug
-          ? fetchSpecificationItemsForReport(slug, itemRefs, locale)
+          ? fetchSpecificationItemsForReport(slug, itemRefs)
           : Promise.resolve([]),
         slug
           ? fetch(`/api/specifications/${encodeURIComponent(slug)}`)
