@@ -1790,7 +1790,7 @@ export function createKravhanteringMcpServer(
                 'Provide exactly one of specificationId or specificationSlug.',
             })
           }
-          if (val.needsReferenceId != null && val.needsReferenceText) {
+          if (val.needsReferenceId != null && val.needsReferenceText != null) {
             ctx.addIssue({
               code: 'custom',
               message:
@@ -1798,7 +1798,10 @@ export function createKravhanteringMcpServer(
               path: ['needsReferenceText'],
             })
           }
-          if (val.needsReferenceDescription && !val.needsReferenceText) {
+          if (
+            val.needsReferenceDescription != null &&
+            val.needsReferenceText == null
+          ) {
             ctx.addIssue({
               code: 'custom',
               message: 'needsReferenceDescription requires needsReferenceText.',

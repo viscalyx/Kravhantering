@@ -1030,13 +1030,16 @@ edited, inspected, and assigned to requirement rows.
 1. Expand a needs-reference row and inspect linked requirements.
 1. Return to `Krav i underlaget`.
 1. Change one row's `Behovsreferens` dropdown to the created reference.
-1. Select multiple rows and apply a needs reference through the bulk dropdown.
+1. Select multiple rows so the bulk needs-reference dropdown appears.
+1. Open the help button next to the bulk needs-reference dropdown.
+1. Apply a needs reference through the bulk dropdown.
 1. Return to `Behovsreferenser` and try deleting a used reference.
 1. Delete an unused reference.
 
 **Expected result:** URL state can reopen the `Behovsreferenser` tab, linked
-counts update after assignments, used references cannot be deleted, and unused
-pre-registered references can be deleted intentionally.
+counts update after assignments, the bulk dropdown help explains the batch
+assignment, used references cannot be deleted, and unused pre-registered
+references can be deleted intentionally.
 
 ### SPEC-10: generate specification list report
 

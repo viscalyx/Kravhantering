@@ -6,10 +6,12 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
+import { useReducedMotion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsSpecificationDetailClient from '@/app/[locale]/specifications/[slug]/requirements-specification-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
+import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 import type { FilterOption } from '@/lib/requirements/list-view'
 import type {
   RequirementsSpecificationDetailInitialData,
@@ -32,6 +34,16 @@ vi.mock('next/navigation', () => ({
     get: () => null,
   }),
 }))
+
+vi.mock('@/lib/reduced-motion', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/reduced-motion')>()
+
+  return {
+    ...actual,
+    dialogPanelMotion: vi.fn(actual.dialogPanelMotion),
+    fadeMotion: vi.fn(actual.fadeMotion),
+  }
+})
 
 vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
   default: ({ requirementId }: { requirementId: number }) => (
@@ -181,6 +193,8 @@ function okJson(body: unknown) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 let addRequirementsResponse: { body: unknown; ok: boolean }
+let bulkNeedsReferencePatchError: Error | null
+let bulkNeedsReferencePatchResponse: { body: unknown; ok: boolean } | null
 let failNextAvailableRequirementsFetch = false
 let failNextSpecificationItemsFetch = false
 
@@ -300,8 +314,11 @@ function renderRequirementsSpecificationDetailClient(
 describe('RequirementsSpecificationDetailClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useReducedMotion).mockReturnValue(false)
     requirementsTableMock.mockReset()
     addRequirementsResponse = { body: { ok: true }, ok: true }
+    bulkNeedsReferencePatchError = null
+    bulkNeedsReferencePatchResponse = null
     failNextAvailableRequirementsFetch = false
     failNextSpecificationItemsFetch = false
     fetchMock.mockImplementation(
@@ -344,6 +361,16 @@ describe('RequirementsSpecificationDetailClient', () => {
           url === '/api/specifications/ETJANST-UPP-2026/items' &&
           method === 'PATCH'
         ) {
+          if (bulkNeedsReferencePatchError) {
+            return Promise.reject(bulkNeedsReferencePatchError)
+          }
+          if (bulkNeedsReferencePatchResponse) {
+            const response = bulkNeedsReferencePatchResponse
+            return Promise.resolve({
+              json: async () => response.body,
+              ok: response.ok,
+            })
+          }
           return Promise.resolve(okJson({ ok: true, updatedCount: 1 }))
         }
 
@@ -1188,6 +1215,22 @@ describe('RequirementsSpecificationDetailClient', () => {
     })
   })
 
+  it('passes reduced-motion preferences to the needs reference form modal', async () => {
+    vi.mocked(useReducedMotion).mockReturnValue(true)
+    renderRequirementsSpecificationDetailClient()
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.newNeedsReference' }),
+    )
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(fadeMotion).toHaveBeenCalledWith(true)
+    expect(dialogPanelMotion).toHaveBeenCalledWith(true)
+  })
+
   it('updates a single item needs reference inline from the requirements table', async () => {
     renderRequirementsSpecificationDetailClient({
       ...createInitialData(),
@@ -1265,6 +1308,98 @@ describe('RequirementsSpecificationDetailClient', () => {
           method: 'PATCH',
         }),
       )
+    })
+  })
+
+  it('opens contextual help for the bulk needs reference selector', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '2026-04-20T10:00:00.000Z',
+          description: 'Access management work',
+          id: 81,
+          libraryItemCount: 0,
+          linkedItemCount: 0,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '2026-04-20T10:00:00.000Z',
+        },
+      ],
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'common.help: specification.bulkNeedsReferenceLabel',
+      }),
+    )
+
+    expect(
+      screen.getByText('specification.bulkNeedsReferenceHelp'),
+    ).toBeInTheDocument()
+  })
+
+  it('shows bulk needs reference response failures next to the bulk controls', async () => {
+    bulkNeedsReferencePatchResponse = {
+      body: { error: 'Could not update selected requirements' },
+      ok: false,
+    }
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '2026-04-20T10:00:00.000Z',
+          description: 'Access management work',
+          id: 81,
+          libraryItemCount: 0,
+          linkedItemCount: 0,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '2026-04-20T10:00:00.000Z',
+        },
+      ],
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.change(
+      screen.getByLabelText('specification.bulkNeedsReferenceLabel'),
+      { target: { value: '81' } },
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /specification\.applyNeedsReferenceSelected/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Could not update selected requirements',
+      )
+    })
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+
+    expect(
+      screen.queryByText('Could not update selected requirements'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('catches thrown bulk needs reference request errors', async () => {
+    bulkNeedsReferencePatchError = new Error('Network unavailable')
+    renderRequirementsSpecificationDetailClient()
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /specification\.applyNeedsReferenceSelected/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Network unavailable')
     })
   })
 })

@@ -338,6 +338,7 @@
     "noLinkedRequirements": "Inga krav använder denna behovsreferens.",
     "toggleNeedsReferenceUsage": "Visa krav kopplade till {needsReference}",
     "bulkNeedsReferenceLabel": "Behovsreferens för valda krav",
+    "bulkNeedsReferenceHelp": "Välj den behovsreferens som ska sättas på alla markerade krav i kravunderlaget, eller välj ingen behovsreferens för att rensa kopplingen.",
     "applyNeedsReferenceSelected": "Sätt på valda ({count})",
     "newSpecification": "Nytt kravunderlag",
     "editSpecification": "Redigera kravunderlag",

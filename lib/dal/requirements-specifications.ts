@@ -992,18 +992,28 @@ async function assertSpecificationNeedsReferenceTextAvailable(
   text: string,
   exceptId?: number,
 ): Promise<void> {
-  const rows = (await db.query(
-    `
-      SELECT TOP (1) needs_reference.id AS id
-      FROM specification_needs_references needs_reference
-      WHERE needs_reference.specification_id = @0
-        AND needs_reference.text = @1
-        ${exceptId == null ? '' : 'AND needs_reference.id <> @2'}
-    `,
+  const rows = (
     exceptId == null
-      ? [specificationId, text]
-      : [specificationId, text, exceptId],
-  )) as Array<{ id: number }>
+      ? await db.query(
+          `
+          SELECT TOP (1) needs_reference.id AS id
+          FROM specification_needs_references needs_reference
+          WHERE needs_reference.specification_id = @0
+            AND needs_reference.text = @1
+        `,
+          [specificationId, text],
+        )
+      : await db.query(
+          `
+          SELECT TOP (1) needs_reference.id AS id
+          FROM specification_needs_references needs_reference
+          WHERE needs_reference.specification_id = @0
+            AND needs_reference.text = @1
+            AND needs_reference.id <> @2
+        `,
+          [specificationId, text, exceptId],
+        )
+  ) as Array<{ id: number }>
 
   if (rows[0]) {
     throw conflictError(

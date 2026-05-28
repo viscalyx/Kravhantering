@@ -272,7 +272,7 @@ till kravtillämpningen. En behovsreferens är en fritext som förklarar varför
 kravet behövs i just det här kravunderlaget och kan ge stöd för när kravet ska
 verifieras — t.ex. ett ärendenummer, ett mål eller ett avsnitt i ett
 kravunderlag. Du kan välja en befintlig referens eller skriva en ny med valfri
-beskrivning. I efterhand hanteras registret i tabben **Behovsreferenser**, medan
+beskrivning. I efter hand hanteras registret i tabben **Behovsreferenser**, medan
 kolumnen **Behovsreferens** används för att välja eller rensa befintliga
 referenser i tabellen.
 

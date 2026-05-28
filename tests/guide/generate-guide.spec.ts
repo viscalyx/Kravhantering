@@ -1249,7 +1249,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
             page,
             'lagg-till-krav-modal',
             'Lägg till krav — behovsreferens',
-            'När du lägger till krav i ett kravunderlag kan du koppla en **behovsreferens** till kravtillämpningen. En behovsreferens är en fritext som förklarar varför kravet behövs i just det här kravunderlaget och kan ge stöd för när kravet ska verifieras — t.ex. ett ärendenummer, ett mål eller ett avsnitt i ett kravunderlag. Du kan välja en befintlig referens eller skriva en ny med valfri beskrivning. I efterhand hanteras registret i tabben **Behovsreferenser**, medan kolumnen **Behovsreferens** används för att välja eller rensa befintliga referenser i tabellen.',
+            'När du lägger till krav i ett kravunderlag kan du koppla en **behovsreferens** till kravtillämpningen. En behovsreferens är en fritext som förklarar varför kravet behövs i just det här kravunderlaget och kan ge stöd för när kravet ska verifieras — t.ex. ett ärendenummer, ett mål eller ett avsnitt i ett kravunderlag. Du kan välja en befintlig referens eller skriva en ny med valfri beskrivning. I efter hand hanteras registret i tabben **Behovsreferenser**, medan kolumnen **Behovsreferens** används för att välja eller rensa befintliga referenser i tabellen.',
             { fullPage: false },
           )
 

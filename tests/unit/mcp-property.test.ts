@@ -419,7 +419,18 @@ describe('MCP property-based input validation', () => {
         specificationId: 7,
       })
       await expectInvalidToolCall(client, 'requirements_add_to_specification', {
+        needsReferenceId: 12,
+        needsReferenceText: '',
+        requirementIds: [1],
+        specificationId: 7,
+      })
+      await expectInvalidToolCall(client, 'requirements_add_to_specification', {
         needsReferenceDescription: 'Description without a new reference',
+        requirementIds: [1],
+        specificationId: 7,
+      })
+      await expectInvalidToolCall(client, 'requirements_add_to_specification', {
+        needsReferenceDescription: '',
         requirementIds: [1],
         specificationId: 7,
       })

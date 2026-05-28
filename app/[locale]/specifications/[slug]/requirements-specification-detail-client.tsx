@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   AlertTriangle,
   ChevronRight,
@@ -44,6 +44,7 @@ import { exportToCsv } from '@/lib/export-csv'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
+import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 import { fetchSpecificationItemsForReport } from '@/lib/reports/data/fetch-specification-items'
 import { buildListReport } from '@/lib/reports/templates/list-template'
 import type { ReportModel } from '@/lib/reports/types'
@@ -189,6 +190,7 @@ export default function KravunderlagDetailClient({
   const router = useRouter()
   const { confirm } = useConfirmModal()
   const searchParams = useSearchParams()
+  const shouldReduceMotion = useReducedMotion()
   const preFilterAreaId = searchParams.get('areaId')
     ? Number(searchParams.get('areaId'))
     : null
@@ -284,6 +286,9 @@ export default function KravunderlagDetailClient({
     null,
   )
   const [bulkNeedsReferenceId, setBulkNeedsReferenceId] = useState<string>('')
+  const [bulkNeedsReferenceError, setBulkNeedsReferenceError] = useState<
+    string | null
+  >(null)
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [addModalLoading, setAddModalLoading] = useState(false)
   const [addModalError, setAddModalError] = useState<string | null>(null)
@@ -871,12 +876,19 @@ export default function KravunderlagDetailClient({
 
   const handleNeedsReferenceAssignment = useCallback(
     async (itemRef: string, needsReferenceId: number | null) => {
-      const originalItems = specificationItems
+      const originalItem =
+        specificationItems.find(item => item.itemRef === itemRef) ?? null
       const nextNeedsReference =
         needsReferenceId == null
           ? null
           : (availableNeedsRefs.find(ref => ref.id === needsReferenceId) ??
             null)
+      const restoreOriginalItem = () => {
+        if (!originalItem) return
+        setSpecificationItems(prev =>
+          prev.map(item => (item.itemRef === itemRef ? originalItem : item)),
+        )
+      }
 
       setSpecificationItems(prev =>
         prev.map(item =>
@@ -902,12 +914,12 @@ export default function KravunderlagDetailClient({
           },
         )
         if (!response.ok) {
-          setSpecificationItems(originalItems)
+          restoreOriginalItem()
           return
         }
         await Promise.all([fetchSpecificationItems(), fetchNeedsReferences()])
       } catch {
-        setSpecificationItems(originalItems)
+        restoreOriginalItem()
       }
     },
     [
@@ -927,24 +939,33 @@ export default function KravunderlagDetailClient({
 
     const needsReferenceId =
       bulkNeedsReferenceId === '' ? null : Number(bulkNeedsReferenceId)
-    const response = await apiFetch(
-      `/api/specifications/${specificationSlug}/items`,
-      {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemRefs, needsReferenceId }),
-      },
-    )
+    setBulkNeedsReferenceError(null)
 
-    if (!response.ok) {
-      const details = await readResponseMessage(response)
-      setNeedsReferenceError(details || tc('error'))
-      return
+    try {
+      const response = await apiFetch(
+        `/api/specifications/${specificationSlug}/items`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemRefs, needsReferenceId }),
+        },
+      )
+
+      if (!response.ok) {
+        const details = await readResponseMessage(response)
+        setBulkNeedsReferenceError(details || tc('error'))
+        return
+      }
+
+      setLeftSelectedIds(new Set())
+      setBulkNeedsReferenceId('')
+      setBulkNeedsReferenceError(null)
+      await Promise.all([fetchSpecificationItems(), fetchNeedsReferences()])
+    } catch (error) {
+      setBulkNeedsReferenceError(
+        error instanceof Error ? error.message : tc('error'),
+      )
     }
-
-    setLeftSelectedIds(new Set())
-    setBulkNeedsReferenceId('')
-    await Promise.all([fetchSpecificationItems(), fetchNeedsReferences()])
   }, [
     bulkNeedsReferenceId,
     fetchNeedsReferences,
@@ -1592,147 +1613,159 @@ export default function KravunderlagDetailClient({
       : null
 
   const needsReferenceFormModal =
-    needsReferenceForm && typeof window !== 'undefined'
+    typeof window !== 'undefined'
       ? createPortal(
-          <div
-            aria-modal="true"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-            onKeyDown={event => {
-              if (event.key === 'Escape' && !needsReferenceSaving) {
-                setNeedsReferenceForm(null)
-              }
-            }}
-            role="dialog"
-          >
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
-            {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
-            <div
-              className="absolute inset-0"
-              onClick={() => {
-                if (!needsReferenceSaving) {
-                  setNeedsReferenceForm(null)
-                }
-              }}
-            />
-            <div
-              className="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-secondary-900"
-              role="document"
-            >
-              <div className="mb-5 flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700 dark:text-amber-300">
-                    {t('needsReferences')}
-                  </p>
-                  <h2 className="mt-1 text-lg font-semibold text-secondary-900 dark:text-secondary-100">
-                    {needsReferenceForm.id == null
-                      ? t('newNeedsReference')
-                      : t('editNeedsReference')}
-                  </h2>
-                </div>
-                <button
-                  aria-label={tc('close')}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg transition-colors hover:bg-secondary-100 dark:hover:bg-secondary-800"
-                  disabled={needsReferenceSaving}
-                  onClick={() => setNeedsReferenceForm(null)}
-                  type="button"
+          <AnimatePresence>
+            {needsReferenceForm ? (
+              <motion.div
+                aria-modal="true"
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+                key="needs-reference-form-backdrop"
+                onKeyDown={event => {
+                  if (event.key === 'Escape' && !needsReferenceSaving) {
+                    setNeedsReferenceForm(null)
+                  }
+                }}
+                role="dialog"
+                {...fadeMotion(shouldReduceMotion)}
+              >
+                {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
+                {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
+                <div
+                  className="absolute inset-0"
+                  onClick={() => {
+                    if (!needsReferenceSaving) {
+                      setNeedsReferenceForm(null)
+                    }
+                  }}
+                />
+                <motion.div
+                  className="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-secondary-900"
+                  role="document"
+                  {...dialogPanelMotion(shouldReduceMotion)}
                 >
-                  <X aria-hidden="true" className="h-4 w-4" />
-                </button>
-              </div>
+                  <div className="mb-5 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700 dark:text-amber-300">
+                        {t('needsReferences')}
+                      </p>
+                      <h2 className="mt-1 text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+                        {needsReferenceForm.id == null
+                          ? t('newNeedsReference')
+                          : t('editNeedsReference')}
+                      </h2>
+                    </div>
+                    <button
+                      aria-label={tc('close')}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg transition-colors hover:bg-secondary-100 dark:hover:bg-secondary-800"
+                      disabled={needsReferenceSaving}
+                      onClick={() => setNeedsReferenceForm(null)}
+                      type="button"
+                    >
+                      <X aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                  </div>
 
-              <div className="space-y-4">
-                <div>
-                  <div className="mb-1 flex items-center gap-1.5">
-                    <label
-                      className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
-                      htmlFor="needs-reference-text"
-                    >
-                      {t('needsReference')}
-                    </label>
-                    {helpButton('needs-reference-text', t('needsReference'), {
-                      disabled: needsReferenceSaving,
-                    })}
+                  <div className="space-y-4">
+                    <div>
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <label
+                          className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                          htmlFor="needs-reference-text"
+                        >
+                          {t('needsReference')}
+                        </label>
+                        {helpButton(
+                          'needs-reference-text',
+                          t('needsReference'),
+                          {
+                            disabled: needsReferenceSaving,
+                          },
+                        )}
+                      </div>
+                      {helpPanel('needsReferenceHelp', 'needs-reference-text')}
+                      <input
+                        className="w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-secondary-800/50"
+                        disabled={needsReferenceSaving}
+                        id="needs-reference-text"
+                        onChange={event =>
+                          setNeedsReferenceForm(current =>
+                            current
+                              ? { ...current, text: event.target.value }
+                              : current,
+                          )
+                        }
+                        value={needsReferenceForm.text}
+                      />
+                    </div>
+                    <div>
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <label
+                          className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                          htmlFor="needs-reference-description"
+                        >
+                          {t('needsReferenceDescription')}
+                        </label>
+                        {helpButton(
+                          'needs-reference-description',
+                          t('needsReferenceDescription'),
+                          { disabled: needsReferenceSaving },
+                        )}
+                      </div>
+                      {helpPanel(
+                        'needsReferenceDescriptionHelp',
+                        'needs-reference-description',
+                      )}
+                      <textarea
+                        className="w-full resize-none rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-secondary-800/50"
+                        disabled={needsReferenceSaving}
+                        id="needs-reference-description"
+                        onChange={event =>
+                          setNeedsReferenceForm(current =>
+                            current
+                              ? { ...current, description: event.target.value }
+                              : current,
+                          )
+                        }
+                        placeholder={t('needsReferenceDescriptionPlaceholder')}
+                        rows={4}
+                        value={needsReferenceForm.description}
+                      />
+                    </div>
+                    {needsReferenceError ? (
+                      <p
+                        className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"
+                        role="alert"
+                      >
+                        {needsReferenceError}
+                      </p>
+                    ) : null}
+                    <div className="flex gap-3 pt-1">
+                      <button
+                        className="btn-primary"
+                        disabled={
+                          needsReferenceSaving ||
+                          !needsReferenceForm.text.trim()
+                        }
+                        onClick={() => void handleSaveNeedsReference()}
+                        type="button"
+                      >
+                        {needsReferenceSaving ? tc('saving') : tc('save')}
+                      </button>
+                      <button
+                        className="min-h-11 rounded-xl border px-4 py-2.5 text-sm transition-colors hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-secondary-800"
+                        disabled={needsReferenceSaving}
+                        onClick={() => setNeedsReferenceForm(null)}
+                        type="button"
+                      >
+                        {tc('cancel')}
+                      </button>
+                    </div>
                   </div>
-                  {helpPanel('needsReferenceHelp', 'needs-reference-text')}
-                  <input
-                    className="w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-secondary-800/50"
-                    disabled={needsReferenceSaving}
-                    id="needs-reference-text"
-                    onChange={event =>
-                      setNeedsReferenceForm(current =>
-                        current
-                          ? { ...current, text: event.target.value }
-                          : current,
-                      )
-                    }
-                    value={needsReferenceForm.text}
-                  />
-                </div>
-                <div>
-                  <div className="mb-1 flex items-center gap-1.5">
-                    <label
-                      className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
-                      htmlFor="needs-reference-description"
-                    >
-                      {t('needsReferenceDescription')}
-                    </label>
-                    {helpButton(
-                      'needs-reference-description',
-                      t('needsReferenceDescription'),
-                      { disabled: needsReferenceSaving },
-                    )}
-                  </div>
-                  {helpPanel(
-                    'needsReferenceDescriptionHelp',
-                    'needs-reference-description',
-                  )}
-                  <textarea
-                    className="w-full resize-none rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-secondary-800/50"
-                    disabled={needsReferenceSaving}
-                    id="needs-reference-description"
-                    onChange={event =>
-                      setNeedsReferenceForm(current =>
-                        current
-                          ? { ...current, description: event.target.value }
-                          : current,
-                      )
-                    }
-                    placeholder={t('needsReferenceDescriptionPlaceholder')}
-                    rows={4}
-                    value={needsReferenceForm.description}
-                  />
-                </div>
-                {needsReferenceError ? (
-                  <p
-                    className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"
-                    role="alert"
-                  >
-                    {needsReferenceError}
-                  </p>
-                ) : null}
-                <div className="flex gap-3 pt-1">
-                  <button
-                    className="btn-primary"
-                    disabled={
-                      needsReferenceSaving || !needsReferenceForm.text.trim()
-                    }
-                    onClick={() => void handleSaveNeedsReference()}
-                    type="button"
-                  >
-                    {needsReferenceSaving ? tc('saving') : tc('save')}
-                  </button>
-                  <button
-                    className="min-h-11 rounded-xl border px-4 py-2.5 text-sm transition-colors hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-secondary-800"
-                    disabled={needsReferenceSaving}
-                    onClick={() => setNeedsReferenceForm(null)}
-                    type="button"
-                  >
-                    {tc('cancel')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>,
+                </motion.div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>,
           document.body,
         )
       : null
@@ -2369,22 +2402,42 @@ export default function KravunderlagDetailClient({
                     stickyTitleActions={
                       leftSelectedIds.size > 0 ? (
                         <>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <select
-                              aria-label={t('bulkNeedsReferenceLabel')}
-                              className="min-h-11 rounded-lg border border-secondary-200 bg-white px-2 py-1.5 text-sm text-secondary-700 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200"
-                              onChange={event =>
-                                setBulkNeedsReferenceId(event.target.value)
-                              }
-                              value={bulkNeedsReferenceId}
-                            >
-                              <option value="">{t('noNeedsRef')}</option>
-                              {availableNeedsRefs.map(ref => (
-                                <option key={ref.id} value={ref.id}>
-                                  {ref.text}
-                                </option>
-                              ))}
-                            </select>
+                          <div className="flex flex-wrap items-start gap-2">
+                            <div className="flex min-w-0 flex-col gap-1">
+                              <div className="flex items-center gap-1.5">
+                                <select
+                                  aria-label={t('bulkNeedsReferenceLabel')}
+                                  className="min-h-11 max-w-full rounded-lg border border-secondary-200 bg-white px-2 py-1.5 text-sm text-secondary-700 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200"
+                                  onChange={event =>
+                                    setBulkNeedsReferenceId(event.target.value)
+                                  }
+                                  value={bulkNeedsReferenceId}
+                                >
+                                  <option value="">{t('noNeedsRef')}</option>
+                                  {availableNeedsRefs.map(ref => (
+                                    <option key={ref.id} value={ref.id}>
+                                      {ref.text}
+                                    </option>
+                                  ))}
+                                </select>
+                                {helpButton(
+                                  'bulk-needs-reference',
+                                  t('bulkNeedsReferenceLabel'),
+                                )}
+                              </div>
+                              {helpPanel(
+                                'bulkNeedsReferenceHelp',
+                                'bulk-needs-reference',
+                              )}
+                              {bulkNeedsReferenceError ? (
+                                <p
+                                  className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"
+                                  role="alert"
+                                >
+                                  {bulkNeedsReferenceError}
+                                </p>
+                              ) : null}
+                            </div>
                             <button
                               className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-secondary-300 px-3 py-1.5 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
                               onClick={() =>

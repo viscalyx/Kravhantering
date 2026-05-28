@@ -338,6 +338,7 @@
     "noLinkedRequirements": "No requirements use this needs reference.",
     "toggleNeedsReferenceUsage": "Show requirements linked to {needsReference}",
     "bulkNeedsReferenceLabel": "Needs reference for selected requirements",
+    "bulkNeedsReferenceHelp": "Choose the needs reference to apply to every selected requirement in the specification, or choose no needs reference to clear the assignment.",
     "applyNeedsReferenceSelected": "Apply to selected ({count})",
     "newSpecification": "New requirements specification",
     "editSpecification": "Edit requirements specification",
