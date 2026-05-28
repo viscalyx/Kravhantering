@@ -229,6 +229,10 @@ configuration change.
    set -a
    . /etc/kravhantering/release.env
    set +a
+   STACK_NETWORK=kravhantering-internal
+
+   podman network exists "$STACK_NETWORK" || \
+     podman network create "$STACK_NETWORK"
 
    podman compose --env-file /etc/kravhantering/release.env \
      -f compose/single-node.compose.yml up -d sqlserver keycloak
@@ -245,7 +249,7 @@ configuration change.
    . /etc/kravhantering/release.env
    set +a
 
-   STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+   STACK_NETWORK=kravhantering-internal
 
    RESOLVER_IP="$(
      podman run --rm --network "$STACK_NETWORK" --entrypoint /bin/sh \
@@ -280,7 +284,7 @@ configuration change.
    . /etc/kravhantering/release.env
    set +a
 
-   STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+   STACK_NETWORK=kravhantering-internal
    RUN_BOOTSTRAP=false
 
    podman run --rm --network "$STACK_NETWORK" \
@@ -315,7 +319,7 @@ configuration change.
    . /etc/kravhantering/release.env
    set +a
 
-   STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+   STACK_NETWORK=kravhantering-internal
    DEMO_USERS_FILE=$PWD/keycloak/demo-users.not-for-production.json
    DEMO_USERS_TARGET=/workspace/keycloak/demo-users.not-for-production.json
    SCRIPT_FILE=$PWD/scripts/keycloak-demo-users.mjs
@@ -346,7 +350,7 @@ configuration change.
    . /etc/kravhantering/release.env
    set +a
 
-   STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+   STACK_NETWORK=kravhantering-internal
    DEMO=$PWD/demo-seed
    TYPEORM=/workspace/typeorm
    DOG=seed-dogfood.mjs
@@ -396,6 +400,18 @@ configuration change.
     ```bash
     curl --insecure --fail --silent --show-error \
       https://kravhantering.example.internal/api/health
+    ```
+
+    After the upgraded stack passes health checks, remove the obsolete
+    pre-rename network if it is still present and no containers use it:
+
+    ```bash
+    sudo -iu kravhantering
+    OBSOLETE_NETWORK=kravhantering-single-node_kravhantering-internal
+    if podman network exists "$OBSOLETE_NETWORK"; then
+      podman network rm "$OBSOLETE_NETWORK"
+    fi
+    exit
     ```
 
 11. Re-enable traffic.

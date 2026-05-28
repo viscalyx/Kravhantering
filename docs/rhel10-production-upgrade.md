@@ -242,6 +242,11 @@ place.
 
    COMPOSE_FILE=compose/app-node-tls.compose.yml
    # COMPOSE_FILE=compose/app-node-http.compose.yml
+   APP_NODE_NETWORK=kravhantering-internal
+
+   podman network exists "$APP_NODE_NETWORK" || \
+     podman network create "$APP_NODE_NETWORK"
+
    podman compose --env-file /etc/kravhantering/release.env \
      -f "$COMPOSE_FILE" up -d app-runtime
 
@@ -257,7 +262,7 @@ place.
    . /etc/kravhantering/release.env
    set +a
 
-   APP_NODE_NETWORK=kravhantering-app-node_kravhantering-internal
+   APP_NODE_NETWORK=kravhantering-internal
 
    RESOLVER_IP="$(
      podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
@@ -319,6 +324,18 @@ place.
     ```bash
     curl --insecure --fail --silent --show-error \
       https://kravhantering.example.internal/api/health
+    ```
+
+    After the upgraded app node passes health checks, remove the obsolete
+    pre-rename network if it is still present and no containers use it:
+
+    ```bash
+    sudo -iu kravhantering
+    OBSOLETE_NETWORK=kravhantering-app-node_kravhantering-internal
+    if podman network exists "$OBSOLETE_NETWORK"; then
+      podman network rm "$OBSOLETE_NETWORK"
+    fi
+    exit
     ```
 
 11. Re-enable traffic.

@@ -549,8 +549,9 @@ contains public test credentials.
 Choose exactly one app-node exposure alternative for the host. Use that
 alternative's Compose file in the shared `app-runtime` and resolver steps
 below, then continue with the matching nginx start instructions. Both app-node
-Compose files use the same `kravhantering-app-node_kravhantering-internal`
-network, so the resolver check is shared.
+Compose files use the same `kravhantering-internal` network, so the resolver
+check is shared. Use only one active app-node Compose stack per host with this
+default network name.
 
 Run the common database jobs:
 
@@ -583,6 +584,10 @@ set +a
 
 COMPOSE_FILE=compose/app-node-tls.compose.yml
 # COMPOSE_FILE=compose/app-node-http.compose.yml
+APP_NODE_NETWORK=kravhantering-internal
+
+podman network exists "$APP_NODE_NETWORK" || \
+  podman network create "$APP_NODE_NETWORK"
 
 podman compose --env-file /etc/kravhantering/release.env \
   -f "$COMPOSE_FILE" up -d app-runtime
@@ -599,7 +604,7 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-APP_NODE_NETWORK=kravhantering-app-node_kravhantering-internal
+APP_NODE_NETWORK=kravhantering-internal
 
 RESOLVER_IP="$(
   podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \

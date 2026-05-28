@@ -102,6 +102,13 @@ COMPOSE_FILE=compose/app-node-tls.compose.yml
 podman compose --env-file /etc/kravhantering/release.env \
   -f "$COMPOSE_FILE" down
 
+for NETWORK in kravhantering-internal \
+  kravhantering-app-node_kravhantering-internal; do
+  if podman network exists "$NETWORK"; then
+    podman network rm "$NETWORK"
+  fi
+done
+
 exit
 ```
 

@@ -49,7 +49,7 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+STACK_NETWORK=kravhantering-internal
 
 podman run --rm --network "$STACK_NETWORK" \
   --env-file /etc/kravhantering/db-job.env \
@@ -67,7 +67,7 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+STACK_NETWORK=kravhantering-internal
 SCRIPT_FILE=$PWD/scripts/keycloak-demo-users.mjs
 SCRIPT_TARGET=/workspace/scripts/keycloak-demo-users.mjs
 
@@ -102,6 +102,13 @@ cd /opt/kravhantering/current
 
 podman compose --env-file /etc/kravhantering/release.env \
   -f compose/single-node.compose.yml down
+
+for NETWORK in kravhantering-internal \
+  kravhantering-single-node_kravhantering-internal; do
+  if podman network exists "$NETWORK"; then
+    podman network rm "$NETWORK"
+  fi
+done
 
 exit
 ```

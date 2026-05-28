@@ -872,11 +872,14 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+STACK_NETWORK=kravhantering-internal
 DEMO_USERS_FILE=$PWD/keycloak/demo-users.not-for-production.json
 DEMO_USERS_TARGET=/workspace/keycloak/demo-users.not-for-production.json
 SCRIPT_FILE=$PWD/scripts/keycloak-demo-users.mjs
 SCRIPT_TARGET=/workspace/scripts/keycloak-demo-users.mjs
+
+podman network exists "$STACK_NETWORK" || \
+  podman network create "$STACK_NETWORK"
 
 podman run --rm --pull=never --network "$STACK_NETWORK" \
   --entrypoint node --user 0:0 \
@@ -963,6 +966,10 @@ cd /opt/kravhantering/current
 set -a
 . /etc/kravhantering/release.env
 set +a
+STACK_NETWORK=kravhantering-internal
+
+podman network exists "$STACK_NETWORK" || \
+  podman network create "$STACK_NETWORK"
 
 podman compose --env-file /etc/kravhantering/release.env \
   -f compose/single-node.compose.yml up -d sqlserver keycloak
@@ -979,7 +986,7 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+STACK_NETWORK=kravhantering-internal
 
 RESOLVER_IP="$(
   podman run --rm --network "$STACK_NETWORK" --entrypoint /bin/sh \
@@ -1012,7 +1019,7 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+STACK_NETWORK=kravhantering-internal
 
 podman run --rm --network "$STACK_NETWORK" \
   --env-file /etc/kravhantering/db-job.env \
@@ -1043,7 +1050,7 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+STACK_NETWORK=kravhantering-internal
 DEMO=$PWD/demo-seed
 TYPEORM=/workspace/typeorm
 DOG=seed-dogfood.mjs
