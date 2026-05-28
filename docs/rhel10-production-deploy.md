@@ -450,6 +450,10 @@ Register a confidential OIDC web client in the external IdP. The app requires:
 - `employeeHsaId` claim on ID token, access token and userinfo
 - optional MCP service client audience for `kravhantering-app`
 
+Use the bilingual
+[External IdP Handoff](./external-idp-handoff.md) guide as the checklist and
+request template when coordinating these values with IdP administrators.
+
 Provision at least one initial application administrator in the IdP before the
 first sign-in. This is not an IdP platform administrator account; it is a
 normal application user with a real `employeeHsaId` value and the
