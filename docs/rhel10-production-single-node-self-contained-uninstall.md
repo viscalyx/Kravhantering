@@ -1,12 +1,12 @@
-# RHEL 10 Single-Node Internal Uninstall
+# RHEL 10 Self-Contained Single-Node Uninstall
 
 <!-- cSpell:words Mountpoint mountpoints readlink userdel -->
 
-This guide describes how to uninstall the all-in-one internal RHEL 10
+This guide describes how to uninstall the self-contained single-node RHEL 10
 topology after a first install, with nginx, `app-runtime`, SQL Server,
 Keycloak and `db-job` in one rootless Podman Compose network. It is not an
 upgrade rollback guide. For release rollback after migration, use
-[rhel10-production-single-node-internal-upgrade.md](./rhel10-production-single-node-internal-upgrade.md).
+[rhel10-production-single-node-self-contained-upgrade.md](./rhel10-production-single-node-self-contained-upgrade.md).
 
 The default flow copies host-side material to an administrator-controlled
 staging area, performs culling from that staging copy into a smaller long-term

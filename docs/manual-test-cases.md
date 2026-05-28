@@ -303,8 +303,8 @@ cannot find its short-lived login-state cookie.
 **Steps:**
 
 1. Open `/auth/error?code=login_state_cookie_missing&locale=sv`.
-1. In a single-node internal deployment, repeat the check through the public
-   application origin, for example
+1. In a self-contained single-node deployment, repeat the check through the
+   public application origin, for example
    `https://kravhantering.example.internal/auth/error?code=hsa_id_missing&locale=sv`.
 1. Inspect the visible page and the primary action.
 

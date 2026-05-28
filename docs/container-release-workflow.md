@@ -144,10 +144,13 @@ the app-runtime image copies that directory into the container.
 
 See [rhel10-production-deploy.md](./rhel10-production-deploy.md) for the
 enterprise app-node workflow with external SQL Server and external IdP. See
-[rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md)
-for the controlled all-in-one internal workflow.
-The bundle also includes the matching uninstall guides for reversing a first
-install.
+[rhel10-production-single-node-self-contained-deploy.md](./rhel10-production-single-node-self-contained-deploy.md)
+for the self-contained single-node workflow with bundled SQL Server and
+Keycloak.
+The bundle also includes the matching topology-specific offline guides,
+upgrade guides and uninstall guides. The offline guides document how operators
+create a transferable offline bundle that contains the production deployment
+archive, its checksum, exported images, image refs and hashes.
 
 ## Public GHCR Packages
 

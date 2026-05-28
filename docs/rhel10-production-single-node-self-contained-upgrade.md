@@ -1,17 +1,25 @@
-# RHEL 10 Single-Node Internal Planned-Downtime Upgrade
+# RHEL 10 Self-Contained Single-Node Planned-Downtime Upgrade
 
 <!-- cSpell:words readlink resolv -->
 
-This guide describes how to upgrade and roll back the single-node internal
-RHEL 10 production topology from released artifacts, with nginx, `app-runtime`,
-SQL Server, Keycloak and `db-job` in one rootless Podman Compose network.
+This guide describes how to upgrade and roll back the self-contained
+single-node RHEL 10 production topology from released artifacts, with nginx,
+`app-runtime`, SQL Server, Keycloak and `db-job` in one rootless Podman Compose
+network.
 
 For a first install, use
-[rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md).
+[rhel10-production-single-node-self-contained-deploy.md](./rhel10-production-single-node-self-contained-deploy.md).
 For the enterprise topology with external SQL Server and external IdP, use
 [rhel10-production-upgrade.md](./rhel10-production-upgrade.md).
 To uninstall a first install, use
-[rhel10-production-single-node-internal-uninstall.md](./rhel10-production-single-node-internal-uninstall.md).
+[rhel10-production-single-node-self-contained-uninstall.md](./rhel10-production-single-node-self-contained-uninstall.md).
+
+>[!IMPORTANT]
+>For offline upgrades, first follow
+>[rhel10-production-single-node-self-contained-offline.md](./rhel10-production-single-node-self-contained-offline.md).
+>The offline guide prepares the transferable bundle before the downtime window
+>and tells you which connected artifact and image steps it replaces on the
+>offline host.
 
 ## Planned-Downtime Upgrade
 
@@ -25,7 +33,7 @@ configuration change.
    Download the target bundle and checksum from the approved release source:
 
    ```bash
-   VERSION=1.2.4
+   VERSION=1.2.4 # Change to the version being deployed.
 
    # Default: internal release repository.
    RELEASE_DOWNLOAD_URL="https://release.example.internal/kravhantering/${VERSION}"
@@ -200,188 +208,6 @@ configuration change.
    exit
    ```
 
-   Optional offline upgrade transfer: after the source host has completed this
-   step, create a topology-specific offline upgrade bundle that contains the
-   installed release directory and local verified image archives. Run this as
-   the administrator on the connected source host:
-
-   ```bash
-   TOPOLOGY=single-node
-   OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
-   OFFLINE_BUNDLE="${OFFLINE_ROOT}.tar.gz"
-   IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
-
-   test ! -e "$OFFLINE_ROOT" || {
-     echo "Offline staging directory already exists: $OFFLINE_ROOT" >&2
-     exit 1
-   }
-
-   sudo install -d -o root -g root -m 0755 \
-     "$OFFLINE_ROOT" "$OFFLINE_ROOT/release"
-   sudo install -d -o kravhantering -g kravhantering -m 0755 \
-     "$OFFLINE_ROOT/images"
-   sudo cp -a "/opt/kravhantering/releases/${VERSION}" \
-     "$OFFLINE_ROOT/release/"
-   ```
-
-   Export the already-present, verified local images into the offline staging
-   directory as the service user:
-
-   ```bash
-   sudo -iu kravhantering
-   VERSION=1.2.4
-   TOPOLOGY=single-node
-   OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
-   IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
-   cd /opt/kravhantering/current
-   bin/kravhantering-images.sh --topology single-node \
-     --lock-file container-stack.lock.json \
-     --env-file /etc/kravhantering/release.env \
-     export --output "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
-   exit
-   ```
-
-   Add a manifest, checksums and the final movable tarball:
-
-   ```bash
-   set -a
-   . /etc/kravhantering/release.env
-   set +a
-
-   CURRENT_TARGET="$(readlink -f /opt/kravhantering/current)"
-   jq -n \
-     --arg version "$VERSION" \
-     --arg topology "$TOPOLOGY" \
-     --arg currentTarget "$CURRENT_TARGET" \
-     --arg imageBundle "images/$IMAGE_BUNDLE_NAME" \
-     --arg appRuntime "$APP_RUNTIME_IMAGE_REF" \
-     --arg dbJob "$DB_JOB_IMAGE_REF" \
-     --arg nginx "$NGINX_IMAGE_REF" \
-     --arg sqlserver "$SQLSERVER_IMAGE_REF" \
-     --arg keycloak "$KEYCLOAK_IMAGE_REF" \
-     '{
-       schemaVersion: 1,
-       kind: "kravhantering-offline-upgrade",
-       version: $version,
-       topology: $topology,
-       sourceCurrentTarget: $currentTarget,
-       imageBundle: $imageBundle,
-       imageRefs: {
-         "app-runtime": $appRuntime,
-         "db-job": $dbJob,
-         nginx: $nginx,
-         sqlserver: $sqlserver,
-         keycloak: $keycloak
-       }
-     }' | sudo tee "$OFFLINE_ROOT/offline-upgrade-manifest.json" >/dev/null
-
-   sudo sh -c "cd '$OFFLINE_ROOT' && \
-     sha256sum offline-upgrade-manifest.json \
-       release/$VERSION/container-stack.lock.json \
-       images/$IMAGE_BUNDLE_NAME > hashes.sha256"
-
-   sudo tar -czf "$OFFLINE_BUNDLE" \
-     -C "$(dirname "$OFFLINE_ROOT")" "$(basename "$OFFLINE_ROOT")"
-   sudo chown "$(id -u):$(id -g)" "$OFFLINE_BUNDLE"
-   sha256sum "$OFFLINE_BUNDLE"
-   ```
-
-   Copy `$OFFLINE_BUNDLE` to the offline host with the site's approved
-   transfer method, for example `scp`.
-
-   On the offline host, unpack and verify the offline upgrade bundle in a
-   temporary staging directory:
-
-   ```bash
-   TOPOLOGY=single-node
-   OFFLINE_BUNDLE="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}.tar.gz"
-   OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
-
-   test ! -e "$OFFLINE_ROOT" || {
-     echo "Offline staging directory already exists: $OFFLINE_ROOT" >&2
-     exit 1
-   }
-
-   mkdir -p "$OFFLINE_ROOT"
-   tar -xzf "$OFFLINE_BUNDLE" -C "$OFFLINE_ROOT" --strip-components=1
-   (cd "$OFFLINE_ROOT" && sha256sum -c hashes.sha256)
-   ```
-
-   Install the release directory and move `current` on the offline host. Fail
-   fast if the release directory already exists:
-
-   ```bash
-   test ! -e "/opt/kravhantering/releases/${VERSION}" || {
-     echo "Release directory already exists:" \
-       "/opt/kravhantering/releases/${VERSION}" >&2
-     exit 1
-   }
-
-   sudo install -d -o root -g root -m 0755 /opt/kravhantering/releases
-   sudo cp -a "$OFFLINE_ROOT/release/${VERSION}" \
-     "/opt/kravhantering/releases/${VERSION}"
-   sudo chown -R root:root "/opt/kravhantering/releases/${VERSION}"
-   sudo chcon -R -t container_file_t \
-     "/opt/kravhantering/releases/${VERSION}/nginx"
-   sudo ln -sfn "/opt/kravhantering/releases/${VERSION}" \
-     /opt/kravhantering/current
-   readlink -f /opt/kravhantering/current
-   ```
-
-   Update only the `*_IMAGE_REF` values in the offline host's
-   `/etc/kravhantering/release.env`. By default this preserves the source image
-   refs. Set `TARGET_IMAGE_REGISTRY` to a non-resolvable local or fake registry
-   hostname when the offline host must never reference the source registry:
-
-   ```bash
-   TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
-   MANIFEST="$OFFLINE_ROOT/offline-upgrade-manifest.json"
-
-   update_ref() {
-     sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
-   }
-   source_ref() {
-     jq -r --arg name "$1" '.imageRefs[$name]' "$MANIFEST"
-   }
-   target_ref() {
-     local ref path tag
-     ref="$(source_ref "$1")"
-     if [ -z "$TARGET_IMAGE_REGISTRY" ]; then
-       printf '%s\n' "$ref"
-       return
-     fi
-     tag="${ref##*:}"
-     path="${ref%:*}"
-     printf '%s/%s:%s\n' "$TARGET_IMAGE_REGISTRY" "${path#*/}" "$tag"
-   }
-
-   update_ref APP_RUNTIME_IMAGE_REF "$(target_ref app-runtime)"
-   update_ref DB_JOB_IMAGE_REF "$(target_ref db-job)"
-   update_ref NGINX_IMAGE_REF "$(target_ref nginx)"
-   update_ref SQLSERVER_IMAGE_REF "$(target_ref sqlserver)"
-   update_ref KEYCLOAK_IMAGE_REF "$(target_ref keycloak)"
-   ```
-
-   Load, tag and verify the images as the rootless service user:
-
-   ```bash
-   sudo -iu kravhantering
-   VERSION=1.2.4
-   TOPOLOGY=single-node
-   OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
-   IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
-   cd /opt/kravhantering/current
-   bin/kravhantering-images.sh --topology single-node \
-     --lock-file container-stack.lock.json \
-     --env-file /etc/kravhantering/release.env \
-     load --bundle "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
-   bin/kravhantering-images.sh --topology single-node \
-     --lock-file container-stack.lock.json \
-     --env-file /etc/kravhantering/release.env \
-     verify
-   exit
-   ```
-
 8. Run the database jobs once from the new release.
    First ensure SQL Server, Keycloak and the Compose network exist for the new
    release, then run the job sequence with the new `DB_JOB_IMAGE_REF`. Use the
@@ -389,7 +215,7 @@ configuration change.
    [rhel10-production-upgrade.md](./rhel10-production-upgrade.md), and skip
    `bootstrap`.
 
-   Set `RUN_BOOTSTRAP=true` only for the controlled internal/single-node
+   Set `RUN_BOOTSTRAP=true` only for the self-contained single-node
    bootstrap `db-job.env` that still includes `DB_BOOTSTRAP_ADMIN_*` and
    `DB_BOOTSTRAP_APP_*`, and only when the window intentionally performs SQL
    Server password provisioning or rotation. For DBA-pre-provisioned production
@@ -522,7 +348,7 @@ configuration change.
     ```
 
     If the host uses the temporary self-signed certificate from
-    [Appendix A: Local Self-Signed TLS Certificate](./rhel10-production-single-node-internal-deploy.md#appendix-a-local-self-signed-tls-certificate),
+    [Appendix A: Local Self-Signed TLS Certificate](./rhel10-production-single-node-self-contained-deploy.md#appendix-a-local-self-signed-tls-certificate),
     or the operator workstation does not yet trust the issuing CA, use
     `--insecure` for a manual readiness probe only:
 
@@ -536,7 +362,7 @@ configuration change.
     rotation only after the readiness probes and read-only workflow succeed.
     Add the final bundle checksum, image refs, restore-point reference and
     readiness results to the
-    [Operational Evidence](./rhel10-production-single-node-internal-deploy.md#operational-evidence)
+    [Operational Evidence](./rhel10-production-single-node-self-contained-deploy.md#operational-evidence)
     record.
 
 ## Rollback

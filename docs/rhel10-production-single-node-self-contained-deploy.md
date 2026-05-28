@@ -1,4 +1,4 @@
-# RHEL 10 Single-Node Internal Deployment From Release Artifacts
+# RHEL 10 Self-Contained Single-Node Deployment From Release Artifacts
 
 <!-- cSpell:words coreutils datawriter firewalld fullchain nameserver privkey -->
 <!-- cSpell:words resolv -->
@@ -13,13 +13,21 @@ Red Hat Enterprise Linux 10 host from released artifacts only, with nginx,
 `app-runtime`, SQL Server, Keycloak and `db-job` in one rootless Podman Compose
 network.
 
-Use this topology only when an all-in-one internal deployment model is
-approved. For the enterprise topology with external SQL Server and external
-IdP, use [rhel10-production-deploy.md](./rhel10-production-deploy.md).
+Use this topology when the production site must run without external SQL Server
+or external IdP dependencies at runtime. For the enterprise topology with
+external SQL Server and external IdP, use
+[rhel10-production-deploy.md](./rhel10-production-deploy.md).
 For upgrades and rollback, use
-[rhel10-production-single-node-internal-upgrade.md](./rhel10-production-single-node-internal-upgrade.md).
+[rhel10-production-single-node-self-contained-upgrade.md](./rhel10-production-single-node-self-contained-upgrade.md).
 To uninstall a first install of this topology, use
-[rhel10-production-single-node-internal-uninstall.md](./rhel10-production-single-node-internal-uninstall.md).
+[rhel10-production-single-node-self-contained-uninstall.md](./rhel10-production-single-node-self-contained-uninstall.md).
+
+>[!IMPORTANT]
+>For offline deployment, first follow
+>[rhel10-production-single-node-self-contained-offline.md](./rhel10-production-single-node-self-contained-offline.md).
+>The offline guide prepares the transferable bundle before this deployment
+>guide starts and tells you where to resume these regular deployment steps on
+>the offline host.
 
 ![Kravhantering Infographic Single Node Access Flow](images/infographic-single-node-access-flow.png)
 
@@ -42,11 +50,9 @@ The site must provide approved runtime image refs for:
 - SQL Server
 - Keycloak
 
-The refs must use tag-style `image:tag` values, whether they point at the
-public upstream registries, an internal registry mirror, or a non-resolvable
-local/fake registry name for offline use. Each configured ref must resolve to
+The refs must use tag-style `image:tag` values that point at public upstream
+registries or an internal registry mirror. Each configured ref must resolve to
 the locked `imageId` in `container-stack.lock.json` when inspected with Podman.
-Do not run `podman pull` for non-resolvable offline refs.
 For third-party images, prefer release-specific internal mirror tags instead
 of moving public tags such as `stable-alpine` or `2025-latest`. The lock file,
 not the tag text, is the source of truth; `bin/kravhantering-images.sh verify`
@@ -312,7 +318,7 @@ the approved release artifacts.
 >deployment. GitHub release tags use the `v${VERSION}` path segment.
 
 ```bash
-VERSION=1.2.3
+VERSION=1.2.3 # Change to the version being deployed.
 
 # Default: internal release repository.
 RELEASE_DOWNLOAD_URL="https://release.example.internal/kravhantering/${VERSION}"
@@ -481,43 +487,6 @@ bin/kravhantering-images.sh --topology single-node \
 
 exit
 ```
-
-For image-only offline transport during first install, first create the image
-bundle on a connected staging or mirror host after pulling and verifying the
-same `release.env` refs. The export command saves already-present local images
-and does not pull from a registry:
-
-```bash
-sudo -iu kravhantering
-cd /opt/kravhantering/current
-bin/kravhantering-images.sh --topology single-node \
-  --lock-file container-stack.lock.json \
-  --env-file /etc/kravhantering/release.env \
-  export --output "/tmp/kravhantering-images-${VERSION}-single-node.tar.gz"
-exit
-
-sha256sum "/tmp/kravhantering-images-${VERSION}-single-node.tar.gz"
-```
-
-Copy that tarball to the offline host. Ensure `/etc/kravhantering/release.env`
-contains the tag-style refs that should exist locally after load, then load,
-tag and verify:
-
-```bash
-sudo -iu kravhantering
-cd /opt/kravhantering/current
-bin/kravhantering-images.sh --topology single-node \
-  --lock-file container-stack.lock.json \
-  --env-file /etc/kravhantering/release.env \
-  load --bundle "/tmp/kravhantering-images-${VERSION}-single-node.tar.gz"
-exit
-```
-
-Those offline target refs may preserve the source registry host, or they may
-use a non-resolvable local or fake registry hostname. They only need to be
-stable local image names that the later `release.env`-driven `podman run` and
-`podman compose` commands will use. Do not run the pull block above on an
-offline host that uses non-resolvable refs.
 
 ## Configure Single-Node Services
 
@@ -934,10 +903,19 @@ sudo install -o root -g kravhantering -m 0644 ca.crt \
   /etc/kravhantering/tls/ca.crt
 ```
 
+### Certificate Files
+
+<!-- markdownlint-disable MD013 -->
+| File | Used for |
+| --- | --- |
+| `/etc/kravhantering/tls/fullchain.pem` | Public server certificate chain that nginx presents to browsers, health checks and other HTTPS clients. It contains the server certificate plus the intermediate CA certificates needed to verify it. |
+| `/etc/kravhantering/tls/privkey.pem` | Private key for the server certificate. nginx uses it to prove that this node owns the certificate. Keep it restricted; it must not be copied into app containers, logs or support bundles. |
+| `/etc/kravhantering/tls/ca.crt` | Public CA certificate that the Node.js app trusts through `NODE_EXTRA_CA_CERTS`. In the single-node stack it lets `app-runtime` verify the HTTPS Keycloak issuer exposed through nginx. |
+<!-- markdownlint-enable MD013 -->
+
 `fullchain.pem` and `privkey.pem` are mounted by nginx. `ca.crt` is mounted by
-`app-runtime` through `NODE_EXTRA_CA_CERTS` so the app can trust the internal
-Keycloak issuer through nginx. Keep `privkey.pem` restricted to `0640`.
-Install `ca.crt` as `0644` because it is public trust material and the
+`app-runtime` through `NODE_EXTRA_CA_CERTS`. Keep `privkey.pem` restricted to
+`0640`. Install `ca.crt` as `0644` because it is public trust material and the
 non-root Node.js process inside `app-runtime` must be able to read it.
 
 For a temporary isolated lab host, Appendix A shows how to create these files
@@ -1242,12 +1220,13 @@ from `/opt/kravhantering/current` and `podman compose down` on stop.
 ## Upgrade And Rollback
 
 Use the standalone
-[RHEL 10 single-node internal planned-downtime upgrade guide](./rhel10-production-single-node-internal-upgrade.md)
-to upgrade or roll back the all-in-one internal topology. This deployment
-guide keeps the first-install and day-2 single-node operations in one place.
+[RHEL 10 self-contained single-node planned-downtime upgrade guide](./rhel10-production-single-node-self-contained-upgrade.md)
+to upgrade or roll back the self-contained single-node topology. This
+deployment guide keeps the first-install and day-2 single-node operations in
+one place.
 
 Use
-[RHEL 10 single-node internal uninstall](./rhel10-production-single-node-internal-uninstall.md)
+[RHEL 10 self-contained single-node uninstall](./rhel10-production-single-node-self-contained-uninstall.md)
 to reverse a first install. Do not use the upgrade rollback checklist as an
 uninstall procedure.
 

@@ -584,7 +584,8 @@
     "extfile",
     "CAcreateserial",
     "showcerts",
-    "noout"
+    "noout",
+    "noexec"
   ],
   "flagWords": [],
   "ignorePaths": [

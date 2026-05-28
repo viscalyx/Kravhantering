@@ -12,13 +12,20 @@ This enterprise production topology is an app node that runs nginx and
 `app-runtime` in a rootless Podman Compose network. SQL Server and the IdP are
 external services.
 
-For the controlled all-in-one internal topology where SQL Server and Keycloak
-run on the same RHEL host, use
-[rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md).
+For the self-contained single-node topology where SQL Server and Keycloak run
+on the same RHEL host, use
+[rhel10-production-single-node-self-contained-deploy.md](./rhel10-production-single-node-self-contained-deploy.md).
 For upgrades and rollback, use
 [rhel10-production-upgrade.md](./rhel10-production-upgrade.md).
 To uninstall a first install of this topology, use
 [rhel10-production-uninstall.md](./rhel10-production-uninstall.md).
+
+>[!IMPORTANT]
+>For offline deployment, first follow
+>[rhel10-production-offline.md](./rhel10-production-offline.md). The offline
+>guide prepares the transferable bundle before this deployment guide starts and
+>tells you where to resume these regular deployment steps on the offline app
+>node.
 
 <!-- markdownlint-disable MD013 -->
 ![Kravhantering Infographic Production Access and Service Flow](images/infographic-production-access-and-service-flow.png)
@@ -41,18 +48,13 @@ The site must provide approved runtime image refs for:
 - `db-job`
 - nginx
 
-The refs must use tag-style `image:tag` values, whether they point at the
-public upstream registries, an internal registry mirror, or a non-resolvable
-local/fake registry name for offline use. Each configured ref must resolve to
+The refs must use tag-style `image:tag` values that point at public upstream
+registries or an internal registry mirror. Each configured ref must resolve to
 the locked `imageId` in `container-stack.lock.json` when inspected with Podman.
-Do not run `podman pull` for non-resolvable offline refs.
 For third-party images, prefer release-specific internal mirror tags instead
 of moving public tags such as `stable-alpine`. The lock file, not the tag text,
 is the source of truth; `bin/kravhantering-images.sh verify` fails if a tag now
 resolves to another image ID.
-Mirroring and offline transport mechanics are outside this guide's
-prerequisites; the bundled image helper provides the verification and transport
-commands in the steps below.
 
 ## Configuration BoM
 
@@ -210,7 +212,7 @@ the approved release artifacts.
 >deployment. GitHub release tags use the `v${VERSION}` path segment.
 
 ```bash
-VERSION=1.2.3
+VERSION=1.2.3 # Change to the version being deployed.
 
 # Default: internal release repository.
 RELEASE_DOWNLOAD_URL="https://release.example.internal/kravhantering/${VERSION}"
@@ -357,43 +359,6 @@ bin/kravhantering-images.sh --topology app-node \
 
 exit
 ```
-
-For image-only offline transport during first install, first create the image
-bundle on a connected staging or mirror host after pulling and verifying the
-same `release.env` refs. The export command saves already-present local images
-and does not pull from a registry:
-
-```bash
-sudo -iu kravhantering
-cd /opt/kravhantering/current
-bin/kravhantering-images.sh --topology app-node \
-  --lock-file container-stack.lock.json \
-  --env-file /etc/kravhantering/release.env \
-  export --output "/tmp/kravhantering-images-${VERSION}-app-node.tar.gz"
-exit
-
-sha256sum "/tmp/kravhantering-images-${VERSION}-app-node.tar.gz"
-```
-
-Copy that tarball to the offline host. Ensure `/etc/kravhantering/release.env`
-contains the tag-style refs that should exist locally after load, then load,
-tag and verify:
-
-```bash
-sudo -iu kravhantering
-cd /opt/kravhantering/current
-bin/kravhantering-images.sh --topology app-node \
-  --lock-file container-stack.lock.json \
-  --env-file /etc/kravhantering/release.env \
-  load --bundle "/tmp/kravhantering-images-${VERSION}-app-node.tar.gz"
-exit
-```
-
-Those offline target refs may preserve the source registry host, or they may
-use a non-resolvable local or fake registry hostname. They only need to be
-stable local image names that the later `release.env`-driven `podman run` and
-`podman compose` commands will use. Do not run the pull block above on an
-offline host that uses non-resolvable refs.
 
 Set `NGINX_RESOLVER` in `/etc/kravhantering/release.env` to the Podman DNS
 resolver that nginx should use for dynamic `app-runtime` lookups:
