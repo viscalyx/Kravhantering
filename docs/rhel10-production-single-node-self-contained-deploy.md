@@ -865,6 +865,10 @@ from `/etc/kravhantering/keycloak.env`. The sync adds, updates and removes
 generated demo users, adopts same-username users into the demo set and preserves
 unrelated users:
 
+The `STACK_NETWORK` variable is for temporary `podman run` containers that
+need internal service-name DNS such as `keycloak` or `sqlserver`. `podman
+compose` attaches the long-running services to the network automatically.
+
 ```bash
 sudo -iu kravhantering
 cd /opt/kravhantering/current
@@ -976,6 +980,10 @@ podman compose --env-file /etc/kravhantering/release.env \
 
 exit
 ```
+
+The `STACK_NETWORK` variable is for temporary `podman run` containers that
+need internal service-name DNS such as `keycloak` or `sqlserver`. `podman
+compose` attaches the long-running services to the network automatically.
 
 Confirm the nginx resolver from inside the same Compose network:
 

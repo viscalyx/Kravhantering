@@ -595,7 +595,9 @@ podman compose --env-file /etc/kravhantering/release.env \
 exit
 ```
 
-Confirm the nginx resolver from inside the same Compose network:
+Confirm the nginx resolver from inside the same Compose network. The
+`APP_NODE_NETWORK` variable is for this temporary `podman run` container;
+`podman compose` attaches long-running services to the network automatically.
 
 ```bash
 sudo -iu kravhantering

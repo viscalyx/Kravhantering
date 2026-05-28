@@ -42,6 +42,10 @@ commands finish.
 Clear SQL Server demo data. This deletes all non-required application rows,
 preserving only required system and lookup seed data:
 
+The `STACK_NETWORK` variable is for temporary `podman run` containers that
+need internal service-name DNS such as `keycloak` or `sqlserver`. `podman
+compose` attaches the long-running services to the network automatically.
+
 ```bash
 sudo -iu kravhantering
 cd /opt/kravhantering/current

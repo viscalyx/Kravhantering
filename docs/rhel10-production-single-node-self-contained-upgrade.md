@@ -240,7 +240,10 @@ configuration change.
    exit
    ```
 
-   Confirm the nginx resolver from inside the same Compose network:
+   Confirm the nginx resolver from inside the same Compose network. The
+   `STACK_NETWORK` variable is for temporary `podman run` containers that need
+   internal service-name DNS such as `keycloak` or `sqlserver`. `podman
+   compose` attaches the long-running services to the network automatically.
 
    ```bash
    sudo -iu kravhantering
