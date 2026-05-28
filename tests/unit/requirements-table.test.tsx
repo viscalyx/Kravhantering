@@ -689,6 +689,8 @@ describe('RequirementsTable', () => {
     expect(
       document.querySelector('[data-specification-local-marker="true"]'),
     ).toBeInTheDocument()
+    expect(screen.getByText('-')).toBeInTheDocument()
+    expect(screen.queryByText('Integration')).not.toBeInTheDocument()
   })
 
   it('renders version when the column is made visible', () => {

@@ -1410,10 +1410,6 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
   })
 
   it('Scenario 13: specification-local graduation is copy-only into a draft library requirement', async () => {
-    const sourceArea = await createArea(appDb(), {
-      name: 'Source hint',
-      prefix: 'SRC',
-    })
     const targetArea = await createArea(appDb(), {
       name: 'Target library',
       prefix: 'TGT',
@@ -1431,7 +1427,6 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         acceptanceCriteria: 'Copied acceptance',
         description: 'Copied unique requirement',
         normReferenceIds: [normReference.id],
-        requirementAreaId: sourceArea.id,
         requirementPackageIds: [requirementPackage.id],
         requiresTesting: true,
         verificationMethod: 'Inspection',
@@ -1464,7 +1459,6 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       await Promise.all([
         appDb().query(
           `SELECT
-             requirement_area_id AS requirementAreaId,
              specification_item_status_id AS specificationItemStatusId,
              note
            FROM specification_local_requirements
@@ -1473,7 +1467,6 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         ) as Promise<
           Array<{
             note: string | null
-            requirementAreaId: number
             specificationItemStatusId: number
           }>
         >,
@@ -1529,7 +1522,6 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(sourceRows).toEqual([
       {
         note: 'Keep source note',
-        requirementAreaId: sourceArea.id,
         specificationItemStatusId: DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
       },
     ])

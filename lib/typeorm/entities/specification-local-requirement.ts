@@ -1,6 +1,5 @@
 import { EntitySchema } from 'typeorm'
 import type { QualityCharacteristicEntity } from '@/lib/typeorm/entities/quality-characteristic'
-import type { RequirementAreaEntity } from '@/lib/typeorm/entities/requirement-area'
 import type { RequirementCategoryEntity } from '@/lib/typeorm/entities/requirement-category'
 import type { RequirementTypeEntity } from '@/lib/typeorm/entities/requirement-type'
 import type { RequirementsSpecificationEntity } from '@/lib/typeorm/entities/requirements-specification'
@@ -17,7 +16,6 @@ export interface SpecificationLocalRequirementEntity {
   needsReference: SpecificationNeedsReferenceEntity | null
   note: string | null
   qualityCharacteristic: QualityCharacteristicEntity | null
-  requirementArea: RequirementAreaEntity | null
   requirementCategory: RequirementCategoryEntity | null
   requirementType: RequirementTypeEntity | null
   riskLevel: RiskLevelEntity | null
@@ -94,10 +92,6 @@ export const specificationLocalRequirementEntity =
         name: 'idx_specification_local_requirements_specification_item_status_id',
         columns: ['specificationItemStatus'],
       },
-      {
-        name: 'idx_specification_local_requirements_requirement_area_id',
-        columns: ['requirementArea'],
-      },
     ],
     relations: {
       specification: {
@@ -111,19 +105,6 @@ export const specificationLocalRequirementEntity =
         },
         nullable: false,
         onDelete: 'CASCADE',
-        onUpdate: 'NO ACTION',
-      },
-      requirementArea: {
-        type: 'many-to-one',
-        target: 'RequirementArea',
-        joinColumn: {
-          name: 'requirement_area_id',
-          referencedColumnName: 'id',
-          foreignKeyConstraintName:
-            'fk_specification_local_requirements_requirement_area_id',
-        },
-        nullable: true,
-        onDelete: 'NO ACTION',
         onUpdate: 'NO ACTION',
       },
       requirementCategory: {

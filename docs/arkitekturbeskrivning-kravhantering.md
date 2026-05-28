@@ -827,7 +827,6 @@ erDiagram
     requirements_specification_items }o--|| requirements : "pekar på krav"
     requirements_specification_items }o--o| specification_item_statuses : "användningsstatus"
     requirements_specification_items ||--o{ deviations : "har avsteg"
-    specification_local_requirements }o--|| requirement_areas : "klassificerat i område"
     specification_local_requirements }o--o| requirement_categories : "klassificerat som"
     specification_local_requirements }o--o| requirement_types : "av typ"
     specification_local_requirements }o--o| quality_characteristics : "kvalitetskaraktäristik"

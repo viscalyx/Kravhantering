@@ -179,10 +179,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
             nameEn: 'Security',
             nameSv: 'Sakerhet',
           },
-          requirementArea: {
-            id: 2,
-            name: 'Integration',
-          },
+          requirementArea: null,
           requirementCategory: {
             id: 3,
             nameEn: 'Functional',
@@ -233,6 +230,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
       screen.getByText('Specification local acceptance'),
     ).toBeInTheDocument()
     expect(screen.getByText('Area')).toBeInTheDocument()
+    expect(screen.queryByText('Integration')).not.toBeInTheDocument()
     expect(screen.getByText('Norm references')).toBeInTheDocument()
     expect(screen.getByText('RequirementPackage')).toBeInTheDocument()
     expect(screen.getByText('ISO27001')).toBeInTheDocument()
@@ -291,10 +289,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
           specificationItemStatusNameEn: 'Included',
           specificationItemStatusNameSv: 'Inkluderad',
           qualityCharacteristic: null,
-          requirementArea: {
-            id: 2,
-            name: 'Integration',
-          },
+          requirementArea: null,
           requirementCategory: null,
           requirementType: null,
           requiresTesting: false,
@@ -359,10 +354,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
           specificationItemStatusNameEn: 'Included',
           specificationItemStatusNameSv: 'Inkluderad',
           qualityCharacteristic: null,
-          requirementArea: {
-            id: 2,
-            name: 'Integration',
-          },
+          requirementArea: null,
           requirementCategory: null,
           requirementType: null,
           requiresTesting: false,

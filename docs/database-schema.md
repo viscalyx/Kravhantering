@@ -318,7 +318,6 @@ erDiagram
         integer specification_id FK
         text unique_id
         integer sequence_number
-        integer requirement_area_id FK
         text description
         text acceptance_criteria
         integer requirement_category_id FK
@@ -543,7 +542,6 @@ erDiagram
     requirements ||--o{ requirements_specification_items : "included in"
     requirement_versions ||--o{ requirements_specification_items : "pinned version"
     requirements_specification_items ||--o{ deviations : "has deviations"
-    requirement_areas ||--o{ specification_local_requirements : "classified in"
     requirement_categories ||--o{ specification_local_requirements : "categorized as"
     requirement_types ||--o{ specification_local_requirements : "typed as"
     quality_characteristics ||--o{ specification_local_requirements : "sub-typed as"
@@ -1227,8 +1225,9 @@ Reusable needs-reference texts stored per specification.
 ### `specification_local_requirements`
 
 Specification-scoped requirements that are stored outside the
-global requirements library. They share the same
-classification fields as library requirements but are
+global requirements library. They share most classification
+fields with library requirements but do not belong to a
+requirement area. They are
 edited directly in specification context without the normal
 version/review/publication lifecycle.
 
@@ -1239,7 +1238,6 @@ version/review/publication lifecycle.
 | `specification_id` | integer FK → `requirements_specifications.id` (CASCADE DELETE) | Owning specification |
 | `unique_id` | text | Specification-scoped visible requirement ID in the format `KRAV####`; duplicates across specifications are allowed |
 | `sequence_number` | integer | Monotonic specification-local sequence number used to derive `unique_id` and never reused within the same specification |
-| `requirement_area_id` | integer FK → `requirement_areas.id` | Required area classification |
 | `description` | text NOT NULL | Requirement text |
 | `acceptance_criteria` | text | Acceptance criteria |
 | `requirement_category_id` | integer FK → `requirement_categories.id` | Category classification (nullable) |
@@ -1265,7 +1263,6 @@ workflows reject clearing an assigned usage status to null.
 
 **Indexes:**
 `idx_specification_local_requirements_specification_id`,
-`idx_specification_local_requirements_requirement_area_id`,
 `idx_specification_local_requirements_specification_item_status_id`.
 
 **Seed note:** `ETJANST-UPP-2026` contains two seeded
@@ -1839,7 +1836,6 @@ its purpose and the table/column(s) it covers.
 | `idx_specification_co_authors_hsa_id` | `specification_co_authors` | `hsa_id` | Speed up assignment authorization and privacy lookups |
 | `idx_specification_co_authors_created_by_hsa_id` | `specification_co_authors` | `created_by_hsa_id` | Speed up privacy erasure of historical assignment creators |
 | `idx_specification_local_requirements_specification_id` | `specification_local_requirements` | `specification_id` | Speed up listing specification-local requirements per specification |
-| `idx_specification_local_requirements_requirement_area_id` | `specification_local_requirements` | `requirement_area_id` | Speed up area-based summaries/filtering for specification-local requirements |
 | `idx_specification_local_requirements_specification_item_status_id` | `specification_local_requirements` | `specification_item_status_id` | Speed up usage-status filtering for specification-local requirements |
 | `idx_requirements_specification_items_requirements_specification_id` | `requirements_specification_items` | `requirements_specification_id` | Speed up listing items in a specification |
 | `idx_requirements_specification_items_requirement_id` | `requirements_specification_items` | `requirement_id` | Speed up finding which specifications contain a requirement |
@@ -1911,7 +1907,6 @@ The following table lists every named FK constraint:
 | `fk_requirements_requirement_area_id` | `requirements` | `requirement_area_id` | `requirement_areas.id` | NO ACTION | NO ACTION |
 | `fk_specification_local_requirements_specification_id` | `specification_local_requirements` | `specification_id` | `requirements_specifications.id` | CASCADE | NO ACTION |
 | `fk_specification_local_requirements_specification_id_needs_reference_id` | `specification_local_requirements` | `(specification_id, needs_reference_id)` | `specification_needs_references.(specification_id, id)` | NO ACTION | NO ACTION |
-| `fk_specification_local_requirements_requirement_area_id` | `specification_local_requirements` | `requirement_area_id` | `requirement_areas.id` | NO ACTION | NO ACTION |
 | `fk_specification_local_requirements_requirement_category_id` | `specification_local_requirements` | `requirement_category_id` | `requirement_categories.id` | NO ACTION | NO ACTION |
 | `fk_specification_local_requirements_requirement_type_id` | `specification_local_requirements` | `requirement_type_id` | `requirement_types.id` | NO ACTION | NO ACTION |
 | `fk_specification_local_requirements_quality_characteristic_id` | `specification_local_requirements` | `quality_characteristic_id` | `quality_characteristics.id` | NO ACTION | NO ACTION |
@@ -2057,7 +2052,6 @@ graph LR
     PLR -- "uq_..._specification_id_unique_id\n(specification_id, unique_id)" --> RP
     PLR -- "uq_..._specification_id_sequence_number\n(specification_id, sequence_number)" --> RP
     PLR -- "idx_..._specification_id\n(specification_id)" --> RP
-    PLR -- "idx_..._requirement_area_id\n(requirement_area_id)" --> RA
     PLR -- "idx_..._specification_item_status_id\n(specification_item_status_id)" --> PIS
     RPI -- "idx_..._requirements_specification_id\n(requirements_specification_id)" --> RP
     RPI -- "idx_..._requirement_id\n(requirement_id)" --> R

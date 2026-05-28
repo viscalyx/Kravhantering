@@ -32,6 +32,11 @@ function collectSeedInsertRows() {
       const columns = columnList
         .split(',')
         .map(column => column.trim().replace(/^\[|\]$/g, ''))
+      if (params.length !== columns.length) {
+        throw new Error(
+          `Seed row arity mismatch for ${table}: ${params.length} values for ${columns.length} columns`,
+        )
+      }
       rows.push({
         row: Object.fromEntries(
           columns.map((column, index) => [column, params[index]]),
@@ -522,6 +527,11 @@ describe('seed profiles', () => {
       specification_id: RETENTION_SEED.specification.obsolete,
       unique_id: 'RETENTION-SEED-LR-1',
     })
+    expect(
+      localRequirements.get(
+        RETENTION_SEED.localRequirement.obsoleteSpecification,
+      ),
+    ).not.toHaveProperty('requirement_area_id')
 
     expect(owners.get(RETENTION_SEED.owner.linked)).toMatchObject({
       hsa_id: 'SE5560000001-retentionlinked',
@@ -551,11 +561,6 @@ describe('seed profiles', () => {
     })
     expect(
       [...requirements.values()].some(
-        row => row.requirement_area_id === RETENTION_SEED.requirementArea.used,
-      ),
-    ).toBe(true)
-    expect(
-      [...localRequirements.values()].some(
         row => row.requirement_area_id === RETENTION_SEED.requirementArea.used,
       ),
     ).toBe(true)

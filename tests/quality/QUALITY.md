@@ -517,10 +517,8 @@ scenario, a later implementation could silently revert to the old replace/link
 idea and move or delete evidence from the source specification.
 
 **The requirement:** Graduation must be copy-only. The source unique
-requirement, its usage status, note, source area hint, and local deviations
-remain unchanged; the target library requirement is a new
-Draft in the chosen requirement area, even when that target differs from the
-source hint.
+requirement, its usage status, note, and local deviations remain unchanged; the
+target library requirement is a new Draft in the chosen requirement area.
 
 **How to verify:**
 

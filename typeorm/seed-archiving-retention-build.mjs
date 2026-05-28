@@ -481,7 +481,6 @@ function addRetentionSpecifications(seedData) {
       RETENTION_SEED.needsReference.obsoleteSpecificationLocal,
     note: 'RETENTION-SEED lokal kravnotering.',
     quality_characteristic_id: 1,
-    requirement_area_id: RETENTION_SEED.requirementArea.used,
     requirement_category_id: 2,
     requirement_type_id: 1,
     risk_level_id: 2,

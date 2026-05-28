@@ -38,7 +38,6 @@ interface SpecificationLocalRequirementMutationInput {
   needsReferenceId?: number | null
   normReferenceIds?: number[]
   qualityCharacteristicId?: number | null
-  requirementAreaId?: number | null
   requirementCategoryId?: number | null
   requirementPackageIds?: number[]
   requirementTypeId?: number | null
@@ -64,7 +63,7 @@ export interface SpecificationLocalRequirementDetail {
     uri: string | null
   }[]
   qualityCharacteristic: { id: number; nameEn: string; nameSv: string } | null
-  requirementArea: { id: number; name: string } | null
+  requirementArea: null
   requirementCategory: { id: number; nameEn: string; nameSv: string } | null
   requirementPackages: {
     id: number
@@ -272,24 +271,23 @@ export async function listSpecifications(db: SqlServerDatabase) {
     `,
   )) as Row[]
 
-  const [libraryCounts, localCounts, libraryAreas, localAreas] =
-    await Promise.all([
-      db.query(
-        `
+  const [libraryCounts, localCounts, libraryAreas] = await Promise.all([
+    db.query(
+      `
           SELECT requirements_specification_id AS specificationId, COUNT(*) AS count
           FROM requirements_specification_items
           GROUP BY requirements_specification_id
         `,
-      ) as Promise<Row[]>,
-      db.query(
-        `
+    ) as Promise<Row[]>,
+    db.query(
+      `
           SELECT specification_id AS specificationId, COUNT(*) AS count
           FROM specification_local_requirements
           GROUP BY specification_id
         `,
-      ) as Promise<Row[]>,
-      db.query(
-        `
+    ) as Promise<Row[]>,
+    db.query(
+      `
           SELECT
             specification_item.requirements_specification_id AS specificationId,
             requirement_area.id AS areaId,
@@ -301,20 +299,8 @@ export async function listSpecifications(db: SqlServerDatabase) {
             ON requirement_area.id = requirement.requirement_area_id
           GROUP BY specification_item.requirements_specification_id, requirement_area.id, requirement_area.name
         `,
-      ) as Promise<Row[]>,
-      db.query(
-        `
-          SELECT
-            local_requirement.specification_id AS specificationId,
-            requirement_area.id AS areaId,
-            requirement_area.name AS areaName
-          FROM specification_local_requirements local_requirement
-          INNER JOIN requirement_areas requirement_area
-            ON requirement_area.id = local_requirement.requirement_area_id
-          GROUP BY local_requirement.specification_id, requirement_area.id, requirement_area.name
-        `,
-      ) as Promise<Row[]>,
-    ])
+    ) as Promise<Row[]>,
+  ])
 
   const itemCounts = new Map<number, number>()
   for (const row of [...libraryCounts, ...localCounts]) {
@@ -327,7 +313,7 @@ export async function listSpecifications(db: SqlServerDatabase) {
   }
 
   const requirementAreasBySpecification = new Map<number, Map<number, string>>()
-  for (const row of [...libraryAreas, ...localAreas]) {
+  for (const row of libraryAreas) {
     const specificationId = Number(row.specificationId)
     const areaId = Number(row.areaId)
     const areaName = String(row.areaName ?? '')
@@ -990,7 +976,6 @@ async function normalizeSpecificationLocalRequirementInput(
   const references = await validateRequirementTaxonomyReferences(db, {
     normReferenceIds: data.normReferenceIds,
     qualityCharacteristicId: data.qualityCharacteristicId,
-    requirementAreaId: data.requirementAreaId,
     requirementCategoryId: data.requirementCategoryId,
     requirementPackageIds: data.requirementPackageIds,
     requirementTypeId: data.requirementTypeId,
@@ -1003,7 +988,6 @@ async function normalizeSpecificationLocalRequirementInput(
     needsReferenceId,
     normReferenceIds: references.normReferenceIds,
     qualityCharacteristicId: references.qualityCharacteristicId,
-    requirementAreaId: references.requirementAreaId,
     requirementCategoryId: references.requirementCategoryId,
     requirementTypeId: references.requirementTypeId,
     requiresTesting,
@@ -1064,8 +1048,6 @@ const LOCAL_REQUIREMENT_DETAIL_SELECT = `
     local_requirement.quality_characteristic_id AS qualityCharacteristicId,
     quality_characteristic.name_en AS qualityCharacteristicNameEn,
     quality_characteristic.name_sv AS qualityCharacteristicNameSv,
-    local_requirement.requirement_area_id AS requirementAreaId,
-    requirement_area.name AS requirementAreaName,
     local_requirement.requirement_category_id AS requirementCategoryId,
     requirement_category.name_en AS requirementCategoryNameEn,
     requirement_category.name_sv AS requirementCategoryNameSv,
@@ -1085,8 +1067,6 @@ const LOCAL_REQUIREMENT_DETAIL_SELECT = `
     ON specification_item_status.id = local_requirement.specification_item_status_id
   LEFT JOIN quality_characteristics quality_characteristic
     ON quality_characteristic.id = local_requirement.quality_characteristic_id
-  LEFT JOIN requirement_areas requirement_area
-    ON requirement_area.id = local_requirement.requirement_area_id
   LEFT JOIN requirement_categories requirement_category
     ON requirement_category.id = local_requirement.requirement_category_id
   LEFT JOIN requirement_types requirement_type
@@ -1102,7 +1082,6 @@ function mapSpecificationLocalRequirementDetailFlat(
 ): SpecificationLocalRequirementDetail {
   const id = Number(row.id)
   const qualityCharacteristicId = toNum(row.qualityCharacteristicId)
-  const requirementAreaId = toNum(row.requirementAreaId)
   const requirementCategoryId = toNum(row.requirementCategoryId)
   const requirementTypeId = toNum(row.requirementTypeId)
   const riskLevelId = toNum(row.riskLevelId)
@@ -1167,13 +1146,7 @@ function mapSpecificationLocalRequirementDetailFlat(
             nameSv: String(row.qualityCharacteristicNameSv ?? ''),
           }
         : null,
-    requirementArea:
-      requirementAreaId != null
-        ? {
-            id: requirementAreaId,
-            name: String(row.requirementAreaName ?? ''),
-          }
-        : null,
+    requirementArea: null,
     requirementCategory:
       requirementCategoryId != null
         ? {
@@ -1341,7 +1314,6 @@ export async function createSpecificationLocalRequirement(
           specification_id,
           unique_id,
           sequence_number,
-          requirement_area_id,
           description,
           acceptance_criteria,
           requirement_category_id,
@@ -1356,13 +1328,12 @@ export async function createSpecificationLocalRequirement(
           updated_at
         )
         OUTPUT INSERTED.id AS id
-        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, @13, @14, @14)
+        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, @13, @13)
       `,
       [
         specificationId,
         uniqueId,
         sequenceNumber,
-        normalized.requirementAreaId,
         normalized.description,
         normalized.acceptanceCriteria,
         normalized.requirementCategoryId,
@@ -1435,21 +1406,19 @@ export async function updateSpecificationLocalRequirement(
           acceptance_criteria = @1,
           needs_reference_id = @2,
           quality_characteristic_id = @3,
-          requirement_area_id = @4,
-          requirement_category_id = @5,
-          requirement_type_id = @6,
-          is_testing_required = @7,
-          risk_level_id = @8,
-          verification_method = @9,
-          updated_at = @10
-        WHERE id = @11 AND specification_id = @12
+          requirement_category_id = @4,
+          requirement_type_id = @5,
+          is_testing_required = @6,
+          risk_level_id = @7,
+          verification_method = @8,
+          updated_at = @9
+        WHERE id = @10 AND specification_id = @11
       `,
       [
         normalized.description,
         normalized.acceptanceCriteria,
         normalized.needsReferenceId,
         normalized.qualityCharacteristicId,
-        normalized.requirementAreaId,
         normalized.requirementCategoryId,
         normalized.requirementTypeId,
         normalized.requiresTesting ? 1 : 0,
@@ -2042,7 +2011,6 @@ interface SpecificationLocalListFlatRow {
   normReferenceIds: string | null
   qualityCharacteristicNameEn: string | null
   qualityCharacteristicNameSv: string | null
-  requirementAreaName: string | null
   requirementCategoryNameEn: string | null
   requirementCategoryNameSv: string | null
   requirementPackageIds: string | null
@@ -2069,7 +2037,7 @@ function mapSpecificationLocalRequirementListRow(
   row: SpecificationLocalListFlatRow,
 ): RequirementRow {
   return {
-    area: row.requirementAreaName ? { name: row.requirementAreaName } : null,
+    area: null,
     id: createSpecificationLocalRowId(Number(row.id)),
     isArchived: false,
     itemRef: createSpecificationLocalItemRef(Number(row.id)),
@@ -2219,7 +2187,6 @@ export async function listSpecificationItems(
           specification_item_status.name_sv AS specificationItemStatusNameSv,
           quality_characteristic.name_en AS qualityCharacteristicNameEn,
           quality_characteristic.name_sv AS qualityCharacteristicNameSv,
-          requirement_area.name AS requirementAreaName,
           requirement_category.name_en AS requirementCategoryNameEn,
           requirement_category.name_sv AS requirementCategoryNameSv,
           requirement_type.name_en AS requirementTypeNameEn,
@@ -2243,8 +2210,6 @@ export async function listSpecificationItems(
           ON specification_item_status.id = local_requirement.specification_item_status_id
         LEFT JOIN quality_characteristics quality_characteristic
           ON quality_characteristic.id = local_requirement.quality_characteristic_id
-        LEFT JOIN requirement_areas requirement_area
-          ON requirement_area.id = local_requirement.requirement_area_id
         LEFT JOIN requirement_categories requirement_category
           ON requirement_category.id = local_requirement.requirement_category_id
         LEFT JOIN requirement_types requirement_type

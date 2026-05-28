@@ -1308,9 +1308,9 @@ const DOGFOOD_NEEDS_REFS = [
 
 // Specification-local requirements: controlled-introduction tweaks of a few
 // Krav. Each entry references the dogfood Krav by its 0-based index in
-// DOGFOOD_KRAV (so the builder can resolve the matching requirement_area_id,
-// category, etc.). kravIdx must point to a Krav that is also linked into
-// KH-INFOR via DOGFOOD_KH_INFOR_INDEXES below.
+// DOGFOOD_KRAV (so the builder can resolve matching classification, package,
+// and verification metadata). kravIdx must point to a Krav that is also linked
+// into KH-INFOR via DOGFOOD_KH_INFOR_INDEXES below.
 const DOGFOOD_SPECIFICATION_LOCALS = [
   {
     spec: SPEC_KH_INFOR,
