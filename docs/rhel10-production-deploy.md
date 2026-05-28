@@ -504,6 +504,20 @@ and the access-token lifetime controls when the user must re-authenticate.
 for MCP clients. Keep it aligned with the IdP service-account client id, or
 leave the default when MCP service tokens are not used. It is not a secret.
 
+Ownership for the optional MCP service-token client is split by responsibility:
+
+- the identity-platform or IdP administration owner issues, rotates and
+  revokes the `kravhantering-mcp` confidential client credentials
+- the consuming MCP integration owner stores the client secret in its approved
+  secret store and updates that client during rotations
+- Kravhantering operations approves MCP service-token use per environment,
+  records the client id and audience, and verifies that issued tokens work
+  against `/api/mcp/*`
+
+Do not store the `kravhantering-mcp` client secret in `app.env`.
+`app-runtime` validates signed bearer tokens from the IdP; it does not need the
+MCP client secret.
+
 Leave `NEXT_PUBLIC_DEFAULT_MODEL`, `OPENROUTER_API_KEY` and
 `OPENROUTER_MGMT_API_KEY` empty unless AI requirement generation is approved
 for the environment. To enable AI, set `OPENROUTER_API_KEY` to the approved

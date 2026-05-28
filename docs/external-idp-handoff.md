@@ -176,6 +176,10 @@ Please confirm or provide the following information.
     `grant_type=client_credentials`. The access token must be a signed JWT
     that the application can validate through the provider `jwks_uri`. It must
     match the configured issuer and audience and include `employeeHsaId`.
+    Please confirm that the identity-platform or IdP administration owner will
+    issue, rotate and revoke this client's credentials, and that each
+    consuming MCP integration owner will store and update the client secret in
+    its approved secret store.
 
 Thank you.
 
@@ -338,5 +342,9 @@ Bekräfta eller lämna följande information.
     `grant_type=client_credentials`. Access-token måste vara en signerad JWT
     som applikationen kan validera via leverantörens `jwks_uri`. Den måste
     matcha konfigurerad issuer och audience samt innehålla `employeeHsaId`.
+    Bekräfta att ägaren för identitetsplattformen eller IdP-administrationen
+    utfärdar, roterar och spärrar klientens credentials, och att varje
+    konsumerande MCP-integrationsägare lagrar och uppdaterar klienthemligheten
+    i godkänd hemlighetshantering.
 
 Tack på förhand!

@@ -229,6 +229,9 @@ Close those records through the site-owned procedures:
 - remove SQL logins and users if the database is retired
 - remove or disable the IdP client registration
 - remove application roles and service accounts if they are no longer shared
+- revoke OIDC and optional MCP client secrets, and delete app-specific
+  secret-manager entries such as the session-cookie password after the approved
+  rollback or reinstall window has passed
 - remove load-balancer, DNS and monitoring entries for the app node
 
 Record those external decisions next to the uninstall evidence archive.
