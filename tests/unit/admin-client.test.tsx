@@ -680,10 +680,10 @@ describe('AdminClient', () => {
     expect(panel.getByTestId('reference-data-icon-riskLevels')).toBeTruthy()
 
     expect(
-      panel.getByTestId('reference-data-card-responsibilityAreas'),
-    ).toHaveAttribute('href', '/specifications/responsibility-areas')
+      panel.getByTestId('reference-data-card-governanceObjectTypes'),
+    ).toHaveAttribute('href', '/specifications/governance-object-types')
     expect(
-      panel.getByTestId('reference-data-icon-responsibilityAreas'),
+      panel.getByTestId('reference-data-icon-governanceObjectTypes'),
     ).toBeTruthy()
 
     expect(

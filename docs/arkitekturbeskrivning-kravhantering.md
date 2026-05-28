@@ -819,7 +819,7 @@ erDiagram
     requirement_areas ||--o{ requirement_area_co_authors : "har medförfattare"
     requirements_specifications ||--o{ requirements_specification_items : "innehåller"
     requirements_specifications ||--o{ specification_local_requirements : "innehåller kravunderlagets unika krav"
-    requirements_specifications }o--o| specification_responsibility_areas : "ansvarsområde"
+    requirements_specifications }o--o| specification_governance_object_types : "styrningsobjektstyp"
     requirements_specifications }o--o| specification_implementation_types : "genomförandetyp"
     requirements_specifications }o--o| specification_lifecycle_statuses : "livscykelstatus"
     requirements_specifications ||--o{ specification_needs_references : "behovsreferenser"
@@ -855,7 +855,7 @@ kravunderlagshistorik. Tabellerna `archiving_retention_*` driver Admin
 Centers arkiveringsflöde med policyer, körningskvitton och undantag/legal hold.
 Tabellen `action_audit_events` saknar främmande nycklar medvetet så att
 åtgärdsrader bevaras även när målobjekt gallras eller anonymiseras.
-Kravunderlag kan klassas med ansvarsområde, genomförandetyp,
+Kravunderlag kan klassas med styrningsobjektstyp, genomförandetyp,
 livscykelstatus, behovsreferenser och medförfattare så att samma
 kravbibliotek kan användas i flera verksamhetssammanhang.
 `specification_needs_references` är kravunderlagslokala etiketter med valfri

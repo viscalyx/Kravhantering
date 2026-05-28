@@ -77,7 +77,7 @@
     "taxonomy": "Referensdata",
     "qualityCharacteristics": "Kvalitetsegenskaper",
     "riskLevels": "Risknivåer",
-    "responsibilityAreas": "Verksamhetsobjekt",
+    "governanceObjectTypes": "Styrningsobjektstyper",
     "implementationTypes": "Genomförandeformer",
     "lifecycleStatuses": "Livscykelstatusar",
     "areaOwners": "Kravområdesägare",
@@ -306,8 +306,8 @@
     "help": {
       "name": "Ange ett tydligt namn som gör underlaget lätt att känna igen och återanvända."
     },
-    "responsibilityArea": "Verksamhetsobjekt",
-    "responsibilityAreaHelp": "Välj det verksamhetsobjekt som underlaget hör till, eller lämna tomt om underlaget spänner över flera verksamhetsobjekt.",
+    "governanceObjectType": "Styrningsobjektstyp",
+    "governanceObjectTypeHelp": "Välj vilken styrningsobjektstyp underlaget hör till, eller lämna tomt om underlaget saknar eller spänner över flera styrningsobjektstyper.",
     "responsible": "Ansvarig",
     "responsibleDisplayName": "Ansvarig person",
     "responsibleDisplayNameHelp": "Ange visningsnamnet för personen som ansvarar för kravunderlaget. Använd inte detta för användaren som registrerar ett avsteg om den personen inte också ansvarar för underlaget.",
@@ -562,7 +562,7 @@
     "suggestionHistoryFilenameLabel": "Ändringsförslagshistorik",
     "specificationCover": {
       "specificationId": "Kravunderlag-ID",
-      "responsibilityArea": "Verksamhetsobjekt",
+      "governanceObjectType": "Styrningsobjektstyp",
       "implementationType": "Genomförandeform",
       "lifecycleStatus": "Livscykelstatus",
       "businessNeedsReference": "Underlagssyfte"
@@ -709,16 +709,16 @@
     },
     "emptyState": "Inga kravområdesägare ännu. Skapa din första kravområdesägare."
   },
-  "responsibilityAreaMgmt": {
+  "governanceObjectTypeMgmt": {
     "name": "Namn",
     "nameSvLabel": "Namn (svenska)",
-    "nameSvHelp": "Ange det svenska namnet för verksamhetsobjektet.",
+    "nameSvHelp": "Ange det svenska namnet för styrningsobjektstypen.",
     "nameEnLabel": "Namn (engelska)",
-    "nameEnHelp": "Ange det engelska namnet för verksamhetsobjektet.",
-    "title": "Verksamhetsobjekt",
-    "newItem": "Nytt verksamhetsobjekt",
-    "editItem": "Redigera verksamhetsobjekt",
-    "emptyState": "Inga verksamhetsobjekt ännu. Skapa ditt första verksamhetsobjekt."
+    "nameEnHelp": "Ange det engelska namnet för styrningsobjektstypen.",
+    "title": "Styrningsobjektstyper",
+    "newItem": "Ny styrningsobjektstyp",
+    "editItem": "Redigera styrningsobjektstyp",
+    "emptyState": "Inga styrningsobjektstyper ännu. Skapa din första styrningsobjektstyp."
   },
   "implementationTypeMgmt": {
     "name": "Namn",
@@ -1048,7 +1048,7 @@
     "requirementPackagesDescription": "Hantera kravpaket som kan kopplas till krav.",
     "statusesDescription": "Hantera livscykelstatusar och deras ordning.",
     "qualityAttributesDescription": "Hantera kvalitetsegenskaper enligt ISO/IEC 25010:2023.",
-    "responsibilityAreasDescription": "Hantera verksamhetsobjekt för kravunderlag.",
+    "governanceObjectTypesDescription": "Hantera styrningsobjektstyper för kravunderlag.",
     "implementationTypesDescription": "Hantera genomförandeformer för kravunderlag.",
     "lifecycleStatusesDescription": "Hantera livscykelstatusar för kravunderlag.",
     "areaOwnersDescription": "Hantera ägare som kan tilldelas kravområden.",
@@ -1117,10 +1117,10 @@
       "plural": "Kravpaket",
       "definitePlural": "Kravpaketen"
     },
-    "responsibilityArea": {
-      "singular": "Verksamhetsobjekt",
-      "plural": "Verksamhetsobjekt",
-      "definitePlural": "Verksamhetsobjekten"
+    "governanceObjectType": {
+      "singular": "Styrningsobjektstyp",
+      "plural": "Styrningsobjektstyper",
+      "definitePlural": "Styrningsobjektstyperna"
     },
     "implementationType": {
       "singular": "Genomförandeform",
@@ -1355,7 +1355,7 @@
       "title": "Kravunderlag",
       "overview": {
         "heading": "Vad är ett kravunderlag?",
-        "body": "Kravunderlag grupperar publicerade krav för en specifik leverans, upphandling eller verksamhetskontext. Varje underlag kan kopplas till ett verksamhetsobjekt, en genomförandeform och en ansvarig person."
+        "body": "Kravunderlag grupperar publicerade krav för en specifik leverans, upphandling eller verksamhetskontext. Varje underlag kan kopplas till en styrningsobjektstyp, en genomförandeform och en ansvarig person."
       },
       "create": {
         "heading": "Skapa och redigera",
@@ -1381,15 +1381,15 @@
         "body": "Spåra hur långt varje krav har kommit i underlaget: inkluderad, pågående, implementerad, verifierad eller ej tillämpbar. Ändra statusen direkt i tabellen."
       }
     },
-    "responsibilityAreas": {
-      "title": "Verksamhetsobjekt",
+    "governanceObjectTypes": {
+      "title": "Styrningsobjektstyper",
       "overview": {
-        "heading": "Vad är verksamhetsobjekt?",
-        "body": "Verksamhetsobjekt kategoriserar kravunderlag efter den del av verksamheten de tillhör. Tilldela ett verksamhetsobjekt när du skapar eller redigerar ett underlag."
+        "heading": "Vad är styrningsobjektstyper?",
+        "body": "Styrningsobjektstyper anger vilken typ av styrningssammanhang kravunderlaget hör till, till exempel förvaltningsobjekt, leveransområde, tjänsteområde, projekt eller uppdrag."
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Klicka på redigeringsikonen på en rad för att byta namn på ett verksamhetsobjekt. Använd borttagningsikonen för att ta bort det - enbart verksamhetsobjekt som inte är kopplade till några kravunderlag kan tas bort."
+        "body": "Klicka på redigeringsikonen på en rad för att byta namn på en styrningsobjektstyp. Använd borttagningsikonen för att ta bort den - enbart styrningsobjektstyper som inte är kopplade till några kravunderlag kan tas bort."
       }
     },
     "implementationTypes": {
@@ -1426,7 +1426,7 @@
       },
       "referenceData": {
         "heading": "Referensdata",
-        "body": "Snabblänkar till hantering av områden, typer, kravpaket, statusar, kvalitetsegenskaper, verksamhetsobjekt, genomförandeformer och kravområdesägare."
+        "body": "Snabblänkar till hantering av områden, typer, kravpaket, statusar, kvalitetsegenskaper, styrningsobjektstyper, genomförandeformer och kravområdesägare."
       },
       "privacy": {
         "heading": "Dataskyddsradering",

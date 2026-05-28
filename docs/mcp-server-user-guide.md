@@ -46,8 +46,8 @@ agents can use it reliably.
 
 - `requirements_list_specifications`
   List all requirements specifications, optionally filtered by name. Returns id,
-  `uniqueId` (slug), Swedish and English names, item count, responsibility
-  area, and implementation type for each specification. Copy paths:
+  `uniqueId` (slug), Swedish and English names, item count, governance object
+  type, and implementation type for each specification. Copy paths:
 
   ```text
   requirements_list_specifications.specifications[].id -> specificationId

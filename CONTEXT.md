@@ -98,7 +98,7 @@ _Avoid_: Granskning av kravversioner.
 En ansvarsbärande domän- eller ämnesindelning i kravbiblioteket. Kravområdet
 anger var ett krav hör hemma, vilket krav-ID-prefix som används och vem som
 ansvarar för förvaltningen inom området.
-_Avoid_: Verksamhetsobjekt, kategori.
+_Avoid_: Styrningsobjektstyp, verksamhetsobjekt, kategori.
 
 **Kategori**:
 En övergripande klassning av kravets perspektiv eller intressenttyp, till
@@ -255,11 +255,16 @@ _Avoid_: Behovsreferens när en enskild kravtillämpning avses.
 Äldre eller tekniskt namn för underlagssyfte.
 _Avoid_: Behovsreferens när en enskild kravtillämpning avses.
 
+**Styrningsobjektstyp**:
+En klassning av vilken typ av styrningssammanhang ett kravunderlag hör till,
+till exempel förvaltningsobjekt, leveransområde, tjänsteområde, projekt eller
+uppdrag.
+_Avoid_: Verksamhetsobjekt, kravområde.
+
 **Verksamhetsobjekt**:
-Det objekt, område eller verksamhetssammanhang som ett kravunderlag hör till.
-Verksamhetsobjekt klassificerar kravunderlagets användningssammanhang, inte
-krav i kravbiblioteket.
-_Avoid_: Kravområde.
+Ett begreppsligt objekt som verksamheten hanterar eller beskriver, till exempel
+kund, ärende, beställning, avtal, produkt, patient eller ansökan.
+_Avoid_: Styrningsobjektstyp när kravunderlagets klassning avses.
 
 **Genomförandeform**:
 En klassning av hur kravunderlaget ska omsättas, till exempel genom
@@ -465,9 +470,13 @@ Tillämpningsspårbarhet visar varför och hur krav används i kravunderlag.
 Åtkomstgranskning gäller behörigheter. Granskning gäller kravversioner eller
 avsteg beroende på sammanhang.
 
-**Kravområde vs verksamhetsobjekt**:
+**Kravområde vs styrningsobjektstyp**:
 Kravområde delar in kravbiblioteket och bär ansvar för kravförvaltning.
-Verksamhetsobjekt hör till kravunderlagets användningssammanhang.
+Styrningsobjektstyp klassar kravunderlagets styrningssammanhang.
+
+**Styrningsobjektstyp vs verksamhetsobjekt**:
+Styrningsobjektstyp är kravunderlagets typklassning. Verksamhetsobjekt är
+begreppsliga objekt i verksamheten, till exempel kund, ärende eller avtal.
 
 **Genomförandeform vs livscykelstatus**:
 Genomförandeform beskriver hur kravunderlaget ska omsättas, till exempel

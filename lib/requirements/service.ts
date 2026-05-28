@@ -251,10 +251,10 @@ export interface ListSpecificationsOutput {
     requirementAreas?: { id: number; name: string }[]
     responsibleDisplayName?: string | null
     responsibleHsaId?: string | null
-    responsibilityArea: { id?: number; nameSv: string; nameEn: string } | null
+    governanceObjectType: { id?: number; nameSv: string; nameEn: string } | null
     specificationImplementationTypeId?: number | null
     specificationLifecycleStatusId?: number | null
-    specificationResponsibilityAreaId?: number | null
+    specificationGovernanceObjectTypeId?: number | null
     uniqueId: string
     updatedAt?: string
   }[]

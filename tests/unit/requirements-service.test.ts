@@ -1346,7 +1346,7 @@ describe('createRequirementsService', () => {
         itemCount: 2,
         lifecycleStatus: null,
         name: 'IAM Specification',
-        responsibilityArea: null,
+        governanceObjectType: null,
         uniqueId: 'IAM-SPECIFICATION',
       },
     ])

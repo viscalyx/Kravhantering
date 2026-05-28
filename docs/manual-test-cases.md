@@ -895,7 +895,7 @@ visible specifications.
 **Steps:**
 
 1. Select `Nytt kravunderlag`.
-1. Fill name, lifecycle status, responsibility area, and implementation type.
+1. Fill name, lifecycle status, governance object type, and implementation type.
 1. Add a business need reference if required.
 1. Save.
 

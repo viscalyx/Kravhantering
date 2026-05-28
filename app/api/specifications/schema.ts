@@ -92,7 +92,7 @@ export const createSpecificationSchema = z
       .nullable()
       .optional(),
     specificationLifecycleStatusId: positiveIntegerSchema.nullable().optional(),
-    specificationResponsibilityAreaId: positiveIntegerSchema
+    specificationGovernanceObjectTypeId: positiveIntegerSchema
       .nullable()
       .optional(),
     uniqueId: specificationSlugSchema,
@@ -112,7 +112,7 @@ export const updateSpecificationSchema = z
       .nullable()
       .optional(),
     specificationLifecycleStatusId: positiveIntegerSchema.nullable().optional(),
-    specificationResponsibilityAreaId: positiveIntegerSchema
+    specificationGovernanceObjectTypeId: positiveIntegerSchema
       .nullable()
       .optional(),
     uniqueId: specificationSlugSchema.optional(),

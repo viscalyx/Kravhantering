@@ -367,7 +367,7 @@ It links to the existing stable routes for:
 - specification item statuses
 - risk levels
 - quality characteristics
-- business objects
+- governance object types
 - implementation types
 
 The admin center does not rename or move those routes. It only centralizes how

@@ -1273,7 +1273,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'redigera-kravunderlag',
           'Redigera kravunderlag',
-          'Redigeringspanelen låter dig uppdatera underlagets namn, verksamhetsreferens, livscykelstatus, genomförandeform och verksamhetsobjekt. Klicka på "Spara" för att tillämpa ändringarna.',
+          'Redigeringspanelen låter dig uppdatera underlagets namn, verksamhetsreferens, livscykelstatus, genomförandeform och styrningsobjektstyp. Klicka på "Spara" för att tillämpa ändringarna.',
           { fullPage: false },
         )
         const cancelBtn = page

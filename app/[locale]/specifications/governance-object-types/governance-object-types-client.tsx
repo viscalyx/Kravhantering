@@ -8,69 +8,69 @@ import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 
-const RESPONSIBILITY_AREAS_HELP: HelpContent = {
+const GOVERNANCE_OBJECT_TYPES_HELP: HelpContent = {
   sections: [
     {
       kind: 'text',
-      bodyKey: 'responsibilityAreas.overview.body',
-      headingKey: 'responsibilityAreas.overview.heading',
+      bodyKey: 'governanceObjectTypes.overview.body',
+      headingKey: 'governanceObjectTypes.overview.heading',
     },
     {
       kind: 'text',
-      bodyKey: 'responsibilityAreas.manage.body',
-      headingKey: 'responsibilityAreas.manage.heading',
+      bodyKey: 'governanceObjectTypes.manage.body',
+      headingKey: 'governanceObjectTypes.manage.heading',
     },
   ],
-  titleKey: 'responsibilityAreas.title',
+  titleKey: 'governanceObjectTypes.title',
 }
 
-interface ResponsibilityArea {
+interface GovernanceObjectType {
   id: number
   nameEn: string
   nameSv: string
 }
 
-interface ResponsibilityAreaForm {
+interface GovernanceObjectTypeForm {
   nameEn: string
   nameSv: string
 }
 
-const getInitialForm = (): ResponsibilityAreaForm => ({
+const getInitialForm = (): GovernanceObjectTypeForm => ({
   nameEn: '',
   nameSv: '',
 })
 
-const toForm = (item: ResponsibilityArea): ResponsibilityAreaForm => ({
+const toForm = (item: GovernanceObjectType): GovernanceObjectTypeForm => ({
   nameEn: item.nameEn,
   nameSv: item.nameSv,
 })
 
-const toPayload = (form: ResponsibilityAreaForm) => form
+const toPayload = (form: GovernanceObjectTypeForm) => form
 
-export default function ResponsibilityAreasClient() {
-  useHelpContent(RESPONSIBILITY_AREAS_HELP)
-  const t = useTranslations('responsibilityAreaMgmt')
+export default function GovernanceObjectTypesClient() {
+  useHelpContent(GOVERNANCE_OBJECT_TYPES_HELP)
+  const t = useTranslations('governanceObjectTypeMgmt')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const locale = useLocale()
 
-  const getName = (item: ResponsibilityArea) =>
+  const getName = (item: GovernanceObjectType) =>
     locale === 'sv' ? item.nameSv : item.nameEn
 
   const controller = useCrudAdminResource<
-    ResponsibilityArea,
-    ResponsibilityAreaForm
+    GovernanceObjectType,
+    GovernanceObjectTypeForm
   >({
     confirmDeleteMessage: tc('confirm'),
-    endpoint: '/api/specification-responsibility-areas',
+    endpoint: '/api/specification-governance-object-types',
     errorMessage: tc('error'),
     getInitialForm,
-    listKey: 'areas',
+    listKey: 'governanceObjectTypes',
     toForm,
     toPayload,
   })
 
-  const columns: CrudAdminColumn<ResponsibilityArea>[] = [
+  const columns: CrudAdminColumn<GovernanceObjectType>[] = [
     {
       className: 'py-3 px-4 font-medium',
       header: t('name'),
@@ -83,21 +83,21 @@ export default function ResponsibilityAreasClient() {
     <CrudAdminPanel
       columns={columns}
       controller={controller}
-      devContext="responsibility areas"
+      devContext="governance object types"
       emptyStateMessage={t('emptyState')}
       renderFormFields={({ disabled, form, inputClassName, setForm }) => (
         <>
           <div>
             <FieldLabelWithHelp
               help={t('nameSvHelp')}
-              htmlFor="ra-name-sv"
+              htmlFor="governance-object-type-name-sv"
               label={t('nameSvLabel')}
               required
             />
             <input
               className={inputClassName}
               disabled={disabled}
-              id="ra-name-sv"
+              id="governance-object-type-name-sv"
               onChange={event =>
                 setForm(previousForm => ({
                   ...previousForm,
@@ -111,14 +111,14 @@ export default function ResponsibilityAreasClient() {
           <div>
             <FieldLabelWithHelp
               help={t('nameEnHelp')}
-              htmlFor="ra-name-en"
+              htmlFor="governance-object-type-name-en"
               label={t('nameEnLabel')}
               required
             />
             <input
               className={inputClassName}
               disabled={disabled}
-              id="ra-name-en"
+              id="governance-object-type-name-en"
               onChange={event =>
                 setForm(previousForm => ({
                   ...previousForm,
@@ -131,7 +131,7 @@ export default function ResponsibilityAreasClient() {
           </div>
         </>
       )}
-      title={tn('responsibilityAreas')}
+      title={tn('governanceObjectTypes')}
     />
   )
 }

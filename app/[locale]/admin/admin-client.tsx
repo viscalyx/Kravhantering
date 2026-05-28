@@ -2935,11 +2935,11 @@ export default function AdminClient({
       label: tn('riskLevels'),
     },
     {
-      description: ta('responsibilityAreasDescription'),
-      href: '/specifications/responsibility-areas',
+      description: ta('governanceObjectTypesDescription'),
+      href: '/specifications/governance-object-types',
       icon: Briefcase,
-      id: 'responsibilityAreas',
-      label: tn('responsibilityAreas'),
+      id: 'governanceObjectTypes',
+      label: tn('governanceObjectTypes'),
     },
     {
       description: ta('implementationTypesDescription'),

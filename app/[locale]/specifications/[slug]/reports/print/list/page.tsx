@@ -12,10 +12,10 @@ import type { ReportModel } from '@/lib/reports/types'
 
 interface SpecificationReportResponse {
   businessNeedsReference: string | null
+  governanceObjectType: { nameSv: string; nameEn: string } | null
   implementationType: { nameSv: string; nameEn: string } | null
   lifecycleStatus: { nameSv: string; nameEn: string } | null
   name: string
-  responsibilityArea: { nameSv: string; nameEn: string } | null
   uniqueId: string
 }
 
@@ -103,7 +103,7 @@ export default function PrintListReportPage() {
             ? {
                 name: spec.name,
                 uniqueId: spec.uniqueId,
-                responsibilityArea: pickName(spec.responsibilityArea),
+                governanceObjectType: pickName(spec.governanceObjectType),
                 implementationType: pickName(spec.implementationType),
                 lifecycleStatus: pickName(spec.lifecycleStatus),
                 businessNeedsReference: spec.businessNeedsReference,

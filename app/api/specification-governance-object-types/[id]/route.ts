@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
-  deleteSpecificationResponsibilityArea,
-  updateSpecificationResponsibilityArea,
-} from '@/lib/dal/specification-responsibility-areas'
+  deleteSpecificationGovernanceObjectType,
+  updateSpecificationGovernanceObjectType,
+} from '@/lib/dal/specification-governance-object-types'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   adminMutationPolicy,
@@ -14,7 +14,7 @@ import { boundedDbStringSchema, idParamSchema } from '@/lib/http/validation'
 
 export const dynamic = 'force-dynamic'
 
-const updateResponsibilityAreaSchema = z
+const updateGovernanceObjectTypeSchema = z
   .object({
     nameEn: boundedDbStringSchema.optional(),
     nameSv: boundedDbStringSchema.optional(),
@@ -22,26 +22,26 @@ const updateResponsibilityAreaSchema = z
   .strict()
 
 export const PUT = secureMutationRoute({
-  bodySchema: updateResponsibilityAreaSchema,
+  bodySchema: updateGovernanceObjectTypeSchema,
   paramsSchema: idParamSchema,
   policy: adminMutationPolicy(),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const area = await updateSpecificationResponsibilityArea(
+    const governanceObjectType = await updateSpecificationGovernanceObjectType(
       db,
       params.id,
       body,
     )
-    if (area === undefined) {
+    if (governanceObjectType === undefined) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     await recordAdminPrivilegedActionSucceeded(context, {
       changedFields: Object.keys(body),
       operation: 'update',
       resourceId: params.id,
-      resourceType: 'specification_responsibility_area',
+      resourceType: 'specification_governance_object_type',
     })
-    return NextResponse.json(area)
+    return NextResponse.json(governanceObjectType)
   },
 })
 
@@ -50,7 +50,7 @@ export const DELETE = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const deletedCount = await deleteSpecificationResponsibilityArea(
+    const deletedCount = await deleteSpecificationGovernanceObjectType(
       db,
       params.id,
     )
@@ -60,7 +60,7 @@ export const DELETE = secureMutationRoute({
     await recordAdminPrivilegedActionSucceeded(context, {
       operation: 'delete',
       resourceId: params.id,
-      resourceType: 'specification_responsibility_area',
+      resourceType: 'specification_governance_object_type',
     })
     return NextResponse.json({ ok: true })
   },

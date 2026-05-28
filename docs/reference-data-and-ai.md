@@ -86,7 +86,7 @@ beyond database constraints.
 
 Sources: `lib/dal/specification-implementation-types.ts`,
 `lib/dal/specification-lifecycle-statuses.ts`,
-`lib/dal/specification-responsibility-areas.ts`
+`lib/dal/specification-governance-object-types.ts`
 
 ### Shared Pattern
 
@@ -106,7 +106,7 @@ All three DALs follow the same structure:
 | API routes | Strict object schemas, unknown-field rejection, bounded bilingual names, and positive integer IDs | Strict object schemas, unknown-field rejection, bounded optional fields, and positive integer IDs |
 | `specification-lifecycle-statuses.ts` | Trims both `nameSv`/`nameEn`; throws if either is empty | Trims each provided field; throws if empty |
 | `specification-implementation-types.ts` | None | None |
-| `specification-responsibility-areas.ts` | None | None |
+| `specification-governance-object-types.ts` | None | None |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -114,13 +114,13 @@ The API layer now provides the common request-shape guardrails for all
 three taxonomy groups. The remaining DAL variance is intentional:
 lifecycle statuses are safety-critical because they determine
 specification workflow gates, while implementation types and
-responsibility areas are informational taxonomy values.
+governance object types are informational taxonomy values.
 
 ### Delete Return Values
 
 - `specification-lifecycle-statuses`: returns row count (number).
 - `specification-implementation-types`: returns `void`.
-- `specification-responsibility-areas`: returns `void`.
+- `specification-governance-object-types`: returns `void`.
 
 ## 4 — AI Requirement Generation
 

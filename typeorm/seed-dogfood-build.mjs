@@ -240,7 +240,7 @@ export function appendDogfoodSeed(SEED_DATA) {
     // local_requirement_next_sequence will be patched after specification locals.
     specifications.rows.push([
       p.id,
-      p.responsibility,
+      p.governanceObjectType,
       p.impl,
       SEED_TS,
       SEED_TS,

@@ -407,7 +407,7 @@ function addRetentionSpecifications(seedData) {
       name: spec.name,
       specification_implementation_type_id: 1,
       specification_lifecycle_status_id: spec.lifecycle,
-      specification_responsibility_area_id: 2,
+      specification_governance_object_type_id: 2,
       unique_id: spec.uniqueId,
       updated_at: spec.updatedAt,
     })

@@ -74,7 +74,7 @@ describe('requirements specification report pages', () => {
         implementationType: { nameEn: 'Program', nameSv: 'Program' },
         lifecycleStatus: { nameEn: 'Development', nameSv: 'Utveckling' },
         name: 'Authorization and IAM',
-        responsibilityArea: { nameEn: 'Platform', nameSv: 'Plattform' },
+        governanceObjectType: { nameEn: 'Platform', nameSv: 'Plattform' },
         uniqueId: 'ETJANST-UPP-2026',
       }),
       ok: true,

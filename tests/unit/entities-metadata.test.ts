@@ -18,6 +18,17 @@ const migrationSource = readdirSync(MIGRATIONS_DIR)
   .map(file => readFileSync(join(MIGRATIONS_DIR, file), 'utf8'))
   .join('\n')
 
+function migrationEstablishesTable(tableName: string): boolean {
+  const tableCreate = `CREATE TABLE [${tableName}]`
+  const tableRenamePattern = new RegExp(
+    `EXEC sp_rename N'[a-z_][a-z0-9_]*', N'${tableName}'`,
+  )
+  return (
+    migrationSource.includes(tableCreate) ||
+    tableRenamePattern.test(migrationSource)
+  )
+}
+
 const NAMING_PATTERNS = {
   table: /^[a-z][a-z0-9_]*$/,
   column: /^[a-z][a-z0-9_]*$/,
@@ -145,10 +156,10 @@ describe('sqlServerEntities metadata conventions', () => {
         }
       })
 
-      it('has its table created in a migration', () => {
+      it('has its table established in a migration', () => {
         expect(
-          migrationSource.includes(`CREATE TABLE [${tableName}]`),
-          `migration must contain CREATE TABLE [${tableName}]`,
+          migrationEstablishesTable(tableName),
+          `migration must contain CREATE TABLE [${tableName}] or rename a table to it`,
         ).toBe(true)
       })
     })

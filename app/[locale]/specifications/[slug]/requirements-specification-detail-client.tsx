@@ -210,9 +210,9 @@ export default function KravunderlagDetailClient({
   const [requirementPackages] = useState<FilterOption[]>(
     initialData.requirementPackages,
   )
-  const [specificationResponsibilityAreas] = useState<
+  const [specificationGovernanceObjectTypes] = useState<
     SpecificationTaxonomyItem[]
-  >(initialData.specificationResponsibilityAreas)
+  >(initialData.specificationGovernanceObjectTypes)
   const [specificationImplementationTypes] = useState<
     SpecificationTaxonomyItem[]
   >(initialData.specificationImplementationTypes)
@@ -1374,7 +1374,7 @@ export default function KravunderlagDetailClient({
       buildListReport(requirements, locale, {
         name: spec.name,
         uniqueId: spec.uniqueId,
-        responsibilityArea: pickName(spec.responsibilityArea),
+        governanceObjectType: pickName(spec.governanceObjectType),
         implementationType: pickName(spec.implementationType),
         lifecycleStatus: pickName(spec.lifecycleStatus),
         businessNeedsReference: spec.businessNeedsReference,
@@ -1930,13 +1930,13 @@ export default function KravunderlagDetailClient({
                 className="grid grid-flow-col auto-cols-[minmax(12rem,1fr)] gap-3 overflow-x-auto pb-1 xl:auto-cols-fr"
                 data-specification-detail-header-metadata="true"
               >
-                {spec.responsibilityArea && (
+                {spec.governanceObjectType && (
                   <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
                     <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
-                      {t('responsibilityArea')}
+                      {t('governanceObjectType')}
                     </dt>
                     <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 break-words dark:text-secondary-100">
-                      {localName(spec.responsibilityArea)}
+                      {localName(spec.governanceObjectType)}
                     </dd>
                   </div>
                 )}
@@ -1981,6 +1981,7 @@ export default function KravunderlagDetailClient({
               {showEditSpecificationForm ? (
                 <SpecificationEditPanel
                   className="mt-4"
+                  governanceObjectTypes={specificationGovernanceObjectTypes}
                   implementationTypes={specificationImplementationTypes}
                   key="specification-edit-panel"
                   lifecycleStatuses={specificationLifecycleStatuses}
@@ -1996,7 +1997,6 @@ export default function KravunderlagDetailClient({
                       await fetchSpecificationMeta()
                     }
                   }}
-                  responsibilityAreas={specificationResponsibilityAreas}
                   spec={spec}
                   specificationSlug={specificationSlug}
                 />

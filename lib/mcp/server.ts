@@ -1494,7 +1494,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: true,
       },
-      description: `List all requirements specifications, optionally filtered by name. Returns id, uniqueId (slug), names, item count, responsibility area, and implementation type for each specification. ${specificationIdentifierCopyPaths}`,
+      description: `List all requirements specifications, optionally filtered by name. Returns id, uniqueId (slug), names, item count, governance object type, and implementation type for each specification. ${specificationIdentifierCopyPaths}`,
       inputSchema: z
         .object({
           locale: z.enum(['en', 'sv']).default('en'),
@@ -1520,7 +1520,7 @@ export function createKravhanteringMcpServer(
                   .nullable(),
                 itemCount: z.number(),
                 name: z.string(),
-                responsibilityArea: z
+                governanceObjectType: z
                   .object({ nameEn: z.string(), nameSv: z.string() })
                   .nullable(),
                 uniqueId: z.string(),

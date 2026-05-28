@@ -80,7 +80,7 @@ export type ReportSection =
       type: 'specification-cover'
       name: string
       uniqueId: string
-      responsibilityArea: string | null
+      governanceObjectType: string | null
       implementationType: string | null
       lifecycleStatus: string | null
       businessNeedsReference: string | null

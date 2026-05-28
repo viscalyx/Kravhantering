@@ -261,7 +261,7 @@ export async function listSpecifications(db: SqlServerDatabase) {
         specification_record.id AS id,
         specification_record.unique_id AS uniqueId,
         specification_record.name AS name,
-        specification_record.specification_responsibility_area_id AS specificationResponsibilityAreaId,
+        specification_record.specification_governance_object_type_id AS specificationGovernanceObjectTypeId,
         specification_record.specification_implementation_type_id AS specificationImplementationTypeId,
         specification_record.specification_lifecycle_status_id AS specificationLifecycleStatusId,
         specification_record.business_needs_reference AS businessNeedsReference,
@@ -270,15 +270,15 @@ export async function listSpecifications(db: SqlServerDatabase) {
         CAST(specification_record.can_responsible_generate_ai AS int) AS canResponsibleGenerateAi,
         specification_record.created_at AS createdAt,
         specification_record.updated_at AS updatedAt,
-        responsibility_area.name_sv AS responsibilityAreaNameSv,
-        responsibility_area.name_en AS responsibilityAreaNameEn,
+        governance_object_type.name_sv AS governanceObjectTypeNameSv,
+        governance_object_type.name_en AS governanceObjectTypeNameEn,
         implementation_type.name_sv AS implementationTypeNameSv,
         implementation_type.name_en AS implementationTypeNameEn,
         lifecycle_status.name_sv AS lifecycleStatusNameSv,
         lifecycle_status.name_en AS lifecycleStatusNameEn
       FROM requirements_specifications specification_record
-      LEFT JOIN specification_responsibility_areas responsibility_area
-        ON responsibility_area.id = specification_record.specification_responsibility_area_id
+      LEFT JOIN specification_governance_object_types governance_object_type
+        ON governance_object_type.id = specification_record.specification_governance_object_type_id
       LEFT JOIN specification_implementation_types implementation_type
         ON implementation_type.id = specification_record.specification_implementation_type_id
       LEFT JOIN specification_lifecycle_statuses lifecycle_status
@@ -341,8 +341,8 @@ export async function listSpecifications(db: SqlServerDatabase) {
 
   return rows.map(row => {
     const id = Number(row.id)
-    const specificationResponsibilityAreaId = toNum(
-      row.specificationResponsibilityAreaId,
+    const specificationGovernanceObjectTypeId = toNum(
+      row.specificationGovernanceObjectTypeId,
     )
     const specificationImplementationTypeId = toNum(
       row.specificationImplementationTypeId,
@@ -361,7 +361,7 @@ export async function listSpecifications(db: SqlServerDatabase) {
       id,
       uniqueId: String(row.uniqueId),
       name: String(row.name),
-      specificationResponsibilityAreaId,
+      specificationGovernanceObjectTypeId,
       specificationImplementationTypeId,
       specificationLifecycleStatusId,
       businessNeedsReference: toStr(row.businessNeedsReference),
@@ -370,14 +370,14 @@ export async function listSpecifications(db: SqlServerDatabase) {
       canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
       createdAt: toIso(row.createdAt) ?? '',
       updatedAt: toIso(row.updatedAt) ?? '',
-      responsibilityArea:
-        row.responsibilityAreaNameSv &&
-        specificationResponsibilityAreaId != null
+      governanceObjectType:
+        row.governanceObjectTypeNameSv &&
+        specificationGovernanceObjectTypeId != null
           ? {
-              id: specificationResponsibilityAreaId,
-              nameSv: String(row.responsibilityAreaNameSv),
-              nameEn: row.responsibilityAreaNameEn
-                ? String(row.responsibilityAreaNameEn)
+              id: specificationGovernanceObjectTypeId,
+              nameSv: String(row.governanceObjectTypeNameSv),
+              nameEn: row.governanceObjectTypeNameEn
+                ? String(row.governanceObjectTypeNameEn)
                 : '',
             }
           : null,
@@ -412,24 +412,24 @@ interface SpecificationRecord {
   businessNeedsReference: string | null
   canResponsibleGenerateAi: boolean
   createdAt: string
+  governanceObjectType: { id: number; nameSv: string; nameEn: string } | null
   id: number
   implementationType: { id: number; nameSv: string; nameEn: string } | null
   lifecycleStatus: { id: number; nameSv: string; nameEn: string } | null
   name: string
-  responsibilityArea: { id: number; nameSv: string; nameEn: string } | null
   responsibleDisplayName: string | null
   responsibleHsaId: string | null
+  specificationGovernanceObjectTypeId: number | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
-  specificationResponsibilityAreaId: number | null
   uniqueId: string
   updatedAt: string
 }
 
 function mapSpecificationRow(row: Row | undefined): SpecificationRecord | null {
   if (!row) return null
-  const specificationResponsibilityAreaId = toNum(
-    row.specificationResponsibilityAreaId,
+  const specificationGovernanceObjectTypeId = toNum(
+    row.specificationGovernanceObjectTypeId,
   )
   const specificationImplementationTypeId = toNum(
     row.specificationImplementationTypeId,
@@ -441,7 +441,7 @@ function mapSpecificationRow(row: Row | undefined): SpecificationRecord | null {
     id: Number(row.id),
     uniqueId: String(row.uniqueId),
     name: String(row.name),
-    specificationResponsibilityAreaId,
+    specificationGovernanceObjectTypeId,
     specificationImplementationTypeId,
     specificationLifecycleStatusId,
     businessNeedsReference: toStr(row.businessNeedsReference),
@@ -450,13 +450,14 @@ function mapSpecificationRow(row: Row | undefined): SpecificationRecord | null {
     canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
     createdAt: toIso(row.createdAt) ?? '',
     updatedAt: toIso(row.updatedAt) ?? '',
-    responsibilityArea:
-      row.responsibilityAreaNameSv && specificationResponsibilityAreaId != null
+    governanceObjectType:
+      row.governanceObjectTypeNameSv &&
+      specificationGovernanceObjectTypeId != null
         ? {
-            id: specificationResponsibilityAreaId,
-            nameSv: String(row.responsibilityAreaNameSv),
-            nameEn: row.responsibilityAreaNameEn
-              ? String(row.responsibilityAreaNameEn)
+            id: specificationGovernanceObjectTypeId,
+            nameSv: String(row.governanceObjectTypeNameSv),
+            nameEn: row.governanceObjectTypeNameEn
+              ? String(row.governanceObjectTypeNameEn)
               : '',
           }
         : null,
@@ -488,7 +489,7 @@ const SPECIFICATION_SELECT_WITH_JOINS = `
     specification_record.id AS id,
     specification_record.unique_id AS uniqueId,
     specification_record.name AS name,
-    specification_record.specification_responsibility_area_id AS specificationResponsibilityAreaId,
+    specification_record.specification_governance_object_type_id AS specificationGovernanceObjectTypeId,
     specification_record.specification_implementation_type_id AS specificationImplementationTypeId,
     specification_record.specification_lifecycle_status_id AS specificationLifecycleStatusId,
     specification_record.business_needs_reference AS businessNeedsReference,
@@ -497,15 +498,15 @@ const SPECIFICATION_SELECT_WITH_JOINS = `
     CAST(specification_record.can_responsible_generate_ai AS int) AS canResponsibleGenerateAi,
     specification_record.created_at AS createdAt,
     specification_record.updated_at AS updatedAt,
-    responsibility_area.name_sv AS responsibilityAreaNameSv,
-    responsibility_area.name_en AS responsibilityAreaNameEn,
+    governance_object_type.name_sv AS governanceObjectTypeNameSv,
+    governance_object_type.name_en AS governanceObjectTypeNameEn,
     implementation_type.name_sv AS implementationTypeNameSv,
     implementation_type.name_en AS implementationTypeNameEn,
     lifecycle_status.name_sv AS lifecycleStatusNameSv,
     lifecycle_status.name_en AS lifecycleStatusNameEn
   FROM requirements_specifications specification_record
-  LEFT JOIN specification_responsibility_areas responsibility_area
-    ON responsibility_area.id = specification_record.specification_responsibility_area_id
+  LEFT JOIN specification_governance_object_types governance_object_type
+    ON governance_object_type.id = specification_record.specification_governance_object_type_id
   LEFT JOIN specification_implementation_types implementation_type
     ON implementation_type.id = specification_record.specification_implementation_type_id
   LEFT JOIN specification_lifecycle_statuses lifecycle_status
@@ -582,7 +583,7 @@ export async function createSpecification(
   data: {
     uniqueId: string
     name: string
-    specificationResponsibilityAreaId?: number | null
+    specificationGovernanceObjectTypeId?: number | null
     specificationImplementationTypeId?: number | null
     specificationLifecycleStatusId?: number | null
     businessNeedsReference?: string | null
@@ -597,7 +598,7 @@ export async function createSpecification(
       INSERT INTO requirements_specifications (
         unique_id,
         name,
-        specification_responsibility_area_id,
+        specification_governance_object_type_id,
         specification_implementation_type_id,
         specification_lifecycle_status_id,
         business_needs_reference,
@@ -611,7 +612,7 @@ export async function createSpecification(
         INSERTED.id AS id,
         INSERTED.unique_id AS uniqueId,
         INSERTED.name AS name,
-        INSERTED.specification_responsibility_area_id AS specificationResponsibilityAreaId,
+        INSERTED.specification_governance_object_type_id AS specificationGovernanceObjectTypeId,
         INSERTED.specification_implementation_type_id AS specificationImplementationTypeId,
         INSERTED.specification_lifecycle_status_id AS specificationLifecycleStatusId,
         INSERTED.business_needs_reference AS businessNeedsReference,
@@ -625,7 +626,7 @@ export async function createSpecification(
     [
       data.uniqueId,
       data.name,
-      data.specificationResponsibilityAreaId ?? null,
+      data.specificationGovernanceObjectTypeId ?? null,
       data.specificationImplementationTypeId ?? null,
       data.specificationLifecycleStatusId ?? null,
       data.businessNeedsReference ?? null,
@@ -644,8 +645,8 @@ export async function createSpecification(
     id: Number(row.id),
     uniqueId: String(row.uniqueId),
     name: String(row.name),
-    specificationResponsibilityAreaId: toNum(
-      row.specificationResponsibilityAreaId,
+    specificationGovernanceObjectTypeId: toNum(
+      row.specificationGovernanceObjectTypeId,
     ),
     specificationImplementationTypeId: toNum(
       row.specificationImplementationTypeId,
@@ -666,7 +667,7 @@ export async function updateSpecification(
   data: {
     uniqueId?: string
     name?: string
-    specificationResponsibilityAreaId?: number | null
+    specificationGovernanceObjectTypeId?: number | null
     specificationImplementationTypeId?: number | null
     specificationLifecycleStatusId?: number | null
     businessNeedsReference?: string | null
@@ -686,9 +687,11 @@ export async function updateSpecification(
     setClauses.push(`name = @${params.length}`)
     params.push(data.name)
   }
-  if ('specificationResponsibilityAreaId' in data) {
-    setClauses.push(`specification_responsibility_area_id = @${params.length}`)
-    params.push(data.specificationResponsibilityAreaId ?? null)
+  if ('specificationGovernanceObjectTypeId' in data) {
+    setClauses.push(
+      `specification_governance_object_type_id = @${params.length}`,
+    )
+    params.push(data.specificationGovernanceObjectTypeId ?? null)
   }
   if ('specificationImplementationTypeId' in data) {
     setClauses.push(`specification_implementation_type_id = @${params.length}`)
@@ -729,7 +732,7 @@ export async function updateSpecification(
         INSERTED.id AS id,
         INSERTED.unique_id AS uniqueId,
         INSERTED.name AS name,
-        INSERTED.specification_responsibility_area_id AS specificationResponsibilityAreaId,
+        INSERTED.specification_governance_object_type_id AS specificationGovernanceObjectTypeId,
         INSERTED.specification_implementation_type_id AS specificationImplementationTypeId,
         INSERTED.specification_lifecycle_status_id AS specificationLifecycleStatusId,
         INSERTED.business_needs_reference AS businessNeedsReference,
@@ -749,8 +752,8 @@ export async function updateSpecification(
     id: Number(row.id),
     uniqueId: String(row.uniqueId),
     name: String(row.name),
-    specificationResponsibilityAreaId: toNum(
-      row.specificationResponsibilityAreaId,
+    specificationGovernanceObjectTypeId: toNum(
+      row.specificationGovernanceObjectTypeId,
     ),
     specificationImplementationTypeId: toNum(
       row.specificationImplementationTypeId,

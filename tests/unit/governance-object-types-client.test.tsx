@@ -23,9 +23,9 @@ vi.mock('@/components/ConfirmModal', () => ({
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-import ResponsibilityAreasClient from '@/app/[locale]/specifications/responsibility-areas/responsibility-areas-client'
+import GovernanceObjectTypesClient from '@/app/[locale]/specifications/governance-object-types/governance-object-types-client'
 
-describe('ResponsibilityAreasClient', () => {
+describe('GovernanceObjectTypesClient', () => {
   afterEach(cleanup)
 
   beforeEach(() => {
@@ -34,7 +34,7 @@ describe('ResponsibilityAreasClient', () => {
     confirmMock.mockResolvedValue(true)
     fetchMock.mockResolvedValue(
       okResponse({
-        areas: [
+        governanceObjectTypes: [
           { id: 1, nameEn: 'Architecture', nameSv: 'Arkitektur' },
           { id: 2, nameEn: 'Operations', nameSv: 'Drift' },
         ],
@@ -43,10 +43,10 @@ describe('ResponsibilityAreasClient', () => {
   })
 
   it('renders the heading, create button, and table rows', async () => {
-    render(<ResponsibilityAreasClient />)
+    render(<GovernanceObjectTypesClient />)
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'nav.responsibilityAreas',
+      'nav.governanceObjectTypes',
     )
     expect(
       screen.getByRole('button', { name: 'common.create' }),
@@ -60,23 +60,25 @@ describe('ResponsibilityAreasClient', () => {
 
   it('opens and submits the create form', async () => {
     fetchMock
-      .mockResolvedValueOnce(okResponse({ areas: [] }))
+      .mockResolvedValueOnce(okResponse({ governanceObjectTypes: [] }))
       .mockResolvedValueOnce(
         okResponse({ id: 3, nameEn: 'Security', nameSv: 'Säkerhet' }),
       )
       .mockResolvedValueOnce(
         okResponse({
-          areas: [{ id: 3, nameEn: 'Security', nameSv: 'Säkerhet' }],
+          governanceObjectTypes: [
+            { id: 3, nameEn: 'Security', nameSv: 'Säkerhet' },
+          ],
         }),
       )
 
-    render(<ResponsibilityAreasClient />)
+    render(<GovernanceObjectTypesClient />)
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
 
     fireEvent.click(screen.getAllByRole('button', { name: 'common.create' })[0])
     fireEvent.change(
       screen.getByRole('textbox', {
-        name: /responsibilityAreaMgmt\.nameSvLabel/,
+        name: /governanceObjectTypeMgmt\.nameSvLabel/,
       }),
       {
         target: { value: 'Säkerhet' },
@@ -84,7 +86,7 @@ describe('ResponsibilityAreasClient', () => {
     )
     fireEvent.change(
       screen.getByRole('textbox', {
-        name: /responsibilityAreaMgmt\.nameEnLabel/,
+        name: /governanceObjectTypeMgmt\.nameEnLabel/,
       }),
       {
         target: { value: 'Security' },
@@ -97,7 +99,7 @@ describe('ResponsibilityAreasClient', () => {
     })
     const submitInit = fetchMock.mock.calls[1][1] as RequestInit
     expect(fetchMock.mock.calls[1][0]).toBe(
-      '/api/specification-responsibility-areas',
+      '/api/specification-governance-object-types',
     )
     expect(submitInit.method).toBe('POST')
     expect(JSON.parse(submitInit.body as string)).toEqual({
@@ -107,7 +109,7 @@ describe('ResponsibilityAreasClient', () => {
   })
 
   it('prefills the edit form', async () => {
-    render(<ResponsibilityAreasClient />)
+    render(<GovernanceObjectTypesClient />)
 
     await waitFor(() => {
       expect(screen.getByText('Architecture')).toBeInTheDocument()
@@ -116,12 +118,12 @@ describe('ResponsibilityAreasClient', () => {
 
     expect(
       screen.getByRole('textbox', {
-        name: /responsibilityAreaMgmt\.nameSvLabel/,
+        name: /governanceObjectTypeMgmt\.nameSvLabel/,
       }),
     ).toHaveValue('Arkitektur')
     expect(
       screen.getByRole('textbox', {
-        name: /responsibilityAreaMgmt\.nameEnLabel/,
+        name: /governanceObjectTypeMgmt\.nameEnLabel/,
       }),
     ).toHaveValue('Architecture')
   })
@@ -130,13 +132,15 @@ describe('ResponsibilityAreasClient', () => {
     fetchMock
       .mockResolvedValueOnce(
         okResponse({
-          areas: [{ id: 1, nameEn: 'Architecture', nameSv: 'Arkitektur' }],
+          governanceObjectTypes: [
+            { id: 1, nameEn: 'Architecture', nameSv: 'Arkitektur' },
+          ],
         }),
       )
       .mockResolvedValueOnce(okResponse({ ok: true }))
-      .mockResolvedValueOnce(okResponse({ areas: [] }))
+      .mockResolvedValueOnce(okResponse({ governanceObjectTypes: [] }))
 
-    render(<ResponsibilityAreasClient />)
+    render(<GovernanceObjectTypesClient />)
 
     await waitFor(() => {
       expect(screen.getByText('Architecture')).toBeInTheDocument()
@@ -154,7 +158,7 @@ describe('ResponsibilityAreasClient', () => {
       }),
     )
     expect(fetchMock.mock.calls[1][0]).toBe(
-      '/api/specification-responsibility-areas/1',
+      '/api/specification-governance-object-types/1',
     )
     expect((fetchMock.mock.calls[1][1] as RequestInit).method).toBe('DELETE')
   })

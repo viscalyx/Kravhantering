@@ -1,15 +1,15 @@
 import { EntitySchema } from 'typeorm'
 
-export interface SpecificationResponsibilityAreaEntity {
+export interface SpecificationGovernanceObjectTypeEntity {
   id: number
   nameEn: string
   nameSv: string
 }
 
-export const specificationResponsibilityAreaEntity =
-  new EntitySchema<SpecificationResponsibilityAreaEntity>({
-    name: 'SpecificationResponsibilityArea',
-    tableName: 'specification_responsibility_areas',
+export const specificationGovernanceObjectTypeEntity =
+  new EntitySchema<SpecificationGovernanceObjectTypeEntity>({
+    name: 'SpecificationGovernanceObjectType',
+    tableName: 'specification_governance_object_types',
     columns: {
       id: {
         name: 'id',
@@ -22,11 +22,11 @@ export const specificationResponsibilityAreaEntity =
     },
     uniques: [
       {
-        name: 'uq_specification_responsibility_areas_name_en',
+        name: 'uq_specification_governance_object_types_name_en',
         columns: ['nameEn'],
       },
       {
-        name: 'uq_specification_responsibility_areas_name_sv',
+        name: 'uq_specification_governance_object_types_name_sv',
         columns: ['nameSv'],
       },
     ],
