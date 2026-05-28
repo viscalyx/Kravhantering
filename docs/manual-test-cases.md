@@ -984,12 +984,14 @@ lists as expected.
 **Steps:**
 
 1. Select the unique requirement creation action.
+1. Confirm the form does not show the `Område` field.
 1. Fill the unique requirement text and metadata.
 1. Save.
 1. Expand the new unique row.
 
 **Expected result:** The unique requirement appears only inside the current
-specification and has a local item reference.
+specification, shows `-` in the `Område` column, and has a local item
+reference.
 
 ### SPEC-08: update specification item status
 

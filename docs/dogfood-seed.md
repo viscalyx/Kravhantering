@@ -106,6 +106,8 @@ sit on top of this specification to demonstrate controlled-introduction
 divergence from the shared Krav (one **Avviken**, one **Pågående**). They reuse
 the originating Krav's category/type/quality-characteristic and append
 test and development-specific text to the description and acceptance criteria.
+They intentionally do not receive a requirement area; ownership stays in the
+specification context until a unique requirement is graduated to the library.
 
 ## How it is wired in
 

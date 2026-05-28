@@ -297,7 +297,6 @@ export function appendDogfoodSeed(SEED_DATA) {
       pl.spec,
       uniqueId,
       seq,
-      k.area,
       k.desc + (pl.descSuffix || ''),
       k.ac + (pl.acSuffix || ''),
       k.cat,

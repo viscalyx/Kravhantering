@@ -237,9 +237,6 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
       WHERE area.id = @0
         AND NOT EXISTS (
           SELECT 1 FROM requirements requirement WHERE requirement.requirement_area_id = area.id
-        )
-        AND NOT EXISTS (
-          SELECT 1 FROM specification_local_requirements local_requirement WHERE local_requirement.requirement_area_id = area.id
         )`,
     fieldKey: 'taxonomy',
     objectKey: 'requirementAreas',
@@ -257,9 +254,6 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
         WHERE area.updated_at <= @0
           AND NOT EXISTS (
             SELECT 1 FROM requirements requirement WHERE requirement.requirement_area_id = area.id
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM specification_local_requirements local_requirement WHERE local_requirement.requirement_area_id = area.id
           )
       ) source
       WHERE ${ACTIVE_EXCEPTION_SQL}
@@ -1210,9 +1204,6 @@ async function exportSpecification(
           specification_item_status.name_sv AS specificationItemStatusNameSv,
           specification_item_status.name_en AS specificationItemStatusNameEn,
           specification_item_status.color AS specificationItemStatusColor,
-          requirement_area.id AS requirementAreaId,
-          requirement_area.prefix AS requirementAreaPrefix,
-          requirement_area.name AS requirementAreaName,
           category.id AS categoryId,
           category.name_sv AS categoryNameSv,
           category.name_en AS categoryNameEn,
@@ -1229,7 +1220,6 @@ async function exportSpecification(
         FROM specification_local_requirements local_requirement
         LEFT JOIN specification_needs_references needs_reference ON needs_reference.id = local_requirement.needs_reference_id
         LEFT JOIN specification_item_statuses specification_item_status ON specification_item_status.id = local_requirement.specification_item_status_id
-        LEFT JOIN requirement_areas requirement_area ON requirement_area.id = local_requirement.requirement_area_id
         LEFT JOIN requirement_categories category ON category.id = local_requirement.requirement_category_id
         LEFT JOIN requirement_types requirement_type ON requirement_type.id = local_requirement.requirement_type_id
         LEFT JOIN quality_characteristics quality_characteristic ON quality_characteristic.id = local_requirement.quality_characteristic_id
@@ -1332,7 +1322,7 @@ async function buildArchiveExport(
       policyKey: preview.policy.policyKey,
       statusCondition: preview.policy.statusCondition,
     },
-    schemaVersion: 'archiving-retention-export.v2',
+    schemaVersion: 'archiving-retention-export.v3',
     specifications: await Promise.all(
       specificationCandidates.map(candidate =>
         exportSpecification(db, numericSubjectId(candidate)),

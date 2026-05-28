@@ -2247,7 +2247,7 @@ export default function RequirementsTable({
           <td
             className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
           >
-            {row.area?.name ?? '—'}
+            {row.isSpecificationLocal ? '-' : (row.area?.name ?? '—')}
           </td>
         )
       case 'category':

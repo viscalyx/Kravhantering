@@ -72,9 +72,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         { specificationId: 1, areaId: 8, areaName: 'Security' },
       ])
-      .mockResolvedValueOnce([
-        { specificationId: 1, areaId: 4, areaName: 'Accessibility' },
-      ])
 
     const result = await listSpecifications(db)
 
@@ -113,10 +110,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           nameEn: 'Planned',
         },
         itemCount: 3,
-        requirementAreas: [
-          { id: 4, name: 'Accessibility' },
-          { id: 8, name: 'Security' },
-        ],
+        requirementAreas: [{ id: 8, name: 'Security' }],
       },
     ])
   })
@@ -382,8 +376,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           qualityCharacteristicId: 4,
           qualityCharacteristicNameEn: 'Security',
           qualityCharacteristicNameSv: 'Säkerhet',
-          requirementAreaId: 7,
-          requirementAreaName: 'Platform',
           requirementCategoryId: 8,
           requirementCategoryNameEn: 'Functional',
           requirementCategoryNameSv: 'Funktionell',
@@ -447,7 +439,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         nameEn: 'Security',
         nameSv: 'Säkerhet',
       },
-      requirementArea: { id: 7, name: 'Platform' },
+      requirementArea: null,
       requirementCategory: {
         id: 8,
         nameEn: 'Functional',
@@ -477,7 +469,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
   it('creates and updates specification-local requirements on SQL Server', async () => {
     const { db, query, transaction } = createSqlServerDb()
     query
-      .mockResolvedValueOnce([{ id: 7 }])
       .mockResolvedValueOnce([{ id: 11 }])
       .mockResolvedValueOnce([{ id: 13 }])
       .mockResolvedValueOnce([{ nextSequence: 2 }])
@@ -504,8 +495,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationItemStatusNameEn: 'Default',
           specificationItemStatusNameSv: 'Standard',
           qualityCharacteristicId: null,
-          requirementAreaId: 7,
-          requirementAreaName: 'Platform',
           requirementCategoryId: null,
           requirementTypeId: null,
           riskLevelId: null,
@@ -516,7 +505,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         { id: 41, specificationId: 5, sequenceNumber: 1, uniqueId: 'LOK-001' },
       ])
-      .mockResolvedValueOnce([{ id: 7 }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
@@ -540,8 +528,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationItemStatusNameEn: 'Default',
           specificationItemStatusNameSv: 'Standard',
           qualityCharacteristicId: null,
-          requirementAreaId: 7,
-          requirementAreaName: 'Platform',
           requirementCategoryId: null,
           requirementTypeId: null,
           riskLevelId: null,
@@ -553,14 +539,12 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     const created = await createSpecificationLocalRequirement(db, 5, {
       description: 'Created local requirement',
       normReferenceIds: [11],
-      requirementAreaId: 7,
       requirementPackageIds: [13],
     })
 
     const updated = await updateSpecificationLocalRequirement(db, 5, 41, {
       acceptanceCriteria: 'Updated AC',
       description: 'Updated local requirement',
-      requirementAreaId: 7,
       requiresTesting: true,
       verificationMethod: 'Checklist',
     })
@@ -587,7 +571,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       5,
       'KRAV0001',
       1,
-      7,
       'Created local requirement',
       null,
       null,
@@ -604,12 +587,11 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
 
   it('rejects unknown specification-local create references before inserts', async () => {
     const { db, query, transaction } = createSqlServerDb()
-    query.mockResolvedValueOnce([{ id: 7 }]).mockResolvedValueOnce([])
+    query.mockResolvedValueOnce([])
 
     await expect(
       createSpecificationLocalRequirement(db, 5, {
         description: 'Created local requirement',
-        requirementAreaId: 7,
         requirementPackageIds: [13],
       }),
     ).rejects.toMatchObject({
@@ -621,7 +603,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
 
     expect(transaction).not.toHaveBeenCalled()
     expect(query.mock.calls.map(([sql]) => String(sql))).toEqual([
-      expect.stringContaining('FROM requirement_areas'),
       expect.stringContaining('FROM requirement_packages'),
     ])
   })
@@ -914,7 +895,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationItemStatusNameSv: 'Pågående',
           qualityCharacteristicNameEn: 'Security',
           qualityCharacteristicNameSv: 'Säkerhet',
-          requirementAreaName: 'Platform',
           requirementCategoryNameEn: 'Functional',
           requirementCategoryNameSv: 'Funktionell',
           requirementTypeNameEn: 'Business',
@@ -951,6 +931,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         id: -41,
         itemRef: 'local:41',
         kind: 'specificationLocal',
+        area: null,
         specificationItemStatusIconName: 'Clock',
         uniqueId: 'KRAV0001',
         version: expect.objectContaining({

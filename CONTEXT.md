@@ -224,7 +224,9 @@ _Avoid_: Alla krav i kravbiblioteket när ingen kontrast behövs.
 
 **Kravunderlagslokalt krav**:
 Ett krav som bara finns i ett visst kravunderlag. Det är unikt för det
-kravunderlaget tills det eventuellt lyfts till kravbiblioteket.
+kravunderlaget tills det eventuellt lyfts till kravbiblioteket. Det hör inte
+till ett kravområde; ansvaret ligger i kravunderlagets sammanhang hos
+kravunderlagsansvarig.
 _Avoid_: Lokalt krav utan sammanhang, bibliotekskrav.
 
 **Unikt krav**:

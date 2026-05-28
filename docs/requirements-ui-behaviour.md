@@ -326,6 +326,9 @@ down.
 - The specification-local inline detail pane does not repeat the row's specification-local
   Krav-ID or unique marker icon in its own header area; that identity stays in
   the table row above the expanded pane.
+- Unique requirements are not assigned to a requirement area. The Area column
+  in the specification-items list therefore renders `-` for unique rows, and
+  the create/edit form for a unique requirement does not show the Area field.
 - Specification-local inline detail now follows the specification-item detail
   chrome more
   closely: deviation pills sit above the card, the right-side action rail

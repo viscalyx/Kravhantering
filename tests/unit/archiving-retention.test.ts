@@ -609,7 +609,7 @@ describe('archiving retention service', () => {
 
     expect(archive.exportToken).toHaveLength(64)
     expect(archive.archive).toMatchObject({
-      schemaVersion: 'archiving-retention-export.v2',
+      schemaVersion: 'archiving-retention-export.v3',
       specifications: [
         {
           specification: expect.objectContaining({

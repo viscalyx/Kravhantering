@@ -157,7 +157,6 @@ function emptySeed() {
         'specification_id',
         'unique_id',
         'sequence_number',
-        'requirement_area_id',
         'description',
         'acceptance_criteria',
         'requirement_category_id',

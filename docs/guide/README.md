@@ -249,7 +249,8 @@ Kravunderlagsdetaljsidan har en delad layout: **vänster panel** listar både
 bibliotekskrav och eventuella kravunderlagets unika krav med deras
 implementationsstatus, och **höger panel** visar tillgängliga bibliotekskrav att
 lägga till. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta
-kravunderlag. Klicka på en rad för att se kravets fullständiga detaljer.
+kravunderlag. Unika krav har inget kravområde, så listans områdeskolumn visar
+`-` för de raderna. Klicka på en rad för att se kravets fullständiga detaljer.
 
 ![Kravunderlagsdetalj — delad vy](images/024-kravunderlagsdetalj.png)
 
@@ -552,7 +553,8 @@ tillgänglig).
 
 Skriver ut kraven som ingår i ett specifikt kravunderlag som en formaterad
 tabell. Rapporten inkluderar underlagets metadata (namn, ID, verksamhetsområde,
-genomförandeform, underlagssyfte) som rubrik.
+genomförandeform, underlagssyfte) som rubrik. Unika krav saknar kravområde och
+visas därför med `-` i områdeskolumnen.
 
 **Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält.
 

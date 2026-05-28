@@ -246,8 +246,8 @@ maintenance rule.
 - **Req tag:** `[Req: formal — issue #96 copy-only graduation workflow]`
 - **Question:** Does graduation copy an Included specification-local
   requirement into a new Draft library requirement in the selected
-  target area while leaving the source local row, status, note, area
-  hint, and local deviations unchanged?
+  target area while leaving the source local row, status, note, and
+  local deviations unchanged?
 - **Verify:** `npm exec -- vitest run
   tests/quality/functional.test.ts -t "Scenario 13: specification-local graduation is copy-only into a draft library requirement"`
 

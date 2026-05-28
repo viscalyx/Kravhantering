@@ -270,8 +270,9 @@ the accepted preview through `/api/admin/archiving/*`.
 V1 supports direct deletion after preview and confirmation for:
 
 - orphaned owner rows with no active requirement-area or package assignment
-- unused requirement areas, requirement packages and norm references older than
-  the policy age
+- unused requirement areas with no current library requirements, and unused
+  requirement packages or norm references with no current library or unique
+  requirement links, older than the policy age
 - old requirement versions with no current or historical requirements
   specification dependency
 

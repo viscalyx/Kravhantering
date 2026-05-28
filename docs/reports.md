@@ -61,7 +61,9 @@ formatted table.
   requirements created only for that specification
 - Includes specification metadata in the header: specification name, unique ID,
   responsibility area, implementation type, and specification purpose
-- Shows Krav-ID, description (truncated), area, and status columns
+- Shows Krav-ID, description (truncated), area, and status columns; unique
+  requirements show `-` in the area column because they are not assigned to a
+  requirement area
 - Print opens a dedicated route; PDF is generated inline in the specification
   detail view (not via a separate route page)
 

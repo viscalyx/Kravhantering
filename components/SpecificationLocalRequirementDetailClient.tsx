@@ -43,7 +43,7 @@ interface SpecificationLocalRequirementDetail {
     uri: string | null
   }[]
   qualityCharacteristic: { id: number; nameEn: string; nameSv: string } | null
-  requirementArea: { id: number; name: string } | null
+  requirementArea: null
   requirementCategory: { id: number; nameEn: string; nameSv: string } | null
   requirementPackages: {
     id: number
@@ -866,7 +866,7 @@ export default function SpecificationLocalRequirementDetailClient({
       id: 'area',
       label: t('area'),
       markerValue: 'area',
-      value: requirement.requirementArea?.name ?? '—',
+      value: '-',
     },
     {
       id: 'category',
@@ -1057,9 +1057,6 @@ export default function SpecificationLocalRequirementDetailClient({
                 ),
                 qualityCharacteristicId: requirement.qualityCharacteristic
                   ? String(requirement.qualityCharacteristic.id)
-                  : '',
-                areaId: requirement.requirementArea
-                  ? String(requirement.requirementArea.id)
                   : '',
                 categoryId: requirement.requirementCategory
                   ? String(requirement.requirementCategory.id)

@@ -994,5 +994,6 @@ describe('RequirementsSpecificationDetailClient', () => {
         }),
       ).toBeInTheDocument()
     })
+    expect(screen.queryByLabelText('requirement.area')).not.toBeInTheDocument()
   })
 })
