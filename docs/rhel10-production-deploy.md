@@ -68,7 +68,7 @@ verification.
 | `VERSION` | Release artifact names | No default | Always record the release version to install, for example `1.2.3`. |
 | `APP_HOST` | App URLs, IdP redirect/logout settings, IdP web origins, TLS certificate SANs and smoke checks | No default | Always record the public DNS name without `https://`, for example `kravhantering.example.internal`. |
 | `NEXT_PUBLIC_SITE_URL` | `NEXT_PUBLIC_SITE_URL` in `app.env` | `https://<APP_HOST>` | Verify after choosing `APP_HOST`; plan only if the public URL cannot use the normal scheme and host. |
-| `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Plan only if the rootless Podman network uses a different DNS resolver. |
+| `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Verify from the actual Compose network. It can change when the internal network is renamed, recreated or assigned another subnet. |
 | `SQLSERVER_HOST` | `DB_HOST` in `app.env` and `db-job.env` | No default | Always obtain the external SQL Server host from the DBA. |
 | `DB_PORT` | `DB_PORT` in `app.env` and `db-job.env` | `1433` | Plan only if the DBA provides another SQL Server port. |
 | `DB_NAME` | `DB_NAME` in `app.env` and `db-job.env` | `kravhantering` | Plan only if the DBA provisions a different database name. |
@@ -367,11 +367,13 @@ resolver that nginx should use for dynamic `app-runtime` lookups:
 NGINX_RESOLVER=10.89.0.1
 ```
 
-The shown value is the common rootless Podman resolver. nginx uses it to
-re-resolve the upstream app container after `app-runtime` restarts, instead of
-keeping a stale container IP. If the deployment network uses a different
-resolver, the startup flow below shows how to print the actual resolver from
-inside the Compose network before nginx starts.
+The shown value is the common rootless Podman resolver, not a fixed release
+requirement. nginx uses it to re-resolve the upstream app container after
+`app-runtime` restarts, instead of keeping a stale container IP. The resolver
+can change when the internal Compose network is renamed, recreated or assigned
+another subnet. Before starting nginx, run the resolver check below and update
+`NGINX_RESOLVER` in `/etc/kravhantering/release.env` to the printed resolver
+IP if it differs.
 
 ## External SQL Server Primary Path
 
@@ -542,22 +544,15 @@ and restarting Keycloak only affects a first import, not a running realm.
 Do not import the release-smoke realm into production. The smoke-test realm
 contains public test credentials.
 
-## App Node With TLS on the Node
+## App Node Start Alternatives
 
-Use this when the RHEL app node terminates TLS itself.
+Choose exactly one app-node exposure alternative for the host. Use that
+alternative's Compose file in the shared `app-runtime` and resolver steps
+below, then continue with the matching nginx start instructions. Both app-node
+Compose files use the same `kravhantering-app-node_kravhantering-internal`
+network, so the resolver check is shared.
 
-Install the server certificate and private key:
-
-```bash
-sudo install -o root -g kravhantering -m 0640 fullchain.pem \
-  /etc/kravhantering/tls/fullchain.pem
-sudo install -o root -g kravhantering -m 0640 privkey.pem \
-  /etc/kravhantering/tls/privkey.pem
-sudo chcon -R -t container_file_t /etc/kravhantering/tls
-```
-
-Validate the external database and IdP, then run migration and required seed
-once for the release:
+Run the common database jobs:
 
 ```bash
 sudo -iu kravhantering
@@ -576,8 +571,26 @@ podman run --rm --env-file /etc/kravhantering/db-job.env \
 exit
 ```
 
-Start `app-runtime`, confirm the nginx resolver from inside the Compose
-network, then start the app node:
+Start `app-runtime` first. Pick the Compose file for the alternative this host
+will use:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+set -a
+. /etc/kravhantering/release.env
+set +a
+
+COMPOSE_FILE=compose/app-node-tls.compose.yml
+# COMPOSE_FILE=compose/app-node-http.compose.yml
+
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" up -d app-runtime
+
+exit
+```
+
+Confirm the nginx resolver from inside the same Compose network:
 
 ```bash
 sudo -iu kravhantering
@@ -588,22 +601,89 @@ set +a
 
 APP_NODE_NETWORK=kravhantering-app-node_kravhantering-internal
 
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/app-node-tls.compose.yml up -d app-runtime
-podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
-  "$NGINX_IMAGE_REF" -c "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/app-node-tls.compose.yml up -d
+RESOLVER_IP="$(
+  podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
+    "$NGINX_IMAGE_REF" -c \
+    "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+)"
+printf 'Use NGINX_RESOLVER=%s in /etc/kravhantering/release.env\n' \
+  "$RESOLVER_IP"
 
 exit
 ```
 
 If the printed resolver differs from `NGINX_RESOLVER`, update
-`/etc/kravhantering/release.env` and rerun the app-node start command before
-checking readiness.
+`/etc/kravhantering/release.env` to the printed IP before starting nginx:
 
-Check readiness through nginx:
+```bash
+# Replace 10.89.1.1 with the printed resolver IP.
+RESOLVER_IP=10.89.1.1
+sudo sed -i "s#^NGINX_RESOLVER=.*#NGINX_RESOLVER=${RESOLVER_IP}#" \
+  /etc/kravhantering/release.env
+```
+
+### Alternative A: App Node With TLS on the Node
+
+Use this when the RHEL app node terminates TLS itself.
+
+Install the server certificate and private key:
+
+```bash
+sudo install -o root -g kravhantering -m 0640 fullchain.pem \
+  /etc/kravhantering/tls/fullchain.pem
+sudo install -o root -g kravhantering -m 0640 privkey.pem \
+  /etc/kravhantering/tls/privkey.pem
+sudo chcon -R -t container_file_t /etc/kravhantering/tls
+```
+
+Start the full TLS app node:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+COMPOSE_FILE=compose/app-node-tls.compose.yml
+
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" up -d
+
+exit
+```
+
+The full start command reads the corrected value from
+`/etc/kravhantering/release.env`.
+
+### Alternative B: App Node Behind a TLS-Terminating Load Balancer
+
+Use this when an external load balancer terminates TLS and forwards HTTP to
+the app-node nginx. Set the bind address in `/etc/kravhantering/release.env`:
+
+```env
+NGINX_HTTP_BIND=127.0.0.1:8080
+```
+
+Change the value when the load balancer connects over a dedicated private
+network interface, for example `10.10.20.15:8080`.
+
+Start the full HTTP app node:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+COMPOSE_FILE=compose/app-node-http.compose.yml
+
+podman compose --env-file /etc/kravhantering/release.env \
+  -f "$COMPOSE_FILE" up -d
+
+exit
+```
+
+The full start command reads the corrected value from
+`/etc/kravhantering/release.env`.
+
+The app-facing public URLs in `app.env` must still use the external HTTPS
+origin exposed by the load balancer.
+
+After either alternative, check readiness through nginx:
 
 ```bash
 curl --fail --silent --show-error \
@@ -620,46 +700,6 @@ only:
 curl --insecure --fail --silent --show-error \
   https://kravhantering.example.internal/api/health
 ```
-
-## App Node Behind a TLS-Terminating Load Balancer
-
-Use this when an external load balancer terminates TLS and forwards HTTP to
-the app-node nginx. Set the bind address in `/etc/kravhantering/release.env`:
-
-```env
-NGINX_HTTP_BIND=127.0.0.1:8080
-```
-
-Change the value when the load balancer connects over a dedicated private
-network interface, for example `10.10.20.15:8080`.
-
-Start with the HTTP Compose file:
-
-```bash
-sudo -iu kravhantering
-cd /opt/kravhantering/current
-set -a
-. /etc/kravhantering/release.env
-set +a
-
-APP_NODE_NETWORK=kravhantering-app-node_kravhantering-internal
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/app-node-http.compose.yml up -d app-runtime
-podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
-  "$NGINX_IMAGE_REF" -c "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/app-node-http.compose.yml up -d
-
-exit
-```
-
-If the printed resolver differs from `NGINX_RESOLVER`, update
-`/etc/kravhantering/release.env` and rerun the app-node start command.
-
-The app-facing public URLs in `app.env` must still use the external HTTPS
-origin exposed by the load balancer.
 
 ## Operate Individual App-Node Services
 

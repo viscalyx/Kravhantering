@@ -231,8 +231,7 @@ place.
    ```
 
 9. Start each app node from the new release.
-   Start `app-runtime`, confirm the nginx resolver from inside the Compose
-   network, then start the full app node:
+   Start `app-runtime` first:
 
    ```bash
    sudo -iu kravhantering
@@ -243,22 +242,64 @@ place.
 
    COMPOSE_FILE=compose/app-node-tls.compose.yml
    # COMPOSE_FILE=compose/app-node-http.compose.yml
-   APP_NODE_NETWORK=kravhantering-app-node_kravhantering-internal
-
    podman compose --env-file /etc/kravhantering/release.env \
      -f "$COMPOSE_FILE" up -d app-runtime
-   podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
-     "$NGINX_IMAGE_REF" -c "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+
+   exit
+   ```
+
+   Confirm the nginx resolver from inside the same Compose network:
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   set -a
+   . /etc/kravhantering/release.env
+   set +a
+
+   APP_NODE_NETWORK=kravhantering-app-node_kravhantering-internal
+
+   RESOLVER_IP="$(
+     podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
+       "$NGINX_IMAGE_REF" -c \
+       "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+   )"
+   printf 'Use NGINX_RESOLVER=%s in /etc/kravhantering/release.env\n' \
+     "$RESOLVER_IP"
+
+   exit
+   ```
+
+   If the printed resolver differs from `NGINX_RESOLVER`, update
+   `/etc/kravhantering/release.env` to the printed IP before starting nginx:
+
+   ```bash
+   # Replace 10.89.1.1 with the printed resolver IP.
+   RESOLVER_IP=10.89.1.1
+   sudo sed -i "s#^NGINX_RESOLVER=.*#NGINX_RESOLVER=${RESOLVER_IP}#" \
+     /etc/kravhantering/release.env
+   ```
+
+   The resolver can change when the internal Compose network is renamed,
+   recreated or assigned another subnet.
+
+   Start the full app node:
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   set -a
+   . /etc/kravhantering/release.env
+   set +a
+
+   COMPOSE_FILE=compose/app-node-tls.compose.yml
+   # COMPOSE_FILE=compose/app-node-http.compose.yml
 
    podman compose --env-file /etc/kravhantering/release.env \
      -f "$COMPOSE_FILE" up -d
 
    exit
    ```
-
-   If the printed resolver differs from `NGINX_RESOLVER`, update
-   `/etc/kravhantering/release.env` and rerun the app-node start command
-   before checking readiness.
 
 10. Check `/api/health`, `/api/ready`, sign-in and a read-only UI workflow.
     Check readiness through nginx, then sign in through the browser and open an

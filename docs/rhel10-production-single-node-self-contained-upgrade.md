@@ -230,14 +230,58 @@ configuration change.
    . /etc/kravhantering/release.env
    set +a
 
-   STACK_NETWORK=kravhantering-single-node_kravhantering-internal
-   RUN_BOOTSTRAP=false
-
    podman compose --env-file /etc/kravhantering/release.env \
      -f compose/single-node.compose.yml up -d sqlserver keycloak
 
-   podman run --rm --network "$STACK_NETWORK" --entrypoint /bin/sh \
-     "$NGINX_IMAGE_REF" -c "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+   exit
+   ```
+
+   Confirm the nginx resolver from inside the same Compose network:
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   set -a
+   . /etc/kravhantering/release.env
+   set +a
+
+   STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+
+   RESOLVER_IP="$(
+     podman run --rm --network "$STACK_NETWORK" --entrypoint /bin/sh \
+       "$NGINX_IMAGE_REF" -c \
+       "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+   )"
+   printf 'Use NGINX_RESOLVER=%s in /etc/kravhantering/release.env\n' \
+     "$RESOLVER_IP"
+
+   exit
+   ```
+
+   If the printed resolver differs from `NGINX_RESOLVER`, update
+   `/etc/kravhantering/release.env` to the printed IP before starting nginx:
+
+   ```bash
+   # Replace 10.89.1.1 with the printed resolver IP.
+   RESOLVER_IP=10.89.1.1
+   sudo sed -i "s#^NGINX_RESOLVER=.*#NGINX_RESOLVER=${RESOLVER_IP}#" \
+     /etc/kravhantering/release.env
+   ```
+
+   The resolver can change when the internal Compose network is renamed,
+   recreated or assigned another subnet.
+
+   Run the database jobs:
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   set -a
+   . /etc/kravhantering/release.env
+   set +a
+
+   STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+   RUN_BOOTSTRAP=false
 
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
@@ -319,9 +363,6 @@ configuration change.
 
    exit
    ```
-
-   If the printed resolver differs from `NGINX_RESOLVER`, update
-   `/etc/kravhantering/release.env` before starting nginx.
 
 9. Start the stack from the new release.
    Start all long-running services with the same Compose command used after a
