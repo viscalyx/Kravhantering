@@ -17,6 +17,7 @@ const mocks = {
   listSpecificationItems: vi.fn(),
   removeFromSpecification: vi.fn(),
   unlinkRequirementsFromSpecification: vi.fn(),
+  updateSpecificationItemFieldsByItemRefs: vi.fn(),
 }
 
 const mockContext = {
@@ -50,6 +51,8 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     mocks.listSpecificationItems(...args),
   unlinkRequirementsFromSpecification: (...args: unknown[]) =>
     mocks.unlinkRequirementsFromSpecification(...args),
+  updateSpecificationItemFieldsByItemRefs: (...args: unknown[]) =>
+    mocks.updateSpecificationItemFieldsByItemRefs(...args),
 }))
 
 vi.mock('@/lib/dal/deviations', () => ({
@@ -71,7 +74,12 @@ vi.mock('@/lib/requirements/auth', async importOriginal => {
   }
 })
 
-import { DELETE, GET, POST } from '@/app/api/specifications/[id]/items/route'
+import {
+  DELETE,
+  GET,
+  PATCH,
+  POST,
+} from '@/app/api/specifications/[id]/items/route'
 import { validationError } from '@/lib/requirements/errors'
 
 function makeParams(id: string) {
@@ -128,6 +136,7 @@ describe('specifications/[id]/items route', () => {
       removedCount: 2,
     })
     mocks.unlinkRequirementsFromSpecification.mockResolvedValue(2)
+    mocks.updateSpecificationItemFieldsByItemRefs.mockResolvedValue(2)
   })
 
   it('rejects needsReferenceId values that belong to another specification', async () => {
@@ -160,6 +169,7 @@ describe('specifications/[id]/items route', () => {
     expect(mocks.addToSpecification).toHaveBeenCalledWith(mockContext, {
       specificationId: 5,
       requirementIds: [1],
+      needsReferenceDescription: undefined,
       needsReferenceId: 99,
       needsReferenceText: undefined,
       responseFormat: 'json',
@@ -221,6 +231,7 @@ describe('specifications/[id]/items route', () => {
       'http://localhost/api/specifications/spec/items',
       {
         body: JSON.stringify({
+          needsReferenceDescription: 'Shared description',
           needsReferenceText: 'Shared need',
           requirementIds: [1],
         }),
@@ -239,6 +250,7 @@ describe('specifications/[id]/items route', () => {
     expect(mocks.addToSpecification).toHaveBeenCalledWith(mockContext, {
       specificationId: 5,
       requirementIds: [1],
+      needsReferenceDescription: 'Shared description',
       needsReferenceId: undefined,
       needsReferenceText: 'Shared need',
       responseFormat: 'json',
@@ -272,6 +284,7 @@ describe('specifications/[id]/items route', () => {
     expect(mocks.addToSpecification).toHaveBeenCalledWith(mockContext, {
       specificationId: 5,
       requirementIds: [1],
+      needsReferenceDescription: undefined,
       needsReferenceId: undefined,
       needsReferenceText: 'Shared need',
       responseFormat: 'json',
@@ -334,6 +347,26 @@ describe('specifications/[id]/items route', () => {
 
     expect(response.status).toBe(400)
     await expectInvalidRequest(response, 'needsReferenceText')
+    expect(mocks.addToSpecification).not.toHaveBeenCalled()
+  })
+
+  it('rejects needs-reference descriptions without new needs-reference text', async () => {
+    const request = new NextRequest(
+      'http://localhost/api/specifications/spec/items',
+      {
+        body: JSON.stringify({
+          needsReferenceDescription: 'Context without a reference',
+          requirementIds: [1],
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      },
+    )
+
+    const response = await POST(request, makeParams('spec'))
+
+    expect(response.status).toBe(400)
+    await expectInvalidRequest(response, 'needsReferenceDescription')
     expect(mocks.addToSpecification).not.toHaveBeenCalled()
   })
 
@@ -419,6 +452,7 @@ describe('specifications/[id]/items route', () => {
       expect(mocks.addToSpecification).toHaveBeenCalledWith(mockContext, {
         specificationId: 5,
         requirementIds: [1],
+        needsReferenceDescription: undefined,
         needsReferenceId: undefined,
         needsReferenceText: 'Shared need',
         responseFormat: 'json',
@@ -461,6 +495,34 @@ describe('specifications/[id]/items route', () => {
       requirementIds: [1, 2],
       responseFormat: 'json',
     })
+  })
+
+  it('bulk-updates needs references by item refs', async () => {
+    const request = new NextRequest(
+      'http://localhost/api/specifications/spec/items',
+      {
+        body: JSON.stringify({
+          itemRefs: ['lib:31', 'local:41'],
+          needsReferenceId: 7,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      },
+    )
+
+    const response = await PATCH(request, makeParams('spec'))
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      updatedCount: 2,
+    })
+    expect(mocks.updateSpecificationItemFieldsByItemRefs).toHaveBeenCalledWith(
+      mockDb,
+      5,
+      ['lib:31', 'local:41'],
+      { needsReferenceId: 7 },
+    )
   })
 
   it('returns a JSON 500 error when unlinking requirements fails unexpectedly', async () => {

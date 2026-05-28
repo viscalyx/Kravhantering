@@ -129,6 +129,14 @@ function actionAuditDetail(
         specificationId: action.specificationId,
         specificationSlug: action.specificationSlug,
       }
+    case 'manage_specification_needs_reference':
+      return {
+        actionKind: action.kind,
+        needsReferenceId: action.needsReferenceId,
+        operation: action.operation,
+        specificationId: action.specificationId,
+        specificationSlug: action.specificationSlug,
+      }
     case 'get_requirement':
       return {
         actionKind: action.kind,
@@ -185,6 +193,8 @@ function actionNameForAuthorizationDenied(action: RequirementsAction): string {
       return 'specification_local_requirement.graduate.denied'
     case 'manage_specification_local_requirement':
       return `specification_local_requirement.${action.operation}.denied`
+    case 'manage_specification_needs_reference':
+      return `specification_needs_reference.${action.operation}.denied`
     case 'manage_requirement':
       return `requirement.${action.operation}.denied`
     case 'transition_requirement':
@@ -220,6 +230,14 @@ function targetForAuthorizationDenied(action: RequirementsAction): {
       return {
         targetId: action.localRequirementId,
         targetKind: 'SpecificationLocalRequirement',
+      }
+    case 'manage_specification_needs_reference':
+      return {
+        targetId:
+          action.needsReferenceId ??
+          action.specificationId ??
+          action.specificationSlug,
+        targetKind: 'SpecificationNeedsReference',
       }
     case 'get_requirement':
     case 'manage_requirement':

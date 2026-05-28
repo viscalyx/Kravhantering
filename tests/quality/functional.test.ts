@@ -47,6 +47,7 @@ import {
 import {
   createSpecification,
   createSpecificationLocalRequirement,
+  createSpecificationNeedsReference,
   graduateSpecificationLocalRequirementToLibrary,
   linkRequirementsToSpecificationAtomically,
   updateSpecificationItemFields,
@@ -1560,6 +1561,10 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     await linkRequirementsToSpecificationAtomically(appDb(), spec.id, {
       requirementIds: [published.requirementId],
     })
+    await createSpecificationNeedsReference(appDb(), spec.id, {
+      description: null,
+      text: 'Pre-registered unused need',
+    })
 
     const addedAgain = await linkRequirementsToSpecificationAtomically(
       appDb(),
@@ -1571,12 +1576,12 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
 
     const needsReferences = (await appDb().query(
-      `SELECT text FROM specification_needs_references WHERE specification_id = @0`,
+      `SELECT text FROM specification_needs_references WHERE specification_id = @0 ORDER BY text`,
       [spec.id],
     )) as Array<{ text: string }>
 
     expect(addedAgain).toBe(0)
-    expect(needsReferences).toEqual([])
+    expect(needsReferences).toEqual([{ text: 'Pre-registered unused need' }])
   })
 
   it('Scenario 8: suggestion resolution is impossible without review', async () => {

@@ -90,6 +90,21 @@ The behaviors below apply to the requirement list rendered by:
   `Tillgängliga krav` cards each become their own vertically scrollable region
   and stay pinned below the site navigation while the user scrolls inside a
   list.
+- The left specification-detail panel has tabs for `Krav i underlaget` and
+  `Behovsreferenser`; the tab selection is reflected in the URL through
+  `leftTab=needs-references` so a copied link can reopen the needs-reference
+  register directly.
+- `Behovsreferenser` is a specification-local register. It allows users to
+  create and edit labels plus optional descriptions, delete only unused
+  references, expand a row to inspect linked requirements, and intentionally
+  keep pre-registered references without linked requirements.
+- In `Krav i underlaget`, the `Behovsreferens` column is an inline dropdown
+  with `Ingen behovsreferens` plus existing register entries only; creating a
+  new reference happens in the register tab or in the add-to-specification
+  dialog.
+- When rows are selected in `Krav i underlaget`, the sticky action rail includes
+  a bulk needs-reference dropdown so multiple linked requirements can be
+  reassigned or cleared in one mutation.
 - In the normal desktop specification-detail state, the page shell itself stays
   viewport-locked so the two list panels fit inside the visible window without
   requiring page-level vertical scrolling.

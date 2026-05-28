@@ -3,10 +3,12 @@ import type { RequirementsSpecificationEntity } from '@/lib/typeorm/entities/req
 
 export interface SpecificationNeedsReferenceEntity {
   createdAt: Date
+  description: string | null
   id: number
   specification: RequirementsSpecificationEntity
   specificationId: number
   text: string
+  updatedAt: Date
 }
 
 export const specificationNeedsReferenceEntity =
@@ -22,7 +24,14 @@ export const specificationNeedsReferenceEntity =
       },
       specificationId: { name: 'specification_id', type: 'int' },
       text: { name: 'text', type: 'nvarchar', length: 450 },
+      description: {
+        name: 'description',
+        type: 'nvarchar',
+        length: 'MAX',
+        nullable: true,
+      },
       createdAt: { name: 'created_at', type: 'datetime2' },
+      updatedAt: { name: 'updated_at', type: 'datetime2' },
     },
     uniques: [
       {

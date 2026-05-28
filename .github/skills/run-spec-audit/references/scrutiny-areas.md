@@ -78,12 +78,13 @@ maintenance rule.
 ## 7. Scenario 7: needs-reference linking never leaks orphan metadata
 
 - **Code:** `lib/dal/requirements-specifications.ts` —
-  needs-reference linking and cleanup functions.
-- **Spec:** `docs/lifecycle-workflow.md`.
+  needs-reference linking, cleanup, and register-management functions.
+- **Spec:** `docs/requirements-ui-behaviour.md`.
 - **Req tag:** `[Req: inferred — from
   linkRequirementsToSpecificationAtomically() cleanup path]`
-- **Question:** Do needs-reference rows exist only when at least one
-  linked specification item still points at them?
+- **Question:** Does add-to-specification cleanup remove newly created
+  needs-reference rows when no items are added, while intentionally
+  pre-registered unused needs references remain allowed?
 - **Verify:** `npm exec -- vitest run
   tests/quality/functional.test.ts -t "Scenario 7: needs-reference linking never leaks orphan metadata"`
 

@@ -1203,7 +1203,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'kravunderlagsdetalj',
         'Kravunderlagsdetalj — delad vy',
-        'Kravunderlagsdetaljsidan har en delad layout: **vänster panel** listar både bibliotekskrav och eventuella kravunderlagets unika krav med deras implementationsstatus, och **höger panel** visar tillgängliga bibliotekskrav att lägga till. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag. Klicka på en rad för att se kravets fullständiga detaljer.',
+        'Kravunderlagsdetaljsidan har en delad layout: **vänster panel** har tabbarna **Krav i underlaget** och **Behovsreferenser**, och **höger panel** visar tillgängliga bibliotekskrav att lägga till. I tabben för krav visas både bibliotekskrav och eventuella kravunderlagets unika krav med deras implementationsstatus. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag. Klicka på en rad för att se kravets fullständiga detaljer.',
         { fullPage: false },
       )
     })
@@ -1249,7 +1249,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
             page,
             'lagg-till-krav-modal',
             'Lägg till krav — behovsreferens',
-            'När du lägger till krav i ett kravunderlag kan du koppla en **behovsreferens** till kravtillämpningen. En behovsreferens är en fritext som förklarar varför kravet behövs i just det här kravunderlaget och kan ge stöd för när kravet ska verifieras — t.ex. ett ärendenummer, ett mål eller ett avsnitt i ett kravunderlag. Du kan välja en befintlig referens eller skriva en ny. Fältet är valfritt.',
+            'När du lägger till krav i ett kravunderlag kan du koppla en **behovsreferens** till kravtillämpningen. En behovsreferens är en fritext som förklarar varför kravet behövs i just det här kravunderlaget och kan ge stöd för när kravet ska verifieras — t.ex. ett ärendenummer, ett mål eller ett avsnitt i ett kravunderlag. Du kan välja en befintlig referens eller skriva en ny med valfri beskrivning. I efterhand hanteras registret i tabben **Behovsreferenser**, medan kolumnen **Behovsreferens** används för att välja eller rensa befintliga referenser i tabellen.',
             { fullPage: false },
           )
 

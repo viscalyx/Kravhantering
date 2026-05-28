@@ -147,7 +147,14 @@ function emptySeed() {
       rows: [],
     },
     specification_needs_references: {
-      columns: ['id', 'specification_id', 'text', 'created_at'],
+      columns: [
+        'id',
+        'specification_id',
+        'text',
+        'description',
+        'created_at',
+        'updated_at',
+      ],
       pk: ['id'],
       rows: [],
     },

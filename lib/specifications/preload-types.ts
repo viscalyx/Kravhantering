@@ -36,6 +36,17 @@ export interface SpecificationListItem extends RequirementRow {
   needsReference?: string | null
 }
 
+export interface SpecificationNeedsReference {
+  createdAt?: string
+  description: string | null
+  id: number
+  libraryItemCount?: number
+  linkedItemCount?: number
+  specificationLocalRequirementCount?: number
+  text: string
+  updatedAt?: string
+}
+
 export interface NormReferenceOption {
   id: number
   name: string
@@ -49,7 +60,7 @@ export interface AvailableRequirementsData {
 
 export interface RequirementsSpecificationDetailInitialData {
   areas: AreaOption[]
-  availableNeedsRefs: { id: number; text: string }[]
+  availableNeedsRefs: SpecificationNeedsReference[]
   availableRequirements: AvailableRequirementsData
   errors: SpecificationPreloadError[]
   leftNormReferenceOptions: NormReferenceOption[]

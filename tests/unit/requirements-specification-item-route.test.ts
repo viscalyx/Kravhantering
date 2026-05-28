@@ -235,7 +235,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
       expect.arrayContaining([
         expect.objectContaining({
           message:
-            'At least one of note or specificationItemStatusId must be supplied',
+            'At least one of note, needsReferenceId or specificationItemStatusId must be supplied',
         }),
       ]),
     )

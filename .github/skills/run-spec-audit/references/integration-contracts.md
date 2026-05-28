@@ -115,6 +115,29 @@ Top-level: `{ items: RequirementRow[] }`
 | `usageScenarioIds` | `number[]` | Scenario ids |
 | `version` | `object` | Published snapshot |
 
+## REST: Specification Needs References `/api/specifications/[id]/needs-references`
+
+Source: `app/api/specifications/[id]/needs-references/route.ts`
+
+Top-level GET: `{ needsReferences: SpecificationNeedsReference[] }`
+
+### `SpecificationNeedsReference` fields
+
+| Field | Type | Notes |
+|---|---|---|
+| `description` | `string \| null` | Optional register description |
+| `id` | `number` | Specification-scoped needs reference id |
+| `linkedItemCount` | `number` | Library + specification-local item count |
+| `text` | `string` | Needs-reference label |
+
+Mutation contract:
+
+| Method | Body | Notes |
+|---|---|---|
+| `POST` | `{ text, description? }` | Creates a reference; duplicate text within the specification returns conflict |
+| `PATCH` | `{ id, text, description? }` | Updates label and description for all linked items |
+| `DELETE` | `{ id }` | Deletes only when no items reference it |
+
 ## MCP: `GetRequirementOutputSchema`
 
 Source: `lib/mcp/server.ts`

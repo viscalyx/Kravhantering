@@ -858,6 +858,9 @@ Tabellen `action_audit_events` saknar främmande nycklar medvetet så att
 Kravunderlag kan klassas med ansvarsområde, genomförandetyp,
 livscykelstatus, behovsreferenser och medförfattare så att samma
 kravbibliotek kan användas i flera verksamhetssammanhang.
+`specification_needs_references` är kravunderlagslokala etiketter med valfri
+beskrivning och uppdateringstid; både bibliotekskrav och kravunderlagets unika
+krav pekar på dem inom samma kravunderlag.
 
 > **Tillämpningsbarhet via kravpaket.**
 > Tabellen `requirement_packages` hanterar även

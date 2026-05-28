@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsSpecificationDetailClient from '@/app/[locale]/specifications/[slug]/requirements-specification-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import type { FilterOption } from '@/lib/requirements/list-view'
-import type { SpecificationPreloadError } from '@/lib/specifications/preload-types'
+import type {
+  RequirementsSpecificationDetailInitialData,
+  SpecificationPreloadError,
+} from '@/lib/specifications/preload-types'
 
 const requirementsTableMock = vi.fn()
 
@@ -45,6 +48,10 @@ vi.mock('@/components/RequirementsTable', () => ({
     loadingMore?: boolean
     onFilterChange?: (values: { requirementPackageIds?: number[] }) => void
     onLoadMore?: () => void | Promise<void>
+    onNeedsReferenceChange?: (
+      itemRef: string,
+      needsReferenceId: number | null,
+    ) => void
     onSelectionChange?: (ids: Set<number>) => void
     requirementPackages?: { id: number; nameEn: string; nameSv: string }[]
     rows: { id: number; itemRef?: string; requirementPackageIds?: number[] }[]
@@ -125,6 +132,17 @@ vi.mock('@/components/RequirementsTable', () => ({
             type="button"
           >
             select
+          </button>
+        ) : null}
+        {props.onNeedsReferenceChange && props.rows[0]?.itemRef ? (
+          <button
+            aria-label={`assign-needs-ref-${props.rows[0].itemRef}`}
+            onClick={() =>
+              props.onNeedsReferenceChange?.(props.rows[0].itemRef ?? '', 81)
+            }
+            type="button"
+          >
+            assign needs ref
           </button>
         ) : null}
         {`rows:${props.rows.length}`}
@@ -232,7 +250,7 @@ const initialAvailableRequirement = {
   },
 }
 
-function createInitialData() {
+function createInitialData(): RequirementsSpecificationDetailInitialData {
   return {
     areas: [],
     availableNeedsRefs: [],
@@ -313,6 +331,13 @@ describe('RequirementsSpecificationDetailClient', () => {
             json: async () => addRequirementsResponse.body,
             ok: addRequirementsResponse.ok,
           })
+        }
+
+        if (
+          url === '/api/specifications/ETJANST-UPP-2026/items' &&
+          method === 'PATCH'
+        ) {
+          return Promise.resolve(okJson({ ok: true, updatedCount: 1 }))
         }
 
         if (
@@ -418,7 +443,58 @@ describe('RequirementsSpecificationDetailClient', () => {
           return Promise.resolve(okJson({ requirementPackages: [] }))
         }
 
-        if (url === '/api/specifications/ETJANST-UPP-2026/needs-references') {
+        if (
+          url === '/api/specifications/ETJANST-UPP-2026/items/lib%3A31' &&
+          method === 'PATCH'
+        ) {
+          return Promise.resolve(okJson({ ok: true }))
+        }
+
+        if (
+          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          method === 'POST'
+        ) {
+          return Promise.resolve(
+            okJson({
+              needsReference: {
+                description: 'Access management work',
+                id: 81,
+                linkedItemCount: 0,
+                text: 'IAM-42',
+              },
+              ok: true,
+            }),
+          )
+        }
+
+        if (
+          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          method === 'PATCH'
+        ) {
+          return Promise.resolve(
+            okJson({
+              needsReference: {
+                description: 'Updated context',
+                id: 81,
+                linkedItemCount: 0,
+                text: 'IAM-43',
+              },
+              ok: true,
+            }),
+          )
+        }
+
+        if (
+          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          method === 'DELETE'
+        ) {
+          return Promise.resolve(okJson({ ok: true }))
+        }
+
+        if (
+          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          method === 'GET'
+        ) {
           return Promise.resolve(okJson({ needsReferences: [] }))
         }
 
@@ -995,5 +1071,170 @@ describe('RequirementsSpecificationDetailClient', () => {
       ).toBeInTheDocument()
     })
     expect(screen.queryByLabelText('requirement.area')).not.toBeInTheDocument()
+  })
+
+  it('opens the needs references tab, persists the URL parameter, and shows usage details', async () => {
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState')
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '2026-04-20T10:00:00.000Z',
+          description: null,
+          id: 81,
+          libraryItemCount: 1,
+          linkedItemCount: 1,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '2026-04-20T10:00:00.000Z',
+        },
+      ],
+      specificationItems: [
+        {
+          ...initialSpecificationItem,
+          needsReference: 'IAM-42',
+          needsReferenceId: 81,
+          specificationItemStatusNameEn: 'Included',
+        },
+      ],
+    })
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+
+    expect(replaceStateSpy).toHaveBeenCalled()
+    expect(screen.getByText('IAM-42')).toBeInTheDocument()
+    expect(
+      screen.getByText('specification.missingNeedsReferenceDescription'),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /specification\.toggleNeedsReferenceUsage/,
+      }),
+    )
+
+    expect(screen.getByText('BEH0001')).toBeInTheDocument()
+    expect(screen.getByText('RBAC should be enforced.')).toBeInTheDocument()
+  })
+
+  it('creates a needs reference with a description from the register tab', async () => {
+    renderRequirementsSpecificationDetailClient()
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.newNeedsReference' }),
+    )
+
+    fireEvent.change(screen.getByLabelText('specification.needsReference'), {
+      target: { value: 'IAM-42' },
+    })
+    fireEvent.change(
+      screen.getByLabelText('specification.needsReferenceDescription'),
+      {
+        target: { value: 'Access management work' },
+      },
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specifications/ETJANST-UPP-2026/needs-references',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+
+    const postCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+        (init as RequestInit | undefined)?.method === 'POST',
+    )
+    expect(JSON.parse(String((postCall?.[1] as RequestInit).body))).toEqual({
+      description: 'Access management work',
+      text: 'IAM-42',
+    })
+  })
+
+  it('updates a single item needs reference inline from the requirements table', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '2026-04-20T10:00:00.000Z',
+          description: 'Access management work',
+          id: 81,
+          libraryItemCount: 0,
+          linkedItemCount: 0,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '2026-04-20T10:00:00.000Z',
+        },
+      ],
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'assign-needs-ref-lib:31' }),
+      ).toBeInTheDocument()
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'assign-needs-ref-lib:31' }),
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specifications/ETJANST-UPP-2026/items/lib%3A31',
+        expect.objectContaining({
+          body: JSON.stringify({ needsReferenceId: 81 }),
+          method: 'PATCH',
+        }),
+      )
+    })
+  })
+
+  it('bulk-updates needs references for selected specification items', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '2026-04-20T10:00:00.000Z',
+          description: 'Access management work',
+          id: 81,
+          libraryItemCount: 0,
+          linkedItemCount: 0,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '2026-04-20T10:00:00.000Z',
+        },
+      ],
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.change(
+      screen.getByLabelText('specification.bulkNeedsReferenceLabel'),
+      { target: { value: '81' } },
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /specification\.applyNeedsReferenceSelected/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specifications/ETJANST-UPP-2026/items',
+        expect.objectContaining({
+          body: JSON.stringify({
+            itemRefs: ['lib:31'],
+            needsReferenceId: 81,
+          }),
+          method: 'PATCH',
+        }),
+      )
+    })
   })
 })
