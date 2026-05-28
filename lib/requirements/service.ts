@@ -191,6 +191,7 @@ export interface GetSpecificationItemsInput extends SpecificationRefInput {
 
 export interface AddToSpecificationInput extends SpecificationRefInput {
   locale?: ResponseLocale
+  needsReferenceDescription?: string | null
   needsReferenceId?: number | null
   needsReferenceText?: string | null
   requirementIds: number[]

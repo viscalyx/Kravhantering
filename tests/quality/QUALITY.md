@@ -224,14 +224,18 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 6: deviated
 `[Req: inferred — from linkRequirementsToSpecificationAtomically() cleanup path]`
 
 **What happened:** `linkRequirementsToSpecificationAtomically()` trims
-`needsReferenceText`, creates or reuses the metadata row, and deletes a newly
-created row when no specification items were actually inserted at
-`lib/dal/requirements-specifications.ts:1447-1512`. Without that cleanup, the specification
-administration views accumulate business-need entries that look real but are
-not attached to any requirement.
+`needsReferenceText`, creates a metadata row for new add-to-specification
+payloads, and deletes that newly created row when no specification items were
+actually inserted at `lib/dal/requirements-specifications.ts:1459-1529`.
+Without that cleanup, failed or duplicate-only add flows accumulate
+business-need entries that look real but were never used by any added
+requirement. User-managed needs references are different: the
+specification-local register intentionally allows pre-registered unused rows.
 
-**The requirement:** `specification_needs_references` rows must exist only when
-at least one linked specification item still points at them.
+**The requirement:** Add-to-specification flows must not leave newly created
+needs-reference rows behind when no requirements are added. Explicitly
+pre-registered needs references may exist before any requirement points at
+them.
 
 **How to verify:**
 

@@ -2325,11 +2325,15 @@ describe('RequirementDetailClient', () => {
     const needsReferenceText = screen.getByRole('textbox', {
       name: /specification\.addNeedsRefTextLabel/,
     })
+    const needsReferenceDescription = screen.getByRole('textbox', {
+      name: /specification\.needsReferenceDescription/,
+    })
 
     for (const field of [
       specificationSelect,
       needsReferenceSelect,
       needsReferenceText,
+      needsReferenceDescription,
     ]) {
       expect(field.className).toContain('border-secondary-200')
       expect(field.className).toContain('text-secondary-900')
@@ -2338,6 +2342,76 @@ describe('RequirementDetailClient', () => {
     }
     expect(specificationSelect.className).toContain('min-h-11')
     expect(needsReferenceSelect.className).toContain('min-h-11')
+  })
+
+  it('submits a new needs reference description when adding to a specification', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    const submittedBodies: unknown[] = []
+
+    setupFetch({
+      addToSpecificationHandler: (_specificationId, init) => {
+        submittedBodies.push(JSON.parse(String(init?.body)))
+        return response({})
+      },
+      initialRequirement: requirement,
+      specifications: [{ id: 7, name: 'IAM Specification' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.addToSpecification',
+      }),
+    )
+
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.selectOptions(
+      within(dialog).getByRole('combobox', {
+        name: /specification\.selectSpecification/,
+      }),
+      '7',
+    )
+    await userEvent.selectOptions(
+      within(dialog).getByRole('combobox', {
+        name: /specification\.needsReferenceLabel/,
+      }),
+      'new',
+    )
+    await userEvent.type(
+      within(dialog).getByRole('textbox', {
+        name: /specification\.addNeedsRefTextLabel/,
+      }),
+      'IAM-42',
+    )
+    await userEvent.type(
+      within(dialog).getByRole('textbox', {
+        name: /specification\.needsReferenceDescription/,
+      }),
+      'Access management work',
+    )
+    await userEvent.click(
+      within(dialog).getByRole('button', {
+        name: 'specification.addToSpecification',
+      }),
+    )
+
+    expect(submittedBodies).toEqual([
+      {
+        needsReferenceDescription: 'Access management work',
+        needsReferenceText: 'IAM-42',
+        requirementIds: [requirement.id],
+      },
+    ])
   })
 
   it('ignores stale needs-reference responses when switching specifications quickly', async () => {

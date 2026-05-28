@@ -35,7 +35,7 @@ for (const viewport of viewports) {
     })
 
     if (viewport.name === 'desktop') {
-      test('lets the specification-detail lists scroll independently while keeping the right title bar sticky', async ({
+      test('lets the specification-detail lists scroll independently while keeping the sticky title bars visible', async ({
         page,
       }) => {
         await page.setViewportSize({ width: viewport.width, height: 560 })
@@ -47,10 +47,6 @@ for (const viewport of viewports) {
         const leftPanel = page.locator(
           '[data-specification-detail-list-panel="items"]',
         )
-        const leftPanelHeading = page.getByRole('heading', {
-          level: 2,
-          name: /Krav i underlaget/,
-        })
         const leftEmptyState = page.getByText(
           'Det finns inga krav kopplade till detta kravunderlag.',
         )
@@ -63,9 +59,11 @@ for (const viewport of viewports) {
         const leftTrigger = leftPanel.locator(
           '[data-column-picker-trigger="true"]',
         )
-        const leftTitle = leftPanel.getByRole('heading', {
-          level: 2,
+        const leftItemsTab = leftPanel.getByRole('tab', {
           name: /Krav i underlaget/,
+        })
+        const leftNeedsReferencesTab = leftPanel.getByRole('tab', {
+          name: /Behovsreferenser/,
         })
         const leftHeaderLabel = leftPanel.locator(
           '[data-requirement-header-label="uniqueId"]',
@@ -89,13 +87,13 @@ for (const viewport of viewports) {
         await expect(rightTrigger).toBeVisible()
         await expect(rightTitle).toBeVisible()
         await expect(rightHeaderLabel).toBeVisible()
-        await expect(leftPanelHeading).toBeVisible()
         const hasLeftPanel = (await leftPanel.count()) > 0
         if (hasLeftPanel) {
           await expect(leftPanel).toBeVisible()
           await expect(leftTopBar).toBeVisible()
           await expect(leftTrigger).toBeVisible()
-          await expect(leftTitle).toBeVisible()
+          await expect(leftItemsTab).toBeVisible()
+          await expect(leftNeedsReferencesTab).toBeVisible()
           await expect(leftHeaderLabel).toBeVisible()
         } else {
           await expect(leftEmptyState).toBeVisible()

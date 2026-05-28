@@ -60,7 +60,8 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [SPEC-06: add and remove a requirement in specification detail](#spec-06-add-and-remove-a-requirement-in-specification-detail)
   - [SPEC-07: create a unique requirement](#spec-07-create-a-unique-requirement)
   - [SPEC-08: update specification item status](#spec-08-update-specification-item-status)
-  - [SPEC-09: generate specification list report](#spec-09-generate-specification-list-report)
+  - [SPEC-09: manage needs references](#spec-09-manage-needs-references)
+  - [SPEC-10: generate specification list report](#spec-10-generate-specification-list-report)
 - [Deviations](#deviations)
   - [DEV-01: create a draft deviation](#dev-01-create-a-draft-deviation)
   - [DEV-02: request deviation review](#dev-02-request-deviation-review)
@@ -1009,7 +1010,38 @@ reference.
 
 **Expected result:** The status change is saved and remains after reload.
 
-### SPEC-09: generate specification list report
+### SPEC-09: manage needs references
+
+**Purpose:** Confirm specification-local needs references can be pre-registered,
+edited, inspected, and assigned to requirement rows.
+
+**Users:** `ada.admin`.
+
+**Prerequisites:** Open a specification detail with included requirements.
+
+**Steps:**
+
+1. Open the `Behovsreferenser` tab in the left panel.
+1. Verify the tab is in the left list header and that the right-side action
+   pills change from requirement-list actions to the new-reference action.
+1. Create a new needs reference with a description.
+1. Create another needs reference without a description.
+1. Verify the row without a description shows a completion warning.
+1. Expand a needs-reference row and inspect linked requirements.
+1. Return to `Krav i underlaget`.
+1. Change one row's `Behovsreferens` dropdown to the created reference.
+1. Select multiple rows so the bulk needs-reference dropdown appears.
+1. Open the help button next to the bulk needs-reference dropdown.
+1. Apply a needs reference through the bulk dropdown.
+1. Return to `Behovsreferenser` and try deleting a used reference.
+1. Delete an unused reference.
+
+**Expected result:** URL state can reopen the `Behovsreferenser` tab, linked
+counts update after assignments, the bulk dropdown help explains the batch
+assignment, used references cannot be deleted, and unused pre-registered
+references can be deleted intentionally.
+
+### SPEC-10: generate specification list report
 
 **Purpose:** Confirm specification-scoped reporting works.
 

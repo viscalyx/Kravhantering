@@ -177,9 +177,12 @@ Links requirements to a specification. Accepts `specificationId` (numeric) or
 `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`). Requirements without a published
 version are skipped and returned in `skippedIds` rather than causing an error —
 this lets an agent batch-add requirements without needing to pre-filter by
-publish state. An optional `needsReferenceText` is resolved to a
-`specification_needs_references` row (created if needed) and linked to all added
-items. Use the specification copy paths above, and copy requirement IDs from:
+publish state. `needsReferenceId` links the added items to an existing
+specification-local needs reference. `needsReferenceText` creates a new
+`specification_needs_references` row, with optional
+`needsReferenceDescription`, and links it to all added items. The tool rejects
+duplicate `needsReferenceText` values inside the same specification. Use the
+specification copy paths above, and copy requirement IDs from:
 
 ```text
 requirements_query_catalog.items[].id -> requirementIds

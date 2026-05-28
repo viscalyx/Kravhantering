@@ -310,7 +310,9 @@ erDiagram
         integer id PK
         integer specification_id FK
         text text
+        text description
         text created_at
+        text updated_at
     }
 
     specification_local_requirements {
@@ -1205,7 +1207,7 @@ includes `KRAV0001` and `KRAV0002`.
 
 ### `specification_needs_references`
 
-Reusable needs-reference texts stored per specification.
+Reusable needs-reference labels and descriptions stored per specification.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -1213,7 +1215,9 @@ Reusable needs-reference texts stored per specification.
 | `id` | integer PK | Auto-increment primary key |
 | `specification_id` | integer FK → `requirements_specifications.id` | Owning specification |
 | `text` | text | Stored needs-reference label |
+| `description` | text nullable | Optional context for the need, decision, case, or source behind the label |
 | `created_at` | text (ISO 8601) | Creation timestamp |
+| `updated_at` | text (ISO 8601) | Last label or description update timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Unique indexes:**

@@ -70,9 +70,11 @@ agents can use it reliably.
 - `requirements_add_to_specification`
   Link one or more requirements to a specification. Requirements must have a
   published version; those without are skipped and returned in `skippedIds`.
-  Optionally attach a `needsReferenceText` to all added items. Use
-  `specificationId` or `specificationSlug` to identify the specification. Copy
-  requirement IDs from:
+  Optionally attach an existing `needsReferenceId`, or create a new
+  `needsReferenceText` with an optional `needsReferenceDescription`, for all
+  added items. New needs-reference text must be unique inside the
+  specification. Use `specificationId` or `specificationSlug` to identify the
+  specification. Copy requirement IDs from:
 
   ```text
   requirements_query_catalog.items[].id -> requirementIds
@@ -503,6 +505,7 @@ existing status and risk fields.
 - `Search for requirements about login in specification SAKLYFT-INFOR-Q2.`
 - `Add requirements INT0001 and INT0002 to specification SAKLYFT-INFOR-Q2.`
 - `Add requirement INT0005 to specification GDPR-FORV-2026 with needs reference text "Behov 4.1".` <!-- markdownlint-disable-line MD013 -->
+- `Add requirement INT0005 to specification GDPR-FORV-2026 with needs reference id 12.` <!-- markdownlint-disable-line MD013 -->
 - `List graduation target areas for unique requirement 41 in SAKLYFT-INFOR-Q2.`
 - `Graduate unique requirement 41 from specification SAKLYFT-INFOR-Q2 into requirement area 3.` <!-- markdownlint-disable-line MD013 -->
 - `Remove requirement INT0003 from specification SAKLYFT-INFOR-Q2.`
@@ -513,7 +516,10 @@ existing status and risk fields.
 > `requirements_list_specifications.specifications[].id` -> `specificationId`
 > or `requirements_list_specifications.specifications[].uniqueId` ->
 > `specificationSlug`. For `requirements_add_to_specification`, copy
-> `requirements_query_catalog.items[].id` -> `requirementIds`. For
+> `requirements_query_catalog.items[].id` -> `requirementIds`; use
+> `needsReferenceId` only when it comes from that specification's existing
+> needs-reference register, or use new `needsReferenceText` plus optional
+> `needsReferenceDescription`. For
 > `requirements_remove_from_specification`, copy
 > `requirements_get_specification_items.items[].id` -> `requirementIds`.
 > Requirements must have a published version to be added to a specification.

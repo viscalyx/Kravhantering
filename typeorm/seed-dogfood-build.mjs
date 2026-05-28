@@ -259,7 +259,14 @@ export function appendDogfoodSeed(SEED_DATA) {
     const nr = DOGFOOD_NEEDS_REFS[i]
     const id = NEEDS_REF_ID_BASE + i + 1
     needsRefIds.push(id)
-    needsRefs.rows.push([id, nr.spec, nr.text, SEED_TS])
+    needsRefs.rows.push([
+      id,
+      nr.spec,
+      nr.text,
+      nr.description ?? null,
+      SEED_TS,
+      SEED_TS,
+    ])
   }
 
   // ---- specification_local_requirements + their junctions -----------------------

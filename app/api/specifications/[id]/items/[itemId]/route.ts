@@ -43,16 +43,19 @@ const specificationItemRefParamSchema = z
 
 const patchSpecificationItemSchema = z
   .object({
+    needsReferenceId: positiveIntegerSchema.nullable().optional(),
     note: nullableBusinessTextSchema.optional(),
     specificationItemStatusId: positiveIntegerSchema.optional(),
   })
   .strict()
   .refine(
     data =>
-      data.note !== undefined || data.specificationItemStatusId !== undefined,
+      data.needsReferenceId !== undefined ||
+      data.note !== undefined ||
+      data.specificationItemStatusId !== undefined,
     {
       message:
-        'At least one of note or specificationItemStatusId must be supplied',
+        'At least one of note, needsReferenceId or specificationItemStatusId must be supplied',
     },
   )
 

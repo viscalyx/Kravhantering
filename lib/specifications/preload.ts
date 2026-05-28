@@ -33,6 +33,7 @@ import type {
   Specification,
   SpecificationListItem,
   SpecificationMeta,
+  SpecificationNeedsReference,
   SpecificationPreloadError,
   SpecificationTaxonomyItem,
 } from '@/lib/specifications/preload-types'
@@ -199,7 +200,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
         nameSv: pkg.nameSv,
       })),
     ),
-    capture<{ id: number; text: string }[]>(
+    capture<SpecificationNeedsReference[]>(
       'specification needs references',
       [],
       () => listSpecificationNeedsReferences(db, spec.id),

@@ -415,15 +415,19 @@ function addRetentionSpecifications(seedData) {
 
   addRow(seedData, 'specification_needs_references', {
     created_at: OLD_730_TS,
+    description: null,
     id: RETENTION_SEED.needsReference.obsoleteSpecificationLibrary,
     specification_id: RETENTION_SEED.specification.obsolete,
     text: 'RETENTION-SEED behovsreferens för export av kopplat katalogkrav.',
+    updated_at: OLD_730_TS,
   })
   addRow(seedData, 'specification_needs_references', {
     created_at: OLD_730_TS,
+    description: null,
     id: RETENTION_SEED.needsReference.obsoleteSpecificationLocal,
     specification_id: RETENTION_SEED.specification.obsolete,
     text: 'RETENTION-SEED behovsreferens för export av lokalt krav.',
+    updated_at: OLD_730_TS,
   })
 
   for (const item of [

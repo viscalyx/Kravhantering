@@ -570,6 +570,7 @@ export function createSpecificationWorkflow({
               specificationId,
               {
                 requirementIds: succeeded.map(r => r.id),
+                needsReferenceDescription: input.needsReferenceDescription,
                 needsReferenceId: input.needsReferenceId,
                 needsReferenceText: input.needsReferenceText,
               },

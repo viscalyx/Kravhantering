@@ -1515,6 +1515,8 @@ describe('createRequirementsService', () => {
       mocks.linkRequirementsToSpecificationAtomically,
     ).toHaveBeenCalledWith(expect.anything(), 7, {
       requirementIds: [10, 11],
+      needsReferenceDescription: undefined,
+      needsReferenceId: undefined,
       needsReferenceText: undefined,
     })
     expect(result.addedCount).toBe(1)

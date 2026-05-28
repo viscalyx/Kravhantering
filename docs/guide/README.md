@@ -1,7 +1,7 @@
 <!-- AUTO-GENERERAD — redigera inte manuellt. Kör: npm run generate:guide -->
 # Kravhantering — Användarguide
 
-> Guiden genererades automatiskt av Playwright 2026-05-19.
+> Guiden genererades automatiskt av Playwright 2026-05-28.
 > Alla skärmdumpar visar det svenska gränssnittet.
 
 ## Innehållsförteckning
@@ -245,12 +245,15 @@ samla krav som hör till ett specifikt projekt eller leverans.
 
 ### Kravunderlagsdetalj — delad vy
 
-Kravunderlagsdetaljsidan har en delad layout: **vänster panel** listar både
-bibliotekskrav och eventuella kravunderlagets unika krav med deras
-implementationsstatus, och **höger panel** visar tillgängliga bibliotekskrav att
-lägga till. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta
-kravunderlag. Unika krav har inget kravområde, så listans områdeskolumn visar
-`-` för de raderna. Klicka på en rad för att se kravets fullständiga detaljer.
+Kravunderlagsdetaljsidan har en delad layout: **vänster panel** har tabbarna
+**Krav i underlaget** och **Behovsreferenser** i listans rubrik, och **höger
+panel** visar tillgängliga bibliotekskrav att lägga till. I tabben för krav
+visas både bibliotekskrav och eventuella kravunderlagets unika krav med deras
+implementationsstatus. Knapparna till höger i rubriken byts när du växlar tabb:
+tabben för krav har kravlistans verktyg, medan tabben för behovsreferenser har
+åtgärden för att skapa en ny referens. Knappen **"Nytt unikt krav"** skapar krav
+som bara finns i detta kravunderlag. Klicka på en rad för att se kravets
+fullständiga detaljer.
 
 ![Kravunderlagsdetalj — delad vy](images/024-kravunderlagsdetalj.png)
 
@@ -268,8 +271,10 @@ När du lägger till krav i ett kravunderlag kan du koppla en **behovsreferens**
 till kravtillämpningen. En behovsreferens är en fritext som förklarar varför
 kravet behövs i just det här kravunderlaget och kan ge stöd för när kravet ska
 verifieras — t.ex. ett ärendenummer, ett mål eller ett avsnitt i ett
-kravunderlag. Du kan välja en befintlig referens eller skriva en ny. Fältet är
-valfritt.
+kravunderlag. Du kan välja en befintlig referens eller skriva en ny med valfri
+beskrivning. I efter hand hanteras registret i tabben **Behovsreferenser**, medan
+kolumnen **Behovsreferens** används för att välja eller rensa befintliga
+referenser i tabellen.
 
 ![Lägg till krav — behovsreferens](images/026-lagg-till-krav-modal.png)
 
@@ -553,8 +558,7 @@ tillgänglig).
 
 Skriver ut kraven som ingår i ett specifikt kravunderlag som en formaterad
 tabell. Rapporten inkluderar underlagets metadata (namn, ID, verksamhetsområde,
-genomförandeform, underlagssyfte) som rubrik. Unika krav saknar kravområde och
-visas därför med `-` i områdeskolumnen.
+genomförandeform, underlagssyfte) som rubrik.
 
 **Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält.
 

@@ -1046,7 +1046,12 @@ async function exportSpecification(
     localDeviations,
   ] = await Promise.all([
     db.query(
-      `SELECT id, text, created_at AS createdAt
+      `SELECT
+          id,
+          text,
+          description,
+          created_at AS createdAt,
+          updated_at AS updatedAt
         FROM specification_needs_references
         WHERE specification_id = @0
         ORDER BY id ASC`,

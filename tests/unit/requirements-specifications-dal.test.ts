@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createSpecification,
   createSpecificationLocalRequirement,
+  createSpecificationNeedsReference,
   deleteSpecification,
   deleteSpecificationItemsByRefs,
   deleteSpecificationLocalRequirement,
+  deleteSpecificationNeedsReference,
   getOrCreateSpecificationNeedsReference,
   getSpecificationById,
   getSpecificationLocalRequirementDetail,
@@ -18,6 +20,7 @@ import {
   updateSpecification,
   updateSpecificationItemFieldsByItemRef,
   updateSpecificationLocalRequirement,
+  updateSpecificationNeedsReference,
 } from '@/lib/dal/requirements-specifications'
 import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 
@@ -183,8 +186,24 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
   it('lists specification needs references on the SQL Server path', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([
-      { id: 4, text: 'Accessibility need' },
-      { id: 8, text: 'Security need' },
+      {
+        createdAt: new Date('2026-04-20T10:00:00.000Z'),
+        description: null,
+        id: 4,
+        libraryItemCount: 1,
+        specificationLocalRequirementCount: 0,
+        text: 'Accessibility need',
+        updatedAt: new Date('2026-04-20T10:00:00.000Z'),
+      },
+      {
+        createdAt: new Date('2026-04-21T10:00:00.000Z'),
+        description: 'Security context',
+        id: 8,
+        libraryItemCount: 1,
+        specificationLocalRequirementCount: 1,
+        text: 'Security need',
+        updatedAt: new Date('2026-04-22T10:00:00.000Z'),
+      },
     ])
 
     const result = await listSpecificationNeedsReferences(db, 12)
@@ -196,8 +215,26 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       [12],
     )
     expect(result).toEqual([
-      { id: 4, text: 'Accessibility need' },
-      { id: 8, text: 'Security need' },
+      {
+        createdAt: '2026-04-20T10:00:00.000Z',
+        description: null,
+        id: 4,
+        libraryItemCount: 1,
+        linkedItemCount: 1,
+        specificationLocalRequirementCount: 0,
+        text: 'Accessibility need',
+        updatedAt: '2026-04-20T10:00:00.000Z',
+      },
+      {
+        createdAt: '2026-04-21T10:00:00.000Z',
+        description: 'Security context',
+        id: 8,
+        libraryItemCount: 1,
+        linkedItemCount: 2,
+        specificationLocalRequirementCount: 1,
+        text: 'Security need',
+        updatedAt: '2026-04-22T10:00:00.000Z',
+      },
     ])
   })
 
@@ -346,8 +383,153 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(result).toBe(33)
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO specification_needs_references'),
-      [5, 'Shared specification need', expect.any(Date)],
+      [5, 'Shared specification need', null, expect.any(Date)],
     )
+  })
+
+  it('creates specification needs references with descriptions on SQL Server', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        createdAt: new Date('2026-04-20T10:00:00.000Z'),
+        description: 'Access management work',
+        id: 33,
+        libraryItemCount: 0,
+        specificationLocalRequirementCount: 0,
+        text: 'IAM-42',
+        updatedAt: new Date('2026-04-20T10:00:00.000Z'),
+      },
+    ])
+
+    const result = await createSpecificationNeedsReference(db, 5, {
+      description: ' Access management work ',
+      text: ' IAM-42 ',
+    })
+
+    expect(result).toMatchObject({
+      description: 'Access management work',
+      id: 33,
+      linkedItemCount: 0,
+      text: 'IAM-42',
+    })
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('FROM specification_needs_references'),
+      [5, 'IAM-42'],
+    )
+    expect(query.mock.calls[0]?.[0]).not.toContain('needs_reference.id <> @2')
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('INSERT INTO specification_needs_references'),
+      [5, 'IAM-42', 'Access management work', expect.any(Date)],
+    )
+  })
+
+  it('rejects duplicate specification needs references before insert', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([{ id: 33 }])
+
+    await expect(
+      createSpecificationNeedsReference(db, 5, {
+        description: null,
+        text: 'IAM-42',
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      message: 'Needs reference already exists in this specification',
+    })
+
+    expect(query).toHaveBeenCalledTimes(1)
+  })
+
+  it('updates specification needs references on SQL Server', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([{ id: 33, text: 'IAM-42' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          createdAt: new Date('2026-04-20T10:00:00.000Z'),
+          description: 'Updated context',
+          id: 33,
+          libraryItemCount: 1,
+          specificationLocalRequirementCount: 1,
+          text: 'IAM-43',
+          updatedAt: new Date('2026-04-21T10:00:00.000Z'),
+        },
+      ])
+
+    const result = await updateSpecificationNeedsReference(db, 5, 33, {
+      description: ' Updated context ',
+      text: ' IAM-43 ',
+    })
+
+    expect(result).toMatchObject({
+      description: 'Updated context',
+      id: 33,
+      linkedItemCount: 2,
+      text: 'IAM-43',
+    })
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('AND needs_reference.id <> @2'),
+      [5, 'IAM-43', 33],
+    )
+    expect(query).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('UPDATE specification_needs_references'),
+      ['IAM-43', 'Updated context', expect.any(Date), 33, 5],
+    )
+  })
+
+  it('deletes only unused specification needs references', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          createdAt: new Date('2026-04-20T10:00:00.000Z'),
+          description: null,
+          id: 33,
+          libraryItemCount: 0,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: new Date('2026-04-20T10:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([{ id: 33 }])
+
+    await expect(deleteSpecificationNeedsReference(db, 5, 33)).resolves.toBe(
+      true,
+    )
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('DELETE FROM specification_needs_references'),
+      [33, 5],
+    )
+  })
+
+  it('blocks deleting specification needs references that are in use', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        createdAt: new Date('2026-04-20T10:00:00.000Z'),
+        description: null,
+        id: 33,
+        libraryItemCount: 1,
+        specificationLocalRequirementCount: 0,
+        text: 'IAM-42',
+        updatedAt: new Date('2026-04-20T10:00:00.000Z'),
+      },
+    ])
+
+    await expect(
+      deleteSpecificationNeedsReference(db, 5, 33),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      message: 'Needs reference is used by specification items',
+    })
+    expect(query).toHaveBeenCalledTimes(1)
   })
 
   it('gets specification-local requirement detail on SQL Server', async () => {
@@ -987,6 +1169,43 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       3,
       expect.stringContaining('UPDATE requirements_specification_items'),
       [2, expect.any(String), 'Follow-up', 31],
+    )
+  })
+
+  it('rejects needs references from another specification before item updates', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          id: 31,
+          specificationId: 5,
+          requirementId: 7,
+          requirementVersionId: 101,
+          needsReferenceId: null,
+          specificationItemStatusId: 1,
+          note: null,
+          statusUpdatedAt: null,
+          unused1: null,
+          createdAt: new Date('2026-04-20T10:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([])
+
+    await expect(
+      updateSpecificationItemFieldsByItemRef(db, 5, 'lib:31', {
+        needsReferenceId: 99,
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message:
+        'needsReferenceId does not belong to this requirements specification',
+    })
+
+    expect(query).toHaveBeenCalledTimes(2)
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('FROM specification_needs_references'),
+      [99, 5],
     )
   })
 

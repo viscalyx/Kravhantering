@@ -213,6 +213,33 @@ export default function AddToSpecificationDialog({
                         rows={2}
                         value={state.needsReferenceText}
                       />
+                      <div className="mt-2 mb-1 flex items-center gap-1.5">
+                        <label
+                          className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                          htmlFor="atp-needs-ref-description"
+                        >
+                          {tp('needsReferenceDescription')}
+                        </label>
+                        {helpButton(
+                          'atp-needs-ref-description',
+                          tp('needsReferenceDescription'),
+                        )}
+                      </div>
+                      {helpPanel(
+                        'needsReferenceDescriptionHelp',
+                        'atp-needs-ref-description',
+                      )}
+                      <textarea
+                        className="w-full resize-none rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
+                        id="atp-needs-ref-description"
+                        onChange={event =>
+                          dialog.setNeedsReferenceDescription(
+                            event.target.value,
+                          )
+                        }
+                        rows={3}
+                        value={state.needsReferenceDescription}
+                      />
                     </>
                   )}
                 </div>
