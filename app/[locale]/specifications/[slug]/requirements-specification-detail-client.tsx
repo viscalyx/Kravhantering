@@ -2293,6 +2293,7 @@ export default function KravunderlagDetailClient({
                 >
                   <RequirementsTable
                     areas={areas}
+                    defaultVisibleColumns={DEFAULT_LEFT_COLS}
                     expandedId={leftExpandedId}
                     filterValues={leftFilters}
                     floatingActionRailPlacement="inline-top"
@@ -2517,6 +2518,7 @@ export default function KravunderlagDetailClient({
               >
                 <RequirementsTable
                   areas={areas}
+                  defaultVisibleColumns={DEFAULT_RIGHT_COLS}
                   excludeColumns={['needsReference', 'specificationItemStatus']}
                   expandedId={rightExpandedId}
                   filterValues={rightFilters}

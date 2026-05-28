@@ -53,6 +53,7 @@ vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
 
 vi.mock('@/components/RequirementsTable', () => ({
   default: (props: {
+    defaultVisibleColumns?: string[]
     floatingActionRailPlacement?: string
     floatingActions?: {
       ariaLabel: string
@@ -717,6 +718,34 @@ describe('RequirementsSpecificationDetailClient', () => {
       'description',
       'area',
       'needsReference',
+    ])
+  })
+
+  it('passes context-specific reset defaults to the detail tables', async () => {
+    renderRequirementsSpecificationDetailClient()
+
+    await waitFor(() => {
+      expect(requirementsTableMock.mock.calls.length).toBeGreaterThanOrEqual(2)
+    })
+
+    const tableProps = requirementsTableMock.mock.calls.map(call => call[0])
+    const leftTableProps = tableProps.find(
+      props => props.rows[0]?.id === initialSpecificationItem.id,
+    )
+    const rightTableProps = tableProps.find(
+      props => props.rows[0]?.id === initialAvailableRequirement.id,
+    )
+
+    expect(leftTableProps?.defaultVisibleColumns).toEqual([
+      'uniqueId',
+      'description',
+      'area',
+      'needsReference',
+    ])
+    expect(rightTableProps?.defaultVisibleColumns).toEqual([
+      'uniqueId',
+      'description',
+      'area',
     ])
   })
 

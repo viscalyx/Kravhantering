@@ -77,6 +77,7 @@ export interface RequirementsTableProps {
   categories?: FilterOption[]
   columnDefaults?: RequirementListColumnDefault[]
   columnWidths?: RequirementColumnWidths
+  defaultVisibleColumns?: RequirementColumnId[]
   excludeColumns?: RequirementColumnId[]
   expandedId?: number | null
   filterValues?: FilterValues
@@ -1318,6 +1319,7 @@ export default function RequirementsTable({
   categories = [],
   columnDefaults,
   columnWidths = {},
+  defaultVisibleColumns,
   excludeColumns,
   expandedId,
   filterValues,
@@ -1355,7 +1357,8 @@ export default function RequirementsTable({
   qualityCharacteristics = [],
   types = [],
   requirementPackages = [],
-  visibleColumns = getDefaultVisibleRequirementColumns(columnDefaults),
+  visibleColumns = defaultVisibleColumns ??
+    getDefaultVisibleRequirementColumns(columnDefaults),
   wrapDescription = false,
 }: RequirementsTableProps) {
   const t = useTranslations('requirement')
@@ -2573,7 +2576,8 @@ export default function RequirementsTable({
     pendingResizePreviewVisibleWidthsRef.current = null
     resizePreviewVisibleWidthsRef.current = null
     applyVisibleColumns(
-      getDefaultVisibleRequirementColumns(normalizedColumnDefaults),
+      defaultVisibleColumns ??
+        getDefaultVisibleRequirementColumns(normalizedColumnDefaults),
     )
     onColumnWidthsChange?.({})
   }

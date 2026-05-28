@@ -62,6 +62,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [SPEC-08: update specification item status](#spec-08-update-specification-item-status)
   - [SPEC-09: manage needs references](#spec-09-manage-needs-references)
   - [SPEC-10: generate specification list report](#spec-10-generate-specification-list-report)
+  - [SPEC-11: reset specification column views](#spec-11-reset-specification-column-views)
 - [Deviations](#deviations)
   - [DEV-01: create a draft deviation](#dev-01-create-a-draft-deviation)
   - [DEV-02: request deviation review](#dev-02-request-deviation-review)
@@ -1057,6 +1058,25 @@ references can be deleted intentionally.
 
 **Expected result:** The report includes specification metadata and the chosen
 library or unique requirement rows.
+
+### SPEC-11: reset specification column views
+
+**Purpose:** Confirm each specification table restores its own default view.
+
+**Users:** `ada.admin`.
+
+**Prerequisites:** Open `/sv/specifications/ETJANST-UPP-2026`.
+
+**Steps:**
+
+1. In `Krav i underlaget`, open the column picker.
+1. Hide `Behovsreferens` and show one or more library-only columns.
+1. Select `Återställ standardvy`.
+1. Repeat from `Tillgängliga krav` after showing extra columns.
+
+**Expected result:** `Krav i underlaget` resets to `Krav-ID`, `Kravtext`,
+`Område`, and `Behovsreferens`. `Tillgängliga krav` resets to `Krav-ID`,
+`Kravtext`, and `Område`; it does not use the Kravbibliotek default column set.
 
 ## Deviations
 

@@ -144,8 +144,10 @@ The behaviors below apply to the requirement list rendered by:
   - column widths
 - If a user has saved visibility preferences, the list still displays those
   columns in the current admin-managed order.
-- The list reset action restores:
-  - the admin-managed default visible columns
+- The list reset action restores the current table context:
+  - the admin-managed default visible columns in the requirements library
+  - the specification-detail default visible columns in `Krav i underlaget`
+    and `Tillgängliga krav`
   - the admin-managed default order
   - the default width model
 
