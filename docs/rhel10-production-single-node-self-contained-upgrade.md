@@ -412,7 +412,16 @@ configuration change.
     sudo -iu kravhantering
     OBSOLETE_NETWORK=kravhantering-single-node_kravhantering-internal
     if podman network exists "$OBSOLETE_NETWORK"; then
-      podman network rm "$OBSOLETE_NETWORK"
+      ATTACHED_CONTAINERS="$(
+        podman network inspect "$OBSOLETE_NETWORK" \
+          --format '{{len .Containers}}'
+      )"
+      if [ "${ATTACHED_CONTAINERS:-0}" -eq 0 ]; then
+        podman network rm "$OBSOLETE_NETWORK"
+      else
+        printf 'Skipping obsolete network %s; %s containers still use it.\n' \
+          "$OBSOLETE_NETWORK" "$ATTACHED_CONTAINERS"
+      fi
     fi
     exit
     ```

@@ -511,6 +511,14 @@ describe('specification-governance-object-types routes', () => {
     )
     expect(((await r.json()) as { id: number }).id).toBe(1)
   })
+  it('PUT rejects empty update payloads before opening the DB', async () => {
+    const r = await putGovernanceObjectType(jsonReq('PUT', {}), makeParams('1'))
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockUpdateGovernanceObjectType).not.toHaveBeenCalled()
+  })
   it('DELETE deletes', async () => {
     mockDeleteGovernanceObjectType.mockResolvedValue(1)
     const r = await deleteGovernanceObjectType(

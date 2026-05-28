@@ -221,12 +221,13 @@ export async function collectDeviationForReport(
     throw new ReportDataError('No deviation in review found', 404)
   }
 
-  const version =
-    requirement.versions.find(v => v.id === inReview.requirementVersionId) ??
-    requirement.versions[requirement.versions.length - 1]
-
+  const version = requirement.versions.find(
+    v => v.id === inReview.requirementVersionId,
+  )
   if (!version) {
-    throw new ReportDataError('No requirement version found', 404)
+    throw new ReportDataError(
+      `Requirement version ${inReview.requirementVersionId} not found for requirement ${requirement.id}`,
+    )
   }
 
   return {

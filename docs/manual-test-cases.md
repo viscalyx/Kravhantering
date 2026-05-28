@@ -495,9 +495,11 @@ then metadata such as area, owner, references, and packages.
 1. Apply a simple filter such as `INT`.
 1. Open the report or print menu from the library action rail.
 1. Select the list report option.
+1. Repeat with the PDF list report option.
 
-**Expected result:** A report route or generated report opens for the filtered
-requirements without losing the current list context.
+**Expected result:** A report route opens or a generated PDF downloads for the
+filtered requirements without losing the current list context or duplicating
+the locale prefix in the route.
 
 ### REQ-11: localized library error recovery
 

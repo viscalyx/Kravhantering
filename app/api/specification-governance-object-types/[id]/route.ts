@@ -20,6 +20,9 @@ const updateGovernanceObjectTypeSchema = z
     nameSv: boundedDbStringSchema.optional(),
   })
   .strict()
+  .refine(body => body.nameEn !== undefined || body.nameSv !== undefined, {
+    message: 'At least one of nameEn or nameSv must be provided',
+  })
 
 export const PUT = secureMutationRoute({
   bodySchema: updateGovernanceObjectTypeSchema,

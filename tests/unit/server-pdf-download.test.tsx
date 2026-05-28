@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { useReducedMotion } from 'framer-motion'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import { downloadBlob } from '@/lib/browser-download'
@@ -86,6 +87,7 @@ describe('useServerPdfDownload', () => {
     fetchMock.mockReset()
     vi.stubGlobal('fetch', fetchMock)
     vi.mocked(downloadBlob).mockClear()
+    vi.mocked(useReducedMotion).mockReturnValue(false)
   })
 
   afterEach(() => {
@@ -130,6 +132,24 @@ describe('useServerPdfDownload', () => {
 
     expect(downloadBlob).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('keeps the progress bar static when reduced motion is requested', () => {
+    vi.mocked(useReducedMotion).mockReturnValue(true)
+    const pending = deferred<Response>()
+    fetchMock.mockReturnValueOnce(pending.promise)
+    render(<PdfDownloadProbe />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download' }))
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+
+    const progressBar = screen
+      .getByRole('dialog', { name: 'Preparing PDF' })
+      .querySelector('.bg-primary-600')
+    expect(progressBar).toBeInTheDocument()
+    expect(progressBar).not.toHaveClass('animate-pulse')
   })
 
   it('closes the progress modal and shows feedback when generation fails', async () => {

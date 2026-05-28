@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -8,6 +8,10 @@ const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx'])
 function sourceFiles(root: string): string[] {
   const absoluteRoot = path.join(process.cwd(), root)
   const files: string[] = []
+
+  if (!existsSync(absoluteRoot) || !statSync(absoluteRoot).isDirectory()) {
+    return files
+  }
 
   for (const entry of readdirSync(absoluteRoot)) {
     const absoluteEntry = path.join(absoluteRoot, entry)

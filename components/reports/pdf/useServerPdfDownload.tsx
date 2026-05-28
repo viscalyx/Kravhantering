@@ -130,6 +130,12 @@ function ServerPdfDownloadDialog({
   const tr = useTranslations('reports')
   const tc = useTranslations('common')
   const shouldReduceMotion = useReducedMotion()
+  const progressBarClassName = [
+    'h-full w-1/2 rounded-full bg-primary-600 dark:bg-primary-400',
+    shouldReduceMotion ? null : 'animate-pulse',
+  ]
+    .filter(Boolean)
+    .join(' ')
   const progressRef = useRef<HTMLDivElement>(null)
   const errorRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -243,7 +249,7 @@ function ServerPdfDownloadDialog({
                 aria-hidden="true"
                 className="mt-4 h-1.5 overflow-hidden rounded-full bg-secondary-100 dark:bg-secondary-800"
               >
-                <div className="h-full w-1/2 animate-pulse rounded-full bg-primary-600 dark:bg-primary-400" />
+                <div className={progressBarClassName} />
               </div>
             </motion.div>
           )}

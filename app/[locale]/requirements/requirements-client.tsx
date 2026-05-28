@@ -941,7 +941,7 @@ export default function RequirementsClient({
                         onClick: () =>
                           void pdfDownload.download({
                             fallbackFilename: 'requirements-list.pdf',
-                            url: `/${locale}/requirements/reports/pdf/list?ids=${displayRows.map(r => r.id).join(',')}`,
+                            url: `/requirements/reports/pdf/list?ids=${displayRows.map(r => r.id).join(',')}`,
                           }),
                       },
                     ],
@@ -983,7 +983,7 @@ export default function RequirementsClient({
                                 void pdfDownload.download({
                                   fallbackFilename:
                                     'combined-review-report.pdf',
-                                  url: `/${locale}/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
+                                  url: `/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
                                 }),
                             },
                           ],
