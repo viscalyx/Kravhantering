@@ -903,10 +903,19 @@ sudo install -o root -g kravhantering -m 0644 ca.crt \
   /etc/kravhantering/tls/ca.crt
 ```
 
+### Certificate Files
+
+<!-- markdownlint-disable MD013 -->
+| File | Used for |
+| --- | --- |
+| `/etc/kravhantering/tls/fullchain.pem` | Public server certificate chain that nginx presents to browsers, health checks and other HTTPS clients. It contains the server certificate plus the intermediate CA certificates needed to verify it. |
+| `/etc/kravhantering/tls/privkey.pem` | Private key for the server certificate. nginx uses it to prove that this node owns the certificate. Keep it restricted; it must not be copied into app containers, logs or support bundles. |
+| `/etc/kravhantering/tls/ca.crt` | Public CA certificate that the Node.js app trusts through `NODE_EXTRA_CA_CERTS`. In the single-node stack it lets `app-runtime` verify the HTTPS Keycloak issuer exposed through nginx. |
+<!-- markdownlint-enable MD013 -->
+
 `fullchain.pem` and `privkey.pem` are mounted by nginx. `ca.crt` is mounted by
-`app-runtime` through `NODE_EXTRA_CA_CERTS` so the app can trust the internal
-Keycloak issuer through nginx. Keep `privkey.pem` restricted to `0640`.
-Install `ca.crt` as `0644` because it is public trust material and the
+`app-runtime` through `NODE_EXTRA_CA_CERTS`. Keep `privkey.pem` restricted to
+`0640`. Install `ca.crt` as `0644` because it is public trust material and the
 non-root Node.js process inside `app-runtime` must be able to read it.
 
 For a temporary isolated lab host, Appendix A shows how to create these files
