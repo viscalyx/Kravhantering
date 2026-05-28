@@ -1022,6 +1022,8 @@ edited, inspected, and assigned to requirement rows.
 **Steps:**
 
 1. Open the `Behovsreferenser` tab in the left panel.
+1. Verify the tab is in the left list header and that the right-side action
+   pills change from requirement-list actions to the new-reference action.
 1. Create a new needs reference with a description.
 1. Create another needs reference without a description.
 1. Verify the row without a description shows a completion warning.

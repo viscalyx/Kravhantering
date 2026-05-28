@@ -85,15 +85,21 @@ The behaviors below apply to the requirement list rendered by:
   horizontally scrollable on all viewport sizes so the sticky chrome does not
   cover the table body or inline detail pane.
 - Specification-detail split tables also keep their list title bar sticky in that
-  same chrome so the section title and top rail stay visible with the headers.
+  same chrome so the left-panel tabs, section actions, and top rail stay visible
+  with the headers.
 - On `xl` and wider specification-detail layouts, the `Krav i underlaget` and
   `Tillgängliga krav` cards each become their own vertically scrollable region
   and stay pinned below the site navigation while the user scrolls inside a
   list.
 - The left specification-detail panel has tabs for `Krav i underlaget` and
-  `Behovsreferenser`; the tab selection is reflected in the URL through
-  `leftTab=needs-references` so a copied link can reopen the needs-reference
-  register directly.
+  `Behovsreferenser` embedded in the panel's sticky list header rather than in
+  a separate row above the list; the tab selection is reflected in the URL
+  through `leftTab=needs-references` so a copied link can reopen the
+  needs-reference register directly.
+- The action pills on the right side of that sticky header are contextual:
+  `Krav i underlaget` shows requirement-list actions such as local creation,
+  column settings, print, export, and selected-row bulk actions, while
+  `Behovsreferenser` replaces them with the needs-reference creation action.
 - `Behovsreferenser` is a specification-local register. It allows users to
   create and edit labels plus optional descriptions, delete only unused
   references, expand a row to inspect linked requirements, and intentionally

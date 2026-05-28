@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsSpecificationDetailClient from '@/app/[locale]/specifications/[slug]/requirements-specification-detail-client'
@@ -740,7 +747,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).toBe(JSON.stringify(storedLeftColumns))
   })
 
-  it('uses inline top rails and sticky table titles for the split tables', async () => {
+  it('uses inline top rails and embeds the left tabs in the sticky table title', async () => {
     const { container } = renderRequirementsSpecificationDetailClient()
 
     await waitFor(() => {
@@ -748,13 +755,26 @@ describe('RequirementsSpecificationDetailClient', () => {
     })
 
     expect(
-      screen.getByText('specification.itemsInSpecification', {
+      screen.queryByText('specification.itemsInSpecification', {
         selector: 'h2',
       }),
-    ).toBeInTheDocument()
+    ).not.toBeInTheDocument()
     expect(
       screen.getByText('specification.availableRequirements', {
         selector: 'h2',
+      }),
+    ).toBeInTheDocument()
+    const leftStickyTitle = screen
+      .getAllByTestId('requirements-table-sticky-title')
+      .find(element =>
+        within(element).queryByRole('tab', {
+          name: /specification\.itemsInSpecification/,
+        }),
+      )
+    expect(leftStickyTitle).toBeTruthy()
+    expect(
+      within(leftStickyTitle as HTMLElement).getByRole('tab', {
+        name: /specification\.needsReferences/,
       }),
     ).toBeInTheDocument()
 
@@ -1099,11 +1119,21 @@ describe('RequirementsSpecificationDetailClient', () => {
       ],
     })
 
+    expect(
+      screen.getByRole('button', { name: 'common.export' }),
+    ).toBeInTheDocument()
+
     fireEvent.click(
       screen.getByRole('tab', { name: /specification\.needsReferences/ }),
     )
 
     expect(replaceStateSpy).toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: 'specification.newNeedsReference' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.export' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByText('IAM-42')).toBeInTheDocument()
     expect(
       screen.getByText('specification.missingNeedsReferenceDescription'),

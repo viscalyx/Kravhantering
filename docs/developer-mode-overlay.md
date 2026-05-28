@@ -159,9 +159,10 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `requirements specification detail` context with
   `detail action: edit specification` on the icon trigger and
   `crud form: edit` on the opened editor.
-- Requirement specification detail left-panel create affordance for
-  specification-local requirements uses the `requirements specification detail`
-  context with `table action: create local requirement`.
+- Requirement specification detail left-panel create affordances use the
+  `requirements specification detail` context with `table action` values
+  `create local requirement` and `create needs reference`. They live in the
+  sticky list header beside the embedded left-panel tabs.
 - Specification-local inline detail views in specification context use the
   `requirements specification detail` context with
   `detail pane: specification-local requirement`.
