@@ -262,9 +262,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Requirement specification list print pages expose `report state` markers
   with values `report-print:error`, `report-print:loading`, and
   `report-print:renderer`.
-- Requirement specification list PDF pages expose `report state` markers with
-  values `report-pdf:error`, `report-pdf:loading`, and
-  `report-pdf:ready`.
+- PDF downloads use the shared modal marker `dialog` with values
+  `Generating PDF` and `PDF download error`; specification list PDFs no longer
+  render an intermediate client-side PDF page.
 - AI Requirement Generator dialog uses the `ai-requirement-generator`
   context with `dialog: ai-requirement-generator` on the modal
   container, `dialog title` on the heading,

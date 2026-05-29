@@ -130,7 +130,7 @@ graph TB
 
     subgraph "Utgående format"
         CSV["CSV-export"]
-        PDF["PDF-rapporter<br/>react-pdf · webbläsarutskrift"]
+        PDF["PDF-rapporter<br/>Node-renderad react-pdf · webbläsarutskrift"]
     end
 
     UI -->|HTTP| API
@@ -591,10 +591,12 @@ hjälptexterna förbjuder personidentifierande uppgifter där.
 
 - **CSV-export** — Filtrerade kravlistor exporteras
   som CSV via `format=csv` på API:et.
-- **PDF-rapporter** — Genereras på klientsidan via
-  `@react-pdf/renderer` (automatisk nedladdning) eller
-  via webbläsarens utskriftsfunktion (HTML/CSS med
-  `@media print`).
+- **PDF-rapporter** — Genereras i Node-route handlers med
+  `@react-pdf/renderer` och returneras som nedladdningsbara binära PDF-svar,
+  eller via webbläsarens utskriftsfunktion (HTML/CSS med `@media print`).
+  Webbläsaren importerar inte React-PDF, vilket gör rapportflödet kompatibelt
+  med strikt Content Security Policy utan `unsafe-eval` eller
+  `wasm-unsafe-eval`.
 
 ### Språkväxling
 
@@ -730,7 +732,7 @@ förvaltningens ordinarie it-stöd, inte i applikationen.
 │                                                                             │
 │  << Application Interfaces >>                                               │
 │  ┌───────────┐  ┌──────────┐  ┌──────────────────────────┐                  │
-│  │ JSON/REST │  │ CSV      │  │ PDF (react-pdf / print)  │                  │
+│  │ JSON/REST │  │ CSV      │  │ PDF (server / print)     │                  │
 │  └───────────┘  └──────────┘  └──────────────────────────┘                  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -819,7 +821,7 @@ erDiagram
     requirement_areas ||--o{ requirement_area_co_authors : "har medförfattare"
     requirements_specifications ||--o{ requirements_specification_items : "innehåller"
     requirements_specifications ||--o{ specification_local_requirements : "innehåller kravunderlagets unika krav"
-    requirements_specifications }o--o| specification_responsibility_areas : "ansvarsområde"
+    requirements_specifications }o--o| specification_governance_object_types : "styrningsobjektstyp"
     requirements_specifications }o--o| specification_implementation_types : "genomförandetyp"
     requirements_specifications }o--o| specification_lifecycle_statuses : "livscykelstatus"
     requirements_specifications ||--o{ specification_needs_references : "behovsreferenser"
@@ -855,7 +857,7 @@ kravunderlagshistorik. Tabellerna `archiving_retention_*` driver Admin
 Centers arkiveringsflöde med policyer, körningskvitton och undantag/legal hold.
 Tabellen `action_audit_events` saknar främmande nycklar medvetet så att
 åtgärdsrader bevaras även när målobjekt gallras eller anonymiseras.
-Kravunderlag kan klassas med ansvarsområde, genomförandetyp,
+Kravunderlag kan klassas med styrningsobjektstyp, genomförandetyp,
 livscykelstatus, behovsreferenser och medförfattare så att samma
 kravbibliotek kan användas i flera verksamhetssammanhang.
 `specification_needs_references` är kravunderlagslokala etiketter med valfri

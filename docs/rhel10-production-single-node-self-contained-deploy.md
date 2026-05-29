@@ -71,7 +71,7 @@ verification.
 | `APP_HOST` | `PUBLIC_HOSTNAME`, app URLs, `KC_HOSTNAME`, realm redirect/logout settings, realm web origins, TLS certificate SANs and smoke checks | No default | Always record the public DNS name without `https://`, for example `kravhantering.example.internal`. |
 | `NEXT_PUBLIC_SITE_URL` | `NEXT_PUBLIC_SITE_URL` in `app.env` | `https://<APP_HOST>` | Verify after choosing `APP_HOST`; plan only if the public URL cannot use the normal scheme and host. |
 | `KC_HOSTNAME` | `KC_HOSTNAME` in `keycloak.env` | `https://<APP_HOST>/auth` | Verify after choosing `APP_HOST`; plan only if Keycloak is deliberately exposed at another public URL. |
-| `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Plan only if the rootless Podman network uses a different DNS resolver. |
+| `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Verify from the actual Compose network. It can change when the internal network is renamed, recreated or assigned another subnet. |
 | `MSSQL_SA_PASSWORD` | `MSSQL_SA_PASSWORD` in `sqlserver.env` and `DB_BOOTSTRAP_ADMIN_PASSWORD` in `db-job.env` | No default | Always generate a unique SQL Server `sa` password. Use the same value in both places and follow [Generate Unique Secrets](#generate-unique-secrets). |
 | `DB_JOB_PASSWORD` | `DB_PASSWORD` in `db-job.env` | No default | Always generate a unique SQL Server password for the `kravhantering_job` migration/seed login. Follow [Generate Unique Secrets](#generate-unique-secrets). |
 | `APP_DB_PASSWORD` | `DB_BOOTSTRAP_APP_PASSWORD` in `db-job.env` and `DB_PASSWORD` in `app.env` | No default | Always generate a unique SQL Server password for the `kravhantering_app` runtime login. Use the same value in both places and follow [Generate Unique Secrets](#generate-unique-secrets). |
@@ -515,11 +515,13 @@ dynamic `app-runtime` and Keycloak lookups:
 NGINX_RESOLVER=10.89.0.1
 ```
 
-The shown value is the common rootless Podman resolver. nginx uses it to
-re-resolve upstream container names after `app-runtime` or Keycloak restarts,
-instead of keeping a stale container IP. If the deployment network uses a
-different resolver, the startup flow below shows how to print the actual
-resolver from inside the Compose network before nginx starts.
+The shown value is the common rootless Podman resolver, not a fixed release
+requirement. nginx uses it to re-resolve upstream container names after
+`app-runtime` or Keycloak restarts, instead of keeping a stale container IP.
+The resolver can change when the internal Compose network is renamed,
+recreated or assigned another subnet. Before starting nginx, run the resolver
+check below and update `NGINX_RESOLVER` in
+`/etc/kravhantering/release.env` to the printed resolver IP if it differs.
 
 ### `/etc/kravhantering/sqlserver.env`
 
@@ -863,6 +865,10 @@ from `/etc/kravhantering/keycloak.env`. The sync adds, updates and removes
 generated demo users, adopts same-username users into the demo set and preserves
 unrelated users:
 
+The `STACK_NETWORK` variable is for temporary `podman run` containers that
+need internal service-name DNS such as `keycloak` or `sqlserver`. `podman
+compose` attaches the long-running services to the network automatically.
+
 ```bash
 sudo -iu kravhantering
 cd /opt/kravhantering/current
@@ -870,11 +876,14 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+STACK_NETWORK=kravhantering-internal
 DEMO_USERS_FILE=$PWD/keycloak/demo-users.not-for-production.json
 DEMO_USERS_TARGET=/workspace/keycloak/demo-users.not-for-production.json
 SCRIPT_FILE=$PWD/scripts/keycloak-demo-users.mjs
 SCRIPT_TARGET=/workspace/scripts/keycloak-demo-users.mjs
+
+podman network exists "$STACK_NETWORK" || \
+  podman network create "$STACK_NETWORK"
 
 podman run --rm --pull=never --network "$STACK_NETWORK" \
   --entrypoint node --user 0:0 \
@@ -953,8 +962,30 @@ exit
 
 ## Start the Single-Node Stack
 
-Start SQL Server and Keycloak first, then run the database bootstrap,
-migration and required seed jobs once for the release:
+Start SQL Server and Keycloak first:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+set -a
+. /etc/kravhantering/release.env
+set +a
+STACK_NETWORK=kravhantering-internal
+
+podman network exists "$STACK_NETWORK" || \
+  podman network create "$STACK_NETWORK"
+
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml up -d sqlserver keycloak
+
+exit
+```
+
+The `STACK_NETWORK` variable is for temporary `podman run` containers that
+need internal service-name DNS such as `keycloak` or `sqlserver`. `podman
+compose` attaches the long-running services to the network automatically.
+
+Confirm the nginx resolver from inside the same Compose network:
 
 ```bash
 sudo -iu kravhantering
@@ -963,13 +994,40 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+STACK_NETWORK=kravhantering-internal
 
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml up -d sqlserver keycloak
+RESOLVER_IP="$(
+  podman run --rm --network "$STACK_NETWORK" --entrypoint /bin/sh \
+    "$NGINX_IMAGE_REF" -c \
+    "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+)"
+printf 'Use NGINX_RESOLVER=%s in /etc/kravhantering/release.env\n' \
+  "$RESOLVER_IP"
 
-podman run --rm --network "$STACK_NETWORK" --entrypoint /bin/sh \
-  "$NGINX_IMAGE_REF" -c "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+exit
+```
+
+If the printed resolver differs from `NGINX_RESOLVER`, update
+`/etc/kravhantering/release.env` to the printed IP before starting nginx:
+
+```bash
+# Replace 10.89.1.1 with the printed resolver IP.
+RESOLVER_IP=10.89.1.1
+sudo sed -i "s#^NGINX_RESOLVER=.*#NGINX_RESOLVER=${RESOLVER_IP}#" \
+  /etc/kravhantering/release.env
+```
+
+Run the database bootstrap, migration and required seed jobs once for the
+release:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+set -a
+. /etc/kravhantering/release.env
+set +a
+
+STACK_NETWORK=kravhantering-internal
 
 podman run --rm --network "$STACK_NETWORK" \
   --env-file /etc/kravhantering/db-job.env \
@@ -1000,7 +1058,7 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+STACK_NETWORK=kravhantering-internal
 DEMO=$PWD/demo-seed
 TYPEORM=/workspace/typeorm
 DOG=seed-dogfood.mjs
@@ -1033,9 +1091,8 @@ podman compose --env-file /etc/kravhantering/release.env \
 exit
 ```
 
-If the printed resolver differs from `NGINX_RESOLVER`, update
-`/etc/kravhantering/release.env` and rerun the long-running-service start
-command before checking readiness.
+The full start command reads the corrected value from
+`/etc/kravhantering/release.env`.
 
 The Compose file intentionally contains only long-running services. The
 database jobs are release operations run with `podman run --rm` against the

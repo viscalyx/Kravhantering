@@ -121,15 +121,15 @@ vi.mock('@/lib/dal/specification-lifecycle-statuses', () => ({
     mockDeleteLifecycle(...a),
 }))
 
-const mockUpdateArea = vi.fn()
-const mockDeleteArea = vi.fn()
-vi.mock('@/lib/dal/specification-responsibility-areas', () => ({
-  listSpecificationResponsibilityAreas: async () => [{ id: 1 }],
-  createSpecificationResponsibilityArea: async () => ({ id: 2 }),
-  updateSpecificationResponsibilityArea: (...a: unknown[]) =>
-    mockUpdateArea(...a),
-  deleteSpecificationResponsibilityArea: (...a: unknown[]) =>
-    mockDeleteArea(...a),
+const mockUpdateGovernanceObjectType = vi.fn()
+const mockDeleteGovernanceObjectType = vi.fn()
+vi.mock('@/lib/dal/specification-governance-object-types', () => ({
+  listSpecificationGovernanceObjectTypes: async () => [{ id: 1 }],
+  createSpecificationGovernanceObjectType: async () => ({ id: 2 }),
+  updateSpecificationGovernanceObjectType: (...a: unknown[]) =>
+    mockUpdateGovernanceObjectType(...a),
+  deleteSpecificationGovernanceObjectType: (...a: unknown[]) =>
+    mockDeleteGovernanceObjectType(...a),
 }))
 
 const mockUpdateReqArea = vi.fn()
@@ -242,6 +242,14 @@ import {
 } from '@/app/api/requirement-packages/route'
 import { GET as getTypes } from '@/app/api/requirement-types/route'
 import {
+  DELETE as deleteGovernanceObjectType,
+  PUT as putGovernanceObjectType,
+} from '@/app/api/specification-governance-object-types/[id]/route'
+import {
+  GET as getGovernanceObjectTypes,
+  POST as postGovernanceObjectType,
+} from '@/app/api/specification-governance-object-types/route'
+import {
   DELETE as deleteImplType,
   PUT as putImplType,
 } from '@/app/api/specification-implementation-types/[id]/route'
@@ -257,14 +265,6 @@ import {
   GET as getLifecycleStatuses,
   POST as postLifecycle,
 } from '@/app/api/specification-lifecycle-statuses/route'
-import {
-  DELETE as deleteRespArea,
-  PUT as putRespArea,
-} from '@/app/api/specification-responsibility-areas/[id]/route'
-import {
-  GET as getAreas,
-  POST as postArea,
-} from '@/app/api/specification-responsibility-areas/route'
 import {
   DELETE as deletePkg,
   PUT as putPkg,
@@ -483,18 +483,18 @@ describe('specification-lifecycle-statuses routes', () => {
   })
 })
 
-describe('specification-responsibility-areas routes', () => {
+describe('specification-governance-object-types routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('GET returns areas', async () => {
-    const r = await getAreas()
-    const j = (await r.json()) as { areas: { id: number }[] }
-    expect(j.areas).toHaveLength(1)
+  it('GET returns governance object types', async () => {
+    const r = await getGovernanceObjectTypes()
+    const j = (await r.json()) as { governanceObjectTypes: { id: number }[] }
+    expect(j.governanceObjectTypes).toHaveLength(1)
   })
   it('POST creates with 201', async () => {
-    const r = await postArea(
+    const r = await postGovernanceObjectType(
       new Request('http://l', {
         method: 'POST',
         body: '{"nameSv":"A","nameEn":"B"}',
@@ -504,25 +504,33 @@ describe('specification-responsibility-areas routes', () => {
     expect(r.status).toBe(201)
   })
   it('PUT updates', async () => {
-    mockUpdateArea.mockResolvedValue({ id: 1 })
-    const r = await putRespArea(
+    mockUpdateGovernanceObjectType.mockResolvedValue({ id: 1 })
+    const r = await putGovernanceObjectType(
       jsonReq('PUT', { nameEn: 'X' }),
       makeParams('1'),
     )
     expect(((await r.json()) as { id: number }).id).toBe(1)
   })
+  it('PUT rejects empty update payloads before opening the DB', async () => {
+    const r = await putGovernanceObjectType(jsonReq('PUT', {}), makeParams('1'))
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockUpdateGovernanceObjectType).not.toHaveBeenCalled()
+  })
   it('DELETE deletes', async () => {
-    mockDeleteArea.mockResolvedValue(1)
-    const r = await deleteRespArea(
+    mockDeleteGovernanceObjectType.mockResolvedValue(1)
+    const r = await deleteGovernanceObjectType(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('1'),
     )
     expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
   })
 
-  it('DELETE returns 404 without audit when the responsibility area is missing', async () => {
-    mockDeleteArea.mockResolvedValue(0)
-    const r = await deleteRespArea(
+  it('DELETE returns 404 without audit when the governance object type is missing', async () => {
+    mockDeleteGovernanceObjectType.mockResolvedValue(0)
+    const r = await deleteGovernanceObjectType(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('404'),
     )
@@ -535,19 +543,19 @@ describe('specification-responsibility-areas routes', () => {
   })
 
   it('returns 400 for invalid ids before opening the DB', async () => {
-    const r = await putRespArea(
+    const r = await putGovernanceObjectType(
       jsonReq('PUT', { nameEn: 'X' }),
       makeParams('abc'),
     )
 
     expect(r.status).toBe(400)
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
-    expect(mockUpdateArea).not.toHaveBeenCalled()
+    expect(mockUpdateGovernanceObjectType).not.toHaveBeenCalled()
   })
 
-  it('returns 404 when updating a missing responsibility area', async () => {
-    mockUpdateArea.mockResolvedValue(undefined)
-    const r = await putRespArea(
+  it('returns 404 when updating a missing governance object type', async () => {
+    mockUpdateGovernanceObjectType.mockResolvedValue(undefined)
+    const r = await putGovernanceObjectType(
       jsonReq('PUT', { nameEn: 'Missing' }),
       makeParams('404'),
     )

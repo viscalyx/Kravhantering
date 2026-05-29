@@ -77,7 +77,7 @@
     "taxonomy": "Reference data",
     "qualityCharacteristics": "Quality characteristics",
     "riskLevels": "Risk levels",
-    "responsibilityAreas": "Business objects",
+    "governanceObjectTypes": "Governance object types",
     "implementationTypes": "Implementation types",
     "lifecycleStatuses": "Lifecycle statuses",
     "areaOwners": "Requirement area owners",
@@ -306,8 +306,8 @@
     "help": {
       "name": "Provide a clear name that makes the specification easy to recognize and reuse."
     },
-    "responsibilityArea": "Business object",
-    "responsibilityAreaHelp": "Choose the business object the specification belongs to, or leave it blank if the specification spans multiple business objects.",
+    "governanceObjectType": "Governance object type",
+    "governanceObjectTypeHelp": "Choose the governance object type the specification belongs to, or leave it blank if the specification spans multiple governance object types.",
     "responsible": "Responsible",
     "responsibleDisplayName": "Responsible person",
     "responsibleDisplayNameHelp": "Enter the display name for the person responsible for the requirements specification. Do not use this for the user who registers a deviation unless that person also owns the specification.",
@@ -548,7 +548,8 @@
     "errorTitle": "Error",
     "loading": "Loading report...",
     "loadingData": "Loading report data...",
-    "generatingPdf": "Generating PDF...",
+    "generatingPdfTitle": "Preparing PDF",
+    "generatingPdf": "Working...",
     "pdfDownloadStarted": "PDF download started.",
     "downloadAgain": "Download Again",
     "printButton": "Print",
@@ -562,7 +563,7 @@
     "suggestionHistoryFilenameLabel": "Improvement Suggestion History",
     "specificationCover": {
       "specificationId": "Specification ID",
-      "responsibilityArea": "Responsibility area",
+      "governanceObjectType": "Governance object type",
       "implementationType": "Implementation type",
       "lifecycleStatus": "Lifecycle status",
       "businessNeedsReference": "Specification purpose"
@@ -709,16 +710,16 @@
     },
     "emptyState": "No requirement area owners yet. Create your first owner."
   },
-  "responsibilityAreaMgmt": {
+  "governanceObjectTypeMgmt": {
     "name": "Name",
     "nameSvLabel": "Name (Swedish)",
-    "nameSvHelp": "Enter the Swedish name for this business object.",
+    "nameSvHelp": "Enter the Swedish name for this governance object type.",
     "nameEnLabel": "Name (English)",
-    "nameEnHelp": "Enter the English name for this business object.",
-    "title": "Business objects",
-    "newItem": "New business object",
-    "editItem": "Edit business object",
-    "emptyState": "No business objects yet. Create your first business object."
+    "nameEnHelp": "Enter the English name for this governance object type.",
+    "title": "Governance object types",
+    "newItem": "New governance object type",
+    "editItem": "Edit governance object type",
+    "emptyState": "No governance object types yet. Create your first governance object type."
   },
   "implementationTypeMgmt": {
     "name": "Name",
@@ -1048,7 +1049,7 @@
     "requirementPackagesDescription": "Manage requirements packages linked to requirements.",
     "statusesDescription": "Manage lifecycle statuses and their ordering.",
     "qualityAttributesDescription": "Manage quality characteristics from ISO/IEC 25010:2023.",
-    "responsibilityAreasDescription": "Manage business objects for requirements specifications.",
+    "governanceObjectTypesDescription": "Manage governance object types for requirements specifications.",
     "implementationTypesDescription": "Manage implementation types for requirements specifications.",
     "lifecycleStatusesDescription": "Manage lifecycle statuses for requirements specifications.",
     "areaOwnersDescription": "Manage owners that can be assigned to requirement areas.",
@@ -1117,10 +1118,10 @@
       "plural": "Requirements packages",
       "definitePlural": "Requirements packages"
     },
-    "responsibilityArea": {
-      "singular": "Business object",
-      "plural": "Business objects",
-      "definitePlural": "Business objects"
+    "governanceObjectType": {
+      "singular": "Governance object type",
+      "plural": "Governance object types",
+      "definitePlural": "Governance object types"
     },
     "implementationType": {
       "singular": "Implementation type",
@@ -1355,7 +1356,7 @@
       "title": "Requirements Specifications",
       "overview": {
         "heading": "What is a requirements specification?",
-        "body": "Specifications group published requirements for a specific delivery, procurement, or business context. Each specification can be linked to a business object, an implementation type, and a responsible person."
+        "body": "Specifications group published requirements for a specific delivery, procurement, or business context. Each specification can be linked to a governance object type, an implementation type, and a responsible person."
       },
       "create": {
         "heading": "Creating and editing",
@@ -1381,15 +1382,15 @@
         "body": "Track how far each requirement has progressed within this specification: included, in progress, implemented, verified, or not applicable. Change the status inline in the table."
       }
     },
-    "responsibilityAreas": {
-      "title": "Business Objects",
+    "governanceObjectTypes": {
+      "title": "Governance Object Types",
       "overview": {
-        "heading": "What are business objects?",
-        "body": "Business objects categorize requirements specifications by the part of the business they belong to. Assign a business object when creating or editing a specification."
+        "heading": "What are governance object types?",
+        "body": "Governance object types identify the type of governance context a requirements specification belongs to, such as management object, delivery area, service area, project, or assignment."
       },
       "manage": {
         "heading": "Managing",
-        "body": "Click the edit icon on a row to rename a business object. Use the delete icon to remove it — only business objects not linked to any specification can be deleted."
+        "body": "Click the edit icon on a row to rename a governance object type. Use the delete icon to remove it — only governance object types not linked to any specification can be deleted."
       }
     },
     "implementationTypes": {
@@ -1426,7 +1427,7 @@
       },
       "referenceData": {
         "heading": "Reference data",
-        "body": "Quick links to manage areas, types, requirements packages, statuses, quality characteristics, business objects, implementation types, and requirement area owners."
+        "body": "Quick links to manage areas, types, requirements packages, statuses, quality characteristics, governance object types, implementation types, and requirement area owners."
       },
       "privacy": {
         "heading": "Privacy erasure",

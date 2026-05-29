@@ -201,10 +201,10 @@ export function createSpecificationWorkflow({
                 : null,
               itemCount: p.itemCount,
               name: p.name,
-              responsibilityArea: p.responsibilityArea
+              governanceObjectType: p.governanceObjectType
                 ? {
-                    nameEn: p.responsibilityArea.nameEn,
-                    nameSv: p.responsibilityArea.nameSv,
+                    nameEn: p.governanceObjectType.nameEn,
+                    nameSv: p.governanceObjectType.nameSv,
                   }
                 : null,
               uniqueId: p.uniqueId,
@@ -235,18 +235,18 @@ export function createSpecificationWorkflow({
               responsibleDisplayName: p.responsibleDisplayName,
               responsibleHsaId: p.responsibleHsaId,
               canResponsibleGenerateAi: p.canResponsibleGenerateAi,
-              responsibilityArea: p.responsibilityArea
+              governanceObjectType: p.governanceObjectType
                 ? {
-                    id: p.responsibilityArea.id,
-                    nameEn: p.responsibilityArea.nameEn,
-                    nameSv: p.responsibilityArea.nameSv,
+                    id: p.governanceObjectType.id,
+                    nameEn: p.governanceObjectType.nameEn,
+                    nameSv: p.governanceObjectType.nameSv,
                   }
                 : null,
               specificationImplementationTypeId:
                 p.specificationImplementationTypeId,
               specificationLifecycleStatusId: p.specificationLifecycleStatusId,
-              specificationResponsibilityAreaId:
-                p.specificationResponsibilityAreaId,
+              specificationGovernanceObjectTypeId:
+                p.specificationGovernanceObjectTypeId,
               updatedAt: p.updatedAt,
             }
           })

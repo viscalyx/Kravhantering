@@ -190,10 +190,10 @@ const pages: MarkerSpec[] = [
             id: 1,
             name: 'P',
             uniqueId: 'P',
-            specificationResponsibilityAreaId: null,
+            specificationGovernanceObjectTypeId: null,
             specificationImplementationTypeId: null,
             specificationLifecycleStatusId: null,
-            responsibilityArea: null,
+            governanceObjectType: null,
             implementationType: null,
             lifecycleStatus: null,
             itemCount: 0,
@@ -219,10 +219,10 @@ const pages: MarkerSpec[] = [
               id: 1,
               name: 'P',
               uniqueId: 'P',
-              specificationResponsibilityAreaId: null,
+              specificationGovernanceObjectTypeId: null,
               specificationImplementationTypeId: null,
               specificationLifecycleStatusId: null,
-              responsibilityArea: null,
+              governanceObjectType: null,
               implementationType: null,
               lifecycleStatus: null,
               itemCount: 0,
@@ -236,8 +236,8 @@ const pages: MarkerSpec[] = [
         }) as Response
       }
 
-      if (url === '/api/specification-responsibility-areas') {
-        return okJson({ areas: [] }) as Response
+      if (url === '/api/specification-governance-object-types') {
+        return okJson({ governanceObjectTypes: [] }) as Response
       }
 
       if (url === '/api/specification-implementation-types') {
@@ -259,15 +259,15 @@ const pages: MarkerSpec[] = [
     expectedFetchCalls: 4,
   },
   {
-    label: 'AnsvarsomradenClient (responsibility areas)',
-    context: 'responsibility areas',
+    label: 'GovernanceObjectTypesClient (governance object types)',
+    context: 'governance object types',
     factory: () =>
       import(
-        '@/app/[locale]/specifications/responsibility-areas/responsibility-areas-client'
+        '@/app/[locale]/specifications/governance-object-types/governance-object-types-client'
       ) as Promise<{ default: React.ComponentType }>,
     fetchResponse: () =>
       okJson({
-        areas: [{ id: 1, nameSv: 'R', nameEn: 'R' }],
+        governanceObjectTypes: [{ id: 1, nameSv: 'R', nameEn: 'R' }],
       }),
     expectedMarkers: ['create button', 'crud table', 'table action'],
   },

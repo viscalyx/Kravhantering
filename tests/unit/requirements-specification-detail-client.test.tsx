@@ -53,6 +53,7 @@ vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
 
 vi.mock('@/components/RequirementsTable', () => ({
   default: (props: {
+    defaultVisibleColumns?: string[]
     floatingActionRailPlacement?: string
     floatingActions?: {
       ariaLabel: string
@@ -209,8 +210,8 @@ const initialSpec = {
   responsibleHsaId: 'SE5560000001-ada1',
   specificationImplementationTypeId: 2,
   specificationLifecycleStatusId: 3,
-  specificationResponsibilityAreaId: 1,
-  responsibilityArea: { id: 1, nameEn: 'Platform', nameSv: 'Plattform' },
+  specificationGovernanceObjectTypeId: 1,
+  governanceObjectType: { id: 1, nameEn: 'Platform', nameSv: 'Plattform' },
   uniqueId: 'ETJANST-UPP-2026',
 }
 
@@ -292,7 +293,7 @@ function createInitialData(): RequirementsSpecificationDetailInitialData {
     specificationLifecycleStatuses: [
       { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
     ],
-    specificationResponsibilityAreas: [
+    specificationGovernanceObjectTypes: [
       { id: 1, nameEn: 'Platform', nameSv: 'Plattform' },
     ],
   }
@@ -340,8 +341,8 @@ describe('RequirementsSpecificationDetailClient', () => {
               canResponsibleGenerateAi: true,
               specificationImplementationTypeId: 2,
               specificationLifecycleStatusId: 3,
-              specificationResponsibilityAreaId: 1,
-              responsibilityArea: { nameEn: 'Platform', nameSv: 'Plattform' },
+              specificationGovernanceObjectTypeId: 1,
+              governanceObjectType: { nameEn: 'Platform', nameSv: 'Plattform' },
               uniqueId: 'ETJANST-UPP-2026',
             }),
           )
@@ -532,10 +533,12 @@ describe('RequirementsSpecificationDetailClient', () => {
           return Promise.resolve(okJson({ needsReferences: [] }))
         }
 
-        if (url === '/api/specification-responsibility-areas') {
+        if (url === '/api/specification-governance-object-types') {
           return Promise.resolve(
             okJson({
-              areas: [{ id: 1, nameEn: 'Platform', nameSv: 'Plattform' }],
+              governanceObjectTypes: [
+                { id: 1, nameEn: 'Platform', nameSv: 'Plattform' },
+              ],
             }),
           )
         }
@@ -715,6 +718,34 @@ describe('RequirementsSpecificationDetailClient', () => {
       'description',
       'area',
       'needsReference',
+    ])
+  })
+
+  it('passes context-specific reset defaults to the detail tables', async () => {
+    renderRequirementsSpecificationDetailClient()
+
+    await waitFor(() => {
+      expect(requirementsTableMock.mock.calls.length).toBeGreaterThanOrEqual(2)
+    })
+
+    const tableProps = requirementsTableMock.mock.calls.map(call => call[0])
+    const leftTableProps = tableProps.find(
+      props => props.rows[0]?.id === initialSpecificationItem.id,
+    )
+    const rightTableProps = tableProps.find(
+      props => props.rows[0]?.id === initialAvailableRequirement.id,
+    )
+
+    expect(leftTableProps?.defaultVisibleColumns).toEqual([
+      'uniqueId',
+      'description',
+      'area',
+      'needsReference',
+    ])
+    expect(rightTableProps?.defaultVisibleColumns).toEqual([
+      'uniqueId',
+      'description',
+      'area',
     ])
   })
 

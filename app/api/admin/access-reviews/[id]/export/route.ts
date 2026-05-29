@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
+import { createElement } from 'react'
 import { z } from 'zod'
+import AccessReviewExportPdfRenderer from '@/components/access-review/AccessReviewExportPdfRenderer'
+import { accessReviewExportFilename } from '@/lib/access-review/export-filenames'
 import {
   accessReviewAuditActor,
   accessReviewServiceActor,
@@ -16,13 +19,15 @@ import {
   customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { idParamSchema } from '@/lib/http/validation'
+import { idParamSchema, localeSchema } from '@/lib/http/validation'
+import { renderPdfResponse } from '@/lib/pdf/server-response'
 
 export const dynamic = 'force-dynamic'
 
 const exportSchema = z
   .object({
     delivery: z.union([z.literal('json'), z.literal('pdf')]),
+    locale: localeSchema.optional().default('sv'),
   })
   .strict()
 
@@ -51,6 +56,15 @@ export const POST = secureMutationRoute({
         outcome: 'success',
         request: context.request ?? request,
       })
+      if (body.delivery === 'pdf') {
+        return renderPdfResponse(
+          createElement(AccessReviewExportPdfRenderer, {
+            exportData: exportPayload,
+            locale: body.locale,
+          }),
+          accessReviewExportFilename(exportPayload, 'pdf'),
+        )
+      }
       return NextResponse.json(exportPayload, {
         headers: { 'Cache-Control': 'no-store' },
       })

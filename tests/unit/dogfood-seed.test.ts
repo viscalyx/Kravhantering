@@ -133,7 +133,7 @@ function emptySeed() {
     requirements_specifications: {
       columns: [
         'id',
-        'specification_responsibility_area_id',
+        'specification_governance_object_type_id',
         'specification_implementation_type_id',
         'created_at',
         'updated_at',

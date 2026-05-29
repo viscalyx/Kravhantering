@@ -35,7 +35,7 @@ const ID = {
     utveckling: 3,
     forvaltning: 4,
   },
-  specRespArea: {
+  specGovernanceObjectType: {
     forvaltningsobjekt: 1,
     projekt: 2,
     uppdrag: 3,
@@ -1258,7 +1258,7 @@ const DOGFOOD_SPECIFICATIONS = [
     id: SPEC_KH,
     uniqueId: 'KH',
     name: 'Kravhantering',
-    responsibility: ID.specRespArea.forvaltningsobjekt,
+    governanceObjectType: ID.specGovernanceObjectType.forvaltningsobjekt,
     impl: ID.specImpl.utveckling,
     lifecycle: ID.specLifecycle.utveckling,
     businessNeeds:
@@ -1268,7 +1268,7 @@ const DOGFOOD_SPECIFICATIONS = [
     id: SPEC_KH_INFOR,
     uniqueId: 'KH-INFOR',
     name: 'Kravhantering kontrollerat införande',
-    responsibility: ID.specRespArea.projekt,
+    governanceObjectType: ID.specGovernanceObjectType.projekt,
     impl: ID.specImpl.utveckling,
     lifecycle: ID.specLifecycle.inforande,
     businessNeeds:

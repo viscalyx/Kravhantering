@@ -136,10 +136,10 @@ function SpecificationCoverSection({
               marginBottom: '0.25rem',
             }}
           >
-            {t('specificationCover.responsibilityArea')}
+            {t('specificationCover.governanceObjectType')}
           </dt>
           <dd style={{ fontSize: '0.875rem', margin: 0 }}>
-            {section.responsibilityArea ?? '—'}
+            {section.governanceObjectType ?? '—'}
           </dd>
         </div>
         <div>

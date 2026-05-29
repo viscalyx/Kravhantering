@@ -19,16 +19,16 @@ export interface SpecificationTaxonomyItem {
 export interface SpecificationMeta {
   businessNeedsReference: string | null
   canResponsibleGenerateAi: boolean
+  governanceObjectType: SpecificationTaxonomyItem | null
   id: number
   implementationType: SpecificationTaxonomyItem | null
   lifecycleStatus: SpecificationTaxonomyItem | null
   name: string
-  responsibilityArea: SpecificationTaxonomyItem | null
   responsibleDisplayName: string | null
   responsibleHsaId: string | null
+  specificationGovernanceObjectTypeId: number | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
-  specificationResponsibilityAreaId: number | null
   uniqueId: string
 }
 
@@ -67,11 +67,11 @@ export interface RequirementsSpecificationDetailInitialData {
   requirementPackages: FilterOption[]
   rightNormReferenceOptions: NormReferenceOption[]
   spec: SpecificationMeta | null
+  specificationGovernanceObjectTypes: SpecificationTaxonomyItem[]
   specificationImplementationTypes: SpecificationTaxonomyItem[]
   specificationItemStatuses: SpecificationItemStatusOption[]
   specificationItems: SpecificationListItem[]
   specificationLifecycleStatuses: SpecificationTaxonomyItem[]
-  specificationResponsibilityAreas: SpecificationTaxonomyItem[]
 }
 
 export interface SpecificationRequirementArea {
@@ -82,25 +82,25 @@ export interface SpecificationRequirementArea {
 export interface Specification {
   businessNeedsReference: string | null
   canResponsibleGenerateAi: boolean
+  governanceObjectType: SpecificationTaxonomyItem | null
   id: number
   implementationType: SpecificationTaxonomyItem | null
   itemCount: number
   lifecycleStatus: SpecificationTaxonomyItem | null
   name: string
   requirementAreas: SpecificationRequirementArea[]
-  responsibilityArea: SpecificationTaxonomyItem | null
   responsibleDisplayName: string | null
   responsibleHsaId: string | null
+  specificationGovernanceObjectTypeId: number | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
-  specificationResponsibilityAreaId: number | null
   uniqueId: string
 }
 
 export interface RequirementsSpecificationsInitialData {
   errors: SpecificationPreloadError[]
+  governanceObjectTypes: SpecificationTaxonomyItem[]
   implementationTypes: SpecificationTaxonomyItem[]
   lifecycleStatuses: SpecificationTaxonomyItem[]
-  responsibilityAreas: SpecificationTaxonomyItem[]
   specifications: Specification[]
 }

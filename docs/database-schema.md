@@ -261,7 +261,7 @@ erDiagram
         integer norm_reference_id FK, PK
     }
 
-    specification_responsibility_areas {
+    specification_governance_object_types {
         integer id PK
         text name_sv UK
         text name_en UK
@@ -295,7 +295,7 @@ erDiagram
         text unique_id UK
         text name
         integer local_requirement_next_sequence
-        integer specification_responsibility_area_id FK
+        integer specification_governance_object_type_id FK
         integer specification_implementation_type_id FK
         integer specification_lifecycle_status_id FK
         text business_needs_reference
@@ -534,7 +534,7 @@ erDiagram
     requirements_specifications ||--o{ specification_co_authors : "has co-authors"
     requirements_specifications ||--o{ requirements_specification_items : "contains"
     requirements_specifications ||--o{ specification_local_requirements : "contains local"
-    specification_responsibility_areas ||--o{ requirements_specifications : "responsibility area"
+    specification_governance_object_types ||--o{ requirements_specifications : "governance object type"
     specification_implementation_types ||--o{ requirements_specifications : "implementation type"
     specification_lifecycle_statuses ||--o{ requirements_specifications : "lifecycle status"
     specification_item_statuses ||--o{ requirements_specification_items : "usage status"
@@ -831,11 +831,10 @@ Column names are **not** localized — see
 
 ---
 
-### `specification_responsibility_areas`
+### `specification_governance_object_types`
 
-Classifies the organizational responsibility context for
-a requirements specification (e.g. management object, project,
-assignment).
+Classifies the governance object type for a requirements specification
+(e.g. management object, project, assignment).
 
 | Column | Type | Description |
 | -------- | ------ | ------------- |
@@ -1179,7 +1178,7 @@ specific procurement or project.
 | `unique_id` | text, unique | Stable specification identifier used in URLs and APIs |
 | `name` | text | Display name for the specification |
 | `local_requirement_next_sequence` | integer NOT NULL DEFAULT 1 | Next sequence number reserved for specification-local requirement IDs such as `KRAV0001` |
-| `specification_responsibility_area_id` | integer FK → `specification_responsibility_areas.id` | Responsibility area classification (nullable) |
+| `specification_governance_object_type_id` | integer FK → `specification_governance_object_types.id` | Governance object type classification (nullable) |
 | `specification_implementation_type_id` | integer FK → `specification_implementation_types.id` | Implementation type classification (nullable) |
 | `specification_lifecycle_status_id` | integer FK → `specification_lifecycle_statuses.id` | Lifecycle status classification (nullable) |
 | `business_needs_reference` | text | Optional free-text reference to the underlying business need |
@@ -1802,8 +1801,8 @@ its purpose and the table/column(s) it covers.
 | `uq_requirement_versions_revision_token` | `requirement_versions` | `revision_token` | Ensures each opaque edit token identifies one version row |
 | `uq_requirement_versions_archive_initiated_requirement_id` | `requirement_versions` | `requirement_id` where `archive_initiated_at IS NOT NULL` | Ensures a requirement has at most one archiving-in-progress version |
 | `uq_requirement_versions_published_requirement_id` | `requirement_versions` | `requirement_id` where `requirement_status_id = 3` | Ensures a requirement has at most one Published version |
-| `uq_specification_responsibility_areas_name_sv` | `specification_responsibility_areas` | `name_sv` | Prevents duplicate Swedish responsibility area names |
-| `uq_specification_responsibility_areas_name_en` | `specification_responsibility_areas` | `name_en` | Prevents duplicate English responsibility area names |
+| `uq_specification_governance_object_types_name_sv` | `specification_governance_object_types` | `name_sv` | Prevents duplicate Swedish governance object type names |
+| `uq_specification_governance_object_types_name_en` | `specification_governance_object_types` | `name_en` | Prevents duplicate English governance object type names |
 | `uq_owners_email` | `owners` | `email` | Prevents duplicate non-null owner email addresses |
 | `uq_owners_hsa_id` | `owners` | `hsa_id` | Prevents duplicate non-null live owner identities by HSA-ID |
 | `uq_specification_implementation_types_name_sv` | `specification_implementation_types` | `name_sv` | Prevents duplicate Swedish implementation type names |
@@ -1901,7 +1900,7 @@ The following table lists every named FK constraint:
 | `fk_requirement_areas_owner_id` | `requirement_areas` | `owner_id` | `owners.id` | NO ACTION | NO ACTION |
 | `fk_requirement_area_co_authors_area_id` | `requirement_area_co_authors` | `area_id` | `requirement_areas.id` | CASCADE | NO ACTION |
 | `fk_requirements_specifications_specification_implementation_type_id` | `requirements_specifications` | `specification_implementation_type_id` | `specification_implementation_types.id` | NO ACTION | NO ACTION |
-| `fk_requirements_specifications_specification_responsibility_area_id` | `requirements_specifications` | `specification_responsibility_area_id` | `specification_responsibility_areas.id` | NO ACTION | NO ACTION |
+| `fk_requirements_specifications_specification_governance_object_type_id` | `requirements_specifications` | `specification_governance_object_type_id` | `specification_governance_object_types.id` | NO ACTION | NO ACTION |
 | `fk_requirements_specifications_specification_lifecycle_status_id` | `requirements_specifications` | `specification_lifecycle_status_id` | `specification_lifecycle_statuses.id` | NO ACTION | NO ACTION |
 | `fk_specification_co_authors_specification_id` | `specification_co_authors` | `specification_id` | `requirements_specifications.id` | CASCADE | NO ACTION |
 | `fk_specification_needs_references_specification_id` | `specification_needs_references` | `specification_id` | `requirements_specifications.id` | CASCADE | NO ACTION |
@@ -1971,7 +1970,7 @@ graph LR
     end
 
     subgraph Specifications
-        PRA[specification_responsibility_areas]
+        PGOT[specification_governance_object_types]
         PIT[specification_implementation_types]
         PLS[specification_lifecycle_statuses]
         PIS[specification_item_statuses]
@@ -2092,7 +2091,7 @@ graph LR
     PRE -- "uq_..._subject\n(policy, source, subject)" --> PRE
     PRE -- "idx_..._policy_source\n(policy_id, source_key)" --> PRP
 
-    PRA -- "uq_..._name_sv / name_en" --> PRA
+    PGOT -- "uq_..._name_sv / name_en" --> PGOT
     PIT -- "uq_..._name_sv / name_en" --> PIT
     PLS -- "uq_..._name_sv / name_en" --> PLS
     PIS -- "uq_..._name_sv / name_en" --> PIS

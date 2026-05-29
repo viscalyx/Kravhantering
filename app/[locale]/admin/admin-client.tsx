@@ -768,483 +768,197 @@ function PrivacyErasurePanel() {
       : false
 
   return (
-    <section
-      aria-labelledby="privacy-tab"
-      className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
-      {...devMarker({
-        context: 'admin center',
-        name: 'tab panel',
-        priority: 340,
-        value: 'privacy',
-      })}
-      id="privacy-panel"
-      role="tabpanel"
-    >
-      <div className="border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60">
-        <h2 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
-          {ta('privacy.title')}
-        </h2>
-        <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
-          {ta('privacyDescription')}
-        </p>
-      </div>
-
-      <div className="mt-6 grid gap-5 lg:grid-cols-2">
-        <div className="space-y-4">
-          <div className="block max-w-md space-y-1">
-            <div className="flex items-center gap-1.5">
-              <label
-                className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
-                htmlFor="privacy-target-hsa-id"
-              >
-                {ta('privacy.targetHsaId')}
-              </label>
-              {helpButton('targetHsaId', ta('privacy.targetHsaId'))}
-            </div>
-            {helpPanel('targetHsaId')}
-            <input
-              className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 font-mono text-sm dark:border-secondary-700 dark:bg-secondary-900"
-              id="privacy-target-hsa-id"
-              onChange={event => {
-                resetExecutionFeedback()
-                setTargetHsaId(event.target.value)
-                setPreview(null)
-                setActions({})
-              }}
-              required
-              value={targetHsaId}
-            />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5">
-                <label
-                  className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
-                  htmlFor="privacy-replacement-hsa-id"
-                >
-                  {ta('privacy.replacementHsaId')}
-                </label>
-                {helpButton('replacementHsaId', ta('privacy.replacementHsaId'))}
-              </div>
-              {helpPanel('replacementHsaId')}
-              <input
-                className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 font-mono text-sm dark:border-secondary-700 dark:bg-secondary-900"
-                id="privacy-replacement-hsa-id"
-                onChange={event => {
-                  resetExecutionFeedback()
-                  setReplacementHsaId(event.target.value)
-                }}
-                value={replacementHsaId}
-              />
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5">
-                <label
-                  className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
-                  htmlFor="privacy-replacement-name"
-                >
-                  {ta('privacy.replacementName')}
-                </label>
-                {helpButton('replacementName', ta('privacy.replacementName'))}
-              </div>
-              {helpPanel('replacementName')}
-              <input
-                className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
-                id="privacy-replacement-name"
-                onChange={event => {
-                  resetExecutionFeedback()
-                  setReplacementName(event.target.value)
-                }}
-                value={replacementName}
-              />
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5">
-                <label
-                  className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
-                  htmlFor="privacy-replacement-first-name"
-                >
-                  {ta('privacy.replacementFirstName')}
-                </label>
-                {helpButton(
-                  'replacementFirstName',
-                  ta('privacy.replacementFirstName'),
-                )}
-              </div>
-              {helpPanel('replacementFirstName')}
-              <input
-                className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
-                id="privacy-replacement-first-name"
-                onChange={event => {
-                  resetExecutionFeedback()
-                  setReplacementFirstName(event.target.value)
-                }}
-                value={replacementFirstName}
-              />
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5">
-                <label
-                  className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
-                  htmlFor="privacy-replacement-last-name"
-                >
-                  {ta('privacy.replacementLastName')}
-                </label>
-                {helpButton(
-                  'replacementLastName',
-                  ta('privacy.replacementLastName'),
-                )}
-              </div>
-              {helpPanel('replacementLastName')}
-              <input
-                className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
-                id="privacy-replacement-last-name"
-                onChange={event => {
-                  resetExecutionFeedback()
-                  setReplacementLastName(event.target.value)
-                }}
-                value={replacementLastName}
-              />
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5">
-                <label
-                  className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
-                  htmlFor="privacy-replacement-email"
-                >
-                  {ta('privacy.replacementEmail')}
-                </label>
-                <span
-                  aria-label={ta('privacy.replacementEmailOptional')}
-                  className="inline-flex text-secondary-400 dark:text-secondary-500"
-                  role="img"
-                  title={ta('privacy.replacementEmailOptional')}
-                >
-                  <Info aria-hidden="true" className="h-3.5 w-3.5" />
-                </span>
-                {helpButton('replacementEmail', ta('privacy.replacementEmail'))}
-              </div>
-              {helpPanel('replacementEmail')}
-              <input
-                className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
-                id="privacy-replacement-email"
-                onChange={event => {
-                  resetExecutionFeedback()
-                  setReplacementEmail(event.target.value)
-                }}
-                type="email"
-                value={replacementEmail}
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-              disabled={status === 'saving' || !targetHsaId.trim()}
-              onClick={runPreview}
-              type="button"
-            >
-              <RefreshCw aria-hidden="true" className="h-4 w-4" />
-              {ta('privacy.preview')}
-            </button>
-            {message && messageScope === 'preview' ? (
-              <span
-                className={`text-sm font-medium ${
-                  status === 'error'
-                    ? 'text-red-700 dark:text-red-400'
-                    : 'text-emerald-700 dark:text-emerald-300'
-                }`}
-                role={status === 'error' ? 'alert' : 'status'}
-              >
-                {message}
-              </span>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/70 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
-          <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-secondary-700 dark:text-secondary-200">
-            {ta('privacy.guidanceTitle')}
-          </h3>
-          <p className="mt-3 text-sm text-secondary-600 dark:text-secondary-300">
-            {ta('privacy.guidanceBody')}
+    <>
+      <section
+        aria-labelledby="privacy-tab"
+        className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+        {...devMarker({
+          context: 'admin center',
+          name: 'tab panel',
+          priority: 340,
+          value: 'privacy',
+        })}
+        id="privacy-panel"
+        role="tabpanel"
+      >
+        <div className="border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60">
+          <h2 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
+            {ta('privacy.title')}
+          </h2>
+          <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+            {ta('privacyDescription')}
           </p>
         </div>
-      </div>
 
-      {preview ? (
-        <div className="mt-6 overflow-hidden rounded-2xl border border-secondary-200/70 dark:border-secondary-700/60">
-          <div className="flex flex-col gap-2 border-b border-secondary-200/70 bg-secondary-50 px-4 py-3 dark:border-secondary-700/60 dark:bg-secondary-950/40 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
-                {ta('privacy.previewResult', { count: preview.totalCount })}
-              </div>
-              <div className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
-                {preview.targetFingerprint.slice(0, 16)}
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                disabled={
-                  status === 'saving' || dataSubjectExport.downloading !== null
-                }
-                onClick={() =>
-                  void dataSubjectExport.download({ delivery: 'json' })
-                }
-                type="button"
-              >
-                <FileJson aria-hidden="true" className="h-4 w-4" />
-                {dataSubjectExport.downloading === 'json'
-                  ? ta('privacy.exportingJson')
-                  : ta('privacy.exportJson')}
-              </button>
-              <button
-                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                disabled={
-                  status === 'saving' || dataSubjectExport.downloading !== null
-                }
-                onClick={() =>
-                  void dataSubjectExport.download({ delivery: 'pdf' })
-                }
-                type="button"
-              >
-                <FileText aria-hidden="true" className="h-4 w-4" />
-                {dataSubjectExport.downloading === 'pdf'
-                  ? ta('privacy.exportingPdf')
-                  : ta('privacy.exportPdf')}
-              </button>
-              {dataSubjectExport.error ? (
-                <span
-                  className="text-sm font-medium text-red-700 dark:text-red-300"
-                  role="alert"
+        <div className="mt-6 grid gap-5 lg:grid-cols-2">
+          <div className="space-y-4">
+            <div className="block max-w-md space-y-1">
+              <div className="flex items-center gap-1.5">
+                <label
+                  className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
+                  htmlFor="privacy-target-hsa-id"
                 >
-                  {ta('privacy.exportError', {
-                    detail: dataSubjectExport.error,
-                  })}
-                </span>
-              ) : null}
+                  {ta('privacy.targetHsaId')}
+                </label>
+                {helpButton('targetHsaId', ta('privacy.targetHsaId'))}
+              </div>
+              {helpPanel('targetHsaId')}
+              <input
+                className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 font-mono text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                id="privacy-target-hsa-id"
+                onChange={event => {
+                  resetExecutionFeedback()
+                  setTargetHsaId(event.target.value)
+                  setPreview(null)
+                  setActions({})
+                }}
+                required
+                value={targetHsaId}
+              />
             </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-secondary-200 text-sm dark:divide-secondary-700">
-              <thead className="bg-white dark:bg-secondary-900">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    {ta('privacy.object')}
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    {ta('privacy.count')}
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    {ta('privacy.affected')}
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    {ta('privacy.currentValue')}
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    {ta('privacy.action')}
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    {ta(
-                      executionStatuses ? 'privacy.status' : 'privacy.warning',
-                    )}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-secondary-200 bg-white dark:divide-secondary-700 dark:bg-secondary-900">
-                {preview.groups.map(group => {
-                  const isReadOnly = Boolean(group.readOnlyReasonKey)
-                  const isDisabled = Boolean(group.disabledReasonKey)
-                  const actionValue = effectivePrivacyAction(group, actions, {
-                    canSwitch: canUseSwitchAction,
-                  })
-                  const availableActions = availablePrivacyActions(group, {
-                    canSwitch: canUseSwitchAction,
-                  })
-                  const rowExecutionStatus = executionStatuses?.[group.key]
-                  const currentDisplayValue = formatActorDisplayNameForLocale(
-                    group.currentDisplayValue,
-                    locale,
-                  )
-                  return (
-                    <tr
-                      aria-disabled={isDisabled || isReadOnly || undefined}
-                      className={
-                        rowExecutionStatus?.kind === 'completed'
-                          ? 'bg-emerald-50/70 dark:bg-emerald-950/20'
-                          : rowExecutionStatus?.kind === 'skipped'
-                            ? 'bg-secondary-50/80 dark:bg-secondary-950/30'
-                            : rowExecutionStatus?.kind === 'failed'
-                              ? 'bg-red-50/70 dark:bg-red-950/25'
-                              : isDisabled
-                                ? 'bg-red-50/60 dark:bg-red-950/20'
-                                : isReadOnly
-                                  ? 'bg-secondary-50/70 dark:bg-secondary-950/30'
-                                  : undefined
-                      }
-                      key={group.key}
-                    >
-                      <td className="px-4 py-3">
-                        <div
-                          className={
-                            isDisabled || isReadOnly
-                              ? 'font-medium text-secondary-500 dark:text-secondary-400'
-                              : 'font-medium text-secondary-900 dark:text-secondary-100'
-                          }
-                        >
-                          {ta(`privacy.objects.${group.objectKey}`)}
-                        </div>
-                        <div className="text-xs text-secondary-500 dark:text-secondary-400">
-                          {ta(`privacy.fields.${group.fieldKey}`)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">{group.count}</td>
-                      <td className="max-w-xs px-4 py-3">
-                        {group.affectedReferences?.length ? (
-                          <ul className="list-disc space-y-1 pl-4 text-secondary-700 dark:text-secondary-200">
-                            {group.affectedReferences.map(reference => (
-                              <li key={`${group.key}-${reference}`}>
-                                {reference}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <span className="text-secondary-500 dark:text-secondary-400">
-                            {ta('privacy.notAvailable')}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {currentDisplayValue ?? ta('privacy.notAvailable')}
-                      </td>
-                      <td className="px-4 py-3">
-                        {isReadOnly ? (
-                          <span className="inline-flex min-h-[40px] items-center rounded-lg border border-secondary-200 bg-secondary-100 px-3 py-2 text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-400">
-                            {ta(`privacy.actions.${actionValue}`)}
-                          </span>
-                        ) : (
-                          <select
-                            className="min-h-[40px] rounded-lg border border-secondary-200 bg-white px-3 py-2 disabled:cursor-not-allowed disabled:bg-secondary-100 disabled:text-secondary-500 dark:border-secondary-700 dark:bg-secondary-950 dark:disabled:bg-secondary-800 dark:disabled:text-secondary-400"
-                            disabled={
-                              isDisabled ||
-                              status === 'saving' ||
-                              hasSuccessfulExecution
-                            }
-                            onChange={event => {
-                              resetExecutionFeedback()
-                              const nextAction = event.target
-                                .value as PrivacyAction
-                              setActions(current => ({
-                                ...current,
-                                [group.key]: nextAction,
-                                ...Object.fromEntries(
-                                  preview.groups
-                                    .filter(
-                                      candidate =>
-                                        candidate.controlledByGroupKey ===
-                                        group.key,
-                                    )
-                                    .map(candidate => [
-                                      candidate.key,
-                                      nextAction === 'switch' &&
-                                      availablePrivacyActions(candidate, {
-                                        canSwitch: canUseSwitchAction,
-                                      }).includes('switch')
-                                        ? 'switch'
-                                        : 'skip',
-                                    ]),
-                                ),
-                              }))
-                            }}
-                            value={actionValue}
-                          >
-                            {PRIVACY_ACTIONS.filter(action =>
-                              availableActions.includes(action),
-                            ).map(action => (
-                              <option key={action} value={action}>
-                                {ta(`privacy.actions.${action}`)}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      </td>
-                      <td className="max-w-sm px-4 py-3">
-                        {rowExecutionStatus?.kind === 'completed' ? (
-                          <span className="inline-flex items-center gap-2 font-medium text-emerald-700 dark:text-emerald-300">
-                            <CheckCircle2
-                              aria-hidden="true"
-                              className="h-4 w-4"
-                            />
-                            {ta('privacy.executionStatus.completed')}
-                          </span>
-                        ) : rowExecutionStatus?.kind === 'skipped' ? (
-                          <span className="inline-flex items-center gap-2 font-medium text-secondary-600 dark:text-secondary-300">
-                            <CircleMinus
-                              aria-hidden="true"
-                              className="h-4 w-4"
-                            />
-                            {ta('privacy.executionStatus.skipped')}
-                          </span>
-                        ) : rowExecutionStatus?.kind === 'failed' ? (
-                          <span
-                            className="inline-flex items-center gap-2 font-medium text-red-700 dark:text-red-300"
-                            role="alert"
-                          >
-                            <XCircle aria-hidden="true" className="h-4 w-4" />
-                            {ta('privacy.executionStatus.failed', {
-                              reason: rowExecutionStatus.reason
-                                ? ta(
-                                    `privacy.executionErrors.${rowExecutionStatus.reason}`,
-                                  )
-                                : ta('privacy.executeError'),
-                            })}
-                          </span>
-                        ) : group.disabledReasonKey ? (
-                          <div
-                            className="font-medium text-red-700 dark:text-red-300"
-                            role="alert"
-                          >
-                            <div>
-                              {ta(
-                                `privacy.blockers.${group.disabledReasonKey}`,
-                              )}
-                            </div>
-                          </div>
-                        ) : group.readOnlyReasonKey ? (
-                          <span className="text-secondary-500 dark:text-secondary-400">
-                            {ta(`privacy.readOnly.${group.readOnlyReasonKey}`)}
-                          </span>
-                        ) : (
-                          <span className="text-secondary-600 dark:text-secondary-300">
-                            {group.warningKey
-                              ? ta(`privacy.warnings.${group.warningKey}`)
-                              : ''}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-          {preview.totalCount > 0 && !hasSuccessfulExecution ? (
-            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-secondary-200/70 bg-white px-4 py-4 dark:border-secondary-700/60 dark:bg-secondary-900">
+
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <label
+                    className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
+                    htmlFor="privacy-replacement-hsa-id"
+                  >
+                    {ta('privacy.replacementHsaId')}
+                  </label>
+                  {helpButton(
+                    'replacementHsaId',
+                    ta('privacy.replacementHsaId'),
+                  )}
+                </div>
+                {helpPanel('replacementHsaId')}
+                <input
+                  className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 font-mono text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                  id="privacy-replacement-hsa-id"
+                  onChange={event => {
+                    resetExecutionFeedback()
+                    setReplacementHsaId(event.target.value)
+                  }}
+                  value={replacementHsaId}
+                />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <label
+                    className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
+                    htmlFor="privacy-replacement-name"
+                  >
+                    {ta('privacy.replacementName')}
+                  </label>
+                  {helpButton('replacementName', ta('privacy.replacementName'))}
+                </div>
+                {helpPanel('replacementName')}
+                <input
+                  className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                  id="privacy-replacement-name"
+                  onChange={event => {
+                    resetExecutionFeedback()
+                    setReplacementName(event.target.value)
+                  }}
+                  value={replacementName}
+                />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <label
+                    className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
+                    htmlFor="privacy-replacement-first-name"
+                  >
+                    {ta('privacy.replacementFirstName')}
+                  </label>
+                  {helpButton(
+                    'replacementFirstName',
+                    ta('privacy.replacementFirstName'),
+                  )}
+                </div>
+                {helpPanel('replacementFirstName')}
+                <input
+                  className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                  id="privacy-replacement-first-name"
+                  onChange={event => {
+                    resetExecutionFeedback()
+                    setReplacementFirstName(event.target.value)
+                  }}
+                  value={replacementFirstName}
+                />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <label
+                    className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
+                    htmlFor="privacy-replacement-last-name"
+                  >
+                    {ta('privacy.replacementLastName')}
+                  </label>
+                  {helpButton(
+                    'replacementLastName',
+                    ta('privacy.replacementLastName'),
+                  )}
+                </div>
+                {helpPanel('replacementLastName')}
+                <input
+                  className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                  id="privacy-replacement-last-name"
+                  onChange={event => {
+                    resetExecutionFeedback()
+                    setReplacementLastName(event.target.value)
+                  }}
+                  value={replacementLastName}
+                />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <label
+                    className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
+                    htmlFor="privacy-replacement-email"
+                  >
+                    {ta('privacy.replacementEmail')}
+                  </label>
+                  <span
+                    aria-label={ta('privacy.replacementEmailOptional')}
+                    className="inline-flex text-secondary-400 dark:text-secondary-500"
+                    role="img"
+                    title={ta('privacy.replacementEmailOptional')}
+                  >
+                    <Info aria-hidden="true" className="h-3.5 w-3.5" />
+                  </span>
+                  {helpButton(
+                    'replacementEmail',
+                    ta('privacy.replacementEmail'),
+                  )}
+                </div>
+                {helpPanel('replacementEmail')}
+                <input
+                  className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                  id="privacy-replacement-email"
+                  onChange={event => {
+                    resetExecutionFeedback()
+                    setReplacementEmail(event.target.value)
+                  }}
+                  type="email"
+                  value={replacementEmail}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
               <button
-                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-800 disabled:opacity-60"
-                disabled={status === 'saving'}
-                onClick={executeErasure}
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                disabled={status === 'saving' || !targetHsaId.trim()}
+                onClick={runPreview}
                 type="button"
               >
-                <ShieldCheck aria-hidden="true" className="h-4 w-4" />
-                {ta('privacy.execute')}
+                <RefreshCw aria-hidden="true" className="h-4 w-4" />
+                {ta('privacy.preview')}
               </button>
-              {message && messageScope === 'execute' ? (
+              {message && messageScope === 'preview' ? (
                 <span
-                  className={`max-w-2xl text-sm font-medium ${
+                  className={`text-sm font-medium ${
                     status === 'error'
                       ? 'text-red-700 dark:text-red-400'
                       : 'text-emerald-700 dark:text-emerald-300'
@@ -1255,10 +969,311 @@ function PrivacyErasurePanel() {
                 </span>
               ) : null}
             </div>
-          ) : null}
+          </div>
+
+          <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/70 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-secondary-700 dark:text-secondary-200">
+              {ta('privacy.guidanceTitle')}
+            </h3>
+            <p className="mt-3 text-sm text-secondary-600 dark:text-secondary-300">
+              {ta('privacy.guidanceBody')}
+            </p>
+          </div>
         </div>
-      ) : null}
-    </section>
+
+        {preview ? (
+          <div className="mt-6 overflow-hidden rounded-2xl border border-secondary-200/70 dark:border-secondary-700/60">
+            <div className="flex flex-col gap-2 border-b border-secondary-200/70 bg-secondary-50 px-4 py-3 dark:border-secondary-700/60 dark:bg-secondary-950/40 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+                  {ta('privacy.previewResult', { count: preview.totalCount })}
+                </div>
+                <div className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
+                  {preview.targetFingerprint.slice(0, 16)}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                  disabled={
+                    status === 'saving' ||
+                    dataSubjectExport.downloading !== null
+                  }
+                  onClick={() =>
+                    void dataSubjectExport.download({ delivery: 'json' })
+                  }
+                  type="button"
+                >
+                  <FileJson aria-hidden="true" className="h-4 w-4" />
+                  {dataSubjectExport.downloading === 'json'
+                    ? ta('privacy.exportingJson')
+                    : ta('privacy.exportJson')}
+                </button>
+                <button
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                  disabled={
+                    status === 'saving' ||
+                    dataSubjectExport.downloading !== null
+                  }
+                  onClick={() =>
+                    void dataSubjectExport.download({ delivery: 'pdf' })
+                  }
+                  type="button"
+                >
+                  <FileText aria-hidden="true" className="h-4 w-4" />
+                  {dataSubjectExport.downloading === 'pdf'
+                    ? ta('privacy.exportingPdf')
+                    : ta('privacy.exportPdf')}
+                </button>
+                {dataSubjectExport.error ? (
+                  <span
+                    className="text-sm font-medium text-red-700 dark:text-red-300"
+                    role="alert"
+                  >
+                    {ta('privacy.exportError', {
+                      detail: dataSubjectExport.error,
+                    })}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-secondary-200 text-sm dark:divide-secondary-700">
+                <thead className="bg-white dark:bg-secondary-900">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-semibold">
+                      {ta('privacy.object')}
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold">
+                      {ta('privacy.count')}
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold">
+                      {ta('privacy.affected')}
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold">
+                      {ta('privacy.currentValue')}
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold">
+                      {ta('privacy.action')}
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold">
+                      {ta(
+                        executionStatuses
+                          ? 'privacy.status'
+                          : 'privacy.warning',
+                      )}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-secondary-200 bg-white dark:divide-secondary-700 dark:bg-secondary-900">
+                  {preview.groups.map(group => {
+                    const isReadOnly = Boolean(group.readOnlyReasonKey)
+                    const isDisabled = Boolean(group.disabledReasonKey)
+                    const actionValue = effectivePrivacyAction(group, actions, {
+                      canSwitch: canUseSwitchAction,
+                    })
+                    const availableActions = availablePrivacyActions(group, {
+                      canSwitch: canUseSwitchAction,
+                    })
+                    const rowExecutionStatus = executionStatuses?.[group.key]
+                    const currentDisplayValue = formatActorDisplayNameForLocale(
+                      group.currentDisplayValue,
+                      locale,
+                    )
+                    return (
+                      <tr
+                        aria-disabled={isDisabled || isReadOnly || undefined}
+                        className={
+                          rowExecutionStatus?.kind === 'completed'
+                            ? 'bg-emerald-50/70 dark:bg-emerald-950/20'
+                            : rowExecutionStatus?.kind === 'skipped'
+                              ? 'bg-secondary-50/80 dark:bg-secondary-950/30'
+                              : rowExecutionStatus?.kind === 'failed'
+                                ? 'bg-red-50/70 dark:bg-red-950/25'
+                                : isDisabled
+                                  ? 'bg-red-50/60 dark:bg-red-950/20'
+                                  : isReadOnly
+                                    ? 'bg-secondary-50/70 dark:bg-secondary-950/30'
+                                    : undefined
+                        }
+                        key={group.key}
+                      >
+                        <td className="px-4 py-3">
+                          <div
+                            className={
+                              isDisabled || isReadOnly
+                                ? 'font-medium text-secondary-500 dark:text-secondary-400'
+                                : 'font-medium text-secondary-900 dark:text-secondary-100'
+                            }
+                          >
+                            {ta(`privacy.objects.${group.objectKey}`)}
+                          </div>
+                          <div className="text-xs text-secondary-500 dark:text-secondary-400">
+                            {ta(`privacy.fields.${group.fieldKey}`)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">{group.count}</td>
+                        <td className="max-w-xs px-4 py-3">
+                          {group.affectedReferences?.length ? (
+                            <ul className="list-disc space-y-1 pl-4 text-secondary-700 dark:text-secondary-200">
+                              {group.affectedReferences.map(reference => (
+                                <li key={`${group.key}-${reference}`}>
+                                  {reference}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <span className="text-secondary-500 dark:text-secondary-400">
+                              {ta('privacy.notAvailable')}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {currentDisplayValue ?? ta('privacy.notAvailable')}
+                        </td>
+                        <td className="px-4 py-3">
+                          {isReadOnly ? (
+                            <span className="inline-flex min-h-[40px] items-center rounded-lg border border-secondary-200 bg-secondary-100 px-3 py-2 text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-400">
+                              {ta(`privacy.actions.${actionValue}`)}
+                            </span>
+                          ) : (
+                            <select
+                              className="min-h-[40px] rounded-lg border border-secondary-200 bg-white px-3 py-2 disabled:cursor-not-allowed disabled:bg-secondary-100 disabled:text-secondary-500 dark:border-secondary-700 dark:bg-secondary-950 dark:disabled:bg-secondary-800 dark:disabled:text-secondary-400"
+                              disabled={
+                                isDisabled ||
+                                status === 'saving' ||
+                                hasSuccessfulExecution
+                              }
+                              onChange={event => {
+                                resetExecutionFeedback()
+                                const nextAction = event.target
+                                  .value as PrivacyAction
+                                setActions(current => ({
+                                  ...current,
+                                  [group.key]: nextAction,
+                                  ...Object.fromEntries(
+                                    preview.groups
+                                      .filter(
+                                        candidate =>
+                                          candidate.controlledByGroupKey ===
+                                          group.key,
+                                      )
+                                      .map(candidate => [
+                                        candidate.key,
+                                        nextAction === 'switch' &&
+                                        availablePrivacyActions(candidate, {
+                                          canSwitch: canUseSwitchAction,
+                                        }).includes('switch')
+                                          ? 'switch'
+                                          : 'skip',
+                                      ]),
+                                  ),
+                                }))
+                              }}
+                              value={actionValue}
+                            >
+                              {PRIVACY_ACTIONS.filter(action =>
+                                availableActions.includes(action),
+                              ).map(action => (
+                                <option key={action} value={action}>
+                                  {ta(`privacy.actions.${action}`)}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </td>
+                        <td className="max-w-sm px-4 py-3">
+                          {rowExecutionStatus?.kind === 'completed' ? (
+                            <span className="inline-flex items-center gap-2 font-medium text-emerald-700 dark:text-emerald-300">
+                              <CheckCircle2
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                              />
+                              {ta('privacy.executionStatus.completed')}
+                            </span>
+                          ) : rowExecutionStatus?.kind === 'skipped' ? (
+                            <span className="inline-flex items-center gap-2 font-medium text-secondary-600 dark:text-secondary-300">
+                              <CircleMinus
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                              />
+                              {ta('privacy.executionStatus.skipped')}
+                            </span>
+                          ) : rowExecutionStatus?.kind === 'failed' ? (
+                            <span
+                              className="inline-flex items-center gap-2 font-medium text-red-700 dark:text-red-300"
+                              role="alert"
+                            >
+                              <XCircle aria-hidden="true" className="h-4 w-4" />
+                              {ta('privacy.executionStatus.failed', {
+                                reason: rowExecutionStatus.reason
+                                  ? ta(
+                                      `privacy.executionErrors.${rowExecutionStatus.reason}`,
+                                    )
+                                  : ta('privacy.executeError'),
+                              })}
+                            </span>
+                          ) : group.disabledReasonKey ? (
+                            <div
+                              className="font-medium text-red-700 dark:text-red-300"
+                              role="alert"
+                            >
+                              <div>
+                                {ta(
+                                  `privacy.blockers.${group.disabledReasonKey}`,
+                                )}
+                              </div>
+                            </div>
+                          ) : group.readOnlyReasonKey ? (
+                            <span className="text-secondary-500 dark:text-secondary-400">
+                              {ta(
+                                `privacy.readOnly.${group.readOnlyReasonKey}`,
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-secondary-600 dark:text-secondary-300">
+                              {group.warningKey
+                                ? ta(`privacy.warnings.${group.warningKey}`)
+                                : ''}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {preview.totalCount > 0 && !hasSuccessfulExecution ? (
+              <div className="flex flex-wrap items-center justify-end gap-3 border-t border-secondary-200/70 bg-white px-4 py-4 dark:border-secondary-700/60 dark:bg-secondary-900">
+                <button
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-800 disabled:opacity-60"
+                  disabled={status === 'saving'}
+                  onClick={executeErasure}
+                  type="button"
+                >
+                  <ShieldCheck aria-hidden="true" className="h-4 w-4" />
+                  {ta('privacy.execute')}
+                </button>
+                {message && messageScope === 'execute' ? (
+                  <span
+                    className={`max-w-2xl text-sm font-medium ${
+                      status === 'error'
+                        ? 'text-red-700 dark:text-red-400'
+                        : 'text-emerald-700 dark:text-emerald-300'
+                    }`}
+                    role={status === 'error' ? 'alert' : 'status'}
+                  >
+                    {message}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
+      {dataSubjectExport.dialog}
+    </>
   )
 }
 
@@ -2137,528 +2152,539 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
   }
 
   return (
-    <section
-      aria-labelledby="accessReview-tab"
-      className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
-      {...devMarker({
-        context: 'admin center',
-        name: 'tab panel',
-        priority: 340,
-        value: 'access review',
-      })}
-      id="accessReview-panel"
-      role="tabpanel"
-    >
-      {accessReviewErrorMessage ? (
-        <div
-          aria-atomic="true"
-          aria-live="assertive"
-          className="fixed inset-x-4 top-4 z-50 rounded-2xl border border-red-200 bg-white p-4 shadow-2xl shadow-red-950/10 dark:border-red-800/70 dark:bg-secondary-950 sm:inset-x-auto sm:right-6 sm:w-[min(28rem,calc(100vw-3rem))]"
-          role="alert"
-        >
-          <div className="flex items-start gap-3">
-            <XCircle
-              aria-hidden="true"
-              className="mt-0.5 h-5 w-5 shrink-0 text-red-600 dark:text-red-300"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-red-800 dark:text-red-200">
-                {ta('accessReview.errorPopupTitle')}
-              </p>
-              <p className="mt-1 break-words text-sm text-red-700 dark:text-red-300">
-                {accessReviewErrorMessage}
-              </p>
-            </div>
-            <button
-              aria-label={ta('accessReview.dismissError')}
-              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-200 dark:hover:bg-red-950/40"
-              onClick={dismissAccessReviewError}
-              type="button"
-            >
-              <X aria-hidden="true" className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="flex flex-col gap-4 border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
-            {ta('accessReview.title')}
-          </h2>
-          <p className="mt-1 max-w-3xl text-sm text-secondary-600 dark:text-secondary-300">
-            {ta('accessReviewDescription')}
-          </p>
-        </div>
-      </div>
-
-      {message ? (
-        <div
-          className={`mt-4 text-sm font-medium ${
-            status === 'error'
-              ? 'text-red-700 dark:text-red-300'
-              : 'text-emerald-700 dark:text-emerald-300'
-          }`}
-          role={status === 'error' ? undefined : 'status'}
-        >
-          {message}
-        </div>
-      ) : null}
-
-      {canManage ? (
-        <div className="mt-6 rounded-2xl border border-secondary-200/70 bg-secondary-50/70 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
-          <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-secondary-700 dark:text-secondary-200">
-            {ta('accessReview.createTitle')}
-          </h3>
-          <div className="mt-4 max-w-3xl">
-            <div className="flex items-center gap-1.5">
-              <label
-                className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
-                htmlFor="access-review-external-evidence-reference"
-              >
-                {ta('accessReview.externalEvidenceReference')}
-              </label>
+    <>
+      <section
+        aria-labelledby="accessReview-tab"
+        className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+        {...devMarker({
+          context: 'admin center',
+          name: 'tab panel',
+          priority: 340,
+          value: 'access review',
+        })}
+        id="accessReview-panel"
+        role="tabpanel"
+      >
+        {accessReviewErrorMessage ? (
+          <div
+            aria-atomic="true"
+            aria-live="assertive"
+            className="fixed inset-x-4 top-4 z-50 rounded-2xl border border-red-200 bg-white p-4 shadow-2xl shadow-red-950/10 dark:border-red-800/70 dark:bg-secondary-950 sm:inset-x-auto sm:right-6 sm:w-[min(28rem,calc(100vw-3rem))]"
+            role="alert"
+          >
+            <div className="flex items-start gap-3">
+              <XCircle
+                aria-hidden="true"
+                className="mt-0.5 h-5 w-5 shrink-0 text-red-600 dark:text-red-300"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-red-800 dark:text-red-200">
+                  {ta('accessReview.errorPopupTitle')}
+                </p>
+                <p className="mt-1 break-words text-sm text-red-700 dark:text-red-300">
+                  {accessReviewErrorMessage}
+                </p>
+              </div>
               <button
-                aria-controls="access-review-external-evidence-help"
-                aria-describedby={
-                  isExternalEvidenceHelpOpen
-                    ? 'access-review-external-evidence-help'
-                    : undefined
-                }
-                aria-expanded={isExternalEvidenceHelpOpen}
-                aria-label={`${tc('help')}: ${ta('accessReview.externalEvidenceReference')}`}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
-                onClick={() => setIsExternalEvidenceHelpOpen(open => !open)}
+                aria-label={ta('accessReview.dismissError')}
+                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-200 dark:hover:bg-red-950/40"
+                onClick={dismissAccessReviewError}
                 type="button"
               >
-                <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+                <X aria-hidden="true" className="h-4 w-4" />
               </button>
             </div>
-            <AnimatedHelpPanel
-              id="access-review-external-evidence-help"
-              isOpen={isExternalEvidenceHelpOpen}
-            >
-              {ta('accessReview.externalEvidenceHelp')}
-            </AnimatedHelpPanel>
-            <input
-              className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
-              id="access-review-external-evidence-reference"
-              onChange={event =>
-                setExternalEvidenceReference(event.target.value)
-              }
-              value={externalEvidenceReference}
-            />
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <button
-              className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
-              disabled={isCreateDisabled}
-              onClick={createRun}
-              type="button"
-            >
-              <ClipboardCheck aria-hidden="true" className="h-4 w-4" />
-              {status === 'saving' && savingAction === 'create'
-                ? ta('accessReview.creating')
-                : ta('accessReview.create')}
-            </button>
-            {hasOpenRun ? (
-              <p className="text-sm text-secondary-600 dark:text-secondary-300">
-                {ta('accessReview.createBlockedByOpenRun')}
-              </p>
+        ) : null}
+
+        <div className="flex flex-col gap-4 border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
+              {ta('accessReview.title')}
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm text-secondary-600 dark:text-secondary-300">
+              {ta('accessReviewDescription')}
+            </p>
+          </div>
+        </div>
+
+        {message ? (
+          <div
+            className={`mt-4 text-sm font-medium ${
+              status === 'error'
+                ? 'text-red-700 dark:text-red-300'
+                : 'text-emerald-700 dark:text-emerald-300'
+            }`}
+            role={status === 'error' ? undefined : 'status'}
+          >
+            {message}
+          </div>
+        ) : null}
+
+        {canManage ? (
+          <div className="mt-6 rounded-2xl border border-secondary-200/70 bg-secondary-50/70 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-secondary-700 dark:text-secondary-200">
+              {ta('accessReview.createTitle')}
+            </h3>
+            <div className="mt-4 max-w-3xl">
+              <div className="flex items-center gap-1.5">
+                <label
+                  className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
+                  htmlFor="access-review-external-evidence-reference"
+                >
+                  {ta('accessReview.externalEvidenceReference')}
+                </label>
+                <button
+                  aria-controls="access-review-external-evidence-help"
+                  aria-describedby={
+                    isExternalEvidenceHelpOpen
+                      ? 'access-review-external-evidence-help'
+                      : undefined
+                  }
+                  aria-expanded={isExternalEvidenceHelpOpen}
+                  aria-label={`${tc('help')}: ${ta('accessReview.externalEvidenceReference')}`}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                  onClick={() => setIsExternalEvidenceHelpOpen(open => !open)}
+                  type="button"
+                >
+                  <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <AnimatedHelpPanel
+                id="access-review-external-evidence-help"
+                isOpen={isExternalEvidenceHelpOpen}
+              >
+                {ta('accessReview.externalEvidenceHelp')}
+              </AnimatedHelpPanel>
+              <input
+                className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                id="access-review-external-evidence-reference"
+                onChange={event =>
+                  setExternalEvidenceReference(event.target.value)
+                }
+                value={externalEvidenceReference}
+              />
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
+                disabled={isCreateDisabled}
+                onClick={createRun}
+                type="button"
+              >
+                <ClipboardCheck aria-hidden="true" className="h-4 w-4" />
+                {status === 'saving' && savingAction === 'create'
+                  ? ta('accessReview.creating')
+                  : ta('accessReview.create')}
+              </button>
+              {hasOpenRun ? (
+                <p className="text-sm text-secondary-600 dark:text-secondary-300">
+                  {ta('accessReview.createBlockedByOpenRun')}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mt-6 grid gap-5 xl:grid-cols-[20rem_minmax(0,1fr)]">
+          <aside className="space-y-3">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-secondary-700 dark:text-secondary-200">
+              {ta('accessReview.runs')}
+            </h3>
+            {runs.length > 0 ? (
+              runs.map(run => (
+                <button
+                  className={`w-full rounded-2xl border p-4 text-left transition-colors ${
+                    selectedRunId === run.id
+                      ? 'border-primary-300 bg-primary-50/70 dark:border-primary-700 dark:bg-primary-950/30'
+                      : 'border-secondary-200 bg-white hover:bg-secondary-50 dark:border-secondary-700 dark:bg-secondary-900 dark:hover:bg-secondary-800'
+                  }`}
+                  key={run.id}
+                  onClick={() => setSelectedRunId(run.id)}
+                  type="button"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-secondary-950 dark:text-secondary-50">
+                      {ta('accessReview.runNumber', { id: run.id })}
+                    </span>
+                    <span className={accessReviewRunStatusClass(run.status)}>
+                      {ta(`accessReview.statuses.${run.status}`)}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-xs text-secondary-500 dark:text-secondary-400">
+                    {ta('accessReview.dueAt')}: {run.dueAt.slice(0, 10)}
+                  </div>
+                  <div className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                    {ta('accessReview.pendingCount', {
+                      count: run.summary.pendingCount,
+                    })}
+                  </div>
+                </button>
+              ))
+            ) : hasLoadedRuns ? (
+              <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/70 p-4 text-sm text-secondary-600 dark:border-secondary-700/60 dark:bg-secondary-950/40 dark:text-secondary-300">
+                {ta('accessReview.noRuns')}
+              </div>
+            ) : null}
+          </aside>
+
+          <div className="min-w-0">
+            {displayedRun && displayedDetail ? (
+              <div aria-busy={isDetailLoading} className="space-y-5">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  {[
+                    [
+                      'status',
+                      ta(`accessReview.statuses.${displayedRun.status}`),
+                    ],
+                    ['due', displayedRun.dueAt.slice(0, 10)],
+                    ['reviewer', selectedReviewerDisplayName],
+                    [
+                      'progress',
+                      `${displayedRun.summary.itemCount - displayedRun.summary.pendingCount}/${displayedRun.summary.itemCount}`,
+                    ],
+                  ].map(([key, value]) => (
+                    <div
+                      className="rounded-2xl border border-secondary-200/70 bg-secondary-50/70 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40"
+                      key={key}
+                    >
+                      <div className="text-xs font-medium uppercase tracking-[0.14em] text-secondary-500 dark:text-secondary-400">
+                        {ta(`accessReview.summary.${key}`)}
+                      </div>
+                      <div className="mt-2 font-semibold text-secondary-950 dark:text-secondary-50">
+                        {value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {isOverdue ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                    {ta('accessReview.overdue')}
+                  </div>
+                ) : null}
+
+                <div className="overflow-hidden rounded-2xl border border-secondary-200/70 dark:border-secondary-700/60">
+                  <div className="flex flex-col gap-3 border-b border-secondary-200/70 bg-secondary-50 px-4 py-3 dark:border-secondary-700/60 dark:bg-secondary-950/40 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+                          {ta('accessReview.items')}
+                        </h3>
+                        <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-secondary-600 dark:bg-secondary-900 dark:text-secondary-300">
+                          {ta('accessReview.runNumber', {
+                            id: displayedRun.id,
+                          })}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                        {ta('accessReview.itemsDescription')}
+                      </p>
+                      {displayedRun.externalEvidenceReference ? (
+                        <div className="mt-2 flex max-w-full items-center gap-2 text-xs text-secondary-500 dark:text-secondary-400">
+                          <span className="shrink-0 font-medium">
+                            {ta('accessReview.externalEvidenceReference')}:
+                          </span>
+                          <span
+                            className="min-w-0 truncate rounded-full border border-secondary-200 bg-white px-2 py-1 text-secondary-700 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200"
+                            title={displayedRun.externalEvidenceReference}
+                          >
+                            {displayedRun.externalEvidenceReference}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {canManage &&
+                      displayedRun.status !== 'completed' &&
+                      displayedRun.status !== 'cancelled' ? (
+                        <button
+                          className="btn-destructive inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm disabled:opacity-60 dark:bg-secondary-900 dark:text-red-200 dark:hover:bg-red-950/30"
+                          disabled={isDetailLoading || status === 'saving'}
+                          onClick={event => void cancelRun(displayedRun, event)}
+                          type="button"
+                        >
+                          <XCircle aria-hidden="true" className="h-4 w-4" />
+                          {ta('accessReview.cancel')}
+                        </button>
+                      ) : null}
+                      {canManage &&
+                      displayedRun.summary.pendingCount === 0 &&
+                      displayedRun.status !== 'completed' &&
+                      displayedRun.status !== 'cancelled' ? (
+                        <button
+                          className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
+                          disabled={isDetailLoading || status === 'saving'}
+                          onClick={completeRun}
+                          type="button"
+                        >
+                          <CheckCircle2
+                            aria-hidden="true"
+                            className="h-4 w-4"
+                          />
+                          {ta('accessReview.complete')}
+                        </button>
+                      ) : null}
+                      {canManage ? (
+                        <div className="flex min-w-0 max-w-full flex-nowrap items-center gap-2 overflow-x-auto">
+                          <button
+                            className="inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                            disabled={
+                              isDetailLoading ||
+                              status === 'saving' ||
+                              exportDownload.downloading !== null
+                            }
+                            onClick={() =>
+                              void exportDownload.download({ delivery: 'json' })
+                            }
+                            type="button"
+                          >
+                            <FileJson aria-hidden="true" className="h-4 w-4" />
+                            {exportDownload.downloading === 'json'
+                              ? ta('accessReview.exportingJson')
+                              : ta('accessReview.exportJson')}
+                          </button>
+                          <button
+                            className="inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                            disabled={
+                              isDetailLoading ||
+                              status === 'saving' ||
+                              exportDownload.downloading !== null
+                            }
+                            onClick={() =>
+                              void exportDownload.download({ delivery: 'pdf' })
+                            }
+                            type="button"
+                          >
+                            <FileText aria-hidden="true" className="h-4 w-4" />
+                            {exportDownload.downloading === 'pdf'
+                              ? ta('accessReview.exportingPdf')
+                              : ta('accessReview.exportPdf')}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  {exportDownload.error ? (
+                    <div className="border-b border-secondary-200/70 bg-white px-4 py-3 text-sm font-medium text-red-700 dark:border-secondary-700/60 dark:bg-secondary-900 dark:text-red-300">
+                      {ta('accessReview.exportError', {
+                        detail: exportDownload.error,
+                      })}
+                    </div>
+                  ) : null}
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-secondary-200 text-sm dark:divide-secondary-700">
+                      <thead className="bg-white dark:bg-secondary-900">
+                        <tr>
+                          {canManage && !isDisplayedRunClosed ? (
+                            <th className="w-12 px-4 py-3 text-left font-semibold">
+                              <span className="sr-only">
+                                {ta('accessReview.lockState')}
+                              </span>
+                            </th>
+                          ) : null}
+                          <th className="px-4 py-3 text-left font-semibold">
+                            {ta('accessReview.principal')}
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold">
+                            {ta('accessReview.scope')}
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold">
+                            {ta('accessReview.permission')}
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold">
+                            {ta('accessReview.decision')}
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold">
+                            {ta('accessReview.comment')}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-secondary-200 bg-white dark:divide-secondary-700 dark:bg-secondary-900">
+                        {displayedDetail.items.map(item => {
+                          const draft = decisionDrafts[item.id] ?? {
+                            comment: '',
+                            decision: 'approved' as const,
+                          }
+                          const canChooseDecision =
+                            canManage &&
+                            !isDisplayedRunClosed &&
+                            (item.decision === 'pending' ||
+                              unlockedDecisionItemIds.has(item.id))
+                          return (
+                            <tr key={item.id}>
+                              {canManage && !isDisplayedRunClosed ? (
+                                <td className="px-4 py-3 align-middle">
+                                  <button
+                                    aria-label={
+                                      canChooseDecision
+                                        ? ta('accessReview.rowNeedsReview')
+                                        : ta('accessReview.rowApproved')
+                                    }
+                                    className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border transition-colors disabled:opacity-60 ${
+                                      canChooseDecision
+                                        ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-900/40'
+                                        : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-900/40'
+                                    }`}
+                                    disabled={
+                                      !canManage ||
+                                      isDetailLoading ||
+                                      status === 'saving'
+                                    }
+                                    onClick={() => {
+                                      if (!canManage) return
+                                      if (canChooseDecision) {
+                                        void saveDecision(item)
+                                      } else {
+                                        unlockDecision(item)
+                                      }
+                                    }}
+                                    title={
+                                      canChooseDecision
+                                        ? ta('accessReview.rowNeedsReview')
+                                        : ta('accessReview.rowApproved')
+                                    }
+                                    type="button"
+                                  >
+                                    {canChooseDecision ? (
+                                      <CircleAlert
+                                        aria-hidden="true"
+                                        className="h-4 w-4"
+                                      />
+                                    ) : (
+                                      <Check
+                                        aria-hidden="true"
+                                        className="h-4 w-4"
+                                      />
+                                    )}
+                                  </button>
+                                </td>
+                              ) : null}
+                              <td className="px-4 py-3">
+                                <div className="font-medium text-secondary-900 dark:text-secondary-100">
+                                  {formatActorDisplayNameForLocale(
+                                    item.principal.displayName,
+                                    locale,
+                                  ) ?? item.principal.displayName}
+                                </div>
+                                <div className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
+                                  {item.principal.hsaId}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div>{item.scope.label}</div>
+                                <div className="text-xs text-secondary-500 dark:text-secondary-400">
+                                  {item.scope.type}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div>
+                                  {ta(
+                                    `accessReview.permissionTypes.${item.permissionType}`,
+                                  )}
+                                </div>
+                                <div className="text-xs text-secondary-500 dark:text-secondary-400">
+                                  {item.canGenerateAi
+                                    ? ta('accessReview.aiEnabled')
+                                    : ta('accessReview.aiDisabled')}
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-left align-middle">
+                                {canChooseDecision ? (
+                                  <select
+                                    className="mt-2 block min-h-[40px] rounded-lg border border-secondary-200 bg-white px-3 py-2 disabled:cursor-not-allowed disabled:bg-secondary-100 disabled:text-secondary-500 dark:border-secondary-700 dark:bg-secondary-950 dark:disabled:bg-secondary-800 dark:disabled:text-secondary-400"
+                                    disabled={
+                                      isDetailLoading || status === 'saving'
+                                    }
+                                    onChange={event =>
+                                      setDecisionDrafts(current => ({
+                                        ...current,
+                                        [item.id]: {
+                                          ...draft,
+                                          decision: event.target
+                                            .value as Exclude<
+                                            AccessReviewDecision,
+                                            'pending'
+                                          >,
+                                        },
+                                      }))
+                                    }
+                                    value={draft.decision}
+                                  >
+                                    {ACCESS_REVIEW_DECISIONS.map(decision => (
+                                      <option key={decision} value={decision}>
+                                        {ta(
+                                          `accessReview.decisions.${decision}`,
+                                        )}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : item.decision === 'pending' ? (
+                                  <span className="text-sm text-secondary-500 dark:text-secondary-400">
+                                    -
+                                  </span>
+                                ) : (
+                                  <span
+                                    className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-xs font-semibold ${accessReviewDecisionClass(
+                                      item.decision,
+                                    )}`}
+                                  >
+                                    {ta(
+                                      `accessReview.decisions.${item.decision}`,
+                                    )}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-left align-middle">
+                                {canChooseDecision ? (
+                                  <textarea
+                                    className="min-h-20 w-full max-w-sm rounded-xl border border-secondary-200 bg-white px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-secondary-100 disabled:text-secondary-500 dark:border-secondary-700 dark:bg-secondary-950 dark:disabled:bg-secondary-800 dark:disabled:text-secondary-400"
+                                    disabled={
+                                      isDetailLoading || status === 'saving'
+                                    }
+                                    onChange={event =>
+                                      setDecisionDrafts(current => ({
+                                        ...current,
+                                        [item.id]: {
+                                          ...draft,
+                                          comment: event.target.value,
+                                        },
+                                      }))
+                                    }
+                                    value={draft.comment}
+                                  />
+                                ) : (
+                                  <div
+                                    className={`max-w-md whitespace-pre-wrap text-sm ${
+                                      item.comment
+                                        ? 'text-secondary-700 dark:text-secondary-200'
+                                        : 'text-secondary-500 dark:text-secondary-400'
+                                    }`}
+                                  >
+                                    {item.comment ?? '-'}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            ) : isDetailLoading ? (
+              <div aria-hidden="true" className="min-h-[32rem]" />
+            ) : hasLoadedRuns && !selectedRunId ? (
+              <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/70 p-6 text-sm text-secondary-600 dark:border-secondary-700/60 dark:bg-secondary-950/40 dark:text-secondary-300">
+                {ta('accessReview.selectRun')}
+              </div>
             ) : null}
           </div>
         </div>
-      ) : null}
-
-      <div className="mt-6 grid gap-5 xl:grid-cols-[20rem_minmax(0,1fr)]">
-        <aside className="space-y-3">
-          <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-secondary-700 dark:text-secondary-200">
-            {ta('accessReview.runs')}
-          </h3>
-          {runs.length > 0 ? (
-            runs.map(run => (
-              <button
-                className={`w-full rounded-2xl border p-4 text-left transition-colors ${
-                  selectedRunId === run.id
-                    ? 'border-primary-300 bg-primary-50/70 dark:border-primary-700 dark:bg-primary-950/30'
-                    : 'border-secondary-200 bg-white hover:bg-secondary-50 dark:border-secondary-700 dark:bg-secondary-900 dark:hover:bg-secondary-800'
-                }`}
-                key={run.id}
-                onClick={() => setSelectedRunId(run.id)}
-                type="button"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-semibold text-secondary-950 dark:text-secondary-50">
-                    {ta('accessReview.runNumber', { id: run.id })}
-                  </span>
-                  <span className={accessReviewRunStatusClass(run.status)}>
-                    {ta(`accessReview.statuses.${run.status}`)}
-                  </span>
-                </div>
-                <div className="mt-2 text-xs text-secondary-500 dark:text-secondary-400">
-                  {ta('accessReview.dueAt')}: {run.dueAt.slice(0, 10)}
-                </div>
-                <div className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                  {ta('accessReview.pendingCount', {
-                    count: run.summary.pendingCount,
-                  })}
-                </div>
-              </button>
-            ))
-          ) : hasLoadedRuns ? (
-            <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/70 p-4 text-sm text-secondary-600 dark:border-secondary-700/60 dark:bg-secondary-950/40 dark:text-secondary-300">
-              {ta('accessReview.noRuns')}
-            </div>
-          ) : null}
-        </aside>
-
-        <div className="min-w-0">
-          {displayedRun && displayedDetail ? (
-            <div aria-busy={isDetailLoading} className="space-y-5">
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {[
-                  [
-                    'status',
-                    ta(`accessReview.statuses.${displayedRun.status}`),
-                  ],
-                  ['due', displayedRun.dueAt.slice(0, 10)],
-                  ['reviewer', selectedReviewerDisplayName],
-                  [
-                    'progress',
-                    `${displayedRun.summary.itemCount - displayedRun.summary.pendingCount}/${displayedRun.summary.itemCount}`,
-                  ],
-                ].map(([key, value]) => (
-                  <div
-                    className="rounded-2xl border border-secondary-200/70 bg-secondary-50/70 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40"
-                    key={key}
-                  >
-                    <div className="text-xs font-medium uppercase tracking-[0.14em] text-secondary-500 dark:text-secondary-400">
-                      {ta(`accessReview.summary.${key}`)}
-                    </div>
-                    <div className="mt-2 font-semibold text-secondary-950 dark:text-secondary-50">
-                      {value}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {isOverdue ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
-                  {ta('accessReview.overdue')}
-                </div>
-              ) : null}
-
-              <div className="overflow-hidden rounded-2xl border border-secondary-200/70 dark:border-secondary-700/60">
-                <div className="flex flex-col gap-3 border-b border-secondary-200/70 bg-secondary-50 px-4 py-3 dark:border-secondary-700/60 dark:bg-secondary-950/40 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
-                        {ta('accessReview.items')}
-                      </h3>
-                      <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-secondary-600 dark:bg-secondary-900 dark:text-secondary-300">
-                        {ta('accessReview.runNumber', { id: displayedRun.id })}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                      {ta('accessReview.itemsDescription')}
-                    </p>
-                    {displayedRun.externalEvidenceReference ? (
-                      <div className="mt-2 flex max-w-full items-center gap-2 text-xs text-secondary-500 dark:text-secondary-400">
-                        <span className="shrink-0 font-medium">
-                          {ta('accessReview.externalEvidenceReference')}:
-                        </span>
-                        <span
-                          className="min-w-0 truncate rounded-full border border-secondary-200 bg-white px-2 py-1 text-secondary-700 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200"
-                          title={displayedRun.externalEvidenceReference}
-                        >
-                          {displayedRun.externalEvidenceReference}
-                        </span>
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {canManage &&
-                    displayedRun.status !== 'completed' &&
-                    displayedRun.status !== 'cancelled' ? (
-                      <button
-                        className="btn-destructive inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm disabled:opacity-60 dark:bg-secondary-900 dark:text-red-200 dark:hover:bg-red-950/30"
-                        disabled={isDetailLoading || status === 'saving'}
-                        onClick={event => void cancelRun(displayedRun, event)}
-                        type="button"
-                      >
-                        <XCircle aria-hidden="true" className="h-4 w-4" />
-                        {ta('accessReview.cancel')}
-                      </button>
-                    ) : null}
-                    {canManage &&
-                    displayedRun.summary.pendingCount === 0 &&
-                    displayedRun.status !== 'completed' &&
-                    displayedRun.status !== 'cancelled' ? (
-                      <button
-                        className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
-                        disabled={isDetailLoading || status === 'saving'}
-                        onClick={completeRun}
-                        type="button"
-                      >
-                        <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
-                        {ta('accessReview.complete')}
-                      </button>
-                    ) : null}
-                    {canManage ? (
-                      <div className="flex min-w-0 max-w-full flex-nowrap items-center gap-2 overflow-x-auto">
-                        <button
-                          className="inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                          disabled={
-                            isDetailLoading ||
-                            status === 'saving' ||
-                            exportDownload.downloading !== null
-                          }
-                          onClick={() =>
-                            void exportDownload.download({ delivery: 'json' })
-                          }
-                          type="button"
-                        >
-                          <FileJson aria-hidden="true" className="h-4 w-4" />
-                          {exportDownload.downloading === 'json'
-                            ? ta('accessReview.exportingJson')
-                            : ta('accessReview.exportJson')}
-                        </button>
-                        <button
-                          className="inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                          disabled={
-                            isDetailLoading ||
-                            status === 'saving' ||
-                            exportDownload.downloading !== null
-                          }
-                          onClick={() =>
-                            void exportDownload.download({ delivery: 'pdf' })
-                          }
-                          type="button"
-                        >
-                          <FileText aria-hidden="true" className="h-4 w-4" />
-                          {exportDownload.downloading === 'pdf'
-                            ? ta('accessReview.exportingPdf')
-                            : ta('accessReview.exportPdf')}
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-                {exportDownload.error ? (
-                  <div className="border-b border-secondary-200/70 bg-white px-4 py-3 text-sm font-medium text-red-700 dark:border-secondary-700/60 dark:bg-secondary-900 dark:text-red-300">
-                    {ta('accessReview.exportError', {
-                      detail: exportDownload.error,
-                    })}
-                  </div>
-                ) : null}
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-secondary-200 text-sm dark:divide-secondary-700">
-                    <thead className="bg-white dark:bg-secondary-900">
-                      <tr>
-                        {canManage && !isDisplayedRunClosed ? (
-                          <th className="w-12 px-4 py-3 text-left font-semibold">
-                            <span className="sr-only">
-                              {ta('accessReview.lockState')}
-                            </span>
-                          </th>
-                        ) : null}
-                        <th className="px-4 py-3 text-left font-semibold">
-                          {ta('accessReview.principal')}
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold">
-                          {ta('accessReview.scope')}
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold">
-                          {ta('accessReview.permission')}
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold">
-                          {ta('accessReview.decision')}
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold">
-                          {ta('accessReview.comment')}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-secondary-200 bg-white dark:divide-secondary-700 dark:bg-secondary-900">
-                      {displayedDetail.items.map(item => {
-                        const draft = decisionDrafts[item.id] ?? {
-                          comment: '',
-                          decision: 'approved' as const,
-                        }
-                        const canChooseDecision =
-                          canManage &&
-                          !isDisplayedRunClosed &&
-                          (item.decision === 'pending' ||
-                            unlockedDecisionItemIds.has(item.id))
-                        return (
-                          <tr key={item.id}>
-                            {canManage && !isDisplayedRunClosed ? (
-                              <td className="px-4 py-3 align-middle">
-                                <button
-                                  aria-label={
-                                    canChooseDecision
-                                      ? ta('accessReview.rowNeedsReview')
-                                      : ta('accessReview.rowApproved')
-                                  }
-                                  className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border transition-colors disabled:opacity-60 ${
-                                    canChooseDecision
-                                      ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-900/40'
-                                      : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-900/40'
-                                  }`}
-                                  disabled={
-                                    !canManage ||
-                                    isDetailLoading ||
-                                    status === 'saving'
-                                  }
-                                  onClick={() => {
-                                    if (!canManage) return
-                                    if (canChooseDecision) {
-                                      void saveDecision(item)
-                                    } else {
-                                      unlockDecision(item)
-                                    }
-                                  }}
-                                  title={
-                                    canChooseDecision
-                                      ? ta('accessReview.rowNeedsReview')
-                                      : ta('accessReview.rowApproved')
-                                  }
-                                  type="button"
-                                >
-                                  {canChooseDecision ? (
-                                    <CircleAlert
-                                      aria-hidden="true"
-                                      className="h-4 w-4"
-                                    />
-                                  ) : (
-                                    <Check
-                                      aria-hidden="true"
-                                      className="h-4 w-4"
-                                    />
-                                  )}
-                                </button>
-                              </td>
-                            ) : null}
-                            <td className="px-4 py-3">
-                              <div className="font-medium text-secondary-900 dark:text-secondary-100">
-                                {formatActorDisplayNameForLocale(
-                                  item.principal.displayName,
-                                  locale,
-                                ) ?? item.principal.displayName}
-                              </div>
-                              <div className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
-                                {item.principal.hsaId}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div>{item.scope.label}</div>
-                              <div className="text-xs text-secondary-500 dark:text-secondary-400">
-                                {item.scope.type}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div>
-                                {ta(
-                                  `accessReview.permissionTypes.${item.permissionType}`,
-                                )}
-                              </div>
-                              <div className="text-xs text-secondary-500 dark:text-secondary-400">
-                                {item.canGenerateAi
-                                  ? ta('accessReview.aiEnabled')
-                                  : ta('accessReview.aiDisabled')}
-                              </div>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-left align-middle">
-                              {canChooseDecision ? (
-                                <select
-                                  className="mt-2 block min-h-[40px] rounded-lg border border-secondary-200 bg-white px-3 py-2 disabled:cursor-not-allowed disabled:bg-secondary-100 disabled:text-secondary-500 dark:border-secondary-700 dark:bg-secondary-950 dark:disabled:bg-secondary-800 dark:disabled:text-secondary-400"
-                                  disabled={
-                                    isDetailLoading || status === 'saving'
-                                  }
-                                  onChange={event =>
-                                    setDecisionDrafts(current => ({
-                                      ...current,
-                                      [item.id]: {
-                                        ...draft,
-                                        decision: event.target.value as Exclude<
-                                          AccessReviewDecision,
-                                          'pending'
-                                        >,
-                                      },
-                                    }))
-                                  }
-                                  value={draft.decision}
-                                >
-                                  {ACCESS_REVIEW_DECISIONS.map(decision => (
-                                    <option key={decision} value={decision}>
-                                      {ta(`accessReview.decisions.${decision}`)}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : item.decision === 'pending' ? (
-                                <span className="text-sm text-secondary-500 dark:text-secondary-400">
-                                  -
-                                </span>
-                              ) : (
-                                <span
-                                  className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-xs font-semibold ${accessReviewDecisionClass(
-                                    item.decision,
-                                  )}`}
-                                >
-                                  {ta(
-                                    `accessReview.decisions.${item.decision}`,
-                                  )}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-left align-middle">
-                              {canChooseDecision ? (
-                                <textarea
-                                  className="min-h-20 w-full max-w-sm rounded-xl border border-secondary-200 bg-white px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-secondary-100 disabled:text-secondary-500 dark:border-secondary-700 dark:bg-secondary-950 dark:disabled:bg-secondary-800 dark:disabled:text-secondary-400"
-                                  disabled={
-                                    isDetailLoading || status === 'saving'
-                                  }
-                                  onChange={event =>
-                                    setDecisionDrafts(current => ({
-                                      ...current,
-                                      [item.id]: {
-                                        ...draft,
-                                        comment: event.target.value,
-                                      },
-                                    }))
-                                  }
-                                  value={draft.comment}
-                                />
-                              ) : (
-                                <div
-                                  className={`max-w-md whitespace-pre-wrap text-sm ${
-                                    item.comment
-                                      ? 'text-secondary-700 dark:text-secondary-200'
-                                      : 'text-secondary-500 dark:text-secondary-400'
-                                  }`}
-                                >
-                                  {item.comment ?? '-'}
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          ) : isDetailLoading ? (
-            <div aria-hidden="true" className="min-h-[32rem]" />
-          ) : hasLoadedRuns && !selectedRunId ? (
-            <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/70 p-6 text-sm text-secondary-600 dark:border-secondary-700/60 dark:bg-secondary-950/40 dark:text-secondary-300">
-              {ta('accessReview.selectRun')}
-            </div>
-          ) : null}
-        </div>
-      </div>
-    </section>
+      </section>
+      {exportDownload.dialog}
+    </>
   )
 }
 export default function AdminClient({
@@ -2935,11 +2961,11 @@ export default function AdminClient({
       label: tn('riskLevels'),
     },
     {
-      description: ta('responsibilityAreasDescription'),
-      href: '/specifications/responsibility-areas',
+      description: ta('governanceObjectTypesDescription'),
+      href: '/specifications/governance-object-types',
       icon: Briefcase,
-      id: 'responsibilityAreas',
-      label: tn('responsibilityAreas'),
+      id: 'governanceObjectTypes',
+      label: tn('governanceObjectTypes'),
     },
     {
       description: ta('implementationTypesDescription'),

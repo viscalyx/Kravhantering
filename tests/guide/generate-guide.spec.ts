@@ -1273,7 +1273,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'redigera-kravunderlag',
           'Redigera kravunderlag',
-          'Redigeringspanelen låter dig uppdatera underlagets namn, verksamhetsreferens, livscykelstatus, genomförandeform och verksamhetsobjekt. Klicka på "Spara" för att tillämpa ändringarna.',
+          'Redigeringspanelen låter dig uppdatera underlagets namn, verksamhetsreferens, livscykelstatus, genomförandeform och styrningsobjektstyp. Klicka på "Spara" för att tillämpa ändringarna.',
           { fullPage: false },
         )
         const cancelBtn = page
@@ -1756,7 +1756,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         'Kravlista — Kravunderlag',
         'Skriver ut kraven som ingår i ett specifikt kravunderlag som en formaterad tabell. Rapporten inkluderar underlagets metadata (namn, ID, verksamhetsområde, genomförandeform, underlagssyfte) som rubrik.\n\n' +
           '**Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält.\n\n' +
-          '**Rutt:** `/specifications/[slug]/reports/print/list?refs=...` (utskrift) · PDF genereras direkt i vyn.',
+          '**Rutt:** `/specifications/[slug]/reports/print/list?refs=...` (utskrift) · `/specifications/[slug]/reports/pdf/list?refs=...` (PDF)',
       )
 
       textEntry(

@@ -520,7 +520,7 @@ function createSpecificationMcpContractService() {
         implementationType: null,
         itemCount: 1,
         name: 'IAM Specification',
-        responsibilityArea: null,
+        governanceObjectType: null,
         uniqueId: 'IAM-SPECIFICATION',
       },
     ],

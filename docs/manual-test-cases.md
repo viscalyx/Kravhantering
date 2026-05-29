@@ -62,6 +62,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [SPEC-08: update specification item status](#spec-08-update-specification-item-status)
   - [SPEC-09: manage needs references](#spec-09-manage-needs-references)
   - [SPEC-10: generate specification list report](#spec-10-generate-specification-list-report)
+  - [SPEC-11: reset specification column views](#spec-11-reset-specification-column-views)
 - [Deviations](#deviations)
   - [DEV-01: create a draft deviation](#dev-01-create-a-draft-deviation)
   - [DEV-02: request deviation review](#dev-02-request-deviation-review)
@@ -494,9 +495,11 @@ then metadata such as area, owner, references, and packages.
 1. Apply a simple filter such as `INT`.
 1. Open the report or print menu from the library action rail.
 1. Select the list report option.
+1. Repeat with the PDF list report option.
 
-**Expected result:** A report route or generated report opens for the filtered
-requirements without losing the current list context.
+**Expected result:** A report route opens or a generated PDF downloads for the
+filtered requirements without losing the current list context or duplicating
+the locale prefix in the route.
 
 ### REQ-11: localized library error recovery
 
@@ -895,7 +898,7 @@ visible specifications.
 **Steps:**
 
 1. Select `Nytt kravunderlag`.
-1. Fill name, lifecycle status, responsibility area, and implementation type.
+1. Fill name, lifecycle status, governance object type, and implementation type.
 1. Add a business need reference if required.
 1. Save.
 
@@ -1057,6 +1060,25 @@ references can be deleted intentionally.
 
 **Expected result:** The report includes specification metadata and the chosen
 library or unique requirement rows.
+
+### SPEC-11: reset specification column views
+
+**Purpose:** Confirm each specification table restores its own default view.
+
+**Users:** `ada.admin`.
+
+**Prerequisites:** Open `/sv/specifications/ETJANST-UPP-2026`.
+
+**Steps:**
+
+1. In `Krav i underlaget`, open the column picker.
+1. Hide `Behovsreferens` and show one or more library-only columns.
+1. Select `Återställ standardvy`.
+1. Repeat from `Tillgängliga krav` after showing extra columns.
+
+**Expected result:** `Krav i underlaget` resets to `Krav-ID`, `Kravtext`,
+`Område`, and `Behovsreferens`. `Tillgängliga krav` resets to `Krav-ID`,
+`Kravtext`, and `Område`; it does not use the Kravbibliotek default column set.
 
 ## Deviations
 
@@ -1368,13 +1390,16 @@ as `INT0001`.
    searchable icon picker.
 1. Open `/sv/requirements`, then open a requirement detail page and version
    history.
-1. Use the report menu to open a print report and a PDF report.
+1. Use the report menu to open a print report and download a PDF report.
+1. Confirm the PDF download either starts quickly or shows the temporary
+   `Genererar PDF...` dialog if generation takes longer than a few seconds.
 1. Switch dark mode on and repeat the table/detail visual check.
 
 **Expected result:** Lucide catalog icons can be selected, clearing stores no
-icon, labels remain readable, and the configured icons appear consistently in
+icon, labels remain readable, the configured icons appear consistently in
 tables, badges, the status stepper, version history, print reports, and PDF
-reports.
+reports, and the browser console has no Content Security Policy or WebAssembly
+errors while downloading the PDF.
 
 ## Privacy and data portability
 
@@ -1426,8 +1451,9 @@ creator snapshots, decisions, access reviews, and audit actor snapshots.
 1. Save or inspect the generated response.
 1. Select `Exportera PDF`.
 
-**Expected result:** Both exports target `SE5560000001-linneab`; filenames use
-a fingerprint rather than the raw HSA-ID.
+**Expected result:** Both exports target `SE5560000001-linneab`; PDF delivery
+downloads a binary PDF response, and filenames use a fingerprint rather than
+the raw HSA-ID.
 
 ### PRIV-04: duplicate-name privacy search uses HSA-ID only
 

@@ -80,9 +80,12 @@ V1 measures:
 - AI generation through the MCP tool `requirements_generate_requirements`.
 - Shared service operations through service logging.
 - Server-side report item loading for the specification report.
+- Server-side PDF rendering for requirement, specification, privacy, and
+  access-review exports.
 
-Report PDF rendering happens in the browser. V1 therefore measures server-side
-data collection and limits report lists to 50 items.
+Report PDFs are rendered in Node route handlers so production CSP can stay
+strict without `unsafe-eval` or `wasm-unsafe-eval`. V1 limits report lists to
+50 items and treats PDF generation as server workload for capacity planning.
 
 ## Throttling
 

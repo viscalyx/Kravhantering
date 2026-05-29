@@ -12,7 +12,7 @@ export const UI_TERM_KEYS = [
   'acceptanceCriteria',
   'requirementPackage',
   'normReferences',
-  'responsibilityArea',
+  'governanceObjectType',
   'implementationType',
   'lifecycleStatus',
   'referenceData',
@@ -93,12 +93,12 @@ const MESSAGE_BINDINGS: Record<
     ],
     singular: [['requirement', 'normReference']],
   },
-  responsibilityArea: {
+  governanceObjectType: {
     plural: [
-      ['nav', 'responsibilityAreas'],
-      ['responsibilityAreaMgmt', 'title'],
+      ['nav', 'governanceObjectTypes'],
+      ['governanceObjectTypeMgmt', 'title'],
     ],
-    singular: [['specification', 'responsibilityArea']],
+    singular: [['specification', 'governanceObjectType']],
   },
   implementationType: {
     plural: [
@@ -289,16 +289,16 @@ export const DEFAULT_UI_TERMINOLOGY: Record<
       singular: 'Normreferens',
     },
   },
-  responsibilityArea: {
+  governanceObjectType: {
     en: {
-      definitePlural: 'Business objects',
-      plural: 'Business objects',
-      singular: 'Business object',
+      definitePlural: 'Governance object types',
+      plural: 'Governance object types',
+      singular: 'Governance object type',
     },
     sv: {
-      definitePlural: 'Verksamhetsobjekten',
-      plural: 'Verksamhetsobjekt',
-      singular: 'Verksamhetsobjekt',
+      definitePlural: 'Styrningsobjektstyperna',
+      plural: 'Styrningsobjektstyper',
+      singular: 'Styrningsobjektstyp',
     },
   },
   implementationType: {

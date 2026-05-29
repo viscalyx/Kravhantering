@@ -1006,9 +1006,9 @@ async function exportSpecification(
         CASE WHEN specification.responsible_display_name IS NULL THEN NULL ELSE N'no-user' END AS responsibleDisplayName,
         CAST(NULL AS nvarchar(64)) AS responsibleHsaId,
         CAST(specification.can_responsible_generate_ai AS int) AS canResponsibleGenerateAi,
-        responsibility_area.id AS responsibilityAreaId,
-        responsibility_area.name_sv AS responsibilityAreaNameSv,
-        responsibility_area.name_en AS responsibilityAreaNameEn,
+        governance_object_type.id AS governanceObjectTypeId,
+        governance_object_type.name_sv AS governanceObjectTypeNameSv,
+        governance_object_type.name_en AS governanceObjectTypeNameEn,
         implementation_type.id AS implementationTypeId,
         implementation_type.name_sv AS implementationTypeNameSv,
         implementation_type.name_en AS implementationTypeNameEn,
@@ -1016,8 +1016,8 @@ async function exportSpecification(
         lifecycle_status.name_sv AS lifecycleStatusNameSv,
         lifecycle_status.name_en AS lifecycleStatusNameEn
       FROM requirements_specifications specification
-      LEFT JOIN specification_responsibility_areas responsibility_area
-        ON responsibility_area.id = specification.specification_responsibility_area_id
+      LEFT JOIN specification_governance_object_types governance_object_type
+        ON governance_object_type.id = specification.specification_governance_object_type_id
       LEFT JOIN specification_implementation_types implementation_type
         ON implementation_type.id = specification.specification_implementation_type_id
       LEFT JOIN specification_lifecycle_statuses lifecycle_status

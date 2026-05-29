@@ -229,15 +229,66 @@ configuration change.
    set -a
    . /etc/kravhantering/release.env
    set +a
+   STACK_NETWORK=kravhantering-internal
 
-   STACK_NETWORK=kravhantering-single-node_kravhantering-internal
-   RUN_BOOTSTRAP=false
+   podman network exists "$STACK_NETWORK" || \
+     podman network create "$STACK_NETWORK"
 
    podman compose --env-file /etc/kravhantering/release.env \
      -f compose/single-node.compose.yml up -d sqlserver keycloak
 
-   podman run --rm --network "$STACK_NETWORK" --entrypoint /bin/sh \
-     "$NGINX_IMAGE_REF" -c "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+   exit
+   ```
+
+   Confirm the nginx resolver from inside the same Compose network. The
+   `STACK_NETWORK` variable is for temporary `podman run` containers that need
+   internal service-name DNS such as `keycloak` or `sqlserver`. `podman
+   compose` attaches the long-running services to the network automatically.
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   set -a
+   . /etc/kravhantering/release.env
+   set +a
+
+   STACK_NETWORK=kravhantering-internal
+
+   RESOLVER_IP="$(
+     podman run --rm --network "$STACK_NETWORK" --entrypoint /bin/sh \
+       "$NGINX_IMAGE_REF" -c \
+       "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+   )"
+   printf 'Use NGINX_RESOLVER=%s in /etc/kravhantering/release.env\n' \
+     "$RESOLVER_IP"
+
+   exit
+   ```
+
+   If the printed resolver differs from `NGINX_RESOLVER`, update
+   `/etc/kravhantering/release.env` to the printed IP before starting nginx:
+
+   ```bash
+   # Replace 10.89.1.1 with the printed resolver IP.
+   RESOLVER_IP=10.89.1.1
+   sudo sed -i "s#^NGINX_RESOLVER=.*#NGINX_RESOLVER=${RESOLVER_IP}#" \
+     /etc/kravhantering/release.env
+   ```
+
+   The resolver can change when the internal Compose network is renamed,
+   recreated or assigned another subnet.
+
+   Run the database jobs:
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   set -a
+   . /etc/kravhantering/release.env
+   set +a
+
+   STACK_NETWORK=kravhantering-internal
+   RUN_BOOTSTRAP=false
 
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
@@ -271,7 +322,7 @@ configuration change.
    . /etc/kravhantering/release.env
    set +a
 
-   STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+   STACK_NETWORK=kravhantering-internal
    DEMO_USERS_FILE=$PWD/keycloak/demo-users.not-for-production.json
    DEMO_USERS_TARGET=/workspace/keycloak/demo-users.not-for-production.json
    SCRIPT_FILE=$PWD/scripts/keycloak-demo-users.mjs
@@ -302,7 +353,7 @@ configuration change.
    . /etc/kravhantering/release.env
    set +a
 
-   STACK_NETWORK=kravhantering-single-node_kravhantering-internal
+   STACK_NETWORK=kravhantering-internal
    DEMO=$PWD/demo-seed
    TYPEORM=/workspace/typeorm
    DOG=seed-dogfood.mjs
@@ -319,9 +370,6 @@ configuration change.
 
    exit
    ```
-
-   If the printed resolver differs from `NGINX_RESOLVER`, update
-   `/etc/kravhantering/release.env` before starting nginx.
 
 9. Start the stack from the new release.
    Start all long-running services with the same Compose command used after a
@@ -355,6 +403,27 @@ configuration change.
     ```bash
     curl --insecure --fail --silent --show-error \
       https://kravhantering.example.internal/api/health
+    ```
+
+    After the upgraded stack passes health checks, remove the obsolete
+    pre-rename network if it is still present and no containers use it:
+
+    ```bash
+    sudo -iu kravhantering
+    OBSOLETE_NETWORK=kravhantering-single-node_kravhantering-internal
+    if podman network exists "$OBSOLETE_NETWORK"; then
+      ATTACHED_CONTAINERS="$(
+        podman network inspect "$OBSOLETE_NETWORK" \
+          --format '{{len .Containers}}'
+      )"
+      if [ "${ATTACHED_CONTAINERS:-0}" -eq 0 ]; then
+        podman network rm "$OBSOLETE_NETWORK"
+      else
+        printf 'Skipping obsolete network %s; %s containers still use it.\n' \
+          "$OBSOLETE_NETWORK" "$ATTACHED_CONTAINERS"
+      fi
+    fi
+    exit
     ```
 
 11. Re-enable traffic.

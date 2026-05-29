@@ -695,6 +695,13 @@ describe('trusted container release helpers', () => {
         expect(compose).not.toContain(':ro,Z')
         expect(compose).not.toMatch(/-\s+\.\/nginx\//)
         expect(compose).toContain('NGINX_RESOLVER')
+        expect(compose).toContain('name: kravhantering-internal')
+        expect(compose).not.toContain(
+          'kravhantering-app-node_kravhantering-internal',
+        )
+        expect(compose).not.toContain(
+          'kravhantering-single-node_kravhantering-internal',
+        )
         expect(compose).toContain('/etc/nginx/templates/default.conf.template')
         expect(compose).not.toContain('/etc/nginx/conf.d/default.conf')
       }

@@ -442,11 +442,10 @@ flowchart LR
 
 ### Additional required-for-production items
 
-- Tenant handover, redirect-URI registration runbooks, and the remaining
-  production identity-provider readiness work belong to the production
-  rollout.
-- Future environment questions such as per-environment tenant ownership, MCP
-  client credential rotation, and pre-production smoke verification against
-  the real IdP are also part of production readiness.
+- Tenant handover, redirect-URI change process, MCP service-token approval
+  and pre-production smoke verification against the real IdP belong to the
+  production rollout.
+- Day-2 auth credential rotation is handled by the RHEL 10 production
+  upgrade and rollback guide.
 - This document describes the current runtime behavior plus the contract the
   deployment needs to satisfy.

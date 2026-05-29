@@ -231,8 +231,7 @@ place.
    ```
 
 9. Start each app node from the new release.
-   Start `app-runtime`, confirm the nginx resolver from inside the Compose
-   network, then start the full app node:
+   Start `app-runtime` first:
 
    ```bash
    sudo -iu kravhantering
@@ -243,22 +242,72 @@ place.
 
    COMPOSE_FILE=compose/app-node-tls.compose.yml
    # COMPOSE_FILE=compose/app-node-http.compose.yml
-   APP_NODE_NETWORK=kravhantering-app-node_kravhantering-internal
+   APP_NODE_NETWORK=kravhantering-internal
+
+   podman network exists "$APP_NODE_NETWORK" || \
+     podman network create "$APP_NODE_NETWORK"
 
    podman compose --env-file /etc/kravhantering/release.env \
      -f "$COMPOSE_FILE" up -d app-runtime
-   podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
-     "$NGINX_IMAGE_REF" -c "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+
+   exit
+   ```
+
+   Confirm the nginx resolver from inside the same Compose network. The
+   `APP_NODE_NETWORK` variable is for this temporary `podman run` container;
+   `podman compose` attaches long-running services to the network
+   automatically.
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   set -a
+   . /etc/kravhantering/release.env
+   set +a
+
+   APP_NODE_NETWORK=kravhantering-internal
+
+   RESOLVER_IP="$(
+     podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
+       "$NGINX_IMAGE_REF" -c \
+       "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+   )"
+   printf 'Use NGINX_RESOLVER=%s in /etc/kravhantering/release.env\n' \
+     "$RESOLVER_IP"
+
+   exit
+   ```
+
+   If the printed resolver differs from `NGINX_RESOLVER`, update
+   `/etc/kravhantering/release.env` to the printed IP before starting nginx:
+
+   ```bash
+   # Replace 10.89.1.1 with the printed resolver IP.
+   RESOLVER_IP=10.89.1.1
+   sudo sed -i "s#^NGINX_RESOLVER=.*#NGINX_RESOLVER=${RESOLVER_IP}#" \
+     /etc/kravhantering/release.env
+   ```
+
+   The resolver can change when the internal Compose network is renamed,
+   recreated or assigned another subnet.
+
+   Start the full app node:
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   set -a
+   . /etc/kravhantering/release.env
+   set +a
+
+   COMPOSE_FILE=compose/app-node-tls.compose.yml
+   # COMPOSE_FILE=compose/app-node-http.compose.yml
 
    podman compose --env-file /etc/kravhantering/release.env \
      -f "$COMPOSE_FILE" up -d
 
    exit
    ```
-
-   If the printed resolver differs from `NGINX_RESOLVER`, update
-   `/etc/kravhantering/release.env` and rerun the app-node start command
-   before checking readiness.
 
 10. Check `/api/health`, `/api/ready`, sign-in and a read-only UI workflow.
     Check readiness through nginx, then sign in through the browser and open an
@@ -278,6 +327,27 @@ place.
     ```bash
     curl --insecure --fail --silent --show-error \
       https://kravhantering.example.internal/api/health
+    ```
+
+    After the upgraded app node passes health checks, remove the obsolete
+    pre-rename network if it is still present and no containers use it:
+
+    ```bash
+    sudo -iu kravhantering
+    OBSOLETE_NETWORK=kravhantering-app-node_kravhantering-internal
+    if podman network exists "$OBSOLETE_NETWORK"; then
+      ATTACHED_CONTAINERS="$(
+        podman network inspect "$OBSOLETE_NETWORK" \
+          --format '{{len .Containers}}'
+      )"
+      if [ "${ATTACHED_CONTAINERS:-0}" -eq 0 ]; then
+        podman network rm "$OBSOLETE_NETWORK"
+      else
+        printf 'Skipping obsolete network %s; %s containers still use it.\n' \
+          "$OBSOLETE_NETWORK" "$ATTACHED_CONTAINERS"
+      fi
+    fi
+    exit
     ```
 
 11. Re-enable traffic.
@@ -343,3 +413,110 @@ point taken before the upgrade. The supported sequence is:
 
 Do not rely on app-only image rollback after schema migration unless the
 specific release notes explicitly say it is supported.
+
+## Credential Rotation
+
+Use this procedure for day-2 rotation of production auth credentials when no
+release upgrade is being installed. It does not require a database migration or
+database restore point. It does require recreating `app-runtime` because auth
+environment variables are read at process start.
+
+Plan a maintenance window for any rotation that changes
+`AUTH_SESSION_COOKIE_PASSWORD`, or when the IdP cannot keep both old and new
+client secrets active during the cutover. Rotating
+`AUTH_SESSION_COOKIE_PASSWORD` invalidates every live browser session. Users
+must sign in again after the app runtime restarts.
+
+1. Record the rotation scope and current operational evidence.
+   Include which values are rotating:
+   `AUTH_OIDC_CLIENT_SECRET`, optional MCP service-client secrets,
+   `AUTH_SESSION_COOKIE_PASSWORD`, or a combination of them. Do not copy raw
+   secrets into the long-term evidence record.
+
+2. Create a restricted temporary backup of the current app environment on each
+   app node.
+   Keep this only for rollback during the rotation window unless the site's
+   records policy explicitly requires longer retention:
+
+   ```bash
+   ROTATION_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+   ROTATION_DIR="/var/tmp/kravhantering-credential-rotation-${ROTATION_ID}"
+
+   sudo install -d -o root -g root -m 0700 "$ROTATION_DIR"
+   sudo install -o root -g root -m 0600 \
+     /etc/kravhantering/app.env \
+     "$ROTATION_DIR/app.env.before"
+   ```
+
+3. Prepare the new external credentials.
+
+   - For `AUTH_OIDC_CLIENT_SECRET`, ask the IdP administrator to add or issue a
+     new secret for the existing `kravhantering-app` client.
+   - If the IdP supports overlapping secrets, keep the old secret active until
+     every app node has been updated and verified.
+   - If the IdP supports only one active secret, drain traffic before changing
+     either the IdP client secret or `/etc/kravhantering/app.env`.
+   - Optional MCP service-client secrets are not consumed by `app-runtime` for
+     token validation. Rotate them in the IdP and in the approved MCP client
+     secret store. The identity-platform or IdP administration owner issues,
+     rotates and revokes the `kravhantering-mcp` credentials. The consuming
+     MCP integration owner deploys the new secret to the MCP client. If the
+     MCP client id or access-token audience changes, Kravhantering operations
+     updates the corresponding site configuration such as `MCP_CLIENT_ID` and
+     `AUTH_OIDC_API_AUDIENCE`.
+   - Generate a new `AUTH_SESSION_COOKIE_PASSWORD` only when session-cookie
+     key rotation is in scope.
+
+4. Update `/etc/kravhantering/app.env` on every app node.
+   Use the site's approved secret editor or secret-management deployment path.
+   Avoid commands that place secrets in shell history. Keep file ownership and
+   mode restricted to the deployment convention from the first-install guide.
+
+5. Recreate `app-runtime` on every app node.
+   Recreate nginx as well so older bundles do not keep a stale upstream
+   address after the app container changes:
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   COMPOSE_FILE=compose/app-node-tls.compose.yml
+   # COMPOSE_FILE=compose/app-node-http.compose.yml
+
+   podman compose --env-file /etc/kravhantering/release.env \
+     -f "$COMPOSE_FILE" up -d --force-recreate app-runtime
+   podman compose --env-file /etc/kravhantering/release.env \
+     -f "$COMPOSE_FILE" up -d --force-recreate nginx
+
+   exit
+   ```
+
+6. Verify readiness and sign-in before restoring traffic.
+
+   ```bash
+   curl --fail --silent --show-error \
+     https://kravhantering.example.internal/api/health
+   curl --fail --silent --show-error \
+     https://kravhantering.example.internal/api/ready
+   ```
+
+   Then complete a browser login and logout against the public URL. If MCP
+   service-client credentials changed, obtain a new service token and call a
+   read-only `/api/mcp/*` path with `Authorization: Bearer <jwt>`.
+
+7. Complete or roll back the rotation.
+
+   - After successful verification, revoke the old OIDC or MCP client secrets
+     in the IdP and delete the temporary raw `app.env` backup unless retention
+     is required.
+   - If verification fails before the old IdP secret has been revoked, restore
+     the backed-up `app.env`, recreate `app-runtime` and nginx again, and ask
+     the IdP administrator to revoke the new failed secret.
+   - If the old IdP secret has already been revoked and cannot be restored,
+     issue another replacement secret and repeat the cutover instead of
+     restoring a now-invalid `app.env`.
+   - Rolling back `AUTH_SESSION_COOKIE_PASSWORD` invalidates sessions created
+     after the failed rotation. Plan for another sign-in wave.
+
+Add the rotation date, affected credential names, IdP change reference,
+verification result and old-secret revocation confirmation to the operational
+evidence record. Do not store raw secret values in that record.

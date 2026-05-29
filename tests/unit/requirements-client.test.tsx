@@ -32,6 +32,11 @@ const tableState = vi.hoisted(() => ({
   renderSpy: vi.fn(),
 }))
 
+const pdfDownloadState = vi.hoisted(() => ({
+  clearError: vi.fn(),
+  download: vi.fn(),
+}))
+
 const fetchMock = vi.fn()
 const printMock = vi.fn()
 const createObjectURLMock = vi.fn(() => 'blob:requirements-export')
@@ -64,6 +69,16 @@ vi.mock('@/components/AiRequirementGenerator', () => ({
   default: () => null,
 }))
 
+vi.mock('@/components/reports/pdf/useServerPdfDownload', () => ({
+  useServerPdfDownload: () => ({
+    clearError: pdfDownloadState.clearError,
+    dialog: null,
+    download: pdfDownloadState.download,
+    downloading: false,
+    error: null,
+  }),
+}))
+
 vi.mock('@/components/RequirementsTable', () => ({
   default: (props: RequirementsTableProps) => {
     const {
@@ -78,10 +93,12 @@ vi.mock('@/components/RequirementsTable', () => ({
       onColumnWidthsChange,
       onLoadMore,
       onRowClick,
+      onSelectionChange,
       onSortChange,
       onVisibleColumnsChange,
       renderExpanded,
       rows,
+      selectedIds,
       sortState,
       statusOptions,
       qualityCharacteristics,
@@ -93,10 +110,12 @@ vi.mock('@/components/RequirementsTable', () => ({
       areas: areas ?? [],
       categories: categories ?? [],
       columnWidths: columnWidths ?? {},
+      floatingActions: floatingActions ?? [],
       hasMore: hasMore ?? false,
       loading: loading ?? false,
       loadingMore: loadingMore ?? false,
       rows: rows ?? [],
+      selectedIds: selectedIds ?? new Set(),
       sortState,
       statusOptions: statusOptions ?? [],
       qualityCharacteristics: qualityCharacteristics ?? [],
@@ -161,6 +180,15 @@ vi.mock('@/components/RequirementsTable', () => ({
             </button>
           ),
         )}
+        <button
+          onClick={() => {
+            const firstRow = rows?.[0]
+            if (firstRow) onSelectionChange?.(new Set([firstRow.id]))
+          }}
+          type="button"
+        >
+          select-first-row
+        </button>
         <button
           onClick={() => onSortChange?.({ by: 'status', direction: 'asc' })}
           type="button"
@@ -458,6 +486,17 @@ function mockCommonFetches() {
   })
 }
 
+type FloatingAction = NonNullable<
+  RequirementsTableProps['floatingActions']
+>[number]
+
+function latestFloatingActions(): FloatingAction[] {
+  const calls = tableState.renderSpy.mock.calls as {
+    floatingActions: FloatingAction[]
+  }[][]
+  return calls.at(-1)?.[0].floatingActions ?? []
+}
+
 describe('RequirementsClient', () => {
   beforeEach(() => {
     navigationState.searchParams = new URLSearchParams()
@@ -472,6 +511,9 @@ describe('RequirementsClient', () => {
     storageSetItem.mockReset()
     tableState.renderSpy.mockReset()
     tableState.detailChangeHandlers.clear()
+    pdfDownloadState.clearError.mockReset()
+    pdfDownloadState.download.mockReset()
+    pdfDownloadState.download.mockResolvedValue(undefined)
     Object.defineProperty(window, 'print', {
       configurable: true,
       value: printMock,
@@ -846,6 +888,83 @@ describe('RequirementsClient', () => {
     expect(exportRequest).not.toContain('limit=')
     expect(createObjectURLMock).toHaveBeenCalledTimes(1)
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:requirements-export')
+  })
+
+  it('keeps list-view report URLs unprefixed for floating actions', async () => {
+    const reviewRow = makeRequirementRow(1)
+    reviewRow.version.status = 2
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        return okJson({
+          pagination: { hasMore: false },
+          requirements: [reviewRow],
+        })
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+
+    const printAction = latestFloatingActions().find(
+      action => action.id === 'print',
+    )
+    expect(
+      printAction?.menuItems?.find(item => item.id === 'print-list'),
+    ).toMatchObject({
+      href: '/requirements/reports/print/list?ids=1',
+    })
+
+    const pdfListItem = printAction?.menuItems?.find(
+      item => item.id === 'pdf-list',
+    )
+    expect(pdfListItem).toBeTruthy()
+    pdfListItem?.onClick?.()
+    expect(pdfDownloadState.download).toHaveBeenCalledWith({
+      fallbackFilename: 'requirements-list.pdf',
+      url: '/requirements/reports/pdf/list?ids=1',
+    })
+
+    fireEvent.click(screen.getByText('select-first-row'))
+
+    await waitFor(() =>
+      expect(
+        latestFloatingActions().some(action => action.id === 'review-report'),
+      ).toBe(true),
+    )
+
+    const reviewReportAction = latestFloatingActions().find(
+      action => action.id === 'review-report',
+    )
+    expect(
+      reviewReportAction?.menuItems?.find(
+        item => item.id === 'review-report-print',
+      ),
+    ).toMatchObject({
+      href: '/requirements/reports/print/review-combined?ids=1',
+    })
+
+    const reviewPdfItem = reviewReportAction?.menuItems?.find(
+      item => item.id === 'review-report-pdf',
+    )
+    expect(reviewPdfItem).toBeTruthy()
+    reviewPdfItem?.onClick?.()
+    expect(pdfDownloadState.download).toHaveBeenLastCalledWith({
+      fallbackFilename: 'combined-review-report.pdf',
+      url: '/requirements/reports/pdf/review-combined?ids=1',
+    })
   })
 
   it('ignores export failures without starting a download', async () => {

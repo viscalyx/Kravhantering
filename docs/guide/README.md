@@ -272,8 +272,8 @@ till kravtillämpningen. En behovsreferens är en fritext som förklarar varför
 kravet behövs i just det här kravunderlaget och kan ge stöd för när kravet ska
 verifieras — t.ex. ett ärendenummer, ett mål eller ett avsnitt i ett
 kravunderlag. Du kan välja en befintlig referens eller skriva en ny med valfri
-beskrivning. I efter hand hanteras registret i tabben **Behovsreferenser**, medan
-kolumnen **Behovsreferens** används för att välja eller rensa befintliga
+beskrivning. I efter hand hanteras registret i tabben **Behovsreferenser**,
+medan kolumnen **Behovsreferens** används för att välja eller rensa befintliga
 referenser i tabellen.
 
 ![Lägg till krav — behovsreferens](images/026-lagg-till-krav-modal.png)
@@ -281,7 +281,7 @@ referenser i tabellen.
 ### Redigera kravunderlag
 
 Redigeringspanelen låter dig uppdatera underlagets namn, verksamhetsreferens,
-livscykelstatus, genomförandeform och verksamhetsobjekt. Klicka på "Spara" för
+livscykelstatus, genomförandeform och styrningsobjektstyp. Klicka på "Spara" för
 att tillämpa ändringarna.
 
 ![Redigera kravunderlag](images/027-redigera-kravunderlag.png)
@@ -562,8 +562,8 @@ genomförandeform, underlagssyfte) som rubrik.
 
 **Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält.
 
-**Rutt:** `/specifications/[slug]/reports/print/list?refs=...` (utskrift) · PDF
-genereras direkt i vyn.
+**Rutt:** `/specifications/[slug]/reports/print/list?refs=...` (utskrift) ·
+`/specifications/[slug]/reports/pdf/list?refs=...` (PDF)
 
 ### Ändringsförslagshistorik
 

@@ -3,10 +3,10 @@ import type { ReportModel, ReportSection } from '../types'
 
 export interface SpecificationCoverInfo {
   businessNeedsReference: string | null
+  governanceObjectType: string | null
   implementationType: string | null
   lifecycleStatus: string | null
   name: string
-  responsibilityArea: string | null
   uniqueId: string
 }
 

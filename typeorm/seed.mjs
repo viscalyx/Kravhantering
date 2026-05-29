@@ -10,7 +10,7 @@ const TABLE_ORDER = [
   'specification_implementation_types',
   'specification_item_statuses',
   'specification_lifecycle_statuses',
-  'specification_responsibility_areas',
+  'specification_governance_object_types',
   'requirement_areas',
   'requirement_area_co_authors',
   'requirement_categories',
@@ -366,7 +366,7 @@ const SEED_DATA = {
       [4, 'Förvaltning', 'Management'],
     ],
   },
-  specification_responsibility_areas: {
+  specification_governance_object_types: {
     columns: ['id', 'name_sv', 'name_en'],
     pk: ['id'],
     rows: [
@@ -541,7 +541,7 @@ const SEED_DATA = {
   requirements_specifications: {
     columns: [
       'id',
-      'specification_responsibility_area_id',
+      'specification_governance_object_type_id',
       'specification_implementation_type_id',
       'created_at',
       'updated_at',
@@ -12123,13 +12123,13 @@ const SEED_DATA = {
       ],
       [
         11,
-        'responsibilityArea',
-        'Verksamhetsobjekt',
-        'Verksamhetsobjekt',
-        'Verksamhetsobjekten',
-        'Business object',
-        'Business objects',
-        'Business objects',
+        'governanceObjectType',
+        'Styrningsobjektstyp',
+        'Styrningsobjektstyper',
+        'Styrningsobjektstyperna',
+        'Governance object type',
+        'Governance object types',
+        'Governance object types',
         '2026-04-20 20:07:00',
       ],
       [

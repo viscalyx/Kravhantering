@@ -1,48 +1,48 @@
 import type { SqlServerDatabase } from '@/lib/db'
 import {
-  type SpecificationResponsibilityAreaEntity,
-  specificationResponsibilityAreaEntity,
+  type SpecificationGovernanceObjectTypeEntity,
+  specificationGovernanceObjectTypeEntity,
 } from '@/lib/typeorm/entities'
 
-export interface SpecificationResponsibilityAreaRow {
+export interface SpecificationGovernanceObjectTypeRow {
   id: number
   nameEn: string
   nameSv: string
 }
 
 function map(
-  row: SpecificationResponsibilityAreaEntity,
-): SpecificationResponsibilityAreaRow {
+  row: SpecificationGovernanceObjectTypeEntity,
+): SpecificationGovernanceObjectTypeRow {
   return { id: row.id, nameEn: row.nameEn, nameSv: row.nameSv }
 }
 
-export async function listSpecificationResponsibilityAreas(
+export async function listSpecificationGovernanceObjectTypes(
   db: SqlServerDatabase,
-): Promise<SpecificationResponsibilityAreaRow[]> {
+): Promise<SpecificationGovernanceObjectTypeRow[]> {
   const rows = await db
-    .getRepository(specificationResponsibilityAreaEntity)
+    .getRepository(specificationGovernanceObjectTypeEntity)
     .find({ order: { nameSv: 'ASC' } })
   return rows.map(map)
 }
 
-export async function createSpecificationResponsibilityArea(
+export async function createSpecificationGovernanceObjectType(
   db: SqlServerDatabase,
   data: { nameSv: string; nameEn: string },
-): Promise<SpecificationResponsibilityAreaRow> {
-  const repository = db.getRepository(specificationResponsibilityAreaEntity)
+): Promise<SpecificationGovernanceObjectTypeRow> {
+  const repository = db.getRepository(specificationGovernanceObjectTypeEntity)
   const row = await repository.save(
     repository.create({ nameSv: data.nameSv, nameEn: data.nameEn }),
   )
   return map(row)
 }
 
-export async function updateSpecificationResponsibilityArea(
+export async function updateSpecificationGovernanceObjectType(
   db: SqlServerDatabase,
   id: number,
   data: { nameSv?: string; nameEn?: string },
-): Promise<SpecificationResponsibilityAreaRow | undefined> {
-  const repository = db.getRepository(specificationResponsibilityAreaEntity)
-  const patch: Partial<SpecificationResponsibilityAreaEntity> = {}
+): Promise<SpecificationGovernanceObjectTypeRow | undefined> {
+  const repository = db.getRepository(specificationGovernanceObjectTypeEntity)
+  const patch: Partial<SpecificationGovernanceObjectTypeEntity> = {}
   if (data.nameSv !== undefined) patch.nameSv = data.nameSv
   if (data.nameEn !== undefined) patch.nameEn = data.nameEn
   if (Object.keys(patch).length > 0) {
@@ -52,12 +52,12 @@ export async function updateSpecificationResponsibilityArea(
   return row ? map(row) : undefined
 }
 
-export async function deleteSpecificationResponsibilityArea(
+export async function deleteSpecificationGovernanceObjectType(
   db: SqlServerDatabase,
   id: number,
 ): Promise<number> {
   const result = await db
-    .getRepository(specificationResponsibilityAreaEntity)
+    .getRepository(specificationGovernanceObjectTypeEntity)
     .delete(id)
   return result.affected ?? 0
 }
