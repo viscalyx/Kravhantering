@@ -10,10 +10,12 @@ import {
   deploymentBundleArchiveName,
   ensureGitTag,
   isReleaseRelevantPath,
+  packageVersionUrlFromVersions,
   renderReleaseNotes,
   resolveBundledMarkdownAssets,
   selectPreviousReleaseTag,
   stageProductionDeploymentBundle,
+  withReleasePackageUrls,
 } from '../release/container-release.mjs'
 
 const gitVersion = { FullSemVer: '1.2.0-preview.4' }
@@ -345,7 +347,7 @@ describe('trusted container release helpers', () => {
     ).toBe('v1.2.0-preview.3')
   })
 
-  it('uses all reachable first-parent commits when no same-kind release exists', () => {
+  it('reports when no same-kind release exists without building an extra commit list', () => {
     const plan = createReleasePlan({
       changedFiles: [],
       env: env({
@@ -360,10 +362,6 @@ describe('trusted container release helpers', () => {
           { isPrerelease: true, tagName: 'v1.2.3-preview.7' },
         ])
       }
-      if (command === 'git') {
-        expect(args).toContain(plan.commitSha)
-        return 'abc1234\t2026-05-23\tAda Lovelace\tfeat: first release\n'
-      }
       throw new Error(`Unexpected command: ${command}`)
     })
 
@@ -373,22 +371,18 @@ describe('trusted container release helpers', () => {
     expect(changelog.generatedNotesNotice).toContain(
       'No previous stable GitHub Release was found',
     )
-    expect(changelog.commits).toEqual([
-      {
-        author: 'Ada Lovelace',
-        date: '2026-05-23',
-        shortSha: 'abc1234',
-        subject: 'feat: first release',
-      },
-    ])
+    expect(changelog.commits).toEqual([])
     expect(
       execFileSync.mock.calls.some(
         ([command, args]) => command === 'gh' && args[0] === 'api',
       ),
     ).toBe(false)
+    expect(execFileSync.mock.calls.some(([command]) => command === 'git')).toBe(
+      false,
+    )
   })
 
-  it('keeps exact commits when GitHub-generated notes fail', () => {
+  it('keeps a notice when GitHub-generated notes fail', () => {
     const plan = createReleasePlan({
       changedFiles: ['containers/app/Dockerfile'],
       env: env(),
@@ -403,10 +397,6 @@ describe('trusted container release helpers', () => {
       if (command === 'gh' && args[0] === 'api') {
         throw new Error('release notes API failed')
       }
-      if (command === 'git') {
-        expect(args).toContain(`v1.2.0-preview.3..${plan.commitSha}`)
-        return 'def5678\t2026-05-24\tGrace Hopper\tfix: smoke notes\n'
-      }
       throw new Error(`Unexpected command: ${command}`)
     })
 
@@ -416,11 +406,102 @@ describe('trusted container release helpers', () => {
     expect(changelog.generatedNotesNotice).toContain(
       'GitHub-generated release notes were unavailable',
     )
-    expect(changelog.commits).toHaveLength(1)
-    expect(changelog.commits[0].subject).toBe('fix: smoke notes')
+    expect(changelog.commits).toEqual([])
+    expect(execFileSync.mock.calls.some(([command]) => command === 'git')).toBe(
+      false,
+    )
   })
 
-  it('renders release notes with generated changes, exact commits, GHCR refs and checksums', () => {
+  it('builds repository package version URLs from matching container tags', () => {
+    const plan = createReleasePlan({
+      changedFiles: ['containers/app/Dockerfile'],
+      env: env(),
+      gitVersion,
+    })
+
+    expect(
+      packageVersionUrlFromVersions(
+        plan,
+        APP_RUNTIME_PACKAGE,
+        [
+          {
+            id: 901247371,
+            metadata: {
+              container: {
+                tags: ['1.2.0-preview.4'],
+              },
+            },
+          },
+        ],
+        '1.2.0-preview.4',
+      ),
+    ).toBe(
+      'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime/901247371?tag=1.2.0-preview.4',
+    )
+  })
+
+  it('adds package version URLs to release metadata when the package API is available', () => {
+    const plan = createReleasePlan({
+      changedFiles: ['containers/app/Dockerfile'],
+      env: env(),
+      gitVersion,
+    })
+    const metadata = createReleaseMetadata(
+      plan,
+      buildxMetadata('sha256:app-manifest', 'sha256:app-image'),
+      buildxMetadata('sha256:dbjob-manifest', 'sha256:dbjob-image'),
+    )
+    const execFileSync = vi.fn((command, args) => {
+      expect(command).toBe('gh')
+      expect(args[0]).toBe('api')
+      if (args[1].includes('kravhantering-app-runtime')) {
+        return JSON.stringify([
+          {
+            id: 111,
+            metadata: {
+              container: { tags: plan.tags },
+            },
+          },
+        ])
+      }
+      if (args[1].includes('kravhantering-db-job')) {
+        return JSON.stringify([
+          {
+            id: 222,
+            metadata: {
+              container: { tags: plan.tags },
+            },
+          },
+        ])
+      }
+      throw new Error(`Unexpected endpoint: ${args[1]}`)
+    })
+
+    const linkedMetadata = withReleasePackageUrls(plan, metadata, {
+      execFileSync,
+    })
+
+    expect(linkedMetadata.appRuntime.tagUrls[metadata.appRuntime.tags[0]]).toBe(
+      'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime/111?tag=1.2.0-preview.4',
+    )
+    expect(linkedMetadata.appRuntime.tagUrls[metadata.appRuntime.tags[1]]).toBe(
+      'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime/111?tag=main-1234567890ab',
+    )
+    expect(linkedMetadata.appRuntime.tagUrls[metadata.appRuntime.tags[2]]).toBe(
+      'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime/111?tag=sha-1234567890abcdef1234567890abcdef12345678',
+    )
+    expect(linkedMetadata.dbJob.tagUrls[metadata.dbJob.tags[0]]).toBe(
+      'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=1.2.0-preview.4',
+    )
+    expect(linkedMetadata.dbJob.tagUrls[metadata.dbJob.tags[1]]).toBe(
+      'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=main-1234567890ab',
+    )
+    expect(linkedMetadata.dbJob.tagUrls[metadata.dbJob.tags[2]]).toBe(
+      'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=sha-1234567890abcdef1234567890abcdef12345678',
+    )
+  })
+
+  it('renders release notes with generated changes, GHCR refs and bundle links', () => {
     const plan = createReleasePlan({
       changedFiles: ['containers/app/Dockerfile'],
       env: env(),
@@ -432,19 +513,38 @@ describe('trusted container release helpers', () => {
       buildxMetadata('sha256:dbjob-manifest', 'sha256:dbjob-image'),
     )
 
+    const linkedMetadata = {
+      ...metadata,
+      appRuntime: {
+        ...metadata.appRuntime,
+        tagUrls: {
+          [metadata.appRuntime.tags[0]]:
+            'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime/111?tag=1.2.0-preview.4',
+          [metadata.appRuntime.tags[1]]:
+            'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime/111?tag=main-1234567890ab',
+          [metadata.appRuntime.tags[2]]:
+            'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime/111?tag=sha-1234567890abcdef1234567890abcdef12345678',
+        },
+      },
+      dbJob: {
+        ...metadata.dbJob,
+        tagUrls: {
+          [metadata.dbJob.tags[0]]:
+            'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=1.2.0-preview.4',
+          [metadata.dbJob.tags[1]]:
+            'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=main-1234567890ab',
+          [metadata.dbJob.tags[2]]:
+            'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=sha-1234567890abcdef1234567890abcdef12345678',
+        },
+      },
+    }
+
     const notes = renderReleaseNotes(
       plan,
-      metadata,
+      linkedMetadata,
       'abc123  container-stack.lock.json\n',
       {
-        commits: [
-          {
-            author: 'Ada Lovelace',
-            date: '2026-05-23',
-            shortSha: 'abc1234',
-            subject: 'feat: release notes',
-          },
-        ],
+        commits: [],
         generatedNotes: "## What's Changed\n\n- feat: release notes (#228)",
         previousTagName: 'v1.2.0-preview.3',
       },
@@ -452,25 +552,71 @@ describe('trusted container release helpers', () => {
 
     expect(notes).toContain("## What's Changed")
     expect(notes).toContain('- feat: release notes (#228)')
-    expect(notes).toContain('## Exact Commit Range')
-    expect(notes).toContain(`Range: \`v1.2.0-preview.3..${plan.commitSha}\``)
+    expect(notes).not.toContain('## Exact Commit Range')
+    expect(notes).not.toContain('## Public GHCR Images')
+    expect(notes).not.toContain('## Tags')
+    expect(notes).toContain('## Container Images')
+    expect(notes).toContain('### kravhantering-app-runtime')
     expect(notes).toContain(
-      '- `abc1234` 2026-05-23 Ada Lovelace - feat: release notes',
+      'Runnable Next.js application image for the production web runtime.',
     )
+    expect(notes).toContain(
+      '- [`ghcr.io/viscalyx/kravhantering-app-runtime:1.2.0-preview.4`](https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime/111?tag=1.2.0-preview.4)',
+    )
+    expect(notes).toContain(
+      '- [`ghcr.io/viscalyx/kravhantering-app-runtime:main-1234567890ab`](https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime/111?tag=main-1234567890ab)',
+    )
+    expect(notes).toContain(
+      '- [`ghcr.io/viscalyx/kravhantering-app-runtime:sha-1234567890abcdef1234567890abcdef12345678`](https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime/111?tag=sha-1234567890abcdef1234567890abcdef12345678)',
+    )
+    expect(notes).toContain('### kravhantering-db-job')
+    expect(notes).toContain(
+      'Database job image for SQL Server health checks, migrations and required seed operations.',
+    )
+    expect(notes).toContain(
+      '- [`ghcr.io/viscalyx/kravhantering-db-job:1.2.0-preview.4`](https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=1.2.0-preview.4)',
+    )
+    expect(notes).toContain(
+      '- [`ghcr.io/viscalyx/kravhantering-db-job:main-1234567890ab`](https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=main-1234567890ab)',
+    )
+    expect(notes).toContain(
+      '- [`ghcr.io/viscalyx/kravhantering-db-job:sha-1234567890abcdef1234567890abcdef12345678`](https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=sha-1234567890abcdef1234567890abcdef12345678)',
+    )
+    expect(
+      notes.match(/Manifest digest verification reference:/gu),
+    ).toHaveLength(2)
     expect(notes).toContain(
       'ghcr.io/viscalyx/kravhantering-app-runtime@sha256:app-manifest',
     )
     expect(notes).toContain(
       'ghcr.io/viscalyx/kravhantering-db-job@sha256:dbjob-manifest',
     )
-    expect(notes).toContain('abc123  container-stack.lock.json')
-    expect(notes).toContain(
-      'kravhantering-production-deploy-1.2.0-preview.4.tar.gz',
+    expect(notes.indexOf('### kravhantering-app-runtime')).toBeLessThan(
+      notes.indexOf('### kravhantering-db-job'),
+    )
+    expect(notes.indexOf('### kravhantering-db-job')).toBeLessThan(
+      notes.indexOf('## Production Deployment Bundle'),
+    )
+    expect(notes).not.toContain('## Checksums')
+    expect(notes).not.toContain('abc123  container-stack.lock.json')
+    expect(notes).not.toContain('## Verification')
+    expect(notes).not.toContain(
+      'Cosign keyless signatures and GitHub Artifact Attestations were verified before Compose startup.',
+    )
+    expect(notes).not.toContain(
+      'Release smoke artifacts are attached to this workflow run.',
     )
     expect(notes).toContain(
+      '- [`kravhantering-production-deploy-1.2.0-preview.4.tar.gz`](https://github.com/Viscalyx/Kravhantering/releases/download/v1.2.0-preview.4/kravhantering-production-deploy-1.2.0-preview.4.tar.gz)',
+    )
+    expect(notes).toContain(
+      '- [`kravhantering-production-deploy-1.2.0-preview.4.tar.gz.sha256`](https://github.com/Viscalyx/Kravhantering/releases/download/v1.2.0-preview.4/kravhantering-production-deploy-1.2.0-preview.4.tar.gz.sha256)',
+    )
+    expect(notes).not.toContain('## Operational Notes')
+    expect(notes).not.toContain(
       'Single-node TLS CA guidance installs `ca.crt` as readable public trust material',
     )
-    expect(notes).toContain(
+    expect(notes).not.toContain(
       'Production nginx templates use dynamic Podman DNS resolution',
     )
     expect(notes).not.toContain('GHCR package visibility')
@@ -788,7 +934,8 @@ describe('trusted container release helpers', () => {
     )
 
     expect(workflow).toContain('branches: [main]')
-    expect(workflow).toContain("tags: ['v[0-9]*.[0-9]*.[0-9]*']")
+    expect(workflow).toContain("- 'v[0-9]*.[0-9]*.[0-9]*'")
+    expect(workflow).toContain("- '!v*-*'")
     expect(workflow).toContain('packages: write')
     expect(workflow).toContain('id-token: write')
     expect(workflow).toContain('attestations: write')
@@ -810,7 +957,8 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain(
       'sbom-path: tmp/container-release-artifacts/sbom/db-job.spdx.json',
     )
-    expect(workflow).toContain('push-to-registry: true')
+    expect(workflow.match(/push-to-registry: false/g)).toHaveLength(4)
+    expect(workflow).not.toContain('push-to-registry: true')
     expect(workflow).toContain('--release-images-from-lock')
     expect(workflow).toContain(
       '--run-id "$' + '{CONTAINER_STACK_RUN_ID}" || true',

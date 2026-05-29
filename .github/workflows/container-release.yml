@@ -3,7 +3,9 @@ name: Container Release
 on:
   push:
     branches: [main]
-    tags: ['v[0-9]*.[0-9]*.[0-9]*']
+    tags:
+      - 'v[0-9]*.[0-9]*.[0-9]*'
+      - '!v*-*'
   workflow_dispatch:
 
 concurrency:
@@ -205,14 +207,14 @@ jobs:
         with:
           subject-name: ${{ env.APP_RUNTIME_IMAGE }}
           subject-digest: ${{ env.APP_RUNTIME_MANIFEST_DIGEST }}
-          push-to-registry: true
+          push-to-registry: false
 
       - name: Attest db-job provenance
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
           subject-name: ${{ env.DB_JOB_IMAGE }}
           subject-digest: ${{ env.DB_JOB_MANIFEST_DIGEST }}
-          push-to-registry: true
+          push-to-registry: false
 
       - name: Attest app-runtime SBOM
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
@@ -220,7 +222,7 @@ jobs:
           subject-name: ${{ env.APP_RUNTIME_IMAGE }}
           subject-digest: ${{ env.APP_RUNTIME_MANIFEST_DIGEST }}
           sbom-path: tmp/container-release-artifacts/sbom/app-runtime.spdx.json
-          push-to-registry: true
+          push-to-registry: false
 
       - name: Attest db-job SBOM
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
@@ -228,7 +230,7 @@ jobs:
           subject-name: ${{ env.DB_JOB_IMAGE }}
           subject-digest: ${{ env.DB_JOB_MANIFEST_DIGEST }}
           sbom-path: tmp/container-release-artifacts/sbom/db-job.spdx.json
-          push-to-registry: true
+          push-to-registry: false
 
       - name: Verify signatures and attestations
         env:
