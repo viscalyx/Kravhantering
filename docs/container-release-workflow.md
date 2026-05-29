@@ -88,12 +88,13 @@ workflow runs that are triggered by the built-in token.
 
 ## Release Evidence
 
-GitHub Release notes are the first place to find the tested release version,
-the `Container Images` section with semantic GHCR tags for normal pulls, the
-immutable GHCR manifest digest references for `app-runtime` and `db-job`
-verification, and the production deployment bundle assets. Stable releases use
-normal GitHub Releases; preview releases are marked as pre-releases and are
-kept as part of the audit trail.
+The GitHub Release page already shows the release tag, commit and workflow
+provenance. The generated release body therefore focuses on the `Container
+Images` section with semantic GHCR tags for normal pulls, the immutable GHCR
+manifest digest references for `app-runtime` and `db-job` verification, and
+the production deployment bundle assets. Stable releases use normal GitHub
+Releases; preview releases are marked as pre-releases and are kept as part of
+the audit trail.
 
 The `Container Images` section groups entries by container package, adds a
 short purpose description for each image, and lists every published tag for
@@ -172,6 +173,11 @@ artifacts anonymously:
 
 - `ghcr.io/<owner>/kravhantering-app-runtime`
 - `ghcr.io/<owner>/kravhantering-db-job`
+<!-- cSpell:ignore opencontainers -->
+The publish steps attach `org.opencontainers.image.description` as both an
+image label and a manifest annotation. GHCR reads labels for normal image
+metadata, and its package UI needs the annotation form for images published
+through manifest/index-style Buildx outputs.
 
 GHCR visibility is managed outside the workflow through package settings or the
 organization defaults for new packages. The workflow does not change package

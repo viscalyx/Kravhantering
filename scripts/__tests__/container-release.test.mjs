@@ -3,14 +3,17 @@ import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
+  APP_RUNTIME_DESCRIPTION,
   APP_RUNTIME_PACKAGE,
   createReleaseChangelog,
   createReleaseMetadata,
   createReleasePlan,
+  DB_JOB_DESCRIPTION,
   deploymentBundleArchiveName,
   ensureGitTag,
   isReleaseRelevantPath,
   packageVersionUrlFromVersions,
+  releasePlanEnv,
   renderReleaseNotes,
   resolveBundledMarkdownAssets,
   resolvePackageTagUrls,
@@ -100,6 +103,23 @@ describe('trusted container release helpers', () => {
     expect(plan.appRuntimeTags[0]).toBe(
       `ghcr.io/viscalyx/${APP_RUNTIME_PACKAGE}:1.2.0-preview.4`,
     )
+  })
+
+  it('exports package descriptions for GHCR image metadata', () => {
+    const plan = createReleasePlan({
+      changedFiles: ['containers/app/Dockerfile'],
+      env: env(),
+      gitVersion,
+    })
+
+    const values = releasePlanEnv(plan)
+
+    expect(values.APP_RUNTIME_DESCRIPTION).toBe(APP_RUNTIME_DESCRIPTION)
+    expect(values.DB_JOB_DESCRIPTION).toBe(DB_JOB_DESCRIPTION)
+    expect(values.APP_RUNTIME_DESCRIPTION.length).toBeLessThanOrEqual(512)
+    expect(values.DB_JOB_DESCRIPTION.length).toBeLessThanOrEqual(512)
+    expect(values.APP_RUNTIME_DESCRIPTION).not.toMatch(/\r|\n/u)
+    expect(values.DB_JOB_DESCRIPTION).not.toMatch(/\r|\n/u)
   })
 
   it('strips GitVersion build metadata from preview release tags', () => {
@@ -655,6 +675,10 @@ describe('trusted container release helpers', () => {
       },
     )
 
+    expect(notes).toMatch(/^## What's Changed/u)
+    expect(notes).not.toContain('# Preview release 1.2.0-preview.4')
+    expect(notes).not.toContain('Commit:')
+    expect(notes).not.toContain('Workflow run:')
     expect(notes).toContain("## What's Changed")
     expect(notes).toContain('- feat: release notes (#228)')
     expect(notes).not.toContain('## Exact Commit Range')
@@ -1067,6 +1091,23 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain('Attest db-job SBOM')
     expect(workflow.match(/uses: actions\/attest@/g)).toHaveLength(4)
     expect(workflow.match(/--provenance=false/g)).toHaveLength(2)
+    const appRuntimeDescriptionEnv = '$' + '{APP_RUNTIME_DESCRIPTION}'
+    const dbJobDescriptionEnv = '$' + '{DB_JOB_DESCRIPTION}'
+    expect(
+      workflow.match(/org\.opencontainers\.image\.description/g),
+    ).toHaveLength(4)
+    expect(workflow).toContain(
+      `--label "org.opencontainers.image.description=${appRuntimeDescriptionEnv}"`,
+    )
+    expect(workflow).toContain(
+      `--label "org.opencontainers.image.description=${dbJobDescriptionEnv}"`,
+    )
+    expect(workflow).toContain(
+      `--annotation "manifest:org.opencontainers.image.description=${appRuntimeDescriptionEnv}"`,
+    )
+    expect(workflow).toContain(
+      `--annotation "manifest:org.opencontainers.image.description=${dbJobDescriptionEnv}"`,
+    )
     expect(workflow).toContain(
       'sbom-path: tmp/container-release-artifacts/sbom/app-runtime.spdx.json',
     )
