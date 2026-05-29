@@ -13,6 +13,7 @@ import {
   packageVersionUrlFromVersions,
   renderReleaseNotes,
   resolveBundledMarkdownAssets,
+  resolvePackageTagUrls,
   selectPreviousReleaseTag,
   stageProductionDeploymentBundle,
   withReleasePackageUrls,
@@ -438,6 +439,110 @@ describe('trusted container release helpers', () => {
     ).toBe(
       'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime/901247371?tag=1.2.0-preview.4',
     )
+  })
+
+  it('reads package HTML URLs when package version ids are absent', () => {
+    const plan = createReleasePlan({
+      changedFiles: ['containers/app/Dockerfile'],
+      env: env(),
+      gitVersion,
+    })
+
+    expect(
+      packageVersionUrlFromVersions(
+        plan,
+        APP_RUNTIME_PACKAGE,
+        'not-json',
+        '1.2.0-preview.4',
+      ),
+    ).toBeUndefined()
+    expect(
+      packageVersionUrlFromVersions(
+        plan,
+        APP_RUNTIME_PACKAGE,
+        [
+          {
+            html_url:
+              'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime/901247371',
+            metadata: {
+              container: {
+                tags: ['1.2.0-preview.4'],
+              },
+            },
+          },
+        ],
+        '1.2.0-preview.4',
+      ),
+    ).toBe(
+      'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime/901247371',
+    )
+    expect(
+      packageVersionUrlFromVersions(
+        plan,
+        APP_RUNTIME_PACKAGE,
+        [
+          {
+            metadata: {
+              container: {
+                tags: ['main-1234567890ab'],
+              },
+            },
+            package_html_url:
+              'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime/901247372',
+          },
+        ],
+        'main-1234567890ab',
+      ),
+    ).toBe(
+      'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime/901247372',
+    )
+  })
+
+  it('falls back to repository package pages when package API endpoints fail', () => {
+    const plan = createReleasePlan({
+      changedFiles: ['containers/app/Dockerfile'],
+      env: env(),
+      gitVersion,
+    })
+    const execFileSync = vi.fn(() => {
+      throw new Error('package API unavailable')
+    })
+
+    const tagUrls = resolvePackageTagUrls(
+      plan,
+      APP_RUNTIME_PACKAGE,
+      plan.tags,
+      {
+        execFileSync,
+      },
+    )
+
+    expect(tagUrls).toEqual({
+      '1.2.0-preview.4':
+        'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime',
+      'main-1234567890ab':
+        'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime',
+      'sha-1234567890abcdef1234567890abcdef12345678':
+        'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-app-runtime',
+    })
+    expect(
+      execFileSync.mock.calls.map(([command, args]) => [
+        command,
+        args[0],
+        args[1],
+      ]),
+    ).toEqual([
+      [
+        'gh',
+        'api',
+        '/orgs/viscalyx/packages/container/kravhantering-app-runtime/versions?per_page=100',
+      ],
+      [
+        'gh',
+        'api',
+        '/users/viscalyx/packages/container/kravhantering-app-runtime/versions?per_page=100',
+      ],
+    ])
   })
 
   it('adds package version URLs to release metadata when the package API is available', () => {
