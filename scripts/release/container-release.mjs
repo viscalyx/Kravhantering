@@ -13,6 +13,10 @@ export const APP_RUNTIME_PACKAGE = 'kravhantering-app-runtime'
 export const DB_JOB_PACKAGE = 'kravhantering-db-job'
 export const DEFAULT_RELEASE_OUTPUT_DIR = 'tmp/container-release-artifacts'
 export const DEPLOYMENT_BUNDLE_SCHEMA_VERSION = 2
+export const APP_RUNTIME_DESCRIPTION =
+  'Runnable Next.js application image for the production web runtime.'
+export const DB_JOB_DESCRIPTION =
+  'Database job image for SQL Server health checks, migrations and required seed operations.'
 
 const USAGE = `Usage:
   node scripts/release/container-release.mjs plan --gitversion-json <path> --output <path> [--github-env <path>] [--changed-files <path>]
@@ -330,6 +334,7 @@ export function githubEnvLines(values) {
 
 export function releasePlanEnv(plan) {
   return {
+    APP_RUNTIME_DESCRIPTION,
     APP_RUNTIME_IMAGE: plan.appRuntimeImage,
     APP_RUNTIME_PACKAGE: plan.appRuntimePackage,
     APP_RUNTIME_PRIMARY_TAG: plan.appRuntimeTags[0],
@@ -340,6 +345,7 @@ export function releasePlanEnv(plan) {
     BUILD_VERSION: plan.version,
     CONTAINER_PROJECT_NAME: `kravhantering-container-stack-release-smoke-${plan.runId}`,
     CONTAINER_STACK_RUN_ID: plan.runId,
+    DB_JOB_DESCRIPTION,
     DB_JOB_IMAGE: plan.dbJobImage,
     DB_JOB_PACKAGE: plan.dbJobPackage,
     DB_JOB_PRIMARY_TAG: plan.dbJobTags[0],
@@ -1016,11 +1022,6 @@ function releaseAssetDownloadUrl(plan, assetName) {
   )
 }
 
-const APP_RUNTIME_DESCRIPTION =
-  'Runnable Next.js application image for the production web runtime.'
-const DB_JOB_DESCRIPTION =
-  'Database job image for SQL Server health checks, migrations and required seed operations.'
-
 function renderContainerImageBlock(packageName, description, imageMetadata) {
   return [
     `### ${packageName}`,
@@ -1039,18 +1040,10 @@ function renderContainerImageBlock(packageName, description, imageMetadata) {
 }
 
 export function renderReleaseNotes(plan, metadata, _hashesContent, changelog) {
-  const releaseKind = plan.isStableRelease
-    ? 'Stable release'
-    : 'Preview release'
   const generatedNotesSection = renderGeneratedNotesSection(changelog)
   const deploymentArchive = deploymentBundleArchiveName(plan.version)
   const deploymentChecksum = `${deploymentArchive}.sha256`
   const lines = [
-    `# ${releaseKind} ${plan.version}`,
-    '',
-    `Commit: \`${plan.commitSha}\``,
-    `Workflow run: https://github.com/${plan.repository}/actions/runs/${plan.runId}`,
-    '',
     ...(generatedNotesSection ? [generatedNotesSection, ''] : []),
     '## Container Images',
     '',

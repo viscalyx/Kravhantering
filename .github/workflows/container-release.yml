@@ -121,8 +121,10 @@ jobs:
             --build-arg BUILD_IMAGE_TAG="${APP_RUNTIME_PRIMARY_TAG}" \
             --build-arg NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL}" \
             --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.description=${APP_RUNTIME_DESCRIPTION}" \
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             --label "org.opencontainers.image.version=${RELEASE_VERSION}" \
+            --annotation "manifest:org.opencontainers.image.description=${APP_RUNTIME_DESCRIPTION}" \
             --provenance=false \
             "${tag_args[@]}" \
             --push \
@@ -142,8 +144,10 @@ jobs:
             --platform linux/amd64 \
             --metadata-file tmp/container-release-artifacts/metadata/db-job-buildx.json \
             --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.description=${DB_JOB_DESCRIPTION}" \
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             --label "org.opencontainers.image.version=${RELEASE_VERSION}" \
+            --annotation "manifest:org.opencontainers.image.description=${DB_JOB_DESCRIPTION}" \
             --provenance=false \
             "${tag_args[@]}" \
             --push \
