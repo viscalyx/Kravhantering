@@ -1031,7 +1031,7 @@ function renderContainerImageBlock(packageName, description, imageMetadata) {
       imageRef => `- ${codeLink(imageRef, imageMetadata.tagUrls?.[imageRef])}`,
     ),
     '',
-    'Manifest digest verification reference:',
+    'Immutable manifest digest reference:',
     '',
     `- \`${imageMetadata.manifestRef}\``,
     '',

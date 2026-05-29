@@ -175,14 +175,6 @@ jobs:
             --db-job-source ghcr-release
           node scripts/containers/generate-stack-lock.mjs check
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-
-      - name: Sign published image manifest digests
-        run: |
-          cosign sign --yes "${APP_RUNTIME_MANIFEST_DIGEST_REF}"
-          cosign sign --yes "${DB_JOB_MANIFEST_DIGEST_REF}"
-
       - name: Prepare SBOM artifact directory
         run: mkdir -p tmp/container-release-artifacts/sbom
 
@@ -232,18 +224,19 @@ jobs:
           sbom-path: tmp/container-release-artifacts/sbom/db-job.spdx.json
           push-to-registry: false
 
-      - name: Verify signatures and attestations
+      - name: Verify artifact attestations
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/container-release.yml@${GITHUB_REF}"
           for ref in "${APP_RUNTIME_MANIFEST_DIGEST_REF}" "${DB_JOB_MANIFEST_DIGEST_REF}"; do
-            cosign verify \
-              --certificate-identity "${identity}" \
-              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-              "${ref}"
-            gh attestation verify "oci://${ref}" --repo "${GITHUB_REPOSITORY}"
+            gh attestation verify "oci://${ref}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/container-release.yml"
+            gh attestation verify "oci://${ref}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/container-release.yml" \
+              --predicate-type https://spdx.dev/Document/v2.3
           done
 
       - name: Create per-container local env files
