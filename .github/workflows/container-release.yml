@@ -230,7 +230,13 @@ jobs:
         run: |
           set -euo pipefail
           for ref in "${APP_RUNTIME_MANIFEST_DIGEST_REF}" "${DB_JOB_MANIFEST_DIGEST_REF}"; do
-            gh attestation verify "oci://${ref}" --repo "${GITHUB_REPOSITORY}"
+            gh attestation verify "oci://${ref}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/container-release.yml"
+            gh attestation verify "oci://${ref}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/container-release.yml" \
+              --predicate-type https://spdx.dev/Document/v2.3
           done
 
       - name: Create per-container local env files

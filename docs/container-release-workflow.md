@@ -232,7 +232,8 @@ with:
 ```bash
 gh attestation verify \
   oci://ghcr.io/<owner>/kravhantering-app-runtime@sha256:<digest> \
-  --repo <owner>/<repo>
+  --repo <owner>/<repo> \
+  --signer-workflow <owner>/<repo>/.github/workflows/container-release.yml
 ```
 <!-- markdownlint-enable MD013 -->
 
