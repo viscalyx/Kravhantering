@@ -1091,20 +1091,22 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain('Attest db-job SBOM')
     expect(workflow.match(/uses: actions\/attest@/g)).toHaveLength(4)
     expect(workflow.match(/--provenance=false/g)).toHaveLength(2)
+    const appRuntimeDescriptionEnv = '$' + '{APP_RUNTIME_DESCRIPTION}'
+    const dbJobDescriptionEnv = '$' + '{DB_JOB_DESCRIPTION}'
     expect(
       workflow.match(/org\.opencontainers\.image\.description/g),
     ).toHaveLength(4)
     expect(workflow).toContain(
-      '--label "org.opencontainers.image.description=${APP_RUNTIME_DESCRIPTION}"',
+      `--label "org.opencontainers.image.description=${appRuntimeDescriptionEnv}"`,
     )
     expect(workflow).toContain(
-      '--label "org.opencontainers.image.description=${DB_JOB_DESCRIPTION}"',
+      `--label "org.opencontainers.image.description=${dbJobDescriptionEnv}"`,
     )
     expect(workflow).toContain(
-      '--annotation "manifest:org.opencontainers.image.description=${APP_RUNTIME_DESCRIPTION}"',
+      `--annotation "manifest:org.opencontainers.image.description=${appRuntimeDescriptionEnv}"`,
     )
     expect(workflow).toContain(
-      '--annotation "manifest:org.opencontainers.image.description=${DB_JOB_DESCRIPTION}"',
+      `--annotation "manifest:org.opencontainers.image.description=${dbJobDescriptionEnv}"`,
     )
     expect(workflow).toContain(
       'sbom-path: tmp/container-release-artifacts/sbom/app-runtime.spdx.json',
