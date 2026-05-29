@@ -687,9 +687,10 @@ describe('trusted container release helpers', () => {
     expect(notes).toContain(
       '- [`ghcr.io/viscalyx/kravhantering-db-job:sha-1234567890abcdef1234567890abcdef12345678`](https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=sha-1234567890abcdef1234567890abcdef12345678)',
     )
-    expect(
-      notes.match(/Manifest digest verification reference:/gu),
-    ).toHaveLength(2)
+    expect(notes.match(/Immutable manifest digest reference:/gu)).toHaveLength(
+      2,
+    )
+    expect(notes).not.toContain('Manifest digest verification reference:')
     expect(notes).toContain(
       'ghcr.io/viscalyx/kravhantering-app-runtime@sha256:app-manifest',
     )
@@ -1048,8 +1049,12 @@ describe('trusted container release helpers', () => {
     expect(workflow).not.toContain('Install latest npm')
     expect(workflow).not.toContain('npm install -g npm@latest')
     expect(workflow).not.toContain('verify-ghcr-public')
-    expect(workflow).toContain('cosign sign --yes')
+    expect(workflow).not.toContain('sigstore/cosign-installer')
+    expect(workflow).not.toContain('cosign sign --yes')
+    expect(workflow).not.toContain('cosign verify')
     expect(workflow).toContain('mkdir -p tmp/container-release-artifacts/sbom')
+    expect(workflow).toContain('Verify artifact attestations')
+    expect(workflow).toContain('gh attestation verify "oci://${ref}"')
     expect(workflow).toContain('Attest app-runtime provenance')
     expect(workflow).toContain('Attest db-job provenance')
     expect(workflow).toContain('Attest app-runtime SBOM')
