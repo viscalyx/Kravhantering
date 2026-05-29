@@ -1,7 +1,10 @@
 # Trusted Container Publishing
 
 The trusted container flow runs from `.github/workflows/container-release.yml`
-for `main`, stable `vX.Y.Z` tags, and manual workflow runs.
+for `main`, stable `vX.Y.Z` tags, and manual workflow runs. Preview release
+tags such as `vX.Y.Z-preview.N` are created by the `main` run and are excluded
+from the tag trigger so the preview tag push does not start a second container
+release workflow.
 
 The workflow builds `app-runtime` and `db-job`, publishes them to GHCR, and
 records two image identities in `container-stack.lock.json`. The
@@ -15,9 +18,11 @@ guides use tag-style runtime refs and verify them against locked image IDs.
 
 The Buildx publish steps disable BuildKit's default registry provenance
 attestations with `--provenance=false`. The workflow publishes provenance and
-SBOM evidence explicitly through GitHub Artifact Attestations, while keeping the
-Buildx metadata shape stable enough to record both `manifestDigest` and
-`imageId`.
+SBOM evidence explicitly through GitHub Artifact Attestations without pushing
+the attestation OCI artifacts back into GHCR. This keeps GitHub Packages from
+treating digest-derived attestation tags as the newest installable package
+version while keeping the Buildx metadata shape stable enough to record both
+`manifestDigest` and `imageId`.
 
 ## Reproducibility
 
@@ -84,25 +89,33 @@ workflow runs that are triggered by the built-in token.
 ## Release Evidence
 
 GitHub Release notes are the first place to find the tested release version,
-the GHCR manifest digest references for `app-runtime` and `db-job`, and the
-published checksums. Stable releases use normal GitHub Releases; preview
-releases are marked as pre-releases and are kept as part of the audit trail.
+the `Container Images` section with semantic GHCR tags for normal pulls, the
+GHCR manifest digest references for `app-runtime` and `db-job` verification,
+and the production deployment bundle assets. Stable releases use normal GitHub
+Releases; preview releases are marked as pre-releases and are kept as part of
+the audit trail.
+
+The `Container Images` section groups entries by container package, adds a
+short purpose description for each image, and lists every published tag for
+that release. Those tag entries link to the repository package version URL for
+the exact tag when the GitHub Packages API is available during release-note
+generation, for example
+`https://github.com/<owner>/<repo>/pkgs/container/<package>/<version-id>?tag=<tag>`.
+If the package-version lookup is unavailable, the notes fall back to the
+repository package page.
 
 Release notes also include automatic change notes. Stable releases compare
 against the previous published non-prerelease GitHub Release. Preview releases
 compare against the previous published prerelease GitHub Release. When no
 previous release of the same kind exists, the workflow does not let GitHub pick
-another release kind as the changelog boundary; it records all first-parent
-commits reachable from the release commit instead.
+another release kind as the changelog boundary.
 
 The workflow asks GitHub to generate the `What's Changed` section with
 `.github/release.yml`. That file groups pull requests by repository labels and
 uses `Other Changes` as a catch-all so unlabeled merged work still appears.
 Only pull requests labeled `ignore-for-release` are excluded from the generated
-section. Every release note also includes an `Exact Commit Range` section with
-the first-parent commits in the selected range, including short SHA, date,
-author and subject. If GitHub-generated notes are unavailable, the release still
-publishes with the exact commit list and the runtime evidence below.
+section. If GitHub-generated notes are unavailable, the release still publishes
+with the runtime evidence below.
 
 Each trusted run also writes runtime evidence:
 
@@ -166,6 +179,17 @@ visibility and does not check the GitHub Packages API after publishing. GitHub
 normally makes new packages private on first publication unless the organization
 has selected a different default.
 
+GHCR can also show digest-derived `sha256-*` entries for release evidence, such
+as registry-pushed attestations. Those entries are evidence for the image
+manifest digest, not runnable `app-runtime` or `db-job` release images. GitHub
+Packages sorts package versions by publish time, so an evidence entry created
+after the image push can appear above the semantic version tag and be suggested
+by the package UI as the latest command-line install target. The workflow keeps
+GitHub Artifact Attestations out of GHCR for that reason. Treat the GitHub
+Release notes, `container-stack.lock.json`, and the semantic image tags as the
+release source of truth; do not use `sha256-*` evidence entries as production
+image tags.
+
 GitHub warns that a package made public cannot be made private again. Only make
 the packages public when anonymous pulls and review without GitHub
 authentication are intentional.
@@ -198,8 +222,9 @@ current workflow identity. Do not create a `COSIGN_PRIVATE_KEY`,
 
 ## Verification
 
-Release notes contain exact manifest digest references and checksums. A user
-can verify a published app image with:
+Release notes contain the `Container Images` section and exact manifest digest
+references. Use the semantic tags for normal pulls and the manifest digest
+references for verification. A user can verify a published app image with:
 
 <!-- markdownlint-disable MD013 -->
 ```bash

@@ -723,13 +723,6 @@ export function stageProductionDeploymentBundle(options = {}) {
   }
 }
 
-function hashesToMarkdown(content) {
-  const lines = changedFilesFromText(content)
-  return lines.length
-    ? lines.map(line => `- \`${line}\``).join('\n')
-    : '- No hashes recorded.'
-}
-
 function parseJsonText(content, fallback) {
   try {
     return JSON.parse(content)
@@ -742,6 +735,147 @@ function cleanSingleLine(value) {
   return String(value ?? '')
     .replace(/\s+/gu, ' ')
     .trim()
+}
+
+function encodePathSegment(value) {
+  return encodeURIComponent(String(value))
+}
+
+function repositoryPackageUrl(plan, packageName) {
+  return `https://github.com/${plan.repository}/pkgs/container/${encodePathSegment(packageName)}`
+}
+
+function packageTagFallbackUrls(plan, packageName, tags = []) {
+  const fallbackUrl = repositoryPackageUrl(plan, packageName)
+  return Object.fromEntries(tags.map(tag => [tag, fallbackUrl]))
+}
+
+export function packageVersionUrlFromVersions(
+  plan,
+  packageName,
+  versions,
+  tag,
+) {
+  if (!Array.isArray(versions)) return undefined
+  const match = versions.find(version =>
+    version?.metadata?.container?.tags?.includes(tag),
+  )
+  const packageVersionId =
+    match?.id === undefined || match?.id === null
+      ? undefined
+      : readNonEmpty(String(match.id))
+  if (packageVersionId) {
+    return (
+      `https://github.com/${plan.repository}/pkgs/container/` +
+      `${encodePathSegment(packageName)}/${packageVersionId}` +
+      `?tag=${encodeURIComponent(tag)}`
+    )
+  }
+  return readNonEmpty(match?.html_url) ?? readNonEmpty(match?.package_html_url)
+}
+
+export function packageTagUrlsFromVersions(
+  plan,
+  packageName,
+  versions,
+  tags = [],
+) {
+  return Object.fromEntries(
+    tags.map(tag => [
+      tag,
+      packageVersionUrlFromVersions(plan, packageName, versions, tag) ??
+        repositoryPackageUrl(plan, packageName),
+    ]),
+  )
+}
+
+export function resolvePackageTagUrls(
+  plan,
+  packageName,
+  tags = [],
+  options = {},
+) {
+  const normalizedTags = tags.filter(Boolean)
+  if (
+    !plan.repository ||
+    !plan.owner ||
+    !packageName ||
+    normalizedTags.length === 0
+  ) {
+    return {}
+  }
+
+  const owner = encodePathSegment(plan.owner)
+  const packageSegment = encodePathSegment(packageName)
+  const endpoints = [
+    `/orgs/${owner}/packages/container/${packageSegment}/versions?per_page=100`,
+    `/users/${owner}/packages/container/${packageSegment}/versions?per_page=100`,
+  ]
+
+  for (const endpoint of endpoints) {
+    try {
+      const versions = parseJsonText(
+        execText('gh', ['api', endpoint], options),
+        [],
+      )
+      return packageTagUrlsFromVersions(
+        plan,
+        packageName,
+        versions,
+        normalizedTags,
+      )
+    } catch {
+      // Fall back below when the package API is unavailable for this token.
+    }
+  }
+
+  return packageTagFallbackUrls(plan, packageName, normalizedTags)
+}
+
+export function resolvePackageVersionUrl(plan, packageName, tag, options = {}) {
+  return resolvePackageTagUrls(plan, packageName, [tag], options)[tag]
+}
+
+function imageTagUrls(imageRefs = [], rawTags = [], rawTagUrls = {}) {
+  return Object.fromEntries(
+    imageRefs.map((imageRef, index) => {
+      const rawTag = rawTags[index] ?? imageRef.split(':').at(-1)
+      return [imageRef, rawTagUrls[rawTag]]
+    }),
+  )
+}
+
+export function withReleasePackageUrls(plan, metadata, options = {}) {
+  const rawTags = plan.tags ?? []
+  const appRuntimePackage = plan.appRuntimePackage ?? APP_RUNTIME_PACKAGE
+  const dbJobPackage = plan.dbJobPackage ?? DB_JOB_PACKAGE
+  const appRuntimeTagUrls = resolvePackageTagUrls(
+    plan,
+    appRuntimePackage,
+    rawTags,
+    options,
+  )
+  const dbJobTagUrls = resolvePackageTagUrls(
+    plan,
+    dbJobPackage,
+    rawTags,
+    options,
+  )
+  return {
+    ...metadata,
+    appRuntime: {
+      ...metadata.appRuntime,
+      tagUrls: imageTagUrls(
+        metadata.appRuntime.tags,
+        rawTags,
+        appRuntimeTagUrls,
+      ),
+    },
+    dbJob: {
+      ...metadata.dbJob,
+      tagUrls: imageTagUrls(metadata.dbJob.tags, rawTags, dbJobTagUrls),
+    },
+  }
 }
 
 function isSameReleaseKind(plan, release) {
@@ -780,35 +914,6 @@ export function readPublishedGitHubReleases(plan, options = {}) {
   )
   const releases = parseJsonText(output, [])
   return Array.isArray(releases) ? releases : []
-}
-
-export function readFirstParentCommits(plan, previousTagName, options = {}) {
-  if (!plan.releaseTagName) return []
-  const range = previousTagName
-    ? `${previousTagName}..${plan.commitSha}`
-    : plan.commitSha
-  const output = execText(
-    'git',
-    [
-      'log',
-      '--first-parent',
-      '--reverse',
-      '--date=short',
-      '--format=%h%x09%ad%x09%an%x09%s',
-      range,
-    ],
-    options,
-  )
-
-  return changedFilesFromText(output).map(line => {
-    const [shortSha, date, author, ...subjectParts] = line.split('\t')
-    return {
-      author: readNonEmpty(author) ?? 'unknown',
-      date: readNonEmpty(date) ?? 'unknown-date',
-      shortSha: readNonEmpty(shortSha) ?? 'unknown',
-      subject: readNonEmpty(subjectParts.join('\t')) ?? '(no subject)',
-    }
-  })
 }
 
 export function readGeneratedReleaseNotes(plan, previousTagName, options = {}) {
@@ -858,14 +963,12 @@ export function createReleaseChangelog(plan, options = {}) {
     generatedNotesNotice = `GitHub release lookup was unavailable: ${cleanSingleLine(error instanceof Error ? error.message : error)}`
   }
 
-  const commits = readFirstParentCommits(plan, previousTagName, options)
-
   if (!previousTagName) {
     generatedNotesNotice =
       generatedNotesNotice ??
-      `No previous ${plan.prerelease ? 'preview' : 'stable'} GitHub Release was found; the exact commit list covers all first-parent commits reachable from this release.`
+      `No previous ${plan.prerelease ? 'preview' : 'stable'} GitHub Release was found.`
     return {
-      commits,
+      commits: [],
       generatedNotes,
       generatedNotesNotice,
       previousTagName,
@@ -879,7 +982,7 @@ export function createReleaseChangelog(plan, options = {}) {
   }
 
   return {
-    commits,
+    commits: [],
     generatedNotes,
     generatedNotesNotice,
     previousTagName,
@@ -900,40 +1003,48 @@ function renderGeneratedNotesSection(changelog) {
   return `## What's Changed\n\n${notice}`
 }
 
-function renderExactCommitRange(plan, changelog) {
-  if (!changelog) return undefined
-  const lines = [
-    '## Exact Commit Range',
-    '',
-    changelog.previousTagName
-      ? `Previous same-kind release: \`${changelog.previousTagName}\``
-      : 'Previous same-kind release: none',
-    changelog.previousTagName
-      ? `Range: \`${changelog.previousTagName}..${plan.commitSha}\``
-      : `Range: first-parent history through \`${plan.commitSha}\``,
-    '',
-  ]
-
-  if (changelog.commits.length === 0) {
-    lines.push('- No first-parent commits found in this range.')
-  } else {
-    lines.push(
-      ...changelog.commits.map(
-        commit =>
-          `- \`${commit.shortSha}\` ${commit.date} ${commit.author} - ${commit.subject}`,
-      ),
-    )
-  }
-
-  return lines.join('\n')
+function codeLink(value, url) {
+  const code = `\`${value}\``
+  return url ? `[${code}](${url})` : code
 }
 
-export function renderReleaseNotes(plan, metadata, hashesContent, changelog) {
+function releaseAssetDownloadUrl(plan, assetName) {
+  if (!plan.repository || !plan.releaseTagName) return undefined
+  return (
+    `https://github.com/${plan.repository}/releases/download/` +
+    `${encodePathSegment(plan.releaseTagName)}/${encodePathSegment(assetName)}`
+  )
+}
+
+const APP_RUNTIME_DESCRIPTION =
+  'Runnable Next.js application image for the production web runtime.'
+const DB_JOB_DESCRIPTION =
+  'Database job image for SQL Server health checks, migrations and required seed operations.'
+
+function renderContainerImageBlock(packageName, description, imageMetadata) {
+  return [
+    `### ${packageName}`,
+    '',
+    description,
+    '',
+    ...imageMetadata.tags.map(
+      imageRef => `- ${codeLink(imageRef, imageMetadata.tagUrls?.[imageRef])}`,
+    ),
+    '',
+    'Manifest digest verification reference:',
+    '',
+    `- \`${imageMetadata.manifestRef}\``,
+    '',
+  ]
+}
+
+export function renderReleaseNotes(plan, metadata, _hashesContent, changelog) {
   const releaseKind = plan.isStableRelease
     ? 'Stable release'
     : 'Preview release'
   const generatedNotesSection = renderGeneratedNotesSection(changelog)
-  const exactCommitRange = renderExactCommitRange(plan, changelog)
+  const deploymentArchive = deploymentBundleArchiveName(plan.version)
+  const deploymentChecksum = `${deploymentArchive}.sha256`
   const lines = [
     `# ${releaseKind} ${plan.version}`,
     '',
@@ -941,35 +1052,23 @@ export function renderReleaseNotes(plan, metadata, hashesContent, changelog) {
     `Workflow run: https://github.com/${plan.repository}/actions/runs/${plan.runId}`,
     '',
     ...(generatedNotesSection ? [generatedNotesSection, ''] : []),
-    ...(exactCommitRange ? [exactCommitRange, ''] : []),
-    '## Public GHCR Images',
+    '## Container Images',
     '',
-    `- app-runtime: \`${metadata.appRuntime.manifestRef}\``,
-    `- db-job: \`${metadata.dbJob.manifestRef}\``,
-    '',
-    '## Tags',
-    '',
-    ...metadata.appRuntime.tags.map(tag => `- \`${tag}\``),
-    ...metadata.dbJob.tags.map(tag => `- \`${tag}\``),
+    ...renderContainerImageBlock(
+      plan.appRuntimePackage ?? APP_RUNTIME_PACKAGE,
+      APP_RUNTIME_DESCRIPTION,
+      metadata.appRuntime,
+    ),
+    ...renderContainerImageBlock(
+      plan.dbJobPackage ?? DB_JOB_PACKAGE,
+      DB_JOB_DESCRIPTION,
+      metadata.dbJob,
+    ),
     '',
     '## Production Deployment Bundle',
     '',
-    `- \`${deploymentBundleArchiveName(plan.version)}\``,
-    `- \`${deploymentBundleArchiveName(plan.version)}.sha256\``,
-    '',
-    '## Operational Notes',
-    '',
-    '- Single-node TLS CA guidance installs `ca.crt` as readable public trust material while keeping private keys restricted.',
-    '- Production nginx templates use dynamic Podman DNS resolution for app-runtime and Keycloak upstreams to avoid stale container IPs after restarts.',
-    '',
-    '## Checksums',
-    '',
-    hashesToMarkdown(hashesContent),
-    '',
-    '## Verification',
-    '',
-    '- Cosign keyless signatures and GitHub Artifact Attestations were verified before Compose startup.',
-    '- Release smoke artifacts are attached to this workflow run.',
+    `- ${codeLink(deploymentArchive, releaseAssetDownloadUrl(plan, deploymentArchive))}`,
+    `- ${codeLink(deploymentChecksum, releaseAssetDownloadUrl(plan, deploymentChecksum))}`,
     '',
   ]
 
@@ -1073,7 +1172,15 @@ export async function main(args, dependencies = {}) {
 
     if (command === 'notes') {
       const plan = readJsonFile(options.plan, fsImpl)
-      const metadata = readJsonFile(options.metadata, fsImpl)
+      const metadata = withReleasePackageUrls(
+        plan,
+        readJsonFile(options.metadata, fsImpl),
+        {
+          cwd: dependencies.cwd,
+          env,
+          execFileSync: dependencies.execFileSync,
+        },
+      )
       const hashes = fsImpl.existsSync(options.hashes)
         ? fsImpl.readFileSync(options.hashes, 'utf8')
         : ''
