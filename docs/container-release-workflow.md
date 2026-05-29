@@ -173,7 +173,7 @@ artifacts anonymously:
 
 - `ghcr.io/<owner>/kravhantering-app-runtime`
 - `ghcr.io/<owner>/kravhantering-db-job`
-
+<!-- cSpell:ignore opencontainers -->
 The publish steps attach `org.opencontainers.image.description` as both an
 image label and a manifest annotation. GHCR reads labels for normal image
 metadata, and its package UI needs the annotation form for images published
