@@ -1054,7 +1054,7 @@ describe('trusted container release helpers', () => {
     expect(workflow).not.toContain('cosign verify')
     expect(workflow).toContain('mkdir -p tmp/container-release-artifacts/sbom')
     expect(workflow).toContain('Verify artifact attestations')
-    expect(workflow).toContain('gh attestation verify "oci://${ref}"')
+    expect(workflow).toContain('gh attestation verify "oci://$' + '{ref}"')
     expect(workflow).toContain('Attest app-runtime provenance')
     expect(workflow).toContain('Attest db-job provenance')
     expect(workflow).toContain('Attest app-runtime SBOM')
