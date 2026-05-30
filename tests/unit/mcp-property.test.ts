@@ -168,7 +168,7 @@ function createService() {
     })),
     getSpecificationItems: vi.fn(async () => ({
       items: [],
-      message: 'Specification items',
+      message: 'Requirement applications',
       specificationId: 7,
     })),
     graduateSpecificationLocalRequirement: vi.fn(async () => ({
@@ -200,7 +200,7 @@ function createService() {
     listDeviations: vi.fn(),
     listGraduationTargetAreas: vi.fn(async () => ({
       areas: [{ id: 2, name: 'Security', prefix: 'SEC' }],
-      message: 'Graduation target areas',
+      message: 'Graduation target requirement areas',
     })),
     listSpecifications: vi.fn(async () => ({
       message: 'Specifications',

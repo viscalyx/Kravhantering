@@ -176,7 +176,7 @@ describe('specifications/[id]/items route', () => {
     })
   })
 
-  it('returns specification items with merged deviation counts', async () => {
+  it('returns requirement applications with merged deviation counts', async () => {
     mocks.getSpecificationBySlug.mockResolvedValue({ id: 7 })
     mocks.listSpecificationItems.mockResolvedValue([
       {
@@ -569,7 +569,7 @@ describe('specifications/[id]/items route', () => {
     }
   })
 
-  it('deletes mixed specification items by itemRef when itemRefs are supplied', async () => {
+  it('deletes mixed requirement applications by itemRef when itemRefs are supplied', async () => {
     const request = new NextRequest(
       'http://localhost/api/specifications/spec/items',
       {

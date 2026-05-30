@@ -58,7 +58,7 @@ of moving public tags such as `stable-alpine` or `2025-latest`. The lock file,
 not the tag text, is the source of truth; `bin/kravhantering-images.sh verify`
 fails if a tag now resolves to another image ID.
 
-## Configuration BoM
+## Configuration BoM (Bill of Materials)
 
 Before editing templates, record these site values. The table separates values
 that must be planned from defaults or derived values that usually only need
@@ -255,7 +255,7 @@ also holds database files, transaction logs, indexes, system databases and
 Use 10 GiB as a practical floor for the SQL Server Podman volume on a
 production host. Prefer 20-50 GiB when the site expects long version history,
 many requirements specifications, local requirements, deviations, improvement
-suggestions, action audit log rows or long growth periods between maintenance
+suggestions, action-log rows or long growth periods between maintenance
 windows. Keep SQL Server backups and volume snapshots on separate storage.
 
 After a representative import or seed, measure the actual volume usage:

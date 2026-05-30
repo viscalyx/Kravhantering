@@ -527,7 +527,8 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       deleteSpecificationNeedsReference(db, 5, 33),
     ).rejects.toMatchObject({
       code: 'conflict',
-      message: 'Needs reference is used by specification items',
+      message:
+        'Needs reference is used by requirement applications or unique requirements',
     })
     expect(query).toHaveBeenCalledTimes(1)
   })
@@ -1018,7 +1019,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     )
   })
 
-  it('lists specification items on SQL Server', async () => {
+  it('lists requirement applications on SQL Server', async () => {
     const { db, query } = createSqlServerDb()
     query
       .mockResolvedValueOnce([
@@ -1133,7 +1134,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     ])
   })
 
-  it('updates specification item fields by item ref on SQL Server', async () => {
+  it('updates requirement application fields by item ref on SQL Server', async () => {
     const { db, query } = createSqlServerDb()
     query
       .mockResolvedValueOnce([
@@ -1209,7 +1210,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     )
   })
 
-  it('rejects clearing library specification item status before SQL update', async () => {
+  it('rejects clearing library usage status before SQL update', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([
       {
@@ -1233,7 +1234,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       >[3]),
     ).rejects.toMatchObject({
       code: 'validation',
-      message: 'Specification item status cannot be cleared',
+      message: 'Usage status cannot be cleared',
     })
 
     expect(query).toHaveBeenCalledTimes(1)
@@ -1243,7 +1244,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     )
   })
 
-  it('rejects custom library specification item status before status lookup', async () => {
+  it('rejects custom library usage status before status lookup', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([
       {
@@ -1265,7 +1266,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       }),
     ).rejects.toMatchObject({
       code: 'validation',
-      message: 'Invalid specification item status ID',
+      message: 'Invalid usage status ID',
     })
 
     expect(query).toHaveBeenCalledTimes(1)
@@ -1293,7 +1294,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       >[3]),
     ).rejects.toMatchObject({
       code: 'validation',
-      message: 'Specification item status cannot be cleared',
+      message: 'Usage status cannot be cleared',
     })
 
     expect(query).toHaveBeenCalledTimes(1)
@@ -1320,7 +1321,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     )
   })
 
-  it('deletes mixed specification items by refs on SQL Server inside one transaction', async () => {
+  it('deletes mixed requirement applications by refs on SQL Server inside one transaction', async () => {
     const { db, query, transaction } = createSqlServerDb()
     query.mockResolvedValueOnce([{ id: 31 }]).mockResolvedValueOnce([{ id: 4 }])
 

@@ -6,7 +6,7 @@ const viewports = [
 ]
 
 for (const viewport of viewports) {
-  test.describe(`Requirement specifications list filter — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
+  test.describe(`Requirements specifications list filter — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } })
 
     test('filters the table by specification name and clears the search', async ({

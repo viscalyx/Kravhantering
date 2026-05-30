@@ -22,9 +22,9 @@ The developer setup, browse workflow, and CLI reference live in
 4. [UI Settings Tables](#ui-settings-tables)
 5. [Core Domain Tables](#core-domain-tables)
 6. [Access Review Tables](#access-review-tables)
-7. [Application Audit Tables](#application-audit-tables)
+7. [Application Action Log Tables](#application-action-log-tables)
 8. [Join / Bridge Tables](#join--bridge-tables)
-9. [Status Workflow](#status-workflow)
+9. [Requirement Version Status Workflow](#requirement-version-status-workflow)
 
 ---
 
@@ -516,7 +516,7 @@ erDiagram
     requirement_areas ||--o{ requirement_area_co_authors : "has co-authors"
     requirement_areas ||--o{ requirements : "has many"
     requirements ||--o{ requirement_versions : "has many versions"
-    requirement_versions }o--|| requirement_statuses : "has status"
+    requirement_versions }o--|| requirement_statuses : "requirement version status"
     requirement_versions }o--o| requirement_categories : "categorized as"
     requirement_versions }o--o| requirement_types : "typed as"
     requirement_versions }o--o| quality_characteristics : "sub-typed as"
@@ -536,7 +536,7 @@ erDiagram
     requirements_specifications ||--o{ specification_local_requirements : "contains local"
     specification_governance_object_types ||--o{ requirements_specifications : "governance object type"
     specification_implementation_types ||--o{ requirements_specifications : "implementation type"
-    specification_lifecycle_statuses ||--o{ requirements_specifications : "lifecycle status"
+    specification_lifecycle_statuses ||--o{ requirements_specifications : "specification lifecycle status"
     specification_item_statuses ||--o{ requirements_specification_items : "usage status"
     specification_item_statuses ||--o{ specification_local_requirements : "usage status"
     specification_needs_references ||--o{ requirements_specification_items : "scoped needs reference"
@@ -584,8 +584,9 @@ erDiagram
 
 ## Lookup / Taxonomy Tables
 
-These tables store reference data (categories, types,
-statuses). All user-facing text columns are localized
+These tables store reference data (categories, types, requirement version
+statuses, usage statuses, and related catalogs). All user-facing text columns
+are localized
 with `_sv` (Swedish) and `_en` (English) suffixes.
 
 These are business-domain reference-data tables. UI configuration is documented
@@ -649,7 +650,7 @@ The seed catalog contains 49 ISO/IEC 25010:2023 quality-characteristic rows.
 
 ### `requirement_statuses`
 
-Workflow statuses governing the lifecycle of a requirement version.
+Requirement version statuses governing the lifecycle of a requirement version.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -660,7 +661,7 @@ Workflow statuses governing the lifecycle of a requirement version.
 | `sort_order` | integer | Display ordering |
 | `color` | text | Hex color code for UI badges |
 | `icon_name` | text | Allowed lucide icon name (nullable) |
-| `is_system` | boolean (integer) | `true` for built-in statuses that cannot be deleted |
+| `is_system` | boolean (integer) | `true` for built-in requirement version statuses that cannot be deleted |
 <!-- markdownlint-enable MD013 -->
 
 **Seed values:**
@@ -676,14 +677,14 @@ Workflow statuses governing the lifecycle of a requirement version.
 
 ### `requirement_status_transitions`
 
-Defines the allowed state-machine transitions between statuses.
+Defines the allowed state-machine transitions between requirement version statuses.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
-| `from_requirement_status_id` | integer FK → `requirement_statuses.id` | Source status |
-| `to_requirement_status_id` | integer FK → `requirement_statuses.id` | Target status |
+| `from_requirement_status_id` | integer FK → `requirement_statuses.id` | Source requirement version status |
+| `to_requirement_status_id` | integer FK → `requirement_statuses.id` | Target requirement version status |
 <!-- markdownlint-enable MD013 -->
 
 **Unique constraint:**
@@ -702,7 +703,7 @@ Defines the allowed state-machine transitions between statuses.
 
 ---
 
-### Status Workflow
+### Requirement Version Status Workflow
 
 The seeded requirement workflow is:
 
@@ -882,11 +883,11 @@ Förvaltning (Management).
 
 ### `specification_item_statuses`
 
-Fixed lookup table for usage/implementation status of individual
+Fixed lookup table for usage status of individual
 requirements within a specification (e.g. included, in progress,
 implemented, verified). Seed IDs 1-6 are the supported system catalog;
 the rows are editable for labels, descriptions, color, icon, and allowed
-sort order, but statuses are not created or deleted.
+sort order, but usage statuses are not created or deleted.
 
 | Column | Type | Description |
 | -------- | ------ | ------------- |
@@ -999,7 +1000,7 @@ erasure workflow therefore does not scan or rewrite free-text descriptions.
 ### `owners`
 
 People who can be assigned as responsible owners for requirement areas.
-Managed via the area owners reference data page. `hsa_id` is the durable
+Managed via the requirement area owners reference data page. `hsa_id` is the durable
 identity key; names and email are display/contact snapshots.
 
 Privacy erasure cannot anonymize or delete an owner while requirement areas or
@@ -1007,8 +1008,9 @@ requirement packages still reference that owner. The handler must switch those
 assignments to a replacement owner first, or skip the owner row. Requirement
 area and package owner references are shown as informational rows in the
 preview and are controlled by the owner action; a `Switch` owner action updates
-the linked requirement areas and packages in the same transaction. When no area
-or package references the owner, privacy erasure may delete or skip the owner
+the linked requirement areas and packages in the same transaction. When no
+requirement area or package references the owner, privacy erasure may delete or
+skip the owner
 row; it does not switch or anonymize that standalone owner identity.
 
 <!-- markdownlint-disable MD013 -->
@@ -1046,9 +1048,9 @@ Maria (3) → Användbarhet, Drift.
 Seed data also includes duplicate display names with different `hsa_id` values
 so tests prove that privacy erasure and authorization disambiguate by HSA-ID,
 not by name. The `SE5560000001-linneab` fixture appears across every privacy
-preview group: owner rows, area and package owner assignments, requirement
+preview group: owner rows, requirement-area and package owner assignments, requirement
 versions, deviation creator and decision fields, improvement-suggestion creator
-and resolver fields, specification responsibility, and area/specification
+and resolver fields, specification lead, and requirement-area/specification
 co-author assignment rows, plus access-review creator, reviewer, completer,
 reviewed-principal, and decision snapshots. This gives privacy-erasure tests a
 single HSA-ID with varied live-assignment and historical occurrences.
@@ -1058,7 +1060,7 @@ single HSA-ID with varied live-assignment and historical occurrences.
 ### `requirement_areas`
 
 Groups requirements into logical domains
-(e.g. Integration, Security, Performance). Each area
+(e.g. Integration, Security, Performance). Each requirement area
 has a unique prefix used to generate human-readable
 requirement IDs.
 
@@ -1067,17 +1069,18 @@ requirement IDs.
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
 | `prefix` | text, unique | Short code (e.g. `INT`, `SÄK`, `PRE`) used in `unique_id` |
-| `name` | text | Area display name |
-| `description` | text | Purpose of the area |
+| `name` | text | Requirement area display name |
+| `description` | text | Purpose of the requirement area |
 | `owner_id` | integer FK → `owners.id` | Responsible owner (nullable) |
-| `next_sequence` | integer (default 1) | Next sequence number to assign within this area |
+| `next_sequence` | integer (default 1) | Next sequence number to assign within this requirement area |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
 **Owner:** `owner_id` is a foreign key to the `owners` table. The owner is
-assigned via the area reference data management page and is displayed alongside
-the area in the requirement detail views and create/edit form.
+assigned via the requirement area reference-data management page and is
+displayed alongside the requirement area in the requirement detail views and
+create/edit form.
 
 ---
 
@@ -1118,13 +1121,13 @@ precondition.
 | `revision_token` | uniqueidentifier | Opaque optimistic-concurrency token; changes whenever the version row changes |
 | `requirement_id` | integer FK → `requirements.id` | Parent requirement |
 | `version_number` | integer | Monotonically increasing version within the requirement |
-| `description` | text | The requirement specification text |
+| `description` | text | The requirement text |
 | `acceptance_criteria` | text | How to verify the requirement is fulfilled |
 | `requirement_category_id` | integer FK → `requirement_categories.id` | Business / IT / Supplier classification (nullable) |
 | `requirement_type_id` | integer FK → `requirement_types.id` | Functional / Non-functional (nullable) |
 | `quality_characteristic_id` | integer FK → `quality_characteristics.id` | ISO 25010 quality characteristic (nullable) |
 | `risk_level_id` | integer FK → `risk_levels.id` | Risk level classification (nullable) |
-| `requirement_status_id` | integer FK → `requirement_statuses.id` | Current lifecycle status (1=Draft, 2=Review, 3=Published, 4=Archived). The UI may render a derived label — see [UI status labels](lifecycle-workflow.md#ui-status-labels). |
+| `requirement_status_id` | integer FK → `requirement_statuses.id` | Current requirement version status (1=Draft, 2=Review, 3=Published, 4=Archived). The UI may render a derived label — see [UI status labels](lifecycle-workflow.md#ui-status-labels). |
 | `is_testing_required` | boolean (integer, default false) | Whether the requirement must be verified by test |
 | `verification_method` | text | How to verify the requirement (nullable; only meaningful when `is_testing_required` is true) |
 | `created_at` | text (ISO 8601) | When this version was created |
@@ -1133,7 +1136,7 @@ precondition.
 | `archive_initiated_at` | text (ISO 8601) | When archiving was initiated — set when status moves from Published to Review for archiving (nullable). When set, the UI swaps the status badge label to "Arkiveringsgranskning" / "Archiving Review" — see [UI status labels](lifecycle-workflow.md#ui-status-labels). |
 | `archived_at` | text (ISO 8601) | When status changed to Archived (nullable) |
 | `status_updated_at` | text (ISO 8601) | When `requirement_status_id` last changed; used by Admin Archiving to identify stale Draft/Review/Archived versions without touching `edited_at` |
-| `has_specification_item_history` | boolean (integer, default false) | Durable marker set when the version has ever been linked to a requirements specification item |
+| `has_specification_item_history` | boolean (integer, default false) | Durable marker set when the version has ever been linked to a requirement application |
 | `created_by` | text | Display-name snapshot for the actor that created this version (nullable) |
 | `created_by_hsa_id` | text | HSA-ID for the actor that created this version (nullable after privacy erasure) |
 <!-- markdownlint-enable MD013 -->
@@ -1156,10 +1159,10 @@ on `requirement_id` where `requirement_status_id = 3`.
 also enforce at most one Published version and at most one
 archiving-in-progress version per requirement.
 
-**Effective status (filtering):** When listing requirements
-the system computes a priority-based effective status per
+**Effective requirement status (filtering):** When listing requirements
+the system computes a priority-based effective requirement status per
 requirement: Published > Archived > Review > Draft. See
-[version-lifecycle-dates.md](version-lifecycle-dates.md#effective-status-filtering)
+[version-lifecycle-dates.md](version-lifecycle-dates.md#effective-requirement-status-filtering)
 for details. When an archived requirement gets a replacement
 Draft or Review version, `requirements.is_archived` stays
 `true` until that newer version is published.
@@ -1180,11 +1183,11 @@ specific procurement or project.
 | `local_requirement_next_sequence` | integer NOT NULL DEFAULT 1 | Next sequence number reserved for specification-local requirement IDs such as `KRAV0001` |
 | `specification_governance_object_type_id` | integer FK → `specification_governance_object_types.id` | Governance object type classification (nullable) |
 | `specification_implementation_type_id` | integer FK → `specification_implementation_types.id` | Implementation type classification (nullable) |
-| `specification_lifecycle_status_id` | integer FK → `specification_lifecycle_statuses.id` | Lifecycle status classification (nullable) |
+| `specification_lifecycle_status_id` | integer FK → `specification_lifecycle_statuses.id` | Specification lifecycle status classification (nullable) |
 | `business_needs_reference` | text | Optional free-text reference to the underlying business need |
-| `responsible_hsa_id` | text | HSA-ID for the live responsible person (nullable) |
-| `responsible_display_name` | text | Display-name snapshot for the live responsible person (nullable) |
-| `can_responsible_generate_ai` | integer NOT NULL DEFAULT 0 | Whether the responsible assignment may use live AI generation |
+| `responsible_hsa_id` | text | HSA-ID for the live specification lead (nullable) |
+| `responsible_display_name` | text | Display-name snapshot for the live specification lead (nullable) |
+| `can_responsible_generate_ai` | integer NOT NULL DEFAULT 0 | Whether the specification lead assignment may use live AI generation |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
@@ -1250,7 +1253,7 @@ version/review/publication lifecycle.
 | `is_testing_required` | integer NOT NULL DEFAULT 0 | Whether the requirement is marked as verifiable |
 | `verification_method` | text | Verification method |
 | `needs_reference_id` | integer FK → `specification_needs_references.(specification_id, id)` | Optional specification-scoped needs reference |
-| `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Required usage/implementation status, defaults to Included (ID 1) |
+| `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Required usage status, defaults to Included (ID 1) |
 | `note` | text | Optional specification-scoped note |
 | `status_updated_at` | text (ISO 8601) | When the usage status last changed |
 | `created_at` | text (ISO 8601) | Creation timestamp |
@@ -1334,7 +1337,7 @@ Point-in-time snapshot of one app-managed assignment in an access-review run.
 | `scope_type` | text | Scope family, for example `requirement_area` or `requirements_specification` |
 | `scope_key` | text | Stable scope identifier inside the source family |
 | `scope_label` | text | Human-readable scope label |
-| `permission_type` | text | App permission type such as area owner, co-author, or specification responsible |
+| `permission_type` | text | App permission type such as requirement area owner, co-author, or specification lead |
 | `can_generate_ai` | integer NOT NULL DEFAULT 0 | Whether the assignment had app-managed AI permission at snapshot time |
 | `decision` | text | Review decision: `pending`, `approved`, `revoke_required`, `changed`, or `not_applicable` |
 | `decided_at` | text (ISO 8601) | Decision timestamp (nullable) |
@@ -1351,16 +1354,16 @@ Point-in-time snapshot of one app-managed assignment in an access-review run.
 **Check constraint:** `chk_access_review_items_decision` limits `decision` to
 the review decision values above.
 
-## Application Audit Tables
+## Application Action Log Tables
 
-Application action audit rows are stored in the database and are separate from
+Application action-log rows are stored in the database and are separate from
 the platform `security-audit` JSON log stream. They capture successful
 app-owned mutations and authorization denials for Admin review, filtering, and
 CSV export.
 
 ### `action_audit_events`
 
-Durable application-level action audit event. Rows intentionally have no
+Durable application-level action-log event. Rows intentionally have no
 foreign keys so they survive lifecycle deletes, archiving, and privacy erasure
 of related business data.
 
@@ -1394,7 +1397,7 @@ of related business data.
 **Check constraints:** `chk_action_audit_events_actor_kind` and
 `chk_action_audit_events_decision`.
 
-**Privacy note:** Erasure preserves the audit row but may anonymize or switch
+**Privacy note:** Erasure preserves the action-log row but may anonymize or switch
 `actor_hsa_id` and `actor_display_name`. This is an explicit exception to
 strict append-only identity fidelity so data-subject rights can be exercised
 without deleting action, target, time, decision, request ID, or correlation ID.
@@ -1402,7 +1405,7 @@ without deleting action, target, time, decision, request ID, or correlation ID.
 preview/export/erasure workflow in this slice.
 
 **Seed note:** Development seed data includes allowed, denied, human, and MCP
-audit rows, including validated client IPs and `SE5560000001-linneab` actor
+action-log rows, including validated client IPs and `SE5560000001-linneab` actor
 snapshots for privacy preview/export coverage.
 
 ### `archiving_retention_policies`
@@ -1505,7 +1508,7 @@ directly and do not reference `owners`.
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | -------- | ------ | ------------- |
-| `area_id` | integer FK → `requirement_areas.id` (CASCADE DELETE), PK part 1 | Area assignment |
+| `area_id` | integer FK → `requirement_areas.id` (CASCADE DELETE), PK part 1 | Requirement area assignment |
 | `hsa_id` | text, PK part 2 | HSA-ID for the co-author |
 | `display_name` | text | Display-name snapshot for the co-author |
 | `can_generate_ai` | integer NOT NULL DEFAULT 0 | Whether this assignment may use live AI generation |
@@ -1651,7 +1654,7 @@ Links individual requirements (pinned to a specific version) into a specificatio
 | `requirement_id` | integer FK → `requirements.id` | The requirement being included |
 | `requirement_version_id` | integer FK → `requirement_versions.id` | Pinned version snapshot |
 | `needs_reference_id` | integer FK → `specification_needs_references.(specification_id, id)` | Optional specification-scoped needs reference |
-| `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Required usage/implementation status, defaults to Included (ID 1) |
+| `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Required usage status, defaults to Included (ID 1) |
 | `note` | text | Optional free-text note (nullable) |
 | `status_updated_at` | text (ISO 8601) | When the usage status was last changed (nullable) |
 | `unused_1` | text | Retired legacy column kept for migration compatibility |
@@ -1712,7 +1715,7 @@ a decision (approved or rejected) with its own rationale.
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
-| `specification_item_id` | integer FK → `requirements_specification_items.id` (CASCADE DELETE) | The specification item this deviation applies to |
+| `specification_item_id` | integer FK → `requirements_specification_items.id` (CASCADE DELETE) | The requirement application this deviation applies to |
 | `motivation` | text NOT NULL | Why this mandatory requirement cannot be fulfilled |
 | `is_review_requested` | integer NOT NULL DEFAULT 0 | 0 = draft, 1 = submitted for review |
 | `decision` | integer | Null = pending, 1 = approved, 2 = rejected |
@@ -1786,8 +1789,8 @@ its purpose and the table/column(s) it covers.
 | `uq_requirement_categories_name_en` | `requirement_categories` | `name_en` | Prevents duplicate English category names |
 | `uq_requirement_types_name_sv` | `requirement_types` | `name_sv` | Prevents duplicate Swedish type names |
 | `uq_requirement_types_name_en` | `requirement_types` | `name_en` | Prevents duplicate English type names |
-| `uq_requirement_statuses_name_sv` | `requirement_statuses` | `name_sv` | Prevents duplicate Swedish status names |
-| `uq_requirement_statuses_name_en` | `requirement_statuses` | `name_en` | Prevents duplicate English status names |
+| `uq_requirement_statuses_name_sv` | `requirement_statuses` | `name_sv` | Prevents duplicate Swedish requirement version status names |
+| `uq_requirement_statuses_name_en` | `requirement_statuses` | `name_en` | Prevents duplicate English requirement version status names |
 | `uq_risk_levels_name_sv` | `risk_levels` | `name_sv` | Prevents duplicate Swedish risk level names |
 | `uq_risk_levels_name_en` | `risk_levels` | `name_en` | Prevents duplicate English risk level names |
 | `uq_requirement_status_transitions_from_to` | `requirement_status_transitions` | `(from_requirement_status_id, to_requirement_status_id)` | Prevents duplicate transition rules |
@@ -1807,8 +1810,8 @@ its purpose and the table/column(s) it covers.
 | `uq_owners_hsa_id` | `owners` | `hsa_id` | Prevents duplicate non-null live owner identities by HSA-ID |
 | `uq_specification_implementation_types_name_sv` | `specification_implementation_types` | `name_sv` | Prevents duplicate Swedish implementation type names |
 | `uq_specification_implementation_types_name_en` | `specification_implementation_types` | `name_en` | Prevents duplicate English implementation type names |
-| `uq_specification_lifecycle_statuses_name_sv` | `specification_lifecycle_statuses` | `name_sv` | Prevents duplicate Swedish lifecycle status names |
-| `uq_specification_lifecycle_statuses_name_en` | `specification_lifecycle_statuses` | `name_en` | Prevents duplicate English lifecycle status names |
+| `uq_specification_lifecycle_statuses_name_sv` | `specification_lifecycle_statuses` | `name_sv` | Prevents duplicate Swedish specification lifecycle status names |
+| `uq_specification_lifecycle_statuses_name_en` | `specification_lifecycle_statuses` | `name_en` | Prevents duplicate English specification lifecycle status names |
 | `uq_specification_item_statuses_name_sv` | `specification_item_statuses` | `name_sv` | Prevents duplicate Swedish usage status names |
 | `uq_specification_item_statuses_name_en` | `specification_item_statuses` | `name_en` | Prevents duplicate English usage status names |
 | `uq_requirements_specifications_unique_id` | `requirements_specifications` | `unique_id` | Ensures each specification has a stable unique identifier |
@@ -1833,7 +1836,7 @@ its purpose and the table/column(s) it covers.
 | `idx_requirement_versions_created_by_hsa_id` | `requirement_versions` | `created_by_hsa_id` | Speed up privacy erasure and actor-history lookups |
 | `idx_requirement_versions_status_updated_at` | `requirement_versions` | `status_updated_at` | Speed up Admin Archiving candidate checks for stale Draft, Review and Archived versions |
 | `idx_requirement_versions_has_specification_item_history` | `requirement_versions` | `has_specification_item_history` | Speed up filtering versions that have never belonged to a requirements specification |
-| `idx_requirements_specifications_responsible_hsa_id` | `requirements_specifications` | `responsible_hsa_id` | Speed up responsible assignment and privacy lookups |
+| `idx_requirements_specifications_responsible_hsa_id` | `requirements_specifications` | `responsible_hsa_id` | Speed up specification lead assignment and privacy lookups |
 | `idx_requirement_area_co_authors_hsa_id` | `requirement_area_co_authors` | `hsa_id` | Speed up assignment authorization and privacy lookups |
 | `idx_requirement_area_co_authors_created_by_hsa_id` | `requirement_area_co_authors` | `created_by_hsa_id` | Speed up privacy erasure of historical assignment creators |
 | `idx_specification_co_authors_hsa_id` | `specification_co_authors` | `hsa_id` | Speed up assignment authorization and privacy lookups |
@@ -1847,7 +1850,7 @@ its purpose and the table/column(s) it covers.
 | `idx_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | Speed up lookups of requirement versions by norm reference |
 | `idx_specification_local_requirement_requirement_packages_requirement_package_id` | `specification_local_requirement_requirement_packages` | `requirement_package_id` | Speed up lookups of specification-local requirements by requirement package |
 | `idx_specification_local_requirement_norm_references_norm_reference_id` | `specification_local_requirement_norm_references` | `norm_reference_id` | Speed up lookups of specification-local requirements by norm reference |
-| `idx_deviations_specification_item_id` | `deviations` | `specification_item_id` | Speed up lookups of deviations by specification item |
+| `idx_deviations_specification_item_id` | `deviations` | `specification_item_id` | Speed up lookups of deviations by requirement application |
 | `idx_specification_local_requirement_deviations_specification_local_requirement_id` | `specification_local_requirement_deviations` | `specification_local_requirement_id` | Speed up lookups of deviations by specification-local requirement |
 | `idx_specification_local_requirement_deviations_created_by_hsa_id` | `specification_local_requirement_deviations` | `created_by_hsa_id` | Speed up privacy erasure of local deviation creators |
 | `idx_specification_local_requirement_deviations_decided_by_hsa_id` | `specification_local_requirement_deviations` | `decided_by_hsa_id` | Speed up privacy erasure of local deviation decision makers |
@@ -1864,7 +1867,7 @@ its purpose and the table/column(s) it covers.
 | `idx_access_review_items_principal_hsa_id` | `access_review_items` | `principal_hsa_id` | Speed up privacy lookup for reviewed principals |
 | `idx_access_review_items_source_key` | `access_review_items` | `source_key` | Speed up source-family review evidence queries |
 | `idx_access_review_items_decided_by_hsa_id` | `access_review_items` | `decided_by_hsa_id` | Speed up privacy lookup for decision actors |
-| `idx_action_audit_events_occurred_at` | `action_audit_events` | `occurred_at` | Speed up recent audit-log browsing |
+| `idx_action_audit_events_occurred_at` | `action_audit_events` | `occurred_at` | Speed up recent action-log browsing |
 | `idx_action_audit_events_actor_hsa_id_occurred_at` | `action_audit_events` | `(actor_hsa_id, occurred_at)` | Speed up actor filtering and privacy erasure/export lookup |
 | `idx_action_audit_events_target_occurred_at` | `action_audit_events` | `(target_kind, target_id, occurred_at)` | Speed up target-focused audit review |
 | `idx_action_audit_events_action_occurred_at` | `action_audit_events` | `(action, occurred_at)` | Speed up action-name filtering |
@@ -1996,7 +1999,7 @@ graph LR
         ARI[access_review_items]
     end
 
-    subgraph Action Audit
+    subgraph Action Log
         AAE[action_audit_events]
     end
 

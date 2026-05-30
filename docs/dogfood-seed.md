@@ -42,11 +42,11 @@ Existing `requirement_areas.next_sequence` is bumped by the number of dogfood
 Krav added to that area, so newly minted `unique_id` values continue without
 gaps (e.g. `INT0040`, `SÄK0042`, `ANV0038` …).
 
-## Areas
+## Requirement Areas
 
-Existing areas (INT, SÄK, PRE, ANV, LAG, BEH, IDN, LOG, DRF, DAT) are reused
-where the krav fit. Six new areas are introduced for dimensions the base seed
-does not cover:
+Existing requirement areas (INT, SÄK, PRE, ANV, LAG, BEH, IDN, LOG, DRF, DAT)
+are reused where the krav fit. Six new requirement areas are introduced for
+dimensions the base seed does not cover:
 
 | Prefix | Name                | Owner             |
 | ------ | ------------------- | ----------------- |
@@ -62,32 +62,32 @@ does not cover:
 `DOGFOOD_KRAV` contains 59 Krav, each anchored to a real file or feature in
 the repository (e.g. `app/api/mcp/route.ts`, `lib/dal/`, `scripts/dev-curl.sh`,
 `docker-compose.sqlserver.yml`, `.github/instructions/`). All Krav are stored
-as version 1 with status **Publicerad**. Distribution per area:
+as version 1 with status **Publicerad**. Distribution per requirement area:
 
-| Area | Krav |
+| Requirement area | Krav |
 | ---- | ---- |
-| ARK  | 4    |
-| INT  | 5    |
-| SÄK  | 5    |
-| IDN  | 3    |
-| BEH  | 3    |
-| PRE  | 3    |
-| ANV  | 5    |
-| TIL  | 3    |
-| LAG  | 3    |
-| LOG  | 3    |
-| DRF  | 5    |
-| DAT  | 4    |
-| KVA  | 5    |
-| SPR  | 2    |
-| RAP  | 3    |
-| UTV  | 3    |
+| ARK | 4 |
+| INT | 5 |
+| SÄK | 5 |
+| IDN | 3 |
+| BEH | 3 |
+| PRE | 3 |
+| ANV | 5 |
+| TIL | 3 |
+| LAG | 3 |
+| LOG | 3 |
+| DRF | 5 |
+| DAT | 4 |
+| KVA | 5 |
+| SPR | 2 |
+| RAP | 3 |
+| UTV | 3 |
 
 Every Krav fills `description`, `acceptance_criteria`, `verification_method`,
 `requirement_category_id`, `requirement_type_id`, `quality_characteristic_id`,
-`risk_level_id`, `is_testing_required`, and at least one requirement package. Norm
-references are optional and added only where a Krav maps to an applicable law,
-standard or framework.
+`risk_level_id`, `is_testing_required`, and at least one requirement package.
+Norm references are optional and added only where a Krav maps to an applicable
+law, standard or framework.
 
 ## Kravunderlag
 

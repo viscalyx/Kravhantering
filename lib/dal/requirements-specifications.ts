@@ -1176,11 +1176,14 @@ export async function deleteSpecificationNeedsReference(
   }
 
   if (existing.linkedItemCount > 0) {
-    throw conflictError('Needs reference is used by specification items', {
-      linkedItemCount: existing.linkedItemCount,
-      reason: 'needs_reference_in_use',
-      specificationId,
-    })
+    throw conflictError(
+      'Needs reference is used by requirement applications or unique requirements',
+      {
+        linkedItemCount: existing.linkedItemCount,
+        reason: 'needs_reference_in_use',
+        specificationId,
+      },
+    )
   }
 
   const rows = (await db.query(
@@ -1590,7 +1593,7 @@ export async function createSpecificationLocalRequirement(
     const sequenceRow = sequenceRows[0]
     if (!sequenceRow) {
       throw notFoundError(
-        `Requirement specification ${specificationId} not found`,
+        `Requirements specification ${specificationId} not found`,
       )
     }
 
@@ -2623,7 +2626,7 @@ async function validateSpecificationItemStatus(
   statusId: number,
 ): Promise<void> {
   if (!isSystemSpecificationItemStatusId(statusId)) {
-    throw validationError('Invalid specification item status ID', {
+    throw validationError('Invalid usage status ID', {
       specificationItemStatusId: statusId,
     })
   }
@@ -2638,7 +2641,7 @@ async function validateSpecificationItemStatus(
   )) as Array<{ id: number }>
 
   if (!rows[0]) {
-    throw validationError('Invalid specification item status ID', {
+    throw validationError('Invalid usage status ID', {
       specificationItemStatusId: statusId,
     })
   }
@@ -2661,7 +2664,7 @@ export async function updateSpecificationItemFields(
 
   if ('specificationItemStatusId' in data) {
     if (data.specificationItemStatusId == null) {
-      throw validationError('Specification item status cannot be cleared', {
+      throw validationError('Usage status cannot be cleared', {
         itemId,
         specificationItemStatusId: data.specificationItemStatusId,
       })
@@ -2728,7 +2731,7 @@ export async function updateSpecificationLocalRequirementFields(
 
   if ('specificationItemStatusId' in data) {
     if (data.specificationItemStatusId == null) {
-      throw validationError('Specification item status cannot be cleared', {
+      throw validationError('Usage status cannot be cleared', {
         specificationItemStatusId: data.specificationItemStatusId,
         specificationLocalRequirementId,
       })

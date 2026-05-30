@@ -54,7 +54,7 @@ function validateResponsiblePerson(
   if (data.canResponsibleGenerateAi === true && !hasResponsibleField(data)) {
     ctx.addIssue({
       code: 'custom',
-      message: 'Responsible person is required for AI permission',
+      message: 'Specification lead is required for AI permission',
       path: ['canResponsibleGenerateAi'],
     })
   }
@@ -63,7 +63,7 @@ function validateResponsiblePerson(
     const hasHsaId = normalizeResponsibleHsaId(data.responsibleHsaId) != null
     ctx.addIssue({
       code: 'custom',
-      message: 'Responsible HSA-ID and name must be provided together',
+      message: 'Specification lead HSA-ID and name must be provided together',
       path: hasHsaId ? ['responsibleDisplayName'] : ['responsibleHsaId'],
     })
   }
@@ -75,7 +75,7 @@ function validateResponsiblePerson(
   ) {
     ctx.addIssue({
       code: 'custom',
-      message: 'Responsible person is required for AI permission',
+      message: 'Specification lead is required for AI permission',
       path: ['canResponsibleGenerateAi'],
     })
   }

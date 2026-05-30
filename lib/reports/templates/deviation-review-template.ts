@@ -28,7 +28,7 @@ export function buildDeviationReviewReport(
       message:
         locale === 'sv'
           ? `Kravunderlag: ${data.specificationName} (${data.specificationUniqueId})`
-          : `Requirements Specification: ${data.specificationName} (${data.specificationUniqueId})`,
+          : `Requirements specification: ${data.specificationName} (${data.specificationUniqueId})`,
       severity: 'info',
     })
   }

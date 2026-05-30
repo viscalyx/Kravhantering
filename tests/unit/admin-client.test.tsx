@@ -472,7 +472,7 @@ describe('AdminClient', () => {
     )
   })
 
-  it('opens the action audit log tab from the admin tab query parameter', () => {
+  it('opens the action log tab from the admin tab query parameter', () => {
     searchParamsMock.current = new URLSearchParams('tab=actionAuditLog')
 
     render(
@@ -530,7 +530,7 @@ describe('AdminClient', () => {
     expect(screen.getByText('REQ-42')).toBeVisible()
   })
 
-  it('shows an action audit log loading state while tab data is loading', () => {
+  it('shows an action log loading state while tab data is loading', () => {
     searchParamsMock.current = new URLSearchParams('tab=actionAuditLog')
 
     render(
@@ -588,7 +588,7 @@ describe('AdminClient', () => {
     )
   })
 
-  it('writes the action audit log tab to the current history entry', () => {
+  it('writes the action log tab to the current history entry', () => {
     render(
       <AdminClient
         currentUserRoles={['Admin']}

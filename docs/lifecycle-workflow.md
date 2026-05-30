@@ -133,16 +133,16 @@ rules.
 
 The status badge in the requirements list, the version
 history sidebar, and other UI surfaces derives its label
-from a requirement-level effective status combined with
+from an effective requirement status combined with
 `requirement_versions.archive_initiated_at` (relevant for
 Review only). For the requirements list view the effective
-status is computed server-side by the list SQL builder in
+requirement status is computed server-side by the list SQL builder in
 [`lib/dal/requirements-list-sql.mjs`](../lib/dal/requirements-list-sql.mjs),
 using the shared status constants from
 [`lib/requirements/status-constants.mjs`](../lib/requirements/status-constants.mjs).
 The query consolidates each requirement's
 `requirement_versions.requirement_status_id` rows into a
-single status; for the version history sidebar each row's
+single effective requirement status; for the version history sidebar each row's
 own `requirement_status_id` is used directly. In both cases
 the displayed row's `archive_initiated_at` is what
 distinguishes "Granskning" from "Arkiveringsgranskning":
@@ -203,10 +203,10 @@ stateDiagram-v2
 
 ## Deviation Lifecycle
 
-Deviations are linked to requirements specification items
+Deviations are linked to requirement applications
 (`requirements_specification_items`). They record a request to
 deviate from a requirement within a specific specification. A
-single specification item can have multiple deviations over
+single requirement application can have multiple deviations over
 time.
 
 ```mermaid
@@ -233,20 +233,20 @@ stateDiagram-v2
 Approved and Rejected are terminal states — a decided
 deviation cannot be edited, deleted, or reopened.
 
-### Deviation Effect on Specification Item Status
+### Deviation Effect on Usage Status
 
 Approving a deviation does **not** automatically change
-the specification item status. To mark the item as deviated,
-the user must manually set the specification item status to
+the usage status. To mark the item as deviated,
+the user must manually set the usage status to
 "Deviated" (see below). This is only allowed when at
 least one approved deviation exists for the item.
 
-## Specification Item Status
+## Usage Status
 
 When a requirement is included in a requirements specification
-it becomes a **specification item** with a manually managed
-status. There is no enforced state machine — users can
-set any status at any time, with one exception.
+it becomes a **requirement application** with a manually managed
+usage status. There is no enforced state machine — users can
+set any usage status at any time, with one exception.
 
 <!-- markdownlint-disable MD013 -->
 | ID | Swedish | English | Color | Description |
@@ -259,38 +259,38 @@ set any status at any time, with one exception.
 | 6 | Ej tillämpbar | Not Applicable | #6b7280 | Not applicable in this context. |
 <!-- markdownlint-enable MD013 -->
 
-- Every new specification item starts with status **Included**
+- Every new requirement application starts with usage status **Included**
   (1).
 - Status changes are recorded with a `status_updated_at`
   timestamp.
-- The status is required for every specification item. It can change
+- The usage status is required for every requirement application. It can change
   among real usage statuses but cannot be cleared to no status through
   UI, API, DAL, or database workflows.
 - **Guard rule:** The **Deviated** (5) status can only be
-  set when the specification item has at least one approved
+  set when the requirement application has at least one approved
   deviation. The system rejects the update otherwise.
 - Creating or approving a deviation does **not**
-  automatically update the specification item status.
+  automatically update the usage status.
 
 ### Deviation-in-Specification Process
 
 The end-to-end process for handling deviations within a
 requirements specification:
 
-1. A specification item exists in the specification (status defaults
-   to Included).
+1. A requirement application exists in the specification (usage status
+   defaults to Included).
 2. The user registers a deviation on the item, providing
    a motivation.
 3. The deviation goes through
    Draft → Review Requested → Approved or Rejected.
-4. If approved, the user may set the specification item status
+4. If approved, the user may set the usage status
    to **Deviated**. The system validates that an approved
    deviation exists before allowing this.
-5. If rejected, the specification item status remains
+5. If rejected, the usage status remains
    unchanged and the user may register a new deviation.
-6. A specification item can accumulate multiple deviations for
+6. A requirement application can accumulate multiple deviations for
    historical tracking.
-7. Deviations are cascade-deleted when the specification item
+7. Deviations are cascade-deleted when the requirement application
    is removed from the specification.
 
 ---

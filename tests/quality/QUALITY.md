@@ -7,14 +7,15 @@ SQL Server + TypeORM. Quality in this project means every surface tells the
 same lifecycle truth: REST, MCP, specification views, exports, and admin defaults
 must agree on what is draft, under review, published, archived, deviated, or
 pending review. A route returning `200` is not enough if it exposes the wrong
-version or lets specification status drift from the audit trail.
+version or lets specification status drift from recorded decision history.
 
 Deming applies here as "quality is built into the workflow." The shared
 service in `lib/requirements/service.ts`, the lifecycle DAL in
 `lib/dal/requirements.ts`. Juran applies as
 "fitness for use": a requirement register is fit only when lifecycle dates,
-effective status, specification inclusion, and decision history stay trustworthy
-under editing, publishing, archiving, exporting, and lookup fallback paths.
+effective requirement status, specification inclusion, and decision history
+stay trustworthy under editing, publishing, archiving, exporting, and lookup
+fallback paths.
 Crosby applies because the cost of defining these invariants now is far lower
 than debugging a quietly wrong compliance report or a leaked draft later.
 
@@ -28,11 +29,11 @@ recorded production incident.
 <!-- markdownlint-disable MD013 -->
 | Subsystem | Target | Why |
 | --- | --- | --- |
-| `lib/dal/requirements.ts` | 92-95% | Lifecycle transitions, effective status, delete/restore, and auto-archive rules are the core register invariants. A regression here can make the same requirement appear published, draft, or archived depending on the surface. |
+| `lib/dal/requirements.ts` | 92-95% | Lifecycle transitions, effective requirement status, delete/restore, and auto-archive rules are the core register invariants. A regression here can make the same requirement appear published, draft, or archived depending on the surface. |
 | `lib/dal/requirements-specifications.ts` | 90-95% | Specification linking, needs-reference ownership, specification-local sequencing, and deviation gating determine what compliance reports say about real work. Silent drift here produces plausible but wrong specification status. |
 | `lib/requirements/service.ts` and `app/api/requirements/[id]/route.ts` | 88-92% | These are the public truth layer for REST and MCP. The highest-risk failure is published-detail reads leaking draft or review content. |
-| `lib/dal/deviations.ts` and `lib/dal/improvement-suggestions.ts` | 88-92% | These modules hold the project's write-once audit trail. Mutability after approval, rejection, resolution, or dismissal breaks traceability instead of throwing obvious errors. |
-| `lib/audit/action-audit.ts` and `app/api/admin/audit-events/route.ts` | 88-92% | The action audit log is fail-closed review evidence for mutations and denials. A regression here can make a valid business change untraceable or leak personal/free-text data into audit details. |
+| `lib/dal/deviations.ts` and `lib/dal/improvement-suggestions.ts` | 88-92% | These modules hold the project's write-once decision history. Mutability after approval, rejection, resolution, or dismissal breaks traceability instead of throwing obvious errors. |
+| `lib/audit/action-audit.ts` and `app/api/admin/audit-events/route.ts` | 88-92% | The action log is fail-closed review evidence for mutations and denials. A regression here can make a valid business change untraceable or leak personal/free-text data into action-log details. |
 | `lib/requirements/list-view.ts` and requirements-table UI consumers | 82-88% | Admin defaults, visible-column persistence, filter clearing, and width clamps are fail-safe logic. Bad fallback behavior leaves the UI looking normal while applying stale filters. |
 | `lib/mcp/http.ts`, `lib/mcp/server.ts`, and `lib/export-csv.ts` | 80-85% | These are outward-facing contracts. Wrong method handling, malformed MCP fields, or CSV escaping defects break integrations and downstream reporting even when the app UI still works. |
 <!-- markdownlint-enable MD013 -->
@@ -54,7 +55,7 @@ The following do **not** count as meaningful coverage for this project:
 - Calling the MCP handler and only asserting "no exception" instead of the
   actual JSON-RPC error or payload fields.
 - Testing archived behavior through a single boolean flag without checking the
-  effective status rules that drive list visibility.
+  effective requirement status rules that drive list visibility.
 
 ## Fitness-to-Purpose Scenarios
 
@@ -164,9 +165,9 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 4: review a
 ### Scenario 5: archived requirements stay visible while a replacement draft exists
 
 **Requirement tag:**
-`[Req: formal — docs/version-lifecycle-dates.md "Effective Status"]`
+`[Req: formal — docs/version-lifecycle-dates.md "Effective Requirement Status"]`
 
-**What happened:** The effective-status SQL in
+**What happened:** The effective requirement status SQL in
 `lib/dal/requirements.ts:63-85` gives archived requirements higher priority
 than replacement draft or review work while `requirements.isArchived` stays
 true. If draft or review ever outranks archived in this window, archived items
@@ -174,7 +175,8 @@ vanish from archive-oriented reporting exactly when users are preparing a
 replacement.
 
 **The requirement:** While a previously archived requirement is being replaced,
-its effective status must remain archived until a new published version exists.
+its effective requirement status must remain archived until a new published
+version exists.
 
 **How to verify:**
 
@@ -193,7 +195,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 5: archived
 
 <!-- markdownlint-disable MD013 -->
 ```text
-[Req: formal — docs/lifecycle-workflow.md "Deviation Effect on Specification Item Status"]
+[Req: formal — docs/lifecycle-workflow.md "Deviation Effect on Usage Status"]
 ```
 <!-- markdownlint-enable MD013 -->
 
@@ -225,7 +227,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 6: deviated
 
 **What happened:** `linkRequirementsToSpecificationAtomically()` trims
 `needsReferenceText`, creates a metadata row for new add-to-specification
-payloads, and deletes that newly created row when no specification items were
+payloads, and deletes that newly created row when no requirement applications were
 actually inserted at `lib/dal/requirements-specifications.ts:1459-1529`.
 Without that cleanup, failed or duplicate-only add flows accumulate
 business-need entries that look real but were never used by any added
@@ -257,7 +259,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 7: needs-re
 `revertToDraft()` are the only state toggles in
 `lib/dal/improvement-suggestions.ts:208-269` and
 `lib/dal/improvement-suggestions.ts:372-449`. If draft suggestions can resolve
-directly, the audit trail stops telling users whether a reviewer ever saw the
+directly, the decision history stops telling users whether a reviewer ever saw the
 change.
 
 **The requirement:** Suggestions are editable only in draft, may enter review
@@ -514,7 +516,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12f: storag
 **What happened:** `graduateSpecificationLocalRequirementToLibrary()` in
 `lib/dal/requirements-specifications.ts` locks the source
 specification-local row, requires Included usage status, creates a new
-library requirement and Draft version in the selected target area, copies
+library requirement and Draft version in the selected target requirement area, copies
 supported classification, verification, requirement-package and norm-reference
 joins, and leaves the original local row untouched. Without this fitness
 scenario, a later implementation could silently revert to the old replace/link
@@ -532,18 +534,18 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 13: specifi
 ```
 <!-- markdownlint-enable MD013 -->
 
-### Scenario 14: action audit rows fail closed with the business transaction
+### Scenario 14: action-log rows fail closed with the business transaction
 
 **Requirement tag:** `[Req: formal — docs/audit-log.md "Failure Mode"]`
 
-**What happened:** The application action audit log is now database-backed and
-fail-closed. If an implementation writes audit rows after the business
+**What happened:** The application action log is now database-backed and
+fail-closed. If an implementation writes action-log rows after the business
 transaction commits, an audit failure can leave a mutation without durable
 review evidence. If details are not filtered, prompts or submitted free text
 can leak into audit metadata.
 
 **The requirement:** Mutating workflows that own a transaction must write the
-action-audit row before the transaction resolves. Audit write failure must roll
+action-log row before the transaction resolves. Action-log write failure must roll
 back the logical mutation, and `details_json` must keep only bounded structured
 metadata. Validated `client_ip` values should persist as first-class audit
 metadata rather than being placed inside `details_json`.
@@ -552,7 +554,7 @@ metadata rather than being placed inside `details_json`.
 
 <!-- markdownlint-disable MD013 -->
 ```sh
-npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 14: action audit rows fail closed with the business transaction"
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 14: action-log rows fail closed with the business transaction"
 ```
 <!-- markdownlint-enable MD013 -->
 
@@ -565,8 +567,8 @@ data. If unchecked icon strings reach the DAL, reports or client rendering can
 receive arbitrary component names. If the API replaces old fields instead of
 adding `iconName`, MCP and REST clients can break.
 
-**The requirement:** Requirement statuses, specification item statuses, and
-risk levels may carry nullable `icon_name` values only from the shared
+**The requirement:** Requirement version statuses, usage statuses, and risk
+levels may carry nullable `icon_name` values only from the shared
 allowlist generated from the installed Lucide icon catalog. REST and MCP output
 must expose icon data as additive `iconName` fields while keeping existing
 names/colors, and the migration must not backfill customer rows outside clean
@@ -581,23 +583,23 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 15: configu
 <!-- markdownlint-enable MD013 -->
 
 <!-- markdownlint-disable-next-line MD013 -->
-### Scenario 16: requirements specification item usage status cannot be cleared once assigned
+### Scenario 16: requirement application usage status cannot be cleared once assigned
 
 **Requirement tag:**
 
 <!-- markdownlint-disable MD013 -->
 ```text
-[Req: formal — issue #147 prevent clearing specification item usage status]
+[Req: formal — issue #147 prevent clearing usage status]
 ```
 <!-- markdownlint-enable MD013 -->
 
-**What happened:** Requirements specification items default to Included when they
-are added to a requirements specification, but the editable Usage status control
+**What happened:** Requirement applications default to Included when they are
+added to a requirements specification, but the editable Usage status control
 and PATCH/DAL update path previously allowed callers to clear
 `specification_item_status_id` back to null. That makes filtering, reports, and
 deviation follow-up ambiguous.
 
-**The requirement:** Library specification items and specification-local
+**The requirement:** Library requirement applications and specification-local
 requirements must always have a real usage status. They may change among real
 usage statuses, but explicit null status updates must be rejected by update
 paths and by the database schema.
@@ -630,7 +632,7 @@ await expect(
   } as unknown as Parameters<typeof updateSpecificationItemFields>[2]),
 ).rejects.toMatchObject({
   code: 'validation',
-  message: 'Specification item status cannot be cleared',
+  message: 'Usage status cannot be cleared',
 })
 
 await expect(
@@ -639,7 +641,7 @@ await expect(
   } as unknown as Parameters<typeof updateSpecificationLocalRequirementFields>[2]),
 ).rejects.toMatchObject({
   code: 'validation',
-  message: 'Specification item status cannot be cleared',
+  message: 'Usage status cannot be cleared',
 })
 ```
 <!-- markdownlint-enable MD013 -->
@@ -648,7 +650,7 @@ await expect(
 
 <!-- markdownlint-disable MD013 -->
 ```sh
-npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 16: requirements specification item usage status cannot be cleared once assigned"
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 16: requirement application usage status cannot be cleared once assigned"
 ```
 <!-- markdownlint-enable MD013 -->
 

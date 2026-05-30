@@ -118,7 +118,10 @@ export async function GET(
         : await listDeviationsForSpecificationItem(db, numericItemId ?? 0)
     return NextResponse.json({ deviations })
   } catch (error) {
-    logSanitizedError('Failed to list deviations for specification item', error)
+    logSanitizedError(
+      'Failed to list deviations for requirement application',
+      error,
+    )
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

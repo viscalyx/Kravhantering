@@ -232,7 +232,7 @@ The behaviors below apply to the requirement list rendered by:
 - The left fade appears after the user has scrolled horizontally.
 - The fades must remain subtle enough to act as a cue, not as a primary visual element.
 
-## Specification Item Usage Status Column
+## Usage Status Column
 
 - The `specificationItemStatus` column is hidden by default (`defaultVisible: false`).
 - It is **excluded** from the main requirements library and the available-
@@ -254,7 +254,7 @@ The behaviors below apply to the requirement list rendered by:
   items.
 - Outside the specification detail context (e.g. the main requirements library),
   the column renders a read-only color dot + label, or an em dash when no
-  specification item status applies to the row.
+  usage status applies to the row.
 - The column supports multi-select filtering via `specificationItemStatusIds`.
 - Client-side filtering in the specification detail matches on `specificationItemStatusId`.
 - Sorting is disabled for this column (`canSort: false`).
@@ -275,7 +275,7 @@ The detail card renders sections in this fixed order:
 
 1. **Requirement text** (description) — always first
 2. **Acceptance criteria** — always second
-3. **Area** with owner — shown after the primary text sections
+3. **Requirement area** with owner — shown after the primary text sections
 4. **Specification count** — read-only count of how many requirements specifications
    include this requirement (always shown, displays 0 when unused)
 5. **References** — if any exist
@@ -287,9 +287,9 @@ down.
 
 ### Lifecycle Refresh Scroll
 
-- When a requirement status transition refreshes the inline detail pane and the
-  library row, the workflow stepper is kept in view with the smallest necessary
-  scroll adjustment.
+- When a requirement version status transition refreshes the inline detail pane
+  and the library row, the workflow stepper is kept in view with the smallest
+  necessary scroll adjustment.
 - The library does not re-center the selected row during this refresh, so the
   page does not jump down to the version history or improvement-suggestion
   sections.
@@ -297,13 +297,14 @@ down.
   including cases where active library filters require the selected requirement
   to stay pinned in the list.
 
-### Area Owner
+### Requirement Area Owner
 
-- The area owner is a property of the area, not of the requirement itself.
-- In the inline pane, the area and its owner are displayed as a metadata section
-  after the two primary text sections.
-- In the full-page detail sidebar, the area owner is shown as small text below
-  the area name.
+- The requirement area owner is a property of the requirement area, not of the
+  requirement itself.
+- In the inline pane, the requirement area and its owner are displayed as a
+  metadata section after the two primary text sections.
+- In the full-page detail sidebar, the requirement area owner is shown as small
+  text below the requirement area name.
 
 ## Loading and Empty State
 
@@ -346,20 +347,21 @@ down.
 - The expanded specification-local inline pane also uses the same outer inline inset
   as the library requirement detail (`px-6 py-4`), so the properties card and
   right-side rail do not sit flush against the expanded row edges.
-- The specification-local inline detail pane does not repeat the row's specification-local
-  Krav-ID or unique marker icon in its own header area; that identity stays in
-  the table row above the expanded pane.
-- Unique requirements are not assigned to a requirement area. The Area column
-  in the specification-items list therefore renders `-` for unique rows, and
-  the create/edit form for a unique requirement does not show the Area field.
+- The specification-local inline detail pane does not repeat the row's
+  specification-local Krav-ID or unique marker icon in its own header area;
+  that identity stays in the table row above the expanded pane.
+- Unique requirements are not assigned to a requirement area. The Requirement
+  area column in the specification-items list therefore renders `-` for unique
+  rows, and the create/edit form for a unique requirement does not show the
+  Requirement area field.
 - Specification-local inline detail now follows the specification-item detail
   chrome more
   closely: deviation pills sit above the card, the right-side action rail
   starts with print and deviation controls, and local edit/delete actions are
   appended in the same vertical rail.
-- That unique-requirement action rail also uses the same full-width button sizing
-  rhythm as the library requirements specification-item rail, including the shared
-  44px minimum touch target and stacked spacing.
+- That unique-requirement action rail also uses the same full-width button
+  sizing rhythm as the library requirements specification-item rail, including
+  the shared 44px minimum touch target and stacked spacing.
 - Edit and Delete for unique requirements are only enabled when
   **Användningsstatus** is **Inkluderad** and there is no pending deviation
   draft or review request. Otherwise the buttons stay disabled and expose a
@@ -368,9 +370,10 @@ down.
 - The same specification-local action rail may show **Graduate to library** when
   the actor owns or co-authors at least one requirement area. The action is
   disabled unless **Användningsstatus** is **Inkluderad**. Opening the action
-  shows a modal target-area picker over a dimmed background, including the
-  copy-only outcome text. Pressing the modal's **Graduate** action copies the
-  unique requirement into the selected library area as a new Draft library
+  shows a modal target requirement area picker over a dimmed background,
+  including the copy-only outcome text. Pressing the modal's **Graduate**
+  action copies the unique requirement into the selected library requirement
+  area as a new Draft library
   requirement, navigates to that new requirement's created Draft version, and
   leaves the source unique row and any local deviations unchanged.
 
@@ -381,7 +384,8 @@ down.
   - "Print Requirements List" — opens the print engine route
   - "Download Requirements List (PDF)" — downloads the server PDF route
 - Passes the IDs of all currently visible rows as `?ids=` query params.
-- The report shows Krav-ID, description, area, and status columns.
+- The report shows Requirement ID, requirement text, requirement area, and
+  status columns.
 
 ## Specification Print List Report
 

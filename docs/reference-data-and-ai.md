@@ -112,7 +112,7 @@ All three DALs follow the same structure:
 
 The API layer now provides the common request-shape guardrails for all
 three taxonomy groups. The remaining DAL variance is intentional:
-lifecycle statuses are safety-critical because they determine
+specification lifecycle statuses are safety-critical because they determine
 specification workflow gates, while implementation types and
 governance object types are informational taxonomy values.
 

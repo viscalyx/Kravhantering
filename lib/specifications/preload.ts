@@ -220,12 +220,10 @@ export async function loadRequirementsSpecificationDetailInitialData({
       [],
       () => listSpecificationLifecycleStatuses(db),
     ),
-    capture<SpecificationItemStatusOption[]>(
-      'specification item statuses',
-      [],
-      () => listSpecificationItemStatusOptions(db),
+    capture<SpecificationItemStatusOption[]>('usage statuses', [], () =>
+      listSpecificationItemStatusOptions(db),
     ),
-    capture<SpecificationListItem[]>('specification items', [], () =>
+    capture<SpecificationListItem[]>('requirement applications', [], () =>
       loadSpecificationItems(db, spec.id),
     ),
     capture<

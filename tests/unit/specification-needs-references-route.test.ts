@@ -189,10 +189,13 @@ describe('specifications/[id]/needs-references route', () => {
 
   it('blocks deleting needs references that are in use', async () => {
     mocks.deleteSpecificationNeedsReference.mockRejectedValueOnce(
-      conflictError('Needs reference is used by specification items', {
-        linkedItemCount: 2,
-        reason: 'needs_reference_in_use',
-      }),
+      conflictError(
+        'Needs reference is used by requirement applications or unique requirements',
+        {
+          linkedItemCount: 2,
+          reason: 'needs_reference_in_use',
+        },
+      ),
     )
 
     const response = await DELETE(

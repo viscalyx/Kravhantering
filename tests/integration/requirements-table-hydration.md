@@ -29,7 +29,7 @@ Seed values used in the test:
 Expected hydrated column set (checkbox + fixed columns + seeded extras):
 
 ```json
-["", "Krav-ID", "Kravtext", "Område", "Status"]
+["", "Krav-ID", "Kravtext", "Kravområde", "Status"]
 ```
 
 ## Overview Flowchart
@@ -79,7 +79,7 @@ survives a hard reload.
 3. Navigate to `/sv/requirements`.
 4. Assert the loading skeleton is shown (loading text visible, no header cells).
 5. Wait for the hydrated table: assert 5 header cells (`""`, `Krav-ID`,
-   `Kravtext`, `Område`, `Status`) and the status `<col>` width of `220px`.
+   `Kravtext`, `Kravområde`, `Status`) and the status `<col>` width of `220px`.
 6. Reload the page.
 7. Assert the loading skeleton reappears.
 8. Assert the hydrated table again with the same 5 headers and column width.

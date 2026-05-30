@@ -858,7 +858,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).toBeTruthy()
   })
 
-  it('filters specification items when a requirement package chip is selected', async () => {
+  it('filters requirement applications when a requirement package chip is selected', async () => {
     const requirementPackages = [
       { id: 1, nameEn: 'Mobile use', nameSv: 'Mobil användning' },
       { id: 2, nameEn: 'Operations', nameSv: 'Drift' },
@@ -1300,7 +1300,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     })
   })
 
-  it('bulk-updates needs references for selected specification items', async () => {
+  it('bulk-updates needs references for selected requirement applications', async () => {
     renderRequirementsSpecificationDetailClient({
       ...createInitialData(),
       availableNeedsRefs: [

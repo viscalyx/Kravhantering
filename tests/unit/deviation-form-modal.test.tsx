@@ -44,7 +44,7 @@ describe('DeviationFormModal', () => {
 
     expect(submitButton).toBeDisabled()
     expect(
-      within(dialog).queryByLabelText(/Ansvarig för kravställning/),
+      within(dialog).queryByLabelText(/Kravunderlagsansvarig/),
     ).not.toBeInTheDocument()
     expect(within(dialog).queryByLabelText(/Begärt av/)).not.toBeInTheDocument()
 

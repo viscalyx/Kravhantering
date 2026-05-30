@@ -3,7 +3,7 @@
 This document describes the contributor-facing admin center for UI
 terminology, default requirement-list columns, recurring access review,
 privacy erasure and data portability, archiving retention, and reference-data
-entrypoints. Admin users also get an action audit-log entrypoint for
+entrypoints. Admin users also get an action-log entrypoint for
 database-backed mutation and authorization-denial review.
 
 For requirement-list interaction details such as resizing, sorting, and
@@ -32,23 +32,23 @@ The admin center currently has six tabs for core administration:
 - `Archiving`
 - `Privacy`
 
-Admins also see an `Action audit log` tab. The tab renders the audit-log
+Admins also see an `Action log` tab. The tab renders the action-log
 filters, table, pagination, and CSV export directly in the Admin Center.
 
-## Action Audit Log
+## Action Log
 
-The action audit log is available at `/{locale}/admin/audit-log` for users with
-the `Admin` role, and also inline from the Admin Center `Action audit log` tab
+The action log is available at `/{locale}/admin/audit-log` for users with
+the `Admin` role, and also inline from the Admin Center `Action log` tab
 at `/{locale}/admin?tab=actionAuditLog`. It reads `action_audit_events`, shows
 the latest 50 events by default, supports filters for actor HSA-ID, action,
 target, decision, and date range, plus client IP when a validated
 `X-Forwarded-For` value was available, and exports the filtered result as CSV.
 
-The database action audit log is separate from the platform `security-audit`
+The database action log is separate from the platform `security-audit`
 JSON stream. The database log is intended for application action review and
 privacy/data-subject workflows; the platform stream remains the operational
-security telemetry channel. Reading the audit log, including CSV export, does
-not create another audit row.
+security telemetry channel. Reading the action log, including CSV export, does
+not create another action-log row.
 
 ## Terminology
 
@@ -179,9 +179,9 @@ verify that erasing one HSA-ID does not match the other person by name.
 <!-- cspell:ignore linneab -->
 
 Seed data also gives `SE5560000001-linneab` coverage across every privacy
-preview group: owner rows, area and package owner assignments, requirement
+preview group: owner rows, requirement-area and package owner assignments, requirement
 versions, deviation creator and decision fields, improvement-suggestion creator
-and resolver fields, specification responsibility, and area/specification
+and resolver fields, specification lead, and requirement-area/specification
 co-author assignment rows, plus access-review creator, reviewer, completer,
 reviewed-principal, decision snapshots, and action-audit actor snapshots. The
 access-review fixture includes two completed reviews: one created by the Linnéa
@@ -227,8 +227,9 @@ With a replacement supplied, the owner row only allows `Switch` or `Skip`;
 choosing `Switch` changes the linked requirement areas and packages to the
 replacement owner in the same transaction. `Anonymize` and `Delete` are
 rejected for that owner while requirement areas or packages are linked. If no
-area or package references the owner, the owner row only allows `Delete` or
-`Skip`; `Switch` and `Anonymize` are not valid owner actions in that state.
+requirement area or package references the owner, the owner row only allows
+`Delete` or `Skip`; `Switch` and `Anonymize` are not valid owner actions in
+that state.
 
 If no replacement person is supplied, display snapshots are anonymized with the
 internal sentinel `no-user`, shown through localization as `Anonym` in Swedish
@@ -314,8 +315,8 @@ The in-app scope is deliberately limited to permissions Kravhantering owns:
 
 - requirement-area owner references
 - requirement-area co-authors
-- requirements-specification responsible person
-- requirements-specification co-authors
+- specification lead
+- specification co-authors
 - the assignment-bound AI flags on those co-author/responsible rows
 
 Global IdP roles such as `Admin`, `Reviewer`, and `PrivacyOfficer`, source-code
@@ -350,8 +351,8 @@ authoritative evidence payload. The PDF button requests a server-rendered PDF
 of the same payload for human review. Export responses use
 `Cache-Control: no-store`; PDF delivery returns `application/pdf` with
 attachment headers.
-Audit events are emitted for run creation, item decisions, cancellation,
-completion, and export. Audit detail contains review id, counts, delivery,
+Action-log events are emitted for run creation, item decisions, cancellation,
+completion, and export. Action-log detail contains review id, counts, delivery,
 decision, and status
 where relevant; it does not contain the raw list of reviewed HSA-IDs.
 
@@ -366,8 +367,8 @@ It links to the existing stable routes for:
 - types
 - requirement packages
 - norm references
-- statuses
-- specification item statuses
+- requirement version statuses
+- usage statuses
 - risk levels
 - quality characteristics
 - governance object types
@@ -376,21 +377,22 @@ It links to the existing stable routes for:
 The admin center does not rename or move those routes. It only centralizes how
 users reach them.
 
-The fixed system rows for requirement statuses, specification item statuses,
-and risk levels can also carry a nullable icon selected from the installed
+The fixed system rows for requirement version statuses, usage statuses, and risk
+levels can also carry a nullable icon selected from the installed
 Lucide icon catalog through the shared status-icon allowlist. The admin pages
 keep the label visible and use the icon only as a decorative cue in tables,
 badges, steppers, and reports. Existing rows without an icon continue to render
 with text-only labels until an admin selects one.
 
-### Area Owner
+### Requirement Area Owner
 
-Each requirement area can have an assigned owner. The owner is selected from an
-external owners list when creating or editing an area in the area reference data
-page. The owner name is displayed:
+Each requirement area can have an assigned owner. The owner is selected from
+an external owners list when creating or editing a requirement area in the
+requirement area reference-data page. The owner name is displayed:
 
-- in the area reference data table
-- as small text under the area dropdown in the requirement create/edit form
+- in the requirement area reference data table
+- as small text under the requirement area dropdown in the requirement
+  create/edit form
 - in the requirement detail pane (inline and full-page sidebar)
 
 ## Contributor Notes

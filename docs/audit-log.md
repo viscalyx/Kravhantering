@@ -1,6 +1,6 @@
-# Application Action Audit Log
+# Application Action Log
 
-The application action audit log is a database-backed record of successful
+The application action log is a database-backed record of successful
 state-changing actions and authorization denials. It complements, but does not
 replace, the platform `security-audit` JSON log stream.
 
@@ -12,8 +12,8 @@ and improvement-suggestion decisions, Admin reference-data updates, privacy
 erasure execution, archiving execution, access-review decisions, and
 authorization denials.
 
-The audit log intentionally excludes normal browsing, list/detail reads, report
-and CSV exports of business artifacts, audit-log reads, audit-log CSV export,
+The action log intentionally excludes normal browsing, list/detail reads, report
+and CSV exports of business artifacts, action-log reads, action-log CSV export,
 and auth/session events.
 
 ## Data Shape
@@ -35,10 +35,10 @@ tokens, secrets, or submitted free text.
 
 ## Failure Mode
 
-Audit writes are fail-closed. If an audit insert fails, the mutation or denial
-response fails instead of silently losing the audit row. Where the underlying
-service owns a database transaction, the action-audit insert is executed in
-that transaction.
+Action-log writes are fail-closed. If an action-log insert fails, the mutation
+or denial response fails instead of silently losing the action-log row. Where
+the underlying service owns a database transaction, the action-audit insert is
+executed in that transaction.
 
 ## Admin Access
 
@@ -57,7 +57,7 @@ Supported filters:
 - `page` / `pageSize`
 - `format=csv`
 
-The audit-log read and CSV export do not themselves create audit rows.
+The action-log read and CSV export do not themselves create action-log rows.
 
 ## Privacy
 
@@ -72,4 +72,4 @@ correlation ID, and non-personal details.
 `X-Forwarded-For` candidate. It is useful only when the reverse proxy or ingress
 controls that header. IP addresses are not included in the Privacy
 preview/export/erasure workflow in this slice; retention and access are handled
-through the action-audit retention decision and Admin-only audit-log access.
+through the action-log retention decision and Admin-only action-log access.

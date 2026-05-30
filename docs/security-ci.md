@@ -347,7 +347,7 @@ Covered by this scan:
 - `/api/auth/me`
 - Requirement list, detail, create, edit, archive, version read,
   delete-draft, restore, reactivate, and transition routes.
-- Read-only requirement catalog routes used by the requirements UI.
+- Read-only requirements library routes used by the requirements UI.
 
 The delete-draft success contract returns the same deletion-ledger payload for
 both outcomes: `deleted` is an ordered array with the
@@ -536,7 +536,7 @@ Current static headers and rationale:
   active scans, OpenAPI generation, composite action refactors, and throwaway
   realms are later DAST work.
 - **Authenticated coverage of every role.** Only the `Admin` realm
-  user is scanned; other roles (`Reviewer`, area owner, specification
+  user is scanned; other roles (`Reviewer`, requirement area owner, specification
   owner, etc.) are exercised by the Playwright integration tests but
   not separately scanned. Adding them would multiply CI time.
 - **Infrastructure / host scanning.** Out of scope. If host or

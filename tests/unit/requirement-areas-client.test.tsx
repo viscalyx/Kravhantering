@@ -181,7 +181,7 @@ describe('RequirementAreasClient', () => {
       target: { value: 'NEW' },
     })
     fireEvent.change(screen.getByRole('textbox', { name: /area\.name/ }), {
-      target: { value: 'New Area' },
+      target: { value: 'New requirement area' },
     })
 
     fetchMock.mockImplementation(async (url: string) => {
@@ -438,7 +438,7 @@ describe('RequirementAreasClient', () => {
       target: { value: 'FAIL' },
     })
     fireEvent.change(screen.getByRole('textbox', { name: /area\.name/ }), {
-      target: { value: 'Failing Area' },
+      target: { value: 'Failing requirement area' },
     })
 
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {

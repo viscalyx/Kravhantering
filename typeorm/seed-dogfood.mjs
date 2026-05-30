@@ -1178,7 +1178,7 @@ const DOGFOOD_KRAV = [
   {
     area: ID.area.RAP,
     desc: 'Utskriftsvänliga vyer ska finnas under components/reports/print för att stödja pappersrapportering.',
-    ac: 'Print-vyer är formaterade utan navigation/footer och visar all relevant kravdata; @media print-regler aktiverar layouten.',
+    ac: 'Print-vyer är formaterade utan navigation/footer och visar all relevant kravinformation; @media print-regler aktiverar layouten.',
     vm: 'Manuell utskrift och Playwright-snapshot.',
     cat: ID.cat.verksamhet,
     type: ID.type.funk,

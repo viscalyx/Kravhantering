@@ -53,7 +53,7 @@ export function useRequirementDetailData({
       const res = await apiFetch('/api/requirement-statuses')
       if (!res.ok) {
         console.error(
-          'Failed to load requirement statuses:',
+          'Failed to load requirement version statuses:',
           res.statusText || res.status,
         )
         setStatuses([])
@@ -70,7 +70,7 @@ export function useRequirementDetailData({
         .map(transition => transition.toStatus)
       setTransitions(allowed)
     } catch (error) {
-      console.error('Failed to load requirement statuses:', error)
+      console.error('Failed to load requirement version statuses:', error)
       setStatuses([])
       setTransitions([])
     }

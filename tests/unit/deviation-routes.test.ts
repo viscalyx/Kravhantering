@@ -88,7 +88,7 @@ describe('deviation mutation routes', () => {
     })
   })
 
-  it('rejects client-supplied creators for specification item deviations', async () => {
+  it('rejects client-supplied creators for requirement application deviations', async () => {
     const { POST } = await import(
       '@/app/api/specification-item-deviations/[itemId]/route'
     )

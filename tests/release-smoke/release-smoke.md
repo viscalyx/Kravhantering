@@ -79,7 +79,7 @@ CSRF-protected requirement mutation.
 4. Assert at least one `/_next/static/` resource loaded with HTTP 200.
 5. Attach a full-page screenshot as release smoke evidence.
 6. Request `/build.json`, validate all metadata fields, and attach the JSON.
-7. Request `/api/requirement-areas` and choose the first area.
+7. Request `/api/requirement-areas` and choose the first requirement area.
 8. POST `/api/requirements` with a description beginning
    `release-smoke-<run-id>`.
 9. GET the created requirement by id and verify it matches the POST result.
@@ -109,8 +109,12 @@ sequenceDiagram
     Note over PW,APP: ✓ seeded data and static assets are visible
     PW->>APP: GET /build.json
     Note over PW,APP: ✓ build metadata is valid and attached
-    PW->>APP: POST /api/requirements
-    APP->>DB: Persist release-smoke requirement
+    PW->>APP: GET /api/requirement-areas
+    APP->>DB: Read requirement areas
+    DB-->>APP: Requirement area rows
+    Note over PW,APP: Select first requirement area
+    PW->>APP: POST /api/requirements release-smoke-<run-id>
+    APP->>DB: Persist release-smoke-<run-id> requirement
     PW->>APP: GET /api/requirements/:id
     APP->>DB: Read created requirement
     Note over PW,DB: ✓ SQL Server write path is proven

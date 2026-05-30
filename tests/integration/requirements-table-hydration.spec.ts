@@ -14,7 +14,7 @@ async function expectInitialLoadingState(page: Page) {
 }
 
 async function expectHydratedTable(page: Page) {
-  // 5 columns: checkbox + uniqueId + description + area + status
+  // 5 columns: checkbox + uniqueId + description + area + requirement version status
   await expect(page.locator(VISIBLE_HEADER_CELL_SELECTOR)).toHaveCount(5)
 
   await expect
@@ -31,9 +31,9 @@ async function expectHydratedTable(page: Page) {
           ),
         ),
     )
-    .toEqual(['', 'Krav-ID', 'Kravtext', 'Område', 'Status'])
+    .toEqual(['', 'Krav-ID', 'Kravtext', 'Kravområde', 'Kravversionsstatus'])
 
-  // col index 4 = status (0=checkbox, 1=uniqueId, 2=description, 3=area, 4=status)
+  // col index 4 = requirement version status (0=checkbox, 1=uniqueId, 2=description, 3=area, 4=status)
   await expect
     .poll(async () =>
       page

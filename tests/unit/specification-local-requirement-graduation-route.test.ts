@@ -71,7 +71,7 @@ describe('specification-local requirement graduation routes', () => {
     })
     mocks.listGraduationTargetAreas.mockResolvedValue({
       areas: [{ id: 2, name: 'Security', prefix: 'SEC' }],
-      message: 'Target areas',
+      message: 'Target requirement areas',
     })
     mocks.graduateSpecificationLocalRequirement.mockResolvedValue({
       detail: { id: 71, uniqueId: 'SEC0001' },
@@ -87,7 +87,7 @@ describe('specification-local requirement graduation routes', () => {
     })
   })
 
-  it('lists graduation target areas through the shared service', async () => {
+  it('lists graduation target requirement areas through the shared service', async () => {
     const response = await GET(
       new NextRequest(
         'http://localhost/api/specifications/spec/local-requirements/41/graduation-target-areas',
@@ -172,7 +172,9 @@ describe('specification-local requirement graduation routes', () => {
 
   it('maps shared service authorization errors for graduation', async () => {
     mocks.graduateSpecificationLocalRequirement.mockRejectedValueOnce(
-      forbiddenError('Missing target area owner or co-author permission'),
+      forbiddenError(
+        'Missing target requirement area owner or co-author permission',
+      ),
     )
 
     const response = await POST(
@@ -183,7 +185,7 @@ describe('specification-local requirement graduation routes', () => {
     expect(response.status).toBe(403)
     await expect(response.json()).resolves.toEqual({
       code: 'forbidden',
-      error: 'Missing target area owner or co-author permission',
+      error: 'Missing target requirement area owner or co-author permission',
     })
   })
 })

@@ -219,7 +219,7 @@ const adminTabs: { icon: typeof Languages; id: AdminTab }[] = [
 
 const ADMIN_TAB_DEVELOPER_MODE_VALUES: Record<AdminTab, string> = {
   accessReview: 'access review',
-  actionAuditLog: 'action audit log',
+  actionAuditLog: 'action log',
   archiving: 'archiving',
   columns: 'columns',
   privacy: 'privacy',
@@ -3463,7 +3463,7 @@ export default function AdminClient({
               context: 'admin center',
               name: 'tab panel',
               priority: 340,
-              value: 'action audit log',
+              value: 'action log',
             })}
             id="actionAuditLog-panel"
             role="tabpanel"

@@ -180,7 +180,7 @@ function parseDeviationItemId(value: string): number {
   const parsed = parseSpecificationItemRef(decoded)
   if (parsed?.kind === 'specificationLocal') {
     throw new ReportDataError(
-      'Deviation review PDF is only available for library requirement items',
+      'Deviation review PDF is only available for library requirement applications',
       400,
     )
   }
@@ -193,7 +193,7 @@ function parseDeviationItemId(value: string): number {
         : null
 
   if (!numericId || !Number.isInteger(numericId) || numericId < 1) {
-    throw new ReportDataError('Invalid specification item ID', 400)
+    throw new ReportDataError('Invalid requirement application ID', 400)
   }
 
   return numericId

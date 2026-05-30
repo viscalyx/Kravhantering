@@ -47,17 +47,17 @@ const translations: Record<string, string> = {
   'specification.graduateLocalRequirementFailed':
     'Could not graduate the unique requirement.',
   'specification.graduateLocalRequirementTargetHelp':
-    'Choose the library area where the copied draft requirement should be created.',
+    'Choose the library requirement area where the copied draft requirement should be created.',
   'specification.graduateLocalRequirementTargetLabel': 'Requirement area',
   'specification.editLocalRequirement': 'Edit unique requirement',
   'specification.localRequirementNotFound': 'Unique requirement not found',
   'specification.needsReference': 'Needs reference',
   'requirement.acceptanceCriteria': 'Acceptance criteria',
-  'requirement.area': 'Area',
+  'requirement.area': 'Requirement area',
   'requirement.category': 'Category',
-  'requirement.description': 'Description',
+  'requirement.description': 'Requirement text',
   'requirement.normReferences': 'Norm references',
-  'requirement.specificationItemStatus': 'Specification item status',
+  'requirement.specificationItemStatus': 'Usage status',
   'requirement.specificationLocalBadge': 'Unique',
   'requirement.specificationLocalTooltip': 'This row is a unique requirement.',
   'requirement.qualityCharacteristic': 'Quality characteristic',
@@ -229,7 +229,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(
       screen.getByText('Specification local acceptance'),
     ).toBeInTheDocument()
-    expect(screen.getByText('Area')).toBeInTheDocument()
+    expect(screen.getByText('Requirement area')).toBeInTheDocument()
     expect(screen.queryByText('Integration')).not.toBeInTheDocument()
     expect(screen.getByText('Norm references')).toBeInTheDocument()
     expect(screen.getByText('RequirementPackage')).toBeInTheDocument()
@@ -335,7 +335,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
   })
 
-  it('graduates an Included unique requirement into the selected library area', async () => {
+  it('graduates an Included unique requirement into the selected library requirement area', async () => {
     const onChange = vi.fn()
     vi.mocked(fetch)
       .mockImplementationOnce(() =>
