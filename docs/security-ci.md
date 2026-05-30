@@ -4,6 +4,54 @@ Continuous-integration security checks specific to this repository. The
 canonical scanner choice and rationale, plus instructions for tuning,
 extending, and replicating the scan locally.
 
+## SSDLC gate workflow
+
+Workflow file:
+[.github/workflows/ssdlc-gate.yml](../.github/workflows/ssdlc-gate.yml).
+
+Each pull request to `main` runs the repository-owned SSDLC gate before merge,
+including forked pull requests when repository settings allow fork workflows.
+The gate uses `pull_request_target`, explicitly limits `GITHUB_TOKEN` to read
+permissions, and checks out the base commit instead of the pull request commit.
+That keeps the gate script and workflow logic trusted while still reading the
+pull request body and changed file list from the GitHub API.
+
+The implementation lives in
+[scripts/security/ssdlc-gate.mjs](../scripts/security/ssdlc-gate.mjs) and can
+be exercised locally with:
+
+```bash
+npm run ssdlc:gate -- --changed-files <path> --pr-body <path>
+```
+
+### Triggered surfaces
+
+The gate requires evidence when a pull request touches app code, API contract
+or routes, authentication, authorization, session handling, audit/logging,
+personal-data handling, database schema or migrations, AI/MCP integrations,
+dependencies, containers, security workflows, release scripts, or the
+security policy and review templates themselves.
+
+### Required pull request evidence
+
+The pull request template contains stable hidden markers that the script uses
+for validation. For security-sensitive changes, all SSDLC checkboxes must be
+checked and the notes area must contain the concrete decision record:
+
+- affected information-security requirements, for example 8.25 or 8.26
+- security tests added or run, or why no security test is relevant
+- data protection impact, or why no personal-data impact exists
+- threat-model impact, or why no threat-model update is needed
+- approval context, including CODEOWNERS or named security review
+
+The check validates completeness and traceability, not whether the assessment
+is correct. Human reviewers still own the security judgement.
+
+Do not change the SSDLC gate to check out or execute pull request code under
+`pull_request_target`. If the gate ever needs to inspect file contents, add a
+separate `pull_request` workflow with read-only permissions and no secrets, or
+fetch the specific data through the GitHub API without executing it.
+
 ## Repository and supply-chain workflow
 
 Workflow file:

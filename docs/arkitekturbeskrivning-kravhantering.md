@@ -1255,6 +1255,21 @@ underleverantörslistan fastställs per leverans- och
 driftmodell, men följande beroenden är relevanta att redovisa
 när de används:
 
+Vid en egen lokal installation där kunden själv driver
+applikationsvärd, SQL Server, Keycloak eller annan IdP, reverse
+proxy, loggning och backup inom den egna organisationen finns
+normalt inga externa underleverantörer som behandlar
+produktionsdata enbart genom installationen. Baslinjen i
+underleverantörsregistret bör då kunna anges som inga externa
+parter som behandlar Kravhanterings informationsmängder.
+Poster blir aktuella först när en extern part eller extern tjänst
+får åtkomst till, lagrar, transporterar, analyserar eller tar emot
+material från informationsmängderna, till exempel databaser,
+backup, loggar, supportpaket, exporter, prompts eller MCP-anrop.
+Programvaruleverantörer, paketkällor och containerregister
+redovisas som beroenden i leveranskedjan så länge de inte behandlar
+produktionsdata.
+
 <!-- markdownlint-disable MD013 -->
 | Beroende | Roll i lösningen | Berörd information eller åtkomst | Redovisning till beställaren |
 | --- | --- | --- | --- |

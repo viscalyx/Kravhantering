@@ -1,0 +1,25 @@
+# Security-sensitive application, data, workflow, AI, and MCP surfaces.
+app/api/** @viscalyx/security-reviewers
+middleware.ts @viscalyx/security-reviewers
+lib/auth/** @viscalyx/security-reviewers
+lib/http/** @viscalyx/security-reviewers
+lib/access-review/** @viscalyx/security-reviewers
+lib/admin/** @viscalyx/security-reviewers
+lib/audit/** @viscalyx/security-reviewers
+lib/privacy/** @viscalyx/security-reviewers
+lib/requirements/** @viscalyx/security-reviewers
+lib/observability/** @viscalyx/security-reviewers
+lib/typeorm/** @viscalyx/security-reviewers
+lib/archiving/** @viscalyx/security-reviewers
+lib/ai/** @viscalyx/security-reviewers
+lib/mcp/** @viscalyx/security-reviewers
+scripts/security/** @viscalyx/security-reviewers
+typeorm/migrations/** @viscalyx/security-reviewers
+.github/workflows/** @viscalyx/security-reviewers
+.github/CODEOWNERS @viscalyx/security-reviewers
+.github/pull_request_template.md @viscalyx/security-reviewers
+SECURITY.md @viscalyx/security-reviewers
+docs/api-security.md @viscalyx/security-reviewers
+docs/audit-log.md @viscalyx/security-reviewers
+docs/mcp-security-test-plan.md @viscalyx/security-reviewers
+docs/security-ci.md @viscalyx/security-reviewers

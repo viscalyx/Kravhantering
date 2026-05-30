@@ -106,10 +106,10 @@ If the package-version lookup is unavailable, the notes fall back to the
 repository package page.
 
 Release notes also include automatic change notes. Stable releases compare
-against the previous published non-prerelease GitHub Release. Preview releases
-compare against the previous published prerelease GitHub Release. When no
-previous release of the same kind exists, the workflow does not let GitHub pick
-another release kind as the changelog boundary.
+against the previous published stable GitHub Release. Preview releases compare
+against the previous published pre-release GitHub Release. When no previous
+release of the same kind exists, the workflow does not let GitHub pick another
+release kind as the changelog boundary.
 
 The workflow asks GitHub to generate the `What's Changed` section with
 `.github/release.yml`. That file groups pull requests by repository labels and
