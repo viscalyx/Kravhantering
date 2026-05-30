@@ -53,7 +53,7 @@ function makeProject() {
       'sqlserver',
       'database',
       'mcr.microsoft.com/mssql/server',
-      '2025-latest',
+      '2025-CU5-ubuntu-24.04',
       'sha256:sqlserver-manifest',
       'sha256:sqlserver-image',
     ),
