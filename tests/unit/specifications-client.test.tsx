@@ -74,7 +74,7 @@ let fetchMock: ReturnType<typeof vi.fn>
 import RequirementsSpecificationsClient from '@/app/[locale]/specifications/specifications-client'
 
 const sampleGovernanceObjectTypes = [
-  { id: 1, nameSv: 'Område', nameEn: 'Area' },
+  { id: 1, nameSv: 'Leveransområde', nameEn: 'Delivery area' },
 ]
 const sampleTypes = [{ id: 1, nameSv: 'Typ', nameEn: 'Type' }]
 const sampleStatuses = [{ id: 1, nameSv: 'Utveckling', nameEn: 'Development' }]
@@ -140,7 +140,7 @@ describe('RequirementsSpecificationsClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
-    expect(screen.getByText('Area')).toBeInTheDocument()
+    expect(screen.getByText('Delivery area')).toBeInTheDocument()
     expect(screen.getByText('Type')).toBeInTheDocument()
     expect(screen.getByText('Development')).toBeInTheDocument()
     expect(screen.getByText('Ada Admin')).toBeInTheDocument()
@@ -190,7 +190,7 @@ describe('RequirementsSpecificationsClient', () => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('Area')).toBeInTheDocument()
+    expect(screen.getByText('Delivery area')).toBeInTheDocument()
     expect(screen.getByText('Type')).toBeInTheDocument()
   })
 
@@ -223,7 +223,7 @@ describe('RequirementsSpecificationsClient', () => {
         )
       })
 
-      expect(screen.getByText('Area')).toBeInTheDocument()
+      expect(screen.getByText('Delivery area')).toBeInTheDocument()
       expect(screen.getByText('Development')).toBeInTheDocument()
     } finally {
       consoleErrorSpy.mockRestore()
@@ -276,7 +276,7 @@ describe('RequirementsSpecificationsClient', () => {
       )
     })
     expect(await screen.findByText('Kravunderlag sv')).toBeInTheDocument()
-    expect(screen.getByText('Area')).toBeInTheDocument()
+    expect(screen.getByText('Delivery area')).toBeInTheDocument()
     expect(screen.getByText('Type')).toBeInTheDocument()
     expect(screen.getByText('Development')).toBeInTheDocument()
   })
@@ -781,7 +781,7 @@ describe('RequirementsSpecificationsClient', () => {
     ).toBeInTheDocument()
   })
 
-  it('requires responsible person and HSA-ID to be saved together', async () => {
+  it('requires specification lead name and HSA-ID to be saved together', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()

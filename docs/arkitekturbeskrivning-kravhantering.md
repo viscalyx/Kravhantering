@@ -1,7 +1,7 @@
 # Arkitekturbeskrivning — Kravhantering
 
 <!-- markdownlint-disable MD013 -->
-<!-- cSpell:words Archi applikationskomponenter applikationskod applikationssamband applikationsstruktur applikationstjänster Affärslogiklager Avsteghantering avsteghistorik avstegsstatus batchoperationer behörighetskontroll beslutsfattare Beslutsfattande datan Dataåtkomstlager detaljvy detaljvyn detaljvyer Enkelkolumnssortering Feedbackhantering feedbackhistorik feedbackstatus Flerkravsrapport Förbättringsförslag förbättringsförslag Förbättringsförslagen granskningsrapport helsidevy historiksektion Huvudvyn infrastrukturanvändning informationsklassning infrastrukturarkitekt Kalkylbladsliknande kantterminering kodtäckning Kolumnbreddsjustering kombinerad kravförfattare Kravdata Kravfrågor kravinnehåll Kravlistrapport Kravlivscykel Kravlivscykeln kravmetadata kravnamn kravunderlagshantering kravunderlagshistorik kravpost kravposter kravpostens kravrelaterade livscykeldatum livscykelhantering Läsåtkomst Navigeringsnav ordnivådifferenser Underlagsvyn Parameteriserade parameteriserade Pluggbart rapportgenerering referensdatahantering referensdatasidor säkerhetsrubrik statusövergång statusövergångar säkerhetsperspektiv terminologihantering tillståndsmaskin trestegsmodell tvåstegs -->
+<!-- cSpell:words Archi applikationskomponenter applikationskod applikationssamband applikationsstruktur applikationstjänster Affärslogiklager Avsteghantering avsteghistorik avstegsstatus batchoperationer behörighetskontroll beslutsfattare Beslutsfattande datan Dataåtkomstlager detaljvy detaljvyn detaljvyer Enkelkolumnssortering Feedbackhantering feedbackhistorik feedbackstatus Flerkravsrapport Förbättringsförslag förbättringsförslag Förbättringsförslagen granskningsrapport helsidevy historiksektion Huvudvyn infrastrukturanvändning informationsklassning infrastrukturarkitekt Kalkylbladsliknande kantterminering kodtäckning Kolumnbreddsjustering kombinerad kravförfattare Kravfrågor kravinnehåll Kravlistrapport Kravlivscykel Kravlivscykeln kravmetadata kravunderlagshantering kravunderlagshistorik kravrelaterade livscykeldatum livscykelhantering Läsåtkomst Navigeringsnav ordnivådifferenser Underlagsvyn Parameteriserade parameteriserade Pluggbart rapportgenerering referensdatahantering referensdatasidor säkerhetsrubrik statusövergång statusövergångar säkerhetsperspektiv terminologihantering tillståndsmaskin trestegsmodell tvåstegs -->
 <!-- markdownlint-enable MD013 -->
 
 ## Innehållsförteckning
@@ -40,7 +40,7 @@
   - [Ansvarsfördelning i lösningen](#ansvarsfördelning-i-lösningen)
   - [Datamodell — kärnrelationer](#datamodell--kärnrelationer)
   - [Taxonomi och tvåspråkig design](#taxonomi-och-tvåspråkig-design)
-  - [Effektiv status (beräknas vid fråga)](#effektiv-status-beräknas-vid-fråga)
+  - [Beräknad kravstatus (beräknas vid fråga)](#beräknad-kravstatus-beräknas-vid-fråga)
 - [6. Infrastrukturanvändningsperspektiv](#6-infrastrukturanvändningsperspektiv)
   - [Driftplattform](#driftplattform)
   - [Byggkedja](#byggkedja)
@@ -150,7 +150,7 @@ graph TB
 | --- | --- | --- |
 | Användargränssnitt | Next.js 16, React 19, Tailwind CSS 4 | Tvåspråkig webbapplikation med App Router |
 | API-lager | REST-ändpunkter, MCP-server | CRUD, livscykelövergångar, AI-integration |
-| Databas | Microsoft SQL Server via TypeORM | Kravdata, versionshistorik, taxonomi |
+| Databas | Microsoft SQL Server via TypeORM | Kravinformation, versionshistorik, taxonomi |
 | Infrastruktur | Node.js-container, ingress/reverse proxy eller annan lastbalanserare och separat databastjänst | Lokal utveckling, CI och framtida OpenShift-drift |
 <!-- markdownlint-enable MD013 -->
 
@@ -227,7 +227,7 @@ graph TB
 
 Den centrala verksamhetsprocessen är kravets livscykel
 — från utkast till arkivering. Processen följer en
-tillståndsmaskin med fyra statusar och definierade
+tillståndsmaskin med fyra kravversionsstatusar och definierade
 övergångar:
 
 ```mermaid
@@ -270,7 +270,7 @@ att säkerställa kvalitetskontroll:
    Kravet övergår till granskning med en
    arkiveringsflagga (`archive_initiated_at`).
 2. **Godkännande** — En granskare bekräftar
-   arkiveringen. Kravet får status *Arkiverad* och
+   arkiveringen. Kravversionen får kravversionsstatus *Arkiverad* och
    tidsstämpeln `archived_at` sätts.
 
 Arkiveringen kan avbrytas innan godkännande genom att
@@ -304,7 +304,7 @@ flowchart TD
   (ingen ny rad skapas).
 - Redigering av publicerat krav skapar en ny
   utkastversion.
-- Statusövergångar ändrar befintlig rad — de skapar
+- Kravversionsstatusövergångar ändrar befintlig rad — de skapar
   aldrig nya versioner.
 - Vid publicering av ny version arkiveras den
   föregående publicerade versionen automatiskt.
@@ -328,15 +328,15 @@ eller en förvaltningsperiod. Processen omfattar:
 
 1. **Skapa kravunderlag** — Namn, beskrivning och slug
    (URL-vänligt ID) anges.
-2. **Lägga till kravposter** — Krav läggs till i
+2. **Lägga till kravtillämpningar** — Krav läggs till i
    underlaget med en specifik kravversion.
-   Varje post får automatiskt statusen
+   Varje kravtillämpning får automatiskt statusen
    *Inkluderad* (`Included`).
-3. **Statushantering per post** — Varje kravpost
+3. **Statushantering per kravtillämpning** — Varje kravtillämpning
    i underlaget har en egen användningsstatus.
-   Tillgängliga statusar hanteras i
+   Tillgängliga användningsstatusar hanteras i
    uppslagstabellen `specification_item_statuses`.
-   Kravstatusar, användningsstatusar och den fasta
+   Kravversionsstatusar, användningsstatusar och den fasta
    risknivåskalan kan kompletteras med ikon, färg och
    sortering som visuell hjälp i UI och rapporter.
    Textetiketten är fortsatt styrande.
@@ -387,9 +387,9 @@ stateDiagram-v2
    avsteget. Beslutsmotivering, beslutsfattare och
    tidsstämpel registreras. Beslutet är permanent.
 
-Ett godkänt avsteg möjliggör att kravpostens
+Ett godkänt avsteg möjliggör att kravtillämpningens
 användningsstatus ändras till *Avviken*
-(`Deviated`). Ett avslaget avsteg lämnar posten
+(`Deviated`). Ett avslaget avsteg lämnar kravtillämpningen
 i befintlig status.
 
 ### Förbättringsförslag
@@ -485,7 +485,7 @@ tabellvy med:
   och deras ordning. Användare kan anpassa lokalt via
   webbläsarens lagring.
 - **Filtrering** — Kravområde, kategori, typ,
-  kvalitetskaraktäristik, status, kravpaket och
+  kvalitetskaraktäristik, kravversionsstatus, kravpaket och
   testflagga.
 - **Sortering** — Enkelkolumnssortering med
   klick-baserad växling (stigande/fallande).
@@ -497,13 +497,13 @@ tabellvy med:
 ### Detaljvyn
 
 Klick på en rad expanderar en inline-detaljpanel som
-visar kravtext, acceptanskriterier, område med ägare,
+visar kravtext, acceptanskriterier, kravområde med ägare,
 referenser och kravpaket. Alternativt öppnas en
 helsidevy (`/requirements/[id]`).
 
 Från detaljvyn kan användaren:
 
-- Utföra statusövergångar via knappar
+- Utföra kravversionsstatusövergångar via knappar
 - Redigera krav (skapar ny version om publicerat)
 - Generera och ladda ner rapporter (PDF eller utskrift)
 - Visa versionshistorik i sidopanel
@@ -511,7 +511,7 @@ Från detaljvyn kan användaren:
 ### Underlagsvyn
 
 Kravunderlag nås via `/specifications/[slug]`
-och visar samtliga kravposter i underlaget med:
+och visar samtliga kravtillämpningar i underlaget med:
 
 > **Begreppet kravunderlag.** Ett kravunderlag
 > är en gemensam paraply för krav som hör ihop
@@ -519,24 +519,24 @@ och visar samtliga kravposter i underlaget med:
 > **upphandling**, ett **uppdrag**, ett
 > **projekt**, en **utvecklingsinsats** eller
 > ett **förvaltningsobjekt** — alltså inte
-> enbart leveranser. Livscykelstatusen
+> enbart leveranser. Kravunderlagets livscykelstatus
 > (*Upphandling, Införande, Utveckling,
 > Förvaltning*) signalerar var i kedjan
 > underlaget befinner sig.
 
-- **Postöversikt** — Tabell med kravnamn,
+- **Tillämpningsöversikt** — Tabell med krav-ID,
   kravversion, risknivå och användningsstatus.
-- **Statushantering** — Varje kravpost har en
-  egen status (t.ex. *Inkluderad* eller
+- **Användningsstatus** — Varje kravtillämpning har en
+  egen användningsstatus (t.ex. *Inkluderad* eller
   *Avviken*) som kan ändras direkt i vyn.
-- **Avsteghantering** — Från en kravpost kan
+- **Avsteghantering** — Från en kravtillämpning kan
   användaren registrera, redigera och begära
   granskning av avsteg. Vyn visar avstegsstatus
   grafiskt (Utkast → Begärd granskning →
   Beslutat) och stödjer beslutsfattande i ett
   samlat arbetsflöde.
 - **Avsteghistorik** — Alla avsteg för en
-  kravpost visas med senaste avsteget
+  kravtillämpning visas med senaste avsteget
   framhävt och äldre i en expanderbar
   historiksektion.
 
@@ -552,8 +552,9 @@ förvaltningsflikar och en administratörsflik för
 2. **Kolumner** — Ange standardkolumner och ordning
    för kravlistan organisationsövergripande.
 3. **Referensdata** — Navigeringsnav till alla
-   referensdatasidor, bland annat områden, ägare,
-   typer, kravpaket, normreferenser, statusar,
+   referensdatasidor, bland annat kravområden, ägare,
+   typer, kravpaket, normreferenser, kravversionsstatusar,
+   användningsstatusar, kravunderlagets livscykelstatusar,
    risknivåer, kvalitetskaraktäristiker samt
    underlagsklassningar. Risknivåer är en fast
    klassningsskala där administratören kan underhålla
@@ -662,14 +663,14 @@ flöden:
    anropas.
 
 Detta är en extern teknik- och säkerhetsintegration,
-men inte en verksamhetsintegration: kravdata och
+men inte en verksamhetsintegration: kravinformation och
 historik lagras fortsatt enbart i applikationens egen
 SQL Server-databas.
 
 ### Nuvarande integrationslandskap
 
 I nuläget har systemet **inga externa
-verksamhetsintegrationer**. All kravdata, historik och
+verksamhetsintegrationer**. All kravinformation, historik och
 referensdata hanteras inom applikationens egen databas.
 De externa tekniska beroenden som påverkar
 integrationsbilden och bilden av leveranskedjan är
@@ -804,8 +805,8 @@ ansvar:
 ```mermaid
 erDiagram
     requirements ||--o{ requirement_versions : "har versioner"
-    requirements }o--|| requirement_areas : "tillhör område"
-    requirement_versions }o--|| requirement_statuses : "har status"
+    requirements }o--|| requirement_areas : "tillhör kravområde"
+    requirement_versions }o--|| requirement_statuses : "kravversionsstatus"
     requirement_versions }o--o| requirement_categories : "klassificerad som"
     requirement_versions }o--o| requirement_types : "av typ"
     requirement_versions }o--o| quality_characteristics : "kvalitetskaraktäristik"
@@ -822,8 +823,8 @@ erDiagram
     requirements_specifications ||--o{ requirements_specification_items : "innehåller"
     requirements_specifications ||--o{ specification_local_requirements : "innehåller kravunderlagets unika krav"
     requirements_specifications }o--o| specification_governance_object_types : "styrningsobjektstyp"
-    requirements_specifications }o--o| specification_implementation_types : "genomförandetyp"
-    requirements_specifications }o--o| specification_lifecycle_statuses : "livscykelstatus"
+    requirements_specifications }o--o| specification_implementation_types : "genomförandeform"
+    requirements_specifications }o--o| specification_lifecycle_statuses : "kravunderlagets livscykelstatus"
     requirements_specifications ||--o{ specification_needs_references : "behovsreferenser"
     requirements_specifications ||--o{ specification_co_authors : "har medförfattare"
     requirements_specification_items }o--|| requirements : "pekar på krav"
@@ -857,8 +858,8 @@ kravunderlagshistorik. Tabellerna `archiving_retention_*` driver Admin
 Centers arkiveringsflöde med policyer, körningskvitton och undantag/legal hold.
 Tabellen `action_audit_events` saknar främmande nycklar medvetet så att
 åtgärdsrader bevaras även när målobjekt gallras eller anonymiseras.
-Kravunderlag kan klassas med styrningsobjektstyp, genomförandetyp,
-livscykelstatus, behovsreferenser och medförfattare så att samma
+Kravunderlag kan klassas med styrningsobjektstyp, genomförandeform,
+kravunderlagets livscykelstatus, behovsreferenser och medförfattare så att samma
 kravbibliotek kan användas i flera verksamhetssammanhang.
 `specification_needs_references` är kravunderlagslokala etiketter med valfri
 beskrivning och uppdateringstid; både bibliotekskrav och kravunderlagets unika
@@ -887,10 +888,10 @@ etiketter, färger, ikoner och sortering, medan själva
 antalet nivåer hålls stabilt för att bevara jämförbarhet
 i historik och rapporter.
 
-### Effektiv status (beräknas vid fråga)
+### Beräknad kravstatus (beräknas vid fråga)
 
 Eftersom ett krav kan ha flera versioner i olika
-statusar beräknas en *effektiv status* vid
+kravversionsstatusar beräknas en *beräknad kravstatus* vid
 listningsfrågor enligt prioritetsordning:
 Publicerad > Arkiverad > Granskning > Utkast.
 
@@ -1201,7 +1202,7 @@ varje enskild mekanism.
 ```text
 ┌──────────────────────────────────────────────────────────────┐
 │             << Motivation / Security View >>                 │
-│  Mål: Skydda identitet, kravdata och spårbarhet              │
+│  Mål: Skydda identitet, kravinformation och spårbarhet       │
 │  Principer: Fail-closed · Begränsad sessionsyta              │
 │  Verifierad aktör · Spårbar säkerhetsloggning                │
 └──────────────────────────────────────────────────────────────┘
@@ -1274,7 +1275,7 @@ produktionsdata.
 | Beroende | Roll i lösningen | Berörd information eller åtkomst | Redovisning till beställaren |
 | --- | --- | --- | --- |
 | Extern OIDC-/IdP-tjänst, till exempel PhenixID i målmiljö och Keycloak i lokal utveckling | Autentisering, tokenutbyte, JWKS-hämtning och utloggning | Identitetsattribut som `sub`, namn, e-post, `employeeHsaId`, roller och metadata om token | IdP-ägare, tillitsnivå/MFA-krav, geografisk behandling, incidentkontakt, tillgänglighetskrav och ansvar för identitetslivscykel |
-| SQL Server-drift eller databastjänst | Persistens för kravbibliotek, historik, taxonomi, referensdata och audit | Kravdata, ägaruppgifter, avvikelser, förbättringsförslag, UI-konfiguration och säkerhetsaudit | Driftansvarig, backup/restore, kryptering, åtkomst till databas, RTO/RPO, loggskydd och geografisk lagring |
+| SQL Server-drift eller databastjänst | Persistens för kravbibliotek, historik, taxonomi, referensdata och audit | Kravinformation, ägaruppgifter, avvikelser, förbättringsförslag, UI-konfiguration och säkerhetsaudit | Driftansvarig, backup/restore, kryptering, åtkomst till databas, RTO/RPO, loggskydd och geografisk lagring |
 | OpenRouter och valda modellleverantörer | AI-generering av krav, lista över modeller och nyckel-/kredituppslag | Ämne, instruktioner, bilder, taxonomi, AI-svar, modellval och metadata om användning | Ska redovisas när AI är aktiverat med `OPENROUTER_API_KEY`; ange modell-leverantör, datapolicy, retention, egress, sekretessklassning och revisionsstatus |
 | MCP-klienter och AI-agenter | Godkända tekniska klienter till `/api/mcp` | Läsning och mutation av krav, historik, statusövergångar och eventuellt AI-generering | Klientägare, `client_id`, syntetiskt eller personbundet HSA-id, behörighetsomfång, hantering av token, loggkrav och notifieringsansvar |
 | Driftplattform, reverse proxy, logg- och SIEM-tjänster | Runtime, TLS-terminering, hemlighetshantering, begärandeloggning och säkerhetsaudit | Metadata om trafik, säkerhetsloggar, driftloggar, sessionscookies i transit och skyddade miljöparametrar | Plattformsägare, geografisk driftplats, loggretention, åtkomst till loggar/hemligheter, incidentväg och tekniska säkerhetskrav |
@@ -1438,7 +1439,7 @@ oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
   - lokal SQL Server-container (utvecklings- och CI-flöde)
   - managed Azure SQL Database
   - SQL Server i OpenShift-driftmiljön
-- Databasen lagrar all kravdata, versionshistorik,
+- Databasen lagrar all kravinformation, versionshistorik,
   taxonomi och UI-konfiguration.
 - Storleken är begränsad — 367 krav med full
   versionshistorik resulterar i en databas under

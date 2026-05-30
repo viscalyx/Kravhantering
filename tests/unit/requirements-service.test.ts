@@ -478,7 +478,7 @@ describe('createRequirementsService', () => {
       )
   }
 
-  it('returns paginated requirement catalog results', async () => {
+  it('returns paginated requirements library results', async () => {
     mocks.listRequirements.mockResolvedValue([
       {
         acceptanceCriteria: 'Must respond in 2s',
@@ -648,15 +648,15 @@ describe('createRequirementsService', () => {
           normalizeUiTerminology([
             {
               en: {
-                definitePlural: 'Lifecycle states',
-                plural: 'Lifecycle states',
-                singular: 'Lifecycle state',
+                definitePlural: 'Requirement version states',
+                plural: 'Requirement version states',
+                singular: 'Requirement version state',
               },
               key: 'status',
               sv: {
-                definitePlural: 'Livscykelstatusarna',
-                plural: 'Livscykelstatusar',
-                singular: 'Livscykelstatus',
+                definitePlural: 'Kravversionsstatusarna',
+                plural: 'Kravversionsstatusar',
+                singular: 'Kravversionsstatus',
               },
             },
           ]),
@@ -669,7 +669,7 @@ describe('createRequirementsService', () => {
       locale: 'en',
     })
 
-    expect(result.message).toContain('Lifecycle states')
+    expect(result.message).toContain('Requirement version states')
     expect(result.message).toContain('Published')
   })
 
@@ -1444,7 +1444,7 @@ describe('createRequirementsService', () => {
     expect(mocks.listDeviationsForSpecification).not.toHaveBeenCalled()
   })
 
-  it('localizes specification item labels using the requested locale', async () => {
+  it('localizes requirement application labels using the requested locale', async () => {
     mocks.listSpecificationItems.mockResolvedValue([
       {
         area: { name: 'Identitet' },
@@ -1490,7 +1490,7 @@ describe('createRequirementsService', () => {
       }),
     ])
     expect(JSON.parse(result.message)).toMatchObject({
-      title: 'Krav i kravunderlag',
+      title: 'Kravtillämpningar',
     })
   })
 
@@ -1548,7 +1548,7 @@ describe('createRequirementsService', () => {
     })
   })
 
-  it('lists graduation target areas for actors who can author target areas without source specification access', async () => {
+  it('lists graduation target requirement areas for actors who can author target requirement areas without source specification access', async () => {
     mocks.canAuthorSpecification.mockResolvedValueOnce(false)
     mocks.listAreasActorCanAuthor.mockResolvedValue([
       {
@@ -1578,11 +1578,11 @@ describe('createRequirementsService', () => {
     expect(result.areas).toEqual([{ id: 2, name: 'Security', prefix: 'SEC' }])
     expect(JSON.parse(result.message)).toEqual({
       lines: ['1 requirement area(s) can receive the copy.'],
-      title: 'Requirements Library Target Areas',
+      title: 'Requirements Library target requirement areas',
     })
   })
 
-  it('returns no graduation target areas when the actor cannot author any target area', async () => {
+  it('returns no graduation target requirement areas when the actor cannot author any target requirement area', async () => {
     mocks.canAuthorSpecification.mockResolvedValueOnce(false)
     mocks.listAreasActorCanAuthor.mockResolvedValueOnce([])
     const service = createRequirementsService({} as never, {
@@ -1605,11 +1605,11 @@ describe('createRequirementsService', () => {
     expect(result.areas).toEqual([])
     expect(JSON.parse(result.message)).toEqual({
       lines: ['0 requirement area(s) can receive the copy.'],
-      title: 'Requirements Library Target Areas',
+      title: 'Requirements Library target requirement areas',
     })
   })
 
-  it('returns not found for graduation target areas when the local requirement does not exist', async () => {
+  it('returns not found for graduation target requirement areas when the local requirement does not exist', async () => {
     mocks.getSpecificationLocalRequirementDetail.mockResolvedValueOnce(null)
     const service = createRequirementsService({} as never, {
       logger,
@@ -1736,7 +1736,7 @@ describe('createRequirementsService', () => {
     ])
   })
 
-  it('denies graduation when the actor cannot author the target area', async () => {
+  it('denies graduation when the actor cannot author the target requirement area', async () => {
     mocks.canAuthorArea.mockResolvedValueOnce(false)
     mocks.getAreaById.mockResolvedValue({
       id: 2,

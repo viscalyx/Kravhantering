@@ -729,7 +729,7 @@ describe('RequirementsTable', () => {
     expect(screen.getByText('Hög')).toBeTruthy()
   })
 
-  it('renders read-only specification item status icons as decorative badge content', () => {
+  it('renders read-only usage status icons as decorative badge content', () => {
     const rows = [
       makeRow({
         specificationItemStatusColor: '#f59e0b',
@@ -761,7 +761,7 @@ describe('RequirementsTable', () => {
     expect(statusWrapper).toHaveClass('status-badge')
   })
 
-  it('renders read-only specification item status labels without a color dot', () => {
+  it('renders read-only usage status labels without a color dot', () => {
     const rows = [
       makeRow({
         specificationItemStatusColor: null,
@@ -790,7 +790,7 @@ describe('RequirementsTable', () => {
     expect(statusWrapper?.querySelector('span[aria-hidden="true"]')).toBeNull()
   })
 
-  it('renders the editable specification item status select with only real status options', () => {
+  it('renders the editable usage status select with only real status options', () => {
     const onSpecificationItemStatusChange = vi.fn()
     const rows = [
       makeRow({
@@ -1199,7 +1199,7 @@ describe('RequirementsTable', () => {
         floatingActionRailPlacement="inline-top"
         locale="sv"
         rows={[makeRow()]}
-        stickyTitle={<h2>Specification items</h2>}
+        stickyTitle={<h2>Requirement applications</h2>}
         stickyTitleActions={<button type="button">Remove selected</button>}
       />,
     )
@@ -1213,7 +1213,7 @@ describe('RequirementsTable', () => {
     const actionGroup = stickyTopBar?.lastElementChild as HTMLDivElement | null
 
     expect(stickyTopBar).toBeTruthy()
-    expect(stickyTopBar).toHaveTextContent('Specification items')
+    expect(stickyTopBar).toHaveTextContent('Requirement applications')
     expect(stickyTopBar).toHaveTextContent('Remove selected')
     expect(stickyTopBar?.className).toContain('flex-wrap')
     expect(stickyTopBar?.className).toContain('sm:flex-nowrap')

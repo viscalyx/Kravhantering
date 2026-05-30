@@ -49,9 +49,12 @@ export function buildListReport(
     },
     {
       key: 'description',
-      label: locale === 'sv' ? 'Kravtext' : 'Description',
+      label: locale === 'sv' ? 'Kravtext' : 'Requirement text',
     },
-    { key: 'area', label: locale === 'sv' ? 'Område' : 'Area' },
+    {
+      key: 'area',
+      label: locale === 'sv' ? 'Kravområde' : 'Requirement area',
+    },
     { key: 'status', label: 'Status' },
   ]
 

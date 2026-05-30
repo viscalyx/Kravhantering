@@ -69,17 +69,17 @@
   },
   "nav": {
     "catalog": "Kravbibliotek",
-    "areas": "Områden",
+    "areas": "Kravområden",
     "specifications": "Kravunderlag",
     "requirementPackages": "Kravpaket",
-    "statuses": "Statusar",
+    "statuses": "Kravversionsstatusar",
     "types": "Typer",
     "taxonomy": "Referensdata",
     "qualityCharacteristics": "Kvalitetsegenskaper",
     "riskLevels": "Risknivåer",
     "governanceObjectTypes": "Styrningsobjektstyper",
     "implementationTypes": "Genomförandeformer",
-    "lifecycleStatuses": "Livscykelstatusar",
+    "lifecycleStatuses": "Kravunderlagets livscykelstatusar",
     "areaOwners": "Kravområdesägare",
     "normReferences": "Normreferenser",
     "specificationItemStatuses": "Användningsstatusar",
@@ -140,12 +140,12 @@
     "referenceLabel": "Felreferens"
   },
   "requirement": {
-    "statusStepperAriaLabel": "Arbetsflöde för kravstatus",
+    "statusStepperAriaLabel": "Arbetsflöde för kravversionsstatus",
     "tableCaption": "Lista över krav",
     "uniqueId": "Krav-ID",
     "description": "Kravtext",
     "acceptanceCriteria": "Acceptanskriterium",
-    "area": "Område",
+    "area": "Kravområde",
     "category": "Kategori",
     "needsReference": "Behovsreferens",
     "noNeedsRef": "Ingen behovsreferens",
@@ -159,8 +159,8 @@
     "specificationCount": "Används i kravunderlag",
     "verificationMethod": "Verifieringsmetod",
     "verificationMethodHelp": "<strong>Ange hur det ska verifieras att acceptanskriterierna är uppfyllda.</strong>\nVälj eller beskriv lämplig metod, till exempel inspektion, analys/simulering, demonstration eller test, i linje med ISO/IEC/IEEE 29148:2018.\n\nAnge inte namn eller andra uppgifter som kan identifiera en levande person.",
-    "areaHelp": "<strong>Välj det område som kravet tillhör.</strong>\nOmrådet styr prefix för krav-ID och kopplar kravet till en ansvarig ägare.",
-    "areaHelpOptional": "<strong>Områden används bara för krav i kravbiblioteket.</strong>\nUnika krav ligger kvar i sitt kravunderlag tills de lyfts till kravbiblioteket.",
+    "areaHelp": "<strong>Välj det kravområde som kravet tillhör.</strong>\nKravområdet styr prefix för krav-ID och kopplar kravet till en ansvarig ägare.",
+    "areaHelpOptional": "<strong>Kravområden används bara för krav i kravbiblioteket.</strong>\nUnika krav ligger kvar i sitt kravunderlag tills de lyfts till kravbiblioteket.",
     "descriptionHelp": "<strong>Formulera kravet tydligt, konkret och verifierbart.</strong>\nBeskriv vem eller vad kravet gäller och vad som ska uppnås. Fokusera på vad som ska gälla, inte hur lösningen ska implementeras. När det är relevant, ange mätbara villkor, till exempel tid, gränsvärde, precision eller kapacitet, så att kravet kan förstås och verifieras. Undvik vaga ord som snabb, enkel, lämplig eller vid behov. Detta följer principerna i ISO/IEC/IEEE 29148:2018 för tydliga och entydiga krav samt ISO/IEC 25030:2019 för mätbara kvalitetskrav.\n\nAnge inte namn eller andra uppgifter som kan identifiera en levande person.\n\nExempel:\nBra: Systemet ska visa sökresultat inom 2 sekunder.\nMindre bra: Systemet ska vara snabbt och användarvänligt.",
     "acceptanceCriteriaHelp": "<strong>Ange de objektiva villkor som måste vara uppfyllda för att kravet ska godkännas.</strong>\nSkriv tydligt, konkret och mätbart när det är relevant, till exempel tid, gränsvärde, precision, kapacitet eller observerbart resultat. Beskriv vad som ska vara uppfyllt, inte hur det ska testas. Formuleringen bör följa principerna i ISO/IEC 25010:2023, ISO/IEC 25030:2019 och ISO/IEC/IEEE 29148:2018.\n\nAnge inte namn eller andra uppgifter som kan identifiera en levande person.",
     "categoryHelp": "<strong>Välj den kategori som bäst beskriver kravets karaktär.</strong>\nKategorin hjälper till att klassificera och filtrera krav.",
@@ -172,7 +172,7 @@
     "newRequirement": "Nytt krav",
     "aiGenerate": "AI-generera",
     "editRequirement": "Redigera krav",
-    "status": "Status",
+    "status": "Kravversionsstatus",
     "hasPendingVersionDraft": "Det arbetas på en ny version",
     "hasPendingVersionReview": "Det finns en nyare version som är under granskning",
     "statusLabel": {
@@ -281,11 +281,11 @@
     "prefix": "Prefix",
     "name": "Namn",
     "description": "Beskrivning",
-    "owner": "Kravägare",
+    "owner": "Kravområdesägare",
     "help": {
-      "prefix": "Ange det korta prefix med versaler som används när krav-ID:n skapas för området. Prefixet kan bara ändras när ett nytt område skapas.",
+      "prefix": "Ange det korta prefix med versaler som används när krav-ID:n skapas för kravområdet. Prefixet kan bara ändras när ett nytt kravområde skapas.",
       "name": "Ange visningsnamnet för kravområdet.",
-      "description": "Beskriv vid behov vilka typer av krav som hör hemma i området. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
+      "description": "Beskriv vid behov vilka typer av krav som hör hemma i kravområdet. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
       "owner": "Välj den person eller grupp som ansvarar för kravområdet."
     },
     "newArea": "Nytt kravområde",
@@ -308,19 +308,19 @@
     },
     "governanceObjectType": "Styrningsobjektstyp",
     "governanceObjectTypeHelp": "Välj vilken styrningsobjektstyp underlaget hör till, eller lämna tomt om underlaget saknar eller spänner över flera styrningsobjektstyper.",
-    "responsible": "Ansvarig",
-    "responsibleDisplayName": "Ansvarig person",
-    "responsibleDisplayNameHelp": "Ange visningsnamnet för personen som ansvarar för kravunderlaget. Använd inte detta för användaren som registrerar ett avsteg om den personen inte också ansvarar för underlaget.",
-    "responsibleHsaId": "Ansvarigs HSA-ID",
-    "responsibleHsaIdHelp": "Ange HSA-ID för ansvarig person. HSA-ID och visningsnamn måste sparas tillsammans så att dataskyddsexport, radering och behörighetsöversyn kan identifiera tilldelningen.",
-    "canResponsibleGenerateAi": "Ansvarig får använda AI",
-    "canResponsibleGenerateAiHelp": "Aktivera bara när den ansvariga personen får använda AI-stöd för detta kravunderlag.",
-    "responsiblePairRequired": "Ange både ansvarig person och ansvarigs HSA-ID, eller lämna båda tomma.",
-    "invalidResponsibleHsaId": "Kontrollera ansvarigs HSA-ID. Formatet ska vara SE följt av 10 siffror, bindestreck och en alfanumerisk ändelse.",
+    "responsible": "Kravunderlagsansvarig",
+    "responsibleDisplayName": "Kravunderlagsansvarig",
+    "responsibleDisplayNameHelp": "Ange visningsnamnet för kravunderlagsansvarig. Använd inte detta för användaren som registrerar ett avsteg om den personen inte också är kravunderlagsansvarig.",
+    "responsibleHsaId": "HSA-ID för kravunderlagsansvarig",
+    "responsibleHsaIdHelp": "Ange HSA-ID för kravunderlagsansvarig. HSA-ID och visningsnamn måste sparas tillsammans så att dataskyddsexport, radering och behörighetsöversyn kan identifiera tilldelningen.",
+    "canResponsibleGenerateAi": "Kravunderlagsansvarig får använda AI",
+    "canResponsibleGenerateAiHelp": "Aktivera bara när kravunderlagsansvarig får använda AI-stöd för detta kravunderlag.",
+    "responsiblePairRequired": "Ange både kravunderlagsansvarig och HSA-ID för kravunderlagsansvarig, eller lämna båda tomma.",
+    "invalidResponsibleHsaId": "Kontrollera HSA-ID för kravunderlagsansvarig. Formatet ska vara SE följt av 10 siffror, bindestreck och en alfanumerisk ändelse.",
     "implementationType": "Genomförandeform",
     "implementationTypeHelp": "Välj den genomförandeform som bäst beskriver hur underlaget ska levereras.",
-    "lifecycleStatus": "Livscykelstatus",
-    "lifecycleStatusHelp": "Välj den livscykelstatus som bäst beskriver underlagets nuvarande fas.",
+    "lifecycleStatus": "Kravunderlagets livscykelstatus",
+    "lifecycleStatusHelp": "Välj den status som bäst beskriver var kravunderlaget befinner sig i livscykeln.",
     "needsReference": "Behovsreferens",
     "needsReferenceHelp": "Beskriv varför kravtillämpningen behövs i kravunderlaget. Referensen kan också ge stöd för när och hur kravet ska verifieras.",
     "needsReferences": "Behovsreferenser",
@@ -420,7 +420,7 @@
     "csvHeaders": {
       "uniqueId": "Krav-ID",
       "description": "Kravtext",
-      "area": "Område",
+      "area": "Kravområde",
       "needsReference": "Behovsreferens",
       "status": "Status",
       "category": "Kategori",
@@ -565,7 +565,7 @@
       "specificationId": "Kravunderlag-ID",
       "governanceObjectType": "Styrningsobjektstyp",
       "implementationType": "Genomförandeform",
-      "lifecycleStatus": "Livscykelstatus",
+      "lifecycleStatus": "Kravunderlagets livscykelstatus",
       "businessNeedsReference": "Underlagssyfte"
     },
     "printLabels": {
@@ -663,22 +663,22 @@
   "statusMgmt": {
     "name": "Namn",
     "nameSvLabel": "Namn (svenska)",
-    "nameSvHelp": "Ange det svenska statusnamnet som visas när applikationens språk är svenska.",
+    "nameSvHelp": "Ange det svenska namnet för kravversionsstatusen som visas när applikationens språk är svenska.",
     "nameEnLabel": "Namn (engelska)",
-    "nameEnHelp": "Ange det engelska statusnamnet som visas när applikationens språk är engelska.",
+    "nameEnHelp": "Ange det engelska namnet för kravversionsstatusen som visas när applikationens språk är engelska.",
     "color": "Färg",
-    "colorHelp": "Välj den färg som används för statusmärket.",
+    "colorHelp": "Välj den färg som används för märket för kravversionsstatus.",
     "icon": "Ikon",
-    "iconHelp": "Välj en godkänd ikon som visas bredvid statusetiketten. Lämna tomt för ett märke med enbart text.",
+    "iconHelp": "Välj en godkänd ikon som visas bredvid etiketten för kravversionsstatus. Lämna tomt för ett märke med enbart text.",
     "sortOrder": "Sorteringsordning",
     "sortOrderHelp": "Ange ett tal som styr visningsordningen. Lägre tal visas först.",
-    "isSystem": "Systemstatus",
-    "newStatus": "Ny status",
-    "editStatus": "Redigera status",
+    "isSystem": "Systemstyrd kravversionsstatus",
+    "newStatus": "Ny kravversionsstatus",
+    "editStatus": "Redigera kravversionsstatus",
     "preview": "Förhandsvisning",
-    "cannotDeleteSystem": "Systemstatusar kan inte tas bort",
-    "cannotDeleteInUse": "Går inte att ta bort - statusen används av befintliga krav",
-    "emptyState": "Inga kravstatusar är tillgängliga."
+    "cannotDeleteSystem": "Systemstyrda kravversionsstatusar kan inte tas bort",
+    "cannotDeleteInUse": "Går inte att ta bort - kravversionsstatusen används av befintliga krav",
+    "emptyState": "Inga kravversionsstatusar är tillgängliga."
   },
   "iconPicker": {
     "clear": "Rensa ikon",
@@ -736,12 +736,12 @@
     "name": "Namn",
     "nameSvLabel": "Namn (svenska)",
     "nameEnLabel": "Namn (engelska)",
-    "title": "Livscykelstatusar",
-    "newItem": "Ny livscykelstatus",
-    "editItem": "Redigera livscykelstatus",
-    "nameSvHelp": "Ange det svenska namnet för denna livscykelstatus. Det visas när applikationens språk är svenska.",
-    "nameEnHelp": "Ange det engelska namnet för denna livscykelstatus. Det visas när applikationens språk är engelska.",
-    "emptyState": "Inga livscykelstatusar ännu. Skapa din första livscykelstatus."
+    "title": "Kravunderlagets livscykelstatusar",
+    "newItem": "Ny livscykelstatus för kravunderlag",
+    "editItem": "Redigera kravunderlagets livscykelstatus",
+    "nameSvHelp": "Ange det svenska namnet för denna status i kravunderlagets livscykel. Det visas när applikationens språk är svenska.",
+    "nameEnHelp": "Ange det engelska namnet för denna status i kravunderlagets livscykel. Det visas när applikationens språk är engelska.",
+    "emptyState": "Inga livscykelstatusar för kravunderlag ännu. Skapa din första."
   },
   "theme": {
     "light": "Ljust",
@@ -757,7 +757,7 @@
   "admin": {
     "title": "Administrationscenter",
     "loading": "Laddar administrationscenter...",
-    "description": "Hantera centrala administrationsinställningar för systemet, inklusive terminologi, kolumner, åtkomstgranskningar och integritetsrelaterade funktioner.",
+    "description": "Hantera centrala administrationsinställningar för systemet, inklusive terminologi, kolumner, behörighetsöversyner och integritetsrelaterade funktioner.",
     "settings": "Inställningar",
     "adminCenter": "Administrationscenter",
     "adminCenterDescription": "Uppdatera terminologi och standardkolumner.",
@@ -771,7 +771,7 @@
     "privacyDescription": "Förhandsgranska HSA-ID-baserade träffar, exportera data och kör GDPR-radering för aktörsidentiteter och aktiva tilldelningar.",
     "auditLog": {
       "title": "Åtgärdslogg",
-      "eyebrow": "Audit",
+      "eyebrow": "Åtgärdslogg",
       "description": "Sök bland applikationsändringar och nekade behörighetsförsök som lagrats i databasen.",
       "exportCsv": "Exportera CSV",
       "actorHsaId": "Aktörens HSA-ID",
@@ -791,7 +791,7 @@
       "target": "Mål",
       "requestId": "Request-ID",
       "clientIp": "Klient-IP",
-      "empty": "Inga audit-händelser matchar filtren.",
+      "empty": "Inga åtgärdsloggsposter matchar filtren.",
       "pagination": "Sida {page} av {totalPages}, {total} händelse(r)",
       "previous": "Föregående",
       "next": "Nästa"
@@ -807,7 +807,7 @@
       "replacementEmailOptional": "E-postadress är valfri.",
       "fieldHelp": {
         "targetHsaId": "Ange HSA-ID för personen som ska sökas fram för förhandsgranskning, export eller radering. Alla träffar görs med exakt HSA-ID. Namn används inte för matchning och därför finns inget separat namn att söka på.",
-        "replacementHsaId": "Ange HSA-ID för personen som ska ta över aktiva tilldelningar, till exempel ägare, medförfattare eller ansvarig för kravunderlag. Fältet måste kombineras med ersättande namn för att åtgärden Byt ska kunna användas.",
+        "replacementHsaId": "Ange HSA-ID för personen som ska ta över aktiva tilldelningar, till exempel ägare, medförfattare eller kravunderlagsansvarig. Fältet måste kombineras med ersättande namn för att åtgärden Byt ska kunna användas.",
         "replacementName": "Ange visningsnamnet som ska sparas som ögonblicksbild för den ersättande personen. Namnet hjälper användaren att kontrollera bytet, men HSA-ID är den beständiga identiteten.",
         "replacementFirstName": "Valfritt. Ange exakt förnamn för ägarposten när visningsnamnet inte kan delas upp säkert.",
         "replacementLastName": "Valfritt. Ange exakt efternamn för ägarposten när visningsnamnet inte kan delas upp säkert.",
@@ -836,7 +836,7 @@
       "confirmTitle": "Kör dataskyddsradering",
       "confirmMessage": "Detta byter {switch}, anonymiserar {anonymize}, tar bort {delete} och hoppar över {skip} förekomster.",
       "guidanceTitle": "Rekommenderad hantering och export",
-      "guidanceBody": "Använd förhandsgranskningen för att kontrollera exakt vilka HSA-ID-träffar som kan exporteras eller raderas. Exporten påverkar inte uppgifterna. Aktiva tilldelningar, inklusive ansvarig för kravunderlag, byts oftast till ett annat HSA-ID vid radering. Historiska fält för skapare, beslut och åtgärd anonymiseras oftast i stället för att tilldelas om. Beskrivningsfält och fritext skannas inte eftersom gränssnittet instruerar användare att inte ange personidentifierande uppgifter där.",
+      "guidanceBody": "Använd förhandsgranskningen för att kontrollera exakt vilka HSA-ID-träffar som kan exporteras eller raderas. Exporten påverkar inte uppgifterna. Aktiva tilldelningar, inklusive kravunderlagsansvarig, byts oftast till ett annat HSA-ID vid radering. Historiska fält för skapare, beslut och åtgärd anonymiseras oftast i stället för att tilldelas om. Beskrivningsfält och fritext skannas inte eftersom gränssnittet instruerar användare att inte ange personidentifierande uppgifter där.",
       "previewResult": "{count} HSA-ID-förekomster",
       "object": "Objekt",
       "count": "Antal",
@@ -874,11 +874,11 @@
         "specificationLocalDeviations": "Lokala avvikelser i kravunderlag",
         "improvementSuggestions": "Förbättringsförslag",
         "specifications": "Kravunderlag",
-        "areaCoAuthors": "Medförfattare för område",
-        "specificationCoAuthors": "Medförfattare för kravunderlag",
+        "areaCoAuthors": "Kravområdesmedförfattare",
+        "specificationCoAuthors": "Kravunderlagsmedförfattare",
         "accessReviewRuns": "Behörighetsöversyner",
         "accessReviewItems": "Rader i behörighetsöversyn",
-        "actionAuditEvents": "Åtgärdslogg"
+        "actionAuditEvents": "Åtgärdsloggsposter"
       },
       "fields": {
         "identity": "Identitet",
@@ -887,7 +887,7 @@
         "completedBy": "Slutförd av",
         "decidedBy": "Beslutad av",
         "resolvedBy": "Åtgärdad av",
-        "responsible": "Ansvarig",
+        "responsible": "Kravunderlagsansvarig",
         "coAuthor": "Medförfattare",
         "reviewer": "Granskare",
         "actor": "Aktör",
@@ -1028,8 +1028,8 @@
       "permissionTypes": {
         "area_co_author": "Kravområdesmedförfattare",
         "area_owner": "Kravområdesägare",
-        "specification_co_author": "Medförfattare för kravunderlag",
-        "specification_responsible": "Ansvarig för kravunderlag"
+        "specification_co_author": "Kravunderlagsmedförfattare",
+        "specification_responsible": "Kravunderlagsansvarig"
       }
     },
     "swedish": "Svenska",
@@ -1044,18 +1044,18 @@
     "saved": "Sparat",
     "columnsSaveError": "Det gick inte att spara kolumninställningarna.",
     "terminologySaveError": "Det gick inte att spara terminologin.",
-    "areasDescription": "Hantera områden och deras prefix.",
+    "areasDescription": "Hantera kravområden och deras prefix.",
     "typesDescription": "Visa typer och deras kvalitetsstruktur.",
     "requirementPackagesDescription": "Hantera kravpaket som kan kopplas till krav.",
-    "statusesDescription": "Hantera livscykelstatusar och deras ordning.",
+    "statusesDescription": "Hantera kravversionsstatusar och deras ordning.",
     "qualityAttributesDescription": "Hantera kvalitetsegenskaper enligt ISO/IEC 25010:2023.",
     "governanceObjectTypesDescription": "Hantera styrningsobjektstyper för kravunderlag.",
     "implementationTypesDescription": "Hantera genomförandeformer för kravunderlag.",
-    "lifecycleStatusesDescription": "Hantera livscykelstatusar för kravunderlag.",
+    "lifecycleStatusesDescription": "Hantera kravunderlagets livscykelstatusar.",
     "areaOwnersDescription": "Hantera ägare som kan tilldelas kravområden.",
     "normReferencesDescription": "Hantera normreferenser (lagar, förordningar, standarder m.m.) som kan kopplas till krav.",
     "riskLevelsDescription": "Hantera risknivåer som kan tilldelas krav.",
-    "specificationItemStatusesDescription": "Hantera användningsstatusar för krav i underlag."
+    "specificationItemStatusesDescription": "Hantera användningsstatusar för kravtillämpningar."
   },
   "terminology": {
     "description": {
@@ -1064,9 +1064,9 @@
       "definitePlural": "Kravtexterna"
     },
     "area": {
-      "singular": "Område",
-      "plural": "Områden",
-      "definitePlural": "Områdena"
+      "singular": "Kravområde",
+      "plural": "Kravområden",
+      "definitePlural": "Kravområdena"
     },
     "category": {
       "singular": "Kategori",
@@ -1079,9 +1079,9 @@
       "definitePlural": "Typerna"
     },
     "status": {
-      "singular": "Status",
-      "plural": "Statusar",
-      "definitePlural": "Statusarna"
+      "singular": "Kravversionsstatus",
+      "plural": "Kravversionsstatusar",
+      "definitePlural": "Kravversionsstatusarna"
     },
     "qualityCharacteristic": {
       "singular": "Kvalitetsegenskap",
@@ -1129,9 +1129,9 @@
       "definitePlural": "Genomförandeformerna"
     },
     "lifecycleStatus": {
-      "singular": "Livscykelstatus",
-      "plural": "Livscykelstatusar",
-      "definitePlural": "Livscykelstatusarna"
+      "singular": "Kravunderlagets livscykelstatus",
+      "plural": "Kravunderlagets livscykelstatusar",
+      "definitePlural": "Kravunderlagets livscykelstatusar"
     },
     "referenceData": {
       "singular": "Referensdata",
@@ -1163,7 +1163,7 @@
         "skipped": "Hoppade över {count} {requirementWord} utan publicerad version: {ids}."
       },
       "graduationTargets": {
-        "title": "Målområden för kravbiblioteket",
+        "title": "Målkravområden för kravbiblioteket",
         "summary": "{count} kravområde(n) kan ta emot kopian."
       },
       "graduate": {
@@ -1199,11 +1199,11 @@
         "body": "Varje krav har en uppsättning egenskaper som beskriver vad det ställer för krav, hur det klassificeras och var det passar in i organisationens processer. Nedan följer en översikt av varje egenskap och hur den stödjer kravets livscykel.",
         "requirementId": {
           "heading": "Krav-ID",
-          "body": "Genereras automatiskt utifrån områdets prefix och ett löpnummer. Det är den stabila identifieraren som används för spårbarhet i kravunderlag, rapporter och korsreferenser. Du kan inte redigera det direkt — det tilldelas när kravet skapas."
+          "body": "Genereras automatiskt utifrån kravområdets prefix och ett löpnummer. Det är den stabila identifieraren som används för spårbarhet i kravunderlag, rapporter och korsreferenser. Du kan inte redigera det direkt — det tilldelas när kravet skapas."
         },
         "area": {
-          "heading": "Område",
-          "body": "Grupperar krav efter domän, till exempel Integration eller Ärendehantering. Området styr ID-prefixet och avgör vilket team som ansvarar för kravet. Det måste anges när kravet skapas och kan inte ändras efteråt."
+          "heading": "Kravområde",
+          "body": "Grupperar krav efter domän, till exempel Integration eller Ärendehantering. Kravområdet styr ID-prefixet och avgör vilket team som ansvarar för kravet. Det måste anges när kravet skapas och kan inte ändras efteråt."
         },
         "description": {
           "heading": "Kravtext",
@@ -1246,13 +1246,13 @@
           "body": "Kopplar kravet till externa standarder, lagar eller föreskrifter. Dessa kopplingar stödjer efterlevnadsrevision och gör det möjligt att spåra varje krav tillbaka till sitt rättsliga eller normativa ursprung."
         },
         "status": {
-          "heading": "Status",
-          "body": "Visar kravets aktuella livscykelfas — Utkast, Granskning, Publicerad eller Arkiverad. Status hanteras automatiskt genom arbetsflödesåtgärder och styr vilka operationer som är tillgängliga. Se avsnitten Visuell processöversikt och Kravets process nedan för detaljer."
+          "heading": "Kravversionsstatus",
+          "body": "Visar aktuell kravversionsstatus — Utkast, Granskning, Publicerad eller Arkiverad. Statusen hanteras automatiskt genom arbetsflödesåtgärder och styr vilka operationer som är tillgängliga. Se avsnitten Visuell processöversikt och Kravets process nedan för detaljer."
         }
       },
       "filtering": {
         "heading": "Sökning och filter",
-        "body": "Använd sökfältet för fritextsökning i krav-ID och innehåll. Klicka på filterikonen i en kolumnrubrik för att begränsa listan till rätt område, status eller annan metadata. Aktivera \"Visa arkiverade\" när du behöver se krav som inte längre är aktiva."
+        "body": "Använd sökfältet för fritextsökning i krav-ID och innehåll. Klicka på filterikonen i en kolumnrubrik för att begränsa listan till rätt kravområde, kravversionsstatus eller annan metadata. Aktivera \"Visa arkiverade\" när du behöver se krav som inte längre är aktiva."
       },
       "columns": {
         "heading": "Kolumner",
@@ -1308,7 +1308,7 @@
       "title": "Nytt krav",
       "form": {
         "heading": "Fylla i formuläret",
-        "body": "Välj ett område först - det bestämmer krav-ID-prefixet och ansvarig ägare. Varje fält med en frågeteckensikon har inline-vägledning. Obligatoriska fält är markerade."
+        "body": "Välj ett kravområde först - det bestämmer krav-ID-prefixet och ansvarig ägare. Varje fält med en frågeteckensikon har inline-vägledning. Obligatoriska fält är markerade."
       },
       "lifecycle": {
         "heading": "Livscykel",
@@ -1319,7 +1319,7 @@
       "title": "Kravdetalj",
       "status": {
         "heading": "Statusövergångar",
-        "body": "Använd statusfältet för att flytta kravet genom sin livscykel: Utkast → Granskning → Publicerad. Arkivering sker via en arkiveringsgranskning: Publicerad → Granskning (arkivering) → Arkiverad. Varje övergång kräver en bekräftelse. Du kan återgå till Utkast från Granskning om mer arbete behövs."
+        "body": "Använd kravversionsstatusfältet för att flytta kravet genom sin livscykel: Utkast → Granskning → Publicerad. Arkivering sker via en arkiveringsgranskning: Publicerad → Granskning (arkivering) → Arkiverad. Varje övergång kräver en bekräftelse. Du kan återgå till Utkast från Granskning om mer arbete behövs."
       },
       "versions": {
         "heading": "Versioner",
@@ -1356,11 +1356,11 @@
       "title": "Kravunderlag",
       "overview": {
         "heading": "Vad är ett kravunderlag?",
-        "body": "Kravunderlag grupperar publicerade krav för en specifik leverans, upphandling eller verksamhetskontext. Varje underlag kan kopplas till en styrningsobjektstyp, en genomförandeform och en ansvarig person."
+        "body": "Kravunderlag grupperar publicerade krav för en specifik leverans, upphandling eller verksamhetskontext. Varje underlag kan kopplas till en styrningsobjektstyp, en genomförandeform och en kravunderlagsansvarig."
       },
       "create": {
         "heading": "Skapa och redigera",
-        "body": "Klicka på \"Nytt kravunderlag\" för att skapa ett. Klicka på underlagsnamnet för att öppna detaljvyn. Använd redigeringsikonen för att uppdatera underlagets metadata, inklusive ansvarig person."
+        "body": "Klicka på \"Nytt kravunderlag\" för att skapa ett. Klicka på underlagsnamnet för att öppna detaljvyn. Använd redigeringsikonen för att uppdatera underlagets metadata, inklusive kravunderlagsansvarig."
       }
     },
     "requirementsSpecificationDetail": {
@@ -1405,21 +1405,21 @@
       }
     },
     "lifecycleStatuses": {
-      "title": "Livscykelstatusar",
+      "title": "Kravunderlagets livscykelstatusar",
       "overview": {
-        "heading": "Vad är livscykelstatusar?",
-        "body": "Livscykelstatusar beskriver den aktuella fasen för ett kravunderlag, t.ex. upphandling, införande, utveckling eller förvaltning. Tilldela en livscykelstatus när du skapar eller redigerar ett underlag."
+        "heading": "Vad är kravunderlagets livscykelstatusar?",
+        "body": "Kravunderlagets livscykelstatusar beskriver den aktuella fasen för ett kravunderlag, t.ex. upphandling, införande, utveckling eller förvaltning. Tilldela en livscykelstatus när du skapar eller redigerar ett underlag."
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Klicka på redigeringsikonen för att byta namn på en livscykelstatus. Använd borttagningsikonen för att ta bort den - enbart statusar som inte är kopplade till några kravunderlag kan tas bort."
+        "body": "Klicka på redigeringsikonen för att byta namn på en livscykelstatus för kravunderlag. Använd borttagningsikonen för att ta bort den - enbart kravunderlagets livscykelstatusar som inte är kopplade till några kravunderlag kan tas bort."
       }
     },
     "admin": {
       "title": "Administrationscenter",
       "terminology": {
         "heading": "Terminologi",
-        "body": "Åsidosätt singular-, plural- och bestämd pluralform för den terminologi som används i gränssnittet, t.ex. område, kategori, typ. Ändringar träder i kraft omedelbart utan omladdning av sidan."
+        "body": "Åsidosätt singular-, plural- och bestämd pluralform för den terminologi som används i gränssnittet, t.ex. kravområde, kategori, typ. Ändringar träder i kraft omedelbart utan omladdning av sidan."
       },
       "columns": {
         "heading": "Standardkolumner",
@@ -1427,7 +1427,7 @@
       },
       "referenceData": {
         "heading": "Referensdata",
-        "body": "Snabblänkar till hantering av områden, typer, kravpaket, statusar, kvalitetsegenskaper, styrningsobjektstyper, genomförandeformer och kravområdesägare."
+        "body": "Snabblänkar till hantering av kravområden, typer, kravpaket, kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar, kvalitetsegenskaper, styrningsobjektstyper, genomförandeformer och kravområdesägare."
       },
       "privacy": {
         "heading": "Dataskyddsradering",
@@ -1485,7 +1485,7 @@
       },
       "scope": {
         "heading": "Omfattning",
-        "body": "Applikationen inventerar kravområdesägare, kravområdesmedförfattare, ansvariga för kravunderlag, medförfattare för kravunderlag och deras AI-behörigheter i applikationen. Globala roller, källkodsåtkomst och extern klientåtkomst granskas i sina källverktyg."
+        "body": "Applikationen inventerar kravområdesägare, kravområdesmedförfattare, kravunderlagsansvariga, kravunderlagsmedförfattare och deras AI-behörigheter i applikationen. Globala roller, källkodsåtkomst och extern klientåtkomst granskas i sina källverktyg."
       },
       "decisions": {
         "heading": "Beslut",
@@ -1515,11 +1515,11 @@
       "title": "Kravområden",
       "overview": {
         "heading": "Vad är kravområden?",
-        "body": "Kravområden definierar ID-prefixet för krav (t.ex. PERF-001) och tilldelar en ansvarig ägare. Ett krav måste tillhöra ett område innan det kan sparas."
+        "body": "Kravområden definierar ID-prefixet för krav (t.ex. PERF-001) och tilldelar en ansvarig ägare. Ett krav måste tillhöra ett kravområde innan det kan sparas."
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Skapa ett nytt område med Nytt-knappen. Klicka på redigeringsikonen för att uppdatera prefix, namn, beskrivning eller ägare. Det går bara att ta bort ett område om inga krav är kopplade till det."
+        "body": "Skapa ett nytt kravområde med Nytt-knappen. Klicka på redigeringsikonen för att uppdatera prefix, namn, beskrivning eller ägare. Det går bara att ta bort ett kravområde om inga krav är kopplade till det."
       }
     },
     "requirementTypes": {
@@ -1560,14 +1560,14 @@
       }
     },
     "requirementStatuses": {
-      "title": "Kravstatusar",
+      "title": "Kravversionsstatusar",
       "overview": {
-        "heading": "Livscykelstatusar",
-        "body": "Statusar representerar de livscykelsteg som ett krav passerar: Utkast, Granskning, Publicerad och Arkiverad. Dessa fyra systemstatusar kan inte tas bort eller byta namn."
+        "heading": "Kravversionsstatusar",
+        "body": "Kravversionsstatusar representerar de livscykelsteg som en kravversion passerar: Utkast, Granskning, Publicerad och Arkiverad. Dessa fyra systemstyrda kravversionsstatusar kan inte tas bort eller byta namn."
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Du kan ändra ordning och konfigurera färgen på statusar med kontrollerna i varje rad. Systemstatusar är markerade och kan inte tas bort."
+        "body": "Du kan ändra ordning och konfigurera färgen på kravversionsstatusar med kontrollerna i varje rad. Systemstyrda kravversionsstatusar är markerade och kan inte tas bort."
       }
     },
     "owners": {
@@ -1607,11 +1607,11 @@
       "title": "Hjälp för användningsstatusar",
       "overview": {
         "heading": "Om användningsstatusar",
-        "body": "Användningsstatusar spårar hur långt ett krav har kommit inom ett underlag — från inkluderad till implementerad och verifierad. Varje status har ett namn, en färg och en sorteringsordning."
+        "body": "Användningsstatusar spårar hur långt ett krav har kommit inom ett underlag — från inkluderad till implementerad och verifierad. Varje användningsstatus har ett namn, en färg och en sorteringsordning."
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Lägg till nya statusar med Skapa-knappen. Redigera befintliga statusar för att ändra namn, färg eller sorteringsordning. Statusar som är kopplade till underlagsposter kan inte tas bort."
+        "body": "Lägg till nya användningsstatusar med Skapa-knappen. Redigera befintliga användningsstatusar för att ändra namn, färg eller sorteringsordning. Användningsstatusar som är kopplade till kravtillämpningar eller unika krav kan inte tas bort."
       }
     }
   },
@@ -1639,15 +1639,15 @@
     "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}",
     "newItem": "Ny användningsstatus",
     "editItem": "Redigera användningsstatus",
-    "nameSvHelp": "Ange det svenska namnet för denna status. Det visas när applikationens språk är svenska.",
-    "nameEnHelp": "Ange det engelska namnet för denna status. Det visas när applikationens språk är engelska.",
+    "nameSvHelp": "Ange det svenska namnet för denna användningsstatus. Det visas när applikationens språk är svenska.",
+    "nameEnHelp": "Ange det engelska namnet för denna användningsstatus. Det visas när applikationens språk är engelska.",
     "definition": "Definition",
-    "definitionSvHelp": "Ange en svensk definition som beskriver vad denna status innebär. Den visas som en tooltip där statusen används.",
-    "definitionEnHelp": "Ange en engelsk definition som beskriver vad denna status innebär. Den visas som en tooltip där statusen används.",
+    "definitionSvHelp": "Ange en svensk definition som beskriver vad denna användningsstatus innebär. Den visas som en tooltip där användningsstatusen används.",
+    "definitionEnHelp": "Ange en engelsk definition som beskriver vad denna användningsstatus innebär. Den visas som en tooltip där användningsstatusen används.",
     "colorHelp": "Välj färgen som används för märket för denna användningsstatus.",
     "noStatus": "— Ingen status —",
-    "sortOrderHelp": "Ange ett tal som styr visningsordningen. Lägre tal visas först. Reserverade statusar har låst sorteringsordning.",
-    "sortOrderLocked": "Sorteringsordningen för denna systemstatus kan inte ändras.",
+    "sortOrderHelp": "Ange ett tal som styr visningsordningen. Lägre tal visas först. Reserverade användningsstatusar har låst sorteringsordning.",
+    "sortOrderLocked": "Sorteringsordningen för denna systemstyrda användningsstatus kan inte ändras.",
     "specification": "Underlag",
     "requirement": "Krav",
     "emptyState": "Inga användningsstatusar är tillgängliga."
@@ -1656,8 +1656,8 @@
     "generateTitle": "AI-kravgenerering",
     "topicLabel": "Ämne / Systemkontext",
     "topicPlaceholder": "Beskriv systemet eller funktionen du vill generera krav för...",
-    "areaLabel": "Område",
-    "selectArea": "Välj område...",
+    "areaLabel": "Kravområde",
+    "selectArea": "Välj kravområde...",
     "modelLabel": "Modell",
     "advancedLabel": "Avancerat",
     "customInstructionLabel": "Anpassad instruktion",
@@ -1667,7 +1667,7 @@
     "thinkingPhase": "Analyserar krav…",
     "generatingPhase": "Genererar krav…",
     "createSelected": "Skapa valda ({count})",
-    "createConfirm": "{count, plural, one {Skapa # krav i område {area}?} other {Skapa # krav i område {area}?}}",
+    "createConfirm": "{count, plural, one {Skapa # krav i kravområde {area}?} other {Skapa # krav i kravområde {area}?}}",
     "createError": "Kunde inte skapa krav",
     "thinkingTrace": "Resonemangskedja",
     "rationale": "Motivering",
@@ -1729,7 +1729,7 @@
     "creditsErrorTooltip": "Kunde inte hämta kreditsaldo. Kontrollera att OPENROUTER_API_KEY är giltig och att API:t är nåbart. Fel: {detail}",
     "creditsUnreachable": "Kunde inte nå OpenRouter API",
     "topicHelp": "Beskriv det <strong>system eller den funktion</strong> du vill ha krav för. AI:n använder detta som kontext vid generering.",
-    "areaHelp": "Välj vilket <strong>område</strong> de genererade kraven ska placeras i. Det avgör var de visas i kravlistan.",
+    "areaHelp": "Välj vilket <strong>kravområde</strong> de genererade kraven ska placeras i. Det avgör var de visas i kravlistan.",
     "modelHelp": "Välj vilken <strong>AI-modell</strong> som ska användas. Större modeller ger resultat av högre kvalitet men tar längre tid.",
     "prompt": {
       "defaultInstruction": "Generera 5-10 välstrukturerade systemkrav för det givna ämnet.\n\nVarje krav MÅSTE:\n- Ha en tydlig, testbar och entydig beskrivning (enligt ISO/IEC/IEEE 29148:2018 §5.2.5)\n- Använda formen \"Systemet ska...\" för funktionella krav\n- Använda \"Systemet ska kunna...\" eller kvalitetsattributspråk för icke-funktionella krav\n- Inkludera acceptanskriterier där det är tillämpligt\n- Referera till lämpliga kvalitetsegenskaper från ISO/IEC 25010:2023\n- Inkludera en motivering som förklarar varför kravet finns\n\nFör icke-funktionella krav, tillämpa kvalitetsmodellen ISO/IEC 25010:2023:\n- Mappa till den mest specifika kvalitetsunderegenskapen\n- Beakta prestandaeffektivitet, säkerhet, användbarhet, tillförlitlighet och underhållbarhet\n\nBedöm risknivå baserat på:\n- Påverkan på systemsäkerhet, informationssäkerhet eller kärnfunktionalitet (Hög)\n- Påverkan på användarupplevelse eller icke-kritiska funktioner (Medel)\n- Önskvärt eller kosmetiska krav (Låg)",

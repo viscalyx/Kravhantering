@@ -30,7 +30,7 @@ export async function GET(
   try {
     const itemRefs = splitCsvParam(request.nextUrl.searchParams.get('refs'))
     if (itemRefs.length === 0) {
-      throw new ReportDataError('No specification item refs provided', 400)
+      throw new ReportDataError('No requirement application refs provided', 400)
     }
 
     const db = await getRequestSqlServerDataSource()

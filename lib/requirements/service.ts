@@ -608,7 +608,7 @@ export function createRequirementsService(
         async () => {
           if (input.operation === 'create') {
             if (!input.specificationItemId) {
-              throw validationError('Specification item ID is required')
+              throw validationError('Requirement application ID is required')
             }
             const trimmedMotivation = input.motivation?.trim()
             if (!trimmedMotivation) {

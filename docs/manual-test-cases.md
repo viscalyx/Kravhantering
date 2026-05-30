@@ -50,7 +50,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [COL-04: resolve an improvement suggestion](#col-04-resolve-an-improvement-suggestion)
   - [COL-05: dismiss an improvement suggestion](#col-05-dismiss-an-improvement-suggestion)
   - [COL-06: suggestion history report includes suggestions](#col-06-suggestion-history-report-includes-suggestions)
-  - [COL-07: metadata shows area owner and reference data](#col-07-metadata-shows-area-owner-and-reference-data)
+  - [COL-07: metadata shows requirement area owner and reference data](#col-07-metadata-shows-requirement-area-owner-and-reference-data)
 - [Requirements specifications](#requirements-specifications)
   - [SPEC-01: list, filter, and clear specifications](#spec-01-list-filter-and-clear-specifications)
   - [SPEC-02: create a new specification](#spec-02-create-a-new-specification)
@@ -59,7 +59,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [SPEC-05: split lists scroll independently](#spec-05-split-lists-scroll-independently)
   - [SPEC-06: add and remove a requirement in specification detail](#spec-06-add-and-remove-a-requirement-in-specification-detail)
   - [SPEC-07: create a unique requirement](#spec-07-create-a-unique-requirement)
-  - [SPEC-08: update specification item status](#spec-08-update-specification-item-status)
+  - [SPEC-08: update usage status](#spec-08-update-usage-status)
   - [SPEC-09: manage needs references](#spec-09-manage-needs-references)
   - [SPEC-10: generate specification list report](#spec-10-generate-specification-list-report)
   - [SPEC-11: reset specification column views](#spec-11-reset-specification-column-views)
@@ -77,7 +77,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [ADMIN-03: reference-data CRUD page saves changes](#admin-03-reference-data-crud-page-saves-changes)
   - [ADMIN-04: browser back restores reference-data tab](#admin-04-browser-back-restores-reference-data-tab)
   - [ADMIN-05: mobile admin tabs and actions remain usable](#admin-05-mobile-admin-tabs-and-actions-remain-usable)
-  - [ADMIN-06: action audit log filters and exports CSV](#admin-06-action-audit-log-filters-and-exports-csv)
+  - [ADMIN-06: action log filters and exports CSV](#admin-06-action-log-filters-and-exports-csv)
   - [ADMIN-07: access-review decision and export](#admin-07-access-review-decision-and-export)
   - [ADMIN-08: access-review validation rejects long comments](#admin-08-access-review-validation-rejects-long-comments)
   - [ADMIN-09: archiving retention preview is privacy-gated](#admin-09-archiving-retention-preview-is-privacy-gated)
@@ -90,7 +90,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [PRIV-05: replacement-person switch action](#priv-05-replacement-person-switch-action)
   - [PRIV-06: anonymize and skip actions](#priv-06-anonymize-and-skip-actions)
   - [PRIV-07: stale preview is rejected](#priv-07-stale-preview-is-rejected)
-  - [PRIV-08: privacy execution emits audit evidence](#priv-08-privacy-execution-emits-audit-evidence)
+  - [PRIV-08: privacy execution emits action-log evidence](#priv-08-privacy-execution-emits-action-log-evidence)
 - [Developer and resilience surfaces](#developer-and-resilience-surfaces)
   - [DEVTOOLS-01: Developer Mode chip copies a reference](#devtools-01-developer-mode-chip-copies-a-reference)
   - [DEVTOOLS-02: Developer Mode persists across navigation](#devtools-02-developer-mode-persists-across-navigation)
@@ -108,10 +108,10 @@ and must not be reused outside local testing.
 <!-- markdownlint-disable MD013 -->
 | Username | Password | Display name | Roles | `employeeHsaId` | Testing purpose |
 | --- | --- | --- | --- | --- | --- |
-| `olle.areaowner` | `devpass` | Olle AreaOwner | None | `SE5560000001-areaowner1` | Area-owner assignment checks. |
+| `olle.areaowner` | `devpass` | Olle AreaOwner | None | `SE5560000001-areaowner1` | Requirement-area owner assignment checks. |
 | `cora.coauthor` | `devpass` | Cora CoAuthor | None | `SE5560000001-areaco1` | Requirement-area co-author checks. |
-| `linnea.areaowner` | `devpass` | Linnéa AreaOwner | None | `SE5560000001-linneab` | Broad privacy preview fixture and area ownership checks. |
-| `petra.specresp` | `devpass` | Petra SpecificationResp | None | `SE5560000001-specresp1` | Specification responsibility checks. |
+| `linnea.areaowner` | `devpass` | Linnéa AreaOwner | None | `SE5560000001-linneab` | Broad privacy preview fixture and requirement area ownership checks. |
+| `petra.specresp` | `devpass` | Petra SpecificationResp | None | `SE5560000001-specresp1` | Specification lead checks. |
 | `paul.pkgcoauthor` | `devpass` | Paul PkgCoAuthor | None | `SE5560000001-pkgco1` | Requirement-package co-author checks. |
 | `rita.reviewer` | `devpass` | Rita Reviewer | `Reviewer` | `SE5560000001-reviewer1` | Review and decision workflow checks. |
 | `ada.admin` | `devpass` | Ada Admin | `Admin`, `PrivacyOfficer` | `SE5560000001-admin1` | Broad Admin and PrivacyOfficer happy path. |
@@ -272,7 +272,7 @@ that mentions `Dataskyddshandläggare`, and the active tab does not change.
 1. Verify the `Dataskydd` panel is visible.
 1. Open `/sv/admin/audit-log`.
 
-**Expected result:** The privacy panel is usable, while the audit log does not
+**Expected result:** The privacy panel is usable, while the action log does not
 load as an Admin page for this user.
 
 ### AUTH-08: no-role user is denied privileged work
@@ -628,7 +628,7 @@ to the workflow stepper instead of jumping down to `Förbättringsförslag`.
 1. Confirm the action.
 1. Return to the library.
 
-**Expected result:** The requirement status is `Publicerad`, with published
+**Expected result:** The requirement version status is `Publicerad`, with published
 date information recorded in the detail view or version history.
 
 ### LIFE-06: create a new draft version from a published requirement
@@ -847,24 +847,24 @@ history.
 **Expected result:** Suggestions are grouped by requirement version and include
 status, author, date, and resolution details.
 
-### COL-07: metadata shows area owner and reference data
+### COL-07: metadata shows requirement area owner and reference data
 
 **Purpose:** Confirm detail metadata is complete and readable.
 
 **Users:** `ada.admin`.
 
-**Prerequisites:** Open a seeded requirement with area, package, and norm
-reference data.
+**Prerequisites:** Open a seeded requirement with requirement area, package,
+and norm reference data.
 
 **Steps:**
 
 1. Expand the requirement detail.
-1. Check the area metadata and owner text.
+1. Check the requirement area metadata and owner text.
 1. Check requirement packages.
 1. Check norm references.
 
-**Expected result:** Area owner, packages, and references are shown without
-moving above the primary requirement text sections.
+**Expected result:** Requirement area owner, packages, and references are shown
+without moving above the primary requirement text sections.
 
 ## Requirements specifications
 
@@ -898,7 +898,8 @@ visible specifications.
 **Steps:**
 
 1. Select `Nytt kravunderlag`.
-1. Fill name, lifecycle status, governance object type, and implementation type.
+1. Fill name, specification lifecycle status, governance object type, and
+   implementation type.
 1. Add a business need reference if required.
 1. Save.
 
@@ -988,16 +989,16 @@ lists as expected.
 **Steps:**
 
 1. Select the unique requirement creation action.
-1. Confirm the form does not show the `Område` field.
+1. Confirm the form does not show the `Kravområde` field.
 1. Fill the unique requirement text and metadata.
 1. Save.
 1. Expand the new unique row.
 
 **Expected result:** The unique requirement appears only inside the current
-specification, shows `-` in the `Område` column, and has a local item
+specification, shows `-` in the `Kravområde` column, and has a local item
 reference.
 
-### SPEC-08: update specification item status
+### SPEC-08: update usage status
 
 **Purpose:** Confirm usage status can be changed inline.
 
@@ -1077,14 +1078,14 @@ library or unique requirement rows.
 1. Repeat from `Tillgängliga krav` after showing extra columns.
 
 **Expected result:** `Krav i underlaget` resets to `Krav-ID`, `Kravtext`,
-`Område`, and `Behovsreferens`. `Tillgängliga krav` resets to `Krav-ID`,
-`Kravtext`, and `Område`; it does not use the Kravbibliotek default column set.
+`Kravområde`, and `Behovsreferens`. `Tillgängliga krav` resets to `Krav-ID`,
+`Kravtext`, and `Kravområde`; it does not use the Kravbibliotek default column set.
 
 ## Deviations
 
 ### DEV-01: create a draft deviation
 
-**Purpose:** Confirm a deviation can be registered for a specification item.
+**Purpose:** Confirm a deviation can be registered for a requirement application.
 
 **Users:** `ada.admin`.
 
@@ -1194,7 +1195,7 @@ and decision motivation is visible.
 **Steps:**
 
 1. Sign in as `noah.noroles`.
-1. Open the relevant specification item.
+1. Open the relevant requirement application.
 1. Try to register a deviation decision.
 
 **Expected result:** Decision controls are unavailable or the server rejects
@@ -1231,7 +1232,7 @@ reload.
 **Steps:**
 
 1. Open the `Kolumner` tab.
-1. Move `Kategori` above or below `Område`.
+1. Move `Kategori` above or below `Kravområde`.
 1. Verify that `Kravpaket` is available as a hidden-by-default column.
 1. Select `Spara`.
 1. Open `/sv/requirements` in a fresh browser context.
@@ -1249,7 +1250,7 @@ reload.
 **Steps:**
 
 1. Open `Kravområden`.
-1. Create a disposable area with a unique prefix.
+1. Create a disposable requirement area with a unique prefix.
 1. Edit its name.
 1. Delete it if deletion is allowed.
 1. Open a reference-data page with no rows, or remove the disposable row if that
@@ -1296,13 +1297,13 @@ the `Reference data` tab remains selected.
 **Expected result:** Tabs and buttons are visible, selectable, and large enough
 to operate by touch.
 
-### ADMIN-06: action audit log filters and exports CSV
+### ADMIN-06: action log filters and exports CSV
 
-**Purpose:** Confirm Admin audit evidence can be reviewed.
+**Purpose:** Confirm Admin action-log evidence can be reviewed.
 
 **Users:** `ada.admin`.
 
-**Prerequisites:** Seeded audit events exist, or create a requirement first.
+**Prerequisites:** Seeded action-log events exist, or create a requirement first.
 
 **Steps:**
 
@@ -1529,7 +1530,7 @@ and execution.
 **Expected result:** The execution is rejected as stale or unsafe, and no
 partial unexpected changes are made.
 
-### PRIV-08: privacy execution emits audit evidence
+### PRIV-08: privacy execution emits action-log evidence
 
 **Purpose:** Confirm privacy actions produce reviewable evidence.
 
@@ -1544,7 +1545,7 @@ partial unexpected changes are made.
 1. Filter for privacy-related action names.
 1. Inspect the details.
 
-**Expected result:** The audit event includes counts and target fingerprint,
+**Expected result:** The action-log event includes counts and target fingerprint,
 but does not expose the raw target HSA-ID in details.
 
 ## Developer and resilience surfaces
@@ -1596,7 +1597,7 @@ without pressing the shortcut again.
 **Steps:**
 
 1. Enable Developer Mode.
-1. Expand a specification item if needed.
+1. Expand a requirement application if needed.
 1. Hover the specification report control.
 
 **Expected result:** A chip appears with a useful specification-context

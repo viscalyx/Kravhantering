@@ -88,7 +88,7 @@ describe('requirement-statuses/[id] route', () => {
 
   it('PUT preserves non-system status policy errors before auditing', async () => {
     mockUpdateStatus.mockRejectedValue(
-      conflictError('Only system requirement statuses can be edited'),
+      conflictError('Only system requirement version statuses can be edited'),
     )
     const req = new NextRequest('http://localhost', {
       method: 'PUT',
@@ -102,7 +102,7 @@ describe('requirement-statuses/[id] route', () => {
     expect(res.status).toBe(409)
     expect(json).toEqual({
       code: 'conflict',
-      error: 'Only system requirement statuses can be edited',
+      error: 'Only system requirement version statuses can be edited',
     })
     expect(
       auditState.recordAdminPrivilegedActionSucceeded,

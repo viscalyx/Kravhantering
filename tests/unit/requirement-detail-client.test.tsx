@@ -61,7 +61,7 @@ vi.mock('next-intl', () => ({
       'requirement.cancelArchivingConfirm':
         'Cancel archiving and return to Published?',
       'requirement.cancelArchivingTooltip': 'Cancel archiving',
-      'requirement.area': 'Area',
+      'requirement.area': 'Requirement area',
       'requirement.backToLatest': 'Back to latest',
       'requirement.category': 'Category',
       'requirement.deleteDraftConfirm': 'Delete this draft?',
@@ -69,7 +69,7 @@ vi.mock('next-intl', () => ({
         `Deleting this draft will also delete the requirement and ${values?.count} linked improvement suggestions.`,
       'requirement.deleteDraftSuggestionCheckFailed':
         'Linked improvement suggestions could not be checked. The draft was not deleted.',
-      'requirement.description': 'Description',
+      'requirement.description': 'Requirement text',
       'requirement.draftVersionAvailableBanner': values =>
         `Draft version v${values?.version} is available`,
       'requirement.displayedVersion': 'Displayed version',
@@ -873,7 +873,7 @@ describe('RequirementDetailClient', () => {
       screen
         .getByText('Usage status')
         .closest('[data-developer-mode-name="detail section"]'),
-    ).toHaveAttribute('data-developer-mode-value', 'specification item status')
+    ).toHaveAttribute('data-developer-mode-value', 'usage status')
   })
 
   it('falls back to the alternate locale label when localized taxonomy names are missing', async () => {

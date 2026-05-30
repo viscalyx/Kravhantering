@@ -121,7 +121,7 @@ hard page reload.
    and click "Spara". Assert "Sparat" appears.
 1. Navigate to `/sv/requirements`.
 1. Assert the renamed label appears in `<thead>`.
-1. Assert the column index of the renamed label is before or after "Område"
+1. Assert the column index of the renamed label is before or after "Kravområde"
    consistent with the swapped order.
 1. Reload the page.
 1. Assert the renamed label is still in `<thead>`.
@@ -178,12 +178,12 @@ selected.
 1. Navigate to `/en/admin`.
 1. Click the "Reference data" tab.
 1. Assert the URL is `/en/admin?tab=referenceData`.
-1. Click the "Areas" reference-data card.
+1. Click the "Requirement areas" reference-data card.
 1. Assert the URL is `/en/requirement-areas`.
 1. Use browser Back.
 1. Assert the URL is `/en/admin?tab=referenceData`.
-1. Assert the Reference data tab has `aria-selected="true"` and the Areas card
-   is visible.
+1. Assert the Reference data tab has `aria-selected="true"` and the
+   Requirement areas card is visible.
 
 ### Sequence Diagram: Browser History
 
@@ -196,7 +196,7 @@ sequenceDiagram
     U->>A: Open /en/admin
     U->>A: Click Reference data
     Note over A: ✓ URL = /en/admin?tab=referenceData
-    U->>R: Click Areas card
+    U->>R: Click Requirement areas card
     Note over R: ✓ URL = /en/requirement-areas
     U->>A: Browser Back
     Note over A: ✓ URL = /en/admin?tab=referenceData

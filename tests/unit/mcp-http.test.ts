@@ -180,7 +180,7 @@ function createFakeService(
     }),
     getSpecificationItems: vi.fn().mockResolvedValue({
       items: [],
-      message: 'Specification items',
+      message: 'Requirement applications',
       specificationId: 7,
     }),
     graduateSpecificationLocalRequirement: vi.fn().mockResolvedValue({
@@ -225,7 +225,7 @@ function createFakeService(
     }),
     listGraduationTargetAreas: vi.fn().mockResolvedValue({
       areas: [{ id: 2, name: 'Security', prefix: 'SEC' }],
-      message: 'Target areas',
+      message: 'Target requirement areas',
     }),
     listSpecifications: vi.fn().mockResolvedValue({
       message: 'Specifications',
@@ -656,7 +656,7 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
-  it('passes requirement catalog filters and sorting through the MCP schema', async () => {
+  it('passes requirements filters and sorting through the MCP catalog schema', async () => {
     const { client, transport } = await createClient()
     const fakeService = serviceState.getService.mock.results[0]?.value
 
@@ -765,7 +765,7 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
-  it('lists graduation target areas through MCP', async () => {
+  it('lists graduation target requirement areas through MCP', async () => {
     const { client, transport } = await createClient()
     const fakeService = serviceState.getService.mock.results[0]?.value
 

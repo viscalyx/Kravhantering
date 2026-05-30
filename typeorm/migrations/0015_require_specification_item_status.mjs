@@ -30,7 +30,7 @@ END;`,
   SELECT 1 FROM [specification_item_statuses]
   WHERE [id] = 1
 )
-  THROW 51000, N'Cannot require specification item status defaults: Included status id 1 is missing.', 1;`,
+  THROW 51000, N'Cannot require usage status defaults: Included status id 1 is missing.', 1;`,
   `IF EXISTS (
   SELECT 1 FROM [requirements_specification_items]
   WHERE [specification_item_status_id] IS NULL

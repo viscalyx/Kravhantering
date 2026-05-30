@@ -237,14 +237,14 @@ v(n+1):                      created ── edited
 - `v(n+1).published_at` and `v(n+1).archived_at` are both
   `NULL`.
 
-## Effective Status (Filtering)
+## Effective Requirement Status (Filtering)
 
 When listing requirements the system computes an
-**effective status** for each requirement using the
+**effective requirement status** for each requirement using the
 following priority order (highest priority first):
 
 <!-- markdownlint-disable MD013 -->
-| Priority | Condition | Effective Status |
+| Priority | Condition | Effective Requirement Status |
 | -------- | --------- | ---------------- |
 | 1 | Any version has `requirement_status_id = 3` | Published |
 | 2 | No Published version and `requirements.is_archived = true` | Archived |
@@ -253,7 +253,7 @@ following priority order (highest priority first):
 <!-- markdownlint-enable MD013 -->
 
 Each filter option shows only requirements whose effective
-status matches. This means:
+requirement status matches. This means:
 
 - **Draft** — requirements that have **only** Draft
   versions and are not archived (`is_archived = false`).
@@ -266,7 +266,7 @@ status matches. This means:
   even while a newer Draft or Review replacement version
   exists.
 
-The effective status is a **query-time computation** (a SQL
+The effective requirement status is a **query-time computation** (a SQL
 `CASE` expression in `buildRequirementListConditions`). It
 is not stored as a column.
 

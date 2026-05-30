@@ -194,7 +194,7 @@ describe('useDeviationWorkflow', () => {
     })
   })
 
-  it('clears the previous deviation while a new specification item fetch is pending', async () => {
+  it('clears the previous deviation while a new requirement application fetch is pending', async () => {
     const secondFetch = createDeferred<Response>()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
@@ -251,7 +251,7 @@ describe('useDeviationWorkflow', () => {
     expect(result.current.latestDeviation).toBeNull()
   })
 
-  it('ignores stale deviation responses after a newer specification item fetch wins', async () => {
+  it('ignores stale deviation responses after a newer requirement application fetch wins', async () => {
     const firstFetch = createDeferred<Response>()
     const secondFetch = createDeferred<Response>()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {

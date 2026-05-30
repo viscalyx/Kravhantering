@@ -12,7 +12,7 @@ import {
   seedRequiredDatabase,
 } from '../../typeorm/seed-required.mjs'
 
-// cspell:ignore linneab repoåtkomstgranskning retentionlinked retentionorphan
+// cspell:ignore linneab repobehörighetsöversyn retentionlinked retentionorphan
 
 const LINNEA_HSA_ID = 'SE5560000001-linneab'
 const LINNEA_DISPLAY_NAME = 'Linnéa Bergström'
@@ -370,7 +370,7 @@ describe('seed profiles', () => {
     expect(accessReviewRunsById.get(1)).toMatchObject({
       created_by_hsa_id: LINNEA_HSA_ID,
       external_evidence_reference:
-        'DNR-KH-2025-0142: IAM- och repoåtkomstgranskning 2025',
+        'DNR-KH-2025-0142: IAM- och repobehörighetsöversyn 2025',
       status: 'completed',
     })
     expect(accessReviewRunsById.get(2)).toMatchObject({

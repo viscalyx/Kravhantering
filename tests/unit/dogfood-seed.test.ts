@@ -296,7 +296,7 @@ describe('appendDogfoodSeed', () => {
       expect(v[14]).toBeNull() // archived_at
     }
 
-    // Every specification item points to a published v1
+    // Every requirement application points to a published v1.
     const versionById = new Map(versions.map(v => [v[0], v]))
     for (const it of items) {
       const v = versionById.get(it[3])

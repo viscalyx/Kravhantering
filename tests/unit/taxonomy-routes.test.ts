@@ -419,7 +419,7 @@ describe('specification-lifecycle-statuses routes', () => {
     )
     expect(mockUpdateLifecycle).not.toHaveBeenCalled()
   })
-  it('PUT returns 404 when the lifecycle status is missing', async () => {
+  it('PUT returns 404 when the specification lifecycle status is missing', async () => {
     mockUpdateLifecycle.mockResolvedValue(undefined)
     const r = await putLifecycle(
       jsonReq('PUT', { nameEn: 'Missing' }),
@@ -437,7 +437,7 @@ describe('specification-lifecycle-statuses routes', () => {
     )
     expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
   })
-  it('DELETE returns 404 when the lifecycle status is missing', async () => {
+  it('DELETE returns 404 when the specification lifecycle status is missing', async () => {
     mockDeleteLifecycle.mockResolvedValue(0)
     const r = await deleteLifecycle(
       new NextRequest('http://l', { method: 'DELETE' }),
@@ -448,7 +448,7 @@ describe('specification-lifecycle-statuses routes', () => {
     await expect(r.json()).resolves.toEqual({ error: 'Not found' })
   })
 
-  it('DELETE returns 409 when the lifecycle status is in use', async () => {
+  it('DELETE returns 409 when the specification lifecycle status is in use', async () => {
     mockDeleteLifecycle.mockRejectedValue(
       new Error(
         'The DELETE statement conflicted with the REFERENCE constraint',
@@ -461,7 +461,7 @@ describe('specification-lifecycle-statuses routes', () => {
 
     expect(r.status).toBe(409)
     await expect(r.json()).resolves.toEqual({
-      error: 'Cannot delete: lifecycle status is in use',
+      error: 'Cannot delete: specification lifecycle status is in use',
     })
     expect(
       auditState.recordAdminPrivilegedActionSucceeded,
@@ -587,7 +587,7 @@ describe('specification-item-statuses catalog routes', () => {
     })
   })
 
-  it('GET by id returns linked specification items', async () => {
+  it('GET by id returns linked requirement applications', async () => {
     const r = await getSpecItemStatus(
       new NextRequest('http://l', { method: 'GET' }),
       makeParams('5'),
@@ -796,7 +796,7 @@ describe('requirement-specifications routes', () => {
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(mockCreatePkg).not.toHaveBeenCalled()
   })
-  it('POST passes responsible person fields through as an HSA-ID/name pair', async () => {
+  it('POST passes specification lead fields through as an HSA-ID/name pair', async () => {
     const r = await postPkg(
       jsonReq('POST', {
         name: 'A',
@@ -817,7 +817,7 @@ describe('requirement-specifications routes', () => {
       }),
     )
   })
-  it('POST rejects a responsible HSA-ID without a responsible name', async () => {
+  it('POST rejects a specification lead HSA-ID without a specification lead name', async () => {
     const r = await postPkg(
       jsonReq('POST', {
         name: 'A',
@@ -830,7 +830,7 @@ describe('requirement-specifications routes', () => {
     await expectInvalidRequest(r, 'responsibleDisplayName')
     expect(mockCreatePkg).not.toHaveBeenCalled()
   })
-  it('POST rejects a responsible name without a responsible HSA-ID', async () => {
+  it('POST rejects a specification lead name without a specification lead HSA-ID', async () => {
     const r = await postPkg(
       jsonReq('POST', {
         name: 'A',
@@ -856,7 +856,7 @@ describe('requirement-specifications routes', () => {
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(mockUpdatePkg).not.toHaveBeenCalled()
   })
-  it('PUT updates responsible person and AI permission fields', async () => {
+  it('PUT updates specification lead and AI permission fields', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
     const r = await putPkg(
       jsonReq('PUT', {
@@ -878,7 +878,7 @@ describe('requirement-specifications routes', () => {
       }),
     )
   })
-  it('PUT clears the responsible person fields as a pair', async () => {
+  it('PUT clears the specification lead fields as a pair', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
     const r = await putPkg(
       jsonReq('PUT', {
@@ -898,7 +898,7 @@ describe('requirement-specifications routes', () => {
       }),
     )
   })
-  it('PUT clears the responsible person fields as a pair using HSA-ID', async () => {
+  it('PUT clears the specification lead fields as a pair using HSA-ID', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
     const r = await putPkg(
       jsonReq('PUT', {

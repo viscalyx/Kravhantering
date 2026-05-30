@@ -270,7 +270,10 @@ export const DELETE = secureMutationRoute({
           return NextResponse.json(body, { status })
         }
 
-        logSanitizedError('Failed to delete specification items by refs', error)
+        logSanitizedError(
+          'Failed to delete requirement applications by refs',
+          error,
+        )
         return NextResponse.json(
           { error: 'Failed to remove items' },
           { status: 500 },

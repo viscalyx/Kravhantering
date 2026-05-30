@@ -95,7 +95,7 @@ Images` section with semantic GHCR tags for normal pulls, the immutable GHCR
 manifest digest references for `app-runtime` and `db-job` verification, and
 the production deployment bundle assets. Stable releases use normal GitHub
 Releases; preview releases are marked as pre-releases and are kept as part of
-the audit trail.
+the release evidence.
 
 The `Container Images` section groups entries by container package, adds a
 short purpose description for each image, and lists every published tag for

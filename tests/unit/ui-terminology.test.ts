@@ -10,15 +10,15 @@ describe('ui terminology helpers', () => {
     const terminology = normalizeUiTerminology([
       {
         en: {
-          definitePlural: 'Lifecycle states',
-          plural: 'Lifecycle states',
-          singular: 'Lifecycle state',
+          definitePlural: 'Requirement version states',
+          plural: 'Requirement version states',
+          singular: 'Requirement version state',
         },
         key: 'status',
         sv: {
-          definitePlural: 'Livscykelstatusarna',
-          plural: 'Livscykelstatusar',
-          singular: 'Livscykelstatus',
+          definitePlural: 'Kravversionsstatusarna',
+          plural: 'Kravversionsstatusar',
+          singular: 'Kravversionsstatus',
         },
       },
       {
@@ -51,8 +51,14 @@ describe('ui terminology helpers', () => {
 
     const svMessages = applyUiTerminologyMessages(
       {
-        nav: { requirementPackages: 'Kravpaket', statuses: 'Kravstatusar' },
-        requirement: { description: 'Beskrivning', status: 'Kravstatus' },
+        nav: {
+          requirementPackages: 'Kravpaket',
+          statuses: 'Kravversionsstatusar',
+        },
+        requirement: {
+          description: 'Beskrivning',
+          status: 'Kravversionsstatus',
+        },
       },
       'sv',
       terminology,
@@ -61,9 +67,12 @@ describe('ui terminology helpers', () => {
       {
         nav: {
           requirementPackages: 'Requirement packages',
-          statuses: 'Requirement Statuses',
+          statuses: 'Requirement version statuses',
         },
-        requirement: { description: 'Description', status: 'Status' },
+        requirement: {
+          description: 'Requirement text',
+          status: 'Requirement version status',
+        },
       },
       'en',
       terminology,
@@ -72,9 +81,9 @@ describe('ui terminology helpers', () => {
     expect(svMessages).toMatchObject({
       nav: {
         requirementPackages: 'Leveranspaket',
-        statuses: 'Livscykelstatusar',
+        statuses: 'Kravversionsstatusar',
       },
-      requirement: { description: 'Kravtext', status: 'Livscykelstatus' },
+      requirement: { description: 'Kravtext', status: 'Kravversionsstatus' },
       terminology: {
         requirementPackage: {
           definitePlural: 'Leveranspaketen',
@@ -82,20 +91,20 @@ describe('ui terminology helpers', () => {
           singular: 'Leveranspaket',
         },
         status: {
-          definitePlural: 'Livscykelstatusarna',
-          plural: 'Livscykelstatusar',
-          singular: 'Livscykelstatus',
+          definitePlural: 'Kravversionsstatusarna',
+          plural: 'Kravversionsstatusar',
+          singular: 'Kravversionsstatus',
         },
       },
     })
     expect(enMessages).toMatchObject({
       nav: {
         requirementPackages: 'Delivery bundles',
-        statuses: 'Lifecycle states',
+        statuses: 'Requirement version states',
       },
       requirement: {
         description: 'Requirement text',
-        status: 'Lifecycle state',
+        status: 'Requirement version state',
       },
       terminology: {
         description: {
@@ -183,19 +192,19 @@ describe('ui terminology helpers', () => {
       },
     ])
 
-    expect(terminology.area.sv.singular).toBe('Område')
+    expect(terminology.area.sv.singular).toBe('Kravområde')
     expect(terminology.references.en.plural).toBe('References')
     expect(terminology.requiresTestingOff.sv.singular).toBe('Inte verifierbar')
     expect(terminology.mcpRequirementView.sv.singular).toBe('Kravvy från MCP')
     expect(getRequirementCsvHeaders('en', terminology)).toEqual([
       'Requirement ID',
       'Traceability marker',
-      'Area',
+      'Requirement area',
       'Category',
       'Type',
       'Quality characteristic',
       'Risk level',
-      'Status',
+      'Requirement version status',
       'Verifiable',
       'Version',
       'Norm references',

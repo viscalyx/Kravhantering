@@ -92,12 +92,12 @@ function createService() {
   }))
   const getSpecificationItems = vi.fn(async (_context: RequestContext) => ({
     items: [],
-    message: 'Specification items',
+    message: 'Requirement applications',
     specificationId: 7,
   }))
   const listGraduationTargetAreas = vi.fn(async (_context: RequestContext) => ({
     areas: [{ id: 2, name: 'Security', prefix: 'SEC' }],
-    message: 'Target areas',
+    message: 'Target requirement areas',
   }))
   const graduateSpecificationLocalRequirement = vi.fn(
     async (_context: RequestContext) => ({

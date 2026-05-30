@@ -649,7 +649,7 @@ function createQueryCatalogSchema() {
         .array(z.number().int().positive())
         .optional()
         .describe(
-          'Requirement status IDs. Applies only to catalog "requirements".',
+          'Requirement version status IDs. Applies only to catalog "requirements".',
         ),
       typeId: z
         .number()
@@ -932,7 +932,7 @@ function createTransitionRequirementSchema() {
         .int()
         .positive()
         .describe(
-          'Target requirement status ID. Use requirements_query_catalog with catalog "transitions" or "statuses" before choosing this value.',
+          'Target requirement version status ID. Use requirements_query_catalog with catalog "transitions" or "statuses" before choosing this value.',
         ),
       uniqueId: z
         .string()
@@ -1529,7 +1529,7 @@ export function createKravhanteringMcpServer(
           ),
         })
         .strict(),
-      title: 'List Requirements Specifications',
+      title: 'List requirements specifications',
     },
     async input => {
       try {
@@ -1619,7 +1619,7 @@ export function createKravhanteringMcpServer(
           specificationId: z.number(),
         })
         .strict(),
-      title: 'Get Specification Items',
+      title: 'Get Requirement Applications',
     },
     async input => {
       try {
@@ -1656,7 +1656,7 @@ export function createKravhanteringMcpServer(
         'List the requirement areas this actor may use as targets when copying an Included unique requirement into the library. Use requirements_list_specifications and requirements_get_specification_items to identify the source, pass the same specificationId or specificationSlug plus localRequirementId here, then use one returned areas[].id value as requirements_graduate_local_requirement requirementAreaId.',
       inputSchema: createGraduationTargetAreasSchema(),
       outputSchema: GraduationTargetAreasOutputSchema,
-      title: 'List Graduation Target Areas',
+      title: 'List Graduation Target Requirement Areas',
     },
     async input => {
       try {
@@ -2181,7 +2181,7 @@ export function createKravhanteringMcpServer(
             .positive()
             .optional()
             .describe(
-              'Area ID to assign to generated requirements when creating them via requirements_manage_requirement',
+              'Requirement area ID to assign to generated requirements when creating them via requirements_manage_requirement',
             ),
           customInstruction: z
             .string()

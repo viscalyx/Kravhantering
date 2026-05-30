@@ -31,7 +31,7 @@ async function expectHydratedTable(page: Page) {
           ),
         ),
     )
-    .toEqual(['', 'Krav-ID', 'Kravtext', 'Område', 'Status'])
+    .toEqual(['', 'Krav-ID', 'Kravtext', 'Kravområde', 'Status'])
 
   // col index 4 = status (0=checkbox, 1=uniqueId, 2=description, 3=area, 4=status)
   await expect

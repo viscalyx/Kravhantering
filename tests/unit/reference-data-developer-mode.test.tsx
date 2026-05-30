@@ -44,8 +44,8 @@ interface MarkerSpec {
 
 const pages: MarkerSpec[] = [
   {
-    label: 'OmradesagareClient (area owners)',
-    context: 'area owners',
+    label: 'OmradesagareClient (requirement area owners)',
+    context: 'requirement area owners',
     factory: () =>
       import('@/app/[locale]/owners/owners-client') as Promise<{
         default: React.ComponentType
@@ -153,8 +153,8 @@ const pages: MarkerSpec[] = [
     expectedMarkers: ['create button', 'crud table', 'table action'],
   },
   {
-    label: 'KravstatusarClient (statuses)',
-    context: 'statuses',
+    label: 'KravversionsstatusarClient (requirement version statuses)',
+    context: 'requirement version statuses',
     factory: () =>
       import(
         '@/app/[locale]/requirement-statuses/requirement-statuses-client'

@@ -81,7 +81,7 @@ describe('admin audit events route', () => {
     })
   })
 
-  it('lists audit events for Admin with filters and no-store headers', async () => {
+  it('lists action-log events for Admin with filters and no-store headers', async () => {
     const { GET } = await import('@/app/api/admin/audit-events/route')
     const response = await GET(
       new Request(
@@ -139,7 +139,7 @@ describe('admin audit events route', () => {
     expect(routeState.listActionAuditEvents).not.toHaveBeenCalled()
   })
 
-  it('rejects non-admin users before reading audit rows', async () => {
+  it('rejects non-admin users before reading action-log rows', async () => {
     routeState.createRequestContext.mockResolvedValueOnce(context(['Reviewer']))
     const { GET } = await import('@/app/api/admin/audit-events/route')
     const response = await GET(
@@ -151,7 +151,7 @@ describe('admin audit events route', () => {
     expect(routeState.listActionAuditEvents).not.toHaveBeenCalled()
   })
 
-  it('exports filtered audit events as CSV without emitting audit rows', async () => {
+  it('exports filtered action-log events as CSV without emitting action-log rows', async () => {
     const { GET } = await import('@/app/api/admin/audit-events/route')
     const response = await GET(
       new Request(
@@ -163,7 +163,7 @@ describe('admin audit events route', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('Content-Type')).toContain('text/csv')
     expect(response.headers.get('Content-Disposition')).toContain(
-      'action-audit-log.csv',
+      'action-log.csv',
     )
     expect(csv).toContain('occurredAt;actorKind')
     expect(csv).toContain('requirement.create')

@@ -54,7 +54,7 @@ data portability stay aligned for HSA-ID-backed fields. Current sources include:
 - requirement versions
 - deviations and specification-local deviations
 - improvement suggestions
-- requirement specification responsibility
+- specification lead
 - requirement-area and specification co-authors
 - requirement-area and package owner references
 - current auth session claims for self-export only
@@ -72,11 +72,11 @@ export. Database action-audit actor snapshots are included through
 values are not exported. Direct transfer to another controller is not
 implemented in this slice.
 
-## Audit And Filenames
+## Action Log And Filenames
 
 Successful export generation records
 `privacy.data_subject_export.generated` with delivery, item count, source count,
-and target fingerprint. Audit detail must not include the raw target HSA-ID.
+and target fingerprint. Action-log detail must not include the raw target HSA-ID.
 
 Downloaded filenames use the target fingerprint and generation date rather than
 the raw HSA-ID.

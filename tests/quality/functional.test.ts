@@ -294,7 +294,7 @@ it('Scenario 15: configurable status and risk icons use an allowlist and stay ad
     'iconName: version.riskLevel.iconName',
   )
   expect(requirementsServiceSource).toContain('specification_item_statuses')
-  expect(userGuideSource).toContain('specification item statuses')
+  expect(userGuideSource).toContain('usage statuses')
   expect(userGuideSource).toContain('iconName')
   expect(adminCenterDoc).toContain('nullable icon')
   expect(databaseSchemaDoc).toContain('icon_name')
@@ -538,12 +538,12 @@ function createSpecificationMcpContractService() {
         uniqueId: 'SEC0001',
       },
     ],
-    message: 'Specification items',
+    message: 'Requirement applications',
     specificationId: 7,
   }))
   const listGraduationTargetAreas = vi.fn(async () => ({
     areas: [{ id: 2, name: 'Security', prefix: 'SEC' }],
-    message: 'Target areas',
+    message: 'Target requirement areas',
   }))
   const graduateSpecificationLocalRequirement = vi.fn(async () => ({
     detail: {
@@ -909,7 +909,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
 
     const libraryItem = await getSingleSpecificationItem(appDb(), spec.id)
     if (!libraryItem) {
-      throw new Error('Expected a library specification item')
+      throw new Error('Expected a library requirement application')
     }
 
     const localItem = await createSpecificationLocalRequirement(
@@ -978,7 +978,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
   })
 
-  it('Scenario 16: requirements specification item usage status cannot be cleared once assigned', async () => {
+  it('Scenario 16: requirement application usage status cannot be cleared once assigned', async () => {
     const area = await createArea(appDb())
     const published = await createPublishedRequirement(
       appDb(),
@@ -996,7 +996,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
 
     const libraryItem = await getSingleSpecificationItem(appDb(), spec.id)
     if (!libraryItem) {
-      throw new Error('Expected a library specification item')
+      throw new Error('Expected a library requirement application')
     }
     const localItem = await createSpecificationLocalRequirement(
       appDb(),
@@ -1019,7 +1019,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       } as unknown as Parameters<typeof updateSpecificationItemFields>[2]),
     ).rejects.toMatchObject({
       code: 'validation',
-      message: 'Specification item status cannot be cleared',
+      message: 'Usage status cannot be cleared',
     })
     await expect(
       updateSpecificationLocalRequirementFields(appDb(), localItem.id, {
@@ -1029,7 +1029,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       >[2]),
     ).rejects.toMatchObject({
       code: 'validation',
-      message: 'Specification item status cannot be cleared',
+      message: 'Usage status cannot be cleared',
     })
   })
 
@@ -1343,7 +1343,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     }
 
     const area = await createArea(appDb(), {
-      name: 'Scenario 17 Area',
+      name: 'Scenario 17 requirement area',
       prefix: 'S17',
     })
     const published = await createPublishedRequirement(
@@ -1648,7 +1648,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
 
     const item = await getSingleSpecificationItem(appDb(), spec.id)
     if (!item) {
-      throw new Error('Expected specification item')
+      throw new Error('Expected requirement application')
     }
 
     const deviation = await createDeviation(appDb(), {
@@ -2022,7 +2022,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(v2After?.status).toBe(STATUS_DRAFT)
   })
 
-  it('Scenario 14: action audit rows fail closed with the business transaction', async () => {
+  it('Scenario 14: action-log rows fail closed with the business transaction', async () => {
     await expect(
       appDb().transaction(async manager => {
         await recordActionAuditEvent(manager, {

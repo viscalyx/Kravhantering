@@ -79,7 +79,9 @@ export async function updateStatus(
   const existing = await getStatusById(db, id)
   if (!existing) throw notFoundError('Status not found')
   if (!existing.isSystem) {
-    throw conflictError('Only system requirement statuses can be edited')
+    throw conflictError(
+      'Only system requirement version statuses can be edited',
+    )
   }
 
   const patch: Partial<RequirementStatusEntity> = {}

@@ -115,7 +115,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     expect(mocks.listSpecificationItems).toHaveBeenCalledWith(mockDb, 5)
   })
 
-  it('updates specification item status by item ref within the specification', async () => {
+  it('updates usage status by item ref within the specification', async () => {
     mocks.getSpecificationBySlug.mockResolvedValue({ id: 7 })
     mocks.getSpecificationItemByRef.mockResolvedValue({
       itemRef: 'lib:31',
@@ -158,7 +158,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     1.5,
     null,
     '2',
-  ])('rejects malformed specification item status id %s', async specificationItemStatusId => {
+  ])('rejects malformed usage status id %s', async specificationItemStatusId => {
     const request = new NextRequest(
       'http://localhost/api/specifications/ETJANST-UPP-2026/items/lib%3A31',
       {

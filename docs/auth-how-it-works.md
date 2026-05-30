@@ -254,7 +254,7 @@ sequenceDiagram
   redacted key name.
 - Privacy erasure and data-subject export security events are emitted to the
   platform security-log stream. Privacy erasure execution also writes a
-  database action-audit row for Admin review. Both include the handler
+  database action-log row for Admin review. Both include the handler
   identity, request id, grouped counts or delivery metadata, and a
   non-reversible target fingerprint. They must not include the raw target
   HSA-ID in event detail. Retention or redaction of handler identity in
@@ -289,7 +289,7 @@ sequenceDiagram
   same stream. Their `detail` payloads carry stable identifiers, counts, and
   action names only; free-text requirement content, motivations, and suggestion
   text are not emitted.
-- Application action audit rows in `action_audit_events` are separate from
+- Application action-log rows in `action_audit_events` are separate from
   this stream. They are database records for successful app-owned mutations and
   authorization denials, include request/correlation IDs and optional validated
   client IP, and can be viewed by Admins at `/{locale}/admin/audit-log`.

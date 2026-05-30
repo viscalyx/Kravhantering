@@ -69,17 +69,17 @@
   },
   "nav": {
     "catalog": "Requirements Library",
-    "areas": "Areas",
-    "specifications": "Requirements Specifications",
+    "areas": "Requirement areas",
+    "specifications": "Requirements specifications",
     "requirementPackages": "Requirements packages",
-    "statuses": "Statuses",
+    "statuses": "Requirement version statuses",
     "types": "Types",
     "taxonomy": "Reference data",
     "qualityCharacteristics": "Quality characteristics",
     "riskLevels": "Risk levels",
     "governanceObjectTypes": "Governance object types",
     "implementationTypes": "Implementation types",
-    "lifecycleStatuses": "Lifecycle statuses",
+    "lifecycleStatuses": "Specification lifecycle statuses",
     "areaOwners": "Requirement area owners",
     "normReferences": "Norm references",
     "specificationItemStatuses": "Usage statuses",
@@ -140,12 +140,12 @@
     "referenceLabel": "Error reference"
   },
   "requirement": {
-    "statusStepperAriaLabel": "Requirement status workflow steps",
+    "statusStepperAriaLabel": "Requirement version status workflow steps",
     "tableCaption": "Requirements list",
     "uniqueId": "Requirement ID",
     "description": "Requirement text",
     "acceptanceCriteria": "Acceptance criterion",
-    "area": "Area",
+    "area": "Requirement area",
     "category": "Category",
     "needsReference": "Needs reference",
     "noNeedsRef": "No needs reference",
@@ -159,8 +159,8 @@
     "specificationCount": "Used in specification",
     "verificationMethod": "Verification method",
     "verificationMethodHelp": "<strong>Specify how the acceptance criteria will be verified.</strong>\nChoose or describe an appropriate method, such as inspection, analysis/simulation, demonstration, or test, in line with ISO/IEC/IEEE 29148:2018.\n\nDo not enter names or other details that can identify a living person.",
-    "areaHelp": "<strong>Select the area this requirement belongs to.</strong>\nThe area controls the requirement ID prefix and links the requirement to a responsible owner.",
-    "areaHelpOptional": "<strong>Areas are only used for requirements in the Requirements Library.</strong>\nUnique requirements stay within their specification until they are graduated to the Requirements Library.",
+    "areaHelp": "<strong>Select the requirement area this requirement belongs to.</strong>\nThe requirement area controls the requirement ID prefix and links the requirement to a responsible owner.",
+    "areaHelpOptional": "<strong>Requirement areas are only used for requirements in the Requirements Library.</strong>\nUnique requirements stay within their specification until they are graduated to the Requirements Library.",
     "descriptionHelp": "<strong>Formulate the requirement clearly, concretely, and verifiably.</strong>\nDescribe who or what the requirement applies to and what should be achieved. Focus on what should apply, not how the solution should be implemented. Where relevant, specify measurable conditions such as time, threshold, precision, or capacity so the requirement can be understood and verified. Avoid vague words like fast, simple, appropriate, or as needed. This follows the principles in ISO/IEC/IEEE 29148:2018 for clear and unambiguous requirements and ISO/IEC 25030:2019 for measurable quality requirements.\n\nDo not enter names or other details that can identify a living person.\n\nExamples:\nGood: The system shall display search results within 2 seconds.\nLess good: The system should be fast and user-friendly.",
     "acceptanceCriteriaHelp": "<strong>Specify the objective conditions that must be met for the requirement to be accepted.</strong>\nWrite clearly, concretely, and measurably where relevant, such as time, threshold, precision, capacity, or observable outcome. Describe what should be fulfilled, not how it should be tested. The formulation should follow the principles in ISO/IEC 25010:2023, ISO/IEC 25030:2019, and ISO/IEC/IEEE 29148:2018.\n\nDo not enter names or other details that can identify a living person.",
     "categoryHelp": "<strong>Select the category that best describes the nature of the requirement.</strong>\nThe category helps classify and filter requirements.",
@@ -172,7 +172,7 @@
     "newRequirement": "New requirement",
     "aiGenerate": "AI Generate",
     "editRequirement": "Edit requirement",
-    "status": "Status",
+    "status": "Requirement version status",
     "hasPendingVersionDraft": "A new version is being worked on",
     "hasPendingVersionReview": "There is a newer version under review",
     "statusLabel": {
@@ -281,11 +281,11 @@
     "prefix": "Prefix",
     "name": "Name",
     "description": "Description",
-    "owner": "Requirement owner",
+    "owner": "Requirement area owner",
     "help": {
-      "prefix": "Enter the short uppercase prefix used when requirement IDs are generated for this area. The prefix can only be changed when creating a new area.",
+      "prefix": "Enter the short uppercase prefix used when requirement IDs are generated for this requirement area. The prefix can only be changed when creating a new requirement area.",
       "name": "Enter the display name for this requirement area.",
-      "description": "Optionally describe what kinds of requirements belong in this area. Do not enter names or other details that can identify a living person.",
+      "description": "Optionally describe what kinds of requirements belong in this requirement area. Do not enter names or other details that can identify a living person.",
       "owner": "Choose the person or group responsible for this requirement area."
     },
     "newArea": "New requirement area",
@@ -308,19 +308,19 @@
     },
     "governanceObjectType": "Governance object type",
     "governanceObjectTypeHelp": "Choose the governance object type the specification belongs to, or leave it blank if the specification spans multiple governance object types.",
-    "responsible": "Responsible",
-    "responsibleDisplayName": "Responsible person",
-    "responsibleDisplayNameHelp": "Enter the display name for the person responsible for the requirements specification. Do not use this for the user who registers a deviation unless that person also owns the specification.",
-    "responsibleHsaId": "Responsible HSA-ID",
-    "responsibleHsaIdHelp": "Enter the HSA-ID for the responsible person. The HSA-ID and display name must be saved together so privacy export, erasure, and access review can identify the assignment.",
-    "canResponsibleGenerateAi": "Responsible may use AI",
-    "canResponsibleGenerateAiHelp": "Enable this only when the responsible person is allowed to use AI support for this requirements specification.",
-    "responsiblePairRequired": "Enter both responsible person and responsible HSA-ID, or leave both empty.",
-    "invalidResponsibleHsaId": "Check the responsible HSA-ID. The format is SE followed by 10 digits, a hyphen, and an alphanumeric suffix.",
+    "responsible": "Specification lead",
+    "responsibleDisplayName": "Specification lead name",
+    "responsibleDisplayNameHelp": "Enter the display name for the specification lead. Do not use this for the user who registers a deviation unless that person is also the specification lead.",
+    "responsibleHsaId": "Specification lead HSA-ID",
+    "responsibleHsaIdHelp": "Enter the HSA-ID for the specification lead. The HSA-ID and display name must be saved together so privacy export, erasure, and access review can identify the assignment.",
+    "canResponsibleGenerateAi": "Specification lead may use AI",
+    "canResponsibleGenerateAiHelp": "Enable this only when the specification lead is allowed to use AI support for this requirements specification.",
+    "responsiblePairRequired": "Enter both specification lead name and specification lead HSA-ID, or leave both empty.",
+    "invalidResponsibleHsaId": "Check the specification lead HSA-ID. The format is SE followed by 10 digits, a hyphen, and an alphanumeric suffix.",
     "implementationType": "Implementation type",
     "implementationTypeHelp": "Choose the implementation type that best describes how this specification will be delivered.",
-    "lifecycleStatus": "Lifecycle status",
-    "lifecycleStatusHelp": "Choose the lifecycle status that best describes the current phase of the specification.",
+    "lifecycleStatus": "Specification lifecycle status",
+    "lifecycleStatusHelp": "Choose the specification lifecycle status that best describes the current phase of the specification.",
     "needsReference": "Needs reference",
     "needsReferenceHelp": "Describe why the requirement application is needed in the specification. The reference can also support when and how the requirement should be verified.",
     "needsReferences": "Needs references",
@@ -367,7 +367,7 @@
     "removeMixedConfirmTitle": "Remove selected items",
     "removeMixedConfirm": "Are you sure you want to remove {libraryCount, plural, one {1 library requirement} other {# library requirements}} from this specification and permanently delete {specificationLocalCount, plural, one {1 unique requirement} other {# unique requirements}}? Deleted unique requirements cannot be restored.",
     "noItems": "No requirements are linked to this specification.",
-    "specificationNotFound": "Requirement specification not found.",
+    "specificationNotFound": "Requirements specification not found.",
     "backToSpecifications": "Back to specifications",
     "downloadFilename": "specification.csv",
     "newLocalRequirement": "New unique requirement",
@@ -420,7 +420,7 @@
     "csvHeaders": {
       "uniqueId": "Requirement ID",
       "description": "Description",
-      "area": "Area",
+      "area": "Requirement area",
       "needsReference": "Needs reference",
       "status": "Status",
       "category": "Category",
@@ -565,7 +565,7 @@
       "specificationId": "Specification ID",
       "governanceObjectType": "Governance object type",
       "implementationType": "Implementation type",
-      "lifecycleStatus": "Lifecycle status",
+      "lifecycleStatus": "Specification lifecycle status",
       "businessNeedsReference": "Specification purpose"
     },
     "printLabels": {
@@ -663,22 +663,22 @@
   "statusMgmt": {
     "name": "Name",
     "nameSvLabel": "Name (Swedish)",
-    "nameSvHelp": "Enter the Swedish status name shown when the application language is Swedish.",
+    "nameSvHelp": "Enter the Swedish requirement version status name shown when the application language is Swedish.",
     "nameEnLabel": "Name (English)",
-    "nameEnHelp": "Enter the English status name shown when the application language is English.",
+    "nameEnHelp": "Enter the English requirement version status name shown when the application language is English.",
     "color": "Color",
-    "colorHelp": "Choose the color used for this status badge.",
+    "colorHelp": "Choose the color used for this requirement version status badge.",
     "icon": "Icon",
-    "iconHelp": "Choose an approved icon shown next to the status label. Leave empty for a text-only badge.",
+    "iconHelp": "Choose an approved icon shown next to the requirement version status label. Leave empty for a text-only badge.",
     "sortOrder": "Sort order",
     "sortOrderHelp": "Enter a number that controls the display order. Lower numbers appear first.",
-    "isSystem": "System status",
-    "newStatus": "New status",
-    "editStatus": "Edit status",
+    "isSystem": "System requirement version status",
+    "newStatus": "New requirement version status",
+    "editStatus": "Edit requirement version status",
     "preview": "Preview",
-    "cannotDeleteSystem": "System statuses cannot be deleted",
-    "cannotDeleteInUse": "Cannot delete — status is used by existing requirements",
-    "emptyState": "No requirement statuses are available."
+    "cannotDeleteSystem": "System requirement version statuses cannot be deleted",
+    "cannotDeleteInUse": "Cannot delete — requirement version status is used by existing requirements",
+    "emptyState": "No requirement version statuses are available."
   },
   "iconPicker": {
     "clear": "Clear icon",
@@ -736,12 +736,12 @@
     "name": "Name",
     "nameSvLabel": "Name (Swedish)",
     "nameEnLabel": "Name (English)",
-    "title": "Lifecycle statuses",
-    "newItem": "New lifecycle status",
-    "editItem": "Edit lifecycle status",
-    "nameSvHelp": "Enter the Swedish name for this lifecycle status. It is displayed when the application language is Swedish.",
-    "nameEnHelp": "Enter the English name for this lifecycle status. It is displayed when the application language is English.",
-    "emptyState": "No lifecycle statuses yet. Create your first lifecycle status."
+    "title": "Specification lifecycle statuses",
+    "newItem": "New specification lifecycle status",
+    "editItem": "Edit specification lifecycle status",
+    "nameSvHelp": "Enter the Swedish name for this specification lifecycle status. It is displayed when the application language is Swedish.",
+    "nameEnHelp": "Enter the English name for this specification lifecycle status. It is displayed when the application language is English.",
+    "emptyState": "No specification lifecycle statuses yet. Create your first specification lifecycle status."
   },
   "theme": {
     "light": "Light",
@@ -770,8 +770,8 @@
     "accessReviewDescription": "Create recurring reviews of app-managed assignments and AI permissions, decide each access row, and export review evidence.",
     "privacyDescription": "Preview HSA-ID based matches, export data, and execute GDPR erasure for actor identity snapshots and live assignments.",
     "auditLog": {
-      "title": "Action audit log",
-      "eyebrow": "Audit",
+      "title": "Action log",
+      "eyebrow": "Action log",
       "description": "Search application mutations and authorization denials recorded in the database.",
       "exportCsv": "Export CSV",
       "actorHsaId": "Actor HSA-ID",
@@ -791,7 +791,7 @@
       "target": "Target",
       "requestId": "Request ID",
       "clientIp": "Client IP",
-      "empty": "No audit events match the filters.",
+      "empty": "No action log events match the filters.",
       "pagination": "Page {page} of {totalPages}, {total} event(s)",
       "previous": "Previous",
       "next": "Next"
@@ -807,7 +807,7 @@
       "replacementEmailOptional": "Email address is optional.",
       "fieldHelp": {
         "targetHsaId": "Enter the HSA-ID to search for before preview, export, or erasure. Every match uses the exact HSA-ID. Names are not used for matching, so there is no separate name search field.",
-        "replacementHsaId": "Enter the HSA-ID for the person who should take over live assignments, such as owner, co-author, or specification responsible. This field must be combined with replacement name before the Switch action can be used.",
+        "replacementHsaId": "Enter the HSA-ID for the person who should take over live assignments, such as owner, co-author, or specification lead. This field must be combined with replacement name before the Switch action can be used.",
         "replacementName": "Enter the display name snapshot to store for the replacement person. The name helps the operator confirm the switch, but HSA-ID remains the durable identity.",
         "replacementFirstName": "Optional. Enter the exact first-name value for the owner record when the display name cannot be split reliably.",
         "replacementLastName": "Optional. Enter the exact last-name value for the owner record when the display name cannot be split reliably.",
@@ -836,7 +836,7 @@
       "confirmTitle": "Execute privacy erasure",
       "confirmMessage": "This will switch {switch}, anonymize {anonymize}, delete {delete}, and skip {skip} occurrence(s).",
       "guidanceTitle": "Recommended handling and export",
-      "guidanceBody": "Use the preview to verify exactly which HSA-ID matches can be exported or erased. Export does not change the data. Live assignments, including specification responsibles, are usually switched to another HSA-ID during erasure. Historical creator, decision, and resolution fields are usually anonymized instead of reassigned. Description and free-text fields are not scanned because the UI instructs users not to enter person-identifying details there.",
+      "guidanceBody": "Use the preview to verify exactly which HSA-ID matches can be exported or erased. Export does not change the data. Live assignments, including specification leads, are usually switched to another HSA-ID during erasure. Historical creator, decision, and resolution fields are usually anonymized instead of reassigned. Description and free-text fields are not scanned because the UI instructs users not to enter person-identifying details there.",
       "previewResult": "{count} HSA-ID occurrence(s)",
       "object": "Object",
       "count": "Count",
@@ -878,7 +878,7 @@
         "specificationCoAuthors": "Specification co-authors",
         "accessReviewRuns": "Access review rounds",
         "accessReviewItems": "Access review rows",
-        "actionAuditEvents": "Action audit events"
+        "actionAuditEvents": "Action log events"
       },
       "fields": {
         "identity": "Identity",
@@ -887,7 +887,7 @@
         "completedBy": "Completed by",
         "decidedBy": "Decided by",
         "resolvedBy": "Resolved by",
-        "responsible": "Responsible",
+        "responsible": "Specification lead",
         "coAuthor": "Co-author",
         "reviewer": "Reviewer",
         "actor": "Actor",
@@ -1029,7 +1029,7 @@
         "area_co_author": "Requirement area co-author",
         "area_owner": "Requirement area owner",
         "specification_co_author": "Specification co-author",
-        "specification_responsible": "Specification responsible"
+        "specification_responsible": "Specification lead"
       }
     },
     "swedish": "Svenska",
@@ -1044,18 +1044,18 @@
     "saved": "Saved",
     "columnsSaveError": "Could not save the column settings.",
     "terminologySaveError": "Could not save the terminology.",
-    "areasDescription": "Manage areas and their prefixes.",
+    "areasDescription": "Manage requirement areas and their prefixes.",
     "typesDescription": "View types and their quality hierarchy.",
     "requirementPackagesDescription": "Manage requirements packages linked to requirements.",
-    "statusesDescription": "Manage lifecycle statuses and their ordering.",
+    "statusesDescription": "Manage requirement version statuses and their ordering.",
     "qualityAttributesDescription": "Manage quality characteristics from ISO/IEC 25010:2023.",
     "governanceObjectTypesDescription": "Manage governance object types for requirements specifications.",
     "implementationTypesDescription": "Manage implementation types for requirements specifications.",
-    "lifecycleStatusesDescription": "Manage lifecycle statuses for requirements specifications.",
+    "lifecycleStatusesDescription": "Manage specification lifecycle statuses.",
     "areaOwnersDescription": "Manage owners that can be assigned to requirement areas.",
     "normReferencesDescription": "Manage norm references (laws, regulations, standards, etc.) that can be linked to requirements.",
     "riskLevelsDescription": "Manage risk levels that can be assigned to requirements.",
-    "specificationItemStatusesDescription": "Manage usage statuses for requirements in specification."
+    "specificationItemStatusesDescription": "Manage usage statuses for requirement applications."
   },
   "terminology": {
     "description": {
@@ -1064,9 +1064,9 @@
       "definitePlural": "Requirement texts"
     },
     "area": {
-      "singular": "Area",
-      "plural": "Areas",
-      "definitePlural": "Areas"
+      "singular": "Requirement area",
+      "plural": "Requirement areas",
+      "definitePlural": "Requirement areas"
     },
     "category": {
       "singular": "Category",
@@ -1079,9 +1079,9 @@
       "definitePlural": "Types"
     },
     "status": {
-      "singular": "Status",
-      "plural": "Statuses",
-      "definitePlural": "Statuses"
+      "singular": "Requirement version status",
+      "plural": "Requirement version statuses",
+      "definitePlural": "Requirement version statuses"
     },
     "qualityCharacteristic": {
       "singular": "Quality characteristic",
@@ -1129,9 +1129,9 @@
       "definitePlural": "Implementation types"
     },
     "lifecycleStatus": {
-      "singular": "Lifecycle status",
-      "plural": "Lifecycle statuses",
-      "definitePlural": "Lifecycle statuses"
+      "singular": "Specification lifecycle status",
+      "plural": "Specification lifecycle statuses",
+      "definitePlural": "Specification lifecycle statuses"
     },
     "referenceData": {
       "singular": "Reference data",
@@ -1163,7 +1163,7 @@
         "skipped": "Skipped {count} {requirementWord} with no published version: {ids}."
       },
       "graduationTargets": {
-        "title": "Requirements Library Target Areas",
+        "title": "Requirements Library target requirement areas",
         "summary": "{count} requirement area(s) can receive the copy."
       },
       "graduate": {
@@ -1199,11 +1199,11 @@
         "body": "Each requirement carries a set of properties that describe what it demands, how it is classified, and where it fits in the organization's processes. Below is an overview of every property and how it supports the requirement lifecycle.",
         "requirementId": {
           "heading": "Requirement ID",
-          "body": "Generated automatically from the area prefix and a sequence number. This is the stable identifier used for traceability across requirements specifications, reports, and cross-references. You cannot edit it directly — it is assigned when the requirement is created."
+          "body": "Generated automatically from the requirement area prefix and a sequence number. This is the stable identifier used for traceability across requirements specifications, reports, and cross-references. You cannot edit it directly — it is assigned when the requirement is created."
         },
         "area": {
-          "heading": "Area",
-          "body": "Groups requirements by domain, such as Integration or Case Management. The area determines the ID prefix and which team is responsible for the requirement. It must be set when creating a new requirement and cannot be changed afterward."
+          "heading": "Requirement area",
+          "body": "Groups requirements by domain, such as Integration or Case Management. The requirement area determines the ID prefix and which team is responsible for the requirement. It must be set when creating a new requirement and cannot be changed afterward."
         },
         "description": {
           "heading": "Requirement text",
@@ -1246,17 +1246,17 @@
           "body": "Connects the requirement to external standards, laws, or regulations. These links support compliance auditing and make it possible to trace every requirement back to its legal or normative origin."
         },
         "status": {
-          "heading": "Status",
-          "body": "Reflects the current lifecycle state — Draft, Review, Published, or Archived. Status is managed automatically through workflow actions and controls which operations are available. See the Process illustration and Requirement process sections below for details."
+          "heading": "Requirement version status",
+          "body": "Reflects the current requirement version status — Draft, Review, Published, or Archived. The status is managed automatically through workflow actions and controls which operations are available. See the Process illustration and Requirement process sections below for details."
         }
       },
       "filtering": {
         "heading": "Searching and filtering",
-        "body": "Use the search field for free-text searches in requirement IDs and content. Click the filter icon on any column header to narrow the list to the right area, status, or other metadata. Turn on \"Show archived\" when you need to include requirements that are no longer active."
+        "body": "Use the search field for free-text searches in requirement IDs and content. Click the filter icon on any column header to narrow the list to the right requirement area, requirement version status, or other metadata. Turn on \"Show archived\" when you need to include requirements that are no longer active."
       },
       "columns": {
         "heading": "Columns",
-        "body": "The Columns button controls which metadata columns are visible in the table. Drag column edges to resize them. The Requirement ID and Description columns are always visible so you can stay oriented even when you customize the view."
+        "body": "The Columns button controls which metadata columns are visible in the table. Drag column edges to resize them. The Requirement ID and Requirement text columns are always visible so you can stay oriented even when you customize the view."
       },
       "lifecycleVisual": {
         "heading": "Process illustration",
@@ -1308,7 +1308,7 @@
       "title": "New Requirement",
       "form": {
         "heading": "Filling in the form",
-        "body": "Select an area first — it determines the requirement ID prefix and the responsible owner. Each field with a question-mark icon has inline guidance. Required fields are marked."
+        "body": "Select a requirement area first — it determines the requirement ID prefix and the responsible owner. Each field with a question-mark icon has inline guidance. Required fields are marked."
       },
       "lifecycle": {
         "heading": "Lifecycle",
@@ -1319,7 +1319,7 @@
       "title": "Requirement Detail",
       "status": {
         "heading": "Status transitions",
-        "body": "Use the status bar to advance the requirement through its lifecycle: Draft → Review → Published. To archive, the requirement goes through an archiving review: Published → Review (archiving) → Archived. Each transition requires a confirmation. You can return to Draft from Review if more work is needed."
+        "body": "Use the requirement version status bar to advance the requirement through its lifecycle: Draft → Review → Published. To archive, the requirement goes through an archiving review: Published → Review (archiving) → Archived. Each transition requires a confirmation. You can return to Draft from Review if more work is needed."
       },
       "versions": {
         "heading": "Versions",
@@ -1353,14 +1353,14 @@
       }
     },
     "requirementsSpecifications": {
-      "title": "Requirements Specifications",
+      "title": "Requirements specifications",
       "overview": {
         "heading": "What is a requirements specification?",
-        "body": "Specifications group published requirements for a specific delivery, procurement, or business context. Each specification can be linked to a governance object type, an implementation type, and a responsible person."
+        "body": "Specifications group published requirements for a specific delivery, procurement, or business context. Each specification can be linked to a governance object type, an implementation type, and a specification lead."
       },
       "create": {
         "heading": "Creating and editing",
-        "body": "Click \"New requirements specification\" to create one. Click the specification name to open its detail view. Use the edit icon to update the specification metadata, including the responsible person."
+        "body": "Click \"New requirements specification\" to create one. Click the specification name to open its detail view. Use the edit icon to update the specification metadata, including the specification lead."
       }
     },
     "requirementsSpecificationDetail": {
@@ -1405,21 +1405,21 @@
       }
     },
     "lifecycleStatuses": {
-      "title": "Lifecycle Statuses",
+      "title": "Specification Lifecycle Statuses",
       "overview": {
-        "heading": "What are lifecycle statuses?",
-        "body": "Lifecycle statuses describe the current phase of a requirements specification, for example procurement, implementation, development, or management. Assign one when creating or editing a specification."
+        "heading": "What are specification lifecycle statuses?",
+        "body": "Specification lifecycle statuses describe the current phase of a requirements specification, for example procurement, implementation, development, or management. Assign one when creating or editing a specification."
       },
       "manage": {
         "heading": "Managing",
-        "body": "Click the edit icon to rename a lifecycle status. Use the delete icon to remove it — only statuses not linked to any specification can be deleted."
+        "body": "Click the edit icon to rename a specification lifecycle status. Use the delete icon to remove it — only specification lifecycle statuses not linked to any specification can be deleted."
       }
     },
     "admin": {
       "title": "Admin Center",
       "terminology": {
         "heading": "Terminology",
-        "body": "Override the singular, plural, and definite plural labels used throughout the UI for terms like area, category, type, and more. Changes take effect immediately without a page reload."
+        "body": "Override the singular, plural, and definite plural labels used throughout the UI for terms like requirement area, category, type, and more. Changes take effect immediately without a page reload."
       },
       "columns": {
         "heading": "Default columns",
@@ -1427,7 +1427,7 @@
       },
       "referenceData": {
         "heading": "Reference data",
-        "body": "Quick links to manage areas, types, requirements packages, statuses, quality characteristics, governance object types, implementation types, and requirement area owners."
+        "body": "Quick links to manage requirement areas, types, requirements packages, requirement version statuses, usage statuses, specification lifecycle statuses, quality characteristics, governance object types, implementation types, and requirement area owners."
       },
       "privacy": {
         "heading": "Privacy erasure",
@@ -1485,7 +1485,7 @@
       },
       "scope": {
         "heading": "Scope",
-        "body": "The app inventories requirement area owners, requirement area co-authors, specification responsibles, specification co-authors, and their app-managed AI permissions. Global IdP roles, source-code access, and external client provisioning are reviewed in their source tools."
+        "body": "The app inventories requirement area owners, requirement area co-authors, specification leads, specification co-authors, and their app-managed AI permissions. Global IdP roles, source-code access, and external client provisioning are reviewed in their source tools."
       },
       "decisions": {
         "heading": "Decisions",
@@ -1512,14 +1512,14 @@
       }
     },
     "requirementAreas": {
-      "title": "Requirement Areas",
+      "title": "Requirement areas",
       "overview": {
         "heading": "What are requirement areas?",
-        "body": "Areas define the ID prefix for requirements (e.g. PERF-001) and assign a responsible owner. A requirement must belong to an area before it can be saved."
+        "body": "Requirement areas define the ID prefix for requirements (e.g. PERF-001) and assign a responsible owner. A requirement must belong to a requirement area before it can be saved."
       },
       "manage": {
         "heading": "Managing",
-        "body": "Create a new area using the New button. Click the edit icon to update the prefix, name, description, or owner. Deleting an area is only possible if no requirements are assigned to it."
+        "body": "Create a new requirement area using the New button. Click the edit icon to update the prefix, name, description, or owner. Deleting a requirement area is only possible if no requirements are assigned to it."
       }
     },
     "requirementTypes": {
@@ -1560,18 +1560,18 @@
       }
     },
     "requirementStatuses": {
-      "title": "Requirement Statuses",
+      "title": "Requirement Version Statuses",
       "overview": {
-        "heading": "Lifecycle statuses",
-        "body": "Statuses represent the lifecycle stages a requirement passes through: Draft, Review, Published, and Archived. These four system statuses cannot be deleted or renamed."
+        "heading": "Requirement version statuses",
+        "body": "Requirement version statuses represent the lifecycle stages a requirement version passes through: Draft, Review, Published, and Archived. These four system requirement version statuses cannot be deleted or renamed."
       },
       "manage": {
         "heading": "Managing",
-        "body": "You can reorder and configure the color of statuses using the controls in each row. System statuses are marked and cannot be removed."
+        "body": "You can reorder and configure the color of requirement version statuses using the controls in each row. System requirement version statuses are marked and cannot be removed."
       }
     },
     "owners": {
-      "title": "Area Owners",
+      "title": "Requirement area owners",
       "overview": {
         "heading": "What are requirement area owners?",
         "body": "Requirement area owners are the named individuals responsible for requirements in a specific requirement area. They are listed on the requirement area and on each requirement's detail page."
@@ -1607,11 +1607,11 @@
       "title": "Usage Statuses Help",
       "overview": {
         "heading": "About usage statuses",
-        "body": "Usage statuses track how far a requirement has progressed within a specification — from included to implemented and verified. Each status has a name, color, and sort order."
+        "body": "Usage statuses track how far a requirement has progressed within a specification — from included to implemented and verified. Each usage status has a name, color, and sort order."
       },
       "manage": {
         "heading": "Managing",
-        "body": "Add new statuses using the Create button. Edit existing statuses to change name, color, or sort order. Statuses linked to specification items cannot be deleted."
+        "body": "Add new usage statuses using the Create button. Edit existing usage statuses to change name, color, or sort order. Usage statuses linked to requirement applications or unique requirements cannot be deleted."
       }
     }
   },
@@ -1639,15 +1639,15 @@
     "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}",
     "newItem": "New usage status",
     "editItem": "Edit usage status",
-    "nameSvHelp": "Enter the Swedish name for this status. It is displayed when the application language is Swedish.",
-    "nameEnHelp": "Enter the English name for this status. It is displayed when the application language is English.",
+    "nameSvHelp": "Enter the Swedish name for this usage status. It is displayed when the application language is Swedish.",
+    "nameEnHelp": "Enter the English name for this usage status. It is displayed when the application language is English.",
     "definition": "Definition",
-    "definitionSvHelp": "Enter a Swedish definition that describes what this status means. It is shown as a tooltip where the status is used.",
-    "definitionEnHelp": "Enter an English definition that describes what this status means. It is shown as a tooltip where the status is used.",
+    "definitionSvHelp": "Enter a Swedish definition that describes what this usage status means. It is shown as a tooltip where the usage status is used.",
+    "definitionEnHelp": "Enter an English definition that describes what this usage status means. It is shown as a tooltip where the usage status is used.",
     "colorHelp": "Choose the color used for this usage status badge.",
     "noStatus": "— No status —",
-    "sortOrderHelp": "Enter a number that controls the display order. Lower numbers appear first. Reserved statuses keep a locked sort order.",
-    "sortOrderLocked": "The sort order for this system status cannot be changed.",
+    "sortOrderHelp": "Enter a number that controls the display order. Lower numbers appear first. Reserved usage statuses keep a locked sort order.",
+    "sortOrderLocked": "The sort order for this system usage status cannot be changed.",
     "specification": "Specification",
     "requirement": "Requirement",
     "emptyState": "No usage statuses are available."
@@ -1656,8 +1656,8 @@
     "generateTitle": "AI Requirement Generation",
     "topicLabel": "Topic / System Context",
     "topicPlaceholder": "Describe the system or feature you want to generate requirements for...",
-    "areaLabel": "Area",
-    "selectArea": "Select area...",
+    "areaLabel": "Requirement area",
+    "selectArea": "Select requirement area...",
     "modelLabel": "Model",
     "advancedLabel": "Advanced",
     "customInstructionLabel": "Custom Instruction",
@@ -1667,7 +1667,7 @@
     "thinkingPhase": "Analyzing requirements…",
     "generatingPhase": "Generating requirements…",
     "createSelected": "Create Selected ({count})",
-    "createConfirm": "{count, plural, one {Create # requirement in area {area}?} other {Create # requirements in area {area}?}}",
+    "createConfirm": "{count, plural, one {Create # requirement in requirement area {area}?} other {Create # requirements in requirement area {area}?}}",
     "createError": "Failed to create requirements",
     "thinkingTrace": "Thinking Trace",
     "rationale": "Rationale",
@@ -1729,7 +1729,7 @@
     "creditsErrorTooltip": "Could not fetch credit balance. Check that OPENROUTER_API_KEY is valid and the API is reachable. Error: {detail}",
     "creditsUnreachable": "Could not reach OpenRouter API",
     "topicHelp": "Describe the <strong>system or feature</strong> you want requirements for. The AI uses this as context when generating requirements.",
-    "areaHelp": "Choose which <strong>area</strong> the generated requirements will be placed in. This determines where they appear in the requirements list.",
+    "areaHelp": "Choose which <strong>requirement area</strong> the generated requirements will be placed in. This determines where they appear in the requirements list.",
     "modelHelp": "Select the <strong>AI model</strong> to use. Larger models produce higher-quality results but take longer to generate.",
     "prompt": {
       "defaultInstruction": "Generate 5-10 well-structured system requirements for the given topic.\n\nEach requirement MUST:\n- Have a clear, testable, unambiguous description (per ISO/IEC/IEEE 29148:2018 §5.2.5)\n- Use \"The system shall...\" form for functional requirements\n- Use \"The system shall be able to...\" or quality-attribute language for non-functional requirements\n- Include acceptance criteria where applicable\n- Reference appropriate quality characteristics from ISO/IEC 25010:2023\n- Include a rationale explaining why the requirement exists\n\nFor non-functional requirements, apply the ISO/IEC 25010:2023 quality model:\n- Map each to the most specific quality sub-characteristic\n- Consider performance efficiency, security, usability, reliability, and maintainability\n\nAssess risk level based on:\n- Impact on system safety, security, or core functionality (High)\n- Impact on user experience or non-critical features (Medium)\n- Nice-to-have or cosmetic requirements (Low)",

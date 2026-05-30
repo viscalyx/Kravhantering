@@ -79,7 +79,7 @@ CSRF-protected requirement mutation.
 4. Assert at least one `/_next/static/` resource loaded with HTTP 200.
 5. Attach a full-page screenshot as release smoke evidence.
 6. Request `/build.json`, validate all metadata fields, and attach the JSON.
-7. Request `/api/requirement-areas` and choose the first area.
+7. Request `/api/requirement-areas` and choose the first requirement area.
 8. POST `/api/requirements` with a description beginning
    `release-smoke-<run-id>`.
 9. GET the created requirement by id and verify it matches the POST result.
