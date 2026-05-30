@@ -68,10 +68,15 @@ const IMAGE_CONFIGS = {
     listTags: () => fetchRegistryTags('quay.io', 'keycloak/keycloak'),
     lockPath: 'containers/keycloak/image.lock.json',
     name: 'keycloak',
-    parseTag: parseSemverTag,
+    parseTag: parseKeycloakTag,
     registryHost: 'quay.io',
     registryRepository: 'keycloak/keycloak',
-    versionSortValue: version => [version.major, version.minor, version.patch],
+    versionSortValue: version => [
+      version.major,
+      version.minor,
+      version.patch,
+      version.revision,
+    ],
   },
 }
 
@@ -118,15 +123,17 @@ function parseArgs(argv, env) {
   return options
 }
 
-function parseSemverTag(tag) {
+function parseKeycloakTag(tag) {
   const match = tag.match(
-    /^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)$/u,
+    /^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<revision>0|[1-9]\d*))?$/u,
   )
   if (!match?.groups) return null
   return {
     major: Number(match.groups.major),
     minor: Number(match.groups.minor),
     patch: Number(match.groups.patch),
+    revision:
+      match.groups.revision === undefined ? -1 : Number(match.groups.revision),
     tag,
   }
 }
