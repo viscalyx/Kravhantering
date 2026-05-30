@@ -40,11 +40,11 @@ const RELEVANT_PATH_PREFIXES = [
   'public/',
   'docs/images/',
   'docs/rhel10-production-deploy.md',
-  'docs/rhel10-production-offline.md',
+  'docs/rhel10-production-disconnected.md',
   'docs/rhel10-production-uninstall.md',
   'docs/rhel10-production-upgrade.md',
   'docs/rhel10-production-single-node-self-contained-deploy.md',
-  'docs/rhel10-production-single-node-self-contained-offline.md',
+  'docs/rhel10-production-single-node-self-contained-disconnected.md',
   'docs/rhel10-production-single-node-self-contained-uninstall.md',
   'docs/rhel10-production-single-node-self-contained-upgrade.md',
   'dev/keycloak/realm-kravhantering-dev.json',
@@ -69,8 +69,8 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
     target: 'docs/rhel10-production-deploy.md',
   },
   {
-    source: 'docs/rhel10-production-offline.md',
-    target: 'docs/rhel10-production-offline.md',
+    source: 'docs/rhel10-production-disconnected.md',
+    target: 'docs/rhel10-production-disconnected.md',
   },
   {
     source: 'docs/rhel10-production-upgrade.md',
@@ -85,8 +85,8 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
     target: 'docs/rhel10-production-single-node-self-contained-deploy.md',
   },
   {
-    source: 'docs/rhel10-production-single-node-self-contained-offline.md',
-    target: 'docs/rhel10-production-single-node-self-contained-offline.md',
+    source: 'docs/rhel10-production-single-node-self-contained-disconnected.md',
+    target: 'docs/rhel10-production-single-node-self-contained-disconnected.md',
   },
   {
     source: 'docs/rhel10-production-single-node-self-contained-upgrade.md',

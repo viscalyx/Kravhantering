@@ -23,11 +23,11 @@ To uninstall a first install of this topology, use
 [rhel10-production-single-node-self-contained-uninstall.md](./rhel10-production-single-node-self-contained-uninstall.md).
 
 >[!IMPORTANT]
->For offline deployment, first follow
->[rhel10-production-single-node-self-contained-offline.md](./rhel10-production-single-node-self-contained-offline.md).
->The offline guide prepares the transferable bundle before this deployment
+>For disconnected deployment, first follow
+>[rhel10-production-single-node-self-contained-disconnected.md](./rhel10-production-single-node-self-contained-disconnected.md).
+>The disconnected guide prepares the transferable bundle before this deployment
 >guide starts and tells you where to resume these regular deployment steps on
->the offline host.
+>the disconnected host.
 
 ![Kravhantering Infographic Single Node Access Flow](images/infographic-single-node-access-flow.png)
 

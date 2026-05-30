@@ -1,20 +1,20 @@
-# RHEL 10 Production Offline Deployment And Upgrade
+# RHEL 10 Production Disconnected Deployment And Upgrade
 
 <!-- cSpell:words coreutils fLO readlink resolv -->
 
-This guide describes how to prepare and import offline release artifacts for
-the enterprise RHEL 10 production topology, where each app node runs nginx and
-`app-runtime` while SQL Server and the IdP are external services.
+This guide describes how to prepare and import disconnected release artifacts
+for the enterprise RHEL 10 production topology, where each app node runs nginx
+and `app-runtime` while SQL Server and the IdP are external services.
 
-Use this guide before starting an offline-first install with
-[rhel10-production-deploy.md](./rhel10-production-deploy.md), or before the
-downtime window for an offline planned upgrade with
+Use this guide before starting a first install in a disconnected environment
+with [rhel10-production-deploy.md](./rhel10-production-deploy.md), or before
+the downtime window for a disconnected planned upgrade with
 [rhel10-production-upgrade.md](./rhel10-production-upgrade.md).
 
-The connected export host prepares one app-node offline bundle per release.
-Use the same bundle on every offline app node for that release.
+The connected export host prepares one app-node disconnected bundle per
+release. Use the same bundle on every disconnected app node for that release.
 
-![Offline Release Bundle Journey](images/offline-release-bundle-journey.png)
+![Disconnected Bundle Journey](images/disconnected-release-bundle-journey.png)
 
 ## Connected Export Host
 
@@ -32,7 +32,7 @@ The export host needs:
 Podman image storage is per user. Pull, verify and export images with the same
 connected-host account.
 
-### Create The Offline Bundle
+### Create The Disconnected Bundle
 
 Set the release version and download source:
 
@@ -53,11 +53,11 @@ RELEASE_ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
 
 test ! -e "$OFFLINE_ROOT" || {
-  echo "Offline staging directory already exists: $OFFLINE_ROOT" >&2
+  echo "Disconnected staging directory already exists: $OFFLINE_ROOT" >&2
   exit 1
 }
 test ! -e "$OFFLINE_WORK" || {
-  echo "Offline work directory already exists: $OFFLINE_WORK" >&2
+  echo "Disconnected work directory already exists: $OFFLINE_WORK" >&2
   exit 1
 }
 
@@ -172,7 +172,7 @@ bash "$OFFLINE_WORK/bin/kravhantering-images.sh" --topology app-node \
   export --output "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
 ```
 
-Write the offline manifest, checksums and movable bundle:
+Write the bundle manifest, checksums and movable bundle:
 
 ```bash
 jq -n \
@@ -229,16 +229,16 @@ rm -rf -- "$OFFLINE_ROOT" "$OFFLINE_WORK"
 ```
 
 Transfer `$OFFLINE_BUNDLE` and `${OFFLINE_BUNDLE}.sha256` to `/tmp` on every
-offline app node with the site's approved transfer procedure.
+disconnected app node with the site's approved transfer procedure.
 
 ## First Install Import
 
 Before importing, complete
 [Prepare RHEL 10 Host](./rhel10-production-deploy.md#prepare-rhel-10-host) on
-the offline app node. Do not run the regular guide's connected
+the disconnected app node. Do not run the regular guide's connected
 `Install a Release` or `Image References` sections.
 
-Unpack and verify the offline bundle:
+Unpack and verify the disconnected bundle:
 
 ```bash
 VERSION=1.2.3 # Change to the version being deployed.
@@ -249,7 +249,7 @@ RELEASE_ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
 
 test ! -e "$OFFLINE_ROOT" || {
-  echo "Offline staging directory already exists: $OFFLINE_ROOT" >&2
+  echo "Disconnected staging directory already exists: $OFFLINE_ROOT" >&2
   exit 1
 }
 
@@ -294,9 +294,9 @@ sudo chcon -R -t container_file_t \
   "/opt/kravhantering/releases/${VERSION}/nginx"
 ```
 
-Set offline image refs. By default this preserves the source refs recorded in
-the offline manifest. Set `TARGET_IMAGE_REGISTRY` before running the block if
-the offline host should use a local or non-resolvable registry hostname:
+Set disconnected image refs. By default this preserves the source refs recorded
+in the bundle manifest. Set `TARGET_IMAGE_REGISTRY` before running the block if
+the disconnected host should use a local or non-resolvable registry hostname:
 
 ```bash
 TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
@@ -348,12 +348,12 @@ site-specific values from the regular guide.
 
 ## Upgrade Import
 
-Create and transfer the offline bundle before the downtime window. During the
-window, follow the regular upgrade guide for backup, traffic drain and service
-stop. Then use this section instead of the connected artifact install and
-image-pull steps.
+Create and transfer the disconnected bundle before the downtime window. During
+the window, follow the regular upgrade guide for backup, traffic drain and
+service stop. Then use this section instead of the connected artifact install
+and image-pull steps.
 
-Unpack and verify the offline bundle on every offline app node:
+Unpack and verify the disconnected bundle on every disconnected app node:
 
 ```bash
 VERSION=1.2.4 # Change to the version being deployed.
@@ -364,7 +364,7 @@ RELEASE_ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
 
 test ! -e "$OFFLINE_ROOT" || {
-  echo "Offline staging directory already exists: $OFFLINE_ROOT" >&2
+  echo "Disconnected staging directory already exists: $OFFLINE_ROOT" >&2
   exit 1
 }
 

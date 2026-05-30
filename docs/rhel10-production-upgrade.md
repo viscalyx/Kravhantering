@@ -14,11 +14,11 @@ To uninstall a first install, use
 [rhel10-production-uninstall.md](./rhel10-production-uninstall.md).
 
 >[!NOTE]
->For offline upgrades, first follow
->[rhel10-production-offline.md](./rhel10-production-offline.md). The offline
->guide prepares the transferable bundle before the downtime window and tells
->you which connected artifact and image steps it replaces on each offline app
->node.
+>For disconnected upgrades, first follow
+>[rhel10-production-disconnected.md](./rhel10-production-disconnected.md). The
+>disconnected guide prepares the transferable bundle before the downtime window
+>and tells you which connected artifact and image steps it replaces on each
+>disconnected app node.
 
 ## Planned-Downtime Upgrade
 

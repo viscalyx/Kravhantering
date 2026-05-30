@@ -15,11 +15,11 @@ To uninstall a first install, use
 [rhel10-production-single-node-self-contained-uninstall.md](./rhel10-production-single-node-self-contained-uninstall.md).
 
 >[!IMPORTANT]
->For offline upgrades, first follow
->[rhel10-production-single-node-self-contained-offline.md](./rhel10-production-single-node-self-contained-offline.md).
->The offline guide prepares the transferable bundle before the downtime window
->and tells you which connected artifact and image steps it replaces on the
->offline host.
+>For disconnected upgrades, first follow
+>[rhel10-production-single-node-self-contained-disconnected.md](./rhel10-production-single-node-self-contained-disconnected.md).
+>The disconnected guide prepares the transferable bundle before the downtime
+>window and tells you which connected artifact and image steps it replaces on
+>the disconnected host.
 
 ## Planned-Downtime Upgrade
 

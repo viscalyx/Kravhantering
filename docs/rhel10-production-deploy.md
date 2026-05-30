@@ -21,11 +21,11 @@ To uninstall a first install of this topology, use
 [rhel10-production-uninstall.md](./rhel10-production-uninstall.md).
 
 >[!IMPORTANT]
->For offline deployment, first follow
->[rhel10-production-offline.md](./rhel10-production-offline.md). The offline
->guide prepares the transferable bundle before this deployment guide starts and
->tells you where to resume these regular deployment steps on the offline app
->node.
+>For disconnected deployment, first follow
+>[rhel10-production-disconnected.md](./rhel10-production-disconnected.md). The
+>disconnected guide prepares the transferable bundle before this deployment
+>guide starts and tells you where to resume these regular deployment steps on
+>the disconnected app node.
 
 <!-- markdownlint-disable MD013 -->
 ![Kravhantering Infographic Production Access and Service Flow](images/infographic-production-access-and-service-flow.png)

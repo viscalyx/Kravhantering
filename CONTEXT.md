@@ -389,3 +389,11 @@ _Avoid_: Återaktivera version, återställa samma version.
 En möjlig folkmunsterm när någon menar att en arkiverad kravversion återskapas
 som nytt utkast. Använd återskapa som huvudterm.
 _Avoid_: Huvudterm i UI eller dokumentation.
+
+### Drift och leverans
+
+**Frånkopplad produktionsmiljö**:
+En produktionsmiljö som har intern nätverksanslutning men saknar internetåtkomst
+till releasekällor, containerregister eller andra externa artefaktkällor. På
+engelska används disconnected production environment.
+_Avoid_: Offline miljö, air-gapped miljö när bara extern åtkomst saknas.
