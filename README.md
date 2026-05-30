@@ -28,8 +28,8 @@ screenshots that may be helpful.
 The application supports the full requirements lifecycle:
 
 1. **Register** — create a new requirement or a new version
-2. **Classify** — assign area, category, owner, risk level,
-   requirement packages
+2. **Classify** — assign library requirements to an area,
+   category, owner, risk level, and requirement packages
 3. **Edit** — update requirement text, guidance, and evidence
 4. **Review** — submit for review, collect comments, handle
    referrals
@@ -102,8 +102,8 @@ för steg-för-steg-instruktioner med skärmdumpar.
 Applikationen stödjer hela kravlivscykeln:
 
 1. **Registrera** — skapa ett nytt krav eller en ny version
-2. **Klassificera** — tilldela område, kategori, ägare,
-   risknivå, kravpaket
+2. **Klassificera** — tilldela bibliotekskrav område,
+   kategori, ägare, risknivå och kravpaket
 3. **Redigera** — uppdatera kravtext, vägledning och evidens
 4. **Granska** — skicka till granskning, samla kommentarer,
    hantera återremiss

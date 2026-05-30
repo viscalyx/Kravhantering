@@ -245,7 +245,7 @@ step 4), you can connect ChatGPT to it.
 4. Ask a question, for example:
    - `List all published requirements`
    - `Show requirement INT0001`
-   - `List available areas and categories`
+   - `List available requirement areas and categories`
 
 ChatGPT will call the MCP tools and display the results inline
 in the conversation.

@@ -83,7 +83,7 @@ export const DELETE = secureMutationRoute({
     } catch (err) {
       if (isForeignKeyViolation(err)) {
         return NextResponse.json(
-          { error: 'Cannot delete: lifecycle status is in use' },
+          { error: 'Cannot delete: specification lifecycle status is in use' },
           { status: 409 },
         )
       }

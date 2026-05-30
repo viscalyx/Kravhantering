@@ -142,8 +142,8 @@ scanning.
 ### Step-by-Step Flow: Specification Report Reference
 
 1. Navigate to `/sv/specifications/ETJANST-UPP-2026`.
-2. Locate the specification item table panel.
-3. Expand the first specification item row.
+2. Locate the requirement application table panel.
+3. Expand the first requirement application row.
 4. Find the specification report trigger marked as
    `data-developer-mode-value="specification reports"`.
 5. Focus that trigger and activate Developer Mode.

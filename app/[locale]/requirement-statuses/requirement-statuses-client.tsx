@@ -165,7 +165,7 @@ export default function RequirementStatusesClient() {
       canDelete={() => false}
       columns={columns}
       controller={systemStatusController}
-      devContext="statuses"
+      devContext="requirement version statuses"
       emptyStateMessage={t('emptyState')}
       renderFormFields={({ disabled, form, inputClassName, setForm }) => (
         <>

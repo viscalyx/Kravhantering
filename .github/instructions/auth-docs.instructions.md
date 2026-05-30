@@ -1,5 +1,5 @@
 ---
-applyTo: "{app/api/auth/**/*.ts,app/api/mcp/route.ts,components/AuthMenu.tsx,lib/auth/**/*.ts,lib/mcp/http.ts,lib/requirements/auth.ts,middleware.ts,tests/support/oidc-mock.ts,dev/keycloak/realm-kravhantering-dev.json,docs/auth-how-it-works.md,docs/auth-developer-workflow.md}"
+applyTo: "{app/api/auth/**/*.ts,app/api/mcp/route.ts,components/AuthMenu.tsx,lib/auth/**/*.ts,lib/mcp/http.ts,lib/requirements/auth.ts,middleware.ts,tests/support/oidc-mock.ts,dev/keycloak/realm-kravhantering-dev.json,docs/auth-how-it-works.md,docs/auth-developer-workflow.md,docs/external-idp-handoff.md,docs/rhel10-production-deploy.md}"
 ---
 
 # Auth Docs
@@ -16,6 +16,17 @@ applyTo: "{app/api/auth/**/*.ts,app/api/mcp/route.ts,components/AuthMenu.tsx,lib
   - auth env vars
   - mock IdP or local test workflow
   - local troubleshooting or smoke-test steps
+- Update `docs/external-idp-handoff.md` whenever an application change affects
+  deploy-time IdP questions or configuration:
+  - OIDC client registration, redirect URIs, logout URIs, scopes, audience,
+    issuer, discovery, or environment split
+  - required or optional claims, claim names, claim formats, role values, role
+    claim parsing, HSA-id validation, or display-name mapping
+  - MFA, assurance claims, token lifetimes, clock skew, token validation,
+    sample-token expectations, TLS trust, initial app-admin provisioning, or
+    optional MCP service-token clients
+- Keep `docs/rhel10-production-deploy.md` aligned when deployed IdP env vars,
+  defaults, setup steps, or smoke checks change.
 - Keep Mermaid diagrams in `docs/auth-how-it-works.md` aligned with the
   implemented flow.
 - Keep deployed-provider wording generic unless the behaviour is explicitly

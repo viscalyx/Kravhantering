@@ -19,7 +19,9 @@ const implementationTypes = [{ id: 2, nameEn: 'Program', nameSv: 'Program' }]
 const lifecycleStatuses = [
   { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
 ]
-const responsibilityAreas = [{ id: 1, nameEn: 'Platform', nameSv: 'Plattform' }]
+const governanceObjectTypes = [
+  { id: 1, nameEn: 'Platform', nameSv: 'Plattform' },
+]
 const spec = {
   businessNeedsReference: 'Current business need',
   canResponsibleGenerateAi: true,
@@ -28,7 +30,7 @@ const spec = {
   responsibleHsaId: 'SE5560000001-ada1',
   specificationImplementationTypeId: 2,
   specificationLifecycleStatusId: 3,
-  specificationResponsibilityAreaId: 1,
+  specificationGovernanceObjectTypeId: 1,
   uniqueId: 'ETJANST-UPP-2026',
 }
 
@@ -47,11 +49,11 @@ describe('SpecificationEditPanel', () => {
   it('prefills the specification edit form and exposes developer-mode metadata', () => {
     const { container } = render(
       <SpecificationEditPanel
+        governanceObjectTypes={governanceObjectTypes}
         implementationTypes={implementationTypes}
         lifecycleStatuses={lifecycleStatuses}
         onCancel={() => {}}
         onSaved={() => {}}
-        responsibilityAreas={responsibilityAreas}
         spec={spec}
         specificationSlug="ETJANST-UPP-2026"
       />,
@@ -85,11 +87,11 @@ describe('SpecificationEditPanel', () => {
 
     render(
       <SpecificationEditPanel
+        governanceObjectTypes={governanceObjectTypes}
         implementationTypes={implementationTypes}
         lifecycleStatuses={lifecycleStatuses}
         onCancel={onCancel}
         onSaved={() => {}}
-        responsibilityAreas={responsibilityAreas}
         spec={spec}
         specificationSlug="ETJANST-UPP-2026"
       />,
@@ -102,11 +104,11 @@ describe('SpecificationEditPanel', () => {
   it('shows contextual help for specification fields', () => {
     render(
       <SpecificationEditPanel
+        governanceObjectTypes={governanceObjectTypes}
         implementationTypes={implementationTypes}
         lifecycleStatuses={lifecycleStatuses}
         onCancel={() => {}}
         onSaved={() => {}}
-        responsibilityAreas={responsibilityAreas}
         spec={spec}
         specificationSlug="ETJANST-UPP-2026"
       />,
@@ -124,11 +126,11 @@ describe('SpecificationEditPanel', () => {
 
     render(
       <SpecificationEditPanel
+        governanceObjectTypes={governanceObjectTypes}
         implementationTypes={implementationTypes}
         lifecycleStatuses={lifecycleStatuses}
         onCancel={() => {}}
         onSaved={onSaved}
-        responsibilityAreas={responsibilityAreas}
         spec={spec}
         specificationSlug="ETJANST-UPP-2026"
       />,
@@ -168,7 +170,7 @@ describe('SpecificationEditPanel', () => {
       canResponsibleGenerateAi: true,
       specificationImplementationTypeId: 2,
       specificationLifecycleStatusId: 3,
-      specificationResponsibilityAreaId: 1,
+      specificationGovernanceObjectTypeId: 1,
       uniqueId: 'ETJANST-UPP-2026',
     })
   })
@@ -178,11 +180,11 @@ describe('SpecificationEditPanel', () => {
 
     render(
       <SpecificationEditPanel
+        governanceObjectTypes={governanceObjectTypes}
         implementationTypes={implementationTypes}
         lifecycleStatuses={lifecycleStatuses}
         onCancel={() => {}}
         onSaved={() => {}}
-        responsibilityAreas={responsibilityAreas}
         spec={spec}
         specificationSlug="ETJANST-UPP-2026"
       />,

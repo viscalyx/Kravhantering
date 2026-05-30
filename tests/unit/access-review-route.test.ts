@@ -15,6 +15,17 @@ const routeState = vi.hoisted(() => ({
   recordAllowedActionAuditEvent: vi.fn(),
   recordDeniedActionAuditEvent: vi.fn(),
   recordSecurityEvent: vi.fn(),
+  renderPdfResponse: vi.fn((_document, _filename) =>
+    Promise.resolve(
+      new Response('%PDF', {
+        headers: {
+          'Cache-Control': 'no-store',
+          'Content-Disposition': 'attachment; filename="access-review.pdf"',
+          'Content-Type': 'application/pdf',
+        },
+      }),
+    ),
+  ),
   requireHumanActorSnapshot: vi.fn(
     (context: { actor: { displayName: string; hsaId: string } }) => ({
       displayName: context.actor.displayName,
@@ -57,6 +68,14 @@ vi.mock('@/lib/access-review/service', () => ({
   decideAccessReviewItem: routeState.decideAccessReviewItem,
   getAccessReviewRun: routeState.getAccessReviewRun,
   listAccessReviewRuns: routeState.listAccessReviewRuns,
+}))
+
+vi.mock('@/components/access-review/AccessReviewExportPdfRenderer', () => ({
+  default: () => null,
+}))
+
+vi.mock('@/lib/pdf/server-response', () => ({
+  renderPdfResponse: routeState.renderPdfResponse,
 }))
 
 vi.mock('@/lib/requirements/auth', async importOriginal => {
@@ -172,6 +191,7 @@ describe('access review routes', () => {
       ...reviewDetail(),
       run: { ...reviewDetail().run, status: 'cancelled' },
     })
+    routeState.renderPdfResponse.mockClear()
     routeState.buildAccessReviewExport.mockResolvedValue({
       ...reviewDetail(),
       generatedAt: '2026-05-12T12:30:00.000Z',
@@ -425,6 +445,41 @@ describe('access review routes', () => {
       expect.objectContaining({
         detail: {
           delivery: 'json',
+          itemCount: 1,
+          reviewId: 42,
+          status: 'in_review',
+        },
+        event: 'access_review.exported',
+      }),
+    )
+  })
+
+  it('exports PDF as binary while keeping JSON delivery separate', async () => {
+    const { POST } = await import(
+      '@/app/api/admin/access-reviews/[id]/export/route'
+    )
+    const response = await POST(
+      jsonRequest('http://localhost/api/admin/access-reviews/42/export', {
+        delivery: 'pdf',
+        locale: 'en',
+      }) as never,
+      { params: Promise.resolve({ id: '42' }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Type')).toBe('application/pdf')
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(routeState.renderPdfResponse).toHaveBeenCalledWith(
+      expect.any(Object),
+      'access-review-0042-2026-05-12.pdf',
+    )
+    expect(routeState.renderPdfResponse.mock.calls[0][0].props.locale).toBe(
+      'en',
+    )
+    expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: {
+          delivery: 'pdf',
           itemCount: 1,
           reviewId: 42,
           status: 'in_review',

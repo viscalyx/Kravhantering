@@ -2,6 +2,7 @@ import childProcess from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { DEFAULT_INTERNAL_NETWORK_NAME } from './generate-compose.mjs'
 import { assertStackLockSchema } from './generate-stack-lock.mjs'
 
 // cSpell:ignore noheading
@@ -34,6 +35,7 @@ const USAGE = `Usage:
 Options:
   --compose-file <path>  Generated Compose file path
   --lock-file <path>     Stack lock file path
+  --network-name <name>   Internal Compose network name
   --release-images-from-lock
                          Pull app-runtime and db-job by manifest digest from the stack lock
   --run-id <id>          Stable run id for ephemeral modes
@@ -90,6 +92,8 @@ export function parseArgs(args) {
     composeFile: readNonEmpty(options['compose-file']) ?? DEFAULT_COMPOSE_FILE,
     lockFile: readNonEmpty(options['lock-file']) ?? DEFAULT_LOCK_FILE,
     mode,
+    networkName:
+      readNonEmpty(options['network-name']) ?? DEFAULT_INTERNAL_NETWORK_NAME,
     releaseImagesFromLock,
     runId: readNonEmpty(options['run-id']),
     skipBuild,
@@ -147,6 +151,8 @@ export function createLocalStackConfig(options = {}) {
     dbJobImageReference: imageReference(dbJobImage),
     lockFile: options.lockFile ?? DEFAULT_LOCK_FILE,
     mode,
+    networkName:
+      readNonEmpty(options.networkName) ?? DEFAULT_INTERNAL_NETWORK_NAME,
     projectName,
     releaseImagesFromLock: options.releaseImagesFromLock ?? false,
     runId,
@@ -170,7 +176,7 @@ export function podmanComposeArgs(config, args) {
 }
 
 export function podmanComposeNetworkName(config) {
-  return `${config.projectName}_default`
+  return readNonEmpty(config.networkName) ?? DEFAULT_INTERNAL_NETWORK_NAME
 }
 
 function runCommand(command, args, options = {}) {
@@ -792,6 +798,8 @@ async function up(config, options = {}) {
       runtimeConfig.releaseImagesFromLock ? 'release' : 'pr',
       '--lock-file',
       runtimeConfig.lockFile,
+      '--network-name',
+      runtimeConfig.networkName,
       '--project-name',
       runtimeConfig.projectName,
       '--sqlserver-volume-name',

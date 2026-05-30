@@ -272,7 +272,7 @@ async function assertActiveStepperStep(
   expectedText: string,
 ) {
   const activeStep = container
-    .getByRole('group', { name: 'Arbetsflöde för kravstatus' })
+    .getByRole('group', { name: 'Arbetsflöde för kravversionsstatus' })
     .locator('[aria-current="step"]')
 
   await expect(activeStep).toContainText(expectedText)

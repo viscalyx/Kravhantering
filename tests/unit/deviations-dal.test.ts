@@ -102,7 +102,7 @@ describe('deviations DAL (SQL Server path)', () => {
     ])
   })
 
-  it('creates a deviation after validating specification item existence', async () => {
+  it('creates a deviation after validating requirement application existence', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([{ id: 3 }]).mockResolvedValueOnce([{ id: 42 }])
 

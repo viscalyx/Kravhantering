@@ -3,10 +3,10 @@ import type { ReportModel, ReportSection } from '../types'
 
 export interface SpecificationCoverInfo {
   businessNeedsReference: string | null
+  governanceObjectType: string | null
   implementationType: string | null
   lifecycleStatus: string | null
   name: string
-  responsibilityArea: string | null
   uniqueId: string
 }
 
@@ -49,9 +49,12 @@ export function buildListReport(
     },
     {
       key: 'description',
-      label: locale === 'sv' ? 'Kravtext' : 'Description',
+      label: locale === 'sv' ? 'Kravtext' : 'Requirement text',
     },
-    { key: 'area', label: locale === 'sv' ? 'Område' : 'Area' },
+    {
+      key: 'area',
+      label: locale === 'sv' ? 'Kravområde' : 'Requirement area',
+    },
     { key: 'status', label: 'Status' },
   ]
 

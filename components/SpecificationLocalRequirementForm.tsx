@@ -15,7 +15,6 @@ export interface SpecificationLocalRequirementSubmitPayload {
   needsReferenceId: number | null
   normReferenceIds: number[]
   qualityCharacteristicId: number | null
-  requirementAreaId: number | null
   requirementCategoryId: number | null
   requirementPackageIds: number[]
   requirementTypeId: number | null
@@ -128,7 +127,6 @@ export default function SpecificationLocalRequirementForm({
         qualityCharacteristicId: fields.qualityCharacteristicId
           ? Number(fields.qualityCharacteristicId)
           : null,
-        requirementAreaId: fields.areaId ? Number(fields.areaId) : null,
         requirementCategoryId: fields.categoryId
           ? Number(fields.categoryId)
           : null,
@@ -199,6 +197,7 @@ export default function SpecificationLocalRequirementForm({
         idPrefix="plr"
         layout="sidebar"
         onChange={setFields}
+        showArea={false}
         taxonomyOptions={taxonomyOptions}
         values={fields}
       />

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AiRequirementGenerator from '@/components/AiRequirementGenerator'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementsTable from '@/components/RequirementsTable'
+import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
 import {
   type AreaOption,
   buildRequirementListParams,
@@ -232,6 +233,7 @@ export default function RequirementsClient({
   const tc = useTranslations('common')
   const t = useTranslations('requirement')
   const locale = useLocale()
+  const pdfDownload = useServerPdfDownload()
   const normalizedColumnDefaults = useMemo(
     () => normalizeRequirementListColumnDefaults(initialColumnDefaults),
     [initialColumnDefaults],
@@ -934,9 +936,13 @@ export default function RequirementsClient({
                         label: t('printListReport'),
                       },
                       {
-                        href: `/requirements/reports/pdf/list?ids=${displayRows.map(r => r.id).join(',')}`,
                         id: 'pdf-list',
                         label: t('downloadListReportPdf'),
+                        onClick: () =>
+                          void pdfDownload.download({
+                            fallbackFilename: 'requirements-list.pdf',
+                            url: `/requirements/reports/pdf/list?ids=${displayRows.map(r => r.id).join(',')}`,
+                          }),
                       },
                     ],
                   },
@@ -971,9 +977,14 @@ export default function RequirementsClient({
                               label: t('printCombinedReport'),
                             },
                             {
-                              href: `/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
                               id: 'review-report-pdf',
                               label: t('downloadCombinedReportPdf'),
+                              onClick: () =>
+                                void pdfDownload.download({
+                                  fallbackFilename:
+                                    'combined-review-report.pdf',
+                                  url: `/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
+                                }),
                             },
                           ],
                           tooltip: !allSelectedAreReview
@@ -1040,6 +1051,7 @@ export default function RequirementsClient({
           </div>
         </div>
       </div>
+      {pdfDownload.dialog}
       <AiRequirementGenerator
         areas={areas}
         onClose={() => setAiModalOpen(false)}

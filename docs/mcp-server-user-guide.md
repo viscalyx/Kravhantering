@@ -25,7 +25,7 @@ agents can use it reliably.
 - `requirements_query_catalog`
   List or search requirements and fetch lookup catalogs such as areas,
   categories, types, quality characteristics, risk levels, statuses,
-  specification item statuses, requirement packages, and transitions.
+  usage statuses, requirement packages, and transitions.
 - `requirements_get_requirement`
   Fetch the current requirement detail, a specific version, or full version
   history.
@@ -42,12 +42,12 @@ agents can use it reliably.
 - `requirements_transition_requirement`
   Move a requirement through the lifecycle using a target status ID.
 
-#### Requirements Specifications (Kravunderlag)
+#### Requirements specifications (Kravunderlag)
 
 - `requirements_list_specifications`
   List all requirements specifications, optionally filtered by name. Returns id,
-  `uniqueId` (slug), Swedish and English names, item count, responsibility
-  area, and implementation type for each specification. Copy paths:
+  `uniqueId` (slug), Swedish and English names, item count, governance object
+  type, and implementation type for each specification. Copy paths:
 
   ```text
   requirements_list_specifications.specifications[].id -> specificationId
@@ -55,9 +55,10 @@ agents can use it reliably.
   ```
 
 - `requirements_get_specification_items`
-  List requirements linked to a specific specification, with optional description
-  search. Use `specificationId` (numeric) or `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`)
-  from `requirements_list_specifications`. Copy linked requirement IDs from:
+  List requirement applications linked to a specific specification, with
+  optional description search. Use `specificationId` (numeric) or
+  `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`) from
+  `requirements_list_specifications`. Copy linked requirement IDs from:
 
   ```text
   requirements_get_specification_items.items[].id -> requirementIds
@@ -70,9 +71,11 @@ agents can use it reliably.
 - `requirements_add_to_specification`
   Link one or more requirements to a specification. Requirements must have a
   published version; those without are skipped and returned in `skippedIds`.
-  Optionally attach a `needsReferenceText` to all added items. Use
-  `specificationId` or `specificationSlug` to identify the specification. Copy
-  requirement IDs from:
+  Optionally attach an existing `needsReferenceId`, or create a new
+  `needsReferenceText` with an optional `needsReferenceDescription`, for all
+  added items. New needs-reference text must be unique inside the
+  specification. Use `specificationId` or `specificationSlug` to identify the
+  specification. Copy requirement IDs from:
 
   ```text
   requirements_query_catalog.items[].id -> requirementIds
@@ -391,7 +394,7 @@ data first:
 - types
 - type categories
 - statuses
-- specification item statuses
+- usage statuses
 - transitions
 
 This is especially useful because transitions use `toStatusId`, and creation or
@@ -473,7 +476,7 @@ tool. For requirement lists, it supports:
 - `sortBy`
 - `sortDirection`
 
-Lookup rows for statuses, risk levels, and specification item statuses include
+Lookup rows for statuses, risk levels, and usage statuses include
 `iconName` when an admin has configured an allowed icon. Requirement list and
 detail versions also include status and risk icon data while preserving the
 existing status and risk fields.
@@ -495,7 +498,7 @@ existing status and risk fields.
 - `Restore version 2 of INT0001.`
 - `Transition INT0001 to published after checking the valid transitions.`
 
-### Requirements Specifications
+### Requirements specifications
 
 - `List all requirements specifications.`
 - `List specifications whose name contains "säkerhet".`
@@ -503,7 +506,8 @@ existing status and risk fields.
 - `Search for requirements about login in specification SAKLYFT-INFOR-Q2.`
 - `Add requirements INT0001 and INT0002 to specification SAKLYFT-INFOR-Q2.`
 - `Add requirement INT0005 to specification GDPR-FORV-2026 with needs reference text "Behov 4.1".` <!-- markdownlint-disable-line MD013 -->
-- `List graduation target areas for unique requirement 41 in SAKLYFT-INFOR-Q2.`
+- `Add requirement INT0005 to specification GDPR-FORV-2026 with needs reference id 12.` <!-- markdownlint-disable-line MD013 -->
+- `List graduation target requirement areas for unique requirement 41 in SAKLYFT-INFOR-Q2.`
 - `Graduate unique requirement 41 from specification SAKLYFT-INFOR-Q2 into requirement area 3.` <!-- markdownlint-disable-line MD013 -->
 - `Remove requirement INT0003 from specification SAKLYFT-INFOR-Q2.`
 
@@ -513,7 +517,10 @@ existing status and risk fields.
 > `requirements_list_specifications.specifications[].id` -> `specificationId`
 > or `requirements_list_specifications.specifications[].uniqueId` ->
 > `specificationSlug`. For `requirements_add_to_specification`, copy
-> `requirements_query_catalog.items[].id` -> `requirementIds`. For
+> `requirements_query_catalog.items[].id` -> `requirementIds`; use
+> `needsReferenceId` only when it comes from that specification's existing
+> needs-reference register, or use new `needsReferenceText` plus optional
+> `needsReferenceDescription`. For
 > `requirements_remove_from_specification`, copy
 > `requirements_get_specification_items.items[].id` -> `requirementIds`.
 > Requirements must have a published version to be added to a specification.
@@ -522,7 +529,7 @@ existing status and risk fields.
 > authorship of the source specification and ownership or co-authorship of the
 > target requirement area. Use `requirements_list_graduation_target_areas` before
 > graduating so the target `requirementAreaId` comes from the actor's allowed
-> target areas.
+> target requirement areas.
 
 ## Limitations
 

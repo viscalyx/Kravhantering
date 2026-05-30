@@ -15,6 +15,7 @@ export const DEFAULT_SQLSERVER_VOLUME_NAME =
   'kravhantering-container-stack-sqlserver-data'
 export const DEFAULT_TLS_DIR = './tmp/container-tls'
 export const DEFAULT_SQLSERVER_HOST_PORT = '127.0.0.1:1433'
+export const DEFAULT_INTERNAL_NETWORK_NAME = 'kravhantering-internal'
 export const PROJECT_SERVICE_NAMES = new Set(['app-runtime', 'db-job'])
 export const VENDOR_SERVICE_NAMES = new Set(['nginx', 'sqlserver', 'keycloak'])
 
@@ -26,6 +27,7 @@ Options:
   --template <path>              Source-controlled Compose template
   --output <path>                Generated Compose output path
   --project-name <name>          Compose project name
+  --network-name <name>          Internal Compose network name
   --tls-dir <path>               Runtime TLS directory mounted into nginx/app
   --sqlserver-volume-name <name> SQL Server named volume
   --sqlserver-host-port <value>  Host bind value, for example 127.0.0.1:1433`
@@ -112,6 +114,8 @@ export function buildComposeValues(stackLock, options = {}) {
     appRuntimeImage: imageReference(services.appRuntime, mode),
     dbJobImage: imageReference(services.dbJob, mode),
     keycloakImage: imageReference(services.keycloak, mode),
+    networkName:
+      readNonEmpty(options.networkName) ?? DEFAULT_INTERNAL_NETWORK_NAME,
     nginxImage: imageReference(services.nginx, mode),
     projectName: readNonEmpty(options.projectName) ?? DEFAULT_PROJECT_NAME,
     sqlServerHostPort:
@@ -155,6 +159,7 @@ export function generateCompose(template, stackLock, options = {}) {
     template,
     buildComposeValues(stackLock, {
       mode,
+      networkName: options.networkName,
       projectName: options.projectName,
       sqlServerHostPort: options.sqlServerHostPort,
       sqlServerVolumeName: options.sqlServerVolumeName,
@@ -187,6 +192,7 @@ export async function main(args, dependencies = {}) {
     const template = fsImpl.readFileSync(templatePath, 'utf8')
     const compose = generateCompose(template, stackLock, {
       mode,
+      networkName: options['network-name'],
       projectName: options['project-name'],
       sqlServerHostPort: options['sqlserver-host-port'],
       sqlServerVolumeName: options['sqlserver-volume-name'],

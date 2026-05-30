@@ -73,7 +73,9 @@ let fetchMock: ReturnType<typeof vi.fn>
 
 import RequirementsSpecificationsClient from '@/app/[locale]/specifications/specifications-client'
 
-const sampleAreas = [{ id: 1, nameSv: 'Område', nameEn: 'Area' }]
+const sampleGovernanceObjectTypes = [
+  { id: 1, nameSv: 'Leveransområde', nameEn: 'Delivery area' },
+]
 const sampleTypes = [{ id: 1, nameSv: 'Typ', nameEn: 'Type' }]
 const sampleStatuses = [{ id: 1, nameSv: 'Utveckling', nameEn: 'Development' }]
 const sampleSpecifications = [
@@ -81,10 +83,10 @@ const sampleSpecifications = [
     id: 1,
     name: 'Kravunderlag sv',
     uniqueId: 'KRAVUNDERLAG-SV',
-    specificationResponsibilityAreaId: 1,
+    specificationGovernanceObjectTypeId: 1,
     specificationImplementationTypeId: 1,
     specificationLifecycleStatusId: 1,
-    responsibilityArea: sampleAreas[0],
+    governanceObjectType: sampleGovernanceObjectTypes[0],
     implementationType: sampleTypes[0],
     lifecycleStatus: sampleStatuses[0],
     itemCount: 0,
@@ -111,8 +113,10 @@ describe('RequirementsSpecificationsClient', () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
-      if (url === '/api/specification-responsibility-areas')
-        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
       if (url === '/api/specification-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
       if (url === '/api/specification-lifecycle-statuses')
@@ -136,7 +140,7 @@ describe('RequirementsSpecificationsClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
-    expect(screen.getByText('Area')).toBeInTheDocument()
+    expect(screen.getByText('Delivery area')).toBeInTheDocument()
     expect(screen.getByText('Type')).toBeInTheDocument()
     expect(screen.getByText('Development')).toBeInTheDocument()
     expect(screen.getByText('Ada Admin')).toBeInTheDocument()
@@ -158,8 +162,10 @@ describe('RequirementsSpecificationsClient', () => {
             ],
           }),
         )
-      if (url === '/api/specification-responsibility-areas')
-        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
       if (url === '/api/specification-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
       if (url === '/api/specification-lifecycle-statuses')
@@ -184,7 +190,7 @@ describe('RequirementsSpecificationsClient', () => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('Area')).toBeInTheDocument()
+    expect(screen.getByText('Delivery area')).toBeInTheDocument()
     expect(screen.getByText('Type')).toBeInTheDocument()
   })
 
@@ -196,8 +202,10 @@ describe('RequirementsSpecificationsClient', () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
-      if (url === '/api/specification-responsibility-areas')
-        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
       if (url === '/api/specification-implementation-types')
         return Promise.reject(new Error('implementation types unavailable'))
       if (url === '/api/specification-lifecycle-statuses')
@@ -215,7 +223,7 @@ describe('RequirementsSpecificationsClient', () => {
         )
       })
 
-      expect(screen.getByText('Area')).toBeInTheDocument()
+      expect(screen.getByText('Delivery area')).toBeInTheDocument()
       expect(screen.getByText('Development')).toBeInTheDocument()
     } finally {
       consoleErrorSpy.mockRestore()
@@ -229,7 +237,7 @@ describe('RequirementsSpecificationsClient', () => {
           errors: [
             { key: 'requirements specifications', message: 'preload failed' },
             {
-              key: 'specification responsibility areas',
+              key: 'specification governance object types',
               message: 'preload failed',
             },
             {
@@ -243,7 +251,7 @@ describe('RequirementsSpecificationsClient', () => {
           ],
           implementationTypes: [],
           lifecycleStatuses: [],
-          responsibilityAreas: [],
+          governanceObjectTypes: [],
           specifications: [],
         }}
       />,
@@ -255,7 +263,7 @@ describe('RequirementsSpecificationsClient', () => {
         expect.any(Object),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specification-responsibility-areas',
+        '/api/specification-governance-object-types',
         expect.any(Object),
       )
       expect(fetchMock).toHaveBeenCalledWith(
@@ -268,7 +276,7 @@ describe('RequirementsSpecificationsClient', () => {
       )
     })
     expect(await screen.findByText('Kravunderlag sv')).toBeInTheDocument()
-    expect(screen.getByText('Area')).toBeInTheDocument()
+    expect(screen.getByText('Delivery area')).toBeInTheDocument()
     expect(screen.getByText('Type')).toBeInTheDocument()
     expect(screen.getByText('Development')).toBeInTheDocument()
   })
@@ -294,8 +302,10 @@ describe('RequirementsSpecificationsClient', () => {
             ],
           }),
         )
-      if (url === '/api/specification-responsibility-areas')
-        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
       if (url === '/api/specification-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
       if (url === '/api/specification-lifecycle-statuses')
@@ -356,8 +366,10 @@ describe('RequirementsSpecificationsClient', () => {
             ],
           }),
         )
-      if (url === '/api/specification-responsibility-areas')
-        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
       if (url === '/api/specification-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
       if (url === '/api/specification-lifecycle-statuses')
@@ -386,8 +398,10 @@ describe('RequirementsSpecificationsClient', () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/specifications')
         return Promise.resolve(okJson({ specifications: [] }))
-      if (url === '/api/specification-responsibility-areas')
-        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
       if (url === '/api/specification-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
       if (url === '/api/specification-lifecycle-statuses')
@@ -415,8 +429,10 @@ describe('RequirementsSpecificationsClient', () => {
             ],
           }),
         )
-      if (url === '/api/specification-responsibility-areas')
-        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
       if (url === '/api/specification-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
       if (url === '/api/specification-lifecycle-statuses')
@@ -455,8 +471,10 @@ describe('RequirementsSpecificationsClient', () => {
               ],
             }),
           )
-        if (url === '/api/specification-responsibility-areas')
-          return Promise.resolve(okJson({ areas: sampleAreas }))
+        if (url === '/api/specification-governance-object-types')
+          return Promise.resolve(
+            okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+          )
         if (url === '/api/specification-implementation-types')
           return Promise.resolve(okJson({ types: sampleTypes }))
         if (url === '/api/specification-lifecycle-statuses')
@@ -617,7 +635,7 @@ describe('RequirementsSpecificationsClient', () => {
       screen.getByRole('textbox', { name: /specification\.name/ }),
       screen.getByRole('textbox', { name: /specification\.uniqueId/ }),
       screen.getByRole('combobox', {
-        name: /specification\.responsibilityArea/,
+        name: /specification\.governanceObjectType/,
       }),
       screen.getByRole('textbox', {
         name: /specification\.responsibleDisplayName/,
@@ -684,8 +702,10 @@ describe('RequirementsSpecificationsClient', () => {
       if (opts?.method === 'POST') return Promise.resolve(okJson({ id: 2 }))
       if (url === '/api/specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
-      if (url === '/api/specification-responsibility-areas')
-        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
       if (url === '/api/specification-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
       if (url === '/api/specification-lifecycle-statuses')
@@ -740,8 +760,10 @@ describe('RequirementsSpecificationsClient', () => {
       }
       if (url === '/api/specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
-      if (url === '/api/specification-responsibility-areas')
-        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
       if (url === '/api/specification-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
       if (url === '/api/specification-lifecycle-statuses')
@@ -759,7 +781,7 @@ describe('RequirementsSpecificationsClient', () => {
     ).toBeInTheDocument()
   })
 
-  it('requires responsible person and HSA-ID to be saved together', async () => {
+  it('requires specification lead name and HSA-ID to be saved together', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
@@ -844,8 +866,10 @@ describe('RequirementsSpecificationsClient', () => {
       if (opts?.method === 'DELETE') return Promise.resolve(okJson({}))
       if (url === '/api/specifications')
         return Promise.resolve(okJson({ specifications: [] }))
-      if (url === '/api/specification-responsibility-areas')
-        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
       if (url === '/api/specification-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
       if (url === '/api/specification-lifecycle-statuses')
@@ -884,8 +908,10 @@ describe('RequirementsSpecificationsClient', () => {
       }
       if (url === '/api/specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
-      if (url === '/api/specification-responsibility-areas')
-        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
       if (url === '/api/specification-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
       if (url === '/api/specification-lifecycle-statuses')
@@ -966,8 +992,10 @@ describe('RequirementsSpecificationsClient', () => {
       }
       if (url === '/api/specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
-      if (url === '/api/specification-responsibility-areas')
-        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
       if (url === '/api/specification-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
       if (url === '/api/specification-lifecycle-statuses')
@@ -1023,8 +1051,10 @@ describe('RequirementsSpecificationsClient', () => {
       }
       if (url === '/api/specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
-      if (url === '/api/specification-responsibility-areas')
-        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
       if (url === '/api/specification-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
       if (url === '/api/specification-lifecycle-statuses')
@@ -1070,8 +1100,10 @@ describe('RequirementsSpecificationsClient', () => {
           text: async () => 'Service unavailable',
         })
       }
-      if (url === '/api/specification-responsibility-areas')
-        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
       if (url === '/api/specification-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
       if (url === '/api/specification-lifecycle-statuses')

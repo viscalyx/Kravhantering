@@ -47,6 +47,7 @@ import {
 import {
   createSpecification,
   createSpecificationLocalRequirement,
+  createSpecificationNeedsReference,
   graduateSpecificationLocalRequirementToLibrary,
   linkRequirementsToSpecificationAtomically,
   updateSpecificationItemFields,
@@ -293,7 +294,7 @@ it('Scenario 15: configurable status and risk icons use an allowlist and stay ad
     'iconName: version.riskLevel.iconName',
   )
   expect(requirementsServiceSource).toContain('specification_item_statuses')
-  expect(userGuideSource).toContain('specification item statuses')
+  expect(userGuideSource).toContain('usage statuses')
   expect(userGuideSource).toContain('iconName')
   expect(adminCenterDoc).toContain('nullable icon')
   expect(databaseSchemaDoc).toContain('icon_name')
@@ -519,7 +520,7 @@ function createSpecificationMcpContractService() {
         implementationType: null,
         itemCount: 1,
         name: 'IAM Specification',
-        responsibilityArea: null,
+        governanceObjectType: null,
         uniqueId: 'IAM-SPECIFICATION',
       },
     ],
@@ -537,12 +538,12 @@ function createSpecificationMcpContractService() {
         uniqueId: 'SEC0001',
       },
     ],
-    message: 'Specification items',
+    message: 'Requirement applications',
     specificationId: 7,
   }))
   const listGraduationTargetAreas = vi.fn(async () => ({
     areas: [{ id: 2, name: 'Security', prefix: 'SEC' }],
-    message: 'Target areas',
+    message: 'Target requirement areas',
   }))
   const graduateSpecificationLocalRequirement = vi.fn(async () => ({
     detail: {
@@ -908,7 +909,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
 
     const libraryItem = await getSingleSpecificationItem(appDb(), spec.id)
     if (!libraryItem) {
-      throw new Error('Expected a library specification item')
+      throw new Error('Expected a library requirement application')
     }
 
     const localItem = await createSpecificationLocalRequirement(
@@ -977,7 +978,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
   })
 
-  it('Scenario 16: requirements specification item usage status cannot be cleared once assigned', async () => {
+  it('Scenario 16: requirement application usage status cannot be cleared once assigned', async () => {
     const area = await createArea(appDb())
     const published = await createPublishedRequirement(
       appDb(),
@@ -995,7 +996,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
 
     const libraryItem = await getSingleSpecificationItem(appDb(), spec.id)
     if (!libraryItem) {
-      throw new Error('Expected a library specification item')
+      throw new Error('Expected a library requirement application')
     }
     const localItem = await createSpecificationLocalRequirement(
       appDb(),
@@ -1018,7 +1019,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       } as unknown as Parameters<typeof updateSpecificationItemFields>[2]),
     ).rejects.toMatchObject({
       code: 'validation',
-      message: 'Specification item status cannot be cleared',
+      message: 'Usage status cannot be cleared',
     })
     await expect(
       updateSpecificationLocalRequirementFields(appDb(), localItem.id, {
@@ -1028,7 +1029,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       >[2]),
     ).rejects.toMatchObject({
       code: 'validation',
-      message: 'Specification item status cannot be cleared',
+      message: 'Usage status cannot be cleared',
     })
   })
 
@@ -1342,7 +1343,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     }
 
     const area = await createArea(appDb(), {
-      name: 'Scenario 17 Area',
+      name: 'Scenario 17 requirement area',
       prefix: 'S17',
     })
     const published = await createPublishedRequirement(
@@ -1410,10 +1411,6 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
   })
 
   it('Scenario 13: specification-local graduation is copy-only into a draft library requirement', async () => {
-    const sourceArea = await createArea(appDb(), {
-      name: 'Source hint',
-      prefix: 'SRC',
-    })
     const targetArea = await createArea(appDb(), {
       name: 'Target library',
       prefix: 'TGT',
@@ -1431,7 +1428,6 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         acceptanceCriteria: 'Copied acceptance',
         description: 'Copied unique requirement',
         normReferenceIds: [normReference.id],
-        requirementAreaId: sourceArea.id,
         requirementPackageIds: [requirementPackage.id],
         requiresTesting: true,
         verificationMethod: 'Inspection',
@@ -1464,7 +1460,6 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       await Promise.all([
         appDb().query(
           `SELECT
-             requirement_area_id AS requirementAreaId,
              specification_item_status_id AS specificationItemStatusId,
              note
            FROM specification_local_requirements
@@ -1473,7 +1468,6 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         ) as Promise<
           Array<{
             note: string | null
-            requirementAreaId: number
             specificationItemStatusId: number
           }>
         >,
@@ -1529,7 +1523,6 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(sourceRows).toEqual([
       {
         note: 'Keep source note',
-        requirementAreaId: sourceArea.id,
         specificationItemStatusId: DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
       },
     ])
@@ -1568,6 +1561,10 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     await linkRequirementsToSpecificationAtomically(appDb(), spec.id, {
       requirementIds: [published.requirementId],
     })
+    await createSpecificationNeedsReference(appDb(), spec.id, {
+      description: null,
+      text: 'Pre-registered unused need',
+    })
 
     const addedAgain = await linkRequirementsToSpecificationAtomically(
       appDb(),
@@ -1579,12 +1576,12 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
 
     const needsReferences = (await appDb().query(
-      `SELECT text FROM specification_needs_references WHERE specification_id = @0`,
+      `SELECT text FROM specification_needs_references WHERE specification_id = @0 ORDER BY text`,
       [spec.id],
     )) as Array<{ text: string }>
 
     expect(addedAgain).toBe(0)
-    expect(needsReferences).toEqual([])
+    expect(needsReferences).toEqual([{ text: 'Pre-registered unused need' }])
   })
 
   it('Scenario 8: suggestion resolution is impossible without review', async () => {
@@ -1651,7 +1648,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
 
     const item = await getSingleSpecificationItem(appDb(), spec.id)
     if (!item) {
-      throw new Error('Expected specification item')
+      throw new Error('Expected requirement application')
     }
 
     const deviation = await createDeviation(appDb(), {
@@ -2025,7 +2022,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(v2After?.status).toBe(STATUS_DRAFT)
   })
 
-  it('Scenario 14: action audit rows fail closed with the business transaction', async () => {
+  it('Scenario 14: action-log rows fail closed with the business transaction', async () => {
     await expect(
       appDb().transaction(async manager => {
         await recordActionAuditEvent(manager, {

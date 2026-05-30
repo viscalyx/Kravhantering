@@ -1,4 +1,4 @@
-# Requirements Specifications List Integration Tests
+# Requirements specifications list integration tests
 
 > Test flow documentation for
 > [`specifications-list.spec.ts`](tests/integration/specifications-list.spec.ts)

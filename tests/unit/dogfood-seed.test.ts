@@ -133,7 +133,7 @@ function emptySeed() {
     requirements_specifications: {
       columns: [
         'id',
-        'specification_responsibility_area_id',
+        'specification_governance_object_type_id',
         'specification_implementation_type_id',
         'created_at',
         'updated_at',
@@ -147,7 +147,14 @@ function emptySeed() {
       rows: [],
     },
     specification_needs_references: {
-      columns: ['id', 'specification_id', 'text', 'created_at'],
+      columns: [
+        'id',
+        'specification_id',
+        'text',
+        'description',
+        'created_at',
+        'updated_at',
+      ],
       pk: ['id'],
       rows: [],
     },
@@ -157,7 +164,6 @@ function emptySeed() {
         'specification_id',
         'unique_id',
         'sequence_number',
-        'requirement_area_id',
         'description',
         'acceptance_criteria',
         'requirement_category_id',
@@ -290,7 +296,7 @@ describe('appendDogfoodSeed', () => {
       expect(v[14]).toBeNull() // archived_at
     }
 
-    // Every specification item points to a published v1
+    // Every requirement application points to a published v1.
     const versionById = new Map(versions.map(v => [v[0], v]))
     for (const it of items) {
       const v = versionById.get(it[3])

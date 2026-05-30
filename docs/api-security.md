@@ -19,7 +19,7 @@ Covered by this contract:
 - `/api/auth/me`
 - Requirement list, detail, create, edit, archive, version read,
   delete-draft, restore, reactivate, and transition routes.
-- Read-only requirement catalog routes used by the requirements UI.
+- Read-only requirements library routes used by the requirements UI.
 
 Operational probes stay outside the OpenAPI/Schemathesis contract. `/api/health`
 is a liveness check, and `/api/ready` is a public readiness check for
@@ -95,10 +95,10 @@ CSRF and audit but no business authorization policy. A unit coverage test scans
 `app/api/**/route.ts` to keep this invariant in place.
 
 Authorization denials from these policies are fail-closed into the database
-action audit log before the denial response is returned. The audit-log read
+action log before the denial response is returned. The action-log read
 endpoint, `GET /api/admin/audit-events`, is Admin-only, read-only, `no-store`,
 supports a validated `client_ip` filter alongside the other audit filters, and
-intentionally does not create another audit row.
+intentionally does not create another action-log row.
 
 `/api/mcp` is the intentional exception. It keeps validation inside its
 JSON-RPC/MCP schema layer and uses Bearer-token authentication, so MCP tool

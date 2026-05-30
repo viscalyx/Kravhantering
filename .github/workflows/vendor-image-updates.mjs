@@ -23,7 +23,7 @@ const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/iu
 
 const IMAGE_CONFIGS = {
   nginx: {
-    companionFiles: [],
+    companionFiles: ['containers/production/env/release.env.template'],
     image: 'docker.io/library/nginx',
     laneDescription: lane => `nginx ${lane}.x`,
     laneFromVersion: version => String(version.major),

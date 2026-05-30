@@ -164,7 +164,7 @@ test('admin can decide and export an access review run', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Exportera PDF' }).click()
   await expect.poll(() => exportRequests.length).toBe(2)
-  expect(exportRequests[1]).toEqual({ delivery: 'pdf' })
+  expect(exportRequests[1]).toEqual({ delivery: 'pdf', locale: 'sv' })
 })
 
 for (const { error, status } of [

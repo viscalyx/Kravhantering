@@ -83,7 +83,7 @@ export default function LifecycleStatusesClient() {
     <CrudAdminPanel
       columns={columns}
       controller={controller}
-      devContext="lifecycle statuses"
+      devContext="specification lifecycle statuses"
       emptyStateMessage={t('emptyState')}
       renderFormFields={({ disabled, form, inputClassName, setForm }) => (
         <>

@@ -22,7 +22,6 @@ export const specificationLocalRequirementSchema = z
       .optional()
       .default([]),
     qualityCharacteristicId: positiveIntegerSchema.nullable().optional(),
-    requirementAreaId: positiveIntegerSchema.nullable().optional(),
     requirementCategoryId: positiveIntegerSchema.nullable().optional(),
     requirementPackageIds: uniquePositiveIntegerArrayFieldSchema
       .optional()

@@ -191,6 +191,7 @@ export interface GetSpecificationItemsInput extends SpecificationRefInput {
 
 export interface AddToSpecificationInput extends SpecificationRefInput {
   locale?: ResponseLocale
+  needsReferenceDescription?: string | null
   needsReferenceId?: number | null
   needsReferenceText?: string | null
   requirementIds: number[]
@@ -250,10 +251,10 @@ export interface ListSpecificationsOutput {
     requirementAreas?: { id: number; name: string }[]
     responsibleDisplayName?: string | null
     responsibleHsaId?: string | null
-    responsibilityArea: { id?: number; nameSv: string; nameEn: string } | null
+    governanceObjectType: { id?: number; nameSv: string; nameEn: string } | null
     specificationImplementationTypeId?: number | null
     specificationLifecycleStatusId?: number | null
-    specificationResponsibilityAreaId?: number | null
+    specificationGovernanceObjectTypeId?: number | null
     uniqueId: string
     updatedAt?: string
   }[]
@@ -607,7 +608,7 @@ export function createRequirementsService(
         async () => {
           if (input.operation === 'create') {
             if (!input.specificationItemId) {
-              throw validationError('Specification item ID is required')
+              throw validationError('Requirement application ID is required')
             }
             const trimmedMotivation = input.motivation?.trim()
             if (!trimmedMotivation) {

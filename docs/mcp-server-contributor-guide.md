@@ -92,18 +92,17 @@ Combines:
 - requirement listing
 - free-text search
 - lookup tables for areas, categories, types, quality characteristics,
-  risk levels, statuses, specification item statuses, requirement packages,
-  and transitions
+  risk levels, statuses, usage statuses, requirement packages, and transitions
 
 Requirement search supports pagination, sorting, archive inclusion, taxonomy
 filters, status/testing filters, norm-reference filters, and requirement-package
 filters. Lookup catalogs ignore requirement-only filters except
 `typeId`, which filters the `quality_characteristics` catalog.
 
-Status, specification item status, and risk-level catalog rows expose nullable
-`iconName` fields. Requirement list/detail version output also carries status
-and risk icon data as additive fields so older clients can keep using the
-existing status and risk names.
+Requirement version status, usage status, and risk-level catalog rows expose
+nullable `iconName` fields. Requirement list/detail version output also carries
+status and risk icon data as additive fields so older clients can keep using
+the existing status and risk names.
 
 This avoids a larger set of narrowly scoped read tools.
 
@@ -162,10 +161,11 @@ requirements_list_specifications.specifications[].uniqueId -> specificationSlug
 
 ### `requirements_get_specification_items`
 
-Lists requirements linked to a specific specification. Accepts `specificationId`
-(numeric) or `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`). Supports optional
-`descriptionSearch` for client-side filtering. Use the specification copy paths
-above. Returned linked requirement IDs can be copied into removal inputs:
+Lists requirement applications linked to a specific specification. Accepts
+`specificationId` (numeric) or `specificationSlug`
+(e.g. `SAKLYFT-INFOR-Q2`). Supports optional `descriptionSearch` for
+client-side filtering. Use the specification copy paths above. Returned linked
+requirement IDs can be copied into removal inputs:
 
 ```text
 requirements_get_specification_items.items[].id -> requirementIds
@@ -177,9 +177,12 @@ Links requirements to a specification. Accepts `specificationId` (numeric) or
 `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`). Requirements without a published
 version are skipped and returned in `skippedIds` rather than causing an error —
 this lets an agent batch-add requirements without needing to pre-filter by
-publish state. An optional `needsReferenceText` is resolved to a
-`specification_needs_references` row (created if needed) and linked to all added
-items. Use the specification copy paths above, and copy requirement IDs from:
+publish state. `needsReferenceId` links the added items to an existing
+specification-local needs reference. `needsReferenceText` creates a new
+`specification_needs_references` row, with optional
+`needsReferenceDescription`, and links it to all added items. The tool rejects
+duplicate `needsReferenceText` values inside the same specification. Use the
+specification copy paths above, and copy requirement IDs from:
 
 ```text
 requirements_query_catalog.items[].id -> requirementIds
@@ -479,8 +482,8 @@ Manual verification should still include:
 - checking that the requirement view app renders in a client with MCP Apps
   support
 - verifying specification tools: list specifications, get items for a
-  specification, list graduation target areas, add a requirement, graduate a
-  local requirement, and remove a linked requirement again
+  specification, list graduation target requirement areas, add a requirement,
+  graduate a local requirement, and remove a linked requirement again
 
 ## Local Development Notes
 

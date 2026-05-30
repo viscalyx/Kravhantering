@@ -129,7 +129,6 @@ export const PUT = secureMutationRoute<
           needsReferenceId: body.needsReferenceId ?? null,
           normReferenceIds: body.normReferenceIds,
           qualityCharacteristicId: body.qualityCharacteristicId ?? null,
-          requirementAreaId: body.requirementAreaId ?? null,
           requirementCategoryId: body.requirementCategoryId ?? null,
           requirementPackageIds: body.requirementPackageIds,
           requirementTypeId: body.requirementTypeId ?? null,

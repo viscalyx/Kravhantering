@@ -25,6 +25,7 @@ import { requirementsSpecificationEntity } from '@/lib/typeorm/entities/requirem
 import { requirementsSpecificationItemEntity } from '@/lib/typeorm/entities/requirements-specification-item'
 import { riskLevelEntity } from '@/lib/typeorm/entities/risk-level'
 import { specificationCoAuthorEntity } from '@/lib/typeorm/entities/specification-co-author'
+import { specificationGovernanceObjectTypeEntity } from '@/lib/typeorm/entities/specification-governance-object-type'
 import { specificationImplementationTypeEntity } from '@/lib/typeorm/entities/specification-implementation-type'
 import { specificationItemStatusEntity } from '@/lib/typeorm/entities/specification-item-status'
 import { specificationLifecycleStatusEntity } from '@/lib/typeorm/entities/specification-lifecycle-status'
@@ -33,7 +34,6 @@ import { specificationLocalRequirementDeviationEntity } from '@/lib/typeorm/enti
 import { specificationLocalRequirementNormReferenceEntity } from '@/lib/typeorm/entities/specification-local-requirement-norm-reference'
 import { specificationLocalRequirementRequirementPackageEntity } from '@/lib/typeorm/entities/specification-local-requirement-requirement-package'
 import { specificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
-import { specificationResponsibilityAreaEntity } from '@/lib/typeorm/entities/specification-responsibility-area'
 import { uiTerminologyEntity } from '@/lib/typeorm/entities/ui-terminology'
 
 export const sqlServerEntities = [
@@ -55,7 +55,7 @@ export const sqlServerEntities = [
   specificationLocalRequirementNormReferenceEntity,
   specificationLocalRequirementRequirementPackageEntity,
   specificationNeedsReferenceEntity,
-  specificationResponsibilityAreaEntity,
+  specificationGovernanceObjectTypeEntity,
   qualityCharacteristicEntity,
   requirementEntity,
   requirementAreaEntity,
@@ -103,6 +103,7 @@ export type { RequirementsSpecificationEntity } from '@/lib/typeorm/entities/req
 export type { RequirementsSpecificationItemEntity } from '@/lib/typeorm/entities/requirements-specification-item'
 export type { RiskLevelEntity } from '@/lib/typeorm/entities/risk-level'
 export type { SpecificationCoAuthorEntity } from '@/lib/typeorm/entities/specification-co-author'
+export type { SpecificationGovernanceObjectTypeEntity } from '@/lib/typeorm/entities/specification-governance-object-type'
 export type { SpecificationImplementationTypeEntity } from '@/lib/typeorm/entities/specification-implementation-type'
 export type { SpecificationItemStatusEntity } from '@/lib/typeorm/entities/specification-item-status'
 export type { SpecificationLifecycleStatusEntity } from '@/lib/typeorm/entities/specification-lifecycle-status'
@@ -111,7 +112,6 @@ export type { SpecificationLocalRequirementDeviationEntity } from '@/lib/typeorm
 export type { SpecificationLocalRequirementNormReferenceEntity } from '@/lib/typeorm/entities/specification-local-requirement-norm-reference'
 export type { SpecificationLocalRequirementRequirementPackageEntity } from '@/lib/typeorm/entities/specification-local-requirement-requirement-package'
 export type { SpecificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
-export type { SpecificationResponsibilityAreaEntity } from '@/lib/typeorm/entities/specification-responsibility-area'
 export type { UiTerminologyEntity } from '@/lib/typeorm/entities/ui-terminology'
 
 export {
@@ -142,6 +142,7 @@ export {
   requirementVersionRequirementPackageEntity,
   riskLevelEntity,
   specificationCoAuthorEntity,
+  specificationGovernanceObjectTypeEntity,
   specificationImplementationTypeEntity,
   specificationItemStatusEntity,
   specificationLifecycleStatusEntity,
@@ -150,6 +151,5 @@ export {
   specificationLocalRequirementNormReferenceEntity,
   specificationLocalRequirementRequirementPackageEntity,
   specificationNeedsReferenceEntity,
-  specificationResponsibilityAreaEntity,
   uiTerminologyEntity,
 }

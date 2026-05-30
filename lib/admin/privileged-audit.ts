@@ -37,7 +37,7 @@ export type AdminPrivilegedResourceType =
   | 'specification_implementation_type'
   | 'specification_item_status'
   | 'specification_lifecycle_status'
-  | 'specification_responsibility_area'
+  | 'specification_governance_object_type'
   | 'ui_terminology'
 
 export interface AdminPrivilegedActionDetail {

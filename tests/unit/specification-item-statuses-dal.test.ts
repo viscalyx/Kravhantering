@@ -34,7 +34,7 @@ const statusEntity = (id: number) => ({
   sortOrder: id,
 })
 
-describe('specification item statuses DAL', () => {
+describe('usage statuses DAL', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -69,7 +69,7 @@ describe('specification item statuses DAL', () => {
 
     await expect(
       updateSpecificationItemStatus(db, 7, { nameEn: 'Custom' }),
-    ).rejects.toThrow('Only system specification item statuses can be edited')
+    ).rejects.toThrow('Only system usage statuses can be edited')
     expect(repository.update).not.toHaveBeenCalled()
   })
 

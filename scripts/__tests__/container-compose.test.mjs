@@ -3,6 +3,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   buildComposeValues,
+  DEFAULT_INTERNAL_NETWORK_NAME,
   DEFAULT_TEMPLATE_PATH,
   generateCompose,
   imageReference,
@@ -45,7 +46,7 @@ function stackLock() {
         'nginx',
         'tls-proxy',
         'docker.io/library/nginx',
-        'stable-alpine',
+        '1.31.1-alpine',
         'sha256:nginx-manifest',
         'sha256:nginx-image',
       ),
@@ -88,6 +89,7 @@ describe('container Compose generation', () => {
     expect(values.keycloakImage).toBe(
       'quay.io/keycloak/keycloak@sha256:keycloak-manifest',
     )
+    expect(values.networkName).toBe(DEFAULT_INTERNAL_NETWORK_NAME)
   })
 
   it('uses manifest digest references for project images in release mode', () => {
@@ -128,6 +130,7 @@ describe('container Compose generation', () => {
     expect(compose).toContain('- ./containers/sqlserver/.env.sqlserver.local')
     expect(compose).toContain('"127.0.0.1:15433:1433"')
     expect(compose).toContain('./tmp/test-tls/ca.crt')
+    expect(compose).toContain('name: "kravhantering-internal"')
     expect(compose).toContain('name: "kravhantering-test-sqlserver-data"')
     expect(compose).toContain('db-bootstrap:')
     expect(compose).toContain('command: ["bootstrap"]')
@@ -137,6 +140,19 @@ describe('container Compose generation', () => {
     expect(compose).not.toContain('{{')
     expect(compose).not.toContain('AUTH_SESSION_COOKIE_PASSWORD=')
     expect(compose).not.toContain('MSSQL_SA_PASSWORD=')
+  })
+
+  it('allows the generated internal network name to be overridden', () => {
+    const template = fs.readFileSync(
+      path.join(process.cwd(), DEFAULT_TEMPLATE_PATH),
+      'utf8',
+    )
+    const compose = generateCompose(template, stackLock(), {
+      mode: 'release',
+      networkName: 'kravhantering-custom-internal',
+    })
+
+    expect(compose).toContain('name: "kravhantering-custom-internal"')
   })
 
   it('rejects unknown modes and placeholders', () => {

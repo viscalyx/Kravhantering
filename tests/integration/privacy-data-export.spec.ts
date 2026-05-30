@@ -71,6 +71,7 @@ test('admin privacy preview can export JSON and PDF for the preview target', asy
   await expect.poll(() => exportRequests.length).toBe(2)
   expect(exportRequests[1]).toMatchObject({
     delivery: 'pdf',
+    locale: 'sv',
     target: { hsaId: 'SE5560000001-linneab' },
   })
 })

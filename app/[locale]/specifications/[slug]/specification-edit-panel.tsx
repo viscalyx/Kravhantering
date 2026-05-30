@@ -28,19 +28,19 @@ interface SpecificationMeta {
   name: string
   responsibleDisplayName: string | null
   responsibleHsaId: string | null
+  specificationGovernanceObjectTypeId: number | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
-  specificationResponsibilityAreaId: number | null
   uniqueId: string
 }
 
 interface SpecificationEditPanelProps {
   className?: string
+  governanceObjectTypes: TaxonomyItem[]
   implementationTypes: TaxonomyItem[]
   lifecycleStatuses: TaxonomyItem[]
   onCancel: () => void
   onSaved: (result: { newUniqueId: string }) => Promise<void> | void
-  responsibilityAreas: TaxonomyItem[]
   spec: SpecificationMeta
   specificationSlug: string
 }
@@ -51,9 +51,9 @@ interface SpecificationFormState {
   name: string
   responsibleDisplayName: string
   responsibleHsaId: string
+  specificationGovernanceObjectTypeId: string
   specificationImplementationTypeId: string
   specificationLifecycleStatusId: string
-  specificationResponsibilityAreaId: string
   uniqueId: string
 }
 
@@ -81,8 +81,8 @@ function buildFormState(
       spec.specificationImplementationTypeId?.toString() ?? '',
     specificationLifecycleStatusId:
       spec.specificationLifecycleStatusId?.toString() ?? '',
-    specificationResponsibilityAreaId:
-      spec.specificationResponsibilityAreaId?.toString() ?? '',
+    specificationGovernanceObjectTypeId:
+      spec.specificationGovernanceObjectTypeId?.toString() ?? '',
     uniqueId: spec.uniqueId,
   }
 }
@@ -95,7 +95,7 @@ export default function SpecificationEditPanel({
   onSaved,
   specificationSlug,
   spec,
-  responsibilityAreas,
+  governanceObjectTypes,
 }: SpecificationEditPanelProps) {
   const t = useTranslations('specification')
   const tc = useTranslations('common')
@@ -191,9 +191,9 @@ export default function SpecificationEditPanel({
           body: JSON.stringify({
             uniqueId: form.uniqueId,
             name: form.name,
-            specificationResponsibilityAreaId:
-              form.specificationResponsibilityAreaId
-                ? Number(form.specificationResponsibilityAreaId)
+            specificationGovernanceObjectTypeId:
+              form.specificationGovernanceObjectTypeId
+                ? Number(form.specificationGovernanceObjectTypeId)
                 : null,
             specificationImplementationTypeId:
               form.specificationImplementationTypeId
@@ -309,24 +309,24 @@ export default function SpecificationEditPanel({
       <div>
         <div className="mb-1 flex items-center gap-1.5">
           <label className="block text-sm font-medium" htmlFor="spec-area">
-            {t('responsibilityArea')}
+            {t('governanceObjectType')}
           </label>
-          {helpButton('spec-area', t('responsibilityArea'))}
+          {helpButton('spec-area', t('governanceObjectType'))}
         </div>
-        {helpPanel('responsibilityAreaHelp', 'spec-area')}
+        {helpPanel('governanceObjectTypeHelp', 'spec-area')}
         <select
           className="w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
           id="spec-area"
           onChange={event =>
             setForm(current => ({
               ...current,
-              specificationResponsibilityAreaId: event.target.value,
+              specificationGovernanceObjectTypeId: event.target.value,
             }))
           }
-          value={form.specificationResponsibilityAreaId}
+          value={form.specificationGovernanceObjectTypeId}
         >
           <option value="">—</option>
-          {responsibilityAreas.map(area => (
+          {governanceObjectTypes.map(area => (
             <option key={area.id} value={area.id}>
               {locale === 'sv' ? area.nameSv : area.nameEn}
             </option>

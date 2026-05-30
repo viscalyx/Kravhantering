@@ -84,4 +84,21 @@ describe('GitHub Actions workflow security', () => {
 
     expect(unpinnedReferences).toEqual([])
   })
+
+  it('keeps the fork-compatible SSDLC gate on trusted base code', () => {
+    const workflow = readFileSync(
+      path.join(WORKFLOWS_DIR, 'ssdlc-gate.yml'),
+      'utf8',
+    )
+
+    expect(workflow).toContain('pull_request_target:')
+    expect(workflow).toContain('contents: read')
+    expect(workflow).toContain('pull-requests: read')
+    expect(workflow).toContain(
+      ['ref: $', '{{ github.event.pull_request.base.sha }}'].join(''),
+    )
+    expect(workflow).not.toMatch(/github\.event\.pull_request\.head/iu)
+    expect(workflow).not.toMatch(/\bgithub\.head_ref\b/iu)
+    expect(workflow).not.toMatch(/\bnpm\s+(?:ci|install|run)\b/iu)
+  })
 })

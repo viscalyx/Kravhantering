@@ -106,7 +106,7 @@ describe('SpecificationItemStatusesClient', () => {
     })
   })
 
-  it('fetches and displays specification item statuses', async () => {
+  it('fetches and displays usage statuses', async () => {
     render(<SpecificationItemStatusesClient />)
     await waitFor(() => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
@@ -158,7 +158,7 @@ describe('SpecificationItemStatusesClient', () => {
     ).toBeNull()
   })
 
-  it('shows collapsible inline help for specification item status fields', async () => {
+  it('shows collapsible inline help for usage status fields', async () => {
     render(<SpecificationItemStatusesClient />)
     await waitFor(() => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
