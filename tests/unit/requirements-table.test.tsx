@@ -689,6 +689,8 @@ describe('RequirementsTable', () => {
     expect(
       document.querySelector('[data-specification-local-marker="true"]'),
     ).toBeInTheDocument()
+    expect(screen.getByText('-')).toBeInTheDocument()
+    expect(screen.queryByText('Integration')).not.toBeInTheDocument()
   })
 
   it('renders version when the column is made visible', () => {
@@ -727,7 +729,7 @@ describe('RequirementsTable', () => {
     expect(screen.getByText('Hög')).toBeTruthy()
   })
 
-  it('renders read-only specification item status icons as decorative badge content', () => {
+  it('renders read-only usage status icons as decorative badge content', () => {
     const rows = [
       makeRow({
         specificationItemStatusColor: '#f59e0b',
@@ -759,7 +761,7 @@ describe('RequirementsTable', () => {
     expect(statusWrapper).toHaveClass('status-badge')
   })
 
-  it('renders read-only specification item status labels without a color dot', () => {
+  it('renders read-only usage status labels without a color dot', () => {
     const rows = [
       makeRow({
         specificationItemStatusColor: null,
@@ -788,7 +790,7 @@ describe('RequirementsTable', () => {
     expect(statusWrapper?.querySelector('span[aria-hidden="true"]')).toBeNull()
   })
 
-  it('renders the editable specification item status select with only real status options', () => {
+  it('renders the editable usage status select with only real status options', () => {
     const onSpecificationItemStatusChange = vi.fn()
     const rows = [
       makeRow({
@@ -983,6 +985,55 @@ describe('RequirementsTable', () => {
     expect(statusLabel?.className).toContain('w-full')
   })
 
+  it('resets to context-specific default visible columns when provided', () => {
+    const onColumnWidthsChange = vi.fn()
+    const onFilterChange = vi.fn()
+    const onSortChange = vi.fn()
+    const onVisibleColumnsChange = vi.fn()
+
+    render(
+      <RequirementsTable
+        columnWidths={{ status: 220 }}
+        defaultVisibleColumns={[
+          'uniqueId',
+          'description',
+          'area',
+          'needsReference',
+        ]}
+        filterValues={{ statuses: [3] }}
+        locale="sv"
+        onColumnWidthsChange={onColumnWidthsChange}
+        onFilterChange={onFilterChange}
+        onSortChange={onSortChange}
+        onVisibleColumnsChange={onVisibleColumnsChange}
+        rows={[makeRow()]}
+        sortState={{ by: 'status', direction: 'desc' }}
+        visibleColumns={[
+          'uniqueId',
+          'description',
+          'area',
+          'category',
+          'type',
+          'status',
+          'needsReference',
+        ]}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'columns' }))
+    fireEvent.click(screen.getByRole('button', { name: 'resetToDefault' }))
+
+    expect(onVisibleColumnsChange).toHaveBeenCalledWith([
+      'uniqueId',
+      'description',
+      'area',
+      'needsReference',
+    ])
+    expect(onFilterChange).toHaveBeenCalledWith({ statuses: undefined })
+    expect(onSortChange).toHaveBeenCalledWith(DEFAULT_REQUIREMENT_SORT)
+    expect(onColumnWidthsChange).toHaveBeenCalledWith({})
+  })
+
   it('keeps locked columns visible even when excludeColumns includes them', () => {
     render(
       <RequirementsTable
@@ -1148,7 +1199,7 @@ describe('RequirementsTable', () => {
         floatingActionRailPlacement="inline-top"
         locale="sv"
         rows={[makeRow()]}
-        stickyTitle={<h2>Specification items</h2>}
+        stickyTitle={<h2>Requirement applications</h2>}
         stickyTitleActions={<button type="button">Remove selected</button>}
       />,
     )
@@ -1162,7 +1213,7 @@ describe('RequirementsTable', () => {
     const actionGroup = stickyTopBar?.lastElementChild as HTMLDivElement | null
 
     expect(stickyTopBar).toBeTruthy()
-    expect(stickyTopBar).toHaveTextContent('Specification items')
+    expect(stickyTopBar).toHaveTextContent('Requirement applications')
     expect(stickyTopBar).toHaveTextContent('Remove selected')
     expect(stickyTopBar?.className).toContain('flex-wrap')
     expect(stickyTopBar?.className).toContain('sm:flex-nowrap')

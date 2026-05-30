@@ -15,9 +15,7 @@ function requirementCreateAuditRowsFromClientIp(page: Page, clientIp: string) {
   })
 }
 
-test('admin can filter action audit events and export CSV', async ({
-  page,
-}) => {
+test('admin can filter action-log events and export CSV', async ({ page }) => {
   await page.goto('/sv/admin/audit-log')
 
   await expect(page.getByRole('heading', { name: 'Åtgärdslogg' })).toBeVisible()
@@ -47,7 +45,7 @@ test('admin can filter action audit events and export CSV', async ({
   expect(csv).toContain('203.0.113.10')
 })
 
-test('admin can use the action audit log inline from admin center', async ({
+test('admin can use the action log inline from admin center', async ({
   page,
 }) => {
   await page.goto('/sv/admin?tab=actionAuditLog')

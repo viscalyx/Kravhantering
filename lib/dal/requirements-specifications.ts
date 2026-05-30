@@ -32,13 +32,28 @@ interface RequirementsSpecificationLinkItem {
 export type SpecificationItemKind = 'library' | 'specificationLocal'
 export type SpecificationItemRef = `lib:${number}` | `local:${number}`
 
+export interface SpecificationNeedsReferenceSummary {
+  createdAt: string
+  description: string | null
+  id: number
+  libraryItemCount: number
+  linkedItemCount: number
+  specificationLocalRequirementCount: number
+  text: string
+  updatedAt: string
+}
+
+interface SpecificationNeedsReferenceMutationInput {
+  description?: string | null
+  text: string
+}
+
 interface SpecificationLocalRequirementMutationInput {
   acceptanceCriteria?: string | null
   description: string
   needsReferenceId?: number | null
   normReferenceIds?: number[]
   qualityCharacteristicId?: number | null
-  requirementAreaId?: number | null
   requirementCategoryId?: number | null
   requirementPackageIds?: number[]
   requirementTypeId?: number | null
@@ -64,7 +79,7 @@ export interface SpecificationLocalRequirementDetail {
     uri: string | null
   }[]
   qualityCharacteristic: { id: number; nameEn: string; nameSv: string } | null
-  requirementArea: { id: number; name: string } | null
+  requirementArea: null
   requirementCategory: { id: number; nameEn: string; nameSv: string } | null
   requirementPackages: {
     id: number
@@ -246,7 +261,7 @@ export async function listSpecifications(db: SqlServerDatabase) {
         specification_record.id AS id,
         specification_record.unique_id AS uniqueId,
         specification_record.name AS name,
-        specification_record.specification_responsibility_area_id AS specificationResponsibilityAreaId,
+        specification_record.specification_governance_object_type_id AS specificationGovernanceObjectTypeId,
         specification_record.specification_implementation_type_id AS specificationImplementationTypeId,
         specification_record.specification_lifecycle_status_id AS specificationLifecycleStatusId,
         specification_record.business_needs_reference AS businessNeedsReference,
@@ -255,15 +270,15 @@ export async function listSpecifications(db: SqlServerDatabase) {
         CAST(specification_record.can_responsible_generate_ai AS int) AS canResponsibleGenerateAi,
         specification_record.created_at AS createdAt,
         specification_record.updated_at AS updatedAt,
-        responsibility_area.name_sv AS responsibilityAreaNameSv,
-        responsibility_area.name_en AS responsibilityAreaNameEn,
+        governance_object_type.name_sv AS governanceObjectTypeNameSv,
+        governance_object_type.name_en AS governanceObjectTypeNameEn,
         implementation_type.name_sv AS implementationTypeNameSv,
         implementation_type.name_en AS implementationTypeNameEn,
         lifecycle_status.name_sv AS lifecycleStatusNameSv,
         lifecycle_status.name_en AS lifecycleStatusNameEn
       FROM requirements_specifications specification_record
-      LEFT JOIN specification_responsibility_areas responsibility_area
-        ON responsibility_area.id = specification_record.specification_responsibility_area_id
+      LEFT JOIN specification_governance_object_types governance_object_type
+        ON governance_object_type.id = specification_record.specification_governance_object_type_id
       LEFT JOIN specification_implementation_types implementation_type
         ON implementation_type.id = specification_record.specification_implementation_type_id
       LEFT JOIN specification_lifecycle_statuses lifecycle_status
@@ -272,24 +287,23 @@ export async function listSpecifications(db: SqlServerDatabase) {
     `,
   )) as Row[]
 
-  const [libraryCounts, localCounts, libraryAreas, localAreas] =
-    await Promise.all([
-      db.query(
-        `
+  const [libraryCounts, localCounts, libraryAreas] = await Promise.all([
+    db.query(
+      `
           SELECT requirements_specification_id AS specificationId, COUNT(*) AS count
           FROM requirements_specification_items
           GROUP BY requirements_specification_id
         `,
-      ) as Promise<Row[]>,
-      db.query(
-        `
+    ) as Promise<Row[]>,
+    db.query(
+      `
           SELECT specification_id AS specificationId, COUNT(*) AS count
           FROM specification_local_requirements
           GROUP BY specification_id
         `,
-      ) as Promise<Row[]>,
-      db.query(
-        `
+    ) as Promise<Row[]>,
+    db.query(
+      `
           SELECT
             specification_item.requirements_specification_id AS specificationId,
             requirement_area.id AS areaId,
@@ -301,20 +315,8 @@ export async function listSpecifications(db: SqlServerDatabase) {
             ON requirement_area.id = requirement.requirement_area_id
           GROUP BY specification_item.requirements_specification_id, requirement_area.id, requirement_area.name
         `,
-      ) as Promise<Row[]>,
-      db.query(
-        `
-          SELECT
-            local_requirement.specification_id AS specificationId,
-            requirement_area.id AS areaId,
-            requirement_area.name AS areaName
-          FROM specification_local_requirements local_requirement
-          INNER JOIN requirement_areas requirement_area
-            ON requirement_area.id = local_requirement.requirement_area_id
-          GROUP BY local_requirement.specification_id, requirement_area.id, requirement_area.name
-        `,
-      ) as Promise<Row[]>,
-    ])
+    ) as Promise<Row[]>,
+  ])
 
   const itemCounts = new Map<number, number>()
   for (const row of [...libraryCounts, ...localCounts]) {
@@ -327,7 +329,7 @@ export async function listSpecifications(db: SqlServerDatabase) {
   }
 
   const requirementAreasBySpecification = new Map<number, Map<number, string>>()
-  for (const row of [...libraryAreas, ...localAreas]) {
+  for (const row of libraryAreas) {
     const specificationId = Number(row.specificationId)
     const areaId = Number(row.areaId)
     const areaName = String(row.areaName ?? '')
@@ -339,8 +341,8 @@ export async function listSpecifications(db: SqlServerDatabase) {
 
   return rows.map(row => {
     const id = Number(row.id)
-    const specificationResponsibilityAreaId = toNum(
-      row.specificationResponsibilityAreaId,
+    const specificationGovernanceObjectTypeId = toNum(
+      row.specificationGovernanceObjectTypeId,
     )
     const specificationImplementationTypeId = toNum(
       row.specificationImplementationTypeId,
@@ -359,7 +361,7 @@ export async function listSpecifications(db: SqlServerDatabase) {
       id,
       uniqueId: String(row.uniqueId),
       name: String(row.name),
-      specificationResponsibilityAreaId,
+      specificationGovernanceObjectTypeId,
       specificationImplementationTypeId,
       specificationLifecycleStatusId,
       businessNeedsReference: toStr(row.businessNeedsReference),
@@ -368,14 +370,14 @@ export async function listSpecifications(db: SqlServerDatabase) {
       canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
       createdAt: toIso(row.createdAt) ?? '',
       updatedAt: toIso(row.updatedAt) ?? '',
-      responsibilityArea:
-        row.responsibilityAreaNameSv &&
-        specificationResponsibilityAreaId != null
+      governanceObjectType:
+        row.governanceObjectTypeNameSv &&
+        specificationGovernanceObjectTypeId != null
           ? {
-              id: specificationResponsibilityAreaId,
-              nameSv: String(row.responsibilityAreaNameSv),
-              nameEn: row.responsibilityAreaNameEn
-                ? String(row.responsibilityAreaNameEn)
+              id: specificationGovernanceObjectTypeId,
+              nameSv: String(row.governanceObjectTypeNameSv),
+              nameEn: row.governanceObjectTypeNameEn
+                ? String(row.governanceObjectTypeNameEn)
                 : '',
             }
           : null,
@@ -410,24 +412,24 @@ interface SpecificationRecord {
   businessNeedsReference: string | null
   canResponsibleGenerateAi: boolean
   createdAt: string
+  governanceObjectType: { id: number; nameSv: string; nameEn: string } | null
   id: number
   implementationType: { id: number; nameSv: string; nameEn: string } | null
   lifecycleStatus: { id: number; nameSv: string; nameEn: string } | null
   name: string
-  responsibilityArea: { id: number; nameSv: string; nameEn: string } | null
   responsibleDisplayName: string | null
   responsibleHsaId: string | null
+  specificationGovernanceObjectTypeId: number | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
-  specificationResponsibilityAreaId: number | null
   uniqueId: string
   updatedAt: string
 }
 
 function mapSpecificationRow(row: Row | undefined): SpecificationRecord | null {
   if (!row) return null
-  const specificationResponsibilityAreaId = toNum(
-    row.specificationResponsibilityAreaId,
+  const specificationGovernanceObjectTypeId = toNum(
+    row.specificationGovernanceObjectTypeId,
   )
   const specificationImplementationTypeId = toNum(
     row.specificationImplementationTypeId,
@@ -439,7 +441,7 @@ function mapSpecificationRow(row: Row | undefined): SpecificationRecord | null {
     id: Number(row.id),
     uniqueId: String(row.uniqueId),
     name: String(row.name),
-    specificationResponsibilityAreaId,
+    specificationGovernanceObjectTypeId,
     specificationImplementationTypeId,
     specificationLifecycleStatusId,
     businessNeedsReference: toStr(row.businessNeedsReference),
@@ -448,13 +450,14 @@ function mapSpecificationRow(row: Row | undefined): SpecificationRecord | null {
     canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
     createdAt: toIso(row.createdAt) ?? '',
     updatedAt: toIso(row.updatedAt) ?? '',
-    responsibilityArea:
-      row.responsibilityAreaNameSv && specificationResponsibilityAreaId != null
+    governanceObjectType:
+      row.governanceObjectTypeNameSv &&
+      specificationGovernanceObjectTypeId != null
         ? {
-            id: specificationResponsibilityAreaId,
-            nameSv: String(row.responsibilityAreaNameSv),
-            nameEn: row.responsibilityAreaNameEn
-              ? String(row.responsibilityAreaNameEn)
+            id: specificationGovernanceObjectTypeId,
+            nameSv: String(row.governanceObjectTypeNameSv),
+            nameEn: row.governanceObjectTypeNameEn
+              ? String(row.governanceObjectTypeNameEn)
               : '',
           }
         : null,
@@ -486,7 +489,7 @@ const SPECIFICATION_SELECT_WITH_JOINS = `
     specification_record.id AS id,
     specification_record.unique_id AS uniqueId,
     specification_record.name AS name,
-    specification_record.specification_responsibility_area_id AS specificationResponsibilityAreaId,
+    specification_record.specification_governance_object_type_id AS specificationGovernanceObjectTypeId,
     specification_record.specification_implementation_type_id AS specificationImplementationTypeId,
     specification_record.specification_lifecycle_status_id AS specificationLifecycleStatusId,
     specification_record.business_needs_reference AS businessNeedsReference,
@@ -495,15 +498,15 @@ const SPECIFICATION_SELECT_WITH_JOINS = `
     CAST(specification_record.can_responsible_generate_ai AS int) AS canResponsibleGenerateAi,
     specification_record.created_at AS createdAt,
     specification_record.updated_at AS updatedAt,
-    responsibility_area.name_sv AS responsibilityAreaNameSv,
-    responsibility_area.name_en AS responsibilityAreaNameEn,
+    governance_object_type.name_sv AS governanceObjectTypeNameSv,
+    governance_object_type.name_en AS governanceObjectTypeNameEn,
     implementation_type.name_sv AS implementationTypeNameSv,
     implementation_type.name_en AS implementationTypeNameEn,
     lifecycle_status.name_sv AS lifecycleStatusNameSv,
     lifecycle_status.name_en AS lifecycleStatusNameEn
   FROM requirements_specifications specification_record
-  LEFT JOIN specification_responsibility_areas responsibility_area
-    ON responsibility_area.id = specification_record.specification_responsibility_area_id
+  LEFT JOIN specification_governance_object_types governance_object_type
+    ON governance_object_type.id = specification_record.specification_governance_object_type_id
   LEFT JOIN specification_implementation_types implementation_type
     ON implementation_type.id = specification_record.specification_implementation_type_id
   LEFT JOIN specification_lifecycle_statuses lifecycle_status
@@ -580,7 +583,7 @@ export async function createSpecification(
   data: {
     uniqueId: string
     name: string
-    specificationResponsibilityAreaId?: number | null
+    specificationGovernanceObjectTypeId?: number | null
     specificationImplementationTypeId?: number | null
     specificationLifecycleStatusId?: number | null
     businessNeedsReference?: string | null
@@ -595,7 +598,7 @@ export async function createSpecification(
       INSERT INTO requirements_specifications (
         unique_id,
         name,
-        specification_responsibility_area_id,
+        specification_governance_object_type_id,
         specification_implementation_type_id,
         specification_lifecycle_status_id,
         business_needs_reference,
@@ -609,7 +612,7 @@ export async function createSpecification(
         INSERTED.id AS id,
         INSERTED.unique_id AS uniqueId,
         INSERTED.name AS name,
-        INSERTED.specification_responsibility_area_id AS specificationResponsibilityAreaId,
+        INSERTED.specification_governance_object_type_id AS specificationGovernanceObjectTypeId,
         INSERTED.specification_implementation_type_id AS specificationImplementationTypeId,
         INSERTED.specification_lifecycle_status_id AS specificationLifecycleStatusId,
         INSERTED.business_needs_reference AS businessNeedsReference,
@@ -623,7 +626,7 @@ export async function createSpecification(
     [
       data.uniqueId,
       data.name,
-      data.specificationResponsibilityAreaId ?? null,
+      data.specificationGovernanceObjectTypeId ?? null,
       data.specificationImplementationTypeId ?? null,
       data.specificationLifecycleStatusId ?? null,
       data.businessNeedsReference ?? null,
@@ -642,8 +645,8 @@ export async function createSpecification(
     id: Number(row.id),
     uniqueId: String(row.uniqueId),
     name: String(row.name),
-    specificationResponsibilityAreaId: toNum(
-      row.specificationResponsibilityAreaId,
+    specificationGovernanceObjectTypeId: toNum(
+      row.specificationGovernanceObjectTypeId,
     ),
     specificationImplementationTypeId: toNum(
       row.specificationImplementationTypeId,
@@ -664,7 +667,7 @@ export async function updateSpecification(
   data: {
     uniqueId?: string
     name?: string
-    specificationResponsibilityAreaId?: number | null
+    specificationGovernanceObjectTypeId?: number | null
     specificationImplementationTypeId?: number | null
     specificationLifecycleStatusId?: number | null
     businessNeedsReference?: string | null
@@ -684,9 +687,11 @@ export async function updateSpecification(
     setClauses.push(`name = @${params.length}`)
     params.push(data.name)
   }
-  if ('specificationResponsibilityAreaId' in data) {
-    setClauses.push(`specification_responsibility_area_id = @${params.length}`)
-    params.push(data.specificationResponsibilityAreaId ?? null)
+  if ('specificationGovernanceObjectTypeId' in data) {
+    setClauses.push(
+      `specification_governance_object_type_id = @${params.length}`,
+    )
+    params.push(data.specificationGovernanceObjectTypeId ?? null)
   }
   if ('specificationImplementationTypeId' in data) {
     setClauses.push(`specification_implementation_type_id = @${params.length}`)
@@ -727,7 +732,7 @@ export async function updateSpecification(
         INSERTED.id AS id,
         INSERTED.unique_id AS uniqueId,
         INSERTED.name AS name,
-        INSERTED.specification_responsibility_area_id AS specificationResponsibilityAreaId,
+        INSERTED.specification_governance_object_type_id AS specificationGovernanceObjectTypeId,
         INSERTED.specification_implementation_type_id AS specificationImplementationTypeId,
         INSERTED.specification_lifecycle_status_id AS specificationLifecycleStatusId,
         INSERTED.business_needs_reference AS businessNeedsReference,
@@ -747,8 +752,8 @@ export async function updateSpecification(
     id: Number(row.id),
     uniqueId: String(row.uniqueId),
     name: String(row.name),
-    specificationResponsibilityAreaId: toNum(
-      row.specificationResponsibilityAreaId,
+    specificationGovernanceObjectTypeId: toNum(
+      row.specificationGovernanceObjectTypeId,
     ),
     specificationImplementationTypeId: toNum(
       row.specificationImplementationTypeId,
@@ -836,55 +841,80 @@ async function resolveRequirementsSpecificationLinkItems(
 export async function listSpecificationNeedsReferences(
   db: SqlServerDatabase,
   specificationId: number,
-): Promise<{ id: number; text: string }[]> {
+): Promise<SpecificationNeedsReferenceSummary[]> {
   const rows = (await db.query(
     `
-      SELECT needs_reference.id AS id, needs_reference.text AS text
+      SELECT
+        needs_reference.id AS id,
+        needs_reference.text AS text,
+        needs_reference.description AS description,
+        needs_reference.created_at AS createdAt,
+        needs_reference.updated_at AS updatedAt,
+        (
+          SELECT COUNT(*)
+          FROM requirements_specification_items specification_item
+          WHERE specification_item.requirements_specification_id = @0
+            AND specification_item.needs_reference_id = needs_reference.id
+        ) AS libraryItemCount,
+        (
+          SELECT COUNT(*)
+          FROM specification_local_requirements local_requirement
+          WHERE local_requirement.specification_id = @0
+            AND local_requirement.needs_reference_id = needs_reference.id
+        ) AS specificationLocalRequirementCount
       FROM specification_needs_references needs_reference
       WHERE needs_reference.specification_id = @0
       ORDER BY needs_reference.text
     `,
     [specificationId],
   )) as Row[]
-  return rows.map(row => ({
-    id: Number(row.id),
-    text: String(row.text ?? ''),
-  }))
+  return rows.map(mapSpecificationNeedsReferenceRow)
 }
 
 export async function getSpecificationNeedsReferenceById(
   db: SqlExecutor,
   specificationId: number,
   id: number,
-): Promise<{ id: number } | null> {
+): Promise<{ id: number; text: string } | null> {
   const rows = (await db.query(
     `
-      SELECT TOP (1) needs_reference.id AS id
+      SELECT TOP (1) needs_reference.id AS id, needs_reference.text AS text
       FROM specification_needs_references needs_reference
       WHERE needs_reference.id = @0 AND needs_reference.specification_id = @1
     `,
     [id, specificationId],
-  )) as Array<{ id: number }>
-  return rows[0] ? { id: Number(rows[0].id) } : null
+  )) as Array<{ id: number; text: string }>
+  return rows[0]
+    ? { id: Number(rows[0].id), text: String(rows[0].text ?? '') }
+    : null
 }
 
 async function getOrCreateSpecificationNeedsReferenceWithMetadata(
   db: SqlExecutor,
   specificationId: number,
   text: string,
+  description?: string | null,
 ): Promise<{ created: boolean; id: number }> {
   const normalizedText = text.trim()
+  const normalizedDescription = normalizeOptionalBusinessText(description)
+  const now = new Date()
   const insertedRows = (await db.query(
     `
-      INSERT INTO specification_needs_references (specification_id, text, created_at)
+      INSERT INTO specification_needs_references (
+        specification_id,
+        text,
+        description,
+        created_at,
+        updated_at
+      )
       OUTPUT INSERTED.id AS id
-      SELECT @0, @1, @2
+      SELECT @0, @1, @2, @3, @3
       WHERE NOT EXISTS (
         SELECT 1 FROM specification_needs_references
         WHERE specification_id = @0 AND text = @1
       )
     `,
-    [specificationId, normalizedText, new Date()],
+    [specificationId, normalizedText, normalizedDescription, now],
   )) as Array<{ id: number }>
 
   if (insertedRows[0]) {
@@ -910,13 +940,262 @@ export async function getOrCreateSpecificationNeedsReference(
   db: SqlServerDatabase,
   specificationId: number,
   text: string,
+  description?: string | null,
 ): Promise<number> {
   const { id } = await getOrCreateSpecificationNeedsReferenceWithMetadata(
     db,
     specificationId,
     text,
+    description,
   )
   return id
+}
+
+function normalizeOptionalBusinessText(value: string | null | undefined) {
+  const normalized = value?.trim()
+  return normalized ? normalized : null
+}
+
+function normalizeSpecificationNeedsReferenceInput(
+  data: SpecificationNeedsReferenceMutationInput,
+) {
+  const text = data.text.trim()
+  if (!text) {
+    throw validationError('Needs reference text is required')
+  }
+
+  return {
+    description: normalizeOptionalBusinessText(data.description),
+    text,
+  }
+}
+
+function mapSpecificationNeedsReferenceRow(
+  row: Row,
+): SpecificationNeedsReferenceSummary {
+  const libraryItemCount = Number(row.libraryItemCount ?? 0)
+  const specificationLocalRequirementCount = Number(
+    row.specificationLocalRequirementCount ?? 0,
+  )
+  return {
+    createdAt: toIso(row.createdAt) ?? '',
+    description: toStr(row.description),
+    id: Number(row.id),
+    libraryItemCount,
+    linkedItemCount: libraryItemCount + specificationLocalRequirementCount,
+    specificationLocalRequirementCount,
+    text: String(row.text ?? ''),
+    updatedAt: toIso(row.updatedAt) ?? '',
+  }
+}
+
+async function assertSpecificationNeedsReferenceTextAvailable(
+  db: SqlExecutor,
+  specificationId: number,
+  text: string,
+  exceptId?: number,
+): Promise<void> {
+  const rows = (
+    exceptId == null
+      ? await db.query(
+          `
+          SELECT TOP (1) needs_reference.id AS id
+          FROM specification_needs_references needs_reference
+          WHERE needs_reference.specification_id = @0
+            AND needs_reference.text = @1
+        `,
+          [specificationId, text],
+        )
+      : await db.query(
+          `
+          SELECT TOP (1) needs_reference.id AS id
+          FROM specification_needs_references needs_reference
+          WHERE needs_reference.specification_id = @0
+            AND needs_reference.text = @1
+            AND needs_reference.id <> @2
+        `,
+          [specificationId, text, exceptId],
+        )
+  ) as Array<{ id: number }>
+
+  if (rows[0]) {
+    throw conflictError(
+      'Needs reference already exists in this specification',
+      {
+        reason: 'duplicate_needs_reference',
+        specificationId,
+      },
+    )
+  }
+}
+
+async function getSpecificationNeedsReferenceDetailById(
+  db: SqlExecutor,
+  specificationId: number,
+  id: number,
+): Promise<SpecificationNeedsReferenceSummary | null> {
+  const rows = (await db.query(
+    `
+      SELECT
+        needs_reference.id AS id,
+        needs_reference.text AS text,
+        needs_reference.description AS description,
+        needs_reference.created_at AS createdAt,
+        needs_reference.updated_at AS updatedAt,
+        (
+          SELECT COUNT(*)
+          FROM requirements_specification_items specification_item
+          WHERE specification_item.requirements_specification_id = @0
+            AND specification_item.needs_reference_id = needs_reference.id
+        ) AS libraryItemCount,
+        (
+          SELECT COUNT(*)
+          FROM specification_local_requirements local_requirement
+          WHERE local_requirement.specification_id = @0
+            AND local_requirement.needs_reference_id = needs_reference.id
+        ) AS specificationLocalRequirementCount
+      FROM specification_needs_references needs_reference
+      WHERE needs_reference.id = @1 AND needs_reference.specification_id = @0
+    `,
+    [specificationId, id],
+  )) as Row[]
+
+  return rows[0] ? mapSpecificationNeedsReferenceRow(rows[0]) : null
+}
+
+async function createSpecificationNeedsReferenceWithMetadata(
+  db: SqlExecutor,
+  specificationId: number,
+  data: SpecificationNeedsReferenceMutationInput,
+): Promise<SpecificationNeedsReferenceSummary> {
+  const normalized = normalizeSpecificationNeedsReferenceInput(data)
+  await assertSpecificationNeedsReferenceTextAvailable(
+    db,
+    specificationId,
+    normalized.text,
+  )
+
+  const now = new Date()
+  const rows = (await db.query(
+    `
+      INSERT INTO specification_needs_references (
+        specification_id,
+        text,
+        description,
+        created_at,
+        updated_at
+      )
+      OUTPUT
+        INSERTED.id AS id,
+        INSERTED.text AS text,
+        INSERTED.description AS description,
+        INSERTED.created_at AS createdAt,
+        INSERTED.updated_at AS updatedAt,
+        0 AS libraryItemCount,
+        0 AS specificationLocalRequirementCount
+      VALUES (@0, @1, @2, @3, @3)
+    `,
+    [specificationId, normalized.text, normalized.description, now],
+  )) as Row[]
+
+  const row = rows[0]
+  if (!row) {
+    throw new Error('Failed to create specification needs reference')
+  }
+
+  return mapSpecificationNeedsReferenceRow(row)
+}
+
+export async function createSpecificationNeedsReference(
+  db: SqlServerDatabase,
+  specificationId: number,
+  data: SpecificationNeedsReferenceMutationInput,
+): Promise<SpecificationNeedsReferenceSummary> {
+  return createSpecificationNeedsReferenceWithMetadata(
+    db,
+    specificationId,
+    data,
+  )
+}
+
+export async function updateSpecificationNeedsReference(
+  db: SqlServerDatabase,
+  specificationId: number,
+  id: number,
+  data: SpecificationNeedsReferenceMutationInput,
+): Promise<SpecificationNeedsReferenceSummary> {
+  const existing = await getSpecificationNeedsReferenceById(
+    db,
+    specificationId,
+    id,
+  )
+  if (!existing) {
+    throw notFoundError('Needs reference not found')
+  }
+
+  const normalized = normalizeSpecificationNeedsReferenceInput(data)
+  await assertSpecificationNeedsReferenceTextAvailable(
+    db,
+    specificationId,
+    normalized.text,
+    id,
+  )
+
+  await db.query(
+    `
+      UPDATE specification_needs_references
+      SET text = @0, description = @1, updated_at = @2
+      WHERE id = @3 AND specification_id = @4
+    `,
+    [normalized.text, normalized.description, new Date(), id, specificationId],
+  )
+
+  const updated = await getSpecificationNeedsReferenceDetailById(
+    db,
+    specificationId,
+    id,
+  )
+  if (!updated) {
+    throw notFoundError('Needs reference not found after update')
+  }
+  return updated
+}
+
+export async function deleteSpecificationNeedsReference(
+  db: SqlServerDatabase,
+  specificationId: number,
+  id: number,
+): Promise<boolean> {
+  const existing = await getSpecificationNeedsReferenceDetailById(
+    db,
+    specificationId,
+    id,
+  )
+  if (!existing) {
+    return false
+  }
+
+  if (existing.linkedItemCount > 0) {
+    throw conflictError(
+      'Needs reference is used by requirement applications or unique requirements',
+      {
+        linkedItemCount: existing.linkedItemCount,
+        reason: 'needs_reference_in_use',
+        specificationId,
+      },
+    )
+  }
+
+  const rows = (await db.query(
+    `
+      DELETE FROM specification_needs_references
+      OUTPUT DELETED.id AS id
+      WHERE id = @0 AND specification_id = @1
+    `,
+    [id, specificationId],
+  )) as Array<{ id: number }>
+
+  return rows.length > 0
 }
 
 async function resolveExistingSpecificationNeedsReferenceForLinking(
@@ -990,7 +1269,6 @@ async function normalizeSpecificationLocalRequirementInput(
   const references = await validateRequirementTaxonomyReferences(db, {
     normReferenceIds: data.normReferenceIds,
     qualityCharacteristicId: data.qualityCharacteristicId,
-    requirementAreaId: data.requirementAreaId,
     requirementCategoryId: data.requirementCategoryId,
     requirementPackageIds: data.requirementPackageIds,
     requirementTypeId: data.requirementTypeId,
@@ -1003,7 +1281,6 @@ async function normalizeSpecificationLocalRequirementInput(
     needsReferenceId,
     normReferenceIds: references.normReferenceIds,
     qualityCharacteristicId: references.qualityCharacteristicId,
-    requirementAreaId: references.requirementAreaId,
     requirementCategoryId: references.requirementCategoryId,
     requirementTypeId: references.requirementTypeId,
     requiresTesting,
@@ -1064,8 +1341,6 @@ const LOCAL_REQUIREMENT_DETAIL_SELECT = `
     local_requirement.quality_characteristic_id AS qualityCharacteristicId,
     quality_characteristic.name_en AS qualityCharacteristicNameEn,
     quality_characteristic.name_sv AS qualityCharacteristicNameSv,
-    local_requirement.requirement_area_id AS requirementAreaId,
-    requirement_area.name AS requirementAreaName,
     local_requirement.requirement_category_id AS requirementCategoryId,
     requirement_category.name_en AS requirementCategoryNameEn,
     requirement_category.name_sv AS requirementCategoryNameSv,
@@ -1085,8 +1360,6 @@ const LOCAL_REQUIREMENT_DETAIL_SELECT = `
     ON specification_item_status.id = local_requirement.specification_item_status_id
   LEFT JOIN quality_characteristics quality_characteristic
     ON quality_characteristic.id = local_requirement.quality_characteristic_id
-  LEFT JOIN requirement_areas requirement_area
-    ON requirement_area.id = local_requirement.requirement_area_id
   LEFT JOIN requirement_categories requirement_category
     ON requirement_category.id = local_requirement.requirement_category_id
   LEFT JOIN requirement_types requirement_type
@@ -1102,7 +1375,6 @@ function mapSpecificationLocalRequirementDetailFlat(
 ): SpecificationLocalRequirementDetail {
   const id = Number(row.id)
   const qualityCharacteristicId = toNum(row.qualityCharacteristicId)
-  const requirementAreaId = toNum(row.requirementAreaId)
   const requirementCategoryId = toNum(row.requirementCategoryId)
   const requirementTypeId = toNum(row.requirementTypeId)
   const riskLevelId = toNum(row.riskLevelId)
@@ -1167,13 +1439,7 @@ function mapSpecificationLocalRequirementDetailFlat(
             nameSv: String(row.qualityCharacteristicNameSv ?? ''),
           }
         : null,
-    requirementArea:
-      requirementAreaId != null
-        ? {
-            id: requirementAreaId,
-            name: String(row.requirementAreaName ?? ''),
-          }
-        : null,
+    requirementArea: null,
     requirementCategory:
       requirementCategoryId != null
         ? {
@@ -1327,7 +1593,7 @@ export async function createSpecificationLocalRequirement(
     const sequenceRow = sequenceRows[0]
     if (!sequenceRow) {
       throw notFoundError(
-        `Requirement specification ${specificationId} not found`,
+        `Requirements specification ${specificationId} not found`,
       )
     }
 
@@ -1341,7 +1607,6 @@ export async function createSpecificationLocalRequirement(
           specification_id,
           unique_id,
           sequence_number,
-          requirement_area_id,
           description,
           acceptance_criteria,
           requirement_category_id,
@@ -1356,13 +1621,12 @@ export async function createSpecificationLocalRequirement(
           updated_at
         )
         OUTPUT INSERTED.id AS id
-        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, @13, @14, @14)
+        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, @13, @13)
       `,
       [
         specificationId,
         uniqueId,
         sequenceNumber,
-        normalized.requirementAreaId,
         normalized.description,
         normalized.acceptanceCriteria,
         normalized.requirementCategoryId,
@@ -1435,21 +1699,19 @@ export async function updateSpecificationLocalRequirement(
           acceptance_criteria = @1,
           needs_reference_id = @2,
           quality_characteristic_id = @3,
-          requirement_area_id = @4,
-          requirement_category_id = @5,
-          requirement_type_id = @6,
-          is_testing_required = @7,
-          risk_level_id = @8,
-          verification_method = @9,
-          updated_at = @10
-        WHERE id = @11 AND specification_id = @12
+          requirement_category_id = @4,
+          requirement_type_id = @5,
+          is_testing_required = @6,
+          risk_level_id = @7,
+          verification_method = @8,
+          updated_at = @9
+        WHERE id = @10 AND specification_id = @11
       `,
       [
         normalized.description,
         normalized.acceptanceCriteria,
         normalized.needsReferenceId,
         normalized.qualityCharacteristicId,
-        normalized.requirementAreaId,
         normalized.requirementCategoryId,
         normalized.requirementTypeId,
         normalized.requiresTesting ? 1 : 0,
@@ -1843,10 +2105,12 @@ export async function linkRequirementsToSpecificationAtomically(
   specificationId: number,
   {
     requirementIds,
+    needsReferenceDescription,
     needsReferenceId,
     needsReferenceText,
   }: {
     requirementIds: number[]
+    needsReferenceDescription?: string | null
     needsReferenceId?: number | null
     needsReferenceText?: string | null
   },
@@ -1862,6 +2126,15 @@ export async function linkRequirementsToSpecificationAtomically(
     )
   }
 
+  if (
+    !normalizedNeedsReferenceText &&
+    normalizeOptionalBusinessText(needsReferenceDescription)
+  ) {
+    throw validationError(
+      'needsReferenceDescription requires needsReferenceText',
+    )
+  }
+
   return db.transaction(async (manager: SqlExecutor) => {
     const items = await resolveRequirementsSpecificationLinkItems(
       manager,
@@ -1870,10 +2143,13 @@ export async function linkRequirementsToSpecificationAtomically(
 
     if (normalizedNeedsReferenceText) {
       const resolvedNeedsReference =
-        await getOrCreateSpecificationNeedsReferenceWithMetadata(
+        await createSpecificationNeedsReferenceWithMetadata(
           manager,
           specificationId,
-          normalizedNeedsReferenceText,
+          {
+            description: needsReferenceDescription,
+            text: normalizedNeedsReferenceText,
+          },
         )
 
       const addedCount = await linkRequirementsToSpecification(
@@ -1885,7 +2161,7 @@ export async function linkRequirementsToSpecificationAtomically(
         })),
       )
 
-      if (addedCount === 0 && resolvedNeedsReference.created) {
+      if (addedCount === 0) {
         await manager.query(
           `
             DELETE FROM specification_needs_references
@@ -2042,7 +2318,6 @@ interface SpecificationLocalListFlatRow {
   normReferenceIds: string | null
   qualityCharacteristicNameEn: string | null
   qualityCharacteristicNameSv: string | null
-  requirementAreaName: string | null
   requirementCategoryNameEn: string | null
   requirementCategoryNameSv: string | null
   requirementPackageIds: string | null
@@ -2069,7 +2344,7 @@ function mapSpecificationLocalRequirementListRow(
   row: SpecificationLocalListFlatRow,
 ): RequirementRow {
   return {
-    area: row.requirementAreaName ? { name: row.requirementAreaName } : null,
+    area: null,
     id: createSpecificationLocalRowId(Number(row.id)),
     isArchived: false,
     itemRef: createSpecificationLocalItemRef(Number(row.id)),
@@ -2219,7 +2494,6 @@ export async function listSpecificationItems(
           specification_item_status.name_sv AS specificationItemStatusNameSv,
           quality_characteristic.name_en AS qualityCharacteristicNameEn,
           quality_characteristic.name_sv AS qualityCharacteristicNameSv,
-          requirement_area.name AS requirementAreaName,
           requirement_category.name_en AS requirementCategoryNameEn,
           requirement_category.name_sv AS requirementCategoryNameSv,
           requirement_type.name_en AS requirementTypeNameEn,
@@ -2243,8 +2517,6 @@ export async function listSpecificationItems(
           ON specification_item_status.id = local_requirement.specification_item_status_id
         LEFT JOIN quality_characteristics quality_characteristic
           ON quality_characteristic.id = local_requirement.quality_characteristic_id
-        LEFT JOIN requirement_areas requirement_area
-          ON requirement_area.id = local_requirement.requirement_area_id
         LEFT JOIN requirement_categories requirement_category
           ON requirement_category.id = local_requirement.requirement_category_id
         LEFT JOIN requirement_types requirement_type
@@ -2271,7 +2543,7 @@ export async function listSpecificationItems(
 // ─── Item lookup & updates ───────────────────────────────────────────────────
 
 export async function getSpecificationItemById(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   itemId: number,
 ) {
   const rows = (await db.query(
@@ -2308,7 +2580,7 @@ export async function getSpecificationItemById(
 }
 
 export async function getSpecificationItemByRef(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   specificationId: number,
   itemRef: string,
 ) {
@@ -2354,7 +2626,7 @@ async function validateSpecificationItemStatus(
   statusId: number,
 ): Promise<void> {
   if (!isSystemSpecificationItemStatusId(statusId)) {
-    throw validationError('Invalid specification item status ID', {
+    throw validationError('Invalid usage status ID', {
       specificationItemStatusId: statusId,
     })
   }
@@ -2369,19 +2641,20 @@ async function validateSpecificationItemStatus(
   )) as Array<{ id: number }>
 
   if (!rows[0]) {
-    throw validationError('Invalid specification item status ID', {
+    throw validationError('Invalid usage status ID', {
       specificationItemStatusId: statusId,
     })
   }
 }
 
 type SpecificationItemFieldUpdate = {
+  needsReferenceId?: number | null
   note?: string | null
   specificationItemStatusId?: number
 }
 
 export async function updateSpecificationItemFields(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   itemId: number,
   data: SpecificationItemFieldUpdate,
 ): Promise<void> {
@@ -2391,7 +2664,7 @@ export async function updateSpecificationItemFields(
 
   if ('specificationItemStatusId' in data) {
     if (data.specificationItemStatusId == null) {
-      throw validationError('Specification item status cannot be cleared', {
+      throw validationError('Usage status cannot be cleared', {
         itemId,
         specificationItemStatusId: data.specificationItemStatusId,
       })
@@ -2407,6 +2680,11 @@ export async function updateSpecificationItemFields(
   if ('note' in data) {
     setClauses.push(`note = @${params.length}`)
     params.push(data.note ?? null)
+  }
+
+  if ('needsReferenceId' in data) {
+    setClauses.push(`needs_reference_id = @${params.length}`)
+    params.push(data.needsReferenceId ?? null)
   }
 
   if (setClauses.length === 0) return
@@ -2443,7 +2721,7 @@ export async function updateSpecificationItemFields(
 }
 
 export async function updateSpecificationLocalRequirementFields(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   specificationLocalRequirementId: number,
   data: SpecificationItemFieldUpdate,
 ): Promise<void> {
@@ -2453,7 +2731,7 @@ export async function updateSpecificationLocalRequirementFields(
 
   if ('specificationItemStatusId' in data) {
     if (data.specificationItemStatusId == null) {
-      throw validationError('Specification item status cannot be cleared', {
+      throw validationError('Usage status cannot be cleared', {
         specificationItemStatusId: data.specificationItemStatusId,
         specificationLocalRequirementId,
       })
@@ -2469,6 +2747,11 @@ export async function updateSpecificationLocalRequirementFields(
   if ('note' in data) {
     setClauses.push(`note = @${params.length}`)
     params.push(data.note ?? null)
+  }
+
+  if ('needsReferenceId' in data) {
+    setClauses.push(`needs_reference_id = @${params.length}`)
+    params.push(data.needsReferenceId ?? null)
   }
 
   if (setClauses.length === 0) return
@@ -2506,7 +2789,7 @@ export async function updateSpecificationLocalRequirementFields(
 }
 
 export async function updateSpecificationItemFieldsByItemRef(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   specificationId: number,
   itemRef: string,
   data: SpecificationItemFieldUpdate,
@@ -2519,12 +2802,53 @@ export async function updateSpecificationItemFieldsByItemRef(
     })
   }
 
+  const normalizedData = { ...data }
+  if ('needsReferenceId' in normalizedData) {
+    const needsReferenceId = normalizeOptionalForeignKeyId(
+      normalizedData.needsReferenceId,
+    )
+    if (needsReferenceId != null) {
+      await resolveExistingSpecificationNeedsReferenceForLinking(
+        db,
+        specificationId,
+        needsReferenceId,
+      )
+    }
+    normalizedData.needsReferenceId = needsReferenceId
+  }
+
   if (item.kind === 'library') {
-    await updateSpecificationItemFields(db, item.id, data)
+    await updateSpecificationItemFields(db, item.id, normalizedData)
     return
   }
 
-  await updateSpecificationLocalRequirementFields(db, item.id, data)
+  await updateSpecificationLocalRequirementFields(db, item.id, normalizedData)
+}
+
+export async function updateSpecificationItemFieldsByItemRefs(
+  db: SqlServerDatabase,
+  specificationId: number,
+  itemRefs: string[],
+  data: SpecificationItemFieldUpdate,
+): Promise<number> {
+  if (itemRefs.length === 0) {
+    return 0
+  }
+
+  let updatedCount = 0
+  await db.transaction(async manager => {
+    for (const itemRef of itemRefs) {
+      await updateSpecificationItemFieldsByItemRef(
+        manager,
+        specificationId,
+        itemRef,
+        data,
+      )
+      updatedCount += 1
+    }
+  })
+
+  return updatedCount
 }
 
 // ─── Bulk delete by refs ─────────────────────────────────────────────────────

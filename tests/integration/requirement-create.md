@@ -22,7 +22,7 @@ flowchart TD
     E1 --> F[GET /api/requirement-areas]
     E2 --> F
     F --> G[Navigate to /sv/requirements/new]
-    G --> H[Select area, fill description]
+    G --> H[Select requirement area, fill description]
     H --> I[Click submit]
     I --> J[Wait for redirect to /sv/requirements]
     J --> K[Assert description visible in inline detail]
@@ -30,7 +30,7 @@ flowchart TD
 
 ## Test Setup
 
-- No shared `beforeEach` hooks; each test fetches its own area list.
+- No shared `beforeEach` hooks; each test fetches its own requirement area list.
 - The API test uses Playwright's `request` context for direct HTTP calls.
 - The UI tests use Playwright's `page` context and set viewport size per
   iteration.
@@ -43,7 +43,7 @@ flowchart TD
 
 **Steps**:
 
-1. `GET /api/requirement-areas` — retrieve available areas.
+1. `GET /api/requirement-areas` — retrieve available requirement areas.
 2. `POST /api/requirements` with `{ areaId, description, requiresTesting }`.
 3. Assert `201` status and response contains `requirement.id`,
    `requirement.uniqueId`, `version.description`.
@@ -72,9 +72,9 @@ mobile (375 x 812) and desktop (1280 x 800) viewports.
 **Steps**:
 
 1. Set viewport to the target size.
-2. `GET /api/requirement-areas` — retrieve available areas.
+2. `GET /api/requirement-areas` — retrieve available requirement areas.
 3. Navigate to `/sv/requirements/new`.
-4. `selectOption('#areaId', areaId)` — pick the first area.
+4. `selectOption('#areaId', areaId)` — pick the first requirement area.
 5. `fill('#description', 'Playwright UI test requirement')`.
 6. `click('button[type="submit"]')`.
 7. `toHaveURL(/\/sv\/requirements(?:\?|$)/)` — confirm redirect.

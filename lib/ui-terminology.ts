@@ -12,7 +12,7 @@ export const UI_TERM_KEYS = [
   'acceptanceCriteria',
   'requirementPackage',
   'normReferences',
-  'responsibilityArea',
+  'governanceObjectType',
   'implementationType',
   'lifecycleStatus',
   'referenceData',
@@ -93,12 +93,12 @@ const MESSAGE_BINDINGS: Record<
     ],
     singular: [['requirement', 'normReference']],
   },
-  responsibilityArea: {
+  governanceObjectType: {
     plural: [
-      ['nav', 'responsibilityAreas'],
-      ['responsibilityAreaMgmt', 'title'],
+      ['nav', 'governanceObjectTypes'],
+      ['governanceObjectTypeMgmt', 'title'],
     ],
-    singular: [['specification', 'responsibilityArea']],
+    singular: [['specification', 'governanceObjectType']],
   },
   implementationType: {
     plural: [
@@ -147,14 +147,14 @@ export const DEFAULT_UI_TERMINOLOGY: Record<
   },
   area: {
     en: {
-      definitePlural: 'Areas',
-      plural: 'Areas',
-      singular: 'Area',
+      definitePlural: 'Requirement areas',
+      plural: 'Requirement areas',
+      singular: 'Requirement area',
     },
     sv: {
-      definitePlural: 'Områdena',
-      plural: 'Områden',
-      singular: 'Område',
+      definitePlural: 'Kravområdena',
+      plural: 'Kravområden',
+      singular: 'Kravområde',
     },
   },
   category: {
@@ -183,14 +183,14 @@ export const DEFAULT_UI_TERMINOLOGY: Record<
   },
   status: {
     en: {
-      definitePlural: 'Statuses',
-      plural: 'Statuses',
-      singular: 'Status',
+      definitePlural: 'Requirement version statuses',
+      plural: 'Requirement version statuses',
+      singular: 'Requirement version status',
     },
     sv: {
-      definitePlural: 'Statusarna',
-      plural: 'Statusar',
-      singular: 'Status',
+      definitePlural: 'Kravversionsstatusarna',
+      plural: 'Kravversionsstatusar',
+      singular: 'Kravversionsstatus',
     },
   },
   qualityCharacteristic: {
@@ -289,16 +289,16 @@ export const DEFAULT_UI_TERMINOLOGY: Record<
       singular: 'Normreferens',
     },
   },
-  responsibilityArea: {
+  governanceObjectType: {
     en: {
-      definitePlural: 'Business objects',
-      plural: 'Business objects',
-      singular: 'Business object',
+      definitePlural: 'Governance object types',
+      plural: 'Governance object types',
+      singular: 'Governance object type',
     },
     sv: {
-      definitePlural: 'Verksamhetsobjekten',
-      plural: 'Verksamhetsobjekt',
-      singular: 'Verksamhetsobjekt',
+      definitePlural: 'Styrningsobjektstyperna',
+      plural: 'Styrningsobjektstyper',
+      singular: 'Styrningsobjektstyp',
     },
   },
   implementationType: {
@@ -315,14 +315,14 @@ export const DEFAULT_UI_TERMINOLOGY: Record<
   },
   lifecycleStatus: {
     en: {
-      definitePlural: 'Lifecycle statuses',
-      plural: 'Lifecycle statuses',
-      singular: 'Lifecycle status',
+      definitePlural: 'Specification lifecycle statuses',
+      plural: 'Specification lifecycle statuses',
+      singular: 'Specification lifecycle status',
     },
     sv: {
-      definitePlural: 'Livscykelstatusarna',
-      plural: 'Livscykelstatusar',
-      singular: 'Livscykelstatus',
+      definitePlural: 'Kravunderlagets livscykelstatusar',
+      plural: 'Kravunderlagets livscykelstatusar',
+      singular: 'Kravunderlagets livscykelstatus',
     },
   },
   referenceData: {

@@ -106,8 +106,7 @@ export async function GET(request: NextRequest) {
       return noStore(
         new NextResponse(actionAuditEventsToCsv(result.events), {
           headers: {
-            'Content-Disposition':
-              'attachment; filename="action-audit-log.csv"',
+            'Content-Disposition': 'attachment; filename="action-log.csv"',
             'Content-Type': 'text/csv; charset=utf-8',
           },
         }),
@@ -120,10 +119,10 @@ export async function GET(request: NextRequest) {
       const { body, status } = toHttpErrorPayload(error)
       return noStore(NextResponse.json(body, { status }))
     }
-    logSanitizedError('Failed to list action audit events', error)
+    logSanitizedError('Failed to list action log events', error)
     return noStore(
       NextResponse.json(
-        { error: 'Failed to list action audit events' },
+        { error: 'Failed to list action log events' },
         { status: 500 },
       ),
     )

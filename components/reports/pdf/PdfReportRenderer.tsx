@@ -330,10 +330,10 @@ function PdfSpecificationCover({
         </View>
         <View style={styles.metadataItem}>
           <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
-            {getSpecificationCoverLabel(section.locale, 'responsibilityArea')}
+            {getSpecificationCoverLabel(section.locale, 'governanceObjectType')}
           </Text>
           <Text style={styles.fieldValue}>
-            {section.responsibilityArea ?? '—'}
+            {section.governanceObjectType ?? '—'}
           </Text>
         </View>
         <View style={styles.metadataItem}>

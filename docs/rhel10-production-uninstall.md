@@ -102,6 +102,13 @@ COMPOSE_FILE=compose/app-node-tls.compose.yml
 podman compose --env-file /etc/kravhantering/release.env \
   -f "$COMPOSE_FILE" down
 
+for NETWORK in kravhantering-internal \
+  kravhantering-app-node_kravhantering-internal; do
+  if podman network exists "$NETWORK"; then
+    podman network rm "$NETWORK"
+  fi
+done
+
 exit
 ```
 
@@ -222,6 +229,9 @@ Close those records through the site-owned procedures:
 - remove SQL logins and users if the database is retired
 - remove or disable the IdP client registration
 - remove application roles and service accounts if they are no longer shared
+- revoke OIDC and optional MCP client secrets, and delete app-specific
+  secret-manager entries such as the session-cookie password after the approved
+  rollback or reinstall window has passed
 - remove load-balancer, DNS and monitoring entries for the app node
 
 Record those external decisions next to the uninstall evidence archive.

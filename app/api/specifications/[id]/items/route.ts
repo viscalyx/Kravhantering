@@ -6,6 +6,7 @@ import {
   getSpecificationById,
   getSpecificationBySlug,
   listSpecificationItems,
+  updateSpecificationItemFieldsByItemRefs,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -18,6 +19,7 @@ import {
 import {
   ARRAY_INPUT_MAX_ITEMS,
   nullableBoundedDbStringSchema,
+  nullableBusinessTextSchema,
   parseRouteParams,
   positiveIntegerSchema,
   routeSegmentSchema,
@@ -57,6 +59,7 @@ const itemRefsSchema = z
 
 const postItemsSchema = z
   .object({
+    needsReferenceDescription: nullableBusinessTextSchema.optional(),
     needsReferenceId: positiveIntegerSchema.nullable().optional(),
     needsReferenceText: nullableBoundedDbStringSchema.optional(),
     requirementIds: requirementIdsSchema,
@@ -73,6 +76,23 @@ const postItemsSchema = z
       path: ['needsReferenceText'],
     },
   )
+  .refine(
+    value =>
+      value.needsReferenceText != null ||
+      value.needsReferenceDescription == null ||
+      value.needsReferenceDescription.trim() === '',
+    {
+      message: 'needsReferenceDescription requires needsReferenceText',
+      path: ['needsReferenceDescription'],
+    },
+  )
+
+const patchItemsSchema = z
+  .object({
+    itemRefs: itemRefsSchema,
+    needsReferenceId: positiveIntegerSchema.nullable(),
+  })
+  .strict()
 
 const deleteItemsSchema = z.union([
   z
@@ -95,6 +115,12 @@ async function resolveSpecificationId(db: SqlServerDatabase, idOrSlug: string) {
     return byId?.id ?? null
   }
   return null
+}
+
+function specificationActionReference(idOrSlug: string) {
+  return /^\d+$/.test(idOrSlug)
+    ? { specificationId: Number(idOrSlug) }
+    : { specificationSlug: idOrSlug }
 }
 
 export async function GET(
@@ -133,7 +159,7 @@ export const POST = secureMutationRoute({
   >(({ body, params }) => ({
     kind: 'add_to_specification',
     requirementIds: body.requirementIds,
-    specificationSlug: params.id,
+    ...specificationActionReference(params.id),
   })),
   handler: async ({ body, context, params, request }) => {
     const { id } = params
@@ -153,6 +179,7 @@ export const POST = secureMutationRoute({
       const payload = await service.addToSpecification(context, {
         specificationId,
         requirementIds,
+        needsReferenceDescription: body.needsReferenceDescription,
         needsReferenceId,
         needsReferenceText,
         responseFormat: 'json',
@@ -176,6 +203,38 @@ export const POST = secureMutationRoute({
         { status: 500 },
       )
     }
+  },
+})
+
+export const PATCH = secureMutationRoute({
+  bodySchema: patchItemsSchema,
+  paramsSchema: specificationParamSchema,
+  policy: requirementsMutationPolicy<
+    z.infer<typeof patchItemsSchema>,
+    z.infer<typeof specificationParamSchema>
+  >(({ body, params }) => ({
+    kind: 'manage_specification_needs_reference',
+    needsReferenceId: body.needsReferenceId ?? undefined,
+    operation: 'assign',
+    ...specificationActionReference(params.id),
+  })),
+  handler: async ({ body, params }) => {
+    const { id } = params
+    const db = await getRequestSqlServerDataSource()
+
+    const specificationId = await resolveSpecificationId(db, id)
+    if (specificationId === null) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    const updatedCount = await updateSpecificationItemFieldsByItemRefs(
+      db,
+      specificationId,
+      body.itemRefs,
+      { needsReferenceId: body.needsReferenceId },
+    )
+
+    return NextResponse.json({ ok: true, updatedCount })
   },
 })
 
@@ -211,7 +270,10 @@ export const DELETE = secureMutationRoute({
           return NextResponse.json(body, { status })
         }
 
-        logSanitizedError('Failed to delete specification items by refs', error)
+        logSanitizedError(
+          'Failed to delete requirement applications by refs',
+          error,
+        )
         return NextResponse.json(
           { error: 'Failed to remove items' },
           { status: 500 },

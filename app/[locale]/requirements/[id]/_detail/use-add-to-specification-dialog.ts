@@ -20,6 +20,7 @@ interface AddToSpecificationDialogState {
   addToSpecificationStatus: 'error' | 'idle' | 'loading' | 'success'
   availableNeedsRefs: NeedsReferenceOption[]
   isOpen: boolean
+  needsReferenceDescription: string
   needsReferenceId: number | ''
   needsReferenceMode: AddToSpecificationNeedsRefMode
   needsReferencesError: string | null
@@ -39,6 +40,7 @@ type AddToSpecificationDialogAction =
     }
   | { specificationId: string; type: 'select_specification_start' }
   | { refs: NeedsReferenceOption[]; type: 'load_needs_refs_success' }
+  | { description: string; type: 'set_needs_reference_description' }
   | { text: string; type: 'set_needs_reference_text' }
   | {
       mode: AddToSpecificationNeedsRefMode
@@ -63,6 +65,7 @@ const closedState: Omit<AddToSpecificationDialogState, 'specifications'> = {
   availableNeedsRefs: [],
   isOpen: false,
   needsReferenceId: '',
+  needsReferenceDescription: '',
   needsReferenceMode: 'none',
   needsReferenceText: '',
   needsReferencesError: null,
@@ -122,6 +125,7 @@ function addToSpecificationDialogReducer(
         ...state,
         availableNeedsRefs: [],
         needsReferenceId: '',
+        needsReferenceDescription: '',
         needsReferenceMode: 'none',
         needsReferenceText: '',
         needsReferencesError: null,
@@ -152,6 +156,8 @@ function addToSpecificationDialogReducer(
       }
     case 'set_needs_reference_text':
       return { ...state, needsReferenceText: action.text }
+    case 'set_needs_reference_description':
+      return { ...state, needsReferenceDescription: action.description }
     case 'submit_start':
       return {
         ...state,
@@ -187,6 +193,7 @@ export interface UseAddToSpecificationDialogResult {
   handleSpecificationSelect: (specificationId: string) => Promise<void>
   handleSubmit: (event: FormEvent) => Promise<void>
   openDialog: () => Promise<void>
+  setNeedsReferenceDescription: (description: string) => void
   setNeedsReferenceMode: (
     mode: AddToSpecificationNeedsRefMode,
     needsReferenceId?: number | '',
@@ -373,6 +380,7 @@ export function useAddToSpecificationDialog({
       dispatch({ type: 'submit_start' })
       const body: {
         requirementIds: number[]
+        needsReferenceDescription?: string | null
         needsReferenceId?: number | null
         needsReferenceText?: string | null
       } = { requirementIds: [requirementInternalId] }
@@ -386,6 +394,8 @@ export function useAddToSpecificationDialog({
         state.needsReferenceText.trim()
       ) {
         body.needsReferenceText = state.needsReferenceText.trim()
+        body.needsReferenceDescription =
+          state.needsReferenceDescription.trim() || null
       }
       try {
         const res = await apiFetch(
@@ -434,6 +444,7 @@ export function useAddToSpecificationDialog({
       isActiveSession,
       requirementInternalId,
       state.needsReferenceId,
+      state.needsReferenceDescription,
       state.needsReferenceMode,
       state.needsReferenceText,
       state.specificationId,
@@ -452,6 +463,10 @@ export function useAddToSpecificationDialog({
     dispatch({ text, type: 'set_needs_reference_text' })
   }, [])
 
+  const setNeedsReferenceDescription = useCallback((description: string) => {
+    dispatch({ description, type: 'set_needs_reference_description' })
+  }, [])
+
   const toggleHelp = useCallback((field: string) => {
     dispatch({ field, type: 'toggle_help' })
   }, [])
@@ -462,6 +477,7 @@ export function useAddToSpecificationDialog({
     handleSubmit,
     openDialog,
     setNeedsReferenceMode,
+    setNeedsReferenceDescription,
     setNeedsReferenceText,
     state,
     toggleHelp,

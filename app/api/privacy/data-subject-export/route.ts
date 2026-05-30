@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
+import { createElement } from 'react'
 import { z } from 'zod'
+import DataSubjectExportPdfRenderer from '@/components/privacy/DataSubjectExportPdfRenderer'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { CsrfError } from '@/lib/auth/csrf'
 import { isHsaId } from '@/lib/auth/hsa-id'
@@ -14,11 +16,13 @@ import {
   customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { boundedDbStringSchema } from '@/lib/http/validation'
+import { boundedDbStringSchema, localeSchema } from '@/lib/http/validation'
+import { renderPdfResponse } from '@/lib/pdf/server-response'
 import {
   type CollectDataSubjectExportInput,
   collectDataSubjectExport,
 } from '@/lib/privacy/data-subject-export'
+import { dataSubjectExportFilename } from '@/lib/privacy/data-subject-export-filenames'
 import type { DataSubjectExportSessionClaims } from '@/lib/privacy/data-subject-export-types'
 import { auditActor, unexpectedErrorBody } from '@/lib/privacy/route-helpers'
 import {
@@ -41,6 +45,7 @@ const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
 const dataSubjectExportSchema = z
   .object({
     delivery: z.union([z.literal('json'), z.literal('pdf')]),
+    locale: localeSchema.optional().default('sv'),
     target: z
       .object({
         hsaId: hsaIdSchema,
@@ -149,6 +154,16 @@ export const POST = secureMutationRoute({
         outcome: 'success',
         request: context.request ?? request,
       })
+
+      if (body.delivery === 'pdf') {
+        return renderPdfResponse(
+          createElement(DataSubjectExportPdfRenderer, {
+            exportData: exportPayload,
+            locale: body.locale,
+          }),
+          dataSubjectExportFilename(exportPayload, 'pdf'),
+        )
+      }
 
       return NextResponse.json(exportPayload, {
         headers: { 'Cache-Control': 'no-store' },

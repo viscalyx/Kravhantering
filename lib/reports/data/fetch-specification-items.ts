@@ -4,7 +4,6 @@ import { assertReportItemCount } from '@/lib/reports/limits'
 export async function fetchSpecificationItemsForReport(
   specificationIdOrSlug: number | string,
   itemRefs: string[],
-  locale: string,
 ): Promise<RequirementReportData[]> {
   assertReportItemCount(itemRefs.length)
   const refs = itemRefs.map(ref => encodeURIComponent(ref)).join(',')
@@ -12,7 +11,7 @@ export async function fetchSpecificationItemsForReport(
   const response = await fetch(
     `${baseUrl}/api/specifications/${encodeURIComponent(
       String(specificationIdOrSlug),
-    )}/report-items?locale=${encodeURIComponent(locale)}&refs=${refs}`,
+    )}/report-items?refs=${refs}`,
   )
 
   if (!response.ok) {

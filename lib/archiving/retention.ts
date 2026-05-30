@@ -237,9 +237,6 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
       WHERE area.id = @0
         AND NOT EXISTS (
           SELECT 1 FROM requirements requirement WHERE requirement.requirement_area_id = area.id
-        )
-        AND NOT EXISTS (
-          SELECT 1 FROM specification_local_requirements local_requirement WHERE local_requirement.requirement_area_id = area.id
         )`,
     fieldKey: 'taxonomy',
     objectKey: 'requirementAreas',
@@ -257,9 +254,6 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
         WHERE area.updated_at <= @0
           AND NOT EXISTS (
             SELECT 1 FROM requirements requirement WHERE requirement.requirement_area_id = area.id
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM specification_local_requirements local_requirement WHERE local_requirement.requirement_area_id = area.id
           )
       ) source
       WHERE ${ACTIVE_EXCEPTION_SQL}
@@ -1012,9 +1006,9 @@ async function exportSpecification(
         CASE WHEN specification.responsible_display_name IS NULL THEN NULL ELSE N'no-user' END AS responsibleDisplayName,
         CAST(NULL AS nvarchar(64)) AS responsibleHsaId,
         CAST(specification.can_responsible_generate_ai AS int) AS canResponsibleGenerateAi,
-        responsibility_area.id AS responsibilityAreaId,
-        responsibility_area.name_sv AS responsibilityAreaNameSv,
-        responsibility_area.name_en AS responsibilityAreaNameEn,
+        governance_object_type.id AS governanceObjectTypeId,
+        governance_object_type.name_sv AS governanceObjectTypeNameSv,
+        governance_object_type.name_en AS governanceObjectTypeNameEn,
         implementation_type.id AS implementationTypeId,
         implementation_type.name_sv AS implementationTypeNameSv,
         implementation_type.name_en AS implementationTypeNameEn,
@@ -1022,8 +1016,8 @@ async function exportSpecification(
         lifecycle_status.name_sv AS lifecycleStatusNameSv,
         lifecycle_status.name_en AS lifecycleStatusNameEn
       FROM requirements_specifications specification
-      LEFT JOIN specification_responsibility_areas responsibility_area
-        ON responsibility_area.id = specification.specification_responsibility_area_id
+      LEFT JOIN specification_governance_object_types governance_object_type
+        ON governance_object_type.id = specification.specification_governance_object_type_id
       LEFT JOIN specification_implementation_types implementation_type
         ON implementation_type.id = specification.specification_implementation_type_id
       LEFT JOIN specification_lifecycle_statuses lifecycle_status
@@ -1052,7 +1046,12 @@ async function exportSpecification(
     localDeviations,
   ] = await Promise.all([
     db.query(
-      `SELECT id, text, created_at AS createdAt
+      `SELECT
+          id,
+          text,
+          description,
+          created_at AS createdAt,
+          updated_at AS updatedAt
         FROM specification_needs_references
         WHERE specification_id = @0
         ORDER BY id ASC`,
@@ -1210,9 +1209,6 @@ async function exportSpecification(
           specification_item_status.name_sv AS specificationItemStatusNameSv,
           specification_item_status.name_en AS specificationItemStatusNameEn,
           specification_item_status.color AS specificationItemStatusColor,
-          requirement_area.id AS requirementAreaId,
-          requirement_area.prefix AS requirementAreaPrefix,
-          requirement_area.name AS requirementAreaName,
           category.id AS categoryId,
           category.name_sv AS categoryNameSv,
           category.name_en AS categoryNameEn,
@@ -1229,7 +1225,6 @@ async function exportSpecification(
         FROM specification_local_requirements local_requirement
         LEFT JOIN specification_needs_references needs_reference ON needs_reference.id = local_requirement.needs_reference_id
         LEFT JOIN specification_item_statuses specification_item_status ON specification_item_status.id = local_requirement.specification_item_status_id
-        LEFT JOIN requirement_areas requirement_area ON requirement_area.id = local_requirement.requirement_area_id
         LEFT JOIN requirement_categories category ON category.id = local_requirement.requirement_category_id
         LEFT JOIN requirement_types requirement_type ON requirement_type.id = local_requirement.requirement_type_id
         LEFT JOIN quality_characteristics quality_characteristic ON quality_characteristic.id = local_requirement.quality_characteristic_id
@@ -1332,7 +1327,7 @@ async function buildArchiveExport(
       policyKey: preview.policy.policyKey,
       statusCondition: preview.policy.statusCondition,
     },
-    schemaVersion: 'archiving-retention-export.v2',
+    schemaVersion: 'archiving-retention-export.v3',
     specifications: await Promise.all(
       specificationCandidates.map(candidate =>
         exportSpecification(db, numericSubjectId(candidate)),

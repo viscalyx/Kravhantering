@@ -53,13 +53,7 @@ function mapSpecificationLocalRequirementToReportData(
   >,
 ): RequirementReportData {
   return {
-    area: requirement.requirementArea
-      ? {
-          id: requirement.requirementArea.id,
-          name: requirement.requirementArea.name,
-          ownerName: null,
-        }
-      : null,
+    area: null,
     createdAt: requirement.createdAt,
     id: requirement.id,
     isArchived: false,

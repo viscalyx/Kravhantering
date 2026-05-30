@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createSpecification,
   createSpecificationLocalRequirement,
+  createSpecificationNeedsReference,
   deleteSpecification,
   deleteSpecificationItemsByRefs,
   deleteSpecificationLocalRequirement,
+  deleteSpecificationNeedsReference,
   getOrCreateSpecificationNeedsReference,
   getSpecificationById,
   getSpecificationLocalRequirementDetail,
@@ -18,6 +20,7 @@ import {
   updateSpecification,
   updateSpecificationItemFieldsByItemRef,
   updateSpecificationLocalRequirement,
+  updateSpecificationNeedsReference,
 } from '@/lib/dal/requirements-specifications'
 import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 
@@ -50,7 +53,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           id: 1,
           uniqueId: 'PKG-001',
           name: 'Specification A',
-          specificationResponsibilityAreaId: 4,
+          specificationGovernanceObjectTypeId: 4,
           specificationImplementationTypeId: 2,
           specificationLifecycleStatusId: 3,
           businessNeedsReference: 'Strategic need',
@@ -59,8 +62,8 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           canResponsibleGenerateAi: 1,
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-21T10:00:00.000Z'),
-          responsibilityAreaNameSv: 'Plattform',
-          responsibilityAreaNameEn: 'Platform',
+          governanceObjectTypeNameSv: 'Plattform',
+          governanceObjectTypeNameEn: 'Platform',
           implementationTypeNameSv: 'Införande',
           implementationTypeNameEn: 'Implementation',
           lifecycleStatusNameSv: 'Planerad',
@@ -71,9 +74,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([{ specificationId: 1, count: 1 }])
       .mockResolvedValueOnce([
         { specificationId: 1, areaId: 8, areaName: 'Security' },
-      ])
-      .mockResolvedValueOnce([
-        { specificationId: 1, areaId: 4, areaName: 'Accessibility' },
       ])
 
     const result = await listSpecifications(db)
@@ -88,7 +88,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         id: 1,
         uniqueId: 'PKG-001',
         name: 'Specification A',
-        specificationResponsibilityAreaId: 4,
+        specificationGovernanceObjectTypeId: 4,
         specificationImplementationTypeId: 2,
         specificationLifecycleStatusId: 3,
         businessNeedsReference: 'Strategic need',
@@ -97,7 +97,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         canResponsibleGenerateAi: true,
         createdAt: '2026-04-20T10:00:00.000Z',
         updatedAt: '2026-04-21T10:00:00.000Z',
-        responsibilityArea: {
+        governanceObjectType: {
           id: 4,
           nameSv: 'Plattform',
           nameEn: 'Platform',
@@ -113,10 +113,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           nameEn: 'Planned',
         },
         itemCount: 3,
-        requirementAreas: [
-          { id: 4, name: 'Accessibility' },
-          { id: 8, name: 'Security' },
-        ],
+        requirementAreas: [{ id: 8, name: 'Security' }],
       },
     ])
   })
@@ -128,7 +125,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         id: 2,
         uniqueId: 'PKG-002',
         name: 'Specification B',
-        specificationResponsibilityAreaId: 1,
+        specificationGovernanceObjectTypeId: 1,
         specificationImplementationTypeId: 5,
         specificationLifecycleStatusId: 7,
         businessNeedsReference: null,
@@ -137,9 +134,9 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         canResponsibleGenerateAi: 0,
         createdAt: new Date('2026-04-20T09:00:00.000Z'),
         updatedAt: new Date('2026-04-21T09:00:00.000Z'),
-        responsibilityAreaId: 1,
-        responsibilityAreaNameSv: 'Säkerhet',
-        responsibilityAreaNameEn: 'Security',
+        governanceObjectTypeId: 1,
+        governanceObjectTypeNameSv: 'Säkerhet',
+        governanceObjectTypeNameEn: 'Security',
         implementationTypeId: 5,
         implementationTypeNameSv: 'Anpassning',
         implementationTypeNameEn: 'Customization',
@@ -155,7 +152,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       id: 2,
       uniqueId: 'PKG-002',
       name: 'Specification B',
-      specificationResponsibilityAreaId: 1,
+      specificationGovernanceObjectTypeId: 1,
       specificationImplementationTypeId: 5,
       specificationLifecycleStatusId: 7,
       businessNeedsReference: null,
@@ -164,7 +161,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       canResponsibleGenerateAi: false,
       createdAt: '2026-04-20T09:00:00.000Z',
       updatedAt: '2026-04-21T09:00:00.000Z',
-      responsibilityArea: { id: 1, nameSv: 'Säkerhet', nameEn: 'Security' },
+      governanceObjectType: { id: 1, nameSv: 'Säkerhet', nameEn: 'Security' },
       implementationType: {
         id: 5,
         nameSv: 'Anpassning',
@@ -189,8 +186,24 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
   it('lists specification needs references on the SQL Server path', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([
-      { id: 4, text: 'Accessibility need' },
-      { id: 8, text: 'Security need' },
+      {
+        createdAt: new Date('2026-04-20T10:00:00.000Z'),
+        description: null,
+        id: 4,
+        libraryItemCount: 1,
+        specificationLocalRequirementCount: 0,
+        text: 'Accessibility need',
+        updatedAt: new Date('2026-04-20T10:00:00.000Z'),
+      },
+      {
+        createdAt: new Date('2026-04-21T10:00:00.000Z'),
+        description: 'Security context',
+        id: 8,
+        libraryItemCount: 1,
+        specificationLocalRequirementCount: 1,
+        text: 'Security need',
+        updatedAt: new Date('2026-04-22T10:00:00.000Z'),
+      },
     ])
 
     const result = await listSpecificationNeedsReferences(db, 12)
@@ -202,8 +215,26 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       [12],
     )
     expect(result).toEqual([
-      { id: 4, text: 'Accessibility need' },
-      { id: 8, text: 'Security need' },
+      {
+        createdAt: '2026-04-20T10:00:00.000Z',
+        description: null,
+        id: 4,
+        libraryItemCount: 1,
+        linkedItemCount: 1,
+        specificationLocalRequirementCount: 0,
+        text: 'Accessibility need',
+        updatedAt: '2026-04-20T10:00:00.000Z',
+      },
+      {
+        createdAt: '2026-04-21T10:00:00.000Z',
+        description: 'Security context',
+        id: 8,
+        libraryItemCount: 1,
+        linkedItemCount: 2,
+        specificationLocalRequirementCount: 1,
+        text: 'Security need',
+        updatedAt: '2026-04-22T10:00:00.000Z',
+      },
     ])
   })
 
@@ -215,7 +246,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           id: 11,
           uniqueId: 'SPEC-011',
           name: 'Specification Eleven',
-          specificationResponsibilityAreaId: 2,
+          specificationGovernanceObjectTypeId: 2,
           specificationImplementationTypeId: null,
           specificationLifecycleStatusId: 4,
           businessNeedsReference: 'Need',
@@ -231,7 +262,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           id: 11,
           uniqueId: 'SPEC-011',
           name: 'Specification Eleven Updated',
-          specificationResponsibilityAreaId: 2,
+          specificationGovernanceObjectTypeId: 2,
           specificationImplementationTypeId: null,
           specificationLifecycleStatusId: 4,
           businessNeedsReference: null,
@@ -246,7 +277,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     const created = await createSpecification(db, {
       uniqueId: 'SPEC-011',
       name: 'Specification Eleven',
-      specificationResponsibilityAreaId: 2,
+      specificationGovernanceObjectTypeId: 2,
       specificationLifecycleStatusId: 4,
       businessNeedsReference: 'Need',
       responsibleHsaId: 'SE5560000001-ada1',
@@ -265,7 +296,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       id: 11,
       uniqueId: 'SPEC-011',
       name: 'Specification Eleven',
-      specificationResponsibilityAreaId: 2,
+      specificationGovernanceObjectTypeId: 2,
       specificationLifecycleStatusId: 4,
       responsibleHsaId: 'SE5560000001-ada1',
       responsibleDisplayName: 'Ada Admin',
@@ -352,8 +383,154 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(result).toBe(33)
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO specification_needs_references'),
-      [5, 'Shared specification need', expect.any(Date)],
+      [5, 'Shared specification need', null, expect.any(Date)],
     )
+  })
+
+  it('creates specification needs references with descriptions on SQL Server', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        createdAt: new Date('2026-04-20T10:00:00.000Z'),
+        description: 'Access management work',
+        id: 33,
+        libraryItemCount: 0,
+        specificationLocalRequirementCount: 0,
+        text: 'IAM-42',
+        updatedAt: new Date('2026-04-20T10:00:00.000Z'),
+      },
+    ])
+
+    const result = await createSpecificationNeedsReference(db, 5, {
+      description: ' Access management work ',
+      text: ' IAM-42 ',
+    })
+
+    expect(result).toMatchObject({
+      description: 'Access management work',
+      id: 33,
+      linkedItemCount: 0,
+      text: 'IAM-42',
+    })
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('FROM specification_needs_references'),
+      [5, 'IAM-42'],
+    )
+    expect(query.mock.calls[0]?.[0]).not.toContain('needs_reference.id <> @2')
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('INSERT INTO specification_needs_references'),
+      [5, 'IAM-42', 'Access management work', expect.any(Date)],
+    )
+  })
+
+  it('rejects duplicate specification needs references before insert', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([{ id: 33 }])
+
+    await expect(
+      createSpecificationNeedsReference(db, 5, {
+        description: null,
+        text: 'IAM-42',
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      message: 'Needs reference already exists in this specification',
+    })
+
+    expect(query).toHaveBeenCalledTimes(1)
+  })
+
+  it('updates specification needs references on SQL Server', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([{ id: 33, text: 'IAM-42' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          createdAt: new Date('2026-04-20T10:00:00.000Z'),
+          description: 'Updated context',
+          id: 33,
+          libraryItemCount: 1,
+          specificationLocalRequirementCount: 1,
+          text: 'IAM-43',
+          updatedAt: new Date('2026-04-21T10:00:00.000Z'),
+        },
+      ])
+
+    const result = await updateSpecificationNeedsReference(db, 5, 33, {
+      description: ' Updated context ',
+      text: ' IAM-43 ',
+    })
+
+    expect(result).toMatchObject({
+      description: 'Updated context',
+      id: 33,
+      linkedItemCount: 2,
+      text: 'IAM-43',
+    })
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('AND needs_reference.id <> @2'),
+      [5, 'IAM-43', 33],
+    )
+    expect(query).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('UPDATE specification_needs_references'),
+      ['IAM-43', 'Updated context', expect.any(Date), 33, 5],
+    )
+  })
+
+  it('deletes only unused specification needs references', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          createdAt: new Date('2026-04-20T10:00:00.000Z'),
+          description: null,
+          id: 33,
+          libraryItemCount: 0,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: new Date('2026-04-20T10:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([{ id: 33 }])
+
+    await expect(deleteSpecificationNeedsReference(db, 5, 33)).resolves.toBe(
+      true,
+    )
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('DELETE FROM specification_needs_references'),
+      [33, 5],
+    )
+  })
+
+  it('blocks deleting specification needs references that are in use', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        createdAt: new Date('2026-04-20T10:00:00.000Z'),
+        description: null,
+        id: 33,
+        libraryItemCount: 1,
+        specificationLocalRequirementCount: 0,
+        text: 'IAM-42',
+        updatedAt: new Date('2026-04-20T10:00:00.000Z'),
+      },
+    ])
+
+    await expect(
+      deleteSpecificationNeedsReference(db, 5, 33),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      message:
+        'Needs reference is used by requirement applications or unique requirements',
+    })
+    expect(query).toHaveBeenCalledTimes(1)
   })
 
   it('gets specification-local requirement detail on SQL Server', async () => {
@@ -382,8 +559,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           qualityCharacteristicId: 4,
           qualityCharacteristicNameEn: 'Security',
           qualityCharacteristicNameSv: 'Säkerhet',
-          requirementAreaId: 7,
-          requirementAreaName: 'Platform',
           requirementCategoryId: 8,
           requirementCategoryNameEn: 'Functional',
           requirementCategoryNameSv: 'Funktionell',
@@ -447,7 +622,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         nameEn: 'Security',
         nameSv: 'Säkerhet',
       },
-      requirementArea: { id: 7, name: 'Platform' },
+      requirementArea: null,
       requirementCategory: {
         id: 8,
         nameEn: 'Functional',
@@ -477,7 +652,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
   it('creates and updates specification-local requirements on SQL Server', async () => {
     const { db, query, transaction } = createSqlServerDb()
     query
-      .mockResolvedValueOnce([{ id: 7 }])
       .mockResolvedValueOnce([{ id: 11 }])
       .mockResolvedValueOnce([{ id: 13 }])
       .mockResolvedValueOnce([{ nextSequence: 2 }])
@@ -504,8 +678,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationItemStatusNameEn: 'Default',
           specificationItemStatusNameSv: 'Standard',
           qualityCharacteristicId: null,
-          requirementAreaId: 7,
-          requirementAreaName: 'Platform',
           requirementCategoryId: null,
           requirementTypeId: null,
           riskLevelId: null,
@@ -516,7 +688,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         { id: 41, specificationId: 5, sequenceNumber: 1, uniqueId: 'LOK-001' },
       ])
-      .mockResolvedValueOnce([{ id: 7 }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
@@ -540,8 +711,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationItemStatusNameEn: 'Default',
           specificationItemStatusNameSv: 'Standard',
           qualityCharacteristicId: null,
-          requirementAreaId: 7,
-          requirementAreaName: 'Platform',
           requirementCategoryId: null,
           requirementTypeId: null,
           riskLevelId: null,
@@ -553,14 +722,12 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     const created = await createSpecificationLocalRequirement(db, 5, {
       description: 'Created local requirement',
       normReferenceIds: [11],
-      requirementAreaId: 7,
       requirementPackageIds: [13],
     })
 
     const updated = await updateSpecificationLocalRequirement(db, 5, 41, {
       acceptanceCriteria: 'Updated AC',
       description: 'Updated local requirement',
-      requirementAreaId: 7,
       requiresTesting: true,
       verificationMethod: 'Checklist',
     })
@@ -587,7 +754,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       5,
       'KRAV0001',
       1,
-      7,
       'Created local requirement',
       null,
       null,
@@ -604,12 +770,11 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
 
   it('rejects unknown specification-local create references before inserts', async () => {
     const { db, query, transaction } = createSqlServerDb()
-    query.mockResolvedValueOnce([{ id: 7 }]).mockResolvedValueOnce([])
+    query.mockResolvedValueOnce([])
 
     await expect(
       createSpecificationLocalRequirement(db, 5, {
         description: 'Created local requirement',
-        requirementAreaId: 7,
         requirementPackageIds: [13],
       }),
     ).rejects.toMatchObject({
@@ -621,7 +786,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
 
     expect(transaction).not.toHaveBeenCalled()
     expect(query.mock.calls.map(([sql]) => String(sql))).toEqual([
-      expect.stringContaining('FROM requirement_areas'),
       expect.stringContaining('FROM requirement_packages'),
     ])
   })
@@ -855,7 +1019,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     )
   })
 
-  it('lists specification items on SQL Server', async () => {
+  it('lists requirement applications on SQL Server', async () => {
     const { db, query } = createSqlServerDb()
     query
       .mockResolvedValueOnce([
@@ -914,7 +1078,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationItemStatusNameSv: 'Pågående',
           qualityCharacteristicNameEn: 'Security',
           qualityCharacteristicNameSv: 'Säkerhet',
-          requirementAreaName: 'Platform',
           requirementCategoryNameEn: 'Functional',
           requirementCategoryNameSv: 'Funktionell',
           requirementTypeNameEn: 'Business',
@@ -951,6 +1114,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         id: -41,
         itemRef: 'local:41',
         kind: 'specificationLocal',
+        area: null,
         specificationItemStatusIconName: 'Clock',
         uniqueId: 'KRAV0001',
         version: expect.objectContaining({
@@ -970,7 +1134,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     ])
   })
 
-  it('updates specification item fields by item ref on SQL Server', async () => {
+  it('updates requirement application fields by item ref on SQL Server', async () => {
     const { db, query } = createSqlServerDb()
     query
       .mockResolvedValueOnce([
@@ -1009,7 +1173,44 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     )
   })
 
-  it('rejects clearing library specification item status before SQL update', async () => {
+  it('rejects needs references from another specification before item updates', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          id: 31,
+          specificationId: 5,
+          requirementId: 7,
+          requirementVersionId: 101,
+          needsReferenceId: null,
+          specificationItemStatusId: 1,
+          note: null,
+          statusUpdatedAt: null,
+          unused1: null,
+          createdAt: new Date('2026-04-20T10:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([])
+
+    await expect(
+      updateSpecificationItemFieldsByItemRef(db, 5, 'lib:31', {
+        needsReferenceId: 99,
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message:
+        'needsReferenceId does not belong to this requirements specification',
+    })
+
+    expect(query).toHaveBeenCalledTimes(2)
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('FROM specification_needs_references'),
+      [99, 5],
+    )
+  })
+
+  it('rejects clearing library usage status before SQL update', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([
       {
@@ -1033,7 +1234,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       >[3]),
     ).rejects.toMatchObject({
       code: 'validation',
-      message: 'Specification item status cannot be cleared',
+      message: 'Usage status cannot be cleared',
     })
 
     expect(query).toHaveBeenCalledTimes(1)
@@ -1043,7 +1244,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     )
   })
 
-  it('rejects custom library specification item status before status lookup', async () => {
+  it('rejects custom library usage status before status lookup', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([
       {
@@ -1065,7 +1266,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       }),
     ).rejects.toMatchObject({
       code: 'validation',
-      message: 'Invalid specification item status ID',
+      message: 'Invalid usage status ID',
     })
 
     expect(query).toHaveBeenCalledTimes(1)
@@ -1093,7 +1294,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       >[3]),
     ).rejects.toMatchObject({
       code: 'validation',
-      message: 'Specification item status cannot be cleared',
+      message: 'Usage status cannot be cleared',
     })
 
     expect(query).toHaveBeenCalledTimes(1)
@@ -1120,7 +1321,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     )
   })
 
-  it('deletes mixed specification items by refs on SQL Server inside one transaction', async () => {
+  it('deletes mixed requirement applications by refs on SQL Server inside one transaction', async () => {
     const { db, query, transaction } = createSqlServerDb()
     query.mockResolvedValueOnce([{ id: 31 }]).mockResolvedValueOnce([{ id: 4 }])
 

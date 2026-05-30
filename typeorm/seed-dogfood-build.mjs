@@ -240,7 +240,7 @@ export function appendDogfoodSeed(SEED_DATA) {
     // local_requirement_next_sequence will be patched after specification locals.
     specifications.rows.push([
       p.id,
-      p.responsibility,
+      p.governanceObjectType,
       p.impl,
       SEED_TS,
       SEED_TS,
@@ -259,7 +259,14 @@ export function appendDogfoodSeed(SEED_DATA) {
     const nr = DOGFOOD_NEEDS_REFS[i]
     const id = NEEDS_REF_ID_BASE + i + 1
     needsRefIds.push(id)
-    needsRefs.rows.push([id, nr.spec, nr.text, SEED_TS])
+    needsRefs.rows.push([
+      id,
+      nr.spec,
+      nr.text,
+      nr.description ?? null,
+      SEED_TS,
+      SEED_TS,
+    ])
   }
 
   // ---- specification_local_requirements + their junctions -----------------------
@@ -297,7 +304,6 @@ export function appendDogfoodSeed(SEED_DATA) {
       pl.spec,
       uniqueId,
       seq,
-      k.area,
       k.desc + (pl.descSuffix || ''),
       k.ac + (pl.acSuffix || ''),
       k.cat,

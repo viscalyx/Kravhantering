@@ -1,7 +1,7 @@
 import { EntitySchema } from 'typeorm'
+import type { SpecificationGovernanceObjectTypeEntity } from '@/lib/typeorm/entities/specification-governance-object-type'
 import type { SpecificationImplementationTypeEntity } from '@/lib/typeorm/entities/specification-implementation-type'
 import type { SpecificationLifecycleStatusEntity } from '@/lib/typeorm/entities/specification-lifecycle-status'
-import type { SpecificationResponsibilityAreaEntity } from '@/lib/typeorm/entities/specification-responsibility-area'
 
 export interface RequirementsSpecificationEntity {
   businessNeedsReference: string | null
@@ -12,9 +12,9 @@ export interface RequirementsSpecificationEntity {
   name: string
   responsibleDisplayName: string | null
   responsibleHsaId: string | null
+  specificationGovernanceObjectType: SpecificationGovernanceObjectTypeEntity | null
   specificationImplementationType: SpecificationImplementationTypeEntity | null
   specificationLifecycleStatus: SpecificationLifecycleStatusEntity | null
-  specificationResponsibilityArea: SpecificationResponsibilityAreaEntity | null
   uniqueId: string
   updatedAt: Date
 }
@@ -86,14 +86,14 @@ export const requirementsSpecificationEntity =
       },
     ],
     relations: {
-      specificationResponsibilityArea: {
+      specificationGovernanceObjectType: {
         type: 'many-to-one',
-        target: 'SpecificationResponsibilityArea',
+        target: 'SpecificationGovernanceObjectType',
         joinColumn: {
-          name: 'specification_responsibility_area_id',
+          name: 'specification_governance_object_type_id',
           referencedColumnName: 'id',
           foreignKeyConstraintName:
-            'fk_requirements_specifications_specification_responsibility_area_id',
+            'fk_requirements_specifications_specification_governance_object_type_id',
         },
         nullable: true,
         onDelete: 'NO ACTION',

@@ -1,7 +1,7 @@
 <!-- AUTO-GENERERAD — redigera inte manuellt. Kör: npm run generate:guide -->
 # Kravhantering — Användarguide
 
-> Guiden genererades automatiskt av Playwright 2026-05-19.
+> Guiden genererades automatiskt av Playwright 2026-05-28.
 > Alla skärmdumpar visar det svenska gränssnittet.
 
 ## Innehållsförteckning
@@ -49,7 +49,7 @@ användaren själv väljer för varje krav.
 ### Kravbiblioteket — Översikt
 
 Kravbiblioteket listar alla krav i en sorterbar och filtrerbar tabell. Varje rad
-visar nyckeluppgifter som ID, kravtext, område, status och risknivå. Kolumnerna
+visar nyckeluppgifter som ID, kravtext, kravområde, status och risknivå. Kolumnerna
 kan konfigureras efter behov.
 
 ![Kravbiblioteket — Översikt](images/004-kravbibliotek.png)
@@ -100,8 +100,8 @@ följer en översikt av varje egenskap och hur den stödjer kravets livscykel.
 <!-- markdownlint-disable MD013 -->
 | Egenskap | Beskrivning |
 | --- | --- |
-| **Krav-ID** | Genereras automatiskt utifrån områdets prefix och ett löpnummer. Det är den stabila identifieraren som används för spårbarhet i kravunderlag, rapporter och korsreferenser. Du kan inte redigera det direkt — det tilldelas när kravet skapas. |
-| **Område** | Grupperar krav efter domän, till exempel Integration eller Ärendehantering. Området styr ID-prefixet och avgör vilket team som ansvarar för kravet. Det måste anges när kravet skapas och kan inte ändras efteråt. |
+| **Krav-ID** | Genereras automatiskt utifrån kravområdets prefix och ett löpnummer. Det är den stabila identifieraren som används för spårbarhet i kravunderlag, rapporter och korsreferenser. Du kan inte redigera det direkt — det tilldelas när kravet skapas. |
+| **Kravområde** | Grupperar krav efter domän, till exempel Integration eller Ärendehantering. Kravområdet styr ID-prefixet och avgör vilket team som ansvarar för kravet. Det måste anges när kravet skapas och kan inte ändras efteråt. |
 | **Kravtext** | Den centrala beskrivningen av vad som ska uppfyllas. Det är huvudinnehållet som intressenter granskar under granskningsfasen och som blir bindande när kravet publiceras. Håll texten tydlig och testbar. |
 | **Acceptanskriterier** | Mätbara villkor som måste vara uppfyllda för att kravet ska anses vara uppnått. De är viktiga vid verifiering och testning och hjälper granskare att förstå den exakta avsikten bakom kravtexten. |
 | **Kategori** | Klassificerar kravet som Verksamhet, IT eller Leverantör. Det underlättar filtrering i katalogen och gör det enklare att tilldela ansvar till rätt team eller intressentgrupp. |
@@ -151,7 +151,7 @@ det tillfället. Användbara för revision och spårbarhet.
 ### Skapa krav — tomt formulär
 
 Navigera till "Skapa nytt krav" via knappen i kravbiblioteket. Formuläret
-innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier, område,
+innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier, kravområde,
 kategori, typ, risknivå, kvalitetsegenskaper, verifieringsmetod, normreferenser
 och kravpaket.
 
@@ -159,7 +159,7 @@ och kravpaket.
 
 ### Skapa krav — ifyllt formulär
 
-Fyll i kravtext och acceptanskriterier. Välj sedan område, kategori, typ och
+Fyll i kravtext och acceptanskriterier. Välj sedan kravområde, kategori, typ och
 risknivå i respektive rullgardinsmeny. Alla obligatoriska fält markeras med
 asterisk (*). Klicka på "Spara" när formuläret är komplett.
 
@@ -219,13 +219,13 @@ granskningsprocessen.
 
 Ett **kravunderlag** samlar en uppsättning krav som hör ihop inom ramen för ett
 specifikt projekt, en leverans eller ett verksamhetsområde. Underlaget fungerar
-som en spårbar enhet — du kan följa implementationsstatus per krav, begära
+som en spårbar enhet — du kan följa användningsstatus per krav, begära
 avsteg och generera granskningsrapporter direkt från underlaget.
 
 ### Kravunderlagslista
 
-Listan visar underlagens namn, ID, livscykelstatus och genomförandeform. Klicka
-på ett underlag för att se dess detaljer.
+Listan visar underlagens namn, ID, kravunderlagets livscykelstatus och
+genomförandeform. Klicka på ett underlag för att se dess detaljer.
 
 ![Kravunderlagslista](images/021-kravunderlagslista.png)
 
@@ -245,11 +245,15 @@ samla krav som hör till ett specifikt projekt eller leverans.
 
 ### Kravunderlagsdetalj — delad vy
 
-Kravunderlagsdetaljsidan har en delad layout: **vänster panel** listar både
-bibliotekskrav och eventuella kravunderlagets unika krav med deras
-implementationsstatus, och **höger panel** visar tillgängliga bibliotekskrav att
-lägga till. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta
-kravunderlag. Klicka på en rad för att se kravets fullständiga detaljer.
+Kravunderlagsdetaljsidan har en delad layout: **vänster panel** har tabbarna
+**Krav i underlaget** och **Behovsreferenser** i listans rubrik, och **höger
+panel** visar tillgängliga bibliotekskrav att lägga till. I tabben för krav
+visas både bibliotekskrav och eventuella kravunderlagets unika krav med deras
+användningsstatus. Knapparna till höger i rubriken byts när du växlar tabb:
+tabben för krav har kravlistans verktyg, medan tabben för behovsreferenser har
+åtgärden för att skapa en ny referens. Knappen **"Nytt unikt krav"** skapar krav
+som bara finns i detta kravunderlag. Klicka på en rad för att se kravets
+fullständiga detaljer.
 
 ![Kravunderlagsdetalj — delad vy](images/024-kravunderlagsdetalj.png)
 
@@ -267,16 +271,18 @@ När du lägger till krav i ett kravunderlag kan du koppla en **behovsreferens**
 till kravtillämpningen. En behovsreferens är en fritext som förklarar varför
 kravet behövs i just det här kravunderlaget och kan ge stöd för när kravet ska
 verifieras — t.ex. ett ärendenummer, ett mål eller ett avsnitt i ett
-kravunderlag. Du kan välja en befintlig referens eller skriva en ny. Fältet är
-valfritt.
+kravunderlag. Du kan välja en befintlig referens eller skriva en ny med valfri
+beskrivning. I efter hand hanteras registret i tabben **Behovsreferenser**,
+medan kolumnen **Behovsreferens** används för att välja eller rensa befintliga
+referenser i tabellen.
 
 ![Lägg till krav — behovsreferens](images/026-lagg-till-krav-modal.png)
 
 ### Redigera kravunderlag
 
 Redigeringspanelen låter dig uppdatera underlagets namn, verksamhetsreferens,
-livscykelstatus, genomförandeform och verksamhetsobjekt. Klicka på "Spara" för
-att tillämpa ändringarna.
+kravunderlagets livscykelstatus, genomförandeform och styrningsobjektstyp.
+Klicka på "Spara" för att tillämpa ändringarna.
 
 ![Redigera kravunderlag](images/027-redigera-kravunderlag.png)
 
@@ -357,7 +363,7 @@ laddas ned som PDF.
 ### Förbättringsförslag — tom sektion
 
 Längst ned i inline-detaljvyn finns sektionen **Förbättringsförslag**. En
-ansvarig för ett kravunderlag (upphandling, projekt, förvaltning) kan lämna ett
+kravunderlagsansvarig (upphandling, projekt, förvaltning) kan lämna ett
 förslag på förbättring av kravet. Klicka på **"+ Registrera förslag"** för att
 öppna formuläret.
 
@@ -415,8 +421,9 @@ också ange standardvyer för olika kontexter.
 ### Admin — Referensdata
 
 Fliken **Referensdata** innehåller länkar till alla taxonomihanteringssidor:
-områden, typer, statusar, risknivåer, kvalitetsegenskaper, normreferenser och
-kravpaket. Här bygger du upp de grunddata som krav refererar till.
+kravområden, typer, kravversionsstatusar, risknivåer, kvalitetsegenskaper,
+normreferenser och kravpaket. Här bygger du upp de grunddata som krav
+refererar till.
 
 ![Admin — Referensdata](images/043-admin-referensdata.png)
 
@@ -424,19 +431,20 @@ kravpaket. Här bygger du upp de grunddata som krav refererar till.
 
 ### Kravområden
 
-Kravområden organiserar krav efter organisatorisk domän. Varje område har en
+Kravområden organiserar krav efter organisatorisk domän. Varje kravområde har en
 ägare, ett prefix som används i krav-ID (t.ex. "SÄK" ger ID:n som "SÄK0001") och
 en beskrivning.
 
 ![Kravområden](images/044-kravomraden.png)
 
-### Kravstatusar
+### Kravversionsstatusar
 
-Kravstatusar definierar livscykelstegen. De fyra systemstatusarna (Utkast,
-Granskning, Publicerad, Arkiverad) kan inte tas bort eller byta namn — de utgör
-ryggraden i arbetsflödet. Övriga statusar kan anpassas.
+Kravversionsstatusar definierar kravversionens livscykelsteg. De fyra
+systemstyrda kravversionsstatusarna (Utkast, Granskning, Publicerad,
+Arkiverad) kan inte tas bort eller byta namn — de utgör ryggraden i
+arbetsflödet. Övriga kravversionsstatusar kan anpassas.
 
-![Kravstatusar](images/045-kravstatusar.png)
+![Kravversionsstatusar](images/045-kravversionsstatusar.png)
 
 ### Risknivåer
 
@@ -490,7 +498,7 @@ version i omvänd kronologisk ordning med status, författare, tidsstämplar och
 utdrag ur kravtexten. Den publicerade versionen (om den finns) visas överst,
 följd av opublicerade versioner markerade som utkast eller granskning.
 
-**Åtkomst:** Rapportmenyn i kravdetaljvyn (alla statusar).
+**Åtkomst:** Rapportmenyn i kravdetaljvyn (alla kravversionsstatusar).
 
 **Rutt:** `/requirements/reports/print/history/[id]` (utskrift) ·
 `/requirements/reports/pdf/history/[id]` (PDF)
@@ -539,7 +547,7 @@ avsteget är i status *Granskning begärd* eller *Beslutad*).
 ### Kravlista
 
 Skriver ut de krav som för närvarande visas i kravbiblioteket som en formaterad
-tabell med Krav-ID, kravtext (trunkerad), område och status. Rubriken visar
+tabell med Krav-ID, kravtext (trunkerad), kravområde och status. Rubriken visar
 antal krav och tidsstämpel.
 
 **Åtkomst:** Utskriftsknappen i kravbibliotekets verktygsfält (alltid
@@ -556,8 +564,8 @@ genomförandeform, underlagssyfte) som rubrik.
 
 **Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält.
 
-**Rutt:** `/specifications/[slug]/reports/print/list?refs=...` (utskrift) · PDF
-genereras direkt i vyn.
+**Rutt:** `/specifications/[slug]/reports/print/list?refs=...` (utskrift) ·
+`/specifications/[slug]/reports/pdf/list?refs=...` (PDF)
 
 ### Ändringsförslagshistorik
 

@@ -1,10 +1,22 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
+import { useReducedMotion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsSpecificationDetailClient from '@/app/[locale]/specifications/[slug]/requirements-specification-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
+import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 import type { FilterOption } from '@/lib/requirements/list-view'
-import type { SpecificationPreloadError } from '@/lib/specifications/preload-types'
+import type {
+  RequirementsSpecificationDetailInitialData,
+  SpecificationPreloadError,
+} from '@/lib/specifications/preload-types'
 
 const requirementsTableMock = vi.fn()
 
@@ -23,6 +35,16 @@ vi.mock('next/navigation', () => ({
   }),
 }))
 
+vi.mock('@/lib/reduced-motion', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/reduced-motion')>()
+
+  return {
+    ...actual,
+    dialogPanelMotion: vi.fn(actual.dialogPanelMotion),
+    fadeMotion: vi.fn(actual.fadeMotion),
+  }
+})
+
 vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
   default: ({ requirementId }: { requirementId: number }) => (
     <div>{`Requirement detail ${requirementId}`}</div>
@@ -31,6 +53,7 @@ vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
 
 vi.mock('@/components/RequirementsTable', () => ({
   default: (props: {
+    defaultVisibleColumns?: string[]
     floatingActionRailPlacement?: string
     floatingActions?: {
       ariaLabel: string
@@ -45,6 +68,10 @@ vi.mock('@/components/RequirementsTable', () => ({
     loadingMore?: boolean
     onFilterChange?: (values: { requirementPackageIds?: number[] }) => void
     onLoadMore?: () => void | Promise<void>
+    onNeedsReferenceChange?: (
+      itemRef: string,
+      needsReferenceId: number | null,
+    ) => void
     onSelectionChange?: (ids: Set<number>) => void
     requirementPackages?: { id: number; nameEn: string; nameSv: string }[]
     rows: { id: number; itemRef?: string; requirementPackageIds?: number[] }[]
@@ -127,6 +154,17 @@ vi.mock('@/components/RequirementsTable', () => ({
             select
           </button>
         ) : null}
+        {props.onNeedsReferenceChange && props.rows[0]?.itemRef ? (
+          <button
+            aria-label={`assign-needs-ref-${props.rows[0].itemRef}`}
+            onClick={() =>
+              props.onNeedsReferenceChange?.(props.rows[0].itemRef ?? '', 81)
+            }
+            type="button"
+          >
+            assign needs ref
+          </button>
+        ) : null}
         {`rows:${props.rows.length}`}
       </div>
     )
@@ -156,6 +194,8 @@ function okJson(body: unknown) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 let addRequirementsResponse: { body: unknown; ok: boolean }
+let bulkNeedsReferencePatchError: Error | null
+let bulkNeedsReferencePatchResponse: { body: unknown; ok: boolean } | null
 let failNextAvailableRequirementsFetch = false
 let failNextSpecificationItemsFetch = false
 
@@ -170,8 +210,8 @@ const initialSpec = {
   responsibleHsaId: 'SE5560000001-ada1',
   specificationImplementationTypeId: 2,
   specificationLifecycleStatusId: 3,
-  specificationResponsibilityAreaId: 1,
-  responsibilityArea: { id: 1, nameEn: 'Platform', nameSv: 'Plattform' },
+  specificationGovernanceObjectTypeId: 1,
+  governanceObjectType: { id: 1, nameEn: 'Platform', nameSv: 'Plattform' },
   uniqueId: 'ETJANST-UPP-2026',
 }
 
@@ -232,7 +272,7 @@ const initialAvailableRequirement = {
   },
 }
 
-function createInitialData() {
+function createInitialData(): RequirementsSpecificationDetailInitialData {
   return {
     areas: [],
     availableNeedsRefs: [],
@@ -253,7 +293,7 @@ function createInitialData() {
     specificationLifecycleStatuses: [
       { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
     ],
-    specificationResponsibilityAreas: [
+    specificationGovernanceObjectTypes: [
       { id: 1, nameEn: 'Platform', nameSv: 'Plattform' },
     ],
   }
@@ -275,8 +315,11 @@ function renderRequirementsSpecificationDetailClient(
 describe('RequirementsSpecificationDetailClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useReducedMotion).mockReturnValue(false)
     requirementsTableMock.mockReset()
     addRequirementsResponse = { body: { ok: true }, ok: true }
+    bulkNeedsReferencePatchError = null
+    bulkNeedsReferencePatchResponse = null
     failNextAvailableRequirementsFetch = false
     failNextSpecificationItemsFetch = false
     fetchMock.mockImplementation(
@@ -298,8 +341,8 @@ describe('RequirementsSpecificationDetailClient', () => {
               canResponsibleGenerateAi: true,
               specificationImplementationTypeId: 2,
               specificationLifecycleStatusId: 3,
-              specificationResponsibilityAreaId: 1,
-              responsibilityArea: { nameEn: 'Platform', nameSv: 'Plattform' },
+              specificationGovernanceObjectTypeId: 1,
+              governanceObjectType: { nameEn: 'Platform', nameSv: 'Plattform' },
               uniqueId: 'ETJANST-UPP-2026',
             }),
           )
@@ -313,6 +356,23 @@ describe('RequirementsSpecificationDetailClient', () => {
             json: async () => addRequirementsResponse.body,
             ok: addRequirementsResponse.ok,
           })
+        }
+
+        if (
+          url === '/api/specifications/ETJANST-UPP-2026/items' &&
+          method === 'PATCH'
+        ) {
+          if (bulkNeedsReferencePatchError) {
+            return Promise.reject(bulkNeedsReferencePatchError)
+          }
+          if (bulkNeedsReferencePatchResponse) {
+            const response = bulkNeedsReferencePatchResponse
+            return Promise.resolve({
+              json: async () => response.body,
+              ok: response.ok,
+            })
+          }
+          return Promise.resolve(okJson({ ok: true, updatedCount: 1 }))
         }
 
         if (
@@ -418,14 +478,67 @@ describe('RequirementsSpecificationDetailClient', () => {
           return Promise.resolve(okJson({ requirementPackages: [] }))
         }
 
-        if (url === '/api/specifications/ETJANST-UPP-2026/needs-references') {
+        if (
+          url === '/api/specifications/ETJANST-UPP-2026/items/lib%3A31' &&
+          method === 'PATCH'
+        ) {
+          return Promise.resolve(okJson({ ok: true }))
+        }
+
+        if (
+          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          method === 'POST'
+        ) {
+          return Promise.resolve(
+            okJson({
+              needsReference: {
+                description: 'Access management work',
+                id: 81,
+                linkedItemCount: 0,
+                text: 'IAM-42',
+              },
+              ok: true,
+            }),
+          )
+        }
+
+        if (
+          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          method === 'PATCH'
+        ) {
+          return Promise.resolve(
+            okJson({
+              needsReference: {
+                description: 'Updated context',
+                id: 81,
+                linkedItemCount: 0,
+                text: 'IAM-43',
+              },
+              ok: true,
+            }),
+          )
+        }
+
+        if (
+          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          method === 'DELETE'
+        ) {
+          return Promise.resolve(okJson({ ok: true }))
+        }
+
+        if (
+          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          method === 'GET'
+        ) {
           return Promise.resolve(okJson({ needsReferences: [] }))
         }
 
-        if (url === '/api/specification-responsibility-areas') {
+        if (url === '/api/specification-governance-object-types') {
           return Promise.resolve(
             okJson({
-              areas: [{ id: 1, nameEn: 'Platform', nameSv: 'Plattform' }],
+              governanceObjectTypes: [
+                { id: 1, nameEn: 'Platform', nameSv: 'Plattform' },
+              ],
             }),
           )
         }
@@ -608,6 +721,34 @@ describe('RequirementsSpecificationDetailClient', () => {
     ])
   })
 
+  it('passes context-specific reset defaults to the detail tables', async () => {
+    renderRequirementsSpecificationDetailClient()
+
+    await waitFor(() => {
+      expect(requirementsTableMock.mock.calls.length).toBeGreaterThanOrEqual(2)
+    })
+
+    const tableProps = requirementsTableMock.mock.calls.map(call => call[0])
+    const leftTableProps = tableProps.find(
+      props => props.rows[0]?.id === initialSpecificationItem.id,
+    )
+    const rightTableProps = tableProps.find(
+      props => props.rows[0]?.id === initialAvailableRequirement.id,
+    )
+
+    expect(leftTableProps?.defaultVisibleColumns).toEqual([
+      'uniqueId',
+      'description',
+      'area',
+      'needsReference',
+    ])
+    expect(rightTableProps?.defaultVisibleColumns).toEqual([
+      'uniqueId',
+      'description',
+      'area',
+    ])
+  })
+
   it('loads persisted detail columns after the hydration-safe default render', async () => {
     const storedLeftColumns = [
       'uniqueId',
@@ -664,7 +805,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).toBe(JSON.stringify(storedLeftColumns))
   })
 
-  it('uses inline top rails and sticky table titles for the split tables', async () => {
+  it('uses inline top rails and embeds the left tabs in the sticky table title', async () => {
     const { container } = renderRequirementsSpecificationDetailClient()
 
     await waitFor(() => {
@@ -672,13 +813,26 @@ describe('RequirementsSpecificationDetailClient', () => {
     })
 
     expect(
-      screen.getByText('specification.itemsInSpecification', {
+      screen.queryByText('specification.itemsInSpecification', {
         selector: 'h2',
       }),
-    ).toBeInTheDocument()
+    ).not.toBeInTheDocument()
     expect(
       screen.getByText('specification.availableRequirements', {
         selector: 'h2',
+      }),
+    ).toBeInTheDocument()
+    const leftStickyTitle = screen
+      .getAllByTestId('requirements-table-sticky-title')
+      .find(element =>
+        within(element).queryByRole('tab', {
+          name: /specification\.itemsInSpecification/,
+        }),
+      )
+    expect(leftStickyTitle).toBeTruthy()
+    expect(
+      within(leftStickyTitle as HTMLElement).getByRole('tab', {
+        name: /specification\.needsReferences/,
       }),
     ).toBeInTheDocument()
 
@@ -704,7 +858,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).toBeTruthy()
   })
 
-  it('filters specification items when a requirement package chip is selected', async () => {
+  it('filters requirement applications when a requirement package chip is selected', async () => {
     const requirementPackages = [
       { id: 1, nameEn: 'Mobile use', nameSv: 'Mobil användning' },
       { id: 2, nameEn: 'Operations', nameSv: 'Drift' },
@@ -993,6 +1147,290 @@ describe('RequirementsSpecificationDetailClient', () => {
           name: 'specification.newLocalRequirement',
         }),
       ).toBeInTheDocument()
+    })
+    expect(screen.queryByLabelText('requirement.area')).not.toBeInTheDocument()
+  })
+
+  it('opens the needs references tab, persists the URL parameter, and shows usage details', async () => {
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState')
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '2026-04-20T10:00:00.000Z',
+          description: null,
+          id: 81,
+          libraryItemCount: 1,
+          linkedItemCount: 1,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '2026-04-20T10:00:00.000Z',
+        },
+      ],
+      specificationItems: [
+        {
+          ...initialSpecificationItem,
+          needsReference: 'IAM-42',
+          needsReferenceId: 81,
+          specificationItemStatusNameEn: 'Included',
+        },
+      ],
+    })
+
+    expect(
+      screen.getByRole('button', { name: 'common.export' }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+
+    expect(replaceStateSpy).toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: 'specification.newNeedsReference' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.export' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('IAM-42')).toBeInTheDocument()
+    expect(
+      screen.getByText('specification.missingNeedsReferenceDescription'),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /specification\.toggleNeedsReferenceUsage/,
+      }),
+    )
+
+    expect(screen.getByText('BEH0001')).toBeInTheDocument()
+    expect(screen.getByText('RBAC should be enforced.')).toBeInTheDocument()
+  })
+
+  it('creates a needs reference with a description from the register tab', async () => {
+    renderRequirementsSpecificationDetailClient()
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.newNeedsReference' }),
+    )
+
+    fireEvent.change(screen.getByLabelText('specification.needsReference'), {
+      target: { value: 'IAM-42' },
+    })
+    fireEvent.change(
+      screen.getByLabelText('specification.needsReferenceDescription'),
+      {
+        target: { value: 'Access management work' },
+      },
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specifications/ETJANST-UPP-2026/needs-references',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+
+    const postCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+        (init as RequestInit | undefined)?.method === 'POST',
+    )
+    expect(JSON.parse(String((postCall?.[1] as RequestInit).body))).toEqual({
+      description: 'Access management work',
+      text: 'IAM-42',
+    })
+  })
+
+  it('passes reduced-motion preferences to the needs reference form modal', async () => {
+    vi.mocked(useReducedMotion).mockReturnValue(true)
+    renderRequirementsSpecificationDetailClient()
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.newNeedsReference' }),
+    )
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(fadeMotion).toHaveBeenCalledWith(true)
+    expect(dialogPanelMotion).toHaveBeenCalledWith(true)
+  })
+
+  it('updates a single item needs reference inline from the requirements table', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '2026-04-20T10:00:00.000Z',
+          description: 'Access management work',
+          id: 81,
+          libraryItemCount: 0,
+          linkedItemCount: 0,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '2026-04-20T10:00:00.000Z',
+        },
+      ],
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'assign-needs-ref-lib:31' }),
+      ).toBeInTheDocument()
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'assign-needs-ref-lib:31' }),
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specifications/ETJANST-UPP-2026/items/lib%3A31',
+        expect.objectContaining({
+          body: JSON.stringify({ needsReferenceId: 81 }),
+          method: 'PATCH',
+        }),
+      )
+    })
+  })
+
+  it('bulk-updates needs references for selected requirement applications', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '2026-04-20T10:00:00.000Z',
+          description: 'Access management work',
+          id: 81,
+          libraryItemCount: 0,
+          linkedItemCount: 0,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '2026-04-20T10:00:00.000Z',
+        },
+      ],
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.change(
+      screen.getByLabelText('specification.bulkNeedsReferenceLabel'),
+      { target: { value: '81' } },
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /specification\.applyNeedsReferenceSelected/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specifications/ETJANST-UPP-2026/items',
+        expect.objectContaining({
+          body: JSON.stringify({
+            itemRefs: ['lib:31'],
+            needsReferenceId: 81,
+          }),
+          method: 'PATCH',
+        }),
+      )
+    })
+  })
+
+  it('opens contextual help for the bulk needs reference selector', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '2026-04-20T10:00:00.000Z',
+          description: 'Access management work',
+          id: 81,
+          libraryItemCount: 0,
+          linkedItemCount: 0,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '2026-04-20T10:00:00.000Z',
+        },
+      ],
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'common.help: specification.bulkNeedsReferenceLabel',
+      }),
+    )
+
+    expect(
+      screen.getByText('specification.bulkNeedsReferenceHelp'),
+    ).toBeInTheDocument()
+  })
+
+  it('shows bulk needs reference response failures next to the bulk controls', async () => {
+    bulkNeedsReferencePatchResponse = {
+      body: { error: 'Could not update selected requirements' },
+      ok: false,
+    }
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '2026-04-20T10:00:00.000Z',
+          description: 'Access management work',
+          id: 81,
+          libraryItemCount: 0,
+          linkedItemCount: 0,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '2026-04-20T10:00:00.000Z',
+        },
+      ],
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.change(
+      screen.getByLabelText('specification.bulkNeedsReferenceLabel'),
+      { target: { value: '81' } },
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /specification\.applyNeedsReferenceSelected/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Could not update selected requirements',
+      )
+    })
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+
+    expect(
+      screen.queryByText('Could not update selected requirements'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('catches thrown bulk needs reference request errors', async () => {
+    bulkNeedsReferencePatchError = new Error('Network unavailable')
+    renderRequirementsSpecificationDetailClient()
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /specification\.applyNeedsReferenceSelected/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Network unavailable')
     })
   })
 })

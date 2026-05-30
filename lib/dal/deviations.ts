@@ -457,7 +457,7 @@ export async function createDeviation(
 
   if (itemRows.length === 0) {
     throw notFoundError(
-      `Specification item ${data.specificationItemId} not found`,
+      `Requirement application ${data.specificationItemId} not found`,
     )
   }
 

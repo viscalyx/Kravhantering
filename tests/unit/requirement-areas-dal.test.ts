@@ -57,7 +57,7 @@ describe('requirement-areas DAL', () => {
     })
   })
 
-  it('lists graduation target areas by owner or area co-author HSA-ID', async () => {
+  it('lists graduation target requirement areas by owner or requirement area co-author HSA-ID', async () => {
     const { db, query } = createSqlServerDb()
 
     await listAreasActorCanAuthor(db, 'SE5560000001-owner1', false)

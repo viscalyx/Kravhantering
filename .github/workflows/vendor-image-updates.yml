@@ -14,7 +14,7 @@ on:
           - sqlserver
           - keycloak
       include-current:
-        description: Also refresh the current lane tag and immutable digests
+        description: Refresh the saved manifest digest and image ID for the tag already in use, even when no newer tag exists
         required: false
         default: false
         type: boolean

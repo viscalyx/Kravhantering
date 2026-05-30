@@ -943,7 +943,7 @@ describe('privacy erasure service', () => {
     ).toBe(true)
   })
 
-  it('anonymizes action audit actor snapshots without deleting audit rows', async () => {
+  it('anonymizes action-log actor snapshots without deleting action-log rows', async () => {
     const { db, query } = createPrivacyDb({
       'action_audit_events.actor': {
         affectedValues: ['requirement.create #1'],

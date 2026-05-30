@@ -62,7 +62,7 @@ const EMPTY_INITIAL_DATA: RequirementsSpecificationsInitialData = {
   errors: [],
   implementationTypes: [],
   lifecycleStatuses: [],
-  responsibilityAreas: [],
+  governanceObjectTypes: [],
   specifications: [],
 }
 
@@ -202,9 +202,9 @@ export default function RequirementsSpecificationsClient({
   )
   const hasUsableInitialResource = (items: readonly unknown[], key: string) =>
     hasInitialData && (items.length > 0 || !initialDataErrorKeys.has(key))
-  const hasInitialResponsibilityAreas = hasUsableInitialResource(
-    resolvedInitialData.responsibilityAreas,
-    'specification responsibility areas',
+  const hasInitialGovernanceObjectTypes = hasUsableInitialResource(
+    resolvedInitialData.governanceObjectTypes,
+    'specification governance object types',
   )
   const hasInitialImplementationTypes = hasUsableInitialResource(
     resolvedInitialData.implementationTypes,
@@ -226,31 +226,34 @@ export default function RequirementsSpecificationsClient({
     formatActorDisplayNameForLocale(spec.responsibleDisplayName, locale) ?? null
   const specificationTableColumnCount = 8
 
-  const responsibilityAreasResource = useAsyncResource<
+  const governanceObjectTypesResource = useAsyncResource<
     SpecificationTaxonomyItem[]
   >({
     fetcher: async signal => {
       const response = await apiFetch(
-        '/api/specification-responsibility-areas',
+        '/api/specification-governance-object-types',
         {
           signal,
         },
       )
       const data = await readJsonOrThrow<{
-        areas?: SpecificationTaxonomyItem[]
+        governanceObjectTypes?: SpecificationTaxonomyItem[]
       }>(response, t('partialDataLoadWarning'))
-      return data.areas ?? []
+      return data.governanceObjectTypes ?? []
     },
     getErrorMessage: error => {
-      console.error('Failed to load specification responsibility areas', error)
+      console.error(
+        'Failed to load specification governance object types',
+        error,
+      )
       return error instanceof Error
         ? error.message
         : t('partialDataLoadWarning')
     },
-    key: 'specification-responsibility-areas',
-    loadOnMount: !hasInitialResponsibilityAreas,
-    ...(hasInitialResponsibilityAreas
-      ? { initialData: resolvedInitialData.responsibilityAreas }
+    key: 'specification-governance-object-types',
+    loadOnMount: !hasInitialGovernanceObjectTypes,
+    ...(hasInitialGovernanceObjectTypes
+      ? { initialData: resolvedInitialData.governanceObjectTypes }
       : {}),
   })
   const implementationTypesResource = useAsyncResource<
@@ -304,7 +307,7 @@ export default function RequirementsSpecificationsClient({
       ? { initialData: resolvedInitialData.lifecycleStatuses }
       : {}),
   })
-  const responsibilityAreas = responsibilityAreasResource.data ?? []
+  const governanceObjectTypes = governanceObjectTypesResource.data ?? []
   const implementationTypes = implementationTypesResource.data ?? []
   const lifecycleStatuses = lifecycleStatusesResource.data ?? []
   const specificationsResource = useAsyncResource<Specification[]>({
@@ -342,7 +345,7 @@ export default function RequirementsSpecificationsClient({
   const fetchError = specificationsResource.error
   const loadWarning =
     specificationsResource.refreshError ??
-    responsibilityAreasResource.refreshError ??
+    governanceObjectTypesResource.refreshError ??
     implementationTypesResource.refreshError ??
     lifecycleStatusesResource.refreshError ??
     (resolvedInitialData.errors.length > 0 ? t('partialDataLoadWarning') : null)
@@ -359,7 +362,7 @@ export default function RequirementsSpecificationsClient({
   const [form, setForm] = useState({
     name: '',
     uniqueId: '',
-    specificationResponsibilityAreaId: '' as string,
+    specificationGovernanceObjectTypeId: '' as string,
     specificationImplementationTypeId: '' as string,
     specificationLifecycleStatusId: '' as string,
     businessNeedsReference: '',
@@ -379,7 +382,7 @@ export default function RequirementsSpecificationsClient({
   const resetForm = () => ({
     name: '',
     uniqueId: '',
-    specificationResponsibilityAreaId: '' as string,
+    specificationGovernanceObjectTypeId: '' as string,
     specificationImplementationTypeId: '' as string,
     specificationLifecycleStatusId: '' as string,
     businessNeedsReference: '',
@@ -491,9 +494,9 @@ export default function RequirementsSpecificationsClient({
         body: JSON.stringify({
           uniqueId: form.uniqueId,
           name: form.name,
-          specificationResponsibilityAreaId:
-            form.specificationResponsibilityAreaId
-              ? Number(form.specificationResponsibilityAreaId)
+          specificationGovernanceObjectTypeId:
+            form.specificationGovernanceObjectTypeId
+              ? Number(form.specificationGovernanceObjectTypeId)
               : null,
           specificationImplementationTypeId:
             form.specificationImplementationTypeId
@@ -539,8 +542,8 @@ export default function RequirementsSpecificationsClient({
     setForm({
       name: spec.name,
       uniqueId: spec.uniqueId,
-      specificationResponsibilityAreaId:
-        spec.specificationResponsibilityAreaId?.toString() ?? '',
+      specificationGovernanceObjectTypeId:
+        spec.specificationGovernanceObjectTypeId?.toString() ?? '',
       specificationImplementationTypeId:
         spec.specificationImplementationTypeId?.toString() ?? '',
       specificationLifecycleStatusId:
@@ -734,24 +737,24 @@ export default function RequirementsSpecificationsClient({
                     className="block text-sm font-medium"
                     htmlFor="spec-area"
                   >
-                    {t('responsibilityArea')}
+                    {t('governanceObjectType')}
                   </label>
-                  {helpButton('spec-area', t('responsibilityArea'))}
+                  {helpButton('spec-area', t('governanceObjectType'))}
                 </div>
-                {helpPanel('responsibilityAreaHelp', 'spec-area')}
+                {helpPanel('governanceObjectTypeHelp', 'spec-area')}
                 <select
                   className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
                   id="spec-area"
                   onChange={e =>
                     setForm(f => ({
                       ...f,
-                      specificationResponsibilityAreaId: e.target.value,
+                      specificationGovernanceObjectTypeId: e.target.value,
                     }))
                   }
-                  value={form.specificationResponsibilityAreaId}
+                  value={form.specificationGovernanceObjectTypeId}
                 >
                   <option value="">—</option>
-                  {responsibilityAreas.map(a => (
+                  {governanceObjectTypes.map(a => (
                     <option key={a.id} value={a.id}>
                       {locale === 'sv' ? a.nameSv : a.nameEn}
                     </option>
@@ -1077,7 +1080,7 @@ export default function RequirementsSpecificationsClient({
                       {t('responsible')}
                     </th>
                     <th className="py-3 px-4 font-medium">
-                      {t('responsibilityArea')}
+                      {t('governanceObjectType')}
                     </th>
                     <th className="py-3 px-4 font-medium">
                       {t('implementationType')}
@@ -1123,7 +1126,7 @@ export default function RequirementsSpecificationsClient({
                         )}
                       </td>
                       <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                        {getTaxonomyName(spec.responsibilityArea)}
+                        {getTaxonomyName(spec.governanceObjectType)}
                       </td>
                       <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
                         {getTaxonomyName(spec.implementationType)}

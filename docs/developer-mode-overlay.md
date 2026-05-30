@@ -88,7 +88,7 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Keep the control `name` stable and move runtime identity into `value`,
   for example `sort button: requirement id`, `filter button: status`, or
   theme state values like `light`, `dark`, and `auto`.
-- Requirement specification create/edit forms continue to use the `crud form`
+- Requirements specification create/edit forms continue to use the `crud form`
   marker; their specification-field help toggles are part of that same form
   surface rather than separate developer-mode markers.
 - Reference-data CRUD forms may use shared field help toggles; those
@@ -103,7 +103,7 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   and error popups do not add separate developer-mode marker names unless a
   later scanner needs to distinguish one control family.
 - Admin Center Åtgärdslogg controls stay inside the existing
-  `tab panel: action audit log` surface. Filters, pagination, CSV export, and
+  `tab panel: action log` surface. Filters, pagination, CSV export, and
   table cells do not add separate developer-mode marker names unless a later
   scanner needs to distinguish one control family.
 - Navigation help triggers use the `navigation` context with button
@@ -125,7 +125,7 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Auth callback failures expose the `authentication` context with
   `auth callback error: <code>` on the public `/auth/error` surface. The retry
   control uses `link: retry sign in`.
-- Requirement specification form save errors and specification-list load errors
+- Requirements specification form save errors and specification-list load errors
   stay
   inside the existing `specifications` form/table surfaces; they do not add
   separate developer-mode markers.
@@ -138,30 +138,31 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `error recovery: global` on the visible fallback surface. Their retry
   control uses `button: retry`, and safe navigation links use
   `link: requirements recovery` or `link: admin recovery`.
-- Requirement specification list filtering exposes
+- Requirements specification list filtering exposes
   `specifications > text field: name filter` on the Name search input above
   the table, while the specification create trigger keeps the existing
   `specifications > create button` marker when it shares that toolbar row on
   wide screens.
-- Requirement specification list requirement-area labels render as compact,
+- Requirements specification list requirement-area labels render as compact,
   non-interactive pills inside the existing `specifications > crud table`
   surface; they do not add separate developer-mode marker names.
-- Requirement specification list responsible-person metadata renders inside the
+- Requirements specification list responsible-person metadata renders inside the
   existing `specifications > crud table` surface, and the create/edit controls
   stay inside the existing `specifications > crud form` surface.
-- Requirement specification list edit and delete row actions render as icon-only
+- Requirements specification list edit and delete row actions render as icon-only
   buttons, but keep the existing `specifications > table action: edit` and
   `specifications > table action: delete` markers.
-- Requirement specification list requirement-area overflow toggles use
+- Requirements specification list requirement-area overflow toggles use
   `specifications > table action: expand requirement areas` and
   `specifications > table action: collapse requirement areas`.
-- Requirement specification detail header edit affordances use the
+- Requirements specification detail header edit affordances use the
   `requirements specification detail` context with
   `detail action: edit specification` on the icon trigger and
   `crud form: edit` on the opened editor.
-- Requirement specification detail left-panel create affordance for
-  specification-local requirements uses the `requirements specification detail`
-  context with `table action: create local requirement`.
+- Requirements specification detail left-panel create affordances use the
+  `requirements specification detail` context with `table action` values
+  `create local requirement` and `create needs reference`. They live in the
+  sticky list header beside the embedded left-panel tabs.
 - Specification-local inline detail views in specification context use the
   `requirements specification detail` context with
   `detail pane: specification-local requirement`.
@@ -198,10 +199,10 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `download suggestion history pdf`, `print deviation review`, and
   `download deviation review pdf` when those report paths are available.
 - Specification-context library requirement details may expose the extra
-  `detail section` values `needs reference` and `specification item status`
+  `detail section` values `needs reference` and `usage status`
   when the requirement is opened from `Krav i kravunderlag`.
 - The specification-detail header may visually regroup the title,
-  specification purpose, responsible person, and short metadata summary into
+  specification purpose, specification lead, and short metadata summary into
   a compact layout where the metadata row sits to the right of the title on
   wide screens and the metadata cards stay on one horizontal row. That layout
   does not introduce any separate developer-mode marker beyond the existing edit
@@ -220,7 +221,7 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `resize handle` markers continue to describe the shared live divider
   positions while the sticky header and scrolling body stay aligned
   during drag preview.
-- Requirement specification detail tables may render the
+- Requirements specification detail tables may render the
   `floating action rail` inline inside their sticky title bar; the
   marker name stays the same in both the fixed-right and inline-top
   layouts. On narrow screens, that sticky title bar and inline rail may
@@ -258,12 +259,12 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Admin CRUD empty-state rows use the current page context with `empty state`.
   When the table supports creation, the inline empty-state CTA uses
   `empty state create button` and opens the same create form as the page header.
-- Requirement specification list print pages expose `report state` markers
+- Requirements specification list print pages expose `report state` markers
   with values `report-print:error`, `report-print:loading`, and
   `report-print:renderer`.
-- Requirement specification list PDF pages expose `report state` markers with
-  values `report-pdf:error`, `report-pdf:loading`, and
-  `report-pdf:ready`.
+- PDF downloads use the shared modal marker `dialog` with values
+  `Generating PDF` and `PDF download error`; specification list PDFs no longer
+  render an intermediate client-side PDF page.
 - AI Requirement Generator dialog uses the `ai-requirement-generator`
   context with `dialog: ai-requirement-generator` on the modal
   container, `dialog title` on the heading,

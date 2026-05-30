@@ -649,7 +649,7 @@ function createQueryCatalogSchema() {
         .array(z.number().int().positive())
         .optional()
         .describe(
-          'Requirement status IDs. Applies only to catalog "requirements".',
+          'Requirement version status IDs. Applies only to catalog "requirements".',
         ),
       typeId: z
         .number()
@@ -932,7 +932,7 @@ function createTransitionRequirementSchema() {
         .int()
         .positive()
         .describe(
-          'Target requirement status ID. Use requirements_query_catalog with catalog "transitions" or "statuses" before choosing this value.',
+          'Target requirement version status ID. Use requirements_query_catalog with catalog "transitions" or "statuses" before choosing this value.',
         ),
       uniqueId: z
         .string()
@@ -1494,7 +1494,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: true,
       },
-      description: `List all requirements specifications, optionally filtered by name. Returns id, uniqueId (slug), names, item count, responsibility area, and implementation type for each specification. ${specificationIdentifierCopyPaths}`,
+      description: `List all requirements specifications, optionally filtered by name. Returns id, uniqueId (slug), names, item count, governance object type, and implementation type for each specification. ${specificationIdentifierCopyPaths}`,
       inputSchema: z
         .object({
           locale: z.enum(['en', 'sv']).default('en'),
@@ -1520,7 +1520,7 @@ export function createKravhanteringMcpServer(
                   .nullable(),
                 itemCount: z.number(),
                 name: z.string(),
-                responsibilityArea: z
+                governanceObjectType: z
                   .object({ nameEn: z.string(), nameSv: z.string() })
                   .nullable(),
                 uniqueId: z.string(),
@@ -1529,7 +1529,7 @@ export function createKravhanteringMcpServer(
           ),
         })
         .strict(),
-      title: 'List Requirements Specifications',
+      title: 'List requirements specifications',
     },
     async input => {
       try {
@@ -1619,7 +1619,7 @@ export function createKravhanteringMcpServer(
           specificationId: z.number(),
         })
         .strict(),
-      title: 'Get Specification Items',
+      title: 'Get Requirement Applications',
     },
     async input => {
       try {
@@ -1656,7 +1656,7 @@ export function createKravhanteringMcpServer(
         'List the requirement areas this actor may use as targets when copying an Included unique requirement into the library. Use requirements_list_specifications and requirements_get_specification_items to identify the source, pass the same specificationId or specificationSlug plus localRequirementId here, then use one returned areas[].id value as requirements_graduate_local_requirement requirementAreaId.',
       inputSchema: createGraduationTargetAreasSchema(),
       outputSchema: GraduationTargetAreasOutputSchema,
-      title: 'List Graduation Target Areas',
+      title: 'List Graduation Target Requirement Areas',
     },
     async input => {
       try {
@@ -1732,15 +1732,29 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: false,
       },
-      description: `Link one or more requirements to a requirements specification. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach a needs reference text to all added items. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2"). ${specificationIdentifierCopyPaths} ${addRequirementIdsCopyPath}`,
+      description: `Link one or more requirements to a requirements specification. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach an existing needsReferenceId or create a new needsReferenceText plus needsReferenceDescription for all added items. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2"). ${specificationIdentifierCopyPaths} ${addRequirementIdsCopyPath}`,
       inputSchema: z
         .object({
           locale: z.enum(['en', 'sv']).default('en'),
+          needsReferenceDescription: z
+            .string()
+            .optional()
+            .describe(
+              'Optional description for a new needs reference. Requires needsReferenceText.',
+            ),
+          needsReferenceId: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+              'Optional existing needs reference ID from the same requirements specification.',
+            ),
           needsReferenceText: z
             .string()
             .optional()
             .describe(
-              'Optional needs reference text applied to all added requirements. An existing reference with the same text will be reused.',
+              'Optional new needs reference text applied to all added requirements. Duplicate text in the same specification is rejected.',
             ),
           specificationId: z
             .number()
@@ -1776,6 +1790,24 @@ export function createKravhanteringMcpServer(
                 'Provide exactly one of specificationId or specificationSlug.',
             })
           }
+          if (val.needsReferenceId != null && val.needsReferenceText != null) {
+            ctx.addIssue({
+              code: 'custom',
+              message:
+                'Provide either needsReferenceId or needsReferenceText, not both.',
+              path: ['needsReferenceText'],
+            })
+          }
+          if (
+            val.needsReferenceDescription != null &&
+            val.needsReferenceText == null
+          ) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'needsReferenceDescription requires needsReferenceText.',
+              path: ['needsReferenceDescription'],
+            })
+          }
         }),
       outputSchema: z
         .object({
@@ -1793,6 +1825,8 @@ export function createKravhanteringMcpServer(
           await getBaseContext(request, 'requirements_add_to_specification'),
           {
             locale: toResponseLocale(input.locale),
+            needsReferenceDescription: input.needsReferenceDescription,
+            needsReferenceId: input.needsReferenceId,
             needsReferenceText: input.needsReferenceText,
             specificationId: input.specificationId,
             specificationSlug: input.specificationSlug,
@@ -2147,7 +2181,7 @@ export function createKravhanteringMcpServer(
             .positive()
             .optional()
             .describe(
-              'Area ID to assign to generated requirements when creating them via requirements_manage_requirement',
+              'Requirement area ID to assign to generated requirements when creating them via requirements_manage_requirement',
             ),
           customInstruction: z
             .string()

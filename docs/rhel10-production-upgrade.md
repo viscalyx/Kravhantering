@@ -8,10 +8,17 @@ external IdP.
 
 For a first install, use
 [rhel10-production-deploy.md](./rhel10-production-deploy.md). For the
-all-in-one internal topology, use
-[rhel10-production-single-node-internal-upgrade.md](./rhel10-production-single-node-internal-upgrade.md).
+self-contained single-node topology, use
+[rhel10-production-single-node-self-contained-upgrade.md](./rhel10-production-single-node-self-contained-upgrade.md).
 To uninstall a first install, use
 [rhel10-production-uninstall.md](./rhel10-production-uninstall.md).
+
+>[!NOTE]
+>For disconnected upgrades, first follow
+>[rhel10-production-disconnected.md](./rhel10-production-disconnected.md). The
+>disconnected guide prepares the transferable bundle before the downtime window
+>and tells you which connected artifact and image steps it replaces on each
+>disconnected app node.
 
 ## Planned-Downtime Upgrade
 
@@ -29,7 +36,7 @@ place.
    Download the target bundle and checksum from the approved release source:
 
    ```bash
-   VERSION=1.2.4
+   VERSION=1.2.4 # Change to the version being deployed.
 
    # Default: internal release repository.
    RELEASE_DOWNLOAD_URL="https://release.example.internal/kravhantering/${VERSION}"
@@ -201,182 +208,6 @@ place.
    exit
    ```
 
-   Optional offline upgrade transfer: after the source host has completed this
-   step, create a topology-specific offline upgrade bundle that contains the
-   installed release directory and local verified image archives. Run this as
-   the administrator on the connected source host:
-
-   ```bash
-   TOPOLOGY=app-node
-   OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
-   OFFLINE_BUNDLE="${OFFLINE_ROOT}.tar.gz"
-   IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
-
-   test ! -e "$OFFLINE_ROOT" || {
-     echo "Offline staging directory already exists: $OFFLINE_ROOT" >&2
-     exit 1
-   }
-
-   sudo install -d -o root -g root -m 0755 \
-     "$OFFLINE_ROOT" "$OFFLINE_ROOT/release"
-   sudo install -d -o kravhantering -g kravhantering -m 0755 \
-     "$OFFLINE_ROOT/images"
-   sudo cp -a "/opt/kravhantering/releases/${VERSION}" \
-     "$OFFLINE_ROOT/release/"
-   ```
-
-   Export the already-present, verified local images into the offline staging
-   directory as the service user:
-
-   ```bash
-   sudo -iu kravhantering
-   VERSION=1.2.4
-   TOPOLOGY=app-node
-   OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
-   IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
-   cd /opt/kravhantering/current
-   bin/kravhantering-images.sh --topology app-node \
-     --lock-file container-stack.lock.json \
-     --env-file /etc/kravhantering/release.env \
-     export --output "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
-   exit
-   ```
-
-   Add a manifest, checksums and the final movable tarball:
-
-   ```bash
-   set -a
-   . /etc/kravhantering/release.env
-   set +a
-
-   CURRENT_TARGET="$(readlink -f /opt/kravhantering/current)"
-   jq -n \
-     --arg version "$VERSION" \
-     --arg topology "$TOPOLOGY" \
-     --arg currentTarget "$CURRENT_TARGET" \
-     --arg imageBundle "images/$IMAGE_BUNDLE_NAME" \
-     --arg appRuntime "$APP_RUNTIME_IMAGE_REF" \
-     --arg dbJob "$DB_JOB_IMAGE_REF" \
-     --arg nginx "$NGINX_IMAGE_REF" \
-     '{
-       schemaVersion: 1,
-       kind: "kravhantering-offline-upgrade",
-       version: $version,
-       topology: $topology,
-       sourceCurrentTarget: $currentTarget,
-       imageBundle: $imageBundle,
-       imageRefs: {
-         "app-runtime": $appRuntime,
-         "db-job": $dbJob,
-         nginx: $nginx
-       }
-     }' | sudo tee "$OFFLINE_ROOT/offline-upgrade-manifest.json" >/dev/null
-
-   sudo sh -c "cd '$OFFLINE_ROOT' && \
-     sha256sum offline-upgrade-manifest.json \
-       release/$VERSION/container-stack.lock.json \
-       images/$IMAGE_BUNDLE_NAME > hashes.sha256"
-
-   sudo tar -czf "$OFFLINE_BUNDLE" \
-     -C "$(dirname "$OFFLINE_ROOT")" "$(basename "$OFFLINE_ROOT")"
-   sudo chown "$(id -u):$(id -g)" "$OFFLINE_BUNDLE"
-   sha256sum "$OFFLINE_BUNDLE"
-   ```
-
-   Copy `$OFFLINE_BUNDLE` to the offline app node with the site's approved
-   transfer method, for example `scp`.
-
-   On the offline app node, unpack and verify the offline upgrade bundle in a
-   temporary staging directory:
-
-   ```bash
-   TOPOLOGY=app-node
-   OFFLINE_BUNDLE="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}.tar.gz"
-   OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
-
-   test ! -e "$OFFLINE_ROOT" || {
-     echo "Offline staging directory already exists: $OFFLINE_ROOT" >&2
-     exit 1
-   }
-
-   mkdir -p "$OFFLINE_ROOT"
-   tar -xzf "$OFFLINE_BUNDLE" -C "$OFFLINE_ROOT" --strip-components=1
-   (cd "$OFFLINE_ROOT" && sha256sum -c hashes.sha256)
-   ```
-
-   Install the release directory and move `current` on the offline app node.
-   Fail fast if the release directory already exists:
-
-   ```bash
-   test ! -e "/opt/kravhantering/releases/${VERSION}" || {
-     echo "Release directory already exists:" \
-       "/opt/kravhantering/releases/${VERSION}" >&2
-     exit 1
-   }
-
-   sudo install -d -o root -g root -m 0755 /opt/kravhantering/releases
-   sudo cp -a "$OFFLINE_ROOT/release/${VERSION}" \
-     "/opt/kravhantering/releases/${VERSION}"
-   sudo chown -R root:root "/opt/kravhantering/releases/${VERSION}"
-   sudo chcon -R -t container_file_t \
-     "/opt/kravhantering/releases/${VERSION}/nginx"
-   sudo ln -sfn "/opt/kravhantering/releases/${VERSION}" \
-     /opt/kravhantering/current
-   readlink -f /opt/kravhantering/current
-   ```
-
-   Update only the `*_IMAGE_REF` values in the offline app node's
-   `/etc/kravhantering/release.env`. By default this preserves the source image
-   refs. Set `TARGET_IMAGE_REGISTRY` to a non-resolvable local or fake registry
-   hostname when the offline app node must never reference the source registry:
-
-   ```bash
-   TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
-   MANIFEST="$OFFLINE_ROOT/offline-upgrade-manifest.json"
-
-   update_ref() {
-     sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
-   }
-   source_ref() {
-     jq -r --arg name "$1" '.imageRefs[$name]' "$MANIFEST"
-   }
-   target_ref() {
-     local ref path tag
-     ref="$(source_ref "$1")"
-     if [ -z "$TARGET_IMAGE_REGISTRY" ]; then
-       printf '%s\n' "$ref"
-       return
-     fi
-     tag="${ref##*:}"
-     path="${ref%:*}"
-     printf '%s/%s:%s\n' "$TARGET_IMAGE_REGISTRY" "${path#*/}" "$tag"
-   }
-
-   update_ref APP_RUNTIME_IMAGE_REF "$(target_ref app-runtime)"
-   update_ref DB_JOB_IMAGE_REF "$(target_ref db-job)"
-   update_ref NGINX_IMAGE_REF "$(target_ref nginx)"
-   ```
-
-   Load, tag and verify the images as the rootless service user:
-
-   ```bash
-   sudo -iu kravhantering
-   VERSION=1.2.4
-   TOPOLOGY=app-node
-   OFFLINE_ROOT="/tmp/kravhantering-offline-upgrade-${VERSION}-${TOPOLOGY}"
-   IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
-   cd /opt/kravhantering/current
-   bin/kravhantering-images.sh --topology app-node \
-     --lock-file container-stack.lock.json \
-     --env-file /etc/kravhantering/release.env \
-     load --bundle "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
-   bin/kravhantering-images.sh --topology app-node \
-     --lock-file container-stack.lock.json \
-     --env-file /etc/kravhantering/release.env \
-     verify
-   exit
-   ```
-
 8. Run the database jobs once from the new release.
    Use the DBA-pre-provisioned `db-job.env` values. Do not run
    `db-job bootstrap` during a normal upgrade, and do not run `seed:demo` in
@@ -400,8 +231,7 @@ place.
    ```
 
 9. Start each app node from the new release.
-   Start `app-runtime`, confirm the nginx resolver from inside the Compose
-   network, then start the full app node:
+   Start `app-runtime` first:
 
    ```bash
    sudo -iu kravhantering
@@ -412,22 +242,72 @@ place.
 
    COMPOSE_FILE=compose/app-node-tls.compose.yml
    # COMPOSE_FILE=compose/app-node-http.compose.yml
-   APP_NODE_NETWORK=kravhantering-app-node_kravhantering-internal
+   APP_NODE_NETWORK=kravhantering-internal
+
+   podman network exists "$APP_NODE_NETWORK" || \
+     podman network create "$APP_NODE_NETWORK"
 
    podman compose --env-file /etc/kravhantering/release.env \
      -f "$COMPOSE_FILE" up -d app-runtime
-   podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
-     "$NGINX_IMAGE_REF" -c "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+
+   exit
+   ```
+
+   Confirm the nginx resolver from inside the same Compose network. The
+   `APP_NODE_NETWORK` variable is for this temporary `podman run` container;
+   `podman compose` attaches long-running services to the network
+   automatically.
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   set -a
+   . /etc/kravhantering/release.env
+   set +a
+
+   APP_NODE_NETWORK=kravhantering-internal
+
+   RESOLVER_IP="$(
+     podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
+       "$NGINX_IMAGE_REF" -c \
+       "awk '/^nameserver / { print \$2; exit }' /etc/resolv.conf"
+   )"
+   printf 'Use NGINX_RESOLVER=%s in /etc/kravhantering/release.env\n' \
+     "$RESOLVER_IP"
+
+   exit
+   ```
+
+   If the printed resolver differs from `NGINX_RESOLVER`, update
+   `/etc/kravhantering/release.env` to the printed IP before starting nginx:
+
+   ```bash
+   # Replace 10.89.1.1 with the printed resolver IP.
+   RESOLVER_IP=10.89.1.1
+   sudo sed -i "s#^NGINX_RESOLVER=.*#NGINX_RESOLVER=${RESOLVER_IP}#" \
+     /etc/kravhantering/release.env
+   ```
+
+   The resolver can change when the internal Compose network is renamed,
+   recreated or assigned another subnet.
+
+   Start the full app node:
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   set -a
+   . /etc/kravhantering/release.env
+   set +a
+
+   COMPOSE_FILE=compose/app-node-tls.compose.yml
+   # COMPOSE_FILE=compose/app-node-http.compose.yml
 
    podman compose --env-file /etc/kravhantering/release.env \
      -f "$COMPOSE_FILE" up -d
 
    exit
    ```
-
-   If the printed resolver differs from `NGINX_RESOLVER`, update
-   `/etc/kravhantering/release.env` and rerun the app-node start command
-   before checking readiness.
 
 10. Check `/api/health`, `/api/ready`, sign-in and a read-only UI workflow.
     Check readiness through nginx, then sign in through the browser and open an
@@ -447,6 +327,27 @@ place.
     ```bash
     curl --insecure --fail --silent --show-error \
       https://kravhantering.example.internal/api/health
+    ```
+
+    After the upgraded app node passes health checks, remove the obsolete
+    pre-rename network if it is still present and no containers use it:
+
+    ```bash
+    sudo -iu kravhantering
+    OBSOLETE_NETWORK=kravhantering-app-node_kravhantering-internal
+    if podman network exists "$OBSOLETE_NETWORK"; then
+      ATTACHED_CONTAINERS="$(
+        podman network inspect "$OBSOLETE_NETWORK" \
+          --format '{{len .Containers}}'
+      )"
+      if [ "${ATTACHED_CONTAINERS:-0}" -eq 0 ]; then
+        podman network rm "$OBSOLETE_NETWORK"
+      else
+        printf 'Skipping obsolete network %s; %s containers still use it.\n' \
+          "$OBSOLETE_NETWORK" "$ATTACHED_CONTAINERS"
+      fi
+    fi
+    exit
     ```
 
 11. Re-enable traffic.
@@ -483,7 +384,7 @@ point taken before the upgrade. The supported sequence is:
    on every app node.
 
    ```bash
-   PREVIOUS_VERSION=1.2.3
+   PREVIOUS_VERSION=1.2.3 # Change to the previous version being restored.
 
    sudo ln -sfn "/opt/kravhantering/releases/${PREVIOUS_VERSION}" \
      /opt/kravhantering/current
@@ -512,3 +413,110 @@ point taken before the upgrade. The supported sequence is:
 
 Do not rely on app-only image rollback after schema migration unless the
 specific release notes explicitly say it is supported.
+
+## Credential Rotation
+
+Use this procedure for day-2 rotation of production auth credentials when no
+release upgrade is being installed. It does not require a database migration or
+database restore point. It does require recreating `app-runtime` because auth
+environment variables are read at process start.
+
+Plan a maintenance window for any rotation that changes
+`AUTH_SESSION_COOKIE_PASSWORD`, or when the IdP cannot keep both old and new
+client secrets active during the cutover. Rotating
+`AUTH_SESSION_COOKIE_PASSWORD` invalidates every live browser session. Users
+must sign in again after the app runtime restarts.
+
+1. Record the rotation scope and current operational evidence.
+   Include which values are rotating:
+   `AUTH_OIDC_CLIENT_SECRET`, optional MCP service-client secrets,
+   `AUTH_SESSION_COOKIE_PASSWORD`, or a combination of them. Do not copy raw
+   secrets into the long-term evidence record.
+
+2. Create a restricted temporary backup of the current app environment on each
+   app node.
+   Keep this only for rollback during the rotation window unless the site's
+   records policy explicitly requires longer retention:
+
+   ```bash
+   ROTATION_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+   ROTATION_DIR="/var/tmp/kravhantering-credential-rotation-${ROTATION_ID}"
+
+   sudo install -d -o root -g root -m 0700 "$ROTATION_DIR"
+   sudo install -o root -g root -m 0600 \
+     /etc/kravhantering/app.env \
+     "$ROTATION_DIR/app.env.before"
+   ```
+
+3. Prepare the new external credentials.
+
+   - For `AUTH_OIDC_CLIENT_SECRET`, ask the IdP administrator to add or issue a
+     new secret for the existing `kravhantering-app` client.
+   - If the IdP supports overlapping secrets, keep the old secret active until
+     every app node has been updated and verified.
+   - If the IdP supports only one active secret, drain traffic before changing
+     either the IdP client secret or `/etc/kravhantering/app.env`.
+   - Optional MCP service-client secrets are not consumed by `app-runtime` for
+     token validation. Rotate them in the IdP and in the approved MCP client
+     secret store. The identity-platform or IdP administration owner issues,
+     rotates and revokes the `kravhantering-mcp` credentials. The consuming
+     MCP integration owner deploys the new secret to the MCP client. If the
+     MCP client id or access-token audience changes, Kravhantering operations
+     updates the corresponding site configuration such as `MCP_CLIENT_ID` and
+     `AUTH_OIDC_API_AUDIENCE`.
+   - Generate a new `AUTH_SESSION_COOKIE_PASSWORD` only when session-cookie
+     key rotation is in scope.
+
+4. Update `/etc/kravhantering/app.env` on every app node.
+   Use the site's approved secret editor or secret-management deployment path.
+   Avoid commands that place secrets in shell history. Keep file ownership and
+   mode restricted to the deployment convention from the first-install guide.
+
+5. Recreate `app-runtime` on every app node.
+   Recreate nginx as well so older bundles do not keep a stale upstream
+   address after the app container changes:
+
+   ```bash
+   sudo -iu kravhantering
+   cd /opt/kravhantering/current
+   COMPOSE_FILE=compose/app-node-tls.compose.yml
+   # COMPOSE_FILE=compose/app-node-http.compose.yml
+
+   podman compose --env-file /etc/kravhantering/release.env \
+     -f "$COMPOSE_FILE" up -d --force-recreate app-runtime
+   podman compose --env-file /etc/kravhantering/release.env \
+     -f "$COMPOSE_FILE" up -d --force-recreate nginx
+
+   exit
+   ```
+
+6. Verify readiness and sign-in before restoring traffic.
+
+   ```bash
+   curl --fail --silent --show-error \
+     https://kravhantering.example.internal/api/health
+   curl --fail --silent --show-error \
+     https://kravhantering.example.internal/api/ready
+   ```
+
+   Then complete a browser login and logout against the public URL. If MCP
+   service-client credentials changed, obtain a new service token and call a
+   read-only `/api/mcp/*` path with `Authorization: Bearer <jwt>`.
+
+7. Complete or roll back the rotation.
+
+   - After successful verification, revoke the old OIDC or MCP client secrets
+     in the IdP and delete the temporary raw `app.env` backup unless retention
+     is required.
+   - If verification fails before the old IdP secret has been revoked, restore
+     the backed-up `app.env`, recreate `app-runtime` and nginx again, and ask
+     the IdP administrator to revoke the new failed secret.
+   - If the old IdP secret has already been revoked and cannot be restored,
+     issue another replacement secret and repeat the cutover instead of
+     restoring a now-invalid `app.env`.
+   - Rolling back `AUTH_SESSION_COOKIE_PASSWORD` invalidates sessions created
+     after the failed rotation. Plan for another sign-in wave.
+
+Add the rotation date, affected credential names, IdP change reference,
+verification result and old-secret revocation confirmation to the operational
+evidence record. Do not store raw secret values in that record.

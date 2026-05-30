@@ -85,11 +85,32 @@ The behaviors below apply to the requirement list rendered by:
   horizontally scrollable on all viewport sizes so the sticky chrome does not
   cover the table body or inline detail pane.
 - Specification-detail split tables also keep their list title bar sticky in that
-  same chrome so the section title and top rail stay visible with the headers.
+  same chrome so the left-panel tabs, section actions, and top rail stay visible
+  with the headers.
 - On `xl` and wider specification-detail layouts, the `Krav i underlaget` and
   `Tillgängliga krav` cards each become their own vertically scrollable region
   and stay pinned below the site navigation while the user scrolls inside a
   list.
+- The left specification-detail panel has tabs for `Krav i underlaget` and
+  `Behovsreferenser` embedded in the panel's sticky list header rather than in
+  a separate row above the list; the tab selection is reflected in the URL
+  through `leftTab=needs-references` so a copied link can reopen the
+  needs-reference register directly.
+- The action pills on the right side of that sticky header are contextual:
+  `Krav i underlaget` shows requirement-list actions such as local creation,
+  column settings, print, export, and selected-row bulk actions, while
+  `Behovsreferenser` replaces them with the needs-reference creation action.
+- `Behovsreferenser` is a specification-local register. It allows users to
+  create and edit labels plus optional descriptions, delete only unused
+  references, expand a row to inspect linked requirements, and intentionally
+  keep pre-registered references without linked requirements.
+- In `Krav i underlaget`, the `Behovsreferens` column is an inline dropdown
+  with `Ingen behovsreferens` plus existing register entries only; creating a
+  new reference happens in the register tab or in the add-to-specification
+  dialog.
+- When rows are selected in `Krav i underlaget`, the sticky action rail includes
+  a bulk needs-reference dropdown so multiple linked requirements can be
+  reassigned or cleared in one mutation.
 - In the normal desktop specification-detail state, the page shell itself stays
   viewport-locked so the two list panels fit inside the visible window without
   requiring page-level vertical scrolling.
@@ -123,8 +144,10 @@ The behaviors below apply to the requirement list rendered by:
   - column widths
 - If a user has saved visibility preferences, the list still displays those
   columns in the current admin-managed order.
-- The list reset action restores:
-  - the admin-managed default visible columns
+- The list reset action restores the current table context:
+  - the admin-managed default visible columns in the requirements library
+  - the specification-detail default visible columns in `Krav i underlaget`
+    and `Tillgängliga krav`
   - the admin-managed default order
   - the default width model
 
@@ -209,7 +232,7 @@ The behaviors below apply to the requirement list rendered by:
 - The left fade appears after the user has scrolled horizontally.
 - The fades must remain subtle enough to act as a cue, not as a primary visual element.
 
-## Specification Item Usage Status Column
+## Usage Status Column
 
 - The `specificationItemStatus` column is hidden by default (`defaultVisible: false`).
 - It is **excluded** from the main requirements library and the available-
@@ -231,7 +254,7 @@ The behaviors below apply to the requirement list rendered by:
   items.
 - Outside the specification detail context (e.g. the main requirements library),
   the column renders a read-only color dot + label, or an em dash when no
-  specification item status applies to the row.
+  usage status applies to the row.
 - The column supports multi-select filtering via `specificationItemStatusIds`.
 - Client-side filtering in the specification detail matches on `specificationItemStatusId`.
 - Sorting is disabled for this column (`canSort: false`).
@@ -252,7 +275,7 @@ The detail card renders sections in this fixed order:
 
 1. **Requirement text** (description) — always first
 2. **Acceptance criteria** — always second
-3. **Area** with owner — shown after the primary text sections
+3. **Requirement area** with owner — shown after the primary text sections
 4. **Specification count** — read-only count of how many requirements specifications
    include this requirement (always shown, displays 0 when unused)
 5. **References** — if any exist
@@ -264,9 +287,9 @@ down.
 
 ### Lifecycle Refresh Scroll
 
-- When a requirement status transition refreshes the inline detail pane and the
-  library row, the workflow stepper is kept in view with the smallest necessary
-  scroll adjustment.
+- When a requirement version status transition refreshes the inline detail pane
+  and the library row, the workflow stepper is kept in view with the smallest
+  necessary scroll adjustment.
 - The library does not re-center the selected row during this refresh, so the
   page does not jump down to the version history or improvement-suggestion
   sections.
@@ -274,13 +297,14 @@ down.
   including cases where active library filters require the selected requirement
   to stay pinned in the list.
 
-### Area Owner
+### Requirement Area Owner
 
-- The area owner is a property of the area, not of the requirement itself.
-- In the inline pane, the area and its owner are displayed as a metadata section
-  after the two primary text sections.
-- In the full-page detail sidebar, the area owner is shown as small text below
-  the area name.
+- The requirement area owner is a property of the requirement area, not of the
+  requirement itself.
+- In the inline pane, the requirement area and its owner are displayed as a
+  metadata section after the two primary text sections.
+- In the full-page detail sidebar, the requirement area owner is shown as small
+  text below the requirement area name.
 
 ## Loading and Empty State
 
@@ -323,17 +347,21 @@ down.
 - The expanded specification-local inline pane also uses the same outer inline inset
   as the library requirement detail (`px-6 py-4`), so the properties card and
   right-side rail do not sit flush against the expanded row edges.
-- The specification-local inline detail pane does not repeat the row's specification-local
-  Krav-ID or unique marker icon in its own header area; that identity stays in
-  the table row above the expanded pane.
+- The specification-local inline detail pane does not repeat the row's
+  specification-local Krav-ID or unique marker icon in its own header area;
+  that identity stays in the table row above the expanded pane.
+- Unique requirements are not assigned to a requirement area. The Requirement
+  area column in the specification-items list therefore renders `-` for unique
+  rows, and the create/edit form for a unique requirement does not show the
+  Requirement area field.
 - Specification-local inline detail now follows the specification-item detail
   chrome more
   closely: deviation pills sit above the card, the right-side action rail
   starts with print and deviation controls, and local edit/delete actions are
   appended in the same vertical rail.
-- That unique-requirement action rail also uses the same full-width button sizing
-  rhythm as the library requirements specification-item rail, including the shared
-  44px minimum touch target and stacked spacing.
+- That unique-requirement action rail also uses the same full-width button
+  sizing rhythm as the library requirements specification-item rail, including
+  the shared 44px minimum touch target and stacked spacing.
 - Edit and Delete for unique requirements are only enabled when
   **Användningsstatus** is **Inkluderad** and there is no pending deviation
   draft or review request. Otherwise the buttons stay disabled and expose a
@@ -342,9 +370,10 @@ down.
 - The same specification-local action rail may show **Graduate to library** when
   the actor owns or co-authors at least one requirement area. The action is
   disabled unless **Användningsstatus** is **Inkluderad**. Opening the action
-  shows a modal target-area picker over a dimmed background, including the
-  copy-only outcome text. Pressing the modal's **Graduate** action copies the
-  unique requirement into the selected library area as a new Draft library
+  shows a modal target requirement area picker over a dimmed background,
+  including the copy-only outcome text. Pressing the modal's **Graduate**
+  action copies the unique requirement into the selected library requirement
+  area as a new Draft library
   requirement, navigates to that new requirement's created Draft version, and
   leaves the source unique row and any local deviations unchanged.
 
@@ -353,9 +382,10 @@ down.
 - Always visible in the list view as a Printer icon pill.
 - Opens a dropdown with two options:
   - "Print Requirements List" — opens the print engine route
-  - "Download Requirements List (PDF)" — opens the PDF engine route
+  - "Download Requirements List (PDF)" — downloads the server PDF route
 - Passes the IDs of all currently visible rows as `?ids=` query params.
-- The report shows Krav-ID, description, area, and status columns.
+- The report shows Requirement ID, requirement text, requirement area, and
+  status columns.
 
 ## Specification Print List Report
 
@@ -366,6 +396,8 @@ down.
   - `local:<specificationLocalRequirementId>` for a unique requirement
 - This allows the report to include both library and unique requirements in one
   specification list export.
+- PDF uses the matching server route
+  `/[locale]/specifications/[slug]/reports/pdf/list?refs=...`.
 
 ## Combined Review Report Floating Pill
 
@@ -384,9 +416,12 @@ down.
 - Always shows "Print History Report" and "Download History Report (PDF)".
 - Shows "Print Review Report" and "Download Review Report (PDF)" only when
   the current version has Review status.
-- Detail view report URLs use `window.open` with the locale prefix.
-- List view report URLs use `next-intl` `Link` without the locale prefix
-  (the router adds it automatically).
+- Print report URLs use `window.open` with the locale prefix.
+- PDF report URLs are fetched as blobs from the server route; a temporary
+  progress dialog appears only when generation takes longer than two seconds.
+- List view print report URLs use `next-intl` `Link` without the locale prefix
+  (the router adds it automatically); list view PDF downloads use the shared
+  blob download helper.
 
 For report architecture details, see [reports.md](./reports.md).
 

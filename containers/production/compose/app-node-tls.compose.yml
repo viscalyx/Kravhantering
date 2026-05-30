@@ -30,4 +30,4 @@ services:
 
 networks:
   kravhantering-internal:
-    name: kravhantering-app-node_kravhantering-internal
+    name: kravhantering-internal

@@ -2,7 +2,7 @@
   "description": "Seeded MCP HTTP corpus. Placeholder values are resolved from the disposable seeded database by tests/integration/mcp-seeded-scan.spec.ts.",
   "cases": [
     {
-      "name": "lookup requirement catalogs",
+      "name": "lookup requirements through catalog tool",
       "tool": "requirements_query_catalog",
       "kind": "read",
       "arguments": {
@@ -53,7 +53,7 @@
       }
     },
     {
-      "name": "list specification items",
+      "name": "list requirement applications",
       "tool": "requirements_get_specification_items",
       "kind": "read",
       "arguments": {
@@ -62,7 +62,7 @@
       }
     },
     {
-      "name": "list graduation target areas",
+      "name": "list graduation target requirement areas",
       "tool": "requirements_list_graduation_target_areas",
       "kind": "read",
       "arguments": {

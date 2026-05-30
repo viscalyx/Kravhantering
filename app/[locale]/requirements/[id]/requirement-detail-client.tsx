@@ -433,7 +433,7 @@ export default function RequirementDetailClient({
           {
             id: 'specification-item-status',
             label: t('specificationItemStatus'),
-            markerValue: 'specification item status',
+            markerValue: 'usage status',
             value:
               specificationItemDetail?.specificationItemStatusNameEn ||
               specificationItemDetail?.specificationItemStatusNameSv ? (

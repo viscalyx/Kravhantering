@@ -12,7 +12,7 @@ import {
   seedRequiredDatabase,
 } from '../../typeorm/seed-required.mjs'
 
-// cspell:ignore linneab repoåtkomstgranskning retentionlinked retentionorphan
+// cspell:ignore linneab repobehörighetsöversyn retentionlinked retentionorphan
 
 const LINNEA_HSA_ID = 'SE5560000001-linneab'
 const LINNEA_DISPLAY_NAME = 'Linnéa Bergström'
@@ -32,6 +32,11 @@ function collectSeedInsertRows() {
       const columns = columnList
         .split(',')
         .map(column => column.trim().replace(/^\[|\]$/g, ''))
+      if (params.length !== columns.length) {
+        throw new Error(
+          `Seed row arity mismatch for ${table}: ${params.length} values for ${columns.length} columns`,
+        )
+      }
       rows.push({
         row: Object.fromEntries(
           columns.map((column, index) => [column, params[index]]),
@@ -365,7 +370,7 @@ describe('seed profiles', () => {
     expect(accessReviewRunsById.get(1)).toMatchObject({
       created_by_hsa_id: LINNEA_HSA_ID,
       external_evidence_reference:
-        'DNR-KH-2025-0142: IAM- och repoåtkomstgranskning 2025',
+        'DNR-KH-2025-0142: IAM- och repobehörighetsöversyn 2025',
       status: 'completed',
     })
     expect(accessReviewRunsById.get(2)).toMatchObject({
@@ -522,6 +527,11 @@ describe('seed profiles', () => {
       specification_id: RETENTION_SEED.specification.obsolete,
       unique_id: 'RETENTION-SEED-LR-1',
     })
+    expect(
+      localRequirements.get(
+        RETENTION_SEED.localRequirement.obsoleteSpecification,
+      ),
+    ).not.toHaveProperty('requirement_area_id')
 
     expect(owners.get(RETENTION_SEED.owner.linked)).toMatchObject({
       hsa_id: 'SE5560000001-retentionlinked',
@@ -551,11 +561,6 @@ describe('seed profiles', () => {
     })
     expect(
       [...requirements.values()].some(
-        row => row.requirement_area_id === RETENTION_SEED.requirementArea.used,
-      ),
-    ).toBe(true)
-    expect(
-      [...localRequirements.values()].some(
         row => row.requirement_area_id === RETENTION_SEED.requirementArea.used,
       ),
     ).toBe(true)
