@@ -74,7 +74,14 @@ We aim to respond to security reports according to the following timeline:
 
 - **Dependency Management**: Regular security audits using `npm audit` and
   automated dependency updates
-- **Code Review**: All code changes require review before merging
+- **Code Review**: All code changes require review before merging.
+  Security-sensitive paths are owned by `@viscalyx/security-reviewers` in
+  [.github/CODEOWNERS](.github/CODEOWNERS), and security-sensitive pull
+  requests must complete the SSDLC gate in the pull request body.
+- **SSDLC Gate**: Pull requests that touch app code, APIs, migrations,
+  authentication, authorization, logging, AI/MCP, workflows, dependencies, or
+  personal data must record security requirements, test evidence, data
+  protection impact, threat-model impact, and approval context.
 - **Testing**: Comprehensive test coverage including security-focused tests
 - **Linting**: Biome with recommended lint rules
 - **Static Analysis**: TypeScript strict mode and additional static analysis
@@ -143,6 +150,15 @@ If you're contributing to this project, please follow these security guidelines:
 ### Code Review
 
 - **Security Focus**: Review code changes with security implications in mind
+- **Security Ownership**: Changes under `.github/CODEOWNERS` security paths
+  require `@viscalyx/security-reviewers` review before merge
+- **Review Scope**: Security reviewers check input validation, authentication,
+  authorization, audit redaction, personal-data exposure, migration risk, and
+  security-test impact as applicable
+- **SSDLC Evidence**: Security-sensitive pull requests must complete the
+  SSDLC gate checklist and notes before merge. Use requirement IDs, test
+  evidence, privacy impact, threat-model decision, and approval context in the
+  pull request body.
 - **Threat Modeling**: Consider potential attack vectors for new features
 - **Testing**: Include security tests for security-sensitive functionality
 - **Documentation**: Document security-related design decisions

@@ -16,9 +16,9 @@ Usage:
 Options:
   --lock-file <path>  Release container-stack.lock.json path
   --env-file <path>   release.env path with *_IMAGE_REF values
-  --output <path>     Exported offline image bundle path. Export verifies and
-                      saves local images; pull images before running export.
-  --bundle <path>     Offline image bundle to load
+  --output <path>     Exported disconnected image bundle path. Export verifies
+                      and saves local images; pull images before running export.
+  --bundle <path>     Disconnected image bundle to load
 USAGE
 }
 

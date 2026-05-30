@@ -141,6 +141,31 @@ beslutsreferenser ska fastställas av förvaltningen innan produktionskörning.
 | CI/CD-, paket- och containerkedja | Bygg, test, beroendehämtning, containerbas och säkerhetskontroller. | Källkod, byggloggar, dependency metadata och syntetisk testdata. | Leveranskedjeansvar, godkända källor, åtkomst till byggloggar, secrets policy och beslut om produktionsdata inte får behandlas där utan särskilt godkännande. |
 <!-- markdownlint-enable MD013 -->
 
+### Underleverantörer vid egen lokal drift
+
+Vid en installation i kundens egen lokala driftmiljö ska
+förvaltningen först skilja på interna driftfunktioner och externa
+parter. Om kunden själv driver applikationsvärd, SQL Server,
+Keycloak eller annan IdP, reverse proxy, loggning, SIEM och backup
+inom den egna organisationen finns normalt inga externa
+underleverantörer som behandlar systemets informationsmängder
+enbart genom installationen.
+
+Följande ska dokumenteras som underleverantör eller
+personuppgiftsbiträde när funktionen utförs av extern part eller
+extern tjänst: drift- eller plattformspartner, databasdrift,
+extern DBA, IdP, loggning, SIEM, övervakning, backup,
+arkivlagring, support med åtkomst till loggar, databasutdrag eller
+export, externa MCP-klienter eller AI-agenter samt OpenRouter och
+modellleverantörer när AI-generering är aktiverad.
+
+Programvaruleverantörer, paketkällor, containerregister och
+publika containerkällor räknas i normalfallet som
+beroenden i leveranskedjan, inte underleverantörer. De ska bara
+föras in som underleverantörer om de får produktionsdata, loggar,
+telemetri, supportpaket, fjärråtkomst eller annan faktisk åtkomst
+till informationsmängderna.
+
 ## Överlämning till förvaltningen
 
 Förvaltningen bör använda detta dokument som indata till organisationens

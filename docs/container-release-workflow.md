@@ -11,7 +11,8 @@ records two image identities in `container-stack.lock.json`. The
 `manifestDigest` is the registry manifest digest used for GitHub Artifact
 Attestations, SBOM subjects and GHCR release smoke tests. The `imageId` is the
 container image ID used by production operators to verify runtime equivalence
-after tag-based pulls, internal-registry mirroring or offline image transport.
+after tag-based pulls, internal-registry mirroring or disconnected image
+transport.
 The release smoke test starts Podman Compose from verified GHCR manifest digest
 references, but production deployment and upgrade guides use tag-style runtime
 refs and verify them against locked image IDs.
@@ -106,10 +107,10 @@ If the package-version lookup is unavailable, the notes fall back to the
 repository package page.
 
 Release notes also include automatic change notes. Stable releases compare
-against the previous published non-prerelease GitHub Release. Preview releases
-compare against the previous published prerelease GitHub Release. When no
-previous release of the same kind exists, the workflow does not let GitHub pick
-another release kind as the changelog boundary.
+against the previous published stable GitHub Release. Preview releases compare
+against the previous published pre-release GitHub Release. When no previous
+release of the same kind exists, the workflow does not let GitHub pick another
+release kind as the changelog boundary.
 
 The workflow asks GitHub to generate the `What's Changed` section with
 `.github/release.yml`. That file groups pull requests by repository labels and
@@ -144,7 +145,7 @@ The production deployment bundle includes `bin/kravhantering-images.sh`, a
 Bash and jq helper for explicit operator verification. It can verify configured
 tag-style `release.env` image refs against locked image IDs, export already
 present verified local images into a transport bundle, and load and tag that
-bundle on an offline host.
+bundle on a disconnected host.
 
 The production deployment bundle is also uploaded to GitHub Releases as:
 
@@ -161,9 +162,9 @@ enterprise app-node workflow with external SQL Server and external IdP. See
 [rhel10-production-single-node-self-contained-deploy.md](./rhel10-production-single-node-self-contained-deploy.md)
 for the self-contained single-node workflow with bundled SQL Server and
 Keycloak.
-The bundle also includes the matching topology-specific offline guides,
-upgrade guides and uninstall guides. The offline guides document how operators
-create a transferable offline bundle that contains the production deployment
+The bundle also includes the matching topology-specific disconnected guides,
+upgrade guides and uninstall guides. The disconnected guides document how
+operators create a transferable bundle that contains the production deployment
 archive, its checksum, exported images, image refs and hashes.
 
 ## Public GHCR Packages
@@ -251,5 +252,5 @@ refs when the host can reach the registry, then run the bundled
 Podman image inspect `.Id` values with the locked `imageId` values. Third-party
 upstream tags can move after release, so production sites should prefer
 release-specific internal mirror tags and treat the lock file as the source of
-truth. For offline transport, export only after the source host has already
-pulled and verified the local refs.
+truth. For disconnected transport, export only after the source host has
+already pulled and verified the local refs.
