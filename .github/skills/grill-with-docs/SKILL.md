@@ -64,7 +64,7 @@ When the user uses vague or overloaded terms, propose a precise canonical term. 
 ### Multilingual terms
 
 When a term is resolved, determine if the codebase is multilingual. For available locales, propose precise translated canonical terms. "For the term 'Customer' shall we use these translations:
-- Swedish: Kunder
+- Swedish: Kund
 - Spanish: Cliente
 - French: Client
 - German: Kunde"
