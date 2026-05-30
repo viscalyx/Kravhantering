@@ -109,8 +109,12 @@ sequenceDiagram
     Note over PW,APP: ✓ seeded data and static assets are visible
     PW->>APP: GET /build.json
     Note over PW,APP: ✓ build metadata is valid and attached
-    PW->>APP: POST /api/requirements
-    APP->>DB: Persist release-smoke requirement
+    PW->>APP: GET /api/requirement-areas
+    APP->>DB: Read requirement areas
+    DB-->>APP: Requirement area rows
+    Note over PW,APP: Select first requirement area
+    PW->>APP: POST /api/requirements release-smoke-<run-id>
+    APP->>DB: Persist release-smoke-<run-id> requirement
     PW->>APP: GET /api/requirements/:id
     APP->>DB: Read created requirement
     Note over PW,DB: ✓ SQL Server write path is proven
