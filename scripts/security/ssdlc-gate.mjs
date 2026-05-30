@@ -176,6 +176,33 @@ export function checkboxState(prBody, markerId) {
   return match[1].toLowerCase() === 'x' ? 'checked' : 'unchecked'
 }
 
+function stripHtmlCommentMarkup(value) {
+  const input = String(value ?? '')
+  let output = ''
+  let index = 0
+
+  while (index < input.length) {
+    if (input.startsWith('<!--', index)) {
+      const commentEndIndex = input.indexOf('-->', index + 4)
+      if (commentEndIndex === -1) break
+      index = commentEndIndex + 3
+      continue
+    }
+
+    const character = input.at(index)
+    if (character !== '<' && character !== '>') {
+      output += character
+    }
+    index += 1
+  }
+
+  return output
+}
+
+function hasMeaningfulNoteText(line) {
+  return /[^\s!-]/u.test(line)
+}
+
 export function extractSsdlcNotes(prBody) {
   const body = String(prBody ?? '')
   const markerIndex = body.indexOf(SSDLC_NOTES_MARKER)
@@ -188,11 +215,10 @@ export function extractSsdlcNotes(prBody) {
       ? afterMarker
       : afterMarker.slice(0, nextHeadingIndex)
 
-  return notesSection
-    .replaceAll(/<!--[\s\S]*?-->/gu, '')
+  return stripHtmlCommentMarkup(notesSection)
     .split(/\r?\n/u)
     .map(line => line.trim())
-    .filter(Boolean)
+    .filter(hasMeaningfulNoteText)
     .join('\n')
 }
 

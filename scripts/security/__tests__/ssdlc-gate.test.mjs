@@ -92,6 +92,23 @@ describe('SSDLC gate', () => {
     ).toContain('Requirements: 8.25 and 8.26.')
   })
 
+  it('does not count overlapping HTML comment markers as SSDLC notes', () => {
+    const commentOnlyBody = completePrBody.replace(
+      /<!-- ssdlc:notes -->[\s\S]*?## Reviewer Notes/u,
+      '<!-- ssdlc:notes -->\n<!<!-- Hidden evidence -->-->\n## Reviewer Notes',
+    )
+
+    const result = evaluateSsdlcGate({
+      changedFiles: ['scripts/security/ssdlc-gate.mjs'],
+      prBody: commentOnlyBody,
+    })
+
+    expect(extractSsdlcNotes(commentOnlyBody)).toBe('')
+    expect(result.failures).toContain(
+      'SSDLC notes are missing. Add requirement IDs, test evidence, privacy impact, threat-model decision, and approval context.',
+    )
+  })
+
   it('fails when security-sensitive changes have no completed PR evidence', () => {
     const result = evaluateSsdlcGate({
       changedFiles: ['app/api/requirements/route.ts'],
