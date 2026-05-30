@@ -313,7 +313,36 @@ configuration change.
    `keycloak` is running. The container reads the Keycloak admin credentials
    from `/etc/kravhantering/keycloak.env`. The sync adds, updates and removes
    generated demo users, adopts same-username users into the demo set and
-   preserves unrelated users:
+   preserves unrelated users.
+
+   Before running the sync against a realm whose user profile does not already
+   declare it, add an administrator-only `kravhanteringDemoUser` user-profile
+   attribute to the running Keycloak realm. In the Keycloak admin console, open
+   **Realm settings**, **User profile**, and add this managed attribute. Do not
+   enable arbitrary unmanaged attributes:
+
+   ```json
+   {
+     "name": "kravhanteringDemoUser",
+     "displayName": "Kravhantering demo user marker",
+     "group": "user-metadata",
+     "validations": {
+       "length": { "max": 4 },
+       "pattern": {
+         "pattern": "^true$",
+         "error-message": "Invalid demo user marker"
+       }
+     },
+     "permissions": {
+       "view": ["admin"],
+       "edit": ["admin"]
+     },
+     "multivalued": false
+   }
+   ```
+
+   The `*_CONTAINER_FILE` paths below exist inside the temporary container, not
+   on the host:
 
    ```bash
    sudo -iu kravhantering
@@ -324,18 +353,18 @@ configuration change.
 
    STACK_NETWORK=kravhantering-internal
    DEMO_USERS_FILE=$PWD/keycloak/demo-users.not-for-production.json
-   DEMO_USERS_TARGET=/workspace/keycloak/demo-users.not-for-production.json
+   DEMO_USERS_CONTAINER_FILE=/tmp/demo-users.not-for-production.json
    SCRIPT_FILE=$PWD/scripts/keycloak-demo-users.mjs
-   SCRIPT_TARGET=/workspace/scripts/keycloak-demo-users.mjs
+   SCRIPT_CONTAINER_FILE=/tmp/keycloak-demo-users.mjs
 
    podman run --rm --pull=never --network "$STACK_NETWORK" \
      --entrypoint node --user 0:0 \
      --env-file /etc/kravhantering/keycloak.env \
-     --volume "$SCRIPT_FILE:$SCRIPT_TARGET:ro" \
-     --volume "$DEMO_USERS_FILE:$DEMO_USERS_TARGET:ro" \
+     --volume "$SCRIPT_FILE:$SCRIPT_CONTAINER_FILE:ro" \
+     --volume "$DEMO_USERS_FILE:$DEMO_USERS_CONTAINER_FILE:ro" \
      "$DB_JOB_IMAGE_REF" \
-     "$SCRIPT_TARGET" demo-users:sync \
-     --users "$DEMO_USERS_TARGET" \
+     "$SCRIPT_CONTAINER_FILE" demo-users:sync \
+     --users "$DEMO_USERS_CONTAINER_FILE" \
      --base-url http://keycloak:8080 \
      --realm kravhantering-production
 

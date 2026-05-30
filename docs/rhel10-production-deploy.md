@@ -882,6 +882,28 @@ When DBA pre-provisioning is not available, `db-job bootstrap` can create the
 database and SQL principals with temporary SQL admin credentials. Use this only
 as a controlled operational exception:
 
+Validate that SQL Server accepts the bootstrap admin connection before
+creating the application database and logins:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+set -a
+. /etc/kravhantering/release.env
+. /etc/kravhantering/db-job.env
+set +a
+
+podman run --rm --env-file /etc/kravhantering/db-job.env \
+  --env DB_USER="${DB_BOOTSTRAP_ADMIN_USER:-sa}" \
+  --env DB_PASSWORD="$DB_BOOTSTRAP_ADMIN_PASSWORD" \
+  --env DB_NAME=master \
+  "$DB_JOB_IMAGE_REF" wait
+
+exit
+```
+
+Then run bootstrap, migration and required seed:
+
 ```bash
 sudo -iu kravhantering
 cd /opt/kravhantering/current

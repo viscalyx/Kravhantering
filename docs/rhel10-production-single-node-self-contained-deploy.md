@@ -7,6 +7,8 @@
 <!-- cSpell:words serverAuth subjectAltName -->
 <!-- cSpell:words Mountpoint -->
 <!-- cSpell:words fcontext graphroot restorecon semanage tempdb -->
+<!-- cSpell:words invalid_client_credentials -->
+<!-- cSpell:words fromjson mktemp println tojson userprofile -->
 
 This guide describes how to install and operate Kravhantering on one clean
 Red Hat Enterprise Linux 10 host from released artifacts only, with nginx,
@@ -395,8 +397,24 @@ sudo chcon -R -t container_file_t \
 Set image references in `/etc/kravhantering/release.env` to the site's
 approved runtime refs. Production runtime refs must use tag-style `image:tag`
 values. Prefer release-specific internal mirror tags for third-party images.
+
+Choose exactly one image-reference method before running commands in this
+section:
+
+- For connected staging only, derive public upstream refs from the release
+  lock.
+- For an internal registry mirror that preserves repository paths, rewrite only
+  the registry host while keeping the locked tags.
+- For an internal mirror with a custom repository layout, set the five
+  `*_IMAGE_REF` values manually to site-approved tag refs.
+
+Do not run the connected-staging block for a production site that must pull
+third-party images from an internal mirror.
+
+### Connected Staging Public Upstream Refs
+
 For connected staging only, derive the public upstream refs from the release
-lock and verify them immediately:
+lock:
 
 ```bash
 update_ref() {
@@ -428,12 +446,18 @@ update_ref KEYCLOAK_IMAGE_REF \
   "$(service_ref keycloak)"
 ```
 
+### Internal Mirror With Preserved Repository Paths
+
 If the site pulls from an internal registry mirror that preserves repository
 paths, rewrite only the registry host while keeping the locked tags:
 
 ```bash
 TARGET_IMAGE_REGISTRY=registry.example.internal
 LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
+update_ref() {
+  sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
+}
+
 service_image() {
   jq -r --arg name "$1" \
     '.services[] | select(.name == $name) | .image' "$LOCK_FILE"
@@ -461,11 +485,16 @@ update_ref KEYCLOAK_IMAGE_REF \
   "$(mirror_ref keycloak)"
 ```
 
+### Internal Mirror With Custom Repository Layout
+
 If the internal mirror uses a custom repository layout, set the five
 `*_IMAGE_REF` values manually to site-approved tag refs, then run the
 verification below. Each ref must resolve to the locked `imageId`.
 
-Pull and verify the images as the service user:
+### Verify Selected Refs
+
+After completing exactly one image-reference method above, pull and verify the
+images as the service user:
 
 ```bash
 sudo -iu kravhantering
@@ -509,7 +538,11 @@ PUBLIC_HOSTNAME=kravhantering.example.internal
 alias so containers can resolve the browser-facing issuer URL internally.
 
 Set `NGINX_RESOLVER` to the Podman DNS resolver that nginx should use for
-dynamic `app-runtime` and Keycloak lookups:
+dynamic `app-runtime` and Keycloak lookups. This value might not be knowable
+until the Podman network has been created later in the guide. If the site
+already knows the resolver IP that the next Podman network will use, set that
+value now; otherwise keep the example value temporarily and replace it after
+the resolver check in [Start the Single-Node Stack](#start-the-single-node-stack):
 
 ```env
 NGINX_RESOLVER=10.89.0.1
@@ -818,14 +851,68 @@ must never be imported into a production realm.
 
 Keycloak imports the realm JSON only when the `keycloak-data` volume is empty.
 Before first startup, or before intentionally recreating an empty Keycloak
-volume, merge the generated demo users into the realm import file:
+volume, merge the generated demo users into the realm import file. Demo users
+need an administrator-only `kravhanteringDemoUser` user-profile attribute so
+the sync and clear commands can identify them without enabling arbitrary
+unmanaged Keycloak attributes. The commands below add that attribute only to
+the temporary realm copy used for demo-user import.
+
+The temporary copy must be owned by the rootless service user and labeled for a
+container write before it is bind-mounted into the merge container. The
+`*_CONTAINER_FILE` paths below exist inside the temporary container, not on the
+host:
 
 ```bash
-sudo cp \
+sudo install -o kravhantering -g kravhantering -m 0640 \
   /etc/kravhantering/keycloak/realm-kravhantering-production.json \
   /tmp/realm-kravhantering-production.json
-sudo chown kravhantering:kravhantering \
-  /tmp/realm-kravhantering-production.json
+
+sudo chcon -t container_file_t /tmp/realm-kravhantering-production.json
+
+tmp_realm="$(mktemp)"
+
+sudo jq '
+  def demo_marker_profile_attribute:
+    {
+      name: "kravhanteringDemoUser",
+      displayName: "Kravhantering demo user marker",
+      group: "user-metadata",
+      validations: {
+        length: { max: 4 },
+        pattern: {
+          pattern: "^true$",
+          "error-message": "Invalid demo user marker"
+        }
+      },
+      permissions: { view: ["admin"], edit: ["admin"] },
+      multivalued: false
+    };
+
+  demo_marker_profile_attribute as $attribute
+  | .components["org.keycloak.userprofile.UserProfileProvider"] |=
+      map(
+        if .providerId == "declarative-user-profile" then
+          .config["kc.user.profile.config"][0] |= (
+            fromjson
+            | .attributes = (
+                (.attributes // [])
+                | if any(.name == $attribute.name) then .
+                  else . + [$attribute]
+                  end
+              )
+            | tojson
+          )
+        else .
+        end
+      )
+' /tmp/realm-kravhantering-production.json > "$tmp_realm"
+
+sudo install -o kravhantering -g kravhantering -m 0640 \
+  "$tmp_realm" /tmp/realm-kravhantering-production.json
+
+rm -f "$tmp_realm"
+
+sudo chcon -t container_file_t /tmp/realm-kravhantering-production.json
 
 sudo -iu kravhantering
 cd /opt/kravhantering/current
@@ -834,20 +921,20 @@ set -a
 set +a
 
 DEMO_USERS_FILE=$PWD/keycloak/demo-users.not-for-production.json
-DEMO_USERS_TARGET=/workspace/keycloak/demo-users.not-for-production.json
+DEMO_USERS_CONTAINER_FILE=/tmp/demo-users.not-for-production.json
 SCRIPT_FILE=$PWD/scripts/keycloak-demo-users.mjs
-SCRIPT_TARGET=/workspace/scripts/keycloak-demo-users.mjs
+SCRIPT_CONTAINER_FILE=/tmp/keycloak-demo-users.mjs
 REALM_FILE=/tmp/realm-kravhantering-production.json
-REALM_TARGET=/workspace/keycloak/realm-kravhantering-production.json
+REALM_CONTAINER_FILE=/tmp/realm-kravhantering-production.json
 
 podman run --rm --pull=never --entrypoint node --user 0:0 \
-  --volume "$SCRIPT_FILE:$SCRIPT_TARGET:ro" \
-  --volume "$DEMO_USERS_FILE:$DEMO_USERS_TARGET:ro" \
-  --volume "$REALM_FILE:$REALM_TARGET:rw" \
+  --volume "$SCRIPT_FILE:$SCRIPT_CONTAINER_FILE:ro" \
+  --volume "$DEMO_USERS_FILE:$DEMO_USERS_CONTAINER_FILE:ro" \
+  --volume "$REALM_FILE:$REALM_CONTAINER_FILE:rw" \
   "$DB_JOB_IMAGE_REF" \
-  "$SCRIPT_TARGET" merge-file \
-  --users "$DEMO_USERS_TARGET" \
-  --realm-file "$REALM_TARGET"
+  "$SCRIPT_CONTAINER_FILE" merge-file \
+  --users "$DEMO_USERS_CONTAINER_FILE" \
+  --realm-file "$REALM_CONTAINER_FILE"
 
 exit
 
@@ -867,7 +954,9 @@ unrelated users:
 
 The `STACK_NETWORK` variable is for temporary `podman run` containers that
 need internal service-name DNS such as `keycloak` or `sqlserver`. `podman
-compose` attaches the long-running services to the network automatically.
+compose` attaches the long-running services to the network automatically. The
+`*_CONTAINER_FILE` paths below exist inside the temporary container, not on the
+host.
 
 ```bash
 sudo -iu kravhantering
@@ -878,9 +967,9 @@ set +a
 
 STACK_NETWORK=kravhantering-internal
 DEMO_USERS_FILE=$PWD/keycloak/demo-users.not-for-production.json
-DEMO_USERS_TARGET=/workspace/keycloak/demo-users.not-for-production.json
+DEMO_USERS_CONTAINER_FILE=/tmp/demo-users.not-for-production.json
 SCRIPT_FILE=$PWD/scripts/keycloak-demo-users.mjs
-SCRIPT_TARGET=/workspace/scripts/keycloak-demo-users.mjs
+SCRIPT_CONTAINER_FILE=/tmp/keycloak-demo-users.mjs
 
 podman network exists "$STACK_NETWORK" || \
   podman network create "$STACK_NETWORK"
@@ -888,11 +977,11 @@ podman network exists "$STACK_NETWORK" || \
 podman run --rm --pull=never --network "$STACK_NETWORK" \
   --entrypoint node --user 0:0 \
   --env-file /etc/kravhantering/keycloak.env \
-  --volume "$SCRIPT_FILE:$SCRIPT_TARGET:ro" \
-  --volume "$DEMO_USERS_FILE:$DEMO_USERS_TARGET:ro" \
+  --volume "$SCRIPT_FILE:$SCRIPT_CONTAINER_FILE:ro" \
+  --volume "$DEMO_USERS_FILE:$DEMO_USERS_CONTAINER_FILE:ro" \
   "$DB_JOB_IMAGE_REF" \
-  "$SCRIPT_TARGET" demo-users:sync \
-  --users "$DEMO_USERS_TARGET" \
+  "$SCRIPT_CONTAINER_FILE" demo-users:sync \
+  --users "$DEMO_USERS_CONTAINER_FILE" \
   --base-url http://keycloak:8080 \
   --realm kravhantering-production
 
@@ -978,6 +1067,11 @@ podman network exists "$STACK_NETWORK" || \
 podman compose --env-file /etc/kravhantering/release.env \
   -f compose/single-node.compose.yml up -d sqlserver keycloak
 
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml logs --tail=100 sqlserver
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml logs --tail=100 keycloak
+
 exit
 ```
 
@@ -1017,6 +1111,29 @@ sudo sed -i "s#^NGINX_RESOLVER=.*#NGINX_RESOLVER=${RESOLVER_IP}#" \
   /etc/kravhantering/release.env
 ```
 
+Validate that SQL Server accepts the bootstrap admin connection before
+creating the application database and logins:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+set -a
+. /etc/kravhantering/release.env
+. /etc/kravhantering/db-job.env
+set +a
+
+STACK_NETWORK=kravhantering-internal
+
+podman run --rm --network "$STACK_NETWORK" \
+  --env-file /etc/kravhantering/db-job.env \
+  --env DB_USER="${DB_BOOTSTRAP_ADMIN_USER:-sa}" \
+  --env DB_PASSWORD="$DB_BOOTSTRAP_ADMIN_PASSWORD" \
+  --env DB_NAME=master \
+  "$DB_JOB_IMAGE_REF" wait
+
+exit
+```
+
 Run the database bootstrap, migration and required seed jobs once for the
 release:
 
@@ -1029,9 +1146,6 @@ set +a
 
 STACK_NETWORK=kravhantering-internal
 
-podman run --rm --network "$STACK_NETWORK" \
-  --env-file /etc/kravhantering/db-job.env \
-  "$DB_JOB_IMAGE_REF" wait
 podman run --rm --network "$STACK_NETWORK" \
   --env-file /etc/kravhantering/db-job.env \
   "$DB_JOB_IMAGE_REF" bootstrap
@@ -1087,6 +1201,15 @@ sudo -iu kravhantering
 cd /opt/kravhantering/current
 podman compose --env-file /etc/kravhantering/release.env \
   -f compose/single-node.compose.yml up -d
+
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml logs --tail=100 sqlserver
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml logs --tail=100 keycloak
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml logs --tail=100 app-runtime
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml logs --tail=100 nginx
 
 exit
 ```
@@ -1292,6 +1415,26 @@ uninstall procedure.
 - If `/api/health` works from the host but not from a remote client, check
   firewalld and confirm HTTPS is allowed on port 443 for the approved source
   networks.
+- If troubleshooting requires restarting a container, use the service-control
+  patterns in [Operate Individual Services](#operate-individual-services) and
+  prefer restarting only the affected service. For example, restart the app
+  runtime after changing mounted app trust material:
+
+  ```bash
+  sudo -iu kravhantering
+  cd /opt/kravhantering/current
+  podman compose --env-file /etc/kravhantering/release.env \
+    -f compose/single-node.compose.yml restart app-runtime
+
+  exit
+  ```
+
+  `app-runtime` and `nginx` are stateless in this topology and are normally the
+  safest services to restart. `sqlserver` and `keycloak` are stateful and should
+  be restarted only during a planned maintenance window. Do not run
+  `podman compose down -v`, `podman volume rm`, or `podman system prune --volumes`
+  unless an approved restore or uninstall procedure explicitly calls for
+  deleting the SQL Server and Keycloak named data volumes.
 - If `/api/ready` returns `503` and app logs show
   `NODE_EXTRA_CA_CERTS` permission denied, fix the CA trust mount:
 
@@ -1306,6 +1449,82 @@ uninstall procedure.
 
   exit
   ```
+
+- If `AUTH_OIDC_CLIENT_SECRET` was corrected in
+  `/etc/kravhantering/app.env` but readiness still fails and Keycloak logs
+  `invalid_client_credentials` for `kravhantering-app`, compare the secret in
+  the file with the secret still stored in the running `app-runtime` container
+  environment. The commands below print only length and SHA-256 hash values, not
+  the secret itself:
+
+  ```bash
+  sudo -iu kravhantering
+  cd /opt/kravhantering/current
+
+  app_secret="$(
+    sed -n 's/^AUTH_OIDC_CLIENT_SECRET=//p' \
+      /etc/kravhantering/app.env | head -n1
+  )"
+
+  running_secret="$(
+    podman inspect kravhantering-single-node_app-runtime_1 \
+      --format '{{range .Config.Env}}{{println .}}{{end}}' |
+      sed -n 's/^AUTH_OIDC_CLIENT_SECRET=//p' |
+      head -n1
+  )"
+
+  printf 'app.env length=%s sha256=%s\n' \
+    "${#app_secret}" \
+    "$(printf '%s' "$app_secret" | sha256sum | cut -d ' ' -f1)"
+
+  printf 'running app-runtime length=%s sha256=%s\n' \
+    "${#running_secret}" \
+    "$(printf '%s' "$running_secret" | sha256sum | cut -d ' ' -f1)"
+
+  exit
+  ```
+
+  If the values differ, recreate `app-runtime` so Podman reloads the changed
+  env file. `podman compose restart app-runtime` restarts the existing
+  container and does not reload changed `env_file` values. Because nginx
+  depends on `app-runtime`, stop and remove those two stateless containers,
+  then bring them back. Do not remove `sqlserver`, `keycloak`, or any named
+  volumes:
+
+  ```bash
+  sudo -iu kravhantering
+  cd /opt/kravhantering/current
+
+  podman compose --env-file /etc/kravhantering/release.env \
+    -f compose/single-node.compose.yml stop nginx app-runtime
+
+  podman rm kravhantering-single-node_nginx_1
+  podman rm kravhantering-single-node_app-runtime_1
+
+  podman compose --env-file /etc/kravhantering/release.env \
+    -f compose/single-node.compose.yml up -d app-runtime nginx
+
+  podman ps --format '{{.Names}}\t{{.Status}}' |
+    grep -E 'app-runtime|nginx|keycloak|sqlserver'
+
+  curl -sk https://kravhantering.example.internal/api/ready
+
+  exit
+  ```
+
+  The expected readiness response is `{"status":"ready"}`. After recreation,
+  the running `app-runtime` environment should match
+  `/etc/kravhantering/app.env`, and Keycloak should no longer log
+  `invalid_client_credentials` for `kravhantering-app`.
+
+- If `db-job wait` fails with `self-signed certificate; if the root CA is
+  installed locally, try running Node.js with --use-system-ca`, confirm
+  `DB_TRUST_SERVER_CERTIFICATE=true` in both
+  `/etc/kravhantering/db-job.env` and `/etc/kravhantering/app.env`. The
+  single-node SQL Server container presents a self-signed certificate by
+  default, so this topology trusts the presented certificate directly unless
+  the internal SQL Server container has been replaced with a certificate trusted
+  by the container trust store.
 
 - If `/api/health` and `/api/ready` return `502` after restarting
   `app-runtime` on an older release, restart nginx so it resolves the new
@@ -1442,9 +1661,9 @@ sudo update-ca-trust extract
 Review the certificate before starting the stack:
 
 ```bash
-openssl x509 -in "${TLS_DIR}/fullchain.pem" \
+sudo openssl x509 -in "${TLS_DIR}/fullchain.pem" \
   -noout -subject -issuer -dates -ext subjectAltName
-openssl verify -CAfile "${TLS_DIR}/ca.crt" "${TLS_DIR}/server.crt"
+sudo openssl verify -CAfile "${TLS_DIR}/ca.crt" "${TLS_DIR}/server.crt"
 ```
 
 After the stack is running, verify the TLS handshake from an internal client:
