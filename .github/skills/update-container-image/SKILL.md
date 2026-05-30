@@ -41,6 +41,12 @@ verify the release/smoke/test surfaces that consume it.
 4. Update companion files and usage surfaces.
    - Check `IMAGE_CONFIGS[image].companionFiles`; keep it complete when adding
      or discovering hardcoded refs.
+   - Any time this task changes a file because it contains a hardcoded image
+     reference, release example, devcontainer/devfile example, or active
+     deployment/doc workflow reference, update
+     `.github/workflows/vendor-image-updates.mjs` in the same change so
+     `IMAGE_CONFIGS[image].companionFiles` or the replacement logic covers
+     that file for future automated updates.
    - Known companion files:
      - `nginx`: `containers/production/env/release.env.template`
      - `sqlserver`: `docker-compose.sqlserver.yml`,
@@ -49,7 +55,10 @@ verify the release/smoke/test surfaces that consume it.
      - `keycloak`: `docker-compose.idp.yml`,
        `.devcontainer/docker-compose.yml`,
        `.devcontainer/elevated/docker-compose.yml`,
-       `docs/auth-developer-workflow.md`
+       `devfile.example.yaml`,
+       `containers/production/env/release.env.template`,
+       `docs/auth-developer-workflow.md`,
+       `docs/openshift-devspaces.md`
    - Search broadly for the old tag, moving tags, image name, env var, and
      lock name:
 
