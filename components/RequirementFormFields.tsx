@@ -47,6 +47,8 @@ export interface RequirementFormFieldsProps {
   /** Extra actions rendered after norm reference list (e.g. "Create" button) */
   normReferenceActions?: ReactNode
   onChange: (values: RequirementFormFieldValues) => void
+  /** Hide area for contexts where requirements are not owned by a requirement area */
+  showArea?: boolean
   /** Taxonomy option arrays loaded by the form container via useTaxonomyOptions */
   taxonomyOptions: TaxonomyOptions
   values: RequirementFormFieldValues
@@ -75,6 +77,7 @@ export default function RequirementFormFields({
   layout = 'sidebar',
   normReferenceActions,
   onChange,
+  showArea = true,
   taxonomyOptions,
   values,
 }: RequirementFormFieldsProps) {
@@ -220,38 +223,40 @@ export default function RequirementFormFields({
 
   const mainFields = (
     <>
-      <div>
-        <div className="flex items-center gap-1.5 mb-1">
-          <label className="text-sm font-medium" htmlFor={fid('areaId')}>
-            {t('area')}
-            {areaRequired ? <span aria-hidden="true"> *</span> : null}
-          </label>
-          {helpButton(fid('areaId'), t('area'))}
+      {showArea ? (
+        <div>
+          <div className="flex items-center gap-1.5 mb-1">
+            <label className="text-sm font-medium" htmlFor={fid('areaId')}>
+              {t('area')}
+              {areaRequired ? <span aria-hidden="true"> *</span> : null}
+            </label>
+            {helpButton(fid('areaId'), t('area'))}
+          </div>
+          {helpPanel(
+            areaRequired ? 'areaHelp' : 'areaHelpOptional',
+            fid('areaId'),
+          )}
+          <select
+            className={selectClassName}
+            id={fid('areaId')}
+            onChange={e => handleChange('areaId', e.target.value)}
+            required={areaRequired}
+            value={values.areaId}
+          >
+            <option value="">{t('area')}...</option>
+            {areas.map(a => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+          {values.areaId && (
+            <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+              {t('area')} — {t('areaOwner')}: {selectedAreaOwnerName ?? '—'}
+            </p>
+          )}
         </div>
-        {helpPanel(
-          areaRequired ? 'areaHelp' : 'areaHelpOptional',
-          fid('areaId'),
-        )}
-        <select
-          className={selectClassName}
-          id={fid('areaId')}
-          onChange={e => handleChange('areaId', e.target.value)}
-          required={areaRequired}
-          value={values.areaId}
-        >
-          <option value="">{t('area')}...</option>
-          {areas.map(a => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
-        {values.areaId && (
-          <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-            {t('area')} — {t('areaOwner')}: {selectedAreaOwnerName ?? '—'}
-          </p>
-        )}
-      </div>
+      ) : null}
 
       <div>
         <div className="flex items-center gap-1.5 mb-1">

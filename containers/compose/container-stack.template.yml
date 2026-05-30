@@ -108,3 +108,7 @@ services:
 volumes:
   sqlserver-data:
     name: "{{sqlServerVolumeName}}"
+
+networks:
+  default:
+    name: "{{networkName}}"

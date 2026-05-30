@@ -142,7 +142,7 @@ async function openSpecificationFixtureRow(page: Page, uniqueId: string) {
   const detailPaneId = await rowButton.getAttribute('aria-controls')
   if (!detailPaneId) {
     throw new Error(
-      `Specification item row ${uniqueId} does not control a detail pane`,
+      `Requirement application row ${uniqueId} does not control a detail pane`,
     )
   }
 
@@ -178,7 +178,7 @@ for (const viewport of viewports) {
         const decisionMotivation = `${fixture.uniqueId} ${viewport.name} ${deviationCase.action} decision`
         let detailPane = page.locator('body')
 
-        await test.step('prepare fixture and open the specification item', async () => {
+        await test.step('prepare fixture and open the requirement application', async () => {
           await closeLatestPendingDeviation(request, fixture.itemRef)
           detailPane = await openSpecificationFixtureRow(page, fixture.uniqueId)
           await expect(

@@ -36,9 +36,9 @@ describe('error boundary recovery helpers', () => {
     expect(isAdminRecoveryPath('/sv/admin')).toBe(true)
     expect(isAdminRecoveryPath('/en/admin/settings')).toBe(true)
     expect(isAdminRecoveryPath('/sv/requirement-areas')).toBe(true)
-    expect(isAdminRecoveryPath('/en/specifications/responsibility-areas')).toBe(
-      true,
-    )
+    expect(
+      isAdminRecoveryPath('/en/specifications/governance-object-types'),
+    ).toBe(true)
     expect(isAdminRecoveryPath('/sv/specifications/project-alpha')).toBe(false)
     expect(isAdminRecoveryPath('/sv/requirements')).toBe(false)
   })

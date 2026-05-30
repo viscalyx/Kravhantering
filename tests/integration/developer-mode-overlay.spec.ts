@@ -85,16 +85,7 @@ for (const viewport of viewports) {
 
     test('exposes specification report controls in developer mode', async ({
       page,
-      request,
     }) => {
-      const response = await request.post(
-        '/api/specifications/ETJANST-UPP-2026/items',
-        {
-          data: { requirementIds: [39] },
-        },
-      )
-      expect(response.ok()).toBe(true)
-
       await page.goto('/sv/specifications/ETJANST-UPP-2026')
 
       const itemPanel = page.locator(

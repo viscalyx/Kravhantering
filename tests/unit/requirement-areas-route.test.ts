@@ -83,8 +83,8 @@ describe('requirement-areas route', () => {
   })
 
   describe('POST', () => {
-    it('creates an area and returns 201', async () => {
-      const body = { prefix: 'NEW', name: 'New Area' }
+    it('creates a requirement area and returns 201', async () => {
+      const body = { prefix: 'NEW', name: 'New requirement area' }
       mocks.createArea.mockResolvedValue({ id: 3, ...body })
 
       const req = new Request('http://localhost/api/requirement-areas', {

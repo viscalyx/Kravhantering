@@ -11,10 +11,10 @@ import {
   listSpecificationNeedsReferences,
   listSpecifications,
 } from '@/lib/dal/requirements-specifications'
+import { listSpecificationGovernanceObjectTypes } from '@/lib/dal/specification-governance-object-types'
 import { listSpecificationImplementationTypes } from '@/lib/dal/specification-implementation-types'
 import { listSpecificationItemStatuses } from '@/lib/dal/specification-item-statuses'
 import { listSpecificationLifecycleStatuses } from '@/lib/dal/specification-lifecycle-statuses'
-import { listSpecificationResponsibilityAreas } from '@/lib/dal/specification-responsibility-areas'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { queryRequirementList } from '@/lib/requirements/list-query'
@@ -33,6 +33,7 @@ import type {
   Specification,
   SpecificationListItem,
   SpecificationMeta,
+  SpecificationNeedsReference,
   SpecificationPreloadError,
   SpecificationTaxonomyItem,
 } from '@/lib/specifications/preload-types'
@@ -149,7 +150,7 @@ function emptyDetailInitialData(
     specificationItemStatuses: [],
     specificationItems: [],
     specificationLifecycleStatuses: [],
-    specificationResponsibilityAreas: [],
+    specificationGovernanceObjectTypes: [],
   }
 }
 
@@ -180,7 +181,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
     areas,
     requirementPackages,
     needsRefs,
-    specificationResponsibilityAreas,
+    specificationGovernanceObjectTypes,
     specificationImplementationTypes,
     specificationLifecycleStatuses,
     specificationItemStatuses,
@@ -199,15 +200,15 @@ export async function loadRequirementsSpecificationDetailInitialData({
         nameSv: pkg.nameSv,
       })),
     ),
-    capture<{ id: number; text: string }[]>(
+    capture<SpecificationNeedsReference[]>(
       'specification needs references',
       [],
       () => listSpecificationNeedsReferences(db, spec.id),
     ),
     capture<SpecificationTaxonomyItem[]>(
-      'specification responsibility areas',
+      'specification governance object types',
       [],
-      () => listSpecificationResponsibilityAreas(db),
+      () => listSpecificationGovernanceObjectTypes(db),
     ),
     capture<SpecificationTaxonomyItem[]>(
       'specification implementation types',
@@ -219,12 +220,10 @@ export async function loadRequirementsSpecificationDetailInitialData({
       [],
       () => listSpecificationLifecycleStatuses(db),
     ),
-    capture<SpecificationItemStatusOption[]>(
-      'specification item statuses',
-      [],
-      () => listSpecificationItemStatusOptions(db),
+    capture<SpecificationItemStatusOption[]>('usage statuses', [], () =>
+      listSpecificationItemStatusOptions(db),
     ),
-    capture<SpecificationListItem[]>('specification items', [], () =>
+    capture<SpecificationListItem[]>('requirement applications', [], () =>
       loadSpecificationItems(db, spec.id),
     ),
     capture<
@@ -249,7 +248,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
       areas.error,
       requirementPackages.error,
       needsRefs.error,
-      specificationResponsibilityAreas.error,
+      specificationGovernanceObjectTypes.error,
       specificationImplementationTypes.error,
       specificationLifecycleStatuses.error,
       specificationItemStatuses.error,
@@ -266,7 +265,8 @@ export async function loadRequirementsSpecificationDetailInitialData({
     specificationItemStatuses: specificationItemStatuses.value,
     specificationItems: specificationItems.value,
     specificationLifecycleStatuses: specificationLifecycleStatuses.value,
-    specificationResponsibilityAreas: specificationResponsibilityAreas.value,
+    specificationGovernanceObjectTypes:
+      specificationGovernanceObjectTypes.value,
   }
 }
 
@@ -274,7 +274,7 @@ export async function loadRequirementsSpecificationsInitialData(): Promise<Requi
   const db = await getRequestSqlServerDataSource()
   const [
     specifications,
-    responsibilityAreas,
+    governanceObjectTypes,
     implementationTypes,
     lifecycleStatuses,
   ] = await Promise.all([
@@ -284,9 +284,9 @@ export async function loadRequirementsSpecificationsInitialData(): Promise<Requi
       async () => (await listSpecifications(db)) as Specification[],
     ),
     capture<SpecificationTaxonomyItem[]>(
-      'specification responsibility areas',
+      'specification governance object types',
       [],
-      () => listSpecificationResponsibilityAreas(db),
+      () => listSpecificationGovernanceObjectTypes(db),
     ),
     capture<SpecificationTaxonomyItem[]>(
       'specification implementation types',
@@ -303,13 +303,13 @@ export async function loadRequirementsSpecificationsInitialData(): Promise<Requi
   return {
     errors: [
       specifications.error,
-      responsibilityAreas.error,
+      governanceObjectTypes.error,
       implementationTypes.error,
       lifecycleStatuses.error,
     ].filter((error): error is SpecificationPreloadError => !!error),
     implementationTypes: implementationTypes.value,
     lifecycleStatuses: lifecycleStatuses.value,
-    responsibilityAreas: responsibilityAreas.value,
+    governanceObjectTypes: governanceObjectTypes.value,
     specifications: specifications.value,
   }
 }

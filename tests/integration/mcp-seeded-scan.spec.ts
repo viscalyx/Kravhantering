@@ -284,10 +284,10 @@ async function findUnlinkedSpecification(
         specificationId,
       },
     )
-    const linked = arrayField(items, 'items', 'specification items').some(
+    const linked = arrayField(items, 'items', 'requirement applications').some(
       item =>
         stringField(
-          asRecord(item, 'specification item'),
+          asRecord(item, 'requirement application'),
           'uniqueId',
           'item',
         ) === requirementUniqueId,

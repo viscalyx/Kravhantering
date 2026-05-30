@@ -77,6 +77,7 @@ export interface RequirementsTableProps {
   categories?: FilterOption[]
   columnDefaults?: RequirementListColumnDefault[]
   columnWidths?: RequirementColumnWidths
+  defaultVisibleColumns?: RequirementColumnId[]
   excludeColumns?: RequirementColumnId[]
   expandedId?: number | null
   filterValues?: FilterValues
@@ -88,11 +89,19 @@ export interface RequirementsTableProps {
   loading?: boolean
   loadingMore?: boolean
   locale: string
-  needsReferenceOptions?: { id: number; text: string }[]
+  needsReferenceOptions?: {
+    description?: string | null
+    id: number
+    text: string
+  }[]
   normReferences?: { id: number; normReferenceId: string; name: string }[]
   onColumnWidthsChange?: (value: RequirementColumnWidths) => void
   onFilterChange?: (values: FilterValues) => void
   onLoadMore?: () => void
+  onNeedsReferenceChange?: (
+    itemRef: string,
+    needsReferenceId: number | null,
+  ) => void
   onRowClick?: (id: number) => void
   onSelectionChange?: (ids: Set<number>) => void
   onSortChange?: (value: RequirementSortState) => void
@@ -1310,6 +1319,7 @@ export default function RequirementsTable({
   categories = [],
   columnDefaults,
   columnWidths = {},
+  defaultVisibleColumns,
   excludeColumns,
   expandedId,
   filterValues,
@@ -1325,6 +1335,7 @@ export default function RequirementsTable({
   normReferences = [],
   onFilterChange,
   onLoadMore,
+  onNeedsReferenceChange,
   onSpecificationItemStatusChange,
   onRowClick,
   onColumnWidthsChange,
@@ -1346,7 +1357,8 @@ export default function RequirementsTable({
   qualityCharacteristics = [],
   types = [],
   requirementPackages = [],
-  visibleColumns = getDefaultVisibleRequirementColumns(columnDefaults),
+  visibleColumns = defaultVisibleColumns ??
+    getDefaultVisibleRequirementColumns(columnDefaults),
   wrapDescription = false,
 }: RequirementsTableProps) {
   const t = useTranslations('requirement')
@@ -2247,7 +2259,7 @@ export default function RequirementsTable({
           <td
             className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
           >
-            {row.area?.name ?? '—'}
+            {row.isSpecificationLocal ? '-' : (row.area?.name ?? '—')}
           </td>
         )
       case 'category':
@@ -2391,7 +2403,30 @@ export default function RequirementsTable({
           <td
             className={`py-2 px-2 truncate text-secondary-600 dark:text-secondary-400 ${archivedContentClass} ${dividerClass}`}
           >
-            {row.needsReference ?? '—'}
+            {onNeedsReferenceChange && row.itemRef ? (
+              <select
+                aria-label={t('needsReference')}
+                className="min-h-11 w-full min-w-36 rounded-lg border border-secondary-200 bg-white px-2 py-1.5 text-sm text-secondary-700 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200"
+                onChange={event => {
+                  const value = event.target.value
+                  onNeedsReferenceChange(
+                    row.itemRef ?? '',
+                    value ? Number(value) : null,
+                  )
+                }}
+                onClick={event => event.stopPropagation()}
+                value={row.needsReferenceId ? String(row.needsReferenceId) : ''}
+              >
+                <option value="">{t('noNeedsRef')}</option>
+                {needsReferenceOptions.map(option => (
+                  <option key={option.id} value={option.id}>
+                    {option.text}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              (row.needsReference ?? '—')
+            )}
           </td>
         )
       case 'specificationItemStatus': {
@@ -2541,7 +2576,8 @@ export default function RequirementsTable({
     pendingResizePreviewVisibleWidthsRef.current = null
     resizePreviewVisibleWidthsRef.current = null
     applyVisibleColumns(
-      getDefaultVisibleRequirementColumns(normalizedColumnDefaults),
+      defaultVisibleColumns ??
+        getDefaultVisibleRequirementColumns(normalizedColumnDefaults),
     )
     onColumnWidthsChange?.({})
   }

@@ -57,8 +57,8 @@ maintenance rule.
 - **Code:** `lib/dal/requirements.ts` — effective-status logic.
 - **Spec:** `docs/version-lifecycle-dates.md`.
 - **Req tag:** `[Req: formal — docs/version-lifecycle-dates.md
-  "Effective Status"]`
-- **Question:** Does effective status preserve archived visibility
+  "Effective Requirement Status"]`
+- **Question:** Does effective requirement status preserve archived visibility
   while a replacement draft or review exists?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 5: archived requirements stay visible while a replacement draft exists"`
@@ -69,7 +69,7 @@ maintenance rule.
   requirement and deviation-gated status functions.
 - **Spec:** `docs/lifecycle-workflow.md`.
 - **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
-  "Deviation Effect on Specification Item Status"]`
+  "Deviation Effect on Usage Status"]`
 - **Question:** Do library and specification-local items require an
   approved deviation before entering Deviated status?
 - **Verify:** `npm exec -- vitest run
@@ -78,12 +78,13 @@ maintenance rule.
 ## 7. Scenario 7: needs-reference linking never leaks orphan metadata
 
 - **Code:** `lib/dal/requirements-specifications.ts` —
-  needs-reference linking and cleanup functions.
-- **Spec:** `docs/lifecycle-workflow.md`.
+  needs-reference linking, cleanup, and register-management functions.
+- **Spec:** `docs/requirements-ui-behaviour.md`.
 - **Req tag:** `[Req: inferred — from
   linkRequirementsToSpecificationAtomically() cleanup path]`
-- **Question:** Do needs-reference rows exist only when at least one
-  linked specification item still points at them?
+- **Question:** Does add-to-specification cleanup remove newly created
+  needs-reference rows when no items are added, while intentionally
+  pre-registered unused needs references remain allowed?
 - **Verify:** `npm exec -- vitest run
   tests/quality/functional.test.ts -t "Scenario 7: needs-reference linking never leaks orphan metadata"`
 
@@ -246,25 +247,25 @@ maintenance rule.
 - **Req tag:** `[Req: formal — issue #96 copy-only graduation workflow]`
 - **Question:** Does graduation copy an Included specification-local
   requirement into a new Draft library requirement in the selected
-  target area while leaving the source local row, status, note, area
-  hint, and local deviations unchanged?
+  target area while leaving the source local row, status, note, and
+  local deviations unchanged?
 - **Verify:** `npm exec -- vitest run
   tests/quality/functional.test.ts -t "Scenario 13: specification-local graduation is copy-only into a draft library requirement"`
 
-## 21. Scenario 16: requirements specification item usage status cannot be cleared once assigned
+## 21. Scenario 16: requirement application usage status cannot be cleared once assigned
 
 - **Code:** `components/_requirements-table/SpecificationItemStatusSelect.tsx`,
   `app/api/specifications/[id]/items/[itemId]/route.ts`,
   `lib/dal/requirements-specifications.ts`, and
   `typeorm/migrations/0015_require_specification_item_status.mjs`.
 - **Spec:** issue #147 and `docs/lifecycle-workflow.md`
-  ("Specification Item Status").
-- **Req tag:** `[Req: formal — issue #147 prevent clearing specification item usage status]`
-- **Question:** Do library specification items and specification-local
+  ("Usage Status").
+- **Req tag:** `[Req: formal — issue #147 prevent clearing usage status]`
+- **Question:** Do library requirement applications and specification-local
   requirements always keep a real usage status, while explicit null-clearing
   attempts are rejected at the UI, API, DAL, and database boundaries?
 - **Verify:** `npm exec -- vitest run
-  tests/quality/functional.test.ts -t "Scenario 16: requirements specification item usage status cannot be cleared once assigned"`
+  tests/quality/functional.test.ts -t "Scenario 16: requirement application usage status cannot be cleared once assigned"`
 
 ## Maintenance
 

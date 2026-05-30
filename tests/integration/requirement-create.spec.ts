@@ -4,7 +4,7 @@ test.describe('Requirement creation', () => {
   test('POST /api/requirements persists a new requirement', async ({
     request,
   }) => {
-    // Get a valid area
+    // Get a valid requirement area
     const areasRes = await request.get('/api/requirement-areas')
     expect(areasRes.ok()).toBe(true)
     const areasData = (await areasRes.json()) as {
@@ -58,7 +58,7 @@ test.describe('Requirement creation', () => {
           height: viewport.height,
         })
 
-        // Get a valid area for selection
+        // Get a valid requirement area for selection
         const areasRes = await request.get('/api/requirement-areas')
         expect(areasRes.ok()).toBe(true)
         const areasData = (await areasRes.json()) as {
@@ -69,7 +69,7 @@ test.describe('Requirement creation', () => {
 
         await page.goto('/sv/requirements/new')
 
-        // Select area
+        // Select requirement area
         await page.selectOption('#areaId', String(area.id))
 
         // Fill description

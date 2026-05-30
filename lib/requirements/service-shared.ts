@@ -110,7 +110,7 @@ export function getSpecificationServiceTitle(
       case 'add':
         return 'Krav tillagda i kravunderlag'
       case 'items':
-        return 'Krav i kravunderlag'
+        return 'Kravtillämpningar'
       case 'remove':
         return 'Krav borttagna från kravunderlag'
       default:
@@ -122,11 +122,11 @@ export function getSpecificationServiceTitle(
     case 'add':
       return 'Requirements Added to Specification'
     case 'items':
-      return 'Specification Requirements'
+      return 'Requirement Applications'
     case 'remove':
       return 'Requirements Removed from Specification'
     default:
-      return 'Requirements Specifications'
+      return 'Requirements specifications'
   }
 }
 

@@ -152,7 +152,7 @@ export async function updateSpecificationItemStatus(
   },
 ): Promise<SpecificationItemStatusRow | undefined> {
   if (!isSystemSpecificationItemStatusId(id)) {
-    throw conflictError('Only system specification item statuses can be edited')
+    throw conflictError('Only system usage statuses can be edited')
   }
 
   const { sortOrder, ...rest } = data

@@ -151,7 +151,7 @@ describe('requirement-statuses DAL (SQL Server path)', () => {
     })
 
     await expect(updateStatus(db, 8, { nameEn: 'Custom' })).rejects.toThrow(
-      /Only system requirement statuses can be edited/,
+      /Only system requirement version statuses can be edited/,
     )
     expect(repository.update).not.toHaveBeenCalled()
   })

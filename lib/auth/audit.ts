@@ -3,7 +3,7 @@
  *
  * Emits one JSON line per security event to `console.info`, tagged with
  * `channel:"security-audit"` so the OpenShift log collector can route the
- * stream independently from the application action audit log. Stateless and
+ * stream independently from the application action log. Stateless and
  * dependency-free — no transport, no buffering.
  *
  * Callers MUST never pass tokens, secrets, codes, verifiers, state, or

@@ -254,7 +254,7 @@ sequenceDiagram
   redacted key name.
 - Privacy erasure and data-subject export security events are emitted to the
   platform security-log stream. Privacy erasure execution also writes a
-  database action-audit row for Admin review. Both include the handler
+  database action-log row for Admin review. Both include the handler
   identity, request id, grouped counts or delivery metadata, and a
   non-reversible target fingerprint. They must not include the raw target
   HSA-ID in event detail. Retention or redaction of handler identity in
@@ -289,7 +289,7 @@ sequenceDiagram
   same stream. Their `detail` payloads carry stable identifiers, counts, and
   action names only; free-text requirement content, motivations, and suggestion
   text are not emitted.
-- Application action audit rows in `action_audit_events` are separate from
+- Application action-log rows in `action_audit_events` are separate from
   this stream. They are database records for successful app-owned mutations and
   authorization denials, include request/correlation IDs and optional validated
   client IP, and can be viewed by Admins at `/{locale}/admin/audit-log`.
@@ -442,11 +442,10 @@ flowchart LR
 
 ### Additional required-for-production items
 
-- Tenant handover, redirect-URI registration runbooks, and the remaining
-  production identity-provider readiness work belong to the production
-  rollout.
-- Future environment questions such as per-environment tenant ownership, MCP
-  client credential rotation, and pre-production smoke verification against
-  the real IdP are also part of production readiness.
+- Tenant handover, redirect-URI change process, MCP service-token approval
+  and pre-production smoke verification against the real IdP belong to the
+  production rollout.
+- Day-2 auth credential rotation is handled by the RHEL 10 production
+  upgrade and rollback guide.
 - This document describes the current runtime behavior plus the contract the
   deployment needs to satisfy.

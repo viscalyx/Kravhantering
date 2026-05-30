@@ -531,7 +531,7 @@ describe('RequirementForm', () => {
     expect(backMock).toHaveBeenCalled()
   })
 
-  it('displays area owner when area is selected', async () => {
+  it('displays requirement area owner when requirement area is selected', async () => {
     render(
       <RequirementForm
         initialData={{ areaId: '1' }}

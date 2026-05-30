@@ -55,7 +55,7 @@ vi.mock('@/lib/requirements/list-view', () => ({
 }))
 
 vi.mock('@/lib/ui-terminology', () => ({
-  getRequirementCsvHeaders: () => ['ID', 'Description'],
+  getRequirementCsvHeaders: () => ['ID', 'Requirement text'],
 }))
 
 vi.mock('@/lib/export-csv', () => ({

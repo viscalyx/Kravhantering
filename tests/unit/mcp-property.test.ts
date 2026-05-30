@@ -168,7 +168,7 @@ function createService() {
     })),
     getSpecificationItems: vi.fn(async () => ({
       items: [],
-      message: 'Specification items',
+      message: 'Requirement applications',
       specificationId: 7,
     })),
     graduateSpecificationLocalRequirement: vi.fn(async () => ({
@@ -200,7 +200,7 @@ function createService() {
     listDeviations: vi.fn(),
     listGraduationTargetAreas: vi.fn(async () => ({
       areas: [{ id: 2, name: 'Security', prefix: 'SEC' }],
-      message: 'Graduation target areas',
+      message: 'Graduation target requirement areas',
     })),
     listSpecifications: vi.fn(async () => ({
       message: 'Specifications',
@@ -410,6 +410,28 @@ describe('MCP property-based input validation', () => {
       )
       await expectInvalidToolCall(client, 'requirements_add_to_specification', {
         requirementIds: [],
+        specificationId: 7,
+      })
+      await expectInvalidToolCall(client, 'requirements_add_to_specification', {
+        needsReferenceId: 12,
+        needsReferenceText: 'Duplicate meaning',
+        requirementIds: [1],
+        specificationId: 7,
+      })
+      await expectInvalidToolCall(client, 'requirements_add_to_specification', {
+        needsReferenceId: 12,
+        needsReferenceText: '',
+        requirementIds: [1],
+        specificationId: 7,
+      })
+      await expectInvalidToolCall(client, 'requirements_add_to_specification', {
+        needsReferenceDescription: 'Description without a new reference',
+        requirementIds: [1],
+        specificationId: 7,
+      })
+      await expectInvalidToolCall(client, 'requirements_add_to_specification', {
+        needsReferenceDescription: '',
+        requirementIds: [1],
         specificationId: 7,
       })
       await expectInvalidToolCall(

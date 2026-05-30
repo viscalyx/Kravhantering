@@ -21,14 +21,14 @@ import {
 } from '@/lib/requirements/status-constants.mjs'
 
 describe('requirement lifecycle helpers', () => {
-  it('preserves the seeded requirement status IDs', () => {
+  it('preserves the seeded requirement version status IDs', () => {
     expect(STATUS_DRAFT).toBe(1)
     expect(STATUS_REVIEW).toBe(2)
     expect(STATUS_PUBLISHED).toBe(3)
     expect(STATUS_ARCHIVED).toBe(4)
   })
 
-  it('recognizes individual lifecycle statuses only for their canonical IDs', () => {
+  it('recognizes individual requirement version statuses only for their canonical IDs', () => {
     expect(isRequirementDraftStatus(STATUS_DRAFT)).toBe(true)
     expect(isRequirementDraftStatus(STATUS_REVIEW)).toBe(false)
     expect(isRequirementDraftStatus(null)).toBe(false)

@@ -407,7 +407,7 @@ function addRetentionSpecifications(seedData) {
       name: spec.name,
       specification_implementation_type_id: 1,
       specification_lifecycle_status_id: spec.lifecycle,
-      specification_responsibility_area_id: 2,
+      specification_governance_object_type_id: 2,
       unique_id: spec.uniqueId,
       updated_at: spec.updatedAt,
     })
@@ -415,15 +415,19 @@ function addRetentionSpecifications(seedData) {
 
   addRow(seedData, 'specification_needs_references', {
     created_at: OLD_730_TS,
+    description: null,
     id: RETENTION_SEED.needsReference.obsoleteSpecificationLibrary,
     specification_id: RETENTION_SEED.specification.obsolete,
     text: 'RETENTION-SEED behovsreferens för export av kopplat katalogkrav.',
+    updated_at: OLD_730_TS,
   })
   addRow(seedData, 'specification_needs_references', {
     created_at: OLD_730_TS,
+    description: null,
     id: RETENTION_SEED.needsReference.obsoleteSpecificationLocal,
     specification_id: RETENTION_SEED.specification.obsolete,
     text: 'RETENTION-SEED behovsreferens för export av lokalt krav.',
+    updated_at: OLD_730_TS,
   })
 
   for (const item of [
@@ -481,7 +485,6 @@ function addRetentionSpecifications(seedData) {
       RETENTION_SEED.needsReference.obsoleteSpecificationLocal,
     note: 'RETENTION-SEED lokal kravnotering.',
     quality_characteristic_id: 1,
-    requirement_area_id: RETENTION_SEED.requirementArea.used,
     requirement_category_id: 2,
     requirement_type_id: 1,
     risk_level_id: 2,

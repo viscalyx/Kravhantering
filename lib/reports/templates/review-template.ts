@@ -357,7 +357,7 @@ export function buildReviewReport(
   if (descDiff.length > 0) {
     sections.push({
       type: 'diff',
-      fieldLabel: locale === 'sv' ? 'Beskrivning' : 'Description',
+      fieldLabel: locale === 'sv' ? 'Kravtext' : 'Requirement text',
       segments: descDiff,
     })
   }

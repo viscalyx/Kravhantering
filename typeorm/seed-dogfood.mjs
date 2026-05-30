@@ -35,7 +35,7 @@ const ID = {
     utveckling: 3,
     forvaltning: 4,
   },
-  specRespArea: {
+  specGovernanceObjectType: {
     forvaltningsobjekt: 1,
     projekt: 2,
     uppdrag: 3,
@@ -1178,7 +1178,7 @@ const DOGFOOD_KRAV = [
   {
     area: ID.area.RAP,
     desc: 'Utskriftsvänliga vyer ska finnas under components/reports/print för att stödja pappersrapportering.',
-    ac: 'Print-vyer är formaterade utan navigation/footer och visar all relevant kravdata; @media print-regler aktiverar layouten.',
+    ac: 'Print-vyer är formaterade utan navigation/footer och visar all relevant kravinformation; @media print-regler aktiverar layouten.',
     vm: 'Manuell utskrift och Playwright-snapshot.',
     cat: ID.cat.verksamhet,
     type: ID.type.funk,
@@ -1258,7 +1258,7 @@ const DOGFOOD_SPECIFICATIONS = [
     id: SPEC_KH,
     uniqueId: 'KH',
     name: 'Kravhantering',
-    responsibility: ID.specRespArea.forvaltningsobjekt,
+    governanceObjectType: ID.specGovernanceObjectType.forvaltningsobjekt,
     impl: ID.specImpl.utveckling,
     lifecycle: ID.specLifecycle.utveckling,
     businessNeeds:
@@ -1268,7 +1268,7 @@ const DOGFOOD_SPECIFICATIONS = [
     id: SPEC_KH_INFOR,
     uniqueId: 'KH-INFOR',
     name: 'Kravhantering kontrollerat införande',
-    responsibility: ID.specRespArea.projekt,
+    governanceObjectType: ID.specGovernanceObjectType.projekt,
     impl: ID.specImpl.utveckling,
     lifecycle: ID.specLifecycle.inforande,
     businessNeeds:
@@ -1308,9 +1308,9 @@ const DOGFOOD_NEEDS_REFS = [
 
 // Specification-local requirements: controlled-introduction tweaks of a few
 // Krav. Each entry references the dogfood Krav by its 0-based index in
-// DOGFOOD_KRAV (so the builder can resolve the matching requirement_area_id,
-// category, etc.). kravIdx must point to a Krav that is also linked into
-// KH-INFOR via DOGFOOD_KH_INFOR_INDEXES below.
+// DOGFOOD_KRAV (so the builder can resolve matching classification, package,
+// and verification metadata). kravIdx must point to a Krav that is also linked
+// into KH-INFOR via DOGFOOD_KH_INFOR_INDEXES below.
 const DOGFOOD_SPECIFICATION_LOCALS = [
   {
     spec: SPEC_KH_INFOR,

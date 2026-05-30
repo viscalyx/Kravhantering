@@ -180,7 +180,7 @@ function createFakeService(
     }),
     getSpecificationItems: vi.fn().mockResolvedValue({
       items: [],
-      message: 'Specification items',
+      message: 'Requirement applications',
       specificationId: 7,
     }),
     graduateSpecificationLocalRequirement: vi.fn().mockResolvedValue({
@@ -225,7 +225,7 @@ function createFakeService(
     }),
     listGraduationTargetAreas: vi.fn().mockResolvedValue({
       areas: [{ id: 2, name: 'Security', prefix: 'SEC' }],
-      message: 'Target areas',
+      message: 'Target requirement areas',
     }),
     listSpecifications: vi.fn().mockResolvedValue({
       message: 'Specifications',
@@ -365,6 +365,8 @@ describe('handleRequirementsMcpRequest', () => {
         'requirements_query_catalog.items[].id -> requirementIds'
       const removeRequirementIdsCopyPath =
         'requirements_get_specification_items.items[].id -> requirementIds'
+      const needsReferenceIdText = 'needsReferenceId'
+      const needsReferenceDescriptionText = 'needsReferenceDescription'
 
       const listSpecificationsTool = getTool('requirements_list_specifications')
       const getSpecificationItemsTool = getTool(
@@ -397,6 +399,12 @@ describe('handleRequirementsMcpRequest', () => {
       )
       expect(addToSpecificationTool?.description).toContain(
         addRequirementIdsCopyPath,
+      )
+      expect(addToSpecificationTool?.description).toContain(
+        needsReferenceIdText,
+      )
+      expect(addToSpecificationTool?.description).toContain(
+        needsReferenceDescriptionText,
       )
       expect(removeFromSpecificationTool?.description).toContain(
         specificationIdCopyPath,
@@ -432,6 +440,10 @@ describe('handleRequirementsMcpRequest', () => {
       )
       expect(addToSpecificationInputSchemaText).toContain(
         addRequirementIdsCopyPath,
+      )
+      expect(addToSpecificationInputSchemaText).toContain(needsReferenceIdText)
+      expect(addToSpecificationInputSchemaText).toContain(
+        needsReferenceDescriptionText,
       )
       expect(removeFromSpecificationInputSchemaText).toContain(
         specificationIdCopyPath,
@@ -644,7 +656,7 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
-  it('passes requirement catalog filters and sorting through the MCP schema', async () => {
+  it('passes requirements filters and sorting through the MCP catalog schema', async () => {
     const { client, transport } = await createClient()
     const fakeService = serviceState.getService.mock.results[0]?.value
 
@@ -669,6 +681,38 @@ describe('handleRequirementsMcpRequest', () => {
         sortBy: 'riskLevel',
         sortDirection: 'desc',
         requirementPackageIds: [3],
+      }),
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('passes existing or new needs-reference inputs through add-to-specification', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+
+    const result = await client.callTool({
+      arguments: {
+        needsReferenceDescription: 'Access management work',
+        needsReferenceText: 'IAM-42',
+        requirementIds: [1],
+        responseFormat: 'json',
+        specificationId: 7,
+      },
+      name: 'requirements_add_to_specification',
+    })
+
+    expect(result.isError).not.toBe(true)
+    expect(fakeService.addToSpecification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        needsReferenceDescription: 'Access management work',
+        needsReferenceId: undefined,
+        needsReferenceText: 'IAM-42',
+        requirementIds: [1],
+        responseFormat: 'json',
+        specificationId: 7,
       }),
     )
 
@@ -721,7 +765,7 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
-  it('lists graduation target areas through MCP', async () => {
+  it('lists graduation target requirement areas through MCP', async () => {
     const { client, transport } = await createClient()
     const fakeService = serviceState.getService.mock.results[0]?.value
 

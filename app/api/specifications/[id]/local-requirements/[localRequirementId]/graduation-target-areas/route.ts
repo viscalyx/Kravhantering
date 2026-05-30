@@ -53,9 +53,12 @@ export async function GET(
       return NextResponse.json(body, { status })
     }
 
-    logSanitizedError('Failed to list graduation target areas', error)
+    logSanitizedError(
+      'Failed to list graduation target requirement areas',
+      error,
+    )
     return NextResponse.json(
-      { error: 'Failed to list graduation target areas' },
+      { error: 'Failed to list graduation target requirement areas' },
       { status: 500 },
     )
   }

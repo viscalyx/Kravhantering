@@ -1,23 +1,29 @@
 # Trusted Container Publishing
 
 The trusted container flow runs from `.github/workflows/container-release.yml`
-for `main`, stable `vX.Y.Z` tags, and manual workflow runs.
+for `main`, stable `vX.Y.Z` tags, and manual workflow runs. Preview release
+tags such as `vX.Y.Z-preview.N` are created by the `main` run and are excluded
+from the tag trigger so the preview tag push does not start a second container
+release workflow.
 
 The workflow builds `app-runtime` and `db-job`, publishes them to GHCR, and
 records two image identities in `container-stack.lock.json`. The
-`manifestDigest` is the registry manifest digest used for Cosign keyless
-signing, GitHub Artifact Attestations, SBOM subjects and GHCR release smoke
-tests. The `imageId` is the container image ID used by production operators to
-verify runtime equivalence after tag-based pulls, internal-registry mirroring
-or offline image transport. The release smoke test starts Podman Compose from
-verified GHCR manifest digest references, but production deployment and upgrade
-guides use tag-style runtime refs and verify them against locked image IDs.
+`manifestDigest` is the registry manifest digest used for GitHub Artifact
+Attestations, SBOM subjects and GHCR release smoke tests. The `imageId` is the
+container image ID used by production operators to verify runtime equivalence
+after tag-based pulls, internal-registry mirroring or disconnected image
+transport.
+The release smoke test starts Podman Compose from verified GHCR manifest digest
+references, but production deployment and upgrade guides use tag-style runtime
+refs and verify them against locked image IDs.
 
 The Buildx publish steps disable BuildKit's default registry provenance
 attestations with `--provenance=false`. The workflow publishes provenance and
-SBOM evidence explicitly through GitHub Artifact Attestations, while keeping the
-Buildx metadata shape stable enough to record both `manifestDigest` and
-`imageId`.
+SBOM evidence explicitly through GitHub Artifact Attestations without pushing
+the attestation OCI artifacts back into GHCR. This keeps GitHub Packages from
+treating digest-derived attestation tags as the newest installable package
+version while keeping the Buildx metadata shape stable enough to record both
+`manifestDigest` and `imageId`.
 
 ## Reproducibility
 
@@ -69,8 +75,10 @@ platform manifest digest and the image config digest in the matching
 `docker-compose.idp.yml`, both devcontainer Compose files and the developer
 auth documentation on the same tag. SQL Server updates keep
 `docker-compose.sqlserver.yml` and both devcontainer Compose files on the same
-tag. nginx currently has no static devcontainer or integration-test Compose
-reference outside the generated stack.
+tag. nginx updates keep the public direct-pull example in
+`containers/production/env/release.env.template` aligned with the lock; nginx
+has no static devcontainer or integration-test Compose reference outside the
+generated stack.
 
 The updater workflow does not run the full test suite. It creates or updates
 the PR, and the normal PR workflows validate the change. To make those PR
@@ -83,26 +91,35 @@ workflow runs that are triggered by the built-in token.
 
 ## Release Evidence
 
-GitHub Release notes are the first place to find the tested release version,
-the GHCR manifest digest references for `app-runtime` and `db-job`, and the
-published checksums. Stable releases use normal GitHub Releases; preview
-releases are marked as pre-releases and are kept as part of the audit trail.
+The GitHub Release page already shows the release tag, commit and workflow
+provenance. The generated release body therefore focuses on the `Container
+Images` section with semantic GHCR tags for normal pulls, the immutable GHCR
+manifest digest references for `app-runtime` and `db-job` verification, and
+the production deployment bundle assets. Stable releases use normal GitHub
+Releases; preview releases are marked as pre-releases and are kept as part of
+the release evidence.
+
+The `Container Images` section groups entries by container package, adds a
+short purpose description for each image, and lists every published tag for
+that release. Those tag entries link to the repository package version URL for
+the exact tag when the GitHub Packages API is available during release-note
+generation, for example
+`https://github.com/<owner>/<repo>/pkgs/container/<package>/<version-id>?tag=<tag>`.
+If the package-version lookup is unavailable, the notes fall back to the
+repository package page.
 
 Release notes also include automatic change notes. Stable releases compare
-against the previous published non-prerelease GitHub Release. Preview releases
-compare against the previous published prerelease GitHub Release. When no
-previous release of the same kind exists, the workflow does not let GitHub pick
-another release kind as the changelog boundary; it records all first-parent
-commits reachable from the release commit instead.
+against the previous published stable GitHub Release. Preview releases compare
+against the previous published pre-release GitHub Release. When no previous
+release of the same kind exists, the workflow does not let GitHub pick another
+release kind as the changelog boundary.
 
 The workflow asks GitHub to generate the `What's Changed` section with
 `.github/release.yml`. That file groups pull requests by repository labels and
 uses `Other Changes` as a catch-all so unlabeled merged work still appears.
 Only pull requests labeled `ignore-for-release` are excluded from the generated
-section. Every release note also includes an `Exact Commit Range` section with
-the first-parent commits in the selected range, including short SHA, date,
-author and subject. If GitHub-generated notes are unavailable, the release still
-publishes with the exact commit list and the runtime evidence below.
+section. If GitHub-generated notes are unavailable, the release still publishes
+with the runtime evidence below.
 
 Each trusted run also writes runtime evidence:
 
@@ -130,7 +147,7 @@ The production deployment bundle includes `bin/kravhantering-images.sh`, a
 Bash and jq helper for explicit operator verification. It can verify configured
 tag-style `release.env` image refs against locked image IDs, export already
 present verified local images into a transport bundle, and load and tag that
-bundle on an offline host.
+bundle on a disconnected host.
 
 The production deployment bundle is also uploaded to GitHub Releases as:
 
@@ -144,10 +161,13 @@ the app-runtime image copies that directory into the container.
 
 See [rhel10-production-deploy.md](./rhel10-production-deploy.md) for the
 enterprise app-node workflow with external SQL Server and external IdP. See
-[rhel10-production-single-node-internal-deploy.md](./rhel10-production-single-node-internal-deploy.md)
-for the controlled all-in-one internal workflow.
-The bundle also includes the matching uninstall guides for reversing a first
-install.
+[rhel10-production-single-node-self-contained-deploy.md](./rhel10-production-single-node-self-contained-deploy.md)
+for the self-contained single-node workflow with bundled SQL Server and
+Keycloak.
+The bundle also includes the matching topology-specific disconnected guides,
+upgrade guides and uninstall guides. The disconnected guides document how
+operators create a transferable bundle that contains the production deployment
+archive, its checksum, exported images, image refs and hashes.
 
 ## Public GHCR Packages
 
@@ -156,12 +176,29 @@ artifacts anonymously:
 
 - `ghcr.io/<owner>/kravhantering-app-runtime`
 - `ghcr.io/<owner>/kravhantering-db-job`
+<!-- cSpell:ignore opencontainers -->
+The publish steps attach `org.opencontainers.image.description` as both an
+image label and a manifest annotation. GHCR reads labels for normal image
+metadata, and its package UI needs the annotation form for images published
+through manifest/index-style Buildx outputs.
 
 GHCR visibility is managed outside the workflow through package settings or the
 organization defaults for new packages. The workflow does not change package
 visibility and does not check the GitHub Packages API after publishing. GitHub
 normally makes new packages private on first publication unless the organization
 has selected a different default.
+
+GHCR can also show digest-derived `sha256-*` entries for release evidence, such
+as registry-pushed attestations or Cosign signature helper artifacts. Those
+entries are evidence for the image manifest digest, not runnable `app-runtime`
+or `db-job` release images. GitHub Packages sorts package versions by publish
+time, so an evidence entry created after the image push can appear above the
+semantic version tag and be suggested by the package UI as the latest
+command-line install target. The workflow keeps GitHub Artifact Attestations
+out of GHCR and does not push Cosign image signatures to GHCR for that reason.
+Treat the GitHub Release notes, `container-stack.lock.json`, and the semantic
+image tags as the release source of truth; do not use `sha256-*` evidence
+entries as production image tags.
 
 GitHub warns that a package made public cannot be made private again. Only make
 the packages public when anonymous pulls and review without GitHub
@@ -171,7 +208,7 @@ authentication are intentional.
 
 The workflow uses the built-in `GITHUB_TOKEN` that GitHub Actions creates for
 the run. Normal publishing does not require private deploy keys, PAT secrets, or
-Cosign keys.
+signing keys.
 
 The repository or organization GitHub Actions setting must allow `GITHUB_TOKEN`
 to have write permissions. The workflow requests these permissions:
@@ -180,8 +217,7 @@ to have write permissions. The workflow requests these permissions:
   `db-job`.
 - `contents: write` to create preview tags and create or update the GitHub
   Release with artifacts.
-- `id-token: write` for Cosign keyless signing and GitHub Artifact
-  Attestations.
+- `id-token: write` for GitHub Artifact Attestations.
 - `attestations: write` to publish provenance and SBOM attestations.
 
 The GHCR packages must also allow the workflow in this repository to write to
@@ -189,25 +225,24 @@ the packages. For new packages, the first publication from the workflow is
 usually enough. For packages that already exist, the package's **Manage Actions
 access** settings may need to grant this repository write or admin access.
 
-Cosign runs with GitHub OIDC and issues a short-lived certificate for the
-current workflow identity. Do not create a `COSIGN_PRIVATE_KEY`,
-`COSIGN_PASSWORD`, or separate signing secret for this flow.
+Do not add a registry-pushed `cosign sign` step to this flow unless the
+signatures are deliberately stored outside the runnable image packages. Cosign's
+default registry storage creates digest-derived signature tags that GHCR can
+display as recent package versions.
 
 ## Verification
 
-Release notes contain exact manifest digest references and checksums. A user
-can verify a published app image with:
+Release notes contain the `Container Images` section and immutable manifest
+digest references. Use the semantic tags for normal pulls and the manifest
+digest references for verification. A user can verify a published app image
+with:
 
 <!-- markdownlint-disable MD013 -->
 ```bash
-cosign verify \
-  --certificate-identity "https://github.com/<owner>/<repo>/.github/workflows/container-release.yml@refs/tags/vX.Y.Z" \
-  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  ghcr.io/<owner>/kravhantering-app-runtime@sha256:<digest>
-
 gh attestation verify \
   oci://ghcr.io/<owner>/kravhantering-app-runtime@sha256:<digest> \
-  --repo <owner>/<repo>
+  --repo <owner>/<repo> \
+  --signer-workflow <owner>/<repo>/.github/workflows/container-release.yml
 ```
 <!-- markdownlint-enable MD013 -->
 
@@ -219,5 +254,5 @@ refs when the host can reach the registry, then run the bundled
 Podman image inspect `.Id` values with the locked `imageId` values. Third-party
 upstream tags can move after release, so production sites should prefer
 release-specific internal mirror tags and treat the lock file as the source of
-truth. For offline transport, export only after the source host has already
-pulled and verified the local refs.
+truth. For disconnected transport, export only after the source host has
+already pulled and verified the local refs.

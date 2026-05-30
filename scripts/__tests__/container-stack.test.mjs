@@ -51,12 +51,14 @@ describe('container stack helpers', () => {
       runId: 'smoke123',
     })
     expect(testConfig).toMatchObject({
+      networkName: 'kravhantering-internal',
       projectName: 'kravhantering-container-stack-test-abc123',
       sqlServerHostPort: '127.0.0.1:15433',
       sqlServerVolumeName:
         'kravhantering-container-stack-test-abc123-sqlserver-data',
     })
     expect(releaseSmokeConfig).toMatchObject({
+      networkName: 'kravhantering-internal',
       projectName: 'kravhantering-container-stack-release-smoke-smoke123',
       sqlServerHostPort: DEFAULT_RELEASE_SMOKE_SQLSERVER_HOST_PORT,
       sqlServerVolumeName:
@@ -72,9 +74,7 @@ describe('container stack helpers', () => {
       '-d',
       'sqlserver',
     ])
-    expect(podmanComposeNetworkName(testConfig)).toBe(
-      'kravhantering-container-stack-test-abc123_default',
-    )
+    expect(podmanComposeNetworkName(testConfig)).toBe('kravhantering-internal')
   })
 
   it('parses local stack CLI modes and env files', () => {
@@ -87,12 +87,15 @@ describe('container stack helpers', () => {
         '--skip-build',
         '--run-id',
         'run1',
+        '--network-name',
+        'kravhantering-test-network',
         '--sqlserver-host-port',
         '127.0.0.1:16000',
       ]),
     ).toMatchObject({
       command: 'up',
       mode: 'test',
+      networkName: 'kravhantering-test-network',
       runId: 'run1',
       skipBuild: true,
       sqlServerHostPort: '127.0.0.1:16000',
@@ -228,6 +231,7 @@ describe('container stack helpers', () => {
     expect(commandText).toContain(
       'generate-compose.mjs --mode pr --lock-file tmp/custom-stack.lock.json',
     )
+    expect(commandText).toContain('--network-name kravhantering-internal')
     expect(commandText).toContain('--app-tag pr-7-99-deadbeef')
     expect(commandText).toContain(
       '--app-manifest-digest sha256:app-runtime-manifest-pr',
@@ -593,9 +597,7 @@ describe('container stack helpers', () => {
       commands.some(
         command =>
           command.includes('podman run --rm --pull=never') &&
-          command.includes(
-            '--net kravhantering-container-stack-test-order_default',
-          ) &&
+          command.includes('--net kravhantering-internal') &&
           command.endsWith(
             'localhost/kravhantering/db-job:local seed:required',
           ),

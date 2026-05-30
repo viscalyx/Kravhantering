@@ -63,6 +63,7 @@
     "spell": "cspell \"**/*.{ts,tsx,js,jsx,md,json}\"",
     "spell:check": "cspell \"**/*.{ts,tsx,js,jsx,md,json}\" --no-progress",
     "spell:fix": "cspell \"**/*.{ts,tsx,js,jsx,md,json}\" --show-suggestions",
+    "ssdlc:gate": "node scripts/security/ssdlc-gate.mjs",
     "analyze": "ANALYZE=true npm run build",
     "export": "next export",
     "test:integration:ui": "playwright test --ui-host 0.0.0.0 --ui",

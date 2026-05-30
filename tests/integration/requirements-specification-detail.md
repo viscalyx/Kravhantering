@@ -1,4 +1,4 @@
-# Requirements Specification Detail Integration Tests
+# Requirements specification detail integration tests
 
 > Test flow documentation for
 > [`requirements-specification-detail.spec.ts`](tests/integration/requirements-specification-detail.spec.ts)
@@ -179,7 +179,7 @@ flowchart TD
 ### Purpose: Usage Status Options
 
 Confirms that the requirements specification detail page can show the
-specification item Usage status column and that the inline dropdown contains
+usage status column and that the inline dropdown contains
 configured statuses such as `Inkluderad` and `Pågående`.
 
 ### Step-by-Step Flow: Usage Status Options

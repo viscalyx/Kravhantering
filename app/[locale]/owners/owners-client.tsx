@@ -104,7 +104,7 @@ export default function OwnersClient() {
     <CrudAdminPanel
       columns={columns}
       controller={controller}
-      devContext="area owners"
+      devContext="requirement area owners"
       emptyStateMessage={t('emptyState')}
       renderFormFields={({ disabled, form, inputClassName, setForm }) => (
         <fieldset className="space-y-5" disabled={disabled}>

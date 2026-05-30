@@ -55,7 +55,7 @@ function writeLockFile(dir) {
       service(
         'nginx',
         'registry.example/nginx',
-        'stable',
+        '1.31.1-alpine',
         'sha256:nginx-manifest',
         'sha256:nginx-image',
       ),
@@ -69,7 +69,7 @@ function writeLockFile(dir) {
       service(
         'keycloak',
         'registry.example/keycloak',
-        '26.6.1',
+        '26.6.2-2',
         'sha256:keycloak-manifest',
         'sha256:keycloak-image',
       ),
@@ -82,8 +82,8 @@ function writeEnvFile(dir, overrides = {}) {
   const values = {
     APP_RUNTIME_IMAGE_REF: 'registry.example/app-runtime:1.2.3',
     DB_JOB_IMAGE_REF: 'registry.example/db-job:1.2.3',
-    KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.6.1',
-    NGINX_IMAGE_REF: 'registry.example/nginx:stable',
+    KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.6.2-2',
+    NGINX_IMAGE_REF: 'registry.example/nginx:1.31.1-alpine',
     SQLSERVER_IMAGE_REF: 'registry.example/sqlserver:2025-latest',
     ...overrides,
   }
@@ -234,11 +234,11 @@ describe('production image helper', () => {
     expect(result.stderr).toContain('set NGINX_IMAGE_REF to a site mirror tag')
   })
 
-  it('exports local images, loads, tags, and verifies an offline image bundle', () => {
+  it('exports local images, loads, tags, and verifies a disconnected image bundle', () => {
     const dir = makeTempDir()
     const lockFile = writeLockFile(dir)
     const envFile = writeEnvFile(dir)
-    const bundle = path.join(dir, 'offline-images.tar.gz')
+    const bundle = path.join(dir, 'disconnected-images.tar.gz')
 
     const exported = runHelper(dir, [
       '--topology',
@@ -278,7 +278,7 @@ describe('production image helper', () => {
     const dir = makeTempDir()
     const lockFile = writeLockFile(dir)
     const exportEnvFile = writeEnvFile(dir)
-    const bundle = path.join(dir, 'offline-images.tar.gz')
+    const bundle = path.join(dir, 'disconnected-images.tar.gz')
 
     expect(
       runHelper(dir, [

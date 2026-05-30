@@ -23,7 +23,7 @@ const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/iu
 
 const IMAGE_CONFIGS = {
   nginx: {
-    companionFiles: [],
+    companionFiles: ['containers/production/env/release.env.template'],
     image: 'docker.io/library/nginx',
     laneDescription: lane => `nginx ${lane}.x`,
     laneFromVersion: version => String(version.major),
@@ -59,7 +59,10 @@ const IMAGE_CONFIGS = {
       'docker-compose.idp.yml',
       '.devcontainer/docker-compose.yml',
       '.devcontainer/elevated/docker-compose.yml',
+      'devfile.example.yaml',
+      'containers/production/env/release.env.template',
       'docs/auth-developer-workflow.md',
+      'docs/openshift-devspaces.md',
     ],
     image: 'quay.io/keycloak/keycloak',
     laneDescription: lane => `Keycloak ${lane}.x`,
@@ -68,10 +71,15 @@ const IMAGE_CONFIGS = {
     listTags: () => fetchRegistryTags('quay.io', 'keycloak/keycloak'),
     lockPath: 'containers/keycloak/image.lock.json',
     name: 'keycloak',
-    parseTag: parseSemverTag,
+    parseTag: parseKeycloakTag,
     registryHost: 'quay.io',
     registryRepository: 'keycloak/keycloak',
-    versionSortValue: version => [version.major, version.minor, version.patch],
+    versionSortValue: version => [
+      version.major,
+      version.minor,
+      version.patch,
+      version.revision,
+    ],
   },
 }
 
@@ -118,15 +126,17 @@ function parseArgs(argv, env) {
   return options
 }
 
-function parseSemverTag(tag) {
+function parseKeycloakTag(tag) {
   const match = tag.match(
-    /^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)$/u,
+    /^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<revision>0|[1-9]\d*))?$/u,
   )
   if (!match?.groups) return null
   return {
     major: Number(match.groups.major),
     minor: Number(match.groups.minor),
     patch: Number(match.groups.patch),
+    revision:
+      match.groups.revision === undefined ? -1 : Number(match.groups.revision),
     tag,
   }
 }

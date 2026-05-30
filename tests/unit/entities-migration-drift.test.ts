@@ -8,8 +8,8 @@ import { sqlServerEntities } from '@/lib/typeorm/entities'
  * hand-authored migration chain. For every registered entity this test
  * asserts that:
  *
- *  1. Every entity `columns[*].name` exists in the migration's
- *     `CREATE TABLE [<table>] ( ... )` block.
+ *  1. Every entity `columns[*].name` exists in the migration's table
+ *     definition, including tables later established through `sp_rename`.
  *  2. Every entity unique/index `name` appears in the migration source.
  *  3. Every relation `joinColumn.foreignKeyConstraintName` appears in the
  *     migration source.
@@ -49,16 +49,33 @@ function getOptions(entity: unknown): EntityOptionsLike {
   return (entity as { options: EntityOptionsLike }).options
 }
 
+function extractTableRenameSources(table: string): string[] {
+  const sources: string[] = []
+  const tableRenamePattern =
+    /EXEC sp_rename N'([a-z_][a-z0-9_]*)', N'([a-z_][a-z0-9_]*)'/g
+  for (const match of migrationSource.matchAll(tableRenamePattern)) {
+    if (match[2] === table) {
+      sources.push(match[1])
+    }
+  }
+  return sources
+}
+
 function extractTableColumns(table: string): Set<string> {
   const columns = new Set<string>()
-  // Match `CREATE TABLE [<table>] ( ... );` capturing the body.
-  const createPattern = new RegExp(
-    `CREATE TABLE \\[${table}\\] \\(([\\s\\S]*?)\\);`,
-    'gm',
-  )
-  for (const match of migrationSource.matchAll(createPattern)) {
-    for (const colMatch of match[1].matchAll(/\[([a-z_][a-z0-9_]*)\]/g)) {
-      columns.add(colMatch[1])
+  const sourceTables = [table, ...extractTableRenameSources(table)]
+
+  // Match `CREATE TABLE [<table>] ( ... );` capturing the body. If the final
+  // table name is introduced through `sp_rename`, read the source table too.
+  for (const sourceTable of sourceTables) {
+    const createPattern = new RegExp(
+      `CREATE TABLE \\[${sourceTable}\\] \\(([\\s\\S]*?)\\);`,
+      'gm',
+    )
+    for (const match of migrationSource.matchAll(createPattern)) {
+      for (const colMatch of match[1].matchAll(/\[([a-z_][a-z0-9_]*)\]/g)) {
+        columns.add(colMatch[1])
+      }
     }
   }
 
@@ -83,10 +100,10 @@ describe('sqlServerEntities migration drift', () => {
     describe(`entity ${options.name} (${tableName})`, () => {
       const migrationColumns = extractTableColumns(tableName)
 
-      it('has a CREATE TABLE block in the migration', () => {
+      it('has table columns established in the migration', () => {
         expect(
           migrationColumns.size,
-          `migration must declare CREATE TABLE [${tableName}]`,
+          `migration must declare or rename table [${tableName}]`,
         ).toBeGreaterThan(0)
       })
 

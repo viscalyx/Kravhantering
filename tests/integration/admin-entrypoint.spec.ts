@@ -210,7 +210,9 @@ for (const { name, viewport } of viewportVariants) {
       const categoryIndex = headerTexts.findIndex(text =>
         text.includes(renamedCategoryLabel),
       )
-      const areaIndex = headerTexts.findIndex(text => text.includes('Område'))
+      const areaIndex = headerTexts.findIndex(text =>
+        text.includes('Kravområde'),
+      )
 
       expect(categoryIndex).toBeGreaterThanOrEqual(0)
       expect(areaIndex).toBeGreaterThanOrEqual(0)

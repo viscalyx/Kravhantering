@@ -123,6 +123,13 @@ export type RequirementsAction =
       localRequirementId?: number
     }
   | {
+      kind: 'manage_specification_needs_reference'
+      operation: string
+      specificationId?: number
+      specificationSlug?: string
+      needsReferenceId?: number
+    }
+  | {
       kind: 'get_requirement'
       uniqueId?: string
       id?: number
