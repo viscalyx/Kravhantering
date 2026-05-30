@@ -61,6 +61,14 @@ When the user uses a term that conflicts with the existing language in `CONTEXT.
 
 When the user uses vague or overloaded terms, propose a precise canonical term. "You're saying 'account' — do you mean the Customer or the User? Those are different things."
 
+### Multilingual terms
+
+When a term is resolved, determine if the codebase is multilingual. For available locales, propose precise translated canonical terms. "For the term 'Customer' shall we use these translations:
+- Swedish: Kunde
+- Spanish: Cliente
+- French: Client
+- German: Kunde"
+
 ### Discuss concrete scenarios
 
 When domain relationships are being discussed, stress-test them with specific scenarios. Invent scenarios that probe edge cases and force the user to be precise about the boundaries between concepts.
