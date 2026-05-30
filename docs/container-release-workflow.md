@@ -69,8 +69,10 @@ platform manifest digest and the image config digest in the matching
 `docker-compose.idp.yml`, both devcontainer Compose files and the developer
 auth documentation on the same tag. SQL Server updates keep
 `docker-compose.sqlserver.yml` and both devcontainer Compose files on the same
-tag. nginx currently has no static devcontainer or integration-test Compose
-reference outside the generated stack.
+tag. nginx updates keep the public direct-pull example in
+`containers/production/env/release.env.template` aligned with the lock; nginx
+has no static devcontainer or integration-test Compose reference outside the
+generated stack.
 
 The updater workflow does not run the full test suite. It creates or updates
 the PR, and the normal PR workflows validate the change. To make those PR

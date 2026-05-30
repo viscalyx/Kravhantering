@@ -526,6 +526,9 @@ describe('trusted container release helpers', () => {
     expect(releaseEnv).toContain(
       'ghcr.io/viscalyx/kravhantering-app-runtime:replace-with-release-tag',
     )
+    expect(releaseEnv).toContain(
+      'NGINX_IMAGE_REF=docker.io/library/nginx:1.31.1-alpine',
+    )
     expect(releaseEnv).not.toContain('replace-with-release-manifest-digest')
     expect(releaseEnv).not.toContain('replace-with-release-digest')
   })
@@ -574,7 +577,7 @@ describe('trusted container release helpers', () => {
             name: 'nginx',
             role: 'tls-proxy',
             source: 'docker-hub',
-            tag: 'stable',
+            tag: '1.31.1-alpine',
           },
           {
             imageId: 'sha256:sql-image',
