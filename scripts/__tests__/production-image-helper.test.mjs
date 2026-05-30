@@ -55,7 +55,7 @@ function writeLockFile(dir) {
       service(
         'nginx',
         'registry.example/nginx',
-        'stable',
+        '1.31.1-alpine',
         'sha256:nginx-manifest',
         'sha256:nginx-image',
       ),
@@ -83,7 +83,7 @@ function writeEnvFile(dir, overrides = {}) {
     APP_RUNTIME_IMAGE_REF: 'registry.example/app-runtime:1.2.3',
     DB_JOB_IMAGE_REF: 'registry.example/db-job:1.2.3',
     KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.6.1',
-    NGINX_IMAGE_REF: 'registry.example/nginx:stable',
+    NGINX_IMAGE_REF: 'registry.example/nginx:1.31.1-alpine',
     SQLSERVER_IMAGE_REF: 'registry.example/sqlserver:2025-latest',
     ...overrides,
   }
