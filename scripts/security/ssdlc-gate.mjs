@@ -377,7 +377,12 @@ export async function readPullRequestFromGitHub({
         token: cleanToken,
       },
     )
-    changedFiles.push(...files.map(file => file.filename))
+    for (const file of files) {
+      changedFiles.push(file.filename)
+      if (file.previous_filename) {
+        changedFiles.push(file.previous_filename)
+      }
+    }
     if (files.length < 100) break
   }
 

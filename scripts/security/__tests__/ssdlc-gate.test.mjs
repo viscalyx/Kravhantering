@@ -174,6 +174,49 @@ describe('SSDLC gate', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3)
   })
 
+  it('classifies current and previous paths for renamed GitHub PR files', async () => {
+    const fetchImpl = vi.fn(async url => ({
+      ok: true,
+      status: 200,
+      json: async () => {
+        if (String(url).includes('/files?per_page=100&page=1')) {
+          return [
+            {
+              filename: 'docs/security-ci.md',
+              previous_filename: 'lib/auth/session.ts',
+            },
+          ]
+        }
+        return { body: completePrBody }
+      },
+    }))
+
+    const input = await readPullRequestFromGitHub({
+      fetchImpl,
+      prNumber: '42',
+      repository: 'viscalyx/Kravhantering',
+      token: 'token',
+    })
+    const result = evaluateSsdlcGate(input)
+
+    expect(input.changedFiles).toEqual([
+      'docs/security-ci.md',
+      'lib/auth/session.ts',
+    ])
+    expect(result.sensitiveGroups).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          files: ['lib/auth/session.ts'],
+          id: 'authentication-authorization',
+        }),
+        expect.objectContaining({
+          files: ['docs/security-ci.md'],
+          id: 'ci-release-security',
+        }),
+      ]),
+    )
+  })
+
   it('rejects invalid GitHub inputs and API failures', async () => {
     await expect(
       readPullRequestFromGitHub({
