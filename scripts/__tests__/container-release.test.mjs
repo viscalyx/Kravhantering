@@ -872,7 +872,7 @@ describe('trusted container release helpers', () => {
             name: 'sqlserver',
             role: 'database',
             source: 'mcr',
-            tag: '2025-latest',
+            tag: '2025-CU5-ubuntu-24.04',
           },
           {
             imageId: 'sha256:keycloak-image',
