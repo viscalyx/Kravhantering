@@ -10,10 +10,19 @@ export interface SpecificationCoverInfo {
   uniqueId: string
 }
 
+export interface RequirementSelectionContextRow {
+  answerText: string
+  areaName: string
+  isFilterActive: boolean
+  questionCode: string
+  questionText: string
+}
+
 export function buildListReport(
   requirements: RequirementReportData[],
   locale: string,
   specificationInfo?: SpecificationCoverInfo,
+  requirementSelectionContext: RequirementSelectionContextRow[] = [],
 ): ReportModel {
   const sections: ReportSection[] = []
 
@@ -35,6 +44,14 @@ export function buildListReport(
     requirementId: subtitle,
     generatedAt: now,
   })
+
+  if (requirementSelectionContext.length > 0) {
+    sections.push({
+      type: 'requirement-selection-context',
+      title: locale === 'sv' ? 'Urvalskontext' : 'Selection context',
+      rows: requirementSelectionContext,
+    })
+  }
 
   const getStatusName = (
     v: RequirementReportData['versions'][number],

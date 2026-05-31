@@ -25,6 +25,14 @@ export interface DeviationReportVersion {
   versionNumber: number
 }
 
+function requirementPackageName(value: unknown): string | null {
+  const record = value as
+    | { name?: string | null; nameEn?: string | null; nameSv?: string | null }
+    | null
+    | undefined
+  return record?.name ?? record?.nameSv ?? record?.nameEn ?? null
+}
+
 export interface DeviationReportData {
   deviation: DeviationReportDeviation
   requirementUniqueId: string
@@ -185,8 +193,8 @@ export async function fetchDeviationForReport(
       requirementPackages: version.versionRequirementPackages
         .filter(vs => vs.requirementPackage)
         .map(vs => ({
-          nameEn: vs.requirementPackage.nameEn,
-          nameSv: vs.requirementPackage.nameSv,
+          nameEn: requirementPackageName(vs.requirementPackage),
+          nameSv: requirementPackageName(vs.requirementPackage),
         })),
     },
   }

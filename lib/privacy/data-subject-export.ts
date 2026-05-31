@@ -197,9 +197,9 @@ async function collectRequirementAreaOwners(
       policy,
       'live_owner_assignment',
       [
-        { fieldName: 'owner_hsa_id', value: stringValue(row.hsaId) },
+        { fieldName: 'lead_hsa_id', value: stringValue(row.hsaId) },
         {
-          fieldName: 'owner_display_name',
+          fieldName: 'lead_display_name',
           value: stringValue(row.displayName),
         },
       ],
@@ -226,14 +226,13 @@ async function collectRequirementPackageOwners(
     `/* privacy:data-export:requirement_packages.owner */
       SELECT
         pkg.id AS packageId,
-        pkg.name_sv AS packageLabel,
-        owner.hsa_id AS hsaId,
-        CONCAT(owner.first_name, CASE WHEN owner.last_name = '' THEN '' ELSE CONCAT(' ', owner.last_name) END) AS displayName,
+        pkg.name AS packageLabel,
+        pkg.lead_hsa_id AS hsaId,
+        pkg.lead_display_name AS displayName,
         pkg.updated_at AS updatedAt
       FROM requirement_packages pkg
-      INNER JOIN owners owner ON owner.id = pkg.owner_id
-      WHERE owner.hsa_id = @0
-      ORDER BY pkg.name_sv ASC, pkg.id ASC`,
+      WHERE pkg.lead_hsa_id = @0
+      ORDER BY pkg.name ASC, pkg.id ASC`,
     [targetHsaId],
   )) as ExportRow[]
 

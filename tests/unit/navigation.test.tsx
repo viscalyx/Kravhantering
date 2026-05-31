@@ -6,6 +6,15 @@ const pathnameState = vi.hoisted(() => ({
   value: '/requirements',
 }))
 
+const searchParamsState = vi.hoisted(() => ({
+  value: new URLSearchParams(),
+}))
+
+const routerState = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+}))
+
 const helpState = vi.hoisted(() => ({
   value: {
     content: null as { sections: never[]; titleKey: string } | null,
@@ -24,6 +33,10 @@ vi.mock('next-intl', () => ({
   useLocale: () => 'en',
 }))
 
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => searchParamsState.value,
+}))
+
 vi.mock('@/i18n/routing', () => ({
   Link: ({ children, href, ...props }: Record<string, unknown>) => (
     <a href={href as string} {...props}>
@@ -31,6 +44,7 @@ vi.mock('@/i18n/routing', () => ({
     </a>
   ),
   usePathname: () => pathnameState.value,
+  useRouter: () => routerState,
 }))
 
 vi.mock('@/components/LanguageSwitcher', () => ({
@@ -58,6 +72,10 @@ vi.mock('@/components/HelpPanel', () => ({
 describe('Navigation', () => {
   beforeEach(() => {
     pathnameState.value = '/requirements'
+    searchParamsState.value = new URLSearchParams()
+    routerState.push.mockClear()
+    routerState.replace.mockClear()
+    localStorage.clear()
     helpState.value = {
       content: null,
       isOpen: false,
@@ -91,10 +109,13 @@ describe('Navigation', () => {
     expect(appTitle).toHaveAttribute('data-developer-mode-value', 'app title')
   })
 
-  it('shows a global settings link and removes reference data from the desktop navigation', () => {
+  it('shows global settings and opens default stewardship from desktop', () => {
     render(<Navigation />)
 
     const settingsLink = screen.getByRole('link', { name: 'admin.settings' })
+    const stewardshipButton = screen.getByRole('button', {
+      name: 'nav.stewardship',
+    })
 
     expect(settingsLink).toHaveAttribute('href', '/admin')
     expect(settingsLink.className).toContain('min-h-11')
@@ -105,9 +126,92 @@ describe('Navigation', () => {
       'href',
       '/requirements',
     )
+    expect(stewardshipButton).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('link', { name: 'nav.stewardship' })).toBeNull()
+    fireEvent.click(stewardshipButton)
+    expect(routerState.push).toHaveBeenCalledWith(
+      '/requirements/stewardship?tab=packages',
+    )
+    expect(stewardshipButton).toHaveAttribute('aria-expanded', 'true')
+    expect(
+      screen.getByRole('link', { name: 'nav.requirementPackages' }),
+    ).toHaveAttribute('href', '/requirements/stewardship?tab=packages')
+    expect(
+      screen.getByRole('link', { name: 'nav.requirementSelectionQuestions' }),
+    ).toHaveAttribute('href', '/requirements/stewardship?tab=questions')
     expect(
       screen.getByRole('link', { name: 'nav.specifications' }),
     ).toHaveAttribute('href', '/specifications')
+  })
+
+  it('uses distinct navigation icons for the library, stewardship, and packages', () => {
+    render(<Navigation />)
+
+    const catalogLink = screen.getByRole('link', { name: 'nav.catalog' })
+    const stewardshipButton = screen.getByRole('button', {
+      name: 'nav.stewardship',
+    })
+
+    expect(catalogLink.querySelector('.lucide-library-big')).toBeInTheDocument()
+    expect(
+      stewardshipButton.querySelector('.lucide-folder-cog'),
+    ).toBeInTheDocument()
+
+    fireEvent.click(stewardshipButton)
+
+    const packageLink = screen.getByRole('link', {
+      name: 'nav.requirementPackages',
+    })
+
+    expect(packageLink.querySelector('.lucide-package')).toBeInTheDocument()
+  })
+
+  it('opens the remembered stewardship tab from desktop', () => {
+    localStorage.setItem('requirements.stewardship.tab', 'questions')
+
+    render(<Navigation />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'nav.stewardship',
+      }),
+    )
+
+    expect(routerState.push).toHaveBeenCalledWith(
+      '/requirements/stewardship?tab=questions',
+    )
+  })
+
+  it('closes desktop stewardship subnavigation when sibling primary links are selected', () => {
+    render(<Navigation />)
+
+    const stewardshipButton = screen.getByRole('button', {
+      name: 'nav.stewardship',
+    })
+
+    fireEvent.click(stewardshipButton)
+    expect(
+      screen.getByRole('link', { name: 'nav.requirementPackages' }),
+    ).toHaveAttribute('href', '/requirements/stewardship?tab=packages')
+
+    fireEvent.click(screen.getByRole('link', { name: 'nav.specifications' }))
+
+    expect(stewardshipButton).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.queryByRole('link', { name: 'nav.requirementPackages' }),
+    ).toBeNull()
+
+    fireEvent.click(stewardshipButton)
+    expect(
+      screen.getByRole('link', { name: 'nav.requirementPackages' }),
+    ).toHaveAttribute('href', '/requirements/stewardship?tab=packages')
+
+    fireEvent.click(screen.getByRole('link', { name: 'nav.catalog' }))
+
+    expect(stewardshipButton).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.queryByRole('link', { name: 'nav.requirementPackages' }),
+    ).toBeNull()
   })
 
   it('keeps mobile navigation limited to the primary items', () => {
@@ -125,8 +229,37 @@ describe('Navigation', () => {
         .getAllByRole('link', { name: 'nav.specifications' })
         .map(link => link.getAttribute('href')),
     ).toContain('/specifications')
+    const stewardshipButtons = screen.getAllByRole('button', {
+      name: 'nav.stewardship',
+    })
+    fireEvent.click(stewardshipButtons[stewardshipButtons.length - 1])
+    expect(
+      screen
+        .getAllByRole('link', { name: 'nav.requirementPackages' })
+        .map(link => link.getAttribute('href')),
+    ).toContain('/requirements/stewardship?tab=packages')
+    expect(
+      screen
+        .getAllByRole('link', { name: 'nav.requirementSelectionQuestions' })
+        .map(link => link.getAttribute('href')),
+    ).toContain('/requirements/stewardship?tab=questions')
+    expect(screen.queryByRole('link', { name: 'nav.stewardship' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'nav.areas' })).toBeNull()
     expect(screen.queryByText('nav.referenceData')).toBeNull()
+  })
+
+  it('keeps stewardship subnavigation expanded on the stewardship route', () => {
+    pathnameState.value = '/requirements/stewardship'
+    searchParamsState.value = new URLSearchParams('tab=questions')
+
+    render(<Navigation />)
+
+    expect(
+      screen.getByRole('button', { name: 'nav.stewardship' }),
+    ).toHaveAttribute('aria-expanded', 'true')
+    expect(
+      screen.getByRole('link', { name: 'nav.requirementSelectionQuestions' }),
+    ).toHaveAttribute('aria-current', 'page')
   })
 
   it('renders the help toggle with focus styles and developer-mode metadata', () => {

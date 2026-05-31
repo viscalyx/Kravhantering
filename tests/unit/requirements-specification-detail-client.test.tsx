@@ -312,6 +312,22 @@ function renderRequirementsSpecificationDetailClient(
   )
 }
 
+function availableRequirementsFetchUrls(): string[] {
+  return fetchMock.mock.calls
+    .map(([input]) =>
+      typeof input === 'string' ? input : (input as Request).url,
+    )
+    .filter(url =>
+      url.startsWith(
+        '/api/specifications/ETJANST-UPP-2026/available-requirements?',
+      ),
+    )
+}
+
+function searchParamsFromPath(path: string): URLSearchParams {
+  return new URLSearchParams(path.split('?')[1] ?? '')
+}
+
 describe('RequirementsSpecificationDetailClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -419,7 +435,12 @@ describe('RequirementsSpecificationDetailClient', () => {
           )
         }
 
-        if (url.startsWith('/api/requirements?')) {
+        if (
+          url.startsWith(
+            '/api/specifications/ETJANST-UPP-2026/available-requirements?',
+          ) ||
+          url.startsWith('/api/requirements?')
+        ) {
           if (failNextAvailableRequirementsFetch) {
             failNextAvailableRequirementsFetch = false
             return Promise.resolve({
@@ -588,6 +609,46 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'specification.partialDataLoadWarning',
     )
+  })
+
+  it('loads available requirements without sending the fixed status filter', async () => {
+    renderRequirementsSpecificationDetailClient()
+
+    await waitFor(() => {
+      expect(availableRequirementsFetchUrls().length).toBeGreaterThan(0)
+    })
+
+    const initialUrl = availableRequirementsFetchUrls()[0] ?? ''
+    const params = searchParamsFromPath(initialUrl)
+    expect(params.get('locale')).toBe('en')
+    expect(params.has('statuses')).toBe(false)
+  })
+
+  it('loads more available requirements without sending the fixed status filter', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableRequirements: {
+        hasMore: true,
+        rows: [initialAvailableRequirement],
+      },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'load-more-available' }))
+
+    await waitFor(() => {
+      expect(
+        availableRequirementsFetchUrls().some(
+          url => searchParamsFromPath(url).get('offset') === '1',
+        ),
+      ).toBe(true)
+    })
+
+    const params = searchParamsFromPath(
+      availableRequirementsFetchUrls().find(
+        url => searchParamsFromPath(url).get('offset') === '1',
+      ) ?? '',
+    )
+    expect(params.has('statuses')).toBe(false)
   })
 
   it('opens and closes the specification edit view from the title action', async () => {

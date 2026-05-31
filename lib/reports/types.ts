@@ -96,6 +96,17 @@ export type ReportSection =
       }[]
     }
   | {
+      type: 'requirement-selection-context'
+      title: string
+      rows: {
+        answerText: string
+        areaName: string
+        isFilterActive: boolean
+        questionCode: string
+        questionText: string
+      }[]
+    }
+  | {
       type: 'toc'
       groups: {
         heading: string

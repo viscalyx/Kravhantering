@@ -31,6 +31,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [REQ-10: library list report entrypoint works](#req-10-library-list-report-entrypoint-works)
   - [REQ-11: localized library error recovery](#req-11-localized-library-error-recovery)
   - [REQ-12: detail action menus are keyboard accessible](#req-12-detail-action-menus-are-keyboard-accessible)
+  - [REQ-13: requirement-library stewardship manages packages and questions](#req-13-requirement-library-stewardship-manages-packages-and-questions)
 - [Requirement creation and lifecycle](#requirement-creation-and-lifecycle)
   - [LIFE-01: create a requirement from the UI](#life-01-create-a-requirement-from-the-ui)
   - [LIFE-02: validate required fields on create](#life-02-validate-required-fields-on-create)
@@ -63,6 +64,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [SPEC-09: manage needs references](#spec-09-manage-needs-references)
   - [SPEC-10: generate specification list report](#spec-10-generate-specification-list-report)
   - [SPEC-11: reset specification column views](#spec-11-reset-specification-column-views)
+  - [SPEC-12: answer requirement-selection questions](#spec-12-answer-requirement-selection-questions)
 - [Deviations](#deviations)
   - [DEV-01: create a draft deviation](#dev-01-create-a-draft-deviation)
   - [DEV-02: request deviation review](#dev-02-request-deviation-review)
@@ -342,7 +344,8 @@ requirements.
 
 **Users:** `ada.admin`.
 
-**Prerequisites:** Open `/sv/requirements`.
+**Prerequisites:** Open `/sv/requirements` in a fresh browser context, or clear
+the local storage entry `requirements.stewardship.tab`.
 
 **Steps:**
 
@@ -539,6 +542,48 @@ behavior.
 cycle only through menu options, Escape returns focus to the trigger, Tab closes
 the report menu without trapping focus, and the copy result is announced as
 `Kopierad`.
+
+### REQ-13: requirement-library stewardship manages packages and questions
+
+**Purpose:** Confirm package stewardship and requirement-selection question
+management live outside Admin Center.
+
+**Users:** `ada.admin`.
+
+**Prerequisites:** Open `/sv/requirements`.
+
+**Steps:**
+
+1. Verify the header navigation contains `Kravbiblioteksförvaltning`.
+1. Click `Kravbiblioteksförvaltning` and verify it opens `Kravpaket` when no
+   previous stewardship tab has been selected.
+1. Verify the page content shows `Kravpaket` as the only page heading, without
+   a separate `Kravbiblioteksförvaltning` heading above it.
+1. Verify `Kravbiblioteksförvaltning` expands the header downward and shows
+   the inline `Kravpaket` and `Kravurvalsfrågor` links centered directly under
+   the parent button inside the same surrounding background.
+1. Click `Kravunderlag` and verify the inline subnavigation closes. Click
+   `Kravbiblioteksförvaltning` again, then click `Kravbibliotek` and verify the
+   inline subnavigation closes again.
+1. Click `Kravbiblioteksförvaltning` once more to return to `Kravpaket`.
+1. On `Kravpaket`, use the floating `Nytt kravpaket` pill and verify the new
+   package form opens as a modal.
+1. Create or edit a package with `Namn`, `Beskrivning`, `HSA-ID` and
+   `Visningsnamn`.
+1. Switch to `Kravurvalsfrågor`, verify that title is now the page heading, and
+   use the floating `Skapa kravurvalsfråga` pill.
+1. Verify the new question form opens as a modal and create a question for a
+   requirement area.
+1. Open `/sv/requirements`, click `Kravbiblioteksförvaltning`, and verify the
+   parent navigation returns to `Kravurvalsfrågor`.
+1. Add a normal answer linked to a package or requirement.
+1. Add an `Utan kravurval` answer and verify links are cleared for that answer.
+1. Reload the page.
+
+**Expected result:** The last stewardship tab is restored, only the active
+stewardship view title is shown as the page heading, package leads use direct
+HSA-ID/display-name fields, the question gets a stable `KUF` code, and
+questions have no required/mandatory setting.
 
 ## Requirement creation and lifecycle
 
@@ -897,7 +942,7 @@ visible specifications.
 
 **Steps:**
 
-1. Select `Nytt kravunderlag`.
+1. Select the floating `Nytt kravunderlag` pill.
 1. Fill name, specification lifecycle status, governance object type, and
    implementation type.
 1. Add a business need reference if required.
@@ -1080,6 +1125,30 @@ library or unique requirement rows.
 **Expected result:** `Krav i underlaget` resets to `Krav-ID`, `Kravtext`,
 `Kravområde`, and `Behovsreferens`. `Tillgängliga krav` resets to `Krav-ID`,
 `Kravtext`, and `Kravområde`; it does not use the Kravbibliotek default column set.
+
+### SPEC-12: answer requirement-selection questions
+
+**Purpose:** Confirm optional requirement-selection answers filter available
+requirements and appear in reports.
+
+**Users:** `ada.admin`.
+
+**Prerequisites:** Open a specification detail with active
+requirement-selection questions.
+
+**Steps:**
+
+1. In the right panel, switch from `Tillgängliga krav` to `Kravurvalsfrågor`.
+1. Answer one single-choice question and one multiple-choice question.
+1. For a multiple-choice question, choose `Utan kravurval`.
+1. Return to `Tillgängliga krav`.
+1. Generate the specification list report.
+1. Clear one saved answer.
+
+**Expected result:** Progress updates without blocking unanswered questions,
+`Utan kravurval` is exclusive, active answers filter available requirements, the
+report shows the selection context before the requirement table, and clearing an
+answer returns that question to unanswered.
 
 ## Deviations
 

@@ -635,7 +635,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'navigering',
         'Navigationsfält',
-        'Det övre navigationsfältet ger åtkomst till alla huvuddelar: **Kravbiblioteket** (Krav), **Kravunderlag**, **Admininställningar** (kugghjulsikonen) samt language-väljare och tema (ljust/mörkt läge).',
+        'Det övre navigationsfältet ger åtkomst till alla huvuddelar: **Kravbiblioteket**, **Kravbiblioteksförvaltning**, **Kravunderlag**, **Admininställningar** (kugghjulsikonen) samt language-väljare och tema (ljust/mörkt läge).',
         { selector: 'nav[aria-label="Huvudnavigation"]' },
       )
     })

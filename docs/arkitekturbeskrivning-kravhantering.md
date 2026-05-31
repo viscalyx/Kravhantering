@@ -553,7 +553,7 @@ förvaltningsflikar och en administratörsflik för
    för kravlistan organisationsövergripande.
 3. **Referensdata** — Navigeringsnav till alla
    referensdatasidor, bland annat kravområden, ägare,
-   typer, kravpaket, normreferenser, kravversionsstatusar,
+   typer, normreferenser, kravversionsstatusar,
    användningsstatusar, kravunderlagets livscykelstatusar,
    risknivåer, kvalitetskaraktäristiker samt
    underlagsklassningar. Risknivåer är en fast
@@ -598,6 +598,9 @@ hjälptexterna förbjuder personidentifierande uppgifter där.
   Webbläsaren importerar inte React-PDF, vilket gör rapportflödet kompatibelt
   med strikt Content Security Policy utan `unsafe-eval` eller
   `wasm-unsafe-eval`.
+- **Kravunderlagsrapporter** — Kravlistor för kravunderlag kompletterar
+  rubrikdata med kravurval före kravtabellen. CSV-exporten för
+  kravunderlag förblir radbaserad utan extra urvalskontext.
 
 ### Språkväxling
 
@@ -816,12 +819,21 @@ erDiagram
     requirement_versions ||--o{ requirement_version_norm_references : "kopplade normreferenser"
     requirement_version_norm_references }o--|| norm_references : "refererar normreferens"
     requirement_areas }o--|| owners : "ägs av"
-    requirement_packages }o--o| owners : "ägs av"
     quality_characteristics }o--o| quality_characteristics : "förälder"
     quality_characteristics }o--|| requirement_types : "kopplad till typ"
     requirement_areas ||--o{ requirement_area_co_authors : "har medförfattare"
+    requirement_areas ||--o{ requirement_selection_question_sequences : "fördelar KUF-koder"
+    requirement_areas ||--o{ requirement_selection_questions : "äger kravurvalsfrågor"
+    requirement_selection_questions ||--o{ requirement_selection_answers : "har svar"
+    requirement_selection_answers ||--o{ requirement_selection_answer_packages : "kopplar kravpaket"
+    requirement_selection_answer_packages }o--|| requirement_packages : "pekar på kravpaket"
+    requirement_selection_answers ||--o{ requirement_selection_answer_requirements : "kopplar krav"
+    requirement_selection_answer_requirements }o--|| requirements : "pekar på krav"
     requirements_specifications ||--o{ requirements_specification_items : "innehåller"
     requirements_specifications ||--o{ specification_local_requirements : "innehåller kravunderlagets unika krav"
+    requirements_specifications ||--o{ specification_requirement_selection_answers : "sparar kravurvalssvar"
+    specification_requirement_selection_answers }o--|| requirement_selection_questions : "historisk fråga"
+    specification_requirement_selection_answers }o--|| requirement_selection_answers : "historiskt svar"
     requirements_specifications }o--o| specification_governance_object_types : "styrningsobjektstyp"
     requirements_specifications }o--o| specification_implementation_types : "genomförandeform"
     requirements_specifications }o--o| specification_lifecycle_statuses : "kravunderlagets livscykelstatus"
@@ -869,6 +881,16 @@ krav pekar på dem inom samma kravunderlag.
 > Tabellen `requirement_packages` hanterar även
 > *tillämpningsbarhet* — d.v.s. i vilka kontexter
 > eller miljöer ett krav gäller (t.ex. "Alla system").
+> Kravpaket är författat enspråkigt innehåll med `name`,
+> `description`, `lead_hsa_id`, `lead_display_name` och
+> `is_archived`; de ägs inte längre via `owners`.
+>
+> **Kravurvalsfrågor.**
+> Kravområden äger frivilliga kravurvalsfrågor med stabila
+> `{AREA}-KUF###`-koder. Svaren kan länka kravpaket och publicerade
+> bibliotekskrav, eller markera `Utan kravurval`. Kravunderlag sparar
+> svaren separat med `is_filter_active`, så inaktiverade eller arkiverade
+> frågor/svar kan visas historiskt utan att fortsätta filtrera.
 
 ### Taxonomi och tvåspråkig design
 
@@ -876,6 +898,8 @@ Uppslagstabeller för krav och kravunderlag lagrar
 användarsynliga texter i separata kolumner per språk:
 `name_sv` och `name_en`. Applikationen väljer rätt
 kolumn baserat på aktivt locale vid frågetillfället.
+Kravpaket är ett undantag eftersom de numera är författat innehåll
+med ett språkneutralt `name` och `description`.
 
 Kvalitetskaraktäristikerna följer ISO/IEC 25010:2023
 med 49 poster i en hierarkisk trädstruktur

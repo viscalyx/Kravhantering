@@ -69,9 +69,11 @@
   },
   "nav": {
     "catalog": "Requirements Library",
+    "stewardship": "Requirements Library Stewardship",
     "areas": "Requirement areas",
     "specifications": "Requirements specifications",
     "requirementPackages": "Requirements packages",
+    "requirementSelectionQuestions": "Requirement selection questions",
     "statuses": "Requirement version statuses",
     "types": "Types",
     "taxonomy": "Reference data",
@@ -140,6 +142,7 @@
     "referenceLabel": "Error reference"
   },
   "requirement": {
+    "title": "Requirements Library",
     "statusStepperAriaLabel": "Requirement version status workflow steps",
     "tableCaption": "Requirements list",
     "uniqueId": "Requirement ID",
@@ -594,16 +597,26 @@
     }
   },
   "requirementPackage": {
+    "active": "Active",
+    "archive": "Archive",
+    "archived": "Archived",
     "name": "Name",
+    "nameHelp": "Enter the requirements package name. The name is authored in one language and shown for both Swedish and English until translation is introduced.",
     "nameSvLabel": "Name (Swedish)",
     "nameSvHelp": "Enter the Swedish name for this requirements package.",
     "nameEnLabel": "Name (English)",
     "nameEnHelp": "Enter the English name for this requirements package.",
     "description": "Description",
+    "descriptionHelp": "Optionally describe the grouping this requirements package represents. Do not enter names or other details that can identify a living person.",
     "descriptionSvLabel": "Description (Swedish)",
     "descriptionSvHelp": "Optionally describe the requirements package in Swedish so users understand the grouping it represents. Do not enter names or other details that can identify a living person.",
     "descriptionEnLabel": "Description (English)",
     "descriptionEnHelp": "Optionally describe the requirements package in English so users understand the grouping it represents. Do not enter names or other details that can identify a living person.",
+    "lead": "Package lead",
+    "leadDisplayName": "Package lead name",
+    "leadDisplayNameHelp": "Enter the display name for the person responsible for this requirements package.",
+    "leadHsaId": "Package lead HSA-ID",
+    "leadHsaIdHelp": "Enter the package lead HSA-ID in the format SE followed by organization number, hyphen, and alphanumeric suffix.",
     "owner": "Requirements package owner",
     "help": {
       "owner": "Choose the owner responsible for this requirements package and its linked requirements."
@@ -611,7 +624,9 @@
     "newRequirementPackage": "New requirements package",
     "editRequirementPackage": "Edit requirements package",
     "linkedRequirements": "Linked requirements",
+    "reactivate": "Reactivate",
     "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}",
+    "status": "Status",
     "emptyState": "No requirements packages yet. Create your first requirements package."
   },
   "normReference": {

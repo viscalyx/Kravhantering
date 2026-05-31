@@ -1,26 +1,21 @@
 import type { SqlServerDatabase } from '@/lib/db'
-import { toIsoString } from '@/lib/typeorm/value-mappers'
-
-interface RequirementPackageOwner {
-  email: string
-  firstName: string
-  id: number
-  lastName: string
-}
+import { toBoolean, toIsoString } from '@/lib/typeorm/value-mappers'
 
 interface RequirementPackageRow {
   createdAt: string
-  descriptionEn: string | null
-  descriptionSv: string | null
+  description: string | null
   id: number
-  nameEn: string
-  nameSv: string
-  ownerId: number | null
+  isArchived: boolean
+  leadDisplayName: string
+  leadHsaId: string
+  name: string
   updatedAt: string
 }
 
-interface RequirementPackageWithOwner extends RequirementPackageRow {
-  owner: RequirementPackageOwner | null
+interface RequirementPackageUsage {
+  answerLinkCount: number
+  libraryRequirementCount: number
+  localRequirementCount: number
 }
 
 interface LinkedRequirementRow {
@@ -44,55 +39,45 @@ interface LinkedRequirementDbRow
 export type {
   LinkedRequirementRow,
   RequirementPackageRow,
-  RequirementPackageWithOwner,
+  RequirementPackageUsage,
 }
 
 function mapRequirementPackageRow(
   row: Record<string, unknown>,
-): RequirementPackageWithOwner {
+): RequirementPackageRow {
   return {
     createdAt: toIsoString(row.createdAt as Date | string),
-    descriptionEn: row.descriptionEn as string | null,
-    descriptionSv: row.descriptionSv as string | null,
+    description: row.description as string | null,
     id: row.id as number,
-    nameEn: row.nameEn as string,
-    nameSv: row.nameSv as string,
-    owner:
-      row.owner_id_join == null
-        ? null
-        : {
-            email: row.owner_email as string,
-            firstName: row.owner_firstName as string,
-            id: row.owner_id_join as number,
-            lastName: row.owner_lastName as string,
-          },
-    ownerId: row.ownerId as number | null,
+    isArchived: toBoolean(row.isArchived as boolean | number | string),
+    leadDisplayName: row.leadDisplayName as string,
+    leadHsaId: row.leadHsaId as string,
+    name: row.name as string,
     updatedAt: toIsoString(row.updatedAt as Date | string),
   }
 }
 
 export async function listRequirementPackages(
   db: SqlServerDatabase,
-): Promise<RequirementPackageWithOwner[]> {
-  const rows = await db.query(`
-    SELECT
-      requirementPackages.id AS id,
-      requirementPackages.name_sv AS nameSv,
-      requirementPackages.name_en AS nameEn,
-      requirementPackages.description_sv AS descriptionSv,
-      requirementPackages.description_en AS descriptionEn,
-      requirementPackages.owner_id AS ownerId,
-      requirementPackages.created_at AS createdAt,
-      requirementPackages.updated_at AS updatedAt,
-      owners.id AS owner_id_join,
-      owners.first_name AS owner_firstName,
-      owners.last_name AS owner_lastName,
-      owners.email AS owner_email
-    FROM requirement_packages AS requirementPackages
-    LEFT JOIN owners
-      ON requirementPackages.owner_id = owners.id
-    ORDER BY requirementPackages.name_sv ASC
-  `)
+  options: { includeArchived?: boolean } = {},
+): Promise<RequirementPackageRow[]> {
+  const rows = await db.query(
+    `
+      SELECT
+        requirementPackages.id AS id,
+        requirementPackages.name AS name,
+        requirementPackages.description AS description,
+        requirementPackages.lead_hsa_id AS leadHsaId,
+        requirementPackages.lead_display_name AS leadDisplayName,
+        requirementPackages.is_archived AS isArchived,
+        requirementPackages.created_at AS createdAt,
+        requirementPackages.updated_at AS updatedAt
+      FROM requirement_packages AS requirementPackages
+      WHERE @0 = 1 OR requirementPackages.is_archived = 0
+      ORDER BY requirementPackages.is_archived ASC, requirementPackages.name ASC
+    `,
+    [options.includeArchived ? 1 : 0],
+  )
   return rows.map(mapRequirementPackageRow)
 }
 
@@ -159,25 +144,19 @@ export async function getLinkedRequirementsForPackage(
 export async function getRequirementPackageById(
   db: SqlServerDatabase,
   id: number,
-): Promise<RequirementPackageWithOwner | null> {
+): Promise<RequirementPackageRow | null> {
   const rows = await db.query(
     `
       SELECT
         requirementPackages.id AS id,
-        requirementPackages.name_sv AS nameSv,
-        requirementPackages.name_en AS nameEn,
-        requirementPackages.description_sv AS descriptionSv,
-        requirementPackages.description_en AS descriptionEn,
-        requirementPackages.owner_id AS ownerId,
+        requirementPackages.name AS name,
+        requirementPackages.description AS description,
+        requirementPackages.lead_hsa_id AS leadHsaId,
+        requirementPackages.lead_display_name AS leadDisplayName,
+        requirementPackages.is_archived AS isArchived,
         requirementPackages.created_at AS createdAt,
-        requirementPackages.updated_at AS updatedAt,
-        owners.id AS owner_id_join,
-        owners.first_name AS owner_firstName,
-        owners.last_name AS owner_lastName,
-        owners.email AS owner_email
+        requirementPackages.updated_at AS updatedAt
       FROM requirement_packages AS requirementPackages
-      LEFT JOIN owners
-        ON requirementPackages.owner_id = owners.id
       WHERE requirementPackages.id = @0
     `,
     [id],
@@ -185,88 +164,115 @@ export async function getRequirementPackageById(
   return rows[0] ? mapRequirementPackageRow(rows[0]) : null
 }
 
+export async function getRequirementPackageUsage(
+  db: SqlServerDatabase,
+  id: number,
+): Promise<RequirementPackageUsage> {
+  const [row] = (await db.query(
+    `
+      SELECT
+        (
+          SELECT COUNT(DISTINCT versions.requirement_id)
+          FROM requirement_version_requirement_packages AS links
+          INNER JOIN requirement_versions AS versions
+            ON links.requirement_version_id = versions.id
+          WHERE links.requirement_package_id = @0
+        ) AS libraryRequirementCount,
+        (
+          SELECT COUNT(DISTINCT links.specification_local_requirement_id)
+          FROM specification_local_requirement_requirement_packages AS links
+          WHERE links.requirement_package_id = @0
+        ) AS localRequirementCount,
+        (
+          SELECT COUNT(DISTINCT links.answer_id)
+          FROM requirement_selection_answer_packages AS links
+          WHERE links.requirement_package_id = @0
+        ) AS answerLinkCount
+    `,
+    [id],
+  )) as Array<{
+    answerLinkCount: number
+    libraryRequirementCount: number
+    localRequirementCount: number
+  }>
+  return {
+    answerLinkCount: Number(row?.answerLinkCount ?? 0),
+    libraryRequirementCount: Number(row?.libraryRequirementCount ?? 0),
+    localRequirementCount: Number(row?.localRequirementCount ?? 0),
+  }
+}
+
 export async function createRequirementPackage(
   db: SqlServerDatabase,
   data: {
-    nameSv: string
-    nameEn: string
-    descriptionSv?: string
-    descriptionEn?: string
-    ownerId?: number | null
+    description?: string | null
+    leadDisplayName: string
+    leadHsaId: string
+    name: string
   },
 ): Promise<RequirementPackageRow> {
   const now = new Date()
   const rows = await db.query(
     `
       INSERT INTO requirement_packages (
-        name_sv,
-        name_en,
-        description_sv,
-        description_en,
-        owner_id,
+        name,
+        description,
+        lead_hsa_id,
+        lead_display_name,
+        is_archived,
         created_at,
         updated_at
       )
       OUTPUT
         inserted.id AS id,
-        inserted.name_sv AS nameSv,
-        inserted.name_en AS nameEn,
-        inserted.description_sv AS descriptionSv,
-        inserted.description_en AS descriptionEn,
-        inserted.owner_id AS ownerId,
+        inserted.name AS name,
+        inserted.description AS description,
+        inserted.lead_hsa_id AS leadHsaId,
+        inserted.lead_display_name AS leadDisplayName,
+        inserted.is_archived AS isArchived,
         inserted.created_at AS createdAt,
         inserted.updated_at AS updatedAt
-      VALUES (@0, @1, @2, @3, @4, @5, @5)
+      VALUES (@0, @1, @2, @3, 0, @4, @4)
     `,
     [
-      data.nameSv,
-      data.nameEn,
-      data.descriptionSv ?? null,
-      data.descriptionEn ?? null,
-      data.ownerId ?? null,
+      data.name,
+      data.description ?? null,
+      data.leadHsaId,
+      data.leadDisplayName,
       now,
     ],
   )
-  return {
-    ...rows[0],
-    createdAt: toIsoString(rows[0].createdAt),
-    updatedAt: toIsoString(rows[0].updatedAt),
-  }
+  return mapRequirementPackageRow(rows[0])
 }
 
 export async function updateRequirementPackage(
   db: SqlServerDatabase,
   id: number,
   data: {
-    nameSv?: string
-    nameEn?: string
-    descriptionSv?: string
-    descriptionEn?: string
-    ownerId?: number | null
+    description?: string | null
+    leadDisplayName?: string
+    leadHsaId?: string
+    name?: string
   },
 ): Promise<RequirementPackageRow | undefined> {
   const sets: string[] = []
   const params: Array<string | number | Date | null> = []
 
-  if (data.nameSv !== undefined) {
-    params.push(data.nameSv)
-    sets.push(`name_sv = @${params.length - 1}`)
+  if (data.name !== undefined) {
+    params.push(data.name)
+    sets.push(`name = @${params.length - 1}`)
   }
-  if (data.nameEn !== undefined) {
-    params.push(data.nameEn)
-    sets.push(`name_en = @${params.length - 1}`)
+  if (data.description !== undefined) {
+    params.push(data.description)
+    sets.push(`description = @${params.length - 1}`)
   }
-  if (data.descriptionSv !== undefined) {
-    params.push(data.descriptionSv)
-    sets.push(`description_sv = @${params.length - 1}`)
+  if (data.leadHsaId !== undefined) {
+    params.push(data.leadHsaId)
+    sets.push(`lead_hsa_id = @${params.length - 1}`)
   }
-  if (data.descriptionEn !== undefined) {
-    params.push(data.descriptionEn)
-    sets.push(`description_en = @${params.length - 1}`)
-  }
-  if (data.ownerId !== undefined) {
-    params.push(data.ownerId)
-    sets.push(`owner_id = @${params.length - 1}`)
+  if (data.leadDisplayName !== undefined) {
+    params.push(data.leadDisplayName)
+    sets.push(`lead_display_name = @${params.length - 1}`)
   }
 
   params.push(new Date())
@@ -279,24 +285,57 @@ export async function updateRequirementPackage(
       SET ${sets.join(', ')}
       OUTPUT
         inserted.id AS id,
-        inserted.name_sv AS nameSv,
-        inserted.name_en AS nameEn,
-        inserted.description_sv AS descriptionSv,
-        inserted.description_en AS descriptionEn,
-        inserted.owner_id AS ownerId,
+        inserted.name AS name,
+        inserted.description AS description,
+        inserted.lead_hsa_id AS leadHsaId,
+        inserted.lead_display_name AS leadDisplayName,
+        inserted.is_archived AS isArchived,
         inserted.created_at AS createdAt,
         inserted.updated_at AS updatedAt
       WHERE id = @${params.length - 1}
     `,
     params,
   )
-  return rows[0]
-    ? {
-        ...rows[0],
-        createdAt: toIsoString(rows[0].createdAt),
-        updatedAt: toIsoString(rows[0].updatedAt),
-      }
-    : undefined
+  return rows[0] ? mapRequirementPackageRow(rows[0]) : undefined
+}
+
+async function setRequirementPackageArchived(
+  db: SqlServerDatabase,
+  id: number,
+  isArchived: boolean,
+): Promise<RequirementPackageRow | undefined> {
+  const rows = await db.query(
+    `
+      UPDATE requirement_packages
+      SET is_archived = @0, updated_at = @1
+      OUTPUT
+        inserted.id AS id,
+        inserted.name AS name,
+        inserted.description AS description,
+        inserted.lead_hsa_id AS leadHsaId,
+        inserted.lead_display_name AS leadDisplayName,
+        inserted.is_archived AS isArchived,
+        inserted.created_at AS createdAt,
+        inserted.updated_at AS updatedAt
+      WHERE id = @2
+    `,
+    [isArchived ? 1 : 0, new Date(), id],
+  )
+  return rows[0] ? mapRequirementPackageRow(rows[0]) : undefined
+}
+
+export async function archiveRequirementPackage(
+  db: SqlServerDatabase,
+  id: number,
+): Promise<RequirementPackageRow | undefined> {
+  return setRequirementPackageArchived(db, id, true)
+}
+
+export async function reactivateRequirementPackage(
+  db: SqlServerDatabase,
+  id: number,
+): Promise<RequirementPackageRow | undefined> {
+  return setRequirementPackageArchived(db, id, false)
 }
 
 export async function deleteRequirementPackage(
@@ -308,6 +347,21 @@ export async function deleteRequirementPackage(
       DELETE FROM requirement_packages
       OUTPUT deleted.id AS id
       WHERE id = @0
+        AND NOT EXISTS (
+          SELECT 1
+          FROM requirement_version_requirement_packages AS links
+          WHERE links.requirement_package_id = requirement_packages.id
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM specification_local_requirement_requirement_packages AS links
+          WHERE links.requirement_package_id = requirement_packages.id
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM requirement_selection_answer_packages AS links
+          WHERE links.requirement_package_id = requirement_packages.id
+        )
     `,
     [id],
   )

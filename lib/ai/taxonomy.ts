@@ -37,7 +37,7 @@ export async function loadTaxonomy(
     riskLevels: riskLevels.map(r => ({ id: r.id, name: r[nameKey] })),
     requirementPackages: requirementPackages.map(s => ({
       id: s.id,
-      name: s[nameKey],
+      name: s.name,
     })),
     types: types.map(t => ({ id: t.id, name: t[nameKey] })),
   }

@@ -1,0 +1,37 @@
+import { NextResponse } from 'next/server'
+import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
+import { setRequirementSelectionAnswerState } from '@/lib/dal/requirement-selection-questions'
+import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  customMutationPolicy,
+  secureMutationRoute,
+} from '@/lib/http/secure-mutation-route'
+import { answerRouteParamsSchema } from '../../../_schemas'
+
+export function answerStateRoute(
+  operation: 'activate' | 'archive' | 'deactivate' | 'reactivate',
+) {
+  return secureMutationRoute({
+    paramsSchema: answerRouteParamsSchema,
+    policy: customMutationPolicy('requirement_selection_answer', () => {}),
+    handler: async ({ context, params }) => {
+      const db = await getRequestSqlServerDataSource()
+      const question = await setRequirementSelectionAnswerState(
+        db,
+        params.id,
+        params.answerId,
+        operation,
+      )
+      if (!question) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+      await recordAllowedActionAuditEvent(db, context, {
+        action: `requirement_selection_answer.${operation}`,
+        details: { questionId: params.id },
+        targetId: params.answerId,
+        targetKind: 'requirement_selection_answer',
+      })
+      return NextResponse.json(question)
+    },
+  })
+}

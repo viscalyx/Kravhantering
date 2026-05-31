@@ -27,7 +27,6 @@ import {
   RotateCcw,
   Save,
   ShieldCheck,
-  Theater,
   UserCog,
   Wrench,
   X,
@@ -2931,13 +2930,6 @@ export default function AdminClient({
       icon: Layers,
       id: 'types',
       label: tn('types'),
-    },
-    {
-      description: ta('requirementPackagesDescription'),
-      href: '/requirement-packages',
-      icon: Theater,
-      id: 'requirementPackages',
-      label: tn('requirementPackages'),
     },
     {
       description: ta('statusesDescription'),

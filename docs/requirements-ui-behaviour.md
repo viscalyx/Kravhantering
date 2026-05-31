@@ -398,6 +398,24 @@ down.
   specification list export.
 - PDF uses the matching server route
   `/[locale]/specifications/[slug]/reports/pdf/list?refs=...`.
+- Specification list reports include the current requirement-selection context
+  before the requirement table. Historical saved answers are shown as inactive
+  context and do not affect filtering or progress. The specification CSV export
+  remains row-only.
+
+## Specification Requirement Selection Panel
+
+- The specification detail right panel has tabs for `Tillgängliga krav` and
+  `Kravurvalsfrågor`.
+- Requirement-selection questions are always optional. Progress counts answered
+  active questions against all active questions, both total and per requirement
+  area, without blocking save or report actions.
+- Active saved answers filter `Tillgängliga krav` through their linked
+  requirement packages and explicit published requirements.
+- `Utan kravurval` clears other answers for the same question and is exclusive
+  even for multiple-choice questions.
+- Historical saved answers remain visible and clearable, but are excluded from
+  filters and progress.
 
 ## Combined Review Report Floating Pill
 

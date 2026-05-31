@@ -213,12 +213,12 @@ function addRetentionTaxonomy(seedData) {
   ]) {
     addRow(seedData, 'requirement_packages', {
       created_at: pkg.updatedAt,
-      description_en: `${pkg.name} for deterministic archiving retention tests.`,
-      description_sv: `${pkg.name} för deterministiska arkiveringstester.`,
+      description: `${pkg.name} för deterministiska arkiveringstester.`,
       id: pkg.id,
-      name_en: pkg.name,
-      name_sv: pkg.name,
-      owner_id: RETENTION_SEED.owner.linked,
+      is_archived: 0,
+      lead_display_name: 'Retention Linked',
+      lead_hsa_id: 'SE5560000001-retentionlinked',
+      name: pkg.name,
       updated_at: pkg.updatedAt,
     })
   }

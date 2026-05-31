@@ -30,6 +30,14 @@ export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
 
+function requirementPackageName(value: unknown): string | null {
+  const record = value as
+    | { name?: string | null; nameEn?: string | null; nameSv?: string | null }
+    | null
+    | undefined
+  return record?.name ?? record?.nameSv ?? record?.nameEn ?? null
+}
+
 const specificationParamSchema = z
   .object({
     id: specificationIdOrSlugSchema,
@@ -123,8 +131,8 @@ function mapSpecificationLocalRequirementToReportData(
           requirementPackage => ({
             requirementPackage: {
               id: requirementPackage.id,
-              nameEn: requirementPackage.nameEn,
-              nameSv: requirementPackage.nameSv,
+              nameEn: requirementPackageName(requirementPackage),
+              nameSv: requirementPackageName(requirementPackage),
             },
           }),
         ),

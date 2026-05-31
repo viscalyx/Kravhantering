@@ -118,36 +118,41 @@ const pages: MarkerSpec[] = [
       okJson({
         requirementPackages: [
           {
-            id: 1,
-            nameSv: 'S',
-            nameEn: 'S',
-            descriptionSv: null,
+            description: null,
             descriptionEn: null,
+            descriptionSv: null,
+            id: 1,
+            isArchived: false,
+            leadDisplayName: 'Anna Owner',
+            leadHsaId: 'SE5560000001-anna1',
             linkedRequirementCount: 0,
-            owner: null,
-            ownerId: null,
+            name: 'S',
+            nameEn: 'S',
+            nameSv: 'S',
           },
         ],
       }),
     fetchHandler: input => {
       const url = String(input)
-      if (url === '/api/requirement-packages') {
+      if (url.startsWith('/api/requirement-packages?')) {
         return okJson({
           requirementPackages: [
             {
+              description: null,
               descriptionEn: null,
               descriptionSv: null,
               id: 1,
+              isArchived: false,
+              leadDisplayName: 'Anna Owner',
+              leadHsaId: 'SE5560000001-anna1',
               linkedRequirementCount: 0,
+              name: 'S',
               nameEn: 'S',
               nameSv: 'S',
-              owner: null,
-              ownerId: null,
             },
           ],
         }) as Response
       }
-      if (url === '/api/owners/all') return okJson({ owners: [] }) as Response
       return okJson({}) as Response
     },
     expectedMarkers: ['create button', 'crud table', 'table action'],
@@ -376,18 +381,21 @@ describe('RequirementPackagesClient error banner developer-mode marker', () => {
             json: async () => ({ error: 'Has linked requirements' }),
           } as Response
         }
-        if (url.endsWith('/api/requirement-packages')) {
+        if (url.includes('/api/requirement-packages?')) {
           return okJson({
             requirementPackages: [
               {
-                id: 1,
-                nameSv: 'S',
-                nameEn: 'S',
-                descriptionSv: null,
+                description: null,
                 descriptionEn: null,
-                ownerId: null,
+                descriptionSv: null,
+                id: 1,
+                isArchived: false,
+                leadDisplayName: 'Anna Owner',
+                leadHsaId: 'SE5560000001-anna1',
                 linkedRequirementCount: 0,
-                owner: null,
+                name: 'S',
+                nameEn: 'S',
+                nameSv: 'S',
               },
             ],
           }) as Response

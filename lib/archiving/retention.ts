@@ -200,9 +200,6 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
       WHERE owner.id = @0
         AND NOT EXISTS (
           SELECT 1 FROM requirement_areas area WHERE area.owner_id = owner.id
-        )
-        AND NOT EXISTS (
-          SELECT 1 FROM requirement_packages pkg WHERE pkg.owner_id = owner.id
         )`,
     fieldKey: 'identity',
     objectKey: 'owners',
@@ -220,9 +217,6 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
         WHERE owner.updated_at <= @0
           AND NOT EXISTS (
             SELECT 1 FROM requirement_areas area WHERE area.owner_id = owner.id
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM requirement_packages pkg WHERE pkg.owner_id = owner.id
           )
       ) source
       WHERE ${ACTIVE_EXCEPTION_SQL}
@@ -271,6 +265,9 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
         )
         AND NOT EXISTS (
           SELECT 1 FROM specification_local_requirement_requirement_packages link WHERE link.requirement_package_id = pkg.id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM requirement_selection_answer_packages link WHERE link.requirement_package_id = pkg.id
         )`,
     fieldKey: 'taxonomy',
     objectKey: 'requirementPackages',
@@ -281,8 +278,8 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
           N'requirement_packages.unused' AS source_key,
           N'requirement_packages' AS subject_table,
           CAST(pkg.id AS nvarchar(120)) AS subject_id,
-          pkg.name_sv AS reference,
-          pkg.name_sv AS current_display_value,
+          pkg.name AS reference,
+          pkg.name AS current_display_value,
           pkg.updated_at AS age_basis
         FROM requirement_packages pkg
         WHERE pkg.updated_at <= @0
@@ -291,6 +288,9 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
           )
           AND NOT EXISTS (
             SELECT 1 FROM specification_local_requirement_requirement_packages link WHERE link.requirement_package_id = pkg.id
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM requirement_selection_answer_packages link WHERE link.requirement_package_id = pkg.id
           )
       ) source
       WHERE ${ACTIVE_EXCEPTION_SQL}
@@ -1158,16 +1158,16 @@ async function exportSpecification(
       `SELECT
           specification_item.id AS specificationItemId,
           pkg.id,
-          pkg.name_sv AS nameSv,
-          pkg.name_en AS nameEn,
-          pkg.description_sv AS descriptionSv,
-          pkg.description_en AS descriptionEn
+          pkg.name AS nameSv,
+          pkg.name AS nameEn,
+          pkg.description AS descriptionSv,
+          pkg.description AS descriptionEn
         FROM requirements_specification_items specification_item
         INNER JOIN requirement_version_requirement_packages link
           ON link.requirement_version_id = specification_item.requirement_version_id
         INNER JOIN requirement_packages pkg ON pkg.id = link.requirement_package_id
         WHERE specification_item.requirements_specification_id = @0
-        ORDER BY specification_item.id ASC, pkg.name_sv ASC`,
+        ORDER BY specification_item.id ASC, pkg.name ASC`,
       [specificationId],
     ) as Promise<Row[]>,
     db.query(
@@ -1256,16 +1256,16 @@ async function exportSpecification(
       `SELECT
           local_requirement.id AS localRequirementId,
           pkg.id,
-          pkg.name_sv AS nameSv,
-          pkg.name_en AS nameEn,
-          pkg.description_sv AS descriptionSv,
-          pkg.description_en AS descriptionEn
+          pkg.name AS nameSv,
+          pkg.name AS nameEn,
+          pkg.description AS descriptionSv,
+          pkg.description AS descriptionEn
         FROM specification_local_requirements local_requirement
         INNER JOIN specification_local_requirement_requirement_packages link
           ON link.specification_local_requirement_id = local_requirement.id
         INNER JOIN requirement_packages pkg ON pkg.id = link.requirement_package_id
         WHERE local_requirement.specification_id = @0
-        ORDER BY local_requirement.id ASC, pkg.name_sv ASC`,
+        ORDER BY local_requirement.id ASC, pkg.name ASC`,
       [specificationId],
     ) as Promise<Row[]>,
     db.query(

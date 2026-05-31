@@ -36,12 +36,14 @@ export interface ListRequirementsOptions {
   areaIds?: number[]
   categoryIds?: number[]
   descriptionSearch?: string
+  excludeRequirementIds?: number[]
   includeArchived?: boolean
   limit?: number
   locale?: 'en' | 'sv'
   normReferenceIds?: number[]
   offset?: number
   qualityCharacteristicIds?: number[]
+  requirementIds?: number[]
   requirementPackageIds?: number[]
   requiresTesting?: boolean[]
   riskLevelIds?: number[]
@@ -1404,8 +1406,8 @@ export async function getVersionHistory(
             link.requirement_version_id AS requirementVersionId,
             link.requirement_package_id AS requirementPackageId,
             requirementPackage.id AS packageId,
-            requirementPackage.name_en AS packageNameEn,
-            requirementPackage.name_sv AS packageNameSv
+            requirementPackage.name AS packageNameEn,
+            requirementPackage.name AS packageNameSv
           FROM requirement_version_requirement_packages link
           INNER JOIN requirement_packages requirementPackage ON requirementPackage.id = link.requirement_package_id
           WHERE link.requirement_version_id IN (${ids.map((_, i) => `@${i}`).join(', ')})`,
@@ -1619,11 +1621,11 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
             link.requirement_version_id AS requirementVersionId,
             link.requirement_package_id AS requirementPackageId,
             requirementPackage.id AS packageId,
-            requirementPackage.name_en AS packageNameEn,
-            requirementPackage.name_sv AS packageNameSv,
-            requirementPackage.description_en AS packageDescriptionEn,
-            requirementPackage.description_sv AS packageDescriptionSv,
-            requirementPackage.owner_id AS packageOwnerId,
+            requirementPackage.name AS packageNameEn,
+            requirementPackage.name AS packageNameSv,
+            requirementPackage.description AS packageDescriptionEn,
+            requirementPackage.description AS packageDescriptionSv,
+            NULL AS packageOwnerId,
             requirementPackage.created_at AS packageCreatedAt,
             requirementPackage.updated_at AS packageUpdatedAt
           FROM requirement_version_requirement_packages link

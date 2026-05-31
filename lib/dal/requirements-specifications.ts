@@ -1510,8 +1510,8 @@ export async function getSpecificationLocalRequirementDetail(
       `
         SELECT
           requirement_package.id AS id,
-          requirement_package.name_en AS nameEn,
-          requirement_package.name_sv AS nameSv
+          requirement_package.name AS nameEn,
+          requirement_package.name AS nameSv
         FROM specification_local_requirement_requirement_packages link
         INNER JOIN requirement_packages requirement_package
           ON requirement_package.id = link.requirement_package_id

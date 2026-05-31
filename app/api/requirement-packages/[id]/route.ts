@@ -1,15 +1,17 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
+import { isHsaId } from '@/lib/auth/hsa-id'
 import {
   deleteRequirementPackage,
   getLinkedRequirementsForPackage,
   getRequirementPackageById,
+  getRequirementPackageUsage,
   updateRequirementPackage,
 } from '@/lib/dal/requirement-packages'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  adminMutationPolicy,
+  customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
@@ -17,7 +19,6 @@ import {
   idParamSchema,
   optionalBusinessTextSchema,
   parseRouteParams,
-  positiveIntegerSchema,
 } from '@/lib/http/validation'
 
 export const dynamic = 'force-dynamic'
@@ -26,11 +27,14 @@ type Params = Promise<{ id: string }>
 
 const updateRequirementPackageSchema = z
   .object({
-    descriptionEn: optionalBusinessTextSchema,
-    descriptionSv: optionalBusinessTextSchema,
-    nameEn: boundedDbStringSchema.optional(),
-    nameSv: boundedDbStringSchema.optional(),
-    ownerId: positiveIntegerSchema.nullable().optional(),
+    description: optionalBusinessTextSchema,
+    leadDisplayName: boundedDbStringSchema.optional(),
+    leadHsaId: boundedDbStringSchema
+      .refine(isHsaId, {
+        message: 'Expected a valid HSA-ID',
+      })
+      .optional(),
+    name: boundedDbStringSchema.optional(),
   })
   .strict()
 
@@ -49,13 +53,24 @@ export async function GET(
   if (!requirementPackage) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
-  return NextResponse.json({ requirementPackage, linkedRequirements })
+  return NextResponse.json({
+    requirementPackage: {
+      ...requirementPackage,
+      descriptionEn: requirementPackage.description,
+      descriptionSv: requirementPackage.description,
+      nameEn: requirementPackage.name,
+      nameSv: requirementPackage.name,
+      owner: null,
+      ownerId: null,
+    },
+    linkedRequirements,
+  })
 }
 
 export const PUT = secureMutationRoute({
   bodySchema: updateRequirementPackageSchema,
   paramsSchema: idParamSchema,
-  policy: adminMutationPolicy(),
+  policy: customMutationPolicy('requirement_package', () => {}),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const requirementPackage = await updateRequirementPackage(
@@ -66,11 +81,11 @@ export const PUT = secureMutationRoute({
     if (!requirementPackage) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    await recordAdminPrivilegedActionSucceeded(context, {
-      changedFields: Object.keys(body),
-      operation: 'update',
-      resourceId: params.id,
-      resourceType: 'requirement_package',
+    await recordAllowedActionAuditEvent(db, context, {
+      action: 'requirement_package.update',
+      details: { changedFields: Object.keys(body) },
+      targetId: params.id,
+      targetKind: 'requirement_package',
     })
     return NextResponse.json(requirementPackage)
   },
@@ -78,17 +93,28 @@ export const PUT = secureMutationRoute({
 
 export const DELETE = secureMutationRoute({
   paramsSchema: idParamSchema,
-  policy: adminMutationPolicy(),
+  policy: customMutationPolicy('requirement_package', () => {}),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const deletedCount = await deleteRequirementPackage(db, params.id)
     if (deletedCount === 0) {
+      const existing = await getRequirementPackageById(db, params.id)
+      if (existing) {
+        const usage = await getRequirementPackageUsage(db, params.id)
+        return NextResponse.json(
+          {
+            error: 'Requirement package is in use',
+            usage,
+          },
+          { status: 409 },
+        )
+      }
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    await recordAdminPrivilegedActionSucceeded(context, {
-      operation: 'delete',
-      resourceId: params.id,
-      resourceType: 'requirement_package',
+    await recordAllowedActionAuditEvent(db, context, {
+      action: 'requirement_package.delete',
+      targetId: params.id,
+      targetKind: 'requirement_package',
     })
     return NextResponse.json({ ok: true })
   },

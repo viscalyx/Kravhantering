@@ -128,6 +128,11 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 4,
   },
+  sectionTitle: {
+    fontSize: 12,
+    fontFamily: 'Helvetica-Bold',
+    color: '#111827',
+  },
   diffAdded: {
     backgroundColor: '#dcfce7',
     color: '#166534',
@@ -294,6 +299,8 @@ function PdfSectionRenderer({
       return <PdfTimelineEntry locale={locale} section={section} />
     case 'requirement-table':
       return <PdfRequirementTable section={section} />
+    case 'requirement-selection-context':
+      return <PdfRequirementSelectionContext section={section} />
     case 'toc':
       return <PdfToc section={section} />
     case 'specification-cover':
@@ -307,6 +314,37 @@ function PdfSectionRenderer({
     default:
       return null
   }
+}
+
+function PdfRequirementSelectionContext({
+  section,
+}: {
+  section: Extract<ReportSection, { type: 'requirement-selection-context' }>
+}) {
+  return (
+    <View style={{ marginBottom: 18 }}>
+      <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>
+        {section.title}
+      </Text>
+      {section.rows.map(row => (
+        <View
+          key={`${row.questionCode}-${row.answerText}`}
+          style={[styles.tableRow, { borderTopWidth: 1, paddingVertical: 5 }]}
+        >
+          <Text style={[styles.tableCell, { flex: 1.2 }]}>
+            {row.areaName} {row.questionCode}
+          </Text>
+          <Text style={[styles.tableCell, { flex: 2 }]}>
+            {row.questionText}
+          </Text>
+          <Text style={[styles.tableCell, { flex: 1.5 }]}>
+            {row.answerText}
+            {!row.isFilterActive ? ' (not filter-active)' : ''}
+          </Text>
+        </View>
+      ))}
+    </View>
+  )
 }
 
 function PdfSpecificationCover({

@@ -17,6 +17,14 @@ import type {
 const SUGGESTION_RESOLVED = 1
 const SUGGESTION_DISMISSED = 2
 
+function requirementPackageName(value: unknown): string {
+  const record = value as
+    | { name?: string | null; nameEn?: string | null; nameSv?: string | null }
+    | null
+    | undefined
+  return record?.name ?? record?.nameSv ?? record?.nameEn ?? ''
+}
+
 function getStatusLabel(
   version: RequirementReportData['versions'][number],
   locale: string,
@@ -76,8 +84,8 @@ function toVersionSummary(
     requirementPackages: version.versionRequirementPackages
       .filter(vs => vs.requirementPackage)
       .map(vs => ({
-        nameSv: vs.requirementPackage.nameSv ?? '',
-        nameEn: vs.requirementPackage.nameEn ?? '',
+        nameSv: requirementPackageName(vs.requirementPackage),
+        nameEn: requirementPackageName(vs.requirementPackage),
       })),
   }
 }

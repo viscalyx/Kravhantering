@@ -196,8 +196,8 @@ export async function loadRequirementsSpecificationDetailInitialData({
     capture<FilterOption[]>('requirement packages', [], async () =>
       (await listRequirementPackages(db)).map(pkg => ({
         id: pkg.id,
-        nameEn: pkg.nameEn,
-        nameSv: pkg.nameSv,
+        nameEn: pkg.name,
+        nameSv: pkg.name,
       })),
     ),
     capture<SpecificationNeedsReference[]>(

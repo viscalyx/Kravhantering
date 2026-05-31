@@ -242,13 +242,65 @@ erDiagram
 
     requirement_packages {
         integer id PK
-        text name_sv
-        text name_en
-        text description_sv
-        text description_en
-        integer owner_id FK
+        text name
+        text description
+        text lead_hsa_id
+        text lead_display_name
+        integer is_archived
         text created_at
         text updated_at
+    }
+
+    requirement_selection_question_sequences {
+        integer area_id PK, FK
+        integer next_sequence
+    }
+
+    requirement_selection_questions {
+        integer id PK
+        integer area_id FK
+        text question_code UK
+        text question_text
+        text help_text
+        text selection_type
+        integer sort_order
+        integer is_active
+        integer is_archived
+        text created_at
+        text updated_at
+    }
+
+    requirement_selection_answers {
+        integer id PK
+        integer question_id FK
+        text answer_text
+        text description
+        integer sort_order
+        integer is_no_requirement_selection
+        integer is_active
+        integer is_archived
+        text created_at
+        text updated_at
+    }
+
+    requirement_selection_answer_packages {
+        integer answer_id FK, PK
+        integer requirement_package_id FK, PK
+    }
+
+    requirement_selection_answer_requirements {
+        integer answer_id FK, PK
+        integer requirement_id FK, PK
+    }
+
+    specification_requirement_selection_answers {
+        integer specification_id FK, PK
+        integer question_id FK, PK
+        integer answer_id FK, PK
+        integer is_filter_active
+        text changed_at
+        text changed_by_hsa_id
+        text changed_by_display_name
     }
 
     requirement_version_requirement_packages {
@@ -525,11 +577,20 @@ erDiagram
     requirement_packages ||--o{ requirement_version_requirement_packages : "linked via"
     requirement_versions ||--o{ requirement_version_norm_references : "linked via"
     norm_references ||--o{ requirement_version_norm_references : "linked via"
-    owners |o--o{ requirement_packages : "owns"
     requirement_types ||--o{ quality_characteristics : "has many"
     quality_characteristics ||--o{ quality_characteristics : "parent-child"
     requirement_statuses ||--o{ requirement_status_transitions : "from"
     requirement_statuses ||--o{ requirement_status_transitions : "to"
+    requirement_areas ||--o{ requirement_selection_question_sequences : "allocates KUF codes"
+    requirement_areas ||--o{ requirement_selection_questions : "owns"
+    requirement_selection_questions ||--o{ requirement_selection_answers : "has answers"
+    requirement_selection_answers ||--o{ requirement_selection_answer_packages : "links packages"
+    requirement_packages ||--o{ requirement_selection_answer_packages : "selected by answers"
+    requirement_selection_answers ||--o{ requirement_selection_answer_requirements : "links requirements"
+    requirements ||--o{ requirement_selection_answer_requirements : "selected by answers"
+    requirements_specifications ||--o{ specification_requirement_selection_answers : "stores selections"
+    requirement_selection_questions ||--o{ specification_requirement_selection_answers : "historical question"
+    requirement_selection_answers ||--o{ specification_requirement_selection_answers : "historical answer"
     requirements_specifications ||--o{ specification_needs_references : "stores needs references"
     requirements_specifications ||--o{ specification_co_authors : "has co-authors"
     requirements_specifications ||--o{ requirements_specification_items : "contains"
@@ -763,28 +824,165 @@ be linked to.
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
-| `name_sv` | text | Swedish name |
-| `name_en` | text | English name |
-| `description_sv` | text | Swedish description |
-| `description_en` | text | English description |
-| `owner_id` | integer FK → `owners.id` | Responsible owner (nullable) |
+| `name` | text | Authored package name |
+| `description` | text | Authored package description (nullable) |
+| `lead_hsa_id` | text | Requirement-package lead HSA-ID |
+| `lead_display_name` | text | Requirement-package lead display-name snapshot |
+| `is_archived` | integer | Soft archive flag |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
+**Indexes:**
+`idx_requirement_packages_lead_hsa_id`,
+`idx_requirement_packages_is_archived`.
+
 **Seed values:**
 
-| id | Swedish | English |
-| ---- | ------- | ------- |
-| 1 | Mobil användning | Mobile use |
-| 2 | Datamigrering | Data migration |
-| 3 | Integration med andra system | Integration with other systems |
-| 4 | Ärendehantering | Case management |
-| 5 | Användarvänlighet | Usability |
-| 6 | Molndrift | Cloud operations |
-| 7 | Normal drift | Normal operations |
-| 8 | Hög belastning | High load |
-| 9 | Katastrofåterställning | Disaster recovery |
+| id | Name | Lead |
+| ---- | ------- | ---- |
+| 1 | Mobil användning | Anna Johansson |
+| 2 | Datamigrering | Anna Johansson |
+| 3 | Integration med andra system | Erik Lindberg |
+| 4 | Ärendehantering | Erik Lindberg |
+| 5 | Användarvänlighet | Fatima Hassan |
+| 6 | Molndrift | Fatima Hassan |
+| 7 | Normal drift | Anna Johansson |
+| 8 | Hög belastning | Erik Lindberg |
+| 9 | Katastrofåterställning | Fatima Hassan |
+
+---
+
+### `requirement_selection_question_sequences`
+
+Tracks the next `{AREA}-KUF###` sequence per requirement area.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `area_id` | integer FK → `requirement_areas.id` (CASCADE DELETE), PK | Requirement area |
+| `next_sequence` | integer | Next sequence number to assign |
+<!-- markdownlint-enable MD013 -->
+
+**Demo seed:** `npm run db:seed:demo` adds sequence rows with
+`next_sequence = 2` for `SÄK`, `INT`, `DRF`, `ANV`, `RAP`, and `KVA`, matching
+the first seeded `*-KUF001` question in each area.
+
+### `requirement_selection_questions`
+
+Question definitions maintained under requirement-library stewardship. Questions
+are always optional; there is no required flag and no unanswered-question
+validation.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `area_id` | integer FK → `requirement_areas.id` | Immutable requirement-area ownership |
+| `question_code` | text, unique | Stable `{AREA}-KUF###` code |
+| `question_text` | text | User-facing question |
+| `help_text` | text | Optional guidance |
+| `selection_type` | text | `single` or `multiple` |
+| `sort_order` | integer | Display ordering within the area |
+| `is_active` | integer | Active flag |
+| `is_archived` | integer | Soft archive flag |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Indexes and constraints:** `uq_requirement_selection_questions_question_code`,
+`idx_requirement_selection_questions_area_sort_order`,
+`idx_requirement_selection_questions_state`,
+`chk_requirement_selection_questions_selection_type`,
+`chk_requirement_selection_questions_state`.
+
+**Demo seed:** the demo profile contains six active stewardship questions:
+`SÄK-KUF001`, `INT-KUF001`, `DRF-KUF001`, `ANV-KUF001`, `RAP-KUF001`, and
+`KVA-KUF001`.
+
+### `requirement_selection_answers`
+
+Answer options for a requirement-selection question. A special
+`is_no_requirement_selection` answer represents "Utan kravurval" and cannot be
+combined with requirement or package links.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `question_id` | integer FK → `requirement_selection_questions.id` (CASCADE DELETE) | Owning question |
+| `answer_text` | text | User-facing answer text |
+| `description` | text | Optional explanation |
+| `sort_order` | integer | Display ordering within the question |
+| `is_no_requirement_selection` | integer | Marks the answer as selecting no requirements |
+| `is_active` | integer | Active flag |
+| `is_archived` | integer | Soft archive flag |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Indexes and constraints:**
+`idx_requirement_selection_answers_question_sort_order`,
+`idx_requirement_selection_answers_state`,
+`chk_requirement_selection_answers_state`.
+
+**Demo seed:** the demo profile contains 22 active answer options. They cover
+package-only selections, explicit published-requirement selections, mixed
+package and requirement selections, and three `Utan kravurval` answers without
+links.
+
+### `requirement_selection_answer_packages`
+
+Many-to-many link from an answer to requirement packages.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `answer_id` | integer FK → `requirement_selection_answers.id` (CASCADE DELETE), PK part 1 | Answer |
+| `requirement_package_id` | integer FK → `requirement_packages.id` (CASCADE DELETE), PK part 2 | Requirement package |
+<!-- markdownlint-enable MD013 -->
+
+**Index:** `idx_requirement_selection_answer_packages_package_id`.
+
+### `requirement_selection_answer_requirements`
+
+Many-to-many link from an answer to published library requirements.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `answer_id` | integer FK → `requirement_selection_answers.id` (CASCADE DELETE), PK part 1 | Answer |
+| `requirement_id` | integer FK → `requirements.id`, PK part 2 | Library requirement |
+<!-- markdownlint-enable MD013 -->
+
+**Index:** `idx_requirement_selection_answer_requirements_requirement_id`.
+
+### `specification_requirement_selection_answers`
+
+Saved requirement-selection answers for a requirements specification. Inactive
+or archived question/answer changes mark existing saved rows as
+`is_filter_active = 0`, preserving history while removing the answer from
+filters and progress.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `specification_id` | integer FK → `requirements_specifications.id` (CASCADE DELETE), PK part 1 | Requirements specification |
+| `question_id` | integer FK → `requirement_selection_questions.id`, PK part 2 | Historical question reference |
+| `answer_id` | integer FK → `requirement_selection_answers.id`, PK part 3 | Historical answer reference |
+| `is_filter_active` | integer | Whether the saved answer currently filters available requirements |
+| `changed_at` | text (ISO 8601) | Last change timestamp |
+| `changed_by_hsa_id` | text | Actor HSA-ID snapshot |
+| `changed_by_display_name` | text | Actor display-name snapshot |
+<!-- markdownlint-enable MD013 -->
+
+**Indexes:** `idx_specification_requirement_selection_answers_filter`,
+`idx_specification_requirement_selection_answers_changed_by_hsa_id`,
+`idx_specification_requirement_selection_answers_answer_id`.
+
+**Demo seed:** `ETJANST-UPP-2026`, `KH-INFOR`, `INTPLATT-UPP-2026`, and
+`GDPR-FORV-2026` have saved requirement-selection answers. `GDPR-FORV-2026`
+also includes one historical saved answer with `is_filter_active = 0`.
 
 ---
 
@@ -1003,15 +1201,13 @@ People who can be assigned as responsible owners for requirement areas.
 Managed via the requirement area owners reference data page. `hsa_id` is the durable
 identity key; names and email are display/contact snapshots.
 
-Privacy erasure cannot anonymize or delete an owner while requirement areas or
-requirement packages still reference that owner. The handler must switch those
-assignments to a replacement owner first, or skip the owner row. Requirement
-area and package owner references are shown as informational rows in the
-preview and are controlled by the owner action; a `Switch` owner action updates
-the linked requirement areas and packages in the same transaction. When no
-requirement area or package references the owner, privacy erasure may delete or
-skip the owner
-row; it does not switch or anonymize that standalone owner identity.
+Privacy erasure cannot anonymize or delete an owner while requirement areas
+still reference that owner. The handler must switch those assignments to a
+replacement owner first, or skip the owner row. Requirement package leads are no
+longer owner rows; privacy erasure matches and rewrites their direct HSA-ID and
+display-name snapshots separately. When no requirement area references the
+owner, privacy erasure may delete or skip the owner row; it does not switch or
+anonymize that standalone owner identity.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -1847,6 +2043,17 @@ its purpose and the table/column(s) it covers.
 | `idx_requirements_specification_items_requirement_id` | `requirements_specification_items` | `requirement_id` | Speed up finding which specifications contain a requirement |
 | `idx_requirements_specification_items_specification_item_status_id` | `requirements_specification_items` | `specification_item_status_id` | Speed up filtering items by usage status |
 | `idx_requirement_version_requirement_packages_requirement_package_id` | `requirement_version_requirement_packages` | `requirement_package_id` | Speed up lookups of requirement versions by requirement package |
+| `idx_requirement_packages_lead_hsa_id` | `requirement_packages` | `lead_hsa_id` | Speed up requirement package lead privacy and authorization lookups |
+| `idx_requirement_packages_is_archived` | `requirement_packages` | `is_archived` | Speed up active package lists |
+| `idx_requirement_selection_questions_area_sort_order` | `requirement_selection_questions` | `area_id, sort_order` | Speed up stewardship question lists per area |
+| `idx_requirement_selection_questions_state` | `requirement_selection_questions` | `is_active, is_archived` | Speed up active question filters |
+| `idx_requirement_selection_answers_question_sort_order` | `requirement_selection_answers` | `question_id, sort_order` | Speed up answer lists per question |
+| `idx_requirement_selection_answers_state` | `requirement_selection_answers` | `is_active, is_archived` | Speed up active answer filters |
+| `idx_requirement_selection_answer_packages_package_id` | `requirement_selection_answer_packages` | `requirement_package_id` | Speed up package-to-answer lookups |
+| `idx_requirement_selection_answer_requirements_requirement_id` | `requirement_selection_answer_requirements` | `requirement_id` | Speed up requirement-to-answer lookups |
+| `idx_specification_requirement_selection_answers_filter` | `specification_requirement_selection_answers` | `specification_id, is_filter_active` | Speed up active saved-answer filtering for available requirements |
+| `idx_specification_requirement_selection_answers_changed_by_hsa_id` | `specification_requirement_selection_answers` | `changed_by_hsa_id` | Speed up privacy erasure of saved-answer actors |
+| `idx_specification_requirement_selection_answers_answer_id` | `specification_requirement_selection_answers` | `answer_id` | Speed up saved-answer cleanup by answer |
 | `idx_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | Speed up lookups of requirement versions by norm reference |
 | `idx_specification_local_requirement_requirement_packages_requirement_package_id` | `specification_local_requirement_requirement_packages` | `requirement_package_id` | Speed up lookups of specification-local requirements by requirement package |
 | `idx_specification_local_requirement_norm_references_norm_reference_id` | `specification_local_requirement_norm_references` | `norm_reference_id` | Speed up lookups of specification-local requirements by norm reference |
@@ -1933,6 +2140,16 @@ The following table lists every named FK constraint:
 | `fk_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION | NO ACTION |
 | `fk_requirement_version_requirement_packages_requirement_version_id` | `requirement_version_requirement_packages` | `requirement_version_id` | `requirement_versions.id` | NO ACTION | NO ACTION |
 | `fk_requirement_version_requirement_packages_requirement_package_id` | `requirement_version_requirement_packages` | `requirement_package_id` | `requirement_packages.id` | CASCADE | NO ACTION |
+| `fk_requirement_selection_question_sequences_area_id` | `requirement_selection_question_sequences` | `area_id` | `requirement_areas.id` | CASCADE | NO ACTION |
+| `fk_requirement_selection_questions_area_id` | `requirement_selection_questions` | `area_id` | `requirement_areas.id` | NO ACTION | NO ACTION |
+| `fk_requirement_selection_answers_question_id` | `requirement_selection_answers` | `question_id` | `requirement_selection_questions.id` | CASCADE | NO ACTION |
+| `fk_requirement_selection_answer_packages_answer_id` | `requirement_selection_answer_packages` | `answer_id` | `requirement_selection_answers.id` | CASCADE | NO ACTION |
+| `fk_requirement_selection_answer_packages_requirement_package_id` | `requirement_selection_answer_packages` | `requirement_package_id` | `requirement_packages.id` | CASCADE | NO ACTION |
+| `fk_requirement_selection_answer_requirements_answer_id` | `requirement_selection_answer_requirements` | `answer_id` | `requirement_selection_answers.id` | CASCADE | NO ACTION |
+| `fk_requirement_selection_answer_requirements_requirement_id` | `requirement_selection_answer_requirements` | `requirement_id` | `requirements.id` | NO ACTION | NO ACTION |
+| `fk_specification_requirement_selection_answers_specification_id` | `specification_requirement_selection_answers` | `specification_id` | `requirements_specifications.id` | CASCADE | NO ACTION |
+| `fk_specification_requirement_selection_answers_question_id` | `specification_requirement_selection_answers` | `question_id` | `requirement_selection_questions.id` | NO ACTION | NO ACTION |
+| `fk_specification_requirement_selection_answers_answer_id` | `specification_requirement_selection_answers` | `answer_id` | `requirement_selection_answers.id` | NO ACTION | NO ACTION |
 | `fk_requirements_specification_items_requirements_specification_id` | `requirements_specification_items` | `requirements_specification_id` | `requirements_specifications.id` | NO ACTION | NO ACTION |
 | `fk_requirements_specification_items_requirements_specification_id_needs_reference_id` | `requirements_specification_items` | `(requirements_specification_id, needs_reference_id)` | `specification_needs_references.(specification_id, id)` | NO ACTION | NO ACTION |
 | `fk_requirements_specification_items_requirement_id` | `requirements_specification_items` | `requirement_id` | `requirements.id` | NO ACTION | NO ACTION |
@@ -1941,7 +2158,6 @@ The following table lists every named FK constraint:
 | `fk_deviations_specification_item_id` | `deviations` | `specification_item_id` | `requirements_specification_items.id` | CASCADE | NO ACTION |
 | `fk_improvement_suggestions_requirement_id` | `improvement_suggestions` | `requirement_id` | `requirements.id` | CASCADE | NO ACTION |
 | `fk_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | `requirement_versions.id` | SET NULL | NO ACTION |
-| `fk_requirement_packages_owner_id` | `requirement_packages` | `owner_id` | `owners.id` | NO ACTION | NO ACTION |
 | `fk_access_review_items_run_id` | `access_review_items` | `run_id` | `access_review_runs.id` | CASCADE | NO ACTION |
 | `fk_archiving_retention_runs_policy_id` | `archiving_retention_runs` | `policy_id` | `archiving_retention_policies.id` | CASCADE | NO ACTION |
 | `fk_archiving_retention_exceptions_policy_id` | `archiving_retention_exceptions` | `policy_id` | `archiving_retention_policies.id` | CASCADE | NO ACTION |
@@ -1960,6 +2176,9 @@ graph LR
         RS[requirement_statuses]
         RST[requirement_status_transitions]
         RPKG[requirement_packages]
+        RSQS[requirement_selection_question_sequences]
+        RSQ[requirement_selection_questions]
+        RSA[requirement_selection_answers]
         RL[risk_levels]
         NR[norm_references]
     end
@@ -1981,6 +2200,7 @@ graph LR
         PNR[specification_needs_references]
         PLR[specification_local_requirements]
         RPI[requirements_specification_items]
+        SRSA[specification_requirement_selection_answers]
         D[deviations]
         PLRD[specification_local_requirement_deviations]
     end
@@ -1989,6 +2209,8 @@ graph LR
         RAC[requirement_area_co_authors]
         SCA[specification_co_authors]
         RVS[requirement_version_requirement_packages]
+        RSAP[requirement_selection_answer_packages]
+        RSAR[requirement_selection_answer_requirements]
         RVNR[requirement_version_norm_references]
         PLRPKG[specification_local_requirement_requirement_packages]
         PLRNR[specification_local_requirement_norm_references]
@@ -2035,6 +2257,21 @@ graph LR
     RAC -- "idx_..._hsa_id\n(hsa_id)" --> RAC
     RAC -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> RAC
 
+    RPKG -- "idx_..._lead_hsa_id\n(lead_hsa_id)" --> RPKG
+    RPKG -- "idx_..._is_archived\n(is_archived)" --> RPKG
+    RSQS -- "FK area_id" --> RA
+    RSQ -- "FK area_id" --> RA
+    RSQ -- "uq_..._question_code\n(question_code)" --> RSQ
+    RSQ -- "idx_..._area_sort_order\n(area_id, sort_order)" --> RA
+    RSQ -- "idx_..._state\n(is_active, is_archived)" --> RSQ
+    RSA -- "FK question_id" --> RSQ
+    RSA -- "idx_..._question_sort_order\n(question_id, sort_order)" --> RSQ
+    RSA -- "idx_..._state\n(is_active, is_archived)" --> RSA
+    RSAP -- "FK answer_id" --> RSA
+    RSAP -- "idx_..._package_id\n(requirement_package_id)" --> RPKG
+    RSAR -- "FK answer_id" --> RSA
+    RSAR -- "idx_..._requirement_id\n(requirement_id)" --> R
+
     RVS -- "idx_..._requirement_package_id\n(requirement_package_id)" --> RPKG
     RVNR -- "idx_..._norm_reference_id\n(norm_reference_id)" --> NR
 
@@ -2062,6 +2299,10 @@ graph LR
     RPI -- "idx_..._requirements_specification_id\n(requirements_specification_id)" --> RP
     RPI -- "idx_..._requirement_id\n(requirement_id)" --> R
     RPI -- "idx_..._specification_item_status_id\n(specification_item_status_id)" --> PIS
+    SRSA -- "FK specification_id" --> RP
+    SRSA -- "idx_..._filter\n(specification_id, is_filter_active)" --> RP
+    SRSA -- "idx_..._answer_id\n(answer_id)" --> RSA
+    SRSA -- "idx_..._changed_by_hsa_id\n(changed_by_hsa_id)" --> SRSA
     D -- "idx_..._specification_item_id\n(specification_item_id)" --> RPI
     D -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> D
     D -- "idx_..._decided_by_hsa_id\n(decided_by_hsa_id)" --> D

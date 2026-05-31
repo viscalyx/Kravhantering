@@ -79,6 +79,8 @@ function SectionRenderer({
       return <div className="print-page-break" />
     case 'requirement-table':
       return <RequirementTableSection section={section} />
+    case 'requirement-selection-context':
+      return <RequirementSelectionContextSection section={section} />
     case 'toc':
       return <TocSection section={section} />
     case 'deviation-summary':
@@ -88,6 +90,48 @@ function SectionRenderer({
     default:
       return null
   }
+}
+
+function RequirementSelectionContextSection({
+  section,
+}: {
+  section: Extract<ReportSection, { type: 'requirement-selection-context' }>
+}) {
+  return (
+    <div style={{ marginBottom: '1.5rem' }}>
+      <h2 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 8 }}>
+        {section.title}
+      </h2>
+      <table
+        style={{
+          borderCollapse: 'collapse',
+          fontSize: '0.8rem',
+          width: '100%',
+        }}
+      >
+        <tbody>
+          {section.rows.map(row => (
+            <tr key={`${row.questionCode}-${row.answerText}`}>
+              <td style={{ borderTop: '1px solid #e5e7eb', padding: 6 }}>
+                <strong>{row.areaName}</strong>
+                <br />
+                <span style={{ color: '#6b7280' }}>{row.questionCode}</span>
+              </td>
+              <td style={{ borderTop: '1px solid #e5e7eb', padding: 6 }}>
+                {row.questionText}
+              </td>
+              <td style={{ borderTop: '1px solid #e5e7eb', padding: 6 }}>
+                {row.answerText}
+                {!row.isFilterActive && (
+                  <span style={{ color: '#92400e' }}> (ej filteraktiv)</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
 }
 
 function SpecificationCoverSection({

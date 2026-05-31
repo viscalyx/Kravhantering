@@ -80,6 +80,11 @@ vi.mock('@/lib/admin/privileged-audit', () => ({
     auditState.recordAdminPrivilegedActionSucceeded,
 }))
 
+vi.mock('@/lib/audit/action-audit', () => ({
+  recordAllowedActionAuditEvent: vi.fn(),
+  recordDeniedActionAuditEvent: vi.fn(),
+}))
+
 vi.mock('@/lib/requirements/auth', async importOriginal => {
   const actual =
     await importOriginal<typeof import('@/lib/requirements/auth')>()
@@ -196,6 +201,13 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
   listRequirementPackages: async () => [{ id: 1 }],
   countLinkedRequirementsByPackage: async () => ({}),
   createRequirementPackage: async () => ({ id: 2 }),
+  getLinkedRequirementsForPackage: async () => [],
+  getRequirementPackageById: async () => null,
+  getRequirementPackageUsage: async () => ({
+    answerLinkCount: 0,
+    libraryRequirementCount: 0,
+    localRequirementCount: 0,
+  }),
   updateRequirementPackage: (...a: unknown[]) =>
     mockUpdateRequirementPackage(...a),
   deleteRequirementPackage: (...a: unknown[]) =>
@@ -934,7 +946,7 @@ describe('requirement-packages routes', () => {
   })
 
   it('GET returns requirementPackages', async () => {
-    const r = await getRequirementPackages()
+    const r = await getRequirementPackages(new Request('http://l'))
     const j = (await r.json()) as { requirementPackages: { id: number }[] }
     expect(j.requirementPackages).toHaveLength(1)
   })
@@ -942,7 +954,7 @@ describe('requirement-packages routes', () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
-        body: '{"nameSv":"A","nameEn":"B"}',
+        body: '{"name":"A","leadHsaId":"SE5560000001-lead1","leadDisplayName":"Lead One"}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -952,7 +964,7 @@ describe('requirement-packages routes', () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
-        body: '{"nameSv":"A","ownerId":"abc"}',
+        body: '{"name":"A","leadHsaId":"abc","leadDisplayName":"Lead One"}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -963,7 +975,7 @@ describe('requirement-packages routes', () => {
   it('PUT updates', async () => {
     mockUpdateRequirementPackage.mockResolvedValue({ id: 1 })
     const r = await putRequirementPackage(
-      jsonReq('PUT', { nameEn: 'X' }),
+      jsonReq('PUT', { name: 'X' }),
       makeParams('1'),
     )
     expect(((await r.json()) as { id: number }).id).toBe(1)

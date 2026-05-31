@@ -233,25 +233,38 @@ export function formatRequirementDetail(
       })),
       versionNumber: version.versionNumber,
       versionRequirementPackages: version.versionRequirementPackages.map(
-        versionRequirementPackage => ({
-          requirementPackage: {
-            descriptionEn:
-              versionRequirementPackage.requirementPackage?.descriptionEn ??
-              null,
-            descriptionSv:
-              versionRequirementPackage.requirementPackage?.descriptionSv ??
-              null,
-            id:
-              versionRequirementPackage.requirementPackage?.id ??
-              versionRequirementPackage.requirementPackageId,
-            nameEn:
-              versionRequirementPackage.requirementPackage?.nameEn ?? null,
-            nameSv:
-              versionRequirementPackage.requirementPackage?.nameSv ?? null,
-            ownerId:
-              versionRequirementPackage.requirementPackage?.ownerId ?? null,
-          },
-        }),
+        versionRequirementPackage => {
+          const requirementPackage =
+            versionRequirementPackage.requirementPackage as
+              | (typeof versionRequirementPackage.requirementPackage & {
+                  description?: string | null
+                  name?: string | null
+                })
+              | null
+              | undefined
+          const packageName =
+            requirementPackage?.name ??
+            requirementPackage?.nameSv ??
+            requirementPackage?.nameEn ??
+            null
+          const packageDescription =
+            requirementPackage?.description ??
+            requirementPackage?.descriptionSv ??
+            requirementPackage?.descriptionEn ??
+            null
+          return {
+            requirementPackage: {
+              descriptionEn: packageDescription,
+              descriptionSv: packageDescription,
+              id:
+                requirementPackage?.id ??
+                versionRequirementPackage.requirementPackageId,
+              nameEn: packageName,
+              nameSv: packageName,
+              ownerId: null,
+            },
+          }
+        },
       ),
     })),
   }
@@ -563,10 +576,8 @@ export function createRequirementWorkflow({
               items: requirementPackages,
               message: createServiceMessage(
                 getCatalogTitle('requirement_packages', locale, terminology),
-                requirementPackages.map(requirementPackage =>
-                  locale === 'sv'
-                    ? requirementPackage.nameSv
-                    : requirementPackage.nameEn,
+                requirementPackages.map(
+                  requirementPackage => requirementPackage.name,
                 ),
                 responseFormat,
               ),

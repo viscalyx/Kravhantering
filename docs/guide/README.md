@@ -110,7 +110,7 @@ följer en översikt av varje egenskap och hur den stödjer kravets livscykel.
 | **Risknivå** | Markerar kravet som Låg, Medel eller Hög risk. Högre risknivåer signalerar att kravet behöver mer noggrann granskning, mer rigorös testning och tätare uppföljning under implementeringen. Risknivån spelar även en roll vid begäran om avsteg inom ett kravunderlag — ett avsteg för ett krav med hög risk medför större potentiell påverkan och kräver därför en striktare bedömning vid avstegsgranskningen. |
 | **Verifierbar** | Anger om kravet kan testas. När du aktiverar detta måste du även ange en verifieringsmetod. Verifieringsmetoden används inom de kravunderlag där kravet ingår, till exempel i samband med en upphandling, ett införande eller förvaltning. |
 | **Verifieringsmetod** | Beskriver exakt hur kravet ska verifieras — till exempel genom automatiserade tester, manuell inspektion eller användartester. Fältet är obligatoriskt när Verifierbar är aktiverat. Metoden tillämpas inom de kravunderlag där kravet används och ger konkret vägledning för hur verifieringen ska genomföras i varje sammanhang. |
-| **Kravpaket** | Samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning. Varje kravpaket har en ägare som ansvarar för kraven inom grupperingen. Kopplingen hjälper till att avgränsa kravunderlag och filtrera krav efter relevanta grupperingar. |
+| **Kravpaket** | Samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning. Varje kravpaket har en kravpaketsansvarig med HSA-ID och visningsnamn. Kopplingen hjälper till att avgränsa kravunderlag och filtrera krav efter relevanta grupperingar. |
 | **Normreferenser** | Kopplar kravet till externa standarder, lagar eller föreskrifter. Dessa kopplingar stödjer efterlevnadsrevision och gör det möjligt att spåra varje krav tillbaka till sitt rättsliga eller normativa ursprung. |
 | **Status** | Visar kravets aktuella livscykelfas — Utkast, Granskning, Publicerad eller Arkiverad. Status hanteras automatiskt genom arbetsflödesåtgärder och styr vilka operationer som är tillgängliga. Se avsnitten Visuell processöversikt och Kravets process nedan för detaljer. |
 <!-- markdownlint-enable MD013 -->
@@ -420,10 +420,10 @@ också ange standardvyer för olika kontexter.
 
 ### Admin — Referensdata
 
-Fliken **Referensdata** innehåller länkar till alla taxonomihanteringssidor:
+Fliken **Referensdata** innehåller länkar till taxonomihanteringssidor:
 kravområden, typer, kravversionsstatusar, risknivåer, kvalitetsegenskaper,
-normreferenser och kravpaket. Här bygger du upp de grunddata som krav
-refererar till.
+och normreferenser. Kravpaket hanteras i stället under
+**Kravbiblioteksförvaltning**, tillsammans med kravurvalsfrågor.
 
 ![Admin — Referensdata](images/043-admin-referensdata.png)
 
@@ -560,7 +560,10 @@ tillgänglig).
 
 Skriver ut kraven som ingår i ett specifikt kravunderlag som en formaterad
 tabell. Rapporten inkluderar underlagets metadata (namn, ID, verksamhetsområde,
-genomförandeform, underlagssyfte) som rubrik.
+genomförandeform, underlagssyfte) som rubrik. Om kravurvalsfrågor har besvarats
+visas urvalskontexten före kravtabellen. Historiska svar som inte längre
+filtrerar markeras som ej filteraktiva. CSV-exporten för kravunderlag är fortsatt
+radren och tar inte med urvalskontexten.
 
 **Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält.
 

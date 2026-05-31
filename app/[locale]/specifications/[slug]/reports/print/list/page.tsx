@@ -19,6 +19,28 @@ interface SpecificationReportResponse {
   uniqueId: string
 }
 
+interface SelectionQuestionResponse {
+  answers: { id: number; text: string }[]
+  areaName: string
+  questionCode: string
+  savedAnswers: { answerId: number; isFilterActive: boolean }[]
+  text: string
+}
+
+function buildSelectionContext(questions: SelectionQuestionResponse[]) {
+  return questions.flatMap(question =>
+    question.savedAnswers.map(saved => ({
+      answerText:
+        question.answers.find(answer => answer.id === saved.answerId)?.text ??
+        String(saved.answerId),
+      areaName: question.areaName,
+      isFilterActive: saved.isFilterActive,
+      questionCode: question.questionCode,
+      questionText: question.text,
+    })),
+  )
+}
+
 export default function PrintListReportPage() {
   const searchParams = useSearchParams()
   const params = useParams()
@@ -60,12 +82,17 @@ export default function PrintListReportPage() {
         }
         return
       }
-      const [requirements, specRes] = await Promise.all([
+      const [requirements, specRes, selectionRes] = await Promise.all([
         slug
           ? fetchSpecificationItemsForReport(slug, itemRefs)
           : Promise.resolve([]),
         slug
           ? fetch(`/api/specifications/${encodeURIComponent(slug)}`)
+          : Promise.resolve(null),
+        slug
+          ? fetch(
+              `/api/specifications/${encodeURIComponent(slug)}/requirement-selection-answers`,
+            )
           : Promise.resolve(null),
       ])
       if (!isLatestRequest()) {
@@ -90,6 +117,11 @@ export default function PrintListReportPage() {
       const spec = specRes
         ? ((await specRes.json()) as SpecificationReportResponse)
         : null
+      const selectionData = selectionRes?.ok
+        ? ((await selectionRes.json()) as {
+            questions?: SelectionQuestionResponse[]
+          })
+        : null
       if (!isLatestRequest()) {
         return
       }
@@ -109,6 +141,7 @@ export default function PrintListReportPage() {
                 businessNeedsReference: spec.businessNeedsReference,
               }
             : undefined,
+          buildSelectionContext(selectionData?.questions ?? []),
         ),
       )
     } catch (err) {

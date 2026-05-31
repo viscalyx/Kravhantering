@@ -1,14 +1,13 @@
 import { EntitySchema } from 'typeorm'
-import type { OwnerEntity } from '@/lib/typeorm/entities/owner'
 
 export interface RequirementPackageEntity {
   createdAt: Date
-  descriptionEn: string | null
-  descriptionSv: string | null
+  description: string | null
   id: number
-  nameEn: string
-  nameSv: string
-  owner: OwnerEntity | null
+  isArchived: boolean
+  leadDisplayName: string
+  leadHsaId: string
+  name: string
   updatedAt: Date
 }
 
@@ -23,35 +22,31 @@ export const requirementPackageEntity =
         type: 'int',
         generated: 'increment',
       },
-      nameSv: { name: 'name_sv', type: 'nvarchar', length: 'MAX' },
-      nameEn: { name: 'name_en', type: 'nvarchar', length: 'MAX' },
-      descriptionSv: {
-        name: 'description_sv',
+      name: { name: 'name', type: 'nvarchar', length: 'MAX' },
+      description: {
+        name: 'description',
         type: 'nvarchar',
         length: 'MAX',
         nullable: true,
       },
-      descriptionEn: {
-        name: 'description_en',
+      leadHsaId: { name: 'lead_hsa_id', type: 'nvarchar', length: 64 },
+      leadDisplayName: {
+        name: 'lead_display_name',
         type: 'nvarchar',
         length: 'MAX',
-        nullable: true,
       },
+      isArchived: { name: 'is_archived', type: 'bit', default: false },
       createdAt: { name: 'created_at', type: 'datetime2' },
       updatedAt: { name: 'updated_at', type: 'datetime2' },
     },
-    relations: {
-      owner: {
-        type: 'many-to-one',
-        target: 'Owner',
-        joinColumn: {
-          name: 'owner_id',
-          referencedColumnName: 'id',
-          foreignKeyConstraintName: 'fk_requirement_packages_owner_id',
-        },
-        nullable: true,
-        onDelete: 'NO ACTION',
-        onUpdate: 'NO ACTION',
+    indices: [
+      {
+        name: 'idx_requirement_packages_lead_hsa_id',
+        columns: ['leadHsaId'],
       },
-    },
+      {
+        name: 'idx_requirement_packages_is_archived',
+        columns: ['isArchived'],
+      },
+    ],
   })

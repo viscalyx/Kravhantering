@@ -178,7 +178,99 @@ describe('seed profiles', () => {
     expect(seedRowsFor(rows, 'requirements')).toHaveLength(0)
     expect(seedRowsFor(rows, 'requirement_versions')).toHaveLength(0)
     expect(seedRowsFor(rows, 'requirements_specifications')).toHaveLength(0)
+    expect(seedRowsFor(rows, 'requirement_selection_questions')).toHaveLength(0)
+    expect(seedRowsFor(rows, 'requirement_selection_answers')).toHaveLength(0)
+    expect(
+      seedRowsFor(rows, 'specification_requirement_selection_answers'),
+    ).toHaveLength(0)
     expect(seedRowsFor(rows, 'action_audit_events')).toHaveLength(0)
+  })
+
+  it('seeds demo requirement-selection data with valid published links', async () => {
+    const { executor, rows } = collectSeedInsertRows()
+
+    await seedDemoDatabase(executor)
+
+    const questionSequences = seedRowsFor(
+      rows,
+      'requirement_selection_question_sequences',
+    )
+    const questions = seedRowsFor(rows, 'requirement_selection_questions')
+    const answers = seedRowsFor(rows, 'requirement_selection_answers')
+    const answerPackages = seedRowsFor(
+      rows,
+      'requirement_selection_answer_packages',
+    )
+    const answerRequirements = seedRowsFor(
+      rows,
+      'requirement_selection_answer_requirements',
+    )
+    const savedAnswers = seedRowsFor(
+      rows,
+      'specification_requirement_selection_answers',
+    )
+    const packagesById = rowById(seedRowsFor(rows, 'requirement_packages'))
+    const requirementsById = rowById(seedRowsFor(rows, 'requirements'))
+    const specificationsById = rowById(
+      seedRowsFor(rows, 'requirements_specifications'),
+    )
+    const questionsById = rowById(questions)
+    const answersById = rowById(answers)
+    const publishedRequirementIds = new Set(
+      seedRowsFor(rows, 'requirement_versions')
+        .filter(row => row.requirement_status_id === 3)
+        .map(row => row.requirement_id),
+    )
+
+    expect(questions).toHaveLength(6)
+    expect(answers).toHaveLength(22)
+    expect(new Set(questionSequences.map(row => row.next_sequence))).toEqual(
+      new Set([2]),
+    )
+    expect(
+      questionSequences
+        .map(row => row.area_id)
+        .sort((left, right) => Number(left) - Number(right)),
+    ).toEqual([1, 2, 4, 9, 1002, 1004])
+    expect(answerPackages).toHaveLength(32)
+    expect(answerRequirements).toHaveLength(36)
+    expect(new Set(savedAnswers.map(row => row.specification_id))).toEqual(
+      new Set([1, 7, 8, 1002]),
+    )
+    expect(savedAnswers.some(row => row.is_filter_active === 0)).toBe(true)
+
+    for (const answer of answers) {
+      expect(questionsById.has(answer.question_id)).toBe(true)
+    }
+    for (const link of answerPackages) {
+      expect(answersById.has(link.answer_id)).toBe(true)
+      expect(packagesById.has(link.requirement_package_id)).toBe(true)
+    }
+    for (const link of answerRequirements) {
+      expect(answersById.has(link.answer_id)).toBe(true)
+      expect(requirementsById.has(link.requirement_id)).toBe(true)
+      expect(publishedRequirementIds.has(link.requirement_id)).toBe(true)
+    }
+    for (const savedAnswer of savedAnswers) {
+      const answer = answersById.get(savedAnswer.answer_id)
+      expect(specificationsById.has(savedAnswer.specification_id)).toBe(true)
+      expect(questionsById.has(savedAnswer.question_id)).toBe(true)
+      expect(answer).toBeDefined()
+      expect(answer?.question_id).toBe(savedAnswer.question_id)
+    }
+
+    const packageLinkAnswerIds = new Set(
+      answerPackages.map(row => row.answer_id),
+    )
+    const requirementLinkAnswerIds = new Set(
+      answerRequirements.map(row => row.answer_id),
+    )
+    for (const answer of answers.filter(
+      row => row.is_no_requirement_selection === 1,
+    )) {
+      expect(packageLinkAnswerIds.has(answer.id)).toBe(false)
+      expect(requirementLinkAnswerIds.has(answer.id)).toBe(false)
+    }
   })
 
   it('seeds duplicate-name privacy data with distinct HSA-ID decisions', async () => {
@@ -282,7 +374,7 @@ describe('seed profiles', () => {
       'requirement_packages.owner': seedRowsFor(
         rows,
         'requirement_packages',
-      ).filter(row => linneaOwnerIds.has(row.owner_id)).length,
+      ).filter(row => row.lead_hsa_id === LINNEA_HSA_ID).length,
       'requirement_versions.created_by': seedRowsFor(
         rows,
         'requirement_versions',
@@ -461,7 +553,7 @@ describe('seed profiles', () => {
     ).toBe(false)
     expect(
       seedRowsFor(rows, 'requirement_packages').some(
-        row => row.owner_id === RETENTION_SEED.owner.orphan,
+        row => row.lead_hsa_id === 'SE5560000001-retentionorphan',
       ),
     ).toBe(false)
 
@@ -472,7 +564,7 @@ describe('seed profiles', () => {
     expect(
       packages.get(RETENTION_SEED.requirementPackage.unused),
     ).toMatchObject({
-      name_sv: 'RETENTION-SEED oanvänt kravpaket',
+      name: 'RETENTION-SEED oanvänt kravpaket',
       updated_at: '2023-01-15 09:00:00',
     })
     expect(norms.get(RETENTION_SEED.normReference.unused)).toMatchObject({
@@ -543,7 +635,7 @@ describe('seed profiles', () => {
     ).toBe(true)
     expect(
       seedRowsFor(rows, 'requirement_packages').some(
-        row => row.owner_id === RETENTION_SEED.owner.linked,
+        row => row.lead_hsa_id === 'SE5560000001-retentionlinked',
       ),
     ).toBe(true)
     expect(areas.get(RETENTION_SEED.requirementArea.freshUnused)).toMatchObject(

@@ -110,6 +110,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   values `help toggle open` and `help toggle closed`.
 - The app title link in the navigation uses `navigation > link: app title`
   and carries the build-version tooltip when generated metadata is available.
+- The `Kravbiblioteksförvaltning` navigation disclosure uses
+  `navigation > stewardship disclosure: open|closed`, and its inline submenu
+  uses `navigation > stewardship submenu: inline row`.
 - Auth account-detail rows keep their developer-mode values in English
   as `user info name`, `user info email`, `user info subject`, and
   `user info session expires` even when the visible labels are
@@ -140,9 +143,18 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `link: requirements recovery` or `link: admin recovery`.
 - Requirements specification list filtering exposes
   `specifications > text field: name filter` on the Name search input above
-  the table, while the specification create trigger keeps the existing
-  `specifications > create button` marker when it shares that toolbar row on
-  wide screens.
+  the table. Its create trigger now lives in the fixed `floating action rail`
+  as `specifications > floating pill: new specification`.
+- Requirements packages expose their create trigger in the fixed
+  `floating action rail` as
+  `requirementPackages > floating pill: new requirement package`. The new
+  package form opens in the shared `dialog: new requirement package` surface;
+  edit stays in the existing inline `crud form` surface.
+- Requirement selection questions expose their create trigger in the fixed
+  `floating action rail` as
+  `requirementSelectionQuestions > floating pill: new requirement selection question`.
+  The new question form opens in the shared
+  `dialog: new requirement selection question` surface.
 - Requirements specification list requirement-area labels render as compact,
   non-interactive pills inside the existing `specifications > crud table`
   surface; they do not add separate developer-mode marker names.
@@ -163,6 +175,10 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `requirements specification detail` context with `table action` values
   `create local requirement` and `create needs reference`. They live in the
   sticky list header beside the embedded left-panel tabs.
+- Requirements specification detail right-panel tabs cover both available
+  requirements and requirement-selection questions. The question controls reuse
+  the existing form/table control markers; no mandatory-question marker exists
+  because requirement-selection questions are always optional.
 - Specification-local inline detail views in specification context use the
   `requirements specification detail` context with
   `detail pane: specification-local requirement`.

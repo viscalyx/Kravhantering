@@ -62,6 +62,9 @@ formatted table.
   requirements created only for that specification
 - Includes specification metadata in the header: specification name, unique ID,
   governance object type, implementation type, and specification purpose
+- Includes requirement-selection context before the requirement table when the
+  specification has saved answers; historical non-filtering answers are marked
+  as inactive context
 - Shows Requirement ID, requirement text (truncated), requirement area, and
   status columns; unique requirements show `-` in the requirement area column
   because they are not assigned to a requirement area
@@ -96,6 +99,8 @@ CSV with the following conventions:
   tab, or carriage return are prefixed with `'` and wrapped in
   double-quotes.
 - **Encoding:** UTF-8, no BOM.
+- Specification CSV exports stay row-oriented and do not include
+  requirement-selection context sections.
 
 ## Architecture
 

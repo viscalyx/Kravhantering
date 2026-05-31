@@ -69,9 +69,11 @@
   },
   "nav": {
     "catalog": "Kravbibliotek",
+    "stewardship": "Kravbiblioteksförvaltning",
     "areas": "Kravområden",
     "specifications": "Kravunderlag",
     "requirementPackages": "Kravpaket",
+    "requirementSelectionQuestions": "Kravurvalsfrågor",
     "statuses": "Kravversionsstatusar",
     "types": "Typer",
     "taxonomy": "Referensdata",
@@ -140,6 +142,7 @@
     "referenceLabel": "Felreferens"
   },
   "requirement": {
+    "title": "Kravbibliotek",
     "statusStepperAriaLabel": "Arbetsflöde för kravversionsstatus",
     "tableCaption": "Lista över krav",
     "uniqueId": "Krav-ID",
@@ -594,16 +597,26 @@
     }
   },
   "requirementPackage": {
+    "active": "Aktivt",
+    "archive": "Arkivera",
+    "archived": "Arkiverat",
     "name": "Namn",
+    "nameHelp": "Ange kravpaketets namn. Namnet skrivs i ett språk och visas som samma för svenska och engelska tills översättning införs.",
     "nameSvLabel": "Namn (svenska)",
     "nameSvHelp": "Ange kravpaketets svenska namn.",
     "nameEnLabel": "Namn (engelska)",
     "nameEnHelp": "Ange kravpaketets engelska namn.",
     "description": "Beskrivning",
+    "descriptionHelp": "Beskriv vid behov vilken gruppering kravpaketet avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "descriptionSvLabel": "Beskrivning (svenska)",
     "descriptionSvHelp": "Beskriv vid behov kravpaketet på svenska så att användare förstår vilken gruppering det avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "descriptionEnLabel": "Beskrivning (engelska)",
     "descriptionEnHelp": "Beskriv vid behov kravpaketet på engelska så att användare förstår vilken gruppering det avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
+    "lead": "Paketansvarig",
+    "leadDisplayName": "Paketansvarigs namn",
+    "leadDisplayNameHelp": "Ange visningsnamnet för den person som ansvarar för kravpaketet.",
+    "leadHsaId": "Paketansvarigs HSA-ID",
+    "leadHsaIdHelp": "Ange HSA-ID för paketansvarig i formatet SE följt av organisationsnummer, bindestreck och alfanumeriskt suffix.",
     "owner": "Ägare",
     "help": {
       "owner": "Välj ägaren som ansvarar för kravpaketet och dess kopplade krav."
@@ -611,7 +624,9 @@
     "newRequirementPackage": "Nytt kravpaket",
     "editRequirementPackage": "Redigera kravpaket",
     "linkedRequirements": "Kopplade krav",
+    "reactivate": "Återaktivera",
     "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}",
+    "status": "Status",
     "emptyState": "Inga kravpaket ännu. Skapa ditt första kravpaket."
   },
   "normReference": {

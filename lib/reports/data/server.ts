@@ -35,6 +35,14 @@ export class ReportDataError extends Error {
   }
 }
 
+function requirementPackageName(value: unknown): string {
+  const record = value as
+    | { name?: string | null; nameEn?: string | null; nameSv?: string | null }
+    | null
+    | undefined
+  return record?.name ?? record?.nameSv ?? record?.nameEn ?? ''
+}
+
 function decodeSegment(value: string | number): string {
   const raw = String(value)
   try {
@@ -148,8 +156,8 @@ function mapDeviationVersion(
     requirementPackages: version.versionRequirementPackages
       .filter(vrp => vrp.requirementPackage)
       .map(vrp => ({
-        nameEn: vrp.requirementPackage.nameEn,
-        nameSv: vrp.requirementPackage.nameSv,
+        nameEn: requirementPackageName(vrp.requirementPackage),
+        nameSv: requirementPackageName(vrp.requirementPackage),
       })),
     requiresTesting: version.requiresTesting,
     riskLevel: version.riskLevel
@@ -319,8 +327,8 @@ function mapSpecificationLocalRequirementToReportData(
           requirementPackage => ({
             requirementPackage: {
               id: requirementPackage.id,
-              nameEn: requirementPackage.nameEn,
-              nameSv: requirementPackage.nameSv,
+              nameEn: requirementPackageName(requirementPackage),
+              nameSv: requirementPackageName(requirementPackage),
             },
           }),
         ),
