@@ -7,6 +7,7 @@ import type {
   RequirementReportData,
   SuggestionReportRow,
 } from '../data/fetch-requirement'
+import { requirementPackageName } from '../package-name'
 import type {
   ReportModel,
   ReportSection,
@@ -16,14 +17,6 @@ import type {
 
 const SUGGESTION_RESOLVED = 1
 const SUGGESTION_DISMISSED = 2
-
-function requirementPackageName(value: unknown): string {
-  const record = value as
-    | { name?: string | null; nameEn?: string | null; nameSv?: string | null }
-    | null
-    | undefined
-  return record?.name ?? record?.nameSv ?? record?.nameEn ?? ''
-}
 
 function getStatusLabel(
   version: RequirementReportData['versions'][number],

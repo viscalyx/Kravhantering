@@ -6,7 +6,7 @@ import {
 } from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  customMutationPolicy,
+  authenticatedMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { idParamSchema } from '@/lib/http/validation'
@@ -16,7 +16,9 @@ export function questionStateRoute(
 ) {
   return secureMutationRoute({
     paramsSchema: idParamSchema,
-    policy: customMutationPolicy('requirement_selection_question', () => {}),
+    policy: authenticatedMutationPolicy(
+      `requirement_selection_question.${operation}`,
+    ),
     handler: async ({ context, params }) => {
       const db = await getRequestSqlServerDataSource()
       const question = (await setRequirementSelectionQuestionState(

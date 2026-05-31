@@ -29,6 +29,7 @@ import svMessages from '@/messages/sv.json'
 
 type SpecificationCoverLabelKey =
   keyof typeof enMessages.reports.specificationCover
+type ReportLabelKey = 'notFilterActive'
 
 function getSpecificationCoverLabel(
   locale: string,
@@ -36,6 +37,11 @@ function getSpecificationCoverLabel(
 ): string {
   const messages = locale === 'sv' ? svMessages : enMessages
   return messages.reports.specificationCover[key]
+}
+
+function getReportLabel(locale: string, key: ReportLabelKey): string {
+  const messages = locale === 'sv' ? svMessages : enMessages
+  return messages.reports[key]
 }
 
 const styles = StyleSheet.create({
@@ -300,7 +306,9 @@ function PdfSectionRenderer({
     case 'requirement-table':
       return <PdfRequirementTable section={section} />
     case 'requirement-selection-context':
-      return <PdfRequirementSelectionContext section={section} />
+      return (
+        <PdfRequirementSelectionContext locale={locale} section={section} />
+      )
     case 'toc':
       return <PdfToc section={section} />
     case 'specification-cover':
@@ -317,10 +325,13 @@ function PdfSectionRenderer({
 }
 
 function PdfRequirementSelectionContext({
+  locale,
   section,
 }: {
+  locale: string
   section: Extract<ReportSection, { type: 'requirement-selection-context' }>
 }) {
+  const notFilterActiveLabel = getReportLabel(locale, 'notFilterActive')
   return (
     <View style={{ marginBottom: 18 }}>
       <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>
@@ -339,7 +350,7 @@ function PdfRequirementSelectionContext({
           </Text>
           <Text style={[styles.tableCell, { flex: 1.5 }]}>
             {row.answerText}
-            {!row.isFilterActive ? ' (not filter-active)' : ''}
+            {!row.isFilterActive ? ` ${notFilterActiveLabel}` : ''}
           </Text>
         </View>
       ))}

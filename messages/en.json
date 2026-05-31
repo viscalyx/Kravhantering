@@ -109,6 +109,15 @@
     "userInfoNoRoles": "No roles assigned",
     "dataExport": "My personal data"
   },
+  "specificationRequirementSelection": {
+    "clear": "Clear",
+    "error": "Could not save selection.",
+    "historical": "Historical choice",
+    "loading": "Loading questions...",
+    "noQuestions": "No active questions.",
+    "progress": "Answered",
+    "title": "Requirement selection questions"
+  },
   "privacyDataExport": {
     "title": "Personal data export",
     "description": "Download the personal data that is connected to your HSA-ID in a structured JSON file or as a readable PDF.",
@@ -393,6 +402,7 @@
     "noPublishedVersionError": "This requirement has no published version and cannot be added to a specification.",
     "itemsInSpecification": "Requirements in specification",
     "availableRequirements": "Available requirements",
+    "requirementSelectionQuestions": "Requirement selection questions",
     "alreadyAdded": "Already added",
     "needsReferenceLabel": "Needs reference (optional)",
     "addSelectedToSpecification": "Add selected ({count})",
@@ -556,6 +566,7 @@
     "pdfDownloadStarted": "PDF download started.",
     "downloadAgain": "Download Again",
     "printButton": "Print",
+    "notFilterActive": "(not filter-active)",
     "noRequirementIds": "No requirement IDs provided",
     "noRequirementsSelected": "No requirements selected",
     "failedToLoadReport": "Failed to load report",

@@ -3,7 +3,7 @@ import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
 import { setRequirementSelectionAnswerState } from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  customMutationPolicy,
+  authenticatedMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { answerRouteParamsSchema } from '../../../_schemas'
@@ -13,7 +13,9 @@ export function answerStateRoute(
 ) {
   return secureMutationRoute({
     paramsSchema: answerRouteParamsSchema,
-    policy: customMutationPolicy('requirement_selection_answer', () => {}),
+    policy: authenticatedMutationPolicy(
+      `requirement_selection_answer.${operation}`,
+    ),
     handler: async ({ context, params }) => {
       const db = await getRequestSqlServerDataSource()
       const question = await setRequirementSelectionAnswerState(

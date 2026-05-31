@@ -254,12 +254,20 @@ describe('Navigation', () => {
 
     render(<Navigation />)
 
-    expect(
-      screen.getByRole('button', { name: 'nav.stewardship' }),
-    ).toHaveAttribute('aria-expanded', 'true')
+    const stewardshipButton = screen.getByRole('button', {
+      name: 'nav.stewardship',
+    })
+    expect(stewardshipButton).toHaveAttribute('aria-expanded', 'true')
     expect(
       screen.getByRole('link', { name: 'nav.requirementSelectionQuestions' }),
     ).toHaveAttribute('aria-current', 'page')
+
+    fireEvent.click(stewardshipButton)
+
+    expect(stewardshipButton).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.queryByRole('link', { name: 'nav.requirementSelectionQuestions' }),
+    ).toBeNull()
   })
 
   it('renders the help toggle with focus styles and developer-mode metadata', () => {

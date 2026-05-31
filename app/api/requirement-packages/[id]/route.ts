@@ -11,7 +11,7 @@ import {
 } from '@/lib/dal/requirement-packages'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  customMutationPolicy,
+  authenticatedMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
@@ -37,6 +37,13 @@ const updateRequirementPackageSchema = z
     name: boundedDbStringSchema.optional(),
   })
   .strict()
+  .refine(
+    body =>
+      ['description', 'leadDisplayName', 'leadHsaId', 'name'].some(key =>
+        Object.hasOwn(body, key),
+      ),
+    { message: 'At least one field must be provided for update' },
+  )
 
 export async function GET(
   _request: NextRequest,
@@ -70,7 +77,7 @@ export async function GET(
 export const PUT = secureMutationRoute({
   bodySchema: updateRequirementPackageSchema,
   paramsSchema: idParamSchema,
-  policy: customMutationPolicy('requirement_package', () => {}),
+  policy: authenticatedMutationPolicy('requirement_package.update'),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const requirementPackage = await updateRequirementPackage(
@@ -93,7 +100,7 @@ export const PUT = secureMutationRoute({
 
 export const DELETE = secureMutationRoute({
   paramsSchema: idParamSchema,
-  policy: customMutationPolicy('requirement_package', () => {}),
+  policy: authenticatedMutationPolicy('requirement_package.delete'),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const deletedCount = await deleteRequirementPackage(db, params.id)

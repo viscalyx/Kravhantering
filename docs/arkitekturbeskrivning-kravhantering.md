@@ -822,7 +822,7 @@ erDiagram
     quality_characteristics }o--o| quality_characteristics : "förälder"
     quality_characteristics }o--|| requirement_types : "kopplad till typ"
     requirement_areas ||--o{ requirement_area_co_authors : "har medförfattare"
-    requirement_areas ||--o{ requirement_selection_question_sequences : "fördelar KUF-koder"
+    requirement_areas ||--|| requirement_selection_question_sequences : "fördelar KUF-koder"
     requirement_areas ||--o{ requirement_selection_questions : "äger kravurvalsfrågor"
     requirement_selection_questions ||--o{ requirement_selection_answers : "har svar"
     requirement_selection_answers ||--o{ requirement_selection_answer_packages : "kopplar kravpaket"

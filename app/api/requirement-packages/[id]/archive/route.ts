@@ -3,14 +3,14 @@ import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
 import { archiveRequirementPackage } from '@/lib/dal/requirement-packages'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  customMutationPolicy,
+  authenticatedMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { idParamSchema } from '@/lib/http/validation'
 
 export const POST = secureMutationRoute({
   paramsSchema: idParamSchema,
-  policy: customMutationPolicy('requirement_package', () => {}),
+  policy: authenticatedMutationPolicy('requirement_package.archive'),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const requirementPackage = await archiveRequirementPackage(db, params.id)

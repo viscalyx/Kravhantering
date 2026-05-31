@@ -581,7 +581,7 @@ erDiagram
     quality_characteristics ||--o{ quality_characteristics : "parent-child"
     requirement_statuses ||--o{ requirement_status_transitions : "from"
     requirement_statuses ||--o{ requirement_status_transitions : "to"
-    requirement_areas ||--o{ requirement_selection_question_sequences : "allocates KUF codes"
+    requirement_areas ||--|| requirement_selection_question_sequences : "allocates KUF codes"
     requirement_areas ||--o{ requirement_selection_questions : "owns"
     requirement_selection_questions ||--o{ requirement_selection_answers : "has answers"
     requirement_selection_answers ||--o{ requirement_selection_answer_packages : "links packages"
@@ -2000,6 +2000,7 @@ its purpose and the table/column(s) it covers.
 | `uq_requirement_versions_revision_token` | `requirement_versions` | `revision_token` | Ensures each opaque edit token identifies one version row |
 | `uq_requirement_versions_archive_initiated_requirement_id` | `requirement_versions` | `requirement_id` where `archive_initiated_at IS NOT NULL` | Ensures a requirement has at most one archiving-in-progress version |
 | `uq_requirement_versions_published_requirement_id` | `requirement_versions` | `requirement_id` where `requirement_status_id = 3` | Ensures a requirement has at most one Published version |
+| `uq_requirement_selection_questions_question_code` | `requirement_selection_questions` | `question_code` | Ensures question code uniqueness for stewardship questions |
 | `uq_specification_governance_object_types_name_sv` | `specification_governance_object_types` | `name_sv` | Prevents duplicate Swedish governance object type names |
 | `uq_specification_governance_object_types_name_en` | `specification_governance_object_types` | `name_en` | Prevents duplicate English governance object type names |
 | `uq_owners_email` | `owners` | `email` | Prevents duplicate non-null owner email addresses |

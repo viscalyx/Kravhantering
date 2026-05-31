@@ -11,9 +11,9 @@ describe('requirement selection questions DAL', () => {
   it('loads existing requirement ids through the specification item foreign key', async () => {
     const db = createDb([{ requirementId: 101 }, { requirementId: 102 }])
 
-    await expect(getExistingSpecificationRequirementIds(db, 6)).resolves.toEqual(
-      [101, 102],
-    )
+    await expect(
+      getExistingSpecificationRequirementIds(db, 6),
+    ).resolves.toEqual([101, 102])
 
     const query = vi.mocked(db.query)
     expect(query).toHaveBeenCalledWith(

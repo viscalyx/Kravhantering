@@ -7,7 +7,7 @@ import {
 } from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  customMutationPolicy,
+  authenticatedMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
@@ -15,6 +15,7 @@ import {
   positiveIntegerStringSchema,
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
+import { DELETED_USER_INTERNAL_NAME } from '@/lib/privacy/display-name'
 
 const paramsSchema = z
   .object({
@@ -32,9 +33,8 @@ const bodySchema = z
 export const PUT = secureMutationRoute({
   bodySchema,
   paramsSchema,
-  policy: customMutationPolicy(
-    'specification_requirement_selection_answer',
-    () => {},
+  policy: authenticatedMutationPolicy(
+    'specification_requirement_selection_answer.replace',
   ),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
@@ -49,7 +49,9 @@ export const PUT = secureMutationRoute({
       body.answerIds,
       {
         displayName:
-          context.actor.displayName.trim() || context.actor.id || 'unknown',
+          context.actor.displayName.trim() ||
+          context.actor.id ||
+          DELETED_USER_INTERNAL_NAME,
         hsaId: context.actor.hsaId,
       },
     )

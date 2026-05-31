@@ -1,7 +1,7 @@
 'use client'
 
 import { RotateCcw } from 'lucide-react'
-import { useLocale } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
@@ -40,18 +40,15 @@ export default function SpecificationRequirementSelectionPanel({
   onChanged,
   specificationSlug,
 }: Props) {
-  const locale = useLocale()
-  const isSv = locale === 'sv'
+  const t = useTranslations('specificationRequirementSelection')
   const copy = {
-    clear: isSv ? 'Rensa' : 'Clear',
-    error: isSv ? 'Kunde inte spara kravurval.' : 'Could not save selection.',
-    historical: isSv ? 'Historiskt val' : 'Historical choice',
-    loading: isSv ? 'Laddar kravurvalsfrågor...' : 'Loading questions...',
-    noQuestions: isSv
-      ? 'Inga aktiva kravurvalsfrågor.'
-      : 'No active questions.',
-    progress: isSv ? 'Besvarade' : 'Answered',
-    title: isSv ? 'Kravurvalsfrågor' : 'Requirement selection questions',
+    clear: t('clear'),
+    error: t('error'),
+    historical: t('historical'),
+    loading: t('loading'),
+    noQuestions: t('noQuestions'),
+    progress: t('progress'),
+    title: t('title'),
   }
   const [questions, setQuestions] = useState<SelectionQuestion[]>([])
   const [loading, setLoading] = useState(true)

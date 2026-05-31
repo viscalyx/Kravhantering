@@ -2487,35 +2487,55 @@ export default function KravunderlagDetailClient({
 
             {/* Right panel: Tillgängliga krav */}
             <div className="flex flex-col gap-3 xl:h-full xl:min-h-0">
-              <div className="inline-flex self-start rounded-lg border bg-white p-1 shadow-sm dark:border-secondary-700 dark:bg-secondary-900">
+              <div
+                className="inline-flex self-start rounded-lg border bg-white p-1 shadow-sm dark:border-secondary-700 dark:bg-secondary-900"
+                role="tablist"
+              >
                 <button
+                  aria-controls="right-panel-available"
+                  aria-selected={rightPanelTab === 'available'}
                   className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                     rightPanelTab === 'available'
                       ? 'bg-primary-700 text-white'
                       : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800'
                   }`}
+                  id="right-panel-tab-available"
                   onClick={() => setRightPanelTab('available')}
+                  role="tab"
                   type="button"
                 >
                   {t('availableRequirements')}
                 </button>
                 <button
+                  aria-controls="right-panel-questions"
+                  aria-selected={rightPanelTab === 'questions'}
                   className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                     rightPanelTab === 'questions'
                       ? 'bg-primary-700 text-white'
                       : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800'
                   }`}
+                  id="right-panel-tab-questions"
                   onClick={() => setRightPanelTab('questions')}
+                  role="tab"
                   type="button"
                 >
-                  {locale === 'sv'
-                    ? 'Kravurvalsfrågor'
-                    : 'Requirement selection questions'}
+                  {t('requirementSelectionQuestions')}
                 </button>
               </div>
               <div
+                aria-labelledby={
+                  rightPanelTab === 'available'
+                    ? 'right-panel-tab-available'
+                    : 'right-panel-tab-questions'
+                }
                 className={desktopSplitPanelCardClassName}
                 data-specification-detail-list-panel="available"
+                id={
+                  rightPanelTab === 'available'
+                    ? 'right-panel-available'
+                    : 'right-panel-questions'
+                }
+                role="tabpanel"
               >
                 {rightPanelTab === 'available' ? (
                   <RequirementsTable

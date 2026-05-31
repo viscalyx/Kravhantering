@@ -109,6 +109,15 @@
     "userInfoNoRoles": "Inga roller tilldelade",
     "dataExport": "Mina personuppgifter"
   },
+  "specificationRequirementSelection": {
+    "clear": "Rensa",
+    "error": "Kunde inte spara kravurval.",
+    "historical": "Historiskt val",
+    "loading": "Laddar kravurvalsfrågor...",
+    "noQuestions": "Inga aktiva kravurvalsfrågor.",
+    "progress": "Besvarade",
+    "title": "Kravurvalsfrågor"
+  },
   "privacyDataExport": {
     "title": "Export av personuppgifter",
     "description": "Ladda ned personuppgifterna som är kopplade till ditt HSA-ID som strukturerad JSON eller som läsbar PDF.",
@@ -393,6 +402,7 @@
     "noPublishedVersionError": "Kravet saknar publicerad version och kan inte läggas till i ett kravunderlag.",
     "itemsInSpecification": "Krav i underlaget",
     "availableRequirements": "Tillgängliga krav",
+    "requirementSelectionQuestions": "Kravurvalsfrågor",
     "alreadyAdded": "Redan tillagd",
     "needsReferenceLabel": "Behovsreferens (valfri)",
     "addSelectedToSpecification": "Lägg till valda ({count})",
@@ -556,6 +566,7 @@
     "pdfDownloadStarted": "PDF-nedladdningen har startat.",
     "downloadAgain": "Ladda ner igen",
     "printButton": "Skriv ut",
+    "notFilterActive": "(ej filteraktiv)",
     "noRequirementIds": "Inga krav-ID:n angavs",
     "noRequirementsSelected": "Inga krav valda",
     "failedToLoadReport": "Det gick inte att läsa in rapporten",

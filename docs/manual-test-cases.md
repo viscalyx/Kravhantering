@@ -564,7 +564,7 @@ management live outside Admin Center.
    the parent button inside the same surrounding background.
 1. Click `Kravunderlag` and verify the inline subnavigation closes. Click
    `Kravbiblioteksförvaltning` again, then click `Kravbibliotek` and verify the
-   inline subnavigation closes again.
+   inline subnavigation closes.
 1. Click `Kravbiblioteksförvaltning` once more to return to `Kravpaket`.
 1. On `Kravpaket`, use the floating `Nytt kravpaket` pill and verify the new
    package form opens as a modal.

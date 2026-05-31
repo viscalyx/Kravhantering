@@ -1,3 +1,5 @@
+import { requirementPackageName } from '@/lib/reports/package-name'
+
 export interface DeviationReportDeviation {
   createdAt: string
   createdBy: string | null
@@ -11,7 +13,7 @@ export interface DeviationReportVersion {
   description: string | null
   normReferences: { name: string; reference: string; uri: string | null }[]
   qualityCharacteristic: { nameEn: string; nameSv: string } | null
-  requirementPackages: { nameEn: string | null; nameSv: string | null }[]
+  requirementPackages: { nameEn: string; nameSv: string }[]
   requiresTesting: boolean
   riskLevel: {
     color: string | null
@@ -23,14 +25,6 @@ export interface DeviationReportVersion {
   type: { nameEn: string; nameSv: string } | null
   verificationMethod: string | null
   versionNumber: number
-}
-
-function requirementPackageName(value: unknown): string | null {
-  const record = value as
-    | { name?: string | null; nameEn?: string | null; nameSv?: string | null }
-    | null
-    | undefined
-  return record?.name ?? record?.nameSv ?? record?.nameEn ?? null
 }
 
 export interface DeviationReportData {

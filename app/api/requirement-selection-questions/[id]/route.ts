@@ -7,7 +7,7 @@ import {
 } from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  customMutationPolicy,
+  authenticatedMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { idParamSchema, parseRouteParams } from '@/lib/http/validation'
@@ -35,7 +35,7 @@ export async function GET(
 export const PUT = secureMutationRoute({
   bodySchema: questionUpdateSchema,
   paramsSchema: idParamSchema,
-  policy: customMutationPolicy('requirement_selection_question', () => {}),
+  policy: authenticatedMutationPolicy('requirement_selection_question.update'),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const question = await updateRequirementSelectionQuestion(
@@ -59,7 +59,7 @@ export const PUT = secureMutationRoute({
 
 export const DELETE = secureMutationRoute({
   paramsSchema: idParamSchema,
-  policy: customMutationPolicy('requirement_selection_question', () => {}),
+  policy: authenticatedMutationPolicy('requirement_selection_question.delete'),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const result = await deleteRequirementSelectionQuestion(db, params.id)

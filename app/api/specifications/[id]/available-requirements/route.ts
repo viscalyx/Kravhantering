@@ -40,7 +40,6 @@ const querySchema = z
       })
       .optional(),
     locale: z.enum(['en', 'sv']).optional().default('en'),
-    needsReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     normReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     offset: nonNegativeIntegerStringSchema.optional(),
     qualityCharacteristicIds: optionalQueryArraySchema(

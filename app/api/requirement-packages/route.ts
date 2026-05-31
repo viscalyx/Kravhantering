@@ -9,12 +9,13 @@ import {
 } from '@/lib/dal/requirement-packages'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  customMutationPolicy,
+  authenticatedMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
   boundedDbStringSchema,
   optionalBusinessTextSchema,
+  parseSearchParams,
   queryBooleanSchema,
 } from '@/lib/http/validation'
 
@@ -36,12 +37,16 @@ const querySchema = z
   .passthrough()
 
 export async function GET(request: Request) {
-  const db = await getRequestSqlServerDataSource()
-  const query = querySchema.parse(
-    Object.fromEntries(new URL(request.url).searchParams.entries()),
+  const parsedQuery = parseSearchParams(
+    new URL(request.url).searchParams,
+    querySchema,
   )
+  if (!parsedQuery.ok) return parsedQuery.response
+  const db = await getRequestSqlServerDataSource()
   const [requirementPackages, counts] = await Promise.all([
-    listRequirementPackages(db, { includeArchived: query.includeArchived }),
+    listRequirementPackages(db, {
+      includeArchived: parsedQuery.data.includeArchived,
+    }),
     countLinkedRequirementsByPackage(db),
   ])
   return NextResponse.json({
@@ -60,7 +65,7 @@ export async function GET(request: Request) {
 
 export const POST = secureMutationRoute({
   bodySchema: requirementPackageSchema,
-  policy: customMutationPolicy('requirement_package', () => {}),
+  policy: authenticatedMutationPolicy('requirement_package.create'),
   handler: async ({ body, context }) => {
     const db = await getRequestSqlServerDataSource()
     const requirementPackage = await createRequirementPackage(db, body)

@@ -804,9 +804,12 @@ export async function previewPrivacyErasure(
       replacement != null
     const ownerWithoutBlockingReferences =
       policy.kind === 'owner' && !ownerHasBlockingReferences
+    const ownerIdentityGroupExists = groups.some(
+      group => group.key === 'owners.identity',
+    )
     const ownerReferenceControlledByOwner =
       policy.key === 'requirement_areas.owner' ||
-      policy.key === 'requirement_packages.owner'
+      (policy.key === 'requirement_packages.owner' && ownerIdentityGroupExists)
     const policyAllowedActions: PrivacyErasureAction[] =
       ownerBlockedWithoutReplacement
         ? ['skip']

@@ -23,6 +23,7 @@ import type {
   SuggestionReportRow,
 } from '@/lib/reports/data/fetch-requirement'
 import { assertReportItemCount } from '@/lib/reports/limits'
+import { requirementPackageName } from '@/lib/reports/package-name'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
 export class ReportDataError extends Error {
@@ -33,14 +34,6 @@ export class ReportDataError extends Error {
     this.name = 'ReportDataError'
     this.status = status
   }
-}
-
-function requirementPackageName(value: unknown): string {
-  const record = value as
-    | { name?: string | null; nameEn?: string | null; nameSv?: string | null }
-    | null
-    | undefined
-  return record?.name ?? record?.nameSv ?? record?.nameEn ?? ''
 }
 
 function decodeSegment(value: string | number): string {

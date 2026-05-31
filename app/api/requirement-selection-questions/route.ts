@@ -7,7 +7,7 @@ import {
 } from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  customMutationPolicy,
+  authenticatedMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
 
 export const POST = secureMutationRoute({
   bodySchema: questionCreateSchema,
-  policy: customMutationPolicy('requirement_selection_question', () => {}),
+  policy: authenticatedMutationPolicy('requirement_selection_question.create'),
   handler: async ({ body, context }) => {
     const db = await getRequestSqlServerDataSource()
     const question = await createRequirementSelectionQuestion(db, body)

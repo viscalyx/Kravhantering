@@ -3,14 +3,16 @@ import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
 import { duplicateRequirementSelectionQuestion } from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  customMutationPolicy,
+  authenticatedMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { idParamSchema } from '@/lib/http/validation'
 
 export const POST = secureMutationRoute({
   paramsSchema: idParamSchema,
-  policy: customMutationPolicy('requirement_selection_question', () => {}),
+  policy: authenticatedMutationPolicy(
+    'requirement_selection_question.duplicate',
+  ),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const question = await duplicateRequirementSelectionQuestion(db, params.id)

@@ -6,7 +6,7 @@ import {
 } from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  customMutationPolicy,
+  authenticatedMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { answerRouteParamsSchema, answerUpdateSchema } from '../../../_schemas'
@@ -14,7 +14,7 @@ import { answerRouteParamsSchema, answerUpdateSchema } from '../../../_schemas'
 export const PUT = secureMutationRoute({
   bodySchema: answerUpdateSchema,
   paramsSchema: answerRouteParamsSchema,
-  policy: customMutationPolicy('requirement_selection_answer', () => {}),
+  policy: authenticatedMutationPolicy('requirement_selection_answer.update'),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const question = await updateRequirementSelectionAnswer(
@@ -42,7 +42,7 @@ export const PUT = secureMutationRoute({
 
 export const DELETE = secureMutationRoute({
   paramsSchema: answerRouteParamsSchema,
-  policy: customMutationPolicy('requirement_selection_answer', () => {}),
+  policy: authenticatedMutationPolicy('requirement_selection_answer.delete'),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const result = await deleteRequirementSelectionAnswer(

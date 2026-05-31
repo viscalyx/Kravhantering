@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import AuthMenu from '@/components/AuthMenu'
 import { useHelp } from '@/components/HelpPanel'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
@@ -96,14 +96,18 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [desktopStewardshipOpen, setDesktopStewardshipOpen] = useState(false)
-  const [mobileStewardshipOpen, setMobileStewardshipOpen] = useState(false)
+  const [desktopStewardshipOpen, setDesktopStewardshipOpen] = useState(() =>
+    pathname.startsWith('/requirements/stewardship'),
+  )
+  const [mobileStewardshipOpen, setMobileStewardshipOpen] = useState(() =>
+    pathname.startsWith('/requirements/stewardship'),
+  )
   const isAdminActive = pathname.startsWith('/admin')
   const isStewardshipPath = pathname.startsWith('/requirements/stewardship')
   const activeStewardshipTab =
     stewardshipTabFromValue(searchParams.get('tab')) ?? 'packages'
-  const isDesktopStewardshipOpen = isStewardshipPath || desktopStewardshipOpen
-  const isMobileStewardshipOpen = isStewardshipPath || mobileStewardshipOpen
+  const isDesktopStewardshipOpen = desktopStewardshipOpen
+  const isMobileStewardshipOpen = mobileStewardshipOpen
   const {
     toggle: toggleHelp,
     content: helpContent,
@@ -115,7 +119,16 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
   const rememberStewardshipTab = (tab: StewardshipTab) => {
     localStorage.setItem(STEWARDSHIP_STORAGE_KEY, tab)
   }
-  const openStewardshipHome = () => {
+  useEffect(() => {
+    setDesktopStewardshipOpen(isStewardshipPath)
+    setMobileStewardshipOpen(isStewardshipPath)
+  }, [isStewardshipPath])
+
+  const toggleDesktopStewardshipHome = () => {
+    if (desktopStewardshipOpen) {
+      setDesktopStewardshipOpen(false)
+      return
+    }
     const tab = getRememberedStewardshipTab()
     setDesktopStewardshipOpen(true)
     router.push(getStewardshipHref(tab))
@@ -226,7 +239,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
                       value: isDesktopStewardshipOpen ? 'open' : 'closed',
                     })}
                     key="desktop-stewardship-disclosure"
-                    onClick={openStewardshipHome}
+                    onClick={toggleDesktopStewardshipHome}
                     type="button"
                   >
                     <item.icon

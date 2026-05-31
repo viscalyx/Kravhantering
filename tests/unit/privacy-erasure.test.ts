@@ -471,6 +471,55 @@ describe('privacy erasure service', () => {
     ])
   })
 
+  it('allows package-lead switching when the target is not an owner row', async () => {
+    const replacement = {
+      displayName: 'John Levi',
+      hsaId: 'SE5560000001-johlju',
+    }
+    const { db, query } = createPrivacyDb({
+      'requirement_packages.owner': {
+        affectedValues: ['SPR Språkstöd'],
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+    })
+
+    const preview = await previewPrivacyErasure(db, {
+      replacement,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(preview.groups).toEqual([
+      expect.objectContaining({
+        allowedActions: ['switch', 'skip'],
+        controlledByGroupKey: null,
+        key: 'requirement_packages.owner',
+        readOnlyReasonKey: null,
+        recommendedAction: 'switch',
+      }),
+    ])
+
+    query.mockClear()
+
+    const result = await executePrivacyErasure(createTransactionalDb(query), {
+      actions: { 'requirement_packages.owner': 'switch' },
+      previewToken: preview.previewToken,
+      replacement,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE requirement_packages'),
+      [
+        TARGET_HSA_ID,
+        replacement.hsaId,
+        replacement.displayName,
+        expect.any(Date),
+      ],
+    )
+    expect(result.actions.switch).toBe(1)
+  })
+
   it('uses combined owner blocker copy keys when areas and packages reference the owner', async () => {
     const withoutReplacement = await previewPrivacyErasure(
       createPrivacyDb({

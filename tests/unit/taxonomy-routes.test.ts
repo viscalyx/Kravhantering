@@ -950,6 +950,15 @@ describe('requirement-packages routes', () => {
     const j = (await r.json()) as { requirementPackages: { id: number }[] }
     expect(j.requirementPackages).toHaveLength(1)
   })
+  it('GET returns 400 for invalid query parameters', async () => {
+    const r = await getRequirementPackages(
+      new Request('http://l?includeArchived=maybe'),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  })
   it('POST creates with 201', async () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
@@ -979,6 +988,13 @@ describe('requirement-packages routes', () => {
       makeParams('1'),
     )
     expect(((await r.json()) as { id: number }).id).toBe(1)
+  })
+  it('PUT returns 400 for empty updates', async () => {
+    const r = await putRequirementPackage(jsonReq('PUT', {}), makeParams('1'))
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r)
+    expect(mockUpdateRequirementPackage).not.toHaveBeenCalled()
   })
   it('DELETE deletes', async () => {
     mockDeleteRequirementPackage.mockResolvedValue(1)

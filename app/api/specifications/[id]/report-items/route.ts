@@ -23,20 +23,13 @@ import { observeCapacity } from '@/lib/observability/capacity'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
 import { MAX_REPORT_ITEM_COUNT } from '@/lib/reports/limits'
+import { requirementPackageName } from '@/lib/reports/package-name'
 import { createRequestContext } from '@/lib/requirements/auth'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
 export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
-
-function requirementPackageName(value: unknown): string | null {
-  const record = value as
-    | { name?: string | null; nameEn?: string | null; nameSv?: string | null }
-    | null
-    | undefined
-  return record?.name ?? record?.nameSv ?? record?.nameEn ?? null
-}
 
 const specificationParamSchema = z
   .object({

@@ -97,6 +97,7 @@ function RequirementSelectionContextSection({
 }: {
   section: Extract<ReportSection, { type: 'requirement-selection-context' }>
 }) {
+  const t = useTranslations('reports')
   return (
     <div style={{ marginBottom: '1.5rem' }}>
       <h2 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 8 }}>
@@ -123,7 +124,10 @@ function RequirementSelectionContextSection({
               <td style={{ borderTop: '1px solid #e5e7eb', padding: 6 }}>
                 {row.answerText}
                 {!row.isFilterActive && (
-                  <span style={{ color: '#92400e' }}> (ej filteraktiv)</span>
+                  <span style={{ color: '#92400e' }}>
+                    {' '}
+                    {t('notFilterActive')}
+                  </span>
                 )}
               </td>
             </tr>

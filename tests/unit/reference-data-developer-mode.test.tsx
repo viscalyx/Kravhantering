@@ -134,7 +134,10 @@ const pages: MarkerSpec[] = [
       }),
     fetchHandler: input => {
       const url = String(input)
-      if (url.startsWith('/api/requirement-packages?')) {
+      if (
+        url === '/api/requirement-packages' ||
+        url.startsWith('/api/requirement-packages?')
+      ) {
         return okJson({
           requirementPackages: [
             {
@@ -155,7 +158,7 @@ const pages: MarkerSpec[] = [
       }
       return okJson({}) as Response
     },
-    expectedMarkers: ['create button', 'crud table', 'table action'],
+    expectedMarkers: ['floating pill', 'crud table', 'table action'],
   },
   {
     label: 'KravversionsstatusarClient (requirement version statuses)',
@@ -256,7 +259,7 @@ const pages: MarkerSpec[] = [
       return okJson({}) as Response
     },
     expectedMarkers: [
-      'create button',
+      'floating pill',
       'crud table',
       'table action',
       'text field',
@@ -313,12 +316,12 @@ describe.each(pages)('$label developer-mode markers', spec => {
       const mod = await spec.factory()
       const Component = mod.default
       const renderResult = render(<Component />)
-      const { container } = renderResult
+      const { baseElement } = renderResult
       unmount = renderResult.unmount
 
       await waitFor(() => {
         expect(
-          container.querySelector(
+          baseElement.querySelector(
             `[data-developer-mode-name="crud table"][data-developer-mode-context="${spec.context}"]`,
           ),
         ).toBeInTheDocument()
@@ -326,7 +329,7 @@ describe.each(pages)('$label developer-mode markers', spec => {
 
       for (const marker of spec.expectedMarkers) {
         await waitFor(() => {
-          const el = container.querySelector(
+          const el = baseElement.querySelector(
             `[data-developer-mode-name="${marker}"][data-developer-mode-context="${spec.context}"]`,
           )
           expect(
@@ -343,7 +346,7 @@ describe.each(pages)('$label developer-mode markers', spec => {
         })
       }
 
-      const createBtn = container.querySelector(
+      const createBtn = baseElement.querySelector(
         `[data-developer-mode-name="create button"][data-developer-mode-context="${spec.context}"]`,
       )
       if (spec.expectedMarkers.includes('create button')) {
@@ -352,7 +355,7 @@ describe.each(pages)('$label developer-mode markers', spec => {
         expect(createBtn).toBeNull()
       }
 
-      const crudTable = container.querySelector(
+      const crudTable = baseElement.querySelector(
         `[data-developer-mode-name="crud table"][data-developer-mode-context="${spec.context}"]`,
       )
       expect(crudTable).toHaveAttribute('data-developer-mode-priority', '340')
@@ -381,7 +384,10 @@ describe('RequirementPackagesClient error banner developer-mode marker', () => {
             json: async () => ({ error: 'Has linked requirements' }),
           } as Response
         }
-        if (url.includes('/api/requirement-packages?')) {
+        if (
+          url === '/api/requirement-packages' ||
+          url.includes('/api/requirement-packages?')
+        ) {
           return okJson({
             requirementPackages: [
               {

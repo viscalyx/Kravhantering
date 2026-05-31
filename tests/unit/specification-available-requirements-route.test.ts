@@ -112,6 +112,19 @@ describe('specifications/[id]/available-requirements route', () => {
     )
   })
 
+  it('rejects needs-reference filters because the available list does not use them', async () => {
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/specifications/IAM-INFOR-2026/available-requirements?needsReferenceIds=1',
+      ),
+      makeParams('IAM-INFOR-2026'),
+    )
+
+    expect(response.status).toBe(400)
+    expect(mocks.createRequirementsRestRuntime).not.toHaveBeenCalled()
+    expect(mocks.queryRequirementList).not.toHaveBeenCalled()
+  })
+
   it('logs internal failures before returning the safe HTTP error', async () => {
     const error = new Error(
       "Invalid object name 'specification_requirement_selection_answers'.",
