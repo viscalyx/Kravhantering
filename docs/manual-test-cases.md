@@ -561,7 +561,11 @@ management live outside Admin Center.
    a separate `Kravbiblioteksförvaltning` heading above it.
 1. Verify `Kravbiblioteksförvaltning` expands the header downward and shows
    the inline `Kravpaket` and `Kravurvalsfrågor` links centered directly under
-   the parent button inside the same surrounding background.
+   the parent button inside the same light blue-grey surrounding background in
+   both light and dark mode.
+1. Verify the selected `Kravbiblioteksförvaltning` parent button and selected
+   inline tab use the same blue-tinted selected background as `Kravbibliotek`
+   and `Kravunderlag`.
 1. Click `Kravunderlag` and verify the inline subnavigation closes. Click
    `Kravbiblioteksförvaltning` again, then click `Kravbibliotek` and verify the
    inline subnavigation closes.

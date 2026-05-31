@@ -270,6 +270,32 @@ describe('Navigation', () => {
     ).toBeNull()
   })
 
+  it.each([
+    ['packages', 'nav.requirementPackages'],
+    ['questions', 'nav.requirementSelectionQuestions'],
+  ])('uses the primary selected background for desktop stewardship %s navigation', (tab, label) => {
+    pathnameState.value = '/requirements/stewardship'
+    searchParamsState.value = new URLSearchParams(`tab=${tab}`)
+
+    render(<Navigation />)
+
+    const stewardshipButton = screen.getByRole('button', {
+      name: 'nav.stewardship',
+    })
+    const stewardshipTab = screen.getByRole('link', { name: label })
+    const stewardshipShell = stewardshipButton.closest(
+      '[data-developer-mode-name="stewardship submenu"]',
+    )
+
+    expect(stewardshipShell?.className).toContain('bg-secondary-50/90')
+    expect(stewardshipShell?.className).toContain('dark:bg-secondary-800/70')
+    expect(stewardshipButton.className).toContain('bg-primary-50')
+    expect(stewardshipButton.className).not.toContain('bg-white')
+    expect(stewardshipTab).toHaveAttribute('aria-current', 'page')
+    expect(stewardshipTab.className).toContain('bg-primary-50')
+    expect(stewardshipTab.className).not.toContain('bg-white')
+  })
+
   it('renders the help toggle with focus styles and developer-mode metadata', () => {
     const toggleHelp = vi.fn()
     helpState.value = {
