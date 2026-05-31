@@ -12,7 +12,7 @@ import {
 } from '@/lib/dal/requirement-packages'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  authenticatedMutationPolicy,
+  customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
@@ -21,6 +21,7 @@ import {
   optionalBusinessTextSchema,
   parseRouteParams,
 } from '@/lib/http/validation'
+import { requireRequirementPackagePermission } from '@/lib/requirements/requirement-package-permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -78,7 +79,9 @@ export async function GET(
 export const PUT = secureMutationRoute({
   bodySchema: updateRequirementPackageSchema,
   paramsSchema: idParamSchema,
-  policy: authenticatedMutationPolicy('requirement_package.update'),
+  policy: customMutationPolicy('requirement_package.update', ({ context }) => {
+    requireRequirementPackagePermission(context, 'requirement_package.update')
+  }),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const requirementPackage = await updateRequirementPackage(
@@ -101,7 +104,9 @@ export const PUT = secureMutationRoute({
 
 export const DELETE = secureMutationRoute({
   paramsSchema: idParamSchema,
-  policy: authenticatedMutationPolicy('requirement_package.delete'),
+  policy: customMutationPolicy('requirement_package.delete', ({ context }) => {
+    requireRequirementPackagePermission(context, 'requirement_package.delete')
+  }),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const result = await deleteRequirementPackage(db, params.id)

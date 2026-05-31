@@ -8,11 +8,27 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementSelectionQuestionsClient from '@/app/[locale]/requirements/stewardship/requirement-selection-questions-client'
 
-vi.mock('next-intl', () => ({
-  useLocale: () => 'en',
-  useTranslations: (ns?: string) => (key: string) =>
-    ns ? `${ns}.${key}` : key,
-}))
+vi.mock('next-intl', async () => {
+  const messages = ((await import('@/messages/en.json')).default ?? {}) as
+    | Record<string, unknown>
+    | undefined
+
+  function lookup(path: string): unknown {
+    return path.split('.').reduce<unknown>((current, part) => {
+      if (current && typeof current === 'object' && part in current) {
+        return (current as Record<string, unknown>)[part]
+      }
+      return undefined
+    }, messages)
+  }
+
+  return {
+    useTranslations: (ns?: string) => (key: string) => {
+      const value = lookup(ns ? `${ns}.${key}` : key)
+      return typeof value === 'string' ? value : ns ? `${ns}.${key}` : key
+    },
+  }
+})
 
 function okJson(body: unknown) {
   return { ok: true, json: async () => body }
@@ -23,6 +39,20 @@ vi.stubGlobal('fetch', fetchMock)
 
 const sampleArea = { id: 1, name: 'Security', prefix: 'SEC' }
 const samplePackage = { id: 10, isArchived: false, name: 'Baseline' }
+const sampleQuestion = {
+  answers: [],
+  areaId: sampleArea.id,
+  areaName: sampleArea.name,
+  areaPrefix: sampleArea.prefix,
+  helpText: null,
+  id: 11,
+  isActive: true,
+  isArchived: false,
+  questionCode: 'SEC-KUF001',
+  selectionType: 'single',
+  sortOrder: 0,
+  text: 'Which security profile applies?',
+}
 
 describe('RequirementSelectionQuestionsClient', () => {
   afterEach(cleanup)
@@ -71,21 +101,50 @@ describe('RequirementSelectionQuestionsClient', () => {
     expect(screen.getByRole('textbox', { name: /Text/ })).toBeInTheDocument()
   })
 
+  it('shows field help text for question and answer forms', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [sampleQuestion] })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Help: Requirement IDs',
+      }),
+    )
+    expect(
+      screen.getByText(/Only requirements with a published version/),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Create requirement selection question',
+      }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Help: Requirement area',
+      }),
+    )
+    expect(
+      screen.getByText(/grouped under the same area in the specification/),
+    ).toBeInTheDocument()
+  })
+
   it('submits a new question from the modal and closes it', async () => {
-    const createdQuestion = {
-      answers: [],
-      areaId: sampleArea.id,
-      areaName: sampleArea.name,
-      areaPrefix: sampleArea.prefix,
-      helpText: null,
-      id: 99,
-      isActive: false,
-      isArchived: false,
-      questionCode: 'SEC-001',
-      selectionType: 'single',
-      sortOrder: 0,
-      text: 'Which security profile applies?',
-    }
+    const createdQuestion = { ...sampleQuestion, id: 99, isActive: false }
     let questions: unknown[] = []
 
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {

@@ -124,6 +124,57 @@
     "unansweredOnly": "Unanswered only",
     "title": "Requirement selection questions"
   },
+  "requirementSelectionQuestionsStewardship": {
+    "activate": "Activate",
+    "active": "Active",
+    "addAnswer": "Add answer",
+    "allAreas": "All requirement areas",
+    "allStatuses": "All statuses",
+    "archive": "Archive",
+    "archived": "Archived",
+    "area": "Requirement area",
+    "clone": "Duplicate",
+    "create": "Create",
+    "createQuestion": "Create requirement selection question",
+    "deactivate": "Deactivate",
+    "delete": "Delete",
+    "description": "Description",
+    "edit": "Edit",
+    "editAnswer": "Edit answer",
+    "editQuestion": "Edit requirement selection question",
+    "error": "Something went wrong.",
+    "fieldHelp": {
+      "answerDescription": "Add an optional explanation for stewardship. This text does not affect filtering or reports.",
+      "answerPackages": "Link the answer to one or more requirement packages. When the answer is selected, published requirements from those packages are included.",
+      "answerSortOrder": "Controls the order of answers within the question. Lower numbers appear before higher numbers.",
+      "answerText": "Write the answer option that users choose in the specification.",
+      "area": "Choose the requirement area that owns the question. The question is grouped under the same area in the specification and receives its selection-question ID from the area prefix.",
+      "questionHelpText": "Optional help text shown with the question in the specification. Use it for brief guidance on how to answer.",
+      "questionText": "Write the question that users answer in the specification.",
+      "requirementIds": "Enter internal numeric requirement IDs separated by commas or spaces. Only requirements with a published version contribute to the selection.",
+      "selectionType": "Single choice allows one answer. Multiple choice allows several answers. No requirement selection is always exclusive.",
+      "sortOrder": "Controls the order of questions within the same requirement area. Lower numbers appear before higher numbers."
+    },
+    "helpText": "Help text",
+    "inactive": "Inactive",
+    "loading": "Loading...",
+    "matchingRequirements": "Matching requirements",
+    "missingRequirementSelection": "Missing requirement selection",
+    "multiple": "Multiple choice",
+    "noQuestions": "No requirement selection questions yet.",
+    "noRequirementSelection": "No requirement selection",
+    "packages": "Requirement packages",
+    "reactivate": "Reactivate",
+    "requirementIds": "Requirement IDs",
+    "save": "Save",
+    "search": "Search question ID or text",
+    "selectionType": "Selection type",
+    "single": "Single choice",
+    "sortOrder": "Sort order",
+    "status": "Status",
+    "text": "Text",
+    "title": "Requirement selection questions"
+  },
   "privacyDataExport": {
     "title": "Personal data export",
     "description": "Download the personal data that is connected to your HSA-ID in a structured JSON file or as a readable PDF.",
@@ -1414,6 +1465,29 @@
       "specificationItemStatus": {
         "heading": "Usage status",
         "body": "Track how far each requirement has progressed within this specification: included, in progress, implemented, verified, or not applicable. Change the status inline in the table."
+      }
+    },
+    "specificationRequirementSelection": {
+      "title": "Requirement selection questions",
+      "overview": {
+        "heading": "Purpose",
+        "body": "Requirement selection questions narrow the available requirements for this specification by asking for the context that matters for the delivery. Answered questions update the matching requirement list."
+      },
+      "filtering": {
+        "heading": "Finding questions",
+        "body": "Use the area filter, unanswered-only toggle, and search field to focus the list. The progress summary shows how many active questions have answers."
+      },
+      "answers": {
+        "heading": "Choosing answers",
+        "body": "Choose the answer or answers that fit the specification. Some answers match published requirements directly, while others match requirements through requirements packages."
+      },
+      "saving": {
+        "heading": "Saving choices",
+        "body": "Each answer is saved when you select it. Clearing a question removes its saved answers and makes the question unanswered again."
+      },
+      "historical": {
+        "heading": "Historical choices",
+        "body": "Inactive or archived questions and answers are shown as historical choices when they were saved earlier. Historical choices are preserved for traceability but do not affect current matching."
       }
     },
     "governanceObjectTypes": {

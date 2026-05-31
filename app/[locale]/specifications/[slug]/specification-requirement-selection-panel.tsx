@@ -3,6 +3,7 @@
 import { RotateCcw, Search } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 
@@ -39,10 +40,42 @@ interface Props {
   specificationSlug: string
 }
 
+const SPECIFICATION_REQUIREMENT_SELECTION_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'specificationRequirementSelection.overview.body',
+      headingKey: 'specificationRequirementSelection.overview.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'specificationRequirementSelection.filtering.body',
+      headingKey: 'specificationRequirementSelection.filtering.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'specificationRequirementSelection.answers.body',
+      headingKey: 'specificationRequirementSelection.answers.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'specificationRequirementSelection.saving.body',
+      headingKey: 'specificationRequirementSelection.saving.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'specificationRequirementSelection.historical.body',
+      headingKey: 'specificationRequirementSelection.historical.heading',
+    },
+  ],
+  titleKey: 'specificationRequirementSelection.title',
+}
+
 export default function SpecificationRequirementSelectionPanel({
   onChanged,
   specificationSlug,
 }: Props) {
+  useHelpContent(SPECIFICATION_REQUIREMENT_SELECTION_HELP)
   const t = useTranslations('specificationRequirementSelection')
   const copy = {
     allAreas: t('allAreas'),

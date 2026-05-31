@@ -11,7 +11,7 @@ import {
   Search,
   Trash2,
 } from 'lucide-react'
-import { useLocale } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
@@ -123,97 +123,61 @@ function statusText(
 }
 
 export default function RequirementSelectionQuestionsClient() {
-  const locale = useLocale()
-  const isSv = locale === 'sv'
+  const t = useTranslations('requirementSelectionQuestionsStewardship')
   const contentRef = useRef<HTMLDivElement>(null)
   const listAnchorRef = useRef<HTMLDivElement>(null)
   const questionTextRef = useRef<HTMLInputElement>(null)
   const copy = useMemo(
-    () =>
-      isSv
-        ? {
-            activate: 'Aktivera',
-            active: 'Aktiv',
-            addAnswer: 'Lägg till svar',
-            allAreas: 'Alla kravområden',
-            allStatuses: 'Alla statusar',
-            archive: 'Arkivera',
-            archived: 'Arkiverad',
-            area: 'Kravområde',
-            clone: 'Kopiera',
-            create: 'Skapa',
-            createQuestion: 'Skapa kravurvalsfråga',
-            deactivate: 'Inaktivera',
-            delete: 'Ta bort',
-            description: 'Beskrivning',
-            edit: 'Redigera',
-            editAnswer: 'Redigera svar',
-            editQuestion: 'Redigera kravurvalsfråga',
-            error: 'Något gick fel.',
-            helpText: 'Hjälptext',
-            inactive: 'Inaktiv',
-            loading: 'Laddar...',
-            matchingRequirements: 'Matchande krav',
-            missingRequirementSelection: 'Saknar kravurval',
-            multiple: 'Flerval',
-            noQuestions: 'Inga kravurvalsfrågor ännu.',
-            noRequirementSelection: 'Utan kravurval',
-            packages: 'Kravpaket',
-            reactivate: 'Återaktivera',
-            requirementIds: 'Krav-ID',
-            requirementIdsHelp:
-              'Ange interna krav-ID separerade med komma eller blanksteg.',
-            save: 'Spara',
-            search: 'Sök fråge-ID eller text',
-            selectionType: 'Valtyp',
-            single: 'Enval',
-            sortOrder: 'Sortering',
-            status: 'Status',
-            text: 'Text',
-            title: 'Kravurvalsfrågor',
-          }
-        : {
-            activate: 'Activate',
-            active: 'Active',
-            addAnswer: 'Add answer',
-            allAreas: 'All requirement areas',
-            allStatuses: 'All statuses',
-            archive: 'Archive',
-            archived: 'Archived',
-            area: 'Requirement area',
-            clone: 'Duplicate',
-            create: 'Create',
-            createQuestion: 'Create requirement selection question',
-            deactivate: 'Deactivate',
-            delete: 'Delete',
-            description: 'Description',
-            edit: 'Edit',
-            editAnswer: 'Edit answer',
-            editQuestion: 'Edit requirement selection question',
-            error: 'Something went wrong.',
-            helpText: 'Help text',
-            inactive: 'Inactive',
-            loading: 'Loading...',
-            matchingRequirements: 'Matching requirements',
-            missingRequirementSelection: 'Missing requirement selection',
-            multiple: 'Multiple choice',
-            noQuestions: 'No requirement selection questions yet.',
-            noRequirementSelection: 'No requirement selection',
-            packages: 'Requirement packages',
-            reactivate: 'Reactivate',
-            requirementIds: 'Requirement IDs',
-            requirementIdsHelp:
-              'Enter internal requirement IDs separated by commas or spaces.',
-            save: 'Save',
-            search: 'Search question ID or text',
-            selectionType: 'Selection type',
-            single: 'Single choice',
-            sortOrder: 'Sort order',
-            status: 'Status',
-            text: 'Text',
-            title: 'Requirement selection questions',
-          },
-    [isSv],
+    () => ({
+      activate: t('activate'),
+      active: t('active'),
+      addAnswer: t('addAnswer'),
+      allAreas: t('allAreas'),
+      allStatuses: t('allStatuses'),
+      archive: t('archive'),
+      archived: t('archived'),
+      area: t('area'),
+      areaHelp: t('fieldHelp.area'),
+      answerDescriptionHelp: t('fieldHelp.answerDescription'),
+      answerPackagesHelp: t('fieldHelp.answerPackages'),
+      answerSortOrderHelp: t('fieldHelp.answerSortOrder'),
+      answerTextHelp: t('fieldHelp.answerText'),
+      clone: t('clone'),
+      create: t('create'),
+      createQuestion: t('createQuestion'),
+      deactivate: t('deactivate'),
+      delete: t('delete'),
+      description: t('description'),
+      edit: t('edit'),
+      editAnswer: t('editAnswer'),
+      editQuestion: t('editQuestion'),
+      error: t('error'),
+      helpText: t('helpText'),
+      inactive: t('inactive'),
+      loading: t('loading'),
+      matchingRequirements: t('matchingRequirements'),
+      missingRequirementSelection: t('missingRequirementSelection'),
+      multiple: t('multiple'),
+      noQuestions: t('noQuestions'),
+      noRequirementSelection: t('noRequirementSelection'),
+      packages: t('packages'),
+      questionHelpTextHelp: t('fieldHelp.questionHelpText'),
+      questionTextHelp: t('fieldHelp.questionText'),
+      reactivate: t('reactivate'),
+      requirementIds: t('requirementIds'),
+      requirementIdsHelp: t('fieldHelp.requirementIds'),
+      save: t('save'),
+      search: t('search'),
+      selectionType: t('selectionType'),
+      selectionTypeHelp: t('fieldHelp.selectionType'),
+      single: t('single'),
+      sortOrder: t('sortOrder'),
+      sortOrderHelp: t('fieldHelp.sortOrder'),
+      status: t('status'),
+      text: t('text'),
+      title: t('title'),
+    }),
+    [t],
   )
   const [areas, setAreas] = useState<RequirementArea[]>([])
   const [packages, setPackages] = useState<RequirementPackage[]>([])
@@ -529,7 +493,7 @@ export default function RequirementSelectionQuestionsClient() {
       ) : null}
       <div>
         <FieldLabelWithHelp
-          help=""
+          help={copy.areaHelp}
           htmlFor="kuf-area"
           label={copy.area}
           required
@@ -557,7 +521,7 @@ export default function RequirementSelectionQuestionsClient() {
       </div>
       <div>
         <FieldLabelWithHelp
-          help=""
+          help={copy.questionTextHelp}
           htmlFor="kuf-text"
           label={copy.text}
           required
@@ -577,7 +541,11 @@ export default function RequirementSelectionQuestionsClient() {
         />
       </div>
       <div>
-        <FieldLabelWithHelp help="" htmlFor="kuf-help" label={copy.helpText} />
+        <FieldLabelWithHelp
+          help={copy.questionHelpTextHelp}
+          htmlFor="kuf-help"
+          label={copy.helpText}
+        />
         <textarea
           className={inputClassName}
           id="kuf-help"
@@ -593,7 +561,7 @@ export default function RequirementSelectionQuestionsClient() {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <FieldLabelWithHelp
-            help=""
+            help={copy.selectionTypeHelp}
             htmlFor="kuf-selection-type"
             label={copy.selectionType}
             required
@@ -615,7 +583,7 @@ export default function RequirementSelectionQuestionsClient() {
         </div>
         <div>
           <FieldLabelWithHelp
-            help=""
+            help={copy.sortOrderHelp}
             htmlFor="kuf-sort"
             label={copy.sortOrder}
           />
@@ -1000,7 +968,7 @@ export default function RequirementSelectionQuestionsClient() {
                 <div className="space-y-4">
                   <div>
                     <FieldLabelWithHelp
-                      help=""
+                      help={copy.answerTextHelp}
                       htmlFor="kuf-answer-text"
                       label={copy.text}
                       required
@@ -1040,7 +1008,7 @@ export default function RequirementSelectionQuestionsClient() {
                   </label>
                   <div>
                     <FieldLabelWithHelp
-                      help=""
+                      help={copy.answerDescriptionHelp}
                       htmlFor="kuf-answer-description"
                       label={copy.description}
                     />
@@ -1058,7 +1026,7 @@ export default function RequirementSelectionQuestionsClient() {
                   </div>
                   <div>
                     <FieldLabelWithHelp
-                      help=""
+                      help={copy.answerPackagesHelp}
                       htmlFor="kuf-answer-packages"
                       label={copy.packages}
                     />
@@ -1106,7 +1074,7 @@ export default function RequirementSelectionQuestionsClient() {
                   </div>
                   <div>
                     <FieldLabelWithHelp
-                      help=""
+                      help={copy.answerSortOrderHelp}
                       htmlFor="kuf-answer-sort"
                       label={copy.sortOrder}
                     />

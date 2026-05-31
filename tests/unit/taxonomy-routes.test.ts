@@ -201,6 +201,7 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
 
 const mockUpdateRequirementPackage = vi.fn()
 const mockDeleteRequirementPackage = vi.fn()
+const mockArchiveRequirementPackage = vi.fn()
 vi.mock('@/lib/dal/requirement-packages', () => ({
   listRequirementPackages: async () => [{ id: 1 }],
   countLinkedRequirementsByPackage: async () => ({}),
@@ -216,6 +217,8 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
     mockUpdateRequirementPackage(...a),
   deleteRequirementPackage: (...a: unknown[]) =>
     mockDeleteRequirementPackage(...a),
+  archiveRequirementPackage: (...a: unknown[]) =>
+    mockArchiveRequirementPackage(...a),
 }))
 
 vi.mock('@/lib/dal/requirement-types', () => ({
@@ -248,6 +251,7 @@ import {
   POST as postReqArea,
 } from '@/app/api/requirement-areas/route'
 import { GET as getCats } from '@/app/api/requirement-categories/route'
+import { POST as archiveRequirementPackage } from '@/app/api/requirement-packages/[id]/archive/route'
 import {
   DELETE as deleteRequirementPackage,
   PUT as putRequirementPackage,
@@ -947,6 +951,7 @@ describe('requirement-specifications routes', () => {
 describe('requirement-packages routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    authState.context.actor.roles = ['Admin']
   })
 
   it('GET returns requirementPackages', async () => {
@@ -998,6 +1003,18 @@ describe('requirement-packages routes', () => {
 
     expect(r.status).toBe(400)
     await expectInvalidRequest(r)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockUpdateRequirementPackage).not.toHaveBeenCalled()
+  })
+  it('PUT returns 403 without Admin before updating', async () => {
+    authState.context.actor.roles = []
+
+    const r = await putRequirementPackage(
+      jsonReq('PUT', { name: 'X' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(403)
     expect(mockUpdateRequirementPackage).not.toHaveBeenCalled()
   })
   it('DELETE deletes', async () => {
@@ -1014,6 +1031,47 @@ describe('requirement-packages routes', () => {
       makeParams('1'),
     )
     expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
+  })
+  it('DELETE returns 403 without Admin before deleting', async () => {
+    authState.context.actor.roles = []
+
+    const r = await deleteRequirementPackage(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(403)
+    expect(mockDeleteRequirementPackage).not.toHaveBeenCalled()
+  })
+
+  it('POST archive archives a requirement package', async () => {
+    mockArchiveRequirementPackage.mockResolvedValue({
+      cleanup: {
+        affectedAnswerIds: [],
+        affectedRequirementIds: [],
+        removedLinkCount: 0,
+      },
+      requirementPackage: { id: 1 },
+    })
+
+    const r = await archiveRequirementPackage(
+      new NextRequest('http://l', { method: 'POST' }),
+      makeParams('1'),
+    )
+
+    expect(((await r.json()) as { id: number }).id).toBe(1)
+  })
+
+  it('POST archive returns 403 without Admin before archiving', async () => {
+    authState.context.actor.roles = []
+
+    const r = await archiveRequirementPackage(
+      new NextRequest('http://l', { method: 'POST' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(403)
+    expect(mockArchiveRequirementPackage).not.toHaveBeenCalled()
   })
 
   it('DELETE returns 404 without audit when the requirement package is missing', async () => {

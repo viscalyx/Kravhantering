@@ -124,6 +124,57 @@
     "unansweredOnly": "Endast obesvarade",
     "title": "Kravurvalsfrågor"
   },
+  "requirementSelectionQuestionsStewardship": {
+    "activate": "Aktivera",
+    "active": "Aktiv",
+    "addAnswer": "Lägg till svar",
+    "allAreas": "Alla kravområden",
+    "allStatuses": "Alla statusar",
+    "archive": "Arkivera",
+    "archived": "Arkiverad",
+    "area": "Kravområde",
+    "clone": "Kopiera",
+    "create": "Skapa",
+    "createQuestion": "Skapa kravurvalsfråga",
+    "deactivate": "Inaktivera",
+    "delete": "Ta bort",
+    "description": "Beskrivning",
+    "edit": "Redigera",
+    "editAnswer": "Redigera svar",
+    "editQuestion": "Redigera kravurvalsfråga",
+    "error": "Något gick fel.",
+    "fieldHelp": {
+      "answerDescription": "Lägg till valfri förklaring för förvaltningen. Texten påverkar inte filtrering eller rapporter.",
+      "answerPackages": "Koppla svaret till ett eller flera kravpaket. När svaret väljs hämtas publicerade krav från dessa paket.",
+      "answerSortOrder": "Styr ordningen mellan svarsalternativ inom frågan. Lägre tal visas före högre tal.",
+      "answerText": "Skriv svarsalternativet som användaren väljer i kravunderlaget.",
+      "area": "Välj vilket kravområde som äger frågan. Frågan grupperas under samma kravområde i kravunderlaget och får sitt kravurvalsfråge-ID från områdets prefix.",
+      "questionHelpText": "Valfri hjälptext som visas tillsammans med frågan i kravunderlaget. Använd den för kort vägledning om hur frågan ska besvaras.",
+      "questionText": "Skriv frågan som användaren i kravunderlaget ska besvara.",
+      "requirementIds": "Ange interna numeriska krav-ID separerade med komma eller blanksteg. Endast krav som har en publicerad version bidrar till urvalet.",
+      "selectionType": "Enval tillåter ett svar. Flerval tillåter flera svar. Svarstypen Utan kravurval är alltid exklusiv.",
+      "sortOrder": "Styr ordningen mellan frågor inom samma kravområde. Lägre tal visas före högre tal."
+    },
+    "helpText": "Hjälptext",
+    "inactive": "Inaktiv",
+    "loading": "Laddar...",
+    "matchingRequirements": "Matchande krav",
+    "missingRequirementSelection": "Saknar kravurval",
+    "multiple": "Flerval",
+    "noQuestions": "Inga kravurvalsfrågor ännu.",
+    "noRequirementSelection": "Utan kravurval",
+    "packages": "Kravpaket",
+    "reactivate": "Återaktivera",
+    "requirementIds": "Krav-ID",
+    "save": "Spara",
+    "search": "Sök fråge-ID eller text",
+    "selectionType": "Valtyp",
+    "single": "Enval",
+    "sortOrder": "Sortering",
+    "status": "Status",
+    "text": "Text",
+    "title": "Kravurvalsfrågor"
+  },
   "privacyDataExport": {
     "title": "Export av personuppgifter",
     "description": "Ladda ned personuppgifterna som är kopplade till ditt HSA-ID som strukturerad JSON eller som läsbar PDF.",
@@ -1414,6 +1465,29 @@
       "specificationItemStatus": {
         "heading": "Användningsstatus",
         "body": "Spåra hur långt varje krav har kommit i underlaget: inkluderad, pågående, implementerad, verifierad eller ej tillämpbar. Ändra statusen direkt i tabellen."
+      }
+    },
+    "specificationRequirementSelection": {
+      "title": "Kravurvalsfrågor",
+      "overview": {
+        "heading": "Syfte",
+        "body": "Kravurvalsfrågor avgränsar vilka krav som är tillgängliga för kravunderlaget genom att fråga efter leveransens sammanhang. Besvarade frågor uppdaterar listan med matchande krav."
+      },
+      "filtering": {
+        "heading": "Hitta frågor",
+        "body": "Använd områdesfiltret, reglaget för obesvarade frågor och sökfältet för att fokusera listan. Sammanfattningen visar hur många aktiva frågor som har svar."
+      },
+      "answers": {
+        "heading": "Välja svar",
+        "body": "Välj det eller de svar som passar kravunderlaget. Vissa svar matchar publicerade krav direkt, medan andra matchar krav via kravpaket."
+      },
+      "saving": {
+        "heading": "Spara val",
+        "body": "Varje svar sparas när du väljer det. När du rensar en fråga tas de sparade svaren bort och frågan blir obesvarad igen."
+      },
+      "historical": {
+        "heading": "Historiska val",
+        "body": "Inaktiva eller arkiverade frågor och svar visas som historiska val när de har sparats tidigare. Historiska val bevaras för spårbarhet men påverkar inte aktuell matchning."
       }
     },
     "governanceObjectTypes": {

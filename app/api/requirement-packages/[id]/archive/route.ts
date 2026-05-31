@@ -4,14 +4,17 @@ import { recordRequirementSelectionCleanupAudit } from '@/lib/audit/requirement-
 import { archiveRequirementPackage } from '@/lib/dal/requirement-packages'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  authenticatedMutationPolicy,
+  customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { idParamSchema } from '@/lib/http/validation'
+import { requireRequirementPackagePermission } from '@/lib/requirements/requirement-package-permissions'
 
 export const POST = secureMutationRoute({
   paramsSchema: idParamSchema,
-  policy: authenticatedMutationPolicy('requirement_package.archive'),
+  policy: customMutationPolicy('requirement_package.archive', ({ context }) => {
+    requireRequirementPackagePermission(context, 'requirement_package.archive')
+  }),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const result = await archiveRequirementPackage(db, params.id)
