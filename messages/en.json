@@ -110,12 +110,18 @@
     "dataExport": "My personal data"
   },
   "specificationRequirementSelection": {
+    "allAreas": "All requirement areas",
     "clear": "Clear",
     "error": "Could not save selection.",
     "historical": "Historical choice",
     "loading": "Loading questions...",
+    "matchSummary": "{count} matching requirements, {added} already added",
+    "missingRequirementSelection": "Missing requirement selection",
     "noQuestions": "No active questions.",
     "progress": "Answered",
+    "saving": "Saving",
+    "search": "Search question or answer",
+    "unansweredOnly": "Unanswered only",
     "title": "Requirement selection questions"
   },
   "privacyDataExport": {
@@ -403,6 +409,8 @@
     "itemsInSpecification": "Requirements in specification",
     "availableRequirements": "Available requirements",
     "requirementSelectionQuestions": "Requirement selection questions",
+    "adjustFiltersManually": "Adjust filters manually",
+    "requirementSelectionNoPublishedMatches": "The selected requirement-selection answers do not currently match any published requirements.",
     "alreadyAdded": "Already added",
     "needsReferenceLabel": "Needs reference (optional)",
     "addSelectedToSpecification": "Add selected ({count})",

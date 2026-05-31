@@ -10,12 +10,16 @@ import { toBoolean, toIsoString } from '@/lib/typeorm/value-mappers'
 export type RequirementSelectionType = 'multiple' | 'single'
 
 export interface RequirementSelectionAnswerRow {
+  alreadyAddedRequirementCount?: number
   createdAt: string
   description: string | null
+  healthState: 'missing_requirement_selection' | 'ok'
   id: number
   isActive: boolean
   isArchived: boolean
   isNoRequirementSelection: boolean
+  matchingRequirementCount: number
+  matchingRequirements: RequirementSelectionMatchedRequirementRow[]
   packageIds: number[]
   questionId: number
   requirementIds: number[]
@@ -57,6 +61,18 @@ export interface RequirementSelectionFilterResult {
   filterActive: boolean
   hasNoRequirementSelection: boolean
   requirementIds: number[]
+}
+
+export interface RequirementSelectionCleanupResult {
+  affectedAnswerIds: number[]
+  affectedRequirementIds: number[]
+  removedLinkCount: number
+}
+
+export interface RequirementSelectionMatchedRequirementRow {
+  description: string | null
+  id: number
+  uniqueId: string
 }
 
 interface QueryExecutor {
@@ -134,10 +150,13 @@ function mapAnswerRow(row: AnswerDbRow): RequirementSelectionAnswerRow {
   return {
     createdAt: toIsoString(row.createdAt),
     description: row.description,
+    healthState: 'ok',
     id: row.id,
     isActive: toBoolean(row.isActive),
     isArchived: toBoolean(row.isArchived),
     isNoRequirementSelection: toBoolean(row.isNoRequirementSelection),
+    matchingRequirementCount: 0,
+    matchingRequirements: [],
     packageIds: [],
     questionId: row.questionId,
     requirementIds: [],
@@ -294,10 +313,105 @@ async function hydrateAnswers(
     for (const row of requirementRows) {
       answerById.get(row.answerId)?.requirementIds.push(row.requirementId)
     }
+
+    await hydrateAnswerRequirementMatches(executor, answers)
   }
 
   for (const question of questions) {
     question.answers = answersByQuestion.get(question.id) ?? []
+  }
+}
+
+async function hydrateAnswerRequirementMatches(
+  executor: QueryExecutor,
+  answers: RequirementSelectionAnswerRow[],
+): Promise<void> {
+  const answerIds = answers.map(answer => answer.id)
+  if (answerIds.length === 0) return
+
+  const firstAnswerPlaceholders = placeholders(answerIds)
+  const secondAnswerOffset = answerIds.length
+  const secondAnswerPlaceholders = placeholders(answerIds, secondAnswerOffset)
+  const explicitStatusParam = answerIds.length * 2
+  const packageStatusParam = explicitStatusParam + 1
+  const descriptionStatusParam = packageStatusParam + 1
+  const rows = (await executor.query(
+    `
+      SELECT DISTINCT
+        source.answerId AS answerId,
+        requirement.id AS id,
+        requirement.unique_id AS uniqueId,
+        published.description AS description
+      FROM (
+        SELECT
+          answer_requirement.answer_id AS answerId,
+          answer_requirement.requirement_id AS requirementId
+        FROM requirement_selection_answer_requirements AS answer_requirement
+        WHERE answer_requirement.answer_id IN (${firstAnswerPlaceholders})
+          AND EXISTS (
+            SELECT 1
+            FROM requirement_versions AS explicit_version
+            WHERE explicit_version.requirement_id = answer_requirement.requirement_id
+              AND explicit_version.requirement_status_id = @${explicitStatusParam}
+          )
+
+        UNION
+
+        SELECT
+          answer_package.answer_id AS answerId,
+          version.requirement_id AS requirementId
+        FROM requirement_selection_answer_packages AS answer_package
+        INNER JOIN requirement_version_requirement_packages AS version_package
+          ON version_package.requirement_package_id = answer_package.requirement_package_id
+        INNER JOIN requirement_versions AS version
+          ON version.id = version_package.requirement_version_id
+         AND version.requirement_status_id = @${packageStatusParam}
+        WHERE answer_package.answer_id IN (${secondAnswerPlaceholders})
+      ) AS source
+      INNER JOIN requirements AS requirement
+        ON requirement.id = source.requirementId
+      OUTER APPLY (
+        SELECT TOP (1) description
+        FROM requirement_versions AS published_version
+        WHERE published_version.requirement_id = requirement.id
+          AND published_version.requirement_status_id = @${descriptionStatusParam}
+        ORDER BY published_version.version_number DESC
+      ) AS published
+      ORDER BY source.answerId ASC, requirement.unique_id ASC
+    `,
+    [
+      ...answerIds,
+      ...answerIds,
+      STATUS_PUBLISHED,
+      STATUS_PUBLISHED,
+      STATUS_PUBLISHED,
+    ],
+  )) as Array<RequirementSelectionMatchedRequirementRow & { answerId: number }>
+
+  const byAnswer = new Map<
+    number,
+    RequirementSelectionMatchedRequirementRow[]
+  >()
+  for (const row of rows) {
+    const bucket = byAnswer.get(row.answerId) ?? []
+    bucket.push({
+      description: row.description,
+      id: row.id,
+      uniqueId: row.uniqueId,
+    })
+    byAnswer.set(row.answerId, bucket)
+  }
+
+  for (const answer of answers) {
+    answer.matchingRequirements = byAnswer.get(answer.id) ?? []
+    answer.matchingRequirementCount = answer.matchingRequirements.length
+    answer.healthState =
+      !answer.isNoRequirementSelection &&
+      answer.isActive &&
+      !answer.isArchived &&
+      answer.matchingRequirementCount === 0
+        ? 'missing_requirement_selection'
+        : 'ok'
   }
 }
 
@@ -322,6 +436,43 @@ export async function getRequirementSelectionQuestionById(
   if (!question) return null
   await hydrateAnswers(db, [question])
   return question
+}
+
+export async function resolveRequirementSelectionQuestionId(
+  executor: QueryExecutor,
+  idOrCode: number | string,
+): Promise<number | null> {
+  if (typeof idOrCode === 'number' || /^\d+$/.test(idOrCode)) {
+    const id = Number(idOrCode)
+    if (!Number.isInteger(id) || id < 1) return null
+    const rows = (await executor.query(
+      `
+        SELECT id
+        FROM requirement_selection_questions
+        WHERE id = @0
+      `,
+      [id],
+    )) as Array<{ id: number }>
+    return rows[0]?.id ?? null
+  }
+
+  const rows = (await executor.query(
+    `
+      SELECT id
+      FROM requirement_selection_questions
+      WHERE question_code = @0
+    `,
+    [idOrCode],
+  )) as Array<{ id: number }>
+  return rows[0]?.id ?? null
+}
+
+export async function getRequirementSelectionQuestionByIdentifier(
+  db: SqlServerDatabase,
+  idOrCode: number | string,
+): Promise<RequirementSelectionQuestionRow | null> {
+  const id = await resolveRequirementSelectionQuestionId(db, idOrCode)
+  return id == null ? null : getRequirementSelectionQuestionById(db, id)
 }
 
 async function areaPrefix(
@@ -530,10 +681,14 @@ export async function setRequirementSelectionQuestionState(
     if (operation === 'activate') {
       await assertQuestionCanActivate(manager, id)
     }
+    if (operation === 'reactivate') {
+      await assertQuestionCanActivate(manager, id)
+    }
     if (operation === 'deactivate' || operation === 'archive') {
       await markQuestionSelectionsHistorical(manager, id)
     }
-    const activeValue = operation === 'activate' ? 1 : 0
+    const activeValue =
+      operation === 'activate' || operation === 'reactivate' ? 1 : 0
     const archivedValue = operation === 'archive' ? 1 : 0
     await manager.query(
       `
@@ -687,7 +842,7 @@ export async function createRequirementSelectionAnswer(
           updated_at
         )
         OUTPUT inserted.id AS id
-        VALUES (@0, @1, @2, @3, @4, 0, 0, @5, @5)
+        VALUES (@0, @1, @2, @3, @4, 1, 0, @5, @5)
       `,
       [
         questionId,
@@ -779,44 +934,6 @@ export async function updateRequirementSelectionAnswer(
   return getRequirementSelectionQuestionById(db, questionId)
 }
 
-async function assertAnswerCanActivate(
-  executor: QueryExecutor,
-  answerId: number,
-): Promise<void> {
-  const rows = (await executor.query(
-    `
-      SELECT
-        is_no_requirement_selection AS isNoRequirementSelection,
-        (
-          SELECT COUNT(1)
-          FROM requirement_selection_answer_packages package_link
-          WHERE package_link.answer_id = answer.id
-        ) + (
-          SELECT COUNT(1)
-          FROM requirement_selection_answer_requirements requirement_link
-          WHERE requirement_link.answer_id = answer.id
-        ) AS linkCount
-      FROM requirement_selection_answers answer
-      WHERE answer.id = @0
-    `,
-    [answerId],
-  )) as Array<{
-    isNoRequirementSelection: boolean | number | string
-    linkCount: number
-  }>
-  const row = rows[0]
-  if (!row) return
-  if (!toBoolean(row.isNoRequirementSelection) && Number(row.linkCount) < 1) {
-    throw validationError(
-      'Answer must have at least one requirement selection link',
-      {
-        answerId,
-        reason: 'answer_without_links',
-      },
-    )
-  }
-}
-
 async function assertAnswerStateChangeKeepsActiveQuestionUsable(
   executor: QueryExecutor,
   questionId: number,
@@ -866,9 +983,6 @@ export async function setRequirementSelectionAnswerState(
   operation: 'activate' | 'archive' | 'deactivate' | 'reactivate',
 ): Promise<RequirementSelectionQuestionRow | null> {
   await db.transaction(async manager => {
-    if (operation === 'activate') {
-      await assertAnswerCanActivate(manager, answerId)
-    }
     if (operation === 'deactivate' || operation === 'archive') {
       await assertAnswerStateChangeKeepsActiveQuestionUsable(
         manager,
@@ -877,7 +991,8 @@ export async function setRequirementSelectionAnswerState(
       )
       await markAnswerSelectionsHistorical(manager, answerId)
     }
-    const activeValue = operation === 'activate' ? 1 : 0
+    const activeValue =
+      operation === 'activate' || operation === 'reactivate' ? 1 : 0
     const archivedValue = operation === 'archive' ? 1 : 0
     await manager.query(
       `
@@ -1016,7 +1131,9 @@ export async function duplicateRequirementSelectionQuestion(
       ],
     )) as Array<{ id: number }>
     const duplicateId = createdRows[0].id
-    for (const answer of source.answers) {
+    for (const answer of source.answers.filter(
+      item => item.isActive && !item.isArchived,
+    )) {
       const answerRows = (await manager.query(
         `
           INSERT INTO requirement_selection_answers (
@@ -1127,6 +1244,14 @@ export async function listSpecificationRequirementSelectionQuestions(
     question.selectedAnswerIds = question.savedAnswers
       .filter(answer => answer.isFilterActive)
       .map(answer => answer.answerId)
+  }
+  const existingRequirementIds = new Set(
+    await getExistingSpecificationRequirementIds(db, specificationId),
+  )
+  for (const answer of questions.flatMap(question => question.answers)) {
+    answer.alreadyAddedRequirementCount = answer.matchingRequirements.filter(
+      requirement => existingRequirementIds.has(requirement.id),
+    ).length
   }
   return questions
 }
@@ -1270,14 +1395,19 @@ export async function getRequirementSelectionFilterForSpecification(
       requirementIds: [],
     }
   }
-  if (rows.some(row => toBoolean(row.isNoRequirementSelection))) {
+  const hasNoRequirementSelection = rows.some(row =>
+    toBoolean(row.isNoRequirementSelection),
+  )
+  const answerIds = rows
+    .filter(row => !toBoolean(row.isNoRequirementSelection))
+    .map(row => row.answerId)
+  if (answerIds.length === 0) {
     return {
-      filterActive: true,
-      hasNoRequirementSelection: true,
+      filterActive: false,
+      hasNoRequirementSelection,
       requirementIds: [],
     }
   }
-  const answerIds = rows.map(row => row.answerId)
   const requirementRows = (await db.query(
     `
       SELECT DISTINCT requirement_id AS requirementId
@@ -1299,7 +1429,7 @@ export async function getRequirementSelectionFilterForSpecification(
   )) as Array<{ requirementId: number }>
   return {
     filterActive: true,
-    hasNoRequirementSelection: false,
+    hasNoRequirementSelection,
     requirementIds: requirementRows.map(row => row.requirementId),
   }
 }
@@ -1320,4 +1450,94 @@ export async function getExistingSpecificationRequirementIds(
     [specificationId],
   )) as Array<{ requirementId: number }>
   return rows.map(row => row.requirementId)
+}
+
+function emptyCleanupResult(): RequirementSelectionCleanupResult {
+  return {
+    affectedAnswerIds: [],
+    affectedRequirementIds: [],
+    removedLinkCount: 0,
+  }
+}
+
+function cleanupResult(
+  rows: Array<{ answerId: number; requirementId?: number | null }>,
+): RequirementSelectionCleanupResult {
+  return {
+    affectedAnswerIds: Array.from(new Set(rows.map(row => row.answerId))).sort(
+      (a, b) => a - b,
+    ),
+    affectedRequirementIds: Array.from(
+      new Set(
+        rows
+          .map(row => row.requirementId)
+          .filter((id): id is number => typeof id === 'number'),
+      ),
+    ).sort((a, b) => a - b),
+    removedLinkCount: rows.length,
+  }
+}
+
+export async function cleanupRequirementSelectionPackageLinks(
+  executor: QueryExecutor,
+  packageIdsInput: readonly number[],
+): Promise<RequirementSelectionCleanupResult> {
+  const packageIds = uniquePositiveIntegers(packageIdsInput)
+  if (packageIds.length === 0) return emptyCleanupResult()
+  const rows = (await executor.query(
+    `
+      DELETE answer_package
+      OUTPUT
+        deleted.answer_id AS answerId,
+        NULL AS requirementId
+      FROM requirement_selection_answer_packages AS answer_package
+      WHERE answer_package.requirement_package_id IN (${placeholders(packageIds)})
+    `,
+    packageIds,
+  )) as Array<{ answerId: number; requirementId: null }>
+  return cleanupResult(rows)
+}
+
+export async function cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion(
+  executor: QueryExecutor,
+  requirementIdsInput?: readonly number[],
+): Promise<RequirementSelectionCleanupResult> {
+  const requirementIds =
+    requirementIdsInput === undefined
+      ? undefined
+      : uniquePositiveIntegers(requirementIdsInput)
+  if (requirementIds !== undefined && requirementIds.length === 0) {
+    return emptyCleanupResult()
+  }
+  const params: unknown[] = []
+  const conditions = [
+    `NOT EXISTS (
+      SELECT 1
+      FROM requirement_versions AS version
+      WHERE version.requirement_id = answer_requirement.requirement_id
+        AND version.requirement_status_id = @0
+    )`,
+  ]
+  params.push(STATUS_PUBLISHED)
+  if (requirementIds !== undefined) {
+    conditions.push(
+      `answer_requirement.requirement_id IN (${placeholders(
+        requirementIds,
+        params.length,
+      )})`,
+    )
+    params.push(...requirementIds)
+  }
+  const rows = (await executor.query(
+    `
+      DELETE answer_requirement
+      OUTPUT
+        deleted.answer_id AS answerId,
+        deleted.requirement_id AS requirementId
+      FROM requirement_selection_answer_requirements AS answer_requirement
+      WHERE ${conditions.join(' AND ')}
+    `,
+    params,
+  )) as Array<{ answerId: number; requirementId: number }>
+  return cleanupResult(rows)
 }

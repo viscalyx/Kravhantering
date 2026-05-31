@@ -904,7 +904,9 @@ validation.
 
 Answer options for a requirement-selection question. A special
 `is_no_requirement_selection` answer represents "Utan kravurval" and cannot be
-combined with requirement or package links.
+combined with requirement or package links. New answer options are active by
+default. Active answers may temporarily have no current links; the UI reports
+that derived health state as `Saknar kravurval`.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -934,6 +936,9 @@ links.
 ### `requirement_selection_answer_packages`
 
 Many-to-many link from an answer to requirement packages.
+Archiving, deleting, or retention-deleting a package removes these links first
+and logs system-derived cleanup; package links do not block unused-package
+retention.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -947,6 +952,10 @@ Many-to-many link from an answer to requirement packages.
 ### `requirement_selection_answer_requirements`
 
 Many-to-many link from an answer to published library requirements.
+When a linked requirement no longer has a published version, the explicit answer
+link is removed and cleanup is logged. Saved specification answers remain
+historical only when their question or answer is made inactive/archived, not
+because cleanup removed links.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -962,7 +971,8 @@ Many-to-many link from an answer to published library requirements.
 Saved requirement-selection answers for a requirements specification. Inactive
 or archived question/answer changes mark existing saved rows as
 `is_filter_active = 0`, preserving history while removing the answer from
-filters and progress.
+filters and progress. `Utan kravurval` saved answers count as answered but do
+not contribute requirement filters.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |

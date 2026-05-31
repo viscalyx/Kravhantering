@@ -5,8 +5,10 @@ import {
   CheckCircle2,
   Copy,
   PauseCircle,
+  Pencil,
   Plus,
   RotateCcw,
+  Search,
   Trash2,
 } from 'lucide-react'
 import { useLocale } from 'next-intl'
@@ -34,10 +36,17 @@ interface RequirementPackage {
 
 interface RequirementSelectionAnswer {
   description: string | null
+  healthState: 'missing_requirement_selection' | 'ok'
   id: number
   isActive: boolean
   isArchived: boolean
   isNoRequirementSelection: boolean
+  matchingRequirementCount: number
+  matchingRequirements: Array<{
+    description: string | null
+    id: number
+    uniqueId: string
+  }>
   packageIds: number[]
   requirementIds: number[]
   sortOrder: number
@@ -126,6 +135,8 @@ export default function RequirementSelectionQuestionsClient() {
             activate: 'Aktivera',
             active: 'Aktiv',
             addAnswer: 'Lägg till svar',
+            allAreas: 'Alla kravområden',
+            allStatuses: 'Alla statusar',
             archive: 'Arkivera',
             archived: 'Arkiverad',
             area: 'Kravområde',
@@ -135,10 +146,15 @@ export default function RequirementSelectionQuestionsClient() {
             deactivate: 'Inaktivera',
             delete: 'Ta bort',
             description: 'Beskrivning',
+            edit: 'Redigera',
+            editAnswer: 'Redigera svar',
+            editQuestion: 'Redigera kravurvalsfråga',
             error: 'Något gick fel.',
             helpText: 'Hjälptext',
             inactive: 'Inaktiv',
             loading: 'Laddar...',
+            matchingRequirements: 'Matchande krav',
+            missingRequirementSelection: 'Saknar kravurval',
             multiple: 'Flerval',
             noQuestions: 'Inga kravurvalsfrågor ännu.',
             noRequirementSelection: 'Utan kravurval',
@@ -148,6 +164,7 @@ export default function RequirementSelectionQuestionsClient() {
             requirementIdsHelp:
               'Ange interna krav-ID separerade med komma eller blanksteg.',
             save: 'Spara',
+            search: 'Sök fråge-ID eller text',
             selectionType: 'Valtyp',
             single: 'Enval',
             sortOrder: 'Sortering',
@@ -159,6 +176,8 @@ export default function RequirementSelectionQuestionsClient() {
             activate: 'Activate',
             active: 'Active',
             addAnswer: 'Add answer',
+            allAreas: 'All requirement areas',
+            allStatuses: 'All statuses',
             archive: 'Archive',
             archived: 'Archived',
             area: 'Requirement area',
@@ -168,10 +187,15 @@ export default function RequirementSelectionQuestionsClient() {
             deactivate: 'Deactivate',
             delete: 'Delete',
             description: 'Description',
+            edit: 'Edit',
+            editAnswer: 'Edit answer',
+            editQuestion: 'Edit requirement selection question',
             error: 'Something went wrong.',
             helpText: 'Help text',
             inactive: 'Inactive',
             loading: 'Loading...',
+            matchingRequirements: 'Matching requirements',
+            missingRequirementSelection: 'Missing requirement selection',
             multiple: 'Multiple choice',
             noQuestions: 'No requirement selection questions yet.',
             noRequirementSelection: 'No requirement selection',
@@ -181,6 +205,7 @@ export default function RequirementSelectionQuestionsClient() {
             requirementIdsHelp:
               'Enter internal requirement IDs separated by commas or spaces.',
             save: 'Save',
+            search: 'Search question ID or text',
             selectionType: 'Selection type',
             single: 'Single choice',
             sortOrder: 'Sort order',
@@ -199,6 +224,16 @@ export default function RequirementSelectionQuestionsClient() {
   const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(
     null,
   )
+  const [editingQuestionId, setEditingQuestionId] = useState<number | null>(
+    null,
+  )
+  const [editingAnswerId, setEditingAnswerId] = useState<number | null>(null)
+  const [expandedAnswerId, setExpandedAnswerId] = useState<number | null>(null)
+  const [questionSearch, setQuestionSearch] = useState('')
+  const [areaFilter, setAreaFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState<
+    '' | 'active' | 'archived' | 'inactive'
+  >('')
   const [showQuestionForm, setShowQuestionForm] = useState(false)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -207,8 +242,53 @@ export default function RequirementSelectionQuestionsClient() {
   const selectedQuestion =
     questions.find(question => question.id === selectedQuestionId) ?? null
 
+  const filteredQuestions = useMemo(() => {
+    const normalizedSearch = questionSearch.trim().toLocaleLowerCase()
+    return questions.filter(question => {
+      if (areaFilter && String(question.areaId) !== areaFilter) return false
+      if (
+        statusFilter === 'active' &&
+        (!question.isActive || question.isArchived)
+      ) {
+        return false
+      }
+      if (
+        statusFilter === 'inactive' &&
+        (question.isActive || question.isArchived)
+      ) {
+        return false
+      }
+      if (statusFilter === 'archived' && !question.isArchived) return false
+      if (!normalizedSearch) return true
+      return [
+        question.questionCode,
+        question.text,
+        question.helpText ?? '',
+        question.areaName,
+        ...question.answers.map(answer => answer.text),
+      ]
+        .join(' ')
+        .toLocaleLowerCase()
+        .includes(normalizedSearch)
+    })
+  }, [areaFilter, questionSearch, questions, statusFilter])
+
   const openQuestionForm = () => {
     setQuestionForm(initialQuestionForm)
+    setEditingQuestionId(null)
+    setError(null)
+    setShowQuestionForm(true)
+  }
+
+  const openQuestionEditForm = (question: RequirementSelectionQuestion) => {
+    setQuestionForm({
+      areaId: String(question.areaId),
+      helpText: question.helpText ?? '',
+      selectionType: question.selectionType,
+      sortOrder: String(question.sortOrder),
+      text: question.text,
+    })
+    setEditingQuestionId(question.id)
     setError(null)
     setShowQuestionForm(true)
   }
@@ -216,8 +296,28 @@ export default function RequirementSelectionQuestionsClient() {
   const closeQuestionForm = () => {
     if (submitting) return
     setQuestionForm(initialQuestionForm)
+    setEditingQuestionId(null)
     setShowQuestionForm(false)
   }
+
+  const resetAnswerEditingState = useCallback(() => {
+    setAnswerForm(initialAnswerForm)
+    setEditingAnswerId(null)
+    setExpandedAnswerId(null)
+  }, [])
+
+  const selectQuestion = useCallback(
+    (questionId: number | null) => {
+      setSelectedQuestionId(current => {
+        if (current === questionId) {
+          return current
+        }
+        resetAnswerEditingState()
+        return questionId
+      })
+    },
+    [resetAnswerEditingState],
+  )
 
   const reload = useCallback(async () => {
     setLoading(true)
@@ -247,49 +347,58 @@ export default function RequirementSelectionQuestionsClient() {
       const nextQuestions = questionsData.questions ?? []
       setQuestions(nextQuestions)
       setSelectedQuestionId(current => {
-        if (
-          current &&
-          nextQuestions.some(question => question.id === current)
-        ) {
-          return current
+        const nextQuestionId =
+          current && nextQuestions.some(question => question.id === current)
+            ? current
+            : (nextQuestions[0]?.id ?? null)
+        if (nextQuestionId !== current) {
+          resetAnswerEditingState()
         }
-        return nextQuestions[0]?.id ?? null
+        return nextQuestionId
       })
     } catch {
       setError(copy.error)
     } finally {
       setLoading(false)
     }
-  }, [copy.error])
+  }, [copy.error, resetAnswerEditingState])
 
   useEffect(() => {
     void reload()
   }, [reload])
 
-  const createQuestion = async (event: React.FormEvent<HTMLFormElement>) => {
+  const submitQuestion = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!questionForm.areaId) return
     setSubmitting(true)
     setError(null)
     try {
-      const response = await apiFetch('/api/requirement-selection-questions', {
-        body: JSON.stringify({
-          areaId: Number(questionForm.areaId),
-          helpText: questionForm.helpText || undefined,
-          selectionType: questionForm.selectionType,
-          sortOrder: Number(questionForm.sortOrder || 0),
-          text: questionForm.text,
-        }),
-        headers: { 'Content-Type': 'application/json' },
-        method: 'POST',
-      })
+      const response = await apiFetch(
+        editingQuestionId
+          ? `/api/requirement-selection-questions/${editingQuestionId}`
+          : '/api/requirement-selection-questions',
+        {
+          body: JSON.stringify({
+            ...(editingQuestionId
+              ? {}
+              : { areaId: Number(questionForm.areaId) }),
+            helpText: questionForm.helpText || undefined,
+            selectionType: questionForm.selectionType,
+            sortOrder: Number(questionForm.sortOrder || 0),
+            text: questionForm.text,
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: editingQuestionId ? 'PUT' : 'POST',
+        },
+      )
       if (!response.ok) {
         setError((await readResponseMessage(response)) ?? copy.error)
         return
       }
       const created = (await response.json()) as RequirementSelectionQuestion
       setQuestionForm(initialQuestionForm)
-      setSelectedQuestionId(created.id)
+      selectQuestion(created.id)
+      setEditingQuestionId(null)
       setShowQuestionForm(false)
       await reload()
     } catch {
@@ -306,7 +415,9 @@ export default function RequirementSelectionQuestionsClient() {
     setError(null)
     try {
       const response = await apiFetch(
-        `/api/requirement-selection-questions/${selectedQuestion.id}/answers`,
+        editingAnswerId
+          ? `/api/requirement-selection-questions/${selectedQuestion.id}/answers/${editingAnswerId}`
+          : `/api/requirement-selection-questions/${selectedQuestion.id}/answers`,
         {
           body: JSON.stringify({
             description: answerForm.description || undefined,
@@ -321,7 +432,7 @@ export default function RequirementSelectionQuestionsClient() {
             text: answerForm.text,
           }),
           headers: { 'Content-Type': 'application/json' },
-          method: 'POST',
+          method: editingAnswerId ? 'PUT' : 'POST',
         },
       )
       if (!response.ok) {
@@ -329,6 +440,7 @@ export default function RequirementSelectionQuestionsClient() {
         return
       }
       setAnswerForm(initialAnswerForm)
+      setEditingAnswerId(null)
       await reload()
     } catch {
       setError(copy.error)
@@ -385,6 +497,19 @@ export default function RequirementSelectionQuestionsClient() {
     void mutate(path, method)
   }
 
+  const editAnswer = (answer: RequirementSelectionAnswer) => {
+    setAnswerForm({
+      description: answer.description ?? '',
+      isNoRequirementSelection: answer.isNoRequirementSelection,
+      packageIds: answer.packageIds.map(String),
+      requirementIds: answer.requirementIds.join(', '),
+      sortOrder: String(answer.sortOrder),
+      text: answer.text,
+    })
+    setEditingAnswerId(answer.id)
+    setError(null)
+  }
+
   const questionFormContent = (
     <form
       className="space-y-4"
@@ -392,7 +517,7 @@ export default function RequirementSelectionQuestionsClient() {
         context: 'requirementSelectionQuestions',
         name: 'question form',
       })}
-      onSubmit={createQuestion}
+      onSubmit={submitQuestion}
     >
       {showQuestionForm && error ? (
         <p
@@ -411,6 +536,7 @@ export default function RequirementSelectionQuestionsClient() {
         />
         <select
           className={inputClassName}
+          disabled={editingQuestionId != null}
           id="kuf-area"
           onChange={event =>
             setQuestionForm(previous => ({
@@ -514,7 +640,7 @@ export default function RequirementSelectionQuestionsClient() {
         type="submit"
       >
         <Plus aria-hidden="true" className="h-4 w-4" />
-        {copy.create}
+        {editingQuestionId ? copy.save : copy.create}
       </button>
     </form>
   )
@@ -543,7 +669,7 @@ export default function RequirementSelectionQuestionsClient() {
           initialFocusRef={questionTextRef}
           onClose={closeQuestionForm}
           open={showQuestionForm}
-          title={copy.createQuestion}
+          title={editingQuestionId ? copy.editQuestion : copy.createQuestion}
           titleId="requirement-selection-question-create-title"
         >
           {questionFormContent}
@@ -562,6 +688,47 @@ export default function RequirementSelectionQuestionsClient() {
             {error}
           </p>
         )}
+
+        <div className="mb-5 grid gap-3 rounded-2xl border bg-white/80 p-4 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60 md:grid-cols-[minmax(0,1fr)_220px_180px]">
+          <label className="relative block">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
+            />
+            <input
+              className={`${inputClassName} pl-9`}
+              onChange={event => setQuestionSearch(event.target.value)}
+              placeholder={copy.search}
+              value={questionSearch}
+            />
+          </label>
+          <select
+            className={inputClassName}
+            onChange={event => setAreaFilter(event.target.value)}
+            value={areaFilter}
+          >
+            <option value="">{copy.allAreas}</option>
+            {areas.map(area => (
+              <option key={area.id} value={area.id}>
+                {area.prefix} {area.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className={inputClassName}
+            onChange={event =>
+              setStatusFilter(
+                event.target.value as '' | 'active' | 'archived' | 'inactive',
+              )
+            }
+            value={statusFilter}
+          >
+            <option value="">{copy.allStatuses}</option>
+            <option value="active">{copy.active}</option>
+            <option value="inactive">{copy.inactive}</option>
+            <option value="archived">{copy.archived}</option>
+          </select>
+        </div>
 
         <div
           className={`grid grid-cols-1 gap-6 ${
@@ -588,7 +755,7 @@ export default function RequirementSelectionQuestionsClient() {
                 {copy.noQuestions}
               </div>
             ) : (
-              questions.map(question => (
+              filteredQuestions.map(question => (
                 <div
                   className={`rounded-2xl border bg-white/80 p-4 shadow-sm transition-colors dark:border-secondary-800 dark:bg-secondary-900/60 ${
                     selectedQuestionId === question.id
@@ -599,7 +766,7 @@ export default function RequirementSelectionQuestionsClient() {
                 >
                   <button
                     className="block w-full text-left"
-                    onClick={() => setSelectedQuestionId(question.id)}
+                    onClick={() => selectQuestion(question.id)}
                     type="button"
                   >
                     <div className="flex flex-wrap items-center gap-2">
@@ -628,6 +795,15 @@ export default function RequirementSelectionQuestionsClient() {
                     )}
                   </button>
                   <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
+                      disabled={submitting}
+                      onClick={() => openQuestionEditForm(question)}
+                      type="button"
+                    >
+                      <Pencil aria-hidden="true" className="h-4 w-4" />
+                      {copy.edit}
+                    </button>
                     <button
                       className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
                       disabled={submitting}
@@ -709,8 +885,51 @@ export default function RequirementSelectionQuestionsClient() {
                                   {answer.requirementIds.join(', ') || '-'}
                                 </p>
                               )}
+                              <button
+                                className="mt-2 inline-flex min-h-8 items-center rounded-lg border px-2 text-xs disabled:opacity-50"
+                                disabled={answer.matchingRequirementCount < 1}
+                                onClick={() =>
+                                  setExpandedAnswerId(current =>
+                                    current === answer.id ? null : answer.id,
+                                  )
+                                }
+                                type="button"
+                              >
+                                {copy.matchingRequirements}:{' '}
+                                {answer.matchingRequirementCount}
+                              </button>
+                              {answer.healthState ===
+                                'missing_requirement_selection' && (
+                                <span className="ml-2 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+                                  {copy.missingRequirementSelection}
+                                </span>
+                              )}
+                              {expandedAnswerId === answer.id && (
+                                <ul className="mt-2 space-y-1 text-xs text-secondary-600 dark:text-secondary-300">
+                                  {answer.matchingRequirements.map(
+                                    requirement => (
+                                      <li key={requirement.id}>
+                                        <span className="font-mono">
+                                          {requirement.uniqueId}
+                                        </span>
+                                        {requirement.description
+                                          ? ` · ${requirement.description}`
+                                          : ''}
+                                      </li>
+                                    ),
+                                  )}
+                                </ul>
+                              )}
                             </div>
                             <div className="flex flex-wrap gap-2">
+                              <button
+                                className="inline-flex min-h-9 items-center rounded-lg border px-2 text-xs disabled:opacity-50"
+                                disabled={submitting}
+                                onClick={() => editAnswer(answer)}
+                                type="button"
+                              >
+                                {copy.edit}
+                              </button>
                               <button
                                 className="inline-flex min-h-9 items-center rounded-lg border px-2 text-xs disabled:opacity-50"
                                 disabled={submitting}
@@ -772,7 +991,9 @@ export default function RequirementSelectionQuestionsClient() {
                 className="rounded-2xl border bg-white/80 p-5 shadow-sm dark:border-secondary-800 dark:bg-secondary-900/60"
                 onSubmit={createAnswer}
               >
-                <h3 className="mb-4 text-lg font-semibold">{copy.addAnswer}</h3>
+                <h3 className="mb-4 text-lg font-semibold">
+                  {editingAnswerId ? copy.editAnswer : copy.addAnswer}
+                </h3>
                 <p className="mb-4 text-xs text-secondary-500">
                   {selectedQuestion.questionCode}
                 </p>
@@ -909,7 +1130,7 @@ export default function RequirementSelectionQuestionsClient() {
                     type="submit"
                   >
                     <Plus aria-hidden="true" className="h-4 w-4" />
-                    {copy.addAnswer}
+                    {editingAnswerId ? copy.save : copy.addAnswer}
                   </button>
                 </div>
               </form>

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
+import { recordRequirementSelectionCleanupAudit } from '@/lib/audit/requirement-selection-cleanup-audit'
 import { isHsaId } from '@/lib/auth/hsa-id'
 import {
   deleteRequirementPackage,
@@ -103,8 +104,8 @@ export const DELETE = secureMutationRoute({
   policy: authenticatedMutationPolicy('requirement_package.delete'),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const deletedCount = await deleteRequirementPackage(db, params.id)
-    if (deletedCount === 0) {
+    const result = await deleteRequirementPackage(db, params.id)
+    if (result.deletedCount === 0) {
       const existing = await getRequirementPackageById(db, params.id)
       if (existing) {
         const usage = await getRequirementPackageUsage(db, params.id)
@@ -122,6 +123,12 @@ export const DELETE = secureMutationRoute({
       action: 'requirement_package.delete',
       targetId: params.id,
       targetKind: 'requirement_package',
+    })
+    await recordRequirementSelectionCleanupAudit(db, context, {
+      cleanup: result.cleanup,
+      originAction: 'requirement_package.delete',
+      originTargetId: params.id,
+      originTargetKind: 'requirement_package',
     })
     return NextResponse.json({ ok: true })
   },

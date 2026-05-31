@@ -110,12 +110,18 @@
     "dataExport": "Mina personuppgifter"
   },
   "specificationRequirementSelection": {
+    "allAreas": "Alla kravområden",
     "clear": "Rensa",
     "error": "Kunde inte spara kravurval.",
     "historical": "Historiskt val",
     "loading": "Laddar kravurvalsfrågor...",
+    "matchSummary": "{count} matchande krav, {added} redan tillagda",
+    "missingRequirementSelection": "Saknar kravurval",
     "noQuestions": "Inga aktiva kravurvalsfrågor.",
     "progress": "Besvarade",
+    "saving": "Sparar",
+    "search": "Sök fråga eller svar",
+    "unansweredOnly": "Endast obesvarade",
     "title": "Kravurvalsfrågor"
   },
   "privacyDataExport": {
@@ -403,6 +409,8 @@
     "itemsInSpecification": "Krav i underlaget",
     "availableRequirements": "Tillgängliga krav",
     "requirementSelectionQuestions": "Kravurvalsfrågor",
+    "adjustFiltersManually": "Justera filter manuellt",
+    "requirementSelectionNoPublishedMatches": "Valda kravurvalssvar matchar inga publicerade krav just nu.",
     "alreadyAdded": "Redan tillagd",
     "needsReferenceLabel": "Behovsreferens (valfri)",
     "addSelectedToSpecification": "Lägg till valda ({count})",

@@ -155,6 +155,10 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `requirementSelectionQuestions > floating pill: new requirement selection question`.
   The new question form opens in the shared
   `dialog: new requirement selection question` surface.
+  Search, area/status filters, edit buttons, answer preview toggles, and
+  health badges render inside the existing
+  `requirementSelectionQuestions` form/list surfaces; they do not introduce new
+  developer-mode marker names.
 - Requirements specification list requirement-area labels render as compact,
   non-interactive pills inside the existing `specifications > crud table`
   surface; they do not add separate developer-mode marker names.
@@ -177,8 +181,10 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   sticky list header beside the embedded left-panel tabs.
 - Requirements specification detail right-panel tabs cover both available
   requirements and requirement-selection questions. The question controls reuse
-  the existing form/table control markers; no mandatory-question marker exists
-  because requirement-selection questions are always optional.
+  the existing form/table control markers; search/filter controls, optimistic
+  save status, match summaries, and `Saknar kravurval` badges do not introduce
+  separate marker names. No mandatory-question marker exists because
+  requirement-selection questions are always optional.
 - Specification-local inline detail views in specification context use the
   `requirements specification detail` context with
   `detail pane: specification-local requirement`.

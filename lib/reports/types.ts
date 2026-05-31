@@ -101,9 +101,11 @@ export type ReportSection =
       rows: {
         answerText: string
         areaName: string
+        changedAt: string
         isFilterActive: boolean
         questionCode: string
         questionText: string
+        selectedByDisplayName: string | null
       }[]
     }
   | {

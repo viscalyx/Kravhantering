@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
-import { setRequirementSelectionAnswerState } from '@/lib/dal/requirement-selection-questions'
+import {
+  resolveRequirementSelectionQuestionId,
+  setRequirementSelectionAnswerState,
+} from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   authenticatedMutationPolicy,
@@ -18,9 +21,16 @@ export function answerStateRoute(
     ),
     handler: async ({ context, params }) => {
       const db = await getRequestSqlServerDataSource()
-      const question = await setRequirementSelectionAnswerState(
+      const questionId = await resolveRequirementSelectionQuestionId(
         db,
         params.id,
+      )
+      if (questionId == null) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+      const question = await setRequirementSelectionAnswerState(
+        db,
+        questionId,
         params.answerId,
         operation,
       )
@@ -29,7 +39,7 @@ export function answerStateRoute(
       }
       await recordAllowedActionAuditEvent(db, context, {
         action: `requirement_selection_answer.${operation}`,
-        details: { questionId: params.id },
+        details: { questionId },
         targetId: params.answerId,
         targetKind: 'requirement_selection_answer',
       })

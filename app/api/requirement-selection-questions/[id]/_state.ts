@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
 import {
   type RequirementSelectionQuestionRow,
+  resolveRequirementSelectionQuestionId,
   setRequirementSelectionQuestionState,
 } from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -9,21 +10,28 @@ import {
   authenticatedMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { idParamSchema } from '@/lib/http/validation'
+import { questionRouteParamsSchema } from '../_schemas'
 
 export function questionStateRoute(
   operation: 'activate' | 'archive' | 'deactivate' | 'reactivate',
 ) {
   return secureMutationRoute({
-    paramsSchema: idParamSchema,
+    paramsSchema: questionRouteParamsSchema,
     policy: authenticatedMutationPolicy(
       `requirement_selection_question.${operation}`,
     ),
     handler: async ({ context, params }) => {
       const db = await getRequestSqlServerDataSource()
-      const question = (await setRequirementSelectionQuestionState(
+      const questionId = await resolveRequirementSelectionQuestionId(
         db,
         params.id,
+      )
+      if (questionId == null) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+      const question = (await setRequirementSelectionQuestionState(
+        db,
+        questionId,
         operation,
       )) as RequirementSelectionQuestionRow | null
       if (!question) {

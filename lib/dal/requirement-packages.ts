@@ -1,3 +1,7 @@
+import {
+  cleanupRequirementSelectionPackageLinks,
+  type RequirementSelectionCleanupResult,
+} from '@/lib/dal/requirement-selection-questions'
 import type { SqlServerDatabase } from '@/lib/db'
 import { toBoolean, toIsoString } from '@/lib/typeorm/value-mappers'
 
@@ -18,6 +22,15 @@ interface RequirementPackageUsage {
   localRequirementCount: number
 }
 
+interface RequirementPackageMutationResult {
+  cleanup: RequirementSelectionCleanupResult
+  requirementPackage: RequirementPackageRow
+}
+
+interface QueryExecutor {
+  query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
+}
+
 interface LinkedRequirementRow {
   archiveInitiatedAt: string | null
   description: string | null
@@ -36,8 +49,17 @@ interface LinkedRequirementDbRow
   archiveInitiatedAt: Date | string | null
 }
 
+function emptyRequirementSelectionCleanup(): RequirementSelectionCleanupResult {
+  return {
+    affectedAnswerIds: [],
+    affectedRequirementIds: [],
+    removedLinkCount: 0,
+  }
+}
+
 export type {
   LinkedRequirementRow,
+  RequirementPackageMutationResult,
   RequirementPackageRow,
   RequirementPackageUsage,
 }
@@ -61,7 +83,7 @@ export async function listRequirementPackages(
   db: SqlServerDatabase,
   options: { includeArchived?: boolean } = {},
 ): Promise<RequirementPackageRow[]> {
-  const rows = await db.query(
+  const rows = (await db.query(
     `
       SELECT
         requirementPackages.id AS id,
@@ -77,7 +99,7 @@ export async function listRequirementPackages(
       ORDER BY requirementPackages.is_archived ASC, requirementPackages.name ASC
     `,
     [options.includeArchived ? 1 : 0],
-  )
+  )) as Record<string, unknown>[]
   return rows.map(mapRequirementPackageRow)
 }
 
@@ -145,7 +167,7 @@ export async function getRequirementPackageById(
   db: SqlServerDatabase,
   id: number,
 ): Promise<RequirementPackageRow | null> {
-  const rows = await db.query(
+  const rows = await db.query<Record<string, unknown>[]>(
     `
       SELECT
         requirementPackages.id AS id,
@@ -300,11 +322,11 @@ export async function updateRequirementPackage(
 }
 
 async function setRequirementPackageArchived(
-  db: SqlServerDatabase,
+  db: QueryExecutor,
   id: number,
   isArchived: boolean,
 ): Promise<RequirementPackageRow | undefined> {
-  const rows = await db.query(
+  const rows = await db.query<Record<string, unknown>[]>(
     `
       UPDATE requirement_packages
       SET is_archived = @0, updated_at = @1
@@ -327,8 +349,16 @@ async function setRequirementPackageArchived(
 export async function archiveRequirementPackage(
   db: SqlServerDatabase,
   id: number,
-): Promise<RequirementPackageRow | undefined> {
-  return setRequirementPackageArchived(db, id, true)
+): Promise<RequirementPackageMutationResult | undefined> {
+  return db.transaction(async manager => {
+    const cleanup = await cleanupRequirementSelectionPackageLinks(manager, [id])
+    const requirementPackage = await setRequirementPackageArchived(
+      manager,
+      id,
+      true,
+    )
+    return requirementPackage ? { cleanup, requirementPackage } : undefined
+  })
 }
 
 export async function reactivateRequirementPackage(
@@ -341,29 +371,44 @@ export async function reactivateRequirementPackage(
 export async function deleteRequirementPackage(
   db: SqlServerDatabase,
   id: number,
-): Promise<number> {
-  const rows = await db.query(
-    `
-      DELETE FROM requirement_packages
-      OUTPUT deleted.id AS id
-      WHERE id = @0
-        AND NOT EXISTS (
-          SELECT 1
-          FROM requirement_version_requirement_packages AS links
-          WHERE links.requirement_package_id = requirement_packages.id
-        )
-        AND NOT EXISTS (
-          SELECT 1
-          FROM specification_local_requirement_requirement_packages AS links
-          WHERE links.requirement_package_id = requirement_packages.id
-        )
-        AND NOT EXISTS (
-          SELECT 1
-          FROM requirement_selection_answer_packages AS links
-          WHERE links.requirement_package_id = requirement_packages.id
-        )
-    `,
-    [id],
-  )
-  return rows.length
+): Promise<{
+  cleanup: RequirementSelectionCleanupResult
+  deletedCount: number
+}> {
+  return db.transaction(async manager => {
+    const deletableRows = (await manager.query(
+      `
+        SELECT requirement_package.id AS id
+        FROM requirement_packages AS requirement_package
+        WHERE requirement_package.id = @0
+          AND NOT EXISTS (
+            SELECT 1
+            FROM requirement_version_requirement_packages AS links
+            WHERE links.requirement_package_id = requirement_package.id
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM specification_local_requirement_requirement_packages AS links
+            WHERE links.requirement_package_id = requirement_package.id
+          )
+      `,
+      [id],
+    )) as Array<{ id: number }>
+    if (deletableRows.length === 0) {
+      return {
+        cleanup: emptyRequirementSelectionCleanup(),
+        deletedCount: 0,
+      }
+    }
+    const cleanup = await cleanupRequirementSelectionPackageLinks(manager, [id])
+    const rows = await manager.query(
+      `
+        DELETE FROM requirement_packages
+        OUTPUT deleted.id AS id
+        WHERE id = @0
+      `,
+      [id],
+    )
+    return { cleanup, deletedCount: rows.length }
+  })
 }

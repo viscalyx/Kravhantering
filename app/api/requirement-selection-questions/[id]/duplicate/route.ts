@@ -1,27 +1,40 @@
 import { NextResponse } from 'next/server'
 import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
-import { duplicateRequirementSelectionQuestion } from '@/lib/dal/requirement-selection-questions'
+import {
+  duplicateRequirementSelectionQuestion,
+  resolveRequirementSelectionQuestionId,
+} from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   authenticatedMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { idParamSchema } from '@/lib/http/validation'
+import { questionRouteParamsSchema } from '../../_schemas'
 
 export const POST = secureMutationRoute({
-  paramsSchema: idParamSchema,
+  paramsSchema: questionRouteParamsSchema,
   policy: authenticatedMutationPolicy(
     'requirement_selection_question.duplicate',
   ),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const question = await duplicateRequirementSelectionQuestion(db, params.id)
+    const sourceQuestionId = await resolveRequirementSelectionQuestionId(
+      db,
+      params.id,
+    )
+    if (sourceQuestionId == null) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    const question = await duplicateRequirementSelectionQuestion(
+      db,
+      sourceQuestionId,
+    )
     if (!question) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     await recordAllowedActionAuditEvent(db, context, {
       action: 'requirement_selection_question.duplicate',
-      details: { sourceQuestionId: params.id },
+      details: { sourceQuestionId },
       targetId: question.id,
       targetKind: 'requirement_selection_question',
       targetUniqueId: question.questionCode,

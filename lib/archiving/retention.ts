@@ -1,5 +1,9 @@
 // cspell:ignore SYSUTCDATETIME
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
+import {
+  cleanupRequirementSelectionPackageLinks,
+  type RequirementSelectionCleanupResult,
+} from '@/lib/dal/requirement-selection-questions'
 import type { SqlServerDatabase } from '@/lib/db'
 import { isDeletedUserInternalName } from '@/lib/privacy/display-name'
 import {
@@ -87,6 +91,13 @@ export interface ArchivingRetentionExecutionInputWithAudit
   audit?: (
     executor: QueryExecutor,
     result: ArchivingRetentionRunResult,
+  ) => Promise<void>
+  cleanupAudit?: (
+    executor: QueryExecutor,
+    result: {
+      candidate: ArchivingRetentionCandidate
+      cleanup: RequirementSelectionCleanupResult
+    },
   ) => Promise<void>
 }
 
@@ -265,9 +276,6 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
         )
         AND NOT EXISTS (
           SELECT 1 FROM specification_local_requirement_requirement_packages link WHERE link.requirement_package_id = pkg.id
-        )
-        AND NOT EXISTS (
-          SELECT 1 FROM requirement_selection_answer_packages link WHERE link.requirement_package_id = pkg.id
         )`,
     fieldKey: 'taxonomy',
     objectKey: 'requirementPackages',
@@ -288,9 +296,6 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
           )
           AND NOT EXISTS (
             SELECT 1 FROM specification_local_requirement_requirement_packages link WHERE link.requirement_package_id = pkg.id
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM requirement_selection_answer_packages link WHERE link.requirement_package_id = pkg.id
           )
       ) source
       WHERE ${ACTIVE_EXCEPTION_SQL}
@@ -822,7 +827,10 @@ function numericSubjectId(candidate: ArchivingRetentionCandidate): number {
 async function executeCandidate(
   tx: QueryExecutor,
   candidate: ArchivingRetentionCandidate,
-): Promise<boolean> {
+): Promise<{
+  changed: boolean
+  cleanup: RequirementSelectionCleanupResult | null
+}> {
   const source = SOURCE_DEFINITIONS.find(
     definition => definition.sourceKey === candidate.sourceKey,
   )
@@ -838,10 +846,19 @@ async function executeCandidate(
       sourceKey: candidate.sourceKey,
     })
   }
+  const cleanup =
+    source.sourceKey === 'requirement_packages.unused'
+      ? await cleanupRequirementSelectionPackageLinks(tx, [
+          numericSubjectId(candidate),
+        ])
+      : null
   const result = (await tx.query(source.executeSql, [
     numericSubjectId(candidate),
   ])) as { affected?: number } | undefined
-  return result?.affected == null || result.affected > 0
+  return {
+    changed: result?.affected == null || result.affected > 0,
+    cleanup,
+  }
 }
 
 async function insertRun(
@@ -931,10 +948,13 @@ export async function executeArchivingRetention(
     let deleteCount = 0
     let skippedCount = 0
     for (const candidate of preview.candidates) {
-      const changed = await executeCandidate(tx, candidate)
+      const { changed, cleanup } = await executeCandidate(tx, candidate)
       if (!changed) {
         skippedCount += 1
         continue
+      }
+      if (cleanup?.removedLinkCount) {
+        await input.cleanupAudit?.(tx, { candidate, cleanup })
       }
       if (candidate.requiresExport) archiveCount += 1
       if (candidate.action === 'delete') deleteCount += 1

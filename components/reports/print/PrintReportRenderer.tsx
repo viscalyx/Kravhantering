@@ -129,6 +129,13 @@ function RequirementSelectionContextSection({
                     {t('notFilterActive')}
                   </span>
                 )}
+                <br />
+                <span style={{ color: '#6b7280', fontSize: '0.72rem' }}>
+                  {row.changedAt}
+                  {row.selectedByDisplayName
+                    ? ` · ${row.selectedByDisplayName}`
+                    : ''}
+                </span>
               </td>
             </tr>
           ))}

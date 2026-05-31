@@ -578,12 +578,19 @@ management live outside Admin Center.
    parent navigation returns to `Kravurvalsfrågor`.
 1. Add a normal answer linked to a package or requirement.
 1. Add an `Utan kravurval` answer and verify links are cleared for that answer.
+1. Use the question search and filters to narrow by question text, requirement
+   area, and active/archived status.
+1. Edit the question text and an answer text, then verify the edited values are
+   shown without creating duplicate rows.
+1. Expand an answer preview and verify it lists matching published requirements
+   and flags `Saknar kravurval` when no published requirement currently matches.
 1. Reload the page.
 
 **Expected result:** The last stewardship tab is restored, only the active
 stewardship view title is shown as the page heading, package leads use direct
-HSA-ID/display-name fields, the question gets a stable `KUF` code, and
-questions have no required/mandatory setting.
+HSA-ID/display-name fields, the question gets a stable `KUF` code, questions
+have no required/mandatory setting, and active answers without links remain
+editable as action-required health items.
 
 ## Requirement creation and lifecycle
 
@@ -1139,16 +1146,23 @@ requirement-selection questions.
 **Steps:**
 
 1. In the right panel, switch from `Tillgängliga krav` to `Kravurvalsfrågor`.
+1. Filter the question tab by text, requirement area, and unanswered questions.
 1. Answer one single-choice question and one multiple-choice question.
 1. For a multiple-choice question, choose `Utan kravurval`.
 1. Return to `Tillgängliga krav`.
+1. Verify manual filters were cleared, sort/column choices remain, and the
+   filter controls can be deliberately reopened.
+1. Choose an answer that should match requirements but currently matches no
+   published requirements, if such a fixture exists.
 1. Generate the specification list report.
 1. Clear one saved answer.
 
 **Expected result:** Progress updates without blocking unanswered questions,
-`Utan kravurval` is exclusive, active answers filter available requirements, the
-report shows the selection context before the requirement table, and clearing an
-answer returns that question to unanswered.
+`Utan kravurval` is exclusive and does not narrow available requirements on its
+own, active non-empty answers filter available requirements, empty published
+matches show a neutral warning, the report shows the selection context with
+question, answer, status, change timestamp, and actor snapshot before the
+requirement table, and clearing an answer returns that question to unanswered.
 
 ## Deviations
 

@@ -400,8 +400,10 @@ down.
   `/[locale]/specifications/[slug]/reports/pdf/list?refs=...`.
 - Specification list reports include the current requirement-selection context
   before the requirement table. Historical saved answers are shown as inactive
-  context and do not affect filtering or progress. The specification CSV export
-  remains row-only.
+  context and do not affect filtering or progress. Each context row includes the
+  question, answer, active/historical status, latest change timestamp, and actor
+  display-name snapshot when available. The specification CSV export remains
+  row-only.
 
 ## Specification Requirement Selection Panel
 
@@ -410,12 +412,30 @@ down.
 - Requirement-selection questions are always optional. Progress counts answered
   active questions against all active questions, both total and per requirement
   area, without blocking save or report actions.
+- The question tab provides lightweight search/filtering by question text,
+  answer text, requirement area, and unanswered state. Questions are grouped by
+  requirement area and answer rows show how many published requirements they
+  match, plus how many of those are already in the specification.
 - Active saved answers filter `Tillgängliga krav` through their linked
   requirement packages and explicit published requirements.
 - `Utan kravurval` clears other answers for the same question and is exclusive
-  even for multiple-choice questions.
+  even for multiple-choice questions. It counts as answered but contributes no
+  requirement filter; if only `Utan kravurval` answers are selected, available
+  requirements are not narrowed.
 - Historical saved answers remain visible and clearable, but are excluded from
   filters and progress.
+- Saved answers update optimistically with visible saving/error status. When an
+  answer changes, manual filters in `Tillgängliga krav` are cleared so the
+  answer-derived filter is visible; sort order and column choices remain.
+- While active answers filter available requirements, the manual filter controls
+  in `Tillgängliga krav` are locked by default and can be reopened with the
+  explicit adjust-filters action.
+- If selected answers should contribute requirements but no published
+  requirements match, the specification shows a neutral warning instead of
+  treating the state as a validation error.
+- `Saknar kravurval` is a health state for active answers without any currently
+  matching published requirements. It asks stewardship to repair links but does
+  not make the answer historical and does not convert it to `Utan kravurval`.
 
 ## Combined Review Report Floating Pill
 

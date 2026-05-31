@@ -1,9 +1,11 @@
+import { recordRequirementSelectionCleanupAudit } from '@/lib/audit/requirement-selection-cleanup-audit'
 import { listAreas, type RequirementAreaRow } from '@/lib/dal/requirement-areas'
 import {
   listCategories,
   type RequirementCategoryRow,
 } from '@/lib/dal/requirement-categories'
 import { listRequirementPackages } from '@/lib/dal/requirement-packages'
+import { cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion } from '@/lib/dal/requirement-selection-questions'
 import {
   listStatuses,
   listTransitions,
@@ -992,6 +994,21 @@ export function createRequirementWorkflow({
                   requirementId,
                   requirementUniqueId,
                 })
+                const cleanup =
+                  await cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion(
+                    executor,
+                    [requirementId],
+                  )
+                await recordRequirementSelectionCleanupAudit(
+                  executor,
+                  context,
+                  {
+                    cleanup,
+                    originAction: 'requirement.archiving.approved',
+                    originTargetId: requirementId,
+                    originTargetKind: 'requirement',
+                  },
+                )
               },
             })
             const detail = formatRequirementDetail(
@@ -1236,6 +1253,17 @@ export function createRequirementWorkflow({
                 requirementUniqueId,
                 toStatusId: input.toStatusId,
                 versionNumber: result.versionNumber,
+              })
+              const cleanup =
+                await cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion(
+                  executor,
+                  [requirementId],
+                )
+              await recordRequirementSelectionCleanupAudit(executor, context, {
+                cleanup,
+                originAction: 'requirement.transition',
+                originTargetId: requirementId,
+                originTargetKind: 'requirement',
               })
             },
           })

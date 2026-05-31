@@ -56,6 +56,11 @@ export interface NormReferenceOption {
 export interface AvailableRequirementsData {
   hasMore: boolean
   rows: RequirementRow[]
+  selectionFilter?: {
+    filterActive: boolean
+    hasNoRequirementSelection: boolean
+    requirementIds: number[]
+  }
 }
 
 export interface RequirementsSpecificationDetailInitialData {

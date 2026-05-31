@@ -85,6 +85,10 @@ vi.mock('@/lib/audit/action-audit', () => ({
   recordDeniedActionAuditEvent: vi.fn(),
 }))
 
+vi.mock('@/lib/audit/requirement-selection-cleanup-audit', () => ({
+  recordRequirementSelectionCleanupAudit: vi.fn(),
+}))
+
 vi.mock('@/lib/requirements/auth', async importOriginal => {
   const actual =
     await importOriginal<typeof import('@/lib/requirements/auth')>()
@@ -997,7 +1001,14 @@ describe('requirement-packages routes', () => {
     expect(mockUpdateRequirementPackage).not.toHaveBeenCalled()
   })
   it('DELETE deletes', async () => {
-    mockDeleteRequirementPackage.mockResolvedValue(1)
+    mockDeleteRequirementPackage.mockResolvedValue({
+      cleanup: {
+        affectedAnswerIds: [],
+        affectedRequirementIds: [],
+        removedLinkCount: 0,
+      },
+      deletedCount: 1,
+    })
     const r = await deleteRequirementPackage(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('1'),
@@ -1006,7 +1017,14 @@ describe('requirement-packages routes', () => {
   })
 
   it('DELETE returns 404 without audit when the requirement package is missing', async () => {
-    mockDeleteRequirementPackage.mockResolvedValue(0)
+    mockDeleteRequirementPackage.mockResolvedValue({
+      cleanup: {
+        affectedAnswerIds: [],
+        affectedRequirementIds: [],
+        removedLinkCount: 0,
+      },
+      deletedCount: 0,
+    })
     const r = await deleteRequirementPackage(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('404'),

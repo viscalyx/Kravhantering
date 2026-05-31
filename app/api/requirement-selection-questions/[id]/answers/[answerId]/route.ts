@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
 import {
   deleteRequirementSelectionAnswer,
+  resolveRequirementSelectionQuestionId,
   updateRequirementSelectionAnswer,
 } from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -17,9 +18,16 @@ export const PUT = secureMutationRoute({
   policy: authenticatedMutationPolicy('requirement_selection_answer.update'),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const question = await updateRequirementSelectionAnswer(
+    const questionId = await resolveRequirementSelectionQuestionId(
       db,
       params.id,
+    )
+    if (questionId == null) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    const question = await updateRequirementSelectionAnswer(
+      db,
+      questionId,
       params.answerId,
       body,
     )
@@ -31,7 +39,7 @@ export const PUT = secureMutationRoute({
       details: {
         answerId: params.answerId,
         changedFields: Object.keys(body),
-        questionId: params.id,
+        questionId,
       },
       targetId: params.answerId,
       targetKind: 'requirement_selection_answer',
@@ -45,9 +53,16 @@ export const DELETE = secureMutationRoute({
   policy: authenticatedMutationPolicy('requirement_selection_answer.delete'),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const result = await deleteRequirementSelectionAnswer(
+    const questionId = await resolveRequirementSelectionQuestionId(
       db,
       params.id,
+    )
+    if (questionId == null) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    const result = await deleteRequirementSelectionAnswer(
+      db,
+      questionId,
       params.answerId,
     )
     if (result === 'not_found') {
@@ -61,7 +76,7 @@ export const DELETE = secureMutationRoute({
     }
     await recordAllowedActionAuditEvent(db, context, {
       action: 'requirement_selection_answer.delete',
-      details: { questionId: params.id },
+      details: { questionId },
       targetId: params.answerId,
       targetKind: 'requirement_selection_answer',
     })

@@ -351,6 +351,9 @@ function PdfRequirementSelectionContext({
           <Text style={[styles.tableCell, { flex: 1.5 }]}>
             {row.answerText}
             {!row.isFilterActive ? ` ${notFilterActiveLabel}` : ''}
+            {`\n${row.changedAt}${
+              row.selectedByDisplayName ? ` · ${row.selectedByDisplayName}` : ''
+            }`}
           </Text>
         </View>
       ))}

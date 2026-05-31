@@ -2,7 +2,8 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
 import {
   deleteRequirementSelectionQuestion,
-  getRequirementSelectionQuestionById,
+  getRequirementSelectionQuestionByIdentifier,
+  resolveRequirementSelectionQuestionId,
   updateRequirementSelectionQuestion,
 } from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -10,8 +11,8 @@ import {
   authenticatedMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { idParamSchema, parseRouteParams } from '@/lib/http/validation'
-import { questionUpdateSchema } from '../_schemas'
+import { parseRouteParams } from '@/lib/http/validation'
+import { questionRouteParamsSchema, questionUpdateSchema } from '../_schemas'
 
 type Params = Promise<{ id: string }>
 
@@ -19,10 +20,10 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const parsedParams = await parseRouteParams(params, idParamSchema)
+  const parsedParams = await parseRouteParams(params, questionRouteParamsSchema)
   if (!parsedParams.ok) return parsedParams.response
   const db = await getRequestSqlServerDataSource()
-  const question = await getRequirementSelectionQuestionById(
+  const question = await getRequirementSelectionQuestionByIdentifier(
     db,
     parsedParams.data.id,
   )
@@ -34,13 +35,20 @@ export async function GET(
 
 export const PUT = secureMutationRoute({
   bodySchema: questionUpdateSchema,
-  paramsSchema: idParamSchema,
+  paramsSchema: questionRouteParamsSchema,
   policy: authenticatedMutationPolicy('requirement_selection_question.update'),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const question = await updateRequirementSelectionQuestion(
+    const questionId = await resolveRequirementSelectionQuestionId(
       db,
       params.id,
+    )
+    if (questionId == null) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    const question = await updateRequirementSelectionQuestion(
+      db,
+      questionId,
       body,
     )
     if (!question) {
@@ -58,11 +66,18 @@ export const PUT = secureMutationRoute({
 })
 
 export const DELETE = secureMutationRoute({
-  paramsSchema: idParamSchema,
+  paramsSchema: questionRouteParamsSchema,
   policy: authenticatedMutationPolicy('requirement_selection_question.delete'),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const result = await deleteRequirementSelectionQuestion(db, params.id)
+    const questionId = await resolveRequirementSelectionQuestionId(
+      db,
+      params.id,
+    )
+    if (questionId == null) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    const result = await deleteRequirementSelectionQuestion(db, questionId)
     if (result === 'not_found') {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
@@ -74,7 +89,7 @@ export const DELETE = secureMutationRoute({
     }
     await recordAllowedActionAuditEvent(db, context, {
       action: 'requirement_selection_question.delete',
-      targetId: params.id,
+      targetId: questionId,
       targetKind: 'requirement_selection_question',
     })
     return NextResponse.json({ ok: true })

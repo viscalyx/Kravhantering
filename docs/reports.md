@@ -65,6 +65,8 @@ formatted table.
 - Includes requirement-selection context before the requirement table when the
   specification has saved answers; historical non-filtering answers are marked
   as inactive context
+- Requirement-selection context rows show question, answer, active/historical
+  status, latest change timestamp, and actor display-name snapshot when present
 - Shows Requirement ID, requirement text (truncated), requirement area, and
   status columns; unique requirements show `-` in the requirement area column
   because they are not assigned to a requirement area

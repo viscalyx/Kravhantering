@@ -23,7 +23,12 @@ interface SelectionQuestionResponse {
   answers: { id: number; text: string }[]
   areaName: string
   questionCode: string
-  savedAnswers: { answerId: number; isFilterActive: boolean }[]
+  savedAnswers: {
+    answerId: number
+    isFilterActive: boolean
+    selectedByDisplayName: string | null
+    updatedAt: string
+  }[]
   text: string
 }
 
@@ -34,9 +39,11 @@ function buildSelectionContext(questions: SelectionQuestionResponse[]) {
         question.answers.find(answer => answer.id === saved.answerId)?.text ??
         String(saved.answerId),
       areaName: question.areaName,
+      changedAt: saved.updatedAt,
       isFilterActive: saved.isFilterActive,
       questionCode: question.questionCode,
       questionText: question.text,
+      selectedByDisplayName: saved.selectedByDisplayName,
     })),
   )
 }

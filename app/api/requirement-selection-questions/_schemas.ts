@@ -4,6 +4,7 @@ import {
   nonNegativeIntegerSchema,
   optionalBusinessTextSchema,
   positiveIntegerSchema,
+  refOrPositiveIntegerSegmentSchema,
 } from '@/lib/http/validation'
 
 export const selectionTypeSchema = z.enum(['single', 'multiple'])
@@ -57,11 +58,12 @@ export const answerRouteParamsSchema = z
       .regex(/^[1-9]\d*$/, 'Expected a positive integer')
       .transform(value => Number(value))
       .pipe(positiveIntegerSchema),
-    id: z
-      .string()
-      .trim()
-      .regex(/^[1-9]\d*$/, 'Expected a positive integer')
-      .transform(value => Number(value))
-      .pipe(positiveIntegerSchema),
+    id: refOrPositiveIntegerSegmentSchema,
+  })
+  .strict()
+
+export const questionRouteParamsSchema = z
+  .object({
+    id: refOrPositiveIntegerSegmentSchema,
   })
   .strict()

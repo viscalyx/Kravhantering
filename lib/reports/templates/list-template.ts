@@ -13,9 +13,11 @@ export interface SpecificationCoverInfo {
 export interface RequirementSelectionContextRow {
   answerText: string
   areaName: string
+  changedAt: string
   isFilterActive: boolean
   questionCode: string
   questionText: string
+  selectedByDisplayName: string | null
 }
 
 export function buildListReport(

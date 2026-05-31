@@ -10,7 +10,9 @@ Rows are written to `action_audit_events` for app-owned mutations such as
 requirement create/edit/transition, specification/package changes, deviation
 and improvement-suggestion decisions, Admin reference-data updates, privacy
 erasure execution, archiving execution, access-review decisions, and
-authorization denials.
+authorization denials. System-derived cleanup of requirement-selection answer
+links is also logged when requirement package archiving/deletion, retention, or
+requirement publication-state changes remove obsolete links.
 
 The action log intentionally excludes normal browsing, list/detail reads, report
 and CSV exports of business artifacts, action-log reads, action-log CSV export,
@@ -32,6 +34,13 @@ Each row contains:
 operation names, status IDs, tool names, and route/source. It must not contain
 requirement text, prompts, comments, names, e-mail, target HSA-ID values,
 tokens, secrets, or submitted free text.
+
+Requirement-selection cleanup events use action
+`requirement_selection_answer.cleanup`, actor kind `system`, and target kind
+`requirement_selection_answer`. Their details contain only link counts,
+affected answer IDs, affected package/requirement IDs, source action, and route
+or retention metadata. They reuse the surrounding request and correlation IDs
+when cleanup happens inside a user-triggered mutation.
 
 ## Failure Mode
 

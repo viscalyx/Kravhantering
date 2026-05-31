@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   AlertTriangle,
+  Ban,
   ChevronRight,
   Download,
   HelpCircle,
@@ -261,6 +262,7 @@ export default function KravunderlagDetailClient({
   const [loadMoreWarning, setLoadMoreWarning] = useState<string | null>(null)
   const [rightVisibleCols, setRightVisibleCols] =
     useState<RequirementColumnId[]>(DEFAULT_RIGHT_COLS)
+  const [rightFiltersUnlocked, setRightFiltersUnlocked] = useState(false)
   const [columnPreferencesLoaded, setColumnPreferencesLoaded] = useState(false)
 
   // Add modal state
@@ -359,10 +361,12 @@ export default function KravunderlagDetailClient({
         const data = await readJsonOrThrow<{
           pagination?: { hasMore?: boolean }
           requirements?: RequirementRow[]
+          selectionFilter?: AvailableRequirementsData['selectionFilter']
         }>(response, t('loadAvailableRequirementsFailed'))
         return {
           hasMore: data.pagination?.hasMore ?? false,
           rows: data.requirements ?? [],
+          selectionFilter: data.selectionFilter,
         }
       },
       getErrorMessage: error =>
@@ -443,6 +447,14 @@ export default function KravunderlagDetailClient({
 
   const leftNormReferenceOptions = leftNormReferenceResource.data ?? []
   const rightNormReferenceOptions = rightNormReferenceResource.data ?? []
+  const selectionFilter = availableRequirementsResource.data?.selectionFilter
+  const isRequirementSelectionFilterActive =
+    selectionFilter?.filterActive === true
+  const shouldLockRightFilters =
+    isRequirementSelectionFilterActive && !rightFiltersUnlocked
+  const shouldShowRequirementSelectionEmptyWarning =
+    isRequirementSelectionFilterActive &&
+    (selectionFilter?.requirementIds.length ?? 0) === 0
 
   useEffect(() => {
     setSpec(specResource.data ?? null)
@@ -460,6 +472,12 @@ export default function KravunderlagDetailClient({
       setRightHasMore(availableRequirementsResource.data.hasMore)
     }
   }, [availableRequirementsResource.data])
+
+  useEffect(() => {
+    if (!isRequirementSelectionFilterActive) {
+      setRightFiltersUnlocked(false)
+    }
+  }, [isRequirementSelectionFilterActive])
 
   useEffect(() => {
     if (needsReferencesResource.data) {
@@ -2538,69 +2556,97 @@ export default function KravunderlagDetailClient({
                 role="tabpanel"
               >
                 {rightPanelTab === 'available' ? (
-                  <RequirementsTable
-                    areas={areas}
-                    defaultVisibleColumns={DEFAULT_RIGHT_COLS}
-                    excludeColumns={[
-                      'needsReference',
-                      'specificationItemStatus',
-                    ]}
-                    expandedId={rightExpandedId}
-                    filterValues={rightFilters}
-                    floatingActionRailPlacement="inline-top"
-                    getName={getName}
-                    hasMore={rightHasMore}
-                    loadingMore={rightLoadingMore}
-                    locale={locale}
-                    normReferences={rightNormReferenceOptions}
-                    onFilterChange={newFilters => {
-                      // Strip statuses — always fixed to published
-                      const { statuses: _s, ...rest } = newFilters
-                      setRightFilters(rest)
-                    }}
-                    onLoadMore={loadMoreAvailable}
-                    onRowClick={id =>
-                      setRightExpandedId(prev => (prev === id ? null : id))
-                    }
-                    onSelectionChange={setRightSelectedIds}
-                    onSortChange={setRightSort}
-                    onVisibleColumnsChange={setRightVisibleCols}
-                    renderExpanded={id => (
-                      <RequirementDetailClient inline requirementId={id} />
+                  <>
+                    {shouldShowRequirementSelectionEmptyWarning && (
+                      <div
+                        className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100"
+                        role="status"
+                      >
+                        {t('requirementSelectionNoPublishedMatches')}
+                      </div>
                     )}
-                    requirementPackages={requirementPackages}
-                    rows={rightRows}
-                    selectable
-                    selectedIds={rightSelectedIds}
-                    sortState={rightSort}
-                    stickyTitle={
-                      <h2 className="truncate text-lg font-semibold text-secondary-900 dark:text-secondary-100">
-                        {t('availableRequirements')}
-                      </h2>
-                    }
-                    stickyTitleActions={
-                      rightSelectedIds.size > 0 ? (
-                        <button
-                          className="btn-primary inline-flex items-center gap-1.5"
-                          onClick={handleOpenAddModal}
-                          type="button"
-                        >
-                          <Plus aria-hidden="true" className="h-4 w-4" />
-                          {t('addSelectedToSpecification', {
-                            count: rightSelectedIds.size,
-                          })}
-                        </button>
-                      ) : null
-                    }
-                    stickyTopOffsetClassName={
-                      specificationDetailStickyTopOffsetClassName
-                    }
-                    visibleColumns={rightVisibleCols}
-                    wrapDescription
-                  />
+                    <RequirementsTable
+                      areas={areas}
+                      defaultVisibleColumns={DEFAULT_RIGHT_COLS}
+                      excludeColumns={[
+                        'needsReference',
+                        'specificationItemStatus',
+                      ]}
+                      expandedId={rightExpandedId}
+                      filterValues={rightFilters}
+                      floatingActionRailPlacement="inline-top"
+                      getName={getName}
+                      hasMore={rightHasMore}
+                      loadingMore={rightLoadingMore}
+                      locale={locale}
+                      normReferences={rightNormReferenceOptions}
+                      onFilterChange={
+                        shouldLockRightFilters
+                          ? undefined
+                          : newFilters => {
+                              // Strip statuses — always fixed to published
+                              const { statuses: _s, ...rest } = newFilters
+                              setRightFilters(rest)
+                            }
+                      }
+                      onLoadMore={loadMoreAvailable}
+                      onRowClick={id =>
+                        setRightExpandedId(prev => (prev === id ? null : id))
+                      }
+                      onSelectionChange={setRightSelectedIds}
+                      onSortChange={setRightSort}
+                      onVisibleColumnsChange={setRightVisibleCols}
+                      renderExpanded={id => (
+                        <RequirementDetailClient inline requirementId={id} />
+                      )}
+                      requirementPackages={requirementPackages}
+                      rows={rightRows}
+                      selectable
+                      selectedIds={rightSelectedIds}
+                      sortState={rightSort}
+                      stickyTitle={
+                        <h2 className="truncate text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+                          {t('availableRequirements')}
+                        </h2>
+                      }
+                      stickyTitleActions={
+                        <div className="flex flex-wrap items-center gap-2">
+                          {shouldLockRightFilters && (
+                            <button
+                              className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                              onClick={() => setRightFiltersUnlocked(true)}
+                              type="button"
+                            >
+                              <Ban aria-hidden="true" className="h-4 w-4" />
+                              {t('adjustFiltersManually')}
+                            </button>
+                          )}
+                          {rightSelectedIds.size > 0 ? (
+                            <button
+                              className="btn-primary inline-flex items-center gap-1.5"
+                              onClick={handleOpenAddModal}
+                              type="button"
+                            >
+                              <Plus aria-hidden="true" className="h-4 w-4" />
+                              {t('addSelectedToSpecification', {
+                                count: rightSelectedIds.size,
+                              })}
+                            </button>
+                          ) : null}
+                        </div>
+                      }
+                      stickyTopOffsetClassName={
+                        specificationDetailStickyTopOffsetClassName
+                      }
+                      visibleColumns={rightVisibleCols}
+                      wrapDescription
+                    />
+                  </>
                 ) : (
                   <SpecificationRequirementSelectionPanel
                     onChanged={() => {
+                      setRightFilters({})
+                      setRightFiltersUnlocked(false)
                       void availableRequirementsResource.reload()
                       setRightSelectedIds(new Set())
                     }}
