@@ -172,7 +172,15 @@ describe('seed profiles', () => {
 
     expect(seedRowsFor(rows, 'requirement_statuses').length).toBeGreaterThan(0)
     expect(seedRowsFor(rows, 'quality_characteristics')).toHaveLength(49)
-    expect(seedRowsFor(rows, 'archiving_retention_policies')).toHaveLength(5)
+    const retentionPolicies = seedRowsFor(rows, 'archiving_retention_policies')
+    expect(retentionPolicies).toHaveLength(5)
+    expect(retentionPolicies).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          policy_key: 'archived_requirement_selection_delete',
+        }),
+      ]),
+    )
     expect(seedRowsFor(rows, 'owners')).toHaveLength(0)
     expect(seedRowsFor(rows, 'requirement_areas')).toHaveLength(0)
     expect(seedRowsFor(rows, 'requirements')).toHaveLength(0)
@@ -775,6 +783,15 @@ describe('seed profiles', () => {
           RETENTION_SEED.requirementSelectionQuestion.blockedHistory,
       ),
     ).toBe(true)
+    expect(
+      requirementSelectionAnswers.get(
+        RETENTION_SEED.requirementSelectionAnswer.questionHistoryChild,
+      ),
+    ).toMatchObject({
+      archived_at: '2024-01-15 09:00:00',
+      is_archived: 1,
+      question_id: RETENTION_SEED.requirementSelectionQuestion.blockedHistory,
+    })
     expect(
       savedRequirementSelectionAnswers.some(
         row =>

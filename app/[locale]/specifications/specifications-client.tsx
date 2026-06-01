@@ -198,6 +198,7 @@ export default function RequirementsSpecificationsClient({
   const shouldReduceMotion = useReducedMotion()
   const contentRef = useRef<HTMLDivElement>(null)
   const tableAnchorRef = useRef<HTMLDivElement>(null)
+  const nameFilterRef = useRef<HTMLInputElement>(null)
   const hasInitialData = initialData !== undefined
   const resolvedInitialData = initialData ?? EMPTY_INITIAL_DATA
   const initialDataErrorKeys = new Set(
@@ -624,7 +625,7 @@ export default function RequirementsSpecificationsClient({
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom" ref={contentRef}>
         <FloatingActionRail
-          anchorRef={tableAnchorRef}
+          anchorRef={specifications.length > 0 ? nameFilterRef : tableAnchorRef}
           developerModeContext="specifications"
           items={[
             {
@@ -1033,6 +1034,7 @@ export default function RequirementsSpecificationsClient({
                     id="specification-name-filter"
                     onChange={e => setNameFilter(e.target.value)}
                     placeholder={t('filterByNamePlaceholder')}
+                    ref={nameFilterRef}
                     type="text"
                     value={nameFilter}
                   />

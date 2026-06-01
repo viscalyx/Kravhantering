@@ -215,6 +215,12 @@ const DELETE_REQUIREMENT_SELECTION_QUESTION_SQL = `DECLARE @question_id int;
           SELECT 1
           FROM specification_requirement_selection_answers saved
           WHERE saved.question_id = question.id
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM requirement_selection_answers active_answer
+          WHERE active_answer.question_id = question.id
+            AND active_answer.is_archived = 0
         );
       IF @question_id IS NOT NULL
       BEGIN
@@ -530,6 +536,12 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
             FROM specification_requirement_selection_answers saved
             WHERE saved.question_id = question.id
           )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM requirement_selection_answers active_answer
+            WHERE active_answer.question_id = question.id
+              AND active_answer.is_archived = 0
+          )
       ) source
       WHERE ${ACTIVE_EXCEPTION_SQL}
       ORDER BY source.reference ASC`,
@@ -568,6 +580,12 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
               SELECT 1
               FROM specification_requirement_selection_answers saved_question
               WHERE saved_question.question_id = question.id
+            )
+            AND NOT EXISTS (
+              SELECT 1
+              FROM requirement_selection_answers active_answer
+              WHERE active_answer.question_id = question.id
+                AND active_answer.is_archived = 0
             )
           )
       ) source

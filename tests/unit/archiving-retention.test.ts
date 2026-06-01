@@ -683,6 +683,8 @@ describe('archiving retention service', () => {
     const previewSql = query.mock.calls.map(([sql]) => String(sql)).join('\n')
     expect(previewSql).toContain('question.archived_at <= @0')
     expect(previewSql).toContain('saved.question_id = question.id')
+    expect(previewSql).toContain('active_answer.question_id = question.id')
+    expect(previewSql).toContain('active_answer.is_archived = 0')
     expect(previewSql).toContain('answer.archived_at <= @0')
     expect(previewSql).toContain('saved.answer_id = answer.id')
     expect(previewSql).toContain('saved_question.question_id = question.id')
@@ -695,6 +697,8 @@ describe('archiving retention service', () => {
     const executeSql = query.mock.calls.map(([sql]) => String(sql)).join('\n')
     expect(executeSql).toContain('DECLARE @question_id int')
     expect(executeSql).toContain('DECLARE @answer_id int')
+    expect(executeSql).toContain('active_answer.question_id = question.id')
+    expect(executeSql).toContain('active_answer.is_archived = 0')
     expect(executeSql).toContain(
       'DELETE FROM requirement_selection_questions WHERE id = @question_id',
     )

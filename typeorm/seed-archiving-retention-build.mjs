@@ -604,7 +604,7 @@ function addRetentionRequirementSelection(seedData) {
     {
       archivedAt: OLD_365_TS,
       id: RETENTION_SEED.requirementSelectionAnswer.questionHistoryChild,
-      isArchived: 0,
+      isArchived: 1,
       questionId: RETENTION_SEED.requirementSelectionQuestion.blockedHistory,
       text: 'RETENTION-SEED svar med sparad kravunderlagshistorik',
       updatedAt: OLD_365_TS,

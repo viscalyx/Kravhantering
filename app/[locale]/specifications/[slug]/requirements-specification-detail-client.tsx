@@ -1815,7 +1815,7 @@ export default function KravunderlagDetailClient({
     : 'container-custom max-w-none xl:flex xl:min-h-0 xl:flex-1 xl:flex-col'
   const specificationDetailSplitPanelClassName = showEditSpecificationForm
     ? 'grid grid-cols-1 gap-6 items-start xl:grid-cols-2'
-    : 'grid grid-cols-1 gap-6 items-start xl:-mx-8 xl:min-h-0 xl:flex-1 xl:grid-cols-2 xl:items-stretch xl:gap-4'
+    : 'grid grid-cols-1 gap-6 items-start xl:-mx-8 xl:min-h-0 xl:flex-1 xl:grid-cols-2 xl:grid-rows-[minmax(0,1fr)] xl:items-stretch xl:gap-4 xl:overflow-hidden'
   const responsibleDisplayName = formatActorDisplayNameForLocale(
     spec.responsibleDisplayName,
     locale,
@@ -2002,7 +2002,7 @@ export default function KravunderlagDetailClient({
             data-specification-detail-split-panel="true"
           >
             {/* Left panel: Krav i underlaget / Behovsreferenser */}
-            <div className="flex flex-col gap-3 xl:h-full xl:min-h-0">
+            <div className="flex flex-col gap-3 xl:h-full xl:min-h-0 xl:overflow-hidden">
               {leftTab === 'needs-references' ? (
                 <div
                   className={desktopSplitPanelCardClassName}
@@ -2504,7 +2504,7 @@ export default function KravunderlagDetailClient({
             </div>
 
             {/* Right panel: Tillgängliga krav */}
-            <div className="flex flex-col gap-3 xl:h-full xl:min-h-0">
+            <div className="flex flex-col gap-3 xl:h-full xl:min-h-0 xl:overflow-hidden">
               <div
                 className="inline-flex self-start rounded-lg border bg-white p-1 shadow-sm dark:border-secondary-700 dark:bg-secondary-900"
                 role="tablist"
