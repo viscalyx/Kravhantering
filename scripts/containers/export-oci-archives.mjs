@@ -176,12 +176,22 @@ export function exportOciArchives(options = {}) {
   return plans
 }
 
-function createVerifyWorkspace(options = {}) {
+function verifyWorkspaceName(serviceName) {
+  const safeName = readNonEmpty(serviceName)
+    ?.replace(/[^a-z0-9_-]/gi, '-')
+    .replace(/^-+|-+$/g, '')
+  return safeName || 'archive'
+}
+
+function createVerifyWorkspace(options = {}, serviceName = 'archive') {
   const cwd = options.cwd ?? process.cwd()
   const fsImpl = options.fsImpl ?? fs
   const requestedVerifyRoot = readNonEmpty(options.verifyRoot)
   const baseDir = requestedVerifyRoot
-    ? path.resolve(cwd, requestedVerifyRoot)
+    ? path.join(
+        path.resolve(cwd, requestedVerifyRoot),
+        verifyWorkspaceName(serviceName),
+      )
     : createTemporaryVerifyWorkspace(cwd, fsImpl)
   const root = path.join(baseDir, 'root')
   const runroot = path.join(baseDir, 'run')
@@ -190,7 +200,7 @@ function createVerifyWorkspace(options = {}) {
   fsImpl.mkdirSync(runroot, { recursive: true })
   return {
     baseDir,
-    created: !requestedVerifyRoot,
+    created: true,
     podmanGlobalArgs: ['--root', root, '--runroot', runroot],
   }
 }
@@ -252,7 +262,7 @@ export function verifyOciArchives(options = {}) {
       )
     }
 
-    const workspace = createVerifyWorkspace(options)
+    const workspace = createVerifyWorkspace(options, plan.serviceName)
     try {
       runPodman(
         [...workspace.podmanGlobalArgs, 'load', '--input', plan.archivePath],

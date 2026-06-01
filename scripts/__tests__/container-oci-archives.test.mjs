@@ -141,7 +141,7 @@ describe('container OCI archive helpers', () => {
     ])
   })
 
-  it('loads archives into an isolated Podman store and checks image IDs', () => {
+  it('loads archives into isolated Podman stores and checks image IDs', () => {
     const commands = []
     const fsImpl = fakeFs()
     const spawnSync = vi.fn((command, args) => {
@@ -168,10 +168,18 @@ describe('container OCI archive helpers', () => {
       'sha256:db-job',
     ])
     expect(commands).toEqual([
-      'podman --root /workspace/tmp/verify-oci/root --runroot /workspace/tmp/verify-oci/run load --input tmp/oci/app-runtime.oci.tar.gz',
-      'podman --root /workspace/tmp/verify-oci/root --runroot /workspace/tmp/verify-oci/run load --input tmp/oci/db-job.oci.tar.gz',
+      'podman --root /workspace/tmp/verify-oci/app-runtime/root --runroot /workspace/tmp/verify-oci/app-runtime/run load --input tmp/oci/app-runtime.oci.tar.gz',
+      'podman --root /workspace/tmp/verify-oci/db-job/root --runroot /workspace/tmp/verify-oci/db-job/run load --input tmp/oci/db-job.oci.tar.gz',
     ])
-    expect(fsImpl.rmSync).not.toHaveBeenCalled()
+    expect(fsImpl.rmSync).toHaveBeenCalledTimes(2)
+    expect(fsImpl.rmSync).toHaveBeenCalledWith(
+      '/workspace/tmp/verify-oci/app-runtime',
+      { force: true, recursive: true },
+    )
+    expect(fsImpl.rmSync).toHaveBeenCalledWith(
+      '/workspace/tmp/verify-oci/db-job',
+      { force: true, recursive: true },
+    )
   })
 
   it('does not let temporary Podman store cleanup failures mask image ID verification', () => {
