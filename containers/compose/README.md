@@ -164,7 +164,9 @@ Verification loads each archive into an isolated Podman store and compares the
 loaded image ID with the `imageId` recorded in `container-stack.lock.json`.
 When `--verify-root` is supplied, that path is used as the parent for
 short-lived per-service stores so CI does not keep multiple expanded images in
-one Podman graph root.
+one Podman graph root. Podman temp staging is scoped to the same per-service
+directory, and each isolated store is reset through Podman before the directory
+is removed.
 Workflow uploads keep OCI archives separate from the longer-lived Playwright,
 status, Compose, stack-lock, build-metadata and hash artifacts.
 
