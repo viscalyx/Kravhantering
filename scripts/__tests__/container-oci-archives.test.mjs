@@ -304,6 +304,9 @@ describe('container OCI archive helpers', () => {
       'utf8',
     )
     const runIdExpression = '$' + '{CONTAINER_STACK_RUN_ID}'
+    const githubRunIdExpression = '$' + '{GITHUB_RUN_ID}'
+    const verifyRootFallbackExpression =
+      '$' + `{CONTAINER_STACK_RUN_ID:-${githubRunIdExpression}}`
     const targetExpression = '$' + '{target}'
     const verifyRootExpression = '$' + '{verify_root}'
 
@@ -326,7 +329,12 @@ describe('container OCI archive helpers', () => {
     expect(workflow).toContain('--skip-build')
     expect(workflow).toContain('container:oci:export')
     expect(workflow).toContain('Report OCI verification disk layout')
-    expect(workflow).toContain(`verify_root="/tmp/kh-oci-${runIdExpression}"`)
+    expect(
+      workflow.indexOf('Report OCI verification disk layout'),
+    ).toBeLessThan(workflow.indexOf('Checkout code'))
+    expect(workflow).toContain(
+      `verify_root="/tmp/kh-oci-${verifyRootFallbackExpression}"`,
+    )
     expect(workflow).toContain('df -hT')
     expect(workflow).toContain(`findmnt -T "${targetExpression}"`)
     expect(workflow).toContain(

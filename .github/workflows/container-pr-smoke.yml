@@ -25,6 +25,35 @@ jobs:
       STORAGE_DRIVER: vfs
 
     steps:
+      - name: Report OCI verification disk layout
+        run: |
+          set -euo pipefail
+          verify_root="/tmp/kh-oci-${CONTAINER_STACK_RUN_ID:-${GITHUB_RUN_ID}}"
+          mkdir -p "${verify_root}" tmp/container-pr-artifacts/oci
+
+          echo "::group::All mounted filesystems"
+          df -hT
+          echo "::endgroup::"
+
+          echo "::group::OCI verification target mounts"
+          for target in \
+            "${GITHUB_WORKSPACE}" \
+            "${RUNNER_TEMP:-/tmp}" \
+            / \
+            /tmp \
+            /var/tmp \
+            tmp/container-pr-artifacts/oci \
+            "${verify_root}"; do
+            printf '\nTarget: %s\n' "${target}"
+            df -hT "${target}"
+            findmnt -T "${target}" || true
+          done
+          echo "::endgroup::"
+
+          echo "::group::OCI verification directory sizes"
+          du -sh tmp/container-pr-artifacts/oci "${verify_root}" /tmp /var/tmp 2>/dev/null || true
+          echo "::endgroup::"
+
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -139,35 +168,6 @@ jobs:
 
       - name: Export OCI archives
         run: npm run container:oci:export -- --output-dir tmp/container-pr-artifacts/oci
-
-      - name: Report OCI verification disk layout
-        run: |
-          set -euo pipefail
-          verify_root="/tmp/kh-oci-${CONTAINER_STACK_RUN_ID}"
-          mkdir -p "${verify_root}" tmp/container-pr-artifacts/oci
-
-          echo "::group::All mounted filesystems"
-          df -hT
-          echo "::endgroup::"
-
-          echo "::group::OCI verification target mounts"
-          for target in \
-            "${GITHUB_WORKSPACE}" \
-            "${RUNNER_TEMP:-/tmp}" \
-            / \
-            /tmp \
-            /var/tmp \
-            tmp/container-pr-artifacts/oci \
-            "${verify_root}"; do
-            printf '\nTarget: %s\n' "${target}"
-            df -hT "${target}"
-            findmnt -T "${target}" || true
-          done
-          echo "::endgroup::"
-
-          echo "::group::OCI verification directory sizes"
-          du -sh tmp/container-pr-artifacts/oci "${verify_root}" /tmp /var/tmp 2>/dev/null || true
-          echo "::endgroup::"
 
       - name: Verify OCI archives
         run: |
