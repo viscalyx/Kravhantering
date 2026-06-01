@@ -337,26 +337,32 @@ function PdfRequirementSelectionContext({
       <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>
         {section.title}
       </Text>
-      {section.rows.map(row => (
-        <View
-          key={`${row.questionCode}-${row.answerText}`}
-          style={[styles.tableRow, { borderTopWidth: 1, paddingVertical: 5 }]}
-        >
-          <Text style={[styles.tableCell, { flex: 1.2 }]}>
-            {row.areaName} {row.questionCode}
-          </Text>
-          <Text style={[styles.tableCell, { flex: 2 }]}>
-            {row.questionText}
-          </Text>
-          <Text style={[styles.tableCell, { flex: 1.5 }]}>
-            {row.answerText}
-            {!row.isFilterActive ? ` ${notFilterActiveLabel}` : ''}
-            {`\n${row.changedAt}${
-              row.selectedByDisplayName ? ` · ${row.selectedByDisplayName}` : ''
-            }`}
-          </Text>
-        </View>
-      ))}
+      {section.rows.map(row => {
+        const selectedByDisplayName = formatActorDisplayNameForLocale(
+          row.selectedByDisplayName,
+          locale,
+        )
+        return (
+          <View
+            key={`${row.questionCode}-${row.answerText}`}
+            style={[styles.tableRow, { borderTopWidth: 1, paddingVertical: 5 }]}
+          >
+            <Text style={[styles.tableCell, { flex: 1.2 }]}>
+              {row.areaName} {row.questionCode}
+            </Text>
+            <Text style={[styles.tableCell, { flex: 2 }]}>
+              {row.questionText}
+            </Text>
+            <Text style={[styles.tableCell, { flex: 1.5 }]}>
+              {row.answerText}
+              {!row.isFilterActive ? ` ${notFilterActiveLabel}` : ''}
+              {`\n${row.changedAt}${
+                selectedByDisplayName ? ` · ${selectedByDisplayName}` : ''
+              }`}
+            </Text>
+          </View>
+        )
+      })}
     </View>
   )
 }

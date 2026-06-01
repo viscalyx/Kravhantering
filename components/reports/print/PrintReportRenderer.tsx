@@ -80,7 +80,9 @@ function SectionRenderer({
     case 'requirement-table':
       return <RequirementTableSection section={section} />
     case 'requirement-selection-context':
-      return <RequirementSelectionContextSection section={section} />
+      return (
+        <RequirementSelectionContextSection locale={locale} section={section} />
+      )
     case 'toc':
       return <TocSection section={section} />
     case 'deviation-summary':
@@ -93,8 +95,10 @@ function SectionRenderer({
 }
 
 function RequirementSelectionContextSection({
+  locale,
   section,
 }: {
+  locale: string
   section: Extract<ReportSection, { type: 'requirement-selection-context' }>
 }) {
   const t = useTranslations('reports')
@@ -111,34 +115,38 @@ function RequirementSelectionContextSection({
         }}
       >
         <tbody>
-          {section.rows.map(row => (
-            <tr key={`${row.questionCode}-${row.answerText}`}>
-              <td style={{ borderTop: '1px solid #e5e7eb', padding: 6 }}>
-                <strong>{row.areaName}</strong>
-                <br />
-                <span style={{ color: '#6b7280' }}>{row.questionCode}</span>
-              </td>
-              <td style={{ borderTop: '1px solid #e5e7eb', padding: 6 }}>
-                {row.questionText}
-              </td>
-              <td style={{ borderTop: '1px solid #e5e7eb', padding: 6 }}>
-                {row.answerText}
-                {!row.isFilterActive && (
-                  <span style={{ color: '#92400e' }}>
-                    {' '}
-                    {t('notFilterActive')}
+          {section.rows.map(row => {
+            const selectedByDisplayName = formatActorDisplayNameForLocale(
+              row.selectedByDisplayName,
+              locale,
+            )
+            return (
+              <tr key={`${row.questionCode}-${row.answerText}`}>
+                <td style={{ borderTop: '1px solid #e5e7eb', padding: 6 }}>
+                  <strong>{row.areaName}</strong>
+                  <br />
+                  <span style={{ color: '#6b7280' }}>{row.questionCode}</span>
+                </td>
+                <td style={{ borderTop: '1px solid #e5e7eb', padding: 6 }}>
+                  {row.questionText}
+                </td>
+                <td style={{ borderTop: '1px solid #e5e7eb', padding: 6 }}>
+                  {row.answerText}
+                  {!row.isFilterActive && (
+                    <span style={{ color: '#92400e' }}>
+                      {' '}
+                      {t('notFilterActive')}
+                    </span>
+                  )}
+                  <br />
+                  <span style={{ color: '#6b7280', fontSize: '0.72rem' }}>
+                    {row.changedAt}
+                    {selectedByDisplayName ? ` · ${selectedByDisplayName}` : ''}
                   </span>
-                )}
-                <br />
-                <span style={{ color: '#6b7280', fontSize: '0.72rem' }}>
-                  {row.changedAt}
-                  {row.selectedByDisplayName
-                    ? ` · ${row.selectedByDisplayName}`
-                    : ''}
-                </span>
-              </td>
-            </tr>
-          ))}
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

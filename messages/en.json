@@ -1652,6 +1652,21 @@
         "body": "Create and edit requirements packages using the toolbar. A requirements package can be linked to multiple requirements. Removing a package only removes the package record; linked requirements are not affected."
       }
     },
+    "requirementSelectionQuestionsStewardship": {
+      "title": "Requirement selection questions",
+      "overview": {
+        "heading": "Purpose",
+        "body": "Use this stewardship view to maintain the questions that narrow available requirements in a specification. Questions belong to requirement areas and are managed as Requirements Library content."
+      },
+      "answers": {
+        "heading": "Answers and matching",
+        "body": "Add answer options that point to published requirements directly, to requirements packages, or to an intentional no-selection answer. Active answers influence filtering when users choose them in a specification."
+      },
+      "health": {
+        "heading": "Health indicators",
+        "body": "Answers that no longer match any published requirements are marked as missing a requirement selection. Review those answers after packages or requirement versions are archived."
+      }
+    },
     "normReferences": {
       "title": "Norm References",
       "overview": {

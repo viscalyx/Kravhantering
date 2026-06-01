@@ -8,6 +8,14 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementSelectionQuestionsClient from '@/app/[locale]/requirements/stewardship/requirement-selection-questions-client'
 
+const helpPanelState = vi.hoisted(() => ({
+  useHelpContent: vi.fn(),
+}))
+
+vi.mock('@/components/HelpPanel', () => ({
+  useHelpContent: helpPanelState.useHelpContent,
+}))
+
 vi.mock('next-intl', async () => {
   const messages = ((await import('@/messages/en.json')).default ?? {}) as
     | Record<string, unknown>
@@ -54,6 +62,28 @@ const sampleQuestion = {
   text: 'Which security profile applies?',
 }
 
+const sampleAnswer = {
+  description: null,
+  healthState: 'ok',
+  id: 101,
+  isActive: true,
+  isArchived: false,
+  isNoRequirementSelection: false,
+  matchingRequirementCount: 1,
+  matchingRequirements: [
+    {
+      description: 'Use strong authentication',
+      id: 301,
+      uniqueId: 'SEC-001',
+    },
+  ],
+  packageIds: [samplePackage.id],
+  questionId: sampleQuestion.id,
+  requirementIds: [301],
+  sortOrder: 0,
+  text: 'Baseline profile',
+}
+
 describe('RequirementSelectionQuestionsClient', () => {
   afterEach(cleanup)
 
@@ -70,6 +100,27 @@ describe('RequirementSelectionQuestionsClient', () => {
         return okJson({ questions: [] })
       }
       return okJson({})
+    })
+  })
+
+  it('registers stewardship help content', async () => {
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Requirement selection questions',
+      }),
+    ).toBeInTheDocument()
+    expect(helpPanelState.useHelpContent).toHaveBeenCalledWith({
+      sections: expect.arrayContaining([
+        expect.objectContaining({
+          bodyKey: 'requirementSelectionQuestionsStewardship.overview.body',
+          headingKey:
+            'requirementSelectionQuestionsStewardship.overview.heading',
+        }),
+      ]),
+      titleKey: 'requirementSelectionQuestionsStewardship.title',
     })
   })
 
@@ -99,6 +150,22 @@ describe('RequirementSelectionQuestionsClient', () => {
       screen.getByRole('combobox', { name: /Requirement area/ }),
     ).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: /Text/ })).toBeInTheDocument()
+  })
+
+  it('names the stewardship search and filter controls for assistive technology', async () => {
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(
+      await screen.findByRole('textbox', {
+        name: 'Search question ID or text',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('combobox', { name: 'All requirement areas' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('combobox', { name: 'All statuses' }),
+    ).toBeInTheDocument()
   })
 
   it('shows field help text for question and answer forms', async () => {
@@ -195,5 +262,67 @@ describe('RequirementSelectionQuestionsClient', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
     expect(screen.getByText(createdQuestion.text)).toBeInTheDocument()
+  })
+
+  it('selects an answer parent question before saving edited answers', async () => {
+    const firstQuestion = {
+      ...sampleQuestion,
+      questionCode: 'SEC-KUF001',
+      text: 'First question',
+    }
+    const secondQuestion = {
+      ...sampleQuestion,
+      answers: [
+        {
+          ...sampleAnswer,
+          id: 201,
+          questionId: 22,
+          text: 'Second answer',
+        },
+      ],
+      id: 22,
+      questionCode: 'SEC-KUF002',
+      text: 'Second question',
+    }
+    const questions = [firstQuestion, secondQuestion]
+
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions })
+      }
+      if (
+        url === '/api/requirement-selection-questions/22/answers/201' &&
+        init?.method === 'PUT'
+      ) {
+        return okJson(secondQuestion)
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText('Second question')).toBeInTheDocument()
+    const editButtons = screen.getAllByRole('button', { name: 'Edit' })
+    const answerEditButton = editButtons[editButtons.length - 1]
+    if (!answerEditButton) throw new Error('Missing answer edit button')
+    fireEvent.click(answerEditButton)
+
+    expect(screen.getByRole('textbox', { name: /^Text/ })).toHaveValue(
+      'Second answer',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-selection-questions/22/answers/201',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
   })
 })

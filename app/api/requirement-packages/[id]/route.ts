@@ -11,6 +11,7 @@ import {
   updateRequirementPackage,
 } from '@/lib/dal/requirement-packages'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   customMutationPolicy,
   secureMutationRoute,
@@ -129,12 +130,25 @@ export const DELETE = secureMutationRoute({
       targetId: params.id,
       targetKind: 'requirement_package',
     })
-    await recordRequirementSelectionCleanupAudit(db, context, {
-      cleanup: result.cleanup,
-      originAction: 'requirement_package.delete',
-      originTargetId: params.id,
-      originTargetKind: 'requirement_package',
-    })
+    const originAction = 'requirement_package.delete'
+    try {
+      await recordRequirementSelectionCleanupAudit(db, context, {
+        cleanup: result.cleanup,
+        originAction,
+        originTargetId: params.id,
+        originTargetKind: 'requirement_package',
+      })
+    } catch (error) {
+      logSanitizedError(
+        'Failed to record requirement-selection cleanup audit after package deletion',
+        error,
+        {
+          originAction,
+          originTargetId: params.id,
+          originTargetKind: 'requirement_package',
+        },
+      )
+    }
     return NextResponse.json({ ok: true })
   },
 })

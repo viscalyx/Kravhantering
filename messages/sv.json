@@ -1652,6 +1652,21 @@
         "body": "Skapa och redigera kravpaket med verktygsfältet. Ett kravpaket kan kopplas till flera krav. Att ta bort ett kravpaket tar bara bort posten för kravpaketet; kopplade krav påverkas inte."
       }
     },
+    "requirementSelectionQuestionsStewardship": {
+      "title": "Kravurvalsfrågor",
+      "overview": {
+        "heading": "Syfte",
+        "body": "Använd den här förvaltningsvyn för att underhålla frågorna som avgränsar tillgängliga krav i ett kravunderlag. Frågorna hör till kravområden och förvaltas som innehåll i kravbiblioteket."
+      },
+      "answers": {
+        "heading": "Svar och matchning",
+        "body": "Lägg till svarsalternativ som pekar direkt på publicerade krav, på kravpaket eller på ett avsiktligt svar utan kravurval. Aktiva svar påverkar filtreringen när användare väljer dem i ett kravunderlag."
+      },
+      "health": {
+        "heading": "Hälsoindikatorer",
+        "body": "Svar som inte längre matchar några publicerade krav markeras som att de saknar kravurval. Granska de svaren efter att kravpaket eller kravversioner har arkiverats."
+      }
+    },
     "normReferences": {
       "title": "Normreferenser",
       "overview": {

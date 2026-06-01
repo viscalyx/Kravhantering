@@ -69,6 +69,10 @@ const authState = vi.hoisted(() => ({
   },
 }))
 
+const cleanupAuditState = vi.hoisted(() => ({
+  recordRequirementSelectionCleanupAudit: vi.fn(),
+}))
+
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
 }))
@@ -86,7 +90,8 @@ vi.mock('@/lib/audit/action-audit', () => ({
 }))
 
 vi.mock('@/lib/audit/requirement-selection-cleanup-audit', () => ({
-  recordRequirementSelectionCleanupAudit: vi.fn(),
+  recordRequirementSelectionCleanupAudit:
+    cleanupAuditState.recordRequirementSelectionCleanupAudit,
 }))
 
 vi.mock('@/lib/requirements/auth', async importOriginal => {
@@ -1031,6 +1036,45 @@ describe('requirement-packages routes', () => {
       makeParams('1'),
     )
     expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
+  })
+  it('DELETE still succeeds when cleanup audit recording fails', async () => {
+    mockDeleteRequirementPackage.mockResolvedValue({
+      cleanup: {
+        affectedAnswerIds: [3],
+        affectedRequirementIds: [7],
+        removedLinkCount: 1,
+      },
+      deletedCount: 1,
+    })
+    cleanupAuditState.recordRequirementSelectionCleanupAudit.mockRejectedValueOnce(
+      new Error('audit failed'),
+    )
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    try {
+      const r = await deleteRequirementPackage(
+        new NextRequest('http://l', { method: 'DELETE' }),
+        makeParams('1'),
+      )
+
+      expect(r.status).toBe(200)
+      expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
+      expect(
+        cleanupAuditState.recordRequirementSelectionCleanupAudit,
+      ).toHaveBeenCalled()
+      expect(consoleError).toHaveBeenCalledWith(
+        'Failed to record requirement-selection cleanup audit after package deletion',
+        expect.objectContaining({
+          detail: expect.objectContaining({
+            originAction: 'requirement_package.delete',
+            originTargetId: 1,
+            originTargetKind: 'requirement_package',
+          }),
+        }),
+      )
+    } finally {
+      consoleError.mockRestore()
+    }
   })
   it('DELETE returns 403 without Admin before deleting', async () => {
     authState.context.actor.roles = []

@@ -1410,9 +1410,15 @@ export async function getRequirementSelectionFilterForSpecification(
   }
   const requirementRows = (await db.query(
     `
-      SELECT DISTINCT requirement_id AS requirementId
-      FROM requirement_selection_answer_requirements
-      WHERE answer_id IN (${placeholders(answerIds)})
+      SELECT DISTINCT answer_requirement.requirement_id AS requirementId
+      FROM requirement_selection_answer_requirements AS answer_requirement
+      WHERE answer_requirement.answer_id IN (${placeholders(answerIds)})
+        AND EXISTS (
+          SELECT 1
+          FROM requirement_versions AS explicit_version
+          WHERE explicit_version.requirement_id = answer_requirement.requirement_id
+            AND explicit_version.requirement_status_id = @${answerIds.length}
+        )
 
       UNION
 

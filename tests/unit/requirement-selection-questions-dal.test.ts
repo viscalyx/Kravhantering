@@ -5,6 +5,7 @@ import {
   getRequirementSelectionFilterForSpecification,
   resolveRequirementSelectionQuestionId,
 } from '@/lib/dal/requirement-selection-questions'
+import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
 function createDb(rows: unknown[]) {
   return {
@@ -47,6 +48,32 @@ describe('requirement selection questions DAL', () => {
     })
 
     expect(query).toHaveBeenCalledTimes(1)
+  })
+
+  it('filters explicit answer requirement links to requirements with a published version', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ answerId: 4, isNoRequirementSelection: 0 }])
+      .mockResolvedValueOnce([{ requirementId: 101 }])
+    const db = { query } as unknown as Parameters<
+      typeof getRequirementSelectionFilterForSpecification
+    >[0]
+
+    await expect(
+      getRequirementSelectionFilterForSpecification(db, 9),
+    ).resolves.toEqual({
+      filterActive: true,
+      hasNoRequirementSelection: false,
+      requirementIds: [101],
+    })
+
+    const filterSql = String(query.mock.calls[1]?.[0])
+    expect(filterSql).toContain(
+      'FROM requirement_selection_answer_requirements AS answer_requirement',
+    )
+    expect(filterSql).toContain('AND EXISTS (')
+    expect(filterSql).toContain('explicit_version.requirement_status_id = @1')
+    expect(query.mock.calls[1]?.[1]).toEqual([4, STATUS_PUBLISHED])
   })
 
   it('cleans package links from requirement-selection answers and reports affected answers', async () => {

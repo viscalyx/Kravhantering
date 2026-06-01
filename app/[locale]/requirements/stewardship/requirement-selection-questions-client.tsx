@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import FormModal from '@/components/FormModal'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
@@ -48,6 +49,7 @@ interface RequirementSelectionAnswer {
     uniqueId: string
   }>
   packageIds: number[]
+  questionId: number
   requirementIds: number[]
   sortOrder: number
   text: string
@@ -105,6 +107,27 @@ const initialAnswerForm: AnswerForm = {
 const inputClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
 
+const REQUIREMENT_SELECTION_QUESTIONS_STEWARDSHIP_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'requirementSelectionQuestionsStewardship.overview.body',
+      headingKey: 'requirementSelectionQuestionsStewardship.overview.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'requirementSelectionQuestionsStewardship.answers.body',
+      headingKey: 'requirementSelectionQuestionsStewardship.answers.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'requirementSelectionQuestionsStewardship.health.body',
+      headingKey: 'requirementSelectionQuestionsStewardship.health.heading',
+    },
+  ],
+  titleKey: 'requirementSelectionQuestionsStewardship.title',
+}
+
 function parseRequirementIds(value: string): number[] {
   return value
     .split(/[,\s]+/)
@@ -123,6 +146,7 @@ function statusText(
 }
 
 export default function RequirementSelectionQuestionsClient() {
+  useHelpContent(REQUIREMENT_SELECTION_QUESTIONS_STEWARDSHIP_HELP)
   const t = useTranslations('requirementSelectionQuestionsStewardship')
   const contentRef = useRef<HTMLDivElement>(null)
   const listAnchorRef = useRef<HTMLDivElement>(null)
@@ -462,6 +486,7 @@ export default function RequirementSelectionQuestionsClient() {
   }
 
   const editAnswer = (answer: RequirementSelectionAnswer) => {
+    setSelectedQuestionId(answer.questionId)
     setAnswerForm({
       description: answer.description ?? '',
       isNoRequirementSelection: answer.isNoRequirementSelection,
@@ -664,6 +689,7 @@ export default function RequirementSelectionQuestionsClient() {
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
             />
             <input
+              aria-label={copy.search}
               className={`${inputClassName} pl-9`}
               onChange={event => setQuestionSearch(event.target.value)}
               placeholder={copy.search}
@@ -671,6 +697,7 @@ export default function RequirementSelectionQuestionsClient() {
             />
           </label>
           <select
+            aria-label={copy.allAreas}
             className={inputClassName}
             onChange={event => setAreaFilter(event.target.value)}
             value={areaFilter}
@@ -683,6 +710,7 @@ export default function RequirementSelectionQuestionsClient() {
             ))}
           </select>
           <select
+            aria-label={copy.allStatuses}
             className={inputClassName}
             onChange={event =>
               setStatusFilter(
