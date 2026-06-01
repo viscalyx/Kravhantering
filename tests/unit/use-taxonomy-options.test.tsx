@@ -30,7 +30,7 @@ import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 const sampleAreas = [{ id: 1, name: 'Area 1', ownerName: 'Owner' }]
 const sampleCategories = [{ id: 1, nameSv: 'Kat', nameEn: 'Cat' }]
 const sampleTypes = [{ id: 1, nameSv: 'Typ', nameEn: 'Type' }]
-const samplePackages = [{ id: 1, nameSv: 'Paket', nameEn: 'Package' }]
+const samplePackages = [{ id: 1, name: 'Package' }]
 const sampleNormRefs = [{ id: 1, name: 'NR-1', normReferenceId: 'NR001' }]
 const sampleRiskLevels = [{ id: 1, nameSv: 'Låg', nameEn: 'Low' }]
 const sampleQC = [

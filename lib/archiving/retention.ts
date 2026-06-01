@@ -1312,10 +1312,8 @@ async function exportSpecification(
       `SELECT
           specification_item.id AS specificationItemId,
           pkg.id,
-          pkg.name AS nameSv,
-          pkg.name AS nameEn,
-          pkg.description AS descriptionSv,
-          pkg.description AS descriptionEn
+          pkg.name,
+          pkg.description
         FROM requirements_specification_items specification_item
         INNER JOIN requirement_version_requirement_packages link
           ON link.requirement_version_id = specification_item.requirement_version_id
@@ -1410,10 +1408,8 @@ async function exportSpecification(
       `SELECT
           local_requirement.id AS localRequirementId,
           pkg.id,
-          pkg.name AS nameSv,
-          pkg.name AS nameEn,
-          pkg.description AS descriptionSv,
-          pkg.description AS descriptionEn
+          pkg.name,
+          pkg.description
         FROM specification_local_requirements local_requirement
         INNER JOIN specification_local_requirement_requirement_packages link
           ON link.specification_local_requirement_id = local_requirement.id

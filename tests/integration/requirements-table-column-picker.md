@@ -139,18 +139,22 @@ and scrolls back to the headers
 
 This test confirms that the floating rail does not drift vertically while the
 page scrolls and that the conditional up-arrow returns the list to the table
-top once the header row has disappeared.
+top once the header row has disappeared. It also confirms that the
+requirement-package chip filter exposes the package description through the
+native title tooltip.
 
 ### Vertical Scroll Step-by-Step Flow
 
 1. Open `/sv/requirements` for the current viewport variant.
 2. Expand the first inline detail pane to guarantee extra scroll height.
 3. Capture the initial column-picker trigger position.
-4. Scroll the page downward until the header row leaves the viewport.
-5. Assert that the scroll-to-top trigger appears.
-6. Assert that the column-picker trigger keeps the same vertical position.
-7. Click the scroll-to-top trigger.
-8. Assert that the trigger disappears and the page returns near the top.
+4. Assert that the first requirement-package chip filter carries the package
+   description in its `title`.
+5. Scroll the page downward until the header row leaves the viewport.
+6. Assert that the scroll-to-top trigger appears.
+7. Assert that the column-picker trigger keeps the same vertical position.
+8. Click the scroll-to-top trigger.
+9. Assert that the trigger disappears and the page returns near the top.
 
 ### Vertical Scroll Sequence Diagram
 

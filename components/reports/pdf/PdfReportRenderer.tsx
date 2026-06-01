@@ -13,7 +13,6 @@ import {
   Text,
   View,
 } from '@react-pdf/renderer'
-import { localizedName } from '@/lib/i18n/localized'
 import { getStatusIconNodes } from '@/lib/icons/status-icon-allowlist'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import type {
@@ -489,7 +488,7 @@ function PdfVersionSummary({
     return locale === 'sv' ? item.nameSv : item.nameEn
   }
   const requirementPackageNames = version.requirementPackages
-    .map(requirementPackage => localizedName(requirementPackage, locale))
+    .map(requirementPackage => requirementPackage.name)
     .filter(name => name.length > 0)
   const createdBy = formatActorDisplayNameForLocale(version.createdBy, locale)
 

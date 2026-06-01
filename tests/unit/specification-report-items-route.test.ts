@@ -145,7 +145,7 @@ describe('specifications/[id]/report-items route', () => {
         nameSv: 'Tillförlitlighet',
       },
       requirementCategory: { id: 4, nameEn: 'IT', nameSv: 'IT' },
-      requirementPackages: [{ id: 9, nameEn: 'Drift', nameSv: 'Drift' }],
+      requirementPackages: [{ id: 9, name: 'Drift' }],
       requirementType: { id: 5, nameEn: 'Functional', nameSv: 'Funktionellt' },
       requiresTesting: true,
       riskLevel: {
@@ -198,8 +198,7 @@ describe('specifications/[id]/report-items route', () => {
               {
                 requirementPackage: {
                   id: 9,
-                  nameEn: 'Drift',
-                  nameSv: 'Drift',
+                  name: 'Drift',
                 },
               },
             ],

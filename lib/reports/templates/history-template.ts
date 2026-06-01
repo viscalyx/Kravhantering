@@ -3,6 +3,7 @@ import {
   isRequirementPublishedStatus,
 } from '@/lib/requirements/lifecycle'
 import type { RequirementReportData } from '../data/fetch-requirement'
+import { requirementPackageName } from '../package-name'
 import type {
   ReportModel,
   ReportSection,
@@ -71,13 +72,11 @@ function toVersionSummary(
       })),
     requirementPackages: version.versionRequirementPackages.flatMap(vs => {
       const requirementPackage = vs.requirementPackage
-      const nameSv = requirementPackage?.nameSv?.trim()
-      const nameEn = requirementPackage?.nameEn?.trim()
-      if (!nameSv && !nameEn) return []
+      const name = requirementPackageName(requirementPackage).trim()
+      if (!name) return []
       return [
         {
-          nameSv: nameSv || nameEn || '',
-          nameEn: nameEn || nameSv || '',
+          name,
         },
       ]
     }),

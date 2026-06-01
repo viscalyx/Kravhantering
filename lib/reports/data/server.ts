@@ -149,8 +149,7 @@ function mapDeviationVersion(
     requirementPackages: version.versionRequirementPackages
       .filter(vrp => vrp.requirementPackage)
       .map(vrp => ({
-        nameEn: requirementPackageName(vrp.requirementPackage),
-        nameSv: requirementPackageName(vrp.requirementPackage),
+        name: requirementPackageName(vrp.requirementPackage),
       })),
     requiresTesting: version.requiresTesting,
     riskLevel: version.riskLevel
@@ -320,8 +319,7 @@ function mapSpecificationLocalRequirementToReportData(
           requirementPackage => ({
             requirementPackage: {
               id: requirementPackage.id,
-              nameEn: requirementPackageName(requirementPackage),
-              nameSv: requirementPackageName(requirementPackage),
+              name: requirementPackageName(requirementPackage),
             },
           }),
         ),

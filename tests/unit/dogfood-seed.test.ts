@@ -305,8 +305,18 @@ describe('dogfood seed inventory', () => {
     expect(DOGFOOD_OWNERS).toHaveLength(5)
     expect(DOGFOOD_AREAS).toHaveLength(6)
     expect(DOGFOOD_NORMS).toHaveLength(6)
-    expect(DOGFOOD_REQUIREMENT_PACKAGES).toHaveLength(12)
+    expect(DOGFOOD_REQUIREMENT_PACKAGES).toHaveLength(11)
     expect(DOGFOOD_SPECIFICATIONS).toHaveLength(2)
+  })
+
+  it('reuses the base Användarvänlighet requirement package', () => {
+    expect(ID.pkg.anvandbarhet).toBe(5)
+    expect(DOGFOOD_REQUIREMENT_PACKAGES.map(pkg => pkg[0])).not.toContain(
+      ID.pkg.anvandbarhet,
+    )
+    expect(DOGFOOD_REQUIREMENT_PACKAGES.map(pkg => pkg[1])).not.toContain(
+      'Användarvänlighet',
+    )
   })
 
   it('specification-local entries reference Krav that are also in KH-INFOR', () => {

@@ -155,8 +155,8 @@ describe('requirements DAL (SQL Server path)', () => {
         versionCreatedAt: new Date('2026-04-20T08:30:00.000Z'),
         maxVersion: 2,
         requirementPackagesJson: JSON.stringify([
-          { id: 200, nameEn: 'Citizen portal', nameSv: 'Medborgarportal' },
-          { id: 201, nameEn: 'Back office', nameSv: 'Handlaggning' },
+          { id: 200, name: 'Citizen portal' },
+          { id: 201, name: 'Back office' },
         ]),
         suggestionCount: 0,
       },
@@ -168,8 +168,8 @@ describe('requirements DAL (SQL Server path)', () => {
     expect(rows[0]).toMatchObject({
       id: 7,
       requirementPackages: [
-        { id: 200, nameEn: 'Citizen portal', nameSv: 'Medborgarportal' },
-        { id: 201, nameEn: 'Back office', nameSv: 'Handlaggning' },
+        { id: 200, name: 'Citizen portal' },
+        { id: 201, name: 'Back office' },
       ],
       uniqueId: 'SEC-0001',
     })
@@ -330,10 +330,8 @@ describe('requirements DAL (SQL Server path)', () => {
           requirementVersionId: 21,
           requirementPackageId: 200,
           packageId: 200,
-          packageNameEn: 'Citizen portal',
-          packageNameSv: 'Medborgarportal',
-          packageDescriptionEn: null,
-          packageDescriptionSv: null,
+          packageName: 'Citizen portal',
+          packageDescription: null,
           packageOwnerId: null,
           packageCreatedAt: new Date('2026-03-01T00:00:00.000Z'),
           packageUpdatedAt: new Date('2026-03-02T00:00:00.000Z'),
@@ -405,10 +403,8 @@ describe('requirements DAL (SQL Server path)', () => {
         requirementPackageId: 200,
         requirementPackage: {
           id: 200,
-          nameEn: 'Citizen portal',
-          nameSv: 'Medborgarportal',
-          descriptionEn: null,
-          descriptionSv: null,
+          name: 'Citizen portal',
+          description: null,
           ownerId: null,
           createdAt: '2026-03-01T00:00:00.000Z',
           updatedAt: '2026-03-02T00:00:00.000Z',

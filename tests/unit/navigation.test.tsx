@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Navigation from '@/components/Navigation'
 
@@ -172,20 +172,55 @@ describe('Navigation', () => {
     expect(packageLink.querySelector('.lucide-package')).toBeInTheDocument()
   })
 
-  it('opens the remembered stewardship tab from desktop', () => {
+  it('opens the remembered stewardship tab from desktop', async () => {
+    vi.useFakeTimers()
     localStorage.setItem('requirements.stewardship.tab', 'questions')
 
-    render(<Navigation />)
+    try {
+      const { rerender } = render(<Navigation />)
 
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'nav.stewardship',
-      }),
-    )
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'nav.stewardship',
+        }),
+      )
 
-    expect(routerState.push).toHaveBeenCalledWith(
-      '/requirements/stewardship?tab=questions',
-    )
+      expect(routerState.push).toHaveBeenCalledWith(
+        '/requirements/stewardship?tab=questions',
+      )
+      expect(
+        screen.getByRole('link', { name: 'nav.requirementSelectionQuestions' })
+          .className,
+      ).toContain('bg-primary-50')
+      expect(
+        screen.getByRole('link', { name: 'nav.requirementPackages' }).className,
+      ).not.toContain('bg-primary-50')
+      expect(screen.queryByRole('status')).toBeNull()
+
+      await act(async () => {
+        vi.advanceTimersByTime(1999)
+      })
+      expect(screen.queryByRole('status')).toBeNull()
+
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+      })
+      expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+      expect(screen.getByRole('status').parentElement).toHaveAttribute(
+        'data-developer-mode-value',
+        'stewardship',
+      )
+
+      pathnameState.value = '/requirements/stewardship'
+      searchParamsState.value = new URLSearchParams('tab=questions')
+      await act(async () => {
+        rerender(<Navigation />)
+      })
+
+      expect(screen.queryByRole('status')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('closes desktop stewardship subnavigation when sibling primary links are selected', () => {

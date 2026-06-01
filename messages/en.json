@@ -701,7 +701,9 @@
     "reactivate": "Reactivate",
     "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}",
     "status": "Status",
-    "emptyState": "No requirements packages yet. Create your first requirements package."
+    "emptyState": "No requirements packages yet. Create your first requirements package.",
+    "filterByName": "Filter by name or description",
+    "filterByNamePlaceholder": "Search requirements package name or description"
   },
   "normReference": {
     "editNormReference": "Edit norm reference",

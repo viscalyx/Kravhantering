@@ -51,10 +51,10 @@ import {
   type AreaOption,
   buildRequirementListParams,
   DEFAULT_REQUIREMENT_SORT,
-  type FilterOption,
   type FilterValues,
   isRequirementColumnId,
   type RequirementColumnId,
+  type RequirementPackageOption,
   type RequirementRow,
   type RequirementSortState,
 } from '@/lib/requirements/list-view'
@@ -206,7 +206,7 @@ export default function KravunderlagDetailClient({
     initialData.availableRequirements.rows,
   )
   const [areas] = useState<AreaOption[]>(initialData.areas)
-  const [requirementPackages] = useState<FilterOption[]>(
+  const [requirementPackages] = useState<RequirementPackageOption[]>(
     initialData.requirementPackages,
   )
   const [specificationGovernanceObjectTypes] = useState<

@@ -1,9 +1,16 @@
 'use client'
 
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Archive, Plus, RotateCcw } from 'lucide-react'
+import {
+  Archive,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useRef, useState } from 'react'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import FormModal from '@/components/FormModal'
@@ -15,7 +22,6 @@ import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { isSwedish } from '@/lib/i18n/localized'
-import { offsetPanelMotion } from '@/lib/reduced-motion'
 import { resolveStatusLabel } from '@/lib/requirements/status-label'
 
 const REQUIREMENT_PACKAGES_HELP: HelpContent = {
@@ -65,6 +71,7 @@ interface LinkedRequirement {
 }
 
 const DESCRIPTION_TRUNCATE = 80
+const REQUIREMENT_PACKAGE_TABLE_COLUMN_COUNT = 6
 
 const getInitialForm = (): RequirementPackageForm => ({
   description: '',
@@ -92,6 +99,9 @@ const toPayload = (form: RequirementPackageForm) => ({
 const inputClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
 
+const rowActionButtonClassName =
+  'inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
+
 export default function RequirementPackagesClient() {
   useHelpContent(REQUIREMENT_PACKAGES_HELP)
   const t = useTranslations('requirementPackage')
@@ -100,10 +110,11 @@ export default function RequirementPackagesClient() {
   const tr = useTranslations('requirement')
   const tStatusLabel = useTranslations('requirement.statusLabel')
   const locale = useLocale()
-  const shouldReduceMotion = useReducedMotion()
   const contentRef = useRef<HTMLDivElement>(null)
   const tableAnchorRef = useRef<HTMLDivElement>(null)
+  const nameFilterRef = useRef<HTMLInputElement>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const [nameFilter, setNameFilter] = useState('')
   const [stateError, setStateError] = useState<string | null>(null)
   const [stateChangingIds, setStateChangingIds] = useState<Set<number>>(
     new Set(),
@@ -167,8 +178,10 @@ export default function RequirementPackagesClient() {
   )
 
   const openCreate = () => {
+    linkedReqRequestId.current++
     setLinkedRequirements([])
     setLinkedRequirementsError(null)
+    setLinkedRequirementsLoading(false)
     setStateError(null)
     controller.openCreate()
   }
@@ -180,16 +193,20 @@ export default function RequirementPackagesClient() {
   }
 
   const closeForm = () => {
+    linkedReqRequestId.current++
     setLinkedRequirements([])
     setLinkedRequirementsError(null)
+    setLinkedRequirementsLoading(false)
     controller.closeForm()
   }
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     const didSubmit = await controller.submit(event)
     if (didSubmit) {
+      linkedReqRequestId.current++
       setLinkedRequirements([])
       setLinkedRequirementsError(null)
+      setLinkedRequirementsLoading(false)
     }
   }
 
@@ -240,8 +257,25 @@ export default function RequirementPackagesClient() {
     controller.submitting ||
     controller.deletingIds.has(requirementPackage.id) ||
     stateChangingIds.has(requirementPackage.id)
+  const deferredNameFilter = useDeferredValue(nameFilter)
+  const normalizedNameFilter = deferredNameFilter
+    .trim()
+    .toLocaleLowerCase(locale)
+  const hasActiveNameFilter = nameFilter.trim().length > 0
+  const filteredRequirementPackages = controller.items.filter(
+    requirementPackage => {
+      const searchableText = [
+        requirementPackage.name,
+        requirementPackage.description ?? '',
+      ]
+        .join(' ')
+        .toLocaleLowerCase(locale)
 
-  const renderPackageForm = (heading: string | null) => (
+      return searchableText.includes(normalizedNameFilter)
+    },
+  )
+
+  const renderPackageForm = () => (
     <form
       className="space-y-5"
       {...devMarker({
@@ -252,7 +286,6 @@ export default function RequirementPackagesClient() {
       })}
       onSubmit={submit}
     >
-      {heading ? <h2 className="text-lg font-semibold">{heading}</h2> : null}
       <div>
         <FieldLabelWithHelp
           help={t('nameHelp')}
@@ -365,6 +398,103 @@ export default function RequirementPackagesClient() {
     </form>
   )
 
+  const renderLinkedRequirements = () => (
+    <div>
+      <h3 className="mb-3 text-sm font-medium text-secondary-600 dark:text-secondary-400">
+        {t('linkedRequirements')}
+      </h3>
+      {linkedRequirementsLoading ? (
+        <p
+          className="text-sm text-secondary-500 dark:text-secondary-400"
+          role="status"
+        >
+          {tc('loading')}
+        </p>
+      ) : linkedRequirementsError ? (
+        <p
+          className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+          role="alert"
+        >
+          {linkedRequirementsError}
+        </p>
+      ) : linkedRequirements.length === 0 ? (
+        <p className="text-sm text-secondary-500 dark:text-secondary-400">
+          {tc('noneAvailable')}
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-secondary-50/80 text-left text-secondary-700 dark:bg-secondary-800/30 dark:text-secondary-300">
+                <th className="px-3 py-2 font-medium">{tr('uniqueId')}</th>
+                <th className="px-3 py-2 font-medium">{tr('description')}</th>
+                <th className="px-3 py-2 font-medium">{tc('version')}</th>
+                <th className="px-3 py-2 font-medium">{tr('status')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {linkedRequirements.map(requirement => {
+                const truncated = truncateDescription(requirement.description)
+                const isTruncated =
+                  truncated !== requirement.description &&
+                  requirement.description != null
+                return (
+                  <tr
+                    className="border-b transition-colors last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20"
+                    key={`${requirement.id}-v${requirement.versionNumber}`}
+                  >
+                    <td className="px-3 py-2 font-medium">
+                      <Link
+                        className="inline-flex min-h-11 min-w-11 items-center text-primary-700 hover:underline dark:text-primary-300"
+                        href={`/requirements/${requirement.uniqueId}/${requirement.versionNumber}`}
+                      >
+                        {requirement.uniqueId}
+                      </Link>
+                    </td>
+                    <td
+                      className="max-w-xs px-3 py-2 text-secondary-600 dark:text-secondary-400"
+                      title={
+                        isTruncated
+                          ? (requirement.description ?? undefined)
+                          : undefined
+                      }
+                    >
+                      {truncated ?? '-'}
+                    </td>
+                    <td className="px-3 py-2 text-secondary-600 dark:text-secondary-400">
+                      v{requirement.versionNumber}
+                    </td>
+                    <td className="px-3 py-2">
+                      <StatusBadge
+                        color={requirement.statusColor}
+                        iconName={requirement.statusIconName}
+                        label={resolveStatusLabel(
+                          {
+                            archiveInitiatedAt: requirement.archiveInitiatedAt,
+                            status: requirement.statusId,
+                            statusNameEn: requirement.statusNameEn,
+                            statusNameSv: requirement.statusNameSv,
+                          },
+                          isSwedish(locale) ? 'sv' : 'en',
+                          tStatusLabel,
+                        )}
+                      />
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+
+  const isEditing = controller.showForm && controller.editId != null
+  const formModalTitle = isEditing
+    ? t('editRequirementPackage')
+    : t('newRequirementPackage')
+
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom" ref={contentRef}>
@@ -389,6 +519,53 @@ export default function RequirementPackagesClient() {
           </h1>
         </div>
 
+        <div className="mb-4">
+          {!controller.loading && controller.items.length > 0 && (
+            <div className="w-full max-w-lg">
+              <label
+                className="mb-1.5 block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                htmlFor="requirement-package-name-filter"
+              >
+                {t('filterByName')}
+              </label>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
+                  <Search
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
+                  />
+                  <input
+                    autoComplete="off"
+                    className="min-h-11 w-full rounded-xl border border-secondary-200 bg-white py-2.5 pr-3 pl-10 text-sm text-secondary-900 transition-all duration-200 placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100 dark:placeholder:text-secondary-500"
+                    {...devMarker({
+                      context: 'requirementPackages',
+                      name: 'text field',
+                      priority: 330,
+                      value: 'name or description filter',
+                    })}
+                    id="requirement-package-name-filter"
+                    onChange={event => setNameFilter(event.target.value)}
+                    placeholder={t('filterByNamePlaceholder')}
+                    ref={nameFilterRef}
+                    type="text"
+                    value={nameFilter}
+                  />
+                </div>
+                {hasActiveNameFilter && (
+                  <button
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-secondary-200 px-4 py-2.5 text-sm text-secondary-700 transition-all duration-200 hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800/60"
+                    onClick={() => setNameFilter('')}
+                    type="button"
+                  >
+                    <X aria-hidden="true" className="h-4 w-4" />
+                    {tc('clearSearch')}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         {(controller.deleteError || controller.loadError || stateError) && (
           <p
             className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
@@ -410,129 +587,29 @@ export default function RequirementPackagesClient() {
 
         <FormModal
           closeDisabled={controller.submitting}
-          developerModeValue="new requirement package"
+          developerModeValue={
+            isEditing ? 'edit requirement package' : 'new requirement package'
+          }
           initialFocusRef={nameInputRef}
+          maxWidthClassName={isEditing ? 'max-w-5xl' : undefined}
           onClose={closeForm}
-          open={controller.showForm && !controller.editId}
-          title={t('newRequirementPackage')}
-          titleId="requirement-package-create-title"
+          open={controller.showForm}
+          title={formModalTitle}
+          titleId={
+            isEditing
+              ? 'requirement-package-edit-title'
+              : 'requirement-package-create-title'
+          }
         >
-          {renderPackageForm(null)}
-        </FormModal>
-
-        <AnimatePresence>
-          {controller.showForm && controller.editId && (
-            <motion.div
-              className="glass mb-6 rounded-2xl p-6"
-              {...offsetPanelMotion(shouldReduceMotion)}
-            >
-              <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_1fr]">
-                {renderPackageForm(t('editRequirementPackage'))}
-
-                <div>
-                  <h3 className="mb-3 text-sm font-medium text-secondary-600 dark:text-secondary-400">
-                    {t('linkedRequirements')}
-                  </h3>
-                  {linkedRequirementsLoading ? (
-                    <p
-                      className="text-sm text-secondary-500 dark:text-secondary-400"
-                      role="status"
-                    >
-                      {tc('loading')}
-                    </p>
-                  ) : linkedRequirementsError ? (
-                    <p
-                      className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
-                      role="alert"
-                    >
-                      {linkedRequirementsError}
-                    </p>
-                  ) : linkedRequirements.length === 0 ? (
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                      {tc('noneAvailable')}
-                    </p>
-                  ) : (
-                    <div className="overflow-x-auto rounded-xl border">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b bg-secondary-50/80 text-left text-secondary-700 dark:bg-secondary-800/30 dark:text-secondary-300">
-                            <th className="px-3 py-2 font-medium">
-                              {tr('uniqueId')}
-                            </th>
-                            <th className="px-3 py-2 font-medium">
-                              {tr('description')}
-                            </th>
-                            <th className="px-3 py-2 font-medium">
-                              {tc('version')}
-                            </th>
-                            <th className="px-3 py-2 font-medium">
-                              {tr('status')}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {linkedRequirements.map(requirement => {
-                            const truncated = truncateDescription(
-                              requirement.description,
-                            )
-                            const isTruncated =
-                              truncated !== requirement.description &&
-                              requirement.description != null
-                            return (
-                              <tr
-                                className="border-b transition-colors last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20"
-                                key={`${requirement.id}-v${requirement.versionNumber}`}
-                              >
-                                <td className="px-3 py-2 font-medium">
-                                  <Link
-                                    className="inline-flex min-h-11 min-w-11 items-center text-primary-700 hover:underline dark:text-primary-300"
-                                    href={`/requirements/${requirement.uniqueId}/${requirement.versionNumber}`}
-                                  >
-                                    {requirement.uniqueId}
-                                  </Link>
-                                </td>
-                                <td
-                                  className="max-w-xs px-3 py-2 text-secondary-600 dark:text-secondary-400"
-                                  title={
-                                    isTruncated
-                                      ? (requirement.description ?? undefined)
-                                      : undefined
-                                  }
-                                >
-                                  {truncated ?? '-'}
-                                </td>
-                                <td className="px-3 py-2 text-secondary-600 dark:text-secondary-400">
-                                  v{requirement.versionNumber}
-                                </td>
-                                <td className="px-3 py-2">
-                                  <StatusBadge
-                                    color={requirement.statusColor}
-                                    iconName={requirement.statusIconName}
-                                    label={resolveStatusLabel(
-                                      {
-                                        archiveInitiatedAt:
-                                          requirement.archiveInitiatedAt,
-                                        status: requirement.statusId,
-                                        statusNameEn: requirement.statusNameEn,
-                                        statusNameSv: requirement.statusNameSv,
-                                      },
-                                      isSwedish(locale) ? 'sv' : 'en',
-                                      tStatusLabel,
-                                    )}
-                                  />
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
+          {isEditing ? (
+            <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+              {renderPackageForm()}
+              {renderLinkedRequirements()}
+            </div>
+          ) : (
+            renderPackageForm()
           )}
-        </AnimatePresence>
+        </FormModal>
 
         {controller.loading ? (
           <p
@@ -573,7 +650,10 @@ export default function RequirementPackagesClient() {
                       priority: 330,
                     })}
                   >
-                    <td className="px-4 py-10 text-center" colSpan={6}>
+                    <td
+                      className="px-4 py-10 text-center"
+                      colSpan={REQUIREMENT_PACKAGE_TABLE_COLUMN_COUNT}
+                    >
                       <div className="flex flex-col items-center justify-center gap-3 text-secondary-500 dark:text-secondary-400">
                         <p>{t('emptyState')}</p>
                         <button
@@ -593,98 +673,141 @@ export default function RequirementPackagesClient() {
                       </div>
                     </td>
                   </tr>
-                ) : (
-                  controller.items.map(requirementPackage => (
-                    <tr
-                      className="border-b transition-colors hover:bg-primary-50/40 dark:hover:bg-primary-950/20"
-                      key={requirementPackage.id}
+                ) : filteredRequirementPackages.length === 0 ? (
+                  <tr>
+                    <td
+                      className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
+                      colSpan={REQUIREMENT_PACKAGE_TABLE_COLUMN_COUNT}
                     >
-                      <td className="px-4 py-3 font-medium">
-                        {requirementPackage.name}
-                      </td>
-                      <td
-                        className="max-w-xs truncate px-4 py-3 text-secondary-600 dark:text-secondary-400"
-                        title={requirementPackage.description || '-'}
+                      {tc('noResults')}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRequirementPackages.map(requirementPackage => {
+                    const archiveActionLabel = requirementPackage.isArchived
+                      ? t('reactivate')
+                      : t('archive')
+                    const archiveActionValue = requirementPackage.isArchived
+                      ? 'reactivate'
+                      : 'archive'
+                    const busy = isBusy(requirementPackage)
+
+                    return (
+                      <tr
+                        className="border-b transition-colors hover:bg-primary-50/40 dark:hover:bg-primary-950/20"
+                        key={requirementPackage.id}
                       >
-                        {requirementPackage.description || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
-                        <span className="block">
-                          {requirementPackage.leadDisplayName}
-                        </span>
-                        <span className="block text-xs text-secondary-500 dark:text-secondary-500">
-                          {requirementPackage.leadHsaId}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
-                        {requirementPackage.isArchived
-                          ? t('archived')
-                          : t('active')}
-                      </td>
-                      <td className="px-4 py-3 text-center text-secondary-600 dark:text-secondary-400">
-                        {t('requirementCount', {
-                          count: requirementPackage.linkedRequirementCount,
-                        })}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          className="mr-3 inline-flex min-h-11 min-w-11 items-center rounded text-sm text-primary-700 hover:underline focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:text-primary-300"
-                          {...devMarker({
-                            context: 'requirementPackages',
-                            name: 'table action',
-                            value: 'edit',
-                          })}
-                          disabled={isBusy(requirementPackage)}
-                          onClick={() => openEdit(requirementPackage)}
-                          type="button"
+                        <td className="px-4 py-3 font-medium">
+                          {requirementPackage.name}
+                        </td>
+                        <td
+                          className="w-[28rem] max-w-[28rem] whitespace-normal break-words px-4 py-3 align-top leading-6 text-secondary-600 dark:text-secondary-400"
+                          title={requirementPackage.description || '-'}
                         >
-                          {tc('edit')}
-                        </button>
-                        <button
-                          className="mr-3 inline-flex min-h-11 min-w-11 items-center gap-1 rounded text-sm text-secondary-700 hover:underline focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:text-secondary-300"
-                          disabled={isBusy(requirementPackage)}
-                          onClick={() => {
-                            void changeArchivedState(
-                              requirementPackage,
-                              requirementPackage.isArchived
-                                ? 'reactivate'
-                                : 'archive',
-                            )
-                          }}
-                          type="button"
-                        >
-                          {requirementPackage.isArchived ? (
-                            <RotateCcw aria-hidden="true" className="h-4 w-4" />
-                          ) : (
-                            <Archive aria-hidden="true" className="h-4 w-4" />
-                          )}
+                          {requirementPackage.description || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
+                          <span className="block">
+                            {requirementPackage.leadDisplayName}
+                          </span>
+                          <span className="block text-xs text-secondary-500 dark:text-secondary-500">
+                            {requirementPackage.leadHsaId}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
                           {requirementPackage.isArchived
-                            ? t('reactivate')
-                            : t('archive')}
-                        </button>
-                        <button
-                          className="inline-flex min-h-11 min-w-11 items-center rounded text-sm text-red-700 hover:underline focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:text-red-400"
-                          {...devMarker({
-                            context: 'requirementPackages',
-                            name: 'table action',
-                            value: 'delete',
+                            ? t('archived')
+                            : t('active')}
+                        </td>
+                        <td className="px-4 py-3 text-center text-secondary-600 dark:text-secondary-400">
+                          {t('requirementCount', {
+                            count: requirementPackage.linkedRequirementCount,
                           })}
-                          disabled={isBusy(requirementPackage)}
-                          onClick={event => {
-                            void remove(
-                              requirementPackage.id,
-                              event.currentTarget,
-                            )
-                          }}
-                          type="button"
-                        >
-                          {controller.deletingIds.has(requirementPackage.id)
-                            ? tc('loading')
-                            : tc('delete')}
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-1">
+                            <button
+                              aria-label={tc('edit')}
+                              className={`${rowActionButtonClassName} text-primary-700 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-950/30`}
+                              {...devMarker({
+                                context: 'requirementPackages',
+                                name: 'table action',
+                                value: 'edit',
+                              })}
+                              disabled={busy}
+                              onClick={() => openEdit(requirementPackage)}
+                              title={tc('edit')}
+                              type="button"
+                            >
+                              <Pencil
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                                focusable={false}
+                              />
+                            </button>
+                            <button
+                              aria-label={archiveActionLabel}
+                              className={`${rowActionButtonClassName} text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800/70`}
+                              {...devMarker({
+                                context: 'requirementPackages',
+                                name: 'table action',
+                                value: archiveActionValue,
+                              })}
+                              disabled={busy}
+                              onClick={() => {
+                                void changeArchivedState(
+                                  requirementPackage,
+                                  requirementPackage.isArchived
+                                    ? 'reactivate'
+                                    : 'archive',
+                                )
+                              }}
+                              title={archiveActionLabel}
+                              type="button"
+                            >
+                              {requirementPackage.isArchived ? (
+                                <RotateCcw
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                  focusable={false}
+                                />
+                              ) : (
+                                <Archive
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                  focusable={false}
+                                />
+                              )}
+                            </button>
+                            <button
+                              aria-label={tc('delete')}
+                              className={`${rowActionButtonClassName} text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30`}
+                              {...devMarker({
+                                context: 'requirementPackages',
+                                name: 'table action',
+                                value: 'delete',
+                              })}
+                              disabled={busy}
+                              onClick={event => {
+                                void remove(
+                                  requirementPackage.id,
+                                  event.currentTarget,
+                                )
+                              }}
+                              title={tc('delete')}
+                              type="button"
+                            >
+                              <Trash2
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                                focusable={false}
+                              />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>

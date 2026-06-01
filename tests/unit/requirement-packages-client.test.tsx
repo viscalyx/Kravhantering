@@ -51,18 +51,24 @@ import RequirementPackagesClient from '@/app/[locale]/requirement-packages/requi
 const sampleRequirementPackages = [
   {
     description: 'Requirements for mobile access and responsive flows.',
-    descriptionEn: 'Requirements for mobile access and responsive flows.',
-    descriptionSv: 'Requirements for mobile access and responsive flows.',
     id: 1,
     isArchived: false,
     leadDisplayName: 'Anna Owner',
     leadHsaId: 'SE5560000001-anna1',
     linkedRequirementCount: 0,
     name: 'Mobile use',
-    nameEn: 'Mobile use',
-    nameSv: 'Mobile use',
   },
 ]
+
+const additionalRequirementPackage = {
+  description: 'Requirements for shared API integrations.',
+  id: 2,
+  isArchived: false,
+  leadDisplayName: 'Sara Owner',
+  leadHsaId: 'SE5560000001-sara1',
+  linkedRequirementCount: 3,
+  name: 'API use',
+}
 
 const requirementPackageNameInput = () =>
   screen.getByRole('textbox', { name: /requirementPackage\.name/ })
@@ -132,9 +138,117 @@ describe('RequirementPackagesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
-    expect(
-      screen.getByText('Requirements for mobile access and responsive flows.'),
-    ).toBeInTheDocument()
+    const descriptionCell = screen
+      .getByText('Requirements for mobile access and responsive flows.')
+      .closest('td')
+
+    expect(descriptionCell).toBeInTheDocument()
+    expect(descriptionCell).toHaveClass('whitespace-normal')
+    expect(descriptionCell).toHaveClass('break-words')
+    expect(descriptionCell).not.toHaveClass('truncate')
+  })
+
+  it('renders package row actions as compact icon buttons with tooltip text', async () => {
+    render(<RequirementPackagesClient />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    const [editButton] = screen.getAllByRole('button', {
+      name: /common\.edit/i,
+    })
+    const archiveButton = screen.getByRole('button', {
+      name: /requirementPackage\.archive/i,
+    })
+    const [deleteButton] = screen.getAllByRole('button', {
+      name: /common\.delete/i,
+    })
+
+    expect(editButton).toHaveAttribute('title', 'common.edit')
+    expect(editButton.textContent?.trim()).toBe('')
+    expect(editButton).toHaveAccessibleName('common.edit')
+    expect(editButton.className).toContain('h-11')
+    expect(editButton.className).toContain('w-11')
+    expect(editButton.querySelector('svg')).not.toBeNull()
+
+    expect(archiveButton).toHaveAttribute('title', 'requirementPackage.archive')
+    expect(archiveButton.textContent?.trim()).toBe('')
+    expect(archiveButton).toHaveAccessibleName('requirementPackage.archive')
+    expect(archiveButton.className).toContain('h-11')
+    expect(archiveButton.className).toContain('w-11')
+    expect(archiveButton.querySelector('svg')).not.toBeNull()
+    expect(archiveButton).toHaveAttribute(
+      'data-developer-mode-value',
+      'archive',
+    )
+
+    expect(deleteButton).toHaveAttribute('title', 'common.delete')
+    expect(deleteButton.textContent?.trim()).toBe('')
+    expect(deleteButton).toHaveAccessibleName('common.delete')
+    expect(deleteButton.className).toContain('h-11')
+    expect(deleteButton.className).toContain('w-11')
+    expect(deleteButton.querySelector('svg')).not.toBeNull()
+  })
+
+  it('filters requirement packages by name or description and clears the search', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.startsWith('/api/requirement-packages?')) {
+        return okJson({
+          requirementPackages: [
+            ...sampleRequirementPackages,
+            additionalRequirementPackage,
+          ],
+        })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementPackagesClient />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+      expect(screen.getByText('API use')).toBeInTheDocument()
+    })
+
+    const nameFilter = screen.getByRole('textbox', {
+      name: /requirementPackage\.filterByName/i,
+    })
+    expect(nameFilter).toHaveAttribute(
+      'placeholder',
+      'requirementPackage.filterByNamePlaceholder',
+    )
+
+    fireEvent.change(nameFilter, { target: { value: 'mobile' } })
+
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+      expect(screen.queryByText('API use')).toBeNull()
+    })
+
+    fireEvent.change(nameFilter, { target: { value: 'shared' } })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Mobile use')).toBeNull()
+      expect(screen.getByText('API use')).toBeInTheDocument()
+    })
+
+    fireEvent.change(nameFilter, { target: { value: 'saknas' } })
+
+    await waitFor(() => {
+      expect(screen.getByText('common.noResults')).toBeInTheDocument()
+      expect(screen.queryByText('Mobile use')).toBeNull()
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /common\.clearSearch/i }),
+    )
+
+    await waitFor(() => {
+      expect(nameFilter).toHaveValue('')
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+      expect(screen.getByText('API use')).toBeInTheDocument()
+    })
   })
 
   it('shows loading text initially', () => {
@@ -265,6 +379,11 @@ describe('RequirementPackagesClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[0])
+    expect(
+      screen.getByRole('dialog', {
+        name: /requirementPackage\.editRequirementPackage/i,
+      }),
+    ).toBeInTheDocument()
     expect((requirementPackageNameInput() as HTMLInputElement).value).toBe(
       'Mobile use',
     )
@@ -371,6 +490,28 @@ describe('RequirementPackagesClient', () => {
     expect(
       screen.queryByRole('textbox', {
         name: /requirementPackage\.name/,
+      }),
+    ).toBeNull()
+  })
+
+  it('closes the edit modal on cancel', async () => {
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    expect(
+      screen.getByRole('dialog', {
+        name: /requirementPackage\.editRequirementPackage/i,
+      }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
+
+    expect(
+      screen.queryByRole('dialog', {
+        name: /requirementPackage\.editRequirementPackage/i,
       }),
     ).toBeNull()
   })

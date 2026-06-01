@@ -4,10 +4,11 @@ export interface RequirementLocalizedEntity {
   nameSv: string | null
 }
 
-export interface RequirementPackageSummary extends RequirementLocalizedEntity {
-  descriptionEn: string | null
-  descriptionSv: string | null
-  ownerId: number | null
+export interface RequirementPackageSummary {
+  description?: string | null
+  id: number
+  name: string | null
+  ownerId?: number | null
 }
 
 export interface RequirementVersionRequirementPackage {

@@ -77,8 +77,7 @@ function toVersionSummary(
     requirementPackages: version.versionRequirementPackages
       .filter(vs => vs.requirementPackage)
       .map(vs => ({
-        nameSv: requirementPackageName(vs.requirementPackage),
-        nameEn: requirementPackageName(vs.requirementPackage),
+        name: requirementPackageName(vs.requirementPackage),
       })),
   }
 }

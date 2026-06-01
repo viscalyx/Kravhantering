@@ -66,10 +66,6 @@ export async function GET(
   return NextResponse.json({
     requirementPackage: {
       ...requirementPackage,
-      descriptionEn: requirementPackage.description,
-      descriptionSv: requirementPackage.description,
-      nameEn: requirementPackage.name,
-      nameSv: requirementPackage.name,
       owner: null,
       ownerId: null,
     },

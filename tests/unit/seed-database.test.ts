@@ -330,6 +330,25 @@ describe('seed profiles', () => {
     )
   })
 
+  it('seeds each requirement package name only once', async () => {
+    const { executor, rows } = collectSeedInsertRows()
+
+    await seedDemoDatabase(executor)
+
+    const packages = seedRowsFor(rows, 'requirement_packages')
+    const packageNames = packages.map(row => row.name)
+    const duplicateNames = packageNames.filter(
+      (name, index) => packageNames.indexOf(name) !== index,
+    )
+    expect(duplicateNames).toEqual([])
+
+    const matchingPackages = packages.filter(
+      row => row.name === 'Användarvänlighet',
+    )
+    expect(matchingPackages).toHaveLength(1)
+    expect(matchingPackages[0]).toMatchObject({ id: 5 })
+  })
+
   it('seeds Linnea privacy data with decisions and improvement suggestions', async () => {
     const { executor, rows } = collectSeedInsertRows()
 
@@ -435,7 +454,7 @@ describe('seed profiles', () => {
       'requirement_area_co_authors.created_by': 1,
       'requirement_area_co_authors.hsa_id': 1,
       'requirement_areas.owner': 2,
-      'requirement_packages.owner': 2,
+      'requirement_packages.owner': 1,
       'requirement_versions.created_by': 1,
       'requirements_specifications.responsible': 1,
       'specification_co_authors.created_by': 1,

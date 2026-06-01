@@ -7,6 +7,7 @@ import {
   FolderCog,
   HelpCircle,
   LibraryBig,
+  LoaderCircle,
   Menu,
   Package,
   Settings2,
@@ -102,10 +103,20 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
   const [mobileStewardshipOpen, setMobileStewardshipOpen] = useState(() =>
     pathname.startsWith('/requirements/stewardship'),
   )
+  const [rememberedStewardshipTab, setRememberedStewardshipTab] =
+    useState<StewardshipTab>('packages')
+  const [pendingStewardshipTarget, setPendingStewardshipTarget] =
+    useState<StewardshipTab | null>(null)
+  const [
+    showStewardshipTransitionSpinner,
+    setShowStewardshipTransitionSpinner,
+  ] = useState(false)
   const isAdminActive = pathname.startsWith('/admin')
   const isStewardshipPath = pathname.startsWith('/requirements/stewardship')
+  const queryStewardshipTab = stewardshipTabFromValue(searchParams.get('tab'))
   const activeStewardshipTab =
-    stewardshipTabFromValue(searchParams.get('tab')) ?? 'packages'
+    queryStewardshipTab ??
+    (isStewardshipPath ? 'packages' : rememberedStewardshipTab)
   const isDesktopStewardshipOpen = desktopStewardshipOpen
   const isMobileStewardshipOpen = mobileStewardshipOpen
   const {
@@ -118,11 +129,43 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
     : undefined
   const rememberStewardshipTab = (tab: StewardshipTab) => {
     localStorage.setItem(STEWARDSHIP_STORAGE_KEY, tab)
+    setRememberedStewardshipTab(tab)
   }
+  useEffect(() => {
+    setRememberedStewardshipTab(getRememberedStewardshipTab())
+  }, [])
   useEffect(() => {
     setDesktopStewardshipOpen(isStewardshipPath)
     setMobileStewardshipOpen(isStewardshipPath)
   }, [isStewardshipPath])
+  useEffect(() => {
+    if (
+      pendingStewardshipTarget &&
+      isStewardshipPath &&
+      queryStewardshipTab === pendingStewardshipTarget
+    ) {
+      setPendingStewardshipTarget(null)
+      setShowStewardshipTransitionSpinner(false)
+    }
+  }, [isStewardshipPath, pendingStewardshipTarget, queryStewardshipTab])
+  useEffect(() => {
+    if (!pendingStewardshipTarget) {
+      setShowStewardshipTransitionSpinner(false)
+      return undefined
+    }
+    setShowStewardshipTransitionSpinner(false)
+    const spinnerTimeout = window.setTimeout(() => {
+      setShowStewardshipTransitionSpinner(true)
+    }, 2000)
+    const cleanupTimeout = window.setTimeout(() => {
+      setPendingStewardshipTarget(null)
+      setShowStewardshipTransitionSpinner(false)
+    }, 5000)
+    return () => {
+      window.clearTimeout(spinnerTimeout)
+      window.clearTimeout(cleanupTimeout)
+    }
+  }, [pendingStewardshipTarget])
 
   const toggleDesktopStewardshipHome = () => {
     if (desktopStewardshipOpen) {
@@ -130,6 +173,8 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
       return
     }
     const tab = getRememberedStewardshipTab()
+    setRememberedStewardshipTab(tab)
+    setPendingStewardshipTarget(tab)
     setDesktopStewardshipOpen(true)
     router.push(getStewardshipHref(tab))
   }
@@ -151,7 +196,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
           : 'bg-primary-50 text-primary-700 shadow-sm dark:bg-primary-950/80 dark:text-primary-300'
       return (
         <Link
-          aria-current={isActive ? 'page' : undefined}
+          aria-current={isStewardshipPath && isActive ? 'page' : undefined}
           className={`inline-flex items-center gap-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950 ${
             mode === 'mobile' ? 'min-h-11' : 'min-h-10'
           } ${modeClassName} ${
@@ -355,6 +400,26 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
           </button>
         </div>
       </div>
+
+      {showStewardshipTransitionSpinner && (
+        <div
+          className="fixed inset-x-0 top-16 bottom-0 z-40 flex items-start justify-center bg-white/95 pt-16 text-secondary-700 backdrop-blur-sm dark:bg-secondary-950/95 dark:text-secondary-200"
+          {...devMarker({
+            context: 'navigation',
+            name: 'transition mask',
+            value: 'stewardship',
+          })}
+        >
+          <div
+            aria-live="polite"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-primary-700 dark:text-primary-300"
+            role="status"
+          >
+            <LoaderCircle aria-hidden="true" className="h-6 w-6 animate-spin" />
+            <span className="sr-only">{tc('loading')}</span>
+          </div>
+        </div>
+      )}
 
       {/* Mobile nav */}
       {mobileOpen && (

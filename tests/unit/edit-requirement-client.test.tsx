@@ -146,11 +146,9 @@ describe('EditRequirementClient', () => {
             versionRequirementPackages: [
               {
                 requirementPackage: {
-                  descriptionEn: null,
-                  descriptionSv: null,
+                  description: null,
                   id: 7,
-                  nameEn: 'Normal operations',
-                  nameSv: 'Normal drift',
+                  name: 'Normal drift',
                   ownerId: null,
                 },
               },

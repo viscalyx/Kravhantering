@@ -13,7 +13,7 @@ export interface DeviationReportVersion {
   description: string | null
   normReferences: { name: string; reference: string; uri: string | null }[]
   qualityCharacteristic: { nameEn: string; nameSv: string } | null
-  requirementPackages: { nameEn: string; nameSv: string }[]
+  requirementPackages: { name: string }[]
   requiresTesting: boolean
   riskLevel: {
     color: string | null
@@ -97,7 +97,7 @@ export async function fetchDeviationForReport(
       }[]
       versionNumber: number
       versionRequirementPackages: {
-        requirementPackage: { nameEn: string | null; nameSv: string | null }
+        requirementPackage: { name: string | null }
       }[]
     }[]
   }
@@ -187,8 +187,7 @@ export async function fetchDeviationForReport(
       requirementPackages: version.versionRequirementPackages
         .filter(vs => vs.requirementPackage)
         .map(vs => ({
-          nameEn: requirementPackageName(vs.requirementPackage),
-          nameSv: requirementPackageName(vs.requirementPackage),
+          name: requirementPackageName(vs.requirementPackage),
         })),
     },
   }

@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsSpecificationDetailClient from '@/app/[locale]/specifications/[slug]/requirements-specification-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
-import type { FilterOption } from '@/lib/requirements/list-view'
+import type { RequirementPackageOption } from '@/lib/requirements/list-view'
 import type {
   RequirementsSpecificationDetailInitialData,
   SpecificationPreloadError,
@@ -73,7 +73,7 @@ vi.mock('@/components/RequirementsTable', () => ({
       needsReferenceId: number | null,
     ) => void
     onSelectionChange?: (ids: Set<number>) => void
-    requirementPackages?: { id: number; nameEn: string; nameSv: string }[]
+    requirementPackages?: { id: number; name: string }[]
     rows: { id: number; itemRef?: string; requirementPackageIds?: number[] }[]
     stickyTopOffsetClassName?: string
     stickyTitle?: ReactNode
@@ -129,7 +129,7 @@ vi.mock('@/components/RequirementsTable', () => ({
               }}
               type="button"
             >
-              {requirementPackage.nameEn}
+              {requirementPackage.name}
             </button>
           )
         })}
@@ -282,7 +282,7 @@ function createInitialData(): RequirementsSpecificationDetailInitialData {
     },
     errors: [] as SpecificationPreloadError[],
     leftNormReferenceOptions: [],
-    requirementPackages: [] as FilterOption[],
+    requirementPackages: [] as RequirementPackageOption[],
     rightNormReferenceOptions: [],
     spec: initialSpec,
     specificationImplementationTypes: [
@@ -921,8 +921,8 @@ describe('RequirementsSpecificationDetailClient', () => {
 
   it('filters requirement applications when a requirement package chip is selected', async () => {
     const requirementPackages = [
-      { id: 1, nameEn: 'Mobile use', nameSv: 'Mobil användning' },
-      { id: 2, nameEn: 'Operations', nameSv: 'Drift' },
+      { id: 1, name: 'Mobile use' },
+      { id: 2, name: 'Operations' },
     ]
     const firstItem = {
       ...initialSpecificationItem,

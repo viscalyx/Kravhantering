@@ -74,8 +74,7 @@ function toNum(value: unknown): number | null {
 
 interface RequirementListPackage {
   id: number
-  nameEn: string
-  nameSv: string
+  name: string
 }
 
 function parseRequirementPackagesJson(
@@ -102,8 +101,7 @@ function parseRequirementPackagesJson(
 
     requirementPackages.push({
       id,
-      nameEn: record.nameEn == null ? '' : String(record.nameEn),
-      nameSv: record.nameSv == null ? '' : String(record.nameSv),
+      name: record.name == null ? '' : String(record.name),
     })
   }
 
@@ -1406,8 +1404,7 @@ export async function getVersionHistory(
             link.requirement_version_id AS requirementVersionId,
             link.requirement_package_id AS requirementPackageId,
             requirementPackage.id AS packageId,
-            requirementPackage.name AS packageNameEn,
-            requirementPackage.name AS packageNameSv
+            requirementPackage.name AS packageName
           FROM requirement_version_requirement_packages link
           INNER JOIN requirement_packages requirementPackage ON requirementPackage.id = link.requirement_package_id
           WHERE link.requirement_version_id IN (${ids.map((_, i) => `@${i}`).join(', ')})`,
@@ -1485,10 +1482,7 @@ export async function getVersionHistory(
         requirementPackageId: Number(link.requirementPackageId),
         requirementPackage: {
           id: Number(link.packageId),
-          nameEn:
-            link.packageNameEn == null ? null : String(link.packageNameEn),
-          nameSv:
-            link.packageNameSv == null ? null : String(link.packageNameSv),
+          name: link.packageName == null ? null : String(link.packageName),
         },
       })),
       status: Number(row.statusId),
@@ -1621,10 +1615,8 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
             link.requirement_version_id AS requirementVersionId,
             link.requirement_package_id AS requirementPackageId,
             requirementPackage.id AS packageId,
-            requirementPackage.name AS packageNameEn,
-            requirementPackage.name AS packageNameSv,
-            requirementPackage.description AS packageDescriptionEn,
-            requirementPackage.description AS packageDescriptionSv,
+            requirementPackage.name AS packageName,
+            requirementPackage.description AS packageDescription,
             NULL AS packageOwnerId,
             requirementPackage.created_at AS packageCreatedAt,
             requirementPackage.updated_at AS packageUpdatedAt
@@ -1755,18 +1747,11 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
         requirementPackageId: Number(link.requirementPackageId),
         requirementPackage: {
           id: Number(link.packageId),
-          nameEn:
-            link.packageNameEn == null ? null : String(link.packageNameEn),
-          nameSv:
-            link.packageNameSv == null ? null : String(link.packageNameSv),
-          descriptionEn:
-            link.packageDescriptionEn == null
+          name: link.packageName == null ? null : String(link.packageName),
+          description:
+            link.packageDescription == null
               ? null
-              : String(link.packageDescriptionEn),
-          descriptionSv:
-            link.packageDescriptionSv == null
-              ? null
-              : String(link.packageDescriptionSv),
+              : String(link.packageDescription),
           ownerId: toNum(link.packageOwnerId),
           createdAt: toIso(link.packageCreatedAt) ?? '',
           updatedAt: toIso(link.packageUpdatedAt) ?? '',

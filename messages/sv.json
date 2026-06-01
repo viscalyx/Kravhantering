@@ -701,7 +701,9 @@
     "reactivate": "Återaktivera",
     "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}",
     "status": "Status",
-    "emptyState": "Inga kravpaket ännu. Skapa ditt första kravpaket."
+    "emptyState": "Inga kravpaket ännu. Skapa ditt första kravpaket.",
+    "filterByName": "Filtrera på namn eller beskrivning",
+    "filterByNamePlaceholder": "Sök namn eller beskrivning på kravpaket"
   },
   "normReference": {
     "editNormReference": "Redigera normreferens",

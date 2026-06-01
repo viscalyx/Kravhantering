@@ -244,25 +244,13 @@ export function formatRequirementDetail(
                 })
               | null
               | undefined
-          const packageName =
-            requirementPackage?.name ??
-            requirementPackage?.nameSv ??
-            requirementPackage?.nameEn ??
-            null
-          const packageDescription =
-            requirementPackage?.description ??
-            requirementPackage?.descriptionSv ??
-            requirementPackage?.descriptionEn ??
-            null
           return {
             requirementPackage: {
-              descriptionEn: packageDescription,
-              descriptionSv: packageDescription,
+              description: requirementPackage?.description ?? null,
               id:
                 requirementPackage?.id ??
                 versionRequirementPackage.requirementPackageId,
-              nameEn: packageName,
-              nameSv: packageName,
+              name: requirementPackage?.name ?? null,
               ownerId: null,
             },
           }

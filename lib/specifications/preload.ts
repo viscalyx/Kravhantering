@@ -21,7 +21,7 @@ import { queryRequirementList } from '@/lib/requirements/list-query'
 import {
   type AreaOption,
   DEFAULT_REQUIREMENT_SORT,
-  type FilterOption,
+  type RequirementPackageOption,
   type RequirementRow,
   type SpecificationItemStatusOption,
 } from '@/lib/requirements/list-view'
@@ -193,11 +193,11 @@ export async function loadRequirementsSpecificationDetailInitialData({
     capture<AreaOption[]>('requirement areas', [], async () =>
       (await listAreas(db)).map(area => ({ id: area.id, name: area.name })),
     ),
-    capture<FilterOption[]>('requirement packages', [], async () =>
+    capture<RequirementPackageOption[]>('requirement packages', [], async () =>
       (await listRequirementPackages(db)).map(pkg => ({
+        description: pkg.description,
         id: pkg.id,
-        nameEn: pkg.name,
-        nameSv: pkg.name,
+        name: pkg.name,
       })),
     ),
     capture<SpecificationNeedsReference[]>(

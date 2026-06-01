@@ -158,6 +158,10 @@ test.describe('Requirements table column picker', () => {
 
         await expect(columnsTrigger).toBeVisible()
         await expect(requirementPackageFilter).toBeVisible()
+        await expect(requirementPackageFilter).toHaveAttribute(
+          'title',
+          'Krav som gäller när systemet används från mobiltelefon eller surfplatta.',
+        )
         await expect(headerLabel).toBeVisible()
 
         const beforeScrollBox = await columnsTrigger.boundingBox()

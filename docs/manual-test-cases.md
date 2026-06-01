@@ -408,6 +408,8 @@ consistently.
 1. Enable `Kvalitetsegenskap`, `Kravpaket`, `Test krävs`, and `Version`.
 1. Close the picker.
 1. Verify that the `Kravpaket` column shows package names or `—`.
+1. Hover a `Kravpaket` chip filter and verify that the package description is
+   shown as a tooltip.
 1. Select a `Kravpaket` chip filter option, then hide the `Kravpaket` column.
 1. Verify that the chip stays selected and the list remains filtered.
 1. Reload the page.
@@ -575,14 +577,25 @@ management live outside Admin Center.
 1. Click `Kravbiblioteksförvaltning` once more to return to `Kravpaket`.
 1. On `Kravpaket`, use the floating `Nytt kravpaket` pill and verify the new
    package form opens as a modal.
+1. Use `Filtrera på namn eller beskrivning` to search for a package by name and
+   by description, verify the table is narrowed to matching packages in both
+   cases, then click `Rensa sökning` and verify all packages are shown again.
 1. Create or edit a package with `Namn`, `Beskrivning`, `HSA-ID` and
-   `Visningsnamn`.
+   `Visningsnamn`. Verify editing opens in a modal and shows linked
+   requirements beside the form.
+1. Verify long `Beskrivning` values in the package list wrap inside the
+   description column instead of being truncated to one line.
+1. Verify package row actions are icon-only buttons. Hover the icons and verify
+   the tooltips show `Redigera`, `Arkivera` or `Återaktivera`, and `Ta bort`.
 1. Switch to `Kravurvalsfrågor`, verify that title is now the page heading, and
    use the floating `Skapa kravurvalsfråga` pill.
 1. Verify the new question form opens as a modal and create a question for a
    requirement area.
 1. Open `/sv/requirements`, click `Kravbiblioteksförvaltning`, and verify the
-   parent navigation returns to `Kravurvalsfrågor`.
+   parent navigation returns directly to `Kravurvalsfrågor` without flashing
+   `Kravpaket` first. Verify no visible `Laddar...` text appears during a fast
+   route change. If the route is slowed for more than about two seconds, verify
+   the delayed transition indicator is a spinner.
 1. Add a normal answer linked to a package or requirement.
 1. Add an `Utan kravurval` answer and verify links are cleared for that answer.
 1. Use the question search and filters to narrow by question text, requirement

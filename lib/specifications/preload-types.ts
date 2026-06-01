@@ -1,6 +1,6 @@
 import type {
   AreaOption,
-  FilterOption,
+  RequirementPackageOption,
   RequirementRow,
   SpecificationItemStatusOption,
 } from '@/lib/requirements/list-view'
@@ -69,7 +69,7 @@ export interface RequirementsSpecificationDetailInitialData {
   availableRequirements: AvailableRequirementsData
   errors: SpecificationPreloadError[]
   leftNormReferenceOptions: NormReferenceOption[]
-  requirementPackages: FilterOption[]
+  requirementPackages: RequirementPackageOption[]
   rightNormReferenceOptions: NormReferenceOption[]
   spec: SpecificationMeta | null
   specificationGovernanceObjectTypes: SpecificationTaxonomyItem[]

@@ -119,16 +119,12 @@ const pages: MarkerSpec[] = [
         requirementPackages: [
           {
             description: null,
-            descriptionEn: null,
-            descriptionSv: null,
             id: 1,
             isArchived: false,
             leadDisplayName: 'Anna Owner',
             leadHsaId: 'SE5560000001-anna1',
             linkedRequirementCount: 0,
             name: 'S',
-            nameEn: 'S',
-            nameSv: 'S',
           },
         ],
       }),
@@ -142,23 +138,24 @@ const pages: MarkerSpec[] = [
           requirementPackages: [
             {
               description: null,
-              descriptionEn: null,
-              descriptionSv: null,
               id: 1,
               isArchived: false,
               leadDisplayName: 'Anna Owner',
               leadHsaId: 'SE5560000001-anna1',
               linkedRequirementCount: 0,
               name: 'S',
-              nameEn: 'S',
-              nameSv: 'S',
             },
           ],
         }) as Response
       }
       return okJson({}) as Response
     },
-    expectedMarkers: ['floating pill', 'crud table', 'table action'],
+    expectedMarkers: [
+      'floating pill',
+      'text field',
+      'crud table',
+      'table action',
+    ],
   },
   {
     label: 'KravversionsstatusarClient (requirement version statuses)',
@@ -392,16 +389,12 @@ describe('RequirementPackagesClient error banner developer-mode marker', () => {
             requirementPackages: [
               {
                 description: null,
-                descriptionEn: null,
-                descriptionSv: null,
                 id: 1,
                 isArchived: false,
                 leadDisplayName: 'Anna Owner',
                 leadHsaId: 'SE5560000001-anna1',
                 linkedRequirementCount: 0,
                 name: 'S',
-                nameEn: 'S',
-                nameSv: 'S',
               },
             ],
           }) as Response

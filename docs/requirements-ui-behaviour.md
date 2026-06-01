@@ -47,6 +47,8 @@ The behaviors below apply to the requirement list rendered by:
 - `requiresTesting` is filterable, but not sortable.
 - `requirementPackage` is filterable through the requirement-package chip row
   even when the optional, non-sortable table column is hidden.
+- Requirement-package chip filters use the package description as a native
+  tooltip when a description exists.
 
 ## Column Visibility
 

@@ -124,8 +124,7 @@ function mapSpecificationLocalRequirementToReportData(
           requirementPackage => ({
             requirementPackage: {
               id: requirementPackage.id,
-              nameEn: requirementPackageName(requirementPackage),
-              nameSv: requirementPackageName(requirementPackage),
+              name: requirementPackageName(requirementPackage),
             },
           }),
         ),

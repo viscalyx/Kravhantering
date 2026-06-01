@@ -115,6 +115,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   uses `navigation > stewardship submenu: inline row`. The separate decorative
   desktop backgrounds behind the disclosure and submenu belong to that same
   submenu surface and do not add separate markers.
+- The delayed stewardship route change spinner uses
+  `navigation > transition mask: stewardship` only when navigation takes longer
+  than two seconds.
 - Auth account-detail rows keep their developer-mode values in English
   as `user info name`, `user info email`, `user info subject`, and
   `user info session expires` even when the visible labels are
@@ -151,7 +154,13 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `floating action rail` as
   `requirementPackages > floating pill: new requirement package`. The new
   package form opens in the shared `dialog: new requirement package` surface;
-  edit stays in the existing inline `crud form` surface.
+  editing opens the same modal surface as `dialog: edit requirement package`.
+  The package name-or-description search field renders as
+  `requirementPackages > text field: name or description filter`. Package list
+  row actions render as icon-only buttons and keep their developer-mode markers
+  as
+  `requirementPackages > table action: edit`, `archive`, `reactivate`, and
+  `delete`.
 - Requirement selection questions expose their create trigger in the fixed
   `floating action rail` as
   `requirementSelectionQuestions > floating pill: new requirement selection question`.

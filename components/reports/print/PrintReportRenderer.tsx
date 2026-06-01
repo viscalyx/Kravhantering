@@ -475,9 +475,7 @@ function VersionDetails({
             {t('requirementPackages')}:{' '}
           </span>
           <span style={{ color: '#6b7280' }}>
-            {version.requirementPackages
-              .map(s => localizedName(s, locale))
-              .join(', ')}
+            {version.requirementPackages.map(s => s.name).join(', ')}
           </span>
         </div>
       )}

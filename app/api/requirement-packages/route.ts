@@ -52,11 +52,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     requirementPackages: requirementPackages.map(s => ({
       ...s,
-      descriptionEn: s.description,
-      descriptionSv: s.description,
       linkedRequirementCount: counts[s.id] ?? 0,
-      nameEn: s.name,
-      nameSv: s.name,
       owner: null,
       ownerId: null,
     })),

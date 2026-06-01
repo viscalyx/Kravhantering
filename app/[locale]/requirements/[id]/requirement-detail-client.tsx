@@ -481,11 +481,8 @@ export default function RequirementDetailClient({
       versionRequirementPackage => {
         const requirementPackage = versionRequirementPackage.requirementPackage
         const requirementPackageLabel =
-          localName(requirementPackage)?.trim() || String(requirementPackage.id)
-        const requirementPackageMarkerValue =
-          requirementPackage.nameEn?.trim() ||
-          requirementPackage.nameSv?.trim() ||
-          String(requirementPackage.id)
+          requirementPackage.name?.trim() || String(requirementPackage.id)
+        const requirementPackageMarkerValue = requirementPackageLabel
 
         return {
           id: `requirementPackage-chip-${requirementPackage.id}`,

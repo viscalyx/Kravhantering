@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StewardshipClient from '@/app/[locale]/requirements/stewardship/stewardship-client'
 
@@ -69,5 +69,31 @@ describe('StewardshipClient', () => {
         name: 'Requirements Library Stewardship',
       }),
     ).not.toBeInTheDocument()
+  })
+
+  it('restores the remembered question tab without first rendering packages', async () => {
+    localStorage.setItem('requirements.stewardship.tab', 'questions')
+
+    render(<StewardshipClient />)
+
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Requirement selection questions',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', {
+        level: 1,
+        name: 'Requirements packages',
+      }),
+    ).not.toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(routerState.replace).toHaveBeenCalledWith(
+        '/requirements/stewardship?tab=questions',
+        { scroll: false },
+      )
+    })
   })
 })

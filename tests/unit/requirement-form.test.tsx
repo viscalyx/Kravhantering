@@ -62,9 +62,7 @@ import RequirementForm from '@/components/RequirementForm'
 const sampleAreas = [{ id: 1, name: 'Area 1', ownerName: 'Owner' }]
 const sampleCategories = [{ id: 1, nameSv: 'Kat', nameEn: 'Cat' }]
 const sampleTypes = [{ id: 1, nameSv: 'Typ', nameEn: 'Type' }]
-const sampleRequirementPackages = [
-  { id: 1, nameSv: 'Kravpaket Alfa', nameEn: 'Package Alpha' },
-]
+const sampleRequirementPackages = [{ id: 1, name: 'Package Alpha' }]
 const sampleNormReferences = [
   { id: 1, name: 'Norm Alpha', normReferenceId: 'NR-1' },
 ]

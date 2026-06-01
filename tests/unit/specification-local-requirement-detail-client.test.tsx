@@ -200,8 +200,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
           requirementPackages: [
             {
               id: 12,
-              nameEn: 'Ordering',
-              nameSv: 'Bestallning',
+              name: 'Bestallning',
             },
           ],
           uniqueId: 'KRAV0001',

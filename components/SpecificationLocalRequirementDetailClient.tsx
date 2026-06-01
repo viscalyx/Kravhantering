@@ -47,8 +47,7 @@ interface SpecificationLocalRequirementDetail {
   requirementCategory: { id: number; nameEn: string; nameSv: string } | null
   requirementPackages: {
     id: number
-    nameEn: string | null
-    nameSv: string | null
+    name: string | null
   }[]
   requirementType: { id: number; nameEn: string; nameSv: string } | null
   requiresTesting: boolean
@@ -979,15 +978,9 @@ export default function SpecificationLocalRequirementDetailClient({
   const requirementPackages = requirement.requirementPackages.map(
     requirementPackage => ({
       id: `specification-local-requirementPackage-${requirementPackage.id}`,
-      label:
-        locale === 'sv'
-          ? (requirementPackage.nameSv ?? requirementPackage.nameEn)
-          : (requirementPackage.nameEn ?? requirementPackage.nameSv),
+      label: requirementPackage.name,
       markerContext: buildDetailSectionContext('requirementPackages'),
-      markerValue:
-        requirementPackage.nameEn ??
-        requirementPackage.nameSv ??
-        String(requirementPackage.id),
+      markerValue: requirementPackage.name ?? String(requirementPackage.id),
     }),
   )
 

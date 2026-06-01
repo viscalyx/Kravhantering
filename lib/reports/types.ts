@@ -14,7 +14,7 @@ export interface VersionSummaryData {
   normReferences: { name: string; reference: string; uri: string | null }[]
   publishedAt: string | null
   qualityCharacteristic: { nameSv: string; nameEn: string } | null
-  requirementPackages: { nameSv: string; nameEn: string }[]
+  requirementPackages: { name: string }[]
   requiresTesting: boolean
   riskLevel: {
     color?: string | null
