@@ -248,14 +248,17 @@ function writeInfo(consoleObj, message) {
 function removeTemporaryVerifyWorkspace(workspace, fsImpl, options = {}) {
   const consoleObj = options.consoleObj ?? console
   try {
-    runPodman([...workspace.podmanGlobalArgs, 'system', 'reset', '--force'], {
-      ...options,
-      stdio: 'ignore',
-    })
+    runPodman(
+      [...workspace.podmanGlobalArgs, 'image', 'prune', '--all', '--force'],
+      {
+        ...options,
+        stdio: 'ignore',
+      },
+    )
   } catch (error) {
     writeInfo(
       consoleObj,
-      `Ignoring OCI verification Podman store reset failure for ${workspace.baseDir}: ${formatErrorMessage(error)}. Node cleanup will still run.`,
+      `Ignoring OCI verification Podman image prune failure for ${workspace.baseDir}: ${formatErrorMessage(error)}. Node cleanup will still run.`,
     )
   }
 

@@ -171,9 +171,9 @@ describe('container OCI archive helpers', () => {
     ])
     expect(commands).toEqual([
       'podman --root /workspace/tmp/verify-oci/app-runtime/root --runroot /workspace/tmp/verify-oci/app-runtime/run load --input tmp/oci/app-runtime.oci.tar.gz',
-      'podman --root /workspace/tmp/verify-oci/app-runtime/root --runroot /workspace/tmp/verify-oci/app-runtime/run system reset --force',
+      'podman --root /workspace/tmp/verify-oci/app-runtime/root --runroot /workspace/tmp/verify-oci/app-runtime/run image prune --all --force',
       'podman --root /workspace/tmp/verify-oci/db-job/root --runroot /workspace/tmp/verify-oci/db-job/run load --input tmp/oci/db-job.oci.tar.gz',
-      'podman --root /workspace/tmp/verify-oci/db-job/root --runroot /workspace/tmp/verify-oci/db-job/run system reset --force',
+      'podman --root /workspace/tmp/verify-oci/db-job/root --runroot /workspace/tmp/verify-oci/db-job/run image prune --all --force',
     ])
     expect(commandEnvs.map(env => env.TMPDIR)).toEqual([
       '/workspace/tmp/verify-oci/app-runtime/tmp',
@@ -228,9 +228,9 @@ describe('container OCI archive helpers', () => {
     ])
     expect(commands).toEqual([
       'podman --root /tmp/kh-oci-verify/verify-ci/root --runroot /tmp/kh-oci-verify/verify-ci/run load --input tmp/oci/app-runtime.oci.tar.gz',
-      'podman --root /tmp/kh-oci-verify/verify-ci/root --runroot /tmp/kh-oci-verify/verify-ci/run system reset --force',
+      'podman --root /tmp/kh-oci-verify/verify-ci/root --runroot /tmp/kh-oci-verify/verify-ci/run image prune --all --force',
       'podman --root /tmp/kh-oci-verify/verify-ci/root --runroot /tmp/kh-oci-verify/verify-ci/run load --input tmp/oci/db-job.oci.tar.gz',
-      'podman --root /tmp/kh-oci-verify/verify-ci/root --runroot /tmp/kh-oci-verify/verify-ci/run system reset --force',
+      'podman --root /tmp/kh-oci-verify/verify-ci/root --runroot /tmp/kh-oci-verify/verify-ci/run image prune --all --force',
     ])
     expect(fsImpl.rmSync).toHaveBeenCalledTimes(2)
     expect(consoleObj.info).toHaveBeenCalledTimes(2)
@@ -239,12 +239,12 @@ describe('container OCI archive helpers', () => {
     )
   })
 
-  it('does not let Podman store reset failures mask image ID verification', () => {
+  it('does not let Podman image prune failures mask image ID verification', () => {
     const fsImpl = fakeFs()
     const consoleObj = { info: vi.fn() }
     const spawnSync = vi.fn((command, args) => {
       expect(command).toBe('podman')
-      return args.includes('reset') ? { status: 125 } : { status: 0 }
+      return args.includes('prune') ? { status: 125 } : { status: 0 }
     })
     const execFileSync = vi.fn((command, args) => {
       expect(command).toBe('podman')
@@ -268,7 +268,7 @@ describe('container OCI archive helpers', () => {
     expect(fsImpl.rmSync).toHaveBeenCalledTimes(2)
     expect(consoleObj.info).toHaveBeenCalledTimes(2)
     expect(consoleObj.info).toHaveBeenCalledWith(
-      'Ignoring OCI verification Podman store reset failure for /tmp/kh-oci-verify/verify-ci: podman --root /tmp/kh-oci-verify/verify-ci/root --runroot /tmp/kh-oci-verify/verify-ci/run system reset --force failed with 125. Node cleanup will still run.',
+      'Ignoring OCI verification Podman image prune failure for /tmp/kh-oci-verify/verify-ci: podman --root /tmp/kh-oci-verify/verify-ci/root --runroot /tmp/kh-oci-verify/verify-ci/run image prune --all --force failed with 125. Node cleanup will still run.',
     )
   })
 
