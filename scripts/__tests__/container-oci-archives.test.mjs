@@ -304,6 +304,8 @@ describe('container OCI archive helpers', () => {
       'utf8',
     )
     const runIdExpression = '$' + '{CONTAINER_STACK_RUN_ID}'
+    const targetExpression = '$' + '{target}'
+    const verifyRootExpression = '$' + '{verify_root}'
 
     expect(workflow).toContain('pull_request:')
     expect(workflow).toContain('contents: read')
@@ -323,6 +325,13 @@ describe('container OCI archive helpers', () => {
     expect(workflow).toContain('npm install -g npm@latest')
     expect(workflow).toContain('--skip-build')
     expect(workflow).toContain('container:oci:export')
+    expect(workflow).toContain('Report OCI verification disk layout')
+    expect(workflow).toContain(`verify_root="/tmp/kh-oci-${runIdExpression}"`)
+    expect(workflow).toContain('df -hT')
+    expect(workflow).toContain(`findmnt -T "${targetExpression}"`)
+    expect(workflow).toContain(
+      `du -sh tmp/container-pr-artifacts/oci "${verifyRootExpression}" /tmp /var/tmp`,
+    )
     expect(workflow).toContain('container:oci:verify')
     expect(workflow).toContain(`--verify-root "/tmp/kh-oci-${runIdExpression}"`)
     expect(workflow).not.toContain('--verify-root tmp/container-oci-verify')
