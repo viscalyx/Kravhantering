@@ -10,6 +10,8 @@ import { describe, expect, it } from 'vitest'
 const rootDir = process.cwd()
 const actorFieldPattern =
   /(?:\.(?:createdBy|decidedBy|resolvedBy|ownerName|firstName|lastName|displayName|selectedByDisplayName)\b)/
+const actorFieldArgumentPattern =
+  /^\s*[\w$.[\]?]+\.(?:createdBy|decidedBy|resolvedBy|ownerName|firstName|lastName|displayName|selectedByDisplayName)\b\s*,?\)?\s*$/
 const formattedActorRenderPattern =
   /\b(?:formatActorDisplayName(?:ForLocale)?|format[A-Z]\w*Name)\s*\(/
 const localeDisplayNameImportPattern =
@@ -69,8 +71,10 @@ describe('privacy display-name enforcement', () => {
         .filter(({ line, number }) => {
           if (!actorFieldPattern.test(line)) return false
           const previousLine = lines[number - 2] ?? ''
-          return !`${previousLine}\n${line}`.includes(
-            'formatActorDisplayNameForLocale(',
+          if (line.includes('formatActorDisplayNameForLocale(')) return false
+          return !(
+            previousLine.trim().endsWith('formatActorDisplayNameForLocale(') &&
+            actorFieldArgumentPattern.test(line)
           )
         })
 

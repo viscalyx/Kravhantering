@@ -4,12 +4,21 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementSelectionQuestionsClient from '@/app/[locale]/requirements/stewardship/requirement-selection-questions-client'
 
+const confirmState = vi.hoisted(() => ({
+  confirm: vi.fn(),
+}))
+
 const helpPanelState = vi.hoisted(() => ({
   useHelpContent: vi.fn(),
+}))
+
+vi.mock('@/components/ConfirmModal', () => ({
+  useConfirmModal: () => ({ confirm: confirmState.confirm }),
 }))
 
 vi.mock('@/components/HelpPanel', () => ({
@@ -89,6 +98,7 @@ describe('RequirementSelectionQuestionsClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    confirmState.confirm.mockResolvedValue(true)
     fetchMock.mockImplementation(async (url: string) => {
       if (url === '/api/requirement-areas') {
         return okJson({ areas: [sampleArea] })
@@ -324,5 +334,136 @@ describe('RequirementSelectionQuestionsClient', () => {
         expect.objectContaining({ method: 'PUT' }),
       )
     })
+  })
+
+  it('keeps question deletion behind confirmation', async () => {
+    confirmState.confirm.mockResolvedValue(false)
+    const questions = [{ ...sampleQuestion, answers: [sampleAnswer] }]
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    const deleteButton = screen.getAllByRole('button', { name: 'Delete' })[0]
+    if (!deleteButton) throw new Error('Missing question delete button')
+    const callCountBeforeDelete = fetchMock.mock.calls.length
+    fireEvent.click(deleteButton)
+
+    await waitFor(() => {
+      expect(confirmState.confirm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          anchorEl: deleteButton,
+          icon: 'caution',
+          message: 'Delete this requirement selection question?',
+          variant: 'danger',
+        }),
+      )
+    })
+    expect(
+      fetchMock.mock.calls.slice(callCountBeforeDelete),
+    ).not.toContainEqual([
+      '/api/requirement-selection-questions/11',
+      expect.objectContaining({ method: 'DELETE' }),
+    ])
+  })
+
+  it('archives answers only after confirmation', async () => {
+    const questions = [{ ...sampleQuestion, answers: [sampleAnswer] }]
+
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions })
+      }
+      if (
+        url === '/api/requirement-selection-questions/11/answers/101/archive' &&
+        init?.method === 'POST'
+      ) {
+        return okJson({})
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(sampleAnswer.text)).toBeInTheDocument()
+    const answerCard = screen.getByText(sampleAnswer.text).closest('.p-3')
+    if (!answerCard) throw new Error('Missing answer card')
+    const archiveButton = within(answerCard as HTMLElement).getByRole(
+      'button',
+      {
+        name: 'Archive',
+      },
+    )
+    fireEvent.click(archiveButton)
+
+    await waitFor(() => {
+      expect(confirmState.confirm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          anchorEl: archiveButton,
+          icon: 'caution',
+          message: 'Archive this answer?',
+          variant: 'danger',
+        }),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-selection-questions/11/answers/101/archive',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+  })
+
+  it('uses 44px minimum touch targets for answer controls', async () => {
+    const questions = [{ ...sampleQuestion, answers: [sampleAnswer] }]
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(sampleAnswer.text)).toBeInTheDocument()
+    const answerCard = screen.getByText(sampleAnswer.text).closest('.p-3')
+    if (!answerCard) throw new Error('Missing answer card')
+
+    for (const buttonName of [
+      'Matching requirements: 1',
+      'Edit',
+      'Deactivate',
+      'Archive',
+      'Delete',
+    ]) {
+      expect(
+        within(answerCard as HTMLElement).getByRole('button', {
+          name: buttonName,
+        }),
+      ).toHaveClass('min-h-11', 'min-w-11')
+    }
   })
 })

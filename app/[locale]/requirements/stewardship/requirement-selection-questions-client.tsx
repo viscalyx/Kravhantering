@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import FormModal from '@/components/FormModal'
@@ -147,6 +148,7 @@ function statusText(
 
 export default function RequirementSelectionQuestionsClient() {
   useHelpContent(REQUIREMENT_SELECTION_QUESTIONS_STEWARDSHIP_HELP)
+  const { confirm } = useConfirmModal()
   const t = useTranslations('requirementSelectionQuestionsStewardship')
   const contentRef = useRef<HTMLDivElement>(null)
   const listAnchorRef = useRef<HTMLDivElement>(null)
@@ -167,6 +169,10 @@ export default function RequirementSelectionQuestionsClient() {
       answerSortOrderHelp: t('fieldHelp.answerSortOrder'),
       answerTextHelp: t('fieldHelp.answerText'),
       clone: t('clone'),
+      confirmArchiveAnswer: t('confirmArchiveAnswer'),
+      confirmArchiveQuestion: t('confirmArchiveQuestion'),
+      confirmDeleteAnswer: t('confirmDeleteAnswer'),
+      confirmDeleteQuestion: t('confirmDeleteQuestion'),
       create: t('create'),
       createQuestion: t('createQuestion'),
       deactivate: t('deactivate'),
@@ -463,12 +469,28 @@ export default function RequirementSelectionQuestionsClient() {
       | 'delete'
       | 'duplicate'
       | 'reactivate',
+    anchorEl?: HTMLElement,
   ) => {
     const method = operation === 'delete' ? 'DELETE' : 'POST'
     const path =
       operation === 'delete'
         ? `/api/requirement-selection-questions/${question.id}`
         : `/api/requirement-selection-questions/${question.id}/${operation}`
+    if (operation === 'archive' || operation === 'delete') {
+      void confirm({
+        anchorEl,
+        confirmText: operation === 'delete' ? copy.delete : copy.archive,
+        icon: 'caution',
+        message:
+          operation === 'delete'
+            ? copy.confirmDeleteQuestion
+            : copy.confirmArchiveQuestion,
+        variant: 'danger',
+      }).then(confirmed => {
+        if (confirmed) void mutate(path, method)
+      })
+      return
+    }
     void mutate(path, method)
   }
 
@@ -476,12 +498,28 @@ export default function RequirementSelectionQuestionsClient() {
     question: RequirementSelectionQuestion,
     answer: RequirementSelectionAnswer,
     operation: 'activate' | 'archive' | 'deactivate' | 'delete' | 'reactivate',
+    anchorEl?: HTMLElement,
   ) => {
     const method = operation === 'delete' ? 'DELETE' : 'POST'
     const path =
       operation === 'delete'
         ? `/api/requirement-selection-questions/${question.id}/answers/${answer.id}`
         : `/api/requirement-selection-questions/${question.id}/answers/${answer.id}/${operation}`
+    if (operation === 'archive' || operation === 'delete') {
+      void confirm({
+        anchorEl,
+        confirmText: operation === 'delete' ? copy.delete : copy.archive,
+        icon: 'caution',
+        message:
+          operation === 'delete'
+            ? copy.confirmDeleteAnswer
+            : copy.confirmArchiveAnswer,
+        variant: 'danger',
+      }).then(confirmed => {
+        if (confirmed) void mutate(path, method)
+      })
+      return
+    }
     void mutate(path, method)
   }
 
@@ -821,10 +859,11 @@ export default function RequirementSelectionQuestionsClient() {
                     <button
                       className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
                       disabled={submitting}
-                      onClick={() =>
+                      onClick={event =>
                         questionAction(
                           question,
                           question.isArchived ? 'reactivate' : 'archive',
+                          event.currentTarget,
                         )
                       }
                       type="button"
@@ -848,7 +887,9 @@ export default function RequirementSelectionQuestionsClient() {
                     <button
                       className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-red-200 px-3 text-sm text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
                       disabled={submitting}
-                      onClick={() => questionAction(question, 'delete')}
+                      onClick={event =>
+                        questionAction(question, 'delete', event.currentTarget)
+                      }
                       type="button"
                     >
                       <Trash2 aria-hidden="true" className="h-4 w-4" />
@@ -882,7 +923,7 @@ export default function RequirementSelectionQuestionsClient() {
                                 </p>
                               )}
                               <button
-                                className="mt-2 inline-flex min-h-8 items-center rounded-lg border px-2 text-xs disabled:opacity-50"
+                                className="mt-2 inline-flex min-h-11 min-w-11 items-center rounded-lg border px-2 text-xs disabled:opacity-50"
                                 disabled={answer.matchingRequirementCount < 1}
                                 onClick={() =>
                                   setExpandedAnswerId(current =>
@@ -919,7 +960,7 @@ export default function RequirementSelectionQuestionsClient() {
                             </div>
                             <div className="flex flex-wrap gap-2">
                               <button
-                                className="inline-flex min-h-9 items-center rounded-lg border px-2 text-xs disabled:opacity-50"
+                                className="inline-flex min-h-11 min-w-11 items-center rounded-lg border px-2 text-xs disabled:opacity-50"
                                 disabled={submitting}
                                 onClick={() => editAnswer(answer)}
                                 type="button"
@@ -927,7 +968,7 @@ export default function RequirementSelectionQuestionsClient() {
                                 {copy.edit}
                               </button>
                               <button
-                                className="inline-flex min-h-9 items-center rounded-lg border px-2 text-xs disabled:opacity-50"
+                                className="inline-flex min-h-11 min-w-11 items-center rounded-lg border px-2 text-xs disabled:opacity-50"
                                 disabled={submitting}
                                 onClick={() =>
                                   answerAction(
@@ -943,15 +984,16 @@ export default function RequirementSelectionQuestionsClient() {
                                   : copy.activate}
                               </button>
                               <button
-                                className="inline-flex min-h-9 items-center rounded-lg border px-2 text-xs disabled:opacity-50"
+                                className="inline-flex min-h-11 min-w-11 items-center rounded-lg border px-2 text-xs disabled:opacity-50"
                                 disabled={submitting}
-                                onClick={() =>
+                                onClick={event =>
                                   answerAction(
                                     question,
                                     answer,
                                     answer.isArchived
                                       ? 'reactivate'
                                       : 'archive',
+                                    event.currentTarget,
                                   )
                                 }
                                 type="button"
@@ -961,10 +1003,15 @@ export default function RequirementSelectionQuestionsClient() {
                                   : copy.archive}
                               </button>
                               <button
-                                className="inline-flex min-h-9 items-center rounded-lg border border-red-200 px-2 text-xs text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
+                                className="inline-flex min-h-11 min-w-11 items-center rounded-lg border border-red-200 px-2 text-xs text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
                                 disabled={submitting}
-                                onClick={() =>
-                                  answerAction(question, answer, 'delete')
+                                onClick={event =>
+                                  answerAction(
+                                    question,
+                                    answer,
+                                    'delete',
+                                    event.currentTarget,
+                                  )
                                 }
                                 type="button"
                               >

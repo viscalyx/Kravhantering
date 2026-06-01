@@ -589,6 +589,8 @@ management live outside Admin Center.
    area, and active/archived status.
 1. Edit the question text and an answer text, then verify the edited values are
    shown without creating duplicate rows.
+1. Try to archive and delete a question or answer, cancel the first
+   confirmation, then repeat and confirm.
 1. Expand an answer preview and verify it lists matching published requirements
    and flags `Saknar kravurval` when no published requirement currently matches.
 1. Reload the page.
@@ -596,8 +598,9 @@ management live outside Admin Center.
 **Expected result:** The last stewardship tab is restored, only the active
 stewardship view title is shown as the page heading, package leads use direct
 HSA-ID/display-name fields, the question gets a stable `KUF` code, questions
-have no required/mandatory setting, and active answers without links remain
-editable as action-required health items.
+have no required/mandatory setting, cancelled destructive actions leave the
+question or answer unchanged, confirmed destructive actions complete, and active
+answers without links remain editable as action-required health items.
 
 ## Requirement creation and lifecycle
 
