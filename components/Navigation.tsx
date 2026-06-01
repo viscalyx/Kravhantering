@@ -214,7 +214,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
                 <div
                   className={`flex flex-col items-center transition-all duration-200 ${
                     isDesktopStewardshipOpen
-                      ? 'rounded-[2rem] border border-secondary-200/70 bg-secondary-50/90 p-1 shadow-sm ring-1 ring-white/80 dark:border-secondary-700/60 dark:bg-secondary-800/70 dark:ring-secondary-700/50'
+                      ? 'stewardship-nav-stepped-shell'
                       : ''
                   }`}
                   {...devMarker({
@@ -227,6 +227,10 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
                   <button
                     aria-expanded={isDesktopStewardshipOpen}
                     className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950 ${
+                      isDesktopStewardshipOpen
+                        ? 'stewardship-nav-parent-shell'
+                        : ''
+                    } ${
                       isActive
                         ? 'bg-primary-50 text-primary-700 shadow-sm dark:bg-primary-950/80 dark:text-primary-300'
                         : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800'
@@ -256,7 +260,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
                   </button>
                   {isDesktopStewardshipOpen && (
                     <div
-                      className="mt-1 flex items-center gap-1 rounded-full bg-white/55 p-1 shadow-inner shadow-secondary-200/50 dark:bg-secondary-950/35 dark:shadow-black/20"
+                      className="stewardship-nav-submenu-shell mt-1 flex items-center gap-1 p-1 shadow-inner shadow-secondary-200/50 dark:shadow-black/20"
                       key="desktop-stewardship-subnav"
                     >
                       {stewardshipSubLinks('desktop')}

@@ -959,6 +959,8 @@
         "specificationLocalDeviations": "Lokala avvikelser i kravunderlag",
         "improvementSuggestions": "Förbättringsförslag",
         "specifications": "Kravunderlag",
+        "requirementSelectionQuestions": "Kravurvalsfrågor",
+        "requirementSelectionAnswers": "Kravurvalssvar",
         "areaCoAuthors": "Kravområdesmedförfattare",
         "specificationCoAuthors": "Kravunderlagsmedförfattare",
         "accessReviewRuns": "Behörighetsöversyner",
@@ -979,7 +981,8 @@
         "accessReviewPrincipal": "Behörig i översyn",
         "taxonomy": "Taxonomi",
         "requirementVersion": "Kravversion",
-        "specificationArchive": "Kravunderlag"
+        "specificationArchive": "Kravunderlag",
+        "requirementSelection": "Kravurval"
       },
       "warnings": {
         "ownerSwitch": "Byt referenser till en ersättande ägare, eller anonymisera till den raderade användaren när ingen ersättare anges.",

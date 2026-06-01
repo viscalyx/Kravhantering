@@ -172,7 +172,7 @@ describe('seed profiles', () => {
 
     expect(seedRowsFor(rows, 'requirement_statuses').length).toBeGreaterThan(0)
     expect(seedRowsFor(rows, 'quality_characteristics')).toHaveLength(49)
-    expect(seedRowsFor(rows, 'archiving_retention_policies')).toHaveLength(4)
+    expect(seedRowsFor(rows, 'archiving_retention_policies')).toHaveLength(5)
     expect(seedRowsFor(rows, 'owners')).toHaveLength(0)
     expect(seedRowsFor(rows, 'requirement_areas')).toHaveLength(0)
     expect(seedRowsFor(rows, 'requirements')).toHaveLength(0)
@@ -216,14 +216,25 @@ describe('seed profiles', () => {
     )
     const questionsById = rowById(questions)
     const answersById = rowById(answers)
+    const demoQuestionIds = new Set(
+      questions
+        .filter(row => String(row.question_code).endsWith('KUF001'))
+        .map(row => row.id),
+    )
+    const demoAnswers = answers.filter(row =>
+      demoQuestionIds.has(row.question_id),
+    )
+    const demoSavedAnswers = savedAnswers.filter(row =>
+      demoQuestionIds.has(row.question_id),
+    )
     const publishedRequirementIds = new Set(
       seedRowsFor(rows, 'requirement_versions')
         .filter(row => row.requirement_status_id === 3)
         .map(row => row.requirement_id),
     )
 
-    expect(questions).toHaveLength(6)
-    expect(answers).toHaveLength(22)
+    expect(demoQuestionIds.size).toBe(6)
+    expect(demoAnswers).toHaveLength(22)
     expect(new Set(questionSequences.map(row => row.next_sequence))).toEqual(
       new Set([2]),
     )
@@ -234,10 +245,10 @@ describe('seed profiles', () => {
     ).toEqual([1, 2, 4, 9, 1002, 1004])
     expect(answerPackages).toHaveLength(32)
     expect(answerRequirements).toHaveLength(36)
-    expect(new Set(savedAnswers.map(row => row.specification_id))).toEqual(
+    expect(new Set(demoSavedAnswers.map(row => row.specification_id))).toEqual(
       new Set([1, 7, 8, 1002]),
     )
-    expect(savedAnswers.some(row => row.is_filter_active === 0)).toBe(true)
+    expect(demoSavedAnswers.some(row => row.is_filter_active === 0)).toBe(true)
 
     for (const answer of answers) {
       expect(questionsById.has(answer.question_id)).toBe(true)
@@ -507,6 +518,8 @@ describe('seed profiles', () => {
       'requirement_versions.review_stale',
       'requirement_versions.draft_stale',
       'requirements_specifications.obsolete',
+      'requirement_selection_questions.archived',
+      'requirement_selection_answers.archived',
     ])
 
     const owners = rowById(seedRowsFor(rows, 'owners'))
@@ -517,6 +530,16 @@ describe('seed profiles', () => {
     const versions = rowById(seedRowsFor(rows, 'requirement_versions'))
     const specifications = rowById(
       seedRowsFor(rows, 'requirements_specifications'),
+    )
+    const requirementSelectionQuestions = rowById(
+      seedRowsFor(rows, 'requirement_selection_questions'),
+    )
+    const requirementSelectionAnswers = rowById(
+      seedRowsFor(rows, 'requirement_selection_answers'),
+    )
+    const savedRequirementSelectionAnswers = seedRowsFor(
+      rows,
+      'specification_requirement_selection_answers',
     )
     const localRequirements = rowById(
       seedRowsFor(rows, 'specification_local_requirements'),
@@ -719,5 +742,45 @@ describe('seed profiles', () => {
       specification_lifecycle_status_id: 1,
       updated_at: '2026-04-25 09:00:00',
     })
+    expect(
+      requirementSelectionQuestions.get(
+        RETENTION_SEED.requirementSelectionQuestion.unusedArchived,
+      ),
+    ).toMatchObject({
+      archived_at: '2024-01-15 09:00:00',
+      is_archived: 1,
+      question_code: 'RSK-KUF901',
+    })
+    expect(
+      requirementSelectionAnswers.get(
+        RETENTION_SEED.requirementSelectionAnswer.unusedArchived,
+      ),
+    ).toMatchObject({
+      archived_at: '2024-01-15 09:00:00',
+      is_archived: 1,
+      question_id:
+        RETENTION_SEED.requirementSelectionQuestion.withArchivedAnswer,
+    })
+    expect(
+      requirementSelectionQuestions.get(
+        RETENTION_SEED.requirementSelectionQuestion.freshArchived,
+      ),
+    ).toMatchObject({
+      archived_at: '2026-04-25 09:00:00',
+    })
+    expect(
+      savedRequirementSelectionAnswers.some(
+        row =>
+          row.question_id ===
+          RETENTION_SEED.requirementSelectionQuestion.blockedHistory,
+      ),
+    ).toBe(true)
+    expect(
+      savedRequirementSelectionAnswers.some(
+        row =>
+          row.answer_id ===
+          RETENTION_SEED.requirementSelectionAnswer.blockedHistory,
+      ),
+    ).toBe(true)
   })
 })

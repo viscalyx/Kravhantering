@@ -4,6 +4,8 @@ import {
   getExistingSpecificationRequirementIds,
   getRequirementSelectionFilterForSpecification,
   resolveRequirementSelectionQuestionId,
+  setRequirementSelectionAnswerState,
+  setRequirementSelectionQuestionState,
 } from '@/lib/dal/requirement-selection-questions'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
@@ -11,6 +13,15 @@ function createDb(rows: unknown[]) {
   return {
     query: vi.fn(async () => rows),
   } as unknown as Parameters<typeof getExistingSpecificationRequirementIds>[0]
+}
+
+function createTransactionalDb(query: ReturnType<typeof vi.fn>) {
+  return {
+    query,
+    transaction: vi.fn(async (callback: (manager: unknown) => Promise<void>) =>
+      callback({ query }),
+    ),
+  } as unknown as Parameters<typeof setRequirementSelectionQuestionState>[0]
 }
 
 describe('requirement selection questions DAL', () => {
@@ -113,5 +124,55 @@ describe('requirement selection questions DAL', () => {
       expect.stringContaining('question_code = @0'),
       ['SÄK-KUF001'],
     )
+  })
+
+  it('sets and clears question archived_at when changing question state', async () => {
+    const query = vi.fn(async (_sql: string, _params?: unknown[]) => [])
+    const db = createTransactionalDb(query)
+
+    await setRequirementSelectionQuestionState(db, 7, 'archive')
+    await setRequirementSelectionQuestionState(db, 7, 'deactivate')
+
+    const updateCalls = query.mock.calls.filter(([sql]) =>
+      String(sql).includes('UPDATE requirement_selection_questions'),
+    )
+    expect(String(updateCalls[0]?.[0])).toContain('archived_at = @2')
+    expect(updateCalls[0]?.[1]).toEqual([
+      0,
+      1,
+      expect.any(Date),
+      expect.any(Date),
+      7,
+    ])
+    expect(updateCalls[1]?.[1]).toEqual([0, 0, null, expect.any(Date), 7])
+  })
+
+  it('sets and clears answer archived_at when changing answer state', async () => {
+    const query = vi.fn(async (sql: string, _params?: unknown[]) => {
+      if (sql.includes('remainingActiveAnswerCount')) {
+        return [{ questionIsActive: 0, remainingActiveAnswerCount: 0 }]
+      }
+      return []
+    })
+    const db = createTransactionalDb(query) as unknown as Parameters<
+      typeof setRequirementSelectionAnswerState
+    >[0]
+
+    await setRequirementSelectionAnswerState(db, 7, 11, 'archive')
+    await setRequirementSelectionAnswerState(db, 7, 11, 'reactivate')
+
+    const updateCalls = query.mock.calls.filter(([sql]) =>
+      String(sql).includes('UPDATE requirement_selection_answers'),
+    )
+    expect(String(updateCalls[0]?.[0])).toContain('archived_at = @2')
+    expect(updateCalls[0]?.[1]).toEqual([
+      0,
+      1,
+      expect.any(Date),
+      expect.any(Date),
+      11,
+      7,
+    ])
+    expect(updateCalls[1]?.[1]).toEqual([1, 0, null, expect.any(Date), 11, 7])
   })
 })

@@ -112,7 +112,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   and carries the build-version tooltip when generated metadata is available.
 - The `Kravbiblioteksförvaltning` navigation disclosure uses
   `navigation > stewardship disclosure: open|closed`, and its inline submenu
-  uses `navigation > stewardship submenu: inline row`.
+  uses `navigation > stewardship submenu: inline row`. The separate decorative
+  desktop backgrounds behind the disclosure and submenu belong to that same
+  submenu surface and do not add separate markers.
 - Auth account-detail rows keep their developer-mode values in English
   as `user info name`, `user info email`, `user info subject`, and
   `user info session expires` even when the visible labels are

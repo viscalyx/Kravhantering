@@ -267,6 +267,7 @@ erDiagram
         integer sort_order
         integer is_active
         integer is_archived
+        text archived_at
         text created_at
         text updated_at
     }
@@ -280,6 +281,7 @@ erDiagram
         integer is_no_requirement_selection
         integer is_active
         integer is_archived
+        text archived_at
         text created_at
         text updated_at
     }
@@ -887,6 +889,7 @@ validation.
 | `sort_order` | integer | Display ordering within the area |
 | `is_active` | integer | Active flag |
 | `is_archived` | integer | Soft archive flag |
+| `archived_at` | text (ISO 8601) | When the question was archived for retention aging |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
@@ -894,6 +897,7 @@ validation.
 **Indexes and constraints:** `uq_requirement_selection_questions_question_code`,
 `idx_requirement_selection_questions_area_sort_order`,
 `idx_requirement_selection_questions_state`,
+`idx_requirement_selection_questions_archived_at`,
 `chk_requirement_selection_questions_selection_type`,
 `chk_requirement_selection_questions_state`.
 
@@ -920,6 +924,7 @@ that derived health state as `Saknar kravurval`.
 | `is_no_requirement_selection` | integer | Marks the answer as selecting no requirements |
 | `is_active` | integer | Active flag |
 | `is_archived` | integer | Soft archive flag |
+| `archived_at` | text (ISO 8601) | When the answer was archived for retention aging |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
@@ -927,6 +932,7 @@ that derived health state as `Saknar kravurval`.
 **Indexes and constraints:**
 `idx_requirement_selection_answers_question_sort_order`,
 `idx_requirement_selection_answers_state`,
+`idx_requirement_selection_answers_archived_at`,
 `chk_requirement_selection_answers_state`.
 
 **Demo seed:** the demo profile contains 22 active answer options. They cover
@@ -1651,6 +1657,9 @@ Seeded policies:
   specification history.
 - `obsolete_specifications_delete` — requires anonymized JSON export and then
   deletes requirements specifications outside `Förvaltning` after 730 days.
+- `archived_requirement_selection_delete` — deletes archived
+  requirement-selection questions and answers after 365 days when no saved
+  requirements-specification answers still reference them.
 
 ### `archiving_retention_runs`
 
@@ -2059,8 +2068,10 @@ its purpose and the table/column(s) it covers.
 | `idx_requirement_packages_is_archived` | `requirement_packages` | `is_archived` | Speed up active package lists |
 | `idx_requirement_selection_questions_area_sort_order` | `requirement_selection_questions` | `area_id, sort_order` | Speed up stewardship question lists per area |
 | `idx_requirement_selection_questions_state` | `requirement_selection_questions` | `is_active, is_archived` | Speed up active question filters |
+| `idx_requirement_selection_questions_archived_at` | `requirement_selection_questions` | `is_archived, archived_at` | Speed up retention previews for archived questions |
 | `idx_requirement_selection_answers_question_sort_order` | `requirement_selection_answers` | `question_id, sort_order` | Speed up answer lists per question |
 | `idx_requirement_selection_answers_state` | `requirement_selection_answers` | `is_active, is_archived` | Speed up active answer filters |
+| `idx_requirement_selection_answers_archived_at` | `requirement_selection_answers` | `is_archived, archived_at` | Speed up retention previews for archived answers |
 | `idx_requirement_selection_answer_packages_package_id` | `requirement_selection_answer_packages` | `requirement_package_id` | Speed up package-to-answer lookups |
 | `idx_requirement_selection_answer_requirements_requirement_id` | `requirement_selection_answer_requirements` | `requirement_id` | Speed up requirement-to-answer lookups |
 | `idx_specification_requirement_selection_answers_filter` | `specification_requirement_selection_answers` | `specification_id, is_filter_active` | Speed up active saved-answer filtering for available requirements |
@@ -2276,9 +2287,11 @@ graph LR
     RSQ -- "uq_..._question_code\n(question_code)" --> RSQ
     RSQ -- "idx_..._area_sort_order\n(area_id, sort_order)" --> RA
     RSQ -- "idx_..._state\n(is_active, is_archived)" --> RSQ
+    RSQ -- "idx_..._archived_at\n(is_archived, archived_at)" --> RSQ
     RSA -- "FK question_id" --> RSQ
     RSA -- "idx_..._question_sort_order\n(question_id, sort_order)" --> RSQ
     RSA -- "idx_..._state\n(is_active, is_archived)" --> RSA
+    RSA -- "idx_..._archived_at\n(is_archived, archived_at)" --> RSA
     RSAP -- "FK answer_id" --> RSA
     RSAP -- "idx_..._package_id\n(requirement_package_id)" --> RPKG
     RSAR -- "FK answer_id" --> RSA

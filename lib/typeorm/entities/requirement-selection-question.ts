@@ -4,6 +4,7 @@ import type { RequirementAreaEntity } from '@/lib/typeorm/entities/requirement-a
 export type RequirementSelectionQuestionType = 'multiple' | 'single'
 
 export interface RequirementSelectionQuestionEntity {
+  archivedAt: Date | null
   area: RequirementAreaEntity
   areaId: number
   createdAt: Date
@@ -57,6 +58,7 @@ export const requirementSelectionQuestionEntity =
       sortOrder: { default: 0, name: 'sort_order', type: 'int' },
       isActive: { default: false, name: 'is_active', type: 'bit' },
       isArchived: { default: false, name: 'is_archived', type: 'bit' },
+      archivedAt: { name: 'archived_at', nullable: true, type: 'datetime2' },
       createdAt: { name: 'created_at', type: 'datetime2' },
       updatedAt: { name: 'updated_at', type: 'datetime2' },
     },
@@ -74,6 +76,10 @@ export const requirementSelectionQuestionEntity =
       {
         columns: ['isActive', 'isArchived'],
         name: 'idx_requirement_selection_questions_state',
+      },
+      {
+        columns: ['isArchived', 'archivedAt'],
+        name: 'idx_requirement_selection_questions_archived_at',
       },
     ],
     checks: [

@@ -277,6 +277,8 @@ V1 supports direct deletion after preview and confirmation for:
   requirement links, older than the policy age
 - old requirement versions with no current or historical requirements
   specification dependency
+- archived requirement-selection questions and answers older than one year
+  when no saved requirements-specification answers still reference them
 
 Local seed data includes deterministic `RETENTION-SEED` fixtures for every
 active policy source and the main exclusion cases, so a freshly seeded
@@ -287,6 +289,11 @@ Requirement-version deletion removes package and norm-reference join rows first,
 then the version row. If no versions remain, the requirement row is deleted as
 well. Versions that have ever been linked to a requirements specification are
 excluded by `has_specification_item_history`.
+
+Archived requirement-selection deletion uses the `archived_at` timestamp on the
+question or answer as its age basis. Saved answers in
+`specification_requirement_selection_answers` block deletion so requirements
+specification history remains intact.
 
 Requirements specifications outside `Förvaltning` and older than the policy age
 require an anonymized JSON archive export before deletion. The export includes

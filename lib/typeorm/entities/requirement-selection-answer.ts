@@ -3,6 +3,7 @@ import type { RequirementSelectionQuestionEntity } from '@/lib/typeorm/entities/
 
 export interface RequirementSelectionAnswerEntity {
   answerText: string
+  archivedAt: Date | null
   createdAt: Date
   description: string | null
   id: number
@@ -49,6 +50,7 @@ export const requirementSelectionAnswerEntity =
       },
       isActive: { default: true, name: 'is_active', type: 'bit' },
       isArchived: { default: false, name: 'is_archived', type: 'bit' },
+      archivedAt: { name: 'archived_at', nullable: true, type: 'datetime2' },
       createdAt: { name: 'created_at', type: 'datetime2' },
       updatedAt: { name: 'updated_at', type: 'datetime2' },
     },
@@ -60,6 +62,10 @@ export const requirementSelectionAnswerEntity =
       {
         columns: ['isActive', 'isArchived'],
         name: 'idx_requirement_selection_answers_state',
+      },
+      {
+        columns: ['isArchived', 'archivedAt'],
+        name: 'idx_requirement_selection_answers_archived_at',
       },
     ],
     checks: [

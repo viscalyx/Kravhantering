@@ -116,6 +116,9 @@ describe('Navigation', () => {
     const stewardshipButton = screen.getByRole('button', {
       name: 'nav.stewardship',
     })
+    const stewardshipSurface = stewardshipButton.closest(
+      '[data-developer-mode-name="stewardship submenu"]',
+    )
 
     expect(settingsLink).toHaveAttribute('href', '/admin')
     expect(settingsLink.className).toContain('min-h-11')
@@ -127,12 +130,15 @@ describe('Navigation', () => {
       '/requirements',
     )
     expect(stewardshipButton).toHaveAttribute('aria-expanded', 'false')
+    expect(stewardshipSurface).not.toHaveClass('stewardship-nav-stepped-shell')
     expect(screen.queryByRole('link', { name: 'nav.stewardship' })).toBeNull()
     fireEvent.click(stewardshipButton)
     expect(routerState.push).toHaveBeenCalledWith(
       '/requirements/stewardship?tab=packages',
     )
     expect(stewardshipButton).toHaveAttribute('aria-expanded', 'true')
+    expect(stewardshipSurface).toHaveClass('stewardship-nav-stepped-shell')
+    expect(stewardshipButton).toHaveClass('stewardship-nav-parent-shell')
     expect(
       screen.getByRole('link', { name: 'nav.requirementPackages' }),
     ).toHaveAttribute('href', '/requirements/stewardship?tab=packages')
@@ -273,7 +279,7 @@ describe('Navigation', () => {
   it.each([
     ['packages', 'nav.requirementPackages'],
     ['questions', 'nav.requirementSelectionQuestions'],
-  ])('uses the primary selected background for desktop stewardship %s navigation', (tab, label) => {
+  ])('uses the stepped shell and primary selected background for desktop stewardship %s navigation', (tab, label) => {
     pathnameState.value = '/requirements/stewardship'
     searchParamsState.value = new URLSearchParams(`tab=${tab}`)
 
@@ -286,9 +292,13 @@ describe('Navigation', () => {
     const stewardshipShell = stewardshipButton.closest(
       '[data-developer-mode-name="stewardship submenu"]',
     )
+    const stewardshipSubmenu = stewardshipTab.closest(
+      '.stewardship-nav-submenu-shell',
+    )
 
-    expect(stewardshipShell?.className).toContain('bg-secondary-50/90')
-    expect(stewardshipShell?.className).toContain('dark:bg-secondary-800/70')
+    expect(stewardshipShell).toHaveClass('stewardship-nav-stepped-shell')
+    expect(stewardshipButton).toHaveClass('stewardship-nav-parent-shell')
+    expect(stewardshipSubmenu).toBeInTheDocument()
     expect(stewardshipButton.className).toContain('bg-primary-50')
     expect(stewardshipButton.className).not.toContain('bg-white')
     expect(stewardshipTab).toHaveAttribute('aria-current', 'page')

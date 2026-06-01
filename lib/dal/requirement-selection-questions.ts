@@ -11,6 +11,7 @@ export type RequirementSelectionType = 'multiple' | 'single'
 
 export interface RequirementSelectionAnswerRow {
   alreadyAddedRequirementCount?: number
+  archivedAt: string | null
   createdAt: string
   description: string | null
   healthState: 'missing_requirement_selection' | 'ok'
@@ -30,6 +31,7 @@ export interface RequirementSelectionAnswerRow {
 
 export interface RequirementSelectionQuestionRow {
   answers: RequirementSelectionAnswerRow[]
+  archivedAt: string | null
   areaId: number
   areaName: string
   areaPrefix: string
@@ -83,6 +85,7 @@ type QuestionDbRow = {
   areaId: number
   areaName: string
   areaPrefix: string
+  archivedAt: Date | string | null
   createdAt: Date | string
   helpText: string | null
   id: number
@@ -96,6 +99,7 @@ type QuestionDbRow = {
 }
 
 type AnswerDbRow = {
+  archivedAt: Date | string | null
   createdAt: Date | string
   description: string | null
   id: number
@@ -133,6 +137,7 @@ function mapQuestionRow(row: QuestionDbRow): RequirementSelectionQuestionRow {
     areaId: row.areaId,
     areaName: row.areaName,
     areaPrefix: row.areaPrefix,
+    archivedAt: row.archivedAt == null ? null : toIsoString(row.archivedAt),
     createdAt: toIsoString(row.createdAt),
     helpText: row.helpText,
     id: row.id,
@@ -148,6 +153,7 @@ function mapQuestionRow(row: QuestionDbRow): RequirementSelectionQuestionRow {
 
 function mapAnswerRow(row: AnswerDbRow): RequirementSelectionAnswerRow {
   return {
+    archivedAt: row.archivedAt == null ? null : toIsoString(row.archivedAt),
     createdAt: toIsoString(row.createdAt),
     description: row.description,
     healthState: 'ok',
@@ -215,6 +221,7 @@ async function listQuestionRows(
         question.sort_order AS sortOrder,
         question.is_active AS isActive,
         question.is_archived AS isArchived,
+        question.archived_at AS archivedAt,
         question.created_at AS createdAt,
         question.updated_at AS updatedAt
       FROM requirement_selection_questions AS question
@@ -269,6 +276,7 @@ async function hydrateAnswers(
         answer.is_no_requirement_selection AS isNoRequirementSelection,
         answer.is_active AS isActive,
         answer.is_archived AS isArchived,
+        answer.archived_at AS archivedAt,
         answer.created_at AS createdAt,
         answer.updated_at AS updatedAt
       FROM requirement_selection_answers AS answer
@@ -678,6 +686,7 @@ export async function setRequirementSelectionQuestionState(
   operation: 'activate' | 'archive' | 'deactivate' | 'reactivate',
 ): Promise<RequirementSelectionQuestionRow | null> {
   await db.transaction(async manager => {
+    const now = new Date()
     if (operation === 'activate') {
       await assertQuestionCanActivate(manager, id)
     }
@@ -690,15 +699,17 @@ export async function setRequirementSelectionQuestionState(
     const activeValue =
       operation === 'activate' || operation === 'reactivate' ? 1 : 0
     const archivedValue = operation === 'archive' ? 1 : 0
+    const archivedAt = operation === 'archive' ? now : null
     await manager.query(
       `
         UPDATE requirement_selection_questions
         SET is_active = @0,
             is_archived = @1,
-            updated_at = @2
-        WHERE id = @3
+            archived_at = @2,
+            updated_at = @3
+        WHERE id = @4
       `,
-      [activeValue, archivedValue, new Date(), id],
+      [activeValue, archivedValue, archivedAt, now, id],
     )
   })
   return getRequirementSelectionQuestionById(db, id)
@@ -983,6 +994,7 @@ export async function setRequirementSelectionAnswerState(
   operation: 'activate' | 'archive' | 'deactivate' | 'reactivate',
 ): Promise<RequirementSelectionQuestionRow | null> {
   await db.transaction(async manager => {
+    const now = new Date()
     if (operation === 'deactivate' || operation === 'archive') {
       await assertAnswerStateChangeKeepsActiveQuestionUsable(
         manager,
@@ -994,16 +1006,18 @@ export async function setRequirementSelectionAnswerState(
     const activeValue =
       operation === 'activate' || operation === 'reactivate' ? 1 : 0
     const archivedValue = operation === 'archive' ? 1 : 0
+    const archivedAt = operation === 'archive' ? now : null
     await manager.query(
       `
         UPDATE requirement_selection_answers
         SET is_active = @0,
             is_archived = @1,
-            updated_at = @2
-        WHERE id = @3
-          AND question_id = @4
+            archived_at = @2,
+            updated_at = @3
+        WHERE id = @4
+          AND question_id = @5
       `,
-      [activeValue, archivedValue, new Date(), answerId, questionId],
+      [activeValue, archivedValue, archivedAt, now, answerId, questionId],
     )
   })
   return getRequirementSelectionQuestionById(db, questionId)

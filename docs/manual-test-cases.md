@@ -84,6 +84,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [ADMIN-08: access-review validation rejects long comments](#admin-08-access-review-validation-rejects-long-comments)
   - [ADMIN-09: archiving retention preview is privacy-gated](#admin-09-archiving-retention-preview-is-privacy-gated)
   - [ADMIN-10: reference-data icons render across requirement surfaces](#admin-10-reference-data-icons-render-across-requirement-surfaces)
+  - [ADMIN-11: archived requirement-selection retention excludes saved history](#admin-11-archived-requirement-selection-retention-excludes-saved-history)
 - [Privacy and data portability](#privacy-and-data-portability)
   - [PRIV-01: self-service privacy export](#priv-01-self-service-privacy-export)
   - [PRIV-02: PrivacyOfficer preview by HSA-ID](#priv-02-privacyofficer-preview-by-hsa-id)
@@ -561,8 +562,10 @@ management live outside Admin Center.
    a separate `Kravbiblioteksförvaltning` heading above it.
 1. Verify `Kravbiblioteksförvaltning` expands the header downward and shows
    the inline `Kravpaket` and `Kravurvalsfrågor` links centered directly under
-   the parent button inside the same light blue-grey surrounding background in
-   both light and dark mode.
+   the parent button. Verify the parent button sits in its own tight light-grey
+   background and the two inline links sit together in a separate wider
+   light-grey background with straight sides and matching short soft corner
+   curves in both light and dark mode.
 1. Verify the selected `Kravbiblioteksförvaltning` parent button and selected
    inline tab use the same blue-tinted selected background as `Kravbibliotek`
    and `Kravunderlag`.
@@ -1488,6 +1491,31 @@ icon, labels remain readable, the configured icons appear consistently in
 tables, badges, the status stepper, version history, print reports, and PDF
 reports, and the browser console has no Content Security Policy or WebAssembly
 errors while downloading the PDF.
+
+### ADMIN-11: archived requirement-selection retention excludes saved history
+
+**Purpose:** Confirm Admin > Arkivering can gallra archived
+requirement-selection content without deleting saved requirements-specification
+history.
+
+**Users:** `disa.privacy`.
+
+**Prerequisites:** Use demo seed data with `RETENTION-SEED` retention fixtures.
+
+**Steps:**
+
+1. Open `/sv/admin?tab=archiving`.
+1. Select policy `Arkiverade kravurvalsfrågor och kravurvalssvar`.
+1. Select `Förhandsgranska gallring`.
+1. Verify the preview lists the old archived `RETENTION-SEED` question and the
+   old archived `RETENTION-SEED` answer without saved history.
+1. Verify fresh archived requirement-selection rows and rows with saved
+   requirements-specification answers are absent.
+1. Select `Kör gallring` and confirm.
+
+**Expected result:** The run completes without requiring archive export. Only
+archived requirement-selection rows that have no saved
+`specification_requirement_selection_answers` references are deleted.
 
 ## Privacy and data portability
 

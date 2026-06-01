@@ -159,6 +159,8 @@ const ORPHANED_OWNER_POLICY_KEY = 'orphaned_owner_delete'
 const UNUSED_TAXONOMY_POLICY_KEY = 'unused_taxonomy_delete'
 const OLD_REQUIREMENT_VERSIONS_POLICY_KEY = 'old_requirement_versions_delete'
 const OBSOLETE_SPECIFICATIONS_POLICY_KEY = 'obsolete_specifications_delete'
+const ARCHIVED_REQUIREMENT_SELECTION_POLICY_KEY =
+  'archived_requirement_selection_delete'
 const SPECIFICATION_MANAGEMENT_STATUS_ID = 4
 const EXPORT_CONFIRMATION_TTL_MS = 15 * 60 * 1000
 
@@ -201,6 +203,51 @@ const DELETE_REQUIREMENT_VERSION_SQL = `DECLARE @requirement_id int;
         BEGIN
           DELETE FROM requirements WHERE id = @requirement_id;
         END
+      END`
+
+const DELETE_REQUIREMENT_SELECTION_QUESTION_SQL = `DECLARE @question_id int;
+      SELECT @question_id = question.id
+      FROM requirement_selection_questions question
+      WHERE question.id = @0
+        AND question.is_archived = 1
+        AND question.archived_at IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM specification_requirement_selection_answers saved
+          WHERE saved.question_id = question.id
+        );
+      IF @question_id IS NOT NULL
+      BEGIN
+        DELETE answer_package
+        FROM requirement_selection_answer_packages AS answer_package
+        INNER JOIN requirement_selection_answers AS answer
+          ON answer.id = answer_package.answer_id
+        WHERE answer.question_id = @question_id;
+        DELETE answer_requirement
+        FROM requirement_selection_answer_requirements AS answer_requirement
+        INNER JOIN requirement_selection_answers AS answer
+          ON answer.id = answer_requirement.answer_id
+        WHERE answer.question_id = @question_id;
+        DELETE FROM requirement_selection_answers WHERE question_id = @question_id;
+        DELETE FROM requirement_selection_questions WHERE id = @question_id;
+      END`
+
+const DELETE_REQUIREMENT_SELECTION_ANSWER_SQL = `DECLARE @answer_id int;
+      SELECT @answer_id = answer.id
+      FROM requirement_selection_answers answer
+      WHERE answer.id = @0
+        AND answer.is_archived = 1
+        AND answer.archived_at IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM specification_requirement_selection_answers saved
+          WHERE saved.answer_id = answer.id
+        );
+      IF @answer_id IS NOT NULL
+      BEGIN
+        DELETE FROM requirement_selection_answer_packages WHERE answer_id = @answer_id;
+        DELETE FROM requirement_selection_answer_requirements WHERE answer_id = @answer_id;
+        DELETE FROM requirement_selection_answers WHERE id = @answer_id;
       END`
 
 const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
@@ -459,6 +506,75 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
       ORDER BY source.reference ASC`,
     sourceKey: 'requirements_specifications.obsolete',
     subjectTable: 'requirements_specifications',
+  },
+  {
+    action: 'delete',
+    executeSql: DELETE_REQUIREMENT_SELECTION_QUESTION_SQL,
+    fieldKey: 'requirementSelection',
+    objectKey: 'requirementSelectionQuestions',
+    policyKey: ARCHIVED_REQUIREMENT_SELECTION_POLICY_KEY,
+    selectSql: `SELECT *
+      FROM (
+        SELECT
+          N'requirement_selection_questions.archived' AS source_key,
+          N'requirement_selection_questions' AS subject_table,
+          CAST(question.id AS nvarchar(120)) AS subject_id,
+          CONCAT(question.question_code, N' ', question.question_text) AS reference,
+          question.question_text AS current_display_value,
+          question.archived_at AS age_basis
+        FROM requirement_selection_questions question
+        WHERE question.is_archived = 1
+          AND question.archived_at <= @0
+          AND NOT EXISTS (
+            SELECT 1
+            FROM specification_requirement_selection_answers saved
+            WHERE saved.question_id = question.id
+          )
+      ) source
+      WHERE ${ACTIVE_EXCEPTION_SQL}
+      ORDER BY source.reference ASC`,
+    sourceKey: 'requirement_selection_questions.archived',
+    subjectTable: 'requirement_selection_questions',
+  },
+  {
+    action: 'delete',
+    executeSql: DELETE_REQUIREMENT_SELECTION_ANSWER_SQL,
+    fieldKey: 'requirementSelection',
+    objectKey: 'requirementSelectionAnswers',
+    policyKey: ARCHIVED_REQUIREMENT_SELECTION_POLICY_KEY,
+    selectSql: `SELECT *
+      FROM (
+        SELECT
+          N'requirement_selection_answers.archived' AS source_key,
+          N'requirement_selection_answers' AS subject_table,
+          CAST(answer.id AS nvarchar(120)) AS subject_id,
+          CONCAT(question.question_code, N' / ', answer.answer_text) AS reference,
+          answer.answer_text AS current_display_value,
+          answer.archived_at AS age_basis
+        FROM requirement_selection_answers answer
+        INNER JOIN requirement_selection_questions question
+          ON question.id = answer.question_id
+        WHERE answer.is_archived = 1
+          AND answer.archived_at <= @0
+          AND NOT EXISTS (
+            SELECT 1
+            FROM specification_requirement_selection_answers saved
+            WHERE saved.answer_id = answer.id
+          )
+          AND NOT (
+            question.is_archived = 1
+            AND question.archived_at <= @0
+            AND NOT EXISTS (
+              SELECT 1
+              FROM specification_requirement_selection_answers saved_question
+              WHERE saved_question.question_id = question.id
+            )
+          )
+      ) source
+      WHERE ${ACTIVE_EXCEPTION_SQL}
+      ORDER BY source.reference ASC`,
+    sourceKey: 'requirement_selection_answers.archived',
+    subjectTable: 'requirement_selection_answers',
   },
 ]
 

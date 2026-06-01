@@ -959,6 +959,8 @@
         "specificationLocalDeviations": "Specification-local deviations",
         "improvementSuggestions": "Improvement suggestions",
         "specifications": "Specifications",
+        "requirementSelectionQuestions": "Requirement selection questions",
+        "requirementSelectionAnswers": "Requirement selection answers",
         "areaCoAuthors": "Requirement area co-authors",
         "specificationCoAuthors": "Specification co-authors",
         "accessReviewRuns": "Access review rounds",
@@ -979,7 +981,8 @@
         "accessReviewPrincipal": "Access review principal",
         "taxonomy": "Taxonomy",
         "requirementVersion": "Requirement version",
-        "specificationArchive": "Specification"
+        "specificationArchive": "Specification",
+        "requirementSelection": "Requirement selection"
       },
       "warnings": {
         "ownerSwitch": "Switch references to a replacement owner, or anonymize to the deleted-user sentinel when no replacement is supplied.",

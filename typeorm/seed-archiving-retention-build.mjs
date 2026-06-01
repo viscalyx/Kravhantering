@@ -58,6 +58,19 @@ export const RETENTION_SEED = Object.freeze({
     reviewStale: 910102,
     specificationLibrary: 910201,
   },
+  requirementSelectionAnswer: {
+    blockedHistory: 910416,
+    freshArchived: 910415,
+    questionCandidateChild: 910411,
+    questionHistoryChild: 910413,
+    unusedArchived: 910414,
+  },
+  requirementSelectionQuestion: {
+    blockedHistory: 910403,
+    freshArchived: 910402,
+    unusedArchived: 910401,
+    withArchivedAnswer: 910404,
+  },
   specification: {
     freshObsolete: 910302,
     management: 910301,
@@ -82,6 +95,8 @@ export const RETENTION_POSITIVE_SOURCE_KEYS = [
   'requirement_versions.review_stale',
   'requirement_versions.draft_stale',
   'requirements_specifications.obsolete',
+  'requirement_selection_questions.archived',
+  'requirement_selection_answers.archived',
 ]
 
 function tableSection(seedData, name) {
@@ -525,11 +540,148 @@ function addRetentionSpecifications(seedData) {
   })
 }
 
+function addRetentionRequirementSelection(seedData) {
+  for (const question of [
+    {
+      archivedAt: OLD_365_TS,
+      code: 'RSK-KUF901',
+      id: RETENTION_SEED.requirementSelectionQuestion.unusedArchived,
+      isArchived: 1,
+      text: 'RETENTION-SEED arkiverad kravurvalsfråga utan historik',
+      updatedAt: OLD_365_TS,
+    },
+    {
+      archivedAt: NEW_TS,
+      code: 'RSK-KUF902',
+      id: RETENTION_SEED.requirementSelectionQuestion.freshArchived,
+      isArchived: 1,
+      text: 'RETENTION-SEED ny arkiverad kravurvalsfråga',
+      updatedAt: NEW_TS,
+    },
+    {
+      archivedAt: OLD_365_TS,
+      code: 'RSK-KUF903',
+      id: RETENTION_SEED.requirementSelectionQuestion.blockedHistory,
+      isArchived: 1,
+      text: 'RETENTION-SEED arkiverad kravurvalsfråga med historik',
+      updatedAt: OLD_365_TS,
+    },
+    {
+      archivedAt: null,
+      code: 'RSK-KUF904',
+      id: RETENTION_SEED.requirementSelectionQuestion.withArchivedAnswer,
+      isArchived: 0,
+      text: 'RETENTION-SEED aktiv kravurvalsfråga med arkiverade svar',
+      updatedAt: OLD_365_TS,
+    },
+  ]) {
+    addRow(seedData, 'requirement_selection_questions', {
+      archived_at: question.archivedAt,
+      area_id: RETENTION_SEED.requirementArea.used,
+      created_at: OLD_365_TS,
+      help_text:
+        'RETENTION-SEED fixture för Admin > Arkivering av kravurvalscontent.',
+      id: question.id,
+      is_active: question.isArchived ? 0 : 1,
+      is_archived: question.isArchived,
+      question_code: question.code,
+      question_text: question.text,
+      selection_type: 'multiple',
+      sort_order: 900,
+      updated_at: question.updatedAt,
+    })
+  }
+
+  for (const answer of [
+    {
+      archivedAt: OLD_365_TS,
+      id: RETENTION_SEED.requirementSelectionAnswer.questionCandidateChild,
+      isArchived: 1,
+      questionId: RETENTION_SEED.requirementSelectionQuestion.unusedArchived,
+      text: 'RETENTION-SEED arkiverat svar under frågekandidat',
+      updatedAt: OLD_365_TS,
+    },
+    {
+      archivedAt: OLD_365_TS,
+      id: RETENTION_SEED.requirementSelectionAnswer.questionHistoryChild,
+      isArchived: 0,
+      questionId: RETENTION_SEED.requirementSelectionQuestion.blockedHistory,
+      text: 'RETENTION-SEED svar med sparad kravunderlagshistorik',
+      updatedAt: OLD_365_TS,
+    },
+    {
+      archivedAt: OLD_365_TS,
+      id: RETENTION_SEED.requirementSelectionAnswer.unusedArchived,
+      isArchived: 1,
+      questionId:
+        RETENTION_SEED.requirementSelectionQuestion.withArchivedAnswer,
+      text: 'RETENTION-SEED arkiverat kravurvalssvar utan historik',
+      updatedAt: OLD_365_TS,
+    },
+    {
+      archivedAt: NEW_TS,
+      id: RETENTION_SEED.requirementSelectionAnswer.freshArchived,
+      isArchived: 1,
+      questionId:
+        RETENTION_SEED.requirementSelectionQuestion.withArchivedAnswer,
+      text: 'RETENTION-SEED nytt arkiverat kravurvalssvar',
+      updatedAt: NEW_TS,
+    },
+    {
+      archivedAt: OLD_365_TS,
+      id: RETENTION_SEED.requirementSelectionAnswer.blockedHistory,
+      isArchived: 1,
+      questionId:
+        RETENTION_SEED.requirementSelectionQuestion.withArchivedAnswer,
+      text: 'RETENTION-SEED arkiverat kravurvalssvar med historik',
+      updatedAt: OLD_365_TS,
+    },
+  ]) {
+    addRow(seedData, 'requirement_selection_answers', {
+      answer_text: answer.text,
+      archived_at: answer.archivedAt,
+      created_at: OLD_365_TS,
+      description:
+        'RETENTION-SEED fixture för Admin > Arkivering av kravurvalssvar.',
+      id: answer.id,
+      is_active: answer.isArchived ? 0 : 1,
+      is_archived: answer.isArchived,
+      is_no_requirement_selection: 1,
+      question_id: answer.questionId,
+      sort_order: 1,
+      updated_at: answer.updatedAt,
+    })
+  }
+
+  for (const saved of [
+    {
+      answerId: RETENTION_SEED.requirementSelectionAnswer.questionHistoryChild,
+      questionId: RETENTION_SEED.requirementSelectionQuestion.blockedHistory,
+    },
+    {
+      answerId: RETENTION_SEED.requirementSelectionAnswer.blockedHistory,
+      questionId:
+        RETENTION_SEED.requirementSelectionQuestion.withArchivedAnswer,
+    },
+  ]) {
+    addRow(seedData, 'specification_requirement_selection_answers', {
+      answer_id: saved.answerId,
+      changed_at: OLD_365_TS,
+      changed_by_display_name: 'Retention Linked',
+      changed_by_hsa_id: 'SE5560000001-retentionlinked',
+      is_filter_active: 0,
+      question_id: saved.questionId,
+      specification_id: RETENTION_SEED.specification.management,
+    })
+  }
+}
+
 export function appendArchivingRetentionSeed(seedData) {
   addRetentionOwners(seedData)
   addRetentionTaxonomy(seedData)
   addRetentionRequirements(seedData)
   addRetentionSpecifications(seedData)
+  addRetentionRequirementSelection(seedData)
   return {
     positiveSourceKeys: RETENTION_POSITIVE_SOURCE_KEYS.length,
   }
