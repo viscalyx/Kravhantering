@@ -303,12 +303,20 @@ describe('container OCI archive helpers', () => {
       path.join(process.cwd(), '.github/workflows/container-pr-smoke.yml'),
       'utf8',
     )
-    const runIdExpression = '$' + '{CONTAINER_STACK_RUN_ID}'
-    const githubRunIdExpression = '$' + '{GITHUB_RUN_ID}'
-    const verifyRootFallbackExpression =
-      '$' + `{CONTAINER_STACK_RUN_ID:-${githubRunIdExpression}}`
-    const targetExpression = '$' + '{target}'
-    const verifyRootExpression = '$' + '{verify_root}'
+    const stepIndex = stepName => {
+      const index = workflow.indexOf(stepName)
+      expect(index, `${stepName} should exist in the workflow`).toBeGreaterThan(
+        -1,
+      )
+      return index
+    }
+    const shellPrefix = '$'
+    const runIdExpression = `${shellPrefix}{CONTAINER_STACK_RUN_ID}`
+    const githubRunIdExpression = `${shellPrefix}{GITHUB_RUN_ID}`
+    const githubWorkspaceExpression = `${shellPrefix}{GITHUB_WORKSPACE}`
+    const runnerTempExpression = `${shellPrefix}{RUNNER_TEMP}`
+    const verifyRootFallbackExpression = `${shellPrefix}{CONTAINER_STACK_RUN_ID:-${githubRunIdExpression}}`
+    const targetExpression = `${shellPrefix}{target}`
 
     expect(workflow).toContain('pull_request:')
     expect(workflow).toContain('contents: read')
@@ -328,18 +336,32 @@ describe('container OCI archive helpers', () => {
     expect(workflow).toContain('npm install -g npm@latest')
     expect(workflow).toContain('--skip-build')
     expect(workflow).toContain('container:oci:export')
-    expect(workflow).toContain('Report OCI verification disk layout')
-    expect(
-      workflow.indexOf('Report OCI verification disk layout'),
-    ).toBeLessThan(workflow.indexOf('Checkout code'))
+    expect(stepIndex('Report initial disk layout')).toBeLessThan(
+      stepIndex('Checkout code'),
+    )
+    expect(workflow).toContain(
+      `cat > "${runnerTempExpression}/report-disk-layout.sh" <<'REPORT_DISK_LAYOUT'`,
+    )
     expect(workflow).toContain(
       `verify_root="/tmp/kh-oci-${verifyRootFallbackExpression}"`,
     )
     expect(workflow).toContain('df -hT')
+    expect(workflow).toContain('df -ihT')
     expect(workflow).toContain(`findmnt -T "${targetExpression}"`)
+    expect(workflow).toContain('docker system df')
+    expect(workflow).toContain('podman system df')
     expect(workflow).toContain(
-      `du -sh tmp/container-pr-artifacts/oci "${verifyRootExpression}" /tmp /var/tmp`,
+      `"${githubWorkspaceExpression}/tmp/container-pr-artifacts/oci"`,
     )
+    expect(workflow).toContain('/var/lib/docker')
+    expect(stepIndex('Report OCI export disk layout')).toBeLessThan(
+      stepIndex('Export OCI archives'),
+    )
+    expect(workflow).toContain('after OCI export')
+    expect(stepIndex('Report OCI verification disk layout')).toBeLessThan(
+      stepIndex('Verify OCI archives'),
+    )
+    expect(workflow).toContain('after OCI verification')
     expect(workflow).toContain('container:oci:verify')
     expect(workflow).toContain(`--verify-root "/tmp/kh-oci-${runIdExpression}"`)
     expect(workflow).not.toContain('--verify-root tmp/container-oci-verify')
