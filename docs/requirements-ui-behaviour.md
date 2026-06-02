@@ -407,6 +407,19 @@ down.
   display-name snapshot when available. The specification CSV export remains
   row-only.
 
+## Requirement Selection Question Stewardship
+
+- In `Kravbiblioteksförvaltning` > `Kravurvalsfrågor`, the question form shows
+  the selected requirement area's description as small supporting text below
+  `Kravområde`.
+- `Kravområde` is set when a requirement-selection question is created and stays
+  locked when editing the question. The edit form shows the select as disabled,
+  exposes a tooltip explaining why it cannot be changed, and keeps the selected
+  area's description visible.
+- The question form's free-text areas can be resized vertically, but their
+  maximum height is capped relative to the viewport so the remaining form
+  controls stay reachable inside the modal.
+
 ## Specification Requirement Selection Panel
 
 - The specification detail right panel has tabs for `Tillgängliga krav` and

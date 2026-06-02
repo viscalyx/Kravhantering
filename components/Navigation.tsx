@@ -305,7 +305,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
                   </button>
                   {isDesktopStewardshipOpen && (
                     <div
-                      className="stewardship-nav-submenu-shell mt-1 flex items-center gap-1 p-1 shadow-inner shadow-secondary-200/50 dark:shadow-black/20"
+                      className="stewardship-nav-submenu-shell mt-1 flex items-center gap-1 p-1"
                       key="desktop-stewardship-subnav"
                     >
                       {stewardshipSubLinks('desktop')}

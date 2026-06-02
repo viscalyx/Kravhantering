@@ -334,6 +334,7 @@ describe('Navigation', () => {
     expect(stewardshipShell).toHaveClass('stewardship-nav-stepped-shell')
     expect(stewardshipButton).toHaveClass('stewardship-nav-parent-shell')
     expect(stewardshipSubmenu).toBeInTheDocument()
+    expect(stewardshipSubmenu?.className).not.toContain('shadow-inner')
     expect(stewardshipButton.className).toContain('bg-primary-50')
     expect(stewardshipButton.className).not.toContain('bg-white')
     expect(stewardshipTab).toHaveAttribute('aria-current', 'page')

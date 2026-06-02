@@ -566,8 +566,8 @@ management live outside Admin Center.
    the inline `Kravpaket` and `Kravurvalsfrågor` links centered directly under
    the parent button. Verify the parent button sits in its own tight light-grey
    background and the two inline links sit together in a separate wider
-   light-grey background with straight sides and matching short soft corner
-   curves in both light and dark mode.
+   solid light-grey background without inner divider lines, with straight
+   sides and matching short soft corner curves in both light and dark mode.
 1. Verify the selected `Kravbiblioteksförvaltning` parent button and selected
    inline tab use the same blue-tinted selected background as `Kravbibliotek`
    and `Kravunderlag`.
@@ -590,20 +590,35 @@ management live outside Admin Center.
 1. Switch to `Kravurvalsfrågor`, verify that title is now the page heading, and
    use the floating `Skapa kravurvalsfråga` pill.
 1. Verify the new question form opens as a modal and create a question for a
-   requirement area.
+   requirement area. After selecting `Kravområde`, verify the selected
+   requirement area's description appears as small text below the dropdown.
 1. Open `/sv/requirements`, click `Kravbiblioteksförvaltning`, and verify the
    parent navigation returns directly to `Kravurvalsfrågor` without flashing
    `Kravpaket` first. Verify no visible `Laddar...` text appears during a fast
    route change. If the route is slowed for more than about two seconds, verify
    the delayed transition indicator is a spinner.
-1. Add a normal answer linked to a package or requirement.
-1. Add an `Utan kravurval` answer and verify links are cleared for that answer.
+1. Use `Lägg till svar` under svarlistan för en kravurvalsfråga and verify the new
+   answer form opens as a modal.
+1. Add a normal answer linked to a package or requirement from the modal.
+1. Add an `Utan kravurval` answer from the modal and verify links are cleared
+   for that answer.
+1. Drag an answer's full-height handle to change the answer order and verify
+   the dragged answer leaves an empty gray slot that moves as the other answers
+   rearrange while dragging. Verify answer text can still be selected from the
+   row body, and verify the final order is preserved after reloading the page.
+   Focus the same handle with the keyboard and verify arrow-key movement
+   changes the order as well.
 1. Use the question search and filters to narrow by question text, requirement
    area, and active/archived status.
-1. Edit the question text and an answer text, then verify the edited values are
-   shown without creating duplicate rows.
-1. Try to archive and delete a question or answer, cancel the first
-   confirmation, then repeat and confirm.
+1. Edit the question text and verify `Kravområde` is visibly disabled, explains
+   that the area cannot be changed after creation, and still shows the selected
+   requirement area's description. Drag-resize `Hjälptext` vertically and verify
+   it stops before hiding the remaining form controls outside the modal viewport.
+   Edit an answer text, verify answer editing opens in the same modal surface,
+   then verify the edited values are shown without creating duplicate rows.
+1. Verify the answer action buttons show icons next to `Redigera`,
+   `Inaktivera`, `Arkivera`, and `Ta bort`. Try to archive and delete a
+   question or answer, cancel the first confirmation, then repeat and confirm.
 1. Expand an answer preview and verify it lists matching published requirements
    and flags `Saknar kravurval` when no published requirement currently matches.
 1. Reload the page.

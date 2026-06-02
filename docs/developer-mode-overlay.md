@@ -166,10 +166,14 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `requirementSelectionQuestions > floating pill: new requirement selection question`.
   The new question form opens in the shared
   `dialog: new requirement selection question` surface.
-  Search, area/status filters, edit buttons, answer preview toggles, and
-  health badges render inside the existing
-  `requirementSelectionQuestions` form/list surfaces; they do not introduce new
-  developer-mode marker names.
+  Each question renders its contextual answer-create trigger as
+  `requirementSelectionQuestions > button: new requirement selection answer`.
+  New and edited answer forms open as `dialog: new requirement selection answer`
+  and `dialog: edit requirement selection answer`. Search, area/status filters,
+  edit buttons, question-form requirement-area descriptions and lock hints,
+  answer preview toggles, answer row reorder handles, and health badges render
+  inside the existing `requirementSelectionQuestions` form/list surfaces; they
+  do not introduce new developer-mode marker names.
 - Requirements specification list requirement-area labels render as compact,
   non-interactive pills inside the existing `specifications > crud table`
   surface; they do not add separate developer-mode marker names.
