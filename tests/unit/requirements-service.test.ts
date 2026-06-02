@@ -951,6 +951,10 @@ describe('createRequirementsService', () => {
     })
     expect(result.catalog).toBe('requirement_packages')
     expect(result.items).toHaveLength(1)
+    expect(result.items[0]).toMatchObject({
+      description: null,
+      name: 'Mobil användning',
+    })
   })
 
   it('queries transitions catalog', async () => {

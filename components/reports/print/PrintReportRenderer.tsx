@@ -387,6 +387,9 @@ function VersionDetails({
   const getName = (item: { nameSv: string; nameEn: string } | null) =>
     item ? localizedName(item, locale) || null : null
   const createdBy = formatActorDisplayNameForLocale(version.createdBy, locale)
+  const requirementPackageNames = version.requirementPackages
+    .map(({ name }) => name?.trim() ?? '')
+    .filter(Boolean)
 
   return (
     <div style={{ fontSize: '0.875rem' }}>
@@ -475,7 +478,7 @@ function VersionDetails({
             {t('requirementPackages')}:{' '}
           </span>
           <span style={{ color: '#6b7280' }}>
-            {version.requirementPackages.map(s => s.name).join(', ')}
+            {requirementPackageNames.join(', ') || '—'}
           </span>
         </div>
       )}

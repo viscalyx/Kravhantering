@@ -219,7 +219,7 @@ export default function FloatingActionRail({
       frameRef.current = null
       pendingRef.current = false
     }
-  }, [anchorRef, runUpdate, scheduleUpdate])
+  })
 
   if (
     visibleItems.length === 0 ||

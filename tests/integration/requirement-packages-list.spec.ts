@@ -44,9 +44,7 @@ for (const viewport of viewports) {
           const createButton = page.getByRole('button', {
             name: 'Nytt kravpaket',
           })
-          const tableSurface = page.locator(
-            '[data-developer-mode-name="crud table"][data-developer-mode-context="requirementPackages"]',
-          )
+          const tableSurface = page.getByRole('table')
 
           await expect(createButton).toHaveCount(1)
           await expect(tableSurface).toHaveCount(1)

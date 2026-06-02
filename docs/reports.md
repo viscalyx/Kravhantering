@@ -4,6 +4,10 @@ The report system generates requirement reports through two rendering engines:
 browser print HTML and server-side PDF rendering. Both engines share a template
 layer so report content changes apply to both.
 
+Version summaries include requirement package names when present. Blank or
+whitespace-only package names are ignored so report output does not show empty
+package entries.
+
 ## Report Types
 
 ### 1. History Report

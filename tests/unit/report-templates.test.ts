@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
 import { buildHistoryReport } from '@/lib/reports/templates/history-template'
 import { buildReviewReport } from '@/lib/reports/templates/review-template'
+import { buildSuggestionHistoryReport } from '@/lib/reports/templates/suggestion-history-template'
 
 function makeVersion(
   overrides: Partial<RequirementReportData['versions'][number]> = {},
@@ -104,6 +105,41 @@ describe('report templates', () => {
           ],
         }),
       ]),
+      'sv',
+    )
+
+    const versionSummary = model.sections.find(
+      section => section.type === 'version-summary',
+    )
+    expect(versionSummary).toBeDefined()
+    expect(
+      versionSummary?.type === 'version-summary'
+        ? versionSummary.version.requirementPackages
+        : [],
+    ).toEqual([{ name: 'Mobile use' }])
+  })
+
+  it('skips blank requirement packages in suggestion history reports', () => {
+    const model = buildSuggestionHistoryReport(
+      makeRequirement([
+        makeVersion({
+          versionRequirementPackages: [
+            {
+              requirementPackage: {
+                id: 1,
+                name: 'Mobile use',
+              },
+            },
+            {
+              requirementPackage: {
+                id: 2,
+                name: '  ',
+              },
+            },
+          ],
+        }),
+      ]),
+      [],
       'sv',
     )
 

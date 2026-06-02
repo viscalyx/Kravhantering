@@ -976,12 +976,15 @@ export default function SpecificationLocalRequirementDetailClient({
   }))
 
   const requirementPackages = requirement.requirementPackages.map(
-    requirementPackage => ({
-      id: `specification-local-requirementPackage-${requirementPackage.id}`,
-      label: requirementPackage.name,
-      markerContext: buildDetailSectionContext('requirementPackages'),
-      markerValue: requirementPackage.name ?? String(requirementPackage.id),
-    }),
+    requirementPackage => {
+      const label = requirementPackage.name ?? String(requirementPackage.id)
+      return {
+        id: `specification-local-requirementPackage-${requirementPackage.id}`,
+        label,
+        markerContext: buildDetailSectionContext('requirementPackages'),
+        markerValue: label,
+      }
+    },
   )
 
   const hasPendingDeviation =

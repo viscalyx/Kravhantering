@@ -184,11 +184,11 @@ export async function fetchDeviationForReport(
           reference: vnr.normReference.reference,
           uri: vnr.normReference.uri,
         })),
-      requirementPackages: version.versionRequirementPackages
-        .filter(vs => vs.requirementPackage)
-        .map(vs => ({
-          name: requirementPackageName(vs.requirementPackage),
-        })),
+      requirementPackages: version.versionRequirementPackages.flatMap(vs => {
+        const requirementPackage = vs.requirementPackage
+        const name = requirementPackageName(requirementPackage).trim()
+        return requirementPackage && name ? [{ name }] : []
+      }),
     },
   }
 }

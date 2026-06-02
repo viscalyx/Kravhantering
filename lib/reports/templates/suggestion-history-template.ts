@@ -74,11 +74,10 @@ function toVersionSummary(
         reference: vnr.normReference.reference,
         uri: vnr.normReference.uri,
       })),
-    requirementPackages: version.versionRequirementPackages
-      .filter(vs => vs.requirementPackage)
-      .map(vs => ({
-        name: requirementPackageName(vs.requirementPackage),
-      })),
+    requirementPackages: version.versionRequirementPackages.flatMap(vs => {
+      const name = requirementPackageName(vs.requirementPackage).trim()
+      return name ? [{ name }] : []
+    }),
   }
 }
 

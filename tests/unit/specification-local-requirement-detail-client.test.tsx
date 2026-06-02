@@ -268,6 +268,61 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(inlineInset).toHaveClass('py-4')
   })
 
+  it('falls back to the requirement package id when a chip name is missing', async () => {
+    vi.mocked(fetch)
+      .mockImplementationOnce(() =>
+        okJson({
+          acceptanceCriteria: 'Specification local acceptance',
+          createdAt: '2026-04-01T00:00:00.000Z',
+          description: 'Specification local description',
+          id: 1,
+          itemRef: 'local:1',
+          needsReference: null,
+          needsReferenceId: null,
+          normReferences: [],
+          specificationId: 8,
+          specificationItemStatusColor: '#16a34a',
+          specificationItemStatusId: 1,
+          specificationItemStatusNameEn: 'Included',
+          specificationItemStatusNameSv: 'Inkluderad',
+          qualityCharacteristic: null,
+          requirementArea: null,
+          requirementCategory: null,
+          requirementType: null,
+          requiresTesting: false,
+          riskLevel: null,
+          requirementPackages: [
+            {
+              id: 12,
+              name: null,
+            },
+          ],
+          uniqueId: 'KRAV0001',
+          updatedAt: '2026-04-02T00:00:00.000Z',
+          verificationMethod: null,
+        }),
+      )
+      .mockImplementationOnce(() => okJson({ deviations: [] }))
+      .mockImplementationOnce(() =>
+        okJson({ areas: [{ id: 2, name: 'Security', prefix: 'SEC' }] }),
+      )
+
+    render(
+      <SpecificationLocalRequirementDetailClient
+        localRequirementId={1}
+        needsReferences={[]}
+        specificationSlug="ETJANST-UPP-2026"
+      />,
+    )
+
+    const packageChip = await screen.findByText('12')
+    expect(packageChip).toBeInTheDocument()
+    expect(packageChip.closest('li')).toHaveAttribute(
+      'data-developer-mode-value',
+      '12',
+    )
+  })
+
   it('waits for graduation eligibility before showing the action rail', async () => {
     const graduationTargets = createDeferredJsonResponse()
 
