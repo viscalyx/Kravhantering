@@ -40,6 +40,7 @@ vi.mock('next-intl', async () => {
   }
 
   return {
+    useLocale: () => 'en',
     useTranslations: (ns?: string) => (key: string) => {
       const value = lookup(ns ? `${ns}.${key}` : key)
       return typeof value === 'string' ? value : ns ? `${ns}.${key}` : key
@@ -49,6 +50,30 @@ vi.mock('next-intl', async () => {
 
 function okJson(body: unknown) {
   return { ok: true, json: async () => body }
+}
+
+function mockScrollMetrics(
+  element: HTMLElement,
+  metrics: { clientHeight: number; scrollHeight: number; scrollTop?: number },
+) {
+  let scrollTop = metrics.scrollTop ?? 0
+  Object.defineProperties(element, {
+    clientHeight: {
+      configurable: true,
+      get: () => metrics.clientHeight,
+    },
+    scrollHeight: {
+      configurable: true,
+      get: () => metrics.scrollHeight,
+    },
+    scrollTop: {
+      configurable: true,
+      get: () => scrollTop,
+      set: value => {
+        scrollTop = Number(value)
+      },
+    },
+  })
 }
 
 const fetchMock = vi.fn()
@@ -64,7 +89,9 @@ interface TestAnswer {
   matchingRequirementCount: number
   matchingRequirements: Array<{
     description: string | null
+    direct: boolean
     id: number
+    sourcePackages: Array<{ id: number; name: string }>
     uniqueId: string
   }>
   packageIds: number[]
@@ -122,7 +149,9 @@ const sampleAnswer: TestAnswer = {
   matchingRequirements: [
     {
       description: 'Use strong authentication',
+      direct: true,
       id: 301,
+      sourcePackages: [{ id: samplePackage.id, name: samplePackage.name }],
       uniqueId: 'SEC-001',
     },
   ],
@@ -131,6 +160,59 @@ const sampleAnswer: TestAnswer = {
   requirementIds: [301],
   sortOrder: 0,
   text: 'Baseline profile',
+}
+
+function sampleRequirementDetail() {
+  return {
+    area: {
+      id: sampleArea.id,
+      name: sampleArea.name,
+      ownerId: null,
+      ownerName: null,
+      prefix: sampleArea.prefix,
+    },
+    createdAt: '2026-01-01T00:00:00.000Z',
+    id: 301,
+    isArchived: false,
+    specificationCount: 2,
+    uniqueId: 'SEC-001',
+    versions: [
+      {
+        acceptanceCriteria: 'Acceptance detail',
+        archivedAt: null,
+        archiveInitiatedAt: null,
+        category: { id: 1, nameEn: 'Business', nameSv: 'Verksamhet' },
+        createdAt: '2026-01-01T00:00:00.000Z',
+        createdBy: null,
+        description: 'Detailed published requirement',
+        editedAt: null,
+        id: 401,
+        ownerName: null,
+        publishedAt: '2026-01-02T00:00:00.000Z',
+        qualityCharacteristic: null,
+        requiresTesting: false,
+        revisionToken: 'revision-token',
+        riskLevel: null,
+        status: 3,
+        statusColor: '#22c55e',
+        statusIconName: 'CheckCircle2',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        type: null,
+        verificationMethod: null,
+        versionNormReferences: [],
+        versionNumber: 1,
+        versionRequirementPackages: [
+          {
+            requirementPackage: {
+              id: samplePackage.id,
+              name: samplePackage.name,
+            },
+          },
+        ],
+      },
+    ],
+  }
 }
 
 function createDragDataTransfer(): DataTransfer {
@@ -321,7 +403,7 @@ describe('RequirementSelectionQuestionsClient', () => {
       }),
     )
     expect(
-      screen.getByText(/Only requirements with a published version/),
+      screen.getByText(/Search and add published requirements/),
     ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
@@ -475,6 +557,24 @@ describe('RequirementSelectionQuestionsClient', () => {
       if (url === '/api/requirement-selection-questions?includeArchived=true') {
         return okJson({ questions })
       }
+      if (url.startsWith('/api/requirements?')) {
+        return okJson({
+          requirements: [
+            {
+              id: 301,
+              uniqueId: 'SEC-001',
+              version: { description: 'Use strong authentication' },
+            },
+          ],
+        })
+      }
+      if (
+        url.startsWith(
+          '/api/requirement-selection-questions/matched-requirements?',
+        )
+      ) {
+        return okJson({ requirements: sampleAnswer.matchingRequirements })
+      }
       if (
         url === '/api/requirement-selection-questions/11/answers' &&
         init?.method === 'POST'
@@ -504,6 +604,11 @@ describe('RequirementSelectionQuestionsClient', () => {
 
     const answerDialog = screen.getByRole('dialog', { name: 'Add answer' })
     expect(answerDialog).toBeInTheDocument()
+    expect(
+      within(answerDialog as HTMLElement).queryByRole('spinbutton', {
+        name: 'Sort order',
+      }),
+    ).not.toBeInTheDocument()
     fireEvent.change(
       within(answerDialog as HTMLElement).getByRole('textbox', {
         name: /^Text/,
@@ -517,8 +622,13 @@ describe('RequirementSelectionQuestionsClient', () => {
         name: /Requirement IDs/,
       }),
       {
-        target: { value: '301' },
+        target: { value: 'SEC' },
       },
+    )
+    fireEvent.click(
+      await within(answerDialog as HTMLElement).findByRole('button', {
+        name: /^SEC-001/,
+      }),
     )
     fireEvent.click(
       within(answerDialog as HTMLElement).getByRole('button', {
@@ -598,11 +708,20 @@ describe('RequirementSelectionQuestionsClient', () => {
     fireEvent.click(answerEditButton)
 
     expect(
-      screen.getByRole('dialog', { name: 'Edit answer' }),
+      screen.getByRole('dialog', { name: 'Edit requirement selection answer' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: /^Text/ })).toHaveValue(
       'Second answer',
     )
+    expect(
+      within(
+        screen.getByRole('dialog', {
+          name: 'Edit requirement selection answer',
+        }) as HTMLElement,
+      ).queryByRole('spinbutton', {
+        name: 'Sort order',
+      }),
+    ).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
@@ -611,6 +730,233 @@ describe('RequirementSelectionQuestionsClient', () => {
         expect.objectContaining({ method: 'PUT' }),
       )
     })
+  })
+
+  it('edits answers with package checkboxes, live matches, and compact requirement details', async () => {
+    const questions = [{ ...sampleQuestion, answers: [sampleAnswer] }]
+
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions })
+      }
+      if (
+        url.startsWith(
+          '/api/requirement-selection-questions/matched-requirements?',
+        )
+      ) {
+        return okJson({
+          requirements: sampleAnswer.matchingRequirements,
+        })
+      }
+      if (url.startsWith('/api/requirements?')) {
+        return okJson({
+          requirements: [
+            {
+              id: 301,
+              uniqueId: 'SEC-001',
+              version: { description: 'Use strong authentication' },
+            },
+          ],
+        })
+      }
+      if (url === '/api/requirements/301') {
+        return okJson(sampleRequirementDetail())
+      }
+      if (
+        url === '/api/requirement-selection-questions/11/answers/101' &&
+        init?.method === 'PUT'
+      ) {
+        return okJson(sampleQuestion)
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(sampleAnswer.text)).toBeInTheDocument()
+    const answerCard = screen.getByText(sampleAnswer.text).closest('.p-3')
+    if (!answerCard) throw new Error('Missing answer card')
+    const sourceSummary = within(answerCard as HTMLElement).getByRole('group', {
+      name: 'Requirement selection sources',
+    })
+    expect(sourceSummary).toHaveTextContent(samplePackage.name)
+    expect(sourceSummary).toHaveTextContent('SEC-001')
+    expect(sourceSummary).not.toHaveTextContent('301')
+    expect(sourceSummary).not.toHaveTextContent('10')
+    fireEvent.click(
+      within(answerCard as HTMLElement).getByRole('button', { name: 'Edit' }),
+    )
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'Edit requirement selection answer',
+    })
+    const saveButton = within(dialog as HTMLElement).getByRole('button', {
+      name: 'Save',
+    })
+    expect(saveButton.querySelector('.lucide-save')).toBeInTheDocument()
+    expect(saveButton.querySelector('.lucide-plus')).not.toBeInTheDocument()
+
+    const packageSelector = within(dialog as HTMLElement).getByRole('button', {
+      name: 'Requirement packages',
+    })
+    expect(packageSelector).toHaveTextContent('Choose packages (1)')
+    fireEvent.click(packageSelector)
+    const packageCheckbox = await within(dialog as HTMLElement).findByRole(
+      'checkbox',
+      { name: samplePackage.name },
+    )
+    expect(packageCheckbox).toBeChecked()
+    fireEvent.click(packageCheckbox)
+    expect(packageCheckbox).not.toBeChecked()
+    fireEvent.click(packageCheckbox)
+    expect(packageCheckbox).toBeChecked()
+    expect(
+      within(dialog as HTMLElement).getByRole('group', {
+        name: 'Selected requirement packages',
+      }),
+    ).toHaveTextContent(samplePackage.name)
+
+    fireEvent.click(
+      within(dialog as HTMLElement).getByRole('button', {
+        name: 'Remove requirement SEC-001',
+      }),
+    )
+    expect(
+      within(dialog as HTMLElement).queryByRole('group', {
+        name: 'Selected Requirement IDs',
+      }),
+    ).not.toBeInTheDocument()
+    fireEvent.change(
+      within(dialog as HTMLElement).getByRole('textbox', {
+        name: /Requirement IDs/,
+      }),
+      { target: { value: 'SEC' } },
+    )
+    fireEvent.click(
+      await within(dialog as HTMLElement).findByRole('button', {
+        name: /^SEC-001/,
+      }),
+    )
+    expect(
+      within(dialog as HTMLElement).getByRole('group', {
+        name: 'Selected Requirement IDs',
+      }),
+    ).toHaveTextContent('SEC-001')
+
+    const matchedRequirementsHeading = within(dialog as HTMLElement).getByRole(
+      'heading',
+      { name: 'Requirements in selection' },
+    )
+    const matchedRequirementsColumn =
+      matchedRequirementsHeading.closest('section')
+    if (!(matchedRequirementsColumn instanceof HTMLElement)) {
+      throw new Error('Missing matched requirements column')
+    }
+    expect(
+      within(matchedRequirementsColumn).getByText('Read-only'),
+    ).toBeInTheDocument()
+    expect(
+      within(matchedRequirementsColumn).getByText(
+        'From selected packages and direct Requirement IDs',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      await within(matchedRequirementsColumn).findByText('Directly selected'),
+    ).toBeInTheDocument()
+    expect(
+      within(matchedRequirementsColumn).getByText(samplePackage.name),
+    ).toBeInTheDocument()
+    const matchedRequirementsRows = await within(
+      matchedRequirementsColumn,
+    ).findByRole('list')
+    expect(matchedRequirementsRows).toHaveClass(
+      'divide-y',
+      'divide-secondary-200',
+    )
+    const matchedRequirementsFrame =
+      matchedRequirementsRows.parentElement?.parentElement
+    if (!matchedRequirementsFrame) {
+      throw new Error('Missing matched requirements scroll frame')
+    }
+    const matchedRequirementsList = matchedRequirementsRows.parentElement
+    if (!(matchedRequirementsList instanceof HTMLElement)) {
+      throw new Error('Missing matched requirements scroll list')
+    }
+    expect(matchedRequirementsList).toHaveClass(
+      'h-[min(48vh,32rem)]',
+      'min-h-64',
+      'overflow-y-auto',
+      'shadow-inner',
+      'bg-secondary-50/70',
+    )
+    mockScrollMetrics(matchedRequirementsList, {
+      clientHeight: 200,
+      scrollHeight: 600,
+    })
+    fireEvent(window, new Event('resize'))
+    fireEvent.scroll(matchedRequirementsList)
+    await waitFor(() => {
+      expect(
+        matchedRequirementsFrame.querySelector(
+          '[data-scroll-overflow-cue="end"]',
+        ),
+      ).toBeInTheDocument()
+    })
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          ([calledUrl]) =>
+            calledUrl ===
+            '/api/requirement-selection-questions/matched-requirements?packageIds=10&requirementIds=301',
+        ),
+      ).toBe(true)
+    })
+
+    const requirementButton = await within(dialog as HTMLElement).findByRole(
+      'button',
+      {
+        name: 'Open requirement details SEC-001',
+      },
+    )
+    expect(requirementButton).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(requirementButton)
+    expect(requirementButton).toHaveAttribute('aria-expanded', 'true')
+
+    expect(
+      await within(dialog as HTMLElement).findByText(
+        'Detailed published requirement',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog as HTMLElement).getByText('Acceptance detail'),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog as HTMLElement).queryByRole('button', { name: 'Archive' }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(
+      within(dialog as HTMLElement).getByRole('checkbox', {
+        name: 'No requirement selection',
+      }),
+    )
+    expect(packageSelector).toBeDisabled()
+    expect(
+      within(dialog as HTMLElement).getByRole('textbox', {
+        name: /Requirement IDs/,
+      }),
+    ).toBeDisabled()
+    expect(
+      await within(dialog as HTMLElement).findByText(
+        'Choose packages or search for Requirement IDs to preview requirements in the selection.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('keeps question deletion behind confirmation', async () => {
@@ -934,7 +1280,7 @@ describe('RequirementSelectionQuestionsClient', () => {
 
     expect(
       within(answerCard as HTMLElement).getByRole('button', {
-        name: 'Matching requirements: 1',
+        name: 'Requirements in selection: 1',
       }),
     ).toHaveClass('min-h-11', 'min-w-11')
 

@@ -3,6 +3,8 @@
 import {
   Archive,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Copy,
   GripVertical,
   Lock,
@@ -10,19 +12,25 @@ import {
   Pencil,
   Plus,
   RotateCcw,
+  Save,
   Search,
   Trash2,
+  X,
 } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import RequirementDetailSections from '@/components/RequirementDetailSections'
+import StatusBadge from '@/components/StatusBadge'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
+import type { RequirementDetailResponse } from '@/lib/requirements/types'
 
 type SelectionType = 'multiple' | 'single'
 
@@ -39,6 +47,27 @@ interface RequirementPackage {
   name: string
 }
 
+interface MatchedRequirementSourcePackage {
+  id: number
+  name: string
+}
+
+interface MatchedRequirement {
+  description: string | null
+  direct: boolean
+  id: number
+  sourcePackages: MatchedRequirementSourcePackage[]
+  uniqueId: string
+}
+
+interface SelectedRequirement {
+  description: string | null
+  id: number
+  uniqueId: string
+}
+
+interface RequirementSearchResult extends SelectedRequirement {}
+
 interface RequirementSelectionAnswer {
   description: string | null
   healthState: 'missing_requirement_selection' | 'ok'
@@ -47,11 +76,7 @@ interface RequirementSelectionAnswer {
   isArchived: boolean
   isNoRequirementSelection: boolean
   matchingRequirementCount: number
-  matchingRequirements: Array<{
-    description: string | null
-    id: number
-    uniqueId: string
-  }>
+  matchingRequirements: MatchedRequirement[]
   packageIds: number[]
   questionId: number
   requirementIds: number[]
@@ -86,7 +111,7 @@ interface AnswerForm {
   description: string
   isNoRequirementSelection: boolean
   packageIds: string[]
-  requirementIds: string
+  requirements: SelectedRequirement[]
   sortOrder: string
   text: string
 }
@@ -103,7 +128,7 @@ const initialAnswerForm: AnswerForm = {
   description: '',
   isNoRequirementSelection: false,
   packageIds: [],
-  requirementIds: '',
+  requirements: [],
   sortOrder: '0',
   text: '',
 }
@@ -115,6 +140,127 @@ const modalTextareaClassName = `${inputClassName} min-h-24 max-h-[28vh] resize-y
 
 const lockedInputClassName =
   ' disabled:cursor-not-allowed disabled:border-secondary-200 disabled:bg-secondary-100 disabled:text-secondary-500 disabled:opacity-100 dark:disabled:border-secondary-700 dark:disabled:bg-secondary-900/70 dark:disabled:text-secondary-500'
+
+const answerSelectionListClassName =
+  'h-[min(48vh,32rem)] min-h-64 overflow-y-auto pr-1'
+
+interface ScrollOverflowState {
+  hasOverflowAbove: boolean
+  hasOverflowBelow: boolean
+}
+
+function useScrollOverflowHint<T extends HTMLElement>(contentKey: string) {
+  const [scrollElement, setScrollElement] = useState<T | null>(null)
+  const [overflowState, setOverflowState] = useState<ScrollOverflowState>({
+    hasOverflowAbove: false,
+    hasOverflowBelow: false,
+  })
+  const scrollRef = useCallback((element: T | null) => {
+    setScrollElement(element)
+  }, [])
+
+  const updateScrollOverflow = useCallback(() => {
+    const element = scrollElement
+    if (!element) {
+      setOverflowState({
+        hasOverflowAbove: false,
+        hasOverflowBelow: false,
+      })
+      return
+    }
+
+    const tolerance = 2
+    const nextState = {
+      hasOverflowAbove: element.scrollTop > tolerance,
+      hasOverflowBelow:
+        element.scrollTop + element.clientHeight <
+        element.scrollHeight - tolerance,
+    }
+    setOverflowState(previous =>
+      previous.hasOverflowAbove === nextState.hasOverflowAbove &&
+      previous.hasOverflowBelow === nextState.hasOverflowBelow
+        ? previous
+        : nextState,
+    )
+  }, [scrollElement])
+
+  useEffect(() => {
+    const element = scrollElement
+    if (!element) {
+      updateScrollOverflow()
+      return
+    }
+
+    updateScrollOverflow()
+    element.addEventListener('scroll', updateScrollOverflow, { passive: true })
+    window.addEventListener('resize', updateScrollOverflow)
+
+    const resizeObserver =
+      typeof ResizeObserver === 'function'
+        ? new ResizeObserver(updateScrollOverflow)
+        : null
+    resizeObserver?.observe(element)
+    for (const child of Array.from(element.children)) {
+      resizeObserver?.observe(child)
+    }
+
+    return () => {
+      element.removeEventListener('scroll', updateScrollOverflow)
+      window.removeEventListener('resize', updateScrollOverflow)
+      resizeObserver?.disconnect()
+    }
+  }, [scrollElement, updateScrollOverflow])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: contentKey intentionally remeasures scroll overflow when list content changes without remounting the scroll element.
+  useEffect(() => {
+    updateScrollOverflow()
+  }, [contentKey, updateScrollOverflow])
+
+  return {
+    ...overflowState,
+    scrollRef,
+  }
+}
+
+function ScrollOverflowCue({
+  hasOverflowAbove,
+  hasOverflowBelow,
+  surface,
+}: ScrollOverflowState & {
+  surface: 'packages' | 'preview'
+}) {
+  const topSurfaceClass =
+    surface === 'preview'
+      ? 'from-white/95 dark:from-secondary-950/90'
+      : 'from-secondary-50/95 dark:from-secondary-900/95'
+  const bottomSurfaceClass =
+    surface === 'preview'
+      ? 'from-white/95 via-white/80 dark:from-secondary-950/90 dark:via-secondary-950/70'
+      : 'from-secondary-50/95 via-secondary-50/80 dark:from-secondary-900/95 dark:via-secondary-900/75'
+
+  return (
+    <>
+      {hasOverflowAbove ? (
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-x-0 top-0 z-10 h-8 rounded-t-lg bg-gradient-to-b ${topSurfaceClass} to-transparent`}
+          data-scroll-overflow-cue="start"
+        />
+      ) : null}
+      {hasOverflowBelow ? (
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 flex h-12 items-end justify-center rounded-b-lg bg-gradient-to-t ${bottomSurfaceClass} to-transparent pb-1`}
+          data-scroll-overflow-cue="end"
+        >
+          <span className="rounded-full border border-secondary-200 bg-white/95 px-2 py-0.5 text-secondary-500 shadow-sm dark:border-secondary-700 dark:bg-secondary-900/95 dark:text-secondary-300">
+            <ChevronDown aria-hidden="true" className="h-4 w-4" />
+          </span>
+        </div>
+      ) : null}
+    </>
+  )
+}
 
 function moveAnswerIntoTargetSlot(
   answers: RequirementSelectionAnswer[],
@@ -156,15 +302,6 @@ const REQUIREMENT_SELECTION_QUESTIONS_STEWARDSHIP_HELP: HelpContent = {
   titleKey: 'requirementSelectionQuestionsStewardship.title',
 }
 
-function parseRequirementIds(value: string): number[] {
-  return value
-    .split(/[,\s]+/)
-    .map(item => item.trim())
-    .filter(Boolean)
-    .map(Number)
-    .filter(item => Number.isInteger(item) && item > 0)
-}
-
 function statusText(
   item: { isActive: boolean; isArchived: boolean },
   copy: Record<string, string>,
@@ -173,9 +310,241 @@ function statusText(
   return item.isActive ? copy.active : copy.inactive
 }
 
+function asSelectedRequirement(
+  requirement: Pick<MatchedRequirement, 'description' | 'id' | 'uniqueId'>,
+): SelectedRequirement {
+  return {
+    description: requirement.description,
+    id: requirement.id,
+    uniqueId: requirement.uniqueId,
+  }
+}
+
+function normalizeRequirementSearchResult(row: {
+  description?: string | null
+  id: number
+  uniqueId: string
+  version?: { description?: string | null } | null
+}): RequirementSearchResult {
+  return {
+    description: row.version?.description ?? row.description ?? null,
+    id: row.id,
+    uniqueId: row.uniqueId,
+  }
+}
+
+function localizedName(
+  locale: string,
+  obj: { nameEn: string | null; nameSv: string | null } | null | undefined,
+) {
+  if (!obj) return null
+  return locale === 'sv'
+    ? (obj.nameSv ?? obj.nameEn)
+    : (obj.nameEn ?? obj.nameSv)
+}
+
+interface CompactRequirementDetailProps {
+  developerModeContext: string
+  requirementId: number
+}
+
+function CompactRequirementDetail({
+  developerModeContext,
+  requirementId,
+}: CompactRequirementDetailProps) {
+  const locale = useLocale()
+  const t = useTranslations('requirement')
+  const tc = useTranslations('common')
+  const [detail, setDetail] = useState<RequirementDetailResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setLoading(true)
+    setFailed(false)
+    setDetail(null)
+
+    apiFetch(`/api/requirements/${requirementId}`, {
+      signal: controller.signal,
+    })
+      .then(async response => {
+        if (!response.ok) {
+          throw new Error(response.statusText || String(response.status))
+        }
+        setDetail((await response.json()) as RequirementDetailResponse)
+      })
+      .catch(error => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return
+        }
+        setFailed(true)
+        setDetail(null)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
+
+    return () => controller.abort()
+  }, [requirementId])
+
+  if (loading) {
+    return (
+      <p
+        className="mt-3 rounded-xl border border-secondary-200 bg-white/70 px-3 py-4 text-sm text-secondary-600 dark:border-secondary-700 dark:bg-secondary-900/50 dark:text-secondary-300"
+        role="status"
+      >
+        {tc('loading')}
+      </p>
+    )
+  }
+
+  if (failed || !detail) {
+    return (
+      <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+        {tc('error')}
+      </p>
+    )
+  }
+
+  const selectedVersion =
+    detail.versions.find(version => version.status === STATUS_PUBLISHED) ??
+    detail.versions[0]
+  const areaOwnerName = detail.area?.ownerName?.trim() || null
+  const detailContext = `${developerModeContext} > compact detail: ${detail.uniqueId}`
+  const sectionContext = `${detailContext} > detail section: requirementPackages`
+  const metadata = [
+    ...(detail.area
+      ? [
+          {
+            id: 'area',
+            label: t('area'),
+            markerValue: 'area',
+            value: (
+              <>
+                {detail.area.name}
+                {areaOwnerName ? (
+                  <p className="mt-0.5 text-xs text-secondary-500 dark:text-secondary-400">
+                    {t('areaOwner')}: {areaOwnerName}
+                  </p>
+                ) : null}
+              </>
+            ),
+          },
+        ]
+      : []),
+    {
+      id: 'category',
+      label: t('category'),
+      markerValue: 'category',
+      value: localizedName(locale, selectedVersion?.category) ?? '-',
+    },
+    ...(selectedVersion?.type
+      ? [
+          {
+            id: 'type',
+            label: t('type'),
+            markerValue: 'type',
+            value: localizedName(locale, selectedVersion.type),
+          },
+        ]
+      : []),
+    {
+      id: 'quality-characteristic',
+      label: t('qualityCharacteristic'),
+      markerValue: 'quality characteristic',
+      value: selectedVersion?.qualityCharacteristic
+        ? localizedName(locale, selectedVersion.qualityCharacteristic)
+        : '-',
+    },
+    {
+      id: 'risk-level',
+      label: t('riskLevel'),
+      markerValue: 'risk level',
+      value: selectedVersion?.riskLevel ? (
+        <StatusBadge
+          color={selectedVersion.riskLevel.color}
+          iconName={selectedVersion.riskLevel.iconName}
+          label={localizedName(locale, selectedVersion.riskLevel) ?? ''}
+          size="sm"
+        />
+      ) : (
+        '-'
+      ),
+    },
+    {
+      id: 'requires-testing',
+      label: t('requiresTesting'),
+      markerValue: 'requires testing',
+      value: selectedVersion?.requiresTesting ? tc('yes') : tc('no'),
+    },
+    {
+      id: 'verification-method',
+      label: t('verificationMethod'),
+      markerValue: 'verification method',
+      value: selectedVersion?.verificationMethod || '-',
+    },
+    {
+      id: 'specification-count',
+      label: t('specificationCount'),
+      markerValue: 'specification count',
+      value: detail.specificationCount,
+    },
+  ]
+  const references =
+    selectedVersion?.versionNormReferences?.map(vnr => ({
+      href: vnr.normReference.uri,
+      id: `normref-chip-${vnr.normReference.id}`,
+      label: vnr.normReference.normReferenceId,
+      markerValue: vnr.normReference.normReferenceId,
+      title: `${vnr.normReference.name} (${vnr.normReference.reference})`,
+    })) ?? []
+  const requirementPackages =
+    selectedVersion?.versionRequirementPackages?.map(item => {
+      const requirementPackage = item.requirementPackage
+      const label =
+        requirementPackage.name?.trim() || String(requirementPackage.id)
+      return {
+        id: `requirementPackage-chip-${requirementPackage.id}`,
+        label,
+        markerContext: sectionContext,
+        markerValue: label,
+      }
+    }) ?? []
+
+  return (
+    <article
+      className="mt-3 rounded-xl border border-secondary-200 bg-white/80 p-4 shadow-sm dark:border-secondary-700 dark:bg-secondary-950/40"
+      {...devMarker({
+        context: developerModeContext,
+        name: 'matched requirement detail',
+        value: detail.uniqueId,
+      })}
+    >
+      <h4 className="mb-4 font-mono text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+        {detail.uniqueId}
+      </h4>
+      <RequirementDetailSections
+        acceptanceCriteria={selectedVersion?.acceptanceCriteria ?? '-'}
+        acceptanceCriteriaLabel={t('acceptanceCriteria')}
+        description={selectedVersion?.description ?? '-'}
+        descriptionLabel={t('description')}
+        developerModeContext={detailContext}
+        emptyLabel={tc('noneAvailable')}
+        metadata={metadata}
+        references={references}
+        referencesLabel={t('normReferences')}
+        requirementPackages={requirementPackages}
+        requirementPackagesLabel={t('requirementPackage')}
+      />
+    </article>
+  )
+}
+
 export default function RequirementSelectionQuestionsClient() {
   useHelpContent(REQUIREMENT_SELECTION_QUESTIONS_STEWARDSHIP_HELP)
   const { confirm } = useConfirmModal()
+  const locale = useLocale()
   const t = useTranslations('requirementSelectionQuestionsStewardship')
   const contentRef = useRef<HTMLDivElement>(null)
   const listAnchorRef = useRef<HTMLDivElement>(null)
@@ -196,7 +565,6 @@ export default function RequirementSelectionQuestionsClient() {
       areaLockedTooltip: t('areaLockedTooltip'),
       answerDescriptionHelp: t('fieldHelp.answerDescription'),
       answerPackagesHelp: t('fieldHelp.answerPackages'),
-      answerSortOrderHelp: t('fieldHelp.answerSortOrder'),
       answerTextHelp: t('fieldHelp.answerText'),
       clone: t('clone'),
       confirmArchiveAnswer: t('confirmArchiveAnswer'),
@@ -208,31 +576,55 @@ export default function RequirementSelectionQuestionsClient() {
       deactivate: t('deactivate'),
       delete: t('delete'),
       description: t('description'),
+      directRequirement: t('directRequirement'),
       edit: t('edit'),
       editAnswer: t('editAnswer'),
+      editRequirementSelectionAnswer: t('editRequirementSelectionAnswer'),
       editQuestion: t('editQuestion'),
       error: t('error'),
       helpText: t('helpText'),
       inactive: t('inactive'),
       loading: t('loading'),
       matchingRequirements: t('matchingRequirements'),
+      matchingRequirementsEmpty: t('matchingRequirementsEmpty'),
+      matchingRequirementsError: t('matchingRequirementsError'),
+      matchingRequirementsReadOnly: t('matchingRequirementsReadOnly'),
+      matchingRequirementsPrompt: t('matchingRequirementsPrompt'),
+      matchingRequirementsSource: t('matchingRequirementsSource'),
       missingRequirementSelection: t('missingRequirementSelection'),
       multiple: t('multiple'),
+      noRequirementSearchResults: t('noRequirementSearchResults'),
       noQuestions: t('noQuestions'),
       noRequirementSelection: t('noRequirementSelection'),
+      openRequirementDetail: t('openRequirementDetail'),
+      packageSelector: t('packageSelector'),
+      noPackageSearchResults: t('noPackageSearchResults'),
       packages: t('packages'),
       questionHelpTextHelp: t('fieldHelp.questionHelpText'),
       questionTextHelp: t('fieldHelp.questionText'),
       reactivate: t('reactivate'),
       reorderAnswer: t('reorderAnswer'),
       reorderAnswerHint: t('reorderAnswerHint'),
+      removePackage: t('removePackage'),
+      removeRequirement: t('removeRequirement'),
+      requirementsInSelection: t('requirementsInSelection'),
+      requirementsInSelectionEmpty: t('requirementsInSelectionEmpty'),
+      requirementsInSelectionError: t('requirementsInSelectionError'),
+      requirementsInSelectionPrompt: t('requirementsInSelectionPrompt'),
+      requirementsInSelectionSource: t('requirementsInSelectionSource'),
       requirementIds: t('requirementIds'),
       requirementIdsHelp: t('fieldHelp.requirementIds'),
+      requirementSources: t('requirementSources'),
       save: t('save'),
       search: t('search'),
+      searchRequirementIds: t('searchRequirementIds'),
+      searchRequirementIdsPlaceholder: t('searchRequirementIdsPlaceholder'),
       selectionType: t('selectionType'),
       selectionTypeHelp: t('fieldHelp.selectionType'),
+      selectedPackages: t('selectedPackages'),
+      selectedRequirementIds: t('selectedRequirementIds'),
       single: t('single'),
+      sourceSelection: t('sourceSelection'),
       sortOrder: t('sortOrder'),
       sortOrderHelp: t('fieldHelp.sortOrder'),
       status: t('status'),
@@ -262,6 +654,22 @@ export default function RequirementSelectionQuestionsClient() {
   >('')
   const [showQuestionForm, setShowQuestionForm] = useState(false)
   const [showAnswerForm, setShowAnswerForm] = useState(false)
+  const [packageSelectorOpen, setPackageSelectorOpen] = useState(false)
+  const [packageSearch, setPackageSearch] = useState('')
+  const [requirementSearch, setRequirementSearch] = useState('')
+  const [requirementSearchResults, setRequirementSearchResults] = useState<
+    RequirementSearchResult[]
+  >([])
+  const [requirementSearchStatus, setRequirementSearchStatus] = useState<
+    'error' | 'idle' | 'loading' | 'ready'
+  >('idle')
+  const [matchedRequirementPreviewStatus, setMatchedRequirementPreviewStatus] =
+    useState<'error' | 'idle' | 'loading' | 'ready'>('idle')
+  const [matchedRequirementPreview, setMatchedRequirementPreview] = useState<
+    MatchedRequirement[]
+  >([])
+  const [selectedPreviewRequirementId, setSelectedPreviewRequirementId] =
+    useState<number | null>(null)
   const [armedDragAnswerId, setArmedDragAnswerId] = useState<number | null>(
     null,
   )
@@ -274,6 +682,8 @@ export default function RequirementSelectionQuestionsClient() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const questionsRef = useRef<RequirementSelectionQuestion[]>([])
+  const packageSelectorRef = useRef<HTMLDivElement>(null)
+  const packageSelectorButtonRef = useRef<HTMLButtonElement>(null)
   const draggedAnswerRef = useRef<{
     answerId: number
     originalAnswers: RequirementSelectionAnswer[]
@@ -288,6 +698,213 @@ export default function RequirementSelectionQuestionsClient() {
 
   const selectedQuestion =
     questions.find(question => question.id === selectedQuestionId) ?? null
+
+  const packagesById = useMemo(
+    () => new Map(packages.map(pkg => [pkg.id, pkg])),
+    [packages],
+  )
+  const selectedPackages = useMemo(
+    () =>
+      answerForm.packageIds
+        .map(packageId => packagesById.get(Number(packageId)))
+        .filter((pkg): pkg is RequirementPackage => Boolean(pkg)),
+    [answerForm.packageIds, packagesById],
+  )
+  const filteredPackages = useMemo(() => {
+    const normalizedSearch = packageSearch.trim().toLocaleLowerCase()
+    if (!normalizedSearch) return packages
+    return packages.filter(pkg =>
+      pkg.name.toLocaleLowerCase().includes(normalizedSearch),
+    )
+  }, [packageSearch, packages])
+  const selectedRequirementIds = useMemo(
+    () => new Set(answerForm.requirements.map(requirement => requirement.id)),
+    [answerForm.requirements],
+  )
+  const previewPackageIds = useMemo(
+    () =>
+      answerForm.isNoRequirementSelection
+        ? []
+        : answerForm.packageIds
+            .map(Number)
+            .filter(id => Number.isInteger(id) && id > 0),
+    [answerForm.isNoRequirementSelection, answerForm.packageIds],
+  )
+  const previewRequirementIds = useMemo(
+    () =>
+      answerForm.isNoRequirementSelection
+        ? []
+        : answerForm.requirements.map(requirement => requirement.id),
+    [answerForm.isNoRequirementSelection, answerForm.requirements],
+  )
+
+  useEffect(() => {
+    if (!packageSelectorOpen) return
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (
+        packageSelectorRef.current?.contains(target) ||
+        packageSelectorButtonRef.current?.contains(target)
+      ) {
+        return
+      }
+      setPackageSelectorOpen(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPackageSelectorOpen(false)
+        packageSelectorButtonRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [packageSelectorOpen])
+
+  useEffect(() => {
+    const search = requirementSearch.trim()
+    if (
+      !showAnswerForm ||
+      answerForm.isNoRequirementSelection ||
+      search.length < 2
+    ) {
+      setRequirementSearchResults([])
+      setRequirementSearchStatus('idle')
+      return
+    }
+
+    const controller = new AbortController()
+    const buildSearchUrl = (key: 'descriptionSearch' | 'uniqueIdSearch') => {
+      const params = new URLSearchParams({
+        limit: '8',
+        locale,
+        sortBy: 'uniqueId',
+        sortDirection: 'asc',
+      })
+      params.append('statuses', String(STATUS_PUBLISHED))
+      params.set(key, search)
+      return `/api/requirements?${params.toString()}`
+    }
+
+    setRequirementSearchStatus('loading')
+    Promise.all([
+      apiFetch(buildSearchUrl('uniqueIdSearch'), {
+        signal: controller.signal,
+      }),
+      apiFetch(buildSearchUrl('descriptionSearch'), {
+        signal: controller.signal,
+      }),
+    ])
+      .then(async responses => {
+        if (responses.some(response => !response.ok)) {
+          throw new Error('Failed to search requirements')
+        }
+        const payloads = (await Promise.all(
+          responses.map(response => response.json()),
+        )) as Array<{
+          requirements?: Array<{
+            description?: string | null
+            id: number
+            uniqueId: string
+            version?: { description?: string | null } | null
+          }>
+        }>
+        const byId = new Map<number, RequirementSearchResult>()
+        for (const payload of payloads) {
+          for (const requirement of payload.requirements ?? []) {
+            if (!byId.has(requirement.id)) {
+              byId.set(
+                requirement.id,
+                normalizeRequirementSearchResult(requirement),
+              )
+            }
+          }
+        }
+        setRequirementSearchResults(
+          [...byId.values()].sort((left, right) =>
+            left.uniqueId.localeCompare(right.uniqueId, locale),
+          ),
+        )
+        setRequirementSearchStatus('ready')
+      })
+      .catch(error => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return
+        }
+        setRequirementSearchResults([])
+        setRequirementSearchStatus('error')
+      })
+
+    return () => controller.abort()
+  }, [
+    answerForm.isNoRequirementSelection,
+    locale,
+    requirementSearch,
+    showAnswerForm,
+  ])
+
+  useEffect(() => {
+    if (!showAnswerForm) {
+      setMatchedRequirementPreview([])
+      setMatchedRequirementPreviewStatus('idle')
+      setSelectedPreviewRequirementId(null)
+      return
+    }
+
+    if (previewPackageIds.length === 0 && previewRequirementIds.length === 0) {
+      setMatchedRequirementPreview([])
+      setMatchedRequirementPreviewStatus('idle')
+      setSelectedPreviewRequirementId(null)
+      return
+    }
+
+    const controller = new AbortController()
+    const params = new URLSearchParams()
+    for (const packageId of previewPackageIds) {
+      params.append('packageIds', String(packageId))
+    }
+    for (const requirementId of previewRequirementIds) {
+      params.append('requirementIds', String(requirementId))
+    }
+
+    setMatchedRequirementPreviewStatus('loading')
+    apiFetch(
+      `/api/requirement-selection-questions/matched-requirements?${params.toString()}`,
+      { signal: controller.signal },
+    )
+      .then(async response => {
+        if (!response.ok) {
+          throw new Error(response.statusText || String(response.status))
+        }
+        const data = (await response.json()) as {
+          requirements?: MatchedRequirement[]
+        }
+        const requirements = data.requirements ?? []
+        setMatchedRequirementPreview(requirements)
+        setMatchedRequirementPreviewStatus('ready')
+        setSelectedPreviewRequirementId(current =>
+          current &&
+          requirements.some(requirement => requirement.id === current)
+            ? current
+            : null,
+        )
+      })
+      .catch(error => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return
+        }
+        setMatchedRequirementPreview([])
+        setMatchedRequirementPreviewStatus('error')
+        setSelectedPreviewRequirementId(null)
+      })
+
+    return () => controller.abort()
+  }, [previewPackageIds, previewRequirementIds, showAnswerForm])
 
   const filteredQuestions = useMemo(() => {
     const normalizedSearch = questionSearch.trim().toLocaleLowerCase()
@@ -351,23 +968,38 @@ export default function RequirementSelectionQuestionsClient() {
     setAnswerForm(initialAnswerForm)
     setEditingAnswerId(null)
     setExpandedAnswerId(null)
+    setPackageSelectorOpen(false)
+    setPackageSearch('')
+    setRequirementSearch('')
+    setRequirementSearchResults([])
+    setRequirementSearchStatus('idle')
     setShowAnswerForm(false)
   }, [])
 
   const openAnswerForm = (question: RequirementSelectionQuestion) => {
+    const nextSortOrder =
+      question.answers.length > 0
+        ? Math.max(...question.answers.map(answer => answer.sortOrder)) + 1
+        : 0
     setSelectedQuestionId(question.id)
-    setAnswerForm(initialAnswerForm)
+    setAnswerForm({
+      ...initialAnswerForm,
+      sortOrder: String(nextSortOrder),
+    })
     setEditingAnswerId(null)
     setExpandedAnswerId(null)
+    setPackageSelectorOpen(false)
+    setPackageSearch('')
+    setRequirementSearch('')
+    setRequirementSearchResults([])
+    setRequirementSearchStatus('idle')
     setError(null)
     setShowAnswerForm(true)
   }
 
   const closeAnswerForm = () => {
     if (submitting) return
-    setAnswerForm(initialAnswerForm)
-    setEditingAnswerId(null)
-    setShowAnswerForm(false)
+    resetAnswerEditingState()
   }
 
   const selectQuestion = useCallback(
@@ -491,7 +1123,7 @@ export default function RequirementSelectionQuestionsClient() {
               : answerForm.packageIds.map(Number),
             requirementIds: answerForm.isNoRequirementSelection
               ? []
-              : parseRequirementIds(answerForm.requirementIds),
+              : answerForm.requirements.map(requirement => requirement.id),
             sortOrder: Number(answerForm.sortOrder || 0),
             text: answerForm.text,
           }),
@@ -503,9 +1135,7 @@ export default function RequirementSelectionQuestionsClient() {
         setError((await readResponseMessage(response)) ?? copy.error)
         return
       }
-      setAnswerForm(initialAnswerForm)
-      setEditingAnswerId(null)
-      setShowAnswerForm(false)
+      resetAnswerEditingState()
       await reload()
     } catch {
       setError(copy.error)
@@ -595,16 +1225,24 @@ export default function RequirementSelectionQuestionsClient() {
   }
 
   const editAnswer = (answer: RequirementSelectionAnswer) => {
+    const directRequirementIds = new Set(answer.requirementIds)
     setSelectedQuestionId(answer.questionId)
     setAnswerForm({
       description: answer.description ?? '',
       isNoRequirementSelection: answer.isNoRequirementSelection,
       packageIds: answer.packageIds.map(String),
-      requirementIds: answer.requirementIds.join(', '),
+      requirements: answer.matchingRequirements
+        .filter(requirement => directRequirementIds.has(requirement.id))
+        .map(asSelectedRequirement),
       sortOrder: String(answer.sortOrder),
       text: answer.text,
     })
     setEditingAnswerId(answer.id)
+    setPackageSelectorOpen(false)
+    setPackageSearch('')
+    setRequirementSearch('')
+    setRequirementSearchResults([])
+    setRequirementSearchStatus('idle')
     setError(null)
     setShowAnswerForm(true)
   }
@@ -1053,12 +1691,35 @@ export default function RequirementSelectionQuestionsClient() {
         disabled={submitting}
         type="submit"
       >
-        <Plus aria-hidden="true" className="h-4 w-4" />
+        {editingQuestionId ? (
+          <Save aria-hidden="true" className="h-4 w-4" />
+        ) : (
+          <Plus aria-hidden="true" className="h-4 w-4" />
+        )}
         {editingQuestionId ? copy.save : copy.create}
       </button>
     </form>
   )
 
+  const packageHelpTargetId = 'kuf-answer-package-selector'
+  const hasPreviewInputs =
+    previewPackageIds.length > 0 || previewRequirementIds.length > 0
+  const matchedRequirementsContext =
+    'requirementSelectionQuestions > answer form > requirements in selection'
+  const selectableRequirementSearchResults = requirementSearchResults.filter(
+    requirement => !selectedRequirementIds.has(requirement.id),
+  )
+  const requirementSearchHasQuery = requirementSearch.trim().length >= 2
+  const matchedRequirementScrollOverflow =
+    useScrollOverflowHint<HTMLDivElement>(
+      [
+        showAnswerForm ? 'open' : 'closed',
+        matchedRequirementPreviewStatus,
+        hasPreviewInputs ? 'with-inputs' : 'empty-inputs',
+        matchedRequirementPreview.map(requirement => requirement.id).join(','),
+        selectedPreviewRequirementId ?? 'none',
+      ].join(':'),
+    )
   const answerFormContent = (
     <form
       className="space-y-4"
@@ -1082,139 +1743,503 @@ export default function RequirementSelectionQuestionsClient() {
           {selectedQuestion.questionCode}
         </p>
       ) : null}
-      <div>
-        <FieldLabelWithHelp
-          help={copy.answerTextHelp}
-          htmlFor="kuf-answer-text"
-          label={copy.text}
-          required
-        />
-        <input
-          className={inputClassName}
-          id="kuf-answer-text"
-          onChange={event =>
-            setAnswerForm(previous => ({
-              ...previous,
-              text: event.target.value,
-            }))
-          }
-          ref={answerTextRef}
-          required
-          value={answerForm.text}
-        />
-      </div>
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          checked={answerForm.isNoRequirementSelection}
-          className="h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-          onChange={event =>
-            setAnswerForm(previous => ({
-              ...previous,
-              isNoRequirementSelection: event.target.checked,
-              packageIds: event.target.checked ? [] : previous.packageIds,
-              requirementIds: event.target.checked
-                ? ''
-                : previous.requirementIds,
-            }))
-          }
-          type="checkbox"
-        />
-        {copy.noRequirementSelection}
-      </label>
-      <div>
-        <FieldLabelWithHelp
-          help={copy.answerDescriptionHelp}
-          htmlFor="kuf-answer-description"
-          label={copy.description}
-        />
-        <textarea
-          className={modalTextareaClassName}
-          id="kuf-answer-description"
-          onChange={event =>
-            setAnswerForm(previous => ({
-              ...previous,
-              description: event.target.value,
-            }))
-          }
-          value={answerForm.description}
-        />
-      </div>
-      <div>
-        <FieldLabelWithHelp
-          help={copy.answerPackagesHelp}
-          htmlFor="kuf-answer-packages"
-          label={copy.packages}
-        />
-        <select
-          className={inputClassName}
-          disabled={answerForm.isNoRequirementSelection}
-          id="kuf-answer-packages"
-          multiple
-          onChange={event =>
-            setAnswerForm(previous => ({
-              ...previous,
-              packageIds: Array.from(
-                event.target.selectedOptions,
-                option => option.value,
-              ),
-            }))
-          }
-          value={answerForm.packageIds}
+      <div className="grid gap-6 lg:grid-cols-[minmax(16rem,0.75fr)_minmax(0,1.65fr)] lg:items-start">
+        <div
+          className="space-y-4"
+          {...devMarker({
+            context: 'requirementSelectionQuestions',
+            name: 'answer form column',
+            value: 'fields',
+          })}
         >
-          {packages.map(pkg => (
-            <option key={pkg.id} value={pkg.id}>
-              {pkg.name}
-            </option>
-          ))}
-        </select>
+          <div>
+            <FieldLabelWithHelp
+              help={copy.answerTextHelp}
+              htmlFor="kuf-answer-text"
+              label={copy.text}
+              required
+            />
+            <input
+              className={inputClassName}
+              id="kuf-answer-text"
+              onChange={event =>
+                setAnswerForm(previous => ({
+                  ...previous,
+                  text: event.target.value,
+                }))
+              }
+              ref={answerTextRef}
+              required
+              value={answerForm.text}
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              checked={answerForm.isNoRequirementSelection}
+              className="h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+              onChange={event =>
+                setAnswerForm(previous => ({
+                  ...previous,
+                  isNoRequirementSelection: event.target.checked,
+                  packageIds: event.target.checked ? [] : previous.packageIds,
+                  requirements: event.target.checked
+                    ? []
+                    : previous.requirements,
+                }))
+              }
+              type="checkbox"
+            />
+            {copy.noRequirementSelection}
+          </label>
+          <div>
+            <FieldLabelWithHelp
+              help={copy.answerDescriptionHelp}
+              htmlFor="kuf-answer-description"
+              label={copy.description}
+            />
+            <textarea
+              className={modalTextareaClassName}
+              id="kuf-answer-description"
+              onChange={event =>
+                setAnswerForm(previous => ({
+                  ...previous,
+                  description: event.target.value,
+                }))
+              }
+              value={answerForm.description}
+            />
+          </div>
+          <button
+            className="btn-primary inline-flex items-center gap-1.5"
+            disabled={submitting}
+            type="submit"
+          >
+            {editingAnswerId ? (
+              <Save aria-hidden="true" className="h-4 w-4" />
+            ) : (
+              <Plus aria-hidden="true" className="h-4 w-4" />
+            )}
+            {editingAnswerId ? copy.save : copy.addAnswer}
+          </button>
+        </div>
+
+        <div
+          className="space-y-4"
+          {...devMarker({
+            context: 'requirementSelectionQuestions',
+            name: 'answer form column',
+            value: 'source workspace',
+          })}
+        >
+          <section
+            aria-labelledby="kuf-answer-source-selection-heading"
+            className="rounded-xl border border-secondary-200 bg-secondary-50/70 p-4 dark:border-secondary-700 dark:bg-secondary-900/40"
+            {...devMarker({
+              context: 'requirementSelectionQuestions',
+              name: 'answer form workspace',
+              value: 'source selection',
+            })}
+          >
+            <h3
+              className="text-sm font-semibold text-secondary-800 dark:text-secondary-100"
+              id="kuf-answer-source-selection-heading"
+            >
+              {copy.sourceSelection}
+            </h3>
+            <div className="mt-4 grid gap-4 2xl:grid-cols-[minmax(14rem,0.8fr)_minmax(0,1.2fr)]">
+              <div>
+                <FieldLabelWithHelp
+                  help={copy.answerPackagesHelp}
+                  htmlFor={packageHelpTargetId}
+                  label={copy.packages}
+                />
+                <div className="relative">
+                  <button
+                    aria-expanded={packageSelectorOpen}
+                    aria-haspopup="dialog"
+                    className={`${inputClassName} flex min-h-11 items-center justify-between gap-2 text-left disabled:cursor-not-allowed disabled:bg-secondary-100 disabled:text-secondary-500 dark:disabled:bg-secondary-900/70 dark:disabled:text-secondary-500`}
+                    disabled={answerForm.isNoRequirementSelection}
+                    id={packageHelpTargetId}
+                    onClick={() => setPackageSelectorOpen(open => !open)}
+                    ref={packageSelectorButtonRef}
+                    type="button"
+                  >
+                    <span className="truncate">
+                      {copy.packageSelector} ({selectedPackages.length})
+                    </span>
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={`h-4 w-4 shrink-0 transition-transform ${
+                        packageSelectorOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  {packageSelectorOpen &&
+                  !answerForm.isNoRequirementSelection ? (
+                    <div
+                      className="static mt-2 w-full max-w-96 rounded-xl border border-secondary-200 bg-white p-3 shadow-xl dark:border-secondary-700 dark:bg-secondary-900 2xl:absolute 2xl:left-0 2xl:z-30"
+                      ref={packageSelectorRef}
+                    >
+                      <label className="relative block">
+                        <Search
+                          aria-hidden="true"
+                          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
+                        />
+                        <input
+                          aria-label={`${copy.search} ${copy.packages}`}
+                          className={`${inputClassName} pl-9`}
+                          onChange={event =>
+                            setPackageSearch(event.target.value)
+                          }
+                          value={packageSearch}
+                        />
+                      </label>
+                      <fieldset
+                        aria-label={copy.packages}
+                        className="mt-3 max-h-56 space-y-1 overflow-y-auto pr-1"
+                      >
+                        {filteredPackages.length > 0 ? (
+                          filteredPackages.map(pkg => {
+                            const packageId = String(pkg.id)
+                            const inputId = `kuf-answer-package-${pkg.id}`
+                            return (
+                              <label
+                                className="flex min-h-10 items-start gap-2 rounded-lg border border-transparent px-2 py-2 text-sm transition-colors hover:border-secondary-200 hover:bg-secondary-50 dark:hover:border-secondary-700 dark:hover:bg-secondary-800/70"
+                                htmlFor={inputId}
+                                key={pkg.id}
+                              >
+                                <input
+                                  checked={answerForm.packageIds.includes(
+                                    packageId,
+                                  )}
+                                  className="mt-0.5 h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+                                  id={inputId}
+                                  onChange={event =>
+                                    setAnswerForm(previous => ({
+                                      ...previous,
+                                      packageIds: event.target.checked
+                                        ? [
+                                            ...previous.packageIds.filter(
+                                              id => id !== packageId,
+                                            ),
+                                            packageId,
+                                          ]
+                                        : previous.packageIds.filter(
+                                            id => id !== packageId,
+                                          ),
+                                    }))
+                                  }
+                                  type="checkbox"
+                                />
+                                <span>{pkg.name}</span>
+                              </label>
+                            )
+                          })
+                        ) : (
+                          <p className="px-2 py-3 text-sm text-secondary-500 dark:text-secondary-400">
+                            {copy.noPackageSearchResults}
+                          </p>
+                        )}
+                      </fieldset>
+                    </div>
+                  ) : null}
+                </div>
+                {selectedPackages.length > 0 ? (
+                  <fieldset className="mt-2 flex flex-wrap gap-1.5">
+                    <legend className="sr-only">{copy.selectedPackages}</legend>
+                    {selectedPackages.map(pkg => (
+                      <span
+                        className="inline-flex min-h-7 max-w-full items-center gap-1 rounded-full border border-secondary-200 bg-white px-2 text-xs text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200"
+                        key={pkg.id}
+                      >
+                        <span className="truncate">{pkg.name}</span>
+                        <button
+                          aria-label={`${copy.removePackage} ${pkg.name}`}
+                          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-secondary-500 hover:bg-secondary-100 hover:text-secondary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-secondary-300 dark:hover:bg-secondary-700 dark:hover:text-secondary-50"
+                          disabled={answerForm.isNoRequirementSelection}
+                          onClick={() =>
+                            setAnswerForm(previous => ({
+                              ...previous,
+                              packageIds: previous.packageIds.filter(
+                                id => id !== String(pkg.id),
+                              ),
+                            }))
+                          }
+                          type="button"
+                        >
+                          <X aria-hidden="true" className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </fieldset>
+                ) : null}
+              </div>
+
+              <div>
+                <FieldLabelWithHelp
+                  help={copy.requirementIdsHelp}
+                  htmlFor="kuf-answer-requirement-search"
+                  label={copy.requirementIds}
+                />
+                <div className="relative">
+                  <Search
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
+                  />
+                  <input
+                    aria-autocomplete="list"
+                    aria-controls="kuf-answer-requirement-search-results"
+                    className={`${inputClassName} pl-9`}
+                    disabled={answerForm.isNoRequirementSelection}
+                    id="kuf-answer-requirement-search"
+                    onChange={event => setRequirementSearch(event.target.value)}
+                    placeholder={copy.searchRequirementIdsPlaceholder}
+                    value={requirementSearch}
+                  />
+                  {requirementSearchHasQuery &&
+                  !answerForm.isNoRequirementSelection ? (
+                    <div
+                      className="absolute left-0 right-0 z-20 mt-2 overflow-hidden rounded-xl border border-secondary-200 bg-white shadow-xl dark:border-secondary-700 dark:bg-secondary-900"
+                      id="kuf-answer-requirement-search-results"
+                    >
+                      {requirementSearchStatus === 'loading' ? (
+                        <p
+                          className="px-3 py-3 text-sm text-secondary-600 dark:text-secondary-300"
+                          role="status"
+                        >
+                          {copy.loading}
+                        </p>
+                      ) : requirementSearchStatus === 'error' ? (
+                        <p
+                          className="px-3 py-3 text-sm text-red-700 dark:text-red-300"
+                          role="alert"
+                        >
+                          {copy.requirementsInSelectionError}
+                        </p>
+                      ) : selectableRequirementSearchResults.length === 0 ? (
+                        <p className="px-3 py-3 text-sm text-secondary-500 dark:text-secondary-400">
+                          {copy.noRequirementSearchResults}
+                        </p>
+                      ) : (
+                        <ul className="max-h-64 divide-y divide-secondary-100 overflow-y-auto dark:divide-secondary-800">
+                          {selectableRequirementSearchResults.map(
+                            requirement => (
+                              <li key={requirement.id}>
+                                <button
+                                  className="flex min-h-12 w-full items-start gap-3 px-3 py-2 text-left text-sm hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:hover:bg-secondary-800/70"
+                                  onClick={() => {
+                                    setAnswerForm(previous =>
+                                      previous.requirements.some(
+                                        item => item.id === requirement.id,
+                                      )
+                                        ? previous
+                                        : {
+                                            ...previous,
+                                            requirements: [
+                                              ...previous.requirements,
+                                              requirement,
+                                            ],
+                                          },
+                                    )
+                                    setRequirementSearch('')
+                                    setRequirementSearchResults([])
+                                    setRequirementSearchStatus('idle')
+                                  }}
+                                  type="button"
+                                >
+                                  <span className="mt-0.5 shrink-0 font-mono text-xs font-semibold text-secondary-900 dark:text-secondary-100">
+                                    {requirement.uniqueId}
+                                  </span>
+                                  {requirement.description ? (
+                                    <span className="min-w-0 text-xs leading-5 text-secondary-600 dark:text-secondary-300">
+                                      {requirement.description}
+                                    </span>
+                                  ) : null}
+                                </button>
+                              </li>
+                            ),
+                          )}
+                        </ul>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+                {answerForm.requirements.length > 0 ? (
+                  <fieldset className="mt-2 flex flex-wrap gap-1.5">
+                    <legend className="sr-only">
+                      {copy.selectedRequirementIds}
+                    </legend>
+                    {answerForm.requirements.map(requirement => (
+                      <span
+                        className="inline-flex min-h-7 max-w-full items-center gap-1 rounded-full border border-primary-200 bg-primary-50 px-2 text-xs text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100"
+                        key={requirement.id}
+                      >
+                        <span className="font-mono">
+                          {requirement.uniqueId}
+                        </span>
+                        <button
+                          aria-label={`${copy.removeRequirement} ${requirement.uniqueId}`}
+                          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-primary-700 hover:bg-primary-100 hover:text-primary-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-primary-200 dark:hover:bg-primary-900/60 dark:hover:text-primary-50"
+                          disabled={answerForm.isNoRequirementSelection}
+                          onClick={() =>
+                            setAnswerForm(previous => ({
+                              ...previous,
+                              requirements: previous.requirements.filter(
+                                item => item.id !== requirement.id,
+                              ),
+                            }))
+                          }
+                          type="button"
+                        >
+                          <X aria-hidden="true" className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </fieldset>
+                ) : null}
+              </div>
+            </div>
+          </section>
+
+          <section
+            aria-labelledby="kuf-answer-requirements-in-selection-heading"
+            className="flex min-h-0 flex-col rounded-xl border border-secondary-200 bg-white p-4 dark:border-secondary-700 dark:bg-secondary-950/20"
+            {...devMarker({
+              context: 'requirementSelectionQuestions',
+              name: 'answer form workspace',
+              value: 'requirements in selection',
+            })}
+          >
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h3
+                  className="text-sm font-semibold text-secondary-800 dark:text-secondary-100"
+                  id="kuf-answer-requirements-in-selection-heading"
+                >
+                  {copy.requirementsInSelection}
+                </h3>
+                <p className="mt-1 text-xs leading-5 text-secondary-500 dark:text-secondary-400">
+                  {copy.requirementsInSelectionSource}
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1 rounded-full border border-secondary-200 bg-secondary-100/80 px-2 py-1 text-xs font-medium text-secondary-600 dark:border-secondary-700 dark:bg-secondary-800/70 dark:text-secondary-300">
+                <Lock aria-hidden="true" className="h-3 w-3" />
+                {copy.matchingRequirementsReadOnly}
+              </span>
+            </div>
+            <div className="relative min-h-0">
+              <div
+                className={`${answerSelectionListClassName} rounded-lg border border-secondary-200 bg-secondary-50/70 pb-8 shadow-inner dark:border-secondary-700 dark:bg-secondary-950/20`}
+                ref={matchedRequirementScrollOverflow.scrollRef}
+              >
+                {matchedRequirementPreviewStatus === 'loading' ? (
+                  <p
+                    className="px-3 py-4 text-sm text-secondary-600 dark:text-secondary-300"
+                    role="status"
+                  >
+                    {copy.loading}
+                  </p>
+                ) : matchedRequirementPreviewStatus === 'error' ? (
+                  <p
+                    className="px-3 py-4 text-sm text-red-700 dark:text-red-300"
+                    role="alert"
+                  >
+                    {copy.requirementsInSelectionError}
+                  </p>
+                ) : !hasPreviewInputs ? (
+                  <p className="px-3 py-4 text-sm text-secondary-500 dark:text-secondary-400">
+                    {copy.requirementsInSelectionPrompt}
+                  </p>
+                ) : matchedRequirementPreview.length === 0 ? (
+                  <p className="px-3 py-4 text-sm text-secondary-500 dark:text-secondary-400">
+                    {copy.requirementsInSelectionEmpty}
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-secondary-200 dark:divide-secondary-700">
+                    {matchedRequirementPreview.map(requirement => (
+                      <li key={requirement.id}>
+                        <button
+                          aria-expanded={
+                            selectedPreviewRequirementId === requirement.id
+                          }
+                          aria-label={`${copy.openRequirementDetail} ${requirement.uniqueId}`}
+                          className={`group flex min-h-16 w-full items-start gap-3 border-l-2 px-3 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 ${
+                            selectedPreviewRequirementId === requirement.id
+                              ? 'border-l-primary-500 bg-primary-50/80 text-primary-950 dark:bg-primary-950/30 dark:text-primary-100'
+                              : 'border-l-transparent text-secondary-800 hover:bg-white/80 dark:text-secondary-100 dark:hover:bg-secondary-900/60'
+                          }`}
+                          onClick={() =>
+                            setSelectedPreviewRequirementId(current =>
+                              current === requirement.id
+                                ? null
+                                : requirement.id,
+                            )
+                          }
+                          type="button"
+                          {...devMarker({
+                            context: matchedRequirementsContext,
+                            name: 'requirement in selection',
+                            value: requirement.uniqueId,
+                          })}
+                        >
+                          <span className="mt-0.5 shrink-0 font-mono text-xs font-semibold">
+                            {requirement.uniqueId}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            {requirement.description ? (
+                              <span className="block text-xs leading-5 text-secondary-600 dark:text-secondary-300">
+                                {requirement.description}
+                              </span>
+                            ) : null}
+                            <span className="mt-2 flex flex-wrap gap-1">
+                              {requirement.direct ? (
+                                <span className="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-[0.68rem] font-medium text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
+                                  {copy.directRequirement}
+                                </span>
+                              ) : null}
+                              {requirement.sourcePackages.map(pkg => (
+                                <span
+                                  className="inline-flex rounded-full border border-secondary-200 bg-white px-2 py-0.5 text-[0.68rem] font-medium text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200"
+                                  key={pkg.id}
+                                >
+                                  {pkg.name}
+                                </span>
+                              ))}
+                            </span>
+                          </span>
+                          <ChevronRight
+                            aria-hidden="true"
+                            className={`mt-0.5 h-4 w-4 shrink-0 text-secondary-400 transition-transform group-hover:text-secondary-600 dark:text-secondary-500 dark:group-hover:text-secondary-300 ${
+                              selectedPreviewRequirementId === requirement.id
+                                ? 'rotate-90'
+                                : ''
+                            }`}
+                          />
+                        </button>
+                        {selectedPreviewRequirementId === requirement.id ? (
+                          <CompactRequirementDetail
+                            developerModeContext={matchedRequirementsContext}
+                            requirementId={selectedPreviewRequirementId}
+                          />
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <ScrollOverflowCue
+                hasOverflowAbove={
+                  matchedRequirementScrollOverflow.hasOverflowAbove
+                }
+                hasOverflowBelow={
+                  matchedRequirementScrollOverflow.hasOverflowBelow
+                }
+                surface="preview"
+              />
+            </div>
+          </section>
+        </div>
       </div>
-      <div>
-        <FieldLabelWithHelp
-          help={copy.requirementIdsHelp}
-          htmlFor="kuf-answer-requirements"
-          label={copy.requirementIds}
-        />
-        <input
-          className={inputClassName}
-          disabled={answerForm.isNoRequirementSelection}
-          id="kuf-answer-requirements"
-          onChange={event =>
-            setAnswerForm(previous => ({
-              ...previous,
-              requirementIds: event.target.value,
-            }))
-          }
-          value={answerForm.requirementIds}
-        />
-      </div>
-      <div>
-        <FieldLabelWithHelp
-          help={copy.answerSortOrderHelp}
-          htmlFor="kuf-answer-sort"
-          label={copy.sortOrder}
-        />
-        <input
-          className={inputClassName}
-          id="kuf-answer-sort"
-          min="0"
-          onChange={event =>
-            setAnswerForm(previous => ({
-              ...previous,
-              sortOrder: event.target.value,
-            }))
-          }
-          type="number"
-          value={answerForm.sortOrder}
-        />
-      </div>
-      <button
-        className="btn-primary inline-flex items-center gap-1.5"
-        disabled={submitting}
-        type="submit"
-      >
-        <Plus aria-hidden="true" className="h-4 w-4" />
-        {editingAnswerId ? copy.save : copy.addAnswer}
-      </button>
     </form>
   )
 
@@ -1255,9 +2280,14 @@ export default function RequirementSelectionQuestionsClient() {
               : 'new requirement selection answer'
           }
           initialFocusRef={answerTextRef}
+          maxWidthClassName="max-w-7xl"
           onClose={closeAnswerForm}
           open={showAnswerForm}
-          title={editingAnswerId ? copy.editAnswer : copy.addAnswer}
+          title={
+            editingAnswerId
+              ? copy.editRequirementSelectionAnswer
+              : copy.addAnswer
+          }
           titleId={
             editingAnswerId
               ? 'requirement-selection-answer-edit-title'
@@ -1559,14 +2589,81 @@ export default function RequirementSelectionQuestionsClient() {
                                     {answer.description}
                                   </p>
                                 )}
-                                {!answer.isNoRequirementSelection && (
-                                  <p className="mt-1 text-xs text-secondary-500">
-                                    {copy.packages}:{' '}
-                                    {answer.packageIds.join(', ') || '-'} ·{' '}
-                                    {copy.requirementIds}:{' '}
-                                    {answer.requirementIds.join(', ') || '-'}
-                                  </p>
-                                )}
+                                {!answer.isNoRequirementSelection
+                                  ? (() => {
+                                      const packageNames = answer.packageIds
+                                        .map(packageId =>
+                                          packagesById.get(packageId),
+                                        )
+                                        .filter(
+                                          (pkg): pkg is RequirementPackage =>
+                                            Boolean(pkg),
+                                        )
+                                      const directRequirementIds = new Set(
+                                        answer.requirementIds,
+                                      )
+                                      const directRequirements =
+                                        answer.matchingRequirements.filter(
+                                          requirement =>
+                                            directRequirementIds.has(
+                                              requirement.id,
+                                            ),
+                                        )
+                                      const unresolvedPackageCount =
+                                        answer.packageIds.length -
+                                        packageNames.length
+                                      const unresolvedRequirementCount =
+                                        answer.requirementIds.length -
+                                        directRequirements.length
+
+                                      if (
+                                        packageNames.length === 0 &&
+                                        directRequirements.length === 0 &&
+                                        unresolvedPackageCount === 0 &&
+                                        unresolvedRequirementCount === 0
+                                      ) {
+                                        return null
+                                      }
+
+                                      return (
+                                        <fieldset className="mt-2 flex flex-wrap gap-1.5 text-xs">
+                                          <legend className="sr-only">
+                                            {copy.requirementSources}
+                                          </legend>
+                                          {packageNames.map(pkg => (
+                                            <span
+                                              className="inline-flex rounded-full border border-secondary-200 bg-secondary-50 px-2 py-0.5 text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200"
+                                              key={pkg.id}
+                                            >
+                                              {pkg.name}
+                                            </span>
+                                          ))}
+                                          {unresolvedPackageCount > 0 ? (
+                                            <span className="inline-flex rounded-full border border-secondary-200 bg-secondary-50 px-2 py-0.5 text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                                              {copy.packages}:{' '}
+                                              {unresolvedPackageCount}
+                                            </span>
+                                          ) : null}
+                                          {directRequirements.map(
+                                            requirement => (
+                                              <span
+                                                className="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 font-mono text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100"
+                                                key={requirement.id}
+                                              >
+                                                {requirement.uniqueId}
+                                              </span>
+                                            ),
+                                          )}
+                                          {unresolvedRequirementCount > 0 ? (
+                                            <span className="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
+                                              {copy.requirementIds}:{' '}
+                                              {unresolvedRequirementCount}
+                                            </span>
+                                          ) : null}
+                                        </fieldset>
+                                      )
+                                    })()
+                                  : null}
                                 <button
                                   className="mt-2 inline-flex min-h-11 min-w-11 items-center rounded-lg border px-2 text-xs disabled:opacity-50"
                                   disabled={answer.matchingRequirementCount < 1}
@@ -1577,7 +2674,7 @@ export default function RequirementSelectionQuestionsClient() {
                                   }
                                   type="button"
                                 >
-                                  {copy.matchingRequirements}:{' '}
+                                  {copy.requirementsInSelection}:{' '}
                                   {answer.matchingRequirementCount}
                                 </button>
                                 {answer.healthState ===

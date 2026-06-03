@@ -169,11 +169,21 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   Each question renders its contextual answer-create trigger as
   `requirementSelectionQuestions > button: new requirement selection answer`.
   New and edited answer forms open as `dialog: new requirement selection answer`
-  and `dialog: edit requirement selection answer`. Search, area/status filters,
-  edit buttons, question-form requirement-area descriptions and lock hints,
-  answer preview toggles, answer row reorder handles, and health badges render
-  inside the existing `requirementSelectionQuestions` form/list surfaces; they
-  do not introduce new developer-mode marker names.
+  and `dialog: edit requirement selection answer`. The answer modal exposes
+  `requirementSelectionQuestions > answer form column: fields`,
+  `requirementSelectionQuestions > answer form column: source workspace`,
+  `requirementSelectionQuestions > answer form workspace: source selection`,
+  and
+  `requirementSelectionQuestions > answer form workspace: requirements in selection`;
+  the answer fields column omits manual answer sort-order editing because
+  answer order is managed from the answer list. Rows in `Krav i urvalet` render
+  under
+  `requirementSelectionQuestions > answer form > requirements in selection`
+  as `requirement in selection: <ID>`, and the compact read-only detail renders
+  as `matched requirement detail`.
+  Search, area/status filters, edit buttons, question-form requirement-area
+  descriptions and lock hints, answer row reorder handles, and health badges
+  render inside the existing `requirementSelectionQuestions` form/list surfaces.
 - Requirements specification list requirement-area labels render as compact,
   non-interactive pills inside the existing `specifications > crud table`
   surface; they do not add separate developer-mode marker names.

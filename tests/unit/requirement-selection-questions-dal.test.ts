@@ -3,6 +3,7 @@ import {
   cleanupRequirementSelectionPackageLinks,
   getExistingSpecificationRequirementIds,
   getRequirementSelectionFilterForSpecification,
+  listRequirementSelectionMatchedRequirements,
   resolveRequirementSelectionQuestionId,
   setRequirementSelectionAnswerState,
   setRequirementSelectionQuestionState,
@@ -85,6 +86,164 @@ describe('requirement selection questions DAL', () => {
     expect(filterSql).toContain('AND EXISTS (')
     expect(filterSql).toContain('explicit_version.requirement_status_id = @1')
     expect(query.mock.calls[1]?.[1]).toEqual([4, STATUS_PUBLISHED])
+  })
+
+  it('returns no matched requirements without package or requirement filters', async () => {
+    const db = createDb([])
+
+    await expect(
+      listRequirementSelectionMatchedRequirements(db),
+    ).resolves.toEqual([])
+
+    expect(vi.mocked(db.query)).not.toHaveBeenCalled()
+  })
+
+  it('matches published requirements from explicit requirement ids', async () => {
+    const db = createDb([
+      {
+        description: 'Explicit requirement',
+        id: 101,
+        isDirect: 1,
+        packageId: null,
+        packageName: null,
+        uniqueId: 'REQ-101',
+      },
+    ])
+
+    await expect(
+      listRequirementSelectionMatchedRequirements(db, {
+        requirementIds: [101],
+      }),
+    ).resolves.toEqual([
+      {
+        description: 'Explicit requirement',
+        direct: true,
+        id: 101,
+        sourcePackages: [],
+        uniqueId: 'REQ-101',
+      },
+    ])
+
+    const query = vi.mocked(db.query)
+    expect(String(query.mock.calls[0]?.[0])).toContain(
+      'FROM requirements AS explicit_requirement',
+    )
+    expect(String(query.mock.calls[0]?.[0])).toContain(
+      'explicit_version.requirement_status_id = @1',
+    )
+    expect(String(query.mock.calls[0]?.[0])).not.toContain(
+      'requirement_version_requirement_packages',
+    )
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      101,
+      STATUS_PUBLISHED,
+      STATUS_PUBLISHED,
+    ])
+  })
+
+  it('matches published requirements from requirement packages', async () => {
+    const db = createDb([
+      {
+        description: 'Packaged requirement',
+        id: 202,
+        isDirect: 0,
+        packageId: 7,
+        packageName: 'Baseline',
+        uniqueId: 'REQ-202',
+      },
+    ])
+
+    await expect(
+      listRequirementSelectionMatchedRequirements(db, {
+        packageIds: [7],
+      }),
+    ).resolves.toEqual([
+      {
+        description: 'Packaged requirement',
+        direct: false,
+        id: 202,
+        sourcePackages: [{ id: 7, name: 'Baseline' }],
+        uniqueId: 'REQ-202',
+      },
+    ])
+
+    const query = vi.mocked(db.query)
+    expect(String(query.mock.calls[0]?.[0])).toContain(
+      'FROM requirement_version_requirement_packages AS version_package',
+    )
+    expect(String(query.mock.calls[0]?.[0])).toContain(
+      'package_version.requirement_status_id = @1',
+    )
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      7,
+      STATUS_PUBLISHED,
+      STATUS_PUBLISHED,
+    ])
+  })
+
+  it('matches mixed package and requirement ids with stable deduplicated parameters', async () => {
+    const db = createDb([
+      {
+        description: 'Mixed requirement',
+        id: 303,
+        isDirect: 1,
+        packageId: null,
+        packageName: null,
+        uniqueId: 'REQ-303',
+      },
+      {
+        description: 'Mixed requirement',
+        id: 303,
+        isDirect: 0,
+        packageId: 9,
+        packageName: 'Enhanced',
+        uniqueId: 'REQ-303',
+      },
+    ])
+
+    await expect(
+      listRequirementSelectionMatchedRequirements(db, {
+        packageIds: [9, 9],
+        requirementIds: [303, 303],
+      }),
+    ).resolves.toEqual([
+      {
+        description: 'Mixed requirement',
+        direct: true,
+        id: 303,
+        sourcePackages: [{ id: 9, name: 'Enhanced' }],
+        uniqueId: 'REQ-303',
+      },
+    ])
+
+    const query = vi.mocked(db.query)
+    const sql = String(query.mock.calls[0]?.[0])
+    expect(sql).toContain('UNION ALL')
+    expect(sql).toContain('requirement_package.name AS packageName')
+    expect(sql).toContain('ORDER BY requirement.unique_id ASC')
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      303,
+      STATUS_PUBLISHED,
+      9,
+      STATUS_PUBLISHED,
+      STATUS_PUBLISHED,
+    ])
+  })
+
+  it('rejects invalid matched requirement ids before querying', async () => {
+    const db = createDb([])
+
+    await expect(
+      listRequirementSelectionMatchedRequirements(db, {
+        packageIds: [0],
+      }),
+    ).rejects.toMatchObject({
+      details: expect.objectContaining({
+        reason: 'invalid_id',
+      }),
+    })
+
+    expect(vi.mocked(db.query)).not.toHaveBeenCalled()
   })
 
   it('cleans package links from requirement-selection answers and reports affected answers', async () => {

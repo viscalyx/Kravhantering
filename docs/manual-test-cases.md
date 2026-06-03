@@ -598,10 +598,17 @@ management live outside Admin Center.
    route change. If the route is slowed for more than about two seconds, verify
    the delayed transition indicator is a spinner.
 1. Use `Lägg till svar` under svarlistan för en kravurvalsfråga and verify the new
-   answer form opens as a modal.
-1. Add a normal answer linked to a package or requirement from the modal.
+   answer form opens as a modal with answer fields on the left and a source
+   workspace on the right. Verify the answer modal does not show a `Sortering`
+   field; answer order is managed from the answer list.
+1. Add a normal answer linked to a package or requirement from the modal. Verify
+   `Kravpaket` opens as a compact searchable checkbox popover, `Krav-ID` is
+   selected by searching visible Krav-ID or kravtext and adding result chips,
+   and `Krav i urvalet` updates before saving. Verify each krav row shows
+   source badges such as `Direktvalt` and selected kravpaket names, and that a
+   subtle scroll cue appears when more krav rows are hidden.
 1. Add an `Utan kravurval` answer from the modal and verify links are cleared
-   for that answer.
+   for that answer and the package selector and Krav-ID search are disabled.
 1. Drag an answer's full-height handle to change the answer order and verify
    the dragged answer leaves an empty gray slot that moves as the other answers
    rearrange while dragging. Verify answer text can still be selected from the
@@ -614,13 +621,19 @@ management live outside Admin Center.
    that the area cannot be changed after creation, and still shows the selected
    requirement area's description. Drag-resize `Hjälptext` vertically and verify
    it stops before hiding the remaining form controls outside the modal viewport.
-   Edit an answer text, verify answer editing opens in the same modal surface,
-   then verify the edited values are shown without creating duplicate rows.
+   Edit an answer text, verify answer editing opens with the title
+   `Redigera kravurvalsvar`, verify the `Spara` button uses a save icon rather
+   than `+`, then verify the edited values are shown without creating duplicate
+   rows.
 1. Verify the answer action buttons show icons next to `Redigera`,
    `Inaktivera`, `Arkivera`, and `Ta bort`. Try to archive and delete a
    question or answer, cancel the first confirmation, then repeat and confirm.
 1. Expand an answer preview and verify it lists matching published requirements
    and flags `Saknar kravurval` when no published requirement currently matches.
+1. In the answer edit modal, click a row in `Krav i urvalet` and verify a
+   compact kravbibliotek detail appears with kravtext, acceptanskriterier,
+   metadata, referenser and kravpaket, but without process stepper or action
+   buttons.
 1. Reload the page.
 
 **Expected result:** The last stewardship tab is restored, only the active

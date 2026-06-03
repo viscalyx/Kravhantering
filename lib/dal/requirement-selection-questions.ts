@@ -71,9 +71,16 @@ export interface RequirementSelectionCleanupResult {
   removedLinkCount: number
 }
 
+export interface RequirementSelectionMatchedRequirementSourcePackage {
+  id: number
+  name: string
+}
+
 export interface RequirementSelectionMatchedRequirementRow {
   description: string | null
+  direct: boolean
   id: number
+  sourcePackages: RequirementSelectionMatchedRequirementSourcePackage[]
   uniqueId: string
 }
 
@@ -110,6 +117,19 @@ type AnswerDbRow = {
   sortOrder: number
   text: string
   updatedAt: Date | string
+}
+
+type MatchedRequirementSourceDbRow = {
+  description: string | null
+  id: number
+  isDirect: boolean | number | string
+  packageId: number | null
+  packageName: string | null
+  uniqueId: string
+}
+
+type AnswerMatchedRequirementSourceDbRow = MatchedRequirementSourceDbRow & {
+  answerId: number
 }
 
 function uniquePositiveIntegers(
@@ -235,6 +255,47 @@ async function listQuestionRows(
   return rows.map(mapQuestionRow)
 }
 
+function mergeMatchedRequirementSourceRow(
+  requirementsById: Map<number, RequirementSelectionMatchedRequirementRow>,
+  row: MatchedRequirementSourceDbRow,
+) {
+  const existing = requirementsById.get(row.id)
+  const requirement =
+    existing ??
+    ({
+      description: row.description,
+      direct: false,
+      id: row.id,
+      sourcePackages: [],
+      uniqueId: row.uniqueId,
+    } satisfies RequirementSelectionMatchedRequirementRow)
+
+  if (toBoolean(row.isDirect)) {
+    requirement.direct = true
+  }
+
+  if (
+    row.packageId != null &&
+    row.packageName != null &&
+    !requirement.sourcePackages.some(pkg => pkg.id === row.packageId)
+  ) {
+    requirement.sourcePackages.push({
+      id: row.packageId,
+      name: row.packageName,
+    })
+  }
+
+  requirementsById.set(row.id, requirement)
+}
+
+function sortMatchedRequirements(
+  rows: RequirementSelectionMatchedRequirementRow[],
+) {
+  return rows.sort((left, right) =>
+    left.uniqueId.localeCompare(right.uniqueId, 'sv'),
+  )
+}
+
 async function hydrateAnswers(
   executor: QueryExecutor,
   questions: RequirementSelectionQuestionRow[],
@@ -349,11 +410,17 @@ async function hydrateAnswerRequirementMatches(
         source.answerId AS answerId,
         requirement.id AS id,
         requirement.unique_id AS uniqueId,
-        published.description AS description
+        published.description AS description,
+        source.isDirect AS isDirect,
+        source.packageId AS packageId,
+        source.packageName AS packageName
       FROM (
         SELECT
           answer_requirement.answer_id AS answerId,
-          answer_requirement.requirement_id AS requirementId
+          answer_requirement.requirement_id AS requirementId,
+          CAST(1 AS bit) AS isDirect,
+          CAST(NULL AS int) AS packageId,
+          CAST(NULL AS nvarchar(max)) AS packageName
         FROM requirement_selection_answer_requirements AS answer_requirement
         WHERE answer_requirement.answer_id IN (${firstAnswerPlaceholders})
           AND EXISTS (
@@ -367,8 +434,13 @@ async function hydrateAnswerRequirementMatches(
 
         SELECT
           answer_package.answer_id AS answerId,
-          version.requirement_id AS requirementId
+          version.requirement_id AS requirementId,
+          CAST(0 AS bit) AS isDirect,
+          requirement_package.id AS packageId,
+          requirement_package.name AS packageName
         FROM requirement_selection_answer_packages AS answer_package
+        INNER JOIN requirement_packages AS requirement_package
+          ON requirement_package.id = answer_package.requirement_package_id
         INNER JOIN requirement_version_requirement_packages AS version_package
           ON version_package.requirement_package_id = answer_package.requirement_package_id
         INNER JOIN requirement_versions AS version
@@ -394,24 +466,22 @@ async function hydrateAnswerRequirementMatches(
       STATUS_PUBLISHED,
       STATUS_PUBLISHED,
     ],
-  )) as Array<RequirementSelectionMatchedRequirementRow & { answerId: number }>
+  )) as AnswerMatchedRequirementSourceDbRow[]
 
   const byAnswer = new Map<
     number,
-    RequirementSelectionMatchedRequirementRow[]
+    Map<number, RequirementSelectionMatchedRequirementRow>
   >()
   for (const row of rows) {
-    const bucket = byAnswer.get(row.answerId) ?? []
-    bucket.push({
-      description: row.description,
-      id: row.id,
-      uniqueId: row.uniqueId,
-    })
+    const bucket = byAnswer.get(row.answerId) ?? new Map()
+    mergeMatchedRequirementSourceRow(bucket, row)
     byAnswer.set(row.answerId, bucket)
   }
 
   for (const answer of answers) {
-    answer.matchingRequirements = byAnswer.get(answer.id) ?? []
+    answer.matchingRequirements = sortMatchedRequirements([
+      ...(byAnswer.get(answer.id)?.values() ?? []),
+    ])
     answer.matchingRequirementCount = answer.matchingRequirements.length
     answer.healthState =
       !answer.isNoRequirementSelection &&
@@ -421,6 +491,102 @@ async function hydrateAnswerRequirementMatches(
         ? 'missing_requirement_selection'
         : 'ok'
   }
+}
+
+export async function listRequirementSelectionMatchedRequirements(
+  executor: QueryExecutor,
+  options: {
+    packageIds?: readonly number[]
+    requirementIds?: readonly number[]
+  } = {},
+): Promise<RequirementSelectionMatchedRequirementRow[]> {
+  const requirementIds = uniquePositiveIntegers(options.requirementIds)
+  const packageIds = uniquePositiveIntegers(options.packageIds)
+  if (requirementIds.length === 0 && packageIds.length === 0) return []
+
+  const params: unknown[] = []
+  const sources: string[] = []
+
+  if (requirementIds.length > 0) {
+    const requirementPlaceholders = placeholders(requirementIds, params.length)
+    params.push(...requirementIds)
+    const statusParam = params.length
+    params.push(STATUS_PUBLISHED)
+    sources.push(`
+      SELECT
+        explicit_requirement.id AS requirementId,
+        CAST(1 AS bit) AS isDirect,
+        CAST(NULL AS int) AS packageId,
+        CAST(NULL AS nvarchar(max)) AS packageName
+      FROM requirements AS explicit_requirement
+      WHERE explicit_requirement.id IN (${requirementPlaceholders})
+        AND EXISTS (
+          SELECT 1
+          FROM requirement_versions AS explicit_version
+          WHERE explicit_version.requirement_id = explicit_requirement.id
+            AND explicit_version.requirement_status_id = @${statusParam}
+        )
+    `)
+  }
+
+  if (packageIds.length > 0) {
+    const packagePlaceholders = placeholders(packageIds, params.length)
+    params.push(...packageIds)
+    const statusParam = params.length
+    params.push(STATUS_PUBLISHED)
+    sources.push(`
+      SELECT
+        package_version.requirement_id AS requirementId,
+        CAST(0 AS bit) AS isDirect,
+        requirement_package.id AS packageId,
+        requirement_package.name AS packageName
+      FROM requirement_version_requirement_packages AS version_package
+      INNER JOIN requirement_packages AS requirement_package
+        ON requirement_package.id = version_package.requirement_package_id
+      INNER JOIN requirement_versions AS package_version
+        ON package_version.id = version_package.requirement_version_id
+       AND package_version.requirement_status_id = @${statusParam}
+      WHERE version_package.requirement_package_id IN (${packagePlaceholders})
+    `)
+  }
+
+  const descriptionStatusParam = params.length
+  params.push(STATUS_PUBLISHED)
+
+  const rows = (await executor.query(
+    `
+      SELECT
+        requirement.id AS id,
+        requirement.unique_id AS uniqueId,
+        published.description AS description,
+        source.isDirect AS isDirect,
+        source.packageId AS packageId,
+        source.packageName AS packageName
+      FROM (
+        ${sources.join('\n        UNION ALL\n')}
+      ) AS source
+      INNER JOIN requirements AS requirement
+        ON requirement.id = source.requirementId
+      OUTER APPLY (
+        SELECT TOP (1) description
+        FROM requirement_versions AS published_version
+        WHERE published_version.requirement_id = requirement.id
+          AND published_version.requirement_status_id = @${descriptionStatusParam}
+        ORDER BY published_version.version_number DESC
+      ) AS published
+      ORDER BY requirement.unique_id ASC
+    `,
+    params,
+  )) as MatchedRequirementSourceDbRow[]
+
+  const requirementsById = new Map<
+    number,
+    RequirementSelectionMatchedRequirementRow
+  >()
+  for (const row of rows) {
+    mergeMatchedRequirementSourceRow(requirementsById, row)
+  }
+  return sortMatchedRequirements([...requirementsById.values()])
 }
 
 export async function listRequirementSelectionQuestions(

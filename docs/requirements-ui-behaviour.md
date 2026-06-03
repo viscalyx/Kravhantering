@@ -419,6 +419,13 @@ down.
 - The question form's free-text areas can be resized vertically, but their
   maximum height is capped relative to the viewport so the remaining form
   controls stay reachable inside the modal.
+- The answer form uses a left-form/right-workspace modal. Answer text,
+  `Utan kravurval`, description and save stay in the left column; the right
+  workspace contains compact source controls and the front-and-center
+  `Krav i urvalet` preview. `Kravpaket` is selected through a searchable
+  checkbox popover, direct krav links are added through a visible Krav-ID /
+  kravtext search with chips, and preview rows show source badges for direct
+  selections and contributing kravpaket.
 
 ## Specification Requirement Selection Panel
 
