@@ -16,6 +16,7 @@ import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import {
   Fragment,
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -118,6 +119,57 @@ interface NeedsReferenceFormState {
   id: number | null
   text: string
 }
+
+interface RequirementSelectionFilterToggleProps {
+  checked: boolean
+  disabled: boolean
+  label: string
+  onToggle: (checked: boolean) => void
+  title?: string
+}
+
+const RequirementSelectionFilterToggle = memo(
+  function RequirementSelectionFilterToggle({
+    checked,
+    disabled,
+    label,
+    onToggle,
+    title,
+  }: RequirementSelectionFilterToggleProps) {
+    return (
+      <button
+        aria-checked={checked}
+        aria-label={label}
+        className={`relative inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors focus:outline-none focus-visible:outline-none ${
+          disabled
+            ? 'cursor-not-allowed border-secondary-200 text-secondary-400 opacity-70 dark:border-secondary-800 dark:text-secondary-500'
+            : 'cursor-pointer border-secondary-300 text-secondary-700 hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800'
+        }`}
+        disabled={disabled}
+        onClick={() => onToggle(!checked)}
+        role="switch"
+        title={title}
+        type="button"
+      >
+        <span>{label}</span>
+        <span
+          aria-hidden="true"
+          className={`relative inline-flex h-5 w-9 shrink-0 rounded-full ${
+            checked
+              ? 'bg-primary-700 dark:bg-primary-500'
+              : 'bg-secondary-300 dark:bg-secondary-700'
+          } ${disabled ? 'opacity-60' : ''}`}
+        >
+          <span
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow ${
+              checked ? 'translate-x-4' : 'translate-x-0.5'
+            }`}
+          />
+        </span>
+      </button>
+    )
+  },
+)
 
 function readStoredCols(
   key: string,
@@ -253,6 +305,10 @@ export default function KravunderlagDetailClient({
   const [rightFilters, setRightFilters] = useState<FilterValues>({})
   const [applyRequirementSelectionFilter, setApplyRequirementSelectionFilter] =
     useState(false)
+  const [
+    availableRequirementsSelectionFilter,
+    setAvailableRequirementsSelectionFilter,
+  ] = useState(initialData.availableRequirements.selectionFilter)
   const [rightSort, setRightSort] = useState<RequirementSortState>(
     DEFAULT_REQUIREMENT_SORT,
   )
@@ -449,7 +505,7 @@ export default function KravunderlagDetailClient({
 
   const leftNormReferenceOptions = leftNormReferenceResource.data ?? []
   const rightNormReferenceOptions = rightNormReferenceResource.data ?? []
-  const selectionFilter = availableRequirementsResource.data?.selectionFilter
+  const selectionFilter = availableRequirementsSelectionFilter
   const hasRequirementSelectionAnswers =
     selectionFilter?.hasCurrentAnswers === true
   const canApplyRequirementSelectionFilter =
@@ -473,11 +529,22 @@ export default function KravunderlagDetailClient({
   }, [specificationItemsResource.data])
 
   useEffect(() => {
-    if (availableRequirementsResource.data) {
+    if (
+      availableRequirementsResource.data &&
+      !availableRequirementsResource.refreshing &&
+      !availableRequirementsResource.refreshError
+    ) {
       setAvailableRows(availableRequirementsResource.data.rows)
       setRightHasMore(availableRequirementsResource.data.hasMore)
+      setAvailableRequirementsSelectionFilter(
+        availableRequirementsResource.data.selectionFilter,
+      )
     }
-  }, [availableRequirementsResource.data])
+  }, [
+    availableRequirementsResource.data,
+    availableRequirementsResource.refreshError,
+    availableRequirementsResource.refreshing,
+  ])
 
   useEffect(() => {
     if (
@@ -686,6 +753,14 @@ export default function KravunderlagDetailClient({
     specificationSlug,
     t,
   ])
+
+  const handleRequirementSelectionFilterToggle = useCallback(
+    (checked: boolean) => {
+      setApplyRequirementSelectionFilter(checked)
+      setRightSelectedIds(new Set())
+    },
+    [],
+  )
 
   useEffect(() => {
     setLeftVisibleCols(readStoredCols(LEFT_VISIBLE_COLS_KEY, DEFAULT_LEFT_COLS))
@@ -2615,12 +2690,13 @@ export default function KravunderlagDetailClient({
                       stickyTitleActions={
                         <div className="flex flex-wrap items-center gap-2">
                           {hasRequirementSelectionAnswers && (
-                            <label
-                              className={`relative inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors focus-within:outline-none focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-offset-2 focus-within:ring-offset-white dark:focus-within:ring-offset-secondary-950 ${
-                                isRequirementSelectionToggleDisabled
-                                  ? 'cursor-not-allowed border-secondary-200 text-secondary-400 opacity-70 dark:border-secondary-800 dark:text-secondary-500'
-                                  : 'cursor-pointer border-secondary-300 text-secondary-700 hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800'
-                              }`}
+                            <RequirementSelectionFilterToggle
+                              checked={isRequirementSelectionToggleChecked}
+                              disabled={isRequirementSelectionToggleDisabled}
+                              label={t(
+                                'filterWithRequirementSelectionQuestions',
+                              )}
+                              onToggle={handleRequirementSelectionFilterToggle}
                               title={
                                 isRequirementSelectionToggleDisabled
                                   ? t(
@@ -2628,50 +2704,7 @@ export default function KravunderlagDetailClient({
                                     )
                                   : undefined
                               }
-                            >
-                              <span>
-                                {t('filterWithRequirementSelectionQuestions')}
-                              </span>
-                              <input
-                                aria-checked={
-                                  isRequirementSelectionToggleChecked
-                                }
-                                aria-label={t(
-                                  'filterWithRequirementSelectionQuestions',
-                                )}
-                                checked={isRequirementSelectionToggleChecked}
-                                className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:pointer-events-none disabled:cursor-not-allowed"
-                                disabled={isRequirementSelectionToggleDisabled}
-                                onChange={event => {
-                                  setApplyRequirementSelectionFilter(
-                                    event.target.checked,
-                                  )
-                                  setRightSelectedIds(new Set())
-                                }}
-                                role="switch"
-                                type="checkbox"
-                              />
-                              <span
-                                aria-hidden="true"
-                                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
-                                  isRequirementSelectionToggleChecked
-                                    ? 'bg-primary-700 dark:bg-primary-500'
-                                    : 'bg-secondary-300 dark:bg-secondary-700'
-                                } ${
-                                  isRequirementSelectionToggleDisabled
-                                    ? 'opacity-60'
-                                    : ''
-                                }`}
-                              >
-                                <span
-                                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                                    isRequirementSelectionToggleChecked
-                                      ? 'translate-x-4'
-                                      : 'translate-x-0.5'
-                                  }`}
-                                />
-                              </span>
-                            </label>
+                            />
                           )}
                           {rightSelectedIds.size > 0 ? (
                             <button

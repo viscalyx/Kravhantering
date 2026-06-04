@@ -1223,6 +1223,7 @@ requirement-selection questions.
 1. For a multiple-choice question, choose `Utan kravurval`.
 1. Return to `Tillgängliga krav`.
 1. Verify `Filtrera med kravurvalsfrågor` is off on fresh entry and that
+   the toggle can be activated from its label-sized hit area. Verify
    `Tillgängliga krav` shows all published requirements that are not already in
    `Krav i underlaget`.
 1. Turn on `Filtrera med kravurvalsfrågor` and verify the list is narrowed by
@@ -1242,7 +1243,8 @@ requirement-selection questions.
 `Utan kravurval` is exclusive and does not narrow available requirements on its
 own, saved non-empty answers filter available requirements only after the user
 turns on `Filtrera med kravurvalsfrågor`, empty published matches show a
-neutral warning, the report shows the selection context with
+neutral warning, the filter toggle remains large enough to activate from the
+label area, the report shows the selection context with
 question, answer, status, change timestamp, and actor snapshot before the
 requirement table, and clearing an answer returns that question to unanswered.
 

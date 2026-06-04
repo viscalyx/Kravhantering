@@ -707,10 +707,93 @@ describe('RequirementsSpecificationDetailClient', () => {
     })
     expect(toggle).toBeDisabled()
     expect(toggle).not.toBeChecked()
-    expect(toggle.closest('label')).toHaveAttribute(
+    expect(toggle).toHaveAttribute(
       'title',
       'specification.requirementSelectionFilterDisabledTooltip',
     )
+  })
+
+  it('renders the requirement-selection toggle without a native input surface', async () => {
+    availableRequirementsSelectionFilter = {
+      applied: false,
+      hasCurrentAnswers: true,
+      hasRequirementSelection: true,
+      hasNoRequirementSelection: false,
+      requirementIds: [202],
+    }
+    renderRequirementsSpecificationDetailClient()
+
+    const toggle = await screen.findByRole('switch', {
+      name: 'specification.filterWithRequirementSelectionQuestions',
+    })
+    const switchTrack = toggle.querySelector('span[aria-hidden="true"]')
+    if (!(switchTrack instanceof HTMLElement)) {
+      throw new Error('Expected requirement-selection toggle track')
+    }
+
+    expect(toggle.tagName).toBe('BUTTON')
+    expect(toggle.className).not.toContain('focus-within:ring')
+    expect(toggle.className).not.toContain('absolute')
+    expect(toggle.className).not.toContain('inset-0')
+    expect(toggle.className).not.toContain('w-full')
+    expect(switchTrack.className).not.toContain('peer-focus-visible:ring')
+  })
+
+  it('keeps the requirement-selection toggle mounted while filtered requirements refresh', async () => {
+    availableRequirementsSelectionFilter = {
+      applied: false,
+      hasCurrentAnswers: true,
+      hasRequirementSelection: true,
+      hasNoRequirementSelection: false,
+      requirementIds: [202],
+    }
+    renderRequirementsSpecificationDetailClient()
+
+    const toggle = await screen.findByRole('switch', {
+      name: 'specification.filterWithRequirementSelectionQuestions',
+    })
+
+    let resolveFetch:
+      | ((value: { json: () => Promise<unknown>; ok: boolean }) => void)
+      | undefined
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveFetch = resolve
+        }),
+    )
+
+    fireEvent.click(toggle)
+
+    await waitFor(() => {
+      expect(
+        availableRequirementsFetchUrls().some(url =>
+          url.includes('applyRequirementSelectionFilter=true'),
+        ),
+      ).toBe(true)
+    })
+
+    expect(
+      screen.getByRole('switch', {
+        name: 'specification.filterWithRequirementSelectionQuestions',
+      }),
+    ).toBeChecked()
+
+    await act(async () => {
+      resolveFetch?.(
+        okJson({
+          pagination: { hasMore: false },
+          requirements: [initialAvailableRequirement],
+          selectionFilter: {
+            applied: true,
+            hasCurrentAnswers: true,
+            hasRequirementSelection: true,
+            hasNoRequirementSelection: false,
+            requirementIds: [202],
+          },
+        }),
+      )
+    })
   })
 
   it('loads more available requirements without sending the fixed status filter', async () => {

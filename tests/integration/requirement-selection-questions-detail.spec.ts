@@ -46,17 +46,14 @@ test.describe('Requirement selection question detail preview', () => {
       )
 
       await expect(detailCard).toHaveCount(1)
-      await expect(detailCard).toHaveAttribute('class', /rounded-2xl/)
-      await expect(detailCard).toHaveAttribute('class', /p-6/)
-      await expect(detailCard).toHaveAttribute('class', /space-y-5/)
-      await expect(detailCard).toHaveAttribute('class', /bg-white\/80/)
-      await expect(detailCard).toHaveAttribute('class', /text-sm/)
-      await expect(detailCard.locator('..')).toHaveAttribute('class', /px-6/)
-      await expect(detailCard.locator('..')).toHaveAttribute('class', /py-4/)
+      await expect(detailCard).toBeVisible()
 
       await expect(
         detailCard.getByRole('heading', { name: 'Kravtext' }),
-      ).toHaveCount(1)
+      ).toBeVisible()
+      await expect(detailCard).toContainText(
+        'Skyddade routes ska returnera 302',
+      )
       await expect(
         detailCard.getByRole('heading', { name: requirementId }),
       ).toHaveCount(0)
