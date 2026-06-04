@@ -419,13 +419,30 @@ down.
 - The question form's free-text areas can be resized vertically, but their
   maximum height is capped relative to the viewport so the remaining form
   controls stay reachable inside the modal.
-- The answer form uses a left-form/right-workspace modal. Answer text,
-  `Utan kravurval`, description and save stay in the left column; the right
-  workspace contains compact source controls and the front-and-center
+- The answer form uses a left-form/right-workspace modal without a visible
+  modal title, visible question ID, or close icon. Answer text,
+  `Utan kravurval`, description, save and `Avbryt` stay in the left column; the
+  right workspace contains compact source controls and the front-and-center
   `Krav i urvalet` preview. `Kravpaket` is selected through a searchable
   checkbox popover, direct krav links are added through a visible Krav-ID /
   kravtext search with chips, and preview rows show source badges for direct
-  selections and contributing kravpaket.
+  selections and contributing kravpaket. `Avbryt` closes immediately when the
+  answer is unchanged and asks for confirmation before discarding unsaved answer
+  changes.
+- Clicking a row in the answer form's `Krav i urvalet` preview opens a
+  read-only requirement detail card that reuses the same content-card layout,
+  padding, font scale, and section spacing as the requirements library inline
+  detail. It starts with `Kravtext`, not a repeated Krav-ID heading, and does
+  not include lifecycle steppers, action buttons, or version history.
+- Saved answer rows show compact source pills for selected `Kravpaket` and
+  direct `Krav-ID`. Clicking one or more source pills expands the resulting krav
+  list and filters it to the union of all selected sources; clicking an active
+  pill removes that source from the filter. The compact count disclosure is
+  shown before the source pills, separated by a small divider, and expands or
+  collapses the full list. Expanded krav rows show source badges, so a krav that
+  is both directly selected and included through a package appears once with
+  both `Direktvalt` and package badges. The old separate `Krav i urvalet: n`
+  button is not shown.
 
 ## Specification Requirement Selection Panel
 

@@ -324,6 +324,12 @@ function availableRequirementsFetchUrls(): string[] {
     )
 }
 
+async function waitForInitialAvailableRequirementsRefresh() {
+  await waitFor(() => {
+    expect(availableRequirementsFetchUrls().length).toBeGreaterThan(0)
+  })
+}
+
 function searchParamsFromPath(path: string): URLSearchParams {
   return new URLSearchParams(path.split('?')[1] ?? '')
 }
@@ -600,7 +606,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     window.localStorage.clear()
   })
 
-  it('shows the partial preload warning banner when initial data contains errors', () => {
+  it('shows the partial preload warning banner when initial data contains errors', async () => {
     renderRequirementsSpecificationDetailClient({
       ...createInitialData(),
       errors: [{ key: 'available requirements', message: 'preload failed' }],
@@ -609,6 +615,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'specification.partialDataLoadWarning',
     )
+    await waitForInitialAvailableRequirementsRefresh()
   })
 
   it('loads available requirements without sending the fixed status filter', async () => {
@@ -1266,6 +1273,7 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     expect(screen.getByText('BEH0001')).toBeInTheDocument()
     expect(screen.getByText('RBAC should be enforced.')).toBeInTheDocument()
+    await waitForInitialAvailableRequirementsRefresh()
   })
 
   it('creates a needs reference with a description from the register tab', async () => {
@@ -1321,6 +1329,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(fadeMotion).toHaveBeenCalledWith(true)
     expect(dialogPanelMotion).toHaveBeenCalledWith(true)
+    await waitForInitialAvailableRequirementsRefresh()
   })
 
   it('updates a single item needs reference inline from the requirements table', async () => {
@@ -1430,6 +1439,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(
       screen.getByText('specification.bulkNeedsReferenceHelp'),
     ).toBeInTheDocument()
+    await waitForInitialAvailableRequirementsRefresh()
   })
 
   it('shows bulk needs reference response failures next to the bulk controls', async () => {

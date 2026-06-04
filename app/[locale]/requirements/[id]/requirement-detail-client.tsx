@@ -8,6 +8,7 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationPill from '@/components/DeviationPill'
 import DeviationStepper from '@/components/DeviationStepper'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 import StatusBadge from '@/components/StatusBadge'
 import StatusIcon from '@/components/StatusIcon'
@@ -942,10 +943,7 @@ export default function RequirementDetailClient({
         <div className="grid grid-cols-1 gap-6">
           <div className="space-y-6">
             <div className="relative flex flex-col sm:flex-row gap-3">
-              <div
-                className="relative flex-1 min-w-0 bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6 space-y-5"
-                ref={cardRef}
-              >
+              <RequirementDetailCard ref={cardRef}>
                 <RequirementDetailSections
                   acceptanceCriteria={
                     selectedVersion?.acceptanceCriteria ?? '—'
@@ -973,7 +971,7 @@ export default function RequirementDetailClient({
                     <div className="w-3 h-3 rotate-45 bg-white dark:bg-secondary-900 border-b border-r border-secondary-200 dark:border-secondary-700" />
                   </div>
                 )}
-              </div>
+              </RequirementDetailCard>
 
               {triangleLeft !== null &&
                 connectorHeight !== null &&

@@ -228,6 +228,10 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(
       screen.getByText('Specification local acceptance'),
     ).toBeInTheDocument()
+    const detailCard = screen
+      .getByText('Specification local description')
+      .closest('div[class~="rounded-2xl"]')
+    expect(detailCard).toHaveClass('rounded-2xl', 'p-6', 'space-y-5', 'text-sm')
     expect(screen.getByText('Requirement area')).toBeInTheDocument()
     expect(screen.queryByText('Integration')).not.toBeInTheDocument()
     expect(screen.getByText('Norm references')).toBeInTheDocument()

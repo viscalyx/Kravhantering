@@ -175,12 +175,16 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `requirementSelectionQuestions > answer form workspace: source selection`,
   and
   `requirementSelectionQuestions > answer form workspace: requirements in selection`;
-  the answer fields column omits manual answer sort-order editing because
-  answer order is managed from the answer list. Rows in `Krav i urvalet` render
-  under
+  the answer fields column omits the visible modal title, visible question ID,
+  close icon, and manual answer sort-order editing because answer order is
+  managed from the answer list. Rows in `Krav i urvalet` render under
   `requirementSelectionQuestions > answer form > requirements in selection`
-  as `requirement in selection: <ID>`, and the compact read-only detail renders
-  as `matched requirement detail`.
+  as `requirement in selection: <ID>`, and the read-only detail card reuses the
+  library inline-detail card layout while rendering as `matched requirement
+  detail`. Saved answer rows keep the count disclosure before the compact
+  source pills with a small separator; those pills filter the expanded answer
+  requirement list. Expanded rows show direct and package source
+  badges without adding separate Developer Mode markers.
   Search, area/status filters, edit buttons, question-form requirement-area
   descriptions and lock hints, answer row reorder handles, and health badges
   render inside the existing `requirementSelectionQuestions` form/list surfaces.

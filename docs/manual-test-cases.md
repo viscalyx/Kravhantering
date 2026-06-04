@@ -599,14 +599,31 @@ management live outside Admin Center.
    the delayed transition indicator is a spinner.
 1. Use `Lägg till svar` under svarlistan för en kravurvalsfråga and verify the new
    answer form opens as a modal with answer fields on the left and a source
-   workspace on the right. Verify the answer modal does not show a `Sortering`
-   field; answer order is managed from the answer list.
+   workspace on the right. Verify the answer modal does not show a visible
+   title, question ID or `Sortering` field; answer order is managed from the
+   answer list.
 1. Add a normal answer linked to a package or requirement from the modal. Verify
    `Kravpaket` opens as a compact searchable checkbox popover, `Krav-ID` is
    selected by searching visible Krav-ID or kravtext and adding result chips,
    and `Krav i urvalet` updates before saving. Verify each krav row shows
    source badges such as `Direktvalt` and selected kravpaket names, and that a
    subtle scroll cue appears when more krav rows are hidden.
+1. Edit an existing answer, open `Kravpaket`, and scroll the package checkbox
+   list immediately after the modal opens. Verify the package list scrolls
+   inside the modal and that the kravurvalsfråga answer list behind the modal
+   stays fixed.
+1. In the answer modal, click `Avbryt` before changing anything and verify the
+   modal closes directly. Open it again, change the answer text, click
+   `Avbryt`, cancel the discard confirmation and verify the modal stays open;
+   then repeat and confirm that the unsaved changes are discarded.
+1. After saving the answer, verify the answer row does not show a separate
+   `Krav i urvalet: n` button. Verify the compact count/chevron pill is shown
+   before the `Kravpaket` and `Krav-ID` pills with a small separator between
+   them. Click multiple source pills on the row and verify the expanded krav
+   list shows all krav from every selected pill. For a krav that is both
+   directly selected and included through a package, verify the expanded krav
+   row is shown once with both `Direktvalt` and package badges. Click an active
+   pill again and verify only that source is removed from the filtered list.
 1. Add an `Utan kravurval` answer from the modal and verify links are cleared
    for that answer and the package selector and Krav-ID search are disabled.
 1. Drag an answer's full-height handle to change the answer order and verify
@@ -620,20 +637,21 @@ management live outside Admin Center.
 1. Edit the question text and verify `Kravområde` is visibly disabled, explains
    that the area cannot be changed after creation, and still shows the selected
    requirement area's description. Drag-resize `Hjälptext` vertically and verify
-   it stops before hiding the remaining form controls outside the modal viewport.
-   Edit an answer text, verify answer editing opens with the title
-   `Redigera kravurvalsvar`, verify the `Spara` button uses a save icon rather
-   than `+`, then verify the edited values are shown without creating duplicate
-   rows.
+   it stops before hiding the remaining form controls outside the modal
+   viewport. Edit an answer text, verify answer editing is still announced as
+   `Redigera kravurvalsvar` without showing it as a visible modal title, verify
+   the `Spara` button uses a save icon rather than `+`, then verify the edited
+   values are shown without creating duplicate rows.
 1. Verify the answer action buttons show icons next to `Redigera`,
    `Inaktivera`, `Arkivera`, and `Ta bort`. Try to archive and delete a
    question or answer, cancel the first confirmation, then repeat and confirm.
 1. Expand an answer preview and verify it lists matching published requirements
    and flags `Saknar kravurval` when no published requirement currently matches.
 1. In the answer edit modal, click a row in `Krav i urvalet` and verify a
-   compact kravbibliotek detail appears with kravtext, acceptanskriterier,
-   metadata, referenser and kravpaket, but without process stepper or action
-   buttons.
+   kravbibliotek-style read-only detail card appears with kravtext,
+   acceptanskriterier, metadata, referenser and kravpaket using the same card
+   padding and section spacing as the kravbibliotek inline detail, but without
+   repeated Krav-ID heading, process stepper or action buttons.
 1. Reload the page.
 
 **Expected result:** The last stewardship tab is restored, only the active

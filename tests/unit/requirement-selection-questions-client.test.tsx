@@ -123,6 +123,7 @@ const sampleArea = {
   prefix: 'SEC',
 }
 const samplePackage = { id: 10, isArchived: false, name: 'Baseline' }
+const secondPackage = { id: 20, isArchived: false, name: 'Enhanced' }
 const sampleQuestion: TestQuestion = {
   answers: [],
   areaId: sampleArea.id,
@@ -406,7 +407,7 @@ describe('RequirementSelectionQuestionsClient', () => {
       screen.getByText(/Search and add published requirements/),
     ).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
     fireEvent.click(
       screen.getByRole('button', {
@@ -732,7 +733,104 @@ describe('RequirementSelectionQuestionsClient', () => {
     })
   })
 
-  it('edits answers with package checkboxes, live matches, and compact requirement details', async () => {
+  it('hides answer edit chrome and confirms before discarding unsaved answer changes', async () => {
+    const questions = [{ ...sampleQuestion, answers: [sampleAnswer] }]
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions })
+      }
+      if (
+        url.startsWith(
+          '/api/requirement-selection-questions/matched-requirements?',
+        )
+      ) {
+        return okJson({ requirements: sampleAnswer.matchingRequirements })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(sampleAnswer.text)).toBeInTheDocument()
+    const answerCard = screen.getByText(sampleAnswer.text).closest('.p-3')
+    if (!answerCard) throw new Error('Missing answer card')
+
+    const openEditDialog = () => {
+      fireEvent.click(
+        within(answerCard as HTMLElement).getByRole('button', {
+          name: 'Edit',
+        }),
+      )
+      return screen.getByRole('dialog', {
+        name: 'Edit requirement selection answer',
+      })
+    }
+
+    let dialog = openEditDialog()
+    expect(
+      within(dialog as HTMLElement).getByRole('heading', {
+        name: 'Edit requirement selection answer',
+      }),
+    ).toHaveClass('sr-only')
+    expect(
+      within(dialog as HTMLElement).queryByText(sampleQuestion.questionCode),
+    ).not.toBeInTheDocument()
+    expect(
+      within(dialog as HTMLElement).queryByRole('button', { name: 'Close' }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(
+      within(dialog as HTMLElement).getByRole('button', { name: 'Cancel' }),
+    )
+    expect(confirmState.confirm).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    dialog = openEditDialog()
+    const answerText = within(dialog as HTMLElement).getByRole('textbox', {
+      name: /^Text/,
+    })
+    fireEvent.change(answerText, {
+      target: { value: 'Updated answer text' },
+    })
+    confirmState.confirm.mockResolvedValueOnce(false)
+    const cancelButton = within(dialog as HTMLElement).getByRole('button', {
+      name: 'Cancel',
+    })
+    fireEvent.click(cancelButton)
+
+    await waitFor(() => {
+      expect(confirmState.confirm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          anchorEl: cancelButton,
+          confirmText: 'Discard changes',
+          defaultCancel: true,
+          icon: 'caution',
+          message: 'You have unsaved changes. Discard them?',
+          variant: 'danger',
+        }),
+      )
+    })
+    expect(
+      screen.getByRole('dialog', { name: 'Edit requirement selection answer' }),
+    ).toBeInTheDocument()
+
+    confirmState.confirm.mockResolvedValueOnce(true)
+    fireEvent.click(cancelButton)
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
+  it('edits answers with package checkboxes, live matches, and library-style read-only requirement details', async () => {
     const questions = [{ ...sampleQuestion, answers: [sampleAnswer] }]
 
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
@@ -934,6 +1032,23 @@ describe('RequirementSelectionQuestionsClient', () => {
         'Detailed published requirement',
       ),
     ).toBeInTheDocument()
+    const detailCard = within(dialog as HTMLElement)
+      .getByText('Detailed published requirement')
+      .closest('[data-developer-mode-name="matched requirement detail"]')
+    if (!(detailCard instanceof HTMLElement)) {
+      throw new Error('Missing matched requirement detail card')
+    }
+    expect(detailCard).toHaveClass(
+      'rounded-2xl',
+      'p-6',
+      'space-y-5',
+      'bg-white/80',
+      'text-sm',
+    )
+    expect(detailCard.parentElement).toHaveClass('px-6', 'py-4')
+    expect(
+      within(detailCard).queryByRole('heading', { name: 'SEC-001' }),
+    ).not.toBeInTheDocument()
     expect(
       within(dialog as HTMLElement).getByText('Acceptance detail'),
     ).toBeInTheDocument()
@@ -957,6 +1072,142 @@ describe('RequirementSelectionQuestionsClient', () => {
         'Choose packages or search for Requirement IDs to preview requirements in the selection.',
       ),
     ).toBeInTheDocument()
+  })
+
+  it('filters expanded answer requirements by the union of selected source pills', async () => {
+    const multiSourceAnswer: TestAnswer = {
+      ...sampleAnswer,
+      matchingRequirementCount: 3,
+      matchingRequirements: [
+        {
+          description: 'Use strong authentication',
+          direct: true,
+          id: 301,
+          sourcePackages: [{ id: samplePackage.id, name: samplePackage.name }],
+          uniqueId: 'SEC-001',
+        },
+        {
+          description: 'Require privileged access review',
+          direct: false,
+          id: 302,
+          sourcePackages: [{ id: secondPackage.id, name: secondPackage.name }],
+          uniqueId: 'SEC-002',
+        },
+        {
+          description: 'Log administrative sessions',
+          direct: true,
+          id: 303,
+          sourcePackages: [],
+          uniqueId: 'SEC-003',
+        },
+      ],
+      packageIds: [samplePackage.id, secondPackage.id],
+      requirementIds: [301, 303],
+    }
+    const questions = [{ ...sampleQuestion, answers: [multiSourceAnswer] }]
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage, secondPackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(multiSourceAnswer.text)).toBeInTheDocument()
+    const answerCard = screen.getByText(multiSourceAnswer.text).closest('.p-3')
+    if (!answerCard) throw new Error('Missing answer card')
+
+    const baselinePill = within(answerCard as HTMLElement).getByRole('button', {
+      name: 'Filter requirements by requirement package Baseline',
+    })
+    const enhancedPill = within(answerCard as HTMLElement).getByRole('button', {
+      name: 'Filter requirements by requirement package Enhanced',
+    })
+    const directRequirementPill = within(answerCard as HTMLElement).getByRole(
+      'button',
+      {
+        name: 'Filter requirements by Requirement ID SEC-003',
+      },
+    )
+
+    fireEvent.click(baselinePill)
+    expect(baselinePill).toHaveAttribute('aria-pressed', 'true')
+    expect(baselinePill).toHaveClass(
+      'border-primary-600',
+      'ring-1',
+      'ring-primary-300',
+    )
+    let filteredList = within(answerCard as HTMLElement).getByRole('list', {
+      name: 'Requirements in selection',
+    })
+    expect(within(filteredList).getByText('SEC-001')).toBeInTheDocument()
+    const overlappingRequirementRow = within(filteredList)
+      .getByText('SEC-001')
+      .closest('li')
+    if (!overlappingRequirementRow) {
+      throw new Error('Missing overlapping requirement row')
+    }
+    expect(
+      within(overlappingRequirementRow as HTMLElement).getByText(
+        'Directly selected',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      within(overlappingRequirementRow as HTMLElement).getByText('Baseline'),
+    ).toBeInTheDocument()
+    expect(within(filteredList).getAllByText('SEC-001')).toHaveLength(1)
+    expect(within(filteredList).queryByText('SEC-002')).not.toBeInTheDocument()
+    expect(within(filteredList).queryByText('SEC-003')).not.toBeInTheDocument()
+
+    fireEvent.click(enhancedPill)
+    expect(enhancedPill).toHaveAttribute('aria-pressed', 'true')
+    filteredList = within(answerCard as HTMLElement).getByRole('list', {
+      name: 'Requirements in selection',
+    })
+    expect(within(filteredList).getByText('SEC-001')).toBeInTheDocument()
+    expect(within(filteredList).getByText('SEC-002')).toBeInTheDocument()
+    expect(within(filteredList).queryByText('SEC-003')).not.toBeInTheDocument()
+    expect(
+      within(answerCard as HTMLElement).getByRole('button', {
+        name: 'Hide requirements in selection for Baseline profile',
+      }),
+    ).toHaveTextContent('2/3 requirements')
+
+    fireEvent.click(directRequirementPill)
+    expect(directRequirementPill).toHaveAttribute('aria-pressed', 'true')
+    expect(directRequirementPill).toHaveClass(
+      'border-primary-700',
+      'ring-1',
+      'ring-primary-300',
+    )
+    filteredList = within(answerCard as HTMLElement).getByRole('list', {
+      name: 'Requirements in selection',
+    })
+    expect(within(filteredList).getByText('SEC-001')).toBeInTheDocument()
+    expect(within(filteredList).getByText('SEC-002')).toBeInTheDocument()
+    expect(within(filteredList).getByText('SEC-003')).toBeInTheDocument()
+    expect(
+      within(answerCard as HTMLElement).getByRole('button', {
+        name: 'Hide requirements in selection for Baseline profile',
+      }),
+    ).toHaveTextContent('3/3 requirements')
+
+    fireEvent.click(baselinePill)
+    expect(baselinePill).toHaveAttribute('aria-pressed', 'false')
+    filteredList = within(answerCard as HTMLElement).getByRole('list', {
+      name: 'Requirements in selection',
+    })
+    expect(within(filteredList).queryByText('SEC-001')).not.toBeInTheDocument()
+    expect(within(filteredList).getByText('SEC-002')).toBeInTheDocument()
+    expect(within(filteredList).getByText('SEC-003')).toBeInTheDocument()
   })
 
   it('keeps question deletion behind confirmation', async () => {
@@ -1271,6 +1522,17 @@ describe('RequirementSelectionQuestionsClient', () => {
     expect(await screen.findByText(sampleAnswer.text)).toBeInTheDocument()
     const answerCard = screen.getByText(sampleAnswer.text).closest('.p-3')
     if (!answerCard) throw new Error('Missing answer card')
+    const sourceGroup = within(answerCard as HTMLElement).getByRole('group', {
+      name: 'Requirement selection sources',
+    })
+    const sourceButtons = within(sourceGroup).getAllByRole('button')
+    expect(sourceButtons[0]).toHaveAttribute(
+      'aria-label',
+      'Show requirements in selection for Baseline profile',
+    )
+    expect(
+      sourceGroup.querySelector('[data-answer-source-separator="true"]'),
+    ).toBeInTheDocument()
 
     expect(
       within(answerCard as HTMLElement).getByRole('button', {
@@ -1279,10 +1541,25 @@ describe('RequirementSelectionQuestionsClient', () => {
     ).toHaveClass('min-h-11', 'w-8', 'text-secondary-700')
 
     expect(
-      within(answerCard as HTMLElement).getByRole('button', {
+      within(answerCard as HTMLElement).queryByRole('button', {
         name: 'Requirements in selection: 1',
       }),
-    ).toHaveClass('min-h-11', 'min-w-11')
+    ).not.toBeInTheDocument()
+    expect(
+      within(answerCard as HTMLElement).getByRole('button', {
+        name: 'Filter requirements by requirement package Baseline',
+      }),
+    ).toHaveClass('min-h-7', 'rounded-full')
+    expect(
+      within(answerCard as HTMLElement).getByRole('button', {
+        name: 'Filter requirements by Requirement ID SEC-001',
+      }),
+    ).toHaveClass('min-h-7', 'rounded-full', 'font-mono')
+    expect(
+      within(answerCard as HTMLElement).getByRole('button', {
+        name: 'Show requirements in selection for Baseline profile',
+      }),
+    ).toHaveClass('min-h-7', 'rounded-full')
 
     for (const buttonName of ['Edit', 'Deactivate', 'Archive', 'Delete']) {
       const actionButton = within(answerCard as HTMLElement).getByRole(

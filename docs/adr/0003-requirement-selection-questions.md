@@ -32,8 +32,14 @@ rather than paired locale columns.
 
 Requirement selection answers may point to requirement packages and explicit
 published requirements, or be marked as intentionally having no requirement
-selection. Archived packages and requirements that no longer have a published
-version are automatically removed from answers and are not restored
+selection. Package links and explicit requirement links are independent source
+decisions: the same requirement may match an answer both directly and through a
+package, is counted once, and keeps both source labels visible to stewards.
+This lets a question owner require a specific requirement regardless of later
+package membership changes, while the explicit requirement link must still
+reference a requirement with a published version. Archived packages and
+requirements that no longer have a published version are automatically removed
+from answers and are not restored
 automatically if they become usable again; affected answers that are not
 intentionally empty are shown as missing a requirement selection. Questions
 are always optional in the first implementation: there is no required-question

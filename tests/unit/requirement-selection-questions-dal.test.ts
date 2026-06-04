@@ -181,7 +181,7 @@ describe('requirement selection questions DAL', () => {
     ])
   })
 
-  it('matches mixed package and requirement ids with stable deduplicated parameters', async () => {
+  it('matches overlapping package and requirement ids as one requirement with both sources', async () => {
     const db = createDb([
       {
         description: 'Mixed requirement',
