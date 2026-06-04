@@ -247,13 +247,13 @@ samla krav som hör till ett specifikt projekt eller leverans.
 
 Kravunderlagsdetaljsidan har en delad layout: **vänster panel** har tabbarna
 **Krav i underlaget** och **Behovsreferenser** i listans rubrik, och **höger
-panel** visar tillgängliga bibliotekskrav att lägga till. I tabben för krav
-visas både bibliotekskrav och eventuella kravunderlagets unika krav med deras
-användningsstatus. Knapparna till höger i rubriken byts när du växlar tabb:
-tabben för krav har kravlistans verktyg, medan tabben för behovsreferenser har
-åtgärden för att skapa en ny referens. Knappen **"Nytt unikt krav"** skapar krav
-som bara finns i detta kravunderlag. Klicka på en rad för att se kravets
-fullständiga detaljer.
+panel** har tabbarna **Tillgängliga krav** och **Kravurvalsfrågor** i samma typ
+av sticky rubrik. I tabben för krav visas både bibliotekskrav och eventuella
+kravunderlagets unika krav med deras användningsstatus. Knapparna till höger i
+rubriken byts när du växlar tabb: tabben för krav har kravlistans verktyg, medan
+tabben för behovsreferenser har åtgärden för att skapa en ny referens. Knappen
+**"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag. Klicka på
+en rad för att se kravets fullständiga detaljer.
 
 ![Kravunderlagsdetalj — delad vy](images/024-kravunderlagsdetalj.png)
 
@@ -562,8 +562,8 @@ Skriver ut kraven som ingår i ett specifikt kravunderlag som en formaterad
 tabell. Rapporten inkluderar underlagets metadata (namn, ID, verksamhetsområde,
 genomförandeform, underlagssyfte) som rubrik. Om kravurvalsfrågor har besvarats
 visas urvalskontexten före kravtabellen. Historiska svar som inte längre
-filtrerar markeras som ej filteraktiva. CSV-exporten för kravunderlag är fortsatt
-radren och tar inte med urvalskontexten.
+är aktuell urvalskontext markeras som historiska svar. CSV-exporten för
+kravunderlag är fortsatt radren och tar inte med urvalskontexten.
 
 **Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält.
 

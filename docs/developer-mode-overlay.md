@@ -209,11 +209,15 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `create local requirement` and `create needs reference`. They live in the
   sticky list header beside the embedded left-panel tabs.
 - Requirements specification detail right-panel tabs cover both available
-  requirements and requirement-selection questions. The question controls reuse
-  the existing form/table control markers; search/filter controls, optimistic
-  save status, match summaries, and `Saknar kravurval` badges do not introduce
-  separate marker names. No mandatory-question marker exists because
-  requirement-selection questions are always optional.
+  requirements and requirement-selection questions and live in the sticky panel
+  header, matching the left-panel tab treatment. The
+  `Filtrera med kravurvalsfrågor` switch is a regular product control in the
+  available-requirements sticky action area and does not introduce a separate
+  Developer Mode marker. The question controls reuse the existing form/table
+  control markers; search/filter controls, optimistic save status, match
+  summaries, and `Saknar kravurval` badges do not introduce separate marker
+  names. No mandatory-question marker exists because requirement-selection
+  questions are always optional.
 - Specification-local inline detail views in specification context use the
   `requirements specification detail` context with
   `detail pane: specification-local requirement`.

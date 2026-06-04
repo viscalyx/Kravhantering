@@ -57,7 +57,9 @@ export interface AvailableRequirementsData {
   hasMore: boolean
   rows: RequirementRow[]
   selectionFilter?: {
-    filterActive: boolean
+    applied: boolean
+    hasCurrentAnswers: boolean
+    hasRequirementSelection: boolean
     hasNoRequirementSelection: boolean
     requirementIds: number[]
   }

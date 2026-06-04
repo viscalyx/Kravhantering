@@ -508,12 +508,15 @@ markerat som utan kravurval.
 _Avoid_: Utan kravurval när avsiktligt nollbidrag avses.
 
 **Kravurvalsfilter**:
-Ett styrt grundurval av bibliotekskrav som bildas av valda kravurvalssvar inför
-att krav läggs till i ett kravunderlag.
+Ett användaraktiverat styrt grundurval av bibliotekskrav som bildas av valda
+kravurvalssvar inför att krav läggs till i ett kravunderlag. Valda
+kravurvalssvar kan bevaras som urvalskontext utan att kravurvalsfilter är
+aktivt.
 
 - `en`: Requirement selection filter
 
-_Avoid_: Vanligt tabellfilter, kravpaket.
+_Avoid_: Vanligt tabellfilter, kravpaket, sparade kravurvalssvar när de bara
+dokumenterar urvalskontext.
 
 **Kravtillämpning**:
 Att en publicerad kravversion från kravbiblioteket används i ett visst

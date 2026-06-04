@@ -98,6 +98,10 @@ The behaviors below apply to the requirement list rendered by:
   a separate row above the list; the tab selection is reflected in the URL
   through `leftTab=needs-references` so a copied link can reopen the
   needs-reference register directly.
+- The right specification-detail panel uses the same embedded sticky-list-header
+  tab treatment for `Tillgängliga krav` and `Kravurvalsfrågor`; the active tab
+  is the panel title, so the right panel does not render a second visible
+  heading for either tab.
 - The action pills on the right side of that sticky header are contextual:
   `Krav i underlaget` shows requirement-list actions such as local creation,
   column settings, print, export, and selected-row bulk actions, while
@@ -401,7 +405,7 @@ down.
 - PDF uses the matching server route
   `/[locale]/specifications/[slug]/reports/pdf/list?refs=...`.
 - Specification list reports include the current requirement-selection context
-  before the requirement table. Historical saved answers are shown as inactive
+  before the requirement table. Historical saved answers are shown as historical
   context and do not affect filtering or progress. Each context row includes the
   question, answer, active/historical status, latest change timestamp, and actor
   display-name snapshot when available. The specification CSV export remains
@@ -446,8 +450,9 @@ down.
 
 ## Specification Requirement Selection Panel
 
-- The specification detail right panel has tabs for `Tillgängliga krav` and
-  `Kravurvalsfrågor`.
+- The specification detail right panel embeds the `Tillgängliga krav` and
+  `Kravurvalsfrågor` tabs in the same sticky panel header pattern as the left
+  panel tabs.
 - Requirement-selection questions are always optional. Progress counts answered
   active questions against all active questions, both total and per requirement
   area, without blocking save or report actions.
@@ -455,20 +460,39 @@ down.
   answer text, requirement area, and unanswered state. Questions are grouped by
   requirement area and answer rows show how many published requirements they
   match, plus how many of those are already in the specification.
-- Active saved answers filter `Tillgängliga krav` through their linked
-  requirement packages and explicit published requirements.
+- Saved answers preserve requirement-selection context for the specification.
+  `Tillgängliga krav` starts from all published library requirements that are
+  not already in the specification; users opt in with the `Filtrera med
+  kravurvalsfrågor` toggle when they want saved answers to filter the list
+  through linked requirement packages and explicit published requirements.
 - `Utan kravurval` clears other answers for the same question and is exclusive
   even for multiple-choice questions. It counts as answered but contributes no
   requirement filter; if only `Utan kravurval` answers are selected, available
   requirements are not narrowed.
 - Historical saved answers remain visible and clearable, but are excluded from
   filters and progress.
-- Saved answers update optimistically with visible saving/error status. When an
-  answer changes, manual filters in `Tillgängliga krav` are cleared so the
-  answer-derived filter is visible; sort order and column choices remain.
-- While active answers filter available requirements, the manual filter controls
-  in `Tillgängliga krav` are locked by default and can be reopened with the
-  explicit adjust-filters action.
+- Saved answers update optimistically with visible saving/error status. When the
+  requirement-selection toggle is on, changed answers update the filtered
+  `Tillgängliga krav` list immediately; when the toggle is off, changed answers
+  remain selection context and the list stays unfiltered by requirement-selection
+  answers.
+- The `Filtrera med kravurvalsfrågor` toggle is shown as off on a fresh visit.
+  If answered questions only contain `Utan kravurval`, the toggle remains off,
+  disabled and dimmed with a tooltip that explains that the answered questions
+  do not provide a requirement selection. If answered questions provide a
+  requirement selection that currently matches zero published requirements, the
+  toggle remains enabled and shows the neutral empty-selection warning when
+  turned on.
+- Turning the requirement-selection toggle on or off preserves the user's
+  regular `Tillgängliga krav` filters, search, sort order, selected columns and
+  column widths. Requirement-selection filtering is combined with the regular
+  list filters rather than replacing or clearing them. Changing this toggle, or
+  changing answers while the toggle is on, clears the right-list row selection
+  so hidden requirements cannot remain selected.
+- The requirement-selection toggle is transient view state. It may remain on
+  while the user stays in the same specification detail view and switches
+  between right-panel tabs, but it is not persisted across a fresh visit to the
+  specification.
 - If selected answers should contribute requirements but no published
   requirements match, the specification shows a neutral warning instead of
   treating the state as a validation error.

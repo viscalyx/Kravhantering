@@ -74,9 +74,14 @@ for (const viewport of viewports) {
         const rightTrigger = rightPanel.locator(
           '[data-column-picker-trigger="true"]',
         )
-        const rightTitle = rightPanel.getByRole('heading', {
-          level: 2,
+        const rightAvailableTab = rightTopBar.getByRole('tab', {
           name: /Tillgängliga krav/,
+        })
+        const rightQuestionsTab = rightTopBar.getByRole('tab', {
+          name: /Kravurvalsfrågor/,
+        })
+        const requirementSelectionSwitch = rightTopBar.getByRole('switch', {
+          name: 'Filtrera med kravurvalsfrågor',
         })
         const rightHeaderLabel = rightPanel.locator(
           '[data-requirement-header-label="uniqueId"]',
@@ -85,7 +90,12 @@ for (const viewport of viewports) {
         await expect(rightPanel).toBeVisible()
         await expect(rightTopBar).toBeVisible()
         await expect(rightTrigger).toBeVisible()
-        await expect(rightTitle).toBeVisible()
+        await expect(rightAvailableTab).toBeVisible()
+        await expect(rightQuestionsTab).toBeVisible()
+        await expect(requirementSelectionSwitch).toBeVisible()
+        await expect(requirementSelectionSwitch).not.toBeChecked()
+        await requirementSelectionSwitch.click()
+        await expect(requirementSelectionSwitch).toBeChecked()
         await expect(rightHeaderLabel).toBeVisible()
         const hasLeftPanel = (await leftPanel.count()) > 0
         if (hasLeftPanel) {
@@ -199,7 +209,8 @@ for (const viewport of viewports) {
           .toBe(0)
         await expect(rightTopBar).toBeVisible()
         await expect(rightTrigger).toBeVisible()
-        await expect(rightTitle).toBeVisible()
+        await expect(rightAvailableTab).toBeVisible()
+        await expect(rightQuestionsTab).toBeVisible()
         await expect(rightHeaderLabel).toBeVisible()
 
         const afterTopBarBox = await rightTopBar.boundingBox()

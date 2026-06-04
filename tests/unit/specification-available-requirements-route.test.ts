@@ -69,7 +69,8 @@ describe('specifications/[id]/available-requirements route', () => {
     })
     mocks.getExistingSpecificationRequirementIds.mockResolvedValue([101, 102])
     mocks.getRequirementSelectionFilterForSpecification.mockResolvedValue({
-      filterActive: false,
+      hasCurrentAnswers: false,
+      hasRequirementSelection: false,
       hasNoRequirementSelection: false,
       requirementIds: [],
     })
@@ -93,7 +94,9 @@ describe('specifications/[id]/available-requirements route', () => {
       pagination: { hasMore: false, total: 1 },
       requirements: [{ id: 201, uniqueId: 'IAM0201' }],
       selectionFilter: {
-        filterActive: false,
+        applied: false,
+        hasCurrentAnswers: false,
+        hasRequirementSelection: false,
         hasNoRequirementSelection: false,
         requirementIds: [],
       },
@@ -110,6 +113,114 @@ describe('specifications/[id]/available-requirements route', () => {
       }),
       { authorization: mockAuthorization, context: mockContext },
     )
+    expect(mocks.queryRequirementList.mock.calls[0]?.[1]).not.toHaveProperty(
+      'requirementIds',
+    )
+  })
+
+  it('applies requirement-selection ids only when explicitly requested', async () => {
+    mocks.getRequirementSelectionFilterForSpecification.mockResolvedValue({
+      hasCurrentAnswers: true,
+      hasRequirementSelection: true,
+      hasNoRequirementSelection: false,
+      requirementIds: [301, 302],
+    })
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/specifications/IAM-INFOR-2026/available-requirements?applyRequirementSelectionFilter=true',
+      ),
+      makeParams('IAM-INFOR-2026'),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      pagination: { hasMore: false, total: 1 },
+      requirements: [{ id: 201, uniqueId: 'IAM0201' }],
+      selectionFilter: {
+        applied: true,
+        hasCurrentAnswers: true,
+        hasRequirementSelection: true,
+        hasNoRequirementSelection: false,
+        requirementIds: [301, 302],
+      },
+    })
+    expect(mocks.queryRequirementList).toHaveBeenCalledWith(
+      mockDb,
+      expect.objectContaining({
+        requirementIds: [301, 302],
+      }),
+      { authorization: mockAuthorization, context: mockContext },
+    )
+  })
+
+  it('does not apply requirement-selection ids when the opt-in query param is absent', async () => {
+    mocks.getRequirementSelectionFilterForSpecification.mockResolvedValue({
+      hasCurrentAnswers: true,
+      hasRequirementSelection: true,
+      hasNoRequirementSelection: false,
+      requirementIds: [301, 302],
+    })
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/specifications/IAM-INFOR-2026/available-requirements',
+      ),
+      makeParams('IAM-INFOR-2026'),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      pagination: { hasMore: false, total: 1 },
+      requirements: [{ id: 201, uniqueId: 'IAM0201' }],
+      selectionFilter: {
+        applied: false,
+        hasCurrentAnswers: true,
+        hasRequirementSelection: true,
+        hasNoRequirementSelection: false,
+        requirementIds: [301, 302],
+      },
+    })
+    expect(mocks.queryRequirementList.mock.calls[0]?.[1]).not.toHaveProperty(
+      'requirementIds',
+    )
+  })
+
+  it('returns an empty list when an explicitly applied selection has no published matches', async () => {
+    mocks.getRequirementSelectionFilterForSpecification.mockResolvedValue({
+      hasCurrentAnswers: true,
+      hasRequirementSelection: true,
+      hasNoRequirementSelection: false,
+      requirementIds: [],
+    })
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/specifications/IAM-INFOR-2026/available-requirements?applyRequirementSelectionFilter=true&limit=15',
+      ),
+      makeParams('IAM-INFOR-2026'),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      pagination: {
+        count: 0,
+        hasMore: false,
+        limit: 15,
+        nextOffset: null,
+        offset: 0,
+        total: 0,
+      },
+      requirements: [],
+      selectionFilter: {
+        applied: true,
+        hasCurrentAnswers: true,
+        hasRequirementSelection: true,
+        hasNoRequirementSelection: false,
+        requirementIds: [],
+      },
+    })
+    expect(mocks.queryRequirementList).not.toHaveBeenCalled()
   })
 
   it('rejects needs-reference filters because the available list does not use them', async () => {

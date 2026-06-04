@@ -54,7 +54,8 @@ describe('requirement selection questions DAL', () => {
     await expect(
       getRequirementSelectionFilterForSpecification(db, 9),
     ).resolves.toEqual({
-      filterActive: false,
+      hasCurrentAnswers: true,
+      hasRequirementSelection: false,
       hasNoRequirementSelection: true,
       requirementIds: [],
     })
@@ -74,7 +75,8 @@ describe('requirement selection questions DAL', () => {
     await expect(
       getRequirementSelectionFilterForSpecification(db, 9),
     ).resolves.toEqual({
-      filterActive: true,
+      hasCurrentAnswers: true,
+      hasRequirementSelection: true,
       hasNoRequirementSelection: false,
       requirementIds: [101],
     })

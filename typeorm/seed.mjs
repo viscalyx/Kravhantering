@@ -12357,7 +12357,7 @@ const SEED_DATA = {
       'specification_id',
       'question_id',
       'answer_id',
-      'is_filter_active',
+      'is_historical',
       'changed_at',
       'changed_by_hsa_id',
       'changed_by_display_name',

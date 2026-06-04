@@ -25,7 +25,7 @@ interface SelectionQuestionResponse {
   questionCode: string
   savedAnswers: {
     answerId: number
-    isFilterActive: boolean
+    isHistorical: boolean
     selectedByDisplayName: string | null
     updatedAt: string
   }[]
@@ -40,7 +40,7 @@ function buildSelectionContext(questions: SelectionQuestionResponse[]) {
         String(saved.answerId),
       areaName: question.areaName,
       changedAt: saved.updatedAt,
-      isFilterActive: saved.isFilterActive,
+      isHistorical: saved.isHistorical,
       questionCode: question.questionCode,
       questionText: question.text,
       selectedByDisplayName: saved.selectedByDisplayName,

@@ -432,6 +432,7 @@
     "needsReferenceHelp": "Describe why the requirement application is needed in the specification. The reference can also support when and how the requirement should be verified.",
     "needsReferences": "Needs references",
     "leftPanelTabs": "Specification detail tabs",
+    "rightPanelTabs": "Right specification detail tabs",
     "newNeedsReference": "New needs reference",
     "editNeedsReference": "Edit needs reference",
     "deleteNeedsReference": "Delete needs reference",
@@ -498,7 +499,8 @@
     "itemsInSpecification": "Requirements in specification",
     "availableRequirements": "Available requirements",
     "requirementSelectionQuestions": "Requirement selection questions",
-    "adjustFiltersManually": "Adjust filters manually",
+    "filterWithRequirementSelectionQuestions": "Filter with requirement selection questions",
+    "requirementSelectionFilterDisabledTooltip": "The answered requirement selection questions do not provide a requirement selection. Answer a question with requirement-linked answers to filter the list.",
     "requirementSelectionNoPublishedMatches": "The selected requirement-selection answers do not currently match any published requirements.",
     "alreadyAdded": "Already added",
     "needsReferenceLabel": "Needs reference (optional)",
@@ -663,7 +665,7 @@
     "pdfDownloadStarted": "PDF download started.",
     "downloadAgain": "Download Again",
     "printButton": "Print",
-    "notFilterActive": "(not filter-active)",
+    "historicalSelectionAnswer": "(historical answer)",
     "noRequirementIds": "No requirement IDs provided",
     "noRequirementsSelected": "No requirements selected",
     "failedToLoadReport": "Failed to load report",
@@ -1514,7 +1516,7 @@
       "title": "Requirement selection questions",
       "overview": {
         "heading": "Purpose",
-        "body": "Requirement selection questions narrow the available requirements for this specification by asking for the context that matters for the delivery. Answered questions update the matching requirement list."
+        "body": "Requirement selection questions capture the delivery context as selection context for the specification. When Filter with requirement selection questions is on, answered questions narrow the available requirements list."
       },
       "filtering": {
         "heading": "Finding questions",

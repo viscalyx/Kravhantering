@@ -889,8 +889,8 @@ krav pekar på dem inom samma kravunderlag.
 > Kravområden äger frivilliga kravurvalsfrågor med stabila
 > `{AREA}-KUF###`-koder. Svaren kan länka kravpaket och publicerade
 > bibliotekskrav, eller markera `Utan kravurval`. Kravunderlag sparar
-> svaren separat med `is_filter_active`, så inaktiverade eller arkiverade
-> frågor/svar kan visas historiskt utan att fortsätta filtrera.
+> svaren separat med `is_historical`, så inaktiverade eller arkiverade
+> frågor/svar kan visas historiskt utan att räknas som aktuell urvalskontext.
 > Arkiverade frågor och svar får `archived_at`; Admin > Arkivering kan
 > gallra dem efter beslutad lagringstid när inga sparade kravunderlagssvar
 > längre refererar dem.

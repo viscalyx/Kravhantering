@@ -1076,10 +1076,12 @@ the list.
 1. Ensure `Krav i underlaget` and `Tillgängliga krav` are visible.
 1. Scroll inside the right panel.
 1. Check that the left panel and page scroll position stay fixed.
-1. Verify the sticky title bar remains visible.
+1. Verify the sticky title bar remains visible with the right-panel
+   `Tillgängliga krav` and `Kravurvalsfrågor` tabs.
 
 **Expected result:** Only the scrolled panel moves and its title bar remains
-attached to that panel.
+attached to that panel. The right-panel tabs stay embedded in that sticky title
+bar rather than appearing in a separate row above the panel.
 
 ### SPEC-06: add and remove a requirement in specification detail
 
@@ -1214,13 +1216,23 @@ requirement-selection questions.
 
 **Steps:**
 
-1. In the right panel, switch from `Tillgängliga krav` to `Kravurvalsfrågor`.
+1. In the right panel's sticky title bar, switch from `Tillgängliga krav` to
+   `Kravurvalsfrågor`.
 1. Filter the question tab by text, requirement area, and unanswered questions.
 1. Answer one single-choice question and one multiple-choice question.
 1. For a multiple-choice question, choose `Utan kravurval`.
 1. Return to `Tillgängliga krav`.
-1. Verify manual filters were cleared, sort/column choices remain, and the
-   filter controls can be deliberately reopened.
+1. Verify `Filtrera med kravurvalsfrågor` is off on fresh entry and that
+   `Tillgängliga krav` shows all published requirements that are not already in
+   `Krav i underlaget`.
+1. Turn on `Filtrera med kravurvalsfrågor` and verify the list is narrowed by
+   kravurvalsfrågor while regular list filters, sort/column choices and column
+   widths remain.
+1. Turn the toggle off and verify row selections in the right list are cleared
+   while regular list filters remain.
+1. If only `Utan kravurval` answers are selected, verify the toggle is disabled
+   and its tooltip explains that the answered questions do not provide a
+   requirement selection.
 1. Choose an answer that should match requirements but currently matches no
    published requirements, if such a fixture exists.
 1. Generate the specification list report.
@@ -1228,8 +1240,9 @@ requirement-selection questions.
 
 **Expected result:** Progress updates without blocking unanswered questions,
 `Utan kravurval` is exclusive and does not narrow available requirements on its
-own, active non-empty answers filter available requirements, empty published
-matches show a neutral warning, the report shows the selection context with
+own, saved non-empty answers filter available requirements only after the user
+turns on `Filtrera med kravurvalsfrågor`, empty published matches show a
+neutral warning, the report shows the selection context with
 question, answer, status, change timestamp, and actor snapshot before the
 requirement table, and clearing an answer returns that question to unanswered.
 

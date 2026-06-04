@@ -3,7 +3,6 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   AlertTriangle,
-  Ban,
   ChevronRight,
   Download,
   HelpCircle,
@@ -252,6 +251,8 @@ export default function KravunderlagDetailClient({
   )
   const [rightExpandedId, setRightExpandedId] = useState<number | null>(null)
   const [rightFilters, setRightFilters] = useState<FilterValues>({})
+  const [applyRequirementSelectionFilter, setApplyRequirementSelectionFilter] =
+    useState(false)
   const [rightSort, setRightSort] = useState<RequirementSortState>(
     DEFAULT_REQUIREMENT_SORT,
   )
@@ -262,7 +263,6 @@ export default function KravunderlagDetailClient({
   const [loadMoreWarning, setLoadMoreWarning] = useState<string | null>(null)
   const [rightVisibleCols, setRightVisibleCols] =
     useState<RequirementColumnId[]>(DEFAULT_RIGHT_COLS)
-  const [rightFiltersUnlocked, setRightFiltersUnlocked] = useState(false)
   const [columnPreferencesLoaded, setColumnPreferencesLoaded] = useState(false)
 
   // Add modal state
@@ -297,16 +297,18 @@ export default function KravunderlagDetailClient({
   const [addModalError, setAddModalError] = useState<string | null>(null)
   const pdfDownload = useServerPdfDownload()
 
-  const availableRequirementsParams = useMemo(
-    () =>
-      buildRequirementListParams({
-        filters: rightFilters,
-        limit: PAGE_SIZE,
-        locale,
-        sort: rightSort,
-      }).toString(),
-    [locale, rightFilters, rightSort],
-  )
+  const availableRequirementsParams = useMemo(() => {
+    const params = buildRequirementListParams({
+      filters: rightFilters,
+      limit: PAGE_SIZE,
+      locale,
+      sort: rightSort,
+    })
+    if (applyRequirementSelectionFilter) {
+      params.set('applyRequirementSelectionFilter', 'true')
+    }
+    return params.toString()
+  }, [applyRequirementSelectionFilter, locale, rightFilters, rightSort])
   const availableRequirementsKeyRef = useRef(availableRequirementsParams)
 
   const specResource = useAsyncResource<SpecificationMeta | null>({
@@ -448,12 +450,16 @@ export default function KravunderlagDetailClient({
   const leftNormReferenceOptions = leftNormReferenceResource.data ?? []
   const rightNormReferenceOptions = rightNormReferenceResource.data ?? []
   const selectionFilter = availableRequirementsResource.data?.selectionFilter
-  const isRequirementSelectionFilterActive =
-    selectionFilter?.filterActive === true
-  const shouldLockRightFilters =
-    isRequirementSelectionFilterActive && !rightFiltersUnlocked
+  const hasRequirementSelectionAnswers =
+    selectionFilter?.hasCurrentAnswers === true
+  const canApplyRequirementSelectionFilter =
+    selectionFilter?.hasRequirementSelection === true
+  const isRequirementSelectionToggleDisabled =
+    hasRequirementSelectionAnswers && !canApplyRequirementSelectionFilter
+  const isRequirementSelectionToggleChecked =
+    applyRequirementSelectionFilter && canApplyRequirementSelectionFilter
   const shouldShowRequirementSelectionEmptyWarning =
-    isRequirementSelectionFilterActive &&
+    selectionFilter?.applied === true &&
     (selectionFilter?.requirementIds.length ?? 0) === 0
 
   useEffect(() => {
@@ -474,10 +480,14 @@ export default function KravunderlagDetailClient({
   }, [availableRequirementsResource.data])
 
   useEffect(() => {
-    if (!isRequirementSelectionFilterActive) {
-      setRightFiltersUnlocked(false)
+    if (
+      applyRequirementSelectionFilter &&
+      selectionFilter &&
+      !selectionFilter.hasRequirementSelection
+    ) {
+      setApplyRequirementSelectionFilter(false)
     }
-  }, [isRequirementSelectionFilterActive])
+  }, [applyRequirementSelectionFilter, selectionFilter])
 
   useEffect(() => {
     if (needsReferencesResource.data) {
@@ -638,6 +648,9 @@ export default function KravunderlagDetailClient({
         offset: availableRows.length,
         sort: rightSort,
       })
+      if (applyRequirementSelectionFilter) {
+        params.set('applyRequirementSelectionFilter', 'true')
+      }
       const data = await readJsonOrThrow<{
         requirements?: RequirementRow[]
         pagination?: { hasMore?: boolean }
@@ -663,6 +676,7 @@ export default function KravunderlagDetailClient({
       setRightLoadingMore(false)
     }
   }, [
+    applyRequirementSelectionFilter,
     availableRows.length,
     locale,
     rightFilters,
@@ -1804,7 +1818,7 @@ export default function KravunderlagDetailClient({
   const specificationDetailStickyTopOffsetClassName = 'top-16 xl:top-0'
   const specificationDetailPagePaddingClassName =
     'px-4 pb-8 pt-6 sm:px-6 sm:pb-10 sm:pt-7 lg:px-8 lg:pt-8'
-  const leftPanelHeaderClassName = `sticky ${specificationDetailStickyTopOffsetClassName} z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80`
+  const splitPanelHeaderClassName = `sticky ${specificationDetailStickyTopOffsetClassName} z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80`
   const leftPanelActionPillClassName =
     'inline-flex h-11 w-11 items-center justify-center rounded-full border border-primary-600/80 bg-primary-700 text-white shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:border-primary-700 hover:bg-primary-800 hover:shadow-[0_14px_36px_-20px_rgba(67,56,202,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-primary-500/80 dark:bg-primary-600 dark:hover:border-primary-400 dark:hover:bg-primary-700 dark:focus-visible:ring-offset-secondary-950'
   const specificationDetailPageShellClassName = showEditSpecificationForm
@@ -1828,7 +1842,9 @@ export default function KravunderlagDetailClient({
       text: '',
     })
   }
-  const leftPanelTabClassName = (active: boolean) =>
+  const splitPanelTabsClassName =
+    'inline-flex max-w-full shrink gap-1 overflow-x-auto rounded-full bg-secondary-100 p-1 shadow-inner dark:bg-secondary-950/80'
+  const splitPanelTabClassName = (active: boolean) =>
     `inline-flex min-h-11 min-w-0 items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 sm:px-6 sm:text-base ${
       active
         ? 'border-white bg-white text-secondary-900 shadow-sm dark:border-primary-500 dark:bg-primary-600 dark:text-white'
@@ -1837,12 +1853,12 @@ export default function KravunderlagDetailClient({
   const renderLeftPanelTabs = () => (
     <div
       aria-label={t('leftPanelTabs')}
-      className="inline-flex max-w-full shrink gap-1 overflow-x-auto rounded-full bg-secondary-100 p-1 shadow-inner dark:bg-secondary-950/80"
+      className={splitPanelTabsClassName}
       role="tablist"
     >
       <button
         aria-selected={leftTab === 'items'}
-        className={leftPanelTabClassName(leftTab === 'items')}
+        className={splitPanelTabClassName(leftTab === 'items')}
         onClick={() => handleLeftTabChange('items')}
         role="tab"
         type="button"
@@ -1852,13 +1868,43 @@ export default function KravunderlagDetailClient({
       </button>
       <button
         aria-selected={leftTab === 'needs-references'}
-        className={leftPanelTabClassName(leftTab === 'needs-references')}
+        className={splitPanelTabClassName(leftTab === 'needs-references')}
         onClick={() => handleLeftTabChange('needs-references')}
         role="tab"
         type="button"
       >
         <span className="truncate">{t('needsReferences')}</span>
         <span className="text-xs opacity-80">{availableNeedsRefs.length}</span>
+      </button>
+    </div>
+  )
+  const renderRightPanelTabs = () => (
+    <div
+      aria-label={t('rightPanelTabs')}
+      className={splitPanelTabsClassName}
+      role="tablist"
+    >
+      <button
+        aria-controls="right-panel-available"
+        aria-selected={rightPanelTab === 'available'}
+        className={splitPanelTabClassName(rightPanelTab === 'available')}
+        id="right-panel-tab-available"
+        onClick={() => setRightPanelTab('available')}
+        role="tab"
+        type="button"
+      >
+        <span className="truncate">{t('availableRequirements')}</span>
+      </button>
+      <button
+        aria-controls="right-panel-questions"
+        aria-selected={rightPanelTab === 'questions'}
+        className={splitPanelTabClassName(rightPanelTab === 'questions')}
+        id="right-panel-tab-questions"
+        onClick={() => setRightPanelTab('questions')}
+        role="tab"
+        type="button"
+      >
+        <span className="truncate">{t('requirementSelectionQuestions')}</span>
       </button>
     </div>
   )
@@ -2008,7 +2054,7 @@ export default function KravunderlagDetailClient({
                   className={desktopSplitPanelCardClassName}
                   data-specification-detail-list-panel="needs-references"
                 >
-                  <div className={leftPanelHeaderClassName}>
+                  <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
                     <button
                       aria-label={t('newNeedsReference')}
@@ -2252,7 +2298,7 @@ export default function KravunderlagDetailClient({
                   className={desktopSplitPanelCardClassName}
                   data-specification-detail-list-panel="items"
                 >
-                  <div className={leftPanelHeaderClassName}>
+                  <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
                     <button
                       aria-label={t('newLocalRequirement')}
@@ -2503,43 +2549,8 @@ export default function KravunderlagDetailClient({
               )}
             </div>
 
-            {/* Right panel: Tillgängliga krav */}
+            {/* Right panel: Tillgängliga krav / Kravurvalsfrågor */}
             <div className="flex flex-col gap-3 xl:h-full xl:min-h-0 xl:overflow-hidden">
-              <div
-                className="inline-flex self-start rounded-lg border bg-white p-1 shadow-sm dark:border-secondary-700 dark:bg-secondary-900"
-                role="tablist"
-              >
-                <button
-                  aria-controls="right-panel-available"
-                  aria-selected={rightPanelTab === 'available'}
-                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    rightPanelTab === 'available'
-                      ? 'bg-primary-700 text-white'
-                      : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800'
-                  }`}
-                  id="right-panel-tab-available"
-                  onClick={() => setRightPanelTab('available')}
-                  role="tab"
-                  type="button"
-                >
-                  {t('availableRequirements')}
-                </button>
-                <button
-                  aria-controls="right-panel-questions"
-                  aria-selected={rightPanelTab === 'questions'}
-                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    rightPanelTab === 'questions'
-                      ? 'bg-primary-700 text-white'
-                      : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800'
-                  }`}
-                  id="right-panel-tab-questions"
-                  onClick={() => setRightPanelTab('questions')}
-                  role="tab"
-                  type="button"
-                >
-                  {t('requirementSelectionQuestions')}
-                </button>
-              </div>
               <div
                 aria-labelledby={
                   rightPanelTab === 'available'
@@ -2580,15 +2591,11 @@ export default function KravunderlagDetailClient({
                       loadingMore={rightLoadingMore}
                       locale={locale}
                       normReferences={rightNormReferenceOptions}
-                      onFilterChange={
-                        shouldLockRightFilters
-                          ? undefined
-                          : newFilters => {
-                              // Strip statuses — always fixed to published
-                              const { statuses: _s, ...rest } = newFilters
-                              setRightFilters(rest)
-                            }
-                      }
+                      onFilterChange={newFilters => {
+                        // Strip statuses — always fixed to published
+                        const { statuses: _s, ...rest } = newFilters
+                        setRightFilters(rest)
+                      }}
                       onLoadMore={loadMoreAvailable}
                       onRowClick={id =>
                         setRightExpandedId(prev => (prev === id ? null : id))
@@ -2604,22 +2611,67 @@ export default function KravunderlagDetailClient({
                       selectable
                       selectedIds={rightSelectedIds}
                       sortState={rightSort}
-                      stickyTitle={
-                        <h2 className="truncate text-lg font-semibold text-secondary-900 dark:text-secondary-100">
-                          {t('availableRequirements')}
-                        </h2>
-                      }
+                      stickyTitle={renderRightPanelTabs()}
                       stickyTitleActions={
                         <div className="flex flex-wrap items-center gap-2">
-                          {shouldLockRightFilters && (
-                            <button
-                              className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                              onClick={() => setRightFiltersUnlocked(true)}
-                              type="button"
+                          {hasRequirementSelectionAnswers && (
+                            <label
+                              className={`relative inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors focus-within:outline-none focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-offset-2 focus-within:ring-offset-white dark:focus-within:ring-offset-secondary-950 ${
+                                isRequirementSelectionToggleDisabled
+                                  ? 'cursor-not-allowed border-secondary-200 text-secondary-400 opacity-70 dark:border-secondary-800 dark:text-secondary-500'
+                                  : 'cursor-pointer border-secondary-300 text-secondary-700 hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800'
+                              }`}
+                              title={
+                                isRequirementSelectionToggleDisabled
+                                  ? t(
+                                      'requirementSelectionFilterDisabledTooltip',
+                                    )
+                                  : undefined
+                              }
                             >
-                              <Ban aria-hidden="true" className="h-4 w-4" />
-                              {t('adjustFiltersManually')}
-                            </button>
+                              <span>
+                                {t('filterWithRequirementSelectionQuestions')}
+                              </span>
+                              <input
+                                aria-checked={
+                                  isRequirementSelectionToggleChecked
+                                }
+                                aria-label={t(
+                                  'filterWithRequirementSelectionQuestions',
+                                )}
+                                checked={isRequirementSelectionToggleChecked}
+                                className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:pointer-events-none disabled:cursor-not-allowed"
+                                disabled={isRequirementSelectionToggleDisabled}
+                                onChange={event => {
+                                  setApplyRequirementSelectionFilter(
+                                    event.target.checked,
+                                  )
+                                  setRightSelectedIds(new Set())
+                                }}
+                                role="switch"
+                                type="checkbox"
+                              />
+                              <span
+                                aria-hidden="true"
+                                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
+                                  isRequirementSelectionToggleChecked
+                                    ? 'bg-primary-700 dark:bg-primary-500'
+                                    : 'bg-secondary-300 dark:bg-secondary-700'
+                                } ${
+                                  isRequirementSelectionToggleDisabled
+                                    ? 'opacity-60'
+                                    : ''
+                                }`}
+                              >
+                                <span
+                                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                                    isRequirementSelectionToggleChecked
+                                      ? 'translate-x-4'
+                                      : 'translate-x-0.5'
+                                  }`}
+                                />
+                              </span>
+                            </label>
                           )}
                           {rightSelectedIds.size > 0 ? (
                             <button
@@ -2643,15 +2695,20 @@ export default function KravunderlagDetailClient({
                     />
                   </>
                 ) : (
-                  <SpecificationRequirementSelectionPanel
-                    onChanged={() => {
-                      setRightFilters({})
-                      setRightFiltersUnlocked(false)
-                      void availableRequirementsResource.reload()
-                      setRightSelectedIds(new Set())
-                    }}
-                    specificationSlug={specificationSlug}
-                  />
+                  <>
+                    <div className={splitPanelHeaderClassName}>
+                      {renderRightPanelTabs()}
+                    </div>
+                    <SpecificationRequirementSelectionPanel
+                      onChanged={() => {
+                        if (applyRequirementSelectionFilter) {
+                          setRightSelectedIds(new Set())
+                        }
+                        void availableRequirementsResource.reload()
+                      }}
+                      specificationSlug={specificationSlug}
+                    />
+                  </>
                 )}
               </div>
             </div>

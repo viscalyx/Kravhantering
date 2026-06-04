@@ -28,7 +28,7 @@ import svMessages from '@/messages/sv.json'
 
 type SpecificationCoverLabelKey =
   keyof typeof enMessages.reports.specificationCover
-type ReportLabelKey = 'notFilterActive'
+type ReportLabelKey = 'historicalSelectionAnswer'
 
 function getSpecificationCoverLabel(
   locale: string,
@@ -330,7 +330,10 @@ function PdfRequirementSelectionContext({
   locale: string
   section: Extract<ReportSection, { type: 'requirement-selection-context' }>
 }) {
-  const notFilterActiveLabel = getReportLabel(locale, 'notFilterActive')
+  const historicalSelectionAnswerLabel = getReportLabel(
+    locale,
+    'historicalSelectionAnswer',
+  )
   return (
     <View style={{ marginBottom: 18 }}>
       <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>
@@ -354,7 +357,7 @@ function PdfRequirementSelectionContext({
             </Text>
             <Text style={[styles.tableCell, { flex: 1.5 }]}>
               {row.answerText}
-              {!row.isFilterActive ? ` ${notFilterActiveLabel}` : ''}
+              {row.isHistorical ? ` ${historicalSelectionAnswerLabel}` : ''}
               {`\n${row.changedAt}${
                 selectedByDisplayName ? ` · ${selectedByDisplayName}` : ''
               }`}

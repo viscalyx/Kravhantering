@@ -2784,7 +2784,7 @@ export default function RequirementSelectionQuestionsClient() {
                                         })
                                       }
 
-                                      const isFilterActive = (
+                                      const isSourceFilterActive = (
                                         filter: AnswerRequirementSourceFilter,
                                       ) =>
                                         activeFilters.some(item =>
@@ -2859,7 +2859,7 @@ export default function RequirementSelectionQuestionsClient() {
                                                   sourceId: pkg.id,
                                                 }
                                               const active =
-                                                isFilterActive(filter)
+                                                isSourceFilterActive(filter)
                                               return (
                                                 <button
                                                   aria-label={`${copy.filterRequirementsByPackage} ${pkg.name}`}
@@ -2895,7 +2895,7 @@ export default function RequirementSelectionQuestionsClient() {
                                                     sourceId: requirement.id,
                                                   }
                                                 const active =
-                                                  isFilterActive(filter)
+                                                  isSourceFilterActive(filter)
                                                 return (
                                                   <button
                                                     aria-label={`${copy.filterRequirementsByRequirementId} ${requirement.uniqueId}`}

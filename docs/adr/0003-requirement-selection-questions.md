@@ -11,9 +11,12 @@ inside a requirements specification. The first implementation deliberately
 requires only authentication for these new writes until the assignment-based
 RBAC work is available; this is a temporary implementation constraint, not the
 domain authorization model.
-Selected requirement selection answers form a requirement selection filter over
-the existing `Available requirements` list, and users still review, select and
-add requirements through the existing table flow.
+Selected requirement selection answers preserve selection context for the
+requirements specification and can form a requirement selection filter over the
+existing `Available requirements` list when the user explicitly activates that
+filter in the detail view. A fresh visit starts from the complete set of
+published library requirements that are not already in the specification, and
+users still review, select and add requirements through the existing table flow.
 
 This deliberately reuses the published-library-requirement picker instead of
 creating a separate suggested-requirements view or automatically adding
@@ -52,6 +55,12 @@ reactivated. Taking a question or answer out of active use marks affected saved
 answers as historical; users must choose the answer again for it to affect the
 requirement selection filter.
 
+Changing answers inside a requirements specification does not automatically
+activate the requirement selection filter. If the filter is already active in
+the current detail view, changed answers immediately update the filtered
+available requirements; otherwise the answers remain saved context until the
+user opts in to filtering.
+
 ## Considered Options
 
 - Put questions in Admin Center reference data: rejected because questions are
@@ -62,6 +71,10 @@ requirement selection filter.
 - Automatically add requirements from answers: rejected because answering a
   question should narrow the working set, while adding requirements to a
   specification remains an explicit user action.
+- Automatically filter available requirements on every saved answer: rejected
+  because a fresh visit to a requirements specification should keep `Available
+  requirements` complete until the user opts in to the requirement selection
+  filter.
 - Snapshot question and answer text in each specification: rejected for the
   first version; saved answers keep identity while showing the current
   maintained question and answer text.

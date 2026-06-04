@@ -256,7 +256,7 @@ describe('seed profiles', () => {
     expect(new Set(demoSavedAnswers.map(row => row.specification_id))).toEqual(
       new Set([1, 7, 8, 1002]),
     )
-    expect(demoSavedAnswers.some(row => row.is_filter_active === 0)).toBe(true)
+    expect(demoSavedAnswers.some(row => row.is_historical === 1)).toBe(true)
 
     for (const answer of answers) {
       expect(questionsById.has(answer.question_id)).toBe(true)

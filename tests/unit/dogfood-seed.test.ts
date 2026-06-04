@@ -263,7 +263,7 @@ function emptySeed() {
         'specification_id',
         'question_id',
         'answer_id',
-        'is_filter_active',
+        'is_historical',
         'changed_at',
         'changed_by_hsa_id',
         'changed_by_display_name',
@@ -453,12 +453,12 @@ describe('appendDogfoodSeed', () => {
     expect(new Set(savedAnswers.map(row => row[0]))).toEqual(
       new Set([1, 7, 8, SPEC_KH_INFOR]),
     )
-    expect(savedAnswers.some(row => row[3] === 0)).toBe(true)
+    expect(savedAnswers.some(row => row[3] === 1)).toBe(true)
     expect(savedAnswers).toContainEqual([
       7,
       5,
       18,
-      0,
+      1,
       expect.any(String),
       'SE5560000001-oscarn',
       'Oscar Nilsson',

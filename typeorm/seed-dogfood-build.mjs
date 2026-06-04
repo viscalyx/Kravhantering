@@ -431,7 +431,7 @@ const REQUIREMENT_SELECTION_SAVED_ANSWERS = [
   {
     answerIds: [18],
     actor: { displayName: 'Oscar Nilsson', hsaId: 'SE5560000001-oscarn' },
-    isFilterActive: false,
+    isHistorical: true,
     specificationId: REQUIREMENT_SELECTION_DEMO_SPEC_IDS.gdpr,
   },
 ]
@@ -556,7 +556,7 @@ function appendRequirementSelectionDemoSeed(SEED_DATA) {
           savedSelection.specificationId,
           answer.questionId,
           answerId,
-          savedSelection.isFilterActive === false ? 0 : 1,
+          savedSelection.isHistorical === true ? 1 : 0,
           SEED_TS,
           savedSelection.actor.hsaId,
           savedSelection.actor.displayName,

@@ -198,6 +198,9 @@ let bulkNeedsReferencePatchError: Error | null
 let bulkNeedsReferencePatchResponse: { body: unknown; ok: boolean } | null
 let failNextAvailableRequirementsFetch = false
 let failNextSpecificationItemsFetch = false
+let availableRequirementsSelectionFilter:
+  | RequirementsSpecificationDetailInitialData['availableRequirements']['selectionFilter']
+  | undefined
 
 const initialSpec = {
   businessNeedsReference: 'Shared IAM business case',
@@ -344,6 +347,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     bulkNeedsReferencePatchResponse = null
     failNextAvailableRequirementsFetch = false
     failNextSpecificationItemsFetch = false
+    availableRequirementsSelectionFilter = undefined
     fetchMock.mockImplementation(
       (input: string | Request, init?: RequestInit) => {
         const url = typeof input === 'string' ? input : input.url
@@ -455,6 +459,23 @@ describe('RequirementsSpecificationDetailClient', () => {
             })
           }
 
+          const isSpecificationAvailableRequirements = url.startsWith(
+            '/api/specifications/ETJANST-UPP-2026/available-requirements?',
+          )
+          const applyRequirementSelectionFilter =
+            isSpecificationAvailableRequirements &&
+            url.includes('applyRequirementSelectionFilter=true')
+          const selectionFilter =
+            isSpecificationAvailableRequirements &&
+            availableRequirementsSelectionFilter
+              ? {
+                  ...availableRequirementsSelectionFilter,
+                  applied:
+                    applyRequirementSelectionFilter &&
+                    availableRequirementsSelectionFilter.hasRequirementSelection,
+                }
+              : undefined
+
           return Promise.resolve(
             okJson({
               pagination: { hasMore: false },
@@ -481,6 +502,7 @@ describe('RequirementsSpecificationDetailClient', () => {
                   },
                 },
               ],
+              selectionFilter,
             }),
           )
         }
@@ -560,6 +582,13 @@ describe('RequirementsSpecificationDetailClient', () => {
           return Promise.resolve(okJson({ needsReferences: [] }))
         }
 
+        if (
+          url ===
+          '/api/specifications/ETJANST-UPP-2026/requirement-selection-answers'
+        ) {
+          return Promise.resolve(okJson({ questions: [] }))
+        }
+
         if (url === '/api/specification-governance-object-types') {
           return Promise.resolve(
             okJson({
@@ -629,6 +658,59 @@ describe('RequirementsSpecificationDetailClient', () => {
     const params = searchParamsFromPath(initialUrl)
     expect(params.get('locale')).toBe('en')
     expect(params.has('statuses')).toBe(false)
+  })
+
+  it('keeps requirement-selection filtering opt-in for available requirements', async () => {
+    availableRequirementsSelectionFilter = {
+      applied: false,
+      hasCurrentAnswers: true,
+      hasRequirementSelection: true,
+      hasNoRequirementSelection: false,
+      requirementIds: [202],
+    }
+    renderRequirementsSpecificationDetailClient()
+
+    const toggle = await screen.findByRole('switch', {
+      name: 'specification.filterWithRequirementSelectionQuestions',
+    })
+    expect(toggle).not.toBeChecked()
+    expect(
+      availableRequirementsFetchUrls().some(url =>
+        url.includes('applyRequirementSelectionFilter=true'),
+      ),
+    ).toBe(false)
+
+    fireEvent.click(toggle)
+
+    await waitFor(() => {
+      expect(
+        availableRequirementsFetchUrls().some(url =>
+          url.includes('applyRequirementSelectionFilter=true'),
+        ),
+      ).toBe(true)
+    })
+    expect(toggle).toBeChecked()
+  })
+
+  it('disables the requirement-selection filter toggle when answers provide no requirement selection', async () => {
+    availableRequirementsSelectionFilter = {
+      applied: false,
+      hasCurrentAnswers: true,
+      hasRequirementSelection: false,
+      hasNoRequirementSelection: true,
+      requirementIds: [],
+    }
+    renderRequirementsSpecificationDetailClient()
+
+    const toggle = await screen.findByRole('switch', {
+      name: 'specification.filterWithRequirementSelectionQuestions',
+    })
+    expect(toggle).toBeDisabled()
+    expect(toggle).not.toBeChecked()
+    expect(toggle.closest('label')).toHaveAttribute(
+      'title',
+      'specification.requirementSelectionFilterDisabledTooltip',
+    )
   })
 
   it('loads more available requirements without sending the fixed status filter', async () => {
@@ -873,7 +955,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).toBe(JSON.stringify(storedLeftColumns))
   })
 
-  it('uses inline top rails and embeds the left tabs in the sticky table title', async () => {
+  it('uses inline top rails and embeds the split panel tabs in sticky headers', async () => {
     const { container } = renderRequirementsSpecificationDetailClient()
 
     await waitFor(() => {
@@ -886,23 +968,78 @@ describe('RequirementsSpecificationDetailClient', () => {
       }),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByText('specification.availableRequirements', {
+      screen.queryByText('specification.availableRequirements', {
         selector: 'h2',
       }),
-    ).toBeInTheDocument()
-    const leftStickyTitle = screen
-      .getAllByTestId('requirements-table-sticky-title')
-      .find(element =>
-        within(element).queryByRole('tab', {
-          name: /specification\.itemsInSpecification/,
-        }),
-      )
+    ).not.toBeInTheDocument()
+    const stickyTitles = screen.getAllByTestId(
+      'requirements-table-sticky-title',
+    )
+    const leftStickyTitle = stickyTitles.find(element =>
+      within(element).queryByRole('tab', {
+        name: /specification\.itemsInSpecification/,
+      }),
+    )
+    const rightStickyTitle = stickyTitles.find(element =>
+      within(element).queryByRole('tab', {
+        name: /specification\.availableRequirements/,
+      }),
+    )
+
     expect(leftStickyTitle).toBeTruthy()
+    expect(rightStickyTitle).toBeTruthy()
+    expect(
+      within(leftStickyTitle as HTMLElement).getByRole('tablist', {
+        name: 'specification.leftPanelTabs',
+      }),
+    ).toBeInTheDocument()
     expect(
       within(leftStickyTitle as HTMLElement).getByRole('tab', {
         name: /specification\.needsReferences/,
       }),
     ).toBeInTheDocument()
+    expect(
+      within(rightStickyTitle as HTMLElement).getByRole('tablist', {
+        name: 'specification.rightPanelTabs',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      within(rightStickyTitle as HTMLElement).getByRole('tab', {
+        name: /specification\.availableRequirements/,
+      }),
+    ).toHaveAttribute('aria-controls', 'right-panel-available')
+    const questionsTab = within(rightStickyTitle as HTMLElement).getByRole(
+      'tab',
+      {
+        name: /specification\.requirementSelectionQuestions/,
+      },
+    )
+    expect(questionsTab).toHaveAttribute(
+      'aria-controls',
+      'right-panel-questions',
+    )
+
+    fireEvent.click(questionsTab)
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('specificationRequirementSelection.noQuestions'),
+      ).toBeInTheDocument()
+    })
+    const questionsPanel = container.querySelector('#right-panel-questions')
+
+    expect(questionsPanel).toBeTruthy()
+    expect(
+      within(questionsPanel as HTMLElement).getByRole('tablist', {
+        name: 'specification.rightPanelTabs',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      within(questionsPanel as HTMLElement).queryByText(
+        'specificationRequirementSelection.title',
+        { selector: 'h2' },
+      ),
+    ).not.toBeInTheDocument()
 
     const tableProps = requirementsTableMock.mock.calls.map(call => call[0])
 

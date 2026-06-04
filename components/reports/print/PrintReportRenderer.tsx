@@ -132,10 +132,10 @@ function RequirementSelectionContextSection({
                 </td>
                 <td style={{ borderTop: '1px solid #e5e7eb', padding: 6 }}>
                   {row.answerText}
-                  {!row.isFilterActive && (
+                  {row.isHistorical && (
                     <span style={{ color: '#92400e' }}>
                       {' '}
-                      {t('notFilterActive')}
+                      {t('historicalSelectionAnswer')}
                     </span>
                   )}
                   <br />

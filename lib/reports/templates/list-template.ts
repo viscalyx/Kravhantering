@@ -14,7 +14,7 @@ export interface RequirementSelectionContextRow {
   answerText: string
   areaName: string
   changedAt: string
-  isFilterActive: boolean
+  isHistorical: boolean
   questionCode: string
   questionText: string
   selectedByDisplayName: string | null

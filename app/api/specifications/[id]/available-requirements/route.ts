@@ -32,6 +32,7 @@ const paramsSchema = z.object({ id: specificationIdOrSlugSchema }).strict()
 const querySchema = z
   .object({
     areaIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    applyRequirementSelectionFilter: queryBooleanStringSchema.optional(),
     categoryIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     descriptionSearch: optionalSearchStringSchema,
     limit: positiveIntegerStringSchema
@@ -86,8 +87,16 @@ export async function GET(
       getExistingSpecificationRequirementIds(db, specificationId),
     ])
 
+    const shouldApplyRequirementSelectionFilter =
+      parsedQuery.data.applyRequirementSelectionFilter === 'true' &&
+      selectionFilter.hasRequirementSelection
+    const responseSelectionFilter = {
+      ...selectionFilter,
+      applied: shouldApplyRequirementSelectionFilter,
+    }
+
     if (
-      selectionFilter.filterActive &&
+      shouldApplyRequirementSelectionFilter &&
       selectionFilter.requirementIds.length === 0
     ) {
       return NextResponse.json({
@@ -100,7 +109,7 @@ export async function GET(
           total: 0,
         },
         requirements: [],
-        selectionFilter,
+        selectionFilter: responseSelectionFilter,
       })
     }
 
@@ -150,9 +159,9 @@ export async function GET(
         limit,
         locale,
         offset,
-        requirementIds: selectionFilter.filterActive
-          ? selectionFilter.requirementIds
-          : undefined,
+        ...(shouldApplyRequirementSelectionFilter
+          ? { requirementIds: selectionFilter.requirementIds }
+          : {}),
         sort: {
           by: sortBy ?? DEFAULT_REQUIREMENT_SORT.by,
           direction: sortDirection ?? DEFAULT_REQUIREMENT_SORT.direction,
@@ -161,7 +170,10 @@ export async function GET(
       { authorization, context },
     )
 
-    return NextResponse.json({ ...result, selectionFilter })
+    return NextResponse.json({
+      ...result,
+      selectionFilter: responseSelectionFilter,
+    })
   } catch (error) {
     const { body, status } = toHttpErrorPayload(error)
     if (status >= 500) {

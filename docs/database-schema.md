@@ -300,7 +300,7 @@ erDiagram
         integer specification_id FK, PK
         integer question_id FK, PK
         integer answer_id FK, PK
-        integer is_filter_active
+        integer is_historical
         text changed_at
         text changed_by_hsa_id
         text changed_by_display_name
@@ -977,9 +977,9 @@ because cleanup removed links.
 
 Saved requirement-selection answers for a requirements specification. Inactive
 or archived question/answer changes mark existing saved rows as
-`is_filter_active = 0`, preserving history while removing the answer from
-filters and progress. `Utan kravurval` saved answers count as answered but do
-not contribute requirement filters.
+`is_historical = 1`, preserving history while removing the answer from progress
+and from the requirement-selection filter source. `Utan kravurval` saved
+answers count as answered but do not contribute requirement filters.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -987,19 +987,19 @@ not contribute requirement filters.
 | `specification_id` | integer FK → `requirements_specifications.id` (CASCADE DELETE), PK part 1 | Requirements specification |
 | `question_id` | integer FK → `requirement_selection_questions.id`, PK part 2 | Historical question reference |
 | `answer_id` | integer FK → `requirement_selection_answers.id`, PK part 3 | Historical answer reference |
-| `is_filter_active` | integer | Whether the saved answer currently filters available requirements |
+| `is_historical` | integer | Whether the saved answer is preserved as historical context instead of current selection context |
 | `changed_at` | text (ISO 8601) | Last change timestamp |
 | `changed_by_hsa_id` | text | Actor HSA-ID snapshot |
 | `changed_by_display_name` | text | Actor display-name snapshot |
 <!-- markdownlint-enable MD013 -->
 
-**Indexes:** `idx_specification_requirement_selection_answers_filter`,
+**Indexes:** `idx_specification_requirement_selection_answers_historical`,
 `idx_specification_requirement_selection_answers_changed_by_hsa_id`,
 `idx_specification_requirement_selection_answers_answer_id`.
 
 **Demo seed:** `ETJANST-UPP-2026`, `KH-INFOR`, `INTPLATT-UPP-2026`, and
 `GDPR-FORV-2026` have saved requirement-selection answers. `GDPR-FORV-2026`
-also includes one historical saved answer with `is_filter_active = 0`.
+also includes one historical saved answer with `is_historical = 1`.
 
 ---
 
@@ -2074,7 +2074,7 @@ its purpose and the table/column(s) it covers.
 | `idx_requirement_selection_answers_archived_at` | `requirement_selection_answers` | `is_archived, archived_at` | Speed up retention previews for archived answers |
 | `idx_requirement_selection_answer_packages_package_id` | `requirement_selection_answer_packages` | `requirement_package_id` | Speed up package-to-answer lookups |
 | `idx_requirement_selection_answer_requirements_requirement_id` | `requirement_selection_answer_requirements` | `requirement_id` | Speed up requirement-to-answer lookups |
-| `idx_specification_requirement_selection_answers_filter` | `specification_requirement_selection_answers` | `specification_id, is_filter_active` | Speed up active saved-answer filtering for available requirements |
+| `idx_specification_requirement_selection_answers_historical` | `specification_requirement_selection_answers` | `specification_id, is_historical` | Speed up current saved-answer selection context for available requirements |
 | `idx_specification_requirement_selection_answers_changed_by_hsa_id` | `specification_requirement_selection_answers` | `changed_by_hsa_id` | Speed up privacy erasure of saved-answer actors |
 | `idx_specification_requirement_selection_answers_answer_id` | `specification_requirement_selection_answers` | `answer_id` | Speed up saved-answer cleanup by answer |
 | `idx_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | Speed up lookups of requirement versions by norm reference |
@@ -2325,7 +2325,7 @@ graph LR
     RPI -- "idx_..._requirement_id\n(requirement_id)" --> R
     RPI -- "idx_..._specification_item_status_id\n(specification_item_status_id)" --> PIS
     SRSA -- "FK specification_id" --> RP
-    SRSA -- "idx_..._filter\n(specification_id, is_filter_active)" --> RP
+    SRSA -- "idx_..._historical\n(specification_id, is_historical)" --> RP
     SRSA -- "idx_..._answer_id\n(answer_id)" --> RSA
     SRSA -- "idx_..._changed_by_hsa_id\n(changed_by_hsa_id)" --> SRSA
     D -- "idx_..._specification_item_id\n(specification_item_id)" --> RPI

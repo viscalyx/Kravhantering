@@ -9,7 +9,7 @@ export interface SpecificationRequirementSelectionAnswerEntity {
   changedAt: Date
   changedByDisplayName: string | null
   changedByHsaId: string | null
-  isFilterActive: boolean
+  isHistorical: boolean
   question: RequirementSelectionQuestionEntity
   questionId: number
   specification: RequirementsSpecificationEntity
@@ -36,9 +36,9 @@ export const specificationRequirementSelectionAnswerEntity =
         primary: true,
         type: 'int',
       },
-      isFilterActive: {
-        default: true,
-        name: 'is_filter_active',
+      isHistorical: {
+        default: false,
+        name: 'is_historical',
         type: 'bit',
       },
       changedAt: { name: 'changed_at', type: 'datetime2' },
@@ -57,8 +57,8 @@ export const specificationRequirementSelectionAnswerEntity =
     },
     indices: [
       {
-        columns: ['specificationId', 'isFilterActive'],
-        name: 'idx_specification_requirement_selection_answers_filter',
+        columns: ['specificationId', 'isHistorical'],
+        name: 'idx_specification_requirement_selection_answers_historical',
       },
       {
         columns: ['changedByHsaId'],

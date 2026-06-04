@@ -669,7 +669,7 @@ function addRetentionRequirementSelection(seedData) {
       changed_at: OLD_365_TS,
       changed_by_display_name: 'Retention Linked',
       changed_by_hsa_id: 'SE5560000001-retentionlinked',
-      is_filter_active: 0,
+      is_historical: 1,
       question_id: saved.questionId,
       specification_id: RETENTION_SEED.specification.management,
     })

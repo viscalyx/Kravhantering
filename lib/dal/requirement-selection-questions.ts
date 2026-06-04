@@ -51,7 +51,7 @@ export interface SpecificationRequirementSelectionQuestionRow
   extends RequirementSelectionQuestionRow {
   savedAnswers: Array<{
     answerId: number
-    isFilterActive: boolean
+    isHistorical: boolean
     selectedByDisplayName: string | null
     selectedByHsaId: string | null
     updatedAt: string
@@ -60,8 +60,9 @@ export interface SpecificationRequirementSelectionQuestionRow
 }
 
 export interface RequirementSelectionFilterResult {
-  filterActive: boolean
+  hasCurrentAnswers: boolean
   hasNoRequirementSelection: boolean
+  hasRequirementSelection: boolean
   requirementIds: number[]
 }
 
@@ -799,10 +800,10 @@ async function markQuestionSelectionsHistorical(
   await executor.query(
     `
       UPDATE specification_requirement_selection_answers
-      SET is_filter_active = 0,
+      SET is_historical = 1,
           changed_at = @1
       WHERE question_id = @0
-        AND is_filter_active = 1
+        AND is_historical = 0
     `,
     [questionId, new Date()],
   )
@@ -815,10 +816,10 @@ async function markAnswerSelectionsHistorical(
   await executor.query(
     `
       UPDATE specification_requirement_selection_answers
-      SET is_filter_active = 0,
+      SET is_historical = 1,
           changed_at = @1
       WHERE answer_id = @0
-        AND is_filter_active = 1
+        AND is_historical = 0
     `,
     [answerId, new Date()],
   )
@@ -1387,7 +1388,7 @@ export async function listSpecificationRequirementSelectionQuestions(
       SELECT
         answer_id AS answerId,
         question_id AS questionId,
-        is_filter_active AS isFilterActive,
+        is_historical AS isHistorical,
         changed_by_hsa_id AS selectedByHsaId,
         changed_by_display_name AS selectedByDisplayName,
         changed_at AS updatedAt
@@ -1398,7 +1399,7 @@ export async function listSpecificationRequirementSelectionQuestions(
     [specificationId],
   )) as Array<{
     answerId: number
-    isFilterActive: boolean | number | string
+    isHistorical: boolean | number | string
     questionId: number
     selectedByDisplayName: string | null
     selectedByHsaId: string | null
@@ -1412,7 +1413,7 @@ export async function listSpecificationRequirementSelectionQuestions(
     const bucket = savedByQuestion.get(row.questionId) ?? []
     bucket.push({
       answerId: row.answerId,
-      isFilterActive: toBoolean(row.isFilterActive),
+      isHistorical: toBoolean(row.isHistorical),
       selectedByDisplayName: row.selectedByDisplayName,
       selectedByHsaId: row.selectedByHsaId,
       updatedAt: toIsoString(row.updatedAt),
@@ -1422,7 +1423,7 @@ export async function listSpecificationRequirementSelectionQuestions(
   for (const question of questions) {
     question.savedAnswers = savedByQuestion.get(question.id) ?? []
     question.selectedAnswerIds = question.savedAnswers
-      .filter(answer => answer.isFilterActive)
+      .filter(answer => !answer.isHistorical)
       .map(answer => answer.answerId)
   }
   const existingRequirementIds = new Set(
@@ -1522,11 +1523,11 @@ export async function replaceSpecificationRequirementSelectionAnswers(
             specification_id,
             question_id,
             answer_id,
-            is_filter_active,
+            is_historical,
             changed_at,
             changed_by_hsa_id,
             changed_by_display_name
-          ) VALUES (@0, @1, @2, 1, @3, @4, @5)
+          ) VALUES (@0, @1, @2, 0, @3, @4, @5)
         `,
         [
           specificationId,
@@ -1561,7 +1562,7 @@ export async function getRequirementSelectionFilterForSpecification(
        AND answer.is_active = 1
        AND answer.is_archived = 0
       WHERE saved.specification_id = @0
-        AND saved.is_filter_active = 1
+        AND saved.is_historical = 0
     `,
     [specificationId],
   )) as Array<{
@@ -1570,7 +1571,8 @@ export async function getRequirementSelectionFilterForSpecification(
   }>
   if (rows.length === 0) {
     return {
-      filterActive: false,
+      hasCurrentAnswers: false,
+      hasRequirementSelection: false,
       hasNoRequirementSelection: false,
       requirementIds: [],
     }
@@ -1583,7 +1585,8 @@ export async function getRequirementSelectionFilterForSpecification(
     .map(row => row.answerId)
   if (answerIds.length === 0) {
     return {
-      filterActive: false,
+      hasCurrentAnswers: true,
+      hasRequirementSelection: false,
       hasNoRequirementSelection,
       requirementIds: [],
     }
@@ -1614,7 +1617,8 @@ export async function getRequirementSelectionFilterForSpecification(
     [...answerIds, STATUS_PUBLISHED],
   )) as Array<{ requirementId: number }>
   return {
-    filterActive: true,
+    hasCurrentAnswers: true,
+    hasRequirementSelection: true,
     hasNoRequirementSelection,
     requirementIds: requirementRows.map(row => row.requirementId),
   }

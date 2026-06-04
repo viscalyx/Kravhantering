@@ -432,6 +432,7 @@
     "needsReferenceHelp": "Beskriv varför kravtillämpningen behövs i kravunderlaget. Referensen kan också ge stöd för när och hur kravet ska verifieras.",
     "needsReferences": "Behovsreferenser",
     "leftPanelTabs": "Tabbar för detaljer i kravunderlag",
+    "rightPanelTabs": "Tabbar i kravunderlagets högra panel",
     "newNeedsReference": "Ny behovsreferens",
     "editNeedsReference": "Redigera behovsreferens",
     "deleteNeedsReference": "Ta bort behovsreferens",
@@ -498,7 +499,8 @@
     "itemsInSpecification": "Krav i underlaget",
     "availableRequirements": "Tillgängliga krav",
     "requirementSelectionQuestions": "Kravurvalsfrågor",
-    "adjustFiltersManually": "Justera filter manuellt",
+    "filterWithRequirementSelectionQuestions": "Filtrera med kravurvalsfrågor",
+    "requirementSelectionFilterDisabledTooltip": "De besvarade kravurvalsfrågorna ger inget kravurval. Besvara en fråga med kravkopplade svar för att kunna filtrera listan.",
     "requirementSelectionNoPublishedMatches": "Valda kravurvalssvar matchar inga publicerade krav just nu.",
     "alreadyAdded": "Redan tillagd",
     "needsReferenceLabel": "Behovsreferens (valfri)",
@@ -663,7 +665,7 @@
     "pdfDownloadStarted": "PDF-nedladdningen har startat.",
     "downloadAgain": "Ladda ner igen",
     "printButton": "Skriv ut",
-    "notFilterActive": "(ej filteraktiv)",
+    "historicalSelectionAnswer": "(historiskt svar)",
     "noRequirementIds": "Inga krav-ID:n angavs",
     "noRequirementsSelected": "Inga krav valda",
     "failedToLoadReport": "Det gick inte att läsa in rapporten",
@@ -1514,7 +1516,7 @@
       "title": "Kravurvalsfrågor",
       "overview": {
         "heading": "Syfte",
-        "body": "Kravurvalsfrågor avgränsar vilka krav som är tillgängliga för kravunderlaget genom att fråga efter leveransens sammanhang. Besvarade frågor uppdaterar listan med matchande krav."
+        "body": "Kravurvalsfrågor fångar leveransens sammanhang som urvalskontext för kravunderlaget. När Filtrera med kravurvalsfrågor är på begränsar besvarade frågor listan med tillgängliga krav."
       },
       "filtering": {
         "heading": "Hitta frågor",

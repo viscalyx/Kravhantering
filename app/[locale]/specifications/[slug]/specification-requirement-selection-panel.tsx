@@ -28,7 +28,7 @@ interface SelectionQuestion {
   questionCode: string
   savedAnswers: Array<{
     answerId: number
-    isFilterActive: boolean
+    isHistorical: boolean
   }>
   selectedAnswerIds: number[]
   selectionType: 'multiple' | 'single'
@@ -91,7 +91,6 @@ export default function SpecificationRequirementSelectionPanel({
     saving: t('saving'),
     search: t('search'),
     unansweredOnly: t('unansweredOnly'),
-    title: t('title'),
   }
   const [questions, setQuestions] = useState<SelectionQuestion[]>([])
   const [loading, setLoading] = useState(true)
@@ -160,7 +159,7 @@ export default function SpecificationRequirementSelectionPanel({
               selectedAnswerIds: answerIds,
               savedAnswers: answerIds.map(answerId => ({
                 answerId,
-                isFilterActive: true,
+                isHistorical: false,
               })),
             }
           : item,
@@ -248,12 +247,9 @@ export default function SpecificationRequirementSelectionPanel({
   }
 
   return (
-    <div className="flex h-full flex-col overflow-auto p-4">
+    <div className="flex flex-col p-4">
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
-          {copy.title}
-        </h2>
-        <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">
+        <p className="text-sm text-secondary-600 dark:text-secondary-400">
           {copy.progress}: {progress.answered}/{progress.total}
         </p>
         {progress.byArea.length > 0 && (
@@ -337,7 +333,7 @@ export default function SpecificationRequirementSelectionPanel({
                   !question.isActive ||
                   question.isArchived
                 const historicalAnswers = question.savedAnswers.filter(
-                  item => !item.isFilterActive,
+                  item => item.isHistorical,
                 )
                 return (
                   <div
