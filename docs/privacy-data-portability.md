@@ -60,8 +60,8 @@ action log entries, and important limitations.
 The report uses the requested locale. Swedish exports use plain Swedish labels
 such as `Aktiva uppdrag`, `Kravområde`, `Skapad av`, `Ja` and `Nej`. English
 exports use the corresponding English labels. Unknown technical values are not
-printed raw in the PDF; the report points to the JSON export for machine-readable
-details instead.
+printed raw in the PDF; the report points to the JSON export for
+machine-readable details instead.
 
 ## Covered Sources
 

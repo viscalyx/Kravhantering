@@ -1,6 +1,7 @@
 import type {
   DataSubjectExportItem,
   DataSubjectExportRelatedObject,
+  DataSubjectExportSource,
   DataSubjectExportV1,
   DataSubjectExportValue,
 } from '@/lib/privacy/data-subject-export-types'
@@ -50,6 +51,17 @@ interface SourceInfo {
   description: string
   section: SectionId
   title: string
+}
+
+interface SectionText {
+  description: string
+  title: string
+}
+
+interface BuildEntrySource {
+  items: DataSubjectExportSource['items']
+  key: DataSubjectExportSource['key']
+  objectKey: DataSubjectExportSource['objectKey']
 }
 
 const NAME_FIELDS = new Set([
@@ -731,7 +743,7 @@ function localeKey(locale: string): LocaleKey {
   return locale === 'en' ? 'en' : 'sv'
 }
 
-function sectionText(locale: LocaleKey, id: SectionId) {
+function sectionText(locale: LocaleKey, id: SectionId): SectionText {
   const t = TEXT[locale]
   const textBySection = {
     accessReviews: {
@@ -765,7 +777,7 @@ function sectionText(locale: LocaleKey, id: SectionId) {
       description: t.otherDescription,
       title: t.otherTitle,
     },
-  } satisfies Record<SectionId, { description: string; title: string }>
+  } satisfies Record<SectionId, SectionText>
 
   return textBySection[id]
 }
@@ -917,11 +929,7 @@ function groupKey(item: DataSubjectExportItem): string {
 }
 
 function buildEntry(
-  source: {
-    items: DataSubjectExportItem[]
-    key: string
-    objectKey: string
-  },
+  source: BuildEntrySource,
   items: DataSubjectExportItem[],
   locale: LocaleKey,
 ): DataSubjectExportPdfEntry | null {
