@@ -1,11 +1,11 @@
 ---
-applyTo: 'package.json'
 name: update-packages
 description: Audit npm dependencies in package.json, recommend safe updates for this repo, review overrides and vulnerabilities, apply the project's LTS policy, and generate npm update commands. Use when Codex needs to analyze dependency freshness, compare declared versions to installed versions, decide whether overrides should stay, or plan package maintenance work for this project.
 ---
 
 # Update Packages
 
+- Always run the commands outside the sandbox, otherwise it fails.
 - Audit `package.json` for outdated or installed-version mismatches and vulnerabilities.
 - Recommend repo-safe updates and npm update commands.
 - Review `overrides` and justify each keep, remove, or update decision.
@@ -16,24 +16,29 @@ description: Audit npm dependencies in package.json, recommend safe updates for 
 
 1. Read `package.json`.
 2. Read `.github/instructions/package-updates.instructions.md`.
-3. Record `dependencies`, `devDependencies`, `overrides`, and `//overrides`.
+3. Record `dependencies`, `devDependencies`, `overrides`, `//overrides`,
+   and `allowScripts`.
 4. Run `npm run purge:install` to hydrate `node_modules` using this repo's full install flow. Verify it succeeds before continuing.
-5. Run `npm outdated --json` to collect wanted/latest data.
+5. Run `npm approve-scripts --allow-scripts-pending` to capture packages with
+   install scripts not yet covered by `allowScripts`.
+   - This command is read-only. If it reports pending packages, keep the output
+     and include pinned approval recommendations in the report.
+6. Run `npm outdated --json` to collect wanted/latest data.
    - If `npm outdated` exits non-zero but returns JSON, treat the JSON as usable output.
-6. Run `npm ls --json --depth=0` to capture actual installed versions.
-7. For packages that need registry confirmation, run `npm view <package> dist-tags --json` or `npm view <package> versions --json`.
-8. Run `npm audit --json`.
+7. Run `npm ls --json --depth=0` to capture actual installed versions.
+8. For packages that need registry confirmation, run `npm view <package> dist-tags --json` or `npm view <package> versions --json`.
+9. Run `npm audit --json`.
    - If `npm audit` exits non-zero because vulnerabilities exist, treat the JSON as usable output.
-9. For each major update candidate, run `npm install <package>@<latest> --dry-run 2>&1` and capture any `ERESOLVE` or peer-dependency conflict warnings.
-10. For each transitive vulnerability reported by `npm audit`:
+10. For each major update candidate, run `npm install <package>@<latest> --dry-run 2>&1` and capture any `ERESOLVE` or peer-dependency conflict warnings.
+11. For each transitive vulnerability reported by `npm audit`:
    a. Run `npm ls <vulnerable-package> --json` to identify the dependency path(s).
    b. Check if any parent dependency in the path has a patch/minor update that would pull in the fixed version — cross-reference with the main update tables. If yes, skip the override.
    c. If no parent update resolves it, determine the minimum patched version from the advisory data.
    d. Run `npm install --dry-run` with the override applied to confirm compatibility.
    e. Group multiple advisories for the same package into one override recommendation.
    f. Skip vulnerabilities that are disputed, withdrawn, or have no fix version available.
-11. Evaluate each direct dependency, dev dependency, and override.
-12. Render the report in the required format.
+12. Evaluate each direct dependency, dev dependency, override, and install-script approval.
+13. Render the report in the required format.
 
 ## Apply Repo Rules
 
@@ -70,6 +75,19 @@ description: Audit npm dependencies in package.json, recommend safe updates for 
 - Recommend `Keep override`, `Remove override`, or `Update override`.
 - Explain each override decision briefly, including the relevant parent package, fix, or reason when known.
 - If no overrides exist, still include the Overrides section and state that no overrides are configured.
+
+## Evaluate Install-Script Approvals
+
+- Review every entry in `allowScripts`.
+- Use `npm approve-scripts --allow-scripts-pending` output to detect packages
+  with install scripts that are not yet explicitly approved or denied.
+- Prefer pinned approvals, for example `@swc/core@1.15.32`, so the approval
+  tracks the exact version reviewed.
+- Do not recommend `npm approve-scripts --all` unless the user explicitly asks.
+- For each pending package, briefly state why the install script is expected or
+  why it needs manual review.
+- If no pending install scripts exist, still include the Install-script
+  approvals section and state that no pending approvals were found.
 
 ### Propose New Overrides for Transitive Vulnerabilities
 
@@ -120,26 +138,42 @@ description: Audit npm dependencies in package.json, recommend safe updates for 
 - If no peer conflicts exist, still include the section and state that no conflicts were found.
 - Do not include a major update in the commands section if it has an unresolved peer conflict. Instead list it under Blocked major updates with the conflict details.
 
+## Check Install-Script Approvals
+
+- Include an Install-script approvals section after Peer dependency conflicts.
+- List currently pinned approvals from `allowScripts`.
+- List any pending packages from `npm approve-scripts --allow-scripts-pending`.
+- For pending packages that should be approved, provide one pinned
+  `npm approve-scripts <pkg...>` command using package names, not `--all`.
+- If packages should be denied instead, provide the matching
+  `npm deny-scripts <pkg...>` command and explain why.
+
 ## Provide Commands And Order
 
 - Provide one `npm install` command that batches all safe patch/minor updates.
 - Provide one separate `npm install` command per major update that has no unresolved peer conflict.
 - For each major update, summarize the breaking-change risk and any stack compatibility concern.
 - If new overrides were proposed, provide a New override commands subsection listing each override to apply via the `add-override` skill (package name, pinned version, and reason).
+- If new install-script approvals are needed, provide an Install-script
+  approval commands subsection with the pinned `npm approve-scripts` command.
 - Provide an `Excluded` list for non-LTS skips.
 - Recommend this order:
   1. Apply patch/minor updates in one batch.
   2. Run `npm run purge:install`.
-  3. Run `npm run check`.
-  4. Run `npm audit`.
-  5. Apply recommended new overrides (using `add-override` for each).
-  6. Run `npm run purge:install`.
-  7. Run `npm run check`.
-  8. Run `npm audit`.
-  9. Review and apply major updates one at a time.
-  10. Run `npm run purge:install`.
-  11. Run `npm run check`.
-  12. Run `npm audit`.
+  3. Run `npm approve-scripts --allow-scripts-pending`.
+  4. Apply recommended install-script approvals or denials.
+  5. Run `npm run check`.
+  6. Run `npm audit`.
+  7. Apply recommended new overrides (using `add-override` for each).
+  8. Run `npm run purge:install`.
+  9. Run `npm approve-scripts --allow-scripts-pending`.
+  10. Run `npm run check`.
+  11. Run `npm audit`.
+  12. Review and apply major updates one at a time.
+  13. Run `npm run purge:install`.
+  14. Run `npm approve-scripts --allow-scripts-pending`.
+  15. Run `npm run check`.
+  16. Run `npm audit`.
 
 ## Handle Missing Data
 
