@@ -1461,7 +1461,9 @@ to operate by touch.
 1. Select `Exportera CSV`.
 
 **Expected result:** The URL includes the action filter, matching events remain
-visible, and the CSV contains headers such as `occurredAt;actorKind`.
+visible, and the CSV contains Swedish headers such as `Tidpunkt;Aktörstyp`.
+Opening the file in Windows spreadsheet tools shows Swedish characters
+correctly.
 
 ### ADMIN-06: access-review decision and export
 
@@ -1480,7 +1482,9 @@ visible, and the CSV contains headers such as `occurredAt;actorKind`.
 1. Export PDF.
 
 **Expected result:** The row shows `Godkänd`, the comment remains visible, and
-both exports are available.
+both exports are available. Swedish downloads use ASCII-safe filenames beginning
+with `behorighetsoversyn`, and the JSON file opens with Swedish characters
+intact in Windows text tools.
 
 ### ADMIN-07: access-review validation rejects long comments
 
@@ -1593,9 +1597,11 @@ archived requirement-selection rows that have no saved
 1. Select `Exportera PDF`.
 
 **Expected result:** Both exports are generated for the signed-in user's HSA-ID
-without entering a target HSA-ID. JSON remains structured and machine-readable.
-PDF is a readable Swedish report that explains the person's data without raw
-database field names, schema keys, relation keys, or target fingerprints.
+without entering a target HSA-ID. JSON remains structured and machine-readable,
+uses a filename beginning with `personuppgiftsutdrag`, and opens with Swedish
+characters intact in Windows text tools. PDF is a readable Swedish report that
+explains the person's data without raw database field names, schema keys,
+relation keys, or target fingerprints.
 
 ### PRIV-02: PrivacyOfficer preview by HSA-ID
 
@@ -1630,11 +1636,13 @@ a privacy preview.
 1. Select `Exportera PDF`.
 
 **Expected result:** Both exports target `SE5560000001-linneab`. JSON remains
-structured and machine-readable. PDF delivery downloads a readable Swedish
-report that uses plain labels such as `Aktiva uppdrag`, `Kravområde` and
-`Skapad av` instead of raw database fields, source keys or relation keys.
-Filenames use a fingerprint rather than the raw HSA-ID, but the fingerprint is
-not printed in the PDF report.
+structured and machine-readable, uses a filename beginning with
+`personuppgiftsutdrag`, and opens with Swedish characters intact in Windows
+text tools. PDF delivery downloads a readable Swedish report that uses plain
+labels such as `Aktiva uppdrag`, `Kravområde` and `Skapad av` instead of raw
+database fields, source keys or relation keys. Filenames use a fingerprint
+rather than the raw HSA-ID, but the fingerprint is not printed in the PDF
+report.
 
 ### PRIV-04: duplicate-name privacy search uses HSA-ID only
 

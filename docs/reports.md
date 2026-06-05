@@ -104,9 +104,15 @@ CSV with the following conventions:
 - **Formula hardening:** fields beginning with `=`, `+`, `-`, `@`,
   tab, or carriage return are prefixed with `'` and wrapped in
   double-quotes.
-- **Encoding:** UTF-8, no BOM.
+- **Download encoding:** UTF-8 with BOM at the HTTP/download boundary so
+  Windows spreadsheet tools detect Swedish characters correctly.
+- `exportToCsv()` itself returns plain CSV text without a BOM; callers add
+  the download BOM.
 - Specification CSV exports stay row-oriented and do not include
   requirement-selection context sections.
+
+Browser-created JSON evidence downloads use the same UTF-8 BOM download
+boundary. API JSON responses remain strict BOM-free JSON.
 
 ## Architecture
 

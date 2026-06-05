@@ -12,6 +12,7 @@ import { parseSearchParams } from '@/lib/http/validation'
 import { createRequestContext } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { withUtf8Bom } from '@/lib/text-export'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,6 +65,7 @@ const auditEventsQuerySchema = z
     ),
     format: z.enum(['csv']).optional(),
     from: dateTimeSchema,
+    locale: z.enum(['en', 'sv']).optional().default('en'),
     page: positiveIntegerStringSchema,
     pageSize: positiveIntegerStringSchema,
     target_id: optionalTrimmedStringSchema(255),
@@ -103,13 +105,20 @@ export async function GET(request: NextRequest) {
     })
 
     if (parsedQuery.data.format === 'csv') {
+      const filename =
+        parsedQuery.data.locale === 'sv' ? 'atgardslogg.csv' : 'action-log.csv'
       return noStore(
-        new NextResponse(actionAuditEventsToCsv(result.events), {
-          headers: {
-            'Content-Disposition': 'attachment; filename="action-log.csv"',
-            'Content-Type': 'text/csv; charset=utf-8',
+        new NextResponse(
+          withUtf8Bom(
+            actionAuditEventsToCsv(result.events, parsedQuery.data.locale),
+          ),
+          {
+            headers: {
+              'Content-Disposition': `attachment; filename="${filename}"`,
+              'Content-Type': 'text/csv; charset=utf-8',
+            },
           },
-        }),
+        ),
       )
     }
 

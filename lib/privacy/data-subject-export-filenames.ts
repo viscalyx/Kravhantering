@@ -3,6 +3,8 @@ import type {
   DataSubjectExportV1,
 } from '@/lib/privacy/data-subject-export-types'
 
+type ExportFilenameLocale = 'en' | 'sv'
+
 function dateStamp(generatedAt: string): string {
   const date = new Date(generatedAt)
   if (Number.isNaN(date.getTime())) {
@@ -11,13 +13,18 @@ function dateStamp(generatedAt: string): string {
   return date.toISOString().slice(0, 10)
 }
 
+function filenameStem(locale: string | undefined): string {
+  return locale === 'sv' ? 'personuppgiftsutdrag' : 'data-subject-access-export'
+}
+
 export function dataSubjectExportFilename(
   payload: DataSubjectExportV1,
   delivery: DataSubjectExportDelivery,
+  locale: ExportFilenameLocale | string = 'en',
 ): string {
   const extension = delivery === 'pdf' ? 'pdf' : 'json'
   return `${[
-    'data-subject-export',
+    filenameStem(locale),
     payload.subject.targetFingerprint.slice(0, 16),
     dateStamp(payload.generatedAt),
   ].join('-')}.${extension}`

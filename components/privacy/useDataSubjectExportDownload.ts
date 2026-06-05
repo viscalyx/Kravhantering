@@ -10,6 +10,7 @@ import type {
   DataSubjectExportDelivery,
   DataSubjectExportV1,
 } from '@/lib/privacy/data-subject-export-types'
+import { createUtf8BomBlob } from '@/lib/text-export'
 
 interface UseDataSubjectExportDownloadOptions {
   locale: string
@@ -48,8 +49,12 @@ export function useDataSubjectExportDownload({
         }
 
         if (delivery === 'pdf') {
+          const fallbackFilename =
+            locale === 'sv'
+              ? 'personuppgiftsutdrag.pdf'
+              : 'data-subject-access-export.pdf'
           await pdfDownload.download({
-            fallbackFilename: 'data-subject-export.pdf',
+            fallbackFilename,
             init: {
               body: JSON.stringify({ ...requestBody, locale }),
               headers: { 'Content-Type': 'application/json' },
@@ -72,12 +77,13 @@ export function useDataSubjectExportDownload({
         }
 
         const exportData = (await response.json()) as DataSubjectExportV1
-        const filename = dataSubjectExportFilename(exportData, delivery)
+        const filename = dataSubjectExportFilename(exportData, delivery, locale)
 
         downloadBlob(
-          new Blob([JSON.stringify(exportData, null, 2)], {
-            type: 'application/json;charset=utf-8',
-          }),
+          createUtf8BomBlob(
+            JSON.stringify(exportData, null, 2),
+            'application/json;charset=utf-8',
+          ),
           filename,
         )
       } catch (err) {

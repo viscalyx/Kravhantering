@@ -209,7 +209,7 @@ describe('data-subject export route', () => {
     )
     expect(routeState.renderPdfResponse).toHaveBeenCalledWith(
       expect.any(Object),
-      'data-subject-export-fingerprint-2026-05-12.pdf',
+      'data-subject-access-export-fingerprint-2026-05-12.pdf',
     )
     expect(routeState.renderPdfResponse.mock.calls[0][0].props.locale).toBe(
       'en',
