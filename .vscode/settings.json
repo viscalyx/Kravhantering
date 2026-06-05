@@ -61,12 +61,12 @@
     "**/tsconfig.tsbuildinfo": true
   },
 
-  // TypeScript settings
-  "typescript.preferences.quoteStyle": "single",
-  "typescript.preferences.importModuleSpecifier": "relative",
-  "typescript.updateImportsOnFileMove.enabled": "always",
-  "typescript.suggest.autoImports": true,
-  "typescript.preferences.includePackageJsonAutoImports": "auto",
+  // JavaScript and TypeScript settings
+  "js/ts.preferences.quoteStyle": "single",
+  "js/ts.preferences.importModuleSpecifier": "relative",
+  "js/ts.updateImportsOnFileMove.enabled": "always",
+  "js/ts.suggest.autoImports": true,
+  "js/ts.preferences.includePackageJsonAutoImports": "auto",
 
   // TailwindCSS settings
   "tailwindCSS.includeLanguages": {
@@ -108,9 +108,6 @@
   "explorer.confirmDelete": false,
   "explorer.confirmDragAndDrop": false,
 
-  "markdown-mermaid.darkModeTheme": "default",
-  "markdown-mermaid.lightModeTheme": "default",
-  "python.analysis.typeCheckingMode": "strict",
   "sqltools.connections": [
     {
       "connectionTimeout": 15,
