@@ -1623,7 +1623,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'admin-referensdata',
         'Admin — Referensdata',
-        'Fliken **Referensdata** innehåller länkar till alla taxonomihanteringssidor: kravområden, typer, kravversionsstatusar, risknivåer, kvalitetsegenskaper, normreferenser och kravpaket. Här bygger du upp de grunddata som krav refererar till.',
+        'Fliken **Referensdata** innehåller länkar till alla taxonomihanteringssidor: kravområden, typer, normreferenser, kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar, kravunderlagets kravstatusar, risknivåer och kvalitetsegenskaper. Här bygger du upp de grunddata som krav och kravunderlag refererar till.',
       )
     })
 

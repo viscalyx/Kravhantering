@@ -1517,7 +1517,7 @@
       },
       "referenceData": {
         "heading": "Reference data",
-        "body": "Quick links to manage requirement areas, types, requirements packages, requirement version statuses, usage statuses, specification lifecycle statuses, quality characteristics, governance object types, implementation types, and requirement area owners."
+        "body": "Quick links to manage requirement areas, types, norm references, requirement version statuses, usage statuses, specification lifecycle statuses, specification item statuses, risk levels, quality characteristics, governance object types, implementation types, and requirement area owners."
       },
       "privacy": {
         "heading": "Privacy erasure",

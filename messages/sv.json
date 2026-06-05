@@ -1517,7 +1517,7 @@
       },
       "referenceData": {
         "heading": "Referensdata",
-        "body": "Snabblänkar till hantering av kravområden, typer, kravpaket, kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar, kvalitetsegenskaper, styrningsobjektstyper, genomförandeformer och kravområdesägare."
+        "body": "Snabblänkar till hantering av kravområden, typer, normreferenser, kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar, kravunderlagets kravstatusar, risknivåer, kvalitetsegenskaper, styrningsobjektstyper, genomförandeformer och kravområdesägare."
       },
       "privacy": {
         "heading": "Dataskyddsradering",
