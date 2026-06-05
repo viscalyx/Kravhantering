@@ -5,6 +5,7 @@ import {
   isRequirementReviewStatus,
 } from '@/lib/requirements/lifecycle'
 import type { RequirementReportData } from '../data/fetch-requirement'
+import { requirementPackageName } from '../package-name'
 import { diffText } from '../text-diff'
 import type {
   MetadataChange,
@@ -32,35 +33,19 @@ function getName(item: LocalizedNameItem, locale: string): string | null {
   return (locale === 'sv' ? item.nameSv : item.nameEn) ?? null
 }
 
-function toRequirementPackageSummary(
-  item: LocalizedNameItem,
-): { nameSv: string; nameEn: string } | null {
-  const nameSv = item?.nameSv?.trim()
-  const nameEn = item?.nameEn?.trim()
-  if (!nameSv && !nameEn) return null
-
-  return {
-    nameSv: nameSv || nameEn || '',
-    nameEn: nameEn || nameSv || '',
-  }
-}
-
 function getRequirementPackageDisplayName(
-  item: LocalizedNameItem,
-  locale: string,
+  item: { name: string | null } | null,
 ): string | null {
-  const summary = toRequirementPackageSummary(item)
-  if (!summary) return null
-  return locale === 'sv' ? summary.nameSv : summary.nameEn
+  const name = requirementPackageName(item).trim()
+  return name || null
 }
 
 function collectPackageNames(
   version: RequirementReportData['versions'][number],
-  locale: string,
 ): string {
   return version.versionRequirementPackages
     .flatMap(({ requirementPackage }) => {
-      const name = getRequirementPackageDisplayName(requirementPackage, locale)
+      const name = getRequirementPackageDisplayName(requirementPackage)
       return name ? [name] : []
     })
     .sort()
@@ -129,8 +114,8 @@ function toVersionSummary(
       })),
     requirementPackages: version.versionRequirementPackages.flatMap(
       ({ requirementPackage }) => {
-        const summary = toRequirementPackageSummary(requirementPackage)
-        return summary ? [summary] : []
+        const name = requirementPackageName(requirementPackage).trim()
+        return name ? [{ name }] : []
       },
     ),
   }
@@ -201,8 +186,8 @@ function computeMetadataChanges(
     })
   }
 
-  const oldRequirementPackages = collectPackageNames(baseVersion, locale)
-  const newRequirementPackages = collectPackageNames(reviewVersion, locale)
+  const oldRequirementPackages = collectPackageNames(baseVersion)
+  const newRequirementPackages = collectPackageNames(reviewVersion)
   const oldRequirementPackageIds = collectPackageIds(baseVersion)
   const newRequirementPackageIds = collectPackageIds(reviewVersion)
   if (oldRequirementPackageIds !== newRequirementPackageIds) {

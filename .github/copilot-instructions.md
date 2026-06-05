@@ -57,3 +57,14 @@
 - `ConfirmModalProvider` is already mounted in `app/[locale]/layout.tsx`.
 
 <!-- markdownlint-enable MD013 -->
+
+## Spelling
+
+- If cSpell reports a misspelling in a Markdown file, add the word to the
+  project dictionary if
+  - the word is a correctly spelled technical term
+  - the word or term is the correct grammar for the language the text is written in
+  - the word is a proper noun (e.g. product name, company name, person's name)
+  - the word is a common abbreviation or acronym that is widely recognized in the
+    context of the project
+- If the word is a misspelling, correct the spelling in the text.

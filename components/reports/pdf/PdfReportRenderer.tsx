@@ -13,7 +13,6 @@ import {
   Text,
   View,
 } from '@react-pdf/renderer'
-import { localizedName } from '@/lib/i18n/localized'
 import { getStatusIconNodes } from '@/lib/icons/status-icon-allowlist'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import type {
@@ -29,6 +28,7 @@ import svMessages from '@/messages/sv.json'
 
 type SpecificationCoverLabelKey =
   keyof typeof enMessages.reports.specificationCover
+type ReportLabelKey = 'historicalSelectionAnswer'
 
 function getSpecificationCoverLabel(
   locale: string,
@@ -36,6 +36,11 @@ function getSpecificationCoverLabel(
 ): string {
   const messages = locale === 'sv' ? svMessages : enMessages
   return messages.reports.specificationCover[key]
+}
+
+function getReportLabel(locale: string, key: ReportLabelKey): string {
+  const messages = locale === 'sv' ? svMessages : enMessages
+  return messages.reports[key]
 }
 
 const styles = StyleSheet.create({
@@ -127,6 +132,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
     color: '#374151',
     marginBottom: 4,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontFamily: 'Helvetica-Bold',
+    color: '#111827',
   },
   diffAdded: {
     backgroundColor: '#dcfce7',
@@ -294,6 +304,10 @@ function PdfSectionRenderer({
       return <PdfTimelineEntry locale={locale} section={section} />
     case 'requirement-table':
       return <PdfRequirementTable section={section} />
+    case 'requirement-selection-context':
+      return (
+        <PdfRequirementSelectionContext locale={locale} section={section} />
+      )
     case 'toc':
       return <PdfToc section={section} />
     case 'specification-cover':
@@ -307,6 +321,52 @@ function PdfSectionRenderer({
     default:
       return null
   }
+}
+
+function PdfRequirementSelectionContext({
+  locale,
+  section,
+}: {
+  locale: string
+  section: Extract<ReportSection, { type: 'requirement-selection-context' }>
+}) {
+  const historicalSelectionAnswerLabel = getReportLabel(
+    locale,
+    'historicalSelectionAnswer',
+  )
+  return (
+    <View style={{ marginBottom: 18 }}>
+      <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>
+        {section.title}
+      </Text>
+      {section.rows.map(row => {
+        const selectedByDisplayName = formatActorDisplayNameForLocale(
+          row.selectedByDisplayName,
+          locale,
+        )
+        return (
+          <View
+            key={`${row.questionCode}-${row.answerText}`}
+            style={[styles.tableRow, { borderTopWidth: 1, paddingVertical: 5 }]}
+          >
+            <Text style={[styles.tableCell, { flex: 1.2 }]}>
+              {row.areaName} {row.questionCode}
+            </Text>
+            <Text style={[styles.tableCell, { flex: 2 }]}>
+              {row.questionText}
+            </Text>
+            <Text style={[styles.tableCell, { flex: 1.5 }]}>
+              {row.answerText}
+              {row.isHistorical ? ` ${historicalSelectionAnswerLabel}` : ''}
+              {`\n${row.changedAt}${
+                selectedByDisplayName ? ` · ${selectedByDisplayName}` : ''
+              }`}
+            </Text>
+          </View>
+        )
+      })}
+    </View>
+  )
 }
 
 function PdfSpecificationCover({
@@ -431,7 +491,7 @@ function PdfVersionSummary({
     return locale === 'sv' ? item.nameSv : item.nameEn
   }
   const requirementPackageNames = version.requirementPackages
-    .map(requirementPackage => localizedName(requirementPackage, locale))
+    .map(requirementPackage => requirementPackage.name)
     .filter(name => name.length > 0)
   const createdBy = formatActorDisplayNameForLocale(version.createdBy, locale)
 

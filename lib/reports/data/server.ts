@@ -23,6 +23,7 @@ import type {
   SuggestionReportRow,
 } from '@/lib/reports/data/fetch-requirement'
 import { assertReportItemCount } from '@/lib/reports/limits'
+import { requirementPackageName } from '@/lib/reports/package-name'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
 export class ReportDataError extends Error {
@@ -148,8 +149,7 @@ function mapDeviationVersion(
     requirementPackages: version.versionRequirementPackages
       .filter(vrp => vrp.requirementPackage)
       .map(vrp => ({
-        nameEn: vrp.requirementPackage.nameEn,
-        nameSv: vrp.requirementPackage.nameSv,
+        name: requirementPackageName(vrp.requirementPackage),
       })),
     requiresTesting: version.requiresTesting,
     riskLevel: version.riskLevel
@@ -319,8 +319,7 @@ function mapSpecificationLocalRequirementToReportData(
           requirementPackage => ({
             requirementPackage: {
               id: requirementPackage.id,
-              nameEn: requirementPackage.nameEn,
-              nameSv: requirementPackage.nameSv,
+              name: requirementPackageName(requirementPackage),
             },
           }),
         ),

@@ -21,6 +21,7 @@ import {
 } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import FloatingActionRail from '@/components/FloatingActionRail'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { Link } from '@/i18n/routing'
@@ -195,6 +196,9 @@ export default function RequirementsSpecificationsClient({
   const tc = useTranslations('common')
   const locale = useLocale()
   const shouldReduceMotion = useReducedMotion()
+  const contentRef = useRef<HTMLDivElement>(null)
+  const tableAnchorRef = useRef<HTMLDivElement>(null)
+  const nameFilterRef = useRef<HTMLInputElement>(null)
   const hasInitialData = initialData !== undefined
   const resolvedInitialData = initialData ?? EMPTY_INITIAL_DATA
   const initialDataErrorKeys = new Set(
@@ -619,7 +623,21 @@ export default function RequirementsSpecificationsClient({
 
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom">
+      <div className="container-custom" ref={contentRef}>
+        <FloatingActionRail
+          anchorRef={specifications.length > 0 ? nameFilterRef : tableAnchorRef}
+          developerModeContext="specifications"
+          items={[
+            {
+              ariaLabel: t('newSpecification'),
+              developerModeValue: 'new specification',
+              icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+              id: 'create',
+              onClick: openCreateForm,
+              variant: 'primary',
+            },
+          ]}
+        />
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
             {tn('specifications')}
@@ -989,7 +1007,7 @@ export default function RequirementsSpecificationsClient({
           )}
         </AnimatePresence>
 
-        <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div className="mb-4">
           {!loading && specifications.length > 0 && (
             <div className="w-full max-w-lg">
               <label
@@ -1016,6 +1034,7 @@ export default function RequirementsSpecificationsClient({
                     id="specification-name-filter"
                     onChange={e => setNameFilter(e.target.value)}
                     placeholder={t('filterByNamePlaceholder')}
+                    ref={nameFilterRef}
                     type="text"
                     value={nameFilter}
                   />
@@ -1033,20 +1052,6 @@ export default function RequirementsSpecificationsClient({
               </div>
             </div>
           )}
-
-          <button
-            className="btn-primary inline-flex items-center gap-1.5 justify-self-start lg:col-start-2 lg:justify-self-end"
-            {...devMarker({
-              context: 'specifications',
-              name: 'create button',
-              priority: 350,
-            })}
-            onClick={openCreateForm}
-            type="button"
-          >
-            <Plus aria-hidden="true" className="h-4 w-4" />
-            {t('newSpecification')}
-          </button>
         </div>
 
         {showSpinner && (
@@ -1070,6 +1075,7 @@ export default function RequirementsSpecificationsClient({
               name: 'crud table',
               priority: 340,
             })}
+            ref={tableAnchorRef}
           >
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

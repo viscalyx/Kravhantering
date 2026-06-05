@@ -48,6 +48,10 @@ vi.mock('@/lib/audit/action-audit', async importOriginal => {
   }
 })
 
+vi.mock('@/lib/audit/requirement-selection-cleanup-audit', () => ({
+  recordRequirementSelectionCleanupAudit: vi.fn(),
+}))
+
 vi.mock('@/lib/archiving/retention', () => ({
   createArchivingRetentionException:
     routeState.createArchivingRetentionException,

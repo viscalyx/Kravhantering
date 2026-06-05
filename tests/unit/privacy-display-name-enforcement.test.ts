@@ -9,7 +9,9 @@ import { describe, expect, it } from 'vitest'
 
 const rootDir = process.cwd()
 const actorFieldPattern =
-  /(?:\.(?:createdBy|decidedBy|resolvedBy|ownerName|firstName|lastName|displayName)\b)/
+  /(?:\.(?:createdBy|decidedBy|resolvedBy|ownerName|firstName|lastName|displayName|selectedByDisplayName)\b)/
+const actorFieldArgumentPattern =
+  /^\s*[\w$.[\]?]+\.(?:createdBy|decidedBy|resolvedBy|ownerName|firstName|lastName|displayName|selectedByDisplayName)\b\s*,?\)?\s*$/
 const formattedActorRenderPattern =
   /\b(?:formatActorDisplayName(?:ForLocale)?|format[A-Z]\w*Name)\s*\(/
 const localeDisplayNameImportPattern =
@@ -63,14 +65,18 @@ describe('privacy display-name enforcement', () => {
       if (!actorFieldPattern.test(source)) return []
 
       const hasLocaleHelperImport = localeDisplayNameImportPattern.test(source)
-      const unformattedLines = source
-        .split('\n')
+      const lines = source.split('\n')
+      const unformattedLines = lines
         .map((line, index) => ({ line, number: index + 1 }))
-        .filter(
-          ({ line }) =>
-            actorFieldPattern.test(line) &&
-            !line.includes('formatActorDisplayNameForLocale('),
-        )
+        .filter(({ line, number }) => {
+          if (!actorFieldPattern.test(line)) return false
+          const previousLine = lines[number - 2] ?? ''
+          if (line.includes('formatActorDisplayNameForLocale(')) return false
+          return !(
+            previousLine.trim().endsWith('formatActorDisplayNameForLocale(') &&
+            actorFieldArgumentPattern.test(line)
+          )
+        })
 
       if (hasLocaleHelperImport && unformattedLines.length === 0) return []
 

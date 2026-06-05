@@ -30,7 +30,7 @@ ranges:
 | `owners` | 1–3 | 1001–1005 |
 | `requirement_areas` | 1–10 | 1001–1006 (new) |
 | `norm_references` | 1–6 | 1001–1006 |
-| `requirement_packages` | 1–9 | 1001–1012 |
+| `requirement_packages` | 1–9 | 1001–1004, 1006–1012 |
 | `requirements_specifications` | 1–10 | 1001 (KH), 1002 (KH-INFOR) |
 | `specification_needs_references` | 1–23 | 1001–1006 |
 | `specification_local_requirements` | 1–2 | 1001–1002 |

@@ -477,7 +477,7 @@ export default function RequirementFormFields({
               }}
               type="checkbox"
             />
-            {getOptionName(s)}
+            {s.name}
           </label>
         ))}
       </div>
@@ -567,7 +567,7 @@ export default function RequirementFormFields({
                       }}
                       type="checkbox"
                     />
-                    {getOptionName(s)}
+                    {s.name}
                   </label>
                 ))}
               </div>

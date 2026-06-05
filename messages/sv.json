@@ -69,9 +69,11 @@
   },
   "nav": {
     "catalog": "Kravbibliotek",
+    "stewardship": "Kravbiblioteksförvaltning",
     "areas": "Kravområden",
     "specifications": "Kravunderlag",
     "requirementPackages": "Kravpaket",
+    "requirementSelectionQuestions": "Kravurvalsfrågor",
     "statuses": "Kravversionsstatusar",
     "types": "Typer",
     "taxonomy": "Referensdata",
@@ -107,6 +109,110 @@
     "userInfoNoRoles": "Inga roller tilldelade",
     "dataExport": "Mina personuppgifter"
   },
+  "specificationRequirementSelection": {
+    "allAreas": "Alla kravområden",
+    "clear": "Rensa",
+    "error": "Kunde inte spara kravurval.",
+    "historical": "Historiskt val",
+    "loading": "Laddar kravurvalsfrågor...",
+    "matchSummary": "{count} matchande krav, {added} redan tillagda",
+    "missingRequirementSelection": "Saknar kravurval",
+    "noQuestions": "Inga aktiva kravurvalsfrågor.",
+    "progress": "Besvarade",
+    "saving": "Sparar",
+    "search": "Sök fråga eller svar",
+    "unansweredOnly": "Endast obesvarade",
+    "title": "Kravurvalsfrågor"
+  },
+  "requirementSelectionQuestionsStewardship": {
+    "activate": "Aktivera",
+    "active": "Aktiv",
+    "addAnswer": "Lägg till svar",
+    "allAreas": "Alla kravområden",
+    "allStatuses": "Alla statusar",
+    "archive": "Arkivera",
+    "archived": "Arkiverad",
+    "area": "Kravområde",
+    "areaLockedHint": "Kravområdet är låst efter att frågan har skapats.",
+    "areaLockedTooltip": "Kravområdet kan inte ändras efter att frågan har skapats.",
+    "clone": "Kopiera",
+    "confirmArchiveAnswer": "Vill du arkivera det här svaret?",
+    "confirmArchiveQuestion": "Vill du arkivera den här frågan?",
+    "confirmDeleteAnswer": "Vill du ta bort det här svaret?",
+    "confirmDeleteQuestion": "Vill du ta bort den här frågan?",
+    "create": "Skapa",
+    "createQuestion": "Skapa kravurvalsfråga",
+    "deactivate": "Inaktivera",
+    "delete": "Ta bort",
+    "description": "Beskrivning",
+    "discardChanges": "Förkasta ändringar",
+    "edit": "Redigera",
+    "editAnswer": "Redigera svar",
+    "editRequirementSelectionAnswer": "Redigera kravurvalsvar",
+    "editQuestion": "Redigera kravurvalsfråga",
+    "error": "Något gick fel.",
+    "filterRequirementsByPackage": "Filtrera krav på kravpaket",
+    "filterRequirementsByRequirementId": "Filtrera krav på Krav-ID",
+    "fieldHelp": {
+      "answerDescription": "Lägg till valfri förklaring för förvaltningen. Texten påverkar inte filtrering eller rapporter.",
+      "answerPackages": "Koppla svaret till ett eller flera kravpaket. När svaret väljs hämtas publicerade krav från dessa paket.",
+      "answerText": "Skriv svarsalternativet som användaren väljer i kravunderlaget.",
+      "area": "Välj vilket kravområde som äger frågan. Frågan grupperas under samma kravområde i kravunderlaget och får sitt kravurvalsfråge-ID från områdets prefix.",
+      "questionHelpText": "Valfri hjälptext som visas tillsammans med frågan i kravunderlaget. Använd den för kort vägledning om hur frågan ska besvaras.",
+      "questionText": "Skriv frågan som användaren i kravunderlaget ska besvara.",
+      "requirementIds": "Sök och lägg till publicerade krav via synligt Krav-ID eller kravtext. Svaret sparar kravkopplingarna bakom kulisserna.",
+      "selectionType": "Enval tillåter ett svar. Flerval tillåter flera svar. Svarstypen Utan kravurval är alltid exklusiv.",
+      "sortOrder": "Styr ordningen mellan frågor inom samma kravområde. Lägre tal visas före högre tal."
+    },
+    "helpText": "Hjälptext",
+    "hideRequirementsInSelection": "Dölj krav i urvalet för",
+    "inactive": "Inaktiv",
+    "loading": "Laddar...",
+    "directRequirement": "Direktvalt",
+    "matchingRequirements": "Matchande krav",
+    "matchingRequirementsEmpty": "Inga publicerade krav matchar det aktuella urvalet.",
+    "matchingRequirementsError": "Kunde inte hämta matchande krav.",
+    "matchingRequirementsPrompt": "Välj kravpaket eller ange krav-ID för att förhandsvisa matchande publicerade krav.",
+    "matchingRequirementsReadOnly": "Endast visning",
+    "matchingRequirementsSource": "Från valda kravpaket och krav-ID",
+    "missingRequirementSelection": "Saknar kravurval",
+    "multiple": "Flerval",
+    "noPackageSearchResults": "Inga kravpaket hittades.",
+    "noRequirementSearchResults": "Inga publicerade krav hittades.",
+    "noQuestions": "Inga kravurvalsfrågor ännu.",
+    "noRequirementSelection": "Utan kravurval",
+    "openRequirementDetail": "Öppna kravdetaljer",
+    "packageSelector": "Välj paket",
+    "packages": "Kravpaket",
+    "reactivate": "Återaktivera",
+    "reorderAnswer": "Ändra svarsordning",
+    "reorderAnswerHint": "Dra för att ändra ordning, eller använd pil upp, pil ned, Home och End när knappen har fokus.",
+    "removePackage": "Ta bort paket",
+    "removeRequirement": "Ta bort krav",
+    "requirementsInSelection": "Krav i urvalet",
+    "requirementsInSelectionEmpty": "Inga publicerade krav ingår i de aktuella källorna.",
+    "requirementsInSelectionError": "Kunde inte hämta krav i urvalet.",
+    "requirementsInSelectionPrompt": "Välj kravpaket eller sök Krav-ID för att förhandsvisa krav i urvalet.",
+    "requirementsInSelectionSource": "Från valda kravpaket och direktvalda Krav-ID",
+    "requirementCountPlural": "krav",
+    "requirementCountSingular": "krav",
+    "requirementIds": "Krav-ID",
+    "requirementSources": "Källor för kravurval",
+    "save": "Spara",
+    "search": "Sök fråge-ID eller text",
+    "searchRequirementIds": "Sök Krav-ID",
+    "searchRequirementIdsPlaceholder": "Sök Krav-ID eller kravtext",
+    "selectionType": "Valtyp",
+    "selectedPackages": "Valda kravpaket",
+    "selectedRequirementIds": "Valda Krav-ID",
+    "showRequirementsInSelection": "Visa krav i urvalet för",
+    "single": "Enval",
+    "sourceSelection": "Källor",
+    "sortOrder": "Sortering",
+    "status": "Status",
+    "text": "Text",
+    "title": "Kravurvalsfrågor"
+  },
   "privacyDataExport": {
     "title": "Export av personuppgifter",
     "description": "Ladda ned personuppgifterna som är kopplade till ditt HSA-ID som strukturerad JSON eller som läsbar PDF.",
@@ -140,6 +246,7 @@
     "referenceLabel": "Felreferens"
   },
   "requirement": {
+    "title": "Kravbibliotek",
     "statusStepperAriaLabel": "Arbetsflöde för kravversionsstatus",
     "tableCaption": "Lista över krav",
     "uniqueId": "Krav-ID",
@@ -325,6 +432,7 @@
     "needsReferenceHelp": "Beskriv varför kravtillämpningen behövs i kravunderlaget. Referensen kan också ge stöd för när och hur kravet ska verifieras.",
     "needsReferences": "Behovsreferenser",
     "leftPanelTabs": "Tabbar för detaljer i kravunderlag",
+    "rightPanelTabs": "Tabbar i kravunderlagets högra panel",
     "newNeedsReference": "Ny behovsreferens",
     "editNeedsReference": "Redigera behovsreferens",
     "deleteNeedsReference": "Ta bort behovsreferens",
@@ -390,6 +498,10 @@
     "noPublishedVersionError": "Kravet saknar publicerad version och kan inte läggas till i ett kravunderlag.",
     "itemsInSpecification": "Krav i underlaget",
     "availableRequirements": "Tillgängliga krav",
+    "requirementSelectionQuestions": "Kravurvalsfrågor",
+    "filterWithRequirementSelectionQuestions": "Filtrera med kravurvalsfrågor",
+    "requirementSelectionFilterDisabledTooltip": "De besvarade kravurvalsfrågorna ger inget kravurval. Besvara en fråga med kravkopplade svar för att kunna filtrera listan.",
+    "requirementSelectionNoPublishedMatches": "Valda kravurvalssvar matchar inga publicerade krav just nu.",
     "alreadyAdded": "Redan tillagd",
     "needsReferenceLabel": "Behovsreferens (valfri)",
     "addSelectedToSpecification": "Lägg till valda ({count})",
@@ -553,6 +665,7 @@
     "pdfDownloadStarted": "PDF-nedladdningen har startat.",
     "downloadAgain": "Ladda ner igen",
     "printButton": "Skriv ut",
+    "historicalSelectionAnswer": "(historiskt svar)",
     "noRequirementIds": "Inga krav-ID:n angavs",
     "noRequirementsSelected": "Inga krav valda",
     "failedToLoadReport": "Det gick inte att läsa in rapporten",
@@ -594,16 +707,26 @@
     }
   },
   "requirementPackage": {
+    "active": "Aktivt",
+    "archive": "Arkivera",
+    "archived": "Arkiverat",
     "name": "Namn",
+    "nameHelp": "Ange kravpaketets namn. Namnet skrivs i ett språk och visas som samma för svenska och engelska tills översättning införs.",
     "nameSvLabel": "Namn (svenska)",
     "nameSvHelp": "Ange kravpaketets svenska namn.",
     "nameEnLabel": "Namn (engelska)",
     "nameEnHelp": "Ange kravpaketets engelska namn.",
     "description": "Beskrivning",
+    "descriptionHelp": "Beskriv vid behov vilken gruppering kravpaketet avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "descriptionSvLabel": "Beskrivning (svenska)",
     "descriptionSvHelp": "Beskriv vid behov kravpaketet på svenska så att användare förstår vilken gruppering det avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "descriptionEnLabel": "Beskrivning (engelska)",
     "descriptionEnHelp": "Beskriv vid behov kravpaketet på engelska så att användare förstår vilken gruppering det avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
+    "lead": "Paketansvarig",
+    "leadDisplayName": "Paketansvarigs namn",
+    "leadDisplayNameHelp": "Ange visningsnamnet för den person som ansvarar för kravpaketet.",
+    "leadHsaId": "Paketansvarigs HSA-ID",
+    "leadHsaIdHelp": "Ange HSA-ID för paketansvarig i formatet SE följt av organisationsnummer, bindestreck och alfanumeriskt suffix.",
     "owner": "Ägare",
     "help": {
       "owner": "Välj ägaren som ansvarar för kravpaketet och dess kopplade krav."
@@ -611,8 +734,12 @@
     "newRequirementPackage": "Nytt kravpaket",
     "editRequirementPackage": "Redigera kravpaket",
     "linkedRequirements": "Kopplade krav",
+    "reactivate": "Återaktivera",
     "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}",
-    "emptyState": "Inga kravpaket ännu. Skapa ditt första kravpaket."
+    "status": "Status",
+    "emptyState": "Inga kravpaket ännu. Skapa ditt första kravpaket.",
+    "filterByName": "Filtrera på namn eller beskrivning",
+    "filterByNamePlaceholder": "Sök namn eller beskrivning på kravpaket"
   },
   "normReference": {
     "editNormReference": "Redigera normreferens",
@@ -874,6 +1001,8 @@
         "specificationLocalDeviations": "Lokala avvikelser i kravunderlag",
         "improvementSuggestions": "Förbättringsförslag",
         "specifications": "Kravunderlag",
+        "requirementSelectionQuestions": "Kravurvalsfrågor",
+        "requirementSelectionAnswers": "Kravurvalssvar",
         "areaCoAuthors": "Kravområdesmedförfattare",
         "specificationCoAuthors": "Kravunderlagsmedförfattare",
         "accessReviewRuns": "Behörighetsöversyner",
@@ -894,7 +1023,8 @@
         "accessReviewPrincipal": "Behörig i översyn",
         "taxonomy": "Taxonomi",
         "requirementVersion": "Kravversion",
-        "specificationArchive": "Kravunderlag"
+        "specificationArchive": "Kravunderlag",
+        "requirementSelection": "Kravurval"
       },
       "warnings": {
         "ownerSwitch": "Byt referenser till en ersättande ägare, eller anonymisera till den raderade användaren när ingen ersättare anges.",
@@ -1382,6 +1512,29 @@
         "body": "Spåra hur långt varje krav har kommit i underlaget: inkluderad, pågående, implementerad, verifierad eller ej tillämpbar. Ändra statusen direkt i tabellen."
       }
     },
+    "specificationRequirementSelection": {
+      "title": "Kravurvalsfrågor",
+      "overview": {
+        "heading": "Syfte",
+        "body": "Kravurvalsfrågor fångar leveransens sammanhang som urvalskontext för kravunderlaget. När Filtrera med kravurvalsfrågor är på begränsar besvarade frågor listan med tillgängliga krav."
+      },
+      "filtering": {
+        "heading": "Hitta frågor",
+        "body": "Använd områdesfiltret, reglaget för obesvarade frågor och sökfältet för att fokusera listan. Sammanfattningen visar hur många aktiva frågor som har svar."
+      },
+      "answers": {
+        "heading": "Välja svar",
+        "body": "Välj det eller de svar som passar kravunderlaget. Vissa svar matchar publicerade krav direkt, medan andra matchar krav via kravpaket."
+      },
+      "saving": {
+        "heading": "Spara val",
+        "body": "Varje svar sparas när du väljer det. När du rensar en fråga tas de sparade svaren bort och frågan blir obesvarad igen."
+      },
+      "historical": {
+        "heading": "Historiska val",
+        "body": "Inaktiva eller arkiverade frågor och svar visas som historiska val när de har sparats tidigare. Historiska val bevaras för spårbarhet men påverkar inte aktuell matchning."
+      }
+    },
     "governanceObjectTypes": {
       "title": "Styrningsobjektstyper",
       "overview": {
@@ -1542,6 +1695,21 @@
       "manage": {
         "heading": "Hantera",
         "body": "Skapa och redigera kravpaket med verktygsfältet. Ett kravpaket kan kopplas till flera krav. Att ta bort ett kravpaket tar bara bort posten för kravpaketet; kopplade krav påverkas inte."
+      }
+    },
+    "requirementSelectionQuestionsStewardship": {
+      "title": "Kravurvalsfrågor",
+      "overview": {
+        "heading": "Syfte",
+        "body": "Använd den här förvaltningsvyn för att underhålla frågorna som avgränsar tillgängliga krav i ett kravunderlag. Frågorna hör till kravområden och förvaltas som innehåll i kravbiblioteket."
+      },
+      "answers": {
+        "heading": "Svar och matchning",
+        "body": "Lägg till svarsalternativ som pekar direkt på publicerade krav, på kravpaket eller på ett avsiktligt svar utan kravurval. Aktiva svar påverkar filtreringen när användare väljer dem i ett kravunderlag."
+      },
+      "health": {
+        "heading": "Hälsoindikatorer",
+        "body": "Svar som inte längre matchar några publicerade krav markeras som att de saknar kravurval. Granska de svaren efter att kravpaket eller kravversioner har arkiverats."
       }
     },
     "normReferences": {

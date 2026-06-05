@@ -584,8 +584,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         {
           id: 13,
-          nameEn: 'Login',
-          nameSv: 'Inloggning',
+          name: 'Inloggning',
         },
       ])
 
@@ -642,7 +641,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         nameSv: 'Hög',
         sortOrder: 3,
       },
-      requirementPackages: [{ id: 13, nameEn: 'Login', nameSv: 'Inloggning' }],
+      requirementPackages: [{ id: 13, name: 'Inloggning' }],
       uniqueId: 'LOK-001',
       updatedAt: '2026-04-21T10:00:00.000Z',
       verificationMethod: 'Manual test',

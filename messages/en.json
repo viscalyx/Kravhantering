@@ -69,9 +69,11 @@
   },
   "nav": {
     "catalog": "Requirements Library",
+    "stewardship": "Requirements Library Stewardship",
     "areas": "Requirement areas",
     "specifications": "Requirements specifications",
     "requirementPackages": "Requirements packages",
+    "requirementSelectionQuestions": "Requirement selection questions",
     "statuses": "Requirement version statuses",
     "types": "Types",
     "taxonomy": "Reference data",
@@ -107,6 +109,110 @@
     "userInfoNoRoles": "No roles assigned",
     "dataExport": "My personal data"
   },
+  "specificationRequirementSelection": {
+    "allAreas": "All requirement areas",
+    "clear": "Clear",
+    "error": "Could not save selection.",
+    "historical": "Historical choice",
+    "loading": "Loading questions...",
+    "matchSummary": "{count} matching requirements, {added} already added",
+    "missingRequirementSelection": "Missing requirement selection",
+    "noQuestions": "No active questions.",
+    "progress": "Answered",
+    "saving": "Saving",
+    "search": "Search question or answer",
+    "unansweredOnly": "Unanswered only",
+    "title": "Requirement selection questions"
+  },
+  "requirementSelectionQuestionsStewardship": {
+    "activate": "Activate",
+    "active": "Active",
+    "addAnswer": "Add answer",
+    "allAreas": "All requirement areas",
+    "allStatuses": "All statuses",
+    "archive": "Archive",
+    "archived": "Archived",
+    "area": "Requirement area",
+    "areaLockedHint": "Requirement area is locked after the question has been created.",
+    "areaLockedTooltip": "The requirement area cannot be changed after the question has been created.",
+    "clone": "Duplicate",
+    "confirmArchiveAnswer": "Archive this answer?",
+    "confirmArchiveQuestion": "Archive this requirement selection question?",
+    "confirmDeleteAnswer": "Delete this answer?",
+    "confirmDeleteQuestion": "Delete this requirement selection question?",
+    "create": "Create",
+    "createQuestion": "Create requirement selection question",
+    "deactivate": "Deactivate",
+    "delete": "Delete",
+    "description": "Description",
+    "discardChanges": "Discard changes",
+    "edit": "Edit",
+    "editAnswer": "Edit answer",
+    "editRequirementSelectionAnswer": "Edit requirement selection answer",
+    "editQuestion": "Edit requirement selection question",
+    "error": "Something went wrong.",
+    "filterRequirementsByPackage": "Filter requirements by requirement package",
+    "filterRequirementsByRequirementId": "Filter requirements by Requirement ID",
+    "fieldHelp": {
+      "answerDescription": "Add an optional explanation for stewardship. This text does not affect filtering or reports.",
+      "answerPackages": "Link the answer to one or more requirement packages. When the answer is selected, published requirements from those packages are included.",
+      "answerText": "Write the answer option that users choose in the specification.",
+      "area": "Choose the requirement area that owns the question. The question is grouped under the same area in the specification and receives its selection-question ID from the area prefix.",
+      "questionHelpText": "Optional help text shown with the question in the specification. Use it for brief guidance on how to answer.",
+      "questionText": "Write the question that users answer in the specification.",
+      "requirementIds": "Search and add published requirements by visible Requirement ID or requirement text. The answer stores requirement links behind the scenes.",
+      "selectionType": "Single choice allows one answer. Multiple choice allows several answers. No requirement selection is always exclusive.",
+      "sortOrder": "Controls the order of questions within the same requirement area. Lower numbers appear before higher numbers."
+    },
+    "helpText": "Help text",
+    "hideRequirementsInSelection": "Hide requirements in selection for",
+    "inactive": "Inactive",
+    "loading": "Loading...",
+    "directRequirement": "Directly selected",
+    "matchingRequirements": "Matching requirements",
+    "matchingRequirementsEmpty": "No published requirements match the current selection.",
+    "matchingRequirementsError": "Could not load matching requirements.",
+    "matchingRequirementsPrompt": "Select requirement packages or enter requirement IDs to preview matching published requirements.",
+    "matchingRequirementsReadOnly": "Read-only",
+    "matchingRequirementsSource": "From selected packages and requirement IDs",
+    "missingRequirementSelection": "Missing requirement selection",
+    "multiple": "Multiple choice",
+    "noPackageSearchResults": "No requirement packages found.",
+    "noRequirementSearchResults": "No published requirements found.",
+    "noQuestions": "No requirement selection questions yet.",
+    "noRequirementSelection": "No requirement selection",
+    "openRequirementDetail": "Open requirement details",
+    "packageSelector": "Choose packages",
+    "packages": "Requirement packages",
+    "reactivate": "Reactivate",
+    "reorderAnswer": "Reorder answer",
+    "reorderAnswerHint": "Drag to reorder, or use Arrow Up, Arrow Down, Home, and End while focused.",
+    "removePackage": "Remove package",
+    "removeRequirement": "Remove requirement",
+    "requirementsInSelection": "Requirements in selection",
+    "requirementsInSelectionEmpty": "No published requirements are included by the current sources.",
+    "requirementsInSelectionError": "Could not load requirements in selection.",
+    "requirementsInSelectionPrompt": "Choose packages or search for Requirement IDs to preview requirements in the selection.",
+    "requirementsInSelectionSource": "From selected packages and direct Requirement IDs",
+    "requirementCountPlural": "requirements",
+    "requirementCountSingular": "requirement",
+    "requirementIds": "Requirement IDs",
+    "requirementSources": "Requirement selection sources",
+    "save": "Save",
+    "search": "Search question ID or text",
+    "searchRequirementIds": "Search Requirement IDs",
+    "searchRequirementIdsPlaceholder": "Search Requirement ID or requirement text",
+    "selectionType": "Selection type",
+    "selectedPackages": "Selected requirement packages",
+    "selectedRequirementIds": "Selected Requirement IDs",
+    "showRequirementsInSelection": "Show requirements in selection for",
+    "single": "Single choice",
+    "sourceSelection": "Sources",
+    "sortOrder": "Sort order",
+    "status": "Status",
+    "text": "Text",
+    "title": "Requirement selection questions"
+  },
   "privacyDataExport": {
     "title": "Personal data export",
     "description": "Download the personal data that is connected to your HSA-ID in a structured JSON file or as a readable PDF.",
@@ -140,6 +246,7 @@
     "referenceLabel": "Error reference"
   },
   "requirement": {
+    "title": "Requirements Library",
     "statusStepperAriaLabel": "Requirement version status workflow steps",
     "tableCaption": "Requirements list",
     "uniqueId": "Requirement ID",
@@ -325,6 +432,7 @@
     "needsReferenceHelp": "Describe why the requirement application is needed in the specification. The reference can also support when and how the requirement should be verified.",
     "needsReferences": "Needs references",
     "leftPanelTabs": "Specification detail tabs",
+    "rightPanelTabs": "Right specification detail tabs",
     "newNeedsReference": "New needs reference",
     "editNeedsReference": "Edit needs reference",
     "deleteNeedsReference": "Delete needs reference",
@@ -390,6 +498,10 @@
     "noPublishedVersionError": "This requirement has no published version and cannot be added to a specification.",
     "itemsInSpecification": "Requirements in specification",
     "availableRequirements": "Available requirements",
+    "requirementSelectionQuestions": "Requirement selection questions",
+    "filterWithRequirementSelectionQuestions": "Filter with requirement selection questions",
+    "requirementSelectionFilterDisabledTooltip": "The answered requirement selection questions do not provide a requirement selection. Answer a question with requirement-linked answers to filter the list.",
+    "requirementSelectionNoPublishedMatches": "The selected requirement-selection answers do not currently match any published requirements.",
     "alreadyAdded": "Already added",
     "needsReferenceLabel": "Needs reference (optional)",
     "addSelectedToSpecification": "Add selected ({count})",
@@ -553,6 +665,7 @@
     "pdfDownloadStarted": "PDF download started.",
     "downloadAgain": "Download Again",
     "printButton": "Print",
+    "historicalSelectionAnswer": "(historical answer)",
     "noRequirementIds": "No requirement IDs provided",
     "noRequirementsSelected": "No requirements selected",
     "failedToLoadReport": "Failed to load report",
@@ -594,16 +707,26 @@
     }
   },
   "requirementPackage": {
+    "active": "Active",
+    "archive": "Archive",
+    "archived": "Archived",
     "name": "Name",
+    "nameHelp": "Enter the requirements package name. The name is authored in one language and shown for both Swedish and English until translation is introduced.",
     "nameSvLabel": "Name (Swedish)",
     "nameSvHelp": "Enter the Swedish name for this requirements package.",
     "nameEnLabel": "Name (English)",
     "nameEnHelp": "Enter the English name for this requirements package.",
     "description": "Description",
+    "descriptionHelp": "Optionally describe the grouping this requirements package represents. Do not enter names or other details that can identify a living person.",
     "descriptionSvLabel": "Description (Swedish)",
     "descriptionSvHelp": "Optionally describe the requirements package in Swedish so users understand the grouping it represents. Do not enter names or other details that can identify a living person.",
     "descriptionEnLabel": "Description (English)",
     "descriptionEnHelp": "Optionally describe the requirements package in English so users understand the grouping it represents. Do not enter names or other details that can identify a living person.",
+    "lead": "Package lead",
+    "leadDisplayName": "Package lead name",
+    "leadDisplayNameHelp": "Enter the display name for the person responsible for this requirements package.",
+    "leadHsaId": "Package lead HSA-ID",
+    "leadHsaIdHelp": "Enter the package lead HSA-ID in the format SE followed by organization number, hyphen, and alphanumeric suffix.",
     "owner": "Requirements package owner",
     "help": {
       "owner": "Choose the owner responsible for this requirements package and its linked requirements."
@@ -611,8 +734,12 @@
     "newRequirementPackage": "New requirements package",
     "editRequirementPackage": "Edit requirements package",
     "linkedRequirements": "Linked requirements",
+    "reactivate": "Reactivate",
     "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}",
-    "emptyState": "No requirements packages yet. Create your first requirements package."
+    "status": "Status",
+    "emptyState": "No requirements packages yet. Create your first requirements package.",
+    "filterByName": "Filter by name or description",
+    "filterByNamePlaceholder": "Search requirements package name or description"
   },
   "normReference": {
     "editNormReference": "Edit norm reference",
@@ -874,6 +1001,8 @@
         "specificationLocalDeviations": "Specification-local deviations",
         "improvementSuggestions": "Improvement suggestions",
         "specifications": "Specifications",
+        "requirementSelectionQuestions": "Requirement selection questions",
+        "requirementSelectionAnswers": "Requirement selection answers",
         "areaCoAuthors": "Requirement area co-authors",
         "specificationCoAuthors": "Specification co-authors",
         "accessReviewRuns": "Access review rounds",
@@ -894,7 +1023,8 @@
         "accessReviewPrincipal": "Access review principal",
         "taxonomy": "Taxonomy",
         "requirementVersion": "Requirement version",
-        "specificationArchive": "Specification"
+        "specificationArchive": "Specification",
+        "requirementSelection": "Requirement selection"
       },
       "warnings": {
         "ownerSwitch": "Switch references to a replacement owner, or anonymize to the deleted-user sentinel when no replacement is supplied.",
@@ -1382,6 +1512,29 @@
         "body": "Track how far each requirement has progressed within this specification: included, in progress, implemented, verified, or not applicable. Change the status inline in the table."
       }
     },
+    "specificationRequirementSelection": {
+      "title": "Requirement selection questions",
+      "overview": {
+        "heading": "Purpose",
+        "body": "Requirement selection questions capture the delivery context as selection context for the specification. When Filter with requirement selection questions is on, answered questions narrow the available requirements list."
+      },
+      "filtering": {
+        "heading": "Finding questions",
+        "body": "Use the area filter, unanswered-only toggle, and search field to focus the list. The progress summary shows how many active questions have answers."
+      },
+      "answers": {
+        "heading": "Choosing answers",
+        "body": "Choose the answer or answers that fit the specification. Some answers match published requirements directly, while others match requirements through requirements packages."
+      },
+      "saving": {
+        "heading": "Saving choices",
+        "body": "Each answer is saved when you select it. Clearing a question removes its saved answers and makes the question unanswered again."
+      },
+      "historical": {
+        "heading": "Historical choices",
+        "body": "Inactive or archived questions and answers are shown as historical choices when they were saved earlier. Historical choices are preserved for traceability but do not affect current matching."
+      }
+    },
     "governanceObjectTypes": {
       "title": "Governance Object Types",
       "overview": {
@@ -1542,6 +1695,21 @@
       "manage": {
         "heading": "Managing",
         "body": "Create and edit requirements packages using the toolbar. A requirements package can be linked to multiple requirements. Removing a package only removes the package record; linked requirements are not affected."
+      }
+    },
+    "requirementSelectionQuestionsStewardship": {
+      "title": "Requirement selection questions",
+      "overview": {
+        "heading": "Purpose",
+        "body": "Use this stewardship view to maintain the questions that narrow available requirements in a specification. Questions belong to requirement areas and are managed as Requirements Library content."
+      },
+      "answers": {
+        "heading": "Answers and matching",
+        "body": "Add answer options that point to published requirements directly, to requirements packages, or to an intentional no-selection answer. Active answers influence filtering when users choose them in a specification."
+      },
+      "health": {
+        "heading": "Health indicators",
+        "body": "Answers that no longer match any published requirements are marked as missing a requirement selection. Review those answers after packages or requirement versions are archived."
       }
     },
     "normReferences": {

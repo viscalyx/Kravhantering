@@ -16,6 +16,7 @@ import DeviationDecisionModal from '@/components/DeviationDecisionModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
 import DeviationPill from '@/components/DeviationPill'
 import type { DeviationStep } from '@/components/DeviationStepper'
+import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 import SpecificationLocalRequirementForm, {
   type SpecificationLocalRequirementSubmitPayload,
@@ -47,8 +48,7 @@ interface SpecificationLocalRequirementDetail {
   requirementCategory: { id: number; nameEn: string; nameSv: string } | null
   requirementPackages: {
     id: number
-    nameEn: string | null
-    nameSv: string | null
+    name: string | null
   }[]
   requirementType: { id: number; nameEn: string; nameSv: string } | null
   requiresTesting: boolean
@@ -977,18 +977,15 @@ export default function SpecificationLocalRequirementDetailClient({
   }))
 
   const requirementPackages = requirement.requirementPackages.map(
-    requirementPackage => ({
-      id: `specification-local-requirementPackage-${requirementPackage.id}`,
-      label:
-        locale === 'sv'
-          ? (requirementPackage.nameSv ?? requirementPackage.nameEn)
-          : (requirementPackage.nameEn ?? requirementPackage.nameSv),
-      markerContext: buildDetailSectionContext('requirementPackages'),
-      markerValue:
-        requirementPackage.nameEn ??
-        requirementPackage.nameSv ??
-        String(requirementPackage.id),
-    }),
+    requirementPackage => {
+      const label = requirementPackage.name ?? String(requirementPackage.id)
+      return {
+        id: `specification-local-requirementPackage-${requirementPackage.id}`,
+        label,
+        markerContext: buildDetailSectionContext('requirementPackages'),
+        markerValue: label,
+      }
+    },
   )
 
   const hasPendingDeviation =
@@ -1105,7 +1102,7 @@ export default function SpecificationLocalRequirementDetailClient({
             <div className="grid grid-cols-1 gap-6">
               <div className="space-y-6">
                 <div className="relative flex flex-col gap-3 sm:flex-row">
-                  <div className="relative flex-1 min-w-0 rounded-2xl border bg-white/80 p-6 shadow-sm backdrop-blur-sm space-y-5 dark:bg-secondary-900/60">
+                  <RequirementDetailCard>
                     <RequirementDetailSections
                       acceptanceCriteria={requirement.acceptanceCriteria ?? '—'}
                       acceptanceCriteriaLabel={t('acceptanceCriteria')}
@@ -1119,7 +1116,7 @@ export default function SpecificationLocalRequirementDetailClient({
                       requirementPackages={requirementPackages}
                       requirementPackagesLabel={t('requirementPackage')}
                     />
-                  </div>
+                  </RequirementDetailCard>
 
                   <div className="shrink-0 sm:w-64">
                     {graduationTargetAreasLoaded ? (

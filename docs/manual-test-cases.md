@@ -31,6 +31,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [REQ-10: library list report entrypoint works](#req-10-library-list-report-entrypoint-works)
   - [REQ-11: localized library error recovery](#req-11-localized-library-error-recovery)
   - [REQ-12: detail action menus are keyboard accessible](#req-12-detail-action-menus-are-keyboard-accessible)
+  - [REQ-13: requirement-library stewardship manages packages and questions](#req-13-requirement-library-stewardship-manages-packages-and-questions)
 - [Requirement creation and lifecycle](#requirement-creation-and-lifecycle)
   - [LIFE-01: create a requirement from the UI](#life-01-create-a-requirement-from-the-ui)
   - [LIFE-02: validate required fields on create](#life-02-validate-required-fields-on-create)
@@ -63,6 +64,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [SPEC-09: manage needs references](#spec-09-manage-needs-references)
   - [SPEC-10: generate specification list report](#spec-10-generate-specification-list-report)
   - [SPEC-11: reset specification column views](#spec-11-reset-specification-column-views)
+  - [SPEC-12: answer requirement-selection questions](#spec-12-answer-requirement-selection-questions)
 - [Deviations](#deviations)
   - [DEV-01: create a draft deviation](#dev-01-create-a-draft-deviation)
   - [DEV-02: request deviation review](#dev-02-request-deviation-review)
@@ -82,6 +84,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [ADMIN-08: access-review validation rejects long comments](#admin-08-access-review-validation-rejects-long-comments)
   - [ADMIN-09: archiving retention preview is privacy-gated](#admin-09-archiving-retention-preview-is-privacy-gated)
   - [ADMIN-10: reference-data icons render across requirement surfaces](#admin-10-reference-data-icons-render-across-requirement-surfaces)
+  - [ADMIN-11: archived requirement-selection retention excludes saved history](#admin-11-archived-requirement-selection-retention-excludes-saved-history)
 - [Privacy and data portability](#privacy-and-data-portability)
   - [PRIV-01: self-service privacy export](#priv-01-self-service-privacy-export)
   - [PRIV-02: PrivacyOfficer preview by HSA-ID](#priv-02-privacyofficer-preview-by-hsa-id)
@@ -342,7 +345,8 @@ requirements.
 
 **Users:** `ada.admin`.
 
-**Prerequisites:** Open `/sv/requirements`.
+**Prerequisites:** Open `/sv/requirements` in a fresh browser context, or clear
+the local storage entry `requirements.stewardship.tab`.
 
 **Steps:**
 
@@ -404,6 +408,8 @@ consistently.
 1. Enable `Kvalitetsegenskap`, `Kravpaket`, `Test krävs`, and `Version`.
 1. Close the picker.
 1. Verify that the `Kravpaket` column shows package names or `—`.
+1. Hover a `Kravpaket` chip filter and verify that the package description is
+   shown as a tooltip.
 1. Select a `Kravpaket` chip filter option, then hide the `Kravpaket` column.
 1. Verify that the chip stays selected and the list remains filtered.
 1. Reload the page.
@@ -539,6 +545,121 @@ behavior.
 cycle only through menu options, Escape returns focus to the trigger, Tab closes
 the report menu without trapping focus, and the copy result is announced as
 `Kopierad`.
+
+### REQ-13: requirement-library stewardship manages packages and questions
+
+**Purpose:** Confirm package stewardship and requirement-selection question
+management live outside Admin Center.
+
+**Users:** `ada.admin`.
+
+**Prerequisites:** Open `/sv/requirements`.
+
+**Steps:**
+
+1. Verify the header navigation contains `Kravbiblioteksförvaltning`.
+1. Click `Kravbiblioteksförvaltning` and verify it opens `Kravpaket` when no
+   previous stewardship tab has been selected.
+1. Verify the page content shows `Kravpaket` as the only page heading, without
+   a separate `Kravbiblioteksförvaltning` heading above it.
+1. Verify `Kravbiblioteksförvaltning` expands the header downward and shows
+   the inline `Kravpaket` and `Kravurvalsfrågor` links centered directly under
+   the parent button. Verify the parent button sits in its own tight light-grey
+   background and the two inline links sit together in a separate wider
+   solid light-grey background without inner divider lines, with straight
+   sides and matching short soft corner curves in both light and dark mode.
+1. Verify the selected `Kravbiblioteksförvaltning` parent button and selected
+   inline tab use the same blue-tinted selected background as `Kravbibliotek`
+   and `Kravunderlag`.
+1. Click `Kravunderlag` and verify the inline subnavigation closes. Click
+   `Kravbiblioteksförvaltning` again, then click `Kravbibliotek` and verify the
+   inline subnavigation closes.
+1. Click `Kravbiblioteksförvaltning` once more to return to `Kravpaket`.
+1. On `Kravpaket`, use the floating `Nytt kravpaket` pill and verify the new
+   package form opens as a modal.
+1. Use `Filtrera på namn eller beskrivning` to search for a package by name and
+   by description, verify the table is narrowed to matching packages in both
+   cases, then click `Rensa sökning` and verify all packages are shown again.
+1. Create or edit a package with `Namn`, `Beskrivning`, `HSA-ID` and
+   `Visningsnamn`. Verify editing opens in a modal and shows linked
+   requirements beside the form.
+1. Verify long `Beskrivning` values in the package list wrap inside the
+   description column instead of being truncated to one line.
+1. Verify package row actions are icon-only buttons. Hover the icons and verify
+   the tooltips show `Redigera`, `Arkivera` or `Återaktivera`, and `Ta bort`.
+1. Switch to `Kravurvalsfrågor`, verify that title is now the page heading, and
+   use the floating `Skapa kravurvalsfråga` pill.
+1. Verify the new question form opens as a modal and create a question for a
+   requirement area. After selecting `Kravområde`, verify the selected
+   requirement area's description appears as small text below the dropdown.
+1. Open `/sv/requirements`, click `Kravbiblioteksförvaltning`, and verify the
+   parent navigation returns directly to `Kravurvalsfrågor` without flashing
+   `Kravpaket` first. Verify no visible `Laddar...` text appears during a fast
+   route change. If the route is slowed for more than about two seconds, verify
+   the delayed transition indicator is a spinner.
+1. Use `Lägg till svar` under svarlistan för en kravurvalsfråga and verify the new
+   answer form opens as a modal with answer fields on the left and a source
+   workspace on the right. Verify the answer modal does not show a visible
+   title, question ID or `Sortering` field; answer order is managed from the
+   answer list.
+1. Add a normal answer linked to a package or requirement from the modal. Verify
+   `Kravpaket` opens as a compact searchable checkbox popover, `Krav-ID` is
+   selected by searching visible Krav-ID or kravtext and adding result chips,
+   and `Krav i urvalet` updates before saving. Verify each krav row shows
+   source badges such as `Direktvalt` and selected kravpaket names, and that a
+   subtle scroll cue appears when more krav rows are hidden.
+1. Edit an existing answer, open `Kravpaket`, and scroll the package checkbox
+   list immediately after the modal opens. Verify the package list scrolls
+   inside the modal and that the kravurvalsfråga answer list behind the modal
+   stays fixed.
+1. In the answer modal, click `Avbryt` before changing anything and verify the
+   modal closes directly. Open it again, change the answer text, click
+   `Avbryt`, cancel the discard confirmation and verify the modal stays open;
+   then repeat and confirm that the unsaved changes are discarded.
+1. After saving the answer, verify the answer row does not show a separate
+   `Krav i urvalet: n` button. Verify the compact count/chevron pill is shown
+   before the `Kravpaket` and `Krav-ID` pills with a small separator between
+   them. Click multiple source pills on the row and verify the expanded krav
+   list shows all krav from every selected pill. For a krav that is both
+   directly selected and included through a package, verify the expanded krav
+   row is shown once with both `Direktvalt` and package badges. Click an active
+   pill again and verify only that source is removed from the filtered list.
+1. Add an `Utan kravurval` answer from the modal and verify links are cleared
+   for that answer and the package selector and Krav-ID search are disabled.
+1. Drag an answer's full-height handle to change the answer order and verify
+   the dragged answer leaves an empty gray slot that moves as the other answers
+   rearrange while dragging. Verify answer text can still be selected from the
+   row body, and verify the final order is preserved after reloading the page.
+   Focus the same handle with the keyboard and verify arrow-key movement
+   changes the order as well.
+1. Use the question search and filters to narrow by question text, requirement
+   area, and active/archived status.
+1. Edit the question text and verify `Kravområde` is visibly disabled, explains
+   that the area cannot be changed after creation, and still shows the selected
+   requirement area's description. Drag-resize `Hjälptext` vertically and verify
+   it stops before hiding the remaining form controls outside the modal
+   viewport. Edit an answer text, verify answer editing is still announced as
+   `Redigera kravurvalsvar` without showing it as a visible modal title, verify
+   the `Spara` button uses a save icon rather than `+`, then verify the edited
+   values are shown without creating duplicate rows.
+1. Verify the answer action buttons show icons next to `Redigera`,
+   `Inaktivera`, `Arkivera`, and `Ta bort`. Try to archive and delete a
+   question or answer, cancel the first confirmation, then repeat and confirm.
+1. Expand an answer preview and verify it lists matching published requirements
+   and flags `Saknar kravurval` when no published requirement currently matches.
+1. In the answer edit modal, click a row in `Krav i urvalet` and verify a
+   kravbibliotek-style read-only detail card appears with kravtext,
+   acceptanskriterier, metadata, referenser and kravpaket using the same card
+   padding and section spacing as the kravbibliotek inline detail, but without
+   repeated Krav-ID heading, process stepper or action buttons.
+1. Reload the page.
+
+**Expected result:** The last stewardship tab is restored, only the active
+stewardship view title is shown as the page heading, package leads use direct
+HSA-ID/display-name fields, the question gets a stable `KUF` code, questions
+have no required/mandatory setting, cancelled destructive actions leave the
+question or answer unchanged, confirmed destructive actions complete, and active
+answers without links remain editable as action-required health items.
 
 ## Requirement creation and lifecycle
 
@@ -897,7 +1018,7 @@ visible specifications.
 
 **Steps:**
 
-1. Select `Nytt kravunderlag`.
+1. Select the floating `Nytt kravunderlag` pill.
 1. Fill name, specification lifecycle status, governance object type, and
    implementation type.
 1. Add a business need reference if required.
@@ -955,10 +1076,12 @@ the list.
 1. Ensure `Krav i underlaget` and `Tillgängliga krav` are visible.
 1. Scroll inside the right panel.
 1. Check that the left panel and page scroll position stay fixed.
-1. Verify the sticky title bar remains visible.
+1. Verify the sticky title bar remains visible with the right-panel
+   `Tillgängliga krav` and `Kravurvalsfrågor` tabs.
 
 **Expected result:** Only the scrolled panel moves and its title bar remains
-attached to that panel.
+attached to that panel. The right-panel tabs stay embedded in that sticky title
+bar rather than appearing in a separate row above the panel.
 
 ### SPEC-06: add and remove a requirement in specification detail
 
@@ -1080,6 +1203,50 @@ library or unique requirement rows.
 **Expected result:** `Krav i underlaget` resets to `Krav-ID`, `Kravtext`,
 `Kravområde`, and `Behovsreferens`. `Tillgängliga krav` resets to `Krav-ID`,
 `Kravtext`, and `Kravområde`; it does not use the Kravbibliotek default column set.
+
+### SPEC-12: answer requirement-selection questions
+
+**Purpose:** Confirm optional requirement-selection answers filter available
+requirements and appear in reports.
+
+**Users:** `ada.admin`.
+
+**Prerequisites:** Open a specification detail with active
+requirement-selection questions.
+
+**Steps:**
+
+1. In the right panel's sticky title bar, switch from `Tillgängliga krav` to
+   `Kravurvalsfrågor`.
+1. Filter the question tab by text, requirement area, and unanswered questions.
+1. Answer one single-choice question and one multiple-choice question.
+1. For a multiple-choice question, choose `Utan kravurval`.
+1. Return to `Tillgängliga krav`.
+1. Verify `Filtrera med kravurvalsfrågor` is off on fresh entry and that
+   the toggle can be activated from its label-sized hit area. Verify
+   `Tillgängliga krav` shows all published requirements that are not already in
+   `Krav i underlaget`.
+1. Turn on `Filtrera med kravurvalsfrågor` and verify the list is narrowed by
+   kravurvalsfrågor while regular list filters, sort/column choices and column
+   widths remain.
+1. Turn the toggle off and verify row selections in the right list are cleared
+   while regular list filters remain.
+1. If only `Utan kravurval` answers are selected, verify the toggle is disabled
+   and its tooltip explains that the answered questions do not provide a
+   requirement selection.
+1. Choose an answer that should match requirements but currently matches no
+   published requirements, if such a fixture exists.
+1. Generate the specification list report.
+1. Clear one saved answer.
+
+**Expected result:** Progress updates without blocking unanswered questions,
+`Utan kravurval` is exclusive and does not narrow available requirements on its
+own, saved non-empty answers filter available requirements only after the user
+turns on `Filtrera med kravurvalsfrågor`, empty published matches show a
+neutral warning, the filter toggle remains large enough to activate from the
+label area, the report shows the selection context with
+question, answer, status, change timestamp, and actor snapshot before the
+requirement table, and clearing an answer returns that question to unanswered.
 
 ## Deviations
 
@@ -1401,6 +1568,31 @@ icon, labels remain readable, the configured icons appear consistently in
 tables, badges, the status stepper, version history, print reports, and PDF
 reports, and the browser console has no Content Security Policy or WebAssembly
 errors while downloading the PDF.
+
+### ADMIN-11: archived requirement-selection retention excludes saved history
+
+**Purpose:** Confirm Admin > Arkivering can gallra archived
+requirement-selection content without deleting saved requirements-specification
+history.
+
+**Users:** `disa.privacy`.
+
+**Prerequisites:** Use demo seed data with `RETENTION-SEED` retention fixtures.
+
+**Steps:**
+
+1. Open `/sv/admin?tab=archiving`.
+1. Select policy `Arkiverade kravurvalsfrågor och kravurvalssvar`.
+1. Select `Förhandsgranska gallring`.
+1. Verify the preview lists the old archived `RETENTION-SEED` question and the
+   old archived `RETENTION-SEED` answer without saved history.
+1. Verify fresh archived requirement-selection rows and rows with saved
+   requirements-specification answers are absent.
+1. Select `Kör gallring` and confirm.
+
+**Expected result:** The run completes without requiring archive export. Only
+archived requirement-selection rows that have no saved
+`specification_requirement_selection_answers` references are deleted.
 
 ## Privacy and data portability
 

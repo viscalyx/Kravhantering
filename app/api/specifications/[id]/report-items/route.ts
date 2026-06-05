@@ -23,6 +23,7 @@ import { observeCapacity } from '@/lib/observability/capacity'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
 import { MAX_REPORT_ITEM_COUNT } from '@/lib/reports/limits'
+import { requirementPackageName } from '@/lib/reports/package-name'
 import { createRequestContext } from '@/lib/requirements/auth'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
@@ -123,8 +124,7 @@ function mapSpecificationLocalRequirementToReportData(
           requirementPackage => ({
             requirementPackage: {
               id: requirementPackage.id,
-              nameEn: requirementPackage.nameEn,
-              nameSv: requirementPackage.nameSv,
+              name: requirementPackageName(requirementPackage),
             },
           }),
         ),

@@ -1,9 +1,11 @@
+import { recordRequirementSelectionCleanupAudit } from '@/lib/audit/requirement-selection-cleanup-audit'
 import { listAreas, type RequirementAreaRow } from '@/lib/dal/requirement-areas'
 import {
   listCategories,
   type RequirementCategoryRow,
 } from '@/lib/dal/requirement-categories'
 import { listRequirementPackages } from '@/lib/dal/requirement-packages'
+import { cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion } from '@/lib/dal/requirement-selection-questions'
 import {
   listStatuses,
   listTransitions,
@@ -233,25 +235,26 @@ export function formatRequirementDetail(
       })),
       versionNumber: version.versionNumber,
       versionRequirementPackages: version.versionRequirementPackages.map(
-        versionRequirementPackage => ({
-          requirementPackage: {
-            descriptionEn:
-              versionRequirementPackage.requirementPackage?.descriptionEn ??
-              null,
-            descriptionSv:
-              versionRequirementPackage.requirementPackage?.descriptionSv ??
-              null,
-            id:
-              versionRequirementPackage.requirementPackage?.id ??
-              versionRequirementPackage.requirementPackageId,
-            nameEn:
-              versionRequirementPackage.requirementPackage?.nameEn ?? null,
-            nameSv:
-              versionRequirementPackage.requirementPackage?.nameSv ?? null,
-            ownerId:
-              versionRequirementPackage.requirementPackage?.ownerId ?? null,
-          },
-        }),
+        versionRequirementPackage => {
+          const requirementPackage =
+            versionRequirementPackage.requirementPackage as
+              | (typeof versionRequirementPackage.requirementPackage & {
+                  description?: string | null
+                  name?: string | null
+                })
+              | null
+              | undefined
+          return {
+            requirementPackage: {
+              description: requirementPackage?.description ?? null,
+              id:
+                requirementPackage?.id ??
+                versionRequirementPackage.requirementPackageId,
+              name: requirementPackage?.name ?? null,
+              ownerId: null,
+            },
+          }
+        },
       ),
     })),
   }
@@ -563,10 +566,8 @@ export function createRequirementWorkflow({
               items: requirementPackages,
               message: createServiceMessage(
                 getCatalogTitle('requirement_packages', locale, terminology),
-                requirementPackages.map(requirementPackage =>
-                  locale === 'sv'
-                    ? requirementPackage.nameSv
-                    : requirementPackage.nameEn,
+                requirementPackages.map(
+                  requirementPackage => requirementPackage.name,
                 ),
                 responseFormat,
               ),
@@ -981,6 +982,21 @@ export function createRequirementWorkflow({
                   requirementId,
                   requirementUniqueId,
                 })
+                const cleanup =
+                  await cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion(
+                    executor,
+                    [requirementId],
+                  )
+                await recordRequirementSelectionCleanupAudit(
+                  executor,
+                  context,
+                  {
+                    cleanup,
+                    originAction: 'requirement.archiving.approved',
+                    originTargetId: requirementId,
+                    originTargetKind: 'requirement',
+                  },
+                )
               },
             })
             const detail = formatRequirementDetail(
@@ -1225,6 +1241,17 @@ export function createRequirementWorkflow({
                 requirementUniqueId,
                 toStatusId: input.toStatusId,
                 versionNumber: result.versionNumber,
+              })
+              const cleanup =
+                await cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion(
+                  executor,
+                  [requirementId],
+                )
+              await recordRequirementSelectionCleanupAudit(executor, context, {
+                cleanup,
+                originAction: 'requirement.transition',
+                originTargetId: requirementId,
+                originTargetKind: 'requirement',
               })
             },
           })

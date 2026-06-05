@@ -197,11 +197,9 @@ type RequirementLocalizedEntityOverride = {
 
 type RequirementPackageOverride = {
   requirementPackage: {
-    descriptionEn?: string | null
-    descriptionSv?: string | null
+    description?: string | null
     id: number
-    nameEn: string | null
-    nameSv: string | null
+    name: string | null
     ownerId?: number | null
   }
 }
@@ -237,11 +235,9 @@ function toVersionRequirementPackages(
 ): RequirementVersionDetail['versionRequirementPackages'] {
   return (requirementPackages ?? []).map(({ requirementPackage }) => ({
     requirementPackage: {
-      descriptionEn: requirementPackage.descriptionEn ?? null,
-      descriptionSv: requirementPackage.descriptionSv ?? null,
+      description: requirementPackage.description ?? null,
       id: requirementPackage.id,
-      nameEn: requirementPackage.nameEn,
-      nameSv: requirementPackage.nameSv,
+      name: requirementPackage.name,
       ownerId: requirementPackage.ownerId ?? null,
     },
   }))
@@ -700,8 +696,7 @@ describe('RequirementDetailClient', () => {
           {
             requirementPackage: {
               id: 1,
-              nameEn: 'Ordering',
-              nameSv: 'Bestallning',
+              name: 'Bestallning',
             },
           },
         ],
@@ -725,6 +720,10 @@ describe('RequirementDetailClient', () => {
         .getByText('Published description')
         .closest('[data-developer-mode-name="detail section"]'),
     ).toHaveAttribute('data-developer-mode-value', 'requirement text')
+    const detailCard = screen
+      .getByText('Published description')
+      .closest('div[class~="rounded-2xl"]')
+    expect(detailCard).toHaveClass('rounded-2xl', 'p-6', 'space-y-5', 'text-sm')
     expect(
       screen
         .getByText('Published acceptance')
@@ -734,7 +733,7 @@ describe('RequirementDetailClient', () => {
       screen
         .getByText('Bestallning')
         .closest('[data-developer-mode-name="requirement package chip"]'),
-    ).toHaveAttribute('data-developer-mode-value', 'Ordering')
+    ).toHaveAttribute('data-developer-mode-value', 'Bestallning')
     // Edit button is disabled (pending draft exists above published)
     const editBtn = screen.getByRole('button', { name: 'Edit' })
     expect(editBtn).toBeDisabled()
@@ -893,7 +892,7 @@ describe('RequirementDetailClient', () => {
         type: { nameEn: 'Functional', nameSv: null },
         versionRequirementPackages: [
           {
-            requirementPackage: { id: 1, nameEn: 'Ordering', nameSv: null },
+            requirementPackage: { id: 1, name: 'Ordering' },
           },
         ],
       }),
@@ -1030,8 +1029,7 @@ describe('RequirementDetailClient', () => {
           {
             requirementPackage: {
               id: 1,
-              nameEn: 'Ordering',
-              nameSv: 'Bestallning',
+              name: 'Bestallning',
             },
           },
         ],

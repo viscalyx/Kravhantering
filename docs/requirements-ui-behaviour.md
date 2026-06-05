@@ -47,6 +47,8 @@ The behaviors below apply to the requirement list rendered by:
 - `requiresTesting` is filterable, but not sortable.
 - `requirementPackage` is filterable through the requirement-package chip row
   even when the optional, non-sortable table column is hidden.
+- Requirement-package chip filters use the package description as a native
+  tooltip when a description exists.
 
 ## Column Visibility
 
@@ -96,6 +98,10 @@ The behaviors below apply to the requirement list rendered by:
   a separate row above the list; the tab selection is reflected in the URL
   through `leftTab=needs-references` so a copied link can reopen the
   needs-reference register directly.
+- The right specification-detail panel uses the same embedded sticky-list-header
+  tab treatment for `Tillgängliga krav` and `Kravurvalsfrågor`; the active tab
+  is the panel title, so the right panel does not render a second visible
+  heading for either tab.
 - The action pills on the right side of that sticky header are contextual:
   `Krav i underlaget` shows requirement-list actions such as local creation,
   column settings, print, export, and selected-row bulk actions, while
@@ -398,6 +404,101 @@ down.
   specification list export.
 - PDF uses the matching server route
   `/[locale]/specifications/[slug]/reports/pdf/list?refs=...`.
+- Specification list reports include the current requirement-selection context
+  before the requirement table. Historical saved answers are shown as historical
+  context and do not affect filtering or progress. Each context row includes the
+  question, answer, active/historical status, latest change timestamp, and actor
+  display-name snapshot when available. The specification CSV export remains
+  row-only.
+
+## Requirement Selection Question Stewardship
+
+- In `Kravbiblioteksförvaltning` > `Kravurvalsfrågor`, the question form shows
+  the selected requirement area's description as small supporting text below
+  `Kravområde`.
+- `Kravområde` is set when a requirement-selection question is created and stays
+  locked when editing the question. The edit form shows the select as disabled,
+  exposes a tooltip explaining why it cannot be changed, and keeps the selected
+  area's description visible.
+- The question form's free-text areas can be resized vertically, but their
+  maximum height is capped relative to the viewport so the remaining form
+  controls stay reachable inside the modal.
+- The answer form uses a left-form/right-workspace modal without a visible
+  modal title, visible question ID, or close icon. Answer text,
+  `Utan kravurval`, description, save and `Avbryt` stay in the left column; the
+  right workspace contains compact source controls and the front-and-center
+  `Krav i urvalet` preview. `Kravpaket` is selected through a searchable
+  checkbox popover, direct krav links are added through a visible Krav-ID /
+  kravtext search with chips, and preview rows show source badges for direct
+  selections and contributing kravpaket. `Avbryt` closes immediately when the
+  answer is unchanged and asks for confirmation before discarding unsaved answer
+  changes.
+- Clicking a row in the answer form's `Krav i urvalet` preview opens a
+  read-only requirement detail card that reuses the same content-card layout,
+  padding, font scale, and section spacing as the requirements library inline
+  detail. It starts with `Kravtext`, not a repeated Krav-ID heading, and does
+  not include lifecycle steppers, action buttons, or version history.
+- Saved answer rows show compact source pills for selected `Kravpaket` and
+  direct `Krav-ID`. Clicking one or more source pills expands the resulting krav
+  list and filters it to the union of all selected sources; clicking an active
+  pill removes that source from the filter. The compact count disclosure is
+  shown before the source pills, separated by a small divider, and expands or
+  collapses the full list. Expanded krav rows show source badges, so a krav that
+  is both directly selected and included through a package appears once with
+  both `Direktvalt` and package badges. The old separate `Krav i urvalet: n`
+  button is not shown.
+
+## Specification Requirement Selection Panel
+
+- The specification detail right panel embeds the `Tillgängliga krav` and
+  `Kravurvalsfrågor` tabs in the same sticky panel header pattern as the left
+  panel tabs.
+- Requirement-selection questions are always optional. Progress counts answered
+  active questions against all active questions, both total and per requirement
+  area, without blocking save or report actions.
+- The question tab provides lightweight search/filtering by question text,
+  answer text, requirement area, and unanswered state. Questions are grouped by
+  requirement area and answer rows show how many published requirements they
+  match, plus how many of those are already in the specification.
+- Saved answers preserve requirement-selection context for the specification.
+  `Tillgängliga krav` starts from all published library requirements that are
+  not already in the specification; users opt in with the `Filtrera med
+  kravurvalsfrågor` toggle when they want saved answers to filter the list
+  through linked requirement packages and explicit published requirements.
+- `Utan kravurval` clears other answers for the same question and is exclusive
+  even for multiple-choice questions. It counts as answered but contributes no
+  requirement filter; if only `Utan kravurval` answers are selected, available
+  requirements are not narrowed.
+- Historical saved answers remain visible and clearable, but are excluded from
+  filters and progress.
+- Saved answers update optimistically with visible saving/error status. When the
+  requirement-selection toggle is on, changed answers update the filtered
+  `Tillgängliga krav` list immediately; when the toggle is off, changed answers
+  remain selection context and the list stays unfiltered by requirement-selection
+  answers.
+- The `Filtrera med kravurvalsfrågor` toggle is shown as off on a fresh visit.
+  If answered questions only contain `Utan kravurval`, the toggle remains off,
+  disabled and dimmed with a tooltip that explains that the answered questions
+  do not provide a requirement selection. If answered questions provide a
+  requirement selection that currently matches zero published requirements, the
+  toggle remains enabled and shows the neutral empty-selection warning when
+  turned on.
+- Turning the requirement-selection toggle on or off preserves the user's
+  regular `Tillgängliga krav` filters, search, sort order, selected columns and
+  column widths. Requirement-selection filtering is combined with the regular
+  list filters rather than replacing or clearing them. Changing this toggle, or
+  changing answers while the toggle is on, clears the right-list row selection
+  so hidden requirements cannot remain selected.
+- The requirement-selection toggle is transient view state. It may remain on
+  while the user stays in the same specification detail view and switches
+  between right-panel tabs, but it is not persisted across a fresh visit to the
+  specification.
+- If selected answers should contribute requirements but no published
+  requirements match, the specification shows a neutral warning instead of
+  treating the state as a validation error.
+- `Saknar kravurval` is a health state for active answers without any currently
+  matching published requirements. It asks stewardship to repair links but does
+  not make the answer historical and does not convert it to `Utan kravurval`.
 
 ## Combined Review Report Floating Pill
 

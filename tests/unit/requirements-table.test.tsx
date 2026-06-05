@@ -3185,9 +3185,7 @@ describe('RequirementsTable', () => {
   })
 
   it('only renders requirement package filter pills when filtering is available', () => {
-    const requirementPackages = [
-      { id: 1, nameEn: 'Mobile use', nameSv: 'Mobil användning' },
-    ]
+    const requirementPackages = [{ id: 1, name: 'Mobil användning' }]
     const onFilterChange = vi.fn()
 
     const { rerender } = render(
@@ -3206,7 +3204,6 @@ describe('RequirementsTable', () => {
     rerender(
       <RequirementsTable
         filterValues={{ requirementPackageIds: [1] }}
-        getName={opt => opt.nameSv}
         locale="sv"
         onFilterChange={onFilterChange}
         requirementPackages={requirementPackages}
@@ -3232,7 +3229,6 @@ describe('RequirementsTable', () => {
     rerender(
       <RequirementsTable
         filterValues={{}}
-        getName={opt => opt.nameSv}
         locale="sv"
         onFilterChange={onFilterChange}
         requirementPackages={requirementPackages}
@@ -3248,6 +3244,38 @@ describe('RequirementsTable', () => {
     expect(onFilterChange).toHaveBeenCalledWith({
       requirementPackageIds: [1],
     })
+  })
+
+  it('uses requirement package descriptions as filter pill tooltips', () => {
+    const requirementPackages = [
+      {
+        description: 'Krav för mobil användning.',
+        id: 1,
+        name: 'Mobil användning',
+      },
+      {
+        description: '   ',
+        id: 2,
+        name: 'Tom beskrivning',
+      },
+    ]
+
+    render(
+      <RequirementsTable
+        filterValues={{}}
+        locale="sv"
+        onFilterChange={vi.fn()}
+        requirementPackages={requirementPackages}
+        rows={[makeRow()]}
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Mobil användning' }),
+    ).toHaveAttribute('title', 'Krav för mobil användning.')
+    expect(
+      screen.getByRole('button', { name: 'Tom beskrivning' }),
+    ).not.toHaveAttribute('title')
   })
 
   it('renders the infinite-scroll sentinel when hasMore and onLoadMore are set', () => {
@@ -3368,14 +3396,14 @@ describe('RequirementsTable', () => {
       'requirementPackage' as const,
     ]
 
-    it('renders localized requirement package names in the selected locale', () => {
+    it('renders requirement package names', () => {
       const row = makeRow({
         requirementPackages: [
-          { id: 1, nameEn: 'Mobile use', nameSv: 'Mobil anvandning' },
-          { id: 2, nameEn: 'Data platform', nameSv: 'Dataplattform' },
+          { id: 1, name: 'Mobil anvandning' },
+          { id: 2, name: 'Dataplattform' },
         ],
       })
-      const { rerender } = render(
+      render(
         <RequirementsTable
           locale="sv"
           rows={[row]}
@@ -3386,16 +3414,6 @@ describe('RequirementsTable', () => {
       expect(
         screen.getByText('Mobil anvandning, Dataplattform'),
       ).toBeInTheDocument()
-
-      rerender(
-        <RequirementsTable
-          locale="en"
-          rows={[row]}
-          visibleColumns={requirementPackageColumns}
-        />,
-      )
-
-      expect(screen.getByText('Mobile use, Data platform')).toBeInTheDocument()
     })
 
     it('renders dash when no requirement packages are linked', () => {

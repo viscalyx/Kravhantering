@@ -25,6 +25,62 @@ jobs:
       STORAGE_DRIVER: vfs
 
     steps:
+      - name: Report initial disk layout
+        run: |
+          set -euo pipefail
+          cat > "${RUNNER_TEMP}/report-disk-layout.sh" <<'REPORT_DISK_LAYOUT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          label="${1:-disk layout}"
+          verify_root="/tmp/kh-oci-${CONTAINER_STACK_RUN_ID:-${GITHUB_RUN_ID}}"
+          mkdir -p "${verify_root}" "${GITHUB_WORKSPACE}/tmp/container-pr-artifacts/oci"
+
+          echo "::group::${label}: mounted filesystems"
+          df -hT
+          df -ihT
+          echo "::endgroup::"
+
+          echo "::group::${label}: target mounts"
+          for target in \
+            "${GITHUB_WORKSPACE}" \
+            "${RUNNER_TEMP:-/tmp}" \
+            / \
+            /tmp \
+            /var/tmp \
+            "${GITHUB_WORKSPACE}/tmp/container-pr-artifacts/oci" \
+            "${verify_root}"; do
+            printf '\nTarget: %s\n' "${target}"
+            df -hT "${target}"
+            df -ihT "${target}"
+            findmnt -T "${target}" || true
+          done
+          echo "::endgroup::"
+
+          echo "::group::${label}: container storage usage"
+          if command -v docker >/dev/null 2>&1; then
+            docker system df || true
+          else
+            echo "docker not available"
+          fi
+          if command -v podman >/dev/null 2>&1; then
+            podman system df || true
+          else
+            echo "podman not available"
+          fi
+          du -sh \
+            "${GITHUB_WORKSPACE}/tmp/container-pr-artifacts/oci" \
+            "${verify_root}" \
+            /tmp \
+            /var/tmp \
+            /var/lib/docker \
+            "${HOME}/.local/share/containers" 2>/dev/null || true
+          echo "::endgroup::"
+          REPORT_DISK_LAYOUT
+
+          chmod +x "${RUNNER_TEMP}/report-disk-layout.sh"
+          "${RUNNER_TEMP}/report-disk-layout.sh" "initial"
+
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -137,11 +193,22 @@ jobs:
       - name: Trust generated CA for browser runner
         run: bash .devcontainer/trust-container-ca.sh
 
+      - name: Report OCI export disk layout
+        run: "${RUNNER_TEMP}/report-disk-layout.sh" "before OCI export"
+
       - name: Export OCI archives
-        run: npm run container:oci:export -- --output-dir tmp/container-pr-artifacts/oci
+        run: |
+          set -euo pipefail
+          trap 'bash "${RUNNER_TEMP}/report-disk-layout.sh" "after OCI export" || true' EXIT
+          npm run container:oci:export -- --output-dir tmp/container-pr-artifacts/oci
+
+      - name: Report OCI verification disk layout
+        run: "${RUNNER_TEMP}/report-disk-layout.sh" "before OCI verification"
 
       - name: Verify OCI archives
         run: |
+          set -euo pipefail
+          trap 'bash "${RUNNER_TEMP}/report-disk-layout.sh" "after OCI verification" || true' EXIT
           npm run container:oci:verify -- \
             --output-dir tmp/container-pr-artifacts/oci \
             --verify-root "/tmp/kh-oci-${CONTAINER_STACK_RUN_ID}"

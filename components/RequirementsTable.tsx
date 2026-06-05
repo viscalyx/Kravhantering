@@ -63,6 +63,7 @@ import {
   type RequirementColumnId,
   type RequirementColumnWidths,
   type RequirementListColumnDefault,
+  type RequirementPackageOption,
   type RequirementRow,
   type RequirementSortField,
   type RequirementSortState,
@@ -110,7 +111,7 @@ export interface RequirementsTableProps {
   pinnedIds?: Set<number>
   qualityCharacteristics?: QualityCharacteristicOption[]
   renderExpanded?: (id: number) => ReactNode
-  requirementPackages?: FilterOption[]
+  requirementPackages?: RequirementPackageOption[]
   riskLevels?: RiskLevelOption[]
   rows: RequirementRow[]
   selectable?: boolean
@@ -1607,14 +1608,12 @@ export default function RequirementsTable({
     const rl = riskLevels.find(rl => rl.id === id)
     return rl ? getName(rl) : String(id)
   }
-  const requirementPackageLabel = (requirementPackage: FilterOption) => {
-    const primary =
-      locale === 'sv' ? requirementPackage.nameSv : requirementPackage.nameEn
-    const fallback =
-      locale === 'sv' ? requirementPackage.nameEn : requirementPackage.nameSv
-
-    return primary.trim() || fallback.trim() || String(requirementPackage.id)
-  }
+  const requirementPackageName = (
+    requirementPackage: RequirementPackageOption,
+  ) => requirementPackage.name.trim() || String(requirementPackage.id)
+  const requirementPackageDescription = (
+    requirementPackage: RequirementPackageOption,
+  ) => requirementPackage.description?.trim() || undefined
   const rowRequirementPackageLabels = (row: RequirementRow) => {
     const rowPackages =
       row.requirementPackages && row.requirementPackages.length > 0
@@ -1625,12 +1624,11 @@ export default function RequirementsTable({
                 requirementPackage => requirementPackage.id === id,
               ) ?? {
                 id,
-                nameEn: String(id),
-                nameSv: String(id),
+                name: String(id),
               },
           )
 
-    return rowPackages.map(requirementPackageLabel)
+    return rowPackages.map(requirementPackageName)
   }
   const specificationItemStatusLabel = (id: number) => {
     const s = specificationItemStatuses.find(s => s.id === id)
@@ -3026,9 +3024,10 @@ export default function RequirementsTable({
             <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto">
               {requirementPackages.map(s => {
                 const active = (fv.requirementPackageIds ?? []).includes(s.id)
+                const description = requirementPackageDescription(s)
                 return (
                   <button
-                    aria-label={getName(s)}
+                    aria-label={requirementPackageName(s)}
                     aria-pressed={active}
                     className={`min-h-11 min-w-11 shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                       active
@@ -3047,9 +3046,10 @@ export default function RequirementsTable({
                           next.length > 0 ? next : undefined,
                       })
                     }}
+                    title={description}
                     type="button"
                   >
-                    {getName(s)}
+                    {requirementPackageName(s)}
                   </button>
                 )
               })}

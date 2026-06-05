@@ -124,13 +124,13 @@ describe('requirement list SQL builders', () => {
     })
 
     expect(svQuery.sqlText).toContain(
-      'LOWER(requirement_package.name_sv) ASC, requirement_package.id ASC',
+      'LOWER(requirement_package.name) ASC, requirement_package.id ASC',
     )
     expect(enQuery.sqlText).toContain(
-      'LOWER(requirement_package.name_en) ASC, requirement_package.id ASC',
+      'LOWER(requirement_package.name) ASC, requirement_package.id ASC',
     )
     expect(fallbackQuery.sqlText).toContain(
-      'LOWER(requirement_package.name_en) ASC, requirement_package.id ASC',
+      'LOWER(requirement_package.name) ASC, requirement_package.id ASC',
     )
   })
 

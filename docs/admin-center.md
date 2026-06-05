@@ -218,16 +218,16 @@ the signed-in user may export their own HSA-ID, while cross-user export requires
 `PrivacyOfficer`.
 
 Owner rows have an extra live-assignment guard. If an owner is assigned to one
-or more requirement areas or requirement packages and no replacement
-HSA-ID/name is supplied, the owner row is disabled and its affected-objects
-column lists the blocking assignments; the warning text stays generic.
-Requirement area and package owner rows are still shown in the preview as
-greyed informational rows, but their action is controlled by the owner row.
-With a replacement supplied, the owner row only allows `Switch` or `Skip`;
-choosing `Switch` changes the linked requirement areas and packages to the
-replacement owner in the same transaction. `Anonymize` and `Delete` are
-rejected for that owner while requirement areas or packages are linked. If no
-requirement area or package references the owner, the owner row only allows
+or more requirement areas and no replacement HSA-ID/name is supplied, the owner
+row is disabled and its affected-objects column lists the blocking assignments;
+the warning text stays generic. Requirement area owner rows are still shown in
+the preview as greyed informational rows, but their action is controlled by the
+owner row. Requirement package leads are direct HSA-ID/display-name snapshots
+and are switched by their own package-lead rows. With a replacement supplied,
+the owner row only allows `Switch` or `Skip`; choosing `Switch` changes linked
+requirement areas to the replacement owner in the same transaction. `Anonymize`
+and `Delete` are rejected for that owner while requirement areas are linked. If
+no requirement area references the owner, the owner row only allows
 `Delete` or `Skip`; `Switch` and `Anonymize` are not valid owner actions in
 that state.
 
@@ -271,12 +271,14 @@ the accepted preview through `/api/admin/archiving/*`.
 
 V1 supports direct deletion after preview and confirmation for:
 
-- orphaned owner rows with no active requirement-area or package assignment
+- orphaned owner rows with no active requirement-area assignment
 - unused requirement areas with no current library requirements, and unused
   requirement packages or norm references with no current library or unique
   requirement links, older than the policy age
 - old requirement versions with no current or historical requirements
   specification dependency
+- archived requirement-selection questions and answers older than one year
+  when no saved requirements-specification answers still reference them
 
 Local seed data includes deterministic `RETENTION-SEED` fixtures for every
 active policy source and the main exclusion cases, so a freshly seeded
@@ -287,6 +289,11 @@ Requirement-version deletion removes package and norm-reference join rows first,
 then the version row. If no versions remain, the requirement row is deleted as
 well. Versions that have ever been linked to a requirements specification are
 excluded by `has_specification_item_history`.
+
+Archived requirement-selection deletion uses the `archived_at` timestamp on the
+question or answer as its age basis. Saved answers in
+`specification_requirement_selection_answers` block deletion so requirements
+specification history remains intact.
 
 Requirements specifications outside `Förvaltning` and older than the policy age
 require an anonymized JSON archive export before deletion. The export includes
@@ -365,7 +372,6 @@ It links to the existing stable routes for:
 
 - areas (including owner assignment)
 - types
-- requirement packages
 - norm references
 - requirement version statuses
 - usage statuses
@@ -375,7 +381,10 @@ It links to the existing stable routes for:
 - implementation types
 
 The admin center does not rename or move those routes. It only centralizes how
-users reach them.
+users reach them. Requirement packages are managed from
+`/requirements/stewardship` together with requirement-selection questions, since
+package leads and requirement-area stewards can work there without needing
+Admin Center access.
 
 The fixed system rows for requirement version statuses, usage statuses, and risk
 levels can also carry a nullable icon selected from the installed

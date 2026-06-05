@@ -1,5 +1,9 @@
 // cspell:ignore SYSUTCDATETIME
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
+import {
+  cleanupRequirementSelectionPackageLinks,
+  type RequirementSelectionCleanupResult,
+} from '@/lib/dal/requirement-selection-questions'
 import type { SqlServerDatabase } from '@/lib/db'
 import { isDeletedUserInternalName } from '@/lib/privacy/display-name'
 import {
@@ -88,6 +92,13 @@ export interface ArchivingRetentionExecutionInputWithAudit
     executor: QueryExecutor,
     result: ArchivingRetentionRunResult,
   ) => Promise<void>
+  cleanupAudit?: (
+    executor: QueryExecutor,
+    result: {
+      candidate: ArchivingRetentionCandidate
+      cleanup: RequirementSelectionCleanupResult
+    },
+  ) => Promise<void>
 }
 
 export interface ArchivingRetentionRunResult extends ArchivingRetentionPreview {
@@ -148,6 +159,8 @@ const ORPHANED_OWNER_POLICY_KEY = 'orphaned_owner_delete'
 const UNUSED_TAXONOMY_POLICY_KEY = 'unused_taxonomy_delete'
 const OLD_REQUIREMENT_VERSIONS_POLICY_KEY = 'old_requirement_versions_delete'
 const OBSOLETE_SPECIFICATIONS_POLICY_KEY = 'obsolete_specifications_delete'
+const ARCHIVED_REQUIREMENT_SELECTION_POLICY_KEY =
+  'archived_requirement_selection_delete'
 const SPECIFICATION_MANAGEMENT_STATUS_ID = 4
 const EXPORT_CONFIRMATION_TTL_MS = 15 * 60 * 1000
 
@@ -192,6 +205,57 @@ const DELETE_REQUIREMENT_VERSION_SQL = `DECLARE @requirement_id int;
         END
       END`
 
+const DELETE_REQUIREMENT_SELECTION_QUESTION_SQL = `DECLARE @question_id int;
+      SELECT @question_id = question.id
+      FROM requirement_selection_questions question
+      WHERE question.id = @0
+        AND question.is_archived = 1
+        AND question.archived_at IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM specification_requirement_selection_answers saved
+          WHERE saved.question_id = question.id
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM requirement_selection_answers active_answer
+          WHERE active_answer.question_id = question.id
+            AND active_answer.is_archived = 0
+        );
+      IF @question_id IS NOT NULL
+      BEGIN
+        DELETE answer_package
+        FROM requirement_selection_answer_packages AS answer_package
+        INNER JOIN requirement_selection_answers AS answer
+          ON answer.id = answer_package.answer_id
+        WHERE answer.question_id = @question_id;
+        DELETE answer_requirement
+        FROM requirement_selection_answer_requirements AS answer_requirement
+        INNER JOIN requirement_selection_answers AS answer
+          ON answer.id = answer_requirement.answer_id
+        WHERE answer.question_id = @question_id;
+        DELETE FROM requirement_selection_answers WHERE question_id = @question_id;
+        DELETE FROM requirement_selection_questions WHERE id = @question_id;
+      END`
+
+const DELETE_REQUIREMENT_SELECTION_ANSWER_SQL = `DECLARE @answer_id int;
+      SELECT @answer_id = answer.id
+      FROM requirement_selection_answers answer
+      WHERE answer.id = @0
+        AND answer.is_archived = 1
+        AND answer.archived_at IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM specification_requirement_selection_answers saved
+          WHERE saved.answer_id = answer.id
+        );
+      IF @answer_id IS NOT NULL
+      BEGIN
+        DELETE FROM requirement_selection_answer_packages WHERE answer_id = @answer_id;
+        DELETE FROM requirement_selection_answer_requirements WHERE answer_id = @answer_id;
+        DELETE FROM requirement_selection_answers WHERE id = @answer_id;
+      END`
+
 const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
   {
     action: 'delete',
@@ -200,9 +264,6 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
       WHERE owner.id = @0
         AND NOT EXISTS (
           SELECT 1 FROM requirement_areas area WHERE area.owner_id = owner.id
-        )
-        AND NOT EXISTS (
-          SELECT 1 FROM requirement_packages pkg WHERE pkg.owner_id = owner.id
         )`,
     fieldKey: 'identity',
     objectKey: 'owners',
@@ -220,9 +281,6 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
         WHERE owner.updated_at <= @0
           AND NOT EXISTS (
             SELECT 1 FROM requirement_areas area WHERE area.owner_id = owner.id
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM requirement_packages pkg WHERE pkg.owner_id = owner.id
           )
       ) source
       WHERE ${ACTIVE_EXCEPTION_SQL}
@@ -281,8 +339,8 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
           N'requirement_packages.unused' AS source_key,
           N'requirement_packages' AS subject_table,
           CAST(pkg.id AS nvarchar(120)) AS subject_id,
-          pkg.name_sv AS reference,
-          pkg.name_sv AS current_display_value,
+          pkg.name AS reference,
+          pkg.name AS current_display_value,
           pkg.updated_at AS age_basis
         FROM requirement_packages pkg
         WHERE pkg.updated_at <= @0
@@ -454,6 +512,87 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
       ORDER BY source.reference ASC`,
     sourceKey: 'requirements_specifications.obsolete',
     subjectTable: 'requirements_specifications',
+  },
+  {
+    action: 'delete',
+    executeSql: DELETE_REQUIREMENT_SELECTION_QUESTION_SQL,
+    fieldKey: 'requirementSelection',
+    objectKey: 'requirementSelectionQuestions',
+    policyKey: ARCHIVED_REQUIREMENT_SELECTION_POLICY_KEY,
+    selectSql: `SELECT *
+      FROM (
+        SELECT
+          N'requirement_selection_questions.archived' AS source_key,
+          N'requirement_selection_questions' AS subject_table,
+          CAST(question.id AS nvarchar(120)) AS subject_id,
+          CONCAT(question.question_code, N' ', question.question_text) AS reference,
+          question.question_text AS current_display_value,
+          question.archived_at AS age_basis
+        FROM requirement_selection_questions question
+        WHERE question.is_archived = 1
+          AND question.archived_at <= @0
+          AND NOT EXISTS (
+            SELECT 1
+            FROM specification_requirement_selection_answers saved
+            WHERE saved.question_id = question.id
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM requirement_selection_answers active_answer
+            WHERE active_answer.question_id = question.id
+              AND active_answer.is_archived = 0
+          )
+      ) source
+      WHERE ${ACTIVE_EXCEPTION_SQL}
+      ORDER BY source.reference ASC`,
+    sourceKey: 'requirement_selection_questions.archived',
+    subjectTable: 'requirement_selection_questions',
+  },
+  {
+    action: 'delete',
+    executeSql: DELETE_REQUIREMENT_SELECTION_ANSWER_SQL,
+    fieldKey: 'requirementSelection',
+    objectKey: 'requirementSelectionAnswers',
+    policyKey: ARCHIVED_REQUIREMENT_SELECTION_POLICY_KEY,
+    selectSql: `SELECT *
+      FROM (
+        SELECT
+          N'requirement_selection_answers.archived' AS source_key,
+          N'requirement_selection_answers' AS subject_table,
+          CAST(answer.id AS nvarchar(120)) AS subject_id,
+          CONCAT(question.question_code, N' / ', answer.answer_text) AS reference,
+          answer.answer_text AS current_display_value,
+          answer.archived_at AS age_basis
+        FROM requirement_selection_answers answer
+        INNER JOIN requirement_selection_questions question
+          ON question.id = answer.question_id
+        WHERE answer.is_archived = 1
+          AND answer.archived_at <= @0
+          AND NOT EXISTS (
+            SELECT 1
+            FROM specification_requirement_selection_answers saved
+            WHERE saved.answer_id = answer.id
+          )
+          AND NOT (
+            question.is_archived = 1
+            AND question.archived_at <= @0
+            AND NOT EXISTS (
+              SELECT 1
+              FROM specification_requirement_selection_answers saved_question
+              WHERE saved_question.question_id = question.id
+            )
+            AND NOT EXISTS (
+              SELECT 1
+              FROM requirement_selection_answers active_answer
+              WHERE active_answer.question_id = question.id
+                AND active_answer.is_archived = 0
+            )
+          )
+      ) source
+      WHERE ${ACTIVE_EXCEPTION_SQL}
+      ORDER BY source.reference ASC`,
+    sourceKey: 'requirement_selection_answers.archived',
+    subjectTable: 'requirement_selection_answers',
   },
 ]
 
@@ -822,7 +961,10 @@ function numericSubjectId(candidate: ArchivingRetentionCandidate): number {
 async function executeCandidate(
   tx: QueryExecutor,
   candidate: ArchivingRetentionCandidate,
-): Promise<boolean> {
+): Promise<{
+  changed: boolean
+  cleanup: RequirementSelectionCleanupResult | null
+}> {
   const source = SOURCE_DEFINITIONS.find(
     definition => definition.sourceKey === candidate.sourceKey,
   )
@@ -838,10 +980,19 @@ async function executeCandidate(
       sourceKey: candidate.sourceKey,
     })
   }
+  const cleanup =
+    source.sourceKey === 'requirement_packages.unused'
+      ? await cleanupRequirementSelectionPackageLinks(tx, [
+          numericSubjectId(candidate),
+        ])
+      : null
   const result = (await tx.query(source.executeSql, [
     numericSubjectId(candidate),
   ])) as { affected?: number } | undefined
-  return result?.affected == null || result.affected > 0
+  return {
+    changed: result?.affected == null || result.affected > 0,
+    cleanup,
+  }
 }
 
 async function insertRun(
@@ -931,10 +1082,13 @@ export async function executeArchivingRetention(
     let deleteCount = 0
     let skippedCount = 0
     for (const candidate of preview.candidates) {
-      const changed = await executeCandidate(tx, candidate)
+      const { changed, cleanup } = await executeCandidate(tx, candidate)
       if (!changed) {
         skippedCount += 1
         continue
+      }
+      if (cleanup?.removedLinkCount) {
+        await input.cleanupAudit?.(tx, { candidate, cleanup })
       }
       if (candidate.requiresExport) archiveCount += 1
       if (candidate.action === 'delete') deleteCount += 1
@@ -1158,16 +1312,14 @@ async function exportSpecification(
       `SELECT
           specification_item.id AS specificationItemId,
           pkg.id,
-          pkg.name_sv AS nameSv,
-          pkg.name_en AS nameEn,
-          pkg.description_sv AS descriptionSv,
-          pkg.description_en AS descriptionEn
+          pkg.name,
+          pkg.description
         FROM requirements_specification_items specification_item
         INNER JOIN requirement_version_requirement_packages link
           ON link.requirement_version_id = specification_item.requirement_version_id
         INNER JOIN requirement_packages pkg ON pkg.id = link.requirement_package_id
         WHERE specification_item.requirements_specification_id = @0
-        ORDER BY specification_item.id ASC, pkg.name_sv ASC`,
+        ORDER BY specification_item.id ASC, pkg.name ASC`,
       [specificationId],
     ) as Promise<Row[]>,
     db.query(
@@ -1256,16 +1408,14 @@ async function exportSpecification(
       `SELECT
           local_requirement.id AS localRequirementId,
           pkg.id,
-          pkg.name_sv AS nameSv,
-          pkg.name_en AS nameEn,
-          pkg.description_sv AS descriptionSv,
-          pkg.description_en AS descriptionEn
+          pkg.name,
+          pkg.description
         FROM specification_local_requirements local_requirement
         INNER JOIN specification_local_requirement_requirement_packages link
           ON link.specification_local_requirement_id = local_requirement.id
         INNER JOIN requirement_packages pkg ON pkg.id = link.requirement_package_id
         WHERE local_requirement.specification_id = @0
-        ORDER BY local_requirement.id ASC, pkg.name_sv ASC`,
+        ORDER BY local_requirement.id ASC, pkg.name ASC`,
       [specificationId],
     ) as Promise<Row[]>,
     db.query(

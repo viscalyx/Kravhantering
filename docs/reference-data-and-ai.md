@@ -219,8 +219,9 @@ requirement must have a type.
 - Runs 5 DAL queries in parallel via `Promise.all`:
   categories, types, quality characteristics, risk levels,
   requirement packages.
-- Selects `nameEn` or `nameSv` based on the `locale`
-  parameter.
+- Selects localized `nameEn` or `nameSv` for taxonomy tables based on the
+  `locale` parameter. Requirement packages are authored as one-language content
+  and use their stored `name` for both locales.
 - Quality characteristics include parent hierarchy: a `Map`
   by `id` resolves `parentName` from `parentId`.
 - All results are mapped to `{ id, name }` (plus

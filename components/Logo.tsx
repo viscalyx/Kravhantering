@@ -10,6 +10,7 @@ export default function Logo({ className = 'h-8 w-8' }: LogoProps) {
       alt="Kravhantering logotyp"
       className={className}
       height={32}
+      loading="eager"
       src="/logo-small.png"
       width={32}
     />

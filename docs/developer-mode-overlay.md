@@ -110,6 +110,14 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   values `help toggle open` and `help toggle closed`.
 - The app title link in the navigation uses `navigation > link: app title`
   and carries the build-version tooltip when generated metadata is available.
+- The `Kravbiblioteksförvaltning` navigation disclosure uses
+  `navigation > stewardship disclosure: open|closed`, and its inline submenu
+  uses `navigation > stewardship submenu: inline row`. The separate decorative
+  desktop backgrounds behind the disclosure and submenu belong to that same
+  submenu surface and do not add separate markers.
+- The delayed stewardship route change spinner uses
+  `navigation > transition mask: stewardship` only when navigation takes longer
+  than two seconds.
 - Auth account-detail rows keep their developer-mode values in English
   as `user info name`, `user info email`, `user info subject`, and
   `user info session expires` even when the visible labels are
@@ -140,9 +148,46 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `link: requirements recovery` or `link: admin recovery`.
 - Requirements specification list filtering exposes
   `specifications > text field: name filter` on the Name search input above
-  the table, while the specification create trigger keeps the existing
-  `specifications > create button` marker when it shares that toolbar row on
-  wide screens.
+  the table. Its create trigger now lives in the fixed `floating action rail`
+  as `specifications > floating pill: new specification`.
+- Requirements packages expose their create trigger in the fixed
+  `floating action rail` as
+  `requirementPackages > floating pill: new requirement package`. The new
+  package form opens in the shared `dialog: new requirement package` surface;
+  editing opens the same modal surface as `dialog: edit requirement package`.
+  The package name-or-description search field renders as
+  `requirementPackages > text field: name or description filter`. Package list
+  row actions render as icon-only buttons and keep their developer-mode markers
+  as
+  `requirementPackages > table action: edit`, `archive`, `reactivate`, and
+  `delete`.
+- Requirement selection questions expose their create trigger in the fixed
+  `floating action rail` as
+  `requirementSelectionQuestions > floating pill: new requirement selection question`.
+  The new question form opens in the shared
+  `dialog: new requirement selection question` surface.
+  Each question renders its contextual answer-create trigger as
+  `requirementSelectionQuestions > button: new requirement selection answer`.
+  New and edited answer forms open as `dialog: new requirement selection answer`
+  and `dialog: edit requirement selection answer`. The answer modal exposes
+  `requirementSelectionQuestions > answer form column: fields`,
+  `requirementSelectionQuestions > answer form column: source workspace`,
+  `requirementSelectionQuestions > answer form workspace: source selection`,
+  and
+  `requirementSelectionQuestions > answer form workspace: requirements in selection`;
+  the answer fields column omits the visible modal title, visible question ID,
+  close icon, and manual answer sort-order editing because answer order is
+  managed from the answer list. Rows in `Krav i urvalet` render under
+  `requirementSelectionQuestions > answer form > requirements in selection`
+  as `requirement in selection: <ID>`, and the read-only detail card reuses the
+  library inline-detail card layout while rendering as `matched requirement
+  detail`. Saved answer rows keep the count disclosure before the compact
+  source pills with a small separator; those pills filter the expanded answer
+  requirement list. Expanded rows show direct and package source
+  badges without adding separate Developer Mode markers.
+  Search, area/status filters, edit buttons, question-form requirement-area
+  descriptions and lock hints, answer row reorder handles, and health badges
+  render inside the existing `requirementSelectionQuestions` form/list surfaces.
 - Requirements specification list requirement-area labels render as compact,
   non-interactive pills inside the existing `specifications > crud table`
   surface; they do not add separate developer-mode marker names.
@@ -163,6 +208,16 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `requirements specification detail` context with `table action` values
   `create local requirement` and `create needs reference`. They live in the
   sticky list header beside the embedded left-panel tabs.
+- Requirements specification detail right-panel tabs cover both available
+  requirements and requirement-selection questions and live in the sticky panel
+  header, matching the left-panel tab treatment. The
+  `Filtrera med kravurvalsfrågor` switch is a regular product control in the
+  available-requirements sticky action area and does not introduce a separate
+  Developer Mode marker. The question controls reuse the existing form/table
+  control markers; search/filter controls, optimistic save status, match
+  summaries, and `Saknar kravurval` badges do not introduce separate marker
+  names. No mandatory-question marker exists because requirement-selection
+  questions are always optional.
 - Specification-local inline detail views in specification context use the
   `requirements specification detail` context with
   `detail pane: specification-local requirement`.

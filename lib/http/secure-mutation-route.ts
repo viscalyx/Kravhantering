@@ -314,3 +314,13 @@ export function customMutationPolicy<TBody = unknown, TParams = unknown>(
 ): MutationPolicy<TBody, TParams> {
   return { authorize, kind: 'custom', name }
 }
+
+export function authenticatedMutationPolicy<TBody = unknown, TParams = unknown>(
+  name: string,
+): MutationPolicy<TBody, TParams> {
+  return customMutationPolicy(name, ({ context }) => {
+    if (!context.actor?.isAuthenticated) {
+      throw unauthorizedError()
+    }
+  })
+}

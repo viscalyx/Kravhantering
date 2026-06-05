@@ -593,7 +593,9 @@ describe('RequirementsSpecificationsClient', () => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
     fireEvent.click(
-      screen.getByRole('button', { name: /specification\.newSpecification/i }),
+      await screen.findByRole('button', {
+        name: /specification.newSpecification/i,
+      }),
     )
     expect(
       screen.getByRole('textbox', { name: /specification\.name/ }),
@@ -607,7 +609,9 @@ describe('RequirementsSpecificationsClient', () => {
     })
 
     fireEvent.click(
-      screen.getByRole('button', { name: /specification\.newSpecification/i }),
+      await screen.findByRole('button', {
+        name: /specification.newSpecification/i,
+      }),
     )
     fireEvent.click(
       screen.getByRole('button', { name: 'common.help: specification.name' }),
@@ -628,7 +632,9 @@ describe('RequirementsSpecificationsClient', () => {
     expect(filterInput.className).toContain('min-h-11')
 
     fireEvent.click(
-      screen.getByRole('button', { name: /specification\.newSpecification/i }),
+      await screen.findByRole('button', {
+        name: /specification.newSpecification/i,
+      }),
     )
 
     for (const field of [
@@ -668,7 +674,9 @@ describe('RequirementsSpecificationsClient', () => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
     fireEvent.click(
-      screen.getByRole('button', { name: /specification\.newSpecification/i }),
+      await screen.findByRole('button', {
+        name: /specification.newSpecification/i,
+      }),
     )
 
     fireEvent.change(
@@ -741,7 +749,9 @@ describe('RequirementsSpecificationsClient', () => {
     })
 
     fireEvent.click(
-      screen.getByRole('button', { name: /specification\.newSpecification/i }),
+      await screen.findByRole('button', {
+        name: /specification.newSpecification/i,
+      }),
     )
 
     const nameInput = screen.getByRole('textbox', {
@@ -788,7 +798,9 @@ describe('RequirementsSpecificationsClient', () => {
     })
 
     fireEvent.click(
-      screen.getByRole('button', { name: /specification\.newSpecification/i }),
+      await screen.findByRole('button', {
+        name: /specification.newSpecification/i,
+      }),
     )
 
     const nameInput = screen.getByRole('textbox', {
@@ -849,7 +861,9 @@ describe('RequirementsSpecificationsClient', () => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
     fireEvent.click(
-      screen.getByRole('button', { name: /specification\.newSpecification/i }),
+      await screen.findByRole('button', {
+        name: /specification.newSpecification/i,
+      }),
     )
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
     expect(screen.queryByLabelText(/specification\.name/)).toBeNull()
@@ -920,7 +934,9 @@ describe('RequirementsSpecificationsClient', () => {
     })
 
     fireEvent.click(
-      screen.getByRole('button', { name: /specification\.newSpecification/i }),
+      await screen.findByRole('button', {
+        name: /specification.newSpecification/i,
+      }),
     )
 
     const nameInput = screen.getByRole('textbox', {
@@ -959,7 +975,9 @@ describe('RequirementsSpecificationsClient', () => {
     })
 
     fireEvent.click(
-      screen.getByRole('button', { name: /specification\.newSpecification/i }),
+      await screen.findByRole('button', {
+        name: /specification.newSpecification/i,
+      }),
     )
 
     const nameInput = screen.getByRole('textbox', {
@@ -1009,7 +1027,9 @@ describe('RequirementsSpecificationsClient', () => {
     })
 
     fireEvent.click(
-      screen.getByRole('button', { name: /specification\.newSpecification/i }),
+      await screen.findByRole('button', {
+        name: /specification.newSpecification/i,
+      }),
     )
 
     const nameInput = screen.getByRole('textbox', {

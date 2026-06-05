@@ -27,6 +27,7 @@ import {
   type RequirementColumnId,
   type RequirementColumnWidths,
   type RequirementListColumnDefault,
+  type RequirementPackageOption,
   type RequirementRow,
   type RequirementSortState,
   type RiskLevelOption,
@@ -253,7 +254,7 @@ export default function RequirementsClient({
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([])
   const [riskLevels, setRiskLevels] = useState<RiskLevelOption[]>([])
   const [requirementPackages, setRequirementPackages] = useState<
-    FilterOption[]
+    RequirementPackageOption[]
   >([])
   const [normReferenceOptions, setNormReferenceOptions] = useState<
     { id: number; normReferenceId: string; name: string }[]
@@ -677,7 +678,7 @@ export default function RequirementsClient({
         setStatusOptions(statusesData.statuses ?? [])
       }
       const requirementPackagesData = await readFilterResponse<{
-        requirementPackages?: FilterOption[]
+        requirementPackages?: RequirementPackageOption[]
       }>(requirementPackagesRes)
       if (requirementPackagesData) {
         setRequirementPackages(

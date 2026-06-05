@@ -208,6 +208,69 @@ function emptySeed() {
       pk: ['id'],
       rows: [],
     },
+    requirement_selection_question_sequences: {
+      columns: ['area_id', 'next_sequence'],
+      pk: ['area_id'],
+      rows: [],
+    },
+    requirement_selection_questions: {
+      columns: [
+        'id',
+        'question_code',
+        'area_id',
+        'selection_type',
+        'question_text',
+        'help_text',
+        'sort_order',
+        'is_active',
+        'is_archived',
+        'archived_at',
+        'created_at',
+        'updated_at',
+      ],
+      pk: ['id'],
+      rows: [],
+    },
+    requirement_selection_answers: {
+      columns: [
+        'id',
+        'question_id',
+        'answer_text',
+        'description',
+        'sort_order',
+        'is_no_requirement_selection',
+        'is_active',
+        'is_archived',
+        'archived_at',
+        'created_at',
+        'updated_at',
+      ],
+      pk: ['id'],
+      rows: [],
+    },
+    requirement_selection_answer_packages: {
+      columns: ['answer_id', 'requirement_package_id'],
+      pk: ['answer_id', 'requirement_package_id'],
+      rows: [],
+    },
+    requirement_selection_answer_requirements: {
+      columns: ['answer_id', 'requirement_id'],
+      pk: ['answer_id', 'requirement_id'],
+      rows: [],
+    },
+    specification_requirement_selection_answers: {
+      columns: [
+        'specification_id',
+        'question_id',
+        'answer_id',
+        'is_historical',
+        'changed_at',
+        'changed_by_hsa_id',
+        'changed_by_display_name',
+      ],
+      pk: ['specification_id', 'question_id', 'answer_id'],
+      rows: [],
+    },
   }
 }
 
@@ -242,8 +305,18 @@ describe('dogfood seed inventory', () => {
     expect(DOGFOOD_OWNERS).toHaveLength(5)
     expect(DOGFOOD_AREAS).toHaveLength(6)
     expect(DOGFOOD_NORMS).toHaveLength(6)
-    expect(DOGFOOD_REQUIREMENT_PACKAGES).toHaveLength(12)
+    expect(DOGFOOD_REQUIREMENT_PACKAGES).toHaveLength(11)
     expect(DOGFOOD_SPECIFICATIONS).toHaveLength(2)
+  })
+
+  it('reuses the base Användarvänlighet requirement package', () => {
+    expect(ID.pkg.anvandbarhet).toBe(5)
+    expect(DOGFOOD_REQUIREMENT_PACKAGES.map(pkg => pkg[0])).not.toContain(
+      ID.pkg.anvandbarhet,
+    )
+    expect(DOGFOOD_REQUIREMENT_PACKAGES.map(pkg => pkg[1])).not.toContain(
+      'Användarvänlighet',
+    )
   })
 
   it('specification-local entries reference Krav that are also in KH-INFOR', () => {
@@ -315,6 +388,81 @@ describe('appendDogfoodSeed', () => {
     expect(locals.filter(r => r[1] === SPEC_KH_INFOR)).toHaveLength(
       DOGFOOD_SPECIFICATION_LOCALS.length,
     )
+  })
+
+  it('appends requirement-selection demo questions, answers and saved choices', () => {
+    const seed = emptySeed()
+    const summary = appendDogfoodSeed(seed)
+
+    expect(summary.requirementSelectionQuestionsAdded).toBe(6)
+    expect(summary.requirementSelectionAnswersAdded).toBe(22)
+    expect(summary.specificationRequirementSelectionAnswersAdded).toBe(18)
+
+    const questions = seed.requirement_selection_questions.rows
+    expect(questions).toHaveLength(6)
+    expect(questions.map(row => row[1])).toEqual([
+      'SÄK-KUF001',
+      'INT-KUF001',
+      'DRF-KUF001',
+      'ANV-KUF001',
+      'RAP-KUF001',
+      'KVA-KUF001',
+    ])
+    expect(questions.every(row => row[7] === 1 && row[8] === 0)).toBe(true)
+
+    const sequenceByArea = new Map(
+      seed.requirement_selection_question_sequences.rows.map(row => [
+        row[0],
+        row[1],
+      ]),
+    )
+    expect(sequenceByArea).toEqual(
+      new Map([
+        [ID.area.SAK, 2],
+        [ID.area.INT, 2],
+        [ID.area.DRF, 2],
+        [ID.area.ANV, 2],
+        [ID.area.RAP, 2],
+        [ID.area.KVA, 2],
+      ]),
+    )
+
+    const answers = seed.requirement_selection_answers.rows
+    const packageLinks = seed.requirement_selection_answer_packages.rows
+    const requirementLinks = seed.requirement_selection_answer_requirements.rows
+    expect(answers).toHaveLength(22)
+    expect(packageLinks).toHaveLength(32)
+    expect(requirementLinks).toHaveLength(36)
+
+    const noRequirementAnswerIds = new Set(
+      answers.filter(row => row[5] === 1).map(row => row[0]),
+    )
+    expect(noRequirementAnswerIds).toEqual(new Set([7, 16, 22]))
+    for (const answerId of noRequirementAnswerIds) {
+      expect(packageLinks.some(row => row[0] === answerId)).toBe(false)
+      expect(requirementLinks.some(row => row[0] === answerId)).toBe(false)
+    }
+
+    expect(packageLinks.some(row => row[0] === 6)).toBe(true)
+    expect(requirementLinks.some(row => row[0] === 6)).toBe(false)
+    expect(packageLinks.some(row => row[0] === 4)).toBe(true)
+    expect(requirementLinks.some(row => row[0] === 4)).toBe(true)
+
+    const savedAnswers = seed.specification_requirement_selection_answers.rows
+    expect(savedAnswers).toHaveLength(18)
+    expect(new Set(savedAnswers.map(row => row[0]))).toEqual(
+      new Set([1, 7, 8, SPEC_KH_INFOR]),
+    )
+    expect(savedAnswers.some(row => row[3] === 1)).toBe(true)
+    expect(savedAnswers).toContainEqual([
+      7,
+      5,
+      18,
+      1,
+      expect.any(String),
+      'SE5560000001-oscarn',
+      'Oscar Nilsson',
+    ])
   })
 
   it('mints unique IDs from current area next_sequence rows', () => {

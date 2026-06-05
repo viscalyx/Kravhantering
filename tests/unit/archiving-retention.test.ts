@@ -65,6 +65,8 @@ const BASE_SOURCE_CANDIDATES: Record<string, Array<Record<string, unknown>>> = {
       subject_table: 'requirements_specifications',
     },
   ],
+  'requirement_selection_answers.archived': [],
+  'requirement_selection_questions.archived': [],
 }
 
 function createRetentionDb(options?: {
@@ -132,6 +134,8 @@ function createRetentionDb(options?: {
       if (
         sql.includes('DELETE area') ||
         sql.includes('DECLARE @requirement_id int') ||
+        sql.includes('DECLARE @question_id int') ||
+        sql.includes('DECLARE @answer_id int') ||
         sql.includes('DELETE FROM specification_local_requirements')
       ) {
         const subjectId = String(parameters?.[0] ?? '')
@@ -438,6 +442,30 @@ describe('archiving retention service', () => {
           subject_table: 'requirements_specifications',
         },
       ],
+      'requirement_selection_questions.archived': [
+        {
+          age_basis: new Date('2024-01-15T09:00:00.000Z'),
+          current_display_value:
+            'RETENTION-SEED arkiverad kravurvalsfråga utan historik',
+          reference:
+            'RSK-KUF901 RETENTION-SEED arkiverad kravurvalsfråga utan historik',
+          source_key: 'requirement_selection_questions.archived',
+          subject_id: '910401',
+          subject_table: 'requirement_selection_questions',
+        },
+      ],
+      'requirement_selection_answers.archived': [
+        {
+          age_basis: new Date('2024-01-15T09:00:00.000Z'),
+          current_display_value:
+            'RETENTION-SEED arkiverat kravurvalssvar utan historik',
+          reference:
+            'RSK-KUF904 / RETENTION-SEED arkiverat kravurvalssvar utan historik',
+          source_key: 'requirement_selection_answers.archived',
+          subject_id: '910414',
+          subject_table: 'requirement_selection_answers',
+        },
+      ],
     }
 
     const ownerPreview = await previewArchivingRetention(
@@ -534,11 +562,36 @@ describe('archiving retention service', () => {
         sourceKey: 'requirements_specifications.obsolete',
       }),
     )
+
+    const selectionPreview = await previewArchivingRetention(
+      createRetentionDb({
+        exceptionCount: 0,
+        policy: {
+          ageDays: 365,
+          id: 6,
+          policyKey: 'archived_requirement_selection_delete',
+        },
+        sourceCandidates,
+      }).db as never,
+      { now: new Date('2026-05-14T00:00:00.000Z'), policyId: 6 },
+    )
+    expect(selectionPreview.summary).toMatchObject({
+      archiveCount: 0,
+      candidateCount: 2,
+      deleteCount: 2,
+    })
+    expect(
+      selectionPreview.candidates.map(candidate => candidate.sourceKey),
+    ).toEqual([
+      'requirement_selection_questions.archived',
+      'requirement_selection_answers.archived',
+    ])
     expect(
       [
         ...ownerPreview.candidates,
         ...taxonomyPreview.candidates,
         ...versionPreview.candidates,
+        ...selectionPreview.candidates,
       ].every(candidate => !candidate.requiresExport),
     ).toBe(true)
   })
@@ -575,6 +628,83 @@ describe('archiving retention service', () => {
         String(sql).includes('DELETE FROM requirement_versions WHERE id = @0'),
       ),
     ).toBe(true)
+  })
+
+  it('previews and deletes archived requirement-selection rows only when history is absent', async () => {
+    const sourceCandidates = {
+      'requirement_selection_questions.archived': [
+        {
+          age_basis: new Date('2024-01-15T09:00:00.000Z'),
+          current_display_value: 'Archived question',
+          reference: 'RSK-KUF901 Archived question',
+          source_key: 'requirement_selection_questions.archived',
+          subject_id: '910401',
+          subject_table: 'requirement_selection_questions',
+        },
+      ],
+      'requirement_selection_answers.archived': [
+        {
+          age_basis: new Date('2024-01-15T09:00:00.000Z'),
+          current_display_value: 'Archived answer',
+          reference: 'RSK-KUF904 / Archived answer',
+          source_key: 'requirement_selection_answers.archived',
+          subject_id: '910414',
+          subject_table: 'requirement_selection_answers',
+        },
+      ],
+    }
+    const { db, query } = createRetentionDb({
+      policy: {
+        action: 'delete',
+        ageDays: 365,
+        id: 6,
+        policyKey: 'archived_requirement_selection_delete',
+      },
+      sourceCandidates,
+    })
+
+    const preview = await previewArchivingRetention(db as never, {
+      now: new Date('2026-05-14T00:00:00.000Z'),
+      policyId: 6,
+    })
+
+    expect(preview.candidates).toEqual([
+      expect.objectContaining({
+        key: 'requirement_selection_questions.archived:910401',
+        objectKey: 'requirementSelectionQuestions',
+        requiresExport: false,
+      }),
+      expect.objectContaining({
+        key: 'requirement_selection_answers.archived:910414',
+        objectKey: 'requirementSelectionAnswers',
+        requiresExport: false,
+      }),
+    ])
+    const previewSql = query.mock.calls.map(([sql]) => String(sql)).join('\n')
+    expect(previewSql).toContain('question.archived_at <= @0')
+    expect(previewSql).toContain('saved.question_id = question.id')
+    expect(previewSql).toContain('active_answer.question_id = question.id')
+    expect(previewSql).toContain('active_answer.is_archived = 0')
+    expect(previewSql).toContain('answer.archived_at <= @0')
+    expect(previewSql).toContain('saved.answer_id = answer.id')
+    expect(previewSql).toContain('saved_question.question_id = question.id')
+
+    await executeArchivingRetention(
+      db as never,
+      { policyId: 6, previewToken: preview.previewToken },
+      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE5560000001-privacy1' },
+    )
+    const executeSql = query.mock.calls.map(([sql]) => String(sql)).join('\n')
+    expect(executeSql).toContain('DECLARE @question_id int')
+    expect(executeSql).toContain('DECLARE @answer_id int')
+    expect(executeSql).toContain('active_answer.question_id = question.id')
+    expect(executeSql).toContain('active_answer.is_archived = 0')
+    expect(executeSql).toContain(
+      'DELETE FROM requirement_selection_questions WHERE id = @question_id',
+    )
+    expect(executeSql).toContain(
+      'DELETE FROM requirement_selection_answers WHERE id = @answer_id',
+    )
   })
 
   it('requires and creates archive export before obsolete specification deletion', async () => {
