@@ -1,4 +1,4 @@
-import { assertReportItemCount } from '@/lib/reports/limits'
+import { mapReportItemsWithConcurrency } from '@/lib/reports/data/concurrency'
 
 export interface RequirementReportVersion {
   acceptanceCriteria: string | null
@@ -80,8 +80,9 @@ export async function fetchMultipleRequirements(
   ids: (number | string)[],
   locale: string,
 ): Promise<RequirementReportData[]> {
-  assertReportItemCount(ids.length)
-  return Promise.all(ids.map(id => fetchRequirementForReport(id, locale)))
+  return mapReportItemsWithConcurrency(ids, id =>
+    fetchRequirementForReport(id, locale),
+  )
 }
 
 export interface SuggestionReportRow {

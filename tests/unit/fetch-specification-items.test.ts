@@ -25,4 +25,28 @@ describe('fetchSpecificationItemsForReport', () => {
     )
     expect(fetchMock.mock.calls[0]?.[0]).not.toContain('locale=')
   })
+
+  it('requests more than 50 specification report items without a client-side report count limit', async () => {
+    const rows: RequirementReportData[] = []
+    const itemRefs = Array.from(
+      { length: 60 },
+      (_, index) => `lib:${index + 1}`,
+    )
+    const fetchMock = vi.fn().mockResolvedValue({
+      json: async () => rows,
+      ok: true,
+      status: 200,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      fetchSpecificationItemsForReport('DRIFT-FORV-BAS', itemRefs),
+    ).resolves.toBe(rows)
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/specifications/DRIFT-FORV-BAS/report-items?refs=${itemRefs
+        .map(ref => encodeURIComponent(ref))
+        .join(',')}`,
+    )
+  })
 })

@@ -12,6 +12,7 @@ const routeState = vi.hoisted(() => ({
     }
   },
   buildListReport: vi.fn(),
+  buildCombinedReviewReport: vi.fn(),
   buildReviewReport: vi.fn(),
   collectMultipleRequirementsForReport: vi.fn(),
   collectRequirementForReport: vi.fn(),
@@ -32,6 +33,10 @@ vi.mock('@/lib/reports/data/server', () => ({
 
 vi.mock('@/lib/reports/templates/list-template', () => ({
   buildListReport: routeState.buildListReport,
+}))
+
+vi.mock('@/lib/reports/templates/combined-review-template', () => ({
+  buildCombinedReviewReport: routeState.buildCombinedReviewReport,
 }))
 
 vi.mock('@/lib/reports/templates/review-template', () => ({
@@ -63,6 +68,10 @@ function requirement(uniqueId = 'REQ-1') {
   }
 }
 
+function reportIds(count: number): string[] {
+  return Array.from({ length: count }, (_, index) => String(index + 1))
+}
+
 describe('requirement PDF routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -71,6 +80,9 @@ describe('requirement PDF routes', () => {
       requirement('REQ-1'),
       requirement('REQ-2'),
     ])
+    routeState.buildCombinedReviewReport.mockReturnValue({
+      kind: 'combined-review',
+    })
     routeState.buildReviewReport.mockReturnValue({ kind: 'review' })
     routeState.buildListReport.mockReturnValue({ kind: 'list' })
     routeState.renderReportModelPdfResponse.mockImplementation(
@@ -153,6 +165,55 @@ describe('requirement PDF routes', () => {
       { kind: 'list' },
       'en',
       expect.stringMatching(/^Requirements List \d{4}-\d{2}-\d{2} /),
+    )
+  })
+
+  it('accepts list PDFs with more than 50 requirement ids', async () => {
+    const ids = reportIds(60)
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/list/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        `http://localhost/en/requirements/reports/pdf/list?ids=${ids.join(',')}`,
+      ),
+      { params: Promise.resolve({ locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(
+      routeState.collectMultipleRequirementsForReport,
+    ).toHaveBeenCalledWith({ db: true }, ids)
+  })
+
+  it('accepts combined review PDFs with more than 50 requirement ids', async () => {
+    const ids = reportIds(60)
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/review-combined/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        `http://localhost/sv/requirements/reports/pdf/review-combined?ids=${ids.join(',')}`,
+      ),
+      { params: Promise.resolve({ locale: 'sv' }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(
+      routeState.collectMultipleRequirementsForReport,
+    ).toHaveBeenCalledWith({ db: true }, ids)
+    expect(routeState.buildCombinedReviewReport).toHaveBeenCalledWith(
+      [requirement('REQ-1'), requirement('REQ-2')],
+      'sv',
+    )
+    expect(routeState.renderReportModelPdfResponse).toHaveBeenCalledWith(
+      { kind: 'combined-review' },
+      'sv',
+      expect.stringMatching(
+        /^Kombinerad granskningsrapport \d{4}-\d{2}-\d{2} /,
+      ),
     )
   })
 

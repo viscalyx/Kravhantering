@@ -13,6 +13,7 @@ import {
   parseSpecificationItemRef,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
+import { mapReportItemsWithConcurrency } from '@/lib/reports/data/concurrency'
 import type {
   DeviationReportData,
   DeviationReportVersion,
@@ -22,7 +23,6 @@ import type {
   RequirementReportVersion,
   SuggestionReportRow,
 } from '@/lib/reports/data/fetch-requirement'
-import { assertReportItemCount } from '@/lib/reports/limits'
 import { requirementPackageName } from '@/lib/reports/package-name'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
@@ -94,8 +94,9 @@ export async function collectMultipleRequirementsForReport(
   db: SqlServerDatabase,
   ids: (number | string)[],
 ): Promise<RequirementReportData[]> {
-  assertReportItemCount(ids.length)
-  return Promise.all(ids.map(id => collectRequirementForReport(db, id)))
+  return mapReportItemsWithConcurrency(ids, id =>
+    collectRequirementForReport(db, id),
+  )
 }
 
 export async function collectSuggestionsForReport(
@@ -336,7 +337,6 @@ export async function collectSpecificationItemsForReport(
   requirements: RequirementReportData[]
   specification: NonNullable<Awaited<ReturnType<typeof getSpecificationBySlug>>>
 }> {
-  assertReportItemCount(itemRefs.length)
   const decodedSpecificationId = decodeSegment(specificationIdOrSlug)
   const specification = /^\d+$/.test(decodedSpecificationId)
     ? await getSpecificationById(db, Number(decodedSpecificationId))
