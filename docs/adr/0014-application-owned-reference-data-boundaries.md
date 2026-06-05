@@ -1,19 +1,23 @@
-# Application-Owned Reference Data Stewardship
+# Application-Owned Reference Data Boundaries
 
 Status: Accepted on 2026-06-05.
 
 Kravhantering owns the `Referensdata` that shapes requirement work inside the
 application. This includes requirement areas, categories, types, quality
-characteristics, risk levels, lifecycle and usage statuses, governance object
-types, implementation types, norm-reference records, requirement packages and
-requirement-selection questions.
+characteristics, risk levels, requirement version statuses, usage statuses,
+specification lifecycle statuses, specification item statuses, governance
+object types, implementation types, norm-reference records and requirement-area
+owner assignments.
 
 These catalogs are administered inside Kravhantering because they directly
-affect requirement classification, filtering, selection, reporting, AI prompt
-context and stewardship workflows. Some catalogs are Admin Center
-responsibilities, while requirement packages and selection questions live in
-requirements-library stewardship because package leads and requirement-area
-stewards must be able to maintain them without broad administration access.
+affect requirement classification, filtering, reporting, AI prompt context and
+stewardship workflows. They are reachable through Admin Center as a curated
+navigation surface for application-owned lookup and taxonomy rows.
+
+Requirement packages and requirement-selection questions are
+requirements-library stewardship content, not Admin Center reference data. They
+support selection and filtering, but package leads and requirement-area stewards
+must be able to maintain them without broad administration access.
 
 Kravhantering does not treat external IdP roles, platform logs, source legal
 texts, organizational personnel master data or formal information ownership as
