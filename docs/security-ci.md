@@ -461,9 +461,10 @@ guard.
 The workflow fails on localhost guard failure, token acquisition failure,
 missing or extra MCP tools, unauthenticated 2xx responses, valid-token
 transport failures, unexpected 5xx responses, unexpected MCP errors for
-positive cases, unsafe mutation behavior, sensitive output, or AI generation
-success while OpenRouter env vars are unset. The last check proves the scan is
-exercising the local disabled-provider path, not live provider availability.
+positive cases, unsafe mutation behavior, sensitive output, or AI-assisted
+authoring success while OpenRouter env vars are unset. The last check proves
+the scan is exercising the local disabled-provider path, not live provider
+availability.
 
 Allowed expected negatives are limited to missing or invalid Bearer tokens,
 unknown tool, stale edit conflict, and sanitized AI-disabled error.

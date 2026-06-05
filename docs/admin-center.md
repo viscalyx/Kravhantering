@@ -2,8 +2,8 @@
 
 This document describes the contributor-facing admin center for UI
 terminology, default requirement-list columns, recurring access review,
-privacy erasure and data portability, archiving retention, and reference-data
-entrypoints. Admin users also get an action-log entrypoint for
+personal data erasure and data subject access export, archiving retention, and
+reference-data entrypoints. Admin users also get an action-log entrypoint for
 database-backed mutation and authorization-denial review.
 
 For requirement-list interaction details such as resizing, sorting, and
@@ -141,8 +141,9 @@ Requirements list reset:
 
 The `Privacy` tab is available at `/{locale}/admin?tab=privacy`. It supports
 GDPR Article 17 erasure handling for actor identities and live assignments.
-After a successful preview it also supports GDPR Article 20 data portability
-export for the previewed HSA-ID.
+After a successful preview it also supports data subject access export for the
+previewed HSA-ID. JSON is the machine-readable authoritative payload, and PDF
+is a readable report of the same scope.
 
 Access is intentionally narrow:
 
@@ -264,9 +265,9 @@ presentation as the Admin Center export.
 ## Archiving
 
 The `Archiving` tab is available at `/{locale}/admin?tab=archiving`. Archive
-and retention work is separated from the GDPR erasure and data portability
-flows. Retention is also separate from the requirement lifecycle's functional
-`Archived` state.
+and retention work is separated from personal data erasure and data subject
+access export flows. Retention is also separate from the requirement
+lifecycle's functional `Archived` state.
 
 A `PrivacyOfficer` can load documented retention policies, preview rows whose
 policy age and status criteria have passed, create row-level exceptions for
@@ -416,7 +417,7 @@ If you change any of the following, update this document:
 - terminology persistence or scope
 - column default precedence
 - access-review scope, role gating, decisions, or evidence export
-- privacy-erasure or data-portability policy, actions, or role gating
+- privacy-erasure or data subject access export policy, actions, or role gating
 - admin entrypoint navigation
 - reference-data navigation structure
 - status, usage-status, or risk-level icon behavior

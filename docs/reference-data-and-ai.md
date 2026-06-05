@@ -1,4 +1,4 @@
-# Reference Data and AI Generation
+# Reference Data and AI-Assisted Authoring
 
 <!-- cSpell:ignore FEFF -->
 

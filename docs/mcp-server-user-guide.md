@@ -102,7 +102,7 @@ agents can use it reliably.
   an improvement suggestion on a requirement. Operations: `create`, `edit`, `delete`,
   `request_review`, `revert_to_draft`, `resolve`, `dismiss`.
 
-#### AI Generation
+#### AI-Assisted Authoring
 
 - `requirements_generate_requirements`
   Generate system requirements using AI (OpenRouter) based on a

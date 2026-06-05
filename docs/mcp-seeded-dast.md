@@ -17,11 +17,12 @@ Covered by this workflow:
 - A valid local `kravhantering-mcp` token can connect to `/api/mcp`.
 - The server exposes exactly the documented 11 MCP tools.
 - The seeded corpus exercises read, requirement mutation, transition,
-  specification add/remove, suggestion mutation, and AI-generation surfaces.
+  specification add/remove, suggestion mutation, and AI-assisted authoring
+  surfaces.
 - Disposable test data is used for create, edit, stale edit, transition,
   archive, and suggestion checks.
-- OpenRouter env vars are unset for the scan; AI generation must return the
-  sanitized MCP error instead of succeeding.
+- OpenRouter env vars are unset for the scan; AI-assisted authoring must
+  return the sanitized MCP error instead of succeeding.
 
 Out of scope for this workflow:
 
@@ -47,9 +48,9 @@ The repository verifies its side of the contract instead:
   and OpenRouter error handling with mocked network calls.
 - MCP unit and seeded HTTP tests cover the MCP tool boundary and sanitized error
   behavior.
-- The seeded HTTP scan runs with OpenRouter env vars unset; AI generation must
-  fail safely and must not leak provider keys, prompts, SQL fragments, or stack
-  traces.
+- The seeded HTTP scan runs with OpenRouter env vars unset; AI-assisted
+  authoring must fail safely and must not leak provider keys, prompts, SQL
+  fragments, or stack traces.
 
 ## Local Run
 
@@ -117,7 +118,7 @@ The workflow fails after artifact upload when any of these happen:
   unexpected 5xx.
 - A mutation fails to preserve the expected safety behavior.
 - Output contains sensitive values or internal error details.
-- AI generation succeeds while OpenRouter env vars are unset.
+- AI-assisted authoring succeeds while OpenRouter env vars are unset.
 
 Allowed expected negatives are limited to missing or invalid Bearer tokens,
 unknown tool, stale edit conflict, and sanitized AI-disabled error.

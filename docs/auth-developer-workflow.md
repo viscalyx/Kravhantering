@@ -312,8 +312,8 @@ The realm emits a `roles` claim as a JSON array of strings on both ID and
 access tokens. Values are exactly `Reviewer`, `Admin`, and
 `PrivacyOfficer` (the canonical names used throughout the app). Authoring
 rights are not carried by the roles claim — they are assignment-driven via
-`employeeHsaId`. `PrivacyOfficer` is limited to GDPR erasure preview and
-execution in the Admin Center privacy tab; it does not imply `Admin`.
+`employeeHsaId`. `PrivacyOfficer` is limited to personal data erasure preview
+and execution in the Admin Center privacy tab; it does not imply `Admin`.
 
 ### `employeeHsaId` claim
 

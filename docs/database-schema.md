@@ -1204,8 +1204,8 @@ Organization-wide default layout for the requirements list.
 
 Human actor writes store both a display-name snapshot and a durable HSA-ID.
 The display name is for UI/reporting at the time of the action; the HSA-ID is
-the identity key used for authorization, separation of duties, and GDPR erasure
-matching. New workflows must stamp these values from the verified
+the identity key used for authorization, separation of duties, and personal
+data erasure matching. New workflows must stamp these values from the verified
 `RequestContext.actor`, not from client-submitted name fields.
 
 Description and other free-text columns are governed by UI help text that
@@ -1400,7 +1400,7 @@ specific procurement or project.
 | `business_needs_reference` | text | Optional free-text reference to the underlying business need |
 | `responsible_hsa_id` | text | HSA-ID for the live specification lead (nullable) |
 | `responsible_display_name` | text | Display-name snapshot for the live specification lead (nullable) |
-| `can_responsible_generate_ai` | integer NOT NULL DEFAULT 0 | Whether the specification lead assignment may use live AI generation |
+| `can_responsible_generate_ai` | integer NOT NULL DEFAULT 0 | Whether the specification lead assignment may use live AI-assisted authoring |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
@@ -1727,7 +1727,7 @@ directly and do not reference `owners`.
 | `area_id` | integer FK → `requirement_areas.id` (CASCADE DELETE), PK part 1 | Requirement area assignment |
 | `hsa_id` | text, PK part 2 | HSA-ID for the co-author |
 | `display_name` | text | Display-name snapshot for the co-author |
-| `can_generate_ai` | integer NOT NULL DEFAULT 0 | Whether this assignment may use live AI generation |
+| `can_generate_ai` | integer NOT NULL DEFAULT 0 | Whether this assignment may use live AI-assisted authoring |
 | `created_at` | text (ISO 8601) | Assignment creation timestamp |
 | `created_by_hsa_id` | text | HSA-ID of the actor that created the assignment (nullable after privacy erasure) |
 | `created_by_display_name` | text | Display-name snapshot for the actor that created the assignment |
@@ -1747,7 +1747,7 @@ HSA-ID directly and do not reference `owners`.
 | `specification_id` | integer FK → `requirements_specifications.id` (CASCADE DELETE), PK part 1 | Specification assignment |
 | `hsa_id` | text, PK part 2 | HSA-ID for the co-author |
 | `display_name` | text | Display-name snapshot for the co-author |
-| `can_generate_ai` | integer NOT NULL DEFAULT 0 | Whether this assignment may use live AI generation |
+| `can_generate_ai` | integer NOT NULL DEFAULT 0 | Whether this assignment may use live AI-assisted authoring |
 | `created_at` | text (ISO 8601) | Assignment creation timestamp |
 | `created_by_hsa_id` | text | HSA-ID of the actor that created the assignment (nullable after privacy erasure) |
 | `created_by_display_name` | text | Display-name snapshot for the actor that created the assignment |

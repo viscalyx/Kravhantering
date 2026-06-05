@@ -2029,7 +2029,7 @@ describe('AdminClient', () => {
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:data-subject-export')
   })
 
-  it('shows a preview export error when data portability export fails', async () => {
+  it('shows a preview export error when personal data access export fails', async () => {
     searchParamsMock.current = new URLSearchParams('tab=privacy')
     fetchMock
       .mockResolvedValueOnce(

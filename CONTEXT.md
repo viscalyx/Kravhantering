@@ -150,6 +150,16 @@ Spår av viktiga användar- och systemåtgärder i applikationen, till exempel
 
 _Avoid_: Audit som svensk UI-term, tillämpningsspårbarhet.
 
+**Säkerhetslogg**:
+En strukturerad loggström för autentisering, auktorisering, privilegierade
+åtgärder och andra säkerhetsrelevanta händelser. Säkerhetslogg är inte samma
+sak som åtgärdsloggen och hör hemma i plattformens logg- och SIEM-flöde.
+
+- `en`: Security audit log
+
+_Avoid_: Säkerhetsaudit, säkerhetsrevision när loggströmmen avses,
+Åtgärdslogg, vanlig applikationslogg, tillämpningsspårbarhet.
+
 **Behörighetsöversyn**:
 En formell genomgång av uppdrag, roller och AI-behörigheter där varje
 behörighetsrad bedöms och beslutas.
@@ -266,6 +276,16 @@ normreferenser och statusar. Termen används tills vidare som samlingsnamn.
 
 _Avoid_: Kravdata, kravpaket när innehållsförvaltning av kravbiblioteket avses.
 
+**AI-assisterat författande**:
+Ett stödflöde där en användare får förslag till krav baserat på ämne,
+instruktioner, bilder och referensdata. Förslagen blir krav först när de
+hanteras i ordinarie kravprocess.
+
+- `en`: AI-assisted authoring
+
+_Avoid_: AI-generering som huvudterm, AI-assistering, automatisk publicering,
+AI-beslut, källa till sanning.
+
 **Terminologi**:
 De verksamhetsbegrepp och användargränssnittstermer som används för att
 beskriva kravhanteringen. I administrationen ska terminologi vara namnet på
@@ -339,6 +359,27 @@ exempel förhandsgranskning, export och radering.
 - `en`: Privacy officer
 
 _Avoid_: Administratör när dataskyddsmandat avses.
+
+**Radering av personuppgifter**:
+Ett dataskyddsflöde där personkopplade fält för en registrerad HSA-ID hanteras
+genom att raderas, anonymiseras, hoppas över eller bytas till en ersättare.
+Radering av personuppgifter ska inte ta bort verksamhetshistorik som behöver
+finnas kvar.
+
+- `en`: Personal data erasure
+
+_Avoid_: GDPR-radering, gallring, arkivering, borttagning av kravhistorik.
+
+**Personuppgiftsutdrag**:
+Ett dataskyddsunderlag som visar vilka personuppgifter Kravhantering kan
+koppla till en registrerad HSA-ID, var uppgifterna förekommer i applikationen
+och vilka begränsningar utdraget har. JSON är det maskinläsbara och
+auktoritativa formatet; PDF är en läsbar återgivning av samma uppgifter.
+
+- `en`: Data subject access export
+
+_Avoid_: Export för dataportabilitet, dataportabilitetsexport, arkivexport,
+rapport, export av åtgärdslogg.
 
 **Kravkatalog**:
 Ett accepterat vardagligt eller äldre ord för kravbiblioteket. Begreppet får
@@ -657,6 +698,25 @@ kravversionen är arkiverad.
 - `en`: Archived requirement
 
 _Avoid_: Raderat krav, borttaget krav.
+
+**Gallring**:
+Att enligt fastställda regler ta bort information när den inte längre ska
+bevaras i den aktiva kravhanteringen. Gallring är inte samma sak som
+kravlivscykelns arkivering eller radering av personuppgifter.
+
+- `en`: Retention disposal
+
+_Avoid_: Arkivering, radering av personuppgifter, vanlig radering.
+
+**Arkivexport**:
+Ett bevarandeunderlag som tas fram innan information gallras när
+verksamhetshistoriken ska finnas kvar utanför den aktiva kravhanteringen.
+Arkivexport är inte samma sak som kravlivscykelns arkivering eller
+personuppgiftsutdrag.
+
+- `en`: Archive export
+
+_Avoid_: Rapport, vanlig export, personuppgiftsutdrag.
 
 **Återskapad kravversion**:
 En ny utkastversion som skapas med innehåll från en tidigare kravversion. Den

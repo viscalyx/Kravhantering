@@ -561,7 +561,7 @@ förvaltningsflikar och en administratörsflik för
    namn, färg, ikon och ordning men inte lägga till
    eller ta bort nivåer.
 4. **Dataskydd** — Förhandsgranskning och körning av
-   HSA-ID-baserad GDPR-radering. Fliken kräver rollen
+   HSA-ID-baserad radering av personuppgifter. Fliken kräver rollen
    `PrivacyOfficer` (`Dataskyddshandläggare`) och ger inte
    övriga administratörsrättigheter.
 5. **Behörighetsöversyn** — Återkommande kontroll av
@@ -680,7 +680,7 @@ integrationsbilden och bilden av leveranskedjan är
 främst den
 OIDC-baserade identitetsleverantören för inloggning,
 tokenutbyte, nyckelhämtning och utloggning samt,
-när AI-generering är aktiverad, OpenRouter som
+när AI-assisterat författande är aktiverat, OpenRouter som
 AI-förmedlande tjänst. `/api/mcp` är ett externt
 anropsgränssnitt för godkända MCP-klienter snarare än
 en verksamhetsintegration. Nedan beskrivs de interna
@@ -1303,8 +1303,8 @@ produktionsdata.
 | --- | --- | --- | --- |
 | Extern OIDC-/IdP-tjänst, till exempel PhenixID i målmiljö och Keycloak i lokal utveckling | Autentisering, tokenutbyte, JWKS-hämtning och utloggning | Identitetsattribut som `sub`, namn, e-post, `employeeHsaId`, roller och metadata om token | IdP-ägare, tillitsnivå/MFA-krav, geografisk behandling, incidentkontakt, tillgänglighetskrav och ansvar för identitetslivscykel |
 | SQL Server-drift eller databastjänst | Persistens för kravbibliotek, historik, taxonomi, referensdata och audit | Kravinformation, ägaruppgifter, avvikelser, förbättringsförslag, UI-konfiguration och säkerhetsaudit | Driftansvarig, backup/restore, kryptering, åtkomst till databas, RTO/RPO, loggskydd och geografisk lagring |
-| OpenRouter och valda modellleverantörer | AI-generering av krav, lista över modeller och nyckel-/kredituppslag | Ämne, instruktioner, bilder, taxonomi, AI-svar, modellval och metadata om användning | Ska redovisas när AI är aktiverat med `OPENROUTER_API_KEY`; ange modell-leverantör, datapolicy, retention, egress, sekretessklassning och revisionsstatus |
-| MCP-klienter och AI-agenter | Godkända tekniska klienter till `/api/mcp` | Läsning och mutation av krav, historik, statusövergångar och eventuellt AI-generering | Klientägare, `client_id`, syntetiskt eller personbundet HSA-id, behörighetsomfång, hantering av token, loggkrav och notifieringsansvar |
+| OpenRouter och valda modellleverantörer | AI-assisterat författande, lista över modeller och nyckel-/kredituppslag | Ämne, instruktioner, bilder, taxonomi, AI-svar, modellval och metadata om användning | Ska redovisas när AI är aktiverat med `OPENROUTER_API_KEY`; ange modell-leverantör, datapolicy, retention, egress, sekretessklassning och revisionsstatus |
+| MCP-klienter och AI-agenter | Godkända tekniska klienter till `/api/mcp` | Läsning och mutation av krav, historik, statusövergångar och eventuellt AI-assisterat författande | Klientägare, `client_id`, syntetiskt eller personbundet HSA-id, behörighetsomfång, hantering av token, loggkrav och notifieringsansvar |
 | Driftplattform, reverse proxy, logg- och SIEM-tjänster | Runtime, TLS-terminering, hemlighetshantering, begärandeloggning och säkerhetsaudit | Metadata om trafik, säkerhetsloggar, driftloggar, sessionscookies i transit och skyddade miljöparametrar | Plattformsägare, geografisk driftplats, loggretention, åtkomst till loggar/hemligheter, incidentväg och tekniska säkerhetskrav |
 | CI/CD-, paket- och containerkällor, till exempel GitHub Actions, npm, Microsoft Container Registry och Quay | Bygg, test, beroendehämtning och container-/paketleveranskedja | Källkod, byggloggar, dependency metadata och syntetisk testdata | Redovisas som beroenden för utveckling och leveranskedja; produktionsdata ska inte behandlas där utan särskilt beslut |
 <!-- markdownlint-enable MD013 -->

@@ -38,13 +38,13 @@ Deferred from this contract:
 - CSV export, MCP, AI routes, admin catalog mutations, specifications,
   deviations, improvement suggestions, and Admin Center access-review routes
   (`/api/admin/access-reviews/**`).
-- Privacy erasure and data-subject export routes
+- Privacy erasure and data subject access export routes
   (`POST /api/privacy/erasure-preview`,
   `POST /api/privacy/erasure-requests`,
   `POST /api/privacy/data-subject-export`). They require the separate
   `PrivacyOfficer` role, strict CSRF/origin handling, HSA-ID-only matching,
   stale-preview rejection, and audit-redaction checks before they should be
-  added to the OpenAPI fuzzing contract. The export route also supports
+  added to the OpenAPI fuzzing contract. The access export route also supports
   self-service export for the signed-in user's own HSA-ID, returns
   `Cache-Control: no-store`, and records only a non-reversible target
   fingerprint in audit details.

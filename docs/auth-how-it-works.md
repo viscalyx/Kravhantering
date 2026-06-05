@@ -252,8 +252,8 @@ sequenceDiagram
   detail key is redacted, the audit writer also emits a structured
   `detail-key-redacted` breadcrumb with the source event, actor source, and
   redacted key name.
-- Privacy erasure and data-subject export security events are emitted to the
-  platform security-log stream. Privacy erasure execution also writes a
+- Privacy erasure and data subject access export security events are emitted to
+  the platform security-log stream. Privacy erasure execution also writes a
   database action-log row for Admin review. Both include the handler
   identity, request id, grouped counts or delivery metadata, and a
   non-reversible target fingerprint. They must not include the raw target
@@ -413,7 +413,7 @@ flowchart LR
 - Emit global role information in a way that resolves to the canonical app
   roles `Reviewer`, `Admin`, and `PrivacyOfficer`. For the least friction,
   emit those exact values on a `roles` claim. `PrivacyOfficer` is only for
-  GDPR erasure work and does not imply `Admin`.
+  personal data erasure work and does not imply `Admin`.
 - Do not model authoring rights as IdP roles. The application derives
   authoring rights from area and specification assignments matched on
   `employeeHsaId`.
