@@ -1,10 +1,10 @@
-# Privacy Data Portability
+# Privacy Data Subject Access Export
 
-Kravhantering supports GDPR Article 20 data portability through a JSON export
-for one registered HSA-ID. The JSON payload is the source of truth and remains
-the machine-readable format. PDF export returns a server-rendered report that
-presents the same collected scope in plain Swedish or English for a person who
-wants to understand how their personal data is used.
+Kravhantering supports data subject access export for one registered HSA-ID.
+The JSON payload is the source of truth and remains the machine-readable
+format. PDF export returns a server-rendered report that presents the same
+collected scope in plain Swedish or English for a person who wants to
+understand how their personal data is used.
 
 ## Entry Points
 
@@ -66,7 +66,8 @@ machine-readable details instead.
 ## Covered Sources
 
 The collector reuses the privacy-erasure source registry so erasure preview and
-data portability stay aligned for HSA-ID-backed fields. Current sources include:
+data subject access export stay aligned for HSA-ID-backed fields. Current
+sources include:
 
 - owners
 - requirement versions

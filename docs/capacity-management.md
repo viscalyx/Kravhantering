@@ -74,10 +74,10 @@ strings, tokens, secrets, or HSA IDs.
 
 V1 measures:
 
-- AI generation through `/api/ai/generate-requirements`.
+- AI-assisted authoring through `/api/ai/generate-requirements`.
 - AI metadata through `/api/ai/models` cache misses, `refresh=1`, and
   `/api/ai/credits`.
-- AI generation through the MCP tool `requirements_generate_requirements`.
+- AI-assisted authoring through the MCP tool `requirements_generate_requirements`.
 - Shared service operations through service logging.
 - Server-side report item loading for the specification report.
 - Server-side PDF rendering for requirement, specification, privacy, and
@@ -91,7 +91,7 @@ strict without `unsafe-eval` or `wasm-unsafe-eval`. V1 limits report lists to
 
 V1 uses process-local in-memory throttling:
 
-- AI generation: 5 requests per minute per actor/process.
+- AI-assisted authoring: 5 requests per minute per actor/process.
 - AI model metadata refreshes and cache misses: 10 requests per minute per
   actor/process.
 - AI credit lookup: 20 requests per minute per actor/process.
@@ -106,9 +106,9 @@ SQL Server, Redis, or a platform rate-limiting capability.
 
 - `capacity.operation.failed` above 5 percent for AI flows over 15 minutes.
 - More than 20 `capacity.throttled` events over 10 minutes.
-- p95 `duration_ms` above 30 seconds for AI generation.
+- p95 `duration_ms` above 30 seconds for AI-assisted authoring.
 - p95 `duration_ms` above 10 seconds for report data.
-- Rising daily `cost` or `token_count` for AI generation.
+- Rising daily `cost` or `token_count` for AI-assisted authoring.
 
 Operations is responsible for setting environment-specific thresholds and
 reviewing capacity data at least monthly or before major releases.

@@ -83,7 +83,7 @@ keeps lifecycle behavior aligned between REST and MCP.
 
 The MCP surface is split into four areas: individual requirements (four
 tools), requirements specifications (six tools), improvement suggestions (two
-tools), and AI generation (one tool).
+tools), and AI-assisted authoring (one tool).
 
 ### `requirements_query_catalog`
 
@@ -255,7 +255,7 @@ each generated requirement.
   (`en` | `sv`), `model` (optional OpenRouter model ID),
   `customInstruction` (optional)
 - **Output:** generated requirements list with thinking trace
-- **Grouping:** AI generation
+- **Grouping:** AI-assisted authoring
 
 ## Resource Design
 

@@ -85,7 +85,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [ADMIN-09: archiving retention preview is privacy-gated](#admin-09-archiving-retention-preview-is-privacy-gated)
   - [ADMIN-10: reference-data icons render across requirement surfaces](#admin-10-reference-data-icons-render-across-requirement-surfaces)
   - [ADMIN-11: archived requirement-selection retention excludes saved history](#admin-11-archived-requirement-selection-retention-excludes-saved-history)
-- [Privacy and data portability](#privacy-and-data-portability)
+- [Privacy and personal data access](#privacy-and-personal-data-access)
   - [PRIV-01: self-service privacy export](#priv-01-self-service-privacy-export)
   - [PRIV-02: PrivacyOfficer preview by HSA-ID](#priv-02-privacyofficer-preview-by-hsa-id)
   - [PRIV-03: preview target exports JSON and PDF](#priv-03-preview-target-exports-json-and-pdf)
@@ -1594,7 +1594,7 @@ history.
 archived requirement-selection rows that have no saved
 `specification_requirement_selection_answers` references are deleted.
 
-## Privacy and data portability
+## Privacy and personal data access
 
 ### PRIV-01: self-service privacy export
 
@@ -1635,7 +1635,8 @@ creator snapshots, decisions, access reviews, and audit actor snapshots.
 
 ### PRIV-03: preview target exports JSON and PDF
 
-**Purpose:** Confirm data portability works after a privacy preview.
+**Purpose:** Confirm the personal-data access JSON and PDF exports work after
+a privacy preview.
 
 **Users:** `ada.admin` or `disa.privacy`.
 

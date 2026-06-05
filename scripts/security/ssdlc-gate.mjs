@@ -63,7 +63,7 @@ export const SECURITY_SENSITIVE_PATH_RULES = [
     patterns: [
       'lib/privacy/**',
       'docs/informationsmangder-kravhantering.md',
-      'docs/privacy-data-portability.md',
+      'docs/privacy-data-subject-access-export.md',
     ],
   },
   {
