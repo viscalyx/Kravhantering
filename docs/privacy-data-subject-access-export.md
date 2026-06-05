@@ -1,8 +1,10 @@
 # Privacy Data Subject Access Export
 
 Kravhantering supports data subject access export for one registered HSA-ID.
-JSON is the authoritative machine-readable format. PDF export returns a
-readable server-rendered report of the same payload.
+The JSON payload is the source of truth and remains the machine-readable
+format. PDF export returns a server-rendered report that presents the same
+collected scope in plain Swedish or English for a person who wants to
+understand how their personal data is used.
 
 ## Entry Points
 
@@ -29,7 +31,9 @@ allowed. Exporting any other HSA-ID requires `PrivacyOfficer`.
 `delivery: "json"` returns JSON with `Cache-Control: no-store`;
 `delivery: "pdf"` returns `application/pdf` with attachment headers and
 `Cache-Control: no-store`. The current JSON schema version is
-`privacy-data-subject-export.v1`.
+`privacy-data-subject-export.v1`. The schema applies to JSON. The PDF is not a
+second technical schema or a field-by-field dump; it is a localized readable
+presentation of the collected data.
 
 Top-level fields:
 
@@ -44,6 +48,20 @@ Top-level fields:
 Every exported item includes a stable source key, logical table/source, field
 name, value, relation to the registered person, optional timestamp, and a safe
 related-object reference where one is available.
+
+## PDF Presentation
+
+The PDF report hides raw database field names, table names, schema identifiers,
+source keys, relation keys, and target fingerprints. It groups the collected
+data into human-readable sections such as identity and contact details, active
+assignments, co-authoring and AI access, historical traces, access reviews,
+action log entries, and important limitations.
+
+The report uses the requested locale. Swedish exports use plain Swedish labels
+such as `Aktiva uppdrag`, `Kravområde`, `Skapad av`, `Ja` and `Nej`. English
+exports use the corresponding English labels. Unknown technical values are not
+printed raw in the PDF; the report points to the JSON export for
+machine-readable details instead.
 
 ## Covered Sources
 
