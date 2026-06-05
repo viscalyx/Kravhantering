@@ -26,8 +26,8 @@
     // Productivity
     "gruntfuggly.todo-tree",
     "usernamehw.errorlens",
-    "bierner.markdown-mermaid",
-    "bpruitt-goddard.mermaid-markdown-syntax-highlighting",
+    // "bierner.markdown-mermaid",
+    // "bpruitt-goddard.mermaid-markdown-syntax-highlighting",
     "mtxr.sqltools",
     "mtxr.sqltools-driver-mssql",
     "ms-python.python",
