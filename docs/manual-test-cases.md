@@ -1609,9 +1609,12 @@ archived requirement-selection rows that have no saved
 1. Open `/sv/privacy`.
 1. Verify heading `Export av personuppgifter`.
 1. Select `Exportera JSON`.
+1. Select `Exportera PDF`.
 
-**Expected result:** The export is generated for the signed-in user's HSA-ID
-without entering a target HSA-ID.
+**Expected result:** Both exports are generated for the signed-in user's HSA-ID
+without entering a target HSA-ID. JSON remains structured and machine-readable.
+PDF is a readable Swedish report that explains the person's data without raw
+database field names, schema keys, relation keys, or target fingerprints.
 
 ### PRIV-02: PrivacyOfficer preview by HSA-ID
 
@@ -1644,9 +1647,12 @@ creator snapshots, decisions, access reviews, and audit actor snapshots.
 1. Save or inspect the generated response.
 1. Select `Exportera PDF`.
 
-**Expected result:** Both exports target `SE5560000001-linneab`; PDF delivery
-downloads a binary PDF response, and filenames use a fingerprint rather than
-the raw HSA-ID.
+**Expected result:** Both exports target `SE5560000001-linneab`. JSON remains
+structured and machine-readable. PDF delivery downloads a readable Swedish
+report that uses plain labels such as `Aktiva uppdrag`, `Kravområde` and
+`Skapad av` instead of raw database fields, source keys or relation keys.
+Filenames use a fingerprint rather than the raw HSA-ID, but the fingerprint is
+not printed in the PDF report.
 
 ### PRIV-04: duplicate-name privacy search uses HSA-ID only
 
