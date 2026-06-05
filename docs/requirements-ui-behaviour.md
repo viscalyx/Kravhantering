@@ -4,7 +4,7 @@ This document explains the intended behavior of the Requirements Library list
 UI so
 contributors can change the table without breaking user expectations.
 
-For the admin-managed source of terminology and default column settings, see
+For the admin-managed source of default column settings, see
 [admin-center.md](./admin-center.md).
 
 ## Scope

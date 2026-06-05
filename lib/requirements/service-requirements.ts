@@ -36,7 +36,6 @@ import {
 } from '@/lib/dal/requirements'
 import { listRiskLevels } from '@/lib/dal/risk-levels'
 import { listSpecificationItemStatuses } from '@/lib/dal/specification-item-statuses'
-import type { UiSettingsLoader } from '@/lib/dal/ui-settings'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   type AuthorizationService,
@@ -69,19 +68,36 @@ import {
   clampOffset,
   createServiceMessage,
   getVersionDisplayName,
+  type ServiceMessageKey,
+  translateServiceMessage,
   withLogging,
 } from '@/lib/requirements/service-shared'
 import type {
   RequirementDetail,
   RequirementVersionDetail,
 } from '@/lib/requirements/types'
-import { getCatalogTitle } from '@/lib/ui-terminology'
 
 interface RequirementWorkflowDependencies {
   authorization: AuthorizationService
   db: SqlServerDatabase
   logger: RequirementsLogger
-  uiSettings: UiSettingsLoader
+}
+
+const CATALOG_TITLE_KEYS: Record<CatalogKind, ServiceMessageKey> = {
+  areas: 'requirements.catalogTitles.areas',
+  categories: 'requirements.catalogTitles.categories',
+  quality_characteristics: 'requirements.catalogTitles.qualityCharacteristics',
+  requirement_packages: 'requirements.catalogTitles.requirementPackages',
+  requirements: 'requirements.catalogTitles.requirements',
+  risk_levels: 'requirements.catalogTitles.riskLevels',
+  specification_item_statuses: 'requirements.catalogTitles.usageStatuses',
+  statuses: 'requirements.catalogTitles.statuses',
+  transitions: 'requirements.catalogTitles.transitions',
+  types: 'requirements.catalogTitles.types',
+}
+
+function getCatalogTitle(catalog: CatalogKind, locale: 'en' | 'sv') {
+  return translateServiceMessage(locale, CATALOG_TITLE_KEYS[catalog])
 }
 
 export function formatRequirementListItem(
@@ -357,7 +373,6 @@ export function createRequirementWorkflow({
   authorization,
   db,
   logger,
-  uiSettings,
 }: RequirementWorkflowDependencies): Pick<
   RequirementsService,
   | 'getRequirement'
@@ -383,8 +398,6 @@ export function createRequirementWorkflow({
         'requirements.query_catalog',
         { catalog },
         async () => {
-          const terminology = await uiSettings.getTerminology()
-
           if (catalog === 'requirements') {
             const limit = clampLimit(input.limit)
             const offset = clampOffset(input.offset)
@@ -418,7 +431,7 @@ export function createRequirementWorkflow({
               catalog,
               items,
               message: createServiceMessage(
-                getCatalogTitle('requirements', locale, terminology),
+                getCatalogTitle('requirements', locale),
                 items.map(item => {
                   const statusName =
                     locale === 'sv'
@@ -445,7 +458,7 @@ export function createRequirementWorkflow({
               catalog,
               items: areas,
               message: createServiceMessage(
-                getCatalogTitle('areas', locale, terminology),
+                getCatalogTitle('areas', locale),
                 areas.map(
                   (area: RequirementAreaRow) => `${area.prefix}: ${area.name}`,
                 ),
@@ -461,7 +474,7 @@ export function createRequirementWorkflow({
               catalog,
               items: categories,
               message: createServiceMessage(
-                getCatalogTitle('categories', locale, terminology),
+                getCatalogTitle('categories', locale),
                 categories.map((category: RequirementCategoryRow) =>
                   locale === 'sv' ? category.nameSv : category.nameEn,
                 ),
@@ -477,7 +490,7 @@ export function createRequirementWorkflow({
               catalog,
               items: types,
               message: createServiceMessage(
-                getCatalogTitle('types', locale, terminology),
+                getCatalogTitle('types', locale),
                 types.map((type: RequirementTypeWithQualityCharacteristics) =>
                   locale === 'sv' ? type.nameSv : type.nameEn,
                 ),
@@ -496,7 +509,7 @@ export function createRequirementWorkflow({
               catalog,
               items: qualityCharacteristics,
               message: createServiceMessage(
-                getCatalogTitle('quality_characteristics', locale, terminology),
+                getCatalogTitle('quality_characteristics', locale),
                 qualityCharacteristics.map(
                   (category: QualityCharacteristicRow) =>
                     locale === 'sv' ? category.nameSv : category.nameEn,
@@ -513,7 +526,7 @@ export function createRequirementWorkflow({
               catalog,
               items: levels,
               message: createServiceMessage(
-                getCatalogTitle('risk_levels', locale, terminology),
+                getCatalogTitle('risk_levels', locale),
                 levels.map(level =>
                   locale === 'sv' ? level.nameSv : level.nameEn,
                 ),
@@ -529,11 +542,7 @@ export function createRequirementWorkflow({
               catalog,
               items: statuses,
               message: createServiceMessage(
-                getCatalogTitle(
-                  'specification_item_statuses',
-                  locale,
-                  terminology,
-                ),
+                getCatalogTitle('specification_item_statuses', locale),
                 statuses.map(status =>
                   locale === 'sv' ? status.nameSv : status.nameEn,
                 ),
@@ -549,7 +558,7 @@ export function createRequirementWorkflow({
               catalog,
               items: statuses,
               message: createServiceMessage(
-                getCatalogTitle('statuses', locale, terminology),
+                getCatalogTitle('statuses', locale),
                 statuses.map((status: RequirementStatusRecord) =>
                   locale === 'sv' ? status.nameSv : status.nameEn,
                 ),
@@ -565,7 +574,7 @@ export function createRequirementWorkflow({
               catalog,
               items: requirementPackages,
               message: createServiceMessage(
-                getCatalogTitle('requirement_packages', locale, terminology),
+                getCatalogTitle('requirement_packages', locale),
                 requirementPackages.map(
                   requirementPackage => requirementPackage.name,
                 ),
@@ -580,7 +589,7 @@ export function createRequirementWorkflow({
             catalog,
             items: transitions,
             message: createServiceMessage(
-              getCatalogTitle('transitions', locale, terminology),
+              getCatalogTitle('transitions', locale),
               transitions.map(
                 (transition: RequirementStatusTransitionDetail) => {
                   const fromName =

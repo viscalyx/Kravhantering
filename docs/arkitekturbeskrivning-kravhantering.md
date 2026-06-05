@@ -542,16 +542,13 @@ och visar samtliga kravtillämpningar i underlaget med:
 
 ### Administrationscenter
 
-Administrationscentret (`/admin`) erbjuder sex centrala
+Administrationscentret (`/admin`) erbjuder fem centrala
 förvaltningsflikar och en administratörsflik för
 åtgärdslogg:
 
-1. **Terminologi** — Hantera visningsnamn för
-   kravrelaterade begrepp (singular, plural, bestämd
-   plural) på svenska och engelska.
-2. **Kolumner** — Ange standardkolumner och ordning
+1. **Kolumner** — Ange standardkolumner och ordning
    för kravlistan organisationsövergripande.
-3. **Referensdata** — Navigeringsnav till alla
+2. **Referensdata** — Navigeringsnav till alla
    referensdatasidor, bland annat kravområden, ägare,
    typer, normreferenser, kravversionsstatusar,
    användningsstatusar, kravunderlagets livscykelstatusar,
@@ -560,14 +557,14 @@ förvaltningsflikar och en administratörsflik för
    klassningsskala där administratören kan underhålla
    namn, färg, ikon och ordning men inte lägga till
    eller ta bort nivåer.
-4. **Dataskydd** — Förhandsgranskning och körning av
+3. **Behörighetsöversyn** — Återkommande kontroll av
+   applikationsstyrda uppdrag och AI-behörigheter.
+4. **Arkivering** — Policybaserad gallring med förhandsgranskning,
+   exportbekräftelse och undantag.
+5. **Dataskydd** — Förhandsgranskning och körning av
    HSA-ID-baserad radering av personuppgifter. Fliken kräver rollen
    `PrivacyOfficer` (`Dataskyddshandläggare`) och ger inte
    övriga administratörsrättigheter.
-5. **Behörighetsöversyn** — Återkommande kontroll av
-   applikationsstyrda uppdrag och AI-behörigheter.
-6. **Arkivering** — Policybaserad gallring med förhandsgranskning,
-   exportbekräftelse och undantag.
 
 Åtgärdsloggen nås både från Admin Center och via
 `/admin/audit-log`. Den är endast tillgänglig för

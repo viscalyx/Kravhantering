@@ -3,9 +3,7 @@ import {
   createUiSettingsLoader,
   formatUiSettingsLoadError,
   getRequirementListColumnDefaults,
-  getUiTerminology,
   updateRequirementListColumnDefaults,
-  updateUiTerminology,
 } from '@/lib/dal/ui-settings'
 import type { SqlServerDatabase } from '@/lib/db'
 
@@ -18,16 +16,6 @@ function createSqlServerDb() {
   )
   const db = { query, transaction } as unknown as SqlServerDatabase
   return { db, query, transaction }
-}
-
-const mockTerminologyRow = {
-  key: 'description',
-  singularSv: 'krav',
-  pluralSv: 'krav',
-  definitePluralSv: 'kraven',
-  singularEn: 'requirement',
-  pluralEn: 'requirements',
-  definitePluralEn: 'the requirements',
 }
 
 describe('ui-settings DAL', () => {
@@ -48,28 +36,6 @@ describe('ui-settings DAL', () => {
     expect(formatUiSettingsLoadError('plain string')).toEqual({
       error: 'plain string',
     })
-  })
-
-  it('getUiTerminology loads and normalizes terminology from ui_terminology', async () => {
-    const { db, query } = createSqlServerDb()
-    query.mockResolvedValueOnce([mockTerminologyRow])
-
-    const result = await getUiTerminology(db)
-
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('FROM ui_terminology'),
-    )
-    expect(result).toBeTruthy()
-    expect(Object.keys(result).length).toBeGreaterThan(0)
-  })
-
-  it('getUiTerminology wraps a query error in a helpful message', async () => {
-    const { db, query } = createSqlServerDb()
-    query.mockRejectedValueOnce(new Error('db offline'))
-
-    await expect(getUiTerminology(db)).rejects.toThrow(
-      /Failed to load UI terminology/,
-    )
   })
 
   it('getRequirementListColumnDefaults loads the defaults table', async () => {
@@ -96,17 +62,6 @@ describe('ui-settings DAL', () => {
     )
   })
 
-  it('createUiSettingsLoader caches terminology between calls', async () => {
-    const { db, query } = createSqlServerDb()
-    query.mockResolvedValue([mockTerminologyRow])
-
-    const loader = createUiSettingsLoader(db)
-    await loader.getTerminology()
-    await loader.getTerminology()
-
-    expect(query).toHaveBeenCalledTimes(1)
-  })
-
   it('createUiSettingsLoader caches column defaults between calls', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValue([
@@ -118,29 +73,6 @@ describe('ui-settings DAL', () => {
     await loader.getColumnDefaults()
 
     expect(query).toHaveBeenCalledTimes(1)
-  })
-
-  it('updateUiTerminology writes each entry via a parameterized upsert query', async () => {
-    const { db, query } = createSqlServerDb()
-    query.mockResolvedValue([])
-
-    const result = await updateUiTerminology(db, [
-      {
-        key: 'description',
-        sv: { singular: 'krav', plural: 'krav', definitePlural: 'kraven' },
-        en: {
-          singular: 'requirement',
-          plural: 'requirements',
-          definitePlural: 'the requirements',
-        },
-      },
-    ])
-
-    expect(query).toHaveBeenCalled()
-    const firstCall = query.mock.calls[0]
-    expect(firstCall[0]).toMatch(/UPDATE ui_terminology/)
-    expect(firstCall[0]).toMatch(/INSERT INTO ui_terminology/)
-    expect(result).toBeTruthy()
   })
 
   it('updateRequirementListColumnDefaults clears and reinserts within a transaction', async () => {

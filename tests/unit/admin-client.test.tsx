@@ -18,10 +18,6 @@ import {
   normalizeRequirementListColumnDefaults,
   type RequirementListColumnDefault,
 } from '@/lib/requirements/list-view'
-import {
-  buildUiTerminologyPayload,
-  getDefaultUiTerminology,
-} from '@/lib/ui-terminology'
 
 const routerMock = vi.hoisted(() => ({
   refresh: vi.fn(),
@@ -406,7 +402,6 @@ function renderAdminAccessReview(
     <AdminClient
       currentUserRoles={['Admin']}
       initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-      initialTerminology={buildUiTerminologyPayload(getDefaultUiTerminology())}
     />,
   )
 }
@@ -455,9 +450,6 @@ describe('AdminClient', () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -480,9 +472,6 @@ describe('AdminClient', () => {
         actionAuditLog={actionAuditLogState()}
         currentUserRoles={['Admin']}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -537,9 +526,6 @@ describe('AdminClient', () => {
       <AdminClient
         currentUserRoles={['Admin']}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -555,9 +541,6 @@ describe('AdminClient', () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -571,9 +554,6 @@ describe('AdminClient', () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -593,9 +573,6 @@ describe('AdminClient', () => {
       <AdminClient
         currentUserRoles={['Admin']}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -616,13 +593,10 @@ describe('AdminClient', () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
-    fireEvent.click(screen.getByRole('tab', { name: 'admin.terminology' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
 
     expect(routerReplace).toHaveBeenCalledWith('/admin', { scroll: false })
   })
@@ -631,9 +605,6 @@ describe('AdminClient', () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -717,21 +688,16 @@ describe('AdminClient', () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
-    const terminologyTab = screen.getByRole('tab', {
-      name: 'admin.terminology',
-    })
+    const columnsTab = screen.getByRole('tab', { name: 'admin.columns' })
     const referenceDataTab = screen.getByRole('tab', {
       name: 'admin.referenceData',
     })
 
-    expect(terminologyTab.parentElement).toHaveAttribute('role', 'tablist')
-    expect(terminologyTab).toHaveAttribute('aria-selected', 'true')
+    expect(columnsTab.parentElement).toHaveAttribute('role', 'tablist')
+    expect(columnsTab).toHaveAttribute('aria-selected', 'true')
     expect(referenceDataTab).toHaveAttribute('aria-selected', 'false')
 
     fireEvent.click(referenceDataTab)
@@ -743,46 +709,32 @@ describe('AdminClient', () => {
     )
   })
 
-  it('exposes admin tabs and locale toggles with accessible selection state', () => {
+  it('exposes admin tabs with accessible selection state', () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
-    const terminologyTab = screen.getByRole('tab', {
-      name: 'admin.terminology',
-    })
     const columnsTab = screen.getByRole('tab', { name: 'admin.columns' })
-    const swedishButton = screen.getByRole('button', { name: 'admin.swedish' })
-    const englishButton = screen.getByRole('button', { name: 'admin.english' })
+    const referenceDataTab = screen.getByRole('tab', {
+      name: 'admin.referenceData',
+    })
 
-    expect(terminologyTab).toHaveAttribute('aria-controls', 'terminology-panel')
-    expect(terminologyTab).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tabpanel')).toHaveAttribute(
-      'id',
-      'terminology-panel',
-    )
-    expect(screen.getByRole('tabpanel')).toHaveAttribute(
-      'aria-labelledby',
-      'terminology-tab',
-    )
-    expect(swedishButton).toHaveAttribute('aria-pressed', 'true')
-    expect(englishButton).toHaveAttribute('aria-pressed', 'false')
-
-    fireEvent.click(englishButton)
-
-    expect(swedishButton).toHaveAttribute('aria-pressed', 'false')
-    expect(englishButton).toHaveAttribute('aria-pressed', 'true')
-
-    fireEvent.click(columnsTab)
-
-    expect(columnsTab).toHaveAttribute('aria-controls', 'columns-panel')
     expect(columnsTab).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'columns-panel')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute(
+      'aria-labelledby',
+      'columns-tab',
+    )
+
+    fireEvent.click(referenceDataTab)
+
+    expect(referenceDataTab).toHaveAttribute(
+      'aria-controls',
+      'referenceData-panel',
+    )
+    expect(referenceDataTab).toHaveAttribute('aria-selected', 'true')
   })
 
   it('switches the header help content when the privacy tab is selected', async () => {
@@ -792,9 +744,6 @@ describe('AdminClient', () => {
           <AdminClient
             currentUserRoles={['PrivacyOfficer']}
             initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-            initialTerminology={buildUiTerminologyPayload(
-              getDefaultUiTerminology(),
-            )}
           />
         </ConfirmModalProvider>
         <HelpContentProbe />
@@ -822,9 +771,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['Admin']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
         <HelpContentProbe />
       </HelpProvider>,
@@ -998,9 +944,6 @@ describe('AdminClient', () => {
       <AdminClient
         currentUserRoles={['Reviewer']}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -1081,9 +1024,6 @@ describe('AdminClient', () => {
       <AdminClient
         currentUserRoles={['Admin']}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -1128,9 +1068,6 @@ describe('AdminClient', () => {
       <AdminClient
         currentUserRoles={['Admin']}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -1163,9 +1100,6 @@ describe('AdminClient', () => {
       <AdminClient
         currentUserRoles={['Admin']}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -1225,9 +1159,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['Admin']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </StrictMode>,
     )
@@ -1244,9 +1175,6 @@ describe('AdminClient', () => {
       <AdminClient
         currentUserRoles={['Admin']}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -1299,9 +1227,6 @@ describe('AdminClient', () => {
       <AdminClient
         currentUserRoles={['Admin']}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -1349,9 +1274,6 @@ describe('AdminClient', () => {
       <AdminClient
         currentUserRoles={['Admin']}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -1420,9 +1342,6 @@ describe('AdminClient', () => {
       <AdminClient
         currentUserRoles={['Admin']}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -1488,9 +1407,6 @@ describe('AdminClient', () => {
       <AdminClient
         currentUserRoles={['Admin']}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -1524,9 +1440,6 @@ describe('AdminClient', () => {
       <AdminClient
         currentUserRoles={['Admin']}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -1576,9 +1489,6 @@ describe('AdminClient', () => {
       <AdminClient
         currentUserRoles={['Admin']}
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -1602,9 +1512,6 @@ describe('AdminClient', () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -1615,10 +1522,7 @@ describe('AdminClient', () => {
     expect(privacyTab).toHaveAttribute('aria-disabled', 'true')
     expect(privacyTab).toHaveAttribute('title', 'admin.privacy.disabledTooltip')
     expect(privacyTab).toHaveAttribute('aria-selected', 'false')
-    expect(screen.getByRole('tabpanel')).toHaveAttribute(
-      'id',
-      'terminology-panel',
-    )
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'columns-panel')
     expect(screen.queryByLabelText('admin.privacy.targetHsaId')).toBeNull()
 
     fireEvent.click(privacyTab)
@@ -1635,9 +1539,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -1696,9 +1597,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -1777,9 +1675,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -1862,9 +1757,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -1990,9 +1882,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -2049,9 +1938,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -2095,9 +1981,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -2137,9 +2020,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -2228,9 +2108,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -2348,9 +2225,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -2418,9 +2292,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -2518,9 +2389,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -2607,9 +2475,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -2698,9 +2563,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -2783,9 +2645,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -2869,9 +2728,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -2948,9 +2804,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -3026,9 +2879,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -3072,9 +2922,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -3115,9 +2962,6 @@ describe('AdminClient', () => {
         <AdminClient
           currentUserRoles={['PrivacyOfficer']}
           initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-          initialTerminology={buildUiTerminologyPayload(
-            getDefaultUiTerminology(),
-          )}
         />
       </ConfirmModalProvider>,
     )
@@ -3136,123 +2980,6 @@ describe('AdminClient', () => {
       expect(screen.getByRole('alert')).toHaveTextContent(
         'admin.privacy.replacementIncomplete',
       ),
-    )
-  })
-
-  it('disables terminology controls while saving and shows an error when the save request fails', async () => {
-    const pendingRequest = deferred<Response>()
-    fetchMock.mockReturnValueOnce(pendingRequest.promise)
-
-    render(
-      <AdminClient
-        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
-      />,
-    )
-
-    const localeToggle = screen.getByRole('button', { name: 'admin.english' })
-    const resetButton = screen.getByRole('button', {
-      name: 'common.resetToDefault',
-    })
-    const saveButton = screen.getByRole('button', { name: 'common.save' })
-    const inputs = screen.getAllByRole('textbox')
-
-    fireEvent.click(saveButton)
-
-    await waitFor(() => expect(saveButton).toBeDisabled())
-
-    expect(localeToggle).toBeDisabled()
-    expect(resetButton).toBeDisabled()
-    expect(inputs[0]).toBeDisabled()
-
-    pendingRequest.reject(new Error('network failed'))
-
-    await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        'admin.terminologySaveError',
-      ),
-    )
-  })
-
-  it('refreshes the route after a successful terminology save', async () => {
-    const updatedTerminology = buildUiTerminologyPayload(
-      getDefaultUiTerminology(),
-    )
-    updatedTerminology[0] = {
-      ...updatedTerminology[0],
-      sv: {
-        ...updatedTerminology[0].sv,
-        singular: 'Ny kravtext',
-      },
-    }
-    fetchMock.mockResolvedValueOnce(okJson({ terminology: updatedTerminology }))
-
-    render(
-      <AdminClient
-        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
-      />,
-    )
-
-    fireEvent.change(screen.getAllByRole('textbox')[0], {
-      target: { value: 'Ny kravtext' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
-
-    await waitFor(() => expect(screen.getByText('admin.saved')).toBeTruthy())
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/admin/terminology',
-      expect.objectContaining({
-        method: 'PUT',
-        body: JSON.stringify({ terminology: updatedTerminology }),
-      }),
-    )
-    expect(routerRefresh).toHaveBeenCalledTimes(1)
-  })
-
-  it('restores shipped terminology defaults after a successful save', async () => {
-    const updatedTerminology = buildUiTerminologyPayload(
-      getDefaultUiTerminology(),
-    )
-    updatedTerminology[0] = {
-      ...updatedTerminology[0],
-      sv: {
-        ...updatedTerminology[0].sv,
-        singular: 'Ny kravtext',
-      },
-    }
-    fetchMock.mockResolvedValueOnce(okJson({ terminology: updatedTerminology }))
-
-    render(
-      <AdminClient
-        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
-      />,
-    )
-
-    const singularInput = screen.getAllByRole('textbox')[0]
-
-    fireEvent.change(singularInput, {
-      target: { value: 'Ny kravtext' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
-
-    await waitFor(() => expect(screen.getByText('admin.saved')).toBeTruthy())
-    expect(singularInput).toHaveValue('Ny kravtext')
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'common.resetToDefault' }),
-    )
-
-    expect(singularInput).toHaveValue(
-      getDefaultUiTerminology().description.sv.singular,
     )
   })
 
@@ -3277,9 +3004,6 @@ describe('AdminClient', () => {
     const { container } = render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -3340,14 +3064,7 @@ describe('AdminClient', () => {
       okJson({ columns: normalizedHiddenCategoryColumns }),
     )
 
-    render(
-      <AdminClient
-        initialColumnDefaults={duplicateColumns}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
-      />,
-    )
+    render(<AdminClient initialColumnDefaults={duplicateColumns} />)
 
     fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
 
@@ -3399,9 +3116,6 @@ describe('AdminClient', () => {
     const { container } = render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -3444,9 +3158,6 @@ describe('AdminClient', () => {
     const { container } = render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 
@@ -3496,9 +3207,6 @@ describe('AdminClient', () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
       />,
     )
 

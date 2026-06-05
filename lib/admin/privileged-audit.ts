@@ -38,7 +38,6 @@ export type AdminPrivilegedResourceType =
   | 'specification_item_status'
   | 'specification_lifecycle_status'
   | 'specification_governance_object_type'
-  | 'ui_terminology'
 
 export interface AdminPrivilegedActionDetail {
   changedFields?: readonly string[]

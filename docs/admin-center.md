@@ -1,7 +1,7 @@
 # Admin Center
 
-This document describes the contributor-facing admin center for UI
-terminology, default requirement-list columns, recurring access review,
+This document describes the contributor-facing admin center for default
+requirement-list columns, recurring access review,
 personal data erasure and data subject access export, archiving retention, and
 reference-data entrypoints. Admin users also get an action-log entrypoint for
 database-backed mutation and authorization-denial review.
@@ -11,9 +11,9 @@ filtering, see [requirements-ui-behaviour.md](./requirements-ui-behaviour.md).
 
 ## Purpose
 
-The admin center lets maintainers change human-facing UI names and
-organization-wide list defaults without changing route slugs, API field names,
-or MCP tool identifiers.
+The admin center lets maintainers change organization-wide list defaults,
+reach reference-data administration, and run privileged admin workflows without
+changing route slugs, API field names, or MCP tool identifiers.
 
 The current entrypoint is the global header settings icon, which links to
 `/{locale}/admin`.
@@ -23,9 +23,8 @@ the admin center instead.
 
 ## Tabs
 
-The admin center currently has six tabs for core administration:
+The admin center currently has five tabs for core administration:
 
-- `Terminology`
 - `Columns`
 - `Reference data`
 - `Access review`
@@ -49,38 +48,6 @@ JSON stream. The database log is intended for application action review and
 privacy/data-subject workflows; the platform stream remains the operational
 security telemetry channel. Reading the action log, including CSV export, does
 not create another action-log row.
-
-## Terminology
-
-Terminology is stored in the database and loaded per request.
-
-The source of truth is:
-
-- table: `ui_terminology`
-- DAL: `lib/dal/ui-settings.ts`
-- message overlay: `lib/ui-terminology.ts`
-
-Each term key stores six values:
-
-- Swedish singular
-- Swedish plural
-- Swedish definite plural
-- English singular
-- English plural
-- English definite plural
-
-The admin UI currently manages the configured term families used by the app,
-CSV export, and MCP human-readable output.
-
-Changes made in `Terminology` are applied to:
-
-- app navigation and page labels
-- requirement list headers and detail labels
-- reference-data headings
-- CSV export headers
-- MCP catalog and requirement detail text
-
-The underlying routes, REST payload fields, and MCP tool names remain stable.
 
 ## Columns
 
@@ -414,7 +381,6 @@ requirement area reference-data page. The owner name is displayed:
 If you change any of the following, update this document:
 
 - admin tab behavior
-- terminology persistence or scope
 - column default precedence
 - access-review scope, role gating, decisions, or evidence export
 - privacy-erasure or data subject access export policy, actions, or role gating

@@ -1,7 +1,3 @@
-import {
-  createUiSettingsLoader,
-  type UiSettingsLoader,
-} from '@/lib/dal/ui-settings'
 import { getRequestSqlServerDataSource, type SqlServerDatabase } from '@/lib/db'
 import {
   type AuthorizationService,
@@ -23,7 +19,6 @@ export interface RequirementsRuntime {
   db: SqlServerDatabase
   logger: RequirementsLogger
   service: RequirementsService
-  uiSettings: UiSettingsLoader
 }
 
 export interface RequirementsRestRuntime extends RequirementsRuntime {
@@ -40,11 +35,9 @@ export function createRequirementsRuntime(
 ): RequirementsRuntime {
   const authorization = createDefaultAuthorizationService()
   const logger = createRequirementsLogger()
-  const uiSettings = createUiSettingsLoader(db)
   const service = createRequirementsService(db, {
     authorization,
     logger,
-    uiSettings,
   })
 
   return {
@@ -52,7 +45,6 @@ export function createRequirementsRuntime(
     db,
     logger,
     service,
-    uiSettings,
   }
 }
 

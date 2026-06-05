@@ -7,6 +7,7 @@ vi.mock('@/lib/db', () => ({
 const mockQueryCatalog = vi.fn()
 const mockQueryRequirementList = vi.fn()
 const mockManageRequirement = vi.fn()
+const mockExportToCsv = vi.hoisted(() => vi.fn(() => 'csv-data'))
 const mockAuthorization = { assertAuthorized: vi.fn() }
 const mockRequestContext = {
   actor: {
@@ -40,12 +41,6 @@ vi.mock('@/lib/requirements/list-query', () => ({
   queryRequirementList: mockQueryRequirementList,
 }))
 
-vi.mock('@/lib/dal/ui-settings', () => ({
-  createUiSettingsLoader: () => ({
-    getTerminology: vi.fn().mockResolvedValue({}),
-  }),
-}))
-
 vi.mock('@/lib/requirements/list-view', () => ({
   DEFAULT_REQUIREMENT_SORT: { by: 'uniqueId', direction: 'asc' },
   REQUIREMENT_SORT_FIELDS: ['uniqueId', 'description', 'area', 'status'],
@@ -54,12 +49,8 @@ vi.mock('@/lib/requirements/list-view', () => ({
   isRequirementSortDirection: (v: string) => ['asc', 'desc'].includes(v),
 }))
 
-vi.mock('@/lib/ui-terminology', () => ({
-  getRequirementCsvHeaders: () => ['ID', 'Requirement text'],
-}))
-
 vi.mock('@/lib/export-csv', () => ({
-  exportToCsv: () => 'csv-data',
+  exportToCsv: mockExportToCsv,
 }))
 
 describe('requirements route', () => {
@@ -105,6 +96,28 @@ describe('requirements route', () => {
       expect(res.headers.get('Content-Type')).toContain('text/csv')
       expect(res.headers.get('Content-Disposition')).toContain(
         'kravbibliotek.csv',
+      )
+      expect(mockExportToCsv).toHaveBeenCalledWith(
+        [
+          'Krav-ID',
+          'Kravtext',
+          'Kravområde',
+          'Kategori',
+          'Typ',
+          'Kvalitetsegenskap',
+          'Risknivå',
+          'Kravversionsstatus',
+          'Verifierbar',
+          'Version',
+          'Normreferenser',
+          'Normreferens-URI',
+        ],
+        [
+          expect.objectContaining({
+            'Krav-ID': 'TST-001',
+            Kravtext: '',
+          }),
+        ],
       )
     })
 

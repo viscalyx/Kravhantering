@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { conflictError, forbiddenError } from '@/lib/requirements/errors'
-import { normalizeUiTerminology } from '@/lib/ui-terminology'
 import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
 
 const mocks = vi.hoisted(() => ({
@@ -273,13 +272,6 @@ function makeContext() {
   }
 }
 
-function makeUiSettings() {
-  return {
-    getColumnDefaults: vi.fn(),
-    getTerminology: vi.fn(async () => normalizeUiTerminology([])),
-  }
-}
-
 describe('createRequirementsService', () => {
   const logger = {
     error: vi.fn(),
@@ -514,7 +506,6 @@ describe('createRequirementsService', () => {
 
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'requirements',
@@ -575,7 +566,6 @@ describe('createRequirementsService', () => {
 
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'requirements',
@@ -598,7 +588,6 @@ describe('createRequirementsService', () => {
   it('passes locale-aware sorting options to the DAL query', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await service.queryCatalog(makeContext(), {
@@ -626,7 +615,7 @@ describe('createRequirementsService', () => {
     )
   })
 
-  it('uses configurable terminology in catalog messages', async () => {
+  it('uses static localized catalog titles in catalog messages', async () => {
     mocks.listStatuses.mockResolvedValue([
       {
         color: '#22c55e',
@@ -640,26 +629,6 @@ describe('createRequirementsService', () => {
 
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: {
-        getColumnDefaults: vi.fn(),
-        getTerminology: vi.fn(async () =>
-          normalizeUiTerminology([
-            {
-              en: {
-                definitePlural: 'Requirement version states',
-                plural: 'Requirement version states',
-                singular: 'Requirement version state',
-              },
-              key: 'status',
-              sv: {
-                definitePlural: 'Kravversionsstatusarna',
-                plural: 'Kravversionsstatusar',
-                singular: 'Kravversionsstatus',
-              },
-            },
-          ]),
-        ),
-      },
     })
 
     const result = await service.queryCatalog(makeContext(), {
@@ -667,14 +636,13 @@ describe('createRequirementsService', () => {
       locale: 'en',
     })
 
-    expect(result.message).toContain('Requirement version states')
+    expect(result.message).toContain('Requirement version statuses')
     expect(result.message).toContain('Published')
   })
 
   it('creates a requirement and syncs references', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.manageRequirement(makeContext(), {
       operation: 'create',
@@ -707,7 +675,6 @@ describe('createRequirementsService', () => {
 
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
@@ -732,7 +699,6 @@ describe('createRequirementsService', () => {
     )
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     const result = await service.getRequirement(makeContext(), {
@@ -757,7 +723,6 @@ describe('createRequirementsService', () => {
     )
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     const result = await service.getRequirement(makeContext(), {
@@ -780,7 +745,6 @@ describe('createRequirementsService', () => {
   it('returns not_found when no published version exists for the default detail view', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await expect(
@@ -798,7 +762,6 @@ describe('createRequirementsService', () => {
   it('returns not_found when a requested version is missing', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await expect(
@@ -858,7 +821,6 @@ describe('createRequirementsService', () => {
     mocks.listAreas.mockResolvedValue([{ id: 1, prefix: 'A', name: 'Area A' }])
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'areas',
@@ -874,7 +836,6 @@ describe('createRequirementsService', () => {
     ])
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'categories',
@@ -889,7 +850,6 @@ describe('createRequirementsService', () => {
     ])
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'types',
@@ -904,7 +864,6 @@ describe('createRequirementsService', () => {
     ])
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'quality_characteristics',
@@ -920,7 +879,6 @@ describe('createRequirementsService', () => {
     ])
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'statuses',
@@ -944,7 +902,6 @@ describe('createRequirementsService', () => {
     ])
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'requirement_packages',
@@ -967,7 +924,6 @@ describe('createRequirementsService', () => {
     ])
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'transitions',
@@ -980,7 +936,6 @@ describe('createRequirementsService', () => {
     mocks.editRequirement.mockResolvedValue({ id: 11 })
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
@@ -1007,7 +962,6 @@ describe('createRequirementsService', () => {
   it('rejects edits without an optimistic concurrency token', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await expect(
@@ -1033,7 +987,6 @@ describe('createRequirementsService', () => {
     )
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await expect(
@@ -1061,7 +1014,6 @@ describe('createRequirementsService', () => {
     mocks.initiateArchiving.mockResolvedValue(undefined)
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
@@ -1075,7 +1027,6 @@ describe('createRequirementsService', () => {
     mocks.approveArchiving.mockResolvedValue(undefined)
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
@@ -1089,7 +1040,6 @@ describe('createRequirementsService', () => {
     mocks.cancelArchiving.mockResolvedValue(undefined)
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
@@ -1115,7 +1065,6 @@ describe('createRequirementsService', () => {
       .mockResolvedValueOnce(null)
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
@@ -1129,7 +1078,6 @@ describe('createRequirementsService', () => {
     mocks.getRequirementById.mockResolvedValue(makeRequirementRecord())
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
@@ -1145,7 +1093,6 @@ describe('createRequirementsService', () => {
     )
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.transitionRequirement(makeContext(), {
       id: 1,
@@ -1161,7 +1108,6 @@ describe('createRequirementsService', () => {
     )
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.getRequirement(makeContext(), {
       uniqueId: 'INT0001',
@@ -1177,7 +1123,6 @@ describe('createRequirementsService', () => {
     ])
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'statuses',
@@ -1192,7 +1137,6 @@ describe('createRequirementsService', () => {
     ])
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'statuses',
@@ -1206,7 +1150,6 @@ describe('createRequirementsService', () => {
   it('rejects edit without description', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     await expect(
       service.manageRequirement(makeContext(), {
@@ -1220,7 +1163,6 @@ describe('createRequirementsService', () => {
   it('rejects edit with blank description', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     await expect(
       service.manageRequirement(makeContext(), {
@@ -1239,7 +1181,6 @@ describe('createRequirementsService', () => {
   it('rejects missing requirement references as validation errors', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await expect(
@@ -1273,7 +1214,6 @@ describe('createRequirementsService', () => {
   it('rejects create without areaId', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     await expect(
       service.manageRequirement(makeContext(), {
@@ -1286,7 +1226,6 @@ describe('createRequirementsService', () => {
   it('rejects create with blank description', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     await expect(
       service.manageRequirement(makeContext(), {
@@ -1301,7 +1240,6 @@ describe('createRequirementsService', () => {
     mocks.getVersionHistory.mockResolvedValue([{ id: 10, versionNumber: 1 }])
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     await expect(
       service.manageRequirement(makeContext(), {
@@ -1316,7 +1254,6 @@ describe('createRequirementsService', () => {
   it('rejects restore_version without a valid versionNumber before reading history', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await expect(
@@ -1337,7 +1274,6 @@ describe('createRequirementsService', () => {
     mocks.getRequirementById.mockResolvedValue(null)
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     await expect(
       service.transitionRequirement(makeContext(), {
@@ -1367,7 +1303,6 @@ describe('createRequirementsService', () => {
     const service = createRequirementsService({} as never, {
       authorization,
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     const result = await service.listSpecifications(makeContext(), {
@@ -1396,7 +1331,6 @@ describe('createRequirementsService', () => {
   it('emits capacity metrics for MCP AI generation', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     const result = await service.generateRequirements(
@@ -1433,7 +1367,6 @@ describe('createRequirementsService', () => {
   it('rejects specification workflows without a specification reference', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await expect(
@@ -1481,7 +1414,6 @@ describe('createRequirementsService', () => {
     ])
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     const result = await service.getSpecificationItems(makeContext(), {
@@ -1512,7 +1444,6 @@ describe('createRequirementsService', () => {
     mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(1)
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     const result = await service.addToSpecification(makeContext(), {
@@ -1542,7 +1473,6 @@ describe('createRequirementsService', () => {
     mocks.unlinkRequirementsFromSpecification.mockResolvedValue(1)
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     const result = await service.removeFromSpecification(makeContext(), {
@@ -1571,7 +1501,6 @@ describe('createRequirementsService', () => {
     ])
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     const result = await service.listGraduationTargetAreas(makeContext(), {
@@ -1598,7 +1527,6 @@ describe('createRequirementsService', () => {
     mocks.listAreasActorCanAuthor.mockResolvedValueOnce([])
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     const result = await service.listGraduationTargetAreas(makeContext(), {
@@ -1624,7 +1552,6 @@ describe('createRequirementsService', () => {
     mocks.getSpecificationLocalRequirementDetail.mockResolvedValueOnce(null)
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await expect(
@@ -1694,7 +1621,6 @@ describe('createRequirementsService', () => {
     })
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     const result = await service.graduateSpecificationLocalRequirement(
@@ -1757,7 +1683,6 @@ describe('createRequirementsService', () => {
     })
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
     const context = {
       ...makeContext(),
@@ -1785,7 +1710,6 @@ describe('createRequirementsService', () => {
     mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(0)
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await service.addToSpecification(makeContext(), {
@@ -1799,7 +1723,6 @@ describe('createRequirementsService', () => {
   it('emits security audit events for high-risk requirement mutations', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await service.manageRequirement(makeContext(), {
@@ -1845,7 +1768,6 @@ describe('createRequirementsService', () => {
     mocks.auditQuery.mockImplementation(async () => [])
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await service.manageRequirement(makeContext(), {
@@ -1879,7 +1801,6 @@ describe('createRequirementsService', () => {
     mocks.unlinkRequirementsFromSpecification.mockResolvedValue(2)
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await service.removeFromSpecification(makeContext(), {
@@ -1909,7 +1830,6 @@ describe('createRequirementsService', () => {
     mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(2)
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await service.addToSpecification(makeContext(), {
@@ -1939,7 +1859,6 @@ describe('createRequirementsService', () => {
   it('emits security audit events for deviation decisions', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await service.manageDeviation(makeContext(), {
@@ -1971,7 +1890,6 @@ describe('createRequirementsService', () => {
   it('emits security audit events for suggestion resolutions', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await service.manageSuggestion(makeContext(), {
@@ -2002,7 +1920,6 @@ describe('createRequirementsService', () => {
   it('rejects unsupported suggestion operations without deleting', async () => {
     const service = createRequirementsService({} as never, {
       logger,
-      uiSettings: makeUiSettings(),
     })
 
     await expect(

@@ -1,10 +1,8 @@
 import type { Metadata } from 'next'
-import { getUiTerminology } from '@/lib/dal/ui-settings'
-import { getRequestSqlServerDataSource } from '@/lib/db'
-import { getLocalizedUiTerm, type UiLocale } from '@/lib/ui-terminology'
+import { getTranslations } from 'next-intl/server'
 import VersionDetailClient from './version-detail-client'
 
-type Params = Promise<{ id: string; locale: UiLocale; version: string }>
+type Params = Promise<{ id: string; locale: 'en' | 'sv'; version: string }>
 
 export async function generateMetadata({
   params,
@@ -12,11 +10,9 @@ export async function generateMetadata({
   params: Params
 }): Promise<Metadata> {
   const { locale } = await params
-  const terminology = await getUiTerminology(
-    await getRequestSqlServerDataSource(),
-  )
+  const t = await getTranslations({ locale, namespace: 'requirements' })
   return {
-    title: getLocalizedUiTerm(terminology, 'version', locale, 'singular'),
+    title: t('detailLabels.version'),
   }
 }
 

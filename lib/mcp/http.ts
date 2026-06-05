@@ -55,8 +55,8 @@ export async function handleRequirementsMcpRequest(
     throw err
   }
 
-  const { service, uiSettings } = createRequirementsRuntime(db)
-  const server = createKravhanteringMcpServer(service, request, uiSettings)
+  const { service } = createRequirementsRuntime(db)
+  const server = createKravhanteringMcpServer(service, request)
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
   })

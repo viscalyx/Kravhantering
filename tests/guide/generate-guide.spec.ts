@@ -1605,18 +1605,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
     // ── Sektion 9: Administrationscenter ─────────────────────────────────
     currentSection = 'Administrationscenter'
 
-    await guideStep(page, 'Admin — Terminologi', async () => {
-      await guideGoto(page, '/sv/admin')
-      await snap(
-        page,
-        'admin-terminologi',
-        'Admin — Terminologi',
-        'Administrationscenterets flik **Terminologi** låter dig anpassa gränssnittsetiketter för domänspecifika termer. Till exempel kan "Kravtext" byta namn till en term som passar din organisations vokabulär.',
-      )
-    })
-
     await guideStep(page, 'Admin — Kolumner', async () => {
-      await page.getByRole('tab', { name: 'Kolumner' }).click()
+      await guideGoto(page, '/sv/admin')
       await page.waitForTimeout(300)
       await snap(
         page,

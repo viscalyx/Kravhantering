@@ -174,18 +174,6 @@ erDiagram
         integer to_requirement_status_id FK
     }
 
-    ui_terminology {
-        integer id PK
-        text key UK
-        text singular_sv
-        text plural_sv
-        text definite_plural_sv
-        text singular_en
-        text plural_en
-        text definite_plural_en
-        text updated_at
-    }
-
     requirement_list_column_defaults {
         integer id PK
         text column_id UK
@@ -1136,40 +1124,8 @@ sort order, but usage statuses are not created or deleted.
 
 These tables store contributor- and admin-managed UI configuration.
 
-They are not business-domain reference data. They control terminology and
-organization-wide UI defaults used by the app, CSV export, and MCP
-human-readable output.
-
-### `ui_terminology`
-
-Localized UI terminology overrides for the term families managed from the admin
-center.
-
-<!-- markdownlint-disable MD013 -->
-| Column | Type | Description |
-| -------- | ------ | ------------- |
-| `id` | integer PK | Auto-increment primary key |
-| `key` | text, unique | Stable terminology key used in the app overlay layer |
-| `singular_sv` | text | Swedish singular form |
-| `plural_sv` | text | Swedish plural form |
-| `definite_plural_sv` | text | Swedish definite plural form |
-| `singular_en` | text | English singular form |
-| `plural_en` | text | English plural form |
-| `definite_plural_en` | text | English definite plural form |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
-<!-- markdownlint-enable MD013 -->
-
-**Purpose:**
-
-- contributor/admin-managed naming
-- bilingual label overrides for the UI
-- shared human-readable terminology for CSV export
-- shared human-readable terminology for MCP responses
-
-**Unique index:**
-`uq_ui_terminology_key`.
-
----
+They are not business-domain reference data. They control organization-wide UI
+defaults used by the app.
 
 ### `requirement_list_column_defaults`
 
@@ -2010,7 +1966,6 @@ its purpose and the table/column(s) it covers.
 | `uq_risk_levels_name_sv` | `risk_levels` | `name_sv` | Prevents duplicate Swedish risk level names |
 | `uq_risk_levels_name_en` | `risk_levels` | `name_en` | Prevents duplicate English risk level names |
 | `uq_requirement_status_transitions_from_to` | `requirement_status_transitions` | `(from_requirement_status_id, to_requirement_status_id)` | Prevents duplicate transition rules |
-| `uq_ui_terminology_key` | `ui_terminology` | `key` | Prevents duplicate terminology overlays for the same UI term family |
 | `uq_requirement_list_column_defaults_column_id` | `requirement_list_column_defaults` | `column_id` | Ensures each requirement-list column has one org-managed default row |
 | `uq_requirement_list_column_defaults_sort_order` | `requirement_list_column_defaults` | `sort_order` | Ensures each default list position is assigned to exactly one column |
 | `uq_archiving_retention_policies_policy_key` | `archiving_retention_policies` | `policy_key` | Ensures each retention policy has one stable configuration row |

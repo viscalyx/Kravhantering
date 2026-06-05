@@ -3,7 +3,6 @@ import {
   ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as z from 'zod'
-import type { UiSettingsLoader } from '@/lib/dal/ui-settings'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   createRequestContext,
@@ -24,19 +23,13 @@ import {
   toResponseFormat,
   toResponseLocale,
 } from '@/lib/requirements/service'
-import {
-  applyUiTerminologyMessages,
-  getDefaultUiTerminology,
-  getLocalizedUiTerm,
-  type UiLocale,
-} from '@/lib/ui-terminology'
 import enMessages from '@/messages/en.json'
 import svMessages from '@/messages/sv.json'
 
 const HTML_BASE_MESSAGES = {
   en: enMessages,
   sv: svMessages,
-} satisfies Record<UiLocale, Record<string, unknown>>
+} satisfies Record<'en' | 'sv', Record<string, unknown>>
 
 const PaginationSchema = z
   .object({
@@ -289,7 +282,6 @@ function getSafeReferenceHref(uri: string) {
 function getMessageString(
   messages: Record<string, unknown>,
   path: readonly string[],
-  fallback: string,
 ) {
   let current: unknown = messages
 
@@ -299,13 +291,13 @@ function getMessageString(
       current === null ||
       Array.isArray(current)
     ) {
-      return fallback
+      return path.join('.')
     }
 
     current = (current as Record<string, unknown>)[segment]
   }
 
-  return typeof current === 'string' ? current : fallback
+  return typeof current === 'string' ? current : path.join('.')
 }
 
 function getBaseContext(
@@ -382,13 +374,10 @@ function createRequirementResourceLink(
 function renderRequirementHtml(
   payload: Awaited<ReturnType<RequirementsService['getRequirement']>>,
   locale: 'en' | 'sv',
-  terminology = getDefaultUiTerminology(),
 ) {
-  const localizedMessages = applyUiTerminologyMessages(
-    HTML_BASE_MESSAGES[locale],
-    locale,
-    terminology,
-  ) as Record<string, unknown>
+  const localizedMessages = HTML_BASE_MESSAGES[locale]
+  const detailLabel = (key: string) =>
+    getMessageString(localizedMessages, ['requirements', 'detailLabels', key])
   const detail = payload.requirement
   const selectedVersion = payload.version ?? detail.versions[0]
 
@@ -416,28 +405,16 @@ function renderRequirementHtml(
     locale === 'sv'
       ? (selectedVersion?.statusNameSv as string | undefined)
       : (selectedVersion?.statusNameEn as string | undefined)
-  const requiresTestingLabel = getLocalizedUiTerm(
-    terminology,
-    'requiresTesting',
-    locale,
-    'singular',
-  )
-  const requiresTestingOffLabel = getLocalizedUiTerm(
-    terminology,
-    'requiresTestingOff',
-    locale,
-    'singular',
-  )
-  const noneLabel = getMessageString(
-    localizedMessages,
-    ['common', 'noneAvailable'],
-    locale === 'sv' ? 'Inga' : 'None',
-  )
-  const unnamedReferenceLabel = getMessageString(
-    localizedMessages,
-    ['reference', 'unnamed'],
-    getLocalizedUiTerm(terminology, 'references', locale, 'singular'),
-  )
+  const requiresTestingLabel = detailLabel('requiresTesting')
+  const requiresTestingOffLabel = detailLabel('requiresTestingOff')
+  const noneLabel = getMessageString(localizedMessages, [
+    'common',
+    'noneAvailable',
+  ])
+  const unnamedReferenceLabel = getMessageString(localizedMessages, [
+    'reference',
+    'unnamed',
+  ])
 
   const requirementPackageNames = requirementPackages
     .map(item => item.requirementPackage?.name)
@@ -500,7 +477,7 @@ function renderRequirementHtml(
     '<body>',
     '  <main>',
     '    <article class="card">',
-    `      <div class="eyebrow">${escapeHtml(getLocalizedUiTerm(terminology, 'mcpRequirementView', locale, 'singular'))}</div>`,
+    `      <div class="eyebrow">${escapeHtml(detailLabel('mcpRequirementView'))}</div>`,
     `      <h1>${escapeHtml(title)}</h1>`,
     '      <div class="meta">',
     `        <span class="pill">${escapeHtml(statusLabel ?? 'Unknown')}</span>`,
@@ -512,23 +489,23 @@ function renderRequirementHtml(
     '      </div>',
     '      <section class="split">',
     '        <div>',
-    `          <h2>${escapeHtml(getLocalizedUiTerm(terminology, 'description', locale, 'singular'))}</h2>`,
+    `          <h2>${escapeHtml(detailLabel('description'))}</h2>`,
     `          <p class="body-text">${escapeHtml(String(selectedVersion?.description ?? ''))}</p>`,
-    `          <h2>${escapeHtml(getLocalizedUiTerm(terminology, 'acceptanceCriteria', locale, 'singular'))}</h2>`,
+    `          <h2>${escapeHtml(detailLabel('acceptanceCriteria'))}</h2>`,
     `          <p class="body-text">${escapeHtml(String(selectedVersion?.acceptanceCriteria ?? ''))}</p>`,
     '        </div>',
     '        <div class="grid">',
-    `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'category', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.category?.nameSv : selectedVersion?.category?.nameEn) ?? '—'))}</p></section>`,
-    `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'type', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.type?.nameSv : selectedVersion?.type?.nameEn) ?? '—'))}</p></section>`,
-    `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'qualityCharacteristic', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.qualityCharacteristic?.nameSv : selectedVersion?.qualityCharacteristic?.nameEn) ?? '—'))}</p></section>`,
-    `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'riskLevel', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.riskLevel?.nameSv : selectedVersion?.riskLevel?.nameEn) ?? '—'))}</p></section>`,
-    `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'version', locale, 'singular'))}</h2><p>${escapeHtml(String(selectedVersion?.versionNumber ?? '—'))}</p></section>`,
-    `          <section class="panel"><h2>${escapeHtml(getMessageString(localizedMessages, ['requirement', 'specificationCount'], locale === 'sv' ? 'Används i kravunderlag' : 'Used in specification'))}</h2><p>${escapeHtml(String(detail.specificationCount ?? 0))}</p></section>`,
+    `          <section class="panel"><h2>${escapeHtml(detailLabel('category'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.category?.nameSv : selectedVersion?.category?.nameEn) ?? '—'))}</p></section>`,
+    `          <section class="panel"><h2>${escapeHtml(detailLabel('type'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.type?.nameSv : selectedVersion?.type?.nameEn) ?? '—'))}</p></section>`,
+    `          <section class="panel"><h2>${escapeHtml(detailLabel('qualityCharacteristic'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.qualityCharacteristic?.nameSv : selectedVersion?.qualityCharacteristic?.nameEn) ?? '—'))}</p></section>`,
+    `          <section class="panel"><h2>${escapeHtml(detailLabel('riskLevel'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.riskLevel?.nameSv : selectedVersion?.riskLevel?.nameEn) ?? '—'))}</p></section>`,
+    `          <section class="panel"><h2>${escapeHtml(detailLabel('version'))}</h2><p>${escapeHtml(String(selectedVersion?.versionNumber ?? '—'))}</p></section>`,
+    `          <section class="panel"><h2>${escapeHtml(getMessageString(localizedMessages, ['requirement', 'specificationCount']))}</h2><p>${escapeHtml(String(detail.specificationCount ?? 0))}</p></section>`,
     '        </div>',
     '      </section>',
     '      <section class="split">',
-    `        <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'references', locale, 'plural'))}</h2>${normReferenceMarkup}</section>`,
-    `        <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'requirementPackage', locale, 'plural'))}</h2>${requirementPackageMarkup}</section>`,
+    `        <section class="panel"><h2>${escapeHtml(detailLabel('references'))}</h2>${normReferenceMarkup}</section>`,
+    `        <section class="panel"><h2>${escapeHtml(detailLabel('requirementPackage'))}</h2>${requirementPackageMarkup}</section>`,
     '      </section>',
     '    </article>',
     '  </main>',
@@ -1147,9 +1124,6 @@ function getRequirementLinkPayload(
 export function createKravhanteringMcpServer(
   service: RequirementsService,
   request: Request,
-  uiSettings: Pick<UiSettingsLoader, 'getTerminology'> = {
-    getTerminology: async () => getDefaultUiTerminology(),
-  },
 ): McpServer {
   const server = new McpServer(
     {
@@ -1253,23 +1227,11 @@ export function createKravhanteringMcpServer(
           view: versionNumber ? 'version' : 'detail',
         },
       )
-      let terminology = getDefaultUiTerminology()
-
-      try {
-        terminology = await uiSettings.getTerminology()
-      } catch {
-        // Keep the HTML resource readable when stored UI settings are unavailable.
-      }
-
       return {
         contents: [
           {
             mimeType: 'text/html',
-            text: renderRequirementHtml(
-              payload,
-              locale as UiLocale,
-              terminology,
-            ),
+            text: renderRequirementHtml(payload, locale),
             uri: uri.toString(),
           },
         ],
@@ -2259,6 +2221,6 @@ export function createRequirementsMcpServerFromDb(
   db: SqlServerDatabase,
   request: Request,
 ): McpServer {
-  const { service, uiSettings } = createRequirementsRuntime(db)
-  return createKravhanteringMcpServer(service, request, uiSettings)
+  const { service } = createRequirementsRuntime(db)
+  return createKravhanteringMcpServer(service, request)
 }

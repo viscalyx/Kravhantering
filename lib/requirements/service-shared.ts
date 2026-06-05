@@ -21,7 +21,17 @@ const SERVICE_MESSAGES = {
   sv: svMessages,
 }
 
-type ServiceMessageKey =
+export type ServiceMessageKey =
+  | 'requirements.catalogTitles.areas'
+  | 'requirements.catalogTitles.categories'
+  | 'requirements.catalogTitles.qualityCharacteristics'
+  | 'requirements.catalogTitles.requirementPackages'
+  | 'requirements.catalogTitles.requirements'
+  | 'requirements.catalogTitles.riskLevels'
+  | 'requirements.catalogTitles.statuses'
+  | 'requirements.catalogTitles.transitions'
+  | 'requirements.catalogTitles.types'
+  | 'requirements.catalogTitles.usageStatuses'
   | 'requirements.specifications.add.count'
   | 'requirements.specifications.add.skipped'
   | 'requirements.specifications.graduate.summary'

@@ -12,10 +12,6 @@ import {
   type GraduatedRequirementResult,
   getSpecificationBySlug,
 } from '@/lib/dal/requirements-specifications'
-import {
-  createUiSettingsLoader,
-  type UiSettingsLoader,
-} from '@/lib/dal/ui-settings'
 import type { SqlServerDatabase } from '@/lib/db'
 import { recordCapacityEvent } from '@/lib/observability/capacity'
 import { checkInMemoryThrottle } from '@/lib/observability/throttle'
@@ -507,15 +503,13 @@ export function createRequirementsService(
   {
     authorization = createDefaultAuthorizationService(),
     logger = createRequirementsLogger(),
-    uiSettings = createUiSettingsLoader(db),
   }: {
     authorization?: AuthorizationService
     logger?: RequirementsLogger
-    uiSettings?: UiSettingsLoader
   } = {},
 ): RequirementsService {
   return {
-    ...createRequirementWorkflow({ authorization, db, logger, uiSettings }),
+    ...createRequirementWorkflow({ authorization, db, logger }),
 
     ...createSpecificationWorkflow({ authorization, db, logger }),
     ...createSuggestionWorkflow({ authorization, db, logger }),
