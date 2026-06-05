@@ -761,8 +761,8 @@ förmågor som tillsammans stödjer kravförvaltningen:
 2. **Kravunderlag** — urval av krav i ett
    verksamhetssammanhang, kompletterat med lokala krav,
    avsteg, risknivåer och användningsstatus.
-3. **Förvaltningsyta** — terminologi, kolumnstandard,
-   referensdata, dataskydd, behörighetsöversyn,
+3. **Förvaltningsyta** — kolumnstandard, referensdata,
+   dataskydd, behörighetsöversyn,
    arkivering och åtgärdslogg.
 4. **Integrationsyta** — REST-gränssnitt för
    webbapplikationen, MCP-gränssnitt för godkända

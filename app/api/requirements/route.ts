@@ -47,6 +47,12 @@ type RequirementListCsvRow = Awaited<
   ReturnType<typeof queryRequirementList>
 >['requirements'][number]
 
+function assertUnreachableRequirementCsvHeaderKey(key: never): never {
+  throw new Error(
+    `Unhandled RequirementCsvHeaderKey in getStaticCsvValue: ${String(key)}`,
+  )
+}
+
 function getStaticCsvColumns(locale: 'en' | 'sv') {
   const headers = REQUIREMENT_CSV_MESSAGES[locale].headers
   return Object.entries(headers).map(([key, header]) => ({
@@ -59,7 +65,7 @@ function getStaticCsvValue(
   row: RequirementListCsvRow,
   key: RequirementCsvHeaderKey,
   locale: 'en' | 'sv',
-) {
+): string {
   const isSv = locale === 'sv'
 
   switch (key) {
@@ -99,6 +105,8 @@ function getStaticCsvValue(
       return row.uniqueId
     case 'version':
       return String(row.version?.versionNumber ?? 1)
+    default:
+      return assertUnreachableRequirementCsvHeaderKey(key)
   }
 }
 
