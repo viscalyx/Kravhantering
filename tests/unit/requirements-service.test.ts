@@ -216,11 +216,9 @@ function makeRequirementRecord() {
         versionRequirementPackages: [
           {
             requirementPackage: {
-              descriptionEn: 'A login flow',
-              descriptionSv: 'Ett inloggningsflode',
+              description: 'A login flow',
               id: 7,
-              nameEn: 'Login',
-              nameSv: 'Inloggning',
+              name: 'Login',
               ownerId: 1,
             },
           },
@@ -933,7 +931,16 @@ describe('createRequirementsService', () => {
 
   it('queries requirementPackages catalog', async () => {
     mocks.listRequirementPackages.mockResolvedValue([
-      { id: 1, nameSv: 'Mobil användning', nameEn: 'Mobile use' },
+      {
+        createdAt: '2026-04-20T20:07:00.000Z',
+        description: null,
+        id: 1,
+        isArchived: false,
+        leadDisplayName: 'Anna Owner',
+        leadHsaId: 'SE5560000001-anna1',
+        name: 'Mobil användning',
+        updatedAt: '2026-04-20T20:07:00.000Z',
+      },
     ])
     const service = createRequirementsService({} as never, {
       logger,
@@ -944,6 +951,10 @@ describe('createRequirementsService', () => {
     })
     expect(result.catalog).toBe('requirement_packages')
     expect(result.items).toHaveLength(1)
+    expect(result.items[0]).toMatchObject({
+      description: null,
+      name: 'Mobil användning',
+    })
   })
 
   it('queries transitions catalog', async () => {

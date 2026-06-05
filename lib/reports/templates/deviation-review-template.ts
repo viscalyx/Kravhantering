@@ -53,8 +53,7 @@ export function buildDeviationReviewReport(
     archivedAt: null,
     normReferences: v.normReferences,
     requirementPackages: v.requirementPackages.map(s => ({
-      nameSv: s.nameSv ?? '',
-      nameEn: s.nameEn ?? '',
+      name: s.name,
     })),
   }
 

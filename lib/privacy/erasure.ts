@@ -108,15 +108,6 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
         FROM requirement_areas area
         INNER JOIN owners owner ON owner.id = area.owner_id
         WHERE owner.hsa_id = @0
-        UNION ALL
-        SELECT
-          pkg.name_sv AS value,
-          pkg.name_sv AS sort_value,
-          pkg.id AS sort_id,
-          1 AS sort_group
-        FROM requirement_packages pkg
-        INNER JOIN owners owner ON owner.id = pkg.owner_id
-        WHERE owner.hsa_id = @0
       ) refs
       ORDER BY refs.sort_group ASC, refs.sort_value ASC, refs.sort_id ASC`,
     allowedActions: ['switch', 'skip'],
@@ -153,16 +144,15 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   },
   {
     affectedReferencesSql: `/* privacy:affected:requirement_packages.owner */
-      SELECT pkg.name_sv AS value
+      SELECT pkg.name AS value
       FROM requirement_packages pkg
-      INNER JOIN owners owner ON owner.id = pkg.owner_id
-      WHERE owner.hsa_id = @0
-      ORDER BY pkg.name_sv ASC, pkg.id ASC`,
+      WHERE pkg.lead_hsa_id = @0
+      ORDER BY pkg.name ASC, pkg.id ASC`,
     allowedActions: ['switch', 'skip'],
     countSql:
-      'SELECT COUNT(*) AS count FROM requirement_packages pkg INNER JOIN owners owner ON owner.id = pkg.owner_id WHERE owner.hsa_id = @0',
+      'SELECT COUNT(*) AS count FROM requirement_packages pkg WHERE pkg.lead_hsa_id = @0',
     currentDisplaySql:
-      "SELECT TOP (1) CONCAT(owner.first_name, CASE WHEN owner.last_name = '' THEN '' ELSE CONCAT(' ', owner.last_name) END) AS value FROM requirement_packages pkg INNER JOIN owners owner ON owner.id = pkg.owner_id WHERE owner.hsa_id = @0 ORDER BY pkg.id ASC",
+      'SELECT TOP (1) pkg.lead_display_name AS value FROM requirement_packages pkg WHERE pkg.lead_hsa_id = @0 ORDER BY pkg.id ASC',
     defaultWithReplacement: 'switch',
     defaultWithoutReplacement: 'skip',
     fieldKey: 'owner',
@@ -734,11 +724,10 @@ async function listOwnerRequirementPackageReferences(
   targetHsaId: string,
 ): Promise<string[]> {
   const rows = (await db.query(
-    `SELECT pkg.name_sv AS value
+    `SELECT pkg.name AS value
       FROM requirement_packages pkg
-      INNER JOIN owners owner ON owner.id = pkg.owner_id
-      WHERE owner.hsa_id = @0
-      ORDER BY pkg.name_sv ASC, pkg.id ASC`,
+      WHERE pkg.lead_hsa_id = @0
+      ORDER BY pkg.name ASC, pkg.id ASC`,
     [targetHsaId],
   )) as Array<Record<string, unknown>>
   return valuesFromRows(rows)
@@ -815,9 +804,12 @@ export async function previewPrivacyErasure(
       replacement != null
     const ownerWithoutBlockingReferences =
       policy.kind === 'owner' && !ownerHasBlockingReferences
+    const ownerIdentityGroupExists = groups.some(
+      group => group.key === 'owners.identity',
+    )
     const ownerReferenceControlledByOwner =
       policy.key === 'requirement_areas.owner' ||
-      policy.key === 'requirement_packages.owner'
+      (policy.key === 'requirement_packages.owner' && ownerIdentityGroupExists)
     const policyAllowedActions: PrivacyErasureAction[] =
       ownerBlockedWithoutReplacement
         ? ['skip']
@@ -1010,8 +1002,33 @@ async function applyOwnerReferences(
   action: PrivacyErasureAction,
   targetHsaId: string,
   replacementOwnerId: number | null,
+  replacement: PrivacyReplacementInput | null,
 ): Promise<void> {
   if (action !== 'switch') return
+  const table =
+    policy.key === 'requirement_areas.owner'
+      ? 'requirement_areas'
+      : 'requirement_packages'
+  if (table === 'requirement_packages') {
+    if (!replacement) {
+      throw validationError(
+        'Replacement owner is required for switching package leads',
+        {
+          groupKey: policy.key,
+          reason: 'replacement_required',
+        },
+      )
+    }
+    await tx.query(
+      `UPDATE requirement_packages
+        SET lead_hsa_id = @1,
+            lead_display_name = @2,
+            updated_at = @3
+        WHERE lead_hsa_id = @0`,
+      [targetHsaId, replacement.hsaId, replacement.displayName, new Date()],
+    )
+    return
+  }
   if (replacementOwnerId == null) {
     throw validationError(
       'Replacement owner is required for switching owners',
@@ -1021,10 +1038,6 @@ async function applyOwnerReferences(
       },
     )
   }
-  const table =
-    policy.key === 'requirement_areas.owner'
-      ? 'requirement_areas'
-      : 'requirement_packages'
   await tx.query(
     `UPDATE t
       SET owner_id = @1
@@ -1041,8 +1054,7 @@ async function countOwnerReferences(
 ): Promise<number> {
   const rows = (await tx.query(
     `SELECT
-        (SELECT COUNT(*) FROM requirement_areas WHERE owner_id = @0) +
-        (SELECT COUNT(*) FROM requirement_packages WHERE owner_id = @0) AS count`,
+        (SELECT COUNT(*) FROM requirement_areas WHERE owner_id = @0) AS count`,
     [ownerId],
   )) as Array<Record<string, unknown>>
   return countFromRows(rows)
@@ -1210,14 +1222,15 @@ export async function executePrivacyErasure(
       input.replacement && switchesIdentity
         ? normalizeReplacement(input.replacement)
         : null
-    const switchesOwnerReferences = preview.groups.some(group => {
+    const switchesOwnerTableReferences = preview.groups.some(group => {
       const policy = POLICY_BY_KEY.get(group.key)
       return (
-        policy?.kind === 'ownerReference' && actions[group.key] === 'switch'
+        policy?.key === 'requirement_areas.owner' &&
+        actions[group.key] === 'switch'
       )
     })
     const replacementOwnerId =
-      input.replacement && switchesOwnerReferences
+      input.replacement && switchesOwnerTableReferences
         ? await ensureReplacementOwner(tx, replacement)
         : null
 
@@ -1232,6 +1245,7 @@ export async function executePrivacyErasure(
           action,
           target.hsaId,
           replacementOwnerId,
+          replacement,
         )
       }
     }

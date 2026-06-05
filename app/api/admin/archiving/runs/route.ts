@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { executeArchivingRetention } from '@/lib/archiving/retention'
 import { recordAllowedActionAuditEventWithExecutor } from '@/lib/audit/action-audit'
+import { recordRequirementSelectionCleanupAudit } from '@/lib/audit/requirement-selection-cleanup-audit'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { CsrfError } from '@/lib/auth/csrf'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -67,6 +68,13 @@ export const POST = secureMutationRoute({
               },
               targetId: auditResult.runId,
               targetKind: 'ArchivingRetentionRun',
+            }),
+          cleanupAudit: (executor, cleanupResult) =>
+            recordRequirementSelectionCleanupAudit(executor, context, {
+              cleanup: cleanupResult.cleanup,
+              originAction: 'admin.archiving.execute',
+              originTargetId: cleanupResult.candidate.subjectId,
+              originTargetKind: cleanupResult.candidate.subjectTable,
             }),
         },
         actor,

@@ -176,22 +176,47 @@ export function exportOciArchives(options = {}) {
   return plans
 }
 
-function createVerifyWorkspace(options = {}) {
+function verifyWorkspaceName(serviceName) {
+  const safeName = readNonEmpty(serviceName)
+    ?.replace(/[^a-z0-9_-]/gi, '-')
+    .replace(/^-+|-+$/g, '')
+  return safeName || 'archive'
+}
+
+function createVerifyWorkspace(options = {}, serviceName = 'archive') {
   const cwd = options.cwd ?? process.cwd()
   const fsImpl = options.fsImpl ?? fs
   const requestedVerifyRoot = readNonEmpty(options.verifyRoot)
   const baseDir = requestedVerifyRoot
-    ? path.resolve(cwd, requestedVerifyRoot)
+    ? path.join(
+        path.resolve(cwd, requestedVerifyRoot),
+        verifyWorkspaceName(serviceName),
+      )
     : createTemporaryVerifyWorkspace(cwd, fsImpl)
   const root = path.join(baseDir, 'root')
   const runroot = path.join(baseDir, 'run')
+  const tmpDir = path.join(baseDir, 'tmp')
   validateRunrootLength(runroot)
   fsImpl.mkdirSync(root, { recursive: true })
   fsImpl.mkdirSync(runroot, { recursive: true })
+  fsImpl.mkdirSync(tmpDir, { recursive: true })
   return {
     baseDir,
-    created: !requestedVerifyRoot,
+    created: true,
     podmanGlobalArgs: ['--root', root, '--runroot', runroot],
+    tmpDir,
+  }
+}
+
+function verifyWorkspaceOptions(options, workspace) {
+  return {
+    ...options,
+    env: {
+      ...options.env,
+      TEMP: workspace.tmpDir,
+      TMP: workspace.tmpDir,
+      TMPDIR: workspace.tmpDir,
+    },
   }
 }
 
@@ -220,11 +245,23 @@ function writeInfo(consoleObj, message) {
   }
 }
 
-function removeTemporaryVerifyWorkspace(
-  workspace,
-  fsImpl,
-  consoleObj = console,
-) {
+function removeTemporaryVerifyWorkspace(workspace, fsImpl, options = {}) {
+  const consoleObj = options.consoleObj ?? console
+  try {
+    runPodman(
+      [...workspace.podmanGlobalArgs, 'image', 'prune', '--all', '--force'],
+      {
+        ...options,
+        stdio: 'ignore',
+      },
+    )
+  } catch (error) {
+    writeInfo(
+      consoleObj,
+      `Ignoring OCI verification Podman image prune failure for ${workspace.baseDir}: ${formatErrorMessage(error)}. Node cleanup will still run.`,
+    )
+  }
+
   try {
     fsImpl.rmSync(workspace.baseDir, { force: true, recursive: true })
   } catch (error) {
@@ -252,11 +289,12 @@ export function verifyOciArchives(options = {}) {
       )
     }
 
-    const workspace = createVerifyWorkspace(options)
+    const workspace = createVerifyWorkspace(options, plan.serviceName)
+    const workspaceOptions = verifyWorkspaceOptions(options, workspace)
     try {
       runPodman(
         [...workspace.podmanGlobalArgs, 'load', '--input', plan.archivePath],
-        options,
+        workspaceOptions,
       )
       const actualImageId = normalizeImageId(
         execPodman(
@@ -268,7 +306,7 @@ export function verifyOciArchives(options = {}) {
             '--format',
             '{{.Id}}',
           ],
-          options,
+          workspaceOptions,
         ),
       )
 
@@ -280,7 +318,7 @@ export function verifyOciArchives(options = {}) {
       results.push({ ...plan, actualImageId })
     } finally {
       if (workspace.created) {
-        removeTemporaryVerifyWorkspace(workspace, fsImpl, options.consoleObj)
+        removeTemporaryVerifyWorkspace(workspace, fsImpl, workspaceOptions)
       }
     }
   }

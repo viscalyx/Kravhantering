@@ -141,11 +141,13 @@ describe('container OCI archive helpers', () => {
     ])
   })
 
-  it('loads archives into an isolated Podman store and checks image IDs', () => {
+  it('loads archives into isolated Podman stores and checks image IDs', () => {
     const commands = []
+    const commandEnvs = []
     const fsImpl = fakeFs()
-    const spawnSync = vi.fn((command, args) => {
+    const spawnSync = vi.fn((command, args, options) => {
       commands.push(`${command} ${args.join(' ')}`)
+      commandEnvs.push(options.env)
       return { status: 0 }
     })
     const execFileSync = vi.fn((command, args) => {
@@ -168,10 +170,28 @@ describe('container OCI archive helpers', () => {
       'sha256:db-job',
     ])
     expect(commands).toEqual([
-      'podman --root /workspace/tmp/verify-oci/root --runroot /workspace/tmp/verify-oci/run load --input tmp/oci/app-runtime.oci.tar.gz',
-      'podman --root /workspace/tmp/verify-oci/root --runroot /workspace/tmp/verify-oci/run load --input tmp/oci/db-job.oci.tar.gz',
+      'podman --root /workspace/tmp/verify-oci/app-runtime/root --runroot /workspace/tmp/verify-oci/app-runtime/run load --input tmp/oci/app-runtime.oci.tar.gz',
+      'podman --root /workspace/tmp/verify-oci/app-runtime/root --runroot /workspace/tmp/verify-oci/app-runtime/run image prune --all --force',
+      'podman --root /workspace/tmp/verify-oci/db-job/root --runroot /workspace/tmp/verify-oci/db-job/run load --input tmp/oci/db-job.oci.tar.gz',
+      'podman --root /workspace/tmp/verify-oci/db-job/root --runroot /workspace/tmp/verify-oci/db-job/run image prune --all --force',
     ])
-    expect(fsImpl.rmSync).not.toHaveBeenCalled()
+    expect(commandEnvs.map(env => env.TMPDIR)).toEqual([
+      '/workspace/tmp/verify-oci/app-runtime/tmp',
+      '/workspace/tmp/verify-oci/app-runtime/tmp',
+      '/workspace/tmp/verify-oci/db-job/tmp',
+      '/workspace/tmp/verify-oci/db-job/tmp',
+    ])
+    expect(commandEnvs.every(env => env.TMP === env.TMPDIR)).toBe(true)
+    expect(commandEnvs.every(env => env.TEMP === env.TMPDIR)).toBe(true)
+    expect(fsImpl.rmSync).toHaveBeenCalledTimes(2)
+    expect(fsImpl.rmSync).toHaveBeenCalledWith(
+      '/workspace/tmp/verify-oci/app-runtime',
+      { force: true, recursive: true },
+    )
+    expect(fsImpl.rmSync).toHaveBeenCalledWith(
+      '/workspace/tmp/verify-oci/db-job',
+      { force: true, recursive: true },
+    )
   })
 
   it('does not let temporary Podman store cleanup failures mask image ID verification', () => {
@@ -208,12 +228,47 @@ describe('container OCI archive helpers', () => {
     ])
     expect(commands).toEqual([
       'podman --root /tmp/kh-oci-verify/verify-ci/root --runroot /tmp/kh-oci-verify/verify-ci/run load --input tmp/oci/app-runtime.oci.tar.gz',
+      'podman --root /tmp/kh-oci-verify/verify-ci/root --runroot /tmp/kh-oci-verify/verify-ci/run image prune --all --force',
       'podman --root /tmp/kh-oci-verify/verify-ci/root --runroot /tmp/kh-oci-verify/verify-ci/run load --input tmp/oci/db-job.oci.tar.gz',
+      'podman --root /tmp/kh-oci-verify/verify-ci/root --runroot /tmp/kh-oci-verify/verify-ci/run image prune --all --force',
     ])
     expect(fsImpl.rmSync).toHaveBeenCalledTimes(2)
     expect(consoleObj.info).toHaveBeenCalledTimes(2)
     expect(consoleObj.info).toHaveBeenCalledWith(
       'Ignoring OCI verification store cleanup failure for /tmp/kh-oci-verify/verify-ci: EACCES, permission denied. Podman may leave rootless storage files that Node cannot remove; the archive verification result is preserved.',
+    )
+  })
+
+  it('does not let Podman image prune failures mask image ID verification', () => {
+    const fsImpl = fakeFs()
+    const consoleObj = { info: vi.fn() }
+    const spawnSync = vi.fn((command, args) => {
+      expect(command).toBe('podman')
+      return args.includes('prune') ? { status: 125 } : { status: 0 }
+    })
+    const execFileSync = vi.fn((command, args) => {
+      expect(command).toBe('podman')
+      const joinedArgs = args.join(' ')
+      return joinedArgs.includes('db-job') ? 'sha256:db-job\n' : 'app-runtime\n'
+    })
+
+    const results = verifyOciArchives({
+      consoleObj,
+      cwd: '/workspace',
+      execFileSync,
+      fsImpl,
+      outputDir: 'tmp/oci',
+      spawnSync,
+    })
+
+    expect(results.map(result => result.actualImageId)).toEqual([
+      'sha256:app-runtime',
+      'sha256:db-job',
+    ])
+    expect(fsImpl.rmSync).toHaveBeenCalledTimes(2)
+    expect(consoleObj.info).toHaveBeenCalledTimes(2)
+    expect(consoleObj.info).toHaveBeenCalledWith(
+      'Ignoring OCI verification Podman image prune failure for /tmp/kh-oci-verify/verify-ci: podman --root /tmp/kh-oci-verify/verify-ci/root --runroot /tmp/kh-oci-verify/verify-ci/run image prune --all --force failed with 125. Node cleanup will still run.',
     )
   })
 
@@ -248,7 +303,20 @@ describe('container OCI archive helpers', () => {
       path.join(process.cwd(), '.github/workflows/container-pr-smoke.yml'),
       'utf8',
     )
-    const runIdExpression = '$' + '{CONTAINER_STACK_RUN_ID}'
+    const stepIndex = stepName => {
+      const index = workflow.indexOf(stepName)
+      expect(index, `${stepName} should exist in the workflow`).toBeGreaterThan(
+        -1,
+      )
+      return index
+    }
+    const shellPrefix = '$'
+    const runIdExpression = `${shellPrefix}{CONTAINER_STACK_RUN_ID}`
+    const githubRunIdExpression = `${shellPrefix}{GITHUB_RUN_ID}`
+    const githubWorkspaceExpression = `${shellPrefix}{GITHUB_WORKSPACE}`
+    const runnerTempExpression = `${shellPrefix}{RUNNER_TEMP}`
+    const verifyRootFallbackExpression = `${shellPrefix}{CONTAINER_STACK_RUN_ID:-${githubRunIdExpression}}`
+    const targetExpression = `${shellPrefix}{target}`
 
     expect(workflow).toContain('pull_request:')
     expect(workflow).toContain('contents: read')
@@ -268,6 +336,32 @@ describe('container OCI archive helpers', () => {
     expect(workflow).toContain('npm install -g npm@latest')
     expect(workflow).toContain('--skip-build')
     expect(workflow).toContain('container:oci:export')
+    expect(stepIndex('Report initial disk layout')).toBeLessThan(
+      stepIndex('Checkout code'),
+    )
+    expect(workflow).toContain(
+      `cat > "${runnerTempExpression}/report-disk-layout.sh" <<'REPORT_DISK_LAYOUT'`,
+    )
+    expect(workflow).toContain(
+      `verify_root="/tmp/kh-oci-${verifyRootFallbackExpression}"`,
+    )
+    expect(workflow).toContain('df -hT')
+    expect(workflow).toContain('df -ihT')
+    expect(workflow).toContain(`findmnt -T "${targetExpression}"`)
+    expect(workflow).toContain('docker system df')
+    expect(workflow).toContain('podman system df')
+    expect(workflow).toContain(
+      `"${githubWorkspaceExpression}/tmp/container-pr-artifacts/oci"`,
+    )
+    expect(workflow).toContain('/var/lib/docker')
+    expect(stepIndex('Report OCI export disk layout')).toBeLessThan(
+      stepIndex('Export OCI archives'),
+    )
+    expect(workflow).toContain('after OCI export')
+    expect(stepIndex('Report OCI verification disk layout')).toBeLessThan(
+      stepIndex('Verify OCI archives'),
+    )
+    expect(workflow).toContain('after OCI verification')
     expect(workflow).toContain('container:oci:verify')
     expect(workflow).toContain(`--verify-root "/tmp/kh-oci-${runIdExpression}"`)
     expect(workflow).not.toContain('--verify-root tmp/container-oci-verify')

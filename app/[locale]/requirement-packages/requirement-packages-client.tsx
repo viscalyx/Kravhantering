@@ -1,19 +1,27 @@
 'use client'
 
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Plus } from 'lucide-react'
+import {
+  Archive,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useRef, useState } from 'react'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
+import FloatingActionRail from '@/components/FloatingActionRail'
+import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 import { isSwedish } from '@/lib/i18n/localized'
-import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
-import { offsetPanelMotion } from '@/lib/reduced-motion'
 import { resolveStatusLabel } from '@/lib/requirements/status-label'
 
 const REQUIREMENT_PACKAGES_HELP: HelpContent = {
@@ -32,30 +40,21 @@ const REQUIREMENT_PACKAGES_HELP: HelpContent = {
   titleKey: 'requirementPackages.title',
 }
 
-interface Owner {
-  email: string
-  firstName: string
-  id: number
-  lastName: string
-}
-
 interface RequirementPackage {
-  descriptionEn: string | null
-  descriptionSv: string | null
+  description: string | null
   id: number
+  isArchived: boolean
+  leadDisplayName: string
+  leadHsaId: string
   linkedRequirementCount: number
-  nameEn: string
-  nameSv: string
-  owner: Owner | null
-  ownerId: number | null
+  name: string
 }
 
 interface RequirementPackageForm {
-  descriptionEn: string
-  descriptionSv: string
-  nameEn: string
-  nameSv: string
-  ownerId: string
+  description: string
+  leadDisplayName: string
+  leadHsaId: string
+  name: string
 }
 
 interface LinkedRequirement {
@@ -72,38 +71,36 @@ interface LinkedRequirement {
 }
 
 const DESCRIPTION_TRUNCATE = 80
+const REQUIREMENT_PACKAGE_TABLE_COLUMN_COUNT = 6
 
 const getInitialForm = (): RequirementPackageForm => ({
-  descriptionEn: '',
-  descriptionSv: '',
-  nameEn: '',
-  nameSv: '',
-  ownerId: '',
+  description: '',
+  leadDisplayName: '',
+  leadHsaId: '',
+  name: '',
 })
 
 const toForm = (
   requirementPackage: RequirementPackage,
 ): RequirementPackageForm => ({
-  descriptionEn: requirementPackage.descriptionEn ?? '',
-  descriptionSv: requirementPackage.descriptionSv ?? '',
-  nameEn: requirementPackage.nameEn,
-  nameSv: requirementPackage.nameSv,
-  ownerId:
-    requirementPackage.ownerId != null
-      ? String(requirementPackage.ownerId)
-      : '',
+  description: requirementPackage.description ?? '',
+  leadDisplayName: requirementPackage.leadDisplayName,
+  leadHsaId: requirementPackage.leadHsaId,
+  name: requirementPackage.name,
 })
 
 const toPayload = (form: RequirementPackageForm) => ({
-  nameSv: form.nameSv,
-  nameEn: form.nameEn,
-  descriptionSv: form.descriptionSv || undefined,
-  descriptionEn: form.descriptionEn || undefined,
-  ownerId: form.ownerId ? Number(form.ownerId) : null,
+  description: form.description || undefined,
+  leadDisplayName: form.leadDisplayName,
+  leadHsaId: form.leadHsaId,
+  name: form.name,
 })
 
 const inputClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
+
+const rowActionButtonClassName =
+  'inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
 
 export default function RequirementPackagesClient() {
   useHelpContent(REQUIREMENT_PACKAGES_HELP)
@@ -113,11 +110,15 @@ export default function RequirementPackagesClient() {
   const tr = useTranslations('requirement')
   const tStatusLabel = useTranslations('requirement.statusLabel')
   const locale = useLocale()
-  const shouldReduceMotion = useReducedMotion()
-  const [owners, setOwners] = useState<Owner[]>([])
-  const [ownersLoading, setOwnersLoading] = useState(false)
-  const [ownersError, setOwnersError] = useState<string | null>(null)
-  const ownerLoadError = tc('ownerLoadError')
+  const contentRef = useRef<HTMLDivElement>(null)
+  const tableAnchorRef = useRef<HTMLDivElement>(null)
+  const nameFilterRef = useRef<HTMLInputElement>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+  const [nameFilter, setNameFilter] = useState('')
+  const [stateError, setStateError] = useState<string | null>(null)
+  const [stateChangingIds, setStateChangingIds] = useState<Set<number>>(
+    new Set(),
+  )
   const [linkedRequirements, setLinkedRequirements] = useState<
     LinkedRequirement[]
   >([])
@@ -128,13 +129,6 @@ export default function RequirementPackagesClient() {
     useState(false)
   const linkedReqRequestId = useRef(0)
 
-  const getName = (requirementPackage: RequirementPackage) =>
-    isSwedish(locale) ? requirementPackage.nameSv : requirementPackage.nameEn
-  const getDescription = (requirementPackage: RequirementPackage) =>
-    isSwedish(locale)
-      ? requirementPackage.descriptionSv
-      : requirementPackage.descriptionEn
-
   const controller = useCrudAdminResource<
     RequirementPackage,
     RequirementPackageForm
@@ -143,44 +137,11 @@ export default function RequirementPackagesClient() {
     endpoint: '/api/requirement-packages',
     errorMessage: tc('error'),
     getInitialForm,
+    listEndpoint: '/api/requirement-packages?includeArchived=true',
     listKey: 'requirementPackages',
     toForm,
     toPayload,
   })
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function fetchOwners() {
-      setOwnersLoading(true)
-      setOwnersError(null)
-      try {
-        const response = await apiFetch('/api/owners/all')
-        if (cancelled) return
-        if (!response.ok) {
-          setOwners([])
-          setOwnersError(ownerLoadError)
-          return
-        }
-        const data = (await response.json()) as { owners?: Owner[] }
-        if (cancelled) return
-        setOwners(data.owners ?? [])
-      } catch {
-        if (!cancelled) {
-          setOwners([])
-          setOwnersError(ownerLoadError)
-        }
-      } finally {
-        if (!cancelled) setOwnersLoading(false)
-      }
-    }
-
-    void fetchOwners()
-
-    return () => {
-      cancelled = true
-    }
-  }, [ownerLoadError])
 
   const fetchLinkedRequirements = useCallback(
     async (requirementPackageId: number) => {
@@ -217,27 +178,35 @@ export default function RequirementPackagesClient() {
   )
 
   const openCreate = () => {
+    linkedReqRequestId.current++
     setLinkedRequirements([])
     setLinkedRequirementsError(null)
+    setLinkedRequirementsLoading(false)
+    setStateError(null)
     controller.openCreate()
   }
 
   const openEdit = (requirementPackage: RequirementPackage) => {
+    setStateError(null)
     controller.openEdit(requirementPackage)
     void fetchLinkedRequirements(requirementPackage.id)
   }
 
   const closeForm = () => {
+    linkedReqRequestId.current++
     setLinkedRequirements([])
     setLinkedRequirementsError(null)
+    setLinkedRequirementsLoading(false)
     controller.closeForm()
   }
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     const didSubmit = await controller.submit(event)
     if (didSubmit) {
+      linkedReqRequestId.current++
       setLinkedRequirements([])
       setLinkedRequirementsError(null)
+      setLinkedRequirementsLoading(false)
     }
   }
 
@@ -249,335 +218,398 @@ export default function RequirementPackagesClient() {
     }
   }
 
-  const getOwnerName = (owner: Owner | null) =>
-    owner
-      ? (formatActorDisplayNameForLocale(
-          `${owner.firstName} ${owner.lastName}`.trim(),
-          locale,
-        ) ?? '—')
-      : '—'
+  const changeArchivedState = async (
+    requirementPackage: RequirementPackage,
+    operation: 'archive' | 'reactivate',
+  ) => {
+    setStateError(null)
+    setStateChangingIds(previous =>
+      new Set(previous).add(requirementPackage.id),
+    )
+    try {
+      const response = await apiFetch(
+        `/api/requirement-packages/${requirementPackage.id}/${operation}`,
+        { method: 'POST' },
+      )
+      if (!response.ok) {
+        setStateError((await readResponseMessage(response)) ?? tc('error'))
+        return
+      }
+      await controller.reload()
+    } catch {
+      setStateError(tc('error'))
+    } finally {
+      setStateChangingIds(previous => {
+        const next = new Set(previous)
+        next.delete(requirementPackage.id)
+        return next
+      })
+    }
+  }
 
   const truncateDescription = (text: string | null) => {
     if (!text) return null
     if (text.length <= DESCRIPTION_TRUNCATE) return text
-    return `${text.slice(0, DESCRIPTION_TRUNCATE)}…`
+    return `${text.slice(0, DESCRIPTION_TRUNCATE)}...`
   }
+
+  const isBusy = (requirementPackage: RequirementPackage) =>
+    controller.submitting ||
+    controller.deletingIds.has(requirementPackage.id) ||
+    stateChangingIds.has(requirementPackage.id)
+  const deferredNameFilter = useDeferredValue(nameFilter)
+  const normalizedNameFilter = deferredNameFilter
+    .trim()
+    .toLocaleLowerCase(locale)
+  const hasActiveNameFilter = nameFilter.trim().length > 0
+  const filteredRequirementPackages = controller.items.filter(
+    requirementPackage => {
+      const searchableText = [
+        requirementPackage.name,
+        requirementPackage.description ?? '',
+      ]
+        .join(' ')
+        .toLocaleLowerCase(locale)
+
+      return searchableText.includes(normalizedNameFilter)
+    },
+  )
+
+  const renderPackageForm = () => (
+    <form
+      className="space-y-5"
+      {...devMarker({
+        context: 'requirementPackages',
+        name: 'crud form',
+        priority: 340,
+        value: controller.editId ? 'edit' : 'create',
+      })}
+      onSubmit={submit}
+    >
+      <div>
+        <FieldLabelWithHelp
+          help={t('nameHelp')}
+          htmlFor="requirement-package-name"
+          label={t('name')}
+          required
+        />
+        <input
+          className={inputClassName}
+          disabled={controller.submitting}
+          id="requirement-package-name"
+          onChange={event =>
+            controller.setForm(previousForm => ({
+              ...previousForm,
+              name: event.target.value,
+            }))
+          }
+          ref={nameInputRef}
+          required
+          value={controller.form.name}
+        />
+      </div>
+      <div>
+        <FieldLabelWithHelp
+          help={t('descriptionHelp')}
+          htmlFor="requirement-package-description"
+          label={t('description')}
+        />
+        <textarea
+          className={inputClassName}
+          disabled={controller.submitting}
+          id="requirement-package-description"
+          onChange={event =>
+            controller.setForm(previousForm => ({
+              ...previousForm,
+              description: event.target.value,
+            }))
+          }
+          value={controller.form.description}
+        />
+      </div>
+      <div>
+        <FieldLabelWithHelp
+          help={t('leadHsaIdHelp')}
+          htmlFor="requirement-package-lead-hsa-id"
+          label={t('leadHsaId')}
+          required
+        />
+        <input
+          className={inputClassName}
+          disabled={controller.submitting}
+          id="requirement-package-lead-hsa-id"
+          onChange={event =>
+            controller.setForm(previousForm => ({
+              ...previousForm,
+              leadHsaId: event.target.value,
+            }))
+          }
+          pattern="SE[0-9]{10}-[A-Za-z0-9]+"
+          required
+          value={controller.form.leadHsaId}
+        />
+      </div>
+      <div>
+        <FieldLabelWithHelp
+          help={t('leadDisplayNameHelp')}
+          htmlFor="requirement-package-lead-display-name"
+          label={t('leadDisplayName')}
+          required
+        />
+        <input
+          className={inputClassName}
+          disabled={controller.submitting}
+          id="requirement-package-lead-display-name"
+          onChange={event =>
+            controller.setForm(previousForm => ({
+              ...previousForm,
+              leadDisplayName: event.target.value,
+            }))
+          }
+          required
+          value={controller.form.leadDisplayName}
+        />
+      </div>
+      {controller.formError && (
+        <p
+          className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+          role="alert"
+        >
+          {controller.formError}
+        </p>
+      )}
+      <div className="flex gap-3">
+        <button
+          className="btn-primary"
+          disabled={controller.submitting}
+          type="submit"
+        >
+          {controller.submitting ? tc('saving') : tc('save')}
+        </button>
+        <button
+          className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
+          disabled={controller.submitting}
+          onClick={closeForm}
+          type="button"
+        >
+          {tc('cancel')}
+        </button>
+      </div>
+    </form>
+  )
+
+  const renderLinkedRequirements = () => (
+    <div>
+      <h3 className="mb-3 text-sm font-medium text-secondary-600 dark:text-secondary-400">
+        {t('linkedRequirements')}
+      </h3>
+      {linkedRequirementsLoading ? (
+        <p
+          className="text-sm text-secondary-500 dark:text-secondary-400"
+          role="status"
+        >
+          {tc('loading')}
+        </p>
+      ) : linkedRequirementsError ? (
+        <p
+          className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+          role="alert"
+        >
+          {linkedRequirementsError}
+        </p>
+      ) : linkedRequirements.length === 0 ? (
+        <p className="text-sm text-secondary-500 dark:text-secondary-400">
+          {tc('noneAvailable')}
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-secondary-50/80 text-left text-secondary-700 dark:bg-secondary-800/30 dark:text-secondary-300">
+                <th className="px-3 py-2 font-medium">{tr('uniqueId')}</th>
+                <th className="px-3 py-2 font-medium">{tr('description')}</th>
+                <th className="px-3 py-2 font-medium">{tc('version')}</th>
+                <th className="px-3 py-2 font-medium">{tr('status')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {linkedRequirements.map(requirement => {
+                const truncated = truncateDescription(requirement.description)
+                const isTruncated =
+                  truncated !== requirement.description &&
+                  requirement.description != null
+                return (
+                  <tr
+                    className="border-b transition-colors last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20"
+                    key={`${requirement.id}-v${requirement.versionNumber}`}
+                  >
+                    <td className="px-3 py-2 font-medium">
+                      <Link
+                        className="inline-flex min-h-11 min-w-11 items-center text-primary-700 hover:underline dark:text-primary-300"
+                        href={`/requirements/${requirement.uniqueId}/${requirement.versionNumber}`}
+                      >
+                        {requirement.uniqueId}
+                      </Link>
+                    </td>
+                    <td
+                      className="max-w-xs px-3 py-2 text-secondary-600 dark:text-secondary-400"
+                      title={
+                        isTruncated
+                          ? (requirement.description ?? undefined)
+                          : undefined
+                      }
+                    >
+                      {truncated ?? '-'}
+                    </td>
+                    <td className="px-3 py-2 text-secondary-600 dark:text-secondary-400">
+                      v{requirement.versionNumber}
+                    </td>
+                    <td className="px-3 py-2">
+                      <StatusBadge
+                        color={requirement.statusColor}
+                        iconName={requirement.statusIconName}
+                        label={resolveStatusLabel(
+                          {
+                            archiveInitiatedAt: requirement.archiveInitiatedAt,
+                            status: requirement.statusId,
+                            statusNameEn: requirement.statusNameEn,
+                            statusNameSv: requirement.statusNameSv,
+                          },
+                          isSwedish(locale) ? 'sv' : 'en',
+                          tStatusLabel,
+                        )}
+                      />
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+
+  const isEditing = controller.showForm && controller.editId != null
+  const formModalTitle = isEditing
+    ? t('editRequirementPackage')
+    : t('newRequirementPackage')
 
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom">
-        <div className="flex items-center justify-between mb-6">
+      <div className="container-custom" ref={contentRef}>
+        <FloatingActionRail
+          anchorRef={tableAnchorRef}
+          developerModeContext="requirementPackages"
+          items={[
+            {
+              ariaLabel: t('newRequirementPackage'),
+              developerModeValue: 'new requirement package',
+              disabled: controller.submitting,
+              icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+              id: 'create',
+              onClick: openCreate,
+              variant: 'primary',
+            },
+          ]}
+        />
+        <div className="mb-6">
           <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
             {tn('requirementPackages')}
           </h1>
-          <button
-            className="btn-primary inline-flex items-center gap-1.5"
-            {...devMarker({
-              context: 'requirementPackages',
-              name: 'create button',
-              priority: 350,
-            })}
-            disabled={controller.submitting}
-            onClick={openCreate}
-            type="button"
-          >
-            <Plus aria-hidden="true" className="h-4 w-4" />
-            {tc('create')}
-          </button>
         </div>
 
-        {(controller.deleteError || controller.loadError) && (
+        <div className="mb-4">
+          {!controller.loading && controller.items.length > 0 && (
+            <div className="w-full max-w-lg">
+              <label
+                className="mb-1.5 block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                htmlFor="requirement-package-name-filter"
+              >
+                {t('filterByName')}
+              </label>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
+                  <Search
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
+                  />
+                  <input
+                    autoComplete="off"
+                    className="min-h-11 w-full rounded-xl border border-secondary-200 bg-white py-2.5 pr-3 pl-10 text-sm text-secondary-900 transition-all duration-200 placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100 dark:placeholder:text-secondary-500"
+                    {...devMarker({
+                      context: 'requirementPackages',
+                      name: 'text field',
+                      priority: 330,
+                      value: 'name or description filter',
+                    })}
+                    id="requirement-package-name-filter"
+                    onChange={event => setNameFilter(event.target.value)}
+                    placeholder={t('filterByNamePlaceholder')}
+                    ref={nameFilterRef}
+                    type="text"
+                    value={nameFilter}
+                  />
+                </div>
+                {hasActiveNameFilter && (
+                  <button
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-secondary-200 px-4 py-2.5 text-sm text-secondary-700 transition-all duration-200 hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800/60"
+                    onClick={() => setNameFilter('')}
+                    type="button"
+                  >
+                    <X aria-hidden="true" className="h-4 w-4" />
+                    {tc('clearSearch')}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {(controller.deleteError || controller.loadError || stateError) && (
           <p
             className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
             {...devMarker({
               context: 'requirementPackages',
               name: 'error banner',
               priority: 340,
-              value: controller.deleteError ? 'delete-error' : 'load-error',
+              value: controller.deleteError
+                ? 'delete-error'
+                : stateError
+                  ? 'state-error'
+                  : 'load-error',
             })}
             role="alert"
           >
-            {controller.deleteError ?? controller.loadError}
+            {controller.deleteError ?? controller.loadError ?? stateError}
           </p>
         )}
 
-        <AnimatePresence>
-          {controller.showForm && (
-            <motion.div
-              className="glass rounded-2xl p-6 mb-6"
-              {...offsetPanelMotion(shouldReduceMotion)}
-            >
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 items-start">
-                <form
-                  className="space-y-5"
-                  {...devMarker({
-                    context: 'requirementPackages',
-                    name: 'crud form',
-                    priority: 340,
-                    value: controller.editId ? 'edit' : 'create',
-                  })}
-                  onSubmit={submit}
-                >
-                  <h2 className="text-lg font-semibold">
-                    {controller.editId ? tc('edit') : tc('create')}
-                  </h2>
-                  <div>
-                    <FieldLabelWithHelp
-                      help={t('nameSvHelp')}
-                      htmlFor="requirement-package-name-sv"
-                      label={t('nameSvLabel')}
-                      required
-                    />
-                    <input
-                      className={inputClassName}
-                      disabled={controller.submitting}
-                      id="requirement-package-name-sv"
-                      onChange={event =>
-                        controller.setForm(previousForm => ({
-                          ...previousForm,
-                          nameSv: event.target.value,
-                        }))
-                      }
-                      required
-                      value={controller.form.nameSv}
-                    />
-                  </div>
-                  <div>
-                    <FieldLabelWithHelp
-                      help={t('nameEnHelp')}
-                      htmlFor="requirement-package-name-en"
-                      label={t('nameEnLabel')}
-                      required
-                    />
-                    <input
-                      className={inputClassName}
-                      disabled={controller.submitting}
-                      id="requirement-package-name-en"
-                      onChange={event =>
-                        controller.setForm(previousForm => ({
-                          ...previousForm,
-                          nameEn: event.target.value,
-                        }))
-                      }
-                      required
-                      value={controller.form.nameEn}
-                    />
-                  </div>
-                  <div>
-                    <FieldLabelWithHelp
-                      help={t('descriptionSvHelp')}
-                      htmlFor="requirement-package-description-sv"
-                      label={t('descriptionSvLabel')}
-                    />
-                    <textarea
-                      className={inputClassName}
-                      disabled={controller.submitting}
-                      id="requirement-package-description-sv"
-                      onChange={event =>
-                        controller.setForm(previousForm => ({
-                          ...previousForm,
-                          descriptionSv: event.target.value,
-                        }))
-                      }
-                      value={controller.form.descriptionSv}
-                    />
-                  </div>
-                  <div>
-                    <FieldLabelWithHelp
-                      help={t('descriptionEnHelp')}
-                      htmlFor="requirement-package-description-en"
-                      label={t('descriptionEnLabel')}
-                    />
-                    <textarea
-                      className={inputClassName}
-                      disabled={controller.submitting}
-                      id="requirement-package-description-en"
-                      onChange={event =>
-                        controller.setForm(previousForm => ({
-                          ...previousForm,
-                          descriptionEn: event.target.value,
-                        }))
-                      }
-                      value={controller.form.descriptionEn}
-                    />
-                  </div>
-                  <div>
-                    <FieldLabelWithHelp
-                      help={t('help.owner')}
-                      htmlFor="requirement-package-owner"
-                      label={t('owner')}
-                    />
-                    <select
-                      className={inputClassName}
-                      disabled={controller.submitting || ownersLoading}
-                      id="requirement-package-owner"
-                      onChange={event =>
-                        controller.setForm(previousForm => ({
-                          ...previousForm,
-                          ownerId: event.target.value,
-                        }))
-                      }
-                      value={controller.form.ownerId}
-                    >
-                      <option value="">—</option>
-                      {owners.map(owner => (
-                        <option key={owner.id} value={owner.id}>
-                          {getOwnerName(owner)}
-                        </option>
-                      ))}
-                    </select>
-                    {ownersLoading && (
-                      <p
-                        className="mt-2 text-sm text-secondary-500 dark:text-secondary-400"
-                        role="status"
-                      >
-                        {tc('loading')}
-                      </p>
-                    )}
-                    {ownersError && (
-                      <p
-                        className="mt-2 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
-                        role="alert"
-                      >
-                        {ownersError}
-                      </p>
-                    )}
-                  </div>
-                  {controller.formError && (
-                    <p
-                      className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
-                      role="alert"
-                    >
-                      {controller.formError}
-                    </p>
-                  )}
-                  <div className="flex gap-3">
-                    <button
-                      className="btn-primary"
-                      disabled={controller.submitting}
-                      type="submit"
-                    >
-                      {controller.submitting ? tc('saving') : tc('save')}
-                    </button>
-                    <button
-                      className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                      disabled={controller.submitting}
-                      onClick={closeForm}
-                      type="button"
-                    >
-                      {tc('cancel')}
-                    </button>
-                  </div>
-                </form>
-
-                {controller.editId && (
-                  <div>
-                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-3">
-                      {t('linkedRequirements')}
-                    </h3>
-                    {linkedRequirementsLoading ? (
-                      <p
-                        className="text-sm text-secondary-500 dark:text-secondary-400"
-                        role="status"
-                      >
-                        {tc('loading')}
-                      </p>
-                    ) : linkedRequirementsError ? (
-                      <p
-                        className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
-                        role="alert"
-                      >
-                        {linkedRequirementsError}
-                      </p>
-                    ) : linkedRequirements.length === 0 ? (
-                      <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                        {tc('noneAvailable')}
-                      </p>
-                    ) : (
-                      <div className="rounded-xl border overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
-                              <th className="py-2 px-3 font-medium">
-                                {tr('uniqueId')}
-                              </th>
-                              <th className="py-2 px-3 font-medium">
-                                {tr('description')}
-                              </th>
-                              <th className="py-2 px-3 font-medium">
-                                {tc('version')}
-                              </th>
-                              <th className="py-2 px-3 font-medium">
-                                {tr('status')}
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {linkedRequirements.map(requirement => {
-                              const truncated = truncateDescription(
-                                requirement.description,
-                              )
-                              const isTruncated =
-                                truncated !== requirement.description &&
-                                requirement.description != null
-                              return (
-                                <tr
-                                  className="border-b last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                                  key={`${requirement.id}-v${requirement.versionNumber}`}
-                                >
-                                  <td className="py-2 px-3 font-medium">
-                                    <Link
-                                      className="inline-flex items-center min-h-11 min-w-11 text-primary-700 dark:text-primary-300 hover:underline"
-                                      href={`/requirements/${requirement.uniqueId}/${requirement.versionNumber}`}
-                                    >
-                                      {requirement.uniqueId}
-                                    </Link>
-                                  </td>
-                                  <td
-                                    className="py-2 px-3 text-secondary-600 dark:text-secondary-400 max-w-xs"
-                                    title={
-                                      isTruncated
-                                        ? (requirement.description ?? undefined)
-                                        : undefined
-                                    }
-                                  >
-                                    {truncated ?? '—'}
-                                  </td>
-                                  <td className="py-2 px-3 text-secondary-600 dark:text-secondary-400">
-                                    v{requirement.versionNumber}
-                                  </td>
-                                  <td className="py-2 px-3">
-                                    <StatusBadge
-                                      color={requirement.statusColor}
-                                      iconName={requirement.statusIconName}
-                                      label={resolveStatusLabel(
-                                        {
-                                          archiveInitiatedAt:
-                                            requirement.archiveInitiatedAt,
-                                          status: requirement.statusId,
-                                          statusNameEn:
-                                            requirement.statusNameEn,
-                                          statusNameSv:
-                                            requirement.statusNameSv,
-                                        },
-                                        isSwedish(locale) ? 'sv' : 'en',
-                                        tStatusLabel,
-                                      )}
-                                    />
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </motion.div>
+        <FormModal
+          closeDisabled={controller.submitting}
+          developerModeValue={
+            isEditing ? 'edit requirement package' : 'new requirement package'
+          }
+          initialFocusRef={nameInputRef}
+          maxWidthClassName={isEditing ? 'max-w-5xl' : undefined}
+          onClose={closeForm}
+          open={controller.showForm}
+          title={formModalTitle}
+          titleId={
+            isEditing
+              ? 'requirement-package-edit-title'
+              : 'requirement-package-create-title'
+          }
+        >
+          {isEditing ? (
+            <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+              {renderPackageForm()}
+              {renderLinkedRequirements()}
+            </div>
+          ) : (
+            renderPackageForm()
           )}
-        </AnimatePresence>
+        </FormModal>
 
         {controller.loading ? (
           <p
@@ -588,23 +620,25 @@ export default function RequirementPackagesClient() {
           </p>
         ) : (
           <div
-            className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-x-auto"
+            className="overflow-x-auto rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm dark:bg-secondary-900/60"
             {...devMarker({
               context: 'requirementPackages',
               name: 'crud table',
               priority: 340,
             })}
+            ref={tableAnchorRef}
           >
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
-                  <th className="py-3 px-4 font-medium">{t('name')}</th>
-                  <th className="py-3 px-4 font-medium">{t('description')}</th>
-                  <th className="py-3 px-4 font-medium">{t('owner')}</th>
-                  <th className="py-3 px-4 font-medium text-center">
+                <tr className="border-b bg-secondary-50/80 text-left text-secondary-700 dark:bg-secondary-800/30 dark:text-secondary-300">
+                  <th className="px-4 py-3 font-medium">{t('name')}</th>
+                  <th className="px-4 py-3 font-medium">{t('description')}</th>
+                  <th className="px-4 py-3 font-medium">{t('lead')}</th>
+                  <th className="px-4 py-3 font-medium">{t('status')}</th>
+                  <th className="px-4 py-3 text-center font-medium">
                     {t('linkedRequirements')}
                   </th>
-                  <th className="py-3 px-4" />
+                  <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody>
@@ -616,7 +650,10 @@ export default function RequirementPackagesClient() {
                       priority: 330,
                     })}
                   >
-                    <td className="px-4 py-10 text-center" colSpan={5}>
+                    <td
+                      className="px-4 py-10 text-center"
+                      colSpan={REQUIREMENT_PACKAGE_TABLE_COLUMN_COUNT}
+                    >
                       <div className="flex flex-col items-center justify-center gap-3 text-secondary-500 dark:text-secondary-400">
                         <p>{t('emptyState')}</p>
                         <button
@@ -636,69 +673,141 @@ export default function RequirementPackagesClient() {
                       </div>
                     </td>
                   </tr>
-                ) : (
-                  controller.items.map(requirementPackage => (
-                    <tr
-                      className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                      key={requirementPackage.id}
+                ) : filteredRequirementPackages.length === 0 ? (
+                  <tr>
+                    <td
+                      className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
+                      colSpan={REQUIREMENT_PACKAGE_TABLE_COLUMN_COUNT}
                     >
-                      <td className="py-3 px-4 font-medium">
-                        {getName(requirementPackage)}
-                      </td>
-                      <td
-                        className="py-3 px-4 text-secondary-600 dark:text-secondary-400 max-w-xs truncate"
-                        title={getDescription(requirementPackage) || '—'}
+                      {tc('noResults')}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRequirementPackages.map(requirementPackage => {
+                    const archiveActionLabel = requirementPackage.isArchived
+                      ? t('reactivate')
+                      : t('archive')
+                    const archiveActionValue = requirementPackage.isArchived
+                      ? 'reactivate'
+                      : 'archive'
+                    const busy = isBusy(requirementPackage)
+
+                    return (
+                      <tr
+                        className="border-b transition-colors hover:bg-primary-50/40 dark:hover:bg-primary-950/20"
+                        key={requirementPackage.id}
                       >
-                        {getDescription(requirementPackage) || '—'}
-                      </td>
-                      <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                        {getOwnerName(requirementPackage.owner)}
-                      </td>
-                      <td className="py-3 px-4 text-center text-secondary-600 dark:text-secondary-400">
-                        {t('requirementCount', {
-                          count: requirementPackage.linkedRequirementCount,
-                        })}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
-                          {...devMarker({
-                            context: 'requirementPackages',
-                            name: 'table action',
-                            value: 'edit',
-                          })}
-                          disabled={controller.submitting}
-                          onClick={() => openEdit(requirementPackage)}
-                          type="button"
+                        <td className="px-4 py-3 font-medium">
+                          {requirementPackage.name}
+                        </td>
+                        <td
+                          className="w-[28rem] max-w-[28rem] whitespace-normal break-words px-4 py-3 align-top leading-6 text-secondary-600 dark:text-secondary-400"
+                          title={requirementPackage.description || '-'}
                         >
-                          {tc('edit')}
-                        </button>
-                        <button
-                          className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
-                          {...devMarker({
-                            context: 'requirementPackages',
-                            name: 'table action',
-                            value: 'delete',
+                          {requirementPackage.description || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
+                          <span className="block">
+                            {requirementPackage.leadDisplayName}
+                          </span>
+                          <span className="block text-xs text-secondary-500 dark:text-secondary-500">
+                            {requirementPackage.leadHsaId}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
+                          {requirementPackage.isArchived
+                            ? t('archived')
+                            : t('active')}
+                        </td>
+                        <td className="px-4 py-3 text-center text-secondary-600 dark:text-secondary-400">
+                          {t('requirementCount', {
+                            count: requirementPackage.linkedRequirementCount,
                           })}
-                          disabled={
-                            controller.submitting ||
-                            controller.deletingIds.has(requirementPackage.id)
-                          }
-                          onClick={event => {
-                            void remove(
-                              requirementPackage.id,
-                              event.currentTarget,
-                            )
-                          }}
-                          type="button"
-                        >
-                          {controller.deletingIds.has(requirementPackage.id)
-                            ? tc('loading')
-                            : tc('delete')}
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-1">
+                            <button
+                              aria-label={tc('edit')}
+                              className={`${rowActionButtonClassName} text-primary-700 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-950/30`}
+                              {...devMarker({
+                                context: 'requirementPackages',
+                                name: 'table action',
+                                value: 'edit',
+                              })}
+                              disabled={busy}
+                              onClick={() => openEdit(requirementPackage)}
+                              title={tc('edit')}
+                              type="button"
+                            >
+                              <Pencil
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                                focusable={false}
+                              />
+                            </button>
+                            <button
+                              aria-label={archiveActionLabel}
+                              className={`${rowActionButtonClassName} text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800/70`}
+                              {...devMarker({
+                                context: 'requirementPackages',
+                                name: 'table action',
+                                value: archiveActionValue,
+                              })}
+                              disabled={busy}
+                              onClick={() => {
+                                void changeArchivedState(
+                                  requirementPackage,
+                                  requirementPackage.isArchived
+                                    ? 'reactivate'
+                                    : 'archive',
+                                )
+                              }}
+                              title={archiveActionLabel}
+                              type="button"
+                            >
+                              {requirementPackage.isArchived ? (
+                                <RotateCcw
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                  focusable={false}
+                                />
+                              ) : (
+                                <Archive
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                  focusable={false}
+                                />
+                              )}
+                            </button>
+                            <button
+                              aria-label={tc('delete')}
+                              className={`${rowActionButtonClassName} text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30`}
+                              {...devMarker({
+                                context: 'requirementPackages',
+                                name: 'table action',
+                                value: 'delete',
+                              })}
+                              disabled={busy}
+                              onClick={event => {
+                                void remove(
+                                  requirementPackage.id,
+                                  event.currentTarget,
+                                )
+                              }}
+                              title={tc('delete')}
+                              type="button"
+                            >
+                              <Trash2
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                                focusable={false}
+                              />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>

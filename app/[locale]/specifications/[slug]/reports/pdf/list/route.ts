@@ -5,6 +5,10 @@ import {
   splitCsvParam,
 } from '@/app/[locale]/requirements/reports/pdf/route-helpers'
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
+import {
+  listSpecificationRequirementSelectionQuestions,
+  resolveSpecificationId,
+} from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   collectSpecificationItemsForReport,
@@ -19,6 +23,26 @@ function pickName(
   value: { nameEn: string; nameSv: string } | null,
 ): string | null {
   return value ? (locale === 'sv' ? value.nameSv : value.nameEn) : null
+}
+
+function buildSelectionContext(
+  questions: Awaited<
+    ReturnType<typeof listSpecificationRequirementSelectionQuestions>
+  >,
+) {
+  return questions.flatMap(question =>
+    question.savedAnswers.map(saved => ({
+      answerText:
+        question.answers.find(answer => answer.id === saved.answerId)?.text ??
+        String(saved.answerId),
+      areaName: question.areaName,
+      changedAt: saved.updatedAt,
+      isHistorical: saved.isHistorical,
+      questionCode: question.questionCode,
+      questionText: question.text,
+      selectedByDisplayName: saved.selectedByDisplayName,
+    })),
+  )
 }
 
 export async function GET(
@@ -36,19 +60,36 @@ export async function GET(
     const db = await getRequestSqlServerDataSource()
     const { requirements, specification } =
       await collectSpecificationItemsForReport(db, slug, itemRefs)
+    const specificationId = await resolveSpecificationId(db, slug)
+    const selectionContext = specificationId
+      ? buildSelectionContext(
+          await listSpecificationRequirementSelectionQuestions(
+            db,
+            specificationId,
+          ),
+        )
+      : []
     const label = locale === 'sv' ? 'Kravlista' : 'Requirements List'
     return renderReportModelPdfResponse(
-      buildListReport(requirements, locale, {
-        businessNeedsReference: specification.businessNeedsReference,
-        governanceObjectType: pickName(
-          locale,
-          specification.governanceObjectType,
-        ),
-        implementationType: pickName(locale, specification.implementationType),
-        lifecycleStatus: pickName(locale, specification.lifecycleStatus),
-        name: specification.name,
-        uniqueId: specification.uniqueId,
-      }),
+      buildListReport(
+        requirements,
+        locale,
+        {
+          businessNeedsReference: specification.businessNeedsReference,
+          governanceObjectType: pickName(
+            locale,
+            specification.governanceObjectType,
+          ),
+          implementationType: pickName(
+            locale,
+            specification.implementationType,
+          ),
+          lifecycleStatus: pickName(locale, specification.lifecycleStatus),
+          name: specification.name,
+          uniqueId: specification.uniqueId,
+        },
+        selectionContext,
+      ),
       locale,
       `${label} ${specification.name} ${specification.uniqueId}.pdf`,
     )

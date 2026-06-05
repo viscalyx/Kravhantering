@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createRequirementPackage,
+  deleteRequirementPackage,
   getLinkedRequirementsForPackage,
 } from '@/lib/dal/requirement-packages'
 
@@ -8,12 +9,12 @@ function createSqlServerDb() {
   const query = vi.fn().mockResolvedValue([
     {
       createdAt: new Date('2026-05-02T08:00:00.000Z'),
-      descriptionEn: 'Requirements for mobile access and responsive flows.',
-      descriptionSv: 'Krav för mobil åtkomst och responsiva flöden.',
+      description: 'Krav för mobil åtkomst och responsiva flöden.',
       id: 13,
-      nameEn: 'Mobile use',
-      nameSv: 'Mobil användning',
-      ownerId: 1,
+      isArchived: false,
+      leadDisplayName: 'Anna Johansson',
+      leadHsaId: 'SE5560000001-annaj',
+      name: 'Mobil användning',
       updatedAt: new Date('2026-05-02T08:00:00.000Z'),
     },
   ])
@@ -32,33 +33,31 @@ describe('requirement-packages DAL', () => {
     const { db, query } = createSqlServerDb()
 
     const result = await createRequirementPackage(db, {
-      descriptionEn: 'Requirements for mobile access and responsive flows.',
-      descriptionSv: 'Krav för mobil åtkomst och responsiva flöden.',
-      nameEn: 'Mobile use',
-      nameSv: 'Mobil användning',
-      ownerId: 1,
+      description: 'Krav för mobil åtkomst och responsiva flöden.',
+      leadDisplayName: 'Anna Johansson',
+      leadHsaId: 'SE5560000001-annaj',
+      name: 'Mobil användning',
     })
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('created_at'),
       expect.arrayContaining([
         'Mobil användning',
-        'Mobile use',
         'Krav för mobil åtkomst och responsiva flöden.',
-        'Requirements for mobile access and responsive flows.',
-        1,
+        'SE5560000001-annaj',
+        'Anna Johansson',
         expect.any(Date),
       ]),
     )
     expect(query.mock.calls[0][0]).toContain('updated_at')
     expect(query.mock.calls[0][0]).toContain(
-      'VALUES (@0, @1, @2, @3, @4, @5, @5)',
+      'VALUES (@0, @1, @2, @3, 0, @4, @4)',
     )
     expect(result).toMatchObject({
       createdAt: '2026-05-02T08:00:00.000Z',
       id: 13,
-      nameEn: 'Mobile use',
-      nameSv: 'Mobil användning',
+      leadHsaId: 'SE5560000001-annaj',
+      name: 'Mobil användning',
       updatedAt: '2026-05-02T08:00:00.000Z',
     })
   })
@@ -110,5 +109,54 @@ describe('requirement-packages DAL', () => {
         uniqueId: 'REQ-2',
       },
     ])
+  })
+
+  it('deletes otherwise unused packages after cleaning requirement-selection answer links', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ id: 5 }])
+      .mockResolvedValueOnce([{ answerId: 7, requirementId: null }])
+      .mockResolvedValueOnce([{ id: 5 }])
+    const manager = { query }
+    const db = {
+      transaction: vi.fn(async callback => callback(manager)),
+    } as unknown as Parameters<typeof deleteRequirementPackage>[0]
+
+    await expect(deleteRequirementPackage(db, 5)).resolves.toEqual({
+      cleanup: {
+        affectedAnswerIds: [7],
+        affectedRequirementIds: [],
+        removedLinkCount: 1,
+      },
+      deletedCount: 1,
+    })
+
+    expect(String(query.mock.calls[0]?.[0])).toContain('NOT EXISTS')
+    expect(String(query.mock.calls[1]?.[0])).toContain('DELETE answer_package')
+    expect(String(query.mock.calls[2]?.[0])).toContain(
+      'DELETE FROM requirement_packages',
+    )
+  })
+
+  it('does not clean answer links when package deletion is blocked by real usage', async () => {
+    const query = vi.fn().mockResolvedValueOnce([])
+    const manager = { query }
+    const db = {
+      transaction: vi.fn(async callback => callback(manager)),
+    } as unknown as Parameters<typeof deleteRequirementPackage>[0]
+
+    await expect(deleteRequirementPackage(db, 5)).resolves.toEqual({
+      cleanup: {
+        affectedAnswerIds: [],
+        affectedRequirementIds: [],
+        removedLinkCount: 0,
+      },
+      deletedCount: 0,
+    })
+
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(String(query.mock.calls[0]?.[0])).toContain(
+      'requirement_version_requirement_packages',
+    )
   })
 })

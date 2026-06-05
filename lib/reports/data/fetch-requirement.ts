@@ -44,8 +44,7 @@ export interface RequirementReportVersion {
   versionRequirementPackages: {
     requirementPackage: {
       id: number
-      nameEn: string | null
-      nameSv: string | null
+      name: string | null
     }
   }[]
 }

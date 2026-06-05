@@ -13,6 +13,12 @@ export const DEMO_SEED_FILE = resolve(SCRIPT_DIR, '../typeorm/seed.mjs')
 export const DEMO_RESET_TABLES = Object.freeze([
   'requirement_version_requirement_packages',
   'specification_local_requirement_requirement_packages',
+  'specification_requirement_selection_answers',
+  'requirement_selection_answer_requirements',
+  'requirement_selection_answer_packages',
+  'requirement_selection_answers',
+  'requirement_selection_questions',
+  'requirement_selection_question_sequences',
   'requirement_packages',
   'requirement_version_norm_references',
   'deviations',

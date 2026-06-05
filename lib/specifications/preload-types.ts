@@ -1,6 +1,6 @@
 import type {
   AreaOption,
-  FilterOption,
+  RequirementPackageOption,
   RequirementRow,
   SpecificationItemStatusOption,
 } from '@/lib/requirements/list-view'
@@ -56,6 +56,13 @@ export interface NormReferenceOption {
 export interface AvailableRequirementsData {
   hasMore: boolean
   rows: RequirementRow[]
+  selectionFilter?: {
+    applied: boolean
+    hasCurrentAnswers: boolean
+    hasRequirementSelection: boolean
+    hasNoRequirementSelection: boolean
+    requirementIds: number[]
+  }
 }
 
 export interface RequirementsSpecificationDetailInitialData {
@@ -64,7 +71,7 @@ export interface RequirementsSpecificationDetailInitialData {
   availableRequirements: AvailableRequirementsData
   errors: SpecificationPreloadError[]
   leftNormReferenceOptions: NormReferenceOption[]
-  requirementPackages: FilterOption[]
+  requirementPackages: RequirementPackageOption[]
   rightNormReferenceOptions: NormReferenceOption[]
   spec: SpecificationMeta | null
   specificationGovernanceObjectTypes: SpecificationTaxonomyItem[]

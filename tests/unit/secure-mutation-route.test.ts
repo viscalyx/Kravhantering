@@ -4,11 +4,13 @@ import { z } from 'zod'
 import { CsrfError } from '@/lib/auth/csrf'
 import {
   adminMutationPolicy,
+  authenticatedMutationPolicy,
   customMutationPolicy,
   requirementsMutationPolicy,
   secureLogoutMutationRoute,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
+import type { RequestContext } from '@/lib/requirements/auth'
 import { forbiddenError } from '@/lib/requirements/errors'
 
 const authState = vi.hoisted(() => ({
@@ -60,7 +62,7 @@ vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: auditState.getRequestSqlServerDataSource,
 }))
 
-function context(roles: string[] = ['Admin']) {
+function context(roles: string[] = ['Admin']): RequestContext {
   return {
     actor: {
       displayName: 'Ada Admin',
@@ -229,6 +231,42 @@ describe('secureMutationRoute', () => {
     expect(authState.assertAuthorized.mock.invocationCallOrder[0]).toBeLessThan(
       handler.mock.invocationCallOrder[0],
     )
+  })
+
+  it('exposes an explicit authenticated-only custom policy', async () => {
+    const policy = authenticatedMutationPolicy('authenticated.example')
+
+    expect(policy).toMatchObject({
+      kind: 'custom',
+      name: 'authenticated.example',
+    })
+    if (policy.kind !== 'custom') {
+      throw new Error('Expected custom policy')
+    }
+
+    await expect(
+      Promise.resolve().then(() =>
+        policy.authorize({
+          body: undefined,
+          context: context(),
+          params: undefined,
+          request: jsonRequest({}),
+        }),
+      ),
+    ).resolves.toBeUndefined()
+    await expect(
+      Promise.resolve().then(() =>
+        policy.authorize({
+          body: undefined,
+          context: {
+            ...context([]),
+            actor: { ...context([]).actor, isAuthenticated: false },
+          },
+          params: undefined,
+          request: jsonRequest({}),
+        }),
+      ),
+    ).rejects.toMatchObject({ status: 401 })
   })
 
   it('returns policy denials without running the handler', async () => {

@@ -25,14 +25,14 @@ function keyForPrivacySql(sql: string): string | null {
   if (sql.includes('SELECT CONCAT(area.prefix')) {
     return 'owners.identity.areaReferences'
   }
-  if (sql.includes('SELECT pkg.name_sv AS value')) {
+  if (sql.includes('SELECT pkg.name AS value')) {
     return 'owners.identity.packageReferences'
   }
   if (sql.includes('FROM owners WHERE hsa_id')) return 'owners.identity'
   if (sql.includes('requirement_areas area INNER JOIN owners')) {
     return 'requirement_areas.owner'
   }
-  if (sql.includes('requirement_packages pkg INNER JOIN owners')) {
+  if (sql.includes('FROM requirement_packages pkg')) {
     return 'requirement_packages.owner'
   }
   if (sql.includes('FROM requirement_versions WHERE created_by_hsa_id')) {
@@ -471,6 +471,55 @@ describe('privacy erasure service', () => {
     ])
   })
 
+  it('allows package-lead switching when the target is not an owner row', async () => {
+    const replacement = {
+      displayName: 'John Levi',
+      hsaId: 'SE5560000001-johlju',
+    }
+    const { db, query } = createPrivacyDb({
+      'requirement_packages.owner': {
+        affectedValues: ['SPR Språkstöd'],
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+    })
+
+    const preview = await previewPrivacyErasure(db, {
+      replacement,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(preview.groups).toEqual([
+      expect.objectContaining({
+        allowedActions: ['switch', 'skip'],
+        controlledByGroupKey: null,
+        key: 'requirement_packages.owner',
+        readOnlyReasonKey: null,
+        recommendedAction: 'switch',
+      }),
+    ])
+
+    query.mockClear()
+
+    const result = await executePrivacyErasure(createTransactionalDb(query), {
+      actions: { 'requirement_packages.owner': 'switch' },
+      previewToken: preview.previewToken,
+      replacement,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE requirement_packages'),
+      [
+        TARGET_HSA_ID,
+        replacement.hsaId,
+        replacement.displayName,
+        expect.any(Date),
+      ],
+    )
+    expect(result.actions.switch).toBe(1)
+  })
+
   it('uses combined owner blocker copy keys when areas and packages reference the owner', async () => {
     const withoutReplacement = await previewPrivacyErasure(
       createPrivacyDb({
@@ -633,7 +682,7 @@ describe('privacy erasure service', () => {
     const query = vi.fn(
       <T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T> => {
         void parameters
-        if (sql.includes('UPDATE t') && sql.includes('requirement_packages')) {
+        if (sql.includes('UPDATE requirement_packages')) {
           packageReferences = 0
           return Promise.resolve([] as T)
         }
@@ -648,10 +697,10 @@ describe('privacy erasure service', () => {
         ) {
           return Promise.resolve([{ count: packageReferences }] as T)
         }
-        if (sql.includes('SELECT TOP (1) CONCAT(owner.first_name')) {
+        if (sql.includes('SELECT TOP (1) pkg.lead_display_name')) {
           return Promise.resolve([{ value: 'Kalle Svensson' }] as T)
         }
-        if (sql.includes('SELECT pkg.name_sv AS value')) {
+        if (sql.includes('SELECT pkg.name AS value')) {
           return Promise.resolve(
             packageReferences > 0
               ? ([{ value: 'SPR Språkstöd' }] as T)
@@ -708,8 +757,8 @@ describe('privacy erasure service', () => {
     })
 
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('FROM requirement_packages t'),
-      [TARGET_HSA_ID, 2],
+      expect.stringContaining('UPDATE requirement_packages'),
+      [TARGET_HSA_ID, 'SE5560000001-johlju', 'John Levi', expect.any(Date)],
     )
     expect(query).toHaveBeenCalledWith('DELETE FROM owners WHERE id = @0', [1])
     expect(result.actions.switch).toBe(2)
@@ -717,7 +766,8 @@ describe('privacy erasure service', () => {
     expect(
       query.mock.calls.some(
         ([sql, parameters]) =>
-          String(sql).includes('UPDATE t') && parameters?.[1] === 2,
+          String(sql).includes('UPDATE requirement_packages') &&
+          parameters?.[1] === 'SE5560000001-johlju',
       ),
     ).toBe(true)
   })
@@ -748,8 +798,8 @@ describe('privacy erasure service', () => {
 
   it('stores optional replacement email when creating a replacement owner for owner reference switches', async () => {
     const { db, query } = createPrivacyDb({
-      'requirement_packages.owner': {
-        affectedValues: ['SPR Språkstöd'],
+      'requirement_areas.owner': {
+        affectedValues: ['SEC Säkerhet'],
         count: 1,
         value: 'Kalle Svensson',
       },
@@ -767,7 +817,7 @@ describe('privacy erasure service', () => {
     })
 
     await executePrivacyErasure(createTransactionalDb(query), {
-      actions: { 'requirement_packages.owner': 'switch' },
+      actions: { 'requirement_areas.owner': 'switch' },
       previewToken: preview.previewToken,
       replacement,
       target: { hsaId: TARGET_HSA_ID },
@@ -790,15 +840,15 @@ describe('privacy erasure service', () => {
       <T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T> => {
         void parameters
         if (
-          sql.includes('SELECT COUNT(*) AS count FROM requirement_packages pkg')
+          sql.includes('SELECT COUNT(*) AS count FROM requirement_areas area')
         ) {
           return Promise.resolve([{ count: 1 }] as T)
         }
         if (sql.includes('SELECT TOP (1) CONCAT(owner.first_name')) {
           return Promise.resolve([{ value: 'Anna Maria Eriksson' }] as T)
         }
-        if (sql.includes('privacy:affected:requirement_packages.owner')) {
-          return Promise.resolve([{ value: 'SPR Språkstöd' }] as T)
+        if (sql.includes('privacy:affected:requirement_areas.owner')) {
+          return Promise.resolve([{ value: 'SEC Säkerhet' }] as T)
         }
         if (sql.includes('SELECT TOP (1) id, email FROM owners')) {
           return Promise.resolve([{ email: 'old@example.com', id: 2 }] as T)
@@ -825,7 +875,7 @@ describe('privacy erasure service', () => {
     query.mockClear()
 
     await executePrivacyErasure(createTransactionalDb(query), {
-      actions: { 'requirement_packages.owner': 'switch' },
+      actions: { 'requirement_areas.owner': 'switch' },
       previewToken: preview.previewToken,
       replacement,
       target: { hsaId: TARGET_HSA_ID },
@@ -845,8 +895,8 @@ describe('privacy erasure service', () => {
 
   it('derives a missing replacement owner first name when last name is explicit', async () => {
     const { db, query } = createPrivacyDb({
-      'requirement_packages.owner': {
-        affectedValues: ['SPR Språkstöd'],
+      'requirement_areas.owner': {
+        affectedValues: ['SEC Säkerhet'],
         count: 1,
         value: 'Kalle Svensson',
       },
@@ -862,7 +912,7 @@ describe('privacy erasure service', () => {
     })
 
     await executePrivacyErasure(createTransactionalDb(query), {
-      actions: { 'requirement_packages.owner': 'switch' },
+      actions: { 'requirement_areas.owner': 'switch' },
       previewToken: preview.previewToken,
       replacement,
       target: { hsaId: TARGET_HSA_ID },

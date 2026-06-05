@@ -71,6 +71,502 @@ function tableSection(SEED_DATA, name) {
   return t
 }
 
+const DOGFOOD_OWNER_HSA_BY_ID = new Map([
+  [1001, 'SE5560000001-saraholm'],
+  [1002, 'SE5560000001-karlpersson'],
+  [1003, 'SE5560000001-linneab'],
+  [1004, 'SE5560000001-oscarn'],
+  [1005, 'SE5560000001-emmal'],
+])
+
+function dogfoodOwnerIdentity(ownerId) {
+  const owner = DOGFOOD_OWNERS.find(([id]) => id === ownerId)
+  if (!owner) {
+    throw new Error(`Dogfood seed: unknown package owner id ${ownerId}`)
+  }
+  const hsaId = DOGFOOD_OWNER_HSA_BY_ID.get(ownerId)
+  if (!hsaId) {
+    throw new Error(`Dogfood seed: missing package owner HSA-ID ${ownerId}`)
+  }
+  return {
+    displayName: `${owner[1]} ${owner[2]}`,
+    hsaId,
+  }
+}
+
+const BASE_REQUIREMENT_PACKAGE_IDS = {
+  normalDrift: 7,
+  hogBelastning: 8,
+  katastrofAterstallning: 9,
+}
+
+const REQUIREMENT_SELECTION_DEMO_SPEC_IDS = {
+  intplatt: 1,
+  gdpr: 7,
+  etjanst: 8,
+  khInfor: SPEC_KH_INFOR,
+}
+
+const REQUIREMENT_SELECTION_QUESTIONS = [
+  {
+    areaId: ID.area.SAK,
+    code: 'SÄK-KUF001',
+    helpText:
+      'Välj den nivå som bäst beskriver informationens känslighet och skyddsbehov.',
+    id: 1,
+    selectionType: 'single',
+    sortOrder: 10,
+    text: 'Vilken skyddsnivå gäller för informationen?',
+  },
+  {
+    areaId: ID.area.INT,
+    code: 'INT-KUF001',
+    helpText:
+      'Välj de integrationsmönster som leveransen behöver stödja eller avstå från frågan.',
+    id: 2,
+    selectionType: 'multiple',
+    sortOrder: 20,
+    text: 'Vilka integrationsmönster ingår?',
+  },
+  {
+    areaId: ID.area.DRF,
+    code: 'DRF-KUF001',
+    helpText:
+      'Välj driftförutsättningar som påverkar krav på plattform, återställning och belastning.',
+    id: 3,
+    selectionType: 'multiple',
+    sortOrder: 30,
+    text: 'Vilka driftkrav är relevanta?',
+  },
+  {
+    areaId: ID.area.ANV,
+    code: 'ANV-KUF001',
+    helpText:
+      'Välj de användargrupper och tillgänglighetsbehov som ska styra kravurvalet.',
+    id: 4,
+    selectionType: 'multiple',
+    sortOrder: 40,
+    text: 'Vilka användargrupper ska stödjas?',
+  },
+  {
+    areaId: ID.area.RAP,
+    code: 'RAP-KUF001',
+    helpText:
+      'Välj den rapporteringsnivå som behövs för beslut, uppföljning eller revision.',
+    id: 5,
+    selectionType: 'single',
+    sortOrder: 50,
+    text: 'Vilken rapportering behöver leveransen?',
+  },
+  {
+    areaId: ID.area.KVA,
+    code: 'KVA-KUF001',
+    helpText:
+      'Välj vilka test- och kvalitetssäkringskrav som behöver lyftas in tidigt.',
+    id: 6,
+    selectionType: 'multiple',
+    sortOrder: 60,
+    text: 'Vilken test- och kvalitetssäkring krävs?',
+  },
+]
+
+const REQUIREMENT_SELECTION_ANSWERS = [
+  {
+    description:
+      'Passar intern information där grundläggande informationssäkerhet räcker.',
+    id: 1,
+    packages: [ID.pkg.infosak],
+    questionId: 1,
+    requirementUniqueIds: ['SÄK0042'],
+    sortOrder: 10,
+    text: 'Grundskydd för intern information',
+  },
+  {
+    description:
+      'Används när personuppgifter, sekretess eller känslig handläggning ingår.',
+    id: 2,
+    packages: [ID.pkg.infosak, ID.pkg.gdprPerson],
+    questionId: 1,
+    requirementUniqueIds: ['SÄK0045', 'BEH0037'],
+    sortOrder: 20,
+    text: 'Personuppgifter eller sekretessklassad information',
+  },
+  {
+    description:
+      'Lyfter krav på säker identitet, behörighet och spårbara åtkomster.',
+    id: 3,
+    packages: [ID.pkg.infosak, ID.pkg.behorighet, ID.pkg.sso],
+    questionId: 1,
+    requirementUniqueIds: [
+      'SÄK0043',
+      'IDN0037',
+      'BEH0037',
+      'BEH0038',
+      'BEH0039',
+    ],
+    sortOrder: 30,
+    text: 'Behörighetskritisk information och identitet',
+  },
+  {
+    description:
+      'Täcker publicerade API:er, dokumenterade kontrakt och integrationsgränssnitt.',
+    id: 4,
+    packages: [ID.pkg.apiUtbyte],
+    questionId: 2,
+    requirementUniqueIds: ['INT0039', 'INT0041', 'INT0042'],
+    sortOrder: 10,
+    text: 'REST-API eller API Gateway',
+  },
+  {
+    description:
+      'Passar händelsestyrda integrationer där leveransen behöver avisera andra system.',
+    id: 5,
+    packages: [ID.pkg.integrationer, ID.pkg.apiUtbyte],
+    questionId: 2,
+    requirementUniqueIds: ['INT0043'],
+    sortOrder: 20,
+    text: 'Asynkrona meddelanden eller webhooks',
+  },
+  {
+    description:
+      'Används när befintliga datamängder ska tas in eller flyttas mellan system.',
+    id: 6,
+    packages: [ID.pkg.datamigrering],
+    questionId: 2,
+    requirementUniqueIds: [],
+    sortOrder: 30,
+    text: 'Filimport eller datamigrering',
+  },
+  {
+    description:
+      'Välj när leveransen inte behöver kravurval för externa integrationer.',
+    id: 7,
+    isNoRequirementSelection: true,
+    packages: [],
+    questionId: 2,
+    requirementUniqueIds: [],
+    sortOrder: 40,
+    text: 'Inga externa integrationer',
+  },
+  {
+    description:
+      'Lyfter krav på driftsmiljö, övervakning och återställning i molnplattform.',
+    id: 8,
+    packages: [ID.pkg.molndrift, ID.pkg.driftTillg],
+    questionId: 3,
+    requirementUniqueIds: ['DRF0036', 'DRF0038', 'DRF0040'],
+    sortOrder: 10,
+    text: 'Molndrift och plattformsdrift',
+  },
+  {
+    description:
+      'Passar tjänster med många samtidiga användare, stora datamängder eller toppar.',
+    id: 9,
+    packages: [BASE_REQUIREMENT_PACKAGE_IDS.hogBelastning, ID.pkg.driftTillg],
+    questionId: 3,
+    requirementUniqueIds: ['DRF0038', 'DRF0039'],
+    sortOrder: 20,
+    text: 'Hög belastning eller många samtidiga användare',
+  },
+  {
+    description:
+      'Används för leveranser som måste kunna återställas efter större avbrott.',
+    id: 10,
+    packages: [
+      BASE_REQUIREMENT_PACKAGE_IDS.katastrofAterstallning,
+      ID.pkg.driftTillg,
+    ],
+    questionId: 3,
+    requirementUniqueIds: ['DRF0037', 'DRF0040'],
+    sortOrder: 30,
+    text: 'Katastrofåterställning och backup',
+  },
+  {
+    description:
+      'Basnivå för lösningar utan särskilda belastnings- eller återställningskrav.',
+    id: 11,
+    packages: [BASE_REQUIREMENT_PACKAGE_IDS.normalDrift],
+    questionId: 3,
+    requirementUniqueIds: [],
+    sortOrder: 40,
+    text: 'Normal drift utan särskild belastning',
+  },
+  {
+    description: 'Passar återkommande handläggningsflöden i verksamheten.',
+    id: 12,
+    packages: [ID.pkg.arendehantering, ID.pkg.anvandbarhet],
+    questionId: 4,
+    requirementUniqueIds: ['ANV0037', 'ANV0038'],
+    sortOrder: 10,
+    text: 'Handläggare i verksamheten',
+  },
+  {
+    description:
+      'Lyfter krav på responsivitet, fältarbete och användning utanför kontoret.',
+    id: 13,
+    packages: [ID.pkg.mobilAnvandning, ID.pkg.anvandbarhet],
+    questionId: 4,
+    requirementUniqueIds: ['ANV0040', 'ANV0041'],
+    sortOrder: 20,
+    text: 'Mobila fältanvändare',
+  },
+  {
+    description:
+      'Passar förvaltnings- och administrationsytor med hög spårbarhet.',
+    id: 14,
+    packages: [ID.pkg.anvandbarhet, ID.pkg.sparbarhet],
+    questionId: 4,
+    requirementUniqueIds: ['ANV0037', 'ANV0039'],
+    sortOrder: 30,
+    text: 'Administratörer och förvaltare',
+  },
+  {
+    description:
+      'Används när digital tillgänglighet behöver vara ett tydligt urvalsvillkor.',
+    id: 15,
+    packages: [ID.pkg.tillganglighet],
+    questionId: 4,
+    requirementUniqueIds: ['TIL0001', 'TIL0002'],
+    sortOrder: 40,
+    text: 'Tillgänglighet enligt WCAG',
+  },
+  {
+    description:
+      'Välj när rapportering inte ska påverka kravurvalet i detta underlag.',
+    id: 16,
+    isNoRequirementSelection: true,
+    packages: [],
+    questionId: 5,
+    requirementUniqueIds: [],
+    sortOrder: 10,
+    text: 'Ingen särskild rapportering',
+  },
+  {
+    description:
+      'Passar beslutsunderlag där rapporten ska kunna skrivas ut eller arkiveras.',
+    id: 17,
+    packages: [ID.pkg.grundSystem, ID.pkg.sparbarhet],
+    questionId: 5,
+    requirementUniqueIds: ['RAP0001', 'RAP0002'],
+    sortOrder: 20,
+    text: 'PDF och utskrift för beslut',
+  },
+  {
+    description:
+      'Lyfter krav på spårbarhet, rapportkontext och revisionsbar export.',
+    id: 18,
+    packages: [ID.pkg.sparbarhet, ID.pkg.versionshantering],
+    questionId: 5,
+    requirementUniqueIds: ['RAP0003'],
+    sortOrder: 30,
+    text: 'Spårbar rapportering och revisionsunderlag',
+  },
+  {
+    description:
+      'Basnivå för kodnära tester som ska köras i utvecklingsflödet.',
+    id: 19,
+    packages: [ID.pkg.testKvalitet],
+    questionId: 6,
+    requirementUniqueIds: ['KVA0001', 'KVA0002'],
+    sortOrder: 10,
+    text: 'Automatiserade enhets- och integrationstester',
+  },
+  {
+    description:
+      'Används när användarflöden och kritiska regressioner ska testas i webbläsare.',
+    id: 20,
+    packages: [ID.pkg.testKvalitet],
+    questionId: 6,
+    requirementUniqueIds: ['KVA0003'],
+    sortOrder: 20,
+    text: 'End-to-end-test i webbläsare',
+  },
+  {
+    description:
+      'Passar leveranser där databasändringar, seed och versionering är centrala.',
+    id: 21,
+    packages: [ID.pkg.testKvalitet, ID.pkg.versionshantering],
+    questionId: 6,
+    requirementUniqueIds: ['DAT0037', 'DAT0039', 'KVA0005'],
+    sortOrder: 30,
+    text: 'Seed och migrationer ska vara deterministiska',
+  },
+  {
+    description:
+      'Välj när standardprocessen räcker och inget särskilt kravurval behövs.',
+    id: 22,
+    isNoRequirementSelection: true,
+    packages: [],
+    questionId: 6,
+    requirementUniqueIds: [],
+    sortOrder: 40,
+    text: 'Ingen extra kvalitetssäkring utöver standard',
+  },
+]
+
+const REQUIREMENT_SELECTION_SAVED_ANSWERS = [
+  {
+    answerIds: [2, 4, 5, 8, 13, 15],
+    actor: { displayName: 'Sara Holm', hsaId: 'SE5560000001-saraholm' },
+    specificationId: REQUIREMENT_SELECTION_DEMO_SPEC_IDS.etjanst,
+  },
+  {
+    answerIds: [3, 4, 17, 19, 20, 21],
+    actor: {
+      displayName: 'Linnéa Bergström',
+      hsaId: 'SE5560000001-linneab',
+    },
+    specificationId: REQUIREMENT_SELECTION_DEMO_SPEC_IDS.khInfor,
+  },
+  {
+    answerIds: [4, 5, 6, 9],
+    actor: { displayName: 'Karl Persson', hsaId: 'SE5560000001-karlpersson' },
+    specificationId: REQUIREMENT_SELECTION_DEMO_SPEC_IDS.intplatt,
+  },
+  {
+    answerIds: [2],
+    actor: { displayName: 'Sara Holm', hsaId: 'SE5560000001-saraholm' },
+    specificationId: REQUIREMENT_SELECTION_DEMO_SPEC_IDS.gdpr,
+  },
+  {
+    answerIds: [18],
+    actor: { displayName: 'Oscar Nilsson', hsaId: 'SE5560000001-oscarn' },
+    isHistorical: true,
+    specificationId: REQUIREMENT_SELECTION_DEMO_SPEC_IDS.gdpr,
+  },
+]
+
+function requirementIdByUniqueId(SEED_DATA) {
+  const requirements = tableSection(SEED_DATA, 'requirements')
+  const idIdx = requirements.columns.indexOf('id')
+  const uniqueIdIdx = requirements.columns.indexOf('unique_id')
+  return new Map(requirements.rows.map(row => [row[uniqueIdIdx], row[idIdx]]))
+}
+
+function appendRequirementSelectionDemoSeed(SEED_DATA) {
+  const questionSequences = tableSection(
+    SEED_DATA,
+    'requirement_selection_question_sequences',
+  )
+  const questions = tableSection(SEED_DATA, 'requirement_selection_questions')
+  const answers = tableSection(SEED_DATA, 'requirement_selection_answers')
+  const answerPackages = tableSection(
+    SEED_DATA,
+    'requirement_selection_answer_packages',
+  )
+  const answerRequirements = tableSection(
+    SEED_DATA,
+    'requirement_selection_answer_requirements',
+  )
+  const savedAnswers = tableSection(
+    SEED_DATA,
+    'specification_requirement_selection_answers',
+  )
+  const requirementIdByUnique = requirementIdByUniqueId(SEED_DATA)
+  const answerById = new Map(
+    REQUIREMENT_SELECTION_ANSWERS.map(answer => [answer.id, answer]),
+  )
+
+  for (const question of REQUIREMENT_SELECTION_QUESTIONS) {
+    ensureRow(questionSequences, [question.areaId, 2], ['area_id'])
+    ensureRow(
+      questions,
+      [
+        question.id,
+        question.code,
+        question.areaId,
+        question.selectionType,
+        question.text,
+        question.helpText,
+        question.sortOrder,
+        1,
+        0,
+        null,
+        SEED_TS,
+        SEED_TS,
+      ],
+      ['id'],
+    )
+  }
+
+  for (const answer of REQUIREMENT_SELECTION_ANSWERS) {
+    const isNoRequirementSelection = answer.isNoRequirementSelection === true
+    if (
+      isNoRequirementSelection &&
+      (answer.packages.length > 0 || answer.requirementUniqueIds.length > 0)
+    ) {
+      throw new Error(
+        `Dogfood seed: no-requirement answer ${answer.id} must not have links`,
+      )
+    }
+
+    ensureRow(
+      answers,
+      [
+        answer.id,
+        answer.questionId,
+        answer.text,
+        answer.description,
+        answer.sortOrder,
+        isNoRequirementSelection ? 1 : 0,
+        1,
+        0,
+        null,
+        SEED_TS,
+        SEED_TS,
+      ],
+      ['id'],
+    )
+
+    for (const packageId of answer.packages) {
+      ensureRow(
+        answerPackages,
+        [answer.id, packageId],
+        ['answer_id', 'requirement_package_id'],
+      )
+    }
+
+    for (const uniqueId of answer.requirementUniqueIds) {
+      const requirementId = requirementIdByUnique.get(uniqueId)
+      if (requirementId == null) {
+        // Some unit tests intentionally alter area sequences to verify
+        // minting. The full demo seed has a separate integrity test for the
+        // canonical published Krav links.
+        continue
+      }
+      ensureRow(
+        answerRequirements,
+        [answer.id, requirementId],
+        ['answer_id', 'requirement_id'],
+      )
+    }
+  }
+
+  for (const savedSelection of REQUIREMENT_SELECTION_SAVED_ANSWERS) {
+    for (const answerId of savedSelection.answerIds) {
+      const answer = answerById.get(answerId)
+      if (!answer) {
+        throw new Error(
+          `Dogfood seed: saved selection references unknown answer ${answerId}`,
+        )
+      }
+      ensureRow(
+        savedAnswers,
+        [
+          savedSelection.specificationId,
+          answer.questionId,
+          answerId,
+          savedSelection.isHistorical === true ? 1 : 0,
+          SEED_TS,
+          savedSelection.actor.hsaId,
+          savedSelection.actor.displayName,
+        ],
+        ['specification_id', 'question_id', 'answer_id'],
+      )
+    }
+  }
+}
+
 export function appendDogfoodSeed(SEED_DATA) {
   // ---- Owners ------------------------------------------------------------
   const owners = tableSection(SEED_DATA, 'owners')
@@ -99,10 +595,11 @@ export function appendDogfoodSeed(SEED_DATA) {
 
   // ---- Requirement packages -----------------------------------------------
   const requirementPackages = tableSection(SEED_DATA, 'requirement_packages')
-  for (const [id, sv, en, dsv, den, ownerId] of DOGFOOD_REQUIREMENT_PACKAGES) {
+  for (const [id, sv, , dsv, , ownerId] of DOGFOOD_REQUIREMENT_PACKAGES) {
+    const lead = dogfoodOwnerIdentity(ownerId)
     ensureRow(
       requirementPackages,
-      [id, sv, en, dsv, den, ownerId, SEED_TS, SEED_TS],
+      [id, sv, dsv, lead.hsaId, lead.displayName, 0, SEED_TS, SEED_TS],
       ['id'],
     )
   }
@@ -397,8 +894,17 @@ export function appendDogfoodSeed(SEED_DATA) {
     ])
   }
 
+  appendRequirementSelectionDemoSeed(SEED_DATA)
+
   return {
     requirementsAdded: minted.length,
+    requirementSelectionAnswersAdded: REQUIREMENT_SELECTION_ANSWERS.length,
+    requirementSelectionQuestionsAdded: REQUIREMENT_SELECTION_QUESTIONS.length,
+    specificationRequirementSelectionAnswersAdded:
+      REQUIREMENT_SELECTION_SAVED_ANSWERS.reduce(
+        (count, selection) => count + selection.answerIds.length,
+        0,
+      ),
     specificationsAdded: DOGFOOD_SPECIFICATIONS.length,
     specificationLocalsAdded: DOGFOOD_SPECIFICATION_LOCALS.length,
     specificationItemsAdded: minted.length + DOGFOOD_KH_INFOR_INDEXES.length,

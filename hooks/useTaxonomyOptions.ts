@@ -23,8 +23,7 @@ export interface QualityCharacteristicOption {
 
 export interface RequirementPackageOption {
   id: number
-  nameEn: string
-  nameSv: string
+  name: string
 }
 
 export interface NormReferenceOption {

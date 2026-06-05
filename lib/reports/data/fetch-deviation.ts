@@ -1,3 +1,5 @@
+import { requirementPackageName } from '@/lib/reports/package-name'
+
 export interface DeviationReportDeviation {
   createdAt: string
   createdBy: string | null
@@ -11,7 +13,7 @@ export interface DeviationReportVersion {
   description: string | null
   normReferences: { name: string; reference: string; uri: string | null }[]
   qualityCharacteristic: { nameEn: string; nameSv: string } | null
-  requirementPackages: { nameEn: string | null; nameSv: string | null }[]
+  requirementPackages: { name: string }[]
   requiresTesting: boolean
   riskLevel: {
     color: string | null
@@ -95,7 +97,7 @@ export async function fetchDeviationForReport(
       }[]
       versionNumber: number
       versionRequirementPackages: {
-        requirementPackage: { nameEn: string | null; nameSv: string | null }
+        requirementPackage: { name: string | null }
       }[]
     }[]
   }
@@ -182,12 +184,11 @@ export async function fetchDeviationForReport(
           reference: vnr.normReference.reference,
           uri: vnr.normReference.uri,
         })),
-      requirementPackages: version.versionRequirementPackages
-        .filter(vs => vs.requirementPackage)
-        .map(vs => ({
-          nameEn: vs.requirementPackage.nameEn,
-          nameSv: vs.requirementPackage.nameSv,
-        })),
+      requirementPackages: version.versionRequirementPackages.flatMap(vs => {
+        const requirementPackage = vs.requirementPackage
+        const name = requirementPackageName(requirementPackage).trim()
+        return requirementPackage && name ? [{ name }] : []
+      }),
     },
   }
 }

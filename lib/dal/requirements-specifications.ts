@@ -83,8 +83,7 @@ export interface SpecificationLocalRequirementDetail {
   requirementCategory: { id: number; nameEn: string; nameSv: string } | null
   requirementPackages: {
     id: number
-    nameEn: string | null
-    nameSv: string | null
+    name: string | null
   }[]
   requirementType: { id: number; nameEn: string; nameSv: string } | null
   requiresTesting: boolean
@@ -1392,20 +1391,13 @@ function mapSpecificationLocalRequirementDetailFlat(
   const sortedRequirementPackages = [...requirementPackageRows]
     .map(requirementPackage => ({
       id: Number(requirementPackage.id),
-      nameEn:
-        requirementPackage.nameEn == null
+      name:
+        requirementPackage.name == null
           ? null
-          : String(requirementPackage.nameEn),
-      nameSv:
-        requirementPackage.nameSv == null
-          ? null
-          : String(requirementPackage.nameSv),
+          : String(requirementPackage.name),
     }))
     .sort((left, right) =>
-      (left.nameSv ?? left.nameEn ?? '').localeCompare(
-        right.nameSv ?? right.nameEn ?? '',
-        'sv',
-      ),
+      (left.name ?? '').localeCompare(right.name ?? '', 'sv'),
     )
 
   return {
@@ -1510,8 +1502,7 @@ export async function getSpecificationLocalRequirementDetail(
       `
         SELECT
           requirement_package.id AS id,
-          requirement_package.name_en AS nameEn,
-          requirement_package.name_sv AS nameSv
+          requirement_package.name AS name
         FROM specification_local_requirement_requirement_packages link
         INNER JOIN requirement_packages requirement_package
           ON requirement_package.id = link.requirement_package_id

@@ -627,10 +627,23 @@ async function createRequirementPackage(
 ): Promise<{ id: number }> {
   const now = new Date()
   const rows = (await target.query(
-    `INSERT INTO requirement_packages (name_sv, name_en, created_at, updated_at)
+    `INSERT INTO requirement_packages (
+        name,
+        description,
+        lead_hsa_id,
+        lead_display_name,
+        created_at,
+        updated_at
+      )
        OUTPUT INSERTED.id AS id
-       VALUES (@0, @1, @2, @2)`,
-    ['Säkerhetspaket', 'Security package', now],
+       VALUES (@0, @1, @2, @3, @4, @4)`,
+    [
+      'Säkerhetspaket',
+      'Security package',
+      'SE5560000001-johlju',
+      'Paket Ansvarig',
+      now,
+    ],
   )) as Array<{ id: number }>
   return rows[0] as { id: number }
 }

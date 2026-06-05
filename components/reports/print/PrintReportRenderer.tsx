@@ -79,6 +79,10 @@ function SectionRenderer({
       return <div className="print-page-break" />
     case 'requirement-table':
       return <RequirementTableSection section={section} />
+    case 'requirement-selection-context':
+      return (
+        <RequirementSelectionContextSection locale={locale} section={section} />
+      )
     case 'toc':
       return <TocSection section={section} />
     case 'deviation-summary':
@@ -88,6 +92,65 @@ function SectionRenderer({
     default:
       return null
   }
+}
+
+function RequirementSelectionContextSection({
+  locale,
+  section,
+}: {
+  locale: string
+  section: Extract<ReportSection, { type: 'requirement-selection-context' }>
+}) {
+  const t = useTranslations('reports')
+  return (
+    <div style={{ marginBottom: '1.5rem' }}>
+      <h2 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 8 }}>
+        {section.title}
+      </h2>
+      <table
+        style={{
+          borderCollapse: 'collapse',
+          fontSize: '0.8rem',
+          width: '100%',
+        }}
+      >
+        <tbody>
+          {section.rows.map(row => {
+            const selectedByDisplayName = formatActorDisplayNameForLocale(
+              row.selectedByDisplayName,
+              locale,
+            )
+            return (
+              <tr key={`${row.questionCode}-${row.answerText}`}>
+                <td style={{ borderTop: '1px solid #e5e7eb', padding: 6 }}>
+                  <strong>{row.areaName}</strong>
+                  <br />
+                  <span style={{ color: '#6b7280' }}>{row.questionCode}</span>
+                </td>
+                <td style={{ borderTop: '1px solid #e5e7eb', padding: 6 }}>
+                  {row.questionText}
+                </td>
+                <td style={{ borderTop: '1px solid #e5e7eb', padding: 6 }}>
+                  {row.answerText}
+                  {row.isHistorical && (
+                    <span style={{ color: '#92400e' }}>
+                      {' '}
+                      {t('historicalSelectionAnswer')}
+                    </span>
+                  )}
+                  <br />
+                  <span style={{ color: '#6b7280', fontSize: '0.72rem' }}>
+                    {row.changedAt}
+                    {selectedByDisplayName ? ` · ${selectedByDisplayName}` : ''}
+                  </span>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
 }
 
 function SpecificationCoverSection({
@@ -324,6 +387,9 @@ function VersionDetails({
   const getName = (item: { nameSv: string; nameEn: string } | null) =>
     item ? localizedName(item, locale) || null : null
   const createdBy = formatActorDisplayNameForLocale(version.createdBy, locale)
+  const requirementPackageNames = version.requirementPackages
+    .map(({ name }) => name?.trim() ?? '')
+    .filter(Boolean)
 
   return (
     <div style={{ fontSize: '0.875rem' }}>
@@ -412,9 +478,7 @@ function VersionDetails({
             {t('requirementPackages')}:{' '}
           </span>
           <span style={{ color: '#6b7280' }}>
-            {version.requirementPackages
-              .map(s => localizedName(s, locale))
-              .join(', ')}
+            {requirementPackageNames.join(', ') || '—'}
           </span>
         </div>
       )}

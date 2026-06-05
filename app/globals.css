@@ -102,6 +102,47 @@
     @apply bg-white/70 dark:bg-secondary-900/70 backdrop-blur-xl border border-white/20 dark:border-secondary-700/30 shadow-sm;
   }
 
+  /* Keep the stewardship shell surfaces flat and solid; gradients or inner
+   * shadows create visible divider lines between the navigation buttons. */
+  .stewardship-nav-stepped-shell {
+    position: relative;
+    padding: 0.45rem 0.7rem 0.65rem;
+    isolation: isolate;
+  }
+
+  .stewardship-nav-parent-shell {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .stewardship-nav-parent-shell::before {
+    position: absolute;
+    top: -0.45rem;
+    right: -0.55rem;
+    bottom: -0.25rem;
+    left: -0.55rem;
+    z-index: -1;
+    pointer-events: none;
+    content: "";
+    background: rgb(248 250 252 / 0.98);
+    border-radius: 1.15rem 1.15rem 0.2rem 0.2rem;
+    box-shadow: 0 18px 34px -30px rgb(15 23 42 / 0.34);
+  }
+
+  .stewardship-nav-submenu-shell {
+    background: rgb(248 250 252 / 0.98);
+    border-radius: 1.15rem;
+  }
+
+  .dark .stewardship-nav-parent-shell::before,
+  .dark .stewardship-nav-submenu-shell {
+    background: rgb(15 23 42 / 0.9);
+  }
+
+  .dark .stewardship-nav-parent-shell::before {
+    box-shadow: none;
+  }
+
   /*
    * Status badge: theme-aware foreground.
    * Per-instance CSS variables --sb-fg-light / --sb-fg-dark are emitted by

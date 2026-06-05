@@ -1,14 +1,13 @@
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import Logo from '@/components/Logo'
 
 describe('Logo', () => {
-  it('renders an image with accessible alt text', () => {
-    const { container } = render(<Logo />)
-    const img = container.querySelector('img')
+  it('renders an eagerly loaded image with accessible alt text', () => {
+    render(<Logo />)
+    const img = screen.getByRole('img', { name: /logotyp/i })
 
-    expect(img).toBeTruthy()
-    expect(img?.getAttribute('alt')).toContain('logotyp')
+    expect(img).toHaveAttribute('loading', 'eager')
   })
 
   it('applies custom className', () => {

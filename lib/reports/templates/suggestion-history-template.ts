@@ -7,6 +7,7 @@ import type {
   RequirementReportData,
   SuggestionReportRow,
 } from '../data/fetch-requirement'
+import { requirementPackageName } from '../package-name'
 import type {
   ReportModel,
   ReportSection,
@@ -73,12 +74,10 @@ function toVersionSummary(
         reference: vnr.normReference.reference,
         uri: vnr.normReference.uri,
       })),
-    requirementPackages: version.versionRequirementPackages
-      .filter(vs => vs.requirementPackage)
-      .map(vs => ({
-        nameSv: vs.requirementPackage.nameSv ?? '',
-        nameEn: vs.requirementPackage.nameEn ?? '',
-      })),
+    requirementPackages: version.versionRequirementPackages.flatMap(vs => {
+      const name = requirementPackageName(vs.requirementPackage).trim()
+      return name ? [{ name }] : []
+    }),
   }
 }
 

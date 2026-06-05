@@ -4,6 +4,10 @@ The report system generates requirement reports through two rendering engines:
 browser print HTML and server-side PDF rendering. Both engines share a template
 layer so report content changes apply to both.
 
+Version summaries include requirement package names when present. Blank or
+whitespace-only package names are ignored so report output does not show empty
+package entries.
+
 ## Report Types
 
 ### 1. History Report
@@ -62,6 +66,11 @@ formatted table.
   requirements created only for that specification
 - Includes specification metadata in the header: specification name, unique ID,
   governance object type, implementation type, and specification purpose
+- Includes requirement-selection context before the requirement table when the
+  specification has saved answers; historical non-filtering answers are marked
+  as inactive context
+- Requirement-selection context rows show question, answer, active/historical
+  status, latest change timestamp, and actor display-name snapshot when present
 - Shows Requirement ID, requirement text (truncated), requirement area, and
   status columns; unique requirements show `-` in the requirement area column
   because they are not assigned to a requirement area
@@ -96,6 +105,8 @@ CSV with the following conventions:
   tab, or carriage return are prefixed with `'` and wrapped in
   double-quotes.
 - **Encoding:** UTF-8, no BOM.
+- Specification CSV exports stay row-oriented and do not include
+  requirement-selection context sections.
 
 ## Architecture
 

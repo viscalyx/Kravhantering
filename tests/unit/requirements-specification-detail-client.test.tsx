@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsSpecificationDetailClient from '@/app/[locale]/specifications/[slug]/requirements-specification-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
-import type { FilterOption } from '@/lib/requirements/list-view'
+import type { RequirementPackageOption } from '@/lib/requirements/list-view'
 import type {
   RequirementsSpecificationDetailInitialData,
   SpecificationPreloadError,
@@ -73,7 +73,7 @@ vi.mock('@/components/RequirementsTable', () => ({
       needsReferenceId: number | null,
     ) => void
     onSelectionChange?: (ids: Set<number>) => void
-    requirementPackages?: { id: number; nameEn: string; nameSv: string }[]
+    requirementPackages?: { id: number; name: string }[]
     rows: { id: number; itemRef?: string; requirementPackageIds?: number[] }[]
     stickyTopOffsetClassName?: string
     stickyTitle?: ReactNode
@@ -129,7 +129,7 @@ vi.mock('@/components/RequirementsTable', () => ({
               }}
               type="button"
             >
-              {requirementPackage.nameEn}
+              {requirementPackage.name}
             </button>
           )
         })}
@@ -198,6 +198,9 @@ let bulkNeedsReferencePatchError: Error | null
 let bulkNeedsReferencePatchResponse: { body: unknown; ok: boolean } | null
 let failNextAvailableRequirementsFetch = false
 let failNextSpecificationItemsFetch = false
+let availableRequirementsSelectionFilter:
+  | RequirementsSpecificationDetailInitialData['availableRequirements']['selectionFilter']
+  | undefined
 
 const initialSpec = {
   businessNeedsReference: 'Shared IAM business case',
@@ -282,7 +285,7 @@ function createInitialData(): RequirementsSpecificationDetailInitialData {
     },
     errors: [] as SpecificationPreloadError[],
     leftNormReferenceOptions: [],
-    requirementPackages: [] as FilterOption[],
+    requirementPackages: [] as RequirementPackageOption[],
     rightNormReferenceOptions: [],
     spec: initialSpec,
     specificationImplementationTypes: [
@@ -312,6 +315,28 @@ function renderRequirementsSpecificationDetailClient(
   )
 }
 
+function availableRequirementsFetchUrls(): string[] {
+  return fetchMock.mock.calls
+    .map(([input]) =>
+      typeof input === 'string' ? input : (input as Request).url,
+    )
+    .filter(url =>
+      url.startsWith(
+        '/api/specifications/ETJANST-UPP-2026/available-requirements?',
+      ),
+    )
+}
+
+async function waitForInitialAvailableRequirementsRefresh() {
+  await waitFor(() => {
+    expect(availableRequirementsFetchUrls().length).toBeGreaterThan(0)
+  })
+}
+
+function searchParamsFromPath(path: string): URLSearchParams {
+  return new URLSearchParams(path.split('?')[1] ?? '')
+}
+
 describe('RequirementsSpecificationDetailClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -322,6 +347,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     bulkNeedsReferencePatchResponse = null
     failNextAvailableRequirementsFetch = false
     failNextSpecificationItemsFetch = false
+    availableRequirementsSelectionFilter = undefined
     fetchMock.mockImplementation(
       (input: string | Request, init?: RequestInit) => {
         const url = typeof input === 'string' ? input : input.url
@@ -419,7 +445,12 @@ describe('RequirementsSpecificationDetailClient', () => {
           )
         }
 
-        if (url.startsWith('/api/requirements?')) {
+        if (
+          url.startsWith(
+            '/api/specifications/ETJANST-UPP-2026/available-requirements?',
+          ) ||
+          url.startsWith('/api/requirements?')
+        ) {
           if (failNextAvailableRequirementsFetch) {
             failNextAvailableRequirementsFetch = false
             return Promise.resolve({
@@ -427,6 +458,23 @@ describe('RequirementsSpecificationDetailClient', () => {
               ok: false,
             })
           }
+
+          const isSpecificationAvailableRequirements = url.startsWith(
+            '/api/specifications/ETJANST-UPP-2026/available-requirements?',
+          )
+          const applyRequirementSelectionFilter =
+            isSpecificationAvailableRequirements &&
+            url.includes('applyRequirementSelectionFilter=true')
+          const selectionFilter =
+            isSpecificationAvailableRequirements &&
+            availableRequirementsSelectionFilter
+              ? {
+                  ...availableRequirementsSelectionFilter,
+                  applied:
+                    applyRequirementSelectionFilter &&
+                    availableRequirementsSelectionFilter.hasRequirementSelection,
+                }
+              : undefined
 
           return Promise.resolve(
             okJson({
@@ -454,6 +502,7 @@ describe('RequirementsSpecificationDetailClient', () => {
                   },
                 },
               ],
+              selectionFilter,
             }),
           )
         }
@@ -533,6 +582,13 @@ describe('RequirementsSpecificationDetailClient', () => {
           return Promise.resolve(okJson({ needsReferences: [] }))
         }
 
+        if (
+          url ===
+          '/api/specifications/ETJANST-UPP-2026/requirement-selection-answers'
+        ) {
+          return Promise.resolve(okJson({ questions: [] }))
+        }
+
         if (url === '/api/specification-governance-object-types') {
           return Promise.resolve(
             okJson({
@@ -579,7 +635,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     window.localStorage.clear()
   })
 
-  it('shows the partial preload warning banner when initial data contains errors', () => {
+  it('shows the partial preload warning banner when initial data contains errors', async () => {
     renderRequirementsSpecificationDetailClient({
       ...createInitialData(),
       errors: [{ key: 'available requirements', message: 'preload failed' }],
@@ -588,6 +644,183 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'specification.partialDataLoadWarning',
     )
+    await waitForInitialAvailableRequirementsRefresh()
+  })
+
+  it('loads available requirements without sending the fixed status filter', async () => {
+    renderRequirementsSpecificationDetailClient()
+
+    await waitFor(() => {
+      expect(availableRequirementsFetchUrls().length).toBeGreaterThan(0)
+    })
+
+    const initialUrl = availableRequirementsFetchUrls()[0] ?? ''
+    const params = searchParamsFromPath(initialUrl)
+    expect(params.get('locale')).toBe('en')
+    expect(params.has('statuses')).toBe(false)
+  })
+
+  it('keeps requirement-selection filtering opt-in for available requirements', async () => {
+    availableRequirementsSelectionFilter = {
+      applied: false,
+      hasCurrentAnswers: true,
+      hasRequirementSelection: true,
+      hasNoRequirementSelection: false,
+      requirementIds: [202],
+    }
+    renderRequirementsSpecificationDetailClient()
+
+    const toggle = await screen.findByRole('switch', {
+      name: 'specification.filterWithRequirementSelectionQuestions',
+    })
+    expect(toggle).not.toBeChecked()
+    expect(
+      availableRequirementsFetchUrls().some(url =>
+        url.includes('applyRequirementSelectionFilter=true'),
+      ),
+    ).toBe(false)
+
+    fireEvent.click(toggle)
+
+    await waitFor(() => {
+      expect(
+        availableRequirementsFetchUrls().some(url =>
+          url.includes('applyRequirementSelectionFilter=true'),
+        ),
+      ).toBe(true)
+    })
+    expect(toggle).toBeChecked()
+  })
+
+  it('disables the requirement-selection filter toggle when answers provide no requirement selection', async () => {
+    availableRequirementsSelectionFilter = {
+      applied: false,
+      hasCurrentAnswers: true,
+      hasRequirementSelection: false,
+      hasNoRequirementSelection: true,
+      requirementIds: [],
+    }
+    renderRequirementsSpecificationDetailClient()
+
+    const toggle = await screen.findByRole('switch', {
+      name: 'specification.filterWithRequirementSelectionQuestions',
+    })
+    expect(toggle).toBeDisabled()
+    expect(toggle).not.toBeChecked()
+    expect(toggle).toHaveAttribute(
+      'title',
+      'specification.requirementSelectionFilterDisabledTooltip',
+    )
+  })
+
+  it('renders the requirement-selection toggle without a native input surface', async () => {
+    availableRequirementsSelectionFilter = {
+      applied: false,
+      hasCurrentAnswers: true,
+      hasRequirementSelection: true,
+      hasNoRequirementSelection: false,
+      requirementIds: [202],
+    }
+    renderRequirementsSpecificationDetailClient()
+
+    const toggle = await screen.findByRole('switch', {
+      name: 'specification.filterWithRequirementSelectionQuestions',
+    })
+    const switchTrack = toggle.querySelector('span[aria-hidden="true"]')
+    if (!(switchTrack instanceof HTMLElement)) {
+      throw new Error('Expected requirement-selection toggle track')
+    }
+
+    expect(toggle.tagName).toBe('BUTTON')
+    expect(toggle.className).not.toContain('focus-within:ring')
+    expect(toggle.className).not.toContain('absolute')
+    expect(toggle.className).not.toContain('inset-0')
+    expect(toggle.className).not.toContain('w-full')
+    expect(switchTrack.className).not.toContain('peer-focus-visible:ring')
+  })
+
+  it('keeps the requirement-selection toggle mounted while filtered requirements refresh', async () => {
+    availableRequirementsSelectionFilter = {
+      applied: false,
+      hasCurrentAnswers: true,
+      hasRequirementSelection: true,
+      hasNoRequirementSelection: false,
+      requirementIds: [202],
+    }
+    renderRequirementsSpecificationDetailClient()
+
+    const toggle = await screen.findByRole('switch', {
+      name: 'specification.filterWithRequirementSelectionQuestions',
+    })
+
+    let resolveFetch:
+      | ((value: { json: () => Promise<unknown>; ok: boolean }) => void)
+      | undefined
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveFetch = resolve
+        }),
+    )
+
+    fireEvent.click(toggle)
+
+    await waitFor(() => {
+      expect(
+        availableRequirementsFetchUrls().some(url =>
+          url.includes('applyRequirementSelectionFilter=true'),
+        ),
+      ).toBe(true)
+    })
+
+    expect(
+      screen.getByRole('switch', {
+        name: 'specification.filterWithRequirementSelectionQuestions',
+      }),
+    ).toBeChecked()
+
+    await act(async () => {
+      resolveFetch?.(
+        okJson({
+          pagination: { hasMore: false },
+          requirements: [initialAvailableRequirement],
+          selectionFilter: {
+            applied: true,
+            hasCurrentAnswers: true,
+            hasRequirementSelection: true,
+            hasNoRequirementSelection: false,
+            requirementIds: [202],
+          },
+        }),
+      )
+    })
+  })
+
+  it('loads more available requirements without sending the fixed status filter', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableRequirements: {
+        hasMore: true,
+        rows: [initialAvailableRequirement],
+      },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'load-more-available' }))
+
+    await waitFor(() => {
+      expect(
+        availableRequirementsFetchUrls().some(
+          url => searchParamsFromPath(url).get('offset') === '1',
+        ),
+      ).toBe(true)
+    })
+
+    const params = searchParamsFromPath(
+      availableRequirementsFetchUrls().find(
+        url => searchParamsFromPath(url).get('offset') === '1',
+      ) ?? '',
+    )
+    expect(params.has('statuses')).toBe(false)
   })
 
   it('opens and closes the specification edit view from the title action', async () => {
@@ -805,7 +1038,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).toBe(JSON.stringify(storedLeftColumns))
   })
 
-  it('uses inline top rails and embeds the left tabs in the sticky table title', async () => {
+  it('uses inline top rails and embeds the split panel tabs in sticky headers', async () => {
     const { container } = renderRequirementsSpecificationDetailClient()
 
     await waitFor(() => {
@@ -818,23 +1051,78 @@ describe('RequirementsSpecificationDetailClient', () => {
       }),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByText('specification.availableRequirements', {
+      screen.queryByText('specification.availableRequirements', {
         selector: 'h2',
       }),
-    ).toBeInTheDocument()
-    const leftStickyTitle = screen
-      .getAllByTestId('requirements-table-sticky-title')
-      .find(element =>
-        within(element).queryByRole('tab', {
-          name: /specification\.itemsInSpecification/,
-        }),
-      )
+    ).not.toBeInTheDocument()
+    const stickyTitles = screen.getAllByTestId(
+      'requirements-table-sticky-title',
+    )
+    const leftStickyTitle = stickyTitles.find(element =>
+      within(element).queryByRole('tab', {
+        name: /specification\.itemsInSpecification/,
+      }),
+    )
+    const rightStickyTitle = stickyTitles.find(element =>
+      within(element).queryByRole('tab', {
+        name: /specification\.availableRequirements/,
+      }),
+    )
+
     expect(leftStickyTitle).toBeTruthy()
+    expect(rightStickyTitle).toBeTruthy()
+    expect(
+      within(leftStickyTitle as HTMLElement).getByRole('tablist', {
+        name: 'specification.leftPanelTabs',
+      }),
+    ).toBeInTheDocument()
     expect(
       within(leftStickyTitle as HTMLElement).getByRole('tab', {
         name: /specification\.needsReferences/,
       }),
     ).toBeInTheDocument()
+    expect(
+      within(rightStickyTitle as HTMLElement).getByRole('tablist', {
+        name: 'specification.rightPanelTabs',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      within(rightStickyTitle as HTMLElement).getByRole('tab', {
+        name: /specification\.availableRequirements/,
+      }),
+    ).toHaveAttribute('aria-controls', 'right-panel-available')
+    const questionsTab = within(rightStickyTitle as HTMLElement).getByRole(
+      'tab',
+      {
+        name: /specification\.requirementSelectionQuestions/,
+      },
+    )
+    expect(questionsTab).toHaveAttribute(
+      'aria-controls',
+      'right-panel-questions',
+    )
+
+    fireEvent.click(questionsTab)
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('specificationRequirementSelection.noQuestions'),
+      ).toBeInTheDocument()
+    })
+    const questionsPanel = container.querySelector('#right-panel-questions')
+
+    expect(questionsPanel).toBeTruthy()
+    expect(
+      within(questionsPanel as HTMLElement).getByRole('tablist', {
+        name: 'specification.rightPanelTabs',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      within(questionsPanel as HTMLElement).queryByText(
+        'specificationRequirementSelection.title',
+        { selector: 'h2' },
+      ),
+    ).not.toBeInTheDocument()
 
     const tableProps = requirementsTableMock.mock.calls.map(call => call[0])
 
@@ -860,8 +1148,8 @@ describe('RequirementsSpecificationDetailClient', () => {
 
   it('filters requirement applications when a requirement package chip is selected', async () => {
     const requirementPackages = [
-      { id: 1, nameEn: 'Mobile use', nameSv: 'Mobil användning' },
-      { id: 2, nameEn: 'Operations', nameSv: 'Drift' },
+      { id: 1, name: 'Mobile use' },
+      { id: 2, name: 'Operations' },
     ]
     const firstItem = {
       ...initialSpecificationItem,
@@ -1205,6 +1493,7 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     expect(screen.getByText('BEH0001')).toBeInTheDocument()
     expect(screen.getByText('RBAC should be enforced.')).toBeInTheDocument()
+    await waitForInitialAvailableRequirementsRefresh()
   })
 
   it('creates a needs reference with a description from the register tab', async () => {
@@ -1260,6 +1549,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(fadeMotion).toHaveBeenCalledWith(true)
     expect(dialogPanelMotion).toHaveBeenCalledWith(true)
+    await waitForInitialAvailableRequirementsRefresh()
   })
 
   it('updates a single item needs reference inline from the requirements table', async () => {
@@ -1369,6 +1659,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(
       screen.getByText('specification.bulkNeedsReferenceHelp'),
     ).toBeInTheDocument()
+    await waitForInitialAvailableRequirementsRefresh()
   })
 
   it('shows bulk needs reference response failures next to the bulk controls', async () => {

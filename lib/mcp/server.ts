@@ -407,7 +407,7 @@ function renderRequirementHtml(
     selectedVersion?.versionRequirementPackages,
   )
     ? (selectedVersion.versionRequirementPackages as {
-        requirementPackage?: { nameEn?: string | null; nameSv?: string | null }
+        requirementPackage?: { name?: string | null }
       }[])
     : []
 
@@ -440,11 +440,7 @@ function renderRequirementHtml(
   )
 
   const requirementPackageNames = requirementPackages
-    .map(item =>
-      locale === 'sv'
-        ? (item.requirementPackage?.nameSv ?? item.requirementPackage?.nameEn)
-        : (item.requirementPackage?.nameEn ?? item.requirementPackage?.nameSv),
-    )
+    .map(item => item.requirementPackage?.name)
     .filter((name): name is string => Boolean(name))
 
   const normReferenceMarkup =

@@ -35,11 +35,13 @@ export interface RequirementListQueryResult {
 }
 
 export interface RequirementListQueryInput {
+  excludeRequirementIds?: number[]
   filters?: FilterValues
   includeArchived?: boolean
   limit?: number
   locale?: 'en' | 'sv'
   offset?: number
+  requirementIds?: number[]
   sort?: RequirementSortState
 }
 
@@ -131,6 +133,7 @@ export async function queryRequirementList(
     areaIds: toPositiveIntegerIds(filters.areaIds),
     categoryIds: toPositiveIntegerIds(filters.categoryIds),
     descriptionSearch: filters.descriptionSearch,
+    excludeRequirementIds: toPositiveIntegerIds(input.excludeRequirementIds),
     includeArchived,
     limit,
     locale: input.locale ?? 'en',
@@ -139,6 +142,7 @@ export async function queryRequirementList(
     qualityCharacteristicIds: toPositiveIntegerIds(
       filters.qualityCharacteristicIds,
     ),
+    requirementIds: toPositiveIntegerIds(input.requirementIds),
     requirementPackageIds: toPositiveIntegerIds(filters.requirementPackageIds),
     requiresTesting: toBooleans(filters.requiresTesting),
     riskLevelIds: toPositiveIntegerIds(filters.riskLevelIds),

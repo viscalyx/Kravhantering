@@ -22,6 +22,12 @@ export interface FilterOption {
   nameSv: string
 }
 
+export interface RequirementPackageOption {
+  description?: string | null
+  id: number
+  name: string
+}
+
 export interface AreaOption {
   id: number
   name: string
@@ -84,7 +90,7 @@ export interface RequirementRow {
   pendingVersionStatusIconName?: string | null
   pendingVersionStatusId?: number | null
   requirementPackageIds?: number[]
-  requirementPackages?: FilterOption[]
+  requirementPackages?: RequirementPackageOption[]
   specificationItemId?: number
   specificationItemStatusColor?: string | null
   specificationItemStatusDescriptionEn?: string | null

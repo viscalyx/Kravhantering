@@ -102,7 +102,8 @@ granskat, publicerat, versionerat, arkiverat och förbättrat över tid.
 
 - `en`: Requirements Library stewardship
 
-_Avoid_: Kravbibliotek när processen avses.
+_Avoid_: Kravbibliotek när processen avses, administration,
+förvaltning utan tydligt kravbibliotekssammanhang.
 
 **Tillämpningsstyrning**:
 Arbetet med att använda kravbiblioteket i ett konkret tillämpningssammanhang,
@@ -259,11 +260,11 @@ _Avoid_: Normreferens när källan är styrande.
 **Referensdata**:
 Administrerade listor och klassningar som stödjer krav och kravunderlag, till
 exempel kravområden, kategorier, typer, kvalitetsegenskaper, risknivåer,
-kravpaket och normreferenser. Termen används tills vidare som samlingsnamn.
+normreferenser och statusar. Termen används tills vidare som samlingsnamn.
 
 - `en`: Reference data
 
-_Avoid_: Kravdata.
+_Avoid_: Kravdata, kravpaket när innehållsförvaltning av kravbiblioteket avses.
 
 **Terminologi**:
 De verksamhetsbegrepp och användargränssnittstermer som används för att
@@ -323,9 +324,9 @@ publicering, återremiss eller beslut.
 _Avoid_: Kravområdesgranskare om rollen inte är områdesbunden.
 
 **Administratör**:
-Ett systemövergripande administrationsmandat för referensdata, terminologi,
-kolumner, tilldelningar och systeminställningar. Administratören äger inte
-automatiskt kravens innehåll.
+Ett systemövergripande behörighetsmandat med full rätt att utföra åtgärder i
+systemet. Administratören blir inte verksamhetsansvarig ägare för innehållet
+bara genom rollen.
 
 - `en`: Administrator
 
@@ -447,7 +448,15 @@ användningsområde, scenario eller leveransbehov.
 
 - `en`: Requirements package
 
-_Avoid_: Kravunderlag.
+_Avoid_: Kravunderlag, referensdata.
+
+**Kravpaketsansvarig**:
+Den person eller funktion som har huvudansvar för ett kravpakets syfte,
+sammanhållning och relevans över kravområden.
+
+- `en`: Requirements package lead
+
+_Avoid_: Kravområdesägare, kravunderlagsansvarig.
 
 **Kravunderlagsansvarig**:
 Den person eller funktion som har huvudansvar för ett kravunderlags
@@ -456,6 +465,58 @@ sammansättning, kravtillämpningar, kravunderlagslokala krav och avsteg.
 - `en`: Specification lead
 
 _Avoid_: Kravunderlagsägare.
+
+**Kravurvalsfråga**:
+En fråga som förvaltas inom ett kravområde och stödjer urval av publicerade
+bibliotekskrav till ett kravunderlag genom ett eller flera förberedda svar.
+
+- `en`: Requirement selection question
+
+_Avoid_: Kravpaket, referensdata, fråga utan kravurvalssammanhang, fråga med
+härlett ägarskap från kopplade krav.
+
+**Kravurvalsfråge-ID**:
+Den stabila identifieraren för en kravurvalsfråga, sammansatt av kravområdets
+prefix och en markör för kravurvalsfrågor.
+
+- `en`: Requirement selection question ID
+
+_Avoid_: Krav-ID, databas-ID, radnummer.
+
+**Kravurvalssvar**:
+Ett förberett svarsalternativ i en kravurvalsfråga som kan peka ut relevanta
+kravpaket, krav eller inget kravurval alls.
+
+- `en`: Requirement selection answer
+
+_Avoid_: Användarens svar, kravpaket.
+
+**Utan kravurval**:
+En egenskap hos ett kravurvalssvar som markerar att svaret avsiktligt inte
+bidrar med krav till kravurvalsfilter.
+
+- `en`: No requirement selection
+
+_Avoid_: Saknar kravurval när kopplingar har tappats eller behöver åtgärdas.
+
+**Saknar kravurval**:
+Ett hälsoläge för ett kravurvalssvar som saknar kravkopplingar utan att vara
+markerat som utan kravurval.
+
+- `en`: Missing requirement selection
+
+_Avoid_: Utan kravurval när avsiktligt nollbidrag avses.
+
+**Kravurvalsfilter**:
+Ett användaraktiverat styrt grundurval av bibliotekskrav som bildas av valda
+kravurvalssvar inför att krav läggs till i ett kravunderlag. Valda
+kravurvalssvar kan bevaras som urvalskontext utan att kravurvalsfilter är
+aktivt.
+
+- `en`: Requirement selection filter
+
+_Avoid_: Vanligt tabellfilter, kravpaket, sparade kravurvalssvar när de bara
+dokumenterar urvalskontext.
 
 **Kravtillämpning**:
 Att en publicerad kravversion från kravbiblioteket används i ett visst

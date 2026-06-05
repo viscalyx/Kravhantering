@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
 import { buildHistoryReport } from '@/lib/reports/templates/history-template'
 import { buildReviewReport } from '@/lib/reports/templates/review-template'
+import { buildSuggestionHistoryReport } from '@/lib/reports/templates/suggestion-history-template'
 
 function makeVersion(
   overrides: Partial<RequirementReportData['versions'][number]> = {},
@@ -47,7 +48,7 @@ function makeRequirement(
 }
 
 describe('report templates', () => {
-  it('skips blank requirement packages and falls back to the available locale', () => {
+  it('skips blank requirement packages in history reports', () => {
     const model = buildHistoryReport(
       makeRequirement([
         makeVersion({
@@ -55,15 +56,13 @@ describe('report templates', () => {
             {
               requirementPackage: {
                 id: 1,
-                nameEn: 'Mobile use',
-                nameSv: null,
+                name: 'Mobile use',
               },
             },
             {
               requirementPackage: {
                 id: 2,
-                nameEn: '',
-                nameSv: '',
+                name: '',
               },
             },
           ],
@@ -80,10 +79,10 @@ describe('report templates', () => {
       versionSummary?.type === 'version-summary'
         ? versionSummary.version.requirementPackages
         : [],
-    ).toEqual([{ nameEn: 'Mobile use', nameSv: 'Mobile use' }])
+    ).toEqual([{ name: 'Mobile use' }])
   })
 
-  it('skips blank requirement packages in review reports and falls back to the available locale', () => {
+  it('skips blank requirement packages in review reports', () => {
     const model = buildReviewReport(
       makeRequirement([
         makeVersion({
@@ -94,15 +93,13 @@ describe('report templates', () => {
             {
               requirementPackage: {
                 id: 1,
-                nameEn: 'Mobile use',
-                nameSv: null,
+                name: 'Mobile use',
               },
             },
             {
               requirementPackage: {
                 id: 2,
-                nameEn: '',
-                nameSv: '',
+                name: '',
               },
             },
           ],
@@ -119,7 +116,42 @@ describe('report templates', () => {
       versionSummary?.type === 'version-summary'
         ? versionSummary.version.requirementPackages
         : [],
-    ).toEqual([{ nameEn: 'Mobile use', nameSv: 'Mobile use' }])
+    ).toEqual([{ name: 'Mobile use' }])
+  })
+
+  it('skips blank requirement packages in suggestion history reports', () => {
+    const model = buildSuggestionHistoryReport(
+      makeRequirement([
+        makeVersion({
+          versionRequirementPackages: [
+            {
+              requirementPackage: {
+                id: 1,
+                name: 'Mobile use',
+              },
+            },
+            {
+              requirementPackage: {
+                id: 2,
+                name: '  ',
+              },
+            },
+          ],
+        }),
+      ]),
+      [],
+      'sv',
+    )
+
+    const versionSummary = model.sections.find(
+      section => section.type === 'version-summary',
+    )
+    expect(versionSummary).toBeDefined()
+    expect(
+      versionSummary?.type === 'version-summary'
+        ? versionSummary.version.requirementPackages
+        : [],
+    ).toEqual([{ name: 'Mobile use' }])
   })
 
   it('compares requirement packages by stable IDs in review metadata', () => {
@@ -133,8 +165,7 @@ describe('report templates', () => {
             {
               requirementPackage: {
                 id: 7,
-                nameEn: 'Old translation',
-                nameSv: null,
+                name: 'Old package',
               },
             },
           ],
@@ -150,8 +181,7 @@ describe('report templates', () => {
             {
               requirementPackage: {
                 id: 7,
-                nameEn: 'New translation',
-                nameSv: null,
+                name: 'New package name on same id',
               },
             },
           ],
@@ -176,7 +206,7 @@ describe('report templates', () => {
     )
   })
 
-  it('uses fallback requirement package names in review metadata changes', () => {
+  it('uses requirement package names in review metadata changes', () => {
     const model = buildReviewReport(
       makeRequirement([
         makeVersion({
@@ -187,8 +217,7 @@ describe('report templates', () => {
             {
               requirementPackage: {
                 id: 7,
-                nameEn: 'Old package',
-                nameSv: null,
+                name: 'Old package',
               },
             },
           ],
@@ -203,8 +232,7 @@ describe('report templates', () => {
             {
               requirementPackage: {
                 id: 8,
-                nameEn: 'New package',
-                nameSv: null,
+                name: 'New package',
               },
             },
           ],

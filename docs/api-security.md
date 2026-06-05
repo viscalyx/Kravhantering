@@ -59,8 +59,18 @@ Deferred from this contract:
   reviewer can decide their own run; other users receive 403; export responses
   use `Cache-Control: no-store`; and audit detail never contains a raw reviewed
   HSA-ID list.
+- Requirement-selection stewardship routes and specification saved-answer
+  mutations remain outside the OpenAPI/Schemathesis v1 contract. They are still
+  protected by `secureMutationRoute`, CSRF/origin checks, route/body validation,
+  and focused unit/UI tests, but their useful assertions are state-machine,
+  duplicate, cleanup, and filter-calculation behavior rather than broad fuzzing
+  in this first contract slice.
 - ZAP API scan, role-matrix DAST, full active scans, and paid vendor scanners
   that require service-specific CI secrets.
+
+The existing catalog `GET /api/requirement-packages` route stays in scope and
+documents its `includeArchived=true|false` query parameter because it is a
+read-only browser catalog endpoint used by the stewardship UI.
 
 Those deferred items are later issue `#119` work.
 

@@ -377,8 +377,13 @@ paths:
     get:
       tags: [catalogs]
       operationId: listRequirementPackages
+      parameters:
+        - name: includeArchived
+          in: query
+          schema: { type: string, enum: ['true', 'false'] }
       responses:
         '200': { $ref: '#/components/responses/JsonObject' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 

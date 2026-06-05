@@ -16,6 +16,7 @@ import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import {
   Fragment,
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -27,6 +28,7 @@ import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requiremen
 import SpecificationEditPanel, {
   SPECIFICATION_EDIT_FORM_ID,
 } from '@/app/[locale]/specifications/[slug]/specification-edit-panel'
+import SpecificationRequirementSelectionPanel from '@/app/[locale]/specifications/[slug]/specification-requirement-selection-panel'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
@@ -49,10 +51,10 @@ import {
   type AreaOption,
   buildRequirementListParams,
   DEFAULT_REQUIREMENT_SORT,
-  type FilterOption,
   type FilterValues,
   isRequirementColumnId,
   type RequirementColumnId,
+  type RequirementPackageOption,
   type RequirementRow,
   type RequirementSortState,
 } from '@/lib/requirements/list-view'
@@ -117,6 +119,57 @@ interface NeedsReferenceFormState {
   id: number | null
   text: string
 }
+
+interface RequirementSelectionFilterToggleProps {
+  checked: boolean
+  disabled: boolean
+  label: string
+  onToggle: (checked: boolean) => void
+  title?: string
+}
+
+const RequirementSelectionFilterToggle = memo(
+  function RequirementSelectionFilterToggle({
+    checked,
+    disabled,
+    label,
+    onToggle,
+    title,
+  }: RequirementSelectionFilterToggleProps) {
+    return (
+      <button
+        aria-checked={checked}
+        aria-label={label}
+        className={`relative inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors focus:outline-none focus-visible:outline-none ${
+          disabled
+            ? 'cursor-not-allowed border-secondary-200 text-secondary-400 opacity-70 dark:border-secondary-800 dark:text-secondary-500'
+            : 'cursor-pointer border-secondary-300 text-secondary-700 hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800'
+        }`}
+        disabled={disabled}
+        onClick={() => onToggle(!checked)}
+        role="switch"
+        title={title}
+        type="button"
+      >
+        <span>{label}</span>
+        <span
+          aria-hidden="true"
+          className={`relative inline-flex h-5 w-9 shrink-0 rounded-full ${
+            checked
+              ? 'bg-primary-700 dark:bg-primary-500'
+              : 'bg-secondary-300 dark:bg-secondary-700'
+          } ${disabled ? 'opacity-60' : ''}`}
+        >
+          <span
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow ${
+              checked ? 'translate-x-4' : 'translate-x-0.5'
+            }`}
+          />
+        </span>
+      </button>
+    )
+  },
+)
 
 function readStoredCols(
   key: string,
@@ -204,7 +257,7 @@ export default function KravunderlagDetailClient({
     initialData.availableRequirements.rows,
   )
   const [areas] = useState<AreaOption[]>(initialData.areas)
-  const [requirementPackages] = useState<FilterOption[]>(
+  const [requirementPackages] = useState<RequirementPackageOption[]>(
     initialData.requirementPackages,
   )
   const [specificationGovernanceObjectTypes] = useState<
@@ -222,6 +275,9 @@ export default function KravunderlagDetailClient({
   const [showEditSpecificationForm, setShowEditSpecificationForm] =
     useState(false)
   const [showBulkDeviationModal, setShowBulkDeviationModal] = useState(false)
+  const [rightPanelTab, setRightPanelTab] = useState<'available' | 'questions'>(
+    'available',
+  )
   const [bulkDeviationSaving, setBulkDeviationSaving] = useState(false)
   const [bulkDeviationError, setBulkDeviationError] = useState<string | null>(
     null,
@@ -247,6 +303,12 @@ export default function KravunderlagDetailClient({
   )
   const [rightExpandedId, setRightExpandedId] = useState<number | null>(null)
   const [rightFilters, setRightFilters] = useState<FilterValues>({})
+  const [applyRequirementSelectionFilter, setApplyRequirementSelectionFilter] =
+    useState(false)
+  const [
+    availableRequirementsSelectionFilter,
+    setAvailableRequirementsSelectionFilter,
+  ] = useState(initialData.availableRequirements.selectionFilter)
   const [rightSort, setRightSort] = useState<RequirementSortState>(
     DEFAULT_REQUIREMENT_SORT,
   )
@@ -291,16 +353,18 @@ export default function KravunderlagDetailClient({
   const [addModalError, setAddModalError] = useState<string | null>(null)
   const pdfDownload = useServerPdfDownload()
 
-  const availableRequirementsParams = useMemo(
-    () =>
-      buildRequirementListParams({
-        filters: { ...rightFilters, statuses: [3] },
-        limit: PAGE_SIZE,
-        locale,
-        sort: rightSort,
-      }).toString(),
-    [locale, rightFilters, rightSort],
-  )
+  const availableRequirementsParams = useMemo(() => {
+    const params = buildRequirementListParams({
+      filters: rightFilters,
+      limit: PAGE_SIZE,
+      locale,
+      sort: rightSort,
+    })
+    if (applyRequirementSelectionFilter) {
+      params.set('applyRequirementSelectionFilter', 'true')
+    }
+    return params.toString()
+  }, [applyRequirementSelectionFilter, locale, rightFilters, rightSort])
   const availableRequirementsKeyRef = useRef(availableRequirementsParams)
 
   const specResource = useAsyncResource<SpecificationMeta | null>({
@@ -349,16 +413,18 @@ export default function KravunderlagDetailClient({
     useAsyncResource<AvailableRequirementsData>({
       fetcher: async signal => {
         const response = await apiFetch(
-          `/api/requirements?${availableRequirementsParams}`,
+          `/api/specifications/${specificationSlug}/available-requirements?${availableRequirementsParams}`,
           { signal },
         )
         const data = await readJsonOrThrow<{
           pagination?: { hasMore?: boolean }
           requirements?: RequirementRow[]
+          selectionFilter?: AvailableRequirementsData['selectionFilter']
         }>(response, t('loadAvailableRequirementsFailed'))
         return {
           hasMore: data.pagination?.hasMore ?? false,
           rows: data.requirements ?? [],
+          selectionFilter: data.selectionFilter,
         }
       },
       getErrorMessage: error =>
@@ -367,7 +433,7 @@ export default function KravunderlagDetailClient({
           : t('loadAvailableRequirementsFailed'),
       initialData: initialData.availableRequirements,
       key: `available-requirements:${availableRequirementsParams}`,
-      loadOnMount: false,
+      loadOnMount: true,
     })
 
   const needsReferencesResource = useAsyncResource<
@@ -439,6 +505,18 @@ export default function KravunderlagDetailClient({
 
   const leftNormReferenceOptions = leftNormReferenceResource.data ?? []
   const rightNormReferenceOptions = rightNormReferenceResource.data ?? []
+  const selectionFilter = availableRequirementsSelectionFilter
+  const hasRequirementSelectionAnswers =
+    selectionFilter?.hasCurrentAnswers === true
+  const canApplyRequirementSelectionFilter =
+    selectionFilter?.hasRequirementSelection === true
+  const isRequirementSelectionToggleDisabled =
+    hasRequirementSelectionAnswers && !canApplyRequirementSelectionFilter
+  const isRequirementSelectionToggleChecked =
+    applyRequirementSelectionFilter && canApplyRequirementSelectionFilter
+  const shouldShowRequirementSelectionEmptyWarning =
+    selectionFilter?.applied === true &&
+    (selectionFilter?.requirementIds.length ?? 0) === 0
 
   useEffect(() => {
     setSpec(specResource.data ?? null)
@@ -451,11 +529,32 @@ export default function KravunderlagDetailClient({
   }, [specificationItemsResource.data])
 
   useEffect(() => {
-    if (availableRequirementsResource.data) {
+    if (
+      availableRequirementsResource.data &&
+      !availableRequirementsResource.refreshing &&
+      !availableRequirementsResource.refreshError
+    ) {
       setAvailableRows(availableRequirementsResource.data.rows)
       setRightHasMore(availableRequirementsResource.data.hasMore)
+      setAvailableRequirementsSelectionFilter(
+        availableRequirementsResource.data.selectionFilter,
+      )
     }
-  }, [availableRequirementsResource.data])
+  }, [
+    availableRequirementsResource.data,
+    availableRequirementsResource.refreshError,
+    availableRequirementsResource.refreshing,
+  ])
+
+  useEffect(() => {
+    if (
+      applyRequirementSelectionFilter &&
+      selectionFilter &&
+      !selectionFilter.hasRequirementSelection
+    ) {
+      setApplyRequirementSelectionFilter(false)
+    }
+  }, [applyRequirementSelectionFilter, selectionFilter])
 
   useEffect(() => {
     if (needsReferencesResource.data) {
@@ -610,17 +709,22 @@ export default function KravunderlagDetailClient({
     setRightLoadingMore(true)
     try {
       const params = buildRequirementListParams({
-        filters: { ...rightFilters, statuses: [3] },
+        filters: rightFilters,
         limit: PAGE_SIZE,
         locale,
         offset: availableRows.length,
         sort: rightSort,
       })
+      if (applyRequirementSelectionFilter) {
+        params.set('applyRequirementSelectionFilter', 'true')
+      }
       const data = await readJsonOrThrow<{
         requirements?: RequirementRow[]
         pagination?: { hasMore?: boolean }
       }>(
-        await apiFetch(`/api/requirements?${params}`),
+        await apiFetch(
+          `/api/specifications/${specificationSlug}/available-requirements?${params}`,
+        ),
         t('loadAvailableRequirementsFailed'),
       )
       if (activeKey !== availableRequirementsKeyRef.current) return
@@ -639,14 +743,24 @@ export default function KravunderlagDetailClient({
       setRightLoadingMore(false)
     }
   }, [
+    applyRequirementSelectionFilter,
     availableRows.length,
     locale,
     rightFilters,
     rightHasMore,
     rightLoadingMore,
     rightSort,
+    specificationSlug,
     t,
   ])
+
+  const handleRequirementSelectionFilterToggle = useCallback(
+    (checked: boolean) => {
+      setApplyRequirementSelectionFilter(checked)
+      setRightSelectedIds(new Set())
+    },
+    [],
+  )
 
   useEffect(() => {
     setLeftVisibleCols(readStoredCols(LEFT_VISIBLE_COLS_KEY, DEFAULT_LEFT_COLS))
@@ -1779,7 +1893,7 @@ export default function KravunderlagDetailClient({
   const specificationDetailStickyTopOffsetClassName = 'top-16 xl:top-0'
   const specificationDetailPagePaddingClassName =
     'px-4 pb-8 pt-6 sm:px-6 sm:pb-10 sm:pt-7 lg:px-8 lg:pt-8'
-  const leftPanelHeaderClassName = `sticky ${specificationDetailStickyTopOffsetClassName} z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80`
+  const splitPanelHeaderClassName = `sticky ${specificationDetailStickyTopOffsetClassName} z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80`
   const leftPanelActionPillClassName =
     'inline-flex h-11 w-11 items-center justify-center rounded-full border border-primary-600/80 bg-primary-700 text-white shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:border-primary-700 hover:bg-primary-800 hover:shadow-[0_14px_36px_-20px_rgba(67,56,202,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-primary-500/80 dark:bg-primary-600 dark:hover:border-primary-400 dark:hover:bg-primary-700 dark:focus-visible:ring-offset-secondary-950'
   const specificationDetailPageShellClassName = showEditSpecificationForm
@@ -1790,7 +1904,7 @@ export default function KravunderlagDetailClient({
     : 'container-custom max-w-none xl:flex xl:min-h-0 xl:flex-1 xl:flex-col'
   const specificationDetailSplitPanelClassName = showEditSpecificationForm
     ? 'grid grid-cols-1 gap-6 items-start xl:grid-cols-2'
-    : 'grid grid-cols-1 gap-6 items-start xl:-mx-8 xl:min-h-0 xl:flex-1 xl:grid-cols-2 xl:items-stretch xl:gap-4'
+    : 'grid grid-cols-1 gap-6 items-start xl:-mx-8 xl:min-h-0 xl:flex-1 xl:grid-cols-2 xl:grid-rows-[minmax(0,1fr)] xl:items-stretch xl:gap-4 xl:overflow-hidden'
   const responsibleDisplayName = formatActorDisplayNameForLocale(
     spec.responsibleDisplayName,
     locale,
@@ -1803,7 +1917,9 @@ export default function KravunderlagDetailClient({
       text: '',
     })
   }
-  const leftPanelTabClassName = (active: boolean) =>
+  const splitPanelTabsClassName =
+    'inline-flex max-w-full shrink gap-1 overflow-x-auto rounded-full bg-secondary-100 p-1 shadow-inner dark:bg-secondary-950/80'
+  const splitPanelTabClassName = (active: boolean) =>
     `inline-flex min-h-11 min-w-0 items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 sm:px-6 sm:text-base ${
       active
         ? 'border-white bg-white text-secondary-900 shadow-sm dark:border-primary-500 dark:bg-primary-600 dark:text-white'
@@ -1812,12 +1928,12 @@ export default function KravunderlagDetailClient({
   const renderLeftPanelTabs = () => (
     <div
       aria-label={t('leftPanelTabs')}
-      className="inline-flex max-w-full shrink gap-1 overflow-x-auto rounded-full bg-secondary-100 p-1 shadow-inner dark:bg-secondary-950/80"
+      className={splitPanelTabsClassName}
       role="tablist"
     >
       <button
         aria-selected={leftTab === 'items'}
-        className={leftPanelTabClassName(leftTab === 'items')}
+        className={splitPanelTabClassName(leftTab === 'items')}
         onClick={() => handleLeftTabChange('items')}
         role="tab"
         type="button"
@@ -1827,13 +1943,43 @@ export default function KravunderlagDetailClient({
       </button>
       <button
         aria-selected={leftTab === 'needs-references'}
-        className={leftPanelTabClassName(leftTab === 'needs-references')}
+        className={splitPanelTabClassName(leftTab === 'needs-references')}
         onClick={() => handleLeftTabChange('needs-references')}
         role="tab"
         type="button"
       >
         <span className="truncate">{t('needsReferences')}</span>
         <span className="text-xs opacity-80">{availableNeedsRefs.length}</span>
+      </button>
+    </div>
+  )
+  const renderRightPanelTabs = () => (
+    <div
+      aria-label={t('rightPanelTabs')}
+      className={splitPanelTabsClassName}
+      role="tablist"
+    >
+      <button
+        aria-controls="right-panel-available"
+        aria-selected={rightPanelTab === 'available'}
+        className={splitPanelTabClassName(rightPanelTab === 'available')}
+        id="right-panel-tab-available"
+        onClick={() => setRightPanelTab('available')}
+        role="tab"
+        type="button"
+      >
+        <span className="truncate">{t('availableRequirements')}</span>
+      </button>
+      <button
+        aria-controls="right-panel-questions"
+        aria-selected={rightPanelTab === 'questions'}
+        className={splitPanelTabClassName(rightPanelTab === 'questions')}
+        id="right-panel-tab-questions"
+        onClick={() => setRightPanelTab('questions')}
+        role="tab"
+        type="button"
+      >
+        <span className="truncate">{t('requirementSelectionQuestions')}</span>
       </button>
     </div>
   )
@@ -1977,13 +2123,13 @@ export default function KravunderlagDetailClient({
             data-specification-detail-split-panel="true"
           >
             {/* Left panel: Krav i underlaget / Behovsreferenser */}
-            <div className="flex flex-col gap-3 xl:h-full xl:min-h-0">
+            <div className="flex flex-col gap-3 xl:h-full xl:min-h-0 xl:overflow-hidden">
               {leftTab === 'needs-references' ? (
                 <div
                   className={desktopSplitPanelCardClassName}
                   data-specification-detail-list-panel="needs-references"
                 >
-                  <div className={leftPanelHeaderClassName}>
+                  <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
                     <button
                       aria-label={t('newNeedsReference')}
@@ -2227,7 +2373,7 @@ export default function KravunderlagDetailClient({
                   className={desktopSplitPanelCardClassName}
                   data-specification-detail-list-panel="items"
                 >
-                  <div className={leftPanelHeaderClassName}>
+                  <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
                     <button
                       aria-label={t('newLocalRequirement')}
@@ -2478,69 +2624,125 @@ export default function KravunderlagDetailClient({
               )}
             </div>
 
-            {/* Right panel: Tillgängliga krav */}
-            <div className="flex flex-col gap-3 xl:h-full xl:min-h-0">
+            {/* Right panel: Tillgängliga krav / Kravurvalsfrågor */}
+            <div className="flex flex-col gap-3 xl:h-full xl:min-h-0 xl:overflow-hidden">
               <div
+                aria-labelledby={
+                  rightPanelTab === 'available'
+                    ? 'right-panel-tab-available'
+                    : 'right-panel-tab-questions'
+                }
                 className={desktopSplitPanelCardClassName}
                 data-specification-detail-list-panel="available"
+                id={
+                  rightPanelTab === 'available'
+                    ? 'right-panel-available'
+                    : 'right-panel-questions'
+                }
+                role="tabpanel"
               >
-                <RequirementsTable
-                  areas={areas}
-                  defaultVisibleColumns={DEFAULT_RIGHT_COLS}
-                  excludeColumns={['needsReference', 'specificationItemStatus']}
-                  expandedId={rightExpandedId}
-                  filterValues={rightFilters}
-                  floatingActionRailPlacement="inline-top"
-                  getName={getName}
-                  hasMore={rightHasMore}
-                  loadingMore={rightLoadingMore}
-                  locale={locale}
-                  normReferences={rightNormReferenceOptions}
-                  onFilterChange={newFilters => {
-                    // Strip statuses — always fixed to published
-                    const { statuses: _s, ...rest } = newFilters
-                    setRightFilters(rest)
-                  }}
-                  onLoadMore={loadMoreAvailable}
-                  onRowClick={id =>
-                    setRightExpandedId(prev => (prev === id ? null : id))
-                  }
-                  onSelectionChange={setRightSelectedIds}
-                  onSortChange={setRightSort}
-                  onVisibleColumnsChange={setRightVisibleCols}
-                  renderExpanded={id => (
-                    <RequirementDetailClient inline requirementId={id} />
-                  )}
-                  requirementPackages={requirementPackages}
-                  rows={rightRows}
-                  selectable
-                  selectedIds={rightSelectedIds}
-                  sortState={rightSort}
-                  stickyTitle={
-                    <h2 className="truncate text-lg font-semibold text-secondary-900 dark:text-secondary-100">
-                      {t('availableRequirements')}
-                    </h2>
-                  }
-                  stickyTitleActions={
-                    rightSelectedIds.size > 0 ? (
-                      <button
-                        className="inline-flex items-center gap-1.5 btn-primary"
-                        onClick={handleOpenAddModal}
-                        type="button"
+                {rightPanelTab === 'available' ? (
+                  <>
+                    {shouldShowRequirementSelectionEmptyWarning && (
+                      <div
+                        className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100"
+                        role="status"
                       >
-                        <Plus aria-hidden="true" className="h-4 w-4" />
-                        {t('addSelectedToSpecification', {
-                          count: rightSelectedIds.size,
-                        })}
-                      </button>
-                    ) : null
-                  }
-                  stickyTopOffsetClassName={
-                    specificationDetailStickyTopOffsetClassName
-                  }
-                  visibleColumns={rightVisibleCols}
-                  wrapDescription
-                />
+                        {t('requirementSelectionNoPublishedMatches')}
+                      </div>
+                    )}
+                    <RequirementsTable
+                      areas={areas}
+                      defaultVisibleColumns={DEFAULT_RIGHT_COLS}
+                      excludeColumns={[
+                        'needsReference',
+                        'specificationItemStatus',
+                      ]}
+                      expandedId={rightExpandedId}
+                      filterValues={rightFilters}
+                      floatingActionRailPlacement="inline-top"
+                      getName={getName}
+                      hasMore={rightHasMore}
+                      loadingMore={rightLoadingMore}
+                      locale={locale}
+                      normReferences={rightNormReferenceOptions}
+                      onFilterChange={newFilters => {
+                        // Strip statuses — always fixed to published
+                        const { statuses: _s, ...rest } = newFilters
+                        setRightFilters(rest)
+                      }}
+                      onLoadMore={loadMoreAvailable}
+                      onRowClick={id =>
+                        setRightExpandedId(prev => (prev === id ? null : id))
+                      }
+                      onSelectionChange={setRightSelectedIds}
+                      onSortChange={setRightSort}
+                      onVisibleColumnsChange={setRightVisibleCols}
+                      renderExpanded={id => (
+                        <RequirementDetailClient inline requirementId={id} />
+                      )}
+                      requirementPackages={requirementPackages}
+                      rows={rightRows}
+                      selectable
+                      selectedIds={rightSelectedIds}
+                      sortState={rightSort}
+                      stickyTitle={renderRightPanelTabs()}
+                      stickyTitleActions={
+                        <div className="flex flex-wrap items-center gap-2">
+                          {hasRequirementSelectionAnswers && (
+                            <RequirementSelectionFilterToggle
+                              checked={isRequirementSelectionToggleChecked}
+                              disabled={isRequirementSelectionToggleDisabled}
+                              label={t(
+                                'filterWithRequirementSelectionQuestions',
+                              )}
+                              onToggle={handleRequirementSelectionFilterToggle}
+                              title={
+                                isRequirementSelectionToggleDisabled
+                                  ? t(
+                                      'requirementSelectionFilterDisabledTooltip',
+                                    )
+                                  : undefined
+                              }
+                            />
+                          )}
+                          {rightSelectedIds.size > 0 ? (
+                            <button
+                              className="btn-primary inline-flex items-center gap-1.5"
+                              onClick={handleOpenAddModal}
+                              type="button"
+                            >
+                              <Plus aria-hidden="true" className="h-4 w-4" />
+                              {t('addSelectedToSpecification', {
+                                count: rightSelectedIds.size,
+                              })}
+                            </button>
+                          ) : null}
+                        </div>
+                      }
+                      stickyTopOffsetClassName={
+                        specificationDetailStickyTopOffsetClassName
+                      }
+                      visibleColumns={rightVisibleCols}
+                      wrapDescription
+                    />
+                  </>
+                ) : (
+                  <>
+                    <div className={splitPanelHeaderClassName}>
+                      {renderRightPanelTabs()}
+                    </div>
+                    <SpecificationRequirementSelectionPanel
+                      onChanged={() => {
+                        if (applyRequirementSelectionFilter) {
+                          setRightSelectedIds(new Set())
+                        }
+                        void availableRequirementsResource.reload()
+                      }}
+                      specificationSlug={specificationSlug}
+                    />
+                  </>
+                )}
               </div>
             </div>
           </div>

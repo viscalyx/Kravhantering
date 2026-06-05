@@ -69,6 +69,10 @@ const authState = vi.hoisted(() => ({
   },
 }))
 
+const cleanupAuditState = vi.hoisted(() => ({
+  recordRequirementSelectionCleanupAudit: vi.fn(),
+}))
+
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
 }))
@@ -78,6 +82,16 @@ vi.mock('@/lib/admin/privileged-audit', () => ({
     auditState.createAdminPrivilegedAuditContext,
   recordAdminPrivilegedActionSucceeded:
     auditState.recordAdminPrivilegedActionSucceeded,
+}))
+
+vi.mock('@/lib/audit/action-audit', () => ({
+  recordAllowedActionAuditEvent: vi.fn(),
+  recordDeniedActionAuditEvent: vi.fn(),
+}))
+
+vi.mock('@/lib/audit/requirement-selection-cleanup-audit', () => ({
+  recordRequirementSelectionCleanupAudit:
+    cleanupAuditState.recordRequirementSelectionCleanupAudit,
 }))
 
 vi.mock('@/lib/requirements/auth', async importOriginal => {
@@ -192,14 +206,24 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
 
 const mockUpdateRequirementPackage = vi.fn()
 const mockDeleteRequirementPackage = vi.fn()
+const mockArchiveRequirementPackage = vi.fn()
 vi.mock('@/lib/dal/requirement-packages', () => ({
   listRequirementPackages: async () => [{ id: 1 }],
   countLinkedRequirementsByPackage: async () => ({}),
   createRequirementPackage: async () => ({ id: 2 }),
+  getLinkedRequirementsForPackage: async () => [],
+  getRequirementPackageById: async () => null,
+  getRequirementPackageUsage: async () => ({
+    answerLinkCount: 0,
+    libraryRequirementCount: 0,
+    localRequirementCount: 0,
+  }),
   updateRequirementPackage: (...a: unknown[]) =>
     mockUpdateRequirementPackage(...a),
   deleteRequirementPackage: (...a: unknown[]) =>
     mockDeleteRequirementPackage(...a),
+  archiveRequirementPackage: (...a: unknown[]) =>
+    mockArchiveRequirementPackage(...a),
 }))
 
 vi.mock('@/lib/dal/requirement-types', () => ({
@@ -232,6 +256,7 @@ import {
   POST as postReqArea,
 } from '@/app/api/requirement-areas/route'
 import { GET as getCats } from '@/app/api/requirement-categories/route'
+import { POST as archiveRequirementPackage } from '@/app/api/requirement-packages/[id]/archive/route'
 import {
   DELETE as deleteRequirementPackage,
   PUT as putRequirementPackage,
@@ -931,18 +956,28 @@ describe('requirement-specifications routes', () => {
 describe('requirement-packages routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    authState.context.actor.roles = ['Admin']
   })
 
   it('GET returns requirementPackages', async () => {
-    const r = await getRequirementPackages()
+    const r = await getRequirementPackages(new Request('http://l'))
     const j = (await r.json()) as { requirementPackages: { id: number }[] }
     expect(j.requirementPackages).toHaveLength(1)
+  })
+  it('GET returns 400 for invalid query parameters', async () => {
+    const r = await getRequirementPackages(
+      new Request('http://l?includeArchived=maybe'),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
   it('POST creates with 201', async () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
-        body: '{"nameSv":"A","nameEn":"B"}',
+        body: '{"name":"A","leadHsaId":"SE5560000001-lead1","leadDisplayName":"Lead One"}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -952,7 +987,7 @@ describe('requirement-packages routes', () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
-        body: '{"nameSv":"A","ownerId":"abc"}',
+        body: '{"name":"A","leadHsaId":"abc","leadDisplayName":"Lead One"}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -963,22 +998,135 @@ describe('requirement-packages routes', () => {
   it('PUT updates', async () => {
     mockUpdateRequirementPackage.mockResolvedValue({ id: 1 })
     const r = await putRequirementPackage(
-      jsonReq('PUT', { nameEn: 'X' }),
+      jsonReq('PUT', { name: 'X' }),
       makeParams('1'),
     )
     expect(((await r.json()) as { id: number }).id).toBe(1)
   })
+  it('PUT returns 400 for empty updates', async () => {
+    const r = await putRequirementPackage(jsonReq('PUT', {}), makeParams('1'))
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockUpdateRequirementPackage).not.toHaveBeenCalled()
+  })
+  it('PUT returns 403 without Admin before updating', async () => {
+    authState.context.actor.roles = []
+
+    const r = await putRequirementPackage(
+      jsonReq('PUT', { name: 'X' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(403)
+    expect(mockUpdateRequirementPackage).not.toHaveBeenCalled()
+  })
   it('DELETE deletes', async () => {
-    mockDeleteRequirementPackage.mockResolvedValue(1)
+    mockDeleteRequirementPackage.mockResolvedValue({
+      cleanup: {
+        affectedAnswerIds: [],
+        affectedRequirementIds: [],
+        removedLinkCount: 0,
+      },
+      deletedCount: 1,
+    })
     const r = await deleteRequirementPackage(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('1'),
     )
     expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
   })
+  it('DELETE still succeeds when cleanup audit recording fails', async () => {
+    mockDeleteRequirementPackage.mockResolvedValue({
+      cleanup: {
+        affectedAnswerIds: [3],
+        affectedRequirementIds: [7],
+        removedLinkCount: 1,
+      },
+      deletedCount: 1,
+    })
+    cleanupAuditState.recordRequirementSelectionCleanupAudit.mockRejectedValueOnce(
+      new Error('audit failed'),
+    )
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    try {
+      const r = await deleteRequirementPackage(
+        new NextRequest('http://l', { method: 'DELETE' }),
+        makeParams('1'),
+      )
+
+      expect(r.status).toBe(200)
+      expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
+      expect(
+        cleanupAuditState.recordRequirementSelectionCleanupAudit,
+      ).toHaveBeenCalled()
+      expect(consoleError).toHaveBeenCalledWith(
+        'Failed to record requirement-selection cleanup audit after package deletion',
+        expect.objectContaining({
+          detail: expect.objectContaining({
+            originAction: 'requirement_package.delete',
+            originTargetId: 1,
+            originTargetKind: 'requirement_package',
+          }),
+        }),
+      )
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+  it('DELETE returns 403 without Admin before deleting', async () => {
+    authState.context.actor.roles = []
+
+    const r = await deleteRequirementPackage(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(403)
+    expect(mockDeleteRequirementPackage).not.toHaveBeenCalled()
+  })
+
+  it('POST archive archives a requirement package', async () => {
+    mockArchiveRequirementPackage.mockResolvedValue({
+      cleanup: {
+        affectedAnswerIds: [],
+        affectedRequirementIds: [],
+        removedLinkCount: 0,
+      },
+      requirementPackage: { id: 1 },
+    })
+
+    const r = await archiveRequirementPackage(
+      new NextRequest('http://l', { method: 'POST' }),
+      makeParams('1'),
+    )
+
+    expect(((await r.json()) as { id: number }).id).toBe(1)
+  })
+
+  it('POST archive returns 403 without Admin before archiving', async () => {
+    authState.context.actor.roles = []
+
+    const r = await archiveRequirementPackage(
+      new NextRequest('http://l', { method: 'POST' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(403)
+    expect(mockArchiveRequirementPackage).not.toHaveBeenCalled()
+  })
 
   it('DELETE returns 404 without audit when the requirement package is missing', async () => {
-    mockDeleteRequirementPackage.mockResolvedValue(0)
+    mockDeleteRequirementPackage.mockResolvedValue({
+      cleanup: {
+        affectedAnswerIds: [],
+        affectedRequirementIds: [],
+        removedLinkCount: 0,
+      },
+      deletedCount: 0,
+    })
     const r = await deleteRequirementPackage(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('404'),

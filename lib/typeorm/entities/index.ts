@@ -15,6 +15,11 @@ import { requirementAreaCoAuthorEntity } from '@/lib/typeorm/entities/requiremen
 import { requirementCategoryEntity } from '@/lib/typeorm/entities/requirement-category'
 import { requirementListColumnDefaultEntity } from '@/lib/typeorm/entities/requirement-list-column-default'
 import { requirementPackageEntity } from '@/lib/typeorm/entities/requirement-package'
+import { requirementSelectionAnswerEntity } from '@/lib/typeorm/entities/requirement-selection-answer'
+import { requirementSelectionAnswerPackageEntity } from '@/lib/typeorm/entities/requirement-selection-answer-package'
+import { requirementSelectionAnswerRequirementEntity } from '@/lib/typeorm/entities/requirement-selection-answer-requirement'
+import { requirementSelectionQuestionEntity } from '@/lib/typeorm/entities/requirement-selection-question'
+import { requirementSelectionQuestionSequenceEntity } from '@/lib/typeorm/entities/requirement-selection-question-sequence'
 import { requirementStatusEntity } from '@/lib/typeorm/entities/requirement-status'
 import { requirementStatusTransitionEntity } from '@/lib/typeorm/entities/requirement-status-transition'
 import { requirementTypeEntity } from '@/lib/typeorm/entities/requirement-type'
@@ -34,6 +39,7 @@ import { specificationLocalRequirementDeviationEntity } from '@/lib/typeorm/enti
 import { specificationLocalRequirementNormReferenceEntity } from '@/lib/typeorm/entities/specification-local-requirement-norm-reference'
 import { specificationLocalRequirementRequirementPackageEntity } from '@/lib/typeorm/entities/specification-local-requirement-requirement-package'
 import { specificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
+import { specificationRequirementSelectionAnswerEntity } from '@/lib/typeorm/entities/specification-requirement-selection-answer'
 import { uiTerminologyEntity } from '@/lib/typeorm/entities/ui-terminology'
 
 export const sqlServerEntities = [
@@ -60,6 +66,11 @@ export const sqlServerEntities = [
   requirementEntity,
   requirementAreaEntity,
   requirementAreaCoAuthorEntity,
+  requirementSelectionQuestionSequenceEntity,
+  requirementSelectionQuestionEntity,
+  requirementSelectionAnswerEntity,
+  requirementSelectionAnswerPackageEntity,
+  requirementSelectionAnswerRequirementEntity,
   requirementCategoryEntity,
   requirementListColumnDefaultEntity,
   requirementsSpecificationEntity,
@@ -72,6 +83,7 @@ export const sqlServerEntities = [
   requirementVersionRequirementPackageEntity,
   riskLevelEntity,
   specificationCoAuthorEntity,
+  specificationRequirementSelectionAnswerEntity,
   uiTerminologyEntity,
   requirementPackageEntity,
 ]
@@ -93,6 +105,11 @@ export type { RequirementAreaCoAuthorEntity } from '@/lib/typeorm/entities/requi
 export type { RequirementCategoryEntity } from '@/lib/typeorm/entities/requirement-category'
 export type { RequirementListColumnDefaultEntity } from '@/lib/typeorm/entities/requirement-list-column-default'
 export type { RequirementPackageEntity } from '@/lib/typeorm/entities/requirement-package'
+export type { RequirementSelectionAnswerEntity } from '@/lib/typeorm/entities/requirement-selection-answer'
+export type { RequirementSelectionAnswerPackageEntity } from '@/lib/typeorm/entities/requirement-selection-answer-package'
+export type { RequirementSelectionAnswerRequirementEntity } from '@/lib/typeorm/entities/requirement-selection-answer-requirement'
+export type { RequirementSelectionQuestionEntity } from '@/lib/typeorm/entities/requirement-selection-question'
+export type { RequirementSelectionQuestionSequenceEntity } from '@/lib/typeorm/entities/requirement-selection-question-sequence'
 export type { RequirementStatusEntity } from '@/lib/typeorm/entities/requirement-status'
 export type { RequirementStatusTransitionEntity } from '@/lib/typeorm/entities/requirement-status-transition'
 export type { RequirementTypeEntity } from '@/lib/typeorm/entities/requirement-type'
@@ -112,6 +129,7 @@ export type { SpecificationLocalRequirementDeviationEntity } from '@/lib/typeorm
 export type { SpecificationLocalRequirementNormReferenceEntity } from '@/lib/typeorm/entities/specification-local-requirement-norm-reference'
 export type { SpecificationLocalRequirementRequirementPackageEntity } from '@/lib/typeorm/entities/specification-local-requirement-requirement-package'
 export type { SpecificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
+export type { SpecificationRequirementSelectionAnswerEntity } from '@/lib/typeorm/entities/specification-requirement-selection-answer'
 export type { UiTerminologyEntity } from '@/lib/typeorm/entities/ui-terminology'
 
 export {
@@ -132,6 +150,11 @@ export {
   requirementEntity,
   requirementListColumnDefaultEntity,
   requirementPackageEntity,
+  requirementSelectionAnswerEntity,
+  requirementSelectionAnswerPackageEntity,
+  requirementSelectionAnswerRequirementEntity,
+  requirementSelectionQuestionEntity,
+  requirementSelectionQuestionSequenceEntity,
   requirementStatusEntity,
   requirementStatusTransitionEntity,
   requirementsSpecificationEntity,
@@ -151,5 +174,6 @@ export {
   specificationLocalRequirementNormReferenceEntity,
   specificationLocalRequirementRequirementPackageEntity,
   specificationNeedsReferenceEntity,
+  specificationRequirementSelectionAnswerEntity,
   uiTerminologyEntity,
 }
