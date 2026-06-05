@@ -1,4 +1,4 @@
 interface:
   display_name: "Caveman Mode"
-  short_description: "Ultra-compressed communication mode. Cuts token usage ~75% by dropping filler, articles, and pleasantries while keeping full technical accuracy. Use when user says 'caveman mode', 'talk like caveman', 'use caveman', 'less tokens', 'be brief', or invokes /caveman."
-  default_prompt: "Helps user by converting their request into a concise, technical prompt that minimizes token usage while retaining full meaning."
+  short_description: "Ultra-compressed communication mode. Cuts token usage ~75% by dropping filler while keeping technical accuracy."
+  default_prompt: "Use $caveman to convert the user's request into a concise, technical prompt that minimizes token usage while retaining full meaning."
