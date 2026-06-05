@@ -211,9 +211,12 @@ been changed.
 After preview, the handler can export the same HSA-ID scope as JSON or PDF.
 The JSON payload is the authoritative machine-readable format and uses schema
 version `privacy-data-subject-export.v1`; the PDF is rendered server-side and
-returned as `application/pdf` with attachment headers. Download filenames use a
-non-reversible target fingerprint and date, not the raw HSA-ID. The export
-route checks authorization server-side:
+returned as `application/pdf` with attachment headers. The PDF is a localized
+human-readable report in Swedish or English. It explains the collected personal
+data in plain terms and does not show raw database fields, table names, schema
+keys, relation keys, or target fingerprints. Download filenames use a
+non-reversible target fingerprint and date, not the raw HSA-ID. The export route
+checks authorization server-side:
 the signed-in user may export their own HSA-ID, while cross-user export requires
 `PrivacyOfficer`.
 
@@ -255,7 +258,8 @@ by the platform logging policy, because removing it can reduce traceability.
 Signed-in users can export their own data at `/{locale}/privacy`. That
 self-service path sends no target HSA-ID in the request body; the server derives
 the subject from the verified session HSA-ID and includes current session claims
-only for that self-export.
+only for that self-export. The self-service PDF uses the same readable report
+presentation as the Admin Center export.
 
 ## Archiving
 
