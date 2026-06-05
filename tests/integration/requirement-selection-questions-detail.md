@@ -26,8 +26,9 @@ flowchart TD
 - The test uses the seeded `SÄK-KUF001` question and the
   `Grundskydd för intern information` answer.
 - The linked `SÄK0042` requirement is expanded from the answer modal preview.
-- Assertions use web-first locators and visible localized content. Prodlike
-  builds intentionally no-op Developer Mode attributes.
+- Assertions use web-first locators scoped from the expanded requirement row and
+  visible localized content. Prodlike builds intentionally no-op Developer Mode
+  attributes.
 
 ## opens a library-style read-only requirement detail card from the answer modal
 
@@ -46,9 +47,9 @@ workflow.
 1. Assert the `Redigera kravurvalsvar` dialog is open.
 1. Click `Öppna kravdetaljer SÄK0042`.
 1. Assert the row reports `aria-expanded="true"`.
-1. Assert the rendered detail content is visible.
-1. Assert the first detail section exposes `Kravtext`.
-1. Assert the card contains the seeded `SÄK0042` requirement text.
+1. Scope the detail assertions from the expanded `SÄK0042` requirement row.
+1. Assert the rendered detail content exposes exactly one `Kravtext` section.
+1. Assert the expanded row contains the seeded `SÄK0042` requirement text.
 1. Assert there is no repeated `SÄK0042` heading in the card.
 1. Assert no `Arkivera` action is present in the dialog.
 

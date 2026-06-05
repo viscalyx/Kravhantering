@@ -41,21 +41,24 @@ test.describe('Requirement selection question detail preview', () => {
     })
 
     await test.step('verify the library-style read-only detail card layout', async () => {
-      const detailCard = dialog.locator(
-        '[data-developer-mode-name="matched requirement detail"]',
-      )
-
-      await expect(detailCard).toHaveCount(1)
-      await expect(detailCard).toBeVisible()
+      const expandedRequirement = dialog
+        .getByRole('button', {
+          name: `Öppna kravdetaljer ${requirementId}`,
+        })
+        .locator('xpath=ancestor::li[1]')
 
       await expect(
-        detailCard.getByRole('heading', { name: 'Kravtext' }),
+        expandedRequirement.getByRole('heading', { name: 'Kravtext' }),
+      ).toHaveCount(1)
+
+      await expect(
+        expandedRequirement.getByRole('heading', { name: 'Kravtext' }),
       ).toBeVisible()
-      await expect(detailCard).toContainText(
+      await expect(expandedRequirement).toContainText(
         'Skyddade routes ska returnera 302',
       )
       await expect(
-        detailCard.getByRole('heading', { name: requirementId }),
+        expandedRequirement.getByRole('heading', { name: requirementId }),
       ).toHaveCount(0)
       await expect(
         dialog.getByRole('button', { name: 'Arkivera' }),
