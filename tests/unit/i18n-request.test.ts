@@ -1,18 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getDefaultUiTerminology } from '@/lib/ui-terminology'
-
-const {
-  applyUiTerminologyMessagesMock,
-  getRequestSqlServerDataSourceMock,
-  getUiTerminologyMock,
-} = vi.hoisted(() => ({
-  applyUiTerminologyMessagesMock: vi.fn(baseMessages => ({
-    ...baseMessages,
-    __dbTerminologyApplied: true,
-  })),
-  getRequestSqlServerDataSourceMock: vi.fn(),
-  getUiTerminologyMock: vi.fn(),
-}))
 
 vi.mock('next-intl/server', () => ({
   getRequestConfig: (factory: unknown) => factory,
@@ -25,46 +11,12 @@ vi.mock('@/i18n/routing', () => ({
   },
 }))
 
-vi.mock('@/lib/db', () => ({
-  getRequestSqlServerDataSource: getRequestSqlServerDataSourceMock,
-}))
-
-vi.mock('@/lib/dal/ui-settings', () => ({
-  formatUiSettingsLoadError: (error: unknown) => ({
-    message: error instanceof Error ? error.message : String(error),
-  }),
-  getUiTerminology: getUiTerminologyMock,
-}))
-
-vi.mock('@/lib/ui-terminology', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/ui-terminology')>(
-    '@/lib/ui-terminology',
-  )
-
-  return {
-    ...actual,
-    applyUiTerminologyMessages: applyUiTerminologyMessagesMock,
-  }
-})
-
 describe('i18n request config', () => {
   beforeEach(() => {
     vi.resetModules()
-    applyUiTerminologyMessagesMock.mockReset()
-    applyUiTerminologyMessagesMock.mockImplementation(baseMessages => ({
-      ...baseMessages,
-      __dbTerminologyApplied: true,
-    }))
-    getRequestSqlServerDataSourceMock.mockReset()
-    getUiTerminologyMock.mockReset()
-    delete (globalThis as { EdgeRuntime?: string }).EdgeRuntime
   })
 
-  it('loads database-backed terminology instead of falling back to static messages', async () => {
-    const terminology = getDefaultUiTerminology()
-    getRequestSqlServerDataSourceMock.mockResolvedValueOnce({})
-    getUiTerminologyMock.mockResolvedValueOnce(terminology)
-
+  it('loads static messages for a supported request locale', async () => {
     const getRequestConfig = (await import('@/i18n/request')).default as ({
       requestLocale,
     }: {
@@ -76,72 +28,29 @@ describe('i18n request config', () => {
     })
 
     expect(result.locale).toBe('en')
-    expect(applyUiTerminologyMessagesMock).toHaveBeenCalledWith(
-      expect.any(Object),
-      'en',
-      terminology,
-    )
-    expect(result.messages.__dbTerminologyApplied).toBe(true)
+    expect(result.messages).toMatchObject({
+      nav: expect.objectContaining({
+        catalog: 'Requirements Library',
+      }),
+    })
   })
 
-  it('falls back to shipped messages when database-backed terminology cannot be loaded', async () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined)
-    getRequestSqlServerDataSourceMock.mockRejectedValueOnce(
-      new Error('db unavailable'),
-    )
+  it('falls back to the default static locale for unsupported locales', async () => {
+    const getRequestConfig = (await import('@/i18n/request')).default as ({
+      requestLocale,
+    }: {
+      requestLocale: Promise<string | undefined>
+    }) => Promise<{ locale: string; messages: Record<string, unknown> }>
 
-    try {
-      const getRequestConfig = (await import('@/i18n/request')).default as ({
-        requestLocale,
-      }: {
-        requestLocale: Promise<string>
-      }) => Promise<{ locale: string; messages: Record<string, unknown> }>
+    const result = await getRequestConfig({
+      requestLocale: Promise.resolve('de'),
+    })
 
-      const result = await getRequestConfig({
-        requestLocale: Promise.resolve('en'),
-      })
-
-      expect(result.locale).toBe('en')
-      expect(result.messages.__dbTerminologyApplied).toBeUndefined()
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Failed to load UI terminology for request config',
-        expect.objectContaining({
-          message: 'db unavailable',
-        }),
-      )
-    } finally {
-      consoleErrorSpy.mockRestore()
-    }
-  })
-
-  it('falls back quietly when SQL Server is not configured during static generation', async () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined)
-    getRequestSqlServerDataSourceMock.mockRejectedValueOnce(
-      new Error(
-        'SQLSERVER_DATABASE_URL or DATABASE_URL, or DB_HOST/DB_PORT/DB_NAME with DB_USER/DB_PASSWORD must be configured for SQL Server access.',
-      ),
-    )
-
-    try {
-      const getRequestConfig = (await import('@/i18n/request')).default as ({
-        requestLocale,
-      }: {
-        requestLocale: Promise<string>
-      }) => Promise<{ locale: string; messages: Record<string, unknown> }>
-
-      const result = await getRequestConfig({
-        requestLocale: Promise.resolve('en'),
-      })
-
-      expect(result.locale).toBe('en')
-      expect(result.messages.__dbTerminologyApplied).toBeUndefined()
-      expect(consoleErrorSpy).not.toHaveBeenCalled()
-    } finally {
-      consoleErrorSpy.mockRestore()
-    }
+    expect(result.locale).toBe('sv')
+    expect(result.messages).toMatchObject({
+      nav: expect.objectContaining({
+        catalog: 'Kravbibliotek',
+      }),
+    })
   })
 })

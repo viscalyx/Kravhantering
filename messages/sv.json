@@ -884,12 +884,10 @@
   "admin": {
     "title": "Administrationscenter",
     "loading": "Laddar administrationscenter...",
-    "description": "Hantera centrala administrationsinställningar för systemet, inklusive terminologi, kolumner, behörighetsöversyner och integritetsrelaterade funktioner.",
+    "description": "Hantera centrala administrationsinställningar för systemet, inklusive kolumner, referensdata, behörighetsöversyner och integritetsrelaterade funktioner.",
     "settings": "Inställningar",
     "adminCenter": "Administrationscenter",
-    "adminCenterDescription": "Uppdatera terminologi och standardkolumner.",
-    "terminology": "Terminologi",
-    "terminologyDescription": "Ändra singular, plural och bestämd plural för den terminologi som redan används i gränssnittet.",
+    "adminCenterDescription": "Uppdatera standardkolumner och referensdata.",
     "columns": "Kolumner",
     "columnsDescription": "Styr standardordning och synlighet för kravlistans kolumner.",
     "referenceData": "Referensdata",
@@ -1162,18 +1160,12 @@
         "specification_responsible": "Kravunderlagsansvarig"
       }
     },
-    "swedish": "Svenska",
-    "english": "English",
-    "singular": "Singular",
-    "plural": "Plural",
-    "definitePlural": "Bestämd plural",
     "moveUp": "Flytta upp",
     "moveDown": "Flytta ned",
     "defaultVisible": "Synlig som standard",
     "locked": "Låst",
     "saved": "Sparat",
     "columnsSaveError": "Det gick inte att spara kolumninställningarna.",
-    "terminologySaveError": "Det gick inte att spara terminologin.",
     "areasDescription": "Hantera kravområden och deras prefix.",
     "typesDescription": "Visa typer och deras kvalitetsstruktur.",
     "requirementPackagesDescription": "Hantera kravpaket som kan kopplas till krav.",
@@ -1187,99 +1179,48 @@
     "riskLevelsDescription": "Hantera risknivåer som kan tilldelas krav.",
     "specificationItemStatusesDescription": "Hantera användningsstatusar för kravtillämpningar."
   },
-  "terminology": {
-    "description": {
-      "singular": "Kravtext",
-      "plural": "Kravtexter",
-      "definitePlural": "Kravtexterna"
-    },
-    "area": {
-      "singular": "Kravområde",
-      "plural": "Kravområden",
-      "definitePlural": "Kravområdena"
-    },
-    "category": {
-      "singular": "Kategori",
-      "plural": "Kategorier",
-      "definitePlural": "Kategorierna"
-    },
-    "type": {
-      "singular": "Typ",
-      "plural": "Typer",
-      "definitePlural": "Typerna"
-    },
-    "status": {
-      "singular": "Kravversionsstatus",
-      "plural": "Kravversionsstatusar",
-      "definitePlural": "Kravversionsstatusarna"
-    },
-    "qualityCharacteristic": {
-      "singular": "Kvalitetsegenskap",
-      "plural": "Kvalitetsegenskaper",
-      "definitePlural": "Kvalitetsegenskaperna"
-    },
-    "riskLevel": {
-      "singular": "Risknivå",
-      "plural": "Risknivåer",
-      "definitePlural": "Risknivåerna"
-    },
-    "requiresTesting": {
-      "singular": "Verifierbar",
-      "plural": "Verifierbara",
-      "definitePlural": "Verifierbara"
-    },
-    "requiresTestingOff": {
-      "singular": "Inte verifierbar",
-      "plural": "Inte verifierbara",
-      "definitePlural": "Inte verifierbara"
-    },
-    "version": {
-      "singular": "Version",
-      "plural": "Versioner",
-      "definitePlural": "Versionerna"
-    },
-    "acceptanceCriteria": {
-      "singular": "Acceptanskriterium",
-      "plural": "Acceptanskriterier",
-      "definitePlural": "Acceptanskriterierna"
-    },
-    "requirementPackage": {
-      "singular": "Kravpaket",
-      "plural": "Kravpaket",
-      "definitePlural": "Kravpaketen"
-    },
-    "governanceObjectType": {
-      "singular": "Styrningsobjektstyp",
-      "plural": "Styrningsobjektstyper",
-      "definitePlural": "Styrningsobjektstyperna"
-    },
-    "implementationType": {
-      "singular": "Genomförandeform",
-      "plural": "Genomförandeformer",
-      "definitePlural": "Genomförandeformerna"
-    },
-    "lifecycleStatus": {
-      "singular": "Kravunderlagets livscykelstatus",
-      "plural": "Kravunderlagets livscykelstatusar",
-      "definitePlural": "Kravunderlagets livscykelstatusar"
-    },
-    "referenceData": {
-      "singular": "Referensdata",
-      "plural": "Referensdata",
-      "definitePlural": "Referensdata"
-    },
-    "references": {
-      "singular": "Referens",
-      "plural": "Referenser",
-      "definitePlural": "Referenserna"
-    },
-    "mcpRequirementView": {
-      "singular": "Kravvy från MCP",
-      "plural": "Kravvy från MCP",
-      "definitePlural": "Kravvy från MCP"
-    }
-  },
   "requirements": {
+    "catalogTitles": {
+      "requirements": "Krav",
+      "areas": "Kravområden",
+      "categories": "Kategorier",
+      "types": "Typer",
+      "qualityCharacteristics": "Kvalitetsegenskaper",
+      "riskLevels": "Risknivåer",
+      "usageStatuses": "Användningsstatusar",
+      "statuses": "Kravversionsstatusar",
+      "requirementPackages": "Kravpaket",
+      "transitions": "Övergångar"
+    },
+    "libraryCsvHeaders": {
+      "uniqueId": "Krav-ID",
+      "description": "Kravtext",
+      "area": "Kravområde",
+      "category": "Kategori",
+      "type": "Typ",
+      "qualityCharacteristic": "Kvalitetsegenskap",
+      "riskLevel": "Risknivå",
+      "status": "Kravversionsstatus",
+      "requiresTesting": "Verifierbar",
+      "version": "Version",
+      "normReferences": "Normreferenser",
+      "normReferenceUri": "Normreferens-URI"
+    },
+    "detailLabels": {
+      "mcpRequirementView": "Kravvy från MCP",
+      "description": "Kravtext",
+      "acceptanceCriteria": "Acceptanskriterium",
+      "category": "Kategori",
+      "type": "Typ",
+      "qualityCharacteristic": "Kvalitetsegenskap",
+      "riskLevel": "Risknivå",
+      "version": "Version",
+      "references": "Referenser",
+      "requirementPackage": "Kravpaket",
+      "requiresTesting": "Verifierbar",
+      "requiresTestingOff": "Inte verifierbar",
+      "area": "Kravområde"
+    },
     "specifications": {
       "summary": {
         "none": "Inga kravunderlag hittades.",
@@ -1570,17 +1511,13 @@
     },
     "admin": {
       "title": "Administrationscenter",
-      "terminology": {
-        "heading": "Terminologi",
-        "body": "Åsidosätt singular-, plural- och bestämd pluralform för den terminologi som används i gränssnittet, t.ex. kravområde, kategori, typ. Ändringar träder i kraft omedelbart utan omladdning av sidan."
-      },
       "columns": {
         "heading": "Standardkolumner",
         "body": "Ange vilka kolumner som visas som standard i kravbiblioteket och i vilken ordning. Användare kan fortfarande ändra kolumnsynligheten per session. Låsta kolumner visas alltid."
       },
       "referenceData": {
         "heading": "Referensdata",
-        "body": "Snabblänkar till hantering av kravområden, typer, kravpaket, kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar, kvalitetsegenskaper, styrningsobjektstyper, genomförandeformer och kravområdesägare."
+        "body": "Snabblänkar till hantering av kravområden, typer, normreferenser, kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar, kravunderlagets kravstatusar, risknivåer, kvalitetsegenskaper, styrningsobjektstyper, genomförandeformer och kravområdesägare."
       },
       "privacy": {
         "heading": "Dataskyddsradering",

@@ -25,7 +25,90 @@ import {
 } from '@/lib/requirements/list-view'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { toHttpErrorPayload } from '@/lib/requirements/service'
-import { getRequirementCsvHeaders } from '@/lib/ui-terminology'
+import enMessages from '@/messages/en.json'
+import svMessages from '@/messages/sv.json'
+
+const REQUIREMENT_CSV_MESSAGES = {
+  en: {
+    headers: enMessages.requirements.libraryCsvHeaders,
+    no: enMessages.common.no,
+    yes: enMessages.common.yes,
+  },
+  sv: {
+    headers: svMessages.requirements.libraryCsvHeaders,
+    no: svMessages.common.no,
+    yes: svMessages.common.yes,
+  },
+}
+
+type RequirementCsvHeaderKey =
+  keyof typeof enMessages.requirements.libraryCsvHeaders
+type RequirementListCsvRow = Awaited<
+  ReturnType<typeof queryRequirementList>
+>['requirements'][number]
+
+function assertUnreachableRequirementCsvHeaderKey(key: never): never {
+  throw new Error(
+    `Unhandled RequirementCsvHeaderKey in getStaticCsvValue: ${String(key)}`,
+  )
+}
+
+function getStaticCsvColumns(locale: 'en' | 'sv') {
+  const headers = REQUIREMENT_CSV_MESSAGES[locale].headers
+  return Object.entries(headers).map(([key, header]) => ({
+    header,
+    key: key as RequirementCsvHeaderKey,
+  }))
+}
+
+function getStaticCsvValue(
+  row: RequirementListCsvRow,
+  key: RequirementCsvHeaderKey,
+  locale: 'en' | 'sv',
+): string {
+  const isSv = locale === 'sv'
+
+  switch (key) {
+    case 'area':
+      return row.area?.name ?? ''
+    case 'category':
+      return isSv
+        ? (row.version?.categoryNameSv ?? '')
+        : (row.version?.categoryNameEn ?? '')
+    case 'description':
+      return row.version?.description ?? ''
+    case 'normReferenceUri':
+      return (row.normReferenceUris ?? []).filter(Boolean).join(', ')
+    case 'normReferences':
+      return (row.normReferenceIds ?? []).join(', ')
+    case 'qualityCharacteristic':
+      return isSv
+        ? (row.version?.qualityCharacteristicNameSv ?? '')
+        : (row.version?.qualityCharacteristicNameEn ?? '')
+    case 'requiresTesting':
+      return row.version?.requiresTesting
+        ? REQUIREMENT_CSV_MESSAGES[locale].yes
+        : REQUIREMENT_CSV_MESSAGES[locale].no
+    case 'riskLevel':
+      return isSv
+        ? (row.version?.riskLevelNameSv ?? '')
+        : (row.version?.riskLevelNameEn ?? '')
+    case 'status':
+      return isSv
+        ? (row.version?.statusNameSv ?? '')
+        : (row.version?.statusNameEn ?? '')
+    case 'type':
+      return isSv
+        ? (row.version?.typeNameSv ?? '')
+        : (row.version?.typeNameEn ?? '')
+    case 'uniqueId':
+      return row.uniqueId
+    case 'version':
+      return String(row.version?.versionNumber ?? 1)
+    default:
+      return assertUnreachableRequirementCsvHeaderKey(key)
+  }
+}
 
 const optionalBodyIdSchema = positiveIntegerSchema
   .nullable()
@@ -117,7 +200,7 @@ export async function GET(request: NextRequest) {
   } = parsedQuery.data
 
   try {
-    const { authorization, context, db, uiSettings } =
+    const { authorization, context, db } =
       await createRequirementsRestRuntime(request)
     const result = await queryRequirementList(
       db,
@@ -157,39 +240,16 @@ export async function GET(request: NextRequest) {
 
     if (format === 'csv') {
       const isSv = locale === 'sv'
-      const terminology = await uiSettings.getTerminology()
-      const headers = getRequirementCsvHeaders(locale, terminology)
+      const columns = getStaticCsvColumns(locale)
+      const headers = columns.map(column => column.header)
 
       const data = requirements.map(r => {
-        const values = [
-          r.uniqueId,
-          r.version?.description ?? '',
-          r.area?.name ?? '',
-          isSv
-            ? (r.version?.categoryNameSv ?? '')
-            : (r.version?.categoryNameEn ?? ''),
-          isSv ? (r.version?.typeNameSv ?? '') : (r.version?.typeNameEn ?? ''),
-          isSv
-            ? (r.version?.qualityCharacteristicNameSv ?? '')
-            : (r.version?.qualityCharacteristicNameEn ?? ''),
-          isSv
-            ? (r.version?.riskLevelNameSv ?? '')
-            : (r.version?.riskLevelNameEn ?? ''),
-          isSv
-            ? (r.version?.statusNameSv ?? '')
-            : (r.version?.statusNameEn ?? ''),
-          r.version?.requiresTesting
-            ? isSv
-              ? 'Ja'
-              : 'Yes'
-            : isSv
-              ? 'Nej'
-              : 'No',
-          String(r.version?.versionNumber ?? 1),
-          (r.normReferenceIds ?? []).join(', '),
-          (r.normReferenceUris ?? []).filter(Boolean).join(', '),
-        ]
-        return Object.fromEntries(headers.map((h, i) => [h, values[i]]))
+        return Object.fromEntries(
+          columns.map(column => [
+            column.header,
+            getStaticCsvValue(r, column.key, locale),
+          ]),
+        )
       })
 
       const csv = exportToCsv(headers, data)

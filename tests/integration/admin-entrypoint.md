@@ -4,8 +4,8 @@
 > [`admin-entrypoint.spec.ts`](tests/integration/admin-entrypoint.spec.ts)
 
 This suite verifies the administration centre entrypoint: navigating from the
-requirements library, persisting terminology and column-order changes across
-page reloads, preserving the selected reference-data tab in browser history,
+requirements library, persisting column-order changes across page reloads,
+preserving the selected reference-data tab in browser history,
 touch-target accessibility on mobile, and locale-specific page loads.
 
 ## Data Model
@@ -13,7 +13,6 @@ touch-target accessibility on mobile, and locale-specific page loads.
 <!-- markdownlint-disable MD013 -->
 | Item | Purpose |
 | --- | --- |
-| `DEFAULT_TERMINOLOGY_PAYLOAD` | Full set of UI terminology keys with default values. Reset via `PUT /api/admin/terminology`. |
 | `DEFAULT_COLUMN_PAYLOAD` | Full set of requirement list column defaults. Reset via `PUT /api/admin/requirement-columns`. |
 | `[data-testid^="admin-column-row-"]` | Drag-sortable column rows in the Kolumner tab. |
 | `?tab=referenceData` | URL state that restores the Reference data tab when browser history returns to `/admin`. |
@@ -28,11 +27,9 @@ flowchart TD
     C --> D[Click Inställningar]
     D --> E[Assert URL and heading]
     B -- persist changes --> F[Open /sv/admin]
-    F --> G[Rename a terminology entry]
-    G --> H[Reorder columns]
+    F --> H[Reorder columns]
     H --> I[Navigate to /sv/requirements]
-    I --> J[Assert renamed label in thead]
-    J --> K[Assert column order]
+    I --> K[Assert column order]
     K --> L[Reload and re-assert]
     B -- browser back --> M[Open /en/admin]
     M --> N[Click Reference data]
@@ -51,12 +48,11 @@ flowchart TD
 - `test.describe.configure({ mode: 'serial' })` runs all tests sequentially to
   avoid concurrent writes to shared admin state.
 - `beforeEach` and `afterEach` both call `resetAdminSettings`, which issues
-  `PUT` requests to `/api/admin/terminology` and `/api/admin/requirement-columns`
-  with their default values.
+  a `PUT` request to `/api/admin/requirement-columns` with the default values.
 - Helper functions:
   - `assertOkResponse` — throws with status and body text if a reset request
     fails.
-  - `resetAdminSettings` — calls both PUT resets and delegates to
+  - `resetAdminSettings` — calls the column PUT reset and delegates to
     `assertOkResponse`.
   - `getAdminColumnOrder` — reads the current drag-row order from
     `[data-testid^="admin-column-row-"]` elements.
@@ -101,32 +97,26 @@ sequenceDiagram
     Note over P: ✓ h1 = "Administrationscenter"
 ```
 
-## persists terminology and column changes through library reloads
+## persists column changes through library reloads
 
 ### Purpose: Persist Changes
 
-Confirms that renaming a terminology entry and reordering columns in the admin
-centre are immediately reflected in the requirements library and survive a
-hard page reload.
+Confirms that reordering columns in the admin centre is immediately reflected
+in the requirements library and survives a hard page reload.
 
 ### Step-by-Step Flow: Persist Changes
 
 1. Navigate to `/sv/admin`.
-1. Read the current singular label for "Kategorier".
-1. Switch to the Kolumner tab and read the current column order.
+1. Read the current column order.
 1. Compute a target order that swaps `area` and `category`.
-1. Switch to the Terminologi tab, append `" test"` to the category label,
-   and click "Spara". Assert "Sparat" appears.
-1. Switch to the Kolumner tab, apply the target order via `setAdminColumnOrder`,
-   and click "Spara". Assert "Sparat" appears.
+1. Apply the target order via `setAdminColumnOrder`, and click "Spara".
+   Assert "Sparat" appears.
 1. Navigate to `/sv/requirements`.
-1. Assert the renamed label appears in `<thead>`.
-1. Assert the column index of the renamed label is before or after "Kravområde"
+1. Assert the column index of "Kategori" is before or after "Kravområde"
    consistent with the swapped order.
 1. Reload the page.
-1. Assert the renamed label is still in `<thead>`.
-1. Navigate back to `/sv/admin` and assert the terminology input still holds
-    the renamed value and the column order matches the target.
+1. Assert "Kategori" is still in `<thead>`.
+1. Navigate back to `/sv/admin` and assert the column order matches the target.
 
 ### Sequence Diagram: Persist Changes
 
@@ -138,17 +128,13 @@ sequenceDiagram
     participant R as RequirementsPage
 
     U->>A: Open /sv/admin
-    U->>A: Rename category label, Save
-    Note over API: ✓ Terminology persisted
     U->>A: Reorder columns, Save
     Note over API: ✓ Column order persisted
     U->>R: Open /sv/requirements
-    Note over R: ✓ Renamed label in thead
     Note over R: ✓ Column order matches swap
     U->>R: Reload
-    Note over R: ✓ Renamed label still present
+    Note over R: ✓ Static label still present
     U->>A: Open /sv/admin
-    Note over A: ✓ Terminology input = renamed value
     Note over A: ✓ Column order = target order
 ```
 
@@ -214,11 +200,12 @@ correctly.
 ### Step-by-Step Flow: Mobile Touch Targets
 
 1. Navigate to `/sv/admin` on the `375×812` mobile viewport.
-1. Locate the Terminologi, Kolumner, and Referensdata tabs and the tablist.
+1. Locate the Kolumner and Referensdata tabs and the tablist.
 1. Assert the tablist `scrollWidth` exceeds its `clientWidth` (tabs overflow
    horizontally and are scrollable).
-1. Assert each of the three tabs meets the 44×44 px touch-target minimum.
-1. Assert the "English" and "Återställ standardvy" buttons meet the minimum.
+1. Assert the removed Swedish tab label and old "English" toggle are absent.
+1. Assert the remaining tabs meet the 44×44 px touch-target minimum.
+1. Assert the "Återställ standardvy" button meets the minimum.
 1. Assert the "Spara" button meets the minimum.
 1. Click the Referensdata tab. Assert it has `aria-selected="true"` and the
    reference-data card is visible.

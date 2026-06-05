@@ -20,9 +20,9 @@ import {
   Gauge,
   HelpCircle,
   Info,
-  Languages,
   Layers,
   LayoutPanelTop,
+  type LucideIcon,
   RefreshCw,
   RotateCcw,
   Save,
@@ -71,21 +71,9 @@ import {
   normalizeRequirementListColumnDefaults,
   type RequirementListColumnDefault,
 } from '@/lib/requirements/list-view'
-import {
-  buildUiTerminologyPayload,
-  getDefaultUiTerminology,
-  UI_TERM_KEYS,
-  type UiLocale,
-  type UiTermTranslation,
-} from '@/lib/ui-terminology'
 
 const ADMIN_HELP: HelpContent = {
   sections: [
-    {
-      kind: 'text',
-      bodyKey: 'admin.terminology.body',
-      headingKey: 'admin.terminology.heading',
-    },
     {
       kind: 'text',
       bodyKey: 'admin.columns.body',
@@ -199,15 +187,13 @@ type AdminTab =
   | 'columns'
   | 'privacy'
   | 'referenceData'
-  | 'terminology'
 type SaveState = 'error' | 'idle' | 'saved' | 'saving'
 type AccessReviewSavingAction = 'cancel' | 'complete' | 'create' | 'decision'
 
 const ADMIN_ROLE = 'Admin'
 const PRIVACY_OFFICER_ROLE = 'PrivacyOfficer'
 
-const adminTabs: { icon: typeof Languages; id: AdminTab }[] = [
-  { icon: Languages, id: 'terminology' },
+const adminTabs: { icon: LucideIcon; id: AdminTab }[] = [
   { icon: LayoutPanelTop, id: 'columns' },
   { icon: FolderCog, id: 'referenceData' },
   { icon: ClipboardCheck, id: 'accessReview' },
@@ -223,11 +209,10 @@ const ADMIN_TAB_DEVELOPER_MODE_VALUES: Record<AdminTab, string> = {
   columns: 'columns',
   privacy: 'privacy',
   referenceData: 'reference data',
-  terminology: 'terminology',
 }
 
 const ADMIN_TAB_QUERY_KEY = 'tab'
-const DEFAULT_ADMIN_TAB: AdminTab = 'terminology'
+const DEFAULT_ADMIN_TAB: AdminTab = 'columns'
 
 function getAdminTabFromSearchParams(
   searchParams: URLSearchParams,
@@ -262,10 +247,6 @@ function getAdminTabHref(tab: AdminTab, searchParams: URLSearchParams) {
   return Object.keys(query).length > 0
     ? { pathname: '/admin', query }
     : '/admin'
-}
-
-function createShippedTerminology() {
-  return buildUiTerminologyPayload(getDefaultUiTerminology())
 }
 
 function createShippedColumnDefaults() {
@@ -2690,19 +2671,16 @@ export default function AdminClient({
   actionAuditLog,
   currentUserRoles = [],
   initialColumnDefaults,
-  initialTerminology,
 }: {
   actionAuditLog?: ActionAuditLogInitialState
   currentUserRoles?: string[]
   initialColumnDefaults: RequirementListColumnDefault[]
-  initialTerminology: UiTermTranslation[]
 }) {
   const ta = useTranslations('admin')
   const tc = useTranslations('common')
   const tn = useTranslations('nav')
   const tr = useTranslations('requirement')
   const tis = useTranslations('improvementSuggestion')
-  const terminologyLabel = useTranslations('terminology')
   const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -2714,15 +2692,10 @@ export default function AdminClient({
       canUsePrivacy,
     }),
   )
-  const [activeLocale, setActiveLocale] = useState<UiLocale>('sv')
-  const [terminology, setTerminology] = useState(initialTerminology)
   const [columnDefaults, setColumnDefaults] = useState<
     RequirementListColumnDefault[]
   >(() => normalizeRequirementListColumnDefaults(initialColumnDefaults))
-  const [terminologySaveState, setTerminologySaveState] =
-    useState<SaveState>('idle')
   const [columnSaveState, setColumnSaveState] = useState<SaveState>('idle')
-  const terminologySaveTokenRef = useRef(0)
   const columnSaveTokenRef = useRef(0)
   useHelpContent(
     activeTab === 'privacy'
@@ -2739,7 +2712,6 @@ export default function AdminClient({
     () => Object.fromEntries(new URLSearchParams(searchParams).entries()),
     [searchParams],
   )
-  const isTerminologySaving = terminologySaveState === 'saving'
   const isColumnSaving = columnSaveState === 'saving'
 
   useEffect(() => {
@@ -2764,27 +2736,6 @@ export default function AdminClient({
     router.replace(getAdminTabHref(tab, new URLSearchParams(searchParams)), {
       scroll: false,
     })
-  }
-
-  const updateTermValue = (
-    key: UiTermTranslation['key'],
-    field: 'definitePlural' | 'plural' | 'singular',
-    value: string,
-  ) => {
-    setTerminology(current =>
-      current.map(entry =>
-        entry.key === key
-          ? {
-              ...entry,
-              [activeLocale]: {
-                ...entry[activeLocale],
-                [field]: value,
-              },
-            }
-          : entry,
-      ),
-    )
-    setTerminologySaveState('idle')
   }
 
   const moveColumn = (columnId: string, direction: -1 | 1) => {
@@ -2835,45 +2786,6 @@ export default function AdminClient({
       ),
     )
     setColumnSaveState('idle')
-  }
-
-  const saveTerminology = async () => {
-    const requestToken = terminologySaveTokenRef.current + 1
-    terminologySaveTokenRef.current = requestToken
-    setTerminologySaveState('saving')
-
-    try {
-      const response = await apiFetch('/api/admin/terminology', {
-        body: JSON.stringify({ terminology }),
-        headers: { 'Content-Type': 'application/json' },
-        method: 'PUT',
-      })
-
-      if (requestToken !== terminologySaveTokenRef.current) {
-        return
-      }
-
-      if (!response.ok) {
-        setTerminologySaveState('error')
-        return
-      }
-
-      const data = (await response.json()) as {
-        terminology?: UiTermTranslation[]
-      }
-      if (requestToken !== terminologySaveTokenRef.current) {
-        return
-      }
-
-      const nextTerminology = data.terminology ?? terminology
-      setTerminology(nextTerminology)
-      setTerminologySaveState('saved')
-      router.refresh()
-    } catch {
-      if (requestToken === terminologySaveTokenRef.current) {
-        setTerminologySaveState('error')
-      }
-    }
   }
 
   const saveColumns = async () => {
@@ -3124,150 +3036,6 @@ export default function AdminClient({
             </div>
           </div>
         </section>
-
-        {activeTab === 'terminology' ? (
-          <section
-            aria-labelledby="terminology-tab"
-            className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
-            {...devMarker({
-              context: 'admin center',
-              name: 'tab panel',
-              priority: 340,
-              value: 'terminology',
-            })}
-            id="terminology-panel"
-            role="tabpanel"
-          >
-            <div className="flex flex-col gap-4 border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
-                  {ta('terminology')}
-                </h2>
-                <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
-                  {ta('terminologyDescription')}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="inline-flex rounded-full border border-secondary-200/80 bg-secondary-50/80 p-1 dark:border-secondary-700/70 dark:bg-secondary-950/50">
-                  {(['sv', 'en'] as const).map(locale => (
-                    <button
-                      aria-pressed={activeLocale === locale}
-                      className={`min-h-11 min-w-11 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                        activeLocale === locale
-                          ? 'bg-primary-700 text-white'
-                          : 'text-secondary-700 hover:bg-white dark:text-secondary-200 dark:hover:bg-secondary-800'
-                      }`}
-                      disabled={isTerminologySaving}
-                      key={locale}
-                      onClick={() => setActiveLocale(locale)}
-                      type="button"
-                    >
-                      {locale === 'sv' ? ta('swedish') : ta('english')}
-                    </button>
-                  ))}
-                </div>
-                {renderSaveState(
-                  terminologySaveState,
-                  ta('terminologySaveError'),
-                )}
-                <button
-                  className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                  disabled={isTerminologySaving}
-                  onClick={() => {
-                    setTerminology(createShippedTerminology())
-                    setTerminologySaveState('idle')
-                  }}
-                  type="button"
-                >
-                  <RotateCcw aria-hidden="true" className="h-4 w-4" />
-                  {tc('resetToDefault')}
-                </button>
-                <button
-                  className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
-                  disabled={isTerminologySaving}
-                  onClick={saveTerminology}
-                  type="button"
-                >
-                  <Save aria-hidden="true" className="h-4 w-4" />
-                  {isTerminologySaving ? tc('loading') : tc('save')}
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-6 grid gap-4">
-              {UI_TERM_KEYS.map(key => {
-                const entry =
-                  terminology.find(term => term.key === key) ??
-                  initialTerminology.find(term => term.key === key)
-                if (!entry) {
-                  return null
-                }
-                const localized = entry[activeLocale]
-
-                return (
-                  <article
-                    className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40"
-                    key={key}
-                  >
-                    <div className="mb-4 flex flex-wrap items-center gap-2">
-                      <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-secondary-700 dark:text-secondary-200">
-                        {terminologyLabel(`${key}.plural`)}
-                      </h3>
-                      <span className="rounded-full bg-white px-2 py-1 text-[11px] font-medium text-secondary-500 dark:bg-secondary-900 dark:text-secondary-400">
-                        {key}
-                      </span>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <label className="space-y-1">
-                        <span className="text-xs font-medium text-secondary-600 dark:text-secondary-300">
-                          {ta('singular')}
-                        </span>
-                        <input
-                          className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
-                          disabled={isTerminologySaving}
-                          onChange={event =>
-                            updateTermValue(key, 'singular', event.target.value)
-                          }
-                          value={localized.singular}
-                        />
-                      </label>
-                      <label className="space-y-1">
-                        <span className="text-xs font-medium text-secondary-600 dark:text-secondary-300">
-                          {ta('plural')}
-                        </span>
-                        <input
-                          className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
-                          disabled={isTerminologySaving}
-                          onChange={event =>
-                            updateTermValue(key, 'plural', event.target.value)
-                          }
-                          value={localized.plural}
-                        />
-                      </label>
-                      <label className="space-y-1">
-                        <span className="text-xs font-medium text-secondary-600 dark:text-secondary-300">
-                          {ta('definitePlural')}
-                        </span>
-                        <input
-                          className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
-                          disabled={isTerminologySaving}
-                          onChange={event =>
-                            updateTermValue(
-                              key,
-                              'definitePlural',
-                              event.target.value,
-                            )
-                          }
-                          value={localized.definitePlural}
-                        />
-                      </label>
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
-          </section>
-        ) : null}
 
         {activeTab === 'columns' ? (
           <section

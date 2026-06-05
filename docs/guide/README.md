@@ -402,21 +402,13 @@ alla inkomna synpunkter på kravet.
 
 ## Administrationscenter
 
-### Admin — Terminologi
-
-Administrationscenterets flik **Terminologi** låter dig anpassa
-gränssnittsetiketter för domänspecifika termer. Till exempel kan "Kravtext" byta
-namn till en term som passar din organisations vokabulär.
-
-![Admin — Terminologi](images/041-admin-terminologi.png)
-
 ### Admin — Kolumnhantering
 
 Fliken **Kolumner** konfigurerar vilka kolumner som visas som standard i
 kravbiblioteket och deras ordning. Ändringar gäller för alla användare. Du kan
 också ange standardvyer för olika kontexter.
 
-![Admin — Kolumnhantering](images/042-admin-kolumner.png)
+![Admin — Kolumnhantering](images/041-admin-kolumner.png)
 
 ### Admin — Referensdata
 
@@ -425,7 +417,7 @@ kravområden, typer, kravversionsstatusar, risknivåer, kvalitetsegenskaper,
 och normreferenser. Kravpaket hanteras i stället under
 **Kravbiblioteksförvaltning**, tillsammans med kravurvalsfrågor.
 
-![Admin — Referensdata](images/043-admin-referensdata.png)
+![Admin — Referensdata](images/042-admin-referensdata.png)
 
 ## Referensdatahantering
 

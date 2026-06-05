@@ -1,25 +1,5 @@
 import { getRequestConfig } from 'next-intl/server'
 import { routing } from '@/i18n/routing'
-import {
-  formatUiSettingsLoadError,
-  getUiTerminology,
-} from '@/lib/dal/ui-settings'
-import { getRequestSqlServerDataSource } from '@/lib/db'
-import { applyUiTerminologyMessages, type UiLocale } from '@/lib/ui-terminology'
-
-function isEdgeRuntime() {
-  return (
-    typeof (globalThis as { EdgeRuntime?: string }).EdgeRuntime === 'string'
-  )
-}
-
-function isMissingSqlServerConfigurationError(error: unknown) {
-  return (
-    error instanceof Error &&
-    (error.message.includes('SQLSERVER_DATABASE_URL or DATABASE_URL') ||
-      error.message.includes('No SQL Server connection string is configured'))
-  )
-}
 
 export default getRequestConfig(async ({ requestLocale }) => {
   let locale = await requestLocale
@@ -30,36 +10,8 @@ export default getRequestConfig(async ({ requestLocale }) => {
 
   const baseMessages = (await import(`@/messages/${locale}.json`)).default
 
-  if (isEdgeRuntime()) {
-    throw new Error(
-      'DB-backed UI terminology requires the Node.js runtime and is unavailable in the Edge runtime.',
-    )
-  }
-
-  try {
-    const terminology = await getUiTerminology(
-      await getRequestSqlServerDataSource(),
-    )
-
-    return {
-      locale,
-      messages: applyUiTerminologyMessages(
-        baseMessages,
-        locale as UiLocale,
-        terminology,
-      ),
-    }
-  } catch (error) {
-    if (!isMissingSqlServerConfigurationError(error)) {
-      console.error(
-        'Failed to load UI terminology for request config',
-        formatUiSettingsLoadError(error),
-      )
-    }
-
-    return {
-      locale,
-      messages: baseMessages,
-    }
+  return {
+    locale,
+    messages: baseMessages,
   }
 })

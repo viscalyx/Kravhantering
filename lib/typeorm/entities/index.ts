@@ -40,7 +40,6 @@ import { specificationLocalRequirementNormReferenceEntity } from '@/lib/typeorm/
 import { specificationLocalRequirementRequirementPackageEntity } from '@/lib/typeorm/entities/specification-local-requirement-requirement-package'
 import { specificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
 import { specificationRequirementSelectionAnswerEntity } from '@/lib/typeorm/entities/specification-requirement-selection-answer'
-import { uiTerminologyEntity } from '@/lib/typeorm/entities/ui-terminology'
 
 export const sqlServerEntities = [
   actionAuditEventEntity,
@@ -84,7 +83,6 @@ export const sqlServerEntities = [
   riskLevelEntity,
   specificationCoAuthorEntity,
   specificationRequirementSelectionAnswerEntity,
-  uiTerminologyEntity,
   requirementPackageEntity,
 ]
 
@@ -130,7 +128,6 @@ export type { SpecificationLocalRequirementNormReferenceEntity } from '@/lib/typ
 export type { SpecificationLocalRequirementRequirementPackageEntity } from '@/lib/typeorm/entities/specification-local-requirement-requirement-package'
 export type { SpecificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
 export type { SpecificationRequirementSelectionAnswerEntity } from '@/lib/typeorm/entities/specification-requirement-selection-answer'
-export type { UiTerminologyEntity } from '@/lib/typeorm/entities/ui-terminology'
 
 export {
   accessReviewItemEntity,
@@ -175,5 +172,4 @@ export {
   specificationLocalRequirementRequirementPackageEntity,
   specificationNeedsReferenceEntity,
   specificationRequirementSelectionAnswerEntity,
-  uiTerminologyEntity,
 }

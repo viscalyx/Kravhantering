@@ -53,7 +53,6 @@ import { McpAuthError, verifyMcpBearerToken } from '@/lib/auth/mcp-token'
 import { handleRequirementsMcpRequest } from '@/lib/mcp/http'
 import { createKravhanteringMcpServer } from '@/lib/mcp/server'
 import { RequirementsServiceError } from '@/lib/requirements/errors'
-import { normalizeUiTerminology } from '@/lib/ui-terminology'
 
 function createFakeService(
   normReferences: Array<{
@@ -931,14 +930,10 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
-  it('falls back to default terminology when loading stored terminology fails for the HTML resource', async () => {
-    const getTerminology = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('settings unavailable'))
+  it('renders static English labels for the HTML resource', async () => {
     const server = createKravhanteringMcpServer(
       createFakeService() as never,
       new Request('https://example.test/api/mcp'),
-      { getTerminology },
     )
 
     const { client } = await createInMemoryClient(server)
@@ -956,7 +951,6 @@ describe('handleRequirementsMcpRequest', () => {
     expect(viewText).toContain('MCP Requirement View')
     expect(viewText).toContain('Requirement text')
     expect(viewText).toContain('References')
-    expect(getTerminology).toHaveBeenCalledTimes(1)
 
     await Promise.allSettled([client.close(), server.close()])
   })
@@ -1003,41 +997,10 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
-  it('uses the dedicated false-state terminology in Swedish HTML resources', async () => {
-    const getTerminology = vi.fn().mockResolvedValue(
-      normalizeUiTerminology([
-        {
-          en: {
-            definitePlural: 'Testable',
-            plural: 'Testable',
-            singular: 'Testable',
-          },
-          key: 'requiresTesting',
-          sv: {
-            definitePlural: 'Provbar',
-            plural: 'Provbar',
-            singular: 'Provbar',
-          },
-        },
-        {
-          en: {
-            definitePlural: 'Cannot be tested',
-            plural: 'Cannot be tested',
-            singular: 'Cannot be tested',
-          },
-          key: 'requiresTestingOff',
-          sv: {
-            definitePlural: 'Kan inte provas',
-            plural: 'Kan inte provas',
-            singular: 'Kan inte provas',
-          },
-        },
-      ]),
-    )
+  it('uses the static false-state label in Swedish HTML resources', async () => {
     const server = createKravhanteringMcpServer(
       createFakeService([], false) as never,
       new Request('https://example.test/api/mcp'),
-      { getTerminology },
     )
 
     const { client } = await createInMemoryClient(server)
@@ -1051,9 +1014,8 @@ describe('handleRequirementsMcpRequest', () => {
         ? firstViewResource.text
         : undefined
 
-    expect(viewText).toContain('<span class="pill">Kan inte provas</span>')
-    expect(viewText).not.toContain('<span class="pill">Inte provbar</span>')
-    expect(getTerminology).toHaveBeenCalledTimes(1)
+    expect(viewText).toContain('<span class="pill">Inte verifierbar</span>')
+    expect(viewText).not.toContain('<span class="pill">Not verifiable</span>')
 
     await Promise.allSettled([client.close(), server.close()])
   })

@@ -9,12 +9,8 @@ import {
   firstSearchParamValue,
 } from '@/lib/audit/action-audit-query'
 import { getSession, isSignedIn } from '@/lib/auth/session'
-import {
-  getRequirementListColumnDefaults,
-  getUiTerminology,
-} from '@/lib/dal/ui-settings'
+import { getRequirementListColumnDefaults } from '@/lib/dal/ui-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import { buildUiTerminologyPayload } from '@/lib/ui-terminology'
 import AdminClient from './admin-client'
 
 type PageParams = Promise<{ locale: string }>
@@ -48,13 +44,11 @@ export default async function AdminPage({
   const locale = resolveLocale(requestedLocale)
   const t = await getTranslations({ locale, namespace: 'admin' })
   const db = await getRequestSqlServerDataSource()
-  const [query, session, terminology, initialColumnDefaults] =
-    await Promise.all([
-      searchParams,
-      getSession(),
-      getUiTerminology(db),
-      getRequirementListColumnDefaults(db),
-    ])
+  const [query, session, initialColumnDefaults] = await Promise.all([
+    searchParams,
+    getSession(),
+    getRequirementListColumnDefaults(db),
+  ])
   const currentUserRoles = isSignedIn(session) ? session.roles : []
   const canManageAccessReviews = currentUserRoles.includes('Admin')
   const actionAuditLog =
@@ -85,7 +79,6 @@ export default async function AdminPage({
         actionAuditLog={actionAuditLog}
         currentUserRoles={currentUserRoles}
         initialColumnDefaults={initialColumnDefaults}
-        initialTerminology={buildUiTerminologyPayload(terminology)}
       />
     </Suspense>
   )

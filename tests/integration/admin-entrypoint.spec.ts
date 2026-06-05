@@ -9,7 +9,6 @@ import {
   DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
   type RequirementListColumnDefault,
 } from '../../lib/requirements/list-view'
-import { DEFAULT_UI_TERMINOLOGY, UI_TERM_KEYS } from '../../lib/ui-terminology'
 
 const viewportVariants = [
   {
@@ -21,11 +20,6 @@ const viewportVariants = [
     viewport: { height: 812, width: 375 },
   },
 ] as const
-
-const DEFAULT_TERMINOLOGY_PAYLOAD = UI_TERM_KEYS.map(key => ({
-  key,
-  ...DEFAULT_UI_TERMINOLOGY[key],
-}))
 
 const DEFAULT_COLUMN_PAYLOAD: RequirementListColumnDefault[] =
   DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS.map(column => ({ ...column }))
@@ -48,14 +42,6 @@ async function assertOkResponse(
 }
 
 async function resetAdminSettings(request: APIRequestContext) {
-  await assertOkResponse(
-    'terminology',
-    await request.put('/api/admin/terminology', {
-      data: {
-        terminology: DEFAULT_TERMINOLOGY_PAYLOAD,
-      },
-    }),
-  )
   await assertOkResponse(
     'requirement columns',
     await request.put('/api/admin/requirement-columns', {
@@ -167,27 +153,14 @@ for (const { name, viewport } of viewportVariants) {
       )
     })
 
-    test(`persists terminology and column changes through library reloads (${name})`, async ({
+    test(`persists column changes through library reloads (${name})`, async ({
       page,
     }) => {
       await page.goto('/sv/admin')
 
-      const categoryCard = page.locator('article').filter({
-        has: page.getByText('Kategorier', { exact: true }),
-      })
-      const categorySingularInput = categoryCard.getByLabel('Singular')
-      const originalCategoryLabel = await categorySingularInput.inputValue()
-      const renamedCategoryLabel = `${originalCategoryLabel} test`
-      await page.getByRole('tab', { name: 'Kolumner' }).click()
       const originalOrder = await getAdminColumnOrder(page)
       const targetOrder = swapColumns(originalOrder, 'area', 'category')
 
-      await page.getByRole('tab', { name: 'Terminologi' }).click()
-      await categorySingularInput.fill(renamedCategoryLabel)
-      await page.getByRole('button', { name: 'Spara' }).click()
-      await expect(page.getByText('Sparat')).toBeVisible()
-
-      await page.getByRole('tab', { name: 'Kolumner' }).click()
       await setAdminColumnOrder(page, targetOrder)
       await page.getByRole('button', { name: 'Spara' }).click()
       await expect(page.getByText('Sparat')).toBeVisible()
@@ -195,7 +168,7 @@ for (const { name, viewport } of viewportVariants) {
       await page.goto('/sv/requirements')
       await expect(
         page.locator(VISIBLE_REQUIREMENTS_HEADER_SELECTOR),
-      ).toContainText(renamedCategoryLabel)
+      ).toContainText('Kategori')
 
       const readHeaderTexts = async () =>
         page
@@ -208,7 +181,7 @@ for (const { name, viewport } of viewportVariants) {
 
       const headerTexts = await readHeaderTexts()
       const categoryIndex = headerTexts.findIndex(text =>
-        text.includes(renamedCategoryLabel),
+        text.includes('Kategori'),
       )
       const areaIndex = headerTexts.findIndex(text =>
         text.includes('Kravområde'),
@@ -223,12 +196,9 @@ for (const { name, viewport } of viewportVariants) {
       await page.reload()
       await expect(
         page.locator(VISIBLE_REQUIREMENTS_HEADER_SELECTOR),
-      ).toContainText(renamedCategoryLabel)
+      ).toContainText('Kategori')
 
       await page.goto('/sv/admin')
-      await expect(categorySingularInput).toHaveValue(renamedCategoryLabel)
-
-      await page.getByRole('tab', { name: 'Kolumner' }).click()
       await expect
         .poll(async () => getAdminColumnOrder(page))
         .toEqual(targetOrder)
@@ -301,7 +271,6 @@ for (const { name, viewport } of viewportVariants) {
       }) => {
         await page.goto('/sv/admin')
 
-        const terminologyTab = page.getByRole('tab', { name: 'Terminologi' })
         const columnsTab = page.getByRole('tab', { name: 'Kolumner' })
         const referenceDataTab = page.getByRole('tab', {
           name: 'Referensdata',
@@ -318,11 +287,13 @@ for (const { name, viewport } of viewportVariants) {
           tablistMetrics.clientWidth,
         )
 
-        await expectTouchTargetSize(terminologyTab)
+        await expect(
+          page.getByRole('tab', { name: 'Terminologi' }),
+        ).toHaveCount(0)
         await expectTouchTargetSize(columnsTab)
         await expectTouchTargetSize(referenceDataTab)
-        await expectTouchTargetSize(
-          page.getByRole('button', { name: 'English' }),
+        await expect(page.getByRole('button', { name: 'English' })).toHaveCount(
+          0,
         )
         await expectTouchTargetSize(
           page.getByRole('button', { name: 'Återställ standardvy' }),

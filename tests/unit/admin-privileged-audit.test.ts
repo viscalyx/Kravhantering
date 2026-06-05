@@ -48,16 +48,19 @@ describe('admin privileged action audit', () => {
     sessionState.isSignedIn.mockReturnValueOnce(true)
 
     const context = await createAdminPrivilegedAuditContext(
-      new Request('https://example.test/api/admin/terminology?debug=true', {
-        headers: {
-          origin: 'http://localhost:3000',
-          'user-agent': 'vitest',
-          'x-forwarded-for': '203.0.113.10',
-          'x-requested-with': 'XMLHttpRequest',
-          'x-request-id': 'request-123',
+      new Request(
+        'https://example.test/api/admin/requirement-columns?debug=true',
+        {
+          headers: {
+            origin: 'http://localhost:3000',
+            'user-agent': 'vitest',
+            'x-forwarded-for': '203.0.113.10',
+            'x-requested-with': 'XMLHttpRequest',
+            'x-request-id': 'request-123',
+          },
+          method: 'PUT',
         },
-        method: 'PUT',
-      }),
+      ),
     )
 
     expect(context.actor).toEqual({
@@ -70,7 +73,7 @@ describe('admin privileged action audit', () => {
     })
     expect(context.request).toEqual({
       method: 'PUT',
-      path: '/api/admin/terminology',
+      path: '/api/admin/requirement-columns',
       ip: '203.0.113.10',
       requestId: 'request-123',
       userAgent: 'vitest',

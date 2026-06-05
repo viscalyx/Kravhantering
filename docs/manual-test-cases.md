@@ -74,17 +74,16 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [DEV-06: decided deviations are terminal](#dev-06-decided-deviations-are-terminal)
   - [DEV-07: no-role user cannot decide deviations](#dev-07-no-role-user-cannot-decide-deviations)
 - [Admin Center](#admin-center)
-  - [ADMIN-01: terminology changes apply to the library](#admin-01-terminology-changes-apply-to-the-library)
-  - [ADMIN-02: requirement column defaults affect new library views](#admin-02-requirement-column-defaults-affect-new-library-views)
-  - [ADMIN-03: reference-data CRUD page saves changes](#admin-03-reference-data-crud-page-saves-changes)
-  - [ADMIN-04: browser back restores reference-data tab](#admin-04-browser-back-restores-reference-data-tab)
-  - [ADMIN-05: mobile admin tabs and actions remain usable](#admin-05-mobile-admin-tabs-and-actions-remain-usable)
-  - [ADMIN-06: action log filters and exports CSV](#admin-06-action-log-filters-and-exports-csv)
-  - [ADMIN-07: access-review decision and export](#admin-07-access-review-decision-and-export)
-  - [ADMIN-08: access-review validation rejects long comments](#admin-08-access-review-validation-rejects-long-comments)
-  - [ADMIN-09: archiving retention preview is privacy-gated](#admin-09-archiving-retention-preview-is-privacy-gated)
-  - [ADMIN-10: reference-data icons render across requirement surfaces](#admin-10-reference-data-icons-render-across-requirement-surfaces)
-  - [ADMIN-11: archived requirement-selection retention excludes saved history](#admin-11-archived-requirement-selection-retention-excludes-saved-history)
+  - [ADMIN-01: requirement column defaults affect new library views](#admin-01-requirement-column-defaults-affect-new-library-views)
+  - [ADMIN-02: reference-data CRUD page saves changes](#admin-02-reference-data-crud-page-saves-changes)
+  - [ADMIN-03: browser back restores reference-data tab](#admin-03-browser-back-restores-reference-data-tab)
+  - [ADMIN-04: mobile admin tabs and actions remain usable](#admin-04-mobile-admin-tabs-and-actions-remain-usable)
+  - [ADMIN-05: action log filters and exports CSV](#admin-05-action-log-filters-and-exports-csv)
+  - [ADMIN-06: access-review decision and export](#admin-06-access-review-decision-and-export)
+  - [ADMIN-07: access-review validation rejects long comments](#admin-07-access-review-validation-rejects-long-comments)
+  - [ADMIN-08: archiving retention preview is privacy-gated](#admin-08-archiving-retention-preview-is-privacy-gated)
+  - [ADMIN-09: reference-data icons render across requirement surfaces](#admin-09-reference-data-icons-render-across-requirement-surfaces)
+  - [ADMIN-10: archived requirement-selection retention excludes saved history](#admin-10-archived-requirement-selection-retention-excludes-saved-history)
 - [Privacy and personal data access](#privacy-and-personal-data-access)
   - [PRIV-01: self-service privacy export](#priv-01-self-service-privacy-export)
   - [PRIV-02: PrivacyOfficer preview by HSA-ID](#priv-02-privacyofficer-preview-by-hsa-id)
@@ -1370,25 +1369,7 @@ the mutation without changing deviation state.
 
 ## Admin Center
 
-### ADMIN-01: terminology changes apply to the library
-
-**Purpose:** Confirm terminology saves and affects visible labels.
-
-**Users:** `ada.admin`.
-
-**Prerequisites:** Open `/sv/admin`.
-
-**Steps:**
-
-1. On `Terminologi`, change the singular label for categories.
-1. Select `Spara`.
-1. Open `/sv/requirements`.
-1. Inspect the table headers.
-
-**Expected result:** The changed label appears in the library and remains after
-reload.
-
-### ADMIN-02: requirement column defaults affect new library views
+### ADMIN-01: requirement column defaults affect new library views
 
 **Purpose:** Confirm admin-managed column order and defaults are saved.
 
@@ -1406,7 +1387,7 @@ reload.
 
 **Expected result:** The library uses the saved organization-wide column order.
 
-### ADMIN-03: reference-data CRUD page saves changes
+### ADMIN-02: reference-data CRUD page saves changes
 
 **Purpose:** Confirm reference-data pages can create and edit rows.
 
@@ -1428,7 +1409,7 @@ the row or shows a clear dependency message. Empty reference-data tables show a
 localized empty-state row; tables with an existing create flow include a `Ny`
 CTA that opens the same create form.
 
-### ADMIN-04: browser back restores reference-data tab
+### ADMIN-03: browser back restores reference-data tab
 
 **Purpose:** Confirm Admin Center tab state survives navigation.
 
@@ -1445,7 +1426,7 @@ CTA that opens the same create form.
 **Expected result:** The browser returns to `/en/admin?tab=referenceData`, and
 the `Reference data` tab remains selected.
 
-### ADMIN-05: mobile admin tabs and actions remain usable
+### ADMIN-04: mobile admin tabs and actions remain usable
 
 **Purpose:** Confirm small screens can access Admin Center controls.
 
@@ -1464,7 +1445,7 @@ the `Reference data` tab remains selected.
 **Expected result:** Tabs and buttons are visible, selectable, and large enough
 to operate by touch.
 
-### ADMIN-06: action log filters and exports CSV
+### ADMIN-05: action log filters and exports CSV
 
 **Purpose:** Confirm Admin action-log evidence can be reviewed.
 
@@ -1482,7 +1463,7 @@ to operate by touch.
 **Expected result:** The URL includes the action filter, matching events remain
 visible, and the CSV contains headers such as `occurredAt;actorKind`.
 
-### ADMIN-07: access-review decision and export
+### ADMIN-06: access-review decision and export
 
 **Purpose:** Confirm Admin users can decide and export access reviews.
 
@@ -1501,7 +1482,7 @@ visible, and the CSV contains headers such as `occurredAt;actorKind`.
 **Expected result:** The row shows `Godkänd`, the comment remains visible, and
 both exports are available.
 
-### ADMIN-08: access-review validation rejects long comments
+### ADMIN-07: access-review validation rejects long comments
 
 **Purpose:** Confirm client validation prevents invalid decision payloads.
 
@@ -1518,7 +1499,7 @@ both exports are available.
 **Expected result:** The panel shows a validation message and does not save the
 row.
 
-### ADMIN-09: archiving retention preview is privacy-gated
+### ADMIN-08: archiving retention preview is privacy-gated
 
 **Purpose:** Confirm retention tools are restricted to PrivacyOfficer users.
 
@@ -1536,7 +1517,7 @@ row.
 **Expected result:** `ada.admin` and `disa.privacy` can use archiving privacy
 tools; `only.admin` is redirected to the default tab or sees disabled access.
 
-### ADMIN-10: reference-data icons render across requirement surfaces
+### ADMIN-09: reference-data icons render across requirement surfaces
 
 **Purpose:** Confirm admins can assign and clear icons from the installed
 Lucide catalog, and that labels remain visible wherever icons are rendered.
@@ -1569,7 +1550,7 @@ tables, badges, the status stepper, version history, print reports, and PDF
 reports, and the browser console has no Content Security Policy or WebAssembly
 errors while downloading the PDF.
 
-### ADMIN-11: archived requirement-selection retention excludes saved history
+### ADMIN-10: archived requirement-selection retention excludes saved history
 
 **Purpose:** Confirm Admin > Arkivering can gallra archived
 requirement-selection content without deleting saved requirements-specification

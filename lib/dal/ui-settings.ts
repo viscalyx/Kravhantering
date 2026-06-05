@@ -5,16 +5,9 @@ import {
   type RequirementListColumnDefault,
 } from '@/lib/requirements/list-view'
 import { toBoolean } from '@/lib/typeorm/value-mappers'
-import {
-  buildUiTerminologyPayload,
-  normalizeUiTerminology,
-  type UiTermKey,
-  type UiTermTranslation,
-} from '@/lib/ui-terminology'
 
 export interface UiSettingsLoader {
   getColumnDefaults: () => Promise<RequirementListColumnDefault[]>
-  getTerminology: () => Promise<Record<UiTermKey, UiTermTranslation>>
 }
 
 export function formatUiSettingsLoadError(
@@ -31,16 +24,6 @@ export function formatUiSettingsLoadError(
   return { error }
 }
 
-interface SqlServerUiTerminologyRow {
-  definitePluralEn: string
-  definitePluralSv: string
-  key: UiTermKey
-  pluralEn: string
-  pluralSv: string
-  singularEn: string
-  singularSv: string
-}
-
 interface SqlServerRequirementListColumnDefaultRow {
   columnId: RequirementColumnId
   isDefaultVisible: boolean | number | string
@@ -53,48 +36,6 @@ interface QueryExecutor {
 
 interface UiSettingsWriteOptions {
   audit?: (executor: QueryExecutor) => Promise<void>
-}
-
-function mapSqlServerUiTerminologyRow(
-  row: SqlServerUiTerminologyRow,
-): UiTermTranslation {
-  return {
-    en: {
-      definitePlural: row.definitePluralEn,
-      plural: row.pluralEn,
-      singular: row.singularEn,
-    },
-    key: row.key,
-    sv: {
-      definitePlural: row.definitePluralSv,
-      plural: row.pluralSv,
-      singular: row.singularSv,
-    },
-  }
-}
-
-async function loadTerminology(db: SqlServerDatabase) {
-  try {
-    const rows = await db.query(`
-      SELECT
-        [key] AS [key],
-        singular_sv AS singularSv,
-        plural_sv AS pluralSv,
-        definite_plural_sv AS definitePluralSv,
-        singular_en AS singularEn,
-        plural_en AS pluralEn,
-        definite_plural_en AS definitePluralEn
-      FROM ui_terminology
-      ORDER BY [key] ASC
-    `)
-    return normalizeUiTerminology(
-      (rows as SqlServerUiTerminologyRow[]).map(mapSqlServerUiTerminologyRow),
-    )
-  } catch (error) {
-    throw new Error('Failed to load UI terminology from the database.', {
-      cause: error,
-    })
-  }
 }
 
 async function loadColumnDefaults(db: SqlServerDatabase) {
@@ -128,8 +69,6 @@ async function loadColumnDefaults(db: SqlServerDatabase) {
 export function createUiSettingsLoader(
   db: SqlServerDatabase,
 ): UiSettingsLoader {
-  let terminologyPromise: Promise<Record<UiTermKey, UiTermTranslation>> | null =
-    null
   let columnDefaultsPromise: Promise<RequirementListColumnDefault[]> | null =
     null
 
@@ -138,71 +77,11 @@ export function createUiSettingsLoader(
       columnDefaultsPromise ??= loadColumnDefaults(db)
       return columnDefaultsPromise
     },
-    getTerminology() {
-      terminologyPromise ??= loadTerminology(db)
-      return terminologyPromise
-    },
   }
-}
-
-export async function getUiTerminology(db: SqlServerDatabase) {
-  return createUiSettingsLoader(db).getTerminology()
 }
 
 export async function getRequirementListColumnDefaults(db: SqlServerDatabase) {
   return createUiSettingsLoader(db).getColumnDefaults()
-}
-
-export async function updateUiTerminology(
-  db: SqlServerDatabase,
-  values: readonly Partial<UiTermTranslation>[],
-) {
-  const normalized = normalizeUiTerminology(values)
-  const updatedAt = new Date().toISOString()
-
-  for (const entry of buildUiTerminologyPayload(normalized)) {
-    await db.query(
-      `
-        UPDATE ui_terminology
-        SET
-          singular_sv = @1,
-          plural_sv = @2,
-          definite_plural_sv = @3,
-          singular_en = @4,
-          plural_en = @5,
-          definite_plural_en = @6,
-          updated_at = @7
-        WHERE [key] = @0
-
-        IF @@ROWCOUNT = 0
-        BEGIN
-          INSERT INTO ui_terminology (
-            [key],
-            singular_sv,
-            plural_sv,
-            definite_plural_sv,
-            singular_en,
-            plural_en,
-            definite_plural_en,
-            updated_at
-          )
-          VALUES (@0, @1, @2, @3, @4, @5, @6, @7)
-        END
-      `,
-      [
-        entry.key,
-        entry.sv.singular,
-        entry.sv.plural,
-        entry.sv.definitePlural,
-        entry.en.singular,
-        entry.en.plural,
-        entry.en.definitePlural,
-        updatedAt,
-      ],
-    )
-  }
-
-  return normalized
 }
 
 export async function updateRequirementListColumnDefaults(

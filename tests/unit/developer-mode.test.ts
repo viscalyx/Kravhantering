@@ -145,7 +145,7 @@ describe('developer mode utilities', () => {
       <div data-developer-mode-name="dialog" hidden id="hidden"></div>
       <button aria-label="Columns" id="columns-button" type="button"></button>
       <button aria-label="Settings" id="offscreen" type="button"></button>
-      <button aria-label="Terminology" id="tab" role="tab" type="button"></button>
+      <button aria-label="Settings" id="tab" role="tab" type="button"></button>
     `
 
     mockRect(document.getElementById('table') as HTMLElement, {
@@ -181,7 +181,7 @@ describe('developer mode utilities', () => {
 
     expect(payloads).toContain('requirements table')
     expect(payloads).toContain('button: Columns')
-    expect(payloads).toContain('edge tab: Terminology')
+    expect(payloads).toContain('edge tab: Settings')
     expect(payloads).not.toContain('dialog')
     expect(payloads).not.toContain('button: Settings')
   })

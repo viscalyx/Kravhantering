@@ -7,10 +7,6 @@ const mockLogger = vi.hoisted(() => ({
   error: vi.fn(),
   info: vi.fn(),
 }))
-const mockUiSettings = vi.hoisted(() => ({
-  getColumnDefaults: vi.fn(),
-  getTerminology: vi.fn(),
-}))
 const mockService = vi.hoisted(() => ({ queryCatalog: vi.fn() }))
 const mockRequestContext = vi.hoisted(() => ({
   actor: {
@@ -36,7 +32,6 @@ const mockCreateRequestContext = vi.hoisted(() =>
   vi.fn(async () => mockRequestContext),
 )
 const mockCreateRequirementsLogger = vi.hoisted(() => vi.fn(() => mockLogger))
-const mockCreateUiSettingsLoader = vi.hoisted(() => vi.fn(() => mockUiSettings))
 const mockCreateRequirementsService = vi.hoisted(() => vi.fn(() => mockService))
 
 vi.mock('@/lib/db', () => ({
@@ -50,10 +45,6 @@ vi.mock('@/lib/requirements/auth', () => ({
 
 vi.mock('@/lib/requirements/logging', () => ({
   createRequirementsLogger: mockCreateRequirementsLogger,
-}))
-
-vi.mock('@/lib/dal/ui-settings', () => ({
-  createUiSettingsLoader: mockCreateUiSettingsLoader,
 }))
 
 vi.mock('@/lib/requirements/service', () => ({
@@ -78,12 +69,10 @@ describe('requirements server runtime helpers', () => {
       db: mockDb,
       logger: mockLogger,
       service: mockService,
-      uiSettings: mockUiSettings,
     })
     expect(mockCreateRequirementsService).toHaveBeenCalledWith(mockDb, {
       authorization: mockAuthorization,
       logger: mockLogger,
-      uiSettings: mockUiSettings,
     })
   })
 

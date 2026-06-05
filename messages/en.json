@@ -692,7 +692,7 @@
       "requiresTesting": "Requires Testing",
       "createdBy": "Created By",
       "references": "References",
-      "requirementPackages": "Requirements packages",
+      "requirementPackages": "Requirement packages",
       "deviation": "Deviation",
       "motivation": "Motivation:",
       "submittedBy": "Submitted by:",
@@ -884,12 +884,10 @@
   "admin": {
     "title": "Admin center",
     "loading": "Loading admin center...",
-    "description": "Manage core admin settings for the system, including terminology, columns, access reviews, and privacy-related configuration.",
+    "description": "Manage core admin settings for the system, including columns, reference data, access reviews, and privacy-related configuration.",
     "settings": "Settings",
     "adminCenter": "Admin center",
-    "adminCenterDescription": "Update terminology and default column settings.",
-    "terminology": "Terminology",
-    "terminologyDescription": "Edit singular, plural, and definite plural forms for the labels already used in the interface.",
+    "adminCenterDescription": "Update default column settings and reference data.",
     "columns": "Columns",
     "columnsDescription": "Control the default order and visibility of the requirements list columns.",
     "referenceData": "Reference data",
@@ -1162,18 +1160,12 @@
         "specification_responsible": "Specification lead"
       }
     },
-    "swedish": "Svenska",
-    "english": "English",
-    "singular": "Singular",
-    "plural": "Plural",
-    "definitePlural": "Definite plural",
     "moveUp": "Move up",
     "moveDown": "Move down",
     "defaultVisible": "Visible by default",
     "locked": "Locked",
     "saved": "Saved",
     "columnsSaveError": "Could not save the column settings.",
-    "terminologySaveError": "Could not save the terminology.",
     "areasDescription": "Manage requirement areas and their prefixes.",
     "typesDescription": "View types and their quality hierarchy.",
     "requirementPackagesDescription": "Manage requirements packages linked to requirements.",
@@ -1187,99 +1179,48 @@
     "riskLevelsDescription": "Manage risk levels that can be assigned to requirements.",
     "specificationItemStatusesDescription": "Manage usage statuses for requirement applications."
   },
-  "terminology": {
-    "description": {
-      "singular": "Requirement text",
-      "plural": "Requirement texts",
-      "definitePlural": "Requirement texts"
-    },
-    "area": {
-      "singular": "Requirement area",
-      "plural": "Requirement areas",
-      "definitePlural": "Requirement areas"
-    },
-    "category": {
-      "singular": "Category",
-      "plural": "Categories",
-      "definitePlural": "Categories"
-    },
-    "type": {
-      "singular": "Type",
-      "plural": "Types",
-      "definitePlural": "Types"
-    },
-    "status": {
-      "singular": "Requirement version status",
-      "plural": "Requirement version statuses",
-      "definitePlural": "Requirement version statuses"
-    },
-    "qualityCharacteristic": {
-      "singular": "Quality characteristic",
-      "plural": "Quality characteristics",
-      "definitePlural": "Quality characteristics"
-    },
-    "riskLevel": {
-      "singular": "Risk level",
-      "plural": "Risk levels",
-      "definitePlural": "Risk levels"
-    },
-    "requiresTesting": {
-      "singular": "Verifiable",
-      "plural": "Verifiable",
-      "definitePlural": "Verifiable"
-    },
-    "requiresTestingOff": {
-      "singular": "Not verifiable",
-      "plural": "Not verifiable",
-      "definitePlural": "Not verifiable"
-    },
-    "version": {
-      "singular": "Version",
-      "plural": "Versions",
-      "definitePlural": "Versions"
-    },
-    "acceptanceCriteria": {
-      "singular": "Acceptance criterion",
-      "plural": "Acceptance criteria",
-      "definitePlural": "Acceptance criteria"
-    },
-    "requirementPackage": {
-      "singular": "Requirement package",
-      "plural": "Requirements packages",
-      "definitePlural": "Requirements packages"
-    },
-    "governanceObjectType": {
-      "singular": "Governance object type",
-      "plural": "Governance object types",
-      "definitePlural": "Governance object types"
-    },
-    "implementationType": {
-      "singular": "Implementation type",
-      "plural": "Implementation types",
-      "definitePlural": "Implementation types"
-    },
-    "lifecycleStatus": {
-      "singular": "Specification lifecycle status",
-      "plural": "Specification lifecycle statuses",
-      "definitePlural": "Specification lifecycle statuses"
-    },
-    "referenceData": {
-      "singular": "Reference data",
-      "plural": "Reference data",
-      "definitePlural": "Reference data"
-    },
-    "references": {
-      "singular": "Reference",
-      "plural": "References",
-      "definitePlural": "References"
-    },
-    "mcpRequirementView": {
-      "singular": "MCP Requirement View",
-      "plural": "MCP Requirement View",
-      "definitePlural": "MCP Requirement View"
-    }
-  },
   "requirements": {
+    "catalogTitles": {
+      "requirements": "Requirements",
+      "areas": "Requirement areas",
+      "categories": "Categories",
+      "types": "Types",
+      "qualityCharacteristics": "Quality characteristics",
+      "riskLevels": "Risk levels",
+      "usageStatuses": "Usage statuses",
+      "statuses": "Requirement version statuses",
+      "requirementPackages": "Requirements packages",
+      "transitions": "Transitions"
+    },
+    "libraryCsvHeaders": {
+      "uniqueId": "Requirement ID",
+      "description": "Requirement text",
+      "area": "Requirement area",
+      "category": "Category",
+      "type": "Type",
+      "qualityCharacteristic": "Quality characteristic",
+      "riskLevel": "Risk level",
+      "status": "Requirement version status",
+      "requiresTesting": "Verifiable",
+      "version": "Version",
+      "normReferences": "Norm references",
+      "normReferenceUri": "Norm reference URI"
+    },
+    "detailLabels": {
+      "mcpRequirementView": "MCP Requirement View",
+      "description": "Requirement text",
+      "acceptanceCriteria": "Acceptance criterion",
+      "category": "Category",
+      "type": "Type",
+      "qualityCharacteristic": "Quality characteristic",
+      "riskLevel": "Risk level",
+      "version": "Version",
+      "references": "References",
+      "requirementPackage": "Requirement packages",
+      "requiresTesting": "Verifiable",
+      "requiresTestingOff": "Not verifiable",
+      "area": "Requirement area"
+    },
     "specifications": {
       "summary": {
         "none": "No specifications found.",
@@ -1570,17 +1511,13 @@
     },
     "admin": {
       "title": "Admin Center",
-      "terminology": {
-        "heading": "Terminology",
-        "body": "Override the singular, plural, and definite plural labels used throughout the UI for terms like requirement area, category, type, and more. Changes take effect immediately without a page reload."
-      },
       "columns": {
         "heading": "Default columns",
         "body": "Set which columns appear by default in the requirements library and in what order. Users can still override column visibility per session. Locked columns are always shown."
       },
       "referenceData": {
         "heading": "Reference data",
-        "body": "Quick links to manage requirement areas, types, requirements packages, requirement version statuses, usage statuses, specification lifecycle statuses, quality characteristics, governance object types, implementation types, and requirement area owners."
+        "body": "Quick links to manage requirement areas, types, norm references, requirement version statuses, usage statuses, specification lifecycle statuses, specification item statuses, risk levels, quality characteristics, governance object types, implementation types, and requirement area owners."
       },
       "privacy": {
         "heading": "Privacy erasure",

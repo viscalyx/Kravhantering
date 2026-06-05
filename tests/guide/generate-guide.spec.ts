@@ -1605,18 +1605,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
     // ── Sektion 9: Administrationscenter ─────────────────────────────────
     currentSection = 'Administrationscenter'
 
-    await guideStep(page, 'Admin — Terminologi', async () => {
-      await guideGoto(page, '/sv/admin')
-      await snap(
-        page,
-        'admin-terminologi',
-        'Admin — Terminologi',
-        'Administrationscenterets flik **Terminologi** låter dig anpassa gränssnittsetiketter för domänspecifika termer. Till exempel kan "Kravtext" byta namn till en term som passar din organisations vokabulär.',
-      )
-    })
-
     await guideStep(page, 'Admin — Kolumner', async () => {
-      await page.getByRole('tab', { name: 'Kolumner' }).click()
+      await guideGoto(page, '/sv/admin')
       await page.waitForTimeout(300)
       await snap(
         page,
@@ -1633,7 +1623,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'admin-referensdata',
         'Admin — Referensdata',
-        'Fliken **Referensdata** innehåller länkar till alla taxonomihanteringssidor: kravområden, typer, kravversionsstatusar, risknivåer, kvalitetsegenskaper, normreferenser och kravpaket. Här bygger du upp de grunddata som krav refererar till.',
+        'Fliken **Referensdata** innehåller länkar till alla taxonomihanteringssidor: kravområden, typer, normreferenser, kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar, kravunderlagets kravstatusar, risknivåer och kvalitetsegenskaper. Här bygger du upp de grunddata som krav och kravunderlag refererar till.',
       )
     })
 
