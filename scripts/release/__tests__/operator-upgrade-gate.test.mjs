@@ -23,20 +23,25 @@ const noActionPrBody = `## Operator Upgrade Impact
 ## SSDLC Gate
 `
 
-const operatorActionPrBody = noActionPrBody
+const operatorNotesPrBody = noActionPrBody
   .replace(
     '- [x] <!-- operator-upgrade:no-notes -->',
     '- [ ] <!-- operator-upgrade:no-notes -->',
   )
   .replace(
     '<!-- operator-upgrade:notes start -->\n',
-    '<!-- operator-upgrade:notes start -->\nOperator action: Added owner HSA-ID pre-upgrade note.\n',
+    '<!-- operator-upgrade:notes start -->\nAdded owner HSA-ID pre-upgrade note.\n',
   )
 
-const placeholderPrBody = noActionPrBody.replace(
-  '<!-- operator-upgrade:notes start -->\n',
-  '<!-- operator-upgrade:notes start -->\nWrite operator upgrade notes here...\n',
-)
+const placeholderPrBody = noActionPrBody
+  .replace(
+    '- [x] <!-- operator-upgrade:no-notes -->',
+    '- [ ] <!-- operator-upgrade:no-notes -->',
+  )
+  .replace(
+    '<!-- operator-upgrade:notes start -->\n',
+    '<!-- operator-upgrade:notes start -->\nWrite operator upgrade notes here...\n',
+  )
 
 describe('Operator Upgrade gate', () => {
   it('does not require evidence outside migration and required seed paths', () => {
@@ -96,8 +101,8 @@ describe('Operator Upgrade gate', () => {
       ),
     ).toBe('unchecked')
     expect(checkboxState(noActionPrBody, 'unknown')).toBe('missing')
-    expect(extractOperatorUpgradeNotes(operatorActionPrBody)).toContain(
-      'Operator action:',
+    expect(extractOperatorUpgradeNotes(operatorNotesPrBody)).toContain(
+      'Added owner HSA-ID pre-upgrade note.',
     )
     expect(extractOperatorUpgradeNotes(noActionPrBody)).toBe('')
     expect(extractOperatorUpgradeNotes(placeholderPrBody)).toBe(
@@ -123,7 +128,7 @@ describe('Operator Upgrade gate', () => {
     )
   })
 
-  it('requires review and either no-notes checkbox or action notes', () => {
+  it('requires review and either no-notes checkbox or upgrade notes', () => {
     const incompleteBody = noActionPrBody
       .replace(
         '- [x] <!-- operator-upgrade:reviewed -->',
@@ -143,7 +148,7 @@ describe('Operator Upgrade gate', () => {
     expect(result.failures).toEqual(
       expect.arrayContaining([
         'Operator Upgrade checkbox is not checked: Operator upgrade impact is reviewed, or explicitly not relevant.',
-        'Operator Upgrade evidence is missing. Check "No operator upgrade notes are needed" or add "Operator action: ..." between the operator-upgrade notes markers.',
+        'Operator Upgrade evidence is missing. Check "No operator upgrade notes are needed" or add operator upgrade notes between the operator-upgrade notes markers.',
       ]),
     )
   })
@@ -162,45 +167,52 @@ describe('Operator Upgrade gate', () => {
     )
   })
 
-  it('requires the explicit operator action note prefix when no-notes is unchecked', () => {
+  it('accepts operator upgrade notes without a legacy prefix', () => {
     const result = evaluateOperatorUpgradeGate({
-      changedFiles: ['typeorm/seed-runner.mjs'],
-      prBody: operatorActionPrBody.replace(
-        'Operator action: Added owner HSA-ID pre-upgrade note.',
-        'Reviewed and fine.',
-      ),
+      changedFiles: [
+        'typeorm/seed-runner.mjs',
+        'docs/operator-upgrade-notes.md',
+      ],
+      prBody: operatorNotesPrBody,
     })
 
-    expect(result.passed).toBe(false)
-    expect(result.failures).toContain(
-      'Operator Upgrade notes must start with "Operator action:" unless the no-notes checkbox is checked.',
-    )
+    expect(result.passed).toBe(true)
   })
 
-  it('rejects checked no-notes when action notes are still present', () => {
-    const result = evaluateOperatorUpgradeGate({
+  it('ignores notes and placeholders when no-notes is checked', () => {
+    const notesResult = evaluateOperatorUpgradeGate({
       changedFiles: ['typeorm/seed-runner.mjs'],
-      prBody: operatorActionPrBody.replace(
+      prBody: operatorNotesPrBody.replace(
         '- [ ] <!-- operator-upgrade:no-notes -->',
         '- [x] <!-- operator-upgrade:no-notes -->',
       ),
     })
 
-    expect(result.passed).toBe(false)
-    expect(result.failures).toContain(
-      'Operator Upgrade no-notes checkbox is checked, so remove operator action notes or uncheck the no-notes checkbox.',
-    )
+    expect(notesResult.passed).toBe(true)
+    expect(notesResult.noNotesCheckbox.state).toBe('checked')
+    expect(notesResult.notes).toContain('Added owner HSA-ID pre-upgrade note.')
+
+    const placeholderResult = evaluateOperatorUpgradeGate({
+      changedFiles: ['typeorm/seed-runner.mjs'],
+      prBody: placeholderPrBody.replace(
+        '- [ ] <!-- operator-upgrade:no-notes -->',
+        '- [x] <!-- operator-upgrade:no-notes -->',
+      ),
+    })
+
+    expect(placeholderResult.passed).toBe(true)
+    expect(placeholderResult.notes).toBe('Write operator upgrade notes here...')
   })
 
-  it('requires docs changes when operator action is declared', () => {
+  it('requires docs changes when operator upgrade notes are provided', () => {
     const missingDocsResult = evaluateOperatorUpgradeGate({
       changedFiles: ['typeorm/migrations/0026_example.mjs'],
-      prBody: operatorActionPrBody,
+      prBody: operatorNotesPrBody,
     })
 
     expect(missingDocsResult.passed).toBe(false)
     expect(missingDocsResult.failures).toContain(
-      'Operator Upgrade notes say operator action is required, but docs/operator-upgrade-notes.md is not changed.',
+      'Operator Upgrade notes are provided, but docs/operator-upgrade-notes.md is not changed.',
     )
 
     const withDocsResult = evaluateOperatorUpgradeGate({
@@ -208,7 +220,7 @@ describe('Operator Upgrade gate', () => {
         'typeorm/migrations/0026_example.mjs',
         'docs/operator-upgrade-notes.md',
       ],
-      prBody: operatorActionPrBody,
+      prBody: operatorNotesPrBody,
     })
 
     expect(withDocsResult.passed).toBe(true)

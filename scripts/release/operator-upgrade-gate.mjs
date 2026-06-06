@@ -34,8 +34,6 @@ export const OPERATOR_UPGRADE_PATH_RULES = [
   },
 ]
 
-const OPERATOR_ACTION_PREFIX = 'Operator action:'
-
 function readNonEmpty(value) {
   if (typeof value !== 'string') return undefined
   const trimmed = value.trim()
@@ -180,6 +178,8 @@ export function evaluateOperatorUpgradeGate({ changedFiles, prBody }) {
   const notesBlock = operatorUpgradeNotesBlock(prBody)
   const notes = notesBlock.notes
   const hasDefaultPlaceholder = notes === OPERATOR_UPGRADE_NOTES_PLACEHOLDER
+  const hasOperatorUpgradeNotes =
+    notesBlock.status === 'found' && Boolean(notes) && !hasDefaultPlaceholder
   const failures = []
 
   for (const checkbox of checkboxResults) {
@@ -213,15 +213,9 @@ export function evaluateOperatorUpgradeGate({ changedFiles, prBody }) {
     )
   }
 
-  if (hasDefaultPlaceholder) {
+  if (noNotesCheckbox.state !== 'checked' && hasDefaultPlaceholder) {
     failures.push(
       'Operator Upgrade notes still contain the default placeholder. Replace it with operator notes, or remove it and check the no-notes checkbox.',
-    )
-  }
-
-  if (noNotesCheckbox.state === 'checked' && notes && !hasDefaultPlaceholder) {
-    failures.push(
-      'Operator Upgrade no-notes checkbox is checked, so remove operator action notes or uncheck the no-notes checkbox.',
     )
   }
 
@@ -231,25 +225,18 @@ export function evaluateOperatorUpgradeGate({ changedFiles, prBody }) {
     (!notes || hasDefaultPlaceholder)
   ) {
     failures.push(
-      'Operator Upgrade evidence is missing. Check "No operator upgrade notes are needed" or add "Operator action: ..." between the operator-upgrade notes markers.',
-    )
-  } else if (
-    noNotesCheckbox.state !== 'checked' &&
-    notesBlock.status === 'found' &&
-    !notes.startsWith(OPERATOR_ACTION_PREFIX)
-  ) {
-    failures.push(
-      'Operator Upgrade notes must start with "Operator action:" unless the no-notes checkbox is checked.',
+      'Operator Upgrade evidence is missing. Check "No operator upgrade notes are needed" or add operator upgrade notes between the operator-upgrade notes markers.',
     )
   }
 
   const normalizedFiles = new Set(changedFiles.map(normalizeChangedFile))
   if (
-    notes.startsWith(OPERATOR_ACTION_PREFIX) &&
+    noNotesCheckbox.state !== 'checked' &&
+    hasOperatorUpgradeNotes &&
     !normalizedFiles.has(OPERATOR_UPGRADE_NOTES_PATH)
   ) {
     failures.push(
-      `Operator Upgrade notes say operator action is required, but ${OPERATOR_UPGRADE_NOTES_PATH} is not changed.`,
+      `Operator Upgrade notes are provided, but ${OPERATOR_UPGRADE_NOTES_PATH} is not changed.`,
     )
   }
 
