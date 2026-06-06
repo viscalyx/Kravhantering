@@ -344,7 +344,7 @@ export default function RequirementPackagesClient() {
               leadHsaId: event.target.value,
             }))
           }
-          pattern="SE[0-9]{10}-[A-Za-z0-9]+"
+          pattern="[A-Z]{2}[0-9]{10}-[A-Za-z0-9]+"
           required
           value={controller.form.leadHsaId}
         />

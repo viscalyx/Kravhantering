@@ -413,8 +413,8 @@ också ange standardvyer för olika kontexter.
 ### Admin — Referensdata
 
 Fliken **Referensdata** innehåller länkar till taxonomihanteringssidor:
-kravområden, typer, kravversionsstatusar, risknivåer, kvalitetsegenskaper,
-genomförandeformer och kravområdesägare. Kravpaket och normreferenser hanteras
+kravområden, typer, kravversionsstatusar, risknivåer, kvalitetsegenskaper och
+genomförandeformer. Kravpaket och normreferenser hanteras
 i stället under **Kravbiblioteksförvaltning**, tillsammans med
 kravurvalsfrågor.
 

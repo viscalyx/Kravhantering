@@ -46,16 +46,13 @@ describe('data-subject export service', () => {
     expect(Object.isFrozen(PRIVACY_ERASURE_GROUP_POLICIES)).toBe(true)
   })
 
-  it('collects structured owner data and self-session claims', async () => {
+  it('collects requirement-area owner HSA-ID data and self-session claims', async () => {
     const { db } = createExportDb({
-      'owners.identity': [
+      'requirement_areas.owner': [
         {
-          email: 'kalle@example.test',
-          firstName: 'Kalle',
+          areaId: 7,
+          areaLabel: 'INT Integration',
           hsaId: TARGET_HSA_ID,
-          lastName: 'Svensson',
-          ownerId: 7,
-          ownerLabel: 'Kalle Svensson',
           updatedAt: new Date('2026-05-01T10:00:00Z'),
         },
       ],
@@ -81,7 +78,7 @@ describe('data-subject export service', () => {
     expect(result.generatedAt).toBe('2026-05-12T12:00:00.000Z')
     expect(result.sources.map(source => source.key)).toEqual([
       'auth.session',
-      'owners.identity',
+      'requirement_areas.owner',
     ])
     expect(result.sources[0].items).toEqual(
       expect.arrayContaining([
@@ -91,10 +88,9 @@ describe('data-subject export service', () => {
     )
     expect(result.sources[1].items).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ fieldName: 'hsa_id', value: TARGET_HSA_ID }),
         expect.objectContaining({
-          fieldName: 'email',
-          value: 'kalle@example.test',
+          fieldName: 'owner_hsa_id',
+          value: TARGET_HSA_ID,
         }),
       ]),
     )

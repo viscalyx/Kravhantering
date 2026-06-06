@@ -14,7 +14,7 @@ const execFileAsync = promisify(execFile)
 const SCAN_DIR = 'test-results/mcp-seeded'
 const EVENTS_PATH = `${SCAN_DIR}/events.ndjson`
 const SUMMARY_PATH = `${SCAN_DIR}/summary.md`
-const REAL_HSA_ID_PATTERN = /^SE\d{10}-[A-Za-z0-9]+$/u
+const REAL_HSA_ID_PATTERN = /^[A-Z]{2}\d{10}-[A-Za-z0-9]+$/u
 
 type UnknownRecord = Record<string, unknown>
 type ToolCallResult = Awaited<ReturnType<Client['callTool']>>

@@ -107,22 +107,12 @@ Apply these rules to all schema objects.
 <!-- markdownlint-disable MD013 -->
 ```mermaid
 erDiagram
-    owners {
-        integer id PK
-        text first_name
-        text last_name
-        text email UK
-        text hsa_id UK
-        text created_at
-        text updated_at
-    }
-
     requirement_areas {
         integer id PK
         text prefix UK "e.g. INT, SAK, PRE"
         text name
         text description
-        integer owner_id FK
+        text owner_hsa_id
         integer next_sequence
         text created_at
         text updated_at
@@ -556,7 +546,6 @@ erDiagram
     }
 
     %% Relationships
-    owners |o--o{ requirement_areas : "owns"
     requirement_areas ||--o{ requirement_area_co_authors : "has co-authors"
     requirement_areas ||--o{ requirements : "has many"
     requirements ||--o{ requirement_versions : "has many versions"
@@ -1170,64 +1159,6 @@ Description and other free-text columns are governed by UI help text that
 forbids names or other details that can identify a living person. The privacy
 erasure workflow therefore does not scan or rewrite free-text descriptions.
 
-### `owners`
-
-People who can be assigned as responsible owners for requirement areas.
-Managed via the requirement area owners reference data page. `hsa_id` is the durable
-identity key; names and email are display/contact snapshots.
-
-Privacy erasure cannot anonymize or delete an owner while requirement areas
-still reference that owner. The handler must switch those assignments to a
-replacement owner first, or skip the owner row. Requirement package leads are no
-longer owner rows; privacy erasure matches and rewrites their direct HSA-ID and
-display-name snapshots separately. When no requirement area references the
-owner, privacy erasure may delete or skip the owner row; it does not switch or
-anonymize that standalone owner identity.
-
-<!-- markdownlint-disable MD013 -->
-| Column | Type | Description |
-| -------- | ------ | ------------- |
-| `id` | integer PK | Auto-increment primary key |
-| `first_name` | text | First name |
-| `last_name` | text | Last name |
-| `email` | text, unique when non-null, nullable | Email address |
-| `hsa_id` | text, unique when non-null, nullable | HSA-ID used for assignment and privacy matching |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-| `updated_at` | text (ISO 8601) | Last-modified timestamp |
-<!-- markdownlint-enable MD013 -->
-
-**Filtered unique indexes:** `uq_owners_email`, `uq_owners_hsa_id`.
-
-**Seed data:**
-
-<!-- cSpell:ignore annaj erikl -->
-<!-- markdownlint-disable MD013 MD034 -->
-| id | first\_name | last\_name | email | hsa\_id |
-| --- | --- | --- | --- | --- |
-| 1 | Anna | Johansson | anna.johansson@example.com | SE5560000001-annaj |
-| 2 | Erik | Lindberg | erik.lindberg@example.com | SE5560000001-erikl |
-| 3 | Maria | Svensson | maria.svensson@example.com | SE5560000001-marias |
-<!-- markdownlint-enable MD013 MD034 -->
-
-These owners are assigned to requirement areas via `owner_id`:
-Anna (1) → Integration, Prestanda, Lagring, Loggning, Data;
-Erik (2) → Säkerhet, Behörighet, Identitet;
-Maria (3) → Användbarhet, Drift.
-
-<!-- cspell:ignore linneab -->
-
-Seed data also includes duplicate display names with different `hsa_id` values
-so tests prove that privacy erasure and authorization disambiguate by HSA-ID,
-not by name. The `SE5560000001-linneab` fixture appears across every privacy
-preview group: owner rows, requirement-area and package owner assignments, requirement
-versions, deviation creator and decision fields, improvement-suggestion creator
-and resolver fields, specification lead, and requirement-area/specification
-co-author assignment rows, plus access-review creator, reviewer, completer,
-reviewed-principal, and decision snapshots. This gives privacy-erasure tests a
-single HSA-ID with varied live-assignment and historical occurrences.
-
----
-
 ### `requirement_areas`
 
 Groups requirements into logical domains
@@ -1242,16 +1173,16 @@ requirement IDs.
 | `prefix` | text, unique | Short code (e.g. `INT`, `SÄK`, `PRE`) used in `unique_id` |
 | `name` | text | Requirement area display name |
 | `description` | text | Purpose of the requirement area |
-| `owner_id` | integer FK → `owners.id` | Responsible owner (nullable) |
+| `owner_hsa_id` | text | Responsible owner's HSA-ID |
 | `next_sequence` | integer (default 1) | Next sequence number to assign within this requirement area |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
-**Owner:** `owner_id` is a foreign key to the `owners` table. The owner is
-assigned via the requirement area reference-data management page and is
-displayed alongside the requirement area in the requirement detail views and
-create/edit form.
+**Owner:** `owner_hsa_id` is required and stores the responsible person's
+HSA-ID directly. New requirement areas are created with an editable HSA-ID
+field. Existing requirement areas show the current HSA-ID as read-only and use a
+dedicated owner-change dialog to replace it.
 
 ---
 
@@ -1980,8 +1911,6 @@ its purpose and the table/column(s) it covers.
 | `uq_requirement_selection_questions_question_code` | `requirement_selection_questions` | `question_code` | Ensures question code uniqueness for stewardship questions |
 | `uq_specification_governance_object_types_name_sv` | `specification_governance_object_types` | `name_sv` | Prevents duplicate Swedish governance object type names |
 | `uq_specification_governance_object_types_name_en` | `specification_governance_object_types` | `name_en` | Prevents duplicate English governance object type names |
-| `uq_owners_email` | `owners` | `email` | Prevents duplicate non-null owner email addresses |
-| `uq_owners_hsa_id` | `owners` | `hsa_id` | Prevents duplicate non-null live owner identities by HSA-ID |
 | `uq_specification_implementation_types_name_sv` | `specification_implementation_types` | `name_sv` | Prevents duplicate Swedish implementation type names |
 | `uq_specification_implementation_types_name_en` | `specification_implementation_types` | `name_en` | Prevents duplicate English implementation type names |
 | `uq_specification_lifecycle_statuses_name_sv` | `specification_lifecycle_statuses` | `name_sv` | Prevents duplicate Swedish specification lifecycle status names |
@@ -2087,7 +2016,6 @@ The following table lists every named FK constraint:
 <!-- markdownlint-disable MD013 -->
 | Constraint Name | Table | Column(s) | References | On Delete | On Update |
 | --------------- | ----- | --------- | ---------- | --------- | --------- |
-| `fk_requirement_areas_owner_id` | `requirement_areas` | `owner_id` | `owners.id` | NO ACTION | NO ACTION |
 | `fk_requirement_area_co_authors_area_id` | `requirement_area_co_authors` | `area_id` | `requirement_areas.id` | CASCADE | NO ACTION |
 | `fk_requirements_specifications_specification_implementation_type_id` | `requirements_specifications` | `specification_implementation_type_id` | `specification_implementation_types.id` | NO ACTION | NO ACTION |
 | `fk_requirements_specifications_specification_governance_object_type_id` | `requirements_specifications` | `specification_governance_object_type_id` | `specification_governance_object_types.id` | NO ACTION | NO ACTION |
@@ -2164,7 +2092,6 @@ graph LR
     end
 
     subgraph Core Tables
-        OW[owners]
         RA[requirement_areas]
         R[requirements]
         RV[requirement_versions]
@@ -2211,10 +2138,8 @@ graph LR
         PRE[archiving_retention_exceptions]
     end
 
-    OW -- "uq_owners_email\n(email)" --> OW
-    OW -- "uq_owners_hsa_id\n(hsa_id)" --> OW
-    RA -- "FK owner_id" --> OW
     RA -- "uq_requirement_areas_prefix\n(prefix)" --> RA
+    RA -- "idx_requirement_areas_owner_hsa_id\n(owner_hsa_id)" --> RA
     R -- "uq_requirements_unique_id\n(unique_id)" --> R
     R -- "idx_requirements_requirement_area_id\n(requirement_area_id)" --> RA
     R -- "idx_requirements_is_archived\n(is_archived)" --> R

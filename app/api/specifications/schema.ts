@@ -20,7 +20,7 @@ const optionalNullableResponsibleHsaIdSchema = z.preprocess(
     .max(HSA_ID_MAX_LENGTH)
     .refine(isHsaId, {
       message:
-        'Expected HSA-ID format SE<10-digit org no>-<alphanumeric suffix>',
+        'Expected HSA-ID format <two-letter country code><10-digit org no>-<alphanumeric suffix>',
     })
     .nullable()
     .optional(),

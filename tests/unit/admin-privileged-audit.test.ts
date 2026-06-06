@@ -94,7 +94,7 @@ describe('admin privileged action audit', () => {
       },
       request: {
         method: 'PUT',
-        path: '/api/owners/7',
+        path: '/api/requirement-areas/7',
         requestId: 'request-456',
       },
       correlationId: 'correlation-456',
@@ -104,10 +104,10 @@ describe('admin privileged action audit', () => {
 
     try {
       await recordAdminPrivilegedActionSucceeded(context, {
-        changedFields: ['email', 'hsaId'],
+        changedFields: ['ownerHsaId'],
         operation: 'update',
         resourceId: 7,
-        resourceType: 'owner',
+        resourceType: 'requirement_area',
       })
 
       const event = JSON.parse(String(infoSpy.mock.calls[0][0])) as {
@@ -129,20 +129,20 @@ describe('admin privileged action audit', () => {
         outcome: 'success',
         request: {
           method: 'PUT',
-          path: '/api/owners/7',
+          path: '/api/requirement-areas/7',
           requestId: 'request-456',
         },
       })
       expect(event.detail).toEqual({
         actionKind: 'admin.privileged_action',
         actorRoles: ['Admin', 'Reviewer', 'PrivacyOfficer'],
-        changedFields: ['email', 'hsaId'],
+        changedFields: ['ownerHsaId'],
         operation: 'update',
         privilegeRoles: ['Admin', 'PrivacyOfficer'],
         privilegeSource: 'idp_role_claim',
         requestSource: 'rest',
         resourceId: 7,
-        resourceType: 'owner',
+        resourceType: 'requirement_area',
       })
       expect(JSON.stringify(event.detail)).not.toContain('Ada Admin')
       expect(JSON.stringify(event.detail)).not.toContain('SE5560000001-admin1')
@@ -153,8 +153,8 @@ describe('admin privileged action audit', () => {
           'Ada Admin',
           'user',
           null,
-          'admin.owner.update',
-          'owner',
+          'admin.requirement_area.update',
+          'requirement_area',
           '7',
           null,
           'allowed',

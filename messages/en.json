@@ -50,7 +50,6 @@
     "createdAt": "Created",
     "updatedAt": "Updated",
     "error": "Something went wrong",
-    "ownerLoadError": "Could not load owners. Existing owner choices are kept if available.",
     "share": "Share",
     "copied": "Copied",
     "help": "Help",
@@ -83,7 +82,6 @@
     "governanceObjectTypes": "Governance object types",
     "implementationTypes": "Implementation types",
     "lifecycleStatuses": "Specification lifecycle statuses",
-    "areaOwners": "Requirement area owners",
     "normReferences": "Norm references",
     "specificationItemStatuses": "Usage statuses",
     "admin": "Admin",
@@ -390,11 +388,21 @@
     "name": "Name",
     "description": "Description",
     "owner": "Requirement area owner",
+    "changeOwner": "Change owner",
+    "changeOwnerTitle": "Change requirement area owner",
+    "changeOwnerDescription": "Enter the HSA-ID that should own this requirement area from now on.",
+    "currentOwner": "Previous owner's HSA-ID",
+    "newOwner": "New owner's HSA-ID",
+    "ownerChangeError": "Could not change owner.",
+    "ownerChangeInvalid": "Enter a valid HSA-ID.",
+    "ownerChangeSame": "Enter a different HSA-ID.",
     "help": {
       "prefix": "Enter the short uppercase prefix used when requirement IDs are generated for this requirement area. The prefix can only be changed when creating a new requirement area.",
       "name": "Enter the display name for this requirement area.",
       "description": "Optionally describe what kinds of requirements belong in this requirement area. Do not enter names or other details that can identify a living person.",
-      "owner": "Choose the person or group responsible for this requirement area."
+      "owner": "Enter the HSA-ID for the person responsible for this requirement area. In edit mode the HSA-ID is read-only; use the change-owner button to switch owner.",
+      "currentOwner": "Shows the HSA-ID currently assigned to the requirement area.",
+      "newOwner": "Enter the replacement HSA-ID. The value must use the HSA-ID format and differ from the previous owner."
     },
     "newArea": "New requirement area",
     "editArea": "Edit requirement area",
@@ -424,7 +432,7 @@
     "canResponsibleGenerateAi": "Specification lead may use AI",
     "canResponsibleGenerateAiHelp": "Enable this only when the specification lead is allowed to use AI support for this requirements specification.",
     "responsiblePairRequired": "Enter both specification lead name and specification lead HSA-ID, or leave both empty.",
-    "invalidResponsibleHsaId": "Check the specification lead HSA-ID. The format is SE followed by 10 digits, a hyphen, and an alphanumeric suffix.",
+    "invalidResponsibleHsaId": "Check the specification lead HSA-ID. The format is two uppercase country-code letters, 10 digits, a hyphen, and an alphanumeric suffix.",
     "implementationType": "Implementation type",
     "implementationTypeHelp": "Choose the implementation type that best describes how this specification will be delivered.",
     "lifecycleStatus": "Specification lifecycle status",
@@ -727,7 +735,7 @@
     "leadDisplayName": "Package lead name",
     "leadDisplayNameHelp": "Enter the display name for the person responsible for this requirements package.",
     "leadHsaId": "Package lead HSA-ID",
-    "leadHsaIdHelp": "Enter the package lead HSA-ID in the format SE followed by organization number, hyphen, and alphanumeric suffix.",
+    "leadHsaIdHelp": "Enter the package lead HSA-ID with two uppercase country-code letters, a 10-digit organization number, a hyphen, and an alphanumeric suffix.",
     "owner": "Requirements package owner",
     "help": {
       "owner": "Choose the owner responsible for this requirements package and its linked requirements."
@@ -832,20 +840,6 @@
     "owner": "Reference owner",
     "addReference": "Add reference",
     "unnamed": "Reference"
-  },
-  "ownerMgmt": {
-    "name": "Name",
-    "firstName": "First name",
-    "lastName": "Last name",
-    "hsaId": "HSA-ID",
-    "email": "Email",
-    "help": {
-      "firstName": "Enter the owner's given name.",
-      "lastName": "Enter the owner's family name.",
-      "hsaId": "Enter the owner's verified HSA-ID. Names are display snapshots; HSA-ID is the durable identity key.",
-      "email": "Enter the email address used to contact this owner."
-    },
-    "emptyState": "No requirement area owners yet. Create your first owner."
   },
   "governanceObjectTypeMgmt": {
     "name": "Name",
@@ -961,7 +955,7 @@
       "permissionError": "You need the Privacy officer role. Sign in as a privacy officer to run privacy erasure.",
       "replacementIncomplete": "Enter both replacement HSA-ID and replacement name, or leave both fields empty to anonymize.",
       "invalidReplacementEmail": "Check the replacement email address.",
-      "invalidHsaId": "Check the HSA-ID. The format is SE followed by 10 digits, a hyphen, and an alphanumeric suffix.",
+      "invalidHsaId": "Check the HSA-ID. The format is two uppercase country-code letters, 10 digits, a hyphen, and an alphanumeric suffix.",
       "serverPreviewError": "The server could not preview privacy erasure.",
       "serverExecuteError": "The server could not execute privacy erasure.",
       "serverErrorWithDetail": "{message} Technical detail: {detail}",
@@ -995,12 +989,11 @@
       "executionErrors": {
         "owner_area_references_blocking": "Requirement areas must be switched before the owner can be changed.",
         "owner_references_blocking": "Owner references must be switched before the owner can be deleted.",
-        "replacement_required": "Replacement HSA-ID and name are required for the selected action.",
+        "replacement_required": "Replacement HSA-ID is required for the selected action.",
         "unsupported_owner_action": "The owner row does not support the selected action.",
         "unsupported_privacy_action": "The row does not support the selected action."
       },
       "objects": {
-        "owners": "Owners",
         "requirementAreas": "Requirement areas",
         "requirementPackages": "Requirement packages",
         "normReferences": "Norm references",
@@ -1184,7 +1177,6 @@
     "governanceObjectTypesDescription": "Manage governance object types for requirements specifications.",
     "implementationTypesDescription": "Manage implementation types for requirements specifications.",
     "lifecycleStatusesDescription": "Manage specification lifecycle statuses.",
-    "areaOwnersDescription": "Manage owners that can be assigned to requirement areas.",
     "riskLevelsDescription": "Manage risk levels that can be assigned to requirements.",
     "specificationItemStatusesDescription": "Manage usage statuses for requirement applications."
   },
@@ -1526,7 +1518,7 @@
       },
       "referenceData": {
         "heading": "Reference data",
-        "body": "Quick links to manage requirement areas, types, requirement version statuses, usage statuses, specification lifecycle statuses, specification item statuses, risk levels, quality characteristics, governance object types, implementation types, and requirement area owners."
+        "body": "Quick links to manage requirement areas, types, requirement version statuses, usage statuses, specification lifecycle statuses, specification item statuses, risk levels, quality characteristics, governance object types, and implementation types."
       },
       "privacy": {
         "heading": "Privacy erasure",
@@ -1541,7 +1533,7 @@
       "title": "Privacy",
       "overview": {
         "heading": "Purpose",
-        "body": "The Privacy tab is used when an authorized officer needs to preview and execute GDPR erasure for actor identities. It handles structured identity fields such as owners, creators, decision makers, and co-authors. Free-text fields are not scanned because users are instructed not to enter person-identifying details there."
+        "body": "The Privacy tab is used when an authorized officer needs to preview and execute GDPR erasure for actor identities. It handles structured identity fields such as requirement area owner HSA-IDs, package leads, creators, decision makers, and co-authors. Free-text fields are not scanned because users are instructed not to enter person-identifying details there."
       },
       "permissions": {
         "heading": "Permission",
@@ -1553,11 +1545,11 @@
       },
       "replacement": {
         "heading": "Replacement",
-        "body": "Enter replacement HSA-ID and name when live assignments should move to another person. Email address is optional and is used for owner records when a replacement owner needs to be created or updated. If no replacement is supplied, historical identity fields are anonymized where allowed."
+        "body": "Enter a replacement HSA-ID when live assignments should move to another person. If no replacement is supplied, historical identity fields are anonymized where allowed."
       },
       "preview": {
         "heading": "Preview",
-        "body": "Run Preview before executing. The table groups matches by object type and field, showing how many records are affected, the current display value, affected objects, and the recommended action. Rows controlled by an owner row are shown for information and have no separate action menu."
+        "body": "Run Preview before executing. The table groups matches by object type and field, showing how many records are affected, the current display value, affected objects, and the recommended action."
       },
       "actions": {
         "heading": "Table actions",
@@ -1682,17 +1674,6 @@
       "manage": {
         "heading": "Managing",
         "body": "You can reorder and configure the color of requirement version statuses using the controls in each row. System requirement version statuses are marked and cannot be removed."
-      }
-    },
-    "owners": {
-      "title": "Requirement area owners",
-      "overview": {
-        "heading": "What are requirement area owners?",
-        "body": "Requirement area owners are the named individuals responsible for requirements in a specific requirement area. They are listed on the requirement area and on each requirement's detail page."
-      },
-      "manage": {
-        "heading": "Managing",
-        "body": "Add, edit, or remove owners using the toolbar and row actions. An owner cannot be deleted while they are assigned to one or more requirement areas."
       }
     },
     "qualityCharacteristics": {

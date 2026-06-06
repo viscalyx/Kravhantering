@@ -69,7 +69,6 @@ The collector reuses the privacy-erasure source registry so erasure preview and
 data subject access export stay aligned for HSA-ID-backed fields. Current
 sources include:
 
-- owners
 - requirement versions
 - deviations and specification-local deviations
 - improvement suggestions

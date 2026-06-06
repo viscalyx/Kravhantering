@@ -680,11 +680,8 @@ describe('AdminClient', () => {
       panel.getByTestId('reference-data-icon-lifecycleStatuses'),
     ).toBeTruthy()
 
-    expect(panel.getByTestId('reference-data-card-areaOwners')).toHaveAttribute(
-      'href',
-      '/owners',
-    )
-    expect(panel.getByTestId('reference-data-icon-areaOwners')).toBeTruthy()
+    expect(panel.queryByTestId('reference-data-card-areaOwners')).toBeNull()
+    expect(panel.queryByTestId('reference-data-icon-areaOwners')).toBeNull()
 
     expect(
       panel.getByTestId('reference-data-card-specificationItemStatuses'),
@@ -693,7 +690,7 @@ describe('AdminClient', () => {
       panel.getByTestId('reference-data-icon-specificationItemStatuses'),
     ).toBeTruthy()
 
-    expect(panel.getAllByRole('link')).toHaveLength(10)
+    expect(panel.getAllByRole('link')).toHaveLength(9)
   })
 
   it('exposes the admin tabs through a tablist and updates selection on click', () => {
@@ -2069,25 +2066,11 @@ describe('AdminClient', () => {
               affectedReferences: ['SEC Säkerhet'],
               allowedActions: ['switch', 'skip'],
               count: 1,
-              currentDisplayValue: 'Kalle Svensson',
-              disabledReasonKey: null,
-              fieldKey: 'identity',
-              key: 'owners.identity',
-              objectKey: 'owners',
-              recommendedAction: 'switch',
-              warningKey: 'ownerAreaSwitchOnly',
-            },
-            {
-              affectedReferences: ['SEC Säkerhet'],
-              allowedActions: ['switch', 'skip'],
-              controlledByGroupKey: 'owners.identity',
-              count: 1,
-              currentDisplayValue: 'Kalle Svensson',
+              currentDisplayValue: 'SE5560000001-kalle1',
               disabledReasonKey: null,
               fieldKey: 'owner',
               key: 'requirement_areas.owner',
               objectKey: 'requirementAreas',
-              readOnlyReasonKey: 'controlledByOwner',
               recommendedAction: 'switch',
               warningKey: 'liveAssignment',
             },
@@ -2105,16 +2088,16 @@ describe('AdminClient', () => {
           ],
           previewToken: 'execution-preview-token',
           targetFingerprint: '0123456789abcdef0123456789abcdef',
-          totalCount: 3,
+          totalCount: 2,
         }),
       )
       .mockResolvedValueOnce(
         okJson({
-          actions: { anonymize: 0, delete: 0, skip: 1, switch: 2 },
+          actions: { anonymize: 0, delete: 0, skip: 1, switch: 1 },
           groups: [],
           requestId: 'erasure-request-1',
           targetFingerprint: '0123456789abcdef0123456789abcdef',
-          totalCount: 3,
+          totalCount: 2,
         }),
       )
 
@@ -2155,12 +2138,9 @@ describe('AdminClient', () => {
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
     )
 
-    const ownerRow = (
-      await screen.findByText('admin.privacy.objects.owners')
+    const requirementAreaRow = (
+      await screen.findByText('admin.privacy.objects.requirementAreas')
     ).closest('tr')
-    const requirementAreaRow = screen
-      .getByText('admin.privacy.objects.requirementAreas')
-      .closest('tr')
     const versionRow = screen
       .getByText('admin.privacy.objects.requirementVersions')
       .closest('tr')
@@ -2179,7 +2159,6 @@ describe('AdminClient', () => {
     expect(executeInit).toEqual(expect.objectContaining({ method: 'POST' }))
     expect(JSON.parse(String((executeInit as RequestInit).body))).toEqual({
       actions: {
-        'owners.identity': 'switch',
         'requirement_areas.owner': 'switch',
         'requirement_versions.created_by': 'skip',
       },
@@ -2195,10 +2174,6 @@ describe('AdminClient', () => {
     })
 
     expect(screen.getByText('admin.privacy.status')).toBeTruthy()
-    expect(ownerRow).toHaveTextContent(
-      'admin.privacy.executionStatus.completed',
-    )
-    expect(ownerRow?.className).toContain('bg-emerald')
     expect(requirementAreaRow).toHaveTextContent(
       'admin.privacy.executionStatus.completed',
     )
@@ -2357,15 +2332,15 @@ describe('AdminClient', () => {
           groups: [
             {
               affectedReferences: ['SEC Säkerhet'],
-              allowedActions: ['delete', 'skip'],
+              allowedActions: ['switch', 'skip'],
               count: 1,
-              currentDisplayValue: 'Kalle Svensson',
+              currentDisplayValue: 'SE5560000001-kalle1',
               disabledReasonKey: null,
-              fieldKey: 'identity',
-              key: 'owners.identity',
-              objectKey: 'owners',
-              recommendedAction: 'delete',
-              warningKey: 'ownerDelete',
+              fieldKey: 'owner',
+              key: 'requirement_areas.owner',
+              objectKey: 'requirementAreas',
+              recommendedAction: 'switch',
+              warningKey: 'liveAssignment',
             },
             {
               affectedReferences: ['INT0001 v1'],
@@ -2389,11 +2364,10 @@ describe('AdminClient', () => {
           {
             code: 'validation',
             details: {
-              groupKey: 'owners.identity',
-              reason: 'owner_area_references_blocking',
+              groupKey: 'requirement_areas.owner',
+              reason: 'unsupported_privacy_action',
             },
-            error:
-              'Requirement areas must be switched before changing the owner identity',
+            error: 'The row does not support the selected action.',
           },
           400,
         ),
@@ -2415,8 +2389,8 @@ describe('AdminClient', () => {
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
     )
 
-    const ownerRow = (
-      await screen.findByText('admin.privacy.objects.owners')
+    const requirementAreaRow = (
+      await screen.findByText('admin.privacy.objects.requirementAreas')
     ).closest('tr')
     const versionRow = screen
       .getByText('admin.privacy.objects.requirementVersions')
@@ -2441,8 +2415,10 @@ describe('AdminClient', () => {
     )
 
     expect(screen.getByText('admin.privacy.status')).toBeTruthy()
-    expect(ownerRow).toHaveTextContent('admin.privacy.executionStatus.failed')
-    expect(ownerRow?.className).toContain('bg-red')
+    expect(requirementAreaRow).toHaveTextContent(
+      'admin.privacy.executionStatus.failed',
+    )
+    expect(requirementAreaRow?.className).toContain('bg-red')
     expect(versionRow).toHaveTextContent('admin.privacy.warnings.historySwitch')
     expect(versionRow).not.toHaveTextContent(
       'admin.privacy.executionStatus.completed',
@@ -2529,7 +2505,7 @@ describe('AdminClient', () => {
     ).toBeEnabled()
   })
 
-  it('disables the owner action row when requirement areas still reference the owner and no replacement exists', async () => {
+  it('offers only skip for requirement area owner rows when no replacement exists', async () => {
     searchParamsMock.current = new URLSearchParams('tab=privacy')
     fetchMock.mockResolvedValueOnce(
       okJson({
@@ -2537,39 +2513,19 @@ describe('AdminClient', () => {
           {
             affectedReferences: ['INT Integration', 'SEC Säkerhet'],
             allowedActions: ['skip'],
-            blockingReferences: [
-              {
-                objectKey: 'requirementAreas',
-                values: ['INT Integration', 'SEC Säkerhet'],
-              },
-            ],
             count: 1,
-            currentDisplayValue: 'Kalle Svensson',
-            disabledReasonKey: 'ownerAreaReplacementRequired',
-            fieldKey: 'identity',
-            key: 'owners.identity',
-            objectKey: 'owners',
-            recommendedAction: 'skip',
-            warningKey: 'ownerSwitch',
-          },
-          {
-            affectedReferences: ['INT Integration', 'SEC Säkerhet'],
-            allowedActions: ['switch', 'skip'],
-            controlledByGroupKey: 'owners.identity',
-            count: 1,
-            currentDisplayValue: 'Kalle Svensson',
+            currentDisplayValue: 'SE5560000001-kalle1',
             disabledReasonKey: null,
             fieldKey: 'owner',
             key: 'requirement_areas.owner',
             objectKey: 'requirementAreas',
-            readOnlyReasonKey: 'controlledByOwner',
             recommendedAction: 'skip',
             warningKey: 'liveAssignment',
           },
         ],
         previewToken: 'owner-blocked-preview-token',
         targetFingerprint: '0123456789abcdef0123456789abcdef',
-        totalCount: 2,
+        totalCount: 1,
       }),
     )
 
@@ -2589,46 +2545,20 @@ describe('AdminClient', () => {
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
     )
 
-    const row = await screen.findByText('admin.privacy.objects.owners')
-    const ownerRow = row.closest('tr')
-    expect(ownerRow).not.toBeNull()
-    expect(ownerRow).toHaveAttribute('aria-disabled', 'true')
-
-    const select = within(ownerRow as HTMLTableRowElement).getByRole('combobox')
-    expect(select).toBeDisabled()
-    expect(
-      within(ownerRow as HTMLTableRowElement).getAllByRole('option'),
-    ).toHaveLength(1)
-    expect(
-      within(ownerRow as HTMLTableRowElement).getByRole('option', {
-        name: 'admin.privacy.actions.skip',
-      }),
-    ).toHaveValue('skip')
-    expect(ownerRow).toHaveTextContent(
-      'admin.privacy.blockers.ownerAreaReplacementRequired',
-    )
-    const ownerAlert = within(ownerRow as HTMLTableRowElement).getByRole(
-      'alert',
-    )
-    expect(ownerAlert).not.toHaveTextContent('INT Integration')
-    expect(ownerAlert).not.toHaveTextContent('SEC Säkerhet')
-    expect(ownerRow).toHaveTextContent('INT Integration')
-    expect(ownerRow).toHaveTextContent('SEC Säkerhet')
-
     const requirementAreaRow = (
       await screen.findByText('admin.privacy.objects.requirementAreas')
     ).closest('tr')
     expect(requirementAreaRow).not.toBeNull()
-    expect(requirementAreaRow).toHaveAttribute('aria-disabled', 'true')
+    const select = within(requirementAreaRow as HTMLTableRowElement).getByRole(
+      'combobox',
+    )
+    expect(select).toBeEnabled()
     expect(
-      within(requirementAreaRow as HTMLTableRowElement).queryByRole('combobox'),
-    ).toBeNull()
+      within(requirementAreaRow as HTMLTableRowElement).getAllByRole('option'),
+    ).toHaveLength(1)
     expect(requirementAreaRow).toHaveTextContent('admin.privacy.actions.skip')
     expect(requirementAreaRow).toHaveTextContent('INT Integration')
     expect(requirementAreaRow).toHaveTextContent('SEC Säkerhet')
-    expect(requirementAreaRow).toHaveTextContent(
-      'admin.privacy.readOnly.controlledByOwner',
-    )
   })
 
   it('disables the requirement package owner row when no replacement exists', async () => {
@@ -2702,39 +2632,19 @@ describe('AdminClient', () => {
           {
             affectedReferences: ['SEC Säkerhet'],
             allowedActions: ['switch', 'skip'],
-            blockingReferences: [
-              {
-                objectKey: 'requirementAreas',
-                values: ['SEC Säkerhet'],
-              },
-            ],
             count: 1,
-            currentDisplayValue: 'Kalle Svensson',
-            disabledReasonKey: null,
-            fieldKey: 'identity',
-            key: 'owners.identity',
-            objectKey: 'owners',
-            recommendedAction: 'switch',
-            warningKey: 'ownerAreaSwitchOnly',
-          },
-          {
-            affectedReferences: ['SEC Säkerhet'],
-            allowedActions: ['switch', 'skip'],
-            controlledByGroupKey: 'owners.identity',
-            count: 1,
-            currentDisplayValue: 'Kalle Svensson',
+            currentDisplayValue: 'SE5560000001-kalle1',
             disabledReasonKey: null,
             fieldKey: 'owner',
             key: 'requirement_areas.owner',
             objectKey: 'requirementAreas',
-            readOnlyReasonKey: 'controlledByOwner',
             recommendedAction: 'switch',
             warningKey: 'liveAssignment',
           },
         ],
         previewToken: 'owner-switch-preview-token',
         targetFingerprint: '0123456789abcdef0123456789abcdef',
-        totalCount: 2,
+        totalCount: 1,
       }),
     )
 
@@ -2760,34 +2670,28 @@ describe('AdminClient', () => {
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
     )
 
-    const ownerRow = (
-      await screen.findByText('admin.privacy.objects.owners')
-    ).closest('tr')
-    expect(ownerRow).not.toBeNull()
-
-    const select = within(ownerRow as HTMLTableRowElement).getByRole('combobox')
-    expect(select).toBeEnabled()
-    expect(
-      within(ownerRow as HTMLTableRowElement)
-        .getAllByRole('option')
-        .map(option => option.getAttribute('value')),
-    ).toEqual(['switch', 'skip'])
-    expect(ownerRow).not.toHaveTextContent('admin.privacy.actions.anonymize')
-    expect(ownerRow).not.toHaveTextContent('admin.privacy.actions.delete')
-
     const requirementAreaRow = (
       await screen.findByText('admin.privacy.objects.requirementAreas')
     ).closest('tr')
     expect(requirementAreaRow).not.toBeNull()
-    expect(requirementAreaRow).toHaveAttribute('aria-disabled', 'true')
+
+    const select = within(requirementAreaRow as HTMLTableRowElement).getByRole(
+      'combobox',
+    )
+    expect(select).toBeEnabled()
     expect(
-      within(requirementAreaRow as HTMLTableRowElement).queryByRole('combobox'),
-    ).toBeNull()
+      within(requirementAreaRow as HTMLTableRowElement)
+        .getAllByRole('option')
+        .map(option => option.getAttribute('value')),
+    ).toEqual(['switch', 'skip'])
+    expect(requirementAreaRow).not.toHaveTextContent(
+      'admin.privacy.actions.anonymize',
+    )
+    expect(requirementAreaRow).not.toHaveTextContent(
+      'admin.privacy.actions.delete',
+    )
     expect(requirementAreaRow).toHaveTextContent('admin.privacy.actions.switch')
     expect(requirementAreaRow).toHaveTextContent('SEC Säkerhet')
-    expect(requirementAreaRow).toHaveTextContent(
-      'admin.privacy.readOnly.controlledByOwner',
-    )
   })
 
   it('hides switch actions if the replacement HSA-ID is cleared after preview', async () => {
@@ -2865,25 +2769,25 @@ describe('AdminClient', () => {
     ).toHaveValue('skip')
   })
 
-  it('shows only delete and skip for an owner row with no linked requirement areas', async () => {
+  it('shows only skip for a requirement area owner row without replacement', async () => {
     searchParamsMock.current = new URLSearchParams('tab=privacy')
     fetchMock.mockResolvedValueOnce(
       okJson({
         groups: [
           {
             affectedReferences: [],
-            allowedActions: ['delete', 'skip'],
+            allowedActions: ['skip'],
             count: 1,
-            currentDisplayValue: 'Kalle Svensson',
+            currentDisplayValue: 'SE5560000001-kalle1',
             disabledReasonKey: null,
-            fieldKey: 'identity',
-            key: 'owners.identity',
-            objectKey: 'owners',
-            recommendedAction: 'delete',
-            warningKey: 'ownerDelete',
+            fieldKey: 'owner',
+            key: 'requirement_areas.owner',
+            objectKey: 'requirementAreas',
+            recommendedAction: 'skip',
+            warningKey: 'liveAssignment',
           },
         ],
-        previewToken: 'owner-delete-preview-token',
+        previewToken: 'area-owner-skip-preview-token',
         targetFingerprint: '0123456789abcdef0123456789abcdef',
         totalCount: 1,
       }),
@@ -2905,20 +2809,29 @@ describe('AdminClient', () => {
       screen.getByRole('button', { name: 'admin.privacy.preview' }),
     )
 
-    const ownerRow = (
-      await screen.findByText('admin.privacy.objects.owners')
+    const requirementAreaRow = (
+      await screen.findByText('admin.privacy.objects.requirementAreas')
     ).closest('tr')
-    expect(ownerRow).not.toBeNull()
+    expect(requirementAreaRow).not.toBeNull()
 
-    const select = within(ownerRow as HTMLTableRowElement).getByRole('combobox')
+    const select = within(requirementAreaRow as HTMLTableRowElement).getByRole(
+      'combobox',
+    )
     expect(select).toBeEnabled()
     expect(
-      within(ownerRow as HTMLTableRowElement)
+      within(requirementAreaRow as HTMLTableRowElement)
         .getAllByRole('option')
         .map(option => option.getAttribute('value')),
-    ).toEqual(['delete', 'skip'])
-    expect(ownerRow).not.toHaveTextContent('admin.privacy.actions.switch')
-    expect(ownerRow).not.toHaveTextContent('admin.privacy.actions.anonymize')
+    ).toEqual(['skip'])
+    expect(requirementAreaRow).not.toHaveTextContent(
+      'admin.privacy.actions.switch',
+    )
+    expect(requirementAreaRow).not.toHaveTextContent(
+      'admin.privacy.actions.delete',
+    )
+    expect(requirementAreaRow).not.toHaveTextContent(
+      'admin.privacy.actions.anonymize',
+    )
   })
 
   it('explains when privacy preview requires the PrivacyOfficer role', async () => {

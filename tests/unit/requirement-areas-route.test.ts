@@ -22,9 +22,10 @@ const mocks = vi.hoisted(() => ({
   getRequestSqlServerDataSource: vi.fn(() => 'mock-db'),
   listAreas: vi.fn(),
   createArea: vi.fn(),
-  listOwners: vi.fn(),
+  updateArea: vi.fn(),
   recordAdminPrivilegedActionSucceeded: vi.fn(),
 }))
+
 vi.mock('@/lib/admin/privileged-audit', () => ({
   createAdminPrivilegedAuditContext: mocks.createAdminPrivilegedAuditContext,
   recordAdminPrivilegedActionSucceeded:
@@ -36,12 +37,27 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/dal/requirement-areas', () => ({
   listAreas: mocks.listAreas,
   createArea: mocks.createArea,
-}))
-vi.mock('@/lib/dal/owners', () => ({
-  listOwners: mocks.listOwners,
+  updateArea: mocks.updateArea,
 }))
 
+import { PUT } from '@/app/api/requirement-areas/[id]/route'
 import { GET, POST } from '@/app/api/requirement-areas/route'
+
+function request(
+  body: unknown,
+  url = 'http://localhost/api/requirement-areas',
+  method = 'POST',
+) {
+  return new Request(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+function makeParams(id: string) {
+  return { params: Promise.resolve({ id }) }
+}
 
 describe('requirement-areas route', () => {
   beforeEach(() => {
@@ -49,62 +65,126 @@ describe('requirement-areas route', () => {
   })
 
   describe('GET', () => {
-    it('returns areas enriched with ownerName', async () => {
+    it('returns areas with ownerHsaId', async () => {
       mocks.listAreas.mockResolvedValue([
-        { id: 1, prefix: 'INT', name: 'Integration', ownerId: 1 },
-        { id: 2, prefix: 'SÄK', name: 'Säkerhet', ownerId: null },
-      ])
-      mocks.listOwners.mockResolvedValue([
-        { id: 1, firstName: 'Anna', lastName: 'S', email: 'a@b.com' },
+        {
+          id: 1,
+          prefix: 'INT',
+          name: 'Integration',
+          description: null,
+          ownerHsaId: 'SE5560000001-annaj',
+        },
       ])
 
       const res = await GET()
       const json = (await res.json()) as {
-        areas: { ownerName: string | null }[]
+        areas: { ownerHsaId: string }[]
       }
 
-      expect(json.areas).toHaveLength(2)
-      expect(json.areas[0].ownerName).toBe('Anna S')
-      expect(json.areas[1].ownerName).toBeNull()
-    })
-
-    it('returns null ownerName when owner not found', async () => {
-      mocks.listAreas.mockResolvedValue([
-        { id: 1, prefix: 'INT', name: 'Integration', ownerId: 999 },
-      ])
-      mocks.listOwners.mockResolvedValue([])
-
-      const res = await GET()
-      const json = (await res.json()) as {
-        areas: { ownerName: string | null }[]
-      }
-      expect(json.areas[0].ownerName).toBeNull()
+      expect(json.areas).toHaveLength(1)
+      expect(json.areas[0].ownerHsaId).toBe('SE5560000001-annaj')
     })
   })
 
   describe('POST', () => {
     it('creates a requirement area and returns 201', async () => {
-      const body = { prefix: 'NEW', name: 'New requirement area' }
+      const body = {
+        ownerHsaId: 'NO5560000001-new1',
+        prefix: 'NEW',
+        name: 'New requirement area',
+      }
       mocks.createArea.mockResolvedValue({ id: 3, ...body })
 
-      const req = new Request('http://localhost/api/requirement-areas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      const res = await POST(req)
+      const res = await POST(request(body))
       expect(res.status).toBe(201)
       expect(await res.json()).toMatchObject({ id: 3 })
+      expect(mocks.createArea).toHaveBeenCalledWith('mock-db', body)
       expect(mocks.recordAdminPrivilegedActionSucceeded).toHaveBeenCalledWith(
         expect.objectContaining({ requestId: 'request-area' }),
         {
-          changedFields: ['name', 'prefix'],
+          changedFields: ['name', 'ownerHsaId', 'prefix'],
           operation: 'create',
           resourceId: 3,
           resourceType: 'requirement_area',
         },
       )
+    })
+
+    it('requires ownerHsaId', async () => {
+      const res = await POST(
+        request({ prefix: 'NEW', name: 'New requirement area' }),
+      )
+
+      expect(res.status).toBe(400)
+      expect(mocks.createArea).not.toHaveBeenCalled()
+    })
+
+    it('rejects invalid ownerHsaId', async () => {
+      const res = await POST(
+        request({
+          ownerHsaId: 'not-hsa',
+          prefix: 'NEW',
+          name: 'New requirement area',
+        }),
+      )
+
+      expect(res.status).toBe(400)
+      expect(mocks.createArea).not.toHaveBeenCalled()
+    })
+
+    it('rejects legacy ownerId and ownerName fields', async () => {
+      const res = await POST(
+        request({
+          ownerHsaId: 'SE5560000001-new1',
+          ownerId: 1,
+          ownerName: 'Anna Svensson',
+          prefix: 'NEW',
+          name: 'New requirement area',
+        }),
+      )
+
+      expect(res.status).toBe(400)
+      expect(mocks.createArea).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('PUT', () => {
+    it('can change ownerHsaId', async () => {
+      mocks.updateArea.mockResolvedValue({
+        id: 1,
+        prefix: 'INT',
+        name: 'Integration',
+        description: null,
+        ownerHsaId: 'NO5560000001-next1',
+      })
+
+      const res = await PUT(
+        request(
+          { ownerHsaId: 'NO5560000001-next1' },
+          'http://localhost/api/requirement-areas/1',
+          'PUT',
+        ),
+        makeParams('1'),
+      )
+
+      expect(res.status).toBe(200)
+      expect(mocks.updateArea).toHaveBeenCalledWith('mock-db', 1, {
+        ownerHsaId: 'NO5560000001-next1',
+      })
+    })
+
+    it('rejects legacy ownerId and ownerName fields', async () => {
+      const res = await PUT(
+        request(
+          { ownerId: 1, ownerName: 'Anna Svensson' },
+          'http://localhost/api/requirement-areas/1',
+          'PUT',
+        ),
+        makeParams('1'),
+      )
+
+      expect(res.status).toBe(400)
+      expect(mocks.updateArea).not.toHaveBeenCalled()
     })
   })
 })

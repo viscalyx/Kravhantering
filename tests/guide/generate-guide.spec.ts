@@ -1690,16 +1690,6 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await guideStep(page, 'Ägare', async () => {
-      await guideGoto(page, '/sv/owners')
-      await snap(
-        page,
-        'agare',
-        'Ägare',
-        'Ägare är de personer eller roller som ansvarar för kravområden. Varje kravområde tilldelas en ägare som är ansvarig för kravens kvalitet och aktualitet.',
-      )
-    })
-
     // ── Sektion 10: Rapporter ─────────────────────────────────────────────
     currentSection = 'Rapporter'
     setSectionIntro(

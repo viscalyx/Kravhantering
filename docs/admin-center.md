@@ -376,14 +376,16 @@ with text-only labels until an admin selects one.
 
 ### Requirement Area Owner
 
-Each requirement area can have an assigned owner. The owner is selected from
-an external owners list when creating or editing a requirement area in the
-requirement area reference-data page. The owner name is displayed:
+Each requirement area must have an assigned owner HSA-ID. A new requirement area
+is created with an editable HSA-ID field. When an existing requirement area is
+edited, the current HSA-ID is shown as read-only; the icon button next to it
+opens the owner-change dialog where admins enter the replacement HSA-ID and
+confirm with `Byt ägare`.
 
-- in the requirement area reference data table
-- as small text under the requirement area dropdown in the requirement
+- as HSA-ID in the requirement area reference data table
+- as HSA-ID under the requirement area dropdown in the requirement
   create/edit form
-- in the requirement detail pane (inline and full-page sidebar)
+- as HSA-ID in the requirement detail pane (inline and full-page sidebar)
 
 ## Contributor Notes
 

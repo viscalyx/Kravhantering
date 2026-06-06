@@ -26,7 +26,6 @@ import {
   RotateCcw,
   Save,
   ShieldCheck,
-  UserCog,
   Wrench,
   X,
   XCircle,
@@ -2894,13 +2893,6 @@ export default function AdminClient({
       icon: ClipboardList,
       id: 'specificationItemStatuses',
       label: tn('specificationItemStatuses'),
-    },
-    {
-      description: ta('areaOwnersDescription'),
-      href: '/owners',
-      icon: UserCog,
-      id: 'areaOwners',
-      label: tn('areaOwners'),
     },
   ]
 

@@ -155,7 +155,6 @@ interface RetentionSourceDefinition {
   subjectTable: string
 }
 
-const ORPHANED_OWNER_POLICY_KEY = 'orphaned_owner_delete'
 const UNUSED_TAXONOMY_POLICY_KEY = 'unused_taxonomy_delete'
 const OLD_REQUIREMENT_VERSIONS_POLICY_KEY = 'old_requirement_versions_delete'
 const OBSOLETE_SPECIFICATIONS_POLICY_KEY = 'obsolete_specifications_delete'
@@ -257,37 +256,6 @@ const DELETE_REQUIREMENT_SELECTION_ANSWER_SQL = `DECLARE @answer_id int;
       END`
 
 const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
-  {
-    action: 'delete',
-    executeSql: `DELETE owner
-      FROM owners owner
-      WHERE owner.id = @0
-        AND NOT EXISTS (
-          SELECT 1 FROM requirement_areas area WHERE area.owner_id = owner.id
-        )`,
-    fieldKey: 'identity',
-    objectKey: 'owners',
-    policyKey: ORPHANED_OWNER_POLICY_KEY,
-    selectSql: `SELECT *
-      FROM (
-        SELECT
-          N'owners.identity' AS source_key,
-          N'owners' AS subject_table,
-          CAST(owner.id AS nvarchar(120)) AS subject_id,
-          CONCAT(owner.first_name, N' ', owner.last_name) AS reference,
-          owner.hsa_id AS current_display_value,
-          owner.updated_at AS age_basis
-        FROM owners owner
-        WHERE owner.updated_at <= @0
-          AND NOT EXISTS (
-            SELECT 1 FROM requirement_areas area WHERE area.owner_id = owner.id
-          )
-      ) source
-      WHERE ${ACTIVE_EXCEPTION_SQL}
-      ORDER BY source.reference ASC`,
-    sourceKey: 'owners.identity',
-    subjectTable: 'owners',
-  },
   {
     action: 'delete',
     executeSql: `DELETE area

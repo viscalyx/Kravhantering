@@ -3,7 +3,6 @@ import { runSeedData, seedPositionDetail } from './seed-runner.mjs'
 
 const TABLE_ORDER = [
   'norm_references',
-  'owners',
   'archiving_retention_policies',
   'archiving_retention_runs',
   'archiving_retention_exceptions',
@@ -143,43 +142,6 @@ const SEED_DATA = {
       ],
     ],
   },
-  owners: {
-    columns: [
-      'id',
-      'first_name',
-      'last_name',
-      'email',
-      'created_at',
-      'updated_at',
-    ],
-    pk: ['id'],
-    rows: [
-      [
-        1,
-        'Anna',
-        'Johansson',
-        'anna.johansson@example.com',
-        '2026-04-20 20:07:00',
-        '2026-04-20 20:07:00',
-      ],
-      [
-        2,
-        'Erik',
-        'Lindberg',
-        'erik.lindberg@example.com',
-        '2026-04-20 20:07:00',
-        '2026-04-20 20:07:00',
-      ],
-      [
-        3,
-        'Maria',
-        'Svensson',
-        'maria.svensson@example.com',
-        '2026-04-20 20:07:00',
-        '2026-04-20 20:07:00',
-      ],
-    ],
-  },
   archiving_retention_policies: {
     columns: [
       'id',
@@ -196,19 +158,6 @@ const SEED_DATA = {
     ],
     pk: ['id'],
     rows: [
-      [
-        2,
-        'orphaned_owner_delete',
-        'Fristående ägare utan aktiva uppdrag',
-        'delete',
-        365,
-        'Ägare utan koppling till kravområden eller kravunderlag',
-        1,
-        'docs/informationsmangder-kravhantering.md#gallrings--och-arkiveringsmatris',
-        null,
-        '2026-04-20 20:07:00',
-        '2026-04-20 20:07:00',
-      ],
       [
         3,
         'unused_taxonomy_delete',
@@ -12639,26 +12588,27 @@ function addLinneaPrivacyExerciseSeed() {
 }
 
 function applyPrivacyIdentitySeed() {
-  const owners = seedTable('owners')
-  ensureColumn(owners, 'hsa_id', row => OWNER_HSA_BY_ID.get(row[0]) ?? null)
-  ensureSeedRow(owners, [
-    4,
-    'Kalle',
-    'Svensson',
-    'kalle.svensson.one@example.com',
-    PRIVACY_SEED_TS,
-    PRIVACY_SEED_TS,
-    'SE5560000001-kalle1',
-  ])
-  ensureSeedRow(owners, [
-    5,
-    'Kalle',
-    'Svensson',
-    'kalle.svensson.two@example.com',
-    PRIVACY_SEED_TS,
-    PRIVACY_SEED_TS,
-    'SE5560000001-kalle2',
-  ])
+  const areas = seedTable('requirement_areas')
+  const ownerColumnIndex = areas.columns.indexOf('owner_id')
+  if (ownerColumnIndex >= 0) {
+    areas.columns[ownerColumnIndex] = 'owner_hsa_id'
+    for (const row of areas.rows) {
+      const currentOwnerValue = row[ownerColumnIndex]
+      const ownerHsaId =
+        OWNER_HSA_BY_ID.get(currentOwnerValue) ??
+        (typeof currentOwnerValue === 'string' &&
+        /^[A-Z]{2}\d{10}-[A-Za-z0-9]+$/u.test(currentOwnerValue) &&
+        currentOwnerValue.length <= 31
+          ? currentOwnerValue
+          : null)
+      if (!ownerHsaId) {
+        throw new Error(
+          `Privacy seed: missing owner HSA-ID for requirement area owner ${currentOwnerValue}`,
+        )
+      }
+      row[ownerColumnIndex] = ownerHsaId
+    }
+  }
 
   addHsaColumnForDisplay(
     'requirement_versions',

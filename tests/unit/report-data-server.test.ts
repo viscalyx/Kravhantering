@@ -7,7 +7,6 @@ import {
 } from '@/lib/reports/data/server'
 
 const dalState = vi.hoisted(() => ({
-  getOwnerById: vi.fn(),
   getRequirementById: vi.fn(),
   getRequirementByUniqueId: vi.fn(),
   getSpecificationById: vi.fn(),
@@ -26,10 +25,6 @@ vi.mock('@/lib/dal/deviations', () => ({
 
 vi.mock('@/lib/dal/improvement-suggestions', () => ({
   listSuggestionsForRequirement: dalState.listSuggestionsForRequirement,
-}))
-
-vi.mock('@/lib/dal/owners', () => ({
-  getOwnerById: dalState.getOwnerById,
 }))
 
 vi.mock('@/lib/dal/requirements', () => ({
@@ -121,7 +116,6 @@ function createReportDb(): SqlServerDatabase {
 describe('report data server helpers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    dalState.getOwnerById.mockResolvedValue(null)
     dalState.parseSpecificationItemRef.mockReturnValue(null)
   })
 

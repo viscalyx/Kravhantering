@@ -50,7 +50,6 @@
     "createdAt": "Skapad",
     "updatedAt": "Uppdaterad",
     "error": "Ett fel uppstod",
-    "ownerLoadError": "Kunde inte hämta ägare. Befintliga ägarval behålls om de finns.",
     "share": "Dela",
     "copied": "Kopierad",
     "help": "Hjälp",
@@ -83,7 +82,6 @@
     "governanceObjectTypes": "Styrningsobjektstyper",
     "implementationTypes": "Genomförandeformer",
     "lifecycleStatuses": "Kravunderlagets livscykelstatusar",
-    "areaOwners": "Kravområdesägare",
     "normReferences": "Normreferenser",
     "specificationItemStatuses": "Användningsstatusar",
     "admin": "Administration",
@@ -390,11 +388,21 @@
     "name": "Namn",
     "description": "Beskrivning",
     "owner": "Kravområdesägare",
+    "changeOwner": "Byt ägare",
+    "changeOwnerTitle": "Byt kravområdesägare",
+    "changeOwnerDescription": "Ange det HSA-ID som ska äga kravområdet framöver.",
+    "currentOwner": "Förra ägarens HSA-ID",
+    "newOwner": "Nya ägarens HSA-ID",
+    "ownerChangeError": "Det gick inte att byta ägare.",
+    "ownerChangeInvalid": "Ange ett giltigt HSA-ID.",
+    "ownerChangeSame": "Ange ett annat HSA-ID.",
     "help": {
       "prefix": "Ange det korta prefix med versaler som används när krav-ID:n skapas för kravområdet. Prefixet kan bara ändras när ett nytt kravområde skapas.",
       "name": "Ange visningsnamnet för kravområdet.",
       "description": "Beskriv vid behov vilka typer av krav som hör hemma i kravområdet. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
-      "owner": "Välj den person eller grupp som ansvarar för kravområdet."
+      "owner": "Ange HSA-ID för personen som ansvarar för kravområdet. Vid redigering är HSA-ID:t låst; använd knappen för att byta ägare.",
+      "currentOwner": "Visar HSA-ID:t som är tilldelat kravområdet idag.",
+      "newOwner": "Ange det ersättande HSA-ID:t. Värdet måste följa HSA-ID-formatet och skilja sig från förra ägaren."
     },
     "newArea": "Nytt kravområde",
     "editArea": "Redigera kravområde",
@@ -424,7 +432,7 @@
     "canResponsibleGenerateAi": "Kravunderlagsansvarig får använda AI",
     "canResponsibleGenerateAiHelp": "Aktivera bara när kravunderlagsansvarig får använda AI-stöd för detta kravunderlag.",
     "responsiblePairRequired": "Ange både kravunderlagsansvarig och HSA-ID för kravunderlagsansvarig, eller lämna båda tomma.",
-    "invalidResponsibleHsaId": "Kontrollera HSA-ID för kravunderlagsansvarig. Formatet ska vara SE följt av 10 siffror, bindestreck och en alfanumerisk ändelse.",
+    "invalidResponsibleHsaId": "Kontrollera HSA-ID för kravunderlagsansvarig. Formatet ska vara två versala bokstäver för landskod, 10 siffror, bindestreck och en alfanumerisk ändelse.",
     "implementationType": "Genomförandeform",
     "implementationTypeHelp": "Välj den genomförandeform som bäst beskriver hur underlaget ska levereras.",
     "lifecycleStatus": "Kravunderlagets livscykelstatus",
@@ -727,7 +735,7 @@
     "leadDisplayName": "Paketansvarigs namn",
     "leadDisplayNameHelp": "Ange visningsnamnet för den person som ansvarar för kravpaketet.",
     "leadHsaId": "Paketansvarigs HSA-ID",
-    "leadHsaIdHelp": "Ange HSA-ID för paketansvarig i formatet SE följt av organisationsnummer, bindestreck och alfanumeriskt suffix.",
+    "leadHsaIdHelp": "Ange HSA-ID för paketansvarig med två versala bokstäver för landskod, organisationsnummer med 10 siffror, bindestreck och alfanumeriskt suffix.",
     "owner": "Ägare",
     "help": {
       "owner": "Välj ägaren som ansvarar för kravpaketet och dess kopplade krav."
@@ -832,20 +840,6 @@
     "owner": "Referensägare",
     "addReference": "Lägg till referens",
     "unnamed": "Referens"
-  },
-  "ownerMgmt": {
-    "name": "Namn",
-    "firstName": "Förnamn",
-    "lastName": "Efternamn",
-    "hsaId": "HSA-ID",
-    "email": "E-post",
-    "help": {
-      "firstName": "Ange ägarens förnamn.",
-      "lastName": "Ange ägarens efternamn.",
-      "hsaId": "Ange ägarens verifierade HSA-ID. Namn är visningskopior; HSA-ID är den varaktiga identitetsnyckeln.",
-      "email": "Ange e-postadressen som används för att kontakta ägaren."
-    },
-    "emptyState": "Inga kravområdesägare ännu. Skapa din första kravområdesägare."
   },
   "governanceObjectTypeMgmt": {
     "name": "Namn",
@@ -961,7 +955,7 @@
       "permissionError": "Du saknar rollen Dataskyddshandläggare. Logga in som dataskyddshandläggare för att köra dataskyddsradering.",
       "replacementIncomplete": "Ange både ersättande HSA-ID och ersättande namn, eller lämna båda fälten tomma för anonymisering.",
       "invalidReplacementEmail": "Kontrollera den ersättande e-postadressen.",
-      "invalidHsaId": "Kontrollera HSA-ID. Formatet ska vara SE följt av 10 siffror, bindestreck och en alfanumerisk ändelse.",
+      "invalidHsaId": "Kontrollera HSA-ID. Formatet ska vara två versala bokstäver för landskod, 10 siffror, bindestreck och en alfanumerisk ändelse.",
       "serverPreviewError": "Servern kunde inte förhandsgranska dataskyddsraderingen.",
       "serverExecuteError": "Servern kunde inte köra dataskyddsraderingen.",
       "serverErrorWithDetail": "{message} Teknisk feltext: {detail}",
@@ -995,12 +989,11 @@
       "executionErrors": {
         "owner_area_references_blocking": "Kravområden måste bytas innan ägaren kan ändras.",
         "owner_references_blocking": "Ägarreferenser måste bytas innan ägaren kan tas bort.",
-        "replacement_required": "Ersättande HSA-ID och namn krävs för den valda åtgärden.",
+        "replacement_required": "Ersättande HSA-ID krävs för den valda åtgärden.",
         "unsupported_owner_action": "Ägarraden stöder inte den valda åtgärden.",
         "unsupported_privacy_action": "Raden stöder inte den valda åtgärden."
       },
       "objects": {
-        "owners": "Ägare",
         "requirementAreas": "Kravområden",
         "requirementPackages": "Kravpaket",
         "normReferences": "Normreferenser",
@@ -1184,7 +1177,6 @@
     "governanceObjectTypesDescription": "Hantera styrningsobjektstyper för kravunderlag.",
     "implementationTypesDescription": "Hantera genomförandeformer för kravunderlag.",
     "lifecycleStatusesDescription": "Hantera kravunderlagets livscykelstatusar.",
-    "areaOwnersDescription": "Hantera ägare som kan tilldelas kravområden.",
     "riskLevelsDescription": "Hantera risknivåer som kan tilldelas krav.",
     "specificationItemStatusesDescription": "Hantera användningsstatusar för kravtillämpningar."
   },
@@ -1526,7 +1518,7 @@
       },
       "referenceData": {
         "heading": "Referensdata",
-        "body": "Snabblänkar till hantering av kravområden, typer, kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar, kravunderlagets kravstatusar, risknivåer, kvalitetsegenskaper, styrningsobjektstyper, genomförandeformer och kravområdesägare."
+        "body": "Snabblänkar till hantering av kravområden, typer, kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar, kravunderlagets kravstatusar, risknivåer, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer."
       },
       "privacy": {
         "heading": "Dataskyddsradering",
@@ -1541,7 +1533,7 @@
       "title": "Dataskydd",
       "overview": {
         "heading": "Syfte",
-        "body": "Dataskyddsfliken används när en behörig handläggare behöver förhandsgranska och genomföra GDPR-radering av aktörsidentiteter. Den hanterar strukturerade identitetsfält som ägare, skapare, beslutsfattare och medförfattare. Fritextfält skannas inte, eftersom användare instrueras att inte skriva personidentifierande uppgifter där."
+        "body": "Dataskyddsfliken används när en behörig handläggare behöver förhandsgranska och genomföra GDPR-radering av aktörsidentiteter. Den hanterar strukturerade identitetsfält som HSA-ID för kravområdesägare, ansvariga för kravpaket, skapare, beslutsfattare och medförfattare. Fritextfält skannas inte, eftersom användare instrueras att inte skriva personidentifierande uppgifter där."
       },
       "permissions": {
         "heading": "Behörighet",
@@ -1553,11 +1545,11 @@
       },
       "replacement": {
         "heading": "Ersättare",
-        "body": "Ange ersättande HSA-ID och namn när aktiva tilldelningar ska flyttas till en annan person. E-postadress är valfri och används för ägarposter när en ersättande ägare behöver skapas eller uppdateras. Om ingen ersättare anges anonymiseras historiska identitetsfält där det är tillåtet."
+        "body": "Ange ersättande HSA-ID när aktiva tilldelningar ska flyttas till en annan person. Om ingen ersättare anges anonymiseras historiska identitetsfält där det är tillåtet."
       },
       "preview": {
         "heading": "Förhandsgranskning",
-        "body": "Förhandsgranska innan radering. Tabellen grupperar träffar per objekttyp och fält, visar hur många poster som påverkas, aktuellt visningsvärde, påverkade objekt och rekommenderad åtgärd. Rader som styrs av en ägarrad visas som information och har ingen egen åtgärdsmeny."
+        "body": "Förhandsgranska innan radering. Tabellen grupperar träffar per objekttyp och fält, visar hur många poster som påverkas, aktuellt visningsvärde, påverkade objekt och rekommenderad åtgärd."
       },
       "actions": {
         "heading": "Åtgärder i tabellen",
@@ -1682,17 +1674,6 @@
       "manage": {
         "heading": "Hantera",
         "body": "Du kan ändra ordning och konfigurera färgen på kravversionsstatusar med kontrollerna i varje rad. Systemstyrda kravversionsstatusar är markerade och kan inte tas bort."
-      }
-    },
-    "owners": {
-      "title": "Kravområdesägare",
-      "overview": {
-        "heading": "Vad är kravområdesägare?",
-        "body": "Kravområdesägare är de namngivna personer som är ansvariga för krav inom ett specifikt kravområde. De visas på kravområdet och på varje kravs detaljsida."
-      },
-      "manage": {
-        "heading": "Hantera",
-        "body": "Lägg till, redigera eller ta bort ägare med verktygsfältet och radåtgärderna. En ägare kan inte tas bort om de är tilldelade ett eller flera kravområden."
       }
     },
     "qualityCharacteristics": {

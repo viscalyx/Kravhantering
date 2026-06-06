@@ -17,7 +17,6 @@ import type {
   TaxonomyOption,
   TaxonomyOptions,
 } from '@/hooks/useTaxonomyOptions'
-import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 
 export interface RequirementFormFieldValues {
   acceptanceCriteria: string
@@ -229,10 +228,7 @@ export default function RequirementFormFields({
   const getQcName = (c: QualityCharacteristicOption) =>
     locale === 'sv' ? c.nameSv : c.nameEn
   const selectedAreaOwnerName = values.areaId
-    ? formatActorDisplayNameForLocale(
-        areas.find(a => String(a.id) === values.areaId)?.ownerName,
-        locale,
-      )
+    ? areas.find(a => String(a.id) === values.areaId)?.ownerHsaId
     : null
 
   const mainFields = (

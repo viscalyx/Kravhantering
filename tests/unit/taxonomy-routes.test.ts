@@ -155,10 +155,6 @@ vi.mock('@/lib/dal/requirement-areas', () => ({
   deleteArea: (...a: unknown[]) => mockDeleteReqArea(...a),
 }))
 
-vi.mock('@/lib/dal/owners', () => ({
-  listOwners: async () => [],
-}))
-
 const mockListSpecItemStatuses = vi.fn(async (..._args: unknown[]) => [
   { id: 5, nameEn: 'Deviated', nameSv: 'Avviken' },
 ])
@@ -688,7 +684,7 @@ describe('requirement-areas routes', () => {
     const r = await postReqArea(
       new Request('http://l', {
         method: 'POST',
-        body: '{"name":"Test area","prefix":"TA"}',
+        body: '{"name":"Test area","prefix":"TA","ownerHsaId":"SE5560000001-ta1"}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )

@@ -23,8 +23,8 @@ mechanics and admin presentation are implementation details.
 - Treat lifecycle archive as deletion eligibility: rejected because archived
   requirements and requirement versions can still be needed for traceability.
 - Use one retention rule for all data: rejected because requirement library
-  content, specifications, access reviews, owners, taxonomy and audit evidence
-  have different business-history needs.
+  content, specifications, access reviews, ownership assignments, taxonomy and
+  audit evidence have different business-history needs.
 - Mix personal data erasure with retention disposal: rejected because
   data-subject rights and business-retention policy have different mandates,
   triggers and evidence requirements.

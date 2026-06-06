@@ -568,12 +568,6 @@ function appendRequirementSelectionDemoSeed(SEED_DATA) {
 }
 
 export function appendDogfoodSeed(SEED_DATA) {
-  // ---- Owners ------------------------------------------------------------
-  const owners = tableSection(SEED_DATA, 'owners')
-  for (const [id, first, last, email] of DOGFOOD_OWNERS) {
-    ensureRow(owners, [id, first, last, email, SEED_TS, SEED_TS], ['id'])
-  }
-
   // ---- Norm references ---------------------------------------------------
   const norms = tableSection(SEED_DATA, 'norm_references')
   for (const [
@@ -641,12 +635,16 @@ export function appendDogfoodSeed(SEED_DATA) {
   // New areas
   for (const [id, prefix, name, description, ownerId] of DOGFOOD_AREAS) {
     if (existingAreaIds.has(id)) continue
+    const ownerHsaId = DOGFOOD_OWNER_HSA_BY_ID.get(ownerId)
+    if (!ownerHsaId) {
+      throw new Error(`Dogfood seed: missing area owner HSA-ID ${ownerId}`)
+    }
     areas.rows.push([
       id,
       prefix,
       name,
       description,
-      ownerId,
+      ownerHsaId,
       nextSeqByArea[id],
       SEED_TS,
       SEED_TS,

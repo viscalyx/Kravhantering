@@ -17,18 +17,6 @@ import { appendDogfoodSeed } from '../../typeorm/seed-dogfood-build.mjs'
 
 function emptySeed() {
   return {
-    owners: {
-      columns: [
-        'id',
-        'first_name',
-        'last_name',
-        'email',
-        'created_at',
-        'updated_at',
-      ],
-      pk: ['id'],
-      rows: [],
-    },
     norm_references: {
       columns: [
         'id',
@@ -48,11 +36,11 @@ function emptySeed() {
     requirement_packages: {
       columns: [
         'id',
-        'name_sv',
-        'name_en',
-        'description_sv',
-        'description_en',
-        'owner_id',
+        'name',
+        'description',
+        'lead_hsa_id',
+        'lead_display_name',
+        'is_archived',
         'created_at',
         'updated_at',
       ],
@@ -65,23 +53,23 @@ function emptySeed() {
         'prefix',
         'name',
         'description',
-        'owner_id',
+        'owner_hsa_id',
         'next_sequence',
         'created_at',
         'updated_at',
       ],
       pk: ['id'],
       rows: [
-        [1, 'INT', 'Integration', 'desc', 1, 39, 't', 't'],
-        [2, 'SÄK', 'Säkerhet', 'desc', 2, 41, 't', 't'],
-        [3, 'PRE', 'Prestanda', 'desc', 1, 38, 't', 't'],
-        [4, 'ANV', 'Användbarhet', 'desc', 3, 37, 't', 't'],
-        [5, 'LAG', 'Lagring', 'desc', 1, 38, 't', 't'],
-        [6, 'BEH', 'Behörighet', 'desc', 2, 37, 't', 't'],
-        [7, 'IDN', 'Identitet', 'desc', 2, 37, 't', 't'],
-        [8, 'LOG', 'Loggning', 'desc', 1, 38, 't', 't'],
-        [9, 'DRF', 'Drift', 'desc', 3, 36, 't', 't'],
-        [10, 'DAT', 'Data', 'desc', 1, 36, 't', 't'],
+        [1, 'INT', 'Integration', 'desc', 'SE5560000001-annaj', 39, 't', 't'],
+        [2, 'SÄK', 'Säkerhet', 'desc', 'SE5560000001-1002', 41, 't', 't'],
+        [3, 'PRE', 'Prestanda', 'desc', 'SE5560000001-annaj', 38, 't', 't'],
+        [4, 'ANV', 'Användbarhet', 'desc', 'SE5560000001-marias', 37, 't', 't'],
+        [5, 'LAG', 'Lagring', 'desc', 'SE5560000001-annaj', 38, 't', 't'],
+        [6, 'BEH', 'Behörighet', 'desc', 'SE5560000001-1002', 37, 't', 't'],
+        [7, 'IDN', 'Identitet', 'desc', 'SE5560000001-1002', 37, 't', 't'],
+        [8, 'LOG', 'Loggning', 'desc', 'SE5560000001-annaj', 38, 't', 't'],
+        [9, 'DRF', 'Drift', 'desc', 'SE5560000001-marias', 36, 't', 't'],
+        [10, 'DAT', 'Data', 'desc', 'SE5560000001-annaj', 36, 't', 't'],
       ],
     },
     requirements: {
@@ -301,7 +289,7 @@ describe('dogfood seed inventory', () => {
     }
   })
 
-  it('areas, owners, norms and requirement packages have expected sizes', () => {
+  it('areas, person fixtures, norms and requirement packages have expected sizes', () => {
     expect(DOGFOOD_OWNERS).toHaveLength(5)
     expect(DOGFOOD_AREAS).toHaveLength(6)
     expect(DOGFOOD_NORMS).toHaveLength(6)

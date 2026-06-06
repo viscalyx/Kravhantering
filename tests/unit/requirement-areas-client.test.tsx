@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -36,22 +37,15 @@ const sampleAreas = [
     prefix: 'INT',
     name: 'Integration',
     description: 'System integration',
-    ownerId: 1,
-    ownerName: 'Anna S',
+    ownerHsaId: 'SE5560000001-annaj',
   },
   {
     id: 2,
-    prefix: 'SÄK',
+    prefix: 'SAK',
     name: 'Säkerhet',
     description: null,
-    ownerId: null,
-    ownerName: null,
+    ownerHsaId: 'SE5560000001-1002',
   },
-]
-
-const sampleOwners = [
-  { id: 1, name: 'Anna S' },
-  { id: 2, name: 'Erik L' },
 ]
 
 describe('RequirementAreasClient', () => {
@@ -62,114 +56,23 @@ describe('RequirementAreasClient', () => {
     fetchMock.mockImplementation(async (url: string) => {
       if (url === '/api/requirement-areas')
         return okJson({ areas: sampleAreas })
-      if (url === '/api/owners') return okJson({ owners: sampleOwners })
       return okJson({})
     })
   })
 
-  it('renders heading and create button', async () => {
+  it('renders areas with owner HSA-ID', async () => {
     render(<RequirementAreasClient />)
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'nav.areas',
-    )
-    expect(
-      screen.getByRole('button', { name: /common\.create/i }),
-    ).toBeInTheDocument()
-    await waitFor(() => {
-      expect(screen.getByText('Integration')).toBeInTheDocument()
-    })
-  })
 
-  it('fetches and displays areas in the table', async () => {
-    render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
+
     expect(screen.getByText('INT')).toBeInTheDocument()
-    expect(screen.getByText('Säkerhet')).toBeInTheDocument()
+    expect(screen.getByText('SE5560000001-annaj')).toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/owners')
   })
 
-  it('shows loading text initially', () => {
-    fetchMock.mockReturnValue(new Promise(() => {}))
-    render(<RequirementAreasClient />)
-    expect(screen.getByText('common.loading')).toBeInTheDocument()
-  })
-
-  it('opens create form when clicking create button', async () => {
-    render(<RequirementAreasClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Integration')).toBeInTheDocument()
-    })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
-      'common.create',
-    )
-    expect(
-      screen.getByRole('textbox', { name: /area\.prefix/ }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('textbox', { name: /area\.name/ }),
-    ).toBeInTheDocument()
-  })
-
-  it('renders owner options when owner fetch succeeds', async () => {
-    render(<RequirementAreasClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Integration')).toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-
-    await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'Anna S' })).toBeInTheDocument()
-    })
-    expect(screen.getByRole('option', { name: 'Erik L' })).toBeInTheDocument()
-  })
-
-  it('disables owner select while owner options are loading', async () => {
-    fetchMock.mockImplementation(async (url: string) => {
-      if (url === '/api/requirement-areas') {
-        return okJson({ areas: sampleAreas })
-      }
-      if (url === '/api/owners') return new Promise(() => {})
-      return okJson({})
-    })
-
-    render(<RequirementAreasClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Integration')).toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-
-    expect(screen.getByRole('combobox', { name: /area\.owner/ })).toBeDisabled()
-    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
-  })
-
-  it('shows an owner loading error when owner fetch fails', async () => {
-    fetchMock.mockImplementation(async (url: string) => {
-      if (url === '/api/requirement-areas') {
-        return okJson({ areas: sampleAreas })
-      }
-      if (url === '/api/owners') return errJson({ error: 'Owners failed' })
-      return okJson({})
-    })
-
-    render(<RequirementAreasClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Integration')).toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        'common.ownerLoadError',
-      )
-    })
-  })
-
-  it('submits create form and refreshes list', async () => {
+  it('creates a requirement area with an editable owner HSA-ID field', async () => {
     render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
@@ -183,12 +86,18 @@ describe('RequirementAreasClient', () => {
     fireEvent.change(screen.getByRole('textbox', { name: /area\.name/ }), {
       target: { value: 'New requirement area' },
     })
+    const ownerInput = screen.getByRole('textbox', { name: /area\.owner/ })
+    expect(ownerInput).toBeEnabled()
+    fireEvent.change(ownerInput, {
+      target: { value: 'SE5560000001-new1' },
+    })
 
-    fetchMock.mockImplementation(async (url: string) => {
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas' && init?.method === 'POST')
+        return okJson({ id: 3 })
       if (url === '/api/requirement-areas')
         return okJson({ areas: sampleAreas })
-      if (url === '/api/owners') return okJson({ owners: sampleOwners })
-      return okJson({ id: 3 })
+      return okJson({})
     })
 
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
@@ -199,56 +108,54 @@ describe('RequirementAreasClient', () => {
         expect.objectContaining({ method: 'POST' }),
       )
     })
-  })
-
-  it('opens edit form with existing data', async () => {
-    render(<RequirementAreasClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Integration')).toBeInTheDocument()
-    })
-
-    const editButtons = screen.getAllByRole('button', {
-      name: /common\.edit/i,
-    })
-    fireEvent.click(editButtons[0])
-
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
-      'common.edit',
+    const postCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/requirement-areas' &&
+        (init as RequestInit | undefined)?.method === 'POST',
     )
-    expect(
-      (
-        screen.getByRole('textbox', {
-          name: /area\.prefix/,
-        }) as HTMLInputElement
-      ).value,
-    ).toBe('INT')
-    expect(screen.getByRole('textbox', { name: /area\.prefix/ })).toBeDisabled()
-    expect(
-      (screen.getByRole('textbox', { name: /area\.name/ }) as HTMLInputElement)
-        .value,
-    ).toBe('Integration')
+    expect((postCall?.[1] as RequestInit).body).toBe(
+      JSON.stringify({
+        description: '',
+        name: 'New requirement area',
+        ownerHsaId: 'SE5560000001-new1',
+        prefix: 'NEW',
+      }),
+    )
   })
 
-  it('submits edit form with PUT', async () => {
+  it('shows owner HSA-ID as read-only when editing', async () => {
     render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
 
-    const editButtons = screen.getAllByRole('button', {
-      name: /common\.edit/i,
-    })
-    fireEvent.click(editButtons[0])
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
 
+    const ownerInput = screen.getByRole('textbox', { name: /area\.owner/ })
+    expect(ownerInput).toBeDisabled()
+    expect(ownerInput).toHaveValue('SE5560000001-annaj')
+    expect(
+      screen.getByRole('button', { name: /area\.changeOwner/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('saves ordinary edits without ownerHsaId in the form payload', async () => {
+    render(<RequirementAreasClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Integration')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
     fireEvent.change(screen.getByRole('textbox', { name: /area\.name/ }), {
       target: { value: 'Updated' },
     })
 
-    fetchMock.mockImplementation(async (url: string) => {
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas/1' && init?.method === 'PUT')
+        return okJson({ id: 1 })
       if (url === '/api/requirement-areas')
         return okJson({ areas: sampleAreas })
-      if (url === '/api/owners') return okJson({ owners: sampleOwners })
-      return okJson({ id: 1 })
+      return okJson({})
     })
 
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
@@ -268,35 +175,58 @@ describe('RequirementAreasClient', () => {
       JSON.stringify({
         description: 'System integration',
         name: 'Updated',
-        ownerId: 1,
       }),
     )
   })
 
-  it('sends ownerId null when an existing owner is cleared', async () => {
+  it('changes owner through the owner-change modal', async () => {
     render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
 
-    const editButtons = screen.getAllByRole('button', {
-      name: /common\.edit/i,
-    })
-    fireEvent.click(editButtons[0])
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+    fireEvent.click(screen.getByRole('button', { name: /area\.changeOwner/ }))
 
-    fireEvent.change(screen.getByRole('combobox', { name: /area\.owner/ }), {
-      target: { value: '' },
+    const dialog = screen.getByRole('dialog')
+    expect(
+      within(dialog).getByRole('textbox', { name: /area\.currentOwner/ }),
+    ).toHaveValue('SE5560000001-annaj')
+    const newOwnerInput = within(dialog).getByRole('textbox', {
+      name: /area\.newOwner/,
+    })
+    const changeOwnerButton = within(dialog).getByRole('button', {
+      name: /area\.changeOwner/,
+    })
+    expect(changeOwnerButton).toBeDisabled()
+
+    fireEvent.change(newOwnerInput, {
+      target: { value: 'SE5560000001-annaj' },
+    })
+    expect(changeOwnerButton).toBeDisabled()
+
+    fireEvent.change(newOwnerInput, {
+      target: { value: 'NO5560000001-next1' },
+    })
+    expect(changeOwnerButton).toBeEnabled()
+
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas/1' && init?.method === 'PUT')
+        return okJson({ id: 1, ownerHsaId: 'NO5560000001-next1' })
+      if (url === '/api/requirement-areas')
+        return okJson({
+          areas: [
+            {
+              ...sampleAreas[0],
+              ownerHsaId: 'NO5560000001-next1',
+            },
+            sampleAreas[1],
+          ],
+        })
+      return okJson({})
     })
 
-    fetchMock.mockImplementation(async (url: string) => {
-      if (url === '/api/requirement-areas') {
-        return okJson({ areas: sampleAreas })
-      }
-      if (url === '/api/owners') return okJson({ owners: sampleOwners })
-      return okJson({ id: 1 })
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+    fireEvent.click(changeOwnerButton)
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -310,165 +240,48 @@ describe('RequirementAreasClient', () => {
         (init as RequestInit | undefined)?.method === 'PUT',
     )
     expect((putCall?.[1] as RequestInit).body).toBe(
-      JSON.stringify({
-        description: 'System integration',
-        name: 'Integration',
-        ownerId: null,
-      }),
+      JSON.stringify({ ownerHsaId: 'NO5560000001-next1' }),
+    )
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull()
+    })
+    expect(screen.getByRole('textbox', { name: /area\.owner/ })).toHaveValue(
+      'NO5560000001-next1',
     )
   })
 
-  it('closes form when cancel is clicked', async () => {
+  it('keeps the modal open and shows an error when owner change fails', async () => {
     render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    expect(
-      screen.getByRole('textbox', { name: /area\.prefix/ }),
-    ).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+    fireEvent.click(screen.getByRole('button', { name: /area\.changeOwner/ }))
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
-    expect(screen.queryByRole('textbox', { name: /area\.prefix/ })).toBeNull()
-  })
-
-  it('calls delete with confirm and refreshes', async () => {
-    confirmMock.mockResolvedValue(true)
-    render(<RequirementAreasClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Integration')).toBeInTheDocument()
-    })
-
-    fetchMock.mockImplementation(async (url: string) => {
-      if (url === '/api/requirement-areas')
-        return okJson({ areas: [sampleAreas[1]] })
-      if (url === '/api/owners') return okJson({ owners: sampleOwners })
-      return okJson({})
-    })
-
-    const deleteButtons = screen.getAllByRole('button', {
-      name: /common\.delete/i,
-    })
-    fireEvent.click(deleteButtons[0])
-
-    await waitFor(() => {
-      expect(confirmMock).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: 'danger', icon: 'caution' }),
-      )
-    })
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirement-areas/1',
-        expect.objectContaining({ method: 'DELETE' }),
-      )
-    })
-  })
-
-  it('shows a delete error and skips refresh when delete fails', async () => {
-    confirmMock.mockResolvedValue(true)
-    render(<RequirementAreasClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Integration')).toBeInTheDocument()
-    })
-
-    fetchMock.mockImplementation(async (url: string) => {
-      if (url === '/api/requirement-areas/1') {
-        return errJson({ error: 'Cannot delete area' }, 409, 'Conflict')
-      }
-      if (url === '/api/requirement-areas') {
-        return okJson({ areas: sampleAreas })
-      }
-      if (url === '/api/owners') return okJson({ owners: sampleOwners })
-      return okJson({})
-    })
-
-    const deleteButtons = screen.getAllByRole('button', {
-      name: /common\.delete/i,
-    })
-    fireEvent.click(deleteButtons[0])
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('Cannot delete area')
-    })
-    expect(fetchMock).toHaveBeenCalledTimes(3)
-  })
-
-  it('does not delete when confirm is cancelled', async () => {
-    confirmMock.mockResolvedValue(false)
-    render(<RequirementAreasClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Integration')).toBeInTheDocument()
-    })
-
-    const deleteButtons = screen.getAllByRole('button', {
-      name: /common\.delete/i,
-    })
-    fireEvent.click(deleteButtons[0])
-
-    await waitFor(() => {
-      expect(confirmMock).toHaveBeenCalled()
-    })
-
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      '/api/requirement-areas/1',
-      expect.objectContaining({ method: 'DELETE' }),
+    const dialog = screen.getByRole('dialog')
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: /area\.newOwner/ }),
+      { target: { value: 'SE5560000001-next1' } },
     )
-  })
-
-  it('displays owner names for areas and dash for missing owners', async () => {
-    render(<RequirementAreasClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Anna S')).toBeInTheDocument()
-    })
-    const dashes = screen.getAllByText('—')
-    expect(dashes.length).toBeGreaterThanOrEqual(1)
-  })
-
-  it('keeps form open and shows error when save fails', async () => {
-    render(<RequirementAreasClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Integration')).toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-
-    fireEvent.change(screen.getByRole('textbox', { name: /area\.prefix/ }), {
-      target: { value: 'FAIL' },
-    })
-    fireEvent.change(screen.getByRole('textbox', { name: /area\.name/ }), {
-      target: { value: 'Failing requirement area' },
-    })
 
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
-      if (url === '/api/requirement-areas' && !init?.method)
+      if (url === '/api/requirement-areas/1' && init?.method === 'PUT')
+        return errJson({ error: 'Owner change failed' }, 400, 'Bad Request')
+      if (url === '/api/requirement-areas')
         return okJson({ areas: sampleAreas })
-      if (url === '/api/owners') return okJson({ owners: sampleOwners })
-      return {
-        ok: false,
-        statusText: 'Bad Request',
-        json: async () => ({ error: 'Prefix already exists' }),
-      }
+      return okJson({})
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: /area\.changeOwner/ }),
+    )
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        'Prefix already exists',
+      expect(within(dialog).getByRole('alert')).toHaveTextContent(
+        'Owner change failed',
       )
     })
-
-    expect(
-      screen.getByRole('textbox', { name: /area\.prefix/ }),
-    ).toBeInTheDocument()
-    expect(
-      (
-        screen.getByRole('textbox', {
-          name: /area\.prefix/,
-        }) as HTMLInputElement
-      ).value,
-    ).toBe('FAIL')
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 })

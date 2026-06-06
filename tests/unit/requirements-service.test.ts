@@ -172,7 +172,7 @@ function makeRequirementRecord() {
     area: {
       id: 1,
       name: 'Integration',
-      ownerId: 'alice',
+      ownerHsaId: 'SE5560000001-alice1',
       prefix: 'INT',
     },
     createdAt: '2026-03-08T00:00:00.000Z',
@@ -321,7 +321,7 @@ describe('createRequirementsService', () => {
     mocks.getAreaById.mockResolvedValue({
       id: 1,
       name: 'Integration',
-      ownerId: 'alice',
+      ownerHsaId: 'SE5560000001-alice1',
       prefix: 'INT',
     })
     const createRequirementResult = {
@@ -380,7 +380,7 @@ describe('createRequirementsService', () => {
       {
         id: 1,
         name: 'Integration',
-        ownerId: 'alice',
+        ownerHsaId: 'SE5560000001-alice1',
         prefix: 'INT',
       },
     ])
@@ -1495,7 +1495,7 @@ describe('createRequirementsService', () => {
       {
         id: 2,
         name: 'Security',
-        ownerId: 'alice',
+        ownerHsaId: 'SE5560000001-alice1',
         prefix: 'SEC',
       },
     ])
@@ -1576,7 +1576,7 @@ describe('createRequirementsService', () => {
     mocks.getAreaById.mockResolvedValue({
       id: 2,
       name: 'Security',
-      ownerId: 'alice',
+      ownerHsaId: 'SE5560000001-alice1',
       prefix: 'SEC',
     })
     mocks.graduateSpecificationLocalRequirementToLibrary.mockResolvedValue({
@@ -1603,7 +1603,7 @@ describe('createRequirementsService', () => {
       area: {
         id: 2,
         name: 'Security',
-        ownerId: 'alice',
+        ownerHsaId: 'SE5560000001-alice1',
         prefix: 'SEC',
       },
       id: 2,
@@ -1678,7 +1678,7 @@ describe('createRequirementsService', () => {
     mocks.getAreaById.mockResolvedValue({
       id: 2,
       name: 'Security',
-      ownerId: 'alice',
+      ownerHsaId: 'SE5560000001-alice1',
       prefix: 'SEC',
     })
     const service = createRequirementsService({} as never, {

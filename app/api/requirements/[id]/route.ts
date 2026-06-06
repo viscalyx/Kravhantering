@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getOwnerById } from '@/lib/dal/owners'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -72,22 +71,16 @@ export async function GET(
   const { id } = parsedParams.data
 
   try {
-    const { context, db, service } =
-      await createRequirementsRestRuntime(_request)
+    const { context, service } = await createRequirementsRestRuntime(_request)
     const ref = parseRequirementRef(id)
     const result = await service.getRequirement(context, {
       ...ref,
       view: 'history',
     })
     const req = result.requirement
-    let areaOwnerName: string | null = null
-    if (req.area?.ownerId) {
-      const owner = await getOwnerById(db, req.area.ownerId)
-      if (owner) areaOwnerName = `${owner.firstName} ${owner.lastName}`
-    }
     const responseBody: RequirementDetailResponse = {
       ...req,
-      area: req.area ? { ...req.area, ownerName: areaOwnerName } : null,
+      area: req.area ? { ...req.area, ownerName: req.area.ownerHsaId } : null,
     }
     return NextResponse.json(responseBody)
   } catch (error) {
