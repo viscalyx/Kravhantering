@@ -2,8 +2,7 @@ import type {
   AccessReviewDelivery,
   AccessReviewExportV1,
 } from '@/lib/access-review/types'
-
-type ExportFilenameLocale = 'en' | 'sv'
+import type { ExportFilenameLocale } from '@/lib/http/validation'
 
 function dateStamp(generatedAt: string): string {
   const date = new Date(generatedAt)

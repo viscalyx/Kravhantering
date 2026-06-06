@@ -88,6 +88,14 @@ interface ActionAuditCsvColumn {
   value: (event: ActionAuditEventRow, locale: ActionAuditCsvLocale) => string
 }
 
+const ACTION_AUDIT_DECISION_LABELS: Record<
+  ActionAuditDecision,
+  Record<ActionAuditCsvLocale, string>
+> = {
+  allowed: { en: 'Allowed', sv: 'Tillåten' },
+  denied: { en: 'Denied', sv: 'Nekad' },
+}
+
 const ACTION_AUDIT_CSV_COLUMNS: ActionAuditCsvColumn[] = [
   {
     header: { en: 'Occurred', sv: 'Tidpunkt' },
@@ -128,13 +136,7 @@ const ACTION_AUDIT_CSV_COLUMNS: ActionAuditCsvColumn[] = [
   {
     header: { en: 'Decision', sv: 'Beslut' },
     value: (event, locale) =>
-      event.decision === 'allowed'
-        ? locale === 'sv'
-          ? 'Tillåten'
-          : 'Allowed'
-        : locale === 'sv'
-          ? 'Nekad'
-          : 'Denied',
+      ACTION_AUDIT_DECISION_LABELS[event.decision][locale],
   },
   {
     header: { en: 'Denial reason', sv: 'Orsak' },

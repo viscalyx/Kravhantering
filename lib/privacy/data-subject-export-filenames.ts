@@ -1,9 +1,8 @@
+import type { ExportFilenameLocale } from '@/lib/http/validation'
 import type {
   DataSubjectExportDelivery,
   DataSubjectExportV1,
 } from '@/lib/privacy/data-subject-export-types'
-
-type ExportFilenameLocale = 'en' | 'sv'
 
 function dateStamp(generatedAt: string): string {
   const date = new Date(generatedAt)
