@@ -12457,6 +12457,17 @@ function hsaForDisplayName(displayName) {
   return hsaId
 }
 
+function normalizeOwnerHsaId(value) {
+  return (
+    OWNER_HSA_BY_ID.get(value) ??
+    (typeof value === 'string' &&
+    /^[A-Z]{2}\d{10}-[A-Za-z0-9]+$/u.test(value) &&
+    value.length <= 31
+      ? value
+      : null)
+  )
+}
+
 function addHsaColumnForDisplay(tableName, displayColumn, hsaColumn) {
   const table = seedTable(tableName)
   const displayIndex = table.columns.indexOf(displayColumn)
@@ -12591,22 +12602,29 @@ function applyPrivacyIdentitySeed() {
   const areas = seedTable('requirement_areas')
   const ownerColumnIndex = areas.columns.indexOf('owner_id')
   if (ownerColumnIndex >= 0) {
-    areas.columns[ownerColumnIndex] = 'owner_hsa_id'
+    const existingOwnerHsaIndex = areas.columns.indexOf('owner_hsa_id')
+    const ownerHsaIndex =
+      existingOwnerHsaIndex >= 0 ? existingOwnerHsaIndex : ownerColumnIndex
+    if (existingOwnerHsaIndex < 0) {
+      areas.columns[ownerColumnIndex] = 'owner_hsa_id'
+    }
     for (const row of areas.rows) {
       const currentOwnerValue = row[ownerColumnIndex]
       const ownerHsaId =
-        OWNER_HSA_BY_ID.get(currentOwnerValue) ??
-        (typeof currentOwnerValue === 'string' &&
-        /^[A-Z]{2}\d{10}-[A-Za-z0-9]+$/u.test(currentOwnerValue) &&
-        currentOwnerValue.length <= 31
-          ? currentOwnerValue
-          : null)
+        normalizeOwnerHsaId(row[ownerHsaIndex]) ??
+        normalizeOwnerHsaId(currentOwnerValue)
       if (!ownerHsaId) {
         throw new Error(
           `Privacy seed: missing owner HSA-ID for requirement area owner ${currentOwnerValue}`,
         )
       }
-      row[ownerColumnIndex] = ownerHsaId
+      row[ownerHsaIndex] = ownerHsaId
+    }
+    if (existingOwnerHsaIndex >= 0) {
+      areas.columns.splice(ownerColumnIndex, 1)
+      for (const row of areas.rows) {
+        row.splice(ownerColumnIndex, 1)
+      }
     }
   }
 

@@ -989,7 +989,7 @@
       "executionErrors": {
         "owner_area_references_blocking": "Requirement areas must be switched before the owner can be changed.",
         "owner_references_blocking": "Owner references must be switched before the owner can be deleted.",
-        "replacement_required": "Replacement HSA-ID is required for the selected action.",
+        "replacement_required": "Replacement HSA-ID and replacement name are required for the selected action.",
         "unsupported_owner_action": "The owner row does not support the selected action.",
         "unsupported_privacy_action": "The row does not support the selected action."
       },

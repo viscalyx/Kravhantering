@@ -1,9 +1,9 @@
 /**
  * HSA-ID format validator.
  *
- * HSA-id format (per the Swedish HSA catalog spec):
- *   <country-code><organisation-number><sep>-<sep><suffix>
- *   - Country code: two uppercase A-Z letters.
+ * HSA-id format:
+ *   <country-code><organisation-number>-<suffix>
+ *   - Country code: any two uppercase A-Z letters, not limited to Sweden.
  *   - Organisation number: exactly 10 digits, no hyphen.
  *   - Separator: a single `-`.
  *   - Suffix: one or more characters from `[A-Za-z0-9]`. The Swedish
@@ -11,6 +11,8 @@
  *   - Total length must not exceed 31 characters.
  *
  * Examples: `SE5560000001-1003`, `NO5560000001-1003`.
+ * `isHsaId` accepts the generalized two-letter country code plus
+ * 10-digit organisation number and required separator/suffix pattern above.
  *
  * Non-HSA service identifiers are intentionally NOT valid HSA-ids.
  */

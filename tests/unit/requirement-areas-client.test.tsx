@@ -69,7 +69,8 @@ describe('RequirementAreasClient', () => {
 
     expect(screen.getByText('INT')).toBeInTheDocument()
     expect(screen.getByText('SE5560000001-annaj')).toBeInTheDocument()
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/owners')
+    const urls = fetchMock.mock.calls.map(call => call[0])
+    expect(urls).not.toContain('/api/owners')
   })
 
   it('creates a requirement area with an editable owner HSA-ID field', async () => {

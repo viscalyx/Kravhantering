@@ -53,6 +53,7 @@ export interface RequirementReportData {
   area: {
     id: number
     name: string
+    ownerHsaId: string
     ownerName: string | null
   } | null
   createdAt: string

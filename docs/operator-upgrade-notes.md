@@ -15,3 +15,7 @@ uppercase country-code letters, 10 digits, `-`, and an alphanumeric suffix; it
 is not limited to Swedish `SE` identifiers. If the upgrade stops because an
 owner or HSA-ID is missing or invalid, repair the owner data and rerun the
 target release migration.
+
+This migration cannot be rolled back: it removes the legacy `owners` rows, and
+their original names, email addresses and timestamps cannot be reconstructed
+from `requirement_areas.owner_hsa_id` without data loss.

@@ -72,7 +72,8 @@ export async function collectRequirementForReport(
       ? {
           id: requirement.area.id,
           name: requirement.area.name,
-          ownerName: requirement.area.ownerHsaId,
+          ownerHsaId: requirement.area.ownerHsaId,
+          ownerName: null,
         }
       : null,
     createdAt: requirement.createdAt,

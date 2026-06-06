@@ -140,9 +140,9 @@ leaving the workflow.
 The workflow matches by HSA-ID only. The UI accepts a replacement display name,
 optional explicit first/last name values, and optional replacement email address
 when a replacement person is supplied, but target matching never uses names or
-email addresses and name-only erasure requests are rejected. Explicit first/last
-name values are used only for owner rows when owner assignments are switched;
-otherwise the owner name falls back to the replacement display name.
+email addresses and name-only erasure requests are rejected. Requirement-area
+owner switches update `requirement_areas.owner_hsa_id` directly. Requirement
+package lead switches update the package lead HSA-ID and display-name snapshot.
 
 Local seed data includes two users named `Kalle Svensson` with different
 HSA-IDs. The second identity resolves an improvement suggestion so UI tests can
@@ -151,13 +151,14 @@ verify that erasing one HSA-ID does not match the other person by name.
 <!-- cspell:ignore linneab -->
 
 Seed data also gives `SE5560000001-linneab` coverage across every privacy
-preview group: owner rows, requirement-area and package owner assignments, requirement
-versions, deviation creator and decision fields, improvement-suggestion creator
-and resolver fields, specification lead, and requirement-area/specification
-co-author assignment rows, plus access-review creator, reviewer, completer,
-reviewed-principal, decision snapshots, and action-audit actor snapshots. The
-access-review fixture includes two completed reviews: one created by the Linnéa
-HSA identity and one created by another user where the Linnéa HSA identity is
+preview group: requirement-area `owner_hsa_id` assignments, requirement package
+lead assignments, requirement versions, deviation creator and decision fields,
+improvement-suggestion creator and resolver fields, specification lead, and
+requirement-area/specification co-author assignment rows, plus access-review
+creator, reviewer, completer, reviewed-principal, decision snapshots, and
+action-audit actor snapshots. The access-review fixture includes two completed
+reviews: one created by the Linnéa HSA identity and one created by another user
+where the Linnéa HSA identity is
 the reviewer. This lets the privacy UI be tested end-to-end with one HSA-ID.
 
 The preview groups HSA-ID occurrences by object and field, shows the affected
@@ -193,19 +194,23 @@ remain BOM-free. The export route checks authorization server-side:
 the signed-in user may export their own HSA-ID, while cross-user export requires
 `PrivacyOfficer`.
 
-Owner rows have an extra live-assignment guard. If an owner is assigned to one
-or more requirement areas and no replacement HSA-ID/name is supplied, the owner
-row is disabled and its affected-objects column lists the blocking assignments;
-the warning text stays generic. Requirement area owner rows are still shown in
-the preview as greyed informational rows, but their action is controlled by the
-owner row. Requirement package leads are direct HSA-ID/display-name snapshots
-and are switched by their own package-lead rows. With a replacement supplied,
-the owner row only allows `Switch` or `Skip`; choosing `Switch` changes linked
-requirement areas to the replacement owner in the same transaction. `Anonymize`
-and `Delete` are rejected for that owner while requirement areas are linked. If
-no requirement area references the owner, the owner row only allows
-`Delete` or `Skip`; `Switch` and `Anonymize` are not valid owner actions in
-that state.
+Requirement-area ownership is direct HSA-ID data on
+`requirement_areas.owner_hsa_id`, not a separate owner catalog. Preview rows for
+requirement areas are shown as greyed informational rows; their available
+actions are governed by the requirement-area owner assignment. Requirement
+package leads remain separate HSA-ID/display-name snapshot rows governed by
+their package-lead rows.
+
+When one or more requirement areas reference the target HSA-ID, the
+requirement-area owner assignment allows only `Switch` or `Skip`. `Switch`
+updates the linked requirement areas to the replacement `owner_hsa_id` in one
+transaction. `Anonymize` and `Delete` are rejected while those requirement-area
+references exist. When no requirement area references the target HSA-ID, there
+is no requirement-area owner assignment to change; only unrelated rows can keep
+their own valid actions, and `Switch`/`Anonymize` are not valid for a
+non-existent requirement-area owner assignment. The former owner-catalog state
+where an unreferenced owner row allowed only `Delete` or `Skip` is retired with
+the standalone owner catalog.
 
 If no replacement person is supplied, display snapshots are anonymized with the
 internal sentinel `no-user`, shown through localization as `Anonym` in Swedish
@@ -248,7 +253,6 @@ the accepted preview through `/api/admin/archiving/*`.
 
 V1 supports direct deletion after preview and confirmation for:
 
-- orphaned owner rows with no active requirement-area assignment
 - unused requirement areas with no current library requirements, and unused
   requirement packages or norm references with no current library or unique
   requirement links, older than the policy age

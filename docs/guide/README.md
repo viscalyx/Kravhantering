@@ -424,9 +424,10 @@ kravurvalsfrågor.
 
 ### Kravområden
 
-Kravområden organiserar krav efter organisatorisk domän. Varje kravområde har en
-ägare, ett prefix som används i krav-ID (t.ex. "SÄK" ger ID:n som "SÄK0001") och
-en beskrivning.
+Kravområden organiserar krav efter organisatorisk domän. Varje kravområde har
+ägarens HSA-ID, ett prefix som används i krav-ID (t.ex. "SÄK" ger ID:n som
+"SÄK0001") och en beskrivning. Ägarens HSA-ID hanteras på kravområdet i
+flödet för referensdata; det finns inget separat ägarregister i Admin.
 
 ![Kravområden](images/044-kravomraden.png)
 
@@ -470,13 +471,6 @@ Normbiblioteket samlar normreferenser till externa standarder och regelverk
 normreferenser för att tydliggöra vilka regelverk de härstammar från.
 
 ![Normbibliotek](images/049-normreferenser.png)
-
-### Ägare
-
-Ägare är de personer eller roller som ansvarar för kravområden. Varje kravområde
-tilldelas en ägare som är ansvarig för kravens kvalitet och aktualitet.
-
-![Ägare](images/050-agare.png)
 
 ## Rapporter
 

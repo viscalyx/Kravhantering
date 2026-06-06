@@ -113,7 +113,12 @@ describe('specifications/[id]/report-items route', () => {
 
   it('returns mixed library and specification-local report rows by item ref', async () => {
     const libraryRequirement: RequirementReportData = {
-      area: { id: 2, name: 'Operations', ownerName: 'Ignored Owner' },
+      area: {
+        id: 2,
+        name: 'Operations',
+        ownerHsaId: 'SE5560000001-ops1',
+        ownerName: 'Ignored Owner',
+      },
       createdAt: '2026-05-01T00:00:00.000Z',
       id: 301,
       isArchived: false,
@@ -172,7 +177,12 @@ describe('specifications/[id]/report-items route', () => {
     await expect(response.json()).resolves.toEqual([
       {
         ...libraryRequirement,
-        area: { id: 2, name: 'Operations', ownerName: null },
+        area: {
+          id: 2,
+          name: 'Operations',
+          ownerHsaId: 'SE5560000001-ops1',
+          ownerName: null,
+        },
       },
       expect.objectContaining({
         area: null,

@@ -1537,8 +1537,6 @@ the delete run, but the policy action itself is deletion.
 
 Seeded policies:
 
-- `orphaned_owner_delete` — deletes owner rows with no requirement-area or
-  requirement-package assignments after 365 days.
 - `unused_taxonomy_delete` — deletes unused requirement areas, requirement
   packages and norm references after 730 days.
 - `old_requirement_versions_delete` — deletes old Draft, Review or Archived
@@ -1931,6 +1929,7 @@ its purpose and the table/column(s) it covers.
 <!-- markdownlint-disable MD013 -->
 | Index Name | Table | Column(s) | Purpose |
 | ---------- | ----- | --------- | ------- |
+| `idx_requirement_areas_owner_hsa_id` | `requirement_areas` | `owner_hsa_id` | Speed up requirement-area owner privacy and authorization lookups |
 | `idx_quality_characteristics_requirement_type_id` | `quality_characteristics` | `requirement_type_id` | Speed up lookups of categories belonging to a type |
 | `idx_quality_characteristics_parent_id` | `quality_characteristics` | `parent_id` | Speed up tree traversal (parent → children) |
 | `idx_requirements_requirement_area_id` | `requirements` | `requirement_area_id` | Speed up listing requirements by area |

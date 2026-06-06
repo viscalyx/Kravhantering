@@ -119,6 +119,14 @@ function rowFromColumns(table, values) {
   )
 }
 
+function ensureColumn(table, columnName, defaultValue = null) {
+  if (table.columns.includes(columnName)) return
+  table.columns.push(columnName)
+  for (const row of table.rows) {
+    row.push(defaultValue)
+  }
+}
+
 function addRow(seedData, tableName, values) {
   const table = tableSection(seedData, tableName)
   ensureRow(table, rowFromColumns(table, values), table.pk)
@@ -148,6 +156,8 @@ function requirementVersionRow(values) {
 }
 
 function addRetentionTaxonomy(seedData) {
+  ensureColumn(tableSection(seedData, 'requirement_areas'), 'owner_hsa_id')
+
   for (const area of [
     {
       description:
@@ -179,7 +189,6 @@ function addRetentionTaxonomy(seedData) {
       id: area.id,
       name: area.name,
       next_sequence: 20,
-      owner_id: 910002,
       owner_hsa_id: 'SE5560000001-retentionlinked',
       prefix: area.prefix,
       updated_at: area.updatedAt,

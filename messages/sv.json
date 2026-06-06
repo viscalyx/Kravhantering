@@ -989,7 +989,7 @@
       "executionErrors": {
         "owner_area_references_blocking": "Kravområden måste bytas innan ägaren kan ändras.",
         "owner_references_blocking": "Ägarreferenser måste bytas innan ägaren kan tas bort.",
-        "replacement_required": "Ersättande HSA-ID krävs för den valda åtgärden.",
+        "replacement_required": "Ersättande HSA-ID och ersättande namn krävs för den valda åtgärden.",
         "unsupported_owner_action": "Ägarraden stöder inte den valda åtgärden.",
         "unsupported_privacy_action": "Raden stöder inte den valda åtgärden."
       },
