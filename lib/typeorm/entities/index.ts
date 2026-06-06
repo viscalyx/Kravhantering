@@ -7,7 +7,6 @@ import { archivingRetentionRunEntity } from '@/lib/typeorm/entities/archiving-re
 import { deviationEntity } from '@/lib/typeorm/entities/deviation'
 import { improvementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 import { normReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
-import { ownerEntity } from '@/lib/typeorm/entities/owner'
 import { qualityCharacteristicEntity } from '@/lib/typeorm/entities/quality-characteristic'
 import { requirementEntity } from '@/lib/typeorm/entities/requirement'
 import { requirementAreaEntity } from '@/lib/typeorm/entities/requirement-area'
@@ -48,7 +47,6 @@ export const sqlServerEntities = [
   deviationEntity,
   improvementSuggestionEntity,
   normReferenceEntity,
-  ownerEntity,
   archivingRetentionPolicyEntity,
   archivingRetentionRunEntity,
   archivingRetentionExceptionEntity,
@@ -95,7 +93,6 @@ export type { ArchivingRetentionRunEntity } from '@/lib/typeorm/entities/archivi
 export type { DeviationEntity } from '@/lib/typeorm/entities/deviation'
 export type { ImprovementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 export type { NormReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
-export type { OwnerEntity } from '@/lib/typeorm/entities/owner'
 export type { QualityCharacteristicEntity } from '@/lib/typeorm/entities/quality-characteristic'
 export type { RequirementEntity } from '@/lib/typeorm/entities/requirement'
 export type { RequirementAreaEntity } from '@/lib/typeorm/entities/requirement-area'
@@ -139,7 +136,6 @@ export {
   deviationEntity,
   improvementSuggestionEntity,
   normReferenceEntity,
-  ownerEntity,
   qualityCharacteristicEntity,
   requirementAreaCoAuthorEntity,
   requirementAreaEntity,

@@ -1,6 +1,5 @@
 import { listDeviationsForSpecificationItem } from '@/lib/dal/deviations'
 import { listSuggestionsForRequirement } from '@/lib/dal/improvement-suggestions'
-import { getOwnerById } from '@/lib/dal/owners'
 import {
   getRequirementById,
   getRequirementByUniqueId,
@@ -68,18 +67,13 @@ export async function collectRequirementForReport(
     throw new ReportDataError(`Requirement not found: ${id}`, 404)
   }
 
-  let ownerName: string | null = null
-  if (requirement.area?.ownerId) {
-    const owner = await getOwnerById(db, requirement.area.ownerId)
-    ownerName = owner ? `${owner.firstName} ${owner.lastName}` : null
-  }
-
   return {
     area: requirement.area
       ? {
           id: requirement.area.id,
           name: requirement.area.name,
-          ownerName,
+          ownerHsaId: requirement.area.ownerHsaId,
+          ownerName: null,
         }
       : null,
     createdAt: requirement.createdAt,

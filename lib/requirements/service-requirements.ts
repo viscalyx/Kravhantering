@@ -178,7 +178,7 @@ export function formatRequirementDetail(
       ? {
           id: requirement.area.id,
           name: requirement.area.name,
-          ownerId: requirement.area.ownerId,
+          ownerHsaId: requirement.area.ownerHsaId,
           prefix: requirement.area.prefix,
         }
       : null,

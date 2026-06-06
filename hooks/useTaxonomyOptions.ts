@@ -11,7 +11,7 @@ export interface TaxonomyOption {
 export interface AreaOption {
   id: number
   name: string
-  ownerName: string | null
+  ownerHsaId: string
 }
 
 export interface QualityCharacteristicOption {

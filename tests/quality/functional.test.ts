@@ -343,7 +343,6 @@ const TRANSACTIONAL_TABLES = [
   'requirement_areas',
   'requirement_packages',
   'norm_references',
-  'owners',
 ] as const
 
 let db: SqlServerDatabase | null = null
@@ -610,14 +609,19 @@ function createSpecificationMcpContractService() {
 
 async function createArea(
   target: SqlServerDatabase,
-  overrides: { name?: string; prefix?: string } = {},
+  overrides: { name?: string; ownerHsaId?: string; prefix?: string } = {},
 ): Promise<{ id: number; name: string; prefix: string }> {
   const now = new Date()
   const rows = (await target.query(
-    `INSERT INTO requirement_areas (prefix, name, next_sequence, created_at, updated_at)
+    `INSERT INTO requirement_areas (prefix, name, owner_hsa_id, next_sequence, created_at, updated_at)
        OUTPUT INSERTED.id AS id, INSERTED.name AS name, INSERTED.prefix AS prefix
-       VALUES (@0, @1, 1, @2, @2)`,
-    [overrides.prefix ?? 'INT', overrides.name ?? 'Integration', now],
+       VALUES (@0, @1, @2, 1, @3, @3)`,
+    [
+      overrides.prefix ?? 'INT',
+      overrides.name ?? 'Integration',
+      overrides.ownerHsaId ?? 'SE5560000001-1234',
+      now,
+    ],
   )) as Array<{ id: number; name: string; prefix: string }>
   return rows[0] as { id: number; name: string; prefix: string }
 }

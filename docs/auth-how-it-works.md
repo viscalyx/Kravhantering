@@ -200,9 +200,10 @@ sequenceDiagram
 - JWT verification checks signature, issuer, audience, and a 30-second clock
   tolerance.
 - The required MCP identity is `employeeHsaId`. Values must match the HSA-id
-  validator. The configured local MCP service client emits
-  `SE5560000001-mcp1`; a missing claim means the IdP realm must be reset or
-  re-imported from the current realm JSON.
+  validator: two uppercase country-code letters, 10 digits, `-`, and an
+  alphanumeric suffix, with a maximum length of 31 characters. The configured
+  local MCP service client emits `SE5560000001-mcp1`; a missing claim means the
+  IdP realm must be reset or re-imported from the current realm JSON.
 - The current MCP implementation reads `roles` and `scope` directly from the
   access token payload. On success it attaches a verified actor to the active
   `Request` before the requirements service builds its request context.

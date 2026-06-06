@@ -10,7 +10,8 @@ development requirements — and the two Kravunderlag that group them.
 The data lives in two pure ES modules:
 
 - [typeorm/seed-dogfood.mjs](../typeorm/seed-dogfood.mjs) — inventory: areas,
-  owners, norm references, requirement packages and the `DOGFOOD_KRAV` list.
+  person fixtures, norm references, requirement packages and the `DOGFOOD_KRAV`
+  list.
 - [typeorm/seed-dogfood-build.mjs](../typeorm/seed-dogfood-build.mjs) — the
   builder `appendDogfoodSeed(SEED_DATA)` that mutates the base `SEED_DATA`
   shape (`{ table: { columns, rows } }`) in place. `seed.mjs` calls it once
@@ -27,7 +28,7 @@ ranges:
 
 | Entity | Base IDs | Dogfood IDs |
 | --- | --- | --- |
-| `owners` | 1–3 | 1001–1005 |
+| person fixture IDs | 1–3 | 1001–1005 |
 | `requirement_areas` | 1–10 | 1001–1006 (new) |
 | `norm_references` | 1–6 | 1001–1006 |
 | `requirement_packages` | 1–9 | 1001–1004, 1006–1012 |

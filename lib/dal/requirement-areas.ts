@@ -7,7 +7,7 @@ export interface RequirementAreaRow {
   id: number
   name: string
   nextSequence: number
-  ownerId: number | null
+  ownerHsaId: string
   prefix: string
   updatedAt: Date | string
 }
@@ -29,7 +29,7 @@ export async function listAreas(
       prefix,
       name,
       description,
-      owner_id AS ownerId,
+      owner_hsa_id AS ownerHsaId,
       next_sequence AS nextSequence,
       created_at AS createdAt,
       updated_at AS updatedAt
@@ -59,16 +59,14 @@ export async function listAreasActorCanAuthor(
         area.prefix,
         area.name,
         area.description,
-        area.owner_id AS ownerId,
+        area.owner_hsa_id AS ownerHsaId,
         area.next_sequence AS nextSequence,
         area.created_at AS createdAt,
         area.updated_at AS updatedAt
       FROM requirement_areas area
-      LEFT JOIN owners owner
-        ON owner.id = area.owner_id
       LEFT JOIN requirement_area_co_authors co_author
         ON co_author.area_id = area.id
-      WHERE owner.hsa_id = @0 OR co_author.hsa_id = @0
+      WHERE area.owner_hsa_id = @0 OR co_author.hsa_id = @0
       ORDER BY area.name ASC
     `,
     [actorHsaId],
@@ -94,12 +92,10 @@ export async function canAuthorArea(
     `
       SELECT TOP (1) area.id
       FROM requirement_areas area
-      LEFT JOIN owners owner
-        ON owner.id = area.owner_id
       LEFT JOIN requirement_area_co_authors co_author
         ON co_author.area_id = area.id
       WHERE area.id = @0
-        AND (owner.hsa_id = @1 OR co_author.hsa_id = @1)
+        AND (area.owner_hsa_id = @1 OR co_author.hsa_id = @1)
     `,
     [areaId, actorHsaId],
   )
@@ -117,7 +113,7 @@ export async function getAreaById(
         prefix,
         name,
         description,
-        owner_id AS ownerId,
+        owner_hsa_id AS ownerHsaId,
         next_sequence AS nextSequence,
         created_at AS createdAt,
         updated_at AS updatedAt
@@ -135,7 +131,7 @@ export async function createArea(
     prefix: string
     name: string
     description?: string
-    ownerId?: number
+    ownerHsaId: string
   },
 ): Promise<RequirementAreaRow> {
   const now = new Date()
@@ -145,7 +141,7 @@ export async function createArea(
         prefix,
         name,
         description,
-        owner_id,
+        owner_hsa_id,
         created_at,
         updated_at
       )
@@ -154,19 +150,13 @@ export async function createArea(
         inserted.prefix AS prefix,
         inserted.name AS name,
         inserted.description AS description,
-        inserted.owner_id AS ownerId,
+        inserted.owner_hsa_id AS ownerHsaId,
         inserted.next_sequence AS nextSequence,
         inserted.created_at AS createdAt,
         inserted.updated_at AS updatedAt
       VALUES (@0, @1, @2, @3, @4, @4)
     `,
-    [
-      data.prefix,
-      data.name,
-      data.description ?? null,
-      data.ownerId ?? null,
-      now,
-    ],
+    [data.prefix, data.name, data.description ?? null, data.ownerHsaId, now],
   )
   return mapAreaRow(rows[0])
 }
@@ -177,7 +167,7 @@ export async function updateArea(
   data: {
     name?: string
     description?: string
-    ownerId?: number | null
+    ownerHsaId?: string
   },
 ): Promise<RequirementAreaRow | undefined> {
   const sets: string[] = []
@@ -191,9 +181,9 @@ export async function updateArea(
     params.push(data.description)
     sets.push(`description = @${params.length - 1}`)
   }
-  if (data.ownerId !== undefined) {
-    params.push(data.ownerId)
-    sets.push(`owner_id = @${params.length - 1}`)
+  if (data.ownerHsaId !== undefined) {
+    params.push(data.ownerHsaId)
+    sets.push(`owner_hsa_id = @${params.length - 1}`)
   }
 
   params.push(new Date())
@@ -209,7 +199,7 @@ export async function updateArea(
         inserted.prefix AS prefix,
         inserted.name AS name,
         inserted.description AS description,
-        inserted.owner_id AS ownerId,
+        inserted.owner_hsa_id AS ownerHsaId,
         inserted.next_sequence AS nextSequence,
         inserted.created_at AS createdAt,
         inserted.updated_at AS updatedAt

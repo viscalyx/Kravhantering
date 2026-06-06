@@ -26,10 +26,6 @@ export const RETENTION_SEED = Object.freeze({
     unused: 910030,
     used: 910031,
   },
-  owner: {
-    linked: 910002,
-    orphan: 910001,
-  },
   requirement: {
     archivedUnused: 910101,
     archiveReview: 910105,
@@ -87,7 +83,6 @@ export const RETENTION_HISTORY_ONLY_VERSION_IDS = [
 ]
 
 export const RETENTION_POSITIVE_SOURCE_KEYS = [
-  'owners.identity',
   'requirement_areas.unused',
   'requirement_packages.unused',
   'norm_references.unused',
@@ -124,6 +119,14 @@ function rowFromColumns(table, values) {
   )
 }
 
+function ensureColumn(table, columnName, defaultValue = null) {
+  if (table.columns.includes(columnName)) return
+  table.columns.push(columnName)
+  for (const row of table.rows) {
+    row.push(defaultValue)
+  }
+}
+
 function addRow(seedData, tableName, values) {
   const table = tableSection(seedData, tableName)
   ensureRow(table, rowFromColumns(table, values), table.pk)
@@ -152,26 +155,9 @@ function requirementVersionRow(values) {
   }
 }
 
-function addRetentionOwners(seedData) {
-  addRow(seedData, 'owners', {
-    created_at: OLD_730_TS,
-    email: 'retention.orphan@example.com',
-    first_name: 'Retention',
-    id: RETENTION_SEED.owner.orphan,
-    last_name: 'Orphan',
-    updated_at: OLD_730_TS,
-  })
-  addRow(seedData, 'owners', {
-    created_at: OLD_730_TS,
-    email: 'retention.linked@example.com',
-    first_name: 'Retention',
-    id: RETENTION_SEED.owner.linked,
-    last_name: 'Linked',
-    updated_at: OLD_730_TS,
-  })
-}
-
 function addRetentionTaxonomy(seedData) {
+  ensureColumn(tableSection(seedData, 'requirement_areas'), 'owner_hsa_id')
+
   for (const area of [
     {
       description:
@@ -203,7 +189,7 @@ function addRetentionTaxonomy(seedData) {
       id: area.id,
       name: area.name,
       next_sequence: 20,
-      owner_id: RETENTION_SEED.owner.linked,
+      owner_hsa_id: 'SE5560000001-retentionlinked',
       prefix: area.prefix,
       updated_at: area.updatedAt,
     })
@@ -678,7 +664,6 @@ function addRetentionRequirementSelection(seedData) {
 }
 
 export function appendArchivingRetentionSeed(seedData) {
-  addRetentionOwners(seedData)
   addRetentionTaxonomy(seedData)
   addRetentionRequirements(seedData)
   addRetentionSpecifications(seedData)

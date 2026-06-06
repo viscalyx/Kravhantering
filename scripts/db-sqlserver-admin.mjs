@@ -39,7 +39,6 @@ export const DEMO_RESET_TABLES = Object.freeze([
   'requirement_areas',
   'archiving_retention_exceptions',
   'archiving_retention_runs',
-  'owners',
   'norm_references',
 ])
 

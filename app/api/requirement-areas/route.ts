@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
-import { listOwners, type Owner } from '@/lib/dal/owners'
-import {
-  createArea,
-  listAreas,
-  type RequirementAreaRow,
-} from '@/lib/dal/requirement-areas'
+import { isHsaId } from '@/lib/auth/hsa-id'
+import { createArea, listAreas } from '@/lib/dal/requirement-areas'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   adminMutationPolicy,
@@ -15,37 +11,26 @@ import {
 import {
   boundedDbStringSchema,
   optionalBusinessTextSchema,
-  positiveIntegerSchema,
 } from '@/lib/http/validation'
 
-const optionalOwnerIdSchema = positiveIntegerSchema
-  .nullable()
-  .optional()
-  .transform(value => value ?? undefined)
+const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
+  message:
+    'HSA-ID must use format <two-letter country code><10-digit org no>-<alphanumeric suffix>.',
+})
 
 const createAreaSchema = z
   .object({
     description: optionalBusinessTextSchema,
     name: boundedDbStringSchema,
-    ownerId: optionalOwnerIdSchema,
+    ownerHsaId: hsaIdSchema,
     prefix: boundedDbStringSchema,
   })
   .strict()
 
 export async function GET() {
   const db = await getRequestSqlServerDataSource()
-  const [areas, owners] = await Promise.all([listAreas(db), listOwners(db)])
-  const ownerMap = new Map(
-    owners.map((owner: Owner) => [
-      owner.id,
-      `${owner.firstName} ${owner.lastName}`,
-    ]),
-  )
-  const enriched = areas.map((area: RequirementAreaRow) => ({
-    ...area,
-    ownerName: area.ownerId ? (ownerMap.get(area.ownerId) ?? null) : null,
-  }))
-  return NextResponse.json({ areas: enriched })
+  const areas = await listAreas(db)
+  return NextResponse.json({ areas })
 }
 
 export const POST = secureMutationRoute({

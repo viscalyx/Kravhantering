@@ -477,24 +477,6 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /api/owners:
-    get:
-      tags: [catalogs]
-      operationId: listOwnerOptions
-      responses:
-        '200': { $ref: '#/components/responses/JsonObject' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-
-  /api/owners/all:
-    get:
-      tags: [catalogs]
-      operationId: listOwners
-      responses:
-        '200': { $ref: '#/components/responses/JsonObject' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-
 components:
   securitySchemes:
     cookieSession:

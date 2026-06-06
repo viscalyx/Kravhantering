@@ -197,12 +197,12 @@ describe('production Keycloak realm template', () => {
     expect(hsaIdAttribute?.validations?.length).toMatchObject({ max: 31 })
     expect(hsaIdAttribute?.validations?.pattern).toMatchObject({
       'error-message': 'Invalid HSA ID format',
-      pattern: '^SE[0-9]{10}-[A-Za-z0-9]+$',
+      pattern: '^[A-Z]{2}[0-9]{10}-[A-Za-z0-9]+$',
     })
     expect(hsaIdAttribute?.annotations).toMatchObject({
       inputType: 'text',
       inputTypeMaxLength: '31',
-      inputTypePattern: '^SE[0-9]{10}-[A-Za-z0-9]+$',
+      inputTypePattern: '^[A-Z]{2}[0-9]{10}-[A-Za-z0-9]+$',
       inputTypePlaceholder: 'SE5560000001-admin1',
     })
   })

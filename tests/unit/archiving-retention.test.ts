@@ -31,7 +31,6 @@ const POLICY_ROW = {
 
 const BASE_SOURCE_CANDIDATES: Record<string, Array<Record<string, unknown>>> = {
   'norm_references.unused': [],
-  'owners.identity': [],
   'requirement_areas.unused': [
     {
       age_basis: new Date('2023-01-01T00:00:00.000Z'),
@@ -370,16 +369,6 @@ describe('archiving retention service', () => {
           subject_table: 'norm_references',
         },
       ],
-      'owners.identity': [
-        {
-          age_basis: new Date('2023-01-15T09:00:00.000Z'),
-          current_display_value: 'SE5560000001-retentionorphan',
-          reference: 'Retention Orphan',
-          source_key: 'owners.identity',
-          subject_id: '910001',
-          subject_table: 'owners',
-        },
-      ],
       'requirement_areas.unused': [
         {
           age_basis: new Date('2023-01-15T09:00:00.000Z'),
@@ -467,27 +456,6 @@ describe('archiving retention service', () => {
         },
       ],
     }
-
-    const ownerPreview = await previewArchivingRetention(
-      createRetentionDb({
-        exceptionCount: 0,
-        policy: {
-          ageDays: 365,
-          id: 2,
-          policyKey: 'orphaned_owner_delete',
-        },
-        sourceCandidates,
-      }).db as never,
-      { now: new Date('2026-05-14T00:00:00.000Z'), policyId: 2 },
-    )
-    expect(ownerPreview.summary).toMatchObject({
-      archiveCount: 0,
-      candidateCount: 1,
-      deleteCount: 1,
-    })
-    expect(
-      ownerPreview.candidates.map(candidate => candidate.sourceKey),
-    ).toEqual(['owners.identity'])
 
     const taxonomyPreview = await previewArchivingRetention(
       createRetentionDb({
@@ -588,7 +556,6 @@ describe('archiving retention service', () => {
     ])
     expect(
       [
-        ...ownerPreview.candidates,
         ...taxonomyPreview.candidates,
         ...versionPreview.candidates,
         ...selectionPreview.candidates,

@@ -33,19 +33,6 @@ export const REQUIRED_SEED_DATA = {
     pk: ['id'],
     rows: [
       [
-        2,
-        'orphaned_owner_delete',
-        'Fristående ägare utan aktiva uppdrag',
-        'delete',
-        365,
-        'Ägare utan koppling till kravområden eller kravunderlag',
-        1,
-        'docs/informationsmangder-kravhantering.md#gallrings--och-arkiveringsmatris',
-        null,
-        '2026-04-20 20:07:00',
-        '2026-04-20 20:07:00',
-      ],
-      [
         3,
         'unused_taxonomy_delete',
         'Oanvänd taxonomi',

@@ -85,6 +85,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [ADMIN-09: archiving retention preview is privacy-gated](#admin-09-archiving-retention-preview-is-privacy-gated)
   - [ADMIN-10: reference-data icons render across requirement surfaces](#admin-10-reference-data-icons-render-across-requirement-surfaces)
   - [ADMIN-11: archived requirement-selection retention excludes saved history](#admin-11-archived-requirement-selection-retention-excludes-saved-history)
+  - [ADMIN-12: requirement area owner changes use HSA-ID](#admin-12-requirement-area-owner-changes-use-hsa-id)
 - [Privacy and personal data access](#privacy-and-personal-data-access)
   - [PRIV-01: self-service privacy export](#priv-01-self-service-privacy-export)
   - [PRIV-02: PrivacyOfficer preview by HSA-ID](#priv-02-privacyofficer-preview-by-hsa-id)
@@ -1616,6 +1617,31 @@ history.
 **Expected result:** The run completes without requiring archive export. Only
 archived requirement-selection rows that have no saved
 `specification_requirement_selection_answers` references are deleted.
+
+### ADMIN-12: requirement area owner changes use HSA-ID
+
+**Purpose:** Confirm requirement-area ownership is administered from
+`Kravområden`, not as a separate owner catalog.
+
+**Users:** `ada.admin`.
+
+**Prerequisites:** Open `/sv/admin?tab=referenceData`.
+
+**Steps:**
+
+1. Verify there is no separate `Kravområdesägare` card.
+1. Open `Kravområden`.
+1. Create a disposable requirement area with a unique prefix and a valid HSA-ID
+   in the owner field, for example `NO5560000001-9999`.
+1. Edit the created area and confirm the owner HSA-ID is dimmed and read-only.
+1. Select the owner-change icon next to the dimmed HSA-ID.
+1. Confirm the modal shows the previous HSA-ID, enter a different valid HSA-ID,
+   and select `Byt ägare`.
+
+**Expected result:** The requirement area is created with the entered HSA-ID,
+the edit form cannot change owner inline, `Byt ägare` stays disabled until the
+new HSA-ID is valid and different, and after saving the dimmed field shows the
+new owner HSA-ID.
 
 ## Privacy and personal data access
 

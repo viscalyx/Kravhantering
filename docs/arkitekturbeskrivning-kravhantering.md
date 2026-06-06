@@ -815,7 +815,6 @@ erDiagram
     requirement_version_requirement_packages }o--|| requirement_packages : "refererar kravpaket"
     requirement_versions ||--o{ requirement_version_norm_references : "kopplade normreferenser"
     requirement_version_norm_references }o--|| norm_references : "refererar normreferens"
-    requirement_areas }o--|| owners : "ägs av"
     quality_characteristics }o--o| quality_characteristics : "förälder"
     quality_characteristics }o--|| requirement_types : "kopplad till typ"
     requirement_areas ||--o{ requirement_area_co_authors : "har medförfattare"
@@ -873,6 +872,9 @@ kravbibliotek kan användas i flera verksamhetssammanhang.
 `specification_needs_references` är kravunderlagslokala etiketter med valfri
 beskrivning och uppdateringstid; både bibliotekskrav och kravunderlagets unika
 krav pekar på dem inom samma kravunderlag.
+Kravområden lagrar ansvarigt HSA-ID direkt på
+`requirement_areas.owner_hsa_id`; det finns ingen separat ägarkatalog i
+applikationen.
 
 > **Tillämpningsbarhet via kravpaket.**
 > Tabellen `requirement_packages` hanterar även

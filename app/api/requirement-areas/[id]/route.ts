@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import { isHsaId } from '@/lib/auth/hsa-id'
 import { deleteArea, updateArea } from '@/lib/dal/requirement-areas'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
@@ -11,16 +12,20 @@ import {
   boundedDbStringSchema,
   idParamSchema,
   optionalBusinessTextSchema,
-  positiveIntegerSchema,
 } from '@/lib/http/validation'
 
 export const dynamic = 'force-dynamic'
+
+const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
+  message:
+    'HSA-ID must use format <two-letter country code><10-digit org no>-<alphanumeric suffix>.',
+})
 
 const updateAreaSchema = z
   .object({
     description: optionalBusinessTextSchema,
     name: boundedDbStringSchema.optional(),
-    ownerId: positiveIntegerSchema.nullable().optional(),
+    ownerHsaId: hsaIdSchema.optional(),
   })
   .strict()
 

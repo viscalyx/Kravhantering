@@ -1509,7 +1509,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
         requirement_area.prefix AS areaPrefix,
         requirement_area.name AS areaName,
         requirement_area.description AS areaDescription,
-        requirement_area.owner_id AS areaOwnerId,
+        requirement_area.owner_hsa_id AS areaOwnerHsaId,
         requirement_area.next_sequence AS areaNextSequence,
         requirement_area.created_at AS areaCreatedAt,
         requirement_area.updated_at AS areaUpdatedAt
@@ -1778,7 +1778,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
             name: String(req.areaName ?? ''),
             description:
               req.areaDescription == null ? null : String(req.areaDescription),
-            ownerId: toNum(req.areaOwnerId),
+            ownerHsaId: String(req.areaOwnerHsaId ?? ''),
             nextSequence: Number(req.areaNextSequence ?? 0),
             createdAt: toIso(req.areaCreatedAt) ?? '',
             updatedAt: toIso(req.areaUpdatedAt) ?? '',

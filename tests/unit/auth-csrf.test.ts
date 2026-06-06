@@ -30,7 +30,7 @@ function buildRequest(
   }
   if (init.xrw) headers.set('x-requested-with', init.xrw)
   return new Request(
-    init.requestUrl ?? 'https://app.example.test/api/owners/1',
+    init.requestUrl ?? 'https://app.example.test/api/requirement-areas/1',
     {
       method,
       headers,
@@ -83,7 +83,7 @@ describe('assertSameOriginRequest', () => {
       assertSameOriginRequest(
         buildRequest('POST', {
           origin: 'https://app.example.test',
-          requestUrl: 'http://internal-host/api/owners/1',
+          requestUrl: 'http://internal-host/api/requirement-areas/1',
           xrw: 'XMLHttpRequest',
         }),
       ),
@@ -100,7 +100,7 @@ describe('assertSameOriginRequest', () => {
       assertSameOriginRequest(
         buildRequest('POST', {
           origin: 'https://app.example.test',
-          requestUrl: 'http://internal-host/api/owners/1',
+          requestUrl: 'http://internal-host/api/requirement-areas/1',
           xForwardedHost: 'app.example.test',
           xForwardedProto: 'https',
           xrw: 'XMLHttpRequest',

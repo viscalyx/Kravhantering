@@ -312,8 +312,9 @@ _Avoid_: Benämningar som huvudterm.
 _Avoid_: Huvudterm i UI och dokumentation.
 
 **Kravområdesägare**:
-Den person eller funktion som har huvudansvar för förvaltning av ett
-kravområde och dess krav i kravbiblioteket.
+Den person, identifierad med HSA-ID, som har huvudansvar för förvaltning av ett
+kravområde och dess krav i kravbiblioteket. Kravområdesägare administreras på
+kravområdet, inte som en egen katalog.
 
 - `en`: Requirement area owner
 

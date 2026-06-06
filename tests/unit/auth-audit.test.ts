@@ -176,13 +176,17 @@ describe('recordSecurityEvent', () => {
       event: 'auth.csrf.rejected',
       outcome: 'failure',
       actor: { source: 'oidc' },
-      request: { ip: '2001:db8::1', method: 'POST', path: '/api/owners' },
+      request: {
+        ip: '2001:db8::1',
+        method: 'POST',
+        path: '/api/requirement-areas',
+      },
     })
     const ev = emittedEvents()[0]
     expect(ev.request).toEqual({
       ip: '2001:db8::1',
       method: 'POST',
-      path: '/api/owners',
+      path: '/api/requirement-areas',
     })
   })
 
@@ -194,11 +198,14 @@ describe('recordSecurityEvent', () => {
       request: {
         ip: '"203.0.113.5"',
         method: 'POST',
-        path: '/api/owners',
+        path: '/api/requirement-areas',
       },
     })
     const ev = emittedEvents()[0]
-    expect(ev.request).toEqual({ method: 'POST', path: '/api/owners' })
+    expect(ev.request).toEqual({
+      method: 'POST',
+      path: '/api/requirement-areas',
+    })
   })
 
   it('strips top-level detail keys that match the deny-list', () => {
@@ -344,10 +351,13 @@ describe('recordSecurityEvent', () => {
       event: 'auth.csrf.rejected',
       outcome: 'failure',
       actor: { source: 'oidc' },
-      request: { method: 'POST', path: '/api/owners' },
+      request: { method: 'POST', path: '/api/requirement-areas' },
     })
     const ev = emittedEvents()[0]
-    expect(ev.request).toEqual({ method: 'POST', path: '/api/owners' })
+    expect(ev.request).toEqual({
+      method: 'POST',
+      path: '/api/requirement-areas',
+    })
   })
 
   it('strips query and fragment from pre-normalized request paths', () => {
@@ -357,7 +367,7 @@ describe('recordSecurityEvent', () => {
       actor: { source: 'oidc' },
       request: {
         method: 'POST',
-        path: '/api/owners?code=abc&state=xyz#token',
+        path: '/api/requirement-areas?code=abc&state=xyz#token',
         requestId: 'req-99',
         userAgent: 'TestAgent/2.0',
       },
@@ -365,7 +375,7 @@ describe('recordSecurityEvent', () => {
     const ev = emittedEvents()[0]
     expect(ev.request).toEqual({
       method: 'POST',
-      path: '/api/owners',
+      path: '/api/requirement-areas',
       requestId: 'req-99',
       userAgent: 'TestAgent/2.0',
     })
