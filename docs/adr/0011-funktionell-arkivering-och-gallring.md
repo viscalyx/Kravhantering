@@ -25,8 +25,8 @@ raderingsmekanik och presentation i Admin Center är implementationsdetaljer.
   eftersom arkiverade krav och kravversioner fortfarande kan behövas för
   spårbarhet.
 - Använda en retentionsregel för all data: avvisat eftersom innehåll i
-  kravbiblioteket, kravunderlag, behörighetsöversyner, ägare, taxonomi och
-  bevisunderlag har olika behov av verksamhetshistorik.
+  kravbiblioteket, kravunderlag, behörighetsöversyner, ägaruppdrag, taxonomi
+  och bevisunderlag har olika behov av verksamhetshistorik.
 - Blanda radering av personuppgifter med gallring: avvisat eftersom
   registrerades rättigheter och verksamhetens retentionspolicy har olika
   mandat, triggers och beviskrav.

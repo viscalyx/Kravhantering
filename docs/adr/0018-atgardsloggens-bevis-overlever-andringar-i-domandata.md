@@ -4,11 +4,11 @@ Status: Antagen 2026-06-05.
 
 Kravhantering lagrar bevis i `Åtgärdslogg` i `action_audit_events` som
 varaktiga ögonblicksbilder, inte som relationella barn till krav,
-kravunderlag, ägare eller andra domänrader. Rader i åtgärdsloggen saknar
-avsiktligt foreign keys till levande domäntabeller; de bär logiska target
-identifiers, actor snapshots, request IDs och correlation IDs så att bevisen
-överlever livscykelradering, retentionens `Gallring`, arkivstädning och
-radering eller byte av personfält.
+kravunderlag, ägaruppdrag eller andra domänrader. Rader i åtgärdsloggen
+saknar avsiktligt foreign keys till levande domäntabeller; de bär logiska
+target identifiers, actor snapshots, request IDs och correlation IDs så att
+bevisen överlever livscykelradering, retentionens `Gallring`, arkivstädning
+och radering eller byte av personfält.
 
 Det oväntade är den avsiktliga förlusten av relational integrity för denna
 tabell. Läsning av åtgärdslogg kan inte vara beroende av join tillbaka till
