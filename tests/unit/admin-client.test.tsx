@@ -638,6 +638,7 @@ describe('AdminClient', () => {
     expect(
       panel.queryByTestId('reference-data-card-requirementPackages'),
     ).toBeNull()
+    expect(panel.queryByTestId('reference-data-card-normReferences')).toBeNull()
 
     expect(panel.getByTestId('reference-data-card-statuses')).toHaveAttribute(
       'href',
@@ -692,7 +693,7 @@ describe('AdminClient', () => {
       panel.getByTestId('reference-data-icon-specificationItemStatuses'),
     ).toBeTruthy()
 
-    expect(panel.getAllByRole('link')).toHaveLength(11)
+    expect(panel.getAllByRole('link')).toHaveLength(10)
   })
 
   it('exposes the admin tabs through a tablist and updates selection on click', () => {

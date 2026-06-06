@@ -1,24 +1,22 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
-  deleteNormReference,
   getLinkedRequirements,
   getNormReferenceById,
-  updateNormReference,
 } from '@/lib/dal/norm-references'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import { isForeignKeyViolation } from '@/lib/http/safe-errors'
-import {
-  adminMutationPolicy,
-  secureMutationRoute,
-} from '@/lib/http/secure-mutation-route'
+import { secureMutationRoute } from '@/lib/http/secure-mutation-route'
 import {
   boundedDbStringSchema,
   idParamSchema,
   optionalBusinessTextSchema,
   parseRouteParams,
 } from '@/lib/http/validation'
+import {
+  deleteNormReferenceWithAudit,
+  updateNormReferenceWithAudit,
+} from '@/lib/requirements/norm-reference-mutations'
+import { normReferenceMutationPolicy } from '@/lib/requirements/norm-reference-permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,13 +30,26 @@ const normReferenceUpdateSchema = z
   .object({
     issuer: boundedDbStringSchema.optional(),
     name: boundedDbStringSchema.optional(),
-    normReferenceId: optionalBusinessTextSchema,
+    normReferenceId: optionalBusinessTextSchema.optional(),
     reference: boundedDbStringSchema.optional(),
     type: boundedDbStringSchema.optional(),
     uri: nullableOptionalTextSchema.optional(),
     version: nullableOptionalTextSchema.optional(),
   })
   .strict()
+  .refine(
+    body =>
+      [
+        'issuer',
+        'name',
+        'normReferenceId',
+        'reference',
+        'type',
+        'uri',
+        'version',
+      ].some(key => Object.hasOwn(body, key)),
+    { message: 'At least one field must be provided for update' },
+  )
 
 export async function GET(
   _request: NextRequest,
@@ -61,55 +72,41 @@ export async function GET(
 export const PUT = secureMutationRoute({
   bodySchema: normReferenceUpdateSchema,
   paramsSchema: idParamSchema,
-  policy: adminMutationPolicy(),
+  policy: normReferenceMutationPolicy('norm_reference.update'),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const normReference = await updateNormReference(db, params.id, body)
+    const normReference = await updateNormReferenceWithAudit(
+      db,
+      params.id,
+      body,
+      context,
+    )
     if (!normReference) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    await recordAdminPrivilegedActionSucceeded(context, {
-      changedFields: Object.keys(body),
-      operation: 'update',
-      resourceId: params.id,
-      resourceType: 'norm_reference',
-    })
     return NextResponse.json(normReference)
   },
 })
 
 export const DELETE = secureMutationRoute({
   paramsSchema: idParamSchema,
-  policy: adminMutationPolicy(),
+  policy: normReferenceMutationPolicy('norm_reference.delete'),
   handler: async ({ context, params }) => {
     const { id } = params
     const db = await getRequestSqlServerDataSource()
-    const linked = await getLinkedRequirements(db, id)
-    if (linked.length > 0) {
+    const result = await deleteNormReferenceWithAudit(db, id, context)
+    if (result.status === 'not_found') {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    if (result.status === 'in_use') {
       return NextResponse.json(
-        { error: 'Cannot delete norm reference with linked requirements' },
+        {
+          error: 'Norm reference is in use',
+          usage: result.usage,
+        },
         { status: 409 },
       )
     }
-    try {
-      const deletedCount = await deleteNormReference(db, id)
-      if (deletedCount === 0) {
-        return NextResponse.json({ error: 'Not found' }, { status: 404 })
-      }
-      await recordAdminPrivilegedActionSucceeded(context, {
-        operation: 'delete',
-        resourceId: id,
-        resourceType: 'norm_reference',
-      })
-      return NextResponse.json({ ok: true })
-    } catch (error) {
-      if (isForeignKeyViolation(error)) {
-        return NextResponse.json(
-          { error: 'Cannot delete norm reference with linked requirements' },
-          { status: 409 },
-        )
-      }
-      throw error
-    }
+    return NextResponse.json({ ok: true })
   },
 })

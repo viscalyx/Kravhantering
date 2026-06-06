@@ -414,8 +414,9 @@ också ange standardvyer för olika kontexter.
 
 Fliken **Referensdata** innehåller länkar till taxonomihanteringssidor:
 kravområden, typer, kravversionsstatusar, risknivåer, kvalitetsegenskaper,
-och normreferenser. Kravpaket hanteras i stället under
-**Kravbiblioteksförvaltning**, tillsammans med kravurvalsfrågor.
+genomförandeformer och kravområdesägare. Kravpaket och normreferenser hanteras
+i stället under **Kravbiblioteksförvaltning**, tillsammans med
+kravurvalsfrågor.
 
 ![Admin — Referensdata](images/042-admin-referensdata.png)
 
@@ -462,13 +463,13 @@ för att säkerställa täckning av kvalitetskraven.
 
 ![Kvalitetsegenskaper](images/048-kvalitetsegenskaper.png)
 
-### Normreferenser
+### Normbibliotek
 
-Normreferenser är ett bibliotek med externa standarder och regelverk (t.ex.
-ISO-standarder, GDPR). Krav kan referera till en eller flera normreferenser för
-att tydliggöra vilka regelverk de härstammar från.
+Normbiblioteket samlar normreferenser till externa standarder och regelverk
+(t.ex. ISO-standarder, GDPR). Krav kan referera till en eller flera
+normreferenser för att tydliggöra vilka regelverk de härstammar från.
 
-![Normreferenser](images/049-normreferenser.png)
+![Normbibliotek](images/049-normreferenser.png)
 
 ### Ägare
 

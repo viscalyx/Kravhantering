@@ -78,12 +78,13 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [ADMIN-02: reference-data CRUD page saves changes](#admin-02-reference-data-crud-page-saves-changes)
   - [ADMIN-03: browser back restores reference-data tab](#admin-03-browser-back-restores-reference-data-tab)
   - [ADMIN-04: mobile admin tabs and actions remain usable](#admin-04-mobile-admin-tabs-and-actions-remain-usable)
-  - [ADMIN-05: action log filters and exports CSV](#admin-05-action-log-filters-and-exports-csv)
-  - [ADMIN-06: access-review decision and export](#admin-06-access-review-decision-and-export)
-  - [ADMIN-07: access-review validation rejects long comments](#admin-07-access-review-validation-rejects-long-comments)
-  - [ADMIN-08: archiving retention preview is privacy-gated](#admin-08-archiving-retention-preview-is-privacy-gated)
-  - [ADMIN-09: reference-data icons render across requirement surfaces](#admin-09-reference-data-icons-render-across-requirement-surfaces)
-  - [ADMIN-10: archived requirement-selection retention excludes saved history](#admin-10-archived-requirement-selection-retention-excludes-saved-history)
+  - [ADMIN-05: Normbibliotek lives under stewardship](#admin-05-normbibliotek-lives-under-stewardship)
+  - [ADMIN-06: action log filters and exports CSV](#admin-06-action-log-filters-and-exports-csv)
+  - [ADMIN-07: access-review decision and export](#admin-07-access-review-decision-and-export)
+  - [ADMIN-08: access-review validation rejects long comments](#admin-08-access-review-validation-rejects-long-comments)
+  - [ADMIN-09: archiving retention preview is privacy-gated](#admin-09-archiving-retention-preview-is-privacy-gated)
+  - [ADMIN-10: reference-data icons render across requirement surfaces](#admin-10-reference-data-icons-render-across-requirement-surfaces)
+  - [ADMIN-11: archived requirement-selection retention excludes saved history](#admin-11-archived-requirement-selection-retention-excludes-saved-history)
 - [Privacy and personal data access](#privacy-and-personal-data-access)
   - [PRIV-01: self-service privacy export](#priv-01-self-service-privacy-export)
   - [PRIV-02: PrivacyOfficer preview by HSA-ID](#priv-02-privacyofficer-preview-by-hsa-id)
@@ -241,7 +242,7 @@ and `hsaId`, but does not include raw tokens, authorization codes, `state`,
 1. Open the `Kravområden` reference-data page.
 
 **Expected result:** The Admin Center loads, `Referensdata` is usable, and the
-reference-data page opens.
+reference-data page opens. Normreferenser are not listed under `Referensdata`.
 
 ### AUTH-06: privacy tab is disabled for Admin without PrivacyOfficer
 
@@ -1449,7 +1450,40 @@ the `Reference data` tab remains selected.
 **Expected result:** Tabs and buttons are visible, selectable, and large enough
 to operate by touch.
 
-### ADMIN-05: action log filters and exports CSV
+### ADMIN-05: Normbibliotek lives under stewardship
+
+**Purpose:** Confirm norm-reference stewardship is reached from
+Kravbiblioteksförvaltning, not Admin Center reference data.
+
+**Users:** `ada.admin`.
+
+**Prerequisites:** Open `/sv/requirements`.
+
+**Steps:**
+
+1. Open `Kravbiblioteksförvaltning`.
+1. Select `Normbibliotek`.
+1. Create a new norm reference with a URI such as
+   `https://example.com/document`.
+1. Verify the URI field shows a compact external-link icon after the field.
+1. Edit the created norm reference and temporarily change the URI to
+   `file:///tmp/document.pdf`.
+1. Verify the external-link icon disappears from the URI field.
+1. Change the URI back to `https://example.com/document` and verify the same
+   icon appears after the URI field.
+1. Save and verify the list shows a compact external-link icon next to the
+   norm reference name.
+1. Archive it, confirm the danger dialog, and then reactivate it.
+1. Return to `/sv/admin`, select `Referensdata`, and scan the cards.
+
+**Expected result:** Normbibliotek opens at
+`/sv/requirements/stewardship?tab=norms`, the norm reference can be created,
+edited, opened through the URI icons in the form and list, archived only after
+confirmation, and reactivated. Only `http` and `https` norm-reference URIs
+render browser-link icons; unsupported schemes such as `file` do not. Admin
+Center `Referensdata` has no norm-reference card.
+
+### ADMIN-06: action log filters and exports CSV
 
 **Purpose:** Confirm Admin action-log evidence can be reviewed.
 
@@ -1469,7 +1503,7 @@ visible, and the CSV contains Swedish headers such as `Tidpunkt;Aktörstyp`.
 Opening the file in Windows spreadsheet tools shows Swedish characters
 correctly.
 
-### ADMIN-06: access-review decision and export
+### ADMIN-07: access-review decision and export
 
 **Purpose:** Confirm Admin users can decide and export access reviews.
 
@@ -1490,7 +1524,7 @@ both exports are available. Swedish downloads use ASCII-safe filenames beginning
 with `behorighetsoversyn`, and the JSON file opens with Swedish characters
 intact in Windows text tools.
 
-### ADMIN-07: access-review validation rejects long comments
+### ADMIN-08: access-review validation rejects long comments
 
 **Purpose:** Confirm client validation prevents invalid decision payloads.
 
@@ -1507,7 +1541,7 @@ intact in Windows text tools.
 **Expected result:** The panel shows a validation message and does not save the
 row.
 
-### ADMIN-08: archiving retention preview is privacy-gated
+### ADMIN-09: archiving retention preview is privacy-gated
 
 **Purpose:** Confirm retention tools are restricted to PrivacyOfficer users.
 
@@ -1525,7 +1559,7 @@ row.
 **Expected result:** `ada.admin` and `disa.privacy` can use archiving privacy
 tools; `only.admin` is redirected to the default tab or sees disabled access.
 
-### ADMIN-09: reference-data icons render across requirement surfaces
+### ADMIN-10: reference-data icons render across requirement surfaces
 
 **Purpose:** Confirm admins can assign and clear icons from the installed
 Lucide catalog, and that labels remain visible wherever icons are rendered.
@@ -1558,7 +1592,7 @@ tables, badges, the status stepper, version history, print reports, and PDF
 reports, and the browser console has no Content Security Policy or WebAssembly
 errors while downloading the PDF.
 
-### ADMIN-10: archived requirement-selection retention excludes saved history
+### ADMIN-11: archived requirement-selection retention excludes saved history
 
 **Purpose:** Confirm Admin > Arkivering can gallra archived
 requirement-selection content without deleting saved requirements-specification

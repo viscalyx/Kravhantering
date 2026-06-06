@@ -1,12 +1,12 @@
-# Reference Data and AI-Assisted Authoring
+# Norm Library, Reference Data, and AI-Assisted Authoring
 
 <!-- cSpell:ignore FEFF -->
 
-Behavioral contracts for reference data DALs and AI requirement
-generation. These contracts are auditable by the spec-audit skill
+Behavioral contracts for the norm library, reference data DALs, and AI
+requirement generation. These contracts are auditable by the spec-audit skill
 (scrutiny areas 13–14).
 
-## 1 — Norm References
+## 1 — Norm Library
 
 Source: `lib/dal/norm-references.ts`
 
@@ -27,18 +27,28 @@ If the derived ID already exists in the database, the resolver
 appends `-2`, `-3`, … up to `-999`. If all 998 suffixes are
 taken, it falls back to `-${Date.now()}`.
 
+### Listing and Lifecycle
+
+`listNormReferences()` returns active norm references by default. Pass
+`includeArchived` for the Norm library stewardship surface, or `includeIds`
+when a requirement form must show already selected archived references without
+offering every archived reference as a new choice.
+
+Archiving a norm reference hides it from new requirement links but keeps
+existing links visible. Reactivation makes it selectable again.
+
 ### Linked Requirements
 
-`countLinkedRequirementsByPackage()` counts distinct requirements per
+`countLinkedRequirements()` counts distinct requirements per
 norm reference, with an optional `statuses` filter array.
-`getLinkedRequirementsForPackage()` returns linked requirements with
-both `statusNameSv` and `statusNameEn` columns.
+`getLinkedRequirements()` returns linked requirements with both `statusNameSv`
+and `statusNameEn` columns.
 
 ### Ordering
 
 `listNormReferences()` orders by `normReferenceId` ascending.
-`getLinkedRequirementsForPackage()` orders by `requirements.uniqueId`
-ascending.
+Active rows sort before archived rows when archived rows are included.
+`getLinkedRequirements()` orders by `requirements.uniqueId` ascending.
 
 ### Localization
 

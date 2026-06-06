@@ -3,15 +3,18 @@
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from '@/i18n/routing'
+import NormReferencesClient from '../../norm-references/norm-references-client'
 import RequirementPackagesClient from '../../requirement-packages/requirement-packages-client'
 import RequirementSelectionQuestionsClient from './requirement-selection-questions-client'
 
-type StewardshipTab = 'packages' | 'questions'
+type StewardshipTab = 'packages' | 'questions' | 'norms'
 
 const STORAGE_KEY = 'requirements.stewardship.tab'
 
 function tabFromValue(value: string | null): StewardshipTab | null {
-  return value === 'questions' || value === 'packages' ? value : null
+  return value === 'questions' || value === 'packages' || value === 'norms'
+    ? value
+    : null
 }
 
 function getStoredTab(): StewardshipTab | null {
@@ -57,9 +60,7 @@ export default function StewardshipClient() {
 
   if (activeTab == null) return null
 
-  return activeTab === 'packages' ? (
-    <RequirementPackagesClient />
-  ) : (
-    <RequirementSelectionQuestionsClient />
-  )
+  if (activeTab === 'packages') return <RequirementPackagesClient />
+  if (activeTab === 'questions') return <RequirementSelectionQuestionsClient />
+  return <NormReferencesClient />
 }

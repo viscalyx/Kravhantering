@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   countLinkedRequirements,
-  createNormReference,
   listNormReferences,
 } from '@/lib/dal/norm-references'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  adminMutationPolicy,
+  authenticatedMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
@@ -19,6 +17,7 @@ import {
   positiveIntegerStringSchema,
   queryBooleanSchema,
 } from '@/lib/http/validation'
+import { createNormReferenceWithAudit } from '@/lib/requirements/norm-reference-mutations'
 
 const nullableOptionalTextSchema = optionalBusinessTextSchema
   .nullable()
@@ -26,6 +25,8 @@ const nullableOptionalTextSchema = optionalBusinessTextSchema
 
 const normReferencesQuerySchema = z
   .object({
+    includeArchived: queryBooleanSchema.optional().default(false),
+    includeIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     linked: queryBooleanSchema.optional().default(false),
     statuses: optionalQueryArraySchema(positiveIntegerStringSchema),
   })
@@ -49,10 +50,15 @@ export async function GET(request: Request) {
     normReferencesQuerySchema,
   )
   if (!parsedQuery.ok) return parsedQuery.response
-  const { linked: linkedOnly, statuses } = parsedQuery.data
+  const {
+    includeArchived,
+    includeIds,
+    linked: linkedOnly,
+    statuses,
+  } = parsedQuery.data
   const db = await getRequestSqlServerDataSource()
   const [normRefs, counts] = await Promise.all([
-    listNormReferences(db),
+    listNormReferences(db, { includeArchived, includeIds }),
     countLinkedRequirements(
       db,
       linkedOnly && statuses && statuses.length > 0 ? { statuses } : undefined,
@@ -70,23 +76,10 @@ export async function GET(request: Request) {
 
 export const POST = secureMutationRoute({
   bodySchema: normReferenceCreateSchema,
-  policy: adminMutationPolicy(),
+  policy: authenticatedMutationPolicy('norm_reference.create'),
   handler: async ({ body, context }) => {
     const db = await getRequestSqlServerDataSource()
-    try {
-      const normReference = await createNormReference(db, body)
-      await recordAdminPrivilegedActionSucceeded(context, {
-        changedFields: Object.keys(body),
-        operation: 'create',
-        resourceId: normReference.id,
-        resourceType: 'norm_reference',
-      })
-      return NextResponse.json(normReference, { status: 201 })
-    } catch {
-      return NextResponse.json(
-        { error: 'Failed to create norm reference' },
-        { status: 500 },
-      )
-    }
+    const normReference = await createNormReferenceWithAudit(db, body, context)
+    return NextResponse.json(normReference, { status: 201 })
   },
 })

@@ -3,11 +3,12 @@ import {
   type NormReferenceEntity,
   normReferenceEntity,
 } from '@/lib/typeorm/entities'
-import { toIsoString } from '@/lib/typeorm/value-mappers'
+import { toBoolean, toIsoString } from '@/lib/typeorm/value-mappers'
 
 interface NormReferenceRow {
   createdAt: string
   id: number
+  isArchived: boolean
   issuer: string
   name: string
   normReferenceId: string
@@ -19,6 +20,7 @@ interface NormReferenceRow {
 }
 
 interface LinkedRequirementRow {
+  archiveInitiatedAt: string | null
   description: string | null
   id: number
   statusColor: string | null
@@ -30,7 +32,51 @@ interface LinkedRequirementRow {
   versionNumber: number
 }
 
-export type { LinkedRequirementRow, NormReferenceRow }
+interface NormReferenceUsage {
+  libraryRequirementCount: number
+  localRequirementCount: number
+}
+
+export interface NormReferenceCreateData {
+  issuer: string
+  name: string
+  normReferenceId?: string
+  reference: string
+  type: string
+  uri?: string | null
+  version?: string | null
+}
+
+export interface NormReferenceUpdateData {
+  issuer?: string
+  name?: string
+  normReferenceId?: string
+  reference?: string
+  type?: string
+  uri?: string | null
+  version?: string | null
+}
+
+interface NormReferenceDbRow {
+  createdAt: Date | string
+  id: number
+  isArchived: boolean | number | string
+  issuer: string
+  name: string
+  normReferenceId: string
+  reference: string
+  type: string
+  updatedAt: Date | string
+  uri: string | null
+  version: string | null
+}
+
+interface LinkedRequirementDbRow
+  extends Omit<LinkedRequirementRow, 'archiveInitiatedAt'> {
+  archiveInitiatedAt: Date | string | null
+}
+
+export type { LinkedRequirementRow, NormReferenceRow, NormReferenceUsage }
 
 function map(row: NormReferenceEntity): NormReferenceRow {
   return {
@@ -42,6 +88,23 @@ function map(row: NormReferenceEntity): NormReferenceRow {
     version: row.version,
     issuer: row.issuer,
     uri: row.uri,
+    isArchived: row.isArchived,
+    createdAt: toIsoString(row.createdAt),
+    updatedAt: toIsoString(row.updatedAt),
+  }
+}
+
+function mapDbRow(row: NormReferenceDbRow): NormReferenceRow {
+  return {
+    id: row.id,
+    normReferenceId: row.normReferenceId,
+    name: row.name,
+    type: row.type,
+    reference: row.reference,
+    version: row.version,
+    issuer: row.issuer,
+    uri: row.uri,
+    isArchived: toBoolean(row.isArchived),
     createdAt: toIsoString(row.createdAt),
     updatedAt: toIsoString(row.updatedAt),
   }
@@ -49,11 +112,43 @@ function map(row: NormReferenceEntity): NormReferenceRow {
 
 export async function listNormReferences(
   db: SqlServerDatabase,
+  options: { includeArchived?: boolean; includeIds?: number[] } = {},
 ): Promise<NormReferenceRow[]> {
-  const rows = await db
-    .getRepository(normReferenceEntity)
-    .find({ order: { normReferenceId: 'ASC' } })
-  return rows.map(map)
+  const params: number[] = [options.includeArchived ? 1 : 0]
+  const conditions = ['@0 = 1 OR normReferences.is_archived = 0']
+  const includeIds = [...new Set(options.includeIds ?? [])].filter(
+    id => Number.isInteger(id) && id > 0,
+  )
+
+  if (includeIds.length > 0) {
+    const placeholders = includeIds.map(id => {
+      params.push(id)
+      return `@${params.length - 1}`
+    })
+    conditions.push(`normReferences.id IN (${placeholders.join(', ')})`)
+  }
+
+  const rows = await db.query<NormReferenceDbRow[]>(
+    `
+      SELECT
+        normReferences.id AS id,
+        normReferences.norm_reference_id AS normReferenceId,
+        normReferences.name AS name,
+        normReferences.type AS type,
+        normReferences.reference AS reference,
+        normReferences.version AS version,
+        normReferences.issuer AS issuer,
+        normReferences.uri AS uri,
+        normReferences.is_archived AS isArchived,
+        normReferences.created_at AS createdAt,
+        normReferences.updated_at AS updatedAt
+      FROM norm_references AS normReferences
+      WHERE ${conditions.map(condition => `(${condition})`).join(' OR ')}
+      ORDER BY normReferences.is_archived ASC, normReferences.norm_reference_id ASC
+    `,
+    params,
+  )
+  return rows.map(mapDbRow)
 }
 
 export async function getNormReferenceById(
@@ -116,7 +211,7 @@ export async function getLinkedRequirements(
   db: SqlServerDatabase,
   normReferenceDbId: number,
 ): Promise<LinkedRequirementRow[]> {
-  return db.query(
+  const rows = await db.query<LinkedRequirementDbRow[]>(
     `
       SELECT
         requirements.id AS id,
@@ -124,6 +219,7 @@ export async function getLinkedRequirements(
         requirement_versions.description AS description,
         requirement_versions.version_number AS versionNumber,
         requirement_versions.requirement_status_id AS statusId,
+        requirement_versions.archive_initiated_at AS archiveInitiatedAt,
         requirement_statuses.name_sv AS statusNameSv,
         requirement_statuses.name_en AS statusNameEn,
         requirement_statuses.color AS statusColor,
@@ -140,6 +236,46 @@ export async function getLinkedRequirements(
     `,
     [normReferenceDbId],
   )
+  return rows.map(row => ({
+    ...row,
+    archiveInitiatedAt:
+      row.archiveInitiatedAt == null
+        ? null
+        : toIsoString(row.archiveInitiatedAt),
+  }))
+}
+
+export async function getNormReferenceUsage(
+  db: SqlServerDatabase,
+  id: number,
+): Promise<NormReferenceUsage> {
+  const [row] = await db.query<
+    Array<{
+      libraryRequirementCount: number
+      localRequirementCount: number
+    }>
+  >(
+    `
+      SELECT
+        (
+          SELECT COUNT(DISTINCT versions.requirement_id)
+          FROM requirement_version_norm_references AS links
+          INNER JOIN requirement_versions AS versions
+            ON links.requirement_version_id = versions.id
+          WHERE links.norm_reference_id = @0
+        ) AS libraryRequirementCount,
+        (
+          SELECT COUNT(DISTINCT links.specification_local_requirement_id)
+          FROM specification_local_requirement_norm_references AS links
+          WHERE links.norm_reference_id = @0
+        ) AS localRequirementCount
+    `,
+    [id],
+  )
+  return {
+    libraryRequirementCount: Number(row?.libraryRequirementCount ?? 0),
+    localRequirementCount: Number(row?.localRequirementCount ?? 0),
+  }
 }
 
 async function deriveNormReferenceId(
@@ -216,15 +352,7 @@ async function resolveCollision(
 
 export async function createNormReference(
   db: SqlServerDatabase,
-  data: {
-    normReferenceId?: string
-    name: string
-    type: string
-    reference: string
-    version?: string | null
-    issuer: string
-    uri?: string | null
-  },
+  data: NormReferenceCreateData,
 ): Promise<NormReferenceRow> {
   const normReferenceId =
     data.normReferenceId?.trim() ||
@@ -241,6 +369,7 @@ export async function createNormReference(
       version: data.version ?? null,
       issuer: data.issuer,
       uri: data.uri ?? null,
+      isArchived: false,
       createdAt: now,
       updatedAt: now,
     }),
@@ -251,15 +380,7 @@ export async function createNormReference(
 export async function updateNormReference(
   db: SqlServerDatabase,
   id: number,
-  data: {
-    normReferenceId?: string
-    name?: string
-    type?: string
-    reference?: string
-    version?: string | null
-    issuer?: string
-    uri?: string | null
-  },
+  data: NormReferenceUpdateData,
 ): Promise<NormReferenceRow | undefined> {
   const repository = db.getRepository(normReferenceEntity)
   const patch: Partial<NormReferenceEntity> = {}
@@ -277,10 +398,70 @@ export async function updateNormReference(
   return row ? map(row) : undefined
 }
 
+async function setNormReferenceArchived(
+  db: SqlServerDatabase,
+  id: number,
+  isArchived: boolean,
+): Promise<NormReferenceRow | undefined> {
+  const rows = await db.query<NormReferenceDbRow[]>(
+    `
+      UPDATE norm_references
+      SET is_archived = @0, updated_at = @1
+      OUTPUT
+        inserted.id AS id,
+        inserted.norm_reference_id AS normReferenceId,
+        inserted.name AS name,
+        inserted.type AS type,
+        inserted.reference AS reference,
+        inserted.version AS version,
+        inserted.issuer AS issuer,
+        inserted.uri AS uri,
+        inserted.is_archived AS isArchived,
+        inserted.created_at AS createdAt,
+        inserted.updated_at AS updatedAt
+      WHERE id = @2
+    `,
+    [isArchived ? 1 : 0, new Date(), id],
+  )
+  return rows[0] ? mapDbRow(rows[0]) : undefined
+}
+
+export async function archiveNormReference(
+  db: SqlServerDatabase,
+  id: number,
+): Promise<NormReferenceRow | undefined> {
+  return setNormReferenceArchived(db, id, true)
+}
+
+export async function reactivateNormReference(
+  db: SqlServerDatabase,
+  id: number,
+): Promise<NormReferenceRow | undefined> {
+  return setNormReferenceArchived(db, id, false)
+}
+
 export async function deleteNormReference(
   db: SqlServerDatabase,
   id: number,
 ): Promise<number> {
-  const result = await db.getRepository(normReferenceEntity).delete(id)
-  return result.affected ?? 0
+  const rows = await db.query<Array<{ id: number }>>(
+    `
+      DELETE norm_reference
+      OUTPUT deleted.id AS id
+      FROM norm_references AS norm_reference
+      WHERE norm_reference.id = @0
+        AND NOT EXISTS (
+          SELECT 1
+          FROM requirement_version_norm_references AS links
+          WHERE links.norm_reference_id = norm_reference.id
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM specification_local_requirement_norm_references AS links
+          WHERE links.norm_reference_id = norm_reference.id
+        )
+    `,
+    [id],
+  )
+  return rows.length
 }

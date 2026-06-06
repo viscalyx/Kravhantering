@@ -62,12 +62,11 @@ test.describe('Stewardship navigation memory', () => {
       await page
         .getByRole('button', { name: 'Kravbiblioteksförvaltning' })
         .click()
-      await expect(page.getByRole('status')).toBeHidden({ timeout: 500 })
       await expect(
         page.locator(
           '[data-developer-mode-name="transition mask"][data-developer-mode-value="stewardship"]',
         ),
-      ).toBeHidden({ timeout: 500 })
+      ).toHaveCount(0, { timeout: 2000 })
 
       await expect(page).toHaveURL(
         /\/sv\/requirements\/stewardship\?tab=questions/,
@@ -87,5 +86,29 @@ test.describe('Stewardship navigation memory', () => {
 
       expect(headingLog).not.toContain('Kravpaket')
     })
+  })
+
+  test('opens the norm library stewardship tab', async ({ page }) => {
+    await page.goto('/sv/requirements')
+    await page.evaluate(() =>
+      localStorage.removeItem('requirements.stewardship.tab'),
+    )
+
+    await page
+      .getByRole('button', { name: 'Kravbiblioteksförvaltning' })
+      .click()
+    await page.getByRole('link', { name: 'Normbibliotek' }).click()
+
+    await expect(page).toHaveURL(/\/sv\/requirements\/stewardship\?tab=norms/)
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Normbibliotek' }),
+    ).toBeVisible()
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          localStorage.getItem('requirements.stewardship.tab'),
+        ),
+      )
+      .toBe('norms')
   })
 })

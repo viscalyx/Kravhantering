@@ -65,12 +65,18 @@ Deferred from this contract:
   and focused unit/UI tests, but their useful assertions are state-machine,
   duplicate, cleanup, and filter-calculation behavior rather than broad fuzzing
   in this first contract slice.
+- Norm-reference stewardship mutations remain outside the OpenAPI/Schemathesis
+  v1 contract for the same reason. The read-only `GET /api/norm-references`
+  catalog route stays in scope; create, update, archive, reactivate, and delete
+  are covered by secure-route and focused route/UI tests.
 - ZAP API scan, role-matrix DAST, full active scans, and paid vendor scanners
   that require service-specific CI secrets.
 
 The existing catalog `GET /api/requirement-packages` route stays in scope and
 documents its `includeArchived=true|false` query parameter because it is a
 read-only browser catalog endpoint used by the stewardship UI.
+The catalog `GET /api/norm-references` route also stays in scope and documents
+`includeArchived`, `includeIds`, `linked`, and `statuses` query parameters.
 
 Those deferred items are later issue `#119` work.
 
