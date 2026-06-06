@@ -7,15 +7,17 @@ target version.
 
 ## Unreleased
 
-### Requirement area owners must have valid HSA-IDs before upgrade
+### Requirement package and area owners must have HSA-IDs before upgrade
 
-Confirm that every requirement area has an owner and that every owner has a
-valid HSA-ID before running `db-job migrate`. HSA-ID validation accepts two
-uppercase country-code letters, 10 digits, `-`, and an alphanumeric suffix; it
-is not limited to Swedish `SE` identifiers. If the upgrade stops because an
-owner or HSA-ID is missing or invalid, repair the owner data and rerun the
-target release migration.
+Confirm that every requirement package has an owner with a HSA-ID and every
+requirement area has an owner with a valid HSA-ID before running
+`db-job migrate`. Area owner HSA-IDs must use two uppercase country-code
+letters, 10 digits, `-`, and an alphanumeric suffix. This migration cannot be
+rolled back: it removes the legacy `owners` rows, and their original names,
+email addresses and timestamps cannot be reconstructed from
+`requirement_areas.owner_hsa_id` without data loss.
 
-This migration cannot be rolled back: it removes the legacy `owners` rows, and
-their original names, email addresses and timestamps cannot be reconstructed
-from `requirement_areas.owner_hsa_id` without data loss.
+### Custom UI terminology must be exported before upgrade if it must be retained
+
+Export any custom UI terminology values you need to keep before running
+`db-job migrate`; migration rollback will not restore them.

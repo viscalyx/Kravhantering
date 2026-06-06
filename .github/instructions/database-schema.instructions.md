@@ -79,6 +79,13 @@ ALTER TABLE [<table>]
 - If a deviation is required, add it to `Accepted Exceptions` in
   `docs/database-schema.md` in the same change.
 
+## Operator Upgrade Notes
+
+- When a migration or required seed change requires operator action before
+  upgrade, update `docs/operator-upgrade-notes.md` under `## Unreleased` with
+  a 1-3 sentence note.
+- Complete the PR's Operator Upgrade Impact section.
+
 ## Personal Data / Privacy
 
 - Treat columns that store or derive living-person identity as personal data.

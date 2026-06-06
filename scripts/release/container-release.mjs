@@ -12,6 +12,8 @@ import {
 export const APP_RUNTIME_PACKAGE = 'kravhantering-app-runtime'
 export const DB_JOB_PACKAGE = 'kravhantering-db-job'
 export const DEFAULT_RELEASE_OUTPUT_DIR = 'tmp/container-release-artifacts'
+export const DEFAULT_OPERATOR_UPGRADE_NOTES_PATH =
+  'docs/operator-upgrade-notes.md'
 export const DEPLOYMENT_BUNDLE_SCHEMA_VERSION = 2
 export const APP_RUNTIME_DESCRIPTION =
   'Runnable Next.js application image for the production web runtime.'
@@ -21,7 +23,7 @@ export const DB_JOB_DESCRIPTION =
 const USAGE = `Usage:
   node scripts/release/container-release.mjs plan --gitversion-json <path> --output <path> [--github-env <path>] [--changed-files <path>]
   node scripts/release/container-release.mjs identities --plan <path> --app-metadata <path> --db-job-metadata <path> --output <path> [--github-env <path>]
-  node scripts/release/container-release.mjs notes --plan <path> --metadata <path> --hashes <path> --output <path>
+  node scripts/release/container-release.mjs notes --plan <path> --metadata <path> --hashes <path> --output <path> [--operator-notes <path>]
   node scripts/release/container-release.mjs bundle --plan <path> --metadata <path> --stack-lock <path> --output-dir <path> [--build-json <path>] [--hashes <path>] [--sbom-dir <path>]
   node scripts/release/container-release.mjs ensure-tag --plan <path>`
 
@@ -39,6 +41,7 @@ const RELEVANT_PATH_PREFIXES = [
   'package.json',
   'public/',
   'docs/images/',
+  'docs/operator-upgrade-notes.md',
   'docs/rhel10-production-deploy.md',
   'docs/rhel10-production-disconnected.md',
   'docs/rhel10-production-uninstall.md',
@@ -140,6 +143,47 @@ function writeJsonFile(filePath, value, fsImpl = fs) {
 function writeTextFile(filePath, value, fsImpl = fs) {
   fsImpl.mkdirSync(path.dirname(filePath), { recursive: true })
   fsImpl.writeFileSync(filePath, value)
+}
+
+export function extractUnreleasedOperatorUpgradeNotes(content, filePath) {
+  const body = String(content ?? '')
+  const headingMatch = body.match(/^##[ \t]+Unreleased[ \t]*$/mu)
+  if (!headingMatch) {
+    throw new Error(
+      `Operator upgrade notes file ${filePath} must contain "## Unreleased".`,
+    )
+  }
+
+  const afterHeading = body.slice(headingMatch.index + headingMatch[0].length)
+  const nextReleaseHeadingIndex = afterHeading.search(/^##[ \t]+\S/mu)
+  const unreleasedSection =
+    nextReleaseHeadingIndex === -1
+      ? afterHeading
+      : afterHeading.slice(0, nextReleaseHeadingIndex)
+  const trimmed = unreleasedSection.trim()
+
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
+export function readOperatorUpgradeNotes(
+  filePath = DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
+  fsImpl = fs,
+) {
+  if (typeof fsImpl.existsSync === 'function' && !fsImpl.existsSync(filePath)) {
+    throw new Error(`Operator upgrade notes file is missing: ${filePath}.`)
+  }
+
+  let content
+  try {
+    content = fsImpl.readFileSync(filePath, 'utf8')
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      throw new Error(`Operator upgrade notes file is missing: ${filePath}.`)
+    }
+    throw error
+  }
+
+  return extractUnreleasedOperatorUpgradeNotes(content, filePath)
 }
 
 function parseArgs(args) {
@@ -1039,12 +1083,27 @@ function renderContainerImageBlock(packageName, description, imageMetadata) {
   ]
 }
 
-export function renderReleaseNotes(plan, metadata, _hashesContent, changelog) {
+function renderOperatorUpgradeNotesSection(operatorUpgradeNotes) {
+  const notes = readNonEmpty(operatorUpgradeNotes)
+  if (!notes) return undefined
+  return `## Operator Upgrade Notes\n\n${notes}`
+}
+
+export function renderReleaseNotes(
+  plan,
+  metadata,
+  _hashesContent,
+  changelog,
+  operatorUpgradeNotes,
+) {
   const generatedNotesSection = renderGeneratedNotesSection(changelog)
+  const operatorUpgradeNotesSection =
+    renderOperatorUpgradeNotesSection(operatorUpgradeNotes)
   const deploymentArchive = deploymentBundleArchiveName(plan.version)
   const deploymentChecksum = `${deploymentArchive}.sha256`
   const lines = [
     ...(generatedNotesSection ? [generatedNotesSection, ''] : []),
+    ...(operatorUpgradeNotesSection ? [operatorUpgradeNotesSection, ''] : []),
     '## Container Images',
     '',
     ...renderContainerImageBlock(
@@ -1182,9 +1241,19 @@ export async function main(args, dependencies = {}) {
         env,
         execFileSync: dependencies.execFileSync,
       })
+      const operatorUpgradeNotes = readOperatorUpgradeNotes(
+        options['operator-notes'] ?? DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
+        fsImpl,
+      )
       writeTextFile(
         options.output,
-        renderReleaseNotes(plan, metadata, hashes, changelog),
+        renderReleaseNotes(
+          plan,
+          metadata,
+          hashes,
+          changelog,
+          operatorUpgradeNotes,
+        ),
         fsImpl,
       )
       consoleObj.log(`Wrote ${options.output}`)
