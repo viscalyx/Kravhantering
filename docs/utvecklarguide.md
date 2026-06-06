@@ -1,8 +1,7 @@
 # Utvecklingsverktyg för projektet
 
-Det här dokumentet listar de verktyg och åtkomster en utvecklare behöver för
-att arbeta med Kravhantering. Det beskriver inte hur ny funktionalitet ska
-utvecklas.
+Det här dokumentet visar förslag på flöde för utvecklare och listar de
+verktyg och åtkomster en utvecklare behöver för att arbeta med Kravhantering.
 
 ## Basverktyg
 
@@ -194,7 +193,13 @@ Kodbasen behöver gemensamma system som ägs av teamet eller organisationen.
 
 - Källkodssystem med Git-stöd, till exempel GitHub, Azure DevOps Services eller
   Azure DevOps Server.
-- Pull request- eller merge request-flöde med kodgranskning.
+- Pull request- eller merge request-flöde med kodgranskning och
+  AI-assisterad kodgranskning.
+- Stöd för paket- och beroendeuppdateringar för kodbasens beroenden.
+- Säkerhets- och sårbarhetsskanning för kod, beroenden och
+  containerdefinitioner.
+- Skanning efter produktionshemligheter. Produktionshemligheter som hamnar i
+  kodbasen eller dess historik ska betraktas som röjda.
 - CI/CD-motor som kan köra projektets npm-, Playwright- och containersteg.
 - Containerregister för `app-runtime`, `db-job` och stödavbildningar.
 - Artefaktlagring för releasepaket, rapporter, SBOM och testresultat.
@@ -293,3 +298,90 @@ används behöver motsvarande pipelines finnas där.
 - `Copilot Setup Steps` (`.github/workflows/copilot-setup-steps.yml`) används
   för att förbereda GitHub Copilot-agentens miljö. Den är ett stödflöde, inte en
   release-, test-, lint- eller säkerhetsgate.
+
+## Utvecklarflöde
+
+<!-- cSpell:ignore autonumber -->
+
+```mermaid
+sequenceDiagram
+    autonumber
+
+    actor Användare
+    participant Utvecklare
+    participant KodAgent as AI-agent för kodning
+    participant Kodbas as Kodbas + instruktioner
+    participant Tester as Lint, enhetstester & integrationstester
+    participant PR as Pull Request
+    participant ReviewAgent as AI-agent för kodgranskning
+    participant Validering as Validerings-skill
+
+    Användare->>Utvecklare: Har ett problem eller behov
+
+    Utvecklare->>KodAgent: Beskriver behovet och ber om stöd
+    KodAgent->>Kodbas: Läser instruktioner, skills och relevant kod
+    KodAgent-->>Utvecklare: Föreslår eller gör kodändringar
+
+    alt Tester körs av utvecklare
+        Utvecklare->>Tester: Kör lint, enhetstester och integrationstester
+    else Tester körs av AI-agent
+        KodAgent->>Tester: Kör lint, enhetstester och integrationstester
+    end
+
+    Tester-->>Utvecklare: Testresultat
+
+    Utvecklare->>PR: Skickar local branch som Pull Request
+
+    loop Tills inga granskningskommentarer återstår
+        PR->>ReviewAgent: Startar AI-assisterad kodgranskning
+        ReviewAgent->>PR: Lämnar granskningskommentarer
+
+        alt Kommentarer finns
+            Utvecklare->>KodAgent: Ber om hjälp att bearbeta kommentarerna
+            KodAgent->>Validering: Utvärderar rimlighet och relevans
+            Validering-->>KodAgent: Rekommenderar vilka kommentarer som bör åtgärdas
+
+            KodAgent->>Kodbas: Gör validerade ändringar
+            KodAgent-->>Utvecklare: Sammanfattar ändringar
+
+            alt Tester körs igen
+                Utvecklare->>Tester: Kör lint, enhetstester och integrationstester
+                Tester-->>Utvecklare: Testresultat
+            end
+
+            Utvecklare->>PR: Skickar uppdateringar till PR
+        else Inga kommentarer kvar
+            ReviewAgent-->>Utvecklare: PR är redo för fortsatt hantering
+        end
+    end
+```
+
+### Kortfattade förklaringar
+
+1. **Problem eller behov identifieras**
+   Flödet börjar med att användaren har ett behov, ett fel, en förbättring
+   eller en ny funktion.
+
+2. **Utvecklaren använder en AI-agent för kodning**
+   Utvecklaren använder en AI-agent som kan följa kodbasens instruktioner,
+   använda skills och förstå relevanta delar av koden.
+
+3. **Kodändringar testas lokalt**
+   Antingen utvecklaren eller AI-agenten kör lint, enhetstester och
+   integrationstester för att fånga fel tidigt.
+
+4. **Branch skickas som Pull Request**
+   När ändringarna verkar fungera skickas den lokala grenen in som en PR.
+
+5. **AI-assisterad kodgranskning startar**
+   PR:en granskas av en annan AI-agent än den som användes för kodningen, för
+   att minska risken för självbekräftande granskning.
+
+6. **Kommentarer valideras innan ändringar görs**
+   Utvecklaren tar granskningskommentarerna och använder AI-assisterad kodning
+   tillsammans med en Validerings-skill för att bedöma om kommentarerna är
+   rimliga, relevanta och värda att åtgärda.
+
+7. **Ändringar skickas tillbaka till PR**
+   Validerade ändringar görs, testas vid behov och skickas tillbaka till
+   PR:en. Därefter startar granskningsloopen om tills inga kommentarer återstår.
