@@ -998,8 +998,9 @@ describe('trusted container release helpers', () => {
       expect(singleNodeCompose).not.toContain('\n  db-seed-required:')
       expect(singleNodeCompose).not.toContain('SQLSERVER_HOST_PORT')
       const sqlServerBlock =
-        singleNodeCompose.match(/\n {2}sqlserver:[\s\S]*?\n\n {2}keycloak:/)
-          ?.[0] ?? ''
+        singleNodeCompose.match(
+          /\n {2}sqlserver:[\s\S]*?\n\n {2}keycloak:/,
+        )?.[0] ?? ''
       expect(sqlServerBlock).not.toContain('\n    ports:')
       expect(sqlServerBlock).toContain('kravhantering-internal')
       const releaseEnv = fs.readFileSync(
