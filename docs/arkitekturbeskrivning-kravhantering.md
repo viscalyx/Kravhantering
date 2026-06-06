@@ -550,7 +550,7 @@ förvaltningsflikar och en administratörsflik för
    för kravlistan organisationsövergripande.
 2. **Referensdata** — Navigeringsnav till alla
    referensdatasidor, bland annat kravområden, ägare,
-   typer, normreferenser, kravversionsstatusar,
+   typer, kravversionsstatusar,
    användningsstatusar, kravunderlagets livscykelstatusar,
    risknivåer, kvalitetskaraktäristiker samt
    underlagsklassningar. Risknivåer är en fast
@@ -891,6 +891,11 @@ krav pekar på dem inom samma kravunderlag.
 > Arkiverade frågor och svar får `archived_at`; Admin > Arkivering kan
 > gallra dem efter beslutad lagringstid när inga sparade kravunderlagssvar
 > längre refererar dem.
+>
+> **Normbibliotek.**
+> Normbiblioteket förvaltar normreferenser under
+> Kravbiblioteksförvaltning. Arkiverade normreferenser behålls för befintliga
+> kravkopplingar men döljs från nya krav- och lokalkravslänkar.
 
 ### Taxonomi och tvåspråkig design
 
@@ -900,6 +905,8 @@ användarsynliga texter i separata kolumner per språk:
 kolumn baserat på aktivt locale vid frågetillfället.
 Kravpaket är ett undantag eftersom de numera är författat innehåll
 med ett språkneutralt `name` och `description`.
+Normreferenser är också språkneutrala eftersom de beskriver externa
+normkällor med egna officiella namn, beteckningar och utfärdare.
 
 Kvalitetskaraktäristikerna följer ISO/IEC 25010:2023
 med 49 poster i en hierarkisk trädstruktur

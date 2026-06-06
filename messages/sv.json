@@ -74,6 +74,7 @@
     "specifications": "Kravunderlag",
     "requirementPackages": "Kravpaket",
     "requirementSelectionQuestions": "Kravurvalsfrågor",
+    "normLibrary": "Normbibliotek",
     "statuses": "Kravversionsstatusar",
     "types": "Typer",
     "taxonomy": "Referensdata",
@@ -742,7 +743,12 @@
     "filterByNamePlaceholder": "Sök namn eller beskrivning på kravpaket"
   },
   "normReference": {
+    "active": "Aktiv",
+    "archive": "Arkivera",
+    "archived": "Arkiverad",
     "editNormReference": "Redigera normreferens",
+    "filterByName": "Filtrera på ID, benämning, typ, referens eller utfärdare",
+    "filterByNamePlaceholder": "Sök normreferens",
     "issuer": "Utfärdare",
     "issuerHelp": "<strong>Ange den myndighet eller organisation som utfärdat dokumentet.</strong>\nExempel: Riksdagen, ISO, MSB, Myndigheten för digital förvaltning.",
     "linkedRequirements": "Kopplade krav",
@@ -752,12 +758,14 @@
     },
     "newNormReference": "Ny normreferens",
     "normReferenceId": "Normreferens-ID",
-    "normReferenceIdHelp": "<strong>En unik identifierare för denna normreferens.</strong>\nLämna tomt för att auto-generera från referensfältet, namnet eller ett löpnummer. Se hjälppanelen för normreferenser under referensdata för hela genereringsalgoritmen.",
+    "normReferenceIdHelp": "<strong>En unik identifierare för denna normreferens.</strong>\nLämna tomt för att auto-generera från referensfältet, namnet eller ett löpnummer. Se hjälppanelen för Normbibliotek för hela genereringsalgoritmen.",
     "normReferenceIdPlaceholder": "Auto-genereras om tomt",
     "reference": "Referens",
     "referenceHelp": "<strong>Ange dokumentets formella beteckning.</strong>\nAnvänd den officiella numreringen, t.ex. SFS 2018:218, ISO/IEC 27001:2022 eller MSBFS 2020:6. Värdet används även för att auto-generera normreferens-ID.",
     "referencePlaceholder": "T.ex. SFS 2018:218, ISO 27001:2022",
+    "reactivate": "Återaktivera",
     "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}",
+    "status": "Status",
     "type": "Typ",
     "typeHelp": "<strong>Klassificera dokumenttypen.</strong>\nVälj eller skriv dokumentkategori: Lag, Förordning, Föreskrift, Standard, Riktlinje eller Strategisk riktlinje. Detta underlättar filtrering och gruppering.",
     "typePlaceholder": "T.ex. Lag, Standard, Förordning",
@@ -887,7 +895,7 @@
     "description": "Hantera centrala administrationsinställningar för systemet, inklusive kolumner, referensdata, behörighetsöversyner och integritetsrelaterade funktioner.",
     "settings": "Inställningar",
     "adminCenter": "Administrationscenter",
-    "adminCenterDescription": "Uppdatera standardkolumner och referensdata.",
+    "adminCenterDescription": "Uppdatera standardkolumner och administrationsinställningar.",
     "columns": "Kolumner",
     "columnsDescription": "Styr standardordning och synlighet för kravlistans kolumner.",
     "referenceData": "Referensdata",
@@ -1175,7 +1183,6 @@
     "implementationTypesDescription": "Hantera genomförandeformer för kravunderlag.",
     "lifecycleStatusesDescription": "Hantera kravunderlagets livscykelstatusar.",
     "areaOwnersDescription": "Hantera ägare som kan tilldelas kravområden.",
-    "normReferencesDescription": "Hantera normreferenser (lagar, förordningar, standarder m.m.) som kan kopplas till krav.",
     "riskLevelsDescription": "Hantera risknivåer som kan tilldelas krav.",
     "specificationItemStatusesDescription": "Hantera användningsstatusar för kravtillämpningar."
   },
@@ -1517,7 +1524,7 @@
       },
       "referenceData": {
         "heading": "Referensdata",
-        "body": "Snabblänkar till hantering av kravområden, typer, normreferenser, kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar, kravunderlagets kravstatusar, risknivåer, kvalitetsegenskaper, styrningsobjektstyper, genomförandeformer och kravområdesägare."
+        "body": "Snabblänkar till hantering av kravområden, typer, kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar, kravunderlagets kravstatusar, risknivåer, kvalitetsegenskaper, styrningsobjektstyper, genomförandeformer och kravområdesägare."
       },
       "privacy": {
         "heading": "Dataskyddsradering",
@@ -1650,7 +1657,7 @@
       }
     },
     "normReferences": {
-      "title": "Normreferenser",
+      "title": "Normbibliotek",
       "overview": {
         "heading": "Vad är normreferenser?",
         "body": "Normreferenser är de styrande dokument - lagar, förordningar, föreskrifter, standarder och riktlinjer - som ett krav härleds från eller måste uppfylla. Exempel: Dataskyddsförordningen (GDPR), ISO/IEC 27001:2022 eller MSBFS 2020:6.\n\nEn normreferens är ett delat objekt i systemet och kan kopplas till hur många krav som helst. Det innebär att om du uppdaterar en normreferens påverkar det alla krav som är kopplade till den."

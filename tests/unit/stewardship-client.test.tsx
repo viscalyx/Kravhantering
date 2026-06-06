@@ -33,6 +33,10 @@ vi.mock(
   }),
 )
 
+vi.mock('@/app/[locale]/norm-references/norm-references-client', () => ({
+  default: () => <h1>Norm library</h1>,
+}))
+
 describe('StewardshipClient', () => {
   beforeEach(() => {
     searchParamsState.value = new URLSearchParams()
@@ -62,6 +66,24 @@ describe('StewardshipClient', () => {
       screen.getByRole('heading', {
         level: 1,
         name: 'Requirement selection questions',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', {
+        name: 'Requirements Library Stewardship',
+      }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('uses the norm library view title for the norms tab', () => {
+    searchParamsState.value = new URLSearchParams('tab=norms')
+
+    render(<StewardshipClient />)
+
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Norm library',
       }),
     ).toBeInTheDocument()
     expect(

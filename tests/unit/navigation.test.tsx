@@ -146,6 +146,9 @@ describe('Navigation', () => {
       screen.getByRole('link', { name: 'nav.requirementSelectionQuestions' }),
     ).toHaveAttribute('href', '/requirements/stewardship?tab=questions')
     expect(
+      screen.getByRole('link', { name: 'nav.normLibrary' }),
+    ).toHaveAttribute('href', '/requirements/stewardship?tab=norms')
+    expect(
       screen.getByRole('link', { name: 'nav.specifications' }),
     ).toHaveAttribute('href', '/specifications')
   })
@@ -170,6 +173,11 @@ describe('Navigation', () => {
     })
 
     expect(packageLink.querySelector('.lucide-package')).toBeInTheDocument()
+    expect(
+      screen
+        .getByRole('link', { name: 'nav.normLibrary' })
+        .querySelector('.lucide-book-open'),
+    ).toBeInTheDocument()
   })
 
   it('opens the remembered stewardship tab from desktop', async () => {
@@ -284,6 +292,11 @@ describe('Navigation', () => {
         .getAllByRole('link', { name: 'nav.requirementSelectionQuestions' })
         .map(link => link.getAttribute('href')),
     ).toContain('/requirements/stewardship?tab=questions')
+    expect(
+      screen
+        .getAllByRole('link', { name: 'nav.normLibrary' })
+        .map(link => link.getAttribute('href')),
+    ).toContain('/requirements/stewardship?tab=norms')
     expect(screen.queryByRole('link', { name: 'nav.stewardship' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'nav.areas' })).toBeNull()
     expect(screen.queryByText('nav.referenceData')).toBeNull()
@@ -314,6 +327,7 @@ describe('Navigation', () => {
   it.each([
     ['packages', 'nav.requirementPackages'],
     ['questions', 'nav.requirementSelectionQuestions'],
+    ['norms', 'nav.normLibrary'],
   ])('uses the stepped shell and primary selected background for desktop stewardship %s navigation', (tab, label) => {
     pathnameState.value = '/requirements/stewardship'
     searchParamsState.value = new URLSearchParams(`tab=${tab}`)

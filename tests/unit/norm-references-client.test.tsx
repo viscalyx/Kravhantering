@@ -45,6 +45,7 @@ import NormReferencesClient from '@/app/[locale]/norm-references/norm-references
 const sampleNormReferences = [
   {
     id: 1,
+    isArchived: false,
     issuer: 'Boverket',
     linkedRequirementCount: 1,
     name: 'BBR',
@@ -70,11 +71,13 @@ describe('NormReferencesClient', () => {
   it('renders heading and create button', async () => {
     render(<NormReferencesClient />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'nav.normReferences',
+      'nav.normLibrary',
     )
-    expect(
-      screen.getByRole('button', { name: /common\.create/i }),
-    ).toBeInTheDocument()
+    const createButton = screen.getByRole('button', {
+      name: /normReference\.newNormReference/i,
+    })
+    expect(createButton).toBeInTheDocument()
+    expect(createButton).toHaveAttribute('data-floating-action-id', 'create')
     await waitFor(() => {
       expect(screen.getByText('BBR')).toBeInTheDocument()
     })
@@ -86,12 +89,16 @@ describe('NormReferencesClient', () => {
     render(<NormReferencesClient />)
 
     const emptyState = await screen.findByText('normReference.emptyState')
-    expect(emptyState.closest('td')).toHaveAttribute('colspan', '8')
+    expect(emptyState.closest('td')).toHaveAttribute('colspan', '9')
 
-    const createButtons = screen.getAllByRole('button', {
-      name: /common\.create/i,
-    })
-    expect(createButtons).toHaveLength(2)
+    const createButtons = [
+      screen.getByRole('button', {
+        name: /normReference\.newNormReference/i,
+      }),
+      screen.getByRole('button', {
+        name: /common\.create/i,
+      }),
+    ]
 
     fireEvent.click(createButtons[1])
 
@@ -105,7 +112,11 @@ describe('NormReferencesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('BBR')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /normReference\.newNormReference/i,
+      }),
+    )
     const nameInput = await screen.findByRole('textbox', {
       name: /^normReference\.name/,
     })
@@ -153,9 +164,12 @@ describe('NormReferencesClient', () => {
       okJson({
         linkedRequirements: [
           {
+            archiveInitiatedAt: null,
             description: 'Linked requirement',
             id: 7,
             statusColor: '#22c55e',
+            statusIconName: null,
+            statusId: 3,
             statusNameEn: 'Published',
             statusNameSv: 'Publicerad',
             uniqueId: 'REQ-1',
@@ -168,7 +182,7 @@ describe('NormReferencesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('BBR')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.edit bbr/i }))
+    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
     const nameInput = (await screen.findByRole('textbox', {
       name: /^normReference\.name/,
     })) as HTMLInputElement
@@ -184,14 +198,22 @@ describe('NormReferencesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('BBR')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /normReference\.newNormReference/i,
+      }),
+    )
     const nameInput = await screen.findByRole('textbox', {
       name: /^normReference\.name/,
     })
     fireEvent.change(nameInput, {
       target: { value: 'Dirty norm' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /normReference\.newNormReference/i,
+      }),
+    )
 
     await waitFor(() => {
       expect(confirmMock).toHaveBeenCalledWith(
@@ -221,7 +243,7 @@ describe('NormReferencesClient', () => {
     fetchMock.mockResolvedValueOnce(okJson({}))
     fetchMock.mockResolvedValueOnce(okJson({ normReferences: [] }))
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.delete bbr/i }))
+    fireEvent.click(screen.getByRole('button', { name: /common\.delete/i }))
 
     await waitFor(() => {
       expect(confirmMock).toHaveBeenCalledWith(
@@ -230,6 +252,55 @@ describe('NormReferencesClient', () => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/norm-references/1',
         expect.objectContaining({ method: 'DELETE' }),
+      )
+    })
+  })
+
+  it('archives and reactivates from compact icon actions', async () => {
+    render(<NormReferencesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('BBR')).toBeInTheDocument()
+    })
+
+    fetchMock.mockResolvedValueOnce(
+      okJson({ ...sampleNormReferences[0], isArchived: true }),
+    )
+    fetchMock.mockResolvedValueOnce(
+      okJson({
+        normReferences: [{ ...sampleNormReferences[0], isArchived: true }],
+      }),
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /normReference\.archive/i }),
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/norm-references/1/archive',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /normReference\.reactivate/i }),
+      ).toBeInTheDocument()
+    })
+
+    fetchMock.mockResolvedValueOnce(okJson(sampleNormReferences[0]))
+    fetchMock.mockResolvedValueOnce(
+      okJson({ normReferences: sampleNormReferences }),
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /normReference\.reactivate/i }),
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/norm-references/1/reactivate',
+        expect.objectContaining({ method: 'POST' }),
       )
     })
   })

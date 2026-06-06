@@ -105,7 +105,10 @@ export default function SpecificationLocalRequirementForm({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [needsRefHelpOpen, setNeedsRefHelpOpen] = useState(false)
 
-  const taxonomyOptions = useTaxonomyOptions(fields.typeId)
+  const taxonomyOptions = useTaxonomyOptions(
+    fields.typeId,
+    fields.normReferenceIds,
+  )
 
   useEffect(() => {
     setFields(toFieldValues(initialValue))

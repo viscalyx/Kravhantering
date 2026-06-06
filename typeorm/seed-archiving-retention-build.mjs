@@ -261,6 +261,7 @@ function addRetentionTaxonomy(seedData) {
     addRow(seedData, 'norm_references', {
       created_at: norm.updatedAt,
       id: norm.id,
+      is_archived: 0,
       issuer: 'RETENTION-SEED',
       name: norm.title,
       norm_reference_id: norm.normReferenceId,

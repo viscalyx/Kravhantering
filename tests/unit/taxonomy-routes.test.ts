@@ -226,6 +226,33 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
     mockArchiveRequirementPackage(...a),
 }))
 
+const mockListNormReferences = vi.fn(async (..._args: unknown[]) => [{ id: 1 }])
+const mockCreateNormReference = vi.fn(async (..._args: unknown[]) => ({
+  id: 2,
+}))
+const mockUpdateNormReference = vi.fn()
+const mockDeleteNormReference = vi.fn()
+const mockGetNormReferenceById = vi.fn()
+const mockGetNormReferenceUsage = vi.fn(async (..._args: unknown[]) => ({
+  libraryRequirementCount: 1,
+  localRequirementCount: 2,
+}))
+const mockArchiveNormReference = vi.fn()
+const mockReactivateNormReference = vi.fn()
+vi.mock('@/lib/dal/norm-references', () => ({
+  archiveNormReference: (...a: unknown[]) => mockArchiveNormReference(...a),
+  countLinkedRequirements: async () => ({}),
+  createNormReference: (...a: unknown[]) => mockCreateNormReference(...a),
+  deleteNormReference: (...a: unknown[]) => mockDeleteNormReference(...a),
+  getLinkedRequirements: async () => [],
+  getNormReferenceById: (...a: unknown[]) => mockGetNormReferenceById(...a),
+  getNormReferenceUsage: (...a: unknown[]) => mockGetNormReferenceUsage(...a),
+  listNormReferences: (...a: unknown[]) => mockListNormReferences(...a),
+  reactivateNormReference: (...a: unknown[]) =>
+    mockReactivateNormReference(...a),
+  updateNormReference: (...a: unknown[]) => mockUpdateNormReference(...a),
+}))
+
 vi.mock('@/lib/dal/requirement-types', () => ({
   listTypes: async () => [{ id: 1 }],
   listQualityCharacteristics: async () => [{ id: 10 }],
@@ -243,6 +270,16 @@ import {
   PUT as putSpecItemStatus,
 } from '@/app/api/catalog/specification-item-statuses/[id]/route'
 import { GET as getSpecItemStatuses } from '@/app/api/catalog/specification-item-statuses/route'
+import { POST as archiveNormReference } from '@/app/api/norm-references/[id]/archive/route'
+import { POST as reactivateNormReference } from '@/app/api/norm-references/[id]/reactivate/route'
+import {
+  DELETE as deleteNormReference,
+  PUT as putNormReference,
+} from '@/app/api/norm-references/[id]/route'
+import {
+  GET as getNormReferences,
+  POST as postNormReference,
+} from '@/app/api/norm-references/route'
 import {
   GET as getTypeCats,
   POST as postTypeCat,
@@ -1137,6 +1174,172 @@ describe('requirement-packages routes', () => {
     expect(
       auditState.recordAdminPrivilegedActionSucceeded,
     ).not.toHaveBeenCalled()
+  })
+})
+
+describe('norm-references routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    authState.context.actor.roles = ['Admin']
+    mockListNormReferences.mockResolvedValue([{ id: 1 }])
+    mockCreateNormReference.mockResolvedValue({ id: 2 })
+    mockUpdateNormReference.mockResolvedValue({ id: 1 })
+    mockDeleteNormReference.mockResolvedValue(1)
+    mockGetNormReferenceById.mockResolvedValue({ id: 1 })
+    mockGetNormReferenceUsage.mockResolvedValue({
+      libraryRequirementCount: 1,
+      localRequirementCount: 2,
+    })
+    mockArchiveNormReference.mockResolvedValue({ id: 1, isArchived: true })
+    mockReactivateNormReference.mockResolvedValue({
+      id: 1,
+      isArchived: false,
+    })
+  })
+
+  it('GET defaults to active norm references', async () => {
+    const r = await getNormReferences(
+      new Request('http://l/api/norm-references'),
+    )
+    const j = (await r.json()) as { normReferences: { id: number }[] }
+
+    expect(j.normReferences).toHaveLength(1)
+    expect(mockListNormReferences).toHaveBeenCalledWith(expect.anything(), {
+      includeArchived: false,
+      includeIds: undefined,
+    })
+  })
+
+  it('GET accepts includeArchived and includeIds', async () => {
+    const r = await getNormReferences(
+      new Request(
+        'http://l/api/norm-references?includeArchived=true&includeIds=7&includeIds=8',
+      ),
+    )
+
+    expect(r.status).toBe(200)
+    expect(mockListNormReferences).toHaveBeenCalledWith(expect.anything(), {
+      includeArchived: true,
+      includeIds: [7, 8],
+    })
+  })
+
+  it('GET returns 400 for invalid includeArchived', async () => {
+    const r = await getNormReferences(
+      new Request('http://l/api/norm-references?includeArchived=maybe'),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r)
+    expect(mockListNormReferences).not.toHaveBeenCalled()
+  })
+
+  it('POST creates for an authenticated user', async () => {
+    authState.context.actor.roles = []
+
+    const r = await postNormReference(
+      jsonReq('POST', {
+        issuer: 'ISO',
+        name: 'ISO 27001',
+        reference: 'ISO/IEC 27001:2022',
+        type: 'Standard',
+      }),
+    )
+
+    expect(r.status).toBe(201)
+    expect(mockCreateNormReference).toHaveBeenCalled()
+  })
+
+  it('PUT returns 403 without Admin before updating', async () => {
+    authState.context.actor.roles = []
+
+    const r = await putNormReference(
+      jsonReq('PUT', { name: 'Updated' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(403)
+    expect(mockUpdateNormReference).not.toHaveBeenCalled()
+  })
+
+  it('PUT updates with Admin', async () => {
+    const r = await putNormReference(
+      jsonReq('PUT', { name: 'Updated' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(200)
+    expect(mockUpdateNormReference).toHaveBeenCalledWith(expect.anything(), 1, {
+      name: 'Updated',
+    })
+  })
+
+  it('DELETE returns usage conflict when the norm reference is linked', async () => {
+    mockDeleteNormReference.mockResolvedValue(0)
+
+    const r = await deleteNormReference(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(409)
+    await expect(r.json()).resolves.toEqual({
+      error: 'Norm reference is in use',
+      usage: {
+        libraryRequirementCount: 1,
+        localRequirementCount: 2,
+      },
+    })
+  })
+
+  it('DELETE returns 404 when the norm reference is missing', async () => {
+    mockDeleteNormReference.mockResolvedValue(0)
+    mockGetNormReferenceById.mockResolvedValue(null)
+
+    const r = await deleteNormReference(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('404'),
+    )
+
+    expect(r.status).toBe(404)
+    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
+  })
+
+  it('POST archive requires Admin', async () => {
+    authState.context.actor.roles = []
+
+    const r = await archiveNormReference(
+      new NextRequest('http://l', { method: 'POST' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(403)
+    expect(mockArchiveNormReference).not.toHaveBeenCalled()
+  })
+
+  it('POST archive archives with Admin', async () => {
+    const r = await archiveNormReference(
+      new NextRequest('http://l', { method: 'POST' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(200)
+    expect(mockArchiveNormReference).toHaveBeenCalledWith(expect.anything(), 1)
+  })
+
+  it('POST reactivate works for an authenticated user', async () => {
+    authState.context.actor.roles = []
+
+    const r = await reactivateNormReference(
+      new NextRequest('http://l', { method: 'POST' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(200)
+    expect(mockReactivateNormReference).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+    )
   })
 })
 

@@ -3,6 +3,7 @@ import { EntitySchema } from 'typeorm'
 export interface NormReferenceEntity {
   createdAt: Date
   id: number
+  isArchived: boolean
   issuer: string
   name: string
   normReferenceId: string
@@ -38,6 +39,7 @@ export const normReferenceEntity = new EntitySchema<NormReferenceEntity>({
       nullable: true,
     },
     issuer: { name: 'issuer', type: 'nvarchar', length: 'MAX' },
+    isArchived: { name: 'is_archived', type: 'bit', default: false },
     createdAt: { name: 'created_at', type: 'datetime2' },
     updatedAt: { name: 'updated_at', type: 'datetime2' },
     uri: { name: 'uri', type: 'nvarchar', length: 'MAX', nullable: true },

@@ -1623,7 +1623,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'admin-referensdata',
         'Admin — Referensdata',
-        'Fliken **Referensdata** innehåller länkar till alla taxonomihanteringssidor: kravområden, typer, normreferenser, kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar, kravunderlagets kravstatusar, risknivåer och kvalitetsegenskaper. Här bygger du upp de grunddata som krav och kravunderlag refererar till.',
+        'Fliken **Referensdata** innehåller länkar till taxonomihanteringssidor: kravområden, typer, kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar, kravunderlagets kravstatusar, risknivåer, kvalitetsegenskaper, genomförandeformer och kravområdesägare. Normreferenser hanteras i Normbibliotek under Kravbiblioteksförvaltning.',
       )
     })
 
@@ -1680,13 +1680,13 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await guideStep(page, 'Normreferenser', async () => {
-      await guideGoto(page, '/sv/norm-references')
+    await guideStep(page, 'Normbibliotek', async () => {
+      await guideGoto(page, '/sv/requirements/stewardship?tab=norms')
       await snap(
         page,
         'normreferenser',
-        'Normreferenser',
-        'Normreferenser är ett bibliotek med externa standarder och regelverk (t.ex. ISO-standarder, GDPR). Krav kan referera till en eller flera normreferenser för att tydliggöra vilka regelverk de härstammar från.',
+        'Normbibliotek',
+        'Normbiblioteket samlar normreferenser till externa standarder och regelverk (t.ex. ISO-standarder, GDPR). Krav kan referera till en eller flera normreferenser för att tydliggöra vilka regelverk de härstammar från.',
       )
     })
 

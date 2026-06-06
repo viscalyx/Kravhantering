@@ -129,7 +129,7 @@ export default function RequirementForm({
     requirementPackageIds: initialRequirementPackageIds ?? [],
   })
 
-  const taxonomyOptions = useTaxonomyOptions(form.typeId)
+  const taxonomyOptions = useTaxonomyOptions(form.typeId, form.normReferenceIds)
 
   const dirtyFields = useRef<Set<string>>(new Set())
   const prevInitialData = useRef(initialData)

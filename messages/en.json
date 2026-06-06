@@ -74,6 +74,7 @@
     "specifications": "Requirements specifications",
     "requirementPackages": "Requirements packages",
     "requirementSelectionQuestions": "Requirement selection questions",
+    "normLibrary": "Norm library",
     "statuses": "Requirement version statuses",
     "types": "Types",
     "taxonomy": "Reference data",
@@ -742,7 +743,12 @@
     "filterByNamePlaceholder": "Search requirements package name or description"
   },
   "normReference": {
+    "active": "Active",
+    "archive": "Archive",
+    "archived": "Archived",
     "editNormReference": "Edit norm reference",
+    "filterByName": "Filter by ID, name, type, reference, or issuer",
+    "filterByNamePlaceholder": "Search norm references",
     "issuer": "Issuer",
     "issuerHelp": "<strong>Specify the authority or organization that issued the document.</strong>\nExamples: Riksdagen, ISO, MSB, Myndigheten för digital förvaltning.",
     "linkedRequirements": "Linked requirements",
@@ -752,12 +758,14 @@
     },
     "newNormReference": "New norm reference",
     "normReferenceId": "Norm reference ID",
-    "normReferenceIdHelp": "<strong>A unique identifier for this norm reference.</strong>\nLeave blank to auto-generate from the reference field, name, or a sequential number. See the help panel for norm references under reference data for the full generation algorithm.",
+    "normReferenceIdHelp": "<strong>A unique identifier for this norm reference.</strong>\nLeave blank to auto-generate from the reference field, name, or a sequential number. See the Norm library help panel for the full generation algorithm.",
     "normReferenceIdPlaceholder": "Auto-generated if left blank",
     "reference": "Reference",
     "referenceHelp": "<strong>Enter the formal document identifier or designation.</strong>\nUse the official numbering such as SFS 2018:218, ISO/IEC 27001:2022, or MSBFS 2020:6. This value is also used for auto-generating the norm reference ID.",
     "referencePlaceholder": "E.g. SFS 2018:218, ISO 27001:2022",
+    "reactivate": "Reactivate",
     "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}",
+    "status": "Status",
     "type": "Type",
     "typeHelp": "<strong>Classify the document type.</strong>\nChoose or type the document category: Law, Regulation, Directive, Standard, Guideline, or Strategic guideline. This helps filter and group norm references.",
     "typePlaceholder": "E.g. Law, Standard, Regulation",
@@ -887,7 +895,7 @@
     "description": "Manage core admin settings for the system, including columns, reference data, access reviews, and privacy-related configuration.",
     "settings": "Settings",
     "adminCenter": "Admin center",
-    "adminCenterDescription": "Update default column settings and reference data.",
+    "adminCenterDescription": "Update default column settings and admin settings.",
     "columns": "Columns",
     "columnsDescription": "Control the default order and visibility of the requirements list columns.",
     "referenceData": "Reference data",
@@ -1175,7 +1183,6 @@
     "implementationTypesDescription": "Manage implementation types for requirements specifications.",
     "lifecycleStatusesDescription": "Manage specification lifecycle statuses.",
     "areaOwnersDescription": "Manage owners that can be assigned to requirement areas.",
-    "normReferencesDescription": "Manage norm references (laws, regulations, standards, etc.) that can be linked to requirements.",
     "riskLevelsDescription": "Manage risk levels that can be assigned to requirements.",
     "specificationItemStatusesDescription": "Manage usage statuses for requirement applications."
   },
@@ -1517,7 +1524,7 @@
       },
       "referenceData": {
         "heading": "Reference data",
-        "body": "Quick links to manage requirement areas, types, norm references, requirement version statuses, usage statuses, specification lifecycle statuses, specification item statuses, risk levels, quality characteristics, governance object types, implementation types, and requirement area owners."
+        "body": "Quick links to manage requirement areas, types, requirement version statuses, usage statuses, specification lifecycle statuses, specification item statuses, risk levels, quality characteristics, governance object types, implementation types, and requirement area owners."
       },
       "privacy": {
         "heading": "Privacy erasure",
@@ -1650,7 +1657,7 @@
       }
     },
     "normReferences": {
-      "title": "Norm References",
+      "title": "Norm library",
       "overview": {
         "heading": "What are norm references?",
         "body": "Norm references are the governing documents — laws, regulations, ordinances, standards, and guidelines — that a requirement is derived from or must comply with. Examples: the General Data Protection Regulation (GDPR), ISO/IEC 27001:2022, or MSBFS 2020:6.\n\nA norm reference is a shared object in the system and can be linked to any number of requirements. This means that updating a norm reference affects all requirements linked to it."

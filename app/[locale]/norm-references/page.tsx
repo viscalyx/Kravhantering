@@ -1,12 +1,17 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
-import NormReferencesClient from './norm-references-client'
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('nav')
-  return { title: t('normReferences') }
+  return { title: t('normLibrary') }
 }
 
-export default function NormReferencesPage() {
-  return <NormReferencesClient />
+export default async function NormReferencesPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params
+  redirect(`/${locale}/requirements/stewardship?tab=norms`)
 }

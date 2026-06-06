@@ -28,6 +28,7 @@ export interface RequirementPackageOption {
 
 export interface NormReferenceOption {
   id: number
+  isArchived?: boolean
   name: string
   normReferenceId: string
 }
@@ -43,6 +44,8 @@ export interface TaxonomyOptions {
   types: TaxonomyOption[]
 }
 
+const EMPTY_SELECTED_NORM_REFERENCE_IDS: number[] = []
+
 function isAbortError(error: unknown): boolean {
   return (
     typeof error === 'object' &&
@@ -52,7 +55,10 @@ function isAbortError(error: unknown): boolean {
   )
 }
 
-export function useTaxonomyOptions(typeId: string): TaxonomyOptions {
+export function useTaxonomyOptions(
+  typeId: string,
+  selectedNormReferenceIds: number[] = EMPTY_SELECTED_NORM_REFERENCE_IDS,
+): TaxonomyOptions {
   const [areas, setAreas] = useState<AreaOption[]>([])
   const [categories, setCategories] = useState<TaxonomyOption[]>([])
   const [types, setTypes] = useState<TaxonomyOption[]>([])
@@ -76,7 +82,7 @@ export function useTaxonomyOptions(typeId: string): TaxonomyOptions {
         fetch('/api/requirement-categories'),
         fetch('/api/requirement-types'),
         fetch('/api/requirement-packages'),
-        fetch('/api/norm-references'),
+        fetch(buildNormReferencesUrl(selectedNormReferenceIds)),
         fetch('/api/risk-levels'),
       ])
       const [
@@ -136,7 +142,7 @@ export function useTaxonomyOptions(typeId: string): TaxonomyOptions {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedNormReferenceIds])
 
   const fetchQualityCharacteristics = useCallback(
     async (tid: string, signal: AbortSignal) => {
@@ -187,4 +193,16 @@ export function useTaxonomyOptions(typeId: string): TaxonomyOptions {
     riskLevels,
     types,
   }
+}
+
+function buildNormReferencesUrl(selectedNormReferenceIds: number[]): string {
+  const ids = [...new Set(selectedNormReferenceIds)].filter(
+    id => Number.isInteger(id) && id > 0,
+  )
+  if (ids.length === 0) return '/api/norm-references'
+  const params = new URLSearchParams()
+  for (const id of ids) {
+    params.append('includeIds', String(id))
+  }
+  return `/api/norm-references?${params.toString()}`
 }

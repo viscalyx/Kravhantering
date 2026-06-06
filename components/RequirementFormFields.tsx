@@ -83,6 +83,7 @@ export default function RequirementFormFields({
 }: RequirementFormFieldsProps) {
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
+  const tNormReference = useTranslations('normReference')
   const locale = useLocale()
 
   const {
@@ -156,6 +157,19 @@ export default function RequirementFormFields({
       ...additionalNormReferences.filter(nr => !existingIds.has(nr.id)),
     ]
   }, [normReferences, additionalNormReferences])
+  const renderNormReferenceLabel = (nr: NormReferenceOption) => (
+    <span>
+      <span className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
+        {nr.normReferenceId}
+      </span>{' '}
+      {nr.name}
+      {nr.isArchived ? (
+        <span className="ml-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+          {tNormReference('archived')}
+        </span>
+      ) : null}
+    </span>
+  )
 
   const associationSidebarStyle = associationPanelHeight
     ? ({
@@ -497,33 +511,35 @@ export default function RequirementFormFields({
       </div>
       {helpPanel('normReferencesHelp', fid('normReferences'))}
       <div className={associationListClassName}>
-        {allNormReferences.map(nr => (
-          <label
-            className="flex items-center gap-2 text-sm cursor-pointer"
-            key={nr.id}
-          >
-            <input
-              checked={values.normReferenceIds.includes(nr.id)}
-              className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-              onChange={e => {
-                const checked = e.target.checked
-                onChange({
-                  ...values,
-                  normReferenceIds: checked
-                    ? [...values.normReferenceIds, nr.id]
-                    : values.normReferenceIds.filter(id => id !== nr.id),
-                })
-              }}
-              type="checkbox"
-            />
-            <span>
-              <span className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
-                {nr.normReferenceId}
-              </span>{' '}
-              {nr.name}
-            </span>
-          </label>
-        ))}
+        {allNormReferences.map(nr => {
+          const isSelected = values.normReferenceIds.includes(nr.id)
+          const isDisabled = nr.isArchived === true && !isSelected
+          return (
+            <label
+              className={`flex items-center gap-2 text-sm ${
+                isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+              }`}
+              key={nr.id}
+            >
+              <input
+                checked={isSelected}
+                className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+                disabled={isDisabled}
+                onChange={e => {
+                  const checked = e.target.checked
+                  onChange({
+                    ...values,
+                    normReferenceIds: checked
+                      ? [...values.normReferenceIds, nr.id]
+                      : values.normReferenceIds.filter(id => id !== nr.id),
+                  })
+                }}
+                type="checkbox"
+              />
+              {renderNormReferenceLabel(nr)}
+            </label>
+          )
+        })}
       </div>
     </fieldset>
   )
@@ -582,30 +598,39 @@ export default function RequirementFormFields({
             </legend>
             {helpPanel('normReferencesHelp', fid('normReferences-legend'))}
             <div className="mt-2 max-h-56 space-y-2 overflow-y-auto pr-1">
-              {normReferences.map(nr => (
-                <label className="flex items-start gap-2 text-sm" key={nr.id}>
-                  <input
-                    checked={values.normReferenceIds.includes(nr.id)}
-                    className="mt-0.5 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                    onChange={e => {
-                      const checked = e.target.checked
-                      onChange({
-                        ...values,
-                        normReferenceIds: checked
-                          ? [...values.normReferenceIds, nr.id]
-                          : values.normReferenceIds.filter(id => id !== nr.id),
-                      })
-                    }}
-                    type="checkbox"
-                  />
-                  <span>
-                    <span className="font-mono text-xs text-secondary-500">
-                      {nr.normReferenceId}
-                    </span>{' '}
-                    {nr.name}
-                  </span>
-                </label>
-              ))}
+              {allNormReferences.map(nr => {
+                const isSelected = values.normReferenceIds.includes(nr.id)
+                const isDisabled = nr.isArchived === true && !isSelected
+                return (
+                  <label
+                    className={`flex items-start gap-2 text-sm ${
+                      isDisabled
+                        ? 'cursor-not-allowed opacity-60'
+                        : 'cursor-pointer'
+                    }`}
+                    key={nr.id}
+                  >
+                    <input
+                      checked={isSelected}
+                      className="mt-0.5 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+                      disabled={isDisabled}
+                      onChange={e => {
+                        const checked = e.target.checked
+                        onChange({
+                          ...values,
+                          normReferenceIds: checked
+                            ? [...values.normReferenceIds, nr.id]
+                            : values.normReferenceIds.filter(
+                                id => id !== nr.id,
+                              ),
+                        })
+                      }}
+                      type="checkbox"
+                    />
+                    {renderNormReferenceLabel(nr)}
+                  </label>
+                )
+              })}
             </div>
           </fieldset>
         </div>

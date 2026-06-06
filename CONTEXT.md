@@ -259,6 +259,14 @@ uppfylla, till exempel lag, föreskrift, standard eller riktlinje.
 
 _Avoid_: Vanlig referens, länk.
 
+**Normbibliotek**:
+Den förvaltade samlingen av normreferenser som kan kopplas till krav.
+Normbibliotek avser ytan eller samlingen, inte den enskilda normreferensen.
+
+- `en`: Norm library
+
+_Avoid_: Referensdata, normreferens när en enskild normkälla avses.
+
 **Referens**:
 Stödjande material eller hänvisning som kan hjälpa läsaren att förstå ett krav
 men som inte nödvändigtvis är normerande.
@@ -270,11 +278,12 @@ _Avoid_: Normreferens när källan är styrande.
 **Referensdata**:
 Administrerade listor och klassningar som stödjer krav och kravunderlag, till
 exempel kravområden, kategorier, typer, kvalitetsegenskaper, risknivåer,
-normreferenser och statusar. Termen används tills vidare som samlingsnamn.
+och statusar. Termen används tills vidare som samlingsnamn.
 
 - `en`: Reference data
 
-_Avoid_: Kravdata, kravpaket när innehållsförvaltning av kravbiblioteket avses.
+_Avoid_: Kravdata, kravpaket eller normbibliotek när innehållsförvaltning av
+kravbiblioteket avses.
 
 **AI-assisterat författande**:
 Ett stödflöde där en användare får förslag till krav baserat på ämne,

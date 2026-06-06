@@ -415,6 +415,17 @@ paths:
       tags: [catalogs]
       operationId: listNormReferences
       parameters:
+        - name: includeArchived
+          in: query
+          schema: { type: string, enum: ['true', 'false'] }
+        - name: includeIds
+          in: query
+          schema:
+            type: array
+            maxItems: 100
+            items: { type: integer, minimum: 1 }
+          style: form
+          explode: true
         - name: linked
           in: query
           schema: { type: string, enum: ['true', 'false'] }

@@ -4,7 +4,6 @@ import {
   Archive,
   ArrowDown,
   ArrowUp,
-  BookOpen,
   Briefcase,
   Check,
   CheckCircle2,
@@ -2902,13 +2901,6 @@ export default function AdminClient({
       icon: UserCog,
       id: 'areaOwners',
       label: tn('areaOwners'),
-    },
-    {
-      description: ta('normReferencesDescription'),
-      href: '/norm-references',
-      icon: BookOpen,
-      id: 'normReferences',
-      label: tn('normReferences'),
     },
   ]
 

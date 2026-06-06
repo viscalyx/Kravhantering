@@ -31,7 +31,9 @@ const sampleAreas = [{ id: 1, name: 'Area 1', ownerName: 'Owner' }]
 const sampleCategories = [{ id: 1, nameSv: 'Kat', nameEn: 'Cat' }]
 const sampleTypes = [{ id: 1, nameSv: 'Typ', nameEn: 'Type' }]
 const samplePackages = [{ id: 1, name: 'Package' }]
-const sampleNormRefs = [{ id: 1, name: 'NR-1', normReferenceId: 'NR001' }]
+const sampleNormRefs = [
+  { id: 1, isArchived: false, name: 'NR-1', normReferenceId: 'NR001' },
+]
 const sampleRiskLevels = [{ id: 1, nameSv: 'Låg', nameEn: 'Low' }]
 const sampleQC = [
   { id: 10, nameSv: 'Qc sv', nameEn: 'Qc en', parentId: null },
@@ -78,6 +80,20 @@ describe('useTaxonomyOptions', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/requirement-packages')
     expect(fetchMock).toHaveBeenCalledWith('/api/norm-references')
     expect(fetchMock).toHaveBeenCalledWith('/api/risk-levels')
+  })
+
+  it('includes selected norm reference IDs when loading taxonomy options', async () => {
+    setupFetchMock()
+
+    const { result } = renderHook(() => useTaxonomyOptions('', [3, 5]))
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/norm-references?includeIds=3&includeIds=5',
+    )
   })
 
   it('returns populated option arrays after mount', async () => {

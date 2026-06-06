@@ -588,7 +588,7 @@ export function appendDogfoodSeed(SEED_DATA) {
   ] of DOGFOOD_NORMS) {
     ensureRow(
       norms,
-      [id, normId, name, type, ref, version, issuer, SEED_TS, SEED_TS, uri],
+      [id, normId, name, type, ref, version, issuer, 0, SEED_TS, SEED_TS, uri],
       ['id'],
     )
   }

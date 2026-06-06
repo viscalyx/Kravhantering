@@ -354,7 +354,6 @@ It links to the existing stable routes for:
 
 - areas (including owner assignment)
 - types
-- norm references
 - requirement version statuses
 - usage statuses
 - risk levels
@@ -363,7 +362,7 @@ It links to the existing stable routes for:
 - implementation types
 
 The admin center does not rename or move those routes. It only centralizes how
-users reach them. Requirement packages are managed from
+users reach them. Requirement packages and the norm library are managed from
 `/requirements/stewardship` together with requirement-selection questions, since
 package leads and requirement-area stewards can work there without needing
 Admin Center access.
