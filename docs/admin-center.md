@@ -210,9 +210,8 @@ transaction. `Anonymize` and `Delete` are rejected while those requirement-area
 references exist. When no requirement area references the target HSA-ID, there
 is no requirement-area owner assignment to change; only unrelated rows can keep
 their own valid actions, and `Switch`/`Anonymize` are not valid for a
-non-existent requirement-area owner assignment. The former owner-catalog state
-where an unreferenced owner row allowed only `Delete` or `Skip` is retired with
-the standalone owner catalog.
+non-existent requirement-area owner assignment. There is no standalone
+owner-catalog fallback action for unreferenced owner rows.
 
 If no replacement person is supplied, display snapshots are anonymized with the
 internal sentinel `no-user`, shown through localization as `Anonym` in Swedish
@@ -375,8 +374,7 @@ existing stable routes for:
 
 The admin center does not rename or move those child routes. It only changes
 how users reach them from `/admin`: `?tab=taxonomy` and
-`?tab=statusesAndWorkflows` are the supported tab query values, while the old
-`?tab=referenceData` value is retired and falls back to `Columns`.
+`?tab=statusesAndWorkflows` are the supported tab query values.
 Requirement packages and the norm library are managed from
 `/requirements/stewardship` together with requirement-selection questions,
 since package leads and requirement-area stewards can work there without

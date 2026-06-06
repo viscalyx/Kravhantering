@@ -305,15 +305,14 @@ hardcoded English-only text.
 
 ## Lifecycle Normalization
 
-The shared service and DAL normalize behavior that previously drifted between
-routes:
+The shared service and DAL provide one lifecycle behavior contract for routes:
 
 - archiving updates both `requirements.isArchived` and version state
 - transition-to-archived keeps the requirement and version records in sync
 - restoring an archived version clears the requirement archive flag and creates
   a new draft version
-- publishing preserves the existing behavior where the previously published
-  version is auto-archived
+- publishing auto-archives any existing Published version for the same
+  requirement
 - restoring a version copies requirement packages and references into the new draft
 
 ## Logging

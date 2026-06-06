@@ -449,8 +449,7 @@ down.
   shown before the source pills, separated by a small divider, and expands or
   collapses the full list. Expanded krav rows show source badges, so a krav that
   is both directly selected and included through a package appears once with
-  both `Direktvalt` and package badges. The old separate `Krav i urvalet: n`
-  button is not shown.
+  both `Direktvalt` and package badges.
 
 ## Specification Requirement Selection Panel
 
