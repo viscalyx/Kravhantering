@@ -815,6 +815,7 @@ describe('trusted container release helpers', () => {
     expect(releaseEnv).toContain(
       'NGINX_IMAGE_REF=docker.io/library/nginx:1.31.1-alpine',
     )
+    expect(releaseEnv).not.toContain('SQLSERVER_HOST_PORT')
     expect(releaseEnv).not.toContain('replace-with-release-manifest-digest')
     expect(releaseEnv).not.toContain('replace-with-release-digest')
   })
@@ -946,6 +947,7 @@ describe('trusted container release helpers', () => {
         'docs/adr/0001-release-artifact-production-deployment.md',
       )
       expect(result.files).toContain('env/app.env.template')
+      expect(result.files).toContain('env/release.env.template')
       expect(result.files).toContain('bin/kravhantering-images.sh')
       expect(result.files).toContain(
         'systemd/kravhantering-single-node-compose.service',
@@ -994,6 +996,17 @@ describe('trusted container release helpers', () => {
       expect(singleNodeCompose).not.toContain('\n  db-bootstrap:')
       expect(singleNodeCompose).not.toContain('\n  db-migrate:')
       expect(singleNodeCompose).not.toContain('\n  db-seed-required:')
+      expect(singleNodeCompose).not.toContain('SQLSERVER_HOST_PORT')
+      const sqlServerBlock =
+        singleNodeCompose.match(/\n {2}sqlserver:[\s\S]*?\n\n {2}keycloak:/)
+          ?.[0] ?? ''
+      expect(sqlServerBlock).not.toContain('\n    ports:')
+      expect(sqlServerBlock).toContain('kravhantering-internal')
+      const releaseEnv = fs.readFileSync(
+        path.join(result.bundleRoot, 'env/release.env.template'),
+        'utf8',
+      )
+      expect(releaseEnv).not.toContain('SQLSERVER_HOST_PORT')
       const demoUsers = JSON.parse(
         fs.readFileSync(
           path.join(

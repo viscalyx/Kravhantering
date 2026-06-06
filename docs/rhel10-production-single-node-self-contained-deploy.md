@@ -556,6 +556,10 @@ recreated or assigned another subnet. Before starting nginx, run the resolver
 check below and update `NGINX_RESOLVER` in
 `/etc/kravhantering/release.env` to the printed resolver IP if it differs.
 
+SQL Server is only available internally on the `kravhantering-internal`
+Podman network. Connect to it as `sqlserver:1433` from `app-runtime`,
+`db-job` or temporary administration containers attached to that network.
+
 ### `/etc/kravhantering/sqlserver.env`
 
 Set the SQL Server administrator password and confirm the edition:
@@ -1112,7 +1116,9 @@ sudo sed -i "s#^NGINX_RESOLVER=.*#NGINX_RESOLVER=${RESOLVER_IP}#" \
 ```
 
 Validate that SQL Server accepts the bootstrap admin connection before
-creating the application database and logins:
+creating the application database and logins. Because SQL Server is not
+published on a host port, run this check from a temporary `db-job` container on
+the `kravhantering-internal` network:
 
 ```bash
 sudo -iu kravhantering
