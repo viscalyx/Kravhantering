@@ -148,7 +148,7 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `link: requirements recovery` or `link: admin recovery`.
 - Requirements specification list filtering exposes
   `specifications > text field: name filter` on the Name search input above
-  the table. Its create trigger now lives in the fixed `floating action rail`
+  the table. Its create trigger lives in the fixed `floating action rail`
   as `specifications > floating pill: new specification`.
 - Requirements packages expose their create trigger in the fixed
   `floating action rail` as
@@ -307,7 +307,7 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `detail action: add to specification` flow rather than introducing extra
   markers, including when those controls are temporarily disabled during
   submission.
-- Status and risk icon pickers on reference-data CRUD forms remain inside the
+- Status and risk icon pickers on Admin status and risk forms remain inside the
   existing `crud form` and `crud table` surfaces. They do not introduce new
   developer-mode markers; verify visible behavior through the surrounding
   status, usage-status, or risk-level page marker.

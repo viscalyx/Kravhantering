@@ -14,7 +14,6 @@ import {
   ClipboardList,
   FileJson,
   FileText,
-  FolderCog,
   FolderTree,
   Gauge,
   HelpCircle,
@@ -26,6 +25,7 @@ import {
   RotateCcw,
   Save,
   ShieldCheck,
+  Tags,
   Wrench,
   X,
   XCircle,
@@ -80,8 +80,13 @@ const ADMIN_HELP: HelpContent = {
     },
     {
       kind: 'text',
-      bodyKey: 'admin.referenceData.body',
-      headingKey: 'admin.referenceData.heading',
+      bodyKey: 'admin.taxonomy.body',
+      headingKey: 'admin.taxonomy.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'admin.statusesAndWorkflows.body',
+      headingKey: 'admin.statusesAndWorkflows.heading',
     },
     {
       kind: 'text',
@@ -185,7 +190,8 @@ type AdminTab =
   | 'archiving'
   | 'columns'
   | 'privacy'
-  | 'referenceData'
+  | 'statusesAndWorkflows'
+  | 'taxonomy'
 type SaveState = 'error' | 'idle' | 'saved' | 'saving'
 type AccessReviewSavingAction = 'cancel' | 'complete' | 'create' | 'decision'
 
@@ -194,7 +200,8 @@ const PRIVACY_OFFICER_ROLE = 'PrivacyOfficer'
 
 const adminTabs: { icon: LucideIcon; id: AdminTab }[] = [
   { icon: LayoutPanelTop, id: 'columns' },
-  { icon: FolderCog, id: 'referenceData' },
+  { icon: Tags, id: 'taxonomy' },
+  { icon: CircleDot, id: 'statusesAndWorkflows' },
   { icon: ClipboardCheck, id: 'accessReview' },
   { icon: Archive, id: 'archiving' },
   { icon: ShieldCheck, id: 'privacy' },
@@ -207,7 +214,8 @@ const ADMIN_TAB_DEVELOPER_MODE_VALUES: Record<AdminTab, string> = {
   archiving: 'archiving',
   columns: 'columns',
   privacy: 'privacy',
-  referenceData: 'reference data',
+  statusesAndWorkflows: 'statuses and workflows',
+  taxonomy: 'taxonomy',
 }
 
 const ADMIN_TAB_QUERY_KEY = 'tab'
@@ -217,7 +225,12 @@ function getAdminTabFromSearchParams(
   searchParams: URLSearchParams,
   options: { canManageAccessReviews: boolean; canUsePrivacy: boolean },
 ): AdminTab {
-  const tab = searchParams.get(ADMIN_TAB_QUERY_KEY)
+  const requestedTab = searchParams.get(ADMIN_TAB_QUERY_KEY)
+  const tab =
+    requestedTab === 'referenceData'
+      ? (adminTabs.find(item => item.id.includes('reference'))?.id ??
+        DEFAULT_ADMIN_TAB)
+      : requestedTab
 
   if (!adminTabs.some(item => item.id === tab)) {
     return DEFAULT_ADMIN_TAB
@@ -2830,7 +2843,20 @@ export default function AdminClient({
     }
   }
 
-  const referenceDataItems = [
+  const sortAdminItems = (
+    items: {
+      description: string
+      href: string
+      icon: LucideIcon
+      id: string
+      label: string
+    }[],
+  ) =>
+    [...items].sort((left, right) =>
+      left.label.localeCompare(right.label, locale, { sensitivity: 'base' }),
+    )
+
+  const taxonomyItems = sortAdminItems([
     {
       description: ta('areasDescription'),
       href: '/requirement-areas',
@@ -2839,18 +2865,18 @@ export default function AdminClient({
       label: tn('areas'),
     },
     {
+      description: ta('categoriesDescription'),
+      href: '/requirement-categories',
+      icon: Tags,
+      id: 'categories',
+      label: tn('categories'),
+    },
+    {
       description: ta('typesDescription'),
       href: '/requirement-types',
       icon: Layers,
       id: 'types',
       label: tn('types'),
-    },
-    {
-      description: ta('statusesDescription'),
-      href: '/requirement-statuses',
-      icon: CircleDot,
-      id: 'statuses',
-      label: tn('statuses'),
     },
     {
       description: ta('qualityAttributesDescription'),
@@ -2880,6 +2906,16 @@ export default function AdminClient({
       id: 'implementationTypes',
       label: tn('implementationTypes'),
     },
+  ])
+
+  const statusesAndWorkflowItems = sortAdminItems([
+    {
+      description: ta('statusesDescription'),
+      href: '/requirement-statuses',
+      icon: CircleDot,
+      id: 'statuses',
+      label: tn('statuses'),
+    },
     {
       description: ta('lifecycleStatusesDescription'),
       href: '/specifications/lifecycle-statuses',
@@ -2894,7 +2930,7 @@ export default function AdminClient({
       id: 'specificationItemStatuses',
       label: tn('specificationItemStatuses'),
     },
-  ]
+  ])
 
   const renderSaveState = (value: SaveState, errorMessage?: string) => {
     if (value === 'saved') {
@@ -3140,33 +3176,33 @@ export default function AdminClient({
           </section>
         ) : null}
 
-        {activeTab === 'referenceData' ? (
+        {activeTab === 'taxonomy' ? (
           <section
-            aria-labelledby="referenceData-tab"
+            aria-labelledby="taxonomy-tab"
             className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
             {...devMarker({
               context: 'admin center',
               name: 'tab panel',
               priority: 340,
-              value: 'reference data',
+              value: 'taxonomy',
             })}
-            id="referenceData-panel"
+            id="taxonomy-panel"
             role="tabpanel"
           >
             <div className="border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60">
               <h2 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
-                {ta('referenceData')}
+                {ta('taxonomy')}
               </h2>
               <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
-                {ta('referenceDataDescription')}
+                {ta('taxonomyDescription')}
               </p>
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {referenceDataItems.map(item => (
+              {taxonomyItems.map(item => (
                 <Link
                   className="group rounded-[1.5rem] border border-secondary-200/70 bg-[linear-gradient(155deg,rgba(248,250,252,0.95),rgba(255,255,255,0.98))] p-5 transition-transform hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-lg dark:border-secondary-700/60 dark:bg-[linear-gradient(155deg,rgba(15,23,42,0.88),rgba(30,41,59,0.88))]"
-                  data-testid={`reference-data-card-${item.id}`}
+                  data-testid={`taxonomy-card-${item.id}`}
                   href={item.href}
                   key={item.href}
                 >
@@ -3175,13 +3211,66 @@ export default function AdminClient({
                       <item.icon
                         aria-hidden="true"
                         className="h-5 w-5"
-                        data-testid={`reference-data-icon-${item.id}`}
+                        data-testid={`taxonomy-icon-${item.id}`}
                       />
                     </div>
                     <div>
-                      <div className="text-lg font-semibold text-secondary-950 transition-colors group-hover:text-primary-700 dark:text-secondary-50 dark:group-hover:text-primary-300">
+                      <h3 className="text-lg font-semibold text-secondary-950 transition-colors group-hover:text-primary-700 dark:text-secondary-50 dark:group-hover:text-primary-300">
                         {item.label}
-                      </div>
+                      </h3>
+                      <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-300">
+                        {item.description}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {activeTab === 'statusesAndWorkflows' ? (
+          <section
+            aria-labelledby="statusesAndWorkflows-tab"
+            className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+            {...devMarker({
+              context: 'admin center',
+              name: 'tab panel',
+              priority: 340,
+              value: 'statuses and workflows',
+            })}
+            id="statusesAndWorkflows-panel"
+            role="tabpanel"
+          >
+            <div className="border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60">
+              <h2 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
+                {ta('statusesAndWorkflows')}
+              </h2>
+              <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+                {ta('statusesAndWorkflowsDescription')}
+              </p>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {statusesAndWorkflowItems.map(item => (
+                <Link
+                  className="group rounded-[1.5rem] border border-secondary-200/70 bg-[linear-gradient(155deg,rgba(248,250,252,0.95),rgba(255,255,255,0.98))] p-5 transition-transform hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-lg dark:border-secondary-700/60 dark:bg-[linear-gradient(155deg,rgba(15,23,42,0.88),rgba(30,41,59,0.88))]"
+                  data-testid={`statuses-workflows-card-${item.id}`}
+                  href={item.href}
+                  key={item.href}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary-200/80 bg-primary-50 text-primary-700 transition-colors group-hover:border-primary-300 group-hover:bg-primary-100 dark:border-primary-800 dark:bg-primary-950/70 dark:text-primary-300 dark:group-hover:border-primary-700 dark:group-hover:bg-primary-950">
+                      <item.icon
+                        aria-hidden="true"
+                        className="h-5 w-5"
+                        data-testid={`statuses-workflows-icon-${item.id}`}
+                      />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-secondary-950 transition-colors group-hover:text-primary-700 dark:text-secondary-50 dark:group-hover:text-primary-300">
+                        {item.label}
+                      </h3>
                       <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-300">
                         {item.description}
                       </p>

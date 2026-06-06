@@ -560,7 +560,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 14: action-
 
 ### Scenario 15: configurable status and risk icons use an allowlist and stay additive
 
-**Requirement tag:** `[Req: formal — docs/admin-center.md "Reference Data"]`
+**Requirement tag:** `[Req: formal — docs/admin-center.md "Taxonomy And Statuses"]`
 
 **What happened:** Status and risk icons are admin-configurable presentation
 data. If unchecked icon strings reach the DAL, reports or client rendering can

@@ -70,13 +70,14 @@
     "catalog": "Requirements Library",
     "stewardship": "Requirements Library Stewardship",
     "areas": "Requirement areas",
+    "categories": "Categories",
     "specifications": "Requirements specifications",
     "requirementPackages": "Requirements packages",
     "requirementSelectionQuestions": "Requirement selection questions",
     "normLibrary": "Norm library",
     "statuses": "Requirement version statuses",
     "types": "Types",
-    "taxonomy": "Reference data",
+    "taxonomy": "Taxonomy",
     "qualityCharacteristics": "Quality characteristics",
     "riskLevels": "Risk levels",
     "governanceObjectTypes": "Governance object types",
@@ -750,6 +751,15 @@
     "filterByName": "Filter by name or description",
     "filterByNamePlaceholder": "Search requirements package name or description"
   },
+  "requirementCategoryAdmin": {
+    "description": "Indicates the perspective used to classify a requirement. The list is read-only.",
+    "emptyState": "No requirement categories are available.",
+    "id": "ID",
+    "listHeading": "Requirement categories",
+    "loadError": "Could not load requirement categories.",
+    "name": "Name",
+    "title": "Categories"
+  },
   "normReference": {
     "active": "Active",
     "archive": "Archive",
@@ -888,14 +898,16 @@
   "admin": {
     "title": "Admin center",
     "loading": "Loading admin center...",
-    "description": "Manage core admin settings for the system, including columns, reference data, access reviews, and privacy-related configuration.",
+    "description": "Manage core admin settings for the system, including columns, taxonomy, statuses and workflows, access reviews, and privacy-related configuration.",
     "settings": "Settings",
     "adminCenter": "Admin center",
     "adminCenterDescription": "Update default column settings and admin settings.",
     "columns": "Columns",
     "columnsDescription": "Control the default order and visibility of the requirements list columns.",
-    "referenceData": "Reference data",
-    "referenceDataDescription": "Open the existing reference-data pages with their current route slugs.",
+    "taxonomy": "Taxonomy",
+    "taxonomyDescription": "Open classification pages used for filtering, reporting, and AI support.",
+    "statusesAndWorkflows": "Statuses and workflows",
+    "statusesAndWorkflowsDescription": "Open status catalogs that control life cycles, workflow steps, and requirement use in specifications.",
     "accessReviewDescription": "Create recurring reviews of app-managed assignments and AI permissions, decide each access row, and export review evidence.",
     "privacyDescription": "Preview HSA-ID based matches, export data, and execute GDPR erasure for actor identity snapshots and live assignments.",
     "auditLog": {
@@ -1170,6 +1182,7 @@
     "saved": "Saved",
     "columnsSaveError": "Could not save the column settings.",
     "areasDescription": "Manage requirement areas and their prefixes.",
+    "categoriesDescription": "View requirement categories used to classify requirement perspectives.",
     "typesDescription": "View types and their quality hierarchy.",
     "requirementPackagesDescription": "Manage requirements packages linked to requirements.",
     "statusesDescription": "Manage requirement version statuses and their ordering.",
@@ -1516,9 +1529,13 @@
         "heading": "Default columns",
         "body": "Set which columns appear by default in the requirements library and in what order. Users can still override column visibility per session. Locked columns are always shown."
       },
-      "referenceData": {
-        "heading": "Reference data",
-        "body": "Quick links to manage requirement areas, types, requirement version statuses, usage statuses, specification lifecycle statuses, specification item statuses, risk levels, quality characteristics, governance object types, and implementation types."
+      "taxonomy": {
+        "heading": "Taxonomy",
+        "body": "Quick links to classifications used for filtering, reporting, and AI support: requirement areas, categories, types, risk levels, quality characteristics, governance object types, and implementation types."
+      },
+      "statusesAndWorkflows": {
+        "heading": "Statuses and workflows",
+        "body": "Quick links to status catalogs that control lifecycle and usage states: requirement version statuses, specification lifecycle statuses, and usage statuses."
       },
       "privacy": {
         "heading": "Privacy erasure",
@@ -1611,6 +1628,17 @@
       "manage": {
         "heading": "Managing",
         "body": "Create a new requirement area using the New button. Click the edit icon to update the prefix, name, description, or owner. Deleting a requirement area is only possible if no requirements are assigned to it."
+      }
+    },
+    "requirementCategories": {
+      "title": "Categories",
+      "overview": {
+        "heading": "What are categories?",
+        "body": "Categories classify the requirement perspective, for example business, IT, or supplier requirements. They are part of the taxonomy used for filtering and reporting."
+      },
+      "boundary": {
+        "heading": "Read-only catalog",
+        "body": "Categories are maintained as fixed reference data in this slice. Admin Center shows them for orientation, but they are not created, edited, or deleted here."
       }
     },
     "requirementTypes": {

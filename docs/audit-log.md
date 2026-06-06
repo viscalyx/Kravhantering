@@ -8,9 +8,10 @@ replace, the platform `security-audit` JSON log stream.
 
 Rows are written to `action_audit_events` for app-owned mutations such as
 requirement create/edit/transition, specification/package changes, deviation
-and improvement-suggestion decisions, Admin reference-data updates, privacy
-erasure execution, archiving execution, access-review decisions, and
-authorization denials. System-derived cleanup of requirement-selection answer
+and improvement-suggestion decisions, Admin taxonomy and status-catalog
+updates, privacy erasure execution, archiving execution, access-review
+decisions, and authorization denials. System-derived cleanup of
+requirement-selection answer
 links is also logged when requirement package archiving/deletion, retention, or
 requirement publication-state changes remove obsolete links.
 

@@ -31,6 +31,7 @@ const DEFAULT_LOCALE: AppLocale = 'sv'
 const ADMIN_RECOVERY_PREFIXES = [
   '/admin',
   '/requirement-areas',
+  '/requirement-categories',
   '/requirement-types',
   '/requirement-packages',
   '/requirement-statuses',

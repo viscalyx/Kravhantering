@@ -138,9 +138,9 @@ for (const { name, viewport } of viewportVariants) {
     }) => {
       await page.goto('/sv/requirements')
 
-      await expect(
-        page.getByRole('button', { name: 'Referensdata' }),
-      ).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Taxonomi' })).toHaveCount(
+        0,
+      )
 
       const settingsLink = page.getByRole('link', { name: 'Inställningar' })
       await expect(settingsLink).toBeVisible()
@@ -242,26 +242,24 @@ for (const { name, viewport } of viewportVariants) {
         })
       })
 
-      test('browser back returns to the reference data tab after opening a reference page', async ({
+      test('browser back returns to the taxonomy tab after opening a taxonomy page', async ({
         page,
       }) => {
         await page.goto('/en/admin')
 
-        const referenceDataTab = page.getByRole('tab', {
-          name: 'Reference data',
+        const taxonomyTab = page.getByRole('tab', {
+          name: 'Taxonomy',
         })
-        await referenceDataTab.click()
-        await expect(page).toHaveURL('/en/admin?tab=referenceData')
+        await taxonomyTab.click()
+        await expect(page).toHaveURL('/en/admin?tab=taxonomy')
 
-        await page.getByTestId('reference-data-card-areas').click()
+        await page.getByTestId('taxonomy-card-areas').click()
         await expect(page).toHaveURL('/en/requirement-areas')
 
         await page.goBack()
-        await expect(page).toHaveURL('/en/admin?tab=referenceData')
-        await expect(referenceDataTab).toHaveAttribute('aria-selected', 'true')
-        await expect(
-          page.getByTestId('reference-data-card-areas'),
-        ).toBeVisible()
+        await expect(page).toHaveURL('/en/admin?tab=taxonomy')
+        await expect(taxonomyTab).toHaveAttribute('aria-selected', 'true')
+        await expect(page.getByTestId('taxonomy-card-areas')).toBeVisible()
       })
     }
 
@@ -272,8 +270,11 @@ for (const { name, viewport } of viewportVariants) {
         await page.goto('/sv/admin')
 
         const columnsTab = page.getByRole('tab', { name: 'Kolumner' })
-        const referenceDataTab = page.getByRole('tab', {
-          name: 'Referensdata',
+        const taxonomyTab = page.getByRole('tab', {
+          name: 'Taxonomi',
+        })
+        const statusesAndWorkflowsTab = page.getByRole('tab', {
+          name: 'Statusar och arbetsflöden',
         })
         const tablist = page.getByRole('tablist', {
           name: 'Administrationscenter',
@@ -291,7 +292,8 @@ for (const { name, viewport } of viewportVariants) {
           page.getByRole('tab', { name: 'Terminologi' }),
         ).toHaveCount(0)
         await expectTouchTargetSize(columnsTab)
-        await expectTouchTargetSize(referenceDataTab)
+        await expectTouchTargetSize(taxonomyTab)
+        await expectTouchTargetSize(statusesAndWorkflowsTab)
         await expect(page.getByRole('button', { name: 'English' })).toHaveCount(
           0,
         )
@@ -300,10 +302,17 @@ for (const { name, viewport } of viewportVariants) {
         )
         await expectTouchTargetSize(page.getByRole('button', { name: 'Spara' }))
 
-        await referenceDataTab.click()
-        await expect(referenceDataTab).toHaveAttribute('aria-selected', 'true')
+        await taxonomyTab.click()
+        await expect(taxonomyTab).toHaveAttribute('aria-selected', 'true')
+        await expect(page.getByTestId('taxonomy-card-areas')).toBeVisible()
+
+        await statusesAndWorkflowsTab.click()
+        await expect(statusesAndWorkflowsTab).toHaveAttribute(
+          'aria-selected',
+          'true',
+        )
         await expect(
-          page.getByTestId('reference-data-card-areas'),
+          page.getByTestId('statuses-workflows-card-statuses'),
         ).toBeVisible()
 
         await columnsTab.click()

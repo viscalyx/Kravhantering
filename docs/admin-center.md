@@ -3,8 +3,8 @@
 This document describes the contributor-facing admin center for default
 requirement-list columns, recurring access review,
 personal data erasure and data subject access export, archiving retention, and
-reference-data entrypoints. Admin users also get an action-log entrypoint for
-database-backed mutation and authorization-denial review.
+taxonomy/status entrypoints. Admin users also get an action-log entrypoint
+for database-backed mutation and authorization-denial review.
 
 For requirement-list interaction details such as resizing, sorting, and
 filtering, see [requirements-ui-behaviour.md](./requirements-ui-behaviour.md).
@@ -12,21 +12,23 @@ filtering, see [requirements-ui-behaviour.md](./requirements-ui-behaviour.md).
 ## Purpose
 
 The admin center lets maintainers change organization-wide list defaults,
-reach reference-data administration, and run privileged admin workflows without
-changing route slugs, API field names, or MCP tool identifiers.
+reach app-owned taxonomy and status administration, and run privileged admin
+workflows without changing route slugs, API field names, or MCP tool
+identifiers.
 
 The current entrypoint is the global header settings icon, which links to
 `/{locale}/admin`.
 
-Reference-data links no longer live in the header dropdown. They are grouped in
-the admin center instead.
+Taxonomy and status links no longer live in the header dropdown. They are
+grouped in the admin center instead.
 
 ## Tabs
 
-The admin center currently has five tabs for core administration:
+The admin center currently has six tabs for core administration:
 
 - `Columns`
-- `Reference data`
+- `Taxonomy`
+- `Statuses and workflows`
 - `Access review`
 - `Archiving`
 - `Privacy`
@@ -208,9 +210,8 @@ transaction. `Anonymize` and `Delete` are rejected while those requirement-area
 references exist. When no requirement area references the target HSA-ID, there
 is no requirement-area owner assignment to change; only unrelated rows can keep
 their own valid actions, and `Switch`/`Anonymize` are not valid for a
-non-existent requirement-area owner assignment. The former owner-catalog state
-where an unreferenced owner row allowed only `Delete` or `Skip` is retired with
-the standalone owner catalog.
+non-existent requirement-area owner assignment. There is no standalone
+owner-catalog fallback action for unreferenced owner rows.
 
 If no replacement person is supplied, display snapshots are anonymized with the
 internal sentinel `no-user`, shown through localization as `Anonym` in Swedish
@@ -349,27 +350,35 @@ completion, and export. Action-log detail contains review id, counts, delivery,
 decision, and status
 where relevant; it does not contain the raw list of reviewed HSA-IDs.
 
-## Reference Data
+## Taxonomy And Statuses
 
-The `Reference data` tab is the curated navigation surface for the existing
-reference-data pages.
+The `Taxonomy` tab is the curated navigation surface for classification pages
+used for filtering, reporting and AI support. It links to the existing stable
+routes for:
 
-It links to the existing stable routes for:
-
-- areas (including owner assignment)
+- requirement areas (including owner assignment)
+- categories
 - types
-- requirement version statuses
-- usage statuses
 - risk levels
 - quality characteristics
 - governance object types
 - implementation types
 
-The admin center does not rename or move those routes. It only centralizes how
-users reach them. Requirement packages and the norm library are managed from
-`/requirements/stewardship` together with requirement-selection questions, since
-package leads and requirement-area stewards can work there without needing
-Admin Center access.
+The `Statuses and workflows` tab is the curated navigation surface for status
+catalogs that control lifecycle and use-state behavior. It links to the
+existing stable routes for:
+
+- requirement version statuses
+- specification lifecycle statuses
+- usage statuses
+
+The admin center does not rename or move those child routes. It only changes
+how users reach them from `/admin`: `?tab=taxonomy` and
+`?tab=statusesAndWorkflows` are the supported tab query values.
+Requirement packages and the norm library are managed from
+`/requirements/stewardship` together with requirement-selection questions,
+since package leads and requirement-area stewards can work there without
+needing Admin Center access.
 
 The fixed system rows for requirement version statuses, usage statuses, and risk
 levels can also carry a nullable icon selected from the installed
@@ -386,7 +395,7 @@ edited, the current HSA-ID is shown as read-only; the icon button next to it
 opens the owner-change dialog where admins enter the replacement HSA-ID and
 confirm with `Byt ägare`.
 
-- as HSA-ID in the requirement area reference data table
+- as HSA-ID in the requirement area taxonomy table
 - as HSA-ID under the requirement area dropdown in the requirement
   create/edit form
 - as HSA-ID in the requirement detail pane (inline and full-page sidebar)
@@ -400,7 +409,7 @@ If you change any of the following, update this document:
 - access-review scope, role gating, decisions, or evidence export
 - privacy-erasure or data subject access export policy, actions, or role gating
 - admin entrypoint navigation
-- reference-data navigation structure
+- taxonomy and status/workflow navigation structure
 - status, usage-status, or risk-level icon behavior
 
 If you add a new requirement column or property, also update

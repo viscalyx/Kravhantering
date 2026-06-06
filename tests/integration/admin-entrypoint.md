@@ -5,7 +5,7 @@
 
 This suite verifies the administration centre entrypoint: navigating from the
 requirements library, persisting column-order changes across page reloads,
-preserving the selected reference-data tab in browser history,
+preserving the selected taxonomy tab in browser history,
 touch-target accessibility on mobile, and locale-specific page loads.
 
 ## Data Model
@@ -15,7 +15,7 @@ touch-target accessibility on mobile, and locale-specific page loads.
 | --- | --- |
 | `DEFAULT_COLUMN_PAYLOAD` | Full set of requirement list column defaults. Reset via `PUT /api/admin/requirement-columns`. |
 | `[data-testid^="admin-column-row-"]` | Drag-sortable column rows in the Kolumner tab. |
-| `?tab=referenceData` | URL state that restores the Reference data tab when browser history returns to `/admin`. |
+| `?tab=taxonomy` | URL state that restores the Taxonomy tab when browser history returns to `/admin`. |
 <!-- markdownlint-enable MD013 -->
 
 ## Overview Flowchart
@@ -32,10 +32,10 @@ flowchart TD
     I --> K[Assert column order]
     K --> L[Reload and re-assert]
     B -- browser back --> M[Open /en/admin]
-    M --> N[Click Reference data]
+    M --> N[Click Taxonomy]
     N --> O[Open /en/requirement-areas]
     O --> P[Go back]
-    P --> Q[Assert /en/admin?tab=referenceData]
+    P --> Q[Assert /en/admin?tab=taxonomy]
     B -- mobile touch targets --> R[Open /sv/admin on mobile]
     R --> S[Assert all interactive elements ≥ 44×44px]
     B -- locale load --> T[Open /locale/admin]
@@ -76,7 +76,7 @@ Swedish admin heading.
 ### Step-by-Step Flow
 
 1. Navigate to `/sv/requirements`.
-1. Assert the "Referensdata" button is absent (not an admin context).
+1. Assert the "Taxonomi" button is absent (not an admin context).
 1. Assert the "Inställningar" link is visible with `href="/sv/admin"`.
 1. Click the link.
 1. Assert the URL is `/sv/admin`.
@@ -90,7 +90,7 @@ sequenceDiagram
     participant P as Page
 
     U->>P: Open /sv/requirements
-    Note over P: ✓ No "Referensdata" button
+    Note over P: ✓ No "Taxonomi" button
     Note over P: ✓ "Inställningar" link href=/sv/admin
     U->>P: Click Inställningar
     Note over P: ✓ URL = /sv/admin
@@ -150,26 +150,26 @@ flowchart LR
     D -- Yes --> F[Save]
 ```
 
-## browser back returns to the reference data tab after opening a reference page
+## browser back returns to the taxonomy tab after opening a taxonomy page
 
 ### Purpose: Browser History
 
-Confirms that selecting Reference data is stored in the admin URL before a
-reference-data card opens a child admin page. Browser Back should therefore
-return to `/en/admin?tab=referenceData`, with the Reference data tab still
+Confirms that selecting Taxonomy is stored in the admin URL before a taxonomy
+card opens a child admin page. Browser Back should therefore return to
+`/en/admin?tab=taxonomy`, with the Taxonomy tab still
 selected.
 
 ### Step-by-Step Flow: Browser History
 
 1. Navigate to `/en/admin`.
-1. Click the "Reference data" tab.
-1. Assert the URL is `/en/admin?tab=referenceData`.
-1. Click the "Requirement areas" reference-data card.
+1. Click the "Taxonomy" tab.
+1. Assert the URL is `/en/admin?tab=taxonomy`.
+1. Click the "Requirement areas" taxonomy card.
 1. Assert the URL is `/en/requirement-areas`.
 1. Use browser Back.
-1. Assert the URL is `/en/admin?tab=referenceData`.
-1. Assert the Reference data tab has `aria-selected="true"` and the
-   Requirement areas card is visible.
+1. Assert the URL is `/en/admin?tab=taxonomy`.
+1. Assert the Taxonomy tab has `aria-selected="true"` and the Requirement areas
+   card is visible.
 
 ### Sequence Diagram: Browser History
 
@@ -180,13 +180,13 @@ sequenceDiagram
     participant R as RequirementAreasPage
 
     U->>A: Open /en/admin
-    U->>A: Click Reference data
-    Note over A: ✓ URL = /en/admin?tab=referenceData
+    U->>A: Click Taxonomy
+    Note over A: ✓ URL = /en/admin?tab=taxonomy
     U->>R: Click Requirement areas card
     Note over R: ✓ URL = /en/requirement-areas
     U->>A: Browser Back
-    Note over A: ✓ URL = /en/admin?tab=referenceData
-    Note over A: ✓ Reference data tab selected
+    Note over A: ✓ URL = /en/admin?tab=taxonomy
+    Note over A: ✓ Taxonomy tab selected
 ```
 
 ## keeps admin tabs and actions usable on mobile
@@ -200,15 +200,18 @@ correctly.
 ### Step-by-Step Flow: Mobile Touch Targets
 
 1. Navigate to `/sv/admin` on the `375×812` mobile viewport.
-1. Locate the Kolumner and Referensdata tabs and the tablist.
+1. Locate the Kolumner, Taxonomi, and Statusar och arbetsflöden tabs and the
+   tablist.
 1. Assert the tablist `scrollWidth` exceeds its `clientWidth` (tabs overflow
    horizontally and are scrollable).
 1. Assert the removed Swedish tab label and old "English" toggle are absent.
 1. Assert the remaining tabs meet the 44×44 px touch-target minimum.
 1. Assert the "Återställ standardvy" button meets the minimum.
 1. Assert the "Spara" button meets the minimum.
-1. Click the Referensdata tab. Assert it has `aria-selected="true"` and the
-   reference-data card is visible.
+1. Click the Taxonomi tab. Assert it has `aria-selected="true"` and the
+   taxonomy card is visible.
+1. Click the Statusar och arbetsflöden tab. Assert it has
+   `aria-selected="true"` and the status card is visible.
 1. Click the Kolumner tab. Assert it has `aria-selected="true"`.
 1. Assert the column-section "Återställ standardvy" and "Spara" buttons are
    visible and meet the minimum.
@@ -224,9 +227,12 @@ sequenceDiagram
     Note over P: ✓ Tablist scrollable (scrollWidth > clientWidth)
     Note over P: ✓ All tabs ≥ 44×44 px
     Note over P: ✓ Action buttons ≥ 44×44 px
-    U->>P: Click Referensdata tab
+    U->>P: Click Taxonomi tab
     Note over P: ✓ aria-selected="true"
-    Note over P: ✓ Reference-data card visible
+    Note over P: ✓ Taxonomy card visible
+    U->>P: Click Statusar och arbetsflöden tab
+    Note over P: ✓ aria-selected="true"
+    Note over P: ✓ Status card visible
     U->>P: Click Kolumner tab
     Note over P: ✓ aria-selected="true"
     Note over P: ✓ Column buttons visible and ≥ 44×44 px

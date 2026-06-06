@@ -5,7 +5,7 @@
 
 This suite verifies that unexpected App Router client render failures show a
 localized recovery surface instead of raw framework output. It covers the
-library default path and the admin/reference-data path, including retry
+library default path and admin taxonomy paths, including retry
 affordances, safe navigation links, and suppression of raw technical error
 messages.
 

@@ -1616,19 +1616,30 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    await guideStep(page, 'Admin — Referensdata', async () => {
-      await page.getByRole('tab', { name: 'Referensdata' }).click()
+    await guideStep(page, 'Admin — Taxonomi', async () => {
+      await page.getByRole('tab', { name: 'Taxonomi' }).click()
       await page.waitForTimeout(300)
       await snap(
         page,
-        'admin-referensdata',
-        'Admin — Referensdata',
-        'Fliken **Referensdata** innehåller länkar till hantering av kravområden, typer, kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar, kravunderlagets kravstatusar, risknivåer, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer. Normreferenser hanteras i Normbibliotek under Kravbiblioteksförvaltning.',
+        'admin-taxonomi',
+        'Admin — Taxonomi',
+        'Fliken **Taxonomi** innehåller länkar till klassningar som används för filtrering, rapportering och AI-stöd: kravområden, kategorier, typer, risknivåer, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer. Normreferenser hanteras i Normbibliotek under Kravbiblioteksförvaltning.',
       )
     })
 
-    // ── Sektion 9: Referensdatahantering ─────────────────────────────────
-    currentSection = 'Referensdatahantering'
+    await guideStep(page, 'Admin — Statusar och arbetsflöden', async () => {
+      await page.getByRole('tab', { name: 'Statusar och arbetsflöden' }).click()
+      await page.waitForTimeout(300)
+      await snap(
+        page,
+        'admin-statusar-arbetsfloden',
+        'Admin — Statusar och arbetsflöden',
+        'Fliken **Statusar och arbetsflöden** samlar statuskataloger för kravversioner, kravunderlagets livscykel och användningsstatusar i kravunderlag. Taxonomi och statusar hålls isär så att klassningar inte blandas ihop med livscykel- och användningslägen.',
+      )
+    })
+
+    // ── Sektion 9: Taxonomi och statusar ─────────────────────────────────
+    currentSection = 'Taxonomi och statusar'
 
     await guideStep(page, 'Kravområden', async () => {
       await guideGoto(page, '/sv/requirement-areas')
@@ -1637,6 +1648,16 @@ test.describe('Kravhantering — Guidegenerering', () => {
         'kravomraden',
         'Kravområden',
         'Kravområden organiserar krav efter organisatorisk domän. Varje kravområde har en ägare, ett prefix som används i krav-ID (t.ex. "SÄK" ger ID:n som "SÄK0001") och en beskrivning.',
+      )
+    })
+
+    await guideStep(page, 'Kategorier', async () => {
+      await guideGoto(page, '/sv/requirement-categories')
+      await snap(
+        page,
+        'kategorier',
+        'Kategorier',
+        'Kategorier klassificerar kravets perspektiv, till exempel verksamhetskrav, IT-krav och leverantörskrav. I administrationscentret visas kategorierna som en skrivskyddad taxonomilista.',
       )
     })
 
