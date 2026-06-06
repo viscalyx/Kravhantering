@@ -761,6 +761,7 @@
     "normReferenceId": "Norm reference ID",
     "normReferenceIdHelp": "<strong>A unique identifier for this norm reference.</strong>\nLeave blank to auto-generate from the reference field, name, or a sequential number. See the Norm library help panel for the full generation algorithm.",
     "normReferenceIdPlaceholder": "Auto-generated if left blank",
+    "openUri": "Open URI",
     "reference": "Reference",
     "referenceHelp": "<strong>Enter the formal document identifier or designation.</strong>\nUse the official numbering such as SFS 2018:218, ISO/IEC 27001:2022, or MSBFS 2020:6. This value is also used for auto-generating the norm reference ID.",
     "referencePlaceholder": "E.g. SFS 2018:218, ISO 27001:2022",

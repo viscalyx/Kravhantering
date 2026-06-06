@@ -2,6 +2,7 @@
 
 import {
   Archive,
+  ExternalLink,
   Pencil,
   Plus,
   RotateCcw,
@@ -22,6 +23,7 @@ import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import { getBrowserLinkUri } from '@/lib/norm-references/browser-link-uri'
 
 const NORM_REFERENCES_HELP: HelpContent = {
   sections: [
@@ -116,6 +118,9 @@ const toPayload = (form: NormReferenceForm) => ({
 
 const rowActionButtonClassName =
   'inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
+
+const externalUriLinkClassName =
+  'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-primary-300 dark:hover:bg-primary-950/30 dark:hover:text-primary-200'
 
 export default function NormReferencesClient() {
   useHelpContent(NORM_REFERENCES_HELP)
@@ -692,6 +697,7 @@ export default function NormReferencesClient() {
                       ? 'reactivate'
                       : 'archive'
                     const busy = isBusy(normReference)
+                    const browserLinkUri = getBrowserLinkUri(normReference.uri)
 
                     return (
                       <tr
@@ -702,7 +708,32 @@ export default function NormReferencesClient() {
                           {normReference.normReferenceId}
                         </td>
                         <td className="px-4 py-3 font-medium">
-                          {normReference.name}
+                          <span className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                            <span className="min-w-0 break-words">
+                              {normReference.name}
+                            </span>
+                            {browserLinkUri && (
+                              <a
+                                aria-label={t('openUri')}
+                                className={externalUriLinkClassName}
+                                {...devMarker({
+                                  context: 'normReferences',
+                                  name: 'table action',
+                                  value: 'open URI',
+                                })}
+                                href={browserLinkUri}
+                                rel="noopener noreferrer"
+                                target="_blank"
+                                title={t('openUri')}
+                              >
+                                <ExternalLink
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                  focusable={false}
+                                />
+                              </a>
+                            )}
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
                           {normReference.type}

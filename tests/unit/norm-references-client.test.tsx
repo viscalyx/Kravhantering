@@ -107,6 +107,111 @@ describe('NormReferencesClient', () => {
     ).toBeInTheDocument()
   })
 
+  it('shows a clickable external URI icon for browser-link URIs in the list', async () => {
+    const longName = 'Tillgänglighetskrav på IKT-produkter och IKT-tjänster'
+    fetchMock.mockResolvedValue(
+      okJson({
+        normReferences: [
+          {
+            ...sampleNormReferences[0],
+            name: longName,
+            uri: '  https://example.test/bbr  ',
+          },
+        ],
+      }),
+    )
+
+    render(<NormReferencesClient />)
+
+    const link = await screen.findByRole('link', {
+      name: /normReference\.openUri/i,
+    })
+
+    expect(link).toHaveAttribute('href', 'https://example.test/bbr')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(link).toHaveAttribute('title', 'normReference.openUri')
+    expect(screen.getByText(longName)).toHaveClass('break-words')
+    expect(screen.getByText(longName).parentElement).toHaveClass(
+      'grid',
+      'grid-cols-[minmax(0,1fr)_auto]',
+      'items-center',
+    )
+  })
+
+  it('does not show external URI icons for empty or non-browser-link URIs', async () => {
+    fetchMock.mockResolvedValue(
+      okJson({
+        normReferences: [
+          { ...sampleNormReferences[0], id: 1, name: 'Null URI', uri: null },
+          { ...sampleNormReferences[0], id: 2, name: 'Empty URI', uri: '' },
+          {
+            ...sampleNormReferences[0],
+            id: 3,
+            name: 'Text URI',
+            uri: 'See https://example.test/bbr',
+          },
+          {
+            ...sampleNormReferences[0],
+            id: 4,
+            name: 'Missing scheme URI',
+            uri: '://example.test/bbr',
+          },
+          {
+            ...sampleNormReferences[0],
+            id: 5,
+            name: 'Invalid scheme URI',
+            uri: '1https://example.test/bbr',
+          },
+        ],
+      }),
+    )
+
+    render(<NormReferencesClient />)
+
+    await screen.findByText('Null URI')
+
+    expect(
+      screen.queryByRole('link', { name: /normReference\.openUri/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('updates the external URI icon in the modal when the URI becomes a browser link', async () => {
+    render(<NormReferencesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('BBR')).toBeInTheDocument()
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /normReference\.newNormReference/i,
+      }),
+    )
+
+    const uriInput = await screen.findByLabelText(/^normReference\.uri/)
+    expect(
+      screen.queryByRole('link', { name: /normReference\.openUri/i }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.change(uriInput, {
+      target: { value: 'See https://example.test/bbr' },
+    })
+    expect(
+      screen.queryByRole('link', { name: /normReference\.openUri/i }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.change(uriInput, {
+      target: { value: '  ftp://example.test/bbr  ' },
+    })
+
+    const link = screen.getByRole('link', {
+      name: /normReference\.openUri/i,
+    })
+    expect(link).toHaveAttribute('href', 'ftp://example.test/bbr')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
   it('opens create form and submits it', async () => {
     render(<NormReferencesClient />)
     await waitFor(() => {

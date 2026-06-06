@@ -1,9 +1,11 @@
 'use client'
 
-import { HelpCircle } from 'lucide-react'
+import { ExternalLink, HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { type ReactNode, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import { devMarker } from '@/lib/developer-mode-markers'
+import { getBrowserLinkUri } from '@/lib/norm-references/browser-link-uri'
 
 interface NormReferenceFormData {
   issuer: string
@@ -35,6 +37,9 @@ const richTags = { strong: (chunks: ReactNode) => <strong>{chunks}</strong> }
 const fieldClass =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
 
+const uriLinkClass =
+  'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-primary-300 dark:hover:bg-primary-950/30 dark:hover:text-primary-200'
+
 export default function NormReferenceFormFields({
   form,
   idPrefix,
@@ -43,6 +48,7 @@ export default function NormReferenceFormFields({
   const t = useTranslations('normReference')
   const tc = useTranslations('common')
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
+  const browserLinkUri = getBrowserLinkUri(form.uri)
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -197,14 +203,37 @@ export default function NormReferenceFormFields({
           {helpButton('uri', t('uri'))}
         </div>
         {helpPanel('uriHelp', 'uri')}
-        <input
-          className={fieldClass}
-          id={`${idPrefix}-uri`}
-          onChange={e => onSetField('uri', e.target.value)}
-          placeholder={t('uriPlaceholder')}
-          type="url"
-          value={form.uri}
-        />
+        <div className="flex items-center gap-2">
+          <input
+            className={`${fieldClass} min-w-0 flex-1`}
+            id={`${idPrefix}-uri`}
+            onChange={e => onSetField('uri', e.target.value)}
+            placeholder={t('uriPlaceholder')}
+            type="url"
+            value={form.uri}
+          />
+          {browserLinkUri && (
+            <a
+              aria-label={t('openUri')}
+              className={uriLinkClass}
+              {...devMarker({
+                context: 'normReferences',
+                name: 'form action',
+                value: 'open URI',
+              })}
+              href={browserLinkUri}
+              rel="noopener noreferrer"
+              target="_blank"
+              title={t('openUri')}
+            >
+              <ExternalLink
+                aria-hidden="true"
+                className="h-4 w-4"
+                focusable={false}
+              />
+            </a>
+          )}
+        </div>
       </div>
     </>
   )

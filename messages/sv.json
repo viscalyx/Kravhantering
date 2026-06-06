@@ -761,6 +761,7 @@
     "normReferenceId": "Normreferens-ID",
     "normReferenceIdHelp": "<strong>En unik identifierare för denna normreferens.</strong>\nLämna tomt för att auto-generera från referensfältet, namnet eller ett löpnummer. Se hjälppanelen för Normbibliotek för hela genereringsalgoritmen.",
     "normReferenceIdPlaceholder": "Auto-genereras om tomt",
+    "openUri": "Öppna URI",
     "reference": "Referens",
     "referenceHelp": "<strong>Ange dokumentets formella beteckning.</strong>\nAnvänd den officiella numreringen, t.ex. SFS 2018:218, ISO/IEC 27001:2022 eller MSBFS 2020:6. Värdet används även för att auto-generera normreferens-ID.",
     "referencePlaceholder": "T.ex. SFS 2018:218, ISO 27001:2022",
