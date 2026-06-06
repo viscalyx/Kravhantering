@@ -270,7 +270,7 @@ import {
   PUT as putSpecItemStatus,
 } from '@/app/api/catalog/specification-item-statuses/[id]/route'
 import { GET as getSpecItemStatuses } from '@/app/api/catalog/specification-item-statuses/route'
-import { POST as archiveNormReference } from '@/app/api/norm-references/[id]/archive/route'
+import { POST as archiveNormReference } from '@/app/api/norm-reference-actions/[id]/archive/route'
 import { POST as reactivateNormReference } from '@/app/api/norm-references/[id]/reactivate/route'
 import {
   DELETE as deleteNormReference,

@@ -443,7 +443,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
-  /api/norm-references/{id}/archive:
+  /api/norm-reference-actions/{id}/archive:
     parameters:
       - $ref: '#/components/parameters/NormReferenceId'
     post:

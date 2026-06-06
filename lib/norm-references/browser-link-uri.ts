@@ -1,8 +1,15 @@
-const BROWSER_LINK_URI_PATTERN = /^[A-Za-z][A-Za-z0-9+.-]*:\/\//
-
-export function getBrowserLinkUri(uri: string | null | undefined) {
+export function getBrowserLinkUri(
+  uri: string | null | undefined,
+): string | null {
   const trimmedUri = uri?.trim()
   if (!trimmedUri) return null
 
-  return BROWSER_LINK_URI_PATTERN.test(trimmedUri) ? trimmedUri : null
+  try {
+    const parsedUri = new URL(trimmedUri)
+    return parsedUri.protocol === 'http:' || parsedUri.protocol === 'https:'
+      ? trimmedUri
+      : null
+  } catch {
+    return null
+  }
 }

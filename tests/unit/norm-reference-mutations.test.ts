@@ -7,12 +7,10 @@ const auditState = vi.hoisted(() => ({
 }))
 
 const dalState = vi.hoisted(() => ({
-  archiveNormReference: vi.fn(),
   createNormReference: vi.fn(),
   deleteNormReference: vi.fn(),
   getNormReferenceById: vi.fn(),
   getNormReferenceUsage: vi.fn(),
-  reactivateNormReference: vi.fn(),
   updateNormReference: vi.fn(),
 }))
 
@@ -21,12 +19,10 @@ vi.mock('@/lib/audit/action-audit', () => ({
 }))
 
 vi.mock('@/lib/dal/norm-references', () => ({
-  archiveNormReference: dalState.archiveNormReference,
   createNormReference: dalState.createNormReference,
   deleteNormReference: dalState.deleteNormReference,
   getNormReferenceById: dalState.getNormReferenceById,
   getNormReferenceUsage: dalState.getNormReferenceUsage,
-  reactivateNormReference: dalState.reactivateNormReference,
   updateNormReference: dalState.updateNormReference,
 }))
 

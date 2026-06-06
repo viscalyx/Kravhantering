@@ -275,10 +275,11 @@ export default function NormReferencesClient() {
     setStateError(null)
     setStateChangingIds(previous => new Set(previous).add(normReference.id))
     try {
-      const response = await apiFetch(
-        `/api/norm-references/${normReference.id}/${operation}`,
-        { method: 'POST' },
-      )
+      const endpoint =
+        operation === 'archive'
+          ? `/api/norm-reference-actions/${normReference.id}/archive`
+          : `/api/norm-references/${normReference.id}/reactivate`
+      const response = await apiFetch(endpoint, { method: 'POST' })
       if (!response.ok) {
         setStateError((await readResponseMessage(response)) ?? tc('error'))
         return

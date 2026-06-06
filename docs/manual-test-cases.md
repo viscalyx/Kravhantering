@@ -1466,8 +1466,11 @@ Kravbiblioteksförvaltning, not Admin Center reference data.
 1. Create a new norm reference with a URI such as
    `https://example.com/document`.
 1. Verify the URI field shows a compact external-link icon after the field.
-1. Edit the created norm reference and verify the same icon appears after the
-   URI field.
+1. Edit the created norm reference and temporarily change the URI to
+   `file:///tmp/document.pdf`.
+1. Verify the external-link icon disappears from the URI field.
+1. Change the URI back to `https://example.com/document` and verify the same
+   icon appears after the URI field.
 1. Save and verify the list shows a compact external-link icon next to the
    norm reference name.
 1. Archive it, confirm the danger dialog, and then reactivate it.
@@ -1476,8 +1479,9 @@ Kravbiblioteksförvaltning, not Admin Center reference data.
 **Expected result:** Normbibliotek opens at
 `/sv/requirements/stewardship?tab=norms`, the norm reference can be created,
 edited, opened through the URI icons in the form and list, archived only after
-confirmation, and reactivated, and Admin Center `Referensdata` has no
-norm-reference card.
+confirmation, and reactivated. Only `http` and `https` norm-reference URIs
+render browser-link icons; unsupported schemes such as `file` do not. Admin
+Center `Referensdata` has no norm-reference card.
 
 ### ADMIN-06: action log filters and exports CSV
 

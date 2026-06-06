@@ -203,11 +203,18 @@ describe('NormReferencesClient', () => {
     fireEvent.change(uriInput, {
       target: { value: '  ftp://example.test/bbr  ' },
     })
+    expect(
+      screen.queryByRole('link', { name: /normReference\.openUri/i }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.change(uriInput, {
+      target: { value: '  https://example.test/bbr  ' },
+    })
 
     const link = screen.getByRole('link', {
       name: /normReference\.openUri/i,
     })
-    expect(link).toHaveAttribute('href', 'ftp://example.test/bbr')
+    expect(link).toHaveAttribute('href', 'https://example.test/bbr')
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
@@ -390,7 +397,7 @@ describe('NormReferencesClient', () => {
         }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/norm-references/1/archive',
+        '/api/norm-reference-actions/1/archive',
         expect.objectContaining({ method: 'POST' }),
       )
     })
@@ -438,7 +445,7 @@ describe('NormReferencesClient', () => {
       )
     })
     expect(fetchMock).not.toHaveBeenCalledWith(
-      '/api/norm-references/1/archive',
+      '/api/norm-reference-actions/1/archive',
       expect.objectContaining({ method: 'POST' }),
     )
   })
