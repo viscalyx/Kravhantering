@@ -7,8 +7,6 @@ services:
     image: ${SQLSERVER_IMAGE_REF:?set SQLSERVER_IMAGE_REF}
     env_file:
       - /etc/kravhantering/sqlserver.env
-    ports:
-      - "${SQLSERVER_HOST_PORT:-127.0.0.1:15433}:1433"
     volumes:
       - sqlserver-data:/var/opt/mssql
     networks:

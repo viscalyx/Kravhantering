@@ -42,6 +42,10 @@ at `/{locale}/admin?tab=actionAuditLog`. It reads `action_audit_events`, shows
 the latest 50 events by default, supports filters for actor HSA-ID, action,
 target, decision, and date range, plus client IP when a validated
 `X-Forwarded-For` value was available, and exports the filtered result as CSV.
+The CSV export follows the active locale for column headers and decision values,
+uses UTF-8 with BOM for Windows spreadsheet compatibility, and keeps action
+names, target kinds, request IDs and details JSON as stored evidence
+identifiers.
 
 The database action log is separate from the platform `security-audit`
 JSON stream. The database log is intended for application action review and
@@ -183,8 +187,9 @@ returned as `application/pdf` with attachment headers. The PDF is a localized
 human-readable report in Swedish or English. It explains the collected personal
 data in plain terms and does not show raw database fields, table names, schema
 keys, relation keys, or target fingerprints. Download filenames use a
-non-reversible target fingerprint and date, not the raw HSA-ID. The export route
-checks authorization server-side:
+non-reversible target fingerprint and date, not the raw HSA-ID. JSON downloads
+use UTF-8 with BOM for Windows text-tool compatibility, while API JSON responses
+remain BOM-free. The export route checks authorization server-side:
 the signed-in user may export their own HSA-ID, while cross-user export requires
 `PrivacyOfficer`.
 
@@ -272,7 +277,9 @@ require an anonymized JSON archive export before deletion. The export includes
 the specification metadata, needs references, unique requirements, linked
 library requirements, the pinned requirement-version properties, taxonomy
 labels, packages, norm references and deviations. Person fields in the export
-are written as `null`; the database is not anonymized by this flow.
+are written as `null`; the database is not anonymized by this flow. Browser
+downloads use UTF-8 with BOM and locale-specific ASCII-safe filenames beginning
+with `arkivexport` or `archive-export`.
 
 The retention run emits security-audit events with policy key, counts, request
 id and export confirmation fingerprint, but not raw target HSA-ID values or
@@ -330,6 +337,9 @@ authoritative evidence payload. The PDF button requests a server-rendered PDF
 of the same payload for human review. Export responses use
 `Cache-Control: no-store`; PDF delivery returns `application/pdf` with
 attachment headers.
+Browser-downloaded JSON evidence uses UTF-8 with BOM, while API JSON responses
+remain BOM-free. JSON and PDF filenames follow the active locale with
+ASCII-safe stems.
 Action-log events are emitted for run creation, item decisions, cancellation,
 completion, and export. Action-log detail contains review id, counts, delivery,
 decision, and status
