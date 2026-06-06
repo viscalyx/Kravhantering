@@ -752,12 +752,13 @@
     "filterByNamePlaceholder": "Sök namn eller beskrivning på kravpaket"
   },
   "requirementCategoryAdmin": {
-    "description": "Kategorier klassificerar kravets perspektiv, till exempel verksamhetskrav, IT-krav eller leverantörskrav. De visas här som en skrivskyddad taxonomilista.",
+    "description": "Anger vilket perspektiv ett krav klassificeras med. Listan är skrivskyddad.",
     "emptyState": "Inga kategorier är tillgängliga.",
     "id": "ID",
     "listHeading": "Kategorier",
     "loadError": "Det gick inte att läsa in kategorier.",
-    "name": "Namn"
+    "name": "Namn",
+    "title": "Kategorier"
   },
   "normReference": {
     "active": "Aktiv",

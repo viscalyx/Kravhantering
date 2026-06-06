@@ -31,7 +31,6 @@ export default function RequirementCategoriesClient() {
   useHelpContent(REQUIREMENT_CATEGORIES_HELP)
   const t = useTranslations('requirementCategoryAdmin')
   const tc = useTranslations('common')
-  const tn = useTranslations('nav')
   const locale = useLocale()
   const [categories, setCategories] = useState<RequirementCategory[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,13 +43,8 @@ export default function RequirementCategoriesClient() {
   )
 
   const sortedCategories = useMemo(
-    () =>
-      [...categories].sort((left, right) =>
-        getName(left).localeCompare(getName(right), locale, {
-          sensitivity: 'base',
-        }),
-      ),
-    [categories, getName, locale],
+    () => [...categories].sort((left, right) => left.id - right.id),
+    [categories],
   )
 
   const fetchCategories = useCallback(async () => {
@@ -101,7 +95,7 @@ export default function RequirementCategoriesClient() {
       <div className="container-custom space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
-            {tn('categories')}
+            {t('title')}
           </h1>
           <p className="mt-2 max-w-3xl text-sm text-secondary-600 dark:text-secondary-300">
             {t('description')}

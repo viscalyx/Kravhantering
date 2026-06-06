@@ -21,9 +21,9 @@ vi.stubGlobal('fetch', fetchMock)
 import RequirementCategoriesClient from '@/app/[locale]/requirement-categories/requirement-categories-client'
 
 const sampleCategories = [
-  { id: 2, nameSv: 'IT-krav', nameEn: 'IT requirement' },
-  { id: 1, nameSv: 'Verksamhetskrav', nameEn: 'Business requirement' },
-  { id: 3, nameSv: 'Leverantörskrav', nameEn: 'Supplier requirement' },
+  { id: 2, nameSv: 'IT-krav', nameEn: 'Beta requirement' },
+  { id: 1, nameSv: 'Verksamhetskrav', nameEn: 'Zulu requirement' },
+  { id: 3, nameSv: 'Leverantörskrav', nameEn: 'Alpha requirement' },
 ]
 
 describe('RequirementCategoriesClient', () => {
@@ -34,26 +34,26 @@ describe('RequirementCategoriesClient', () => {
     fetchMock.mockResolvedValue(okJson({ categories: sampleCategories }))
   })
 
-  it('fetches and displays categories in active-locale order', async () => {
+  it('fetches and displays categories in id order', async () => {
     render(<RequirementCategoriesClient />)
 
     await waitFor(() => {
-      expect(screen.getByText('Business requirement')).toBeInTheDocument()
+      expect(screen.getByText('Zulu requirement')).toBeInTheDocument()
     })
 
     expect(fetchMock).toHaveBeenCalledWith('/api/requirement-categories')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'nav.categories',
+      'requirementCategoryAdmin.title',
     )
-    expect(screen.getByText('IT requirement')).toBeInTheDocument()
-    expect(screen.getByText('Supplier requirement')).toBeInTheDocument()
+    expect(screen.getByText('Beta requirement')).toBeInTheDocument()
+    expect(screen.getByText('Alpha requirement')).toBeInTheDocument()
 
     const text = document.body.textContent ?? ''
-    expect(text.indexOf('Business requirement')).toBeLessThan(
-      text.indexOf('IT requirement'),
+    expect(text.indexOf('Zulu requirement')).toBeLessThan(
+      text.indexOf('Beta requirement'),
     )
-    expect(text.indexOf('IT requirement')).toBeLessThan(
-      text.indexOf('Supplier requirement'),
+    expect(text.indexOf('Beta requirement')).toBeLessThan(
+      text.indexOf('Alpha requirement'),
     )
   })
 
@@ -61,7 +61,7 @@ describe('RequirementCategoriesClient', () => {
     render(<RequirementCategoriesClient />)
 
     await waitFor(() => {
-      expect(screen.getByText('Business requirement')).toBeInTheDocument()
+      expect(screen.getByText('Zulu requirement')).toBeInTheDocument()
     })
 
     expect(screen.queryByRole('button', { name: /common\.create/i })).toBeNull()

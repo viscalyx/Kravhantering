@@ -752,12 +752,13 @@
     "filterByNamePlaceholder": "Search requirements package name or description"
   },
   "requirementCategoryAdmin": {
-    "description": "Requirement categories classify the requirement perspective, such as business, IT, or supplier requirements. They are shown here as a read-only taxonomy list.",
+    "description": "Indicates the perspective used to classify a requirement. The list is read-only.",
     "emptyState": "No requirement categories are available.",
     "id": "ID",
     "listHeading": "Requirement categories",
     "loadError": "Could not load requirement categories.",
-    "name": "Name"
+    "name": "Name",
+    "title": "Categories"
   },
   "normReference": {
     "active": "Active",
