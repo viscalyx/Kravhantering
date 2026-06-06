@@ -10,6 +10,7 @@ import type {
 import { downloadBlob } from '@/lib/browser-download'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import { createUtf8BomBlob } from '@/lib/text-export'
 
 interface UseAccessReviewExportDownloadOptions {
   locale: string
@@ -51,8 +52,10 @@ export function useAccessReviewExportDownload({
 
       try {
         if (delivery === 'pdf') {
+          const fallbackStem =
+            locale === 'sv' ? 'behorighetsoversyn' : 'access-review'
           await pdfDownload.download({
-            fallbackFilename: `access-review-${reviewId}.pdf`,
+            fallbackFilename: `${fallbackStem}-${reviewId}.pdf`,
             init: {
               body: JSON.stringify({ delivery, locale }),
               headers: { 'Content-Type': 'application/json' },
@@ -78,12 +81,17 @@ export function useAccessReviewExportDownload({
         }
 
         const exportData = (await response.json()) as AccessReviewExportV1
-        const filename = accessReviewExportFilename(exportData, delivery)
+        const filename = accessReviewExportFilename(
+          exportData,
+          delivery,
+          locale,
+        )
 
         downloadBlob(
-          new Blob([JSON.stringify(exportData, null, 2)], {
-            type: 'application/json;charset=utf-8',
-          }),
+          createUtf8BomBlob(
+            JSON.stringify(exportData, null, 2),
+            'application/json;charset=utf-8',
+          ),
           filename,
         )
       } catch (err) {

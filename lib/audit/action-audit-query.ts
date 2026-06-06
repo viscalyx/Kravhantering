@@ -139,6 +139,7 @@ export function actionAuditLogHref({
 
 export function actionAuditLogCsvHref(
   query: ActionAuditLogSearchParams,
+  locale?: string,
 ): string {
   const params = new URLSearchParams()
 
@@ -148,6 +149,9 @@ export function actionAuditLogCsvHref(
     }
   }
 
+  if (locale === 'en' || locale === 'sv') {
+    params.set('locale', locale)
+  }
   params.set('format', 'csv')
   return `/api/admin/audit-events?${params.toString()}`
 }

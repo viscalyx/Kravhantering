@@ -71,6 +71,7 @@ import {
   normalizeRequirementListColumnDefaults,
   type RequirementListColumnDefault,
 } from '@/lib/requirements/list-view'
+import { createUtf8BomBlob } from '@/lib/text-export'
 
 const ADMIN_HELP: HelpContent = {
   sections: [
@@ -1259,13 +1260,15 @@ function PrivacyErasurePanel() {
 
 function archivingRetentionExportFilename(
   preview: ArchivingRetentionPreview,
+  locale: string,
 ): string {
   const date = new Date().toISOString().slice(0, 10)
   const policyKey = preview.policy.policyKey
     .replace(/[^a-z0-9_-]+/gi, '-')
     .replace(/^-+|-+$/g, '')
     .toLowerCase()
-  return `arkivering-${policyKey || 'retention'}-${date}.json`
+  const stem = locale === 'sv' ? 'arkivexport' : 'archive-export'
+  return `${stem}-${policyKey || 'retention'}-${date}.json`
 }
 
 function ArchivingPanel() {
@@ -1462,10 +1465,11 @@ function ArchivingPanel() {
       const exportData =
         (await response.json()) as ArchivingRetentionExportResponse
       downloadBlob(
-        new Blob([JSON.stringify(exportData.archive, null, 2)], {
-          type: 'application/json;charset=utf-8',
-        }),
-        archivingRetentionExportFilename(retentionPreview),
+        createUtf8BomBlob(
+          JSON.stringify(exportData.archive, null, 2),
+          'application/json;charset=utf-8',
+        ),
+        archivingRetentionExportFilename(retentionPreview, locale),
       )
       setRetentionExportToken(exportData.exportToken)
       setRetentionStatus('saved')

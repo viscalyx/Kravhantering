@@ -161,7 +161,7 @@ export const POST = secureMutationRoute({
             exportData: exportPayload,
             locale: body.locale,
           }),
-          dataSubjectExportFilename(exportPayload, 'pdf'),
+          dataSubjectExportFilename(exportPayload, 'pdf', body.locale),
         )
       }
 

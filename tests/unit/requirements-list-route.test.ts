@@ -53,6 +53,12 @@ vi.mock('@/lib/export-csv', () => ({
   exportToCsv: mockExportToCsv,
 }))
 
+async function responseTextWithBom(response: Response): Promise<string> {
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf])
+  return new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes)
+}
+
 describe('requirements route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -93,10 +99,12 @@ describe('requirements route', () => {
         'http://localhost/api/requirements?format=csv&locale=sv',
       )
       const res = await GET(req as never)
+      const body = await responseTextWithBom(res)
       expect(res.headers.get('Content-Type')).toContain('text/csv')
       expect(res.headers.get('Content-Disposition')).toContain(
         'kravbibliotek.csv',
       )
+      expect(body).toBe('\uFEFFcsv-data')
       expect(mockExportToCsv).toHaveBeenCalledWith(
         [
           'Krav-ID',

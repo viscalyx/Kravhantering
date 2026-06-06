@@ -27,7 +27,9 @@ const searchParamsMock = vi.hoisted(() => ({
   current: new URLSearchParams(),
 }))
 const fetchMock = vi.fn()
-const createObjectURLMock = vi.fn(() => 'blob:data-subject-export')
+const createObjectURLMock = vi.fn(
+  (_blob: Blob | MediaSource) => 'blob:data-subject-export',
+)
 const revokeObjectURLMock = vi.fn()
 const anchorClickMock = vi.fn()
 const routerRefresh = routerMock.refresh
@@ -419,6 +421,15 @@ function getColumnOrder(container: HTMLElement) {
   )
 }
 
+async function expectLastCreatedBlobStartsWithUtf8Bom(): Promise<void> {
+  const blob = createObjectURLMock.mock.calls[
+    createObjectURLMock.mock.calls.length - 1
+  ]?.[0] as Blob | undefined
+  if (!blob) throw new Error('Expected a downloaded blob')
+  const bytes = new Uint8Array(await blob.arrayBuffer())
+  expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf])
+}
+
 describe('AdminClient', () => {
   beforeEach(() => {
     fetchMock.mockReset()
@@ -498,7 +509,7 @@ describe('AdminClient', () => {
       screen.getByRole('link', { name: 'admin.auditLog.exportCsv' }),
     ).toHaveAttribute(
       'href',
-      '/api/admin/audit-events?action=requirement.create&client_ip=203.0.113.10&page=2&pageSize=25&format=csv',
+      '/api/admin/audit-events?action=requirement.create&client_ip=203.0.113.10&page=2&pageSize=25&locale=sv&format=csv',
     )
     expect(
       screen.getByRole('link', { name: 'admin.auditLog.clear' }),
@@ -1369,6 +1380,7 @@ describe('AdminClient', () => {
       ),
     )
     expect(createObjectURLMock).toHaveBeenCalledTimes(1)
+    await expectLastCreatedBlobStartsWithUtf8Bom()
     expect(anchorClickMock).toHaveBeenCalledTimes(1)
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:data-subject-export')
   })
@@ -1693,6 +1705,7 @@ describe('AdminClient', () => {
       }),
     )
     await waitFor(() => expect(anchorClickMock).toHaveBeenCalledTimes(1))
+    await expectLastCreatedBlobStartsWithUtf8Bom()
     expect(screen.getByRole('status')).toHaveTextContent(
       'admin.archiving.retention.exportSuccess',
     )
@@ -1914,6 +1927,7 @@ describe('AdminClient', () => {
       ),
     )
     expect(createObjectURLMock).toHaveBeenCalledTimes(1)
+    await expectLastCreatedBlobStartsWithUtf8Bom()
     expect(anchorClickMock).toHaveBeenCalledTimes(1)
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:data-subject-export')
   })

@@ -97,7 +97,10 @@ export default function ActionAuditLogView({
                 {labels.description}
               </p>
             </div>
-            <a className="btn-secondary" href={actionAuditLogCsvHref(query)}>
+            <a
+              className="btn-secondary"
+              href={actionAuditLogCsvHref(query, locale)}
+            >
               {labels.exportCsv}
             </a>
           </div>
@@ -153,7 +156,10 @@ export default function ActionAuditLogView({
               {labels.description}
             </p>
           </div>
-          <a className="btn-secondary" href={actionAuditLogCsvHref(query)}>
+          <a
+            className="btn-secondary"
+            href={actionAuditLogCsvHref(query, locale)}
+          >
             {labels.exportCsv}
           </a>
         </div>

@@ -25,6 +25,7 @@ import {
 } from '@/lib/requirements/list-view'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { toHttpErrorPayload } from '@/lib/requirements/service'
+import { withUtf8Bom } from '@/lib/text-export'
 import enMessages from '@/messages/en.json'
 import svMessages from '@/messages/sv.json'
 
@@ -256,7 +257,7 @@ export async function GET(request: NextRequest) {
 
       const filename = isSv ? 'kravbibliotek.csv' : 'requirements-library.csv'
 
-      return new NextResponse(csv, {
+      return new NextResponse(withUtf8Bom(csv), {
         headers: {
           'Content-Type': 'text/csv; charset=utf-8',
           'Content-Disposition': `attachment; filename="${filename}"`,

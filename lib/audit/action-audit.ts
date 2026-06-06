@@ -81,6 +81,85 @@ export interface ActionAuditEventListResult {
   }
 }
 
+export type ActionAuditCsvLocale = 'en' | 'sv'
+
+interface ActionAuditCsvColumn {
+  header: Record<ActionAuditCsvLocale, string>
+  value: (event: ActionAuditEventRow, locale: ActionAuditCsvLocale) => string
+}
+
+const ACTION_AUDIT_DECISION_LABELS: Record<
+  ActionAuditDecision,
+  Record<ActionAuditCsvLocale, string>
+> = {
+  allowed: { en: 'Allowed', sv: 'Tillåten' },
+  denied: { en: 'Denied', sv: 'Nekad' },
+}
+
+const ACTION_AUDIT_CSV_COLUMNS: ActionAuditCsvColumn[] = [
+  {
+    header: { en: 'Occurred', sv: 'Tidpunkt' },
+    value: event => event.occurredAt,
+  },
+  {
+    header: { en: 'Actor type', sv: 'Aktörstyp' },
+    value: event => event.actorKind,
+  },
+  {
+    header: { en: 'Actor HSA-ID', sv: 'Aktörens HSA-ID' },
+    value: event => event.actorHsaId ?? '',
+  },
+  {
+    header: { en: 'Actor display name', sv: 'Aktörsnamn' },
+    value: event => event.actorDisplayName ?? '',
+  },
+  {
+    header: { en: 'Actor client ID', sv: 'Aktörens klient-ID' },
+    value: event => event.actorClientId ?? '',
+  },
+  {
+    header: { en: 'Action', sv: 'Åtgärd' },
+    value: event => event.action,
+  },
+  {
+    header: { en: 'Target type', sv: 'Måltyp' },
+    value: event => event.targetKind,
+  },
+  {
+    header: { en: 'Target ID', sv: 'Mål-ID' },
+    value: event => event.targetId ?? '',
+  },
+  {
+    header: { en: 'Target unique ID', sv: 'Målets unika ID' },
+    value: event => event.targetUniqueId ?? '',
+  },
+  {
+    header: { en: 'Decision', sv: 'Beslut' },
+    value: (event, locale) =>
+      ACTION_AUDIT_DECISION_LABELS[event.decision][locale],
+  },
+  {
+    header: { en: 'Denial reason', sv: 'Orsak' },
+    value: event => event.denialReason ?? '',
+  },
+  {
+    header: { en: 'Request ID', sv: 'Request-ID' },
+    value: event => event.requestId ?? '',
+  },
+  {
+    header: { en: 'Correlation ID', sv: 'Korrelations-ID' },
+    value: event => event.correlationId ?? '',
+  },
+  {
+    header: { en: 'Client IP', sv: 'Klient-IP' },
+    value: event => event.clientIp ?? '',
+  },
+  {
+    header: { en: 'Details JSON', sv: 'Detaljer JSON' },
+    value: event => event.detailsJson ?? '',
+  },
+]
+
 export interface QueryExecutor {
   query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
 }
@@ -432,43 +511,21 @@ export async function listActionAuditEvents(
   }
 }
 
-export function actionAuditEventsToCsv(events: ActionAuditEventRow[]): string {
-  const headers = [
-    'occurredAt',
-    'actorKind',
-    'actorHsaId',
-    'actorDisplayName',
-    'actorClientId',
-    'action',
-    'targetKind',
-    'targetId',
-    'targetUniqueId',
-    'decision',
-    'denialReason',
-    'requestId',
-    'correlationId',
-    'clientIp',
-    'detailsJson',
-  ]
+export function actionAuditEventsToCsv(
+  events: ActionAuditEventRow[],
+  locale: ActionAuditCsvLocale = 'en',
+): string {
+  const headers = ACTION_AUDIT_CSV_COLUMNS.map(column => column.header[locale])
   return exportToCsv(
     headers,
-    events.map(event => ({
-      action: event.action,
-      actorClientId: event.actorClientId ?? '',
-      actorDisplayName: event.actorDisplayName ?? '',
-      actorHsaId: event.actorHsaId ?? '',
-      actorKind: event.actorKind,
-      clientIp: event.clientIp ?? '',
-      correlationId: event.correlationId ?? '',
-      decision: event.decision,
-      denialReason: event.denialReason ?? '',
-      detailsJson: event.detailsJson ?? '',
-      occurredAt: event.occurredAt,
-      requestId: event.requestId ?? '',
-      targetId: event.targetId ?? '',
-      targetKind: event.targetKind,
-      targetUniqueId: event.targetUniqueId ?? '',
-    })),
+    events.map(event =>
+      Object.fromEntries(
+        ACTION_AUDIT_CSV_COLUMNS.map(column => [
+          column.header[locale],
+          column.value(event, locale),
+        ]),
+      ),
+    ),
   )
 }
 

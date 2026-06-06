@@ -121,6 +121,7 @@ export const optionalSearchStringSchema = z
   .transform(value => (value === '' ? undefined : value))
 
 export const localeSchema = z.enum(['en', 'sv'])
+export type ExportFilenameLocale = z.infer<typeof localeSchema>
 
 export const optionalLocaleQuerySchema = z
   .enum(['en', 'sv'])

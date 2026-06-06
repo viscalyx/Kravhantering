@@ -70,6 +70,12 @@ const auditEvent = {
   targetUniqueId: 'AUTH-42',
 }
 
+async function responseTextWithBom(response: Response): Promise<string> {
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf])
+  return new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes)
+}
+
 describe('admin audit events route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -151,24 +157,45 @@ describe('admin audit events route', () => {
     expect(routeState.listActionAuditEvents).not.toHaveBeenCalled()
   })
 
-  it('exports filtered action-log events as CSV without emitting action-log rows', async () => {
+  it('exports filtered action-log events as English CSV by default without emitting action-log rows', async () => {
     const { GET } = await import('@/app/api/admin/audit-events/route')
     const response = await GET(
       new Request(
         'http://localhost/api/admin/audit-events?format=csv&action=requirement.create',
       ) as never,
     )
-    const csv = await response.text()
+    const csv = await responseTextWithBom(response)
 
     expect(response.status).toBe(200)
     expect(response.headers.get('Content-Type')).toContain('text/csv')
     expect(response.headers.get('Content-Disposition')).toContain(
       'action-log.csv',
     )
-    expect(csv).toContain('occurredAt;actorKind')
+    expect(csv).toContain('Occurred;Actor type')
+    expect(csv).toContain('Allowed')
     expect(csv).toContain('requirement.create')
     expect(csv).toContain('203.0.113.30')
     expect(routeState.listActionAuditEvents).toHaveBeenCalledTimes(1)
+  })
+
+  it('exports filtered action-log events as Swedish CSV when locale=sv', async () => {
+    const { GET } = await import('@/app/api/admin/audit-events/route')
+    const response = await GET(
+      new Request(
+        'http://localhost/api/admin/audit-events?format=csv&locale=sv&action=requirement.create',
+      ) as never,
+    )
+    const csv = await responseTextWithBom(response)
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Type')).toContain('text/csv')
+    expect(response.headers.get('Content-Disposition')).toContain(
+      'atgardslogg.csv',
+    )
+    expect(csv).toContain('Tidpunkt;Aktörstyp')
+    expect(csv).toContain('Tillåten')
+    expect(csv).toContain('requirement.create')
+    expect(csv).toContain('203.0.113.30')
   })
 
   it('accepts blank filter fields from the admin form', async () => {

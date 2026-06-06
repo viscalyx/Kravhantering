@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  type ActionAuditEventRow,
   actionAuditEventsToCsv,
   listActionAuditEvents,
   recordActionAuditEvent,
@@ -200,29 +201,51 @@ describe('action audit helper', () => {
     expect(result.events[0]?.clientIp).toBe('203.0.113.22')
   })
 
-  it('exports client IP to CSV', () => {
-    const csv = actionAuditEventsToCsv([
-      {
-        action: 'requirement.create',
-        actorClientId: null,
-        actorDisplayName: 'Ada Admin',
-        actorHsaId: 'SE5560000001-admin1',
-        actorKind: 'user',
-        clientIp: '203.0.113.23',
-        correlationId: 'correlation-1',
-        decision: 'allowed',
-        denialReason: null,
-        detailsJson: null,
-        id: '1',
-        occurredAt: '2026-05-16T09:00:00.000Z',
-        requestId: 'request-1',
-        targetId: '42',
-        targetKind: 'Requirement',
-        targetUniqueId: 'AUTH-42',
-      },
-    ])
+  const exportEvent: ActionAuditEventRow = {
+    action: 'requirement.create',
+    actorClientId: null,
+    actorDisplayName: 'Ada Admin',
+    actorHsaId: 'SE5560000001-admin1',
+    actorKind: 'user',
+    clientIp: '203.0.113.23',
+    correlationId: 'correlation-1',
+    decision: 'allowed' as const,
+    denialReason: null,
+    detailsJson: null,
+    id: '1',
+    occurredAt: '2026-05-16T09:00:00.000Z',
+    requestId: 'request-1',
+    targetId: '42',
+    targetKind: 'Requirement',
+    targetUniqueId: 'AUTH-42',
+  }
 
-    expect(csv).toContain('clientIp')
+  it('exports client IP and localized decisions to default English CSV', () => {
+    const csv = actionAuditEventsToCsv([exportEvent])
+
+    expect(csv).toContain('Client IP')
+    expect(csv).toContain('Allowed')
     expect(csv).toContain('203.0.113.23')
+  })
+
+  it('exports localized Swedish CSV headers and decisions', () => {
+    const csv = actionAuditEventsToCsv(
+      [
+        exportEvent,
+        {
+          ...exportEvent,
+          decision: 'denied',
+          denialReason: 'required_role_missing',
+          id: '2',
+        },
+      ],
+      'sv',
+    )
+
+    expect(csv).toContain('Tidpunkt;Aktörstyp')
+    expect(csv).toContain('Beslut')
+    expect(csv).toContain('Tillåten')
+    expect(csv).toContain('Nekad')
+    expect(csv).toContain('requirement.create')
   })
 })
