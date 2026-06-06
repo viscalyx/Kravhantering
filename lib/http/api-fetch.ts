@@ -82,7 +82,7 @@ export async function apiFetch(
 
   const headers = buildHeaders(input, init)
   const xRequestedWith = headers.get('x-requested-with')
-  if (!xRequestedWith || xRequestedWith.toLowerCase() !== 'xmlhttprequest') {
+  if (xRequestedWith?.toLowerCase() !== 'xmlhttprequest') {
     headers.set('X-Requested-With', 'XMLHttpRequest')
   }
 
