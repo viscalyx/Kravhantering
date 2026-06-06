@@ -5,6 +5,7 @@ applyTo: "{docs/**/*.md,README.md,CONTRIBUTING.md,SECURITY.md,CODE_OF_CONDUCT.md
 ## Markdown Style Guide
 
 - Do not use `---` to separate sections in Markdown files unless they are part of YAML frontmatter.
+- Do not reference things past tense (e.g., "This file described...", or "previously...") unless the user explicitly asked for it or needs to know the history. Focus on the current state and future.
 
 ## Markdown Linting
 

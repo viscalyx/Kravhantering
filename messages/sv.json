@@ -70,13 +70,14 @@
     "catalog": "Kravbibliotek",
     "stewardship": "Kravbiblioteksförvaltning",
     "areas": "Kravområden",
+    "categories": "Kategorier",
     "specifications": "Kravunderlag",
     "requirementPackages": "Kravpaket",
     "requirementSelectionQuestions": "Kravurvalsfrågor",
     "normLibrary": "Normbibliotek",
     "statuses": "Kravversionsstatusar",
     "types": "Typer",
-    "taxonomy": "Referensdata",
+    "taxonomy": "Taxonomi",
     "qualityCharacteristics": "Kvalitetsegenskaper",
     "riskLevels": "Risknivåer",
     "governanceObjectTypes": "Styrningsobjektstyper",
@@ -750,6 +751,14 @@
     "filterByName": "Filtrera på namn eller beskrivning",
     "filterByNamePlaceholder": "Sök namn eller beskrivning på kravpaket"
   },
+  "requirementCategoryAdmin": {
+    "description": "Kategorier klassificerar kravets perspektiv, till exempel verksamhetskrav, IT-krav eller leverantörskrav. De visas här som en skrivskyddad taxonomilista.",
+    "emptyState": "Inga kategorier är tillgängliga.",
+    "id": "ID",
+    "listHeading": "Kategorier",
+    "loadError": "Det gick inte att läsa in kategorier.",
+    "name": "Namn"
+  },
   "normReference": {
     "active": "Aktiv",
     "archive": "Arkivera",
@@ -888,14 +897,16 @@
   "admin": {
     "title": "Administrationscenter",
     "loading": "Laddar administrationscenter...",
-    "description": "Hantera centrala administrationsinställningar för systemet, inklusive kolumner, referensdata, behörighetsöversyner och integritetsrelaterade funktioner.",
+    "description": "Hantera centrala administrationsinställningar för systemet, inklusive kolumner, taxonomi, statusar och arbetsflöden, behörighetsöversyner och integritetsrelaterade funktioner.",
     "settings": "Inställningar",
     "adminCenter": "Administrationscenter",
     "adminCenterDescription": "Uppdatera standardkolumner och administrationsinställningar.",
     "columns": "Kolumner",
     "columnsDescription": "Styr standardordning och synlighet för kravlistans kolumner.",
-    "referenceData": "Referensdata",
-    "referenceDataDescription": "Öppna de befintliga referensdatasidorna med oförändrade route-sluggar.",
+    "taxonomy": "Taxonomi",
+    "taxonomyDescription": "Öppna klassningssidor som används för filtrering, rapportering och AI-stöd.",
+    "statusesAndWorkflows": "Statusar och arbetsflöden",
+    "statusesAndWorkflowsDescription": "Öppna statuskataloger som styr livscykler, arbetsflödessteg och hur krav används i kravunderlag.",
     "accessReviewDescription": "Skapa återkommande granskningar av uppdrag och AI-behörigheter som applikationen styr, besluta varje behörighetsrad och exportera granskningsevidens.",
     "privacyDescription": "Förhandsgranska HSA-ID-baserade träffar, exportera data och kör GDPR-radering för aktörsidentiteter och aktiva tilldelningar.",
     "auditLog": {
@@ -1170,6 +1181,7 @@
     "saved": "Sparat",
     "columnsSaveError": "Det gick inte att spara kolumninställningarna.",
     "areasDescription": "Hantera kravområden och deras prefix.",
+    "categoriesDescription": "Visa kategorier som används för att klassificera kravets perspektiv.",
     "typesDescription": "Visa typer och deras kvalitetsstruktur.",
     "requirementPackagesDescription": "Hantera kravpaket som kan kopplas till krav.",
     "statusesDescription": "Hantera kravversionsstatusar och deras ordning.",
@@ -1516,9 +1528,13 @@
         "heading": "Standardkolumner",
         "body": "Ange vilka kolumner som visas som standard i kravbiblioteket och i vilken ordning. Användare kan fortfarande ändra kolumnsynligheten per session. Låsta kolumner visas alltid."
       },
-      "referenceData": {
-        "heading": "Referensdata",
-        "body": "Snabblänkar till hantering av kravområden, typer, kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar, kravunderlagets kravstatusar, risknivåer, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer."
+      "taxonomy": {
+        "heading": "Taxonomi",
+        "body": "Snabblänkar till klassningar som används för filtrering, rapportering och AI-stöd: kravområden, kategorier, typer, risknivåer, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer."
+      },
+      "statusesAndWorkflows": {
+        "heading": "Statusar och arbetsflöden",
+        "body": "Snabblänkar till statuskataloger som styr livscykler och användningslägen: kravversionsstatusar, kravunderlagets livscykelstatusar och användningsstatusar."
       },
       "privacy": {
         "heading": "Dataskyddsradering",
@@ -1611,6 +1627,17 @@
       "manage": {
         "heading": "Hantera",
         "body": "Skapa ett nytt kravområde med Nytt-knappen. Klicka på redigeringsikonen för att uppdatera prefix, namn, beskrivning eller ägare. Det går bara att ta bort ett kravområde om inga krav är kopplade till det."
+      }
+    },
+    "requirementCategories": {
+      "title": "Kategorier",
+      "overview": {
+        "heading": "Vad är kategorier?",
+        "body": "Kategorier klassificerar kravets perspektiv, till exempel verksamhetskrav, IT-krav eller leverantörskrav. De är en del av taxonomin som används för filtrering och rapportering."
+      },
+      "boundary": {
+        "heading": "Skrivskyddad katalog",
+        "body": "Kategorier förvaltas som fast referensdata i den här delen. Administrationscentret visar dem för orientering, men de skapas, ändras eller tas inte bort här."
       }
     },
     "requirementTypes": {

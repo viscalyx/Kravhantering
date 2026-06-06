@@ -626,10 +626,11 @@ erDiagram
 
 ## Lookup / Taxonomy Tables
 
-These tables store reference data (categories, types, requirement version
-statuses, usage statuses, and related catalogs). All user-facing text columns
-are localized
-with `_sv` (Swedish) and `_en` (English) suffixes.
+These tables store app-owned reference data. Taxonomy tables cover
+classifications such as categories, types and risk levels, while status tables
+cover requirement version statuses, usage statuses and lifecycle statuses. All
+user-facing text columns are localized with `_sv` (Swedish) and `_en`
+suffixes.
 
 These are business-domain reference-data tables. UI configuration is documented
 separately under [UI Settings Tables](#ui-settings-tables).

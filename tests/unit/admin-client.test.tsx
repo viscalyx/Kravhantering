@@ -455,7 +455,44 @@ describe('AdminClient', () => {
     })
   })
 
-  it('opens the reference data tab from the admin tab query parameter', () => {
+  it('opens the taxonomy tab from the admin tab query parameter', () => {
+    searchParamsMock.current = new URLSearchParams('tab=taxonomy')
+
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+      />,
+    )
+
+    const taxonomyTab = screen.getByRole('tab', {
+      name: 'admin.taxonomy',
+    })
+
+    expect(taxonomyTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'taxonomy-panel')
+  })
+
+  it('opens the statuses and workflows tab from the admin tab query parameter', () => {
+    searchParamsMock.current = new URLSearchParams('tab=statusesAndWorkflows')
+
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+      />,
+    )
+
+    const statusesAndWorkflowsTab = screen.getByRole('tab', {
+      name: 'admin.statusesAndWorkflows',
+    })
+
+    expect(statusesAndWorkflowsTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute(
+      'id',
+      'statusesAndWorkflows-panel',
+    )
+  })
+
+  it('retires the old reference data tab query parameter', () => {
     searchParamsMock.current = new URLSearchParams('tab=referenceData')
 
     render(
@@ -464,15 +501,11 @@ describe('AdminClient', () => {
       />,
     )
 
-    const referenceDataTab = screen.getByRole('tab', {
-      name: 'admin.referenceData',
-    })
-
-    expect(referenceDataTab).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tabpanel')).toHaveAttribute(
-      'id',
-      'referenceData-panel',
+    expect(screen.getByRole('tab', { name: 'admin.columns' })).toHaveAttribute(
+      'aria-selected',
+      'true',
     )
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'columns-panel')
   })
 
   it('opens the action log tab from the admin tab query parameter', () => {
@@ -568,12 +601,12 @@ describe('AdminClient', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('tab', { name: 'admin.referenceData' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.taxonomy' }))
 
     expect(routerReplace).toHaveBeenCalledWith(
       {
         pathname: '/admin',
-        query: { tab: 'referenceData' },
+        query: { tab: 'taxonomy' },
       },
       { scroll: false },
     )
@@ -599,7 +632,7 @@ describe('AdminClient', () => {
   })
 
   it('removes the admin tab query when returning to the default tab', () => {
-    searchParamsMock.current = new URLSearchParams('tab=referenceData')
+    searchParamsMock.current = new URLSearchParams('tab=taxonomy')
 
     render(
       <AdminClient
@@ -612,85 +645,144 @@ describe('AdminClient', () => {
     expect(routerReplace).toHaveBeenCalledWith('/admin', { scroll: false })
   })
 
-  it('renders icon-bearing reference data cards that link to the existing pages', () => {
+  it('renders icon-bearing taxonomy cards that link to the existing pages', () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
       />,
     )
 
-    fireEvent.click(screen.getByRole('tab', { name: 'admin.referenceData' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.taxonomy' }))
 
     const panel = within(screen.getByRole('tabpanel'))
 
-    expect(panel.getByTestId('reference-data-card-areas')).toHaveAttribute(
+    expect(panel.getByTestId('taxonomy-card-areas')).toHaveAttribute(
       'href',
       '/requirement-areas',
     )
-    expect(panel.getByTestId('reference-data-icon-areas')).toBeTruthy()
+    expect(panel.getByTestId('taxonomy-icon-areas')).toBeTruthy()
 
-    expect(panel.getByTestId('reference-data-card-types')).toHaveAttribute(
+    expect(panel.getByTestId('taxonomy-card-categories')).toHaveAttribute(
+      'href',
+      '/requirement-categories',
+    )
+    expect(panel.getByTestId('taxonomy-icon-categories')).toBeTruthy()
+
+    expect(panel.getByTestId('taxonomy-card-types')).toHaveAttribute(
       'href',
       '/requirement-types',
     )
-    expect(panel.getByTestId('reference-data-icon-types')).toBeTruthy()
+    expect(panel.getByTestId('taxonomy-icon-types')).toBeTruthy()
+
+    expect(panel.queryByTestId('taxonomy-card-requirementPackages')).toBeNull()
+    expect(panel.queryByTestId('taxonomy-card-normReferences')).toBeNull()
+
+    expect(panel.queryByTestId('taxonomy-card-statuses')).toBeNull()
 
     expect(
-      panel.queryByTestId('reference-data-card-requirementPackages'),
-    ).toBeNull()
-    expect(panel.queryByTestId('reference-data-card-normReferences')).toBeNull()
-
-    expect(panel.getByTestId('reference-data-card-statuses')).toHaveAttribute(
-      'href',
-      '/requirement-statuses',
-    )
-    expect(panel.getByTestId('reference-data-icon-statuses')).toBeTruthy()
-
-    expect(
-      panel.getByTestId('reference-data-card-qualityCharacteristics'),
+      panel.getByTestId('taxonomy-card-qualityCharacteristics'),
     ).toHaveAttribute('href', '/quality-characteristics')
     expect(
-      panel.getByTestId('reference-data-icon-qualityCharacteristics'),
+      panel.getByTestId('taxonomy-icon-qualityCharacteristics'),
     ).toBeTruthy()
 
-    expect(panel.getByTestId('reference-data-card-riskLevels')).toHaveAttribute(
+    expect(panel.getByTestId('taxonomy-card-riskLevels')).toHaveAttribute(
       'href',
       '/risk-levels',
     )
-    expect(panel.getByTestId('reference-data-icon-riskLevels')).toBeTruthy()
+    expect(panel.getByTestId('taxonomy-icon-riskLevels')).toBeTruthy()
 
     expect(
-      panel.getByTestId('reference-data-card-governanceObjectTypes'),
+      panel.getByTestId('taxonomy-card-governanceObjectTypes'),
     ).toHaveAttribute('href', '/specifications/governance-object-types')
     expect(
-      panel.getByTestId('reference-data-icon-governanceObjectTypes'),
+      panel.getByTestId('taxonomy-icon-governanceObjectTypes'),
     ).toBeTruthy()
 
     expect(
-      panel.getByTestId('reference-data-card-implementationTypes'),
+      panel.getByTestId('taxonomy-card-implementationTypes'),
     ).toHaveAttribute('href', '/specifications/implementation-types')
+    expect(panel.getByTestId('taxonomy-icon-implementationTypes')).toBeTruthy()
+
+    expect(panel.queryByTestId('taxonomy-card-lifecycleStatuses')).toBeNull()
     expect(
-      panel.getByTestId('reference-data-icon-implementationTypes'),
-    ).toBeTruthy()
+      panel.queryByTestId('taxonomy-card-specificationItemStatuses'),
+    ).toBeNull()
+    expect(panel.queryByTestId('taxonomy-card-areaOwners')).toBeNull()
+    expect(panel.queryByTestId('taxonomy-icon-areaOwners')).toBeNull()
+
+    const cardTexts = panel.getAllByRole('link').map(link => ({
+      description: link.querySelector('p')?.textContent,
+      title: link.querySelector('h3')?.textContent,
+    }))
+    expect(cardTexts).toEqual([
+      { title: 'nav.areas', description: 'admin.areasDescription' },
+      { title: 'nav.categories', description: 'admin.categoriesDescription' },
+      {
+        title: 'nav.governanceObjectTypes',
+        description: 'admin.governanceObjectTypesDescription',
+      },
+      {
+        title: 'nav.implementationTypes',
+        description: 'admin.implementationTypesDescription',
+      },
+      {
+        title: 'nav.qualityCharacteristics',
+        description: 'admin.qualityAttributesDescription',
+      },
+      { title: 'nav.riskLevels', description: 'admin.riskLevelsDescription' },
+      { title: 'nav.types', description: 'admin.typesDescription' },
+    ])
+  })
+
+  it('renders statuses and workflow cards separately from taxonomy', () => {
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+      />,
+    )
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'admin.statusesAndWorkflows' }),
+    )
+
+    const panel = within(screen.getByRole('tabpanel'))
 
     expect(
-      panel.getByTestId('reference-data-card-lifecycleStatuses'),
+      panel.getByTestId('statuses-workflows-card-statuses'),
+    ).toHaveAttribute('href', '/requirement-statuses')
+    expect(panel.getByTestId('statuses-workflows-icon-statuses')).toBeTruthy()
+
+    expect(
+      panel.getByTestId('statuses-workflows-card-lifecycleStatuses'),
     ).toHaveAttribute('href', '/specifications/lifecycle-statuses')
     expect(
-      panel.getByTestId('reference-data-icon-lifecycleStatuses'),
+      panel.getByTestId('statuses-workflows-icon-lifecycleStatuses'),
     ).toBeTruthy()
 
-    expect(panel.queryByTestId('reference-data-card-areaOwners')).toBeNull()
-    expect(panel.queryByTestId('reference-data-icon-areaOwners')).toBeNull()
-
     expect(
-      panel.getByTestId('reference-data-card-specificationItemStatuses'),
+      panel.getByTestId('statuses-workflows-card-specificationItemStatuses'),
     ).toHaveAttribute('href', '/specification-item-statuses')
     expect(
-      panel.getByTestId('reference-data-icon-specificationItemStatuses'),
+      panel.getByTestId('statuses-workflows-icon-specificationItemStatuses'),
     ).toBeTruthy()
 
-    expect(panel.getAllByRole('link')).toHaveLength(9)
+    expect(panel.queryByTestId('statuses-workflows-card-categories')).toBeNull()
+    const cardTexts = panel.getAllByRole('link').map(link => ({
+      description: link.querySelector('p')?.textContent,
+      title: link.querySelector('h3')?.textContent,
+    }))
+    expect(cardTexts).toEqual([
+      {
+        title: 'nav.lifecycleStatuses',
+        description: 'admin.lifecycleStatusesDescription',
+      },
+      {
+        title: 'nav.specificationItemStatuses',
+        description: 'admin.specificationItemStatusesDescription',
+      },
+      { title: 'nav.statuses', description: 'admin.statusesDescription' },
+    ])
   })
 
   it('exposes the admin tabs through a tablist and updates selection on click', () => {
@@ -701,21 +793,18 @@ describe('AdminClient', () => {
     )
 
     const columnsTab = screen.getByRole('tab', { name: 'admin.columns' })
-    const referenceDataTab = screen.getByRole('tab', {
-      name: 'admin.referenceData',
+    const taxonomyTab = screen.getByRole('tab', {
+      name: 'admin.taxonomy',
     })
 
     expect(columnsTab.parentElement).toHaveAttribute('role', 'tablist')
     expect(columnsTab).toHaveAttribute('aria-selected', 'true')
-    expect(referenceDataTab).toHaveAttribute('aria-selected', 'false')
+    expect(taxonomyTab).toHaveAttribute('aria-selected', 'false')
 
-    fireEvent.click(referenceDataTab)
+    fireEvent.click(taxonomyTab)
 
-    expect(referenceDataTab).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tabpanel')).toHaveAttribute(
-      'id',
-      'referenceData-panel',
-    )
+    expect(taxonomyTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'taxonomy-panel')
   })
 
   it('exposes admin tabs with accessible selection state', () => {
@@ -726,8 +815,8 @@ describe('AdminClient', () => {
     )
 
     const columnsTab = screen.getByRole('tab', { name: 'admin.columns' })
-    const referenceDataTab = screen.getByRole('tab', {
-      name: 'admin.referenceData',
+    const taxonomyTab = screen.getByRole('tab', {
+      name: 'admin.taxonomy',
     })
 
     expect(columnsTab).toHaveAttribute('aria-selected', 'true')
@@ -737,13 +826,10 @@ describe('AdminClient', () => {
       'columns-tab',
     )
 
-    fireEvent.click(referenceDataTab)
+    fireEvent.click(taxonomyTab)
 
-    expect(referenceDataTab).toHaveAttribute(
-      'aria-controls',
-      'referenceData-panel',
-    )
-    expect(referenceDataTab).toHaveAttribute('aria-selected', 'true')
+    expect(taxonomyTab).toHaveAttribute('aria-controls', 'taxonomy-panel')
+    expect(taxonomyTab).toHaveAttribute('aria-selected', 'true')
   })
 
   it('switches the header help content when the privacy tab is selected', async () => {

@@ -75,7 +75,7 @@ HSA-ID as read-only and uses a dedicated owner-change action for replacement.
 There is no `/owners` admin surface or owners REST resource, and no local
 person catalog lookup is performed in this flow.
 
-## 3 — Specification Taxonomy Lookups
+## 3 — Specification Lookups
 
 Sources: `lib/dal/specification-implementation-types.ts`,
 `lib/dal/specification-lifecycle-statuses.ts`,
@@ -104,9 +104,9 @@ All three DALs follow the same structure:
 <!-- markdownlint-enable MD013 -->
 
 The API layer now provides the common request-shape guardrails for all
-three taxonomy groups. The remaining DAL variance is intentional:
-specification lifecycle statuses are safety-critical because they determine
-specification workflow gates, while implementation types and
+three lookup groups. The remaining DAL variance is intentional:
+specification lifecycle statuses belong to statuses and workflows because
+they determine specification workflow gates, while implementation types and
 governance object types are informational taxonomy values.
 
 ### Delete Return Values

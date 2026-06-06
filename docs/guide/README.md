@@ -14,7 +14,7 @@
 6. [Avsteg](#avsteg)
 7. [Förbättringsförslag](#förbättringsförslag)
 8. [Administrationscenter](#administrationscenter)
-9. [Referensdatahantering](#referensdatahantering)
+9. [Taxonomi och statusar](#taxonomi-och-statusar)
 10. [Rapporter](#rapporter)
 
 ## Översikt och navigering
@@ -411,17 +411,25 @@ också ange standardvyer för olika kontexter.
 
 ![Admin — Kolumnhantering](images/041-admin-kolumner.png)
 
-### Admin — Referensdata
+### Admin — Taxonomi
 
-Fliken **Referensdata** innehåller länkar till hantering av kravområden, typer,
-kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar,
-kravunderlagets kravstatusar, risknivåer, kvalitetsegenskaper,
-styrningsobjektstyper och genomförandeformer. Normreferenser hanteras i
-Normbibliotek under Kravbiblioteksförvaltning.
+Fliken **Taxonomi** innehåller länkar till klassningar som används för
+filtrering, rapportering och AI-stöd: kravområden, kategorier, typer,
+risknivåer, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer.
+Normreferenser hanteras i Normbibliotek under Kravbiblioteksförvaltning.
 
-![Admin — Referensdata](images/042-admin-referensdata.png)
+![Admin — Taxonomi](images/042-admin-taxonomi.png)
 
-## Referensdatahantering
+### Admin — Statusar och arbetsflöden
+
+Fliken **Statusar och arbetsflöden** samlar statuskataloger för kravversioner,
+kravunderlagets livscykel och användningsstatusar i kravunderlag. Taxonomi och
+statusar hålls isär så att klassningar inte blandas ihop med livscykel- och
+användningslägen.
+
+![Admin — Statusar och arbetsflöden](images/043-admin-statusar-arbetsfloden.png)
+
+## Taxonomi och statusar
 
 ### Kravområden
 
@@ -429,7 +437,15 @@ Kravområden organiserar krav efter organisatorisk domän. Varje kravområde har
 ägare, ett prefix som används i krav-ID (t.ex. "SÄK" ger ID:n som "SÄK0001") och
 en beskrivning.
 
-![Kravområden](images/043-kravomraden.png)
+![Kravområden](images/044-kravomraden.png)
+
+### Kategorier
+
+Kategorier klassificerar kravets perspektiv, till exempel verksamhetskrav,
+IT-krav och leverantörskrav. I administrationscentret visas kategorierna som en
+skrivskyddad taxonomilista.
+
+![Kategorier](images/045-kategorier.png)
 
 ### Kravversionsstatusar
 
@@ -438,7 +454,7 @@ systemstyrda kravversionsstatusarna (Utkast, Granskning, Publicerad, Arkiverad)
 kan inte tas bort eller byta namn — de utgör ryggraden i arbetsflödet. Övriga
 kravversionsstatusar kan anpassas.
 
-![Kravversionsstatusar](images/044-kravversionsstatusar.png)
+![Kravversionsstatusar](images/046-kravversionsstatusar.png)
 
 ### Risknivåer
 
@@ -446,7 +462,7 @@ Risknivåer klassificerar kravets kritikalitet. Varje nivå kan tilldelas en fä
 för visuell identifiering i kravbiblioteket och detaljvyer. Färgkodningen gör
 det enkelt att snabbt bedöma ett kravs vikt.
 
-![Risknivåer](images/045-risknivåer.png)
+![Risknivåer](images/047-risknivåer.png)
 
 ### Kravtyper
 
@@ -454,7 +470,7 @@ Kravtyper kategoriserar kravets karaktär (t.ex. funktionellt, icke-funktionellt
 säkerhetskrav). Typer används för filtrering, rapportering och för att
 säkerställa rätt kvalitetsegenskaper kopplas till kravet.
 
-![Kravtyper](images/046-kravtyper.png)
+![Kravtyper](images/048-kravtyper.png)
 
 ### Kvalitetsegenskaper
 
@@ -462,7 +478,7 @@ Kvalitetsegenskaper är ett hierarkiskt taxonomi som beskriver icke-funktionella
 krav (t.ex. tillgänglighet, prestanda, säkerhet). Egenskaperna kopplas till krav
 för att säkerställa täckning av kvalitetskraven.
 
-![Kvalitetsegenskaper](images/047-kvalitetsegenskaper.png)
+![Kvalitetsegenskaper](images/049-kvalitetsegenskaper.png)
 
 ### Normbibliotek
 
@@ -470,7 +486,7 @@ Normbiblioteket samlar normreferenser till externa standarder och regelverk
 (t.ex. ISO-standarder, GDPR). Krav kan referera till en eller flera
 normreferenser för att tydliggöra vilka regelverk de härstammar från.
 
-![Normbibliotek](images/048-normreferenser.png)
+![Normbibliotek](images/050-normreferenser.png)
 
 ## Rapporter
 
@@ -574,7 +590,7 @@ Markera ett eller flera krav i kravbiblioteket för att aktivera rapportknappar 
 verktygsfältet. Du kan generera PDF-rapporter för granskningsunderlag,
 avstegsöversikter, ändringshistorik och mer.
 
-![Rapportgenerering från kravbiblioteket](images/056-rapporter-kravbibliotek.png)
+![Rapportgenerering från kravbiblioteket](images/058-rapporter-kravbibliotek.png)
 
 ### Rapporter från kravdetaljsidan
 
@@ -582,4 +598,4 @@ Från kravdetaljsidan kan du öppna rapportmenyn för att ladda ned eller skriva
 ut: **Ändringshistorik** (alla versioner), **Förbättringsförslagshistorik** och
 granskningsunderlag. Rapporterna är formaterade för utskrift och PDF-export.
 
-![Rapporter från kravdetaljsidan](images/057-rapporter-kravdetalj.png)
+![Rapporter från kravdetaljsidan](images/059-rapporter-kravdetalj.png)

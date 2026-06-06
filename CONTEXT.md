@@ -276,14 +276,32 @@ men som inte nödvändigtvis är normerande.
 _Avoid_: Normreferens när källan är styrande.
 
 **Referensdata**:
-Administrerade listor och klassningar som stödjer krav och kravunderlag, till
-exempel kravområden, kategorier, typer, kvalitetsegenskaper, risknivåer,
-och statusar. Termen används tills vidare som samlingsnamn.
+Administrerade uppslag, klassningar och statuskataloger som stödjer krav och
+kravunderlag. Referensdata är samlingsbegreppet som omfattar både taxonomi
+samt statusar och arbetsflöden.
 
 - `en`: Reference data
 
-_Avoid_: Kravdata, kravpaket eller normbibliotek när innehållsförvaltning av
+_Avoid_: Taxonomi när statuskataloger eller arbetsflödesstatusar avses,
+kravdata, kravpaket eller normbibliotek när innehållsförvaltning av
 kravbiblioteket avses.
+
+**Taxonomi**:
+En kontrollerad klassningsstruktur som används för att sortera, gruppera,
+filtrera och analysera krav eller kravunderlag.
+
+- `en`: Taxonomy
+
+_Avoid_: Referensdata när även statuskataloger avses, statusar och
+arbetsflöden.
+
+**Statusar och arbetsflöden**:
+Samlingsnamn för statuskataloger som beskriver livscykler, arbetsflödessteg
+eller användning av krav och kravunderlag.
+
+- `en`: Statuses and workflows
+
+_Avoid_: Taxonomi, kravstatus som övergripande term.
 
 **AI-assisterat författande**:
 Ett stödflöde där en användare får förslag till krav baserat på ämne,

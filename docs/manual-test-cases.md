@@ -51,7 +51,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [COL-04: resolve an improvement suggestion](#col-04-resolve-an-improvement-suggestion)
   - [COL-05: dismiss an improvement suggestion](#col-05-dismiss-an-improvement-suggestion)
   - [COL-06: suggestion history report includes suggestions](#col-06-suggestion-history-report-includes-suggestions)
-  - [COL-07: metadata shows requirement area owner and reference data](#col-07-metadata-shows-requirement-area-owner-and-reference-data)
+  - [COL-07: metadata shows requirement area owner and taxonomy data](#col-07-metadata-shows-requirement-area-owner-and-taxonomy-data)
 - [Requirements specifications](#requirements-specifications)
   - [SPEC-01: list, filter, and clear specifications](#spec-01-list-filter-and-clear-specifications)
   - [SPEC-02: create a new specification](#spec-02-create-a-new-specification)
@@ -75,15 +75,15 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [DEV-07: no-role user cannot decide deviations](#dev-07-no-role-user-cannot-decide-deviations)
 - [Admin Center](#admin-center)
   - [ADMIN-01: requirement column defaults affect new library views](#admin-01-requirement-column-defaults-affect-new-library-views)
-  - [ADMIN-02: reference-data CRUD page saves changes](#admin-02-reference-data-crud-page-saves-changes)
-  - [ADMIN-03: browser back restores reference-data tab](#admin-03-browser-back-restores-reference-data-tab)
+  - [ADMIN-02: taxonomy and status pages save changes](#admin-02-taxonomy-and-status-pages-save-changes)
+  - [ADMIN-03: browser back restores taxonomy tab](#admin-03-browser-back-restores-taxonomy-tab)
   - [ADMIN-04: mobile admin tabs and actions remain usable](#admin-04-mobile-admin-tabs-and-actions-remain-usable)
   - [ADMIN-05: Normbibliotek lives under stewardship](#admin-05-normbibliotek-lives-under-stewardship)
   - [ADMIN-06: action log filters and exports CSV](#admin-06-action-log-filters-and-exports-csv)
   - [ADMIN-07: access-review decision and export](#admin-07-access-review-decision-and-export)
   - [ADMIN-08: access-review validation rejects long comments](#admin-08-access-review-validation-rejects-long-comments)
   - [ADMIN-09: archiving retention preview is privacy-gated](#admin-09-archiving-retention-preview-is-privacy-gated)
-  - [ADMIN-10: reference-data icons render across requirement surfaces](#admin-10-reference-data-icons-render-across-requirement-surfaces)
+  - [ADMIN-10: status and risk icons render across requirement surfaces](#admin-10-status-and-risk-icons-render-across-requirement-surfaces)
   - [ADMIN-11: archived requirement-selection retention excludes saved history](#admin-11-archived-requirement-selection-retention-excludes-saved-history)
   - [ADMIN-12: requirement area owner changes use HSA-ID](#admin-12-requirement-area-owner-changes-use-hsa-id)
 - [Privacy and personal data access](#privacy-and-personal-data-access)
@@ -239,11 +239,11 @@ and `hsaId`, but does not include raw tokens, authorization codes, `state`,
 
 1. Open `/sv/admin`.
 1. Verify the page heading.
-1. Open the `Referensdata` tab.
-1. Open the `Kravområden` reference-data page.
+1. Open the `Taxonomi` tab.
+1. Open the `Kravområden` taxonomy page.
 
-**Expected result:** The Admin Center loads, `Referensdata` is usable, and the
-reference-data page opens. Normreferenser are not listed under `Referensdata`.
+**Expected result:** The Admin Center loads, `Taxonomi` is usable, and the
+taxonomy page opens. Normreferenser are not listed under `Taxonomi`.
 
 ### AUTH-06: privacy tab is disabled for Admin without PrivacyOfficer
 
@@ -290,7 +290,7 @@ load as an Admin page for this user.
 **Steps:**
 
 1. Open `/sv/admin`.
-1. Try to open a reference-data administration page such as
+1. Try to open a taxonomy administration page such as
    `/sv/requirement-areas`.
 1. Try a privileged action if the UI displays one.
 
@@ -971,14 +971,14 @@ history.
 **Expected result:** Suggestions are grouped by requirement version and include
 status, author, date, and resolution details.
 
-### COL-07: metadata shows requirement area owner and reference data
+### COL-07: metadata shows requirement area owner and taxonomy data
 
 **Purpose:** Confirm detail metadata is complete and readable.
 
 **Users:** `ada.admin`.
 
 **Prerequisites:** Open a seeded requirement with requirement area, package,
-and norm reference data.
+and norm references.
 
 **Steps:**
 
@@ -1393,13 +1393,14 @@ the mutation without changing deviation state.
 
 **Expected result:** The library uses the saved organization-wide column order.
 
-### ADMIN-02: reference-data CRUD page saves changes
+### ADMIN-02: taxonomy and status pages save changes
 
-**Purpose:** Confirm reference-data pages can create and edit rows.
+**Purpose:** Confirm taxonomy and status pages keep their intended
+administration behavior.
 
 **Users:** `ada.admin`.
 
-**Prerequisites:** Open `/sv/admin?tab=referenceData`.
+**Prerequisites:** Open `/sv/admin?tab=taxonomy`.
 
 **Steps:**
 
@@ -1407,15 +1408,19 @@ the mutation without changing deviation state.
 1. Create a disposable requirement area with a unique prefix.
 1. Edit its name.
 1. Delete it if deletion is allowed.
-1. Open a reference-data page with no rows, or remove the disposable row if that
-   leaves the table empty.
+1. Return to `/sv/admin?tab=taxonomy`.
+1. Open `Kategorier`.
+1. Verify that the category list has no create, edit, or delete controls.
+1. Return to `/sv/admin?tab=statusesAndWorkflows`.
+1. Open `Kravversionsstatusar`.
+1. Verify the status page keeps its existing edit controls.
 
 **Expected result:** Create and edit actions persist, and delete either removes
-the row or shows a clear dependency message. Empty reference-data tables show a
-localized empty-state row; tables with an existing create flow include a `Ny`
-CTA that opens the same create form.
+the row or shows a clear dependency message. `Kategorier` is visible as a
+read-only taxonomy list, while existing editable status pages keep their
+configured controls.
 
-### ADMIN-03: browser back restores reference-data tab
+### ADMIN-03: browser back restores taxonomy tab
 
 **Purpose:** Confirm Admin Center tab state survives navigation.
 
@@ -1425,12 +1430,12 @@ CTA that opens the same create form.
 
 **Steps:**
 
-1. Select the `Reference data` tab.
+1. Select the `Taxonomy` tab.
 1. Open the requirement areas card.
 1. Use browser Back.
 
-**Expected result:** The browser returns to `/en/admin?tab=referenceData`, and
-the `Reference data` tab remains selected.
+**Expected result:** The browser returns to `/en/admin?tab=taxonomy`, and the
+`Taxonomy` tab remains selected.
 
 ### ADMIN-04: mobile admin tabs and actions remain usable
 
@@ -1444,7 +1449,8 @@ the `Reference data` tab remains selected.
 
 1. Open `/sv/admin`.
 1. Horizontally scroll the tab list.
-1. Select `Referensdata`.
+1. Select `Taxonomi`.
+1. Select `Statusar och arbetsflöden`.
 1. Select `Kolumner`.
 1. Check `Återställ standardvy` and `Spara`.
 
@@ -1454,7 +1460,7 @@ to operate by touch.
 ### ADMIN-05: Normbibliotek lives under stewardship
 
 **Purpose:** Confirm norm-reference stewardship is reached from
-Kravbiblioteksförvaltning, not Admin Center reference data.
+Kravbiblioteksförvaltning, not Admin Center taxonomy.
 
 **Users:** `ada.admin`.
 
@@ -1475,14 +1481,14 @@ Kravbiblioteksförvaltning, not Admin Center reference data.
 1. Save and verify the list shows a compact external-link icon next to the
    norm reference name.
 1. Archive it, confirm the danger dialog, and then reactivate it.
-1. Return to `/sv/admin`, select `Referensdata`, and scan the cards.
+1. Return to `/sv/admin`, select `Taxonomi`, and scan the cards.
 
 **Expected result:** Normbibliotek opens at
 `/sv/requirements/stewardship?tab=norms`, the norm reference can be created,
 edited, opened through the URI icons in the form and list, archived only after
 confirmation, and reactivated. Only `http` and `https` norm-reference URIs
 render browser-link icons; unsupported schemes such as `file` do not. Admin
-Center `Referensdata` has no norm-reference card.
+Center `Taxonomi` has no norm-reference card.
 
 ### ADMIN-06: action log filters and exports CSV
 
@@ -1560,7 +1566,7 @@ row.
 **Expected result:** `ada.admin` and `disa.privacy` can use archiving privacy
 tools; `only.admin` is redirected to the default tab or sees disabled access.
 
-### ADMIN-10: reference-data icons render across requirement surfaces
+### ADMIN-10: status and risk icons render across requirement surfaces
 
 **Purpose:** Confirm admins can assign and clear icons from the installed
 Lucide catalog, and that labels remain visible wherever icons are rendered.
@@ -1625,7 +1631,7 @@ archived requirement-selection rows that have no saved
 
 **Users:** `ada.admin`.
 
-**Prerequisites:** Open `/sv/admin?tab=referenceData`.
+**Prerequisites:** Open `/sv/admin?tab=taxonomy`.
 
 **Steps:**
 

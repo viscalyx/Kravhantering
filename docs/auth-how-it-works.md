@@ -261,7 +261,7 @@ sequenceDiagram
   HSA-ID in event detail. Retention or redaction of handler identity in
   external security logs is handled by the platform logging policy because
   removing it can reduce traceability.
-- Privileged Admin Center and reference-data mutations emit
+- Privileged Admin Center taxonomy and status-catalog mutations emit
   `admin.privileged_action.succeeded` only after the mutation succeeds. The
   detail contains operation, resource type, optional resource id, item counts,
   edited field names, request source, session roles and privileged IdP roles;

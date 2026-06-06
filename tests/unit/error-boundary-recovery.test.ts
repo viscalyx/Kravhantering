@@ -12,7 +12,7 @@ import {
 
 describe('error boundary recovery helpers', () => {
   it('normalizes paths and reads supported locale prefixes', () => {
-    expect(normalizePathname('sv/admin?tab=referenceData')).toBe('/sv/admin')
+    expect(normalizePathname('sv/admin?tab=taxonomy')).toBe('/sv/admin')
     expect(normalizePathname(null)).toBe('/')
     expect(getLocaleFromPathname('/en/requirements')).toBe('en')
     expect(getLocaleFromPathname('/sv/admin')).toBe('sv')
@@ -32,10 +32,11 @@ describe('error boundary recovery helpers', () => {
     )
   })
 
-  it('classifies admin and reference-data paths for safe recovery', () => {
+  it('classifies admin and taxonomy paths for safe recovery', () => {
     expect(isAdminRecoveryPath('/sv/admin')).toBe(true)
     expect(isAdminRecoveryPath('/en/admin/settings')).toBe(true)
     expect(isAdminRecoveryPath('/sv/requirement-areas')).toBe(true)
+    expect(isAdminRecoveryPath('/sv/requirement-categories')).toBe(true)
     expect(
       isAdminRecoveryPath('/en/specifications/governance-object-types'),
     ).toBe(true)
