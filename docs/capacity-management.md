@@ -84,8 +84,10 @@ V1 measures:
   access-review exports.
 
 Report PDFs are rendered in Node route handlers so production CSP can stay
-strict without `unsafe-eval` or `wasm-unsafe-eval`. V1 limits report lists to
-50 items and treats PDF generation as server workload for capacity planning.
+strict without `unsafe-eval` or `wasm-unsafe-eval`. V1 does not impose an
+application-level item-count cap on report lists. Large report PDFs remain
+server workload for capacity planning; practical constraints are request URL
+length, data loading time, and PDF rendering capacity.
 
 ## Throttling
 

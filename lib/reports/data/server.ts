@@ -13,6 +13,7 @@ import {
   parseSpecificationItemRef,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
+import { mapReportItemsWithConcurrency } from '@/lib/reports/data/concurrency'
 import type {
   DeviationReportData,
   DeviationReportVersion,
@@ -22,7 +23,6 @@ import type {
   RequirementReportVersion,
   SuggestionReportRow,
 } from '@/lib/reports/data/fetch-requirement'
-import { assertReportItemCount } from '@/lib/reports/limits'
 import { requirementPackageName } from '@/lib/reports/package-name'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
@@ -94,8 +94,9 @@ export async function collectMultipleRequirementsForReport(
   db: SqlServerDatabase,
   ids: (number | string)[],
 ): Promise<RequirementReportData[]> {
-  assertReportItemCount(ids.length)
-  return Promise.all(ids.map(id => collectRequirementForReport(db, id)))
+  return mapReportItemsWithConcurrency(ids, id =>
+    collectRequirementForReport(db, id),
+  )
 }
 
 export async function collectSuggestionsForReport(
@@ -328,6 +329,10 @@ function mapSpecificationLocalRequirementToReportData(
   }
 }
 
+type SpecificationReportFetchRef =
+  | { id: number; itemRef: string; kind: 'lib' }
+  | { id: number; itemRef: string; kind: 'local' }
+
 export async function collectSpecificationItemsForReport(
   db: SqlServerDatabase,
   specificationIdOrSlug: string | number,
@@ -336,7 +341,6 @@ export async function collectSpecificationItemsForReport(
   requirements: RequirementReportData[]
   specification: NonNullable<Awaited<ReturnType<typeof getSpecificationBySlug>>>
 }> {
-  assertReportItemCount(itemRefs.length)
   const decodedSpecificationId = decodeSegment(specificationIdOrSlug)
   const specification = /^\d+$/.test(decodedSpecificationId)
     ? await getSpecificationById(db, Number(decodedSpecificationId))
@@ -349,7 +353,7 @@ export async function collectSpecificationItemsForReport(
     )
   }
 
-  const requirements: RequirementReportData[] = []
+  const toFetch: SpecificationReportFetchRef[] = []
   for (const itemRef of itemRefs) {
     const parsed = parseSpecificationItemRef(decodeSegment(itemRef))
     if (!parsed) {
@@ -357,17 +361,22 @@ export async function collectSpecificationItemsForReport(
     }
 
     if (parsed.kind === 'library') {
-      const item = await getSpecificationItemById(db, parsed.id)
-      if (!item || item.specificationId !== specification.id) {
+      const specificationItem = await getSpecificationItemById(db, parsed.id)
+      if (
+        !specificationItem ||
+        specificationItem.specificationId !== specification.id
+      ) {
         throw new ReportDataError(
           `Item not found in specification: ${itemRef}`,
           404,
         )
       }
 
-      requirements.push(
-        await collectRequirementForReport(db, item.requirementId),
-      )
+      toFetch.push({
+        id: specificationItem.requirementId,
+        itemRef,
+        kind: 'lib',
+      })
       continue
     }
 
@@ -383,10 +392,31 @@ export async function collectSpecificationItemsForReport(
       )
     }
 
-    requirements.push(
-      mapSpecificationLocalRequirementToReportData(localRequirement),
-    )
+    toFetch.push({ id: parsed.id, itemRef, kind: 'local' })
   }
+
+  const requirements = await mapReportItemsWithConcurrency(
+    toFetch,
+    async reportItem => {
+      if (reportItem.kind === 'lib') {
+        return collectRequirementForReport(db, reportItem.id)
+      }
+
+      const localRequirement = await getSpecificationLocalRequirementDetail(
+        db,
+        specification.id,
+        reportItem.id,
+      )
+      if (!localRequirement) {
+        throw new ReportDataError(
+          `Item not found in specification: ${reportItem.itemRef}`,
+          404,
+        )
+      }
+
+      return mapSpecificationLocalRequirementToReportData(localRequirement)
+    },
+  )
 
   return { requirements, specification }
 }

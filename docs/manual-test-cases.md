@@ -497,14 +497,16 @@ then metadata such as area, owner, references, and packages.
 
 **Steps:**
 
-1. Apply a simple filter such as `INT`.
+1. Use no filter, or a broad filter that leaves more than 50 rows visible when
+   fixture data allows it.
 1. Open the report or print menu from the library action rail.
 1. Select the list report option.
 1. Repeat with the PDF list report option.
 
 **Expected result:** A report route opens or a generated PDF downloads for the
 filtered requirements without losing the current list context or duplicating
-the locale prefix in the route.
+the locale prefix in the route. When more than 50 rows are visible, neither
+path shows `Report item count ... exceeds the limit 50`.
 
 ### REQ-11: localized library error recovery
 
@@ -1177,12 +1179,14 @@ references can be deleted intentionally.
 
 **Steps:**
 
-1. Select one or more requirements in `Krav i underlaget`.
+1. Select one or more requirements in `Krav i underlaget`, using more than 50
+   rows when fixture data allows it.
 1. Open the report menu.
 1. Generate the specification list report.
 
 **Expected result:** The report includes specification metadata and the chosen
-library or unique requirement rows.
+library or unique requirement rows. When more than 50 rows are selected, the
+report still opens without a report item-count error.
 
 ### SPEC-11: reset specification column views
 

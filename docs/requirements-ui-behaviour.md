@@ -390,6 +390,8 @@ down.
   - "Print Requirements List" — opens the print engine route
   - "Download Requirements List (PDF)" — downloads the server PDF route
 - Passes the IDs of all currently visible rows as `?ids=` query params.
+- Does not apply an application-level item-count cap to visible rows, though
+  very large selections still use a browser URL.
 - The report shows Requirement ID, requirement text, requirement area, and
   status columns.
 
@@ -402,6 +404,8 @@ down.
   - `local:<specificationLocalRequirementId>` for a unique requirement
 - This allows the report to include both library and unique requirements in one
   specification list export.
+- Does not apply an application-level item-count cap to selected refs, though
+  very large selections still use a browser URL.
 - PDF uses the matching server route
   `/[locale]/specifications/[slug]/reports/pdf/list?refs=...`.
 - Specification list reports include the current requirement-selection context
