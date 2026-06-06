@@ -6,16 +6,13 @@ Kravhantering owns the `Referensdata` that shapes requirement work inside the
 application. This includes requirement areas, categories, types, quality
 characteristics, risk levels, requirement version statuses, usage statuses,
 specification lifecycle statuses, specification item statuses, governance
-object types, implementation types and norm-reference records.
+object types, implementation types, norm-reference records and requirement-area
+owner assignments.
 
 These catalogs are administered inside Kravhantering because they directly
 affect requirement classification, filtering, reporting, AI prompt context and
 stewardship workflows. They are reachable through Admin Center as a curated
 navigation surface for application-owned lookup and taxonomy rows.
-
-Requirement-area ownership is stored directly on each requirement area as the
-owner's HSA-ID. It is an operational responsibility assignment, not a standalone
-reference-data catalog and not an in-app personnel record.
 
 Requirement packages and requirement-selection questions are
 requirements-library stewardship content, not Admin Center reference data. They

@@ -4,11 +4,11 @@ Status: Accepted on 2026-06-05.
 
 Kravhantering stores `Åtgärdslogg` evidence in `action_audit_events` as
 durable snapshot rows, not as relational children of requirements,
-specifications, ownership assignments or other domain rows. Action-log rows
-intentionally do not have foreign keys to live domain tables; they carry
-logical target identifiers, actor snapshots, request IDs and correlation IDs so
-the evidence survives lifecycle deletion, retention `Gallring`, archive cleanup
-and privacy erasure or switching of person fields.
+specifications, owners or other domain rows. Action-log rows intentionally do
+not have foreign keys to live domain tables; they carry logical target
+identifiers, actor snapshots, request IDs and correlation IDs so the evidence
+survives lifecycle deletion, retention `Gallring`, archive cleanup and
+privacy erasure or switching of person fields.
 
 The surprising part is the deliberate loss of relational integrity for this
 table. Action-log reads cannot depend on joining back to the current domain row
