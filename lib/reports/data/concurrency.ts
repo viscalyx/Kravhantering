@@ -13,10 +13,7 @@ export async function mapReportItemsWithConcurrency<T, TResult>(
       while (nextIndex < items.length) {
         const currentIndex = nextIndex
         nextIndex += 1
-        results[currentIndex] = await mapper(
-          items[currentIndex] as T,
-          currentIndex,
-        )
+        results[currentIndex] = await mapper(items[currentIndex], currentIndex)
       }
     }),
   )

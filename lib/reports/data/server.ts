@@ -329,6 +329,10 @@ function mapSpecificationLocalRequirementToReportData(
   }
 }
 
+type SpecificationReportFetchRef =
+  | { id: number; itemRef: string; kind: 'lib' }
+  | { id: number; itemRef: string; kind: 'local' }
+
 export async function collectSpecificationItemsForReport(
   db: SqlServerDatabase,
   specificationIdOrSlug: string | number,
@@ -349,7 +353,7 @@ export async function collectSpecificationItemsForReport(
     )
   }
 
-  const requirements: RequirementReportData[] = []
+  const toFetch: SpecificationReportFetchRef[] = []
   for (const itemRef of itemRefs) {
     const parsed = parseSpecificationItemRef(decodeSegment(itemRef))
     if (!parsed) {
@@ -357,17 +361,22 @@ export async function collectSpecificationItemsForReport(
     }
 
     if (parsed.kind === 'library') {
-      const item = await getSpecificationItemById(db, parsed.id)
-      if (!item || item.specificationId !== specification.id) {
+      const specificationItem = await getSpecificationItemById(db, parsed.id)
+      if (
+        !specificationItem ||
+        specificationItem.specificationId !== specification.id
+      ) {
         throw new ReportDataError(
           `Item not found in specification: ${itemRef}`,
           404,
         )
       }
 
-      requirements.push(
-        await collectRequirementForReport(db, item.requirementId),
-      )
+      toFetch.push({
+        id: specificationItem.requirementId,
+        itemRef,
+        kind: 'lib',
+      })
       continue
     }
 
@@ -383,10 +392,31 @@ export async function collectSpecificationItemsForReport(
       )
     }
 
-    requirements.push(
-      mapSpecificationLocalRequirementToReportData(localRequirement),
-    )
+    toFetch.push({ id: parsed.id, itemRef, kind: 'local' })
   }
+
+  const requirements = await mapReportItemsWithConcurrency(
+    toFetch,
+    async reportItem => {
+      if (reportItem.kind === 'lib') {
+        return collectRequirementForReport(db, reportItem.id)
+      }
+
+      const localRequirement = await getSpecificationLocalRequirementDetail(
+        db,
+        specification.id,
+        reportItem.id,
+      )
+      if (!localRequirement) {
+        throw new ReportDataError(
+          `Item not found in specification: ${reportItem.itemRef}`,
+          404,
+        )
+      }
+
+      return mapSpecificationLocalRequirementToReportData(localRequirement)
+    },
+  )
 
   return { requirements, specification }
 }
