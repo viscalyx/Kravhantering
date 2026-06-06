@@ -69,6 +69,7 @@ export interface DecideAccessReviewItemInput {
 }
 
 const ADMIN_ROLE = 'Admin'
+const PRIVACY_OFFICER_ROLE = 'PrivacyOfficer'
 const ACCESS_REVIEW_ITEM_INSERT_BATCH_SIZE = 150
 const ACCESS_REVIEW_ITEM_INSERT_PARAMETER_COUNT = 11
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000
@@ -78,12 +79,18 @@ function isAdmin(actor: AccessReviewAuthContext): boolean {
   return actor.roles.includes(ADMIN_ROLE)
 }
 
-function requireAdmin(actor: AccessReviewAuthContext): AccessReviewActor {
-  if (!isAdmin(actor)) {
+function canUseAccessReview(actor: AccessReviewAuthContext): boolean {
+  return isAdmin(actor) || actor.roles.includes(PRIVACY_OFFICER_ROLE)
+}
+
+function requireAccessReviewRole(
+  actor: AccessReviewAuthContext,
+): AccessReviewActor {
+  if (!canUseAccessReview(actor)) {
     throw forbiddenError(
-      'Admin role is required for access review management',
+      'Admin or PrivacyOfficer role is required for access review management',
       {
-        reason: 'admin_required',
+        reason: 'access_review_role_required',
       },
     )
   }
@@ -102,29 +109,12 @@ function requireActor(actor: AccessReviewAuthContext): AccessReviewActor {
   }
 }
 
-function assertCanViewRun(
-  actor: AccessReviewAuthContext,
-  run: Pick<AccessReviewRun, 'reviewer'>,
-): void {
-  if (isAdmin(actor)) return
-  const actorSnapshot = requireActor(actor)
-  if (actorSnapshot.hsaId === run.reviewer.hsaId) return
-  throw forbiddenError('Access review is assigned to another reviewer', {
-    reason: 'assigned_reviewer_required',
-  })
+function assertCanViewRun(actor: AccessReviewAuthContext): void {
+  requireAccessReviewRole(actor)
 }
 
-function assertCanDecideRun(
-  actor: AccessReviewAuthContext,
-  run: Pick<AccessReviewRun, 'reviewer'>,
-): AccessReviewActor {
-  const actorSnapshot = requireActor(actor)
-  if (isAdmin(actor) || actorSnapshot.hsaId === run.reviewer.hsaId) {
-    return actorSnapshot
-  }
-  throw forbiddenError('Access review is assigned to another reviewer', {
-    reason: 'assigned_reviewer_required',
-  })
+function assertCanDecideRun(actor: AccessReviewAuthContext): AccessReviewActor {
+  return requireAccessReviewRole(actor)
 }
 
 function isoTimestamp(value: unknown): string {
@@ -483,7 +473,7 @@ export async function createAccessReviewRun(
   actor: AccessReviewAuthContext,
   options: CreateAccessReviewRunOptions = {},
 ): Promise<AccessReviewRunDetail> {
-  const createdBy = requireAdmin(actor)
+  const createdBy = requireAccessReviewRole(actor)
   const generatedAt = input.generatedAt ?? new Date()
   let runId = 0
 
@@ -560,12 +550,11 @@ export async function listAccessReviewRuns(
   db: QueryExecutor,
   actor: AccessReviewAuthContext,
 ): Promise<AccessReviewRun[]> {
-  const actorSnapshot = requireActor(actor)
-  const admin = isAdmin(actor)
+  requireAccessReviewRole(actor)
   const rows = (await db.query(
-    `${runSelectSql(admin ? '' : 'WHERE run.reviewer_hsa_id = @0')}
+    `${runSelectSql('')}
       ORDER BY run.created_at DESC, run.id DESC`,
-    admin ? [] : [actorSnapshot.hsaId],
+    [],
   )) as Row[]
   return rows.map(mapRun)
 }
@@ -586,7 +575,7 @@ export async function getAccessReviewRun(
   }
 
   const run = mapRun(runRows[0])
-  assertCanViewRun(actor, run)
+  assertCanViewRun(actor)
 
   const itemRows = (await db.query(
     `SELECT
@@ -626,7 +615,7 @@ export async function decideAccessReviewItem(
   actor: AccessReviewAuthContext,
 ): Promise<AccessReviewRunDetail> {
   const detail = await getAccessReviewRun(db, runId, actor)
-  const decidedBy = assertCanDecideRun(actor, detail.run)
+  const decidedBy = assertCanDecideRun(actor)
   if (detail.run.status === 'completed' || detail.run.status === 'cancelled') {
     throw conflictError('Access review run is no longer editable', {
       reason: 'access_review_closed',
@@ -677,7 +666,7 @@ export async function completeAccessReviewRun(
   runId: number,
   actor: AccessReviewAuthContext,
 ): Promise<AccessReviewRunDetail> {
-  const completedBy = requireAdmin(actor)
+  const completedBy = requireAccessReviewRole(actor)
   const detail = await getAccessReviewRun(db, runId, actor)
   if (detail.run.status === 'completed') return detail
   if (detail.run.status === 'cancelled') {
@@ -711,7 +700,7 @@ export async function cancelAccessReviewRun(
   runId: number,
   actor: AccessReviewAuthContext,
 ): Promise<AccessReviewRunDetail> {
-  requireAdmin(actor)
+  requireAccessReviewRole(actor)
   const detail = await getAccessReviewRun(db, runId, actor)
   if (detail.run.status === 'cancelled') return detail
   if (detail.run.status === 'completed') {
@@ -737,7 +726,7 @@ export async function buildAccessReviewExport(
   actor: AccessReviewAuthContext,
   generatedAt = new Date(),
 ): Promise<AccessReviewExportV1> {
-  const generatedBy = requireAdmin(actor)
+  const generatedBy = requireAccessReviewRole(actor)
   const detail = await getAccessReviewRun(db, runId, actor)
 
   return {

@@ -216,7 +216,27 @@ for (const { name, viewport } of viewportVariants) {
           const tablist = page.getByRole('tablist', {
             name: 'Administrationscenter',
           })
+          const accessReviewTab = page.getByRole('tab', {
+            name: 'Behörighetsöversyn',
+          })
+          const archivingTab = page.getByRole('tab', { name: 'Arkivering' })
           const privacyTab = page.getByRole('tab', { name: 'Dataskydd' })
+          const actionAuditLogTab = page.getByRole('tab', {
+            name: 'Åtgärdslogg',
+          })
+          await expect(accessReviewTab).not.toHaveAttribute(
+            'aria-disabled',
+            'true',
+          )
+          await expect(actionAuditLogTab).not.toHaveAttribute(
+            'aria-disabled',
+            'true',
+          )
+          await expect(archivingTab).toHaveAttribute('aria-disabled', 'true')
+          await expect(archivingTab).toHaveAttribute(
+            'title',
+            /Dataskyddshandläggare/,
+          )
           await expect(privacyTab).toHaveAttribute('aria-disabled', 'true')
           await expect(privacyTab).toHaveAttribute(
             'title',

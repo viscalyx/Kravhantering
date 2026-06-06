@@ -197,6 +197,7 @@ type AccessReviewSavingAction = 'cancel' | 'complete' | 'create' | 'decision'
 
 const ADMIN_ROLE = 'Admin'
 const PRIVACY_OFFICER_ROLE = 'PrivacyOfficer'
+const EMPTY_USER_ROLES: string[] = []
 
 const adminTabs: { icon: LucideIcon; id: AdminTab }[] = [
   { icon: LayoutPanelTop, id: 'columns' },
@@ -221,9 +222,35 @@ const ADMIN_TAB_DEVELOPER_MODE_VALUES: Record<AdminTab, string> = {
 const ADMIN_TAB_QUERY_KEY = 'tab'
 const DEFAULT_ADMIN_TAB: AdminTab = 'columns'
 
+const ADMIN_TAB_DISABLED_TOOLTIP_KEYS: Partial<Record<AdminTab, string>> = {
+  accessReview: 'accessReview.disabledTooltip',
+  actionAuditLog: 'auditLog.disabledTooltip',
+  archiving: 'archiving.disabledTooltip',
+  privacy: 'privacy.disabledTooltip',
+}
+
+function canAccessAdminTab(tab: AdminTab, roles: string[]): boolean {
+  const isAdmin = roles.includes(ADMIN_ROLE)
+  const isPrivacyOfficer = roles.includes(PRIVACY_OFFICER_ROLE)
+
+  if (tab === 'accessReview') {
+    return isAdmin || isPrivacyOfficer
+  }
+
+  if (tab === 'actionAuditLog') {
+    return isAdmin
+  }
+
+  if (tab === 'archiving' || tab === 'privacy') {
+    return isPrivacyOfficer
+  }
+
+  return true
+}
+
 function getAdminTabFromSearchParams(
   searchParams: URLSearchParams,
-  options: { canManageAccessReviews: boolean; canUsePrivacy: boolean },
+  roles: string[],
 ): AdminTab {
   const requestedTab = searchParams.get(ADMIN_TAB_QUERY_KEY)
   const tab =
@@ -236,11 +263,7 @@ function getAdminTabFromSearchParams(
     return DEFAULT_ADMIN_TAB
   }
 
-  if (tab === 'actionAuditLog' && !options.canManageAccessReviews) {
-    return DEFAULT_ADMIN_TAB
-  }
-
-  if ((tab === 'privacy' || tab === 'archiving') && !options.canUsePrivacy) {
+  if (!canAccessAdminTab(tab as AdminTab, roles)) {
     return DEFAULT_ADMIN_TAB
   }
 
@@ -2684,7 +2707,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
 }
 export default function AdminClient({
   actionAuditLog,
-  currentUserRoles = [],
+  currentUserRoles = EMPTY_USER_ROLES,
   initialColumnDefaults,
 }: {
   actionAuditLog?: ActionAuditLogInitialState
@@ -2699,13 +2722,18 @@ export default function AdminClient({
   const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const canUsePrivacy = currentUserRoles.includes(PRIVACY_OFFICER_ROLE)
-  const canManageAccessReviews = currentUserRoles.includes(ADMIN_ROLE)
+  const canUseAccessReview = canAccessAdminTab('accessReview', currentUserRoles)
+  const canUseArchiving = canAccessAdminTab('archiving', currentUserRoles)
+  const canUsePrivacy = canAccessAdminTab('privacy', currentUserRoles)
+  const canViewActionAuditLog = canAccessAdminTab(
+    'actionAuditLog',
+    currentUserRoles,
+  )
   const [activeTab, setActiveTab] = useState<AdminTab>(() =>
-    getAdminTabFromSearchParams(new URLSearchParams(searchParams), {
-      canManageAccessReviews,
-      canUsePrivacy,
-    }),
+    getAdminTabFromSearchParams(
+      new URLSearchParams(searchParams),
+      currentUserRoles,
+    ),
   )
   const [columnDefaults, setColumnDefaults] = useState<
     RequirementListColumnDefault[]
@@ -2731,19 +2759,15 @@ export default function AdminClient({
 
   useEffect(() => {
     setActiveTab(
-      getAdminTabFromSearchParams(new URLSearchParams(searchParams), {
-        canManageAccessReviews,
-        canUsePrivacy,
-      }),
+      getAdminTabFromSearchParams(
+        new URLSearchParams(searchParams),
+        currentUserRoles,
+      ),
     )
-  }, [canManageAccessReviews, canUsePrivacy, searchParams])
+  }, [currentUserRoles, searchParams])
 
   const selectTab = (tab: AdminTab) => {
-    if (tab === 'actionAuditLog' && !canManageAccessReviews) {
-      return
-    }
-
-    if ((tab === 'privacy' || tab === 'archiving') && !canUsePrivacy) {
+    if (!canAccessAdminTab(tab, currentUserRoles)) {
       return
     }
 
@@ -3006,57 +3030,55 @@ export default function AdminClient({
               })}
               role="tablist"
             >
-              {adminTabs
-                .filter(
-                  tab => tab.id !== 'actionAuditLog' || canManageAccessReviews,
-                )
-                .map(tab => {
-                  const isDisabled =
-                    (tab.id === 'privacy' || tab.id === 'archiving') &&
-                    !canUsePrivacy
-                  const label =
-                    tab.id === 'privacy'
-                      ? ta('privacy.title')
-                      : tab.id === 'accessReview'
-                        ? ta('accessReview.title')
-                        : tab.id === 'archiving'
-                          ? ta('archiving.title')
-                          : tab.id === 'actionAuditLog'
-                            ? ta('auditLog.title')
-                            : ta(tab.id)
+              {adminTabs.map(tab => {
+                const isDisabled = !canAccessAdminTab(tab.id, currentUserRoles)
+                const disabledTooltipKey =
+                  ADMIN_TAB_DISABLED_TOOLTIP_KEYS[tab.id]
+                const label =
+                  tab.id === 'privacy'
+                    ? ta('privacy.title')
+                    : tab.id === 'accessReview'
+                      ? ta('accessReview.title')
+                      : tab.id === 'archiving'
+                        ? ta('archiving.title')
+                        : tab.id === 'actionAuditLog'
+                          ? ta('auditLog.title')
+                          : ta(tab.id)
 
-                  return (
-                    <button
-                      aria-controls={`${tab.id}-panel`}
-                      aria-disabled={isDisabled ? 'true' : undefined}
-                      aria-selected={activeTab === tab.id}
-                      className={`inline-flex min-h-11 min-w-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
-                        isDisabled
-                          ? 'cursor-not-allowed text-secondary-400 opacity-50 hover:bg-transparent dark:text-secondary-500'
-                          : activeTab === tab.id
-                            ? 'bg-primary-700 text-white'
-                            : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-200 dark:hover:bg-secondary-800'
-                      }`}
-                      key={`admin-tab-${tab.id}`}
-                      {...devMarker({
-                        context: 'admin center',
-                        name: 'edge tab',
-                        priority: 360,
-                        value: ADMIN_TAB_DEVELOPER_MODE_VALUES[tab.id],
-                      })}
-                      id={`${tab.id}-tab`}
-                      onClick={() => selectTab(tab.id)}
-                      role="tab"
-                      title={
-                        isDisabled ? ta('privacy.disabledTooltip') : undefined
-                      }
-                      type="button"
-                    >
-                      <tab.icon aria-hidden="true" className="h-4 w-4" />
-                      {label}
-                    </button>
-                  )
-                })}
+                return (
+                  <button
+                    aria-controls={`${tab.id}-panel`}
+                    aria-disabled={isDisabled ? 'true' : undefined}
+                    aria-selected={activeTab === tab.id}
+                    className={`inline-flex min-h-11 min-w-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
+                      isDisabled
+                        ? 'cursor-not-allowed text-secondary-400 opacity-50 hover:bg-transparent dark:text-secondary-500'
+                        : activeTab === tab.id
+                          ? 'bg-primary-700 text-white'
+                          : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-200 dark:hover:bg-secondary-800'
+                    }`}
+                    key={`admin-tab-${tab.id}`}
+                    {...devMarker({
+                      context: 'admin center',
+                      name: 'edge tab',
+                      priority: 360,
+                      value: ADMIN_TAB_DEVELOPER_MODE_VALUES[tab.id],
+                    })}
+                    id={`${tab.id}-tab`}
+                    onClick={() => selectTab(tab.id)}
+                    role="tab"
+                    title={
+                      isDisabled && disabledTooltipKey
+                        ? ta(disabledTooltipKey as Parameters<typeof ta>[0])
+                        : undefined
+                    }
+                    type="button"
+                  >
+                    <tab.icon aria-hidden="true" className="h-4 w-4" />
+                    {label}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </section>
@@ -3282,17 +3304,19 @@ export default function AdminClient({
           </section>
         ) : null}
 
-        {activeTab === 'accessReview' ? (
-          <AccessReviewPanel canManage={canManageAccessReviews} />
+        {activeTab === 'accessReview' && canUseAccessReview ? (
+          <AccessReviewPanel canManage={canUseAccessReview} />
         ) : null}
 
-        {activeTab === 'archiving' && canUsePrivacy ? <ArchivingPanel /> : null}
+        {activeTab === 'archiving' && canUseArchiving ? (
+          <ArchivingPanel />
+        ) : null}
 
         {activeTab === 'privacy' && canUsePrivacy ? (
           <PrivacyErasurePanel />
         ) : null}
 
-        {activeTab === 'actionAuditLog' && canManageAccessReviews ? (
+        {activeTab === 'actionAuditLog' && canViewActionAuditLog ? (
           <section
             aria-labelledby="actionAuditLog-tab"
             className="space-y-6"

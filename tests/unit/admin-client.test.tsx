@@ -631,6 +631,26 @@ describe('AdminClient', () => {
     )
   })
 
+  it.each([
+    ['tab=accessReview', 'admin.accessReview.title'],
+    ['tab=actionAuditLog', 'admin.auditLog.title'],
+  ])('falls back from unauthorized admin tab URL %s', (query, tabName) => {
+    searchParamsMock.current = new URLSearchParams(query)
+
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+      />,
+    )
+
+    expect(screen.getByRole('tab', { name: tabName })).toHaveAttribute(
+      'aria-selected',
+      'false',
+    )
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'columns-panel')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('removes the admin tab query when returning to the default tab', () => {
     searchParamsMock.current = new URLSearchParams('tab=taxonomy')
 
@@ -1031,9 +1051,8 @@ describe('AdminClient', () => {
     ).toBeTruthy()
   })
 
-  it('hides access review decision controls without Admin permission', async () => {
+  it('blocks the access review tab without Admin or PrivacyOfficer permission', () => {
     searchParamsMock.current = new URLSearchParams('tab=accessReview')
-    mockAccessReviewApi()
 
     renderWithConfirmModal(
       <AdminClient
@@ -1042,28 +1061,23 @@ describe('AdminClient', () => {
       />,
     )
 
-    const principalCell = await screen.findByText('Kalle Svensson')
-    const row = principalCell.closest('tr')
-    expect(row).not.toBeNull()
-    expect(screen.queryByText('admin.accessReview.lockState')).toBeNull()
-    expect(
-      within(row as HTMLTableRowElement).queryByRole('button', {
-        name: 'admin.accessReview.rowNeedsReview',
-      }),
-    ).toBeNull()
-    expect(
-      within(row as HTMLTableRowElement).queryByRole('button', {
-        name: 'admin.accessReview.rowApproved',
-      }),
-    ).toBeNull()
-    expect(
-      within(row as HTMLTableRowElement).queryByRole('combobox'),
-    ).toBeNull()
-    expect(within(row as HTMLTableRowElement).queryByRole('textbox')).toBeNull()
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      `/api/admin/access-reviews/${TEST_ACCESS_REVIEW_RUN_ID}/items/${TEST_ACCESS_REVIEW_ITEM_ID}`,
-      expect.objectContaining({ method: 'PATCH' }),
+    const accessReviewTab = screen.getByRole('tab', {
+      name: 'admin.accessReview.title',
+    })
+
+    expect(accessReviewTab).toHaveAttribute('aria-disabled', 'true')
+    expect(accessReviewTab).toHaveAttribute(
+      'title',
+      'admin.accessReview.disabledTooltip',
     )
+    expect(accessReviewTab).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'columns-panel')
+    expect(screen.queryByText('Kalle Svensson')).toBeNull()
+
+    fireEvent.click(accessReviewTab)
+
+    expect(routerReplace).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('keeps a row in place when locking a saved access review decision', async () => {
@@ -1602,7 +1616,7 @@ describe('AdminClient', () => {
     expect(within(alert).getByText('Unauthorized')).toBeTruthy()
   })
 
-  it('dims and disables the privacy tab without the PrivacyOfficer role', () => {
+  it('dims and disables privileged tabs without Admin or PrivacyOfficer roles', () => {
     searchParamsMock.current = new URLSearchParams('tab=privacy')
 
     render(
@@ -1611,20 +1625,80 @@ describe('AdminClient', () => {
       />,
     )
 
-    const privacyTab = screen.getByRole('tab', {
-      name: 'admin.privacy.title',
-    })
+    const disabledTabs = [
+      ['admin.accessReview.title', 'admin.accessReview.disabledTooltip'],
+      ['admin.archiving.title', 'admin.archiving.disabledTooltip'],
+      ['admin.privacy.title', 'admin.privacy.disabledTooltip'],
+      ['admin.auditLog.title', 'admin.auditLog.disabledTooltip'],
+    ] as const
 
-    expect(privacyTab).toHaveAttribute('aria-disabled', 'true')
-    expect(privacyTab).toHaveAttribute('title', 'admin.privacy.disabledTooltip')
-    expect(privacyTab).toHaveAttribute('aria-selected', 'false')
+    for (const [name, tooltip] of disabledTabs) {
+      const tab = screen.getByRole('tab', { name })
+
+      expect(tab).toHaveAttribute('aria-disabled', 'true')
+      expect(tab).toHaveAttribute('title', tooltip)
+      expect(tab).toHaveAttribute('aria-selected', 'false')
+
+      fireEvent.click(tab)
+    }
+
     expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'columns-panel')
     expect(screen.queryByLabelText('admin.privacy.targetHsaId')).toBeNull()
 
-    fireEvent.click(privacyTab)
-
     expect(routerReplace).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('allows PrivacyOfficer to use access review, archiving, and privacy tabs', async () => {
+    mockAccessReviewApi()
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    const accessReviewTab = screen.getByRole('tab', {
+      name: 'admin.accessReview.title',
+    })
+    const archivingTab = screen.getByRole('tab', {
+      name: 'admin.archiving.title',
+    })
+    const privacyTab = screen.getByRole('tab', {
+      name: 'admin.privacy.title',
+    })
+    const actionAuditLogTab = screen.getByRole('tab', {
+      name: 'admin.auditLog.title',
+    })
+
+    expect(actionAuditLogTab).toHaveAttribute('aria-disabled', 'true')
+    expect(actionAuditLogTab).toHaveAttribute(
+      'title',
+      'admin.auditLog.disabledTooltip',
+    )
+
+    fireEvent.click(accessReviewTab)
+    expect(await screen.findByText('Kalle Svensson')).toBeVisible()
+    expect(accessReviewTab).toHaveAttribute('aria-selected', 'true')
+
+    fireEvent.click(privacyTab)
+    expect(screen.getByLabelText('admin.privacy.targetHsaId')).toBeTruthy()
+    expect(privacyTab).toHaveAttribute('aria-selected', 'true')
+
+    fireEvent.click(archivingTab)
+    expect(
+      await screen.findByText('admin.archiving.retention.title'),
+    ).toBeTruthy()
+    expect(archivingTab).toHaveAttribute('aria-selected', 'true')
+
+    routerReplace.mockClear()
+    fireEvent.click(actionAuditLogTab)
+
+    expect(routerReplace).not.toHaveBeenCalled()
+    expect(actionAuditLogTab).toHaveAttribute('aria-selected', 'false')
   })
 
   it('shows inline help for each privacy form field', () => {

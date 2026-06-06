@@ -935,7 +935,8 @@
       "empty": "Inga åtgärdsloggsposter matchar filtren.",
       "pagination": "Sida {page} av {totalPages}, {total} händelse(r)",
       "previous": "Föregående",
-      "next": "Nästa"
+      "next": "Nästa",
+      "disabledTooltip": "Du behöver rollen Administratör."
     },
     "privacy": {
       "title": "Dataskydd",
@@ -1061,6 +1062,7 @@
     "archiving": {
       "body": "Använd arkivering för att förhandsgranska och köra beslutade gallringspolicyer samt exportera arkivunderlag innan radering. Dataskyddsflödet ligger kvar separat för individärenden.",
       "description": "Förhandsgranska gallringskandidater, hantera undantag och exportera arkivmaterial innan data tas bort ur applikationen.",
+      "disabledTooltip": "Du behöver rollen Dataskyddshandläggare.",
       "heading": "Arkivering och gallring",
       "retention": {
         "action": "Gallringsåtgärd",
@@ -1102,6 +1104,7 @@
     },
     "accessReview": {
       "title": "Behörighetsöversyn",
+      "disabledTooltip": "Du behöver rollen Administratör eller Dataskyddshandläggare.",
       "action": "Åtgärd",
       "aiDisabled": "AI av",
       "aiEnabled": "AI på",

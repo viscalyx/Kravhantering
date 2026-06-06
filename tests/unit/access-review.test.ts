@@ -4,6 +4,9 @@ import {
   cancelAccessReviewRun,
   collectAccessReviewAssignments,
   createAccessReviewRun,
+  decideAccessReviewItem,
+  getAccessReviewRun,
+  listAccessReviewRuns,
 } from '@/lib/access-review/service'
 
 function accessReviewSnapshot(index: number): AccessReviewPrincipalSnapshot {
@@ -178,7 +181,7 @@ describe('access review service', () => {
     ).toBe('SE5560000001-admin1')
   })
 
-  it('requires Admin to create a review run', async () => {
+  it('requires Admin or PrivacyOfficer to create a review run', async () => {
     const db = {
       transaction: vi.fn(),
     }
@@ -200,9 +203,79 @@ describe('access review service', () => {
       ),
     ).rejects.toMatchObject({
       code: 'forbidden',
-      details: { reason: 'admin_required' },
+      details: { reason: 'access_review_role_required' },
     })
     expect(db.transaction).not.toHaveBeenCalled()
+  })
+
+  it('lets PrivacyOfficer list access review runs without reviewer filtering', async () => {
+    const db = {
+      query: vi.fn(async () => [
+        {
+          ...accessReviewRunRow(1),
+          reviewerHsaId: 'SE5560000001-admin1',
+        },
+      ]),
+    }
+
+    const runs = await listAccessReviewRuns(db as never, {
+      displayName: 'Disa PrivacyOfficer',
+      hsaId: 'SE5560000001-privacy1',
+      roles: ['PrivacyOfficer'],
+    })
+
+    expect(runs).toHaveLength(1)
+    expect(db.query).toHaveBeenCalledWith(
+      expect.not.stringContaining('WHERE run.reviewer_hsa_id'),
+      [],
+    )
+  })
+
+  it('rejects reviewer-only users even when they are assigned reviewer', async () => {
+    const db = {
+      query: vi.fn(async (sql: string) => {
+        if (sql.includes('FROM access_review_runs')) {
+          return [
+            {
+              ...accessReviewRunRow(1),
+              reviewerDisplayName: 'Rita Reviewer',
+              reviewerHsaId: 'SE5560000001-reviewer1',
+            },
+          ]
+        }
+        return accessReviewItemRows([accessReviewSnapshot(1)])
+      }),
+    }
+    const reviewerOnlyActor = {
+      displayName: 'Rita Reviewer',
+      hsaId: 'SE5560000001-reviewer1',
+      roles: ['Reviewer'],
+    }
+
+    await expect(
+      listAccessReviewRuns(db as never, reviewerOnlyActor),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      details: { reason: 'access_review_role_required' },
+    })
+    await expect(
+      getAccessReviewRun(db as never, 42, reviewerOnlyActor),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      details: { reason: 'access_review_role_required' },
+    })
+    await expect(
+      decideAccessReviewItem(
+        db as never,
+        42,
+        1,
+        { decision: 'approved' },
+        reviewerOnlyActor,
+      ),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      details: { reason: 'access_review_role_required' },
+    })
   })
 
   it('blocks creating a second review while one is still open', async () => {

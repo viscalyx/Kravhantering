@@ -935,7 +935,8 @@
       "empty": "No action log events match the filters.",
       "pagination": "Page {page} of {totalPages}, {total} event(s)",
       "previous": "Previous",
-      "next": "Next"
+      "next": "Next",
+      "disabledTooltip": "You need the Administrator role."
     },
     "privacy": {
       "title": "Privacy",
@@ -1061,6 +1062,7 @@
     "archiving": {
       "body": "Use archiving to preview and execute approved retention policies and export archive evidence before deletion. The data protection flow remains separate for data-subject cases.",
       "description": "Preview retention candidates, manage exceptions, and export archive material before data is removed from the application.",
+      "disabledTooltip": "You need the Privacy officer role.",
       "heading": "Archiving and retention",
       "retention": {
         "action": "Retention action",
@@ -1102,6 +1104,7 @@
     },
     "accessReview": {
       "title": "Access review",
+      "disabledTooltip": "You need the Administrator or Privacy officer role.",
       "action": "Action",
       "aiDisabled": "AI disabled",
       "aiEnabled": "AI enabled",

@@ -333,8 +333,8 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 The current canonical labels include:
 
 - `edge tab`
-  - Admin Center uses this marker for all top tabs, including access review
-    and the disabled privacy tab shown to users without `PrivacyOfficer`.
+  - Admin Center uses this marker for all top tabs, including privileged tabs
+    that render disabled when the current user lacks the required role.
 - `floating action rail`
 - `floating pill`
 - `floating pill menu`
