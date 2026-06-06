@@ -218,4 +218,48 @@ describe('specifications/[id]/report-items route', () => {
       41,
     )
   })
+
+  it('accepts more than 50 report item refs', async () => {
+    const itemRefs = Array.from(
+      { length: 60 },
+      (_, index) => `lib:${index + 1}`,
+    )
+    mocks.getSpecificationItemById.mockImplementation(
+      async (_db: unknown, id: number) => ({
+        id,
+        requirementId: id + 1000,
+        specificationId: 7,
+      }),
+    )
+    mocks.getRequirementById.mockImplementation(
+      async (_db: unknown, id: number): Promise<RequirementReportData> => ({
+        area: null,
+        createdAt: '2026-05-01T00:00:00.000Z',
+        id,
+        isArchived: false,
+        uniqueId: `DRIFT${String(id).padStart(4, '0')}`,
+        versions: [makeVersion({ id })],
+      }),
+    )
+
+    const response = await GET(
+      new NextRequest(
+        `http://localhost/api/specifications/DRIFT-FORV-BAS/report-items?refs=${itemRefs
+          .map(ref => encodeURIComponent(ref))
+          .join(',')}`,
+      ),
+      makeParams('DRIFT-FORV-BAS'),
+    )
+    const body = (await response.json()) as RequirementReportData[]
+
+    expect(response.status).toBe(200)
+    expect(body).toHaveLength(60)
+    expect(body.map(row => row.uniqueId)).toEqual(
+      itemRefs.map(
+        (_ref, index) => `DRIFT${String(index + 1001).padStart(4, '0')}`,
+      ),
+    )
+    expect(mocks.getSpecificationItemById).toHaveBeenCalledTimes(60)
+    expect(mocks.getRequirementById).toHaveBeenCalledTimes(60)
+  })
 })
