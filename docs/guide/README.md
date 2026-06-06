@@ -1,7 +1,7 @@
 <!-- AUTO-GENERERAD — redigera inte manuellt. Kör: npm run generate:guide -->
 # Kravhantering — Användarguide
 
-> Guiden genererades automatiskt av Playwright 2026-05-28.
+> Guiden genererades automatiskt av Playwright 2026-06-06.
 > Alla skärmdumpar visar det svenska gränssnittet.
 
 ## Innehållsförteckning
@@ -28,9 +28,10 @@ kan du söka, filtrera och hantera alla krav i systemet.
 
 ### Navigationsfält
 
-Det övre navigationsfältet ger åtkomst till alla huvuddelar: **Kravbiblioteket**
-(Krav), **Kravunderlag**, **Admininställningar** (kugghjulsikonen) samt
-language-väljare och tema (ljust/mörkt läge).
+Det övre navigationsfältet ger åtkomst till alla huvuddelar:
+**Kravbiblioteket**, **Kravbiblioteksförvaltning**, **Kravunderlag**,
+**Admininställningar** (kugghjulsikonen) samt language-väljare och tema
+(ljust/mörkt läge).
 
 ![Navigationsfält](images/002-navigering.png)
 
@@ -49,8 +50,8 @@ användaren själv väljer för varje krav.
 ### Kravbiblioteket — Översikt
 
 Kravbiblioteket listar alla krav i en sorterbar och filtrerbar tabell. Varje rad
-visar nyckeluppgifter som ID, kravtext, kravområde, status och risknivå. Kolumnerna
-kan konfigureras efter behov.
+visar nyckeluppgifter som ID, kravtext, kravområde, status och risknivå.
+Kolumnerna kan konfigureras efter behov.
 
 ![Kravbiblioteket — Översikt](images/004-kravbibliotek.png)
 
@@ -110,9 +111,9 @@ följer en översikt av varje egenskap och hur den stödjer kravets livscykel.
 | **Risknivå** | Markerar kravet som Låg, Medel eller Hög risk. Högre risknivåer signalerar att kravet behöver mer noggrann granskning, mer rigorös testning och tätare uppföljning under implementeringen. Risknivån spelar även en roll vid begäran om avsteg inom ett kravunderlag — ett avsteg för ett krav med hög risk medför större potentiell påverkan och kräver därför en striktare bedömning vid avstegsgranskningen. |
 | **Verifierbar** | Anger om kravet kan testas. När du aktiverar detta måste du även ange en verifieringsmetod. Verifieringsmetoden används inom de kravunderlag där kravet ingår, till exempel i samband med en upphandling, ett införande eller förvaltning. |
 | **Verifieringsmetod** | Beskriver exakt hur kravet ska verifieras — till exempel genom automatiserade tester, manuell inspektion eller användartester. Fältet är obligatoriskt när Verifierbar är aktiverat. Metoden tillämpas inom de kravunderlag där kravet används och ger konkret vägledning för hur verifieringen ska genomföras i varje sammanhang. |
-| **Kravpaket** | Samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning. Varje kravpaket har en kravpaketsansvarig med HSA-ID och visningsnamn. Kopplingen hjälper till att avgränsa kravunderlag och filtrera krav efter relevanta grupperingar. |
+| **Kravpaket** | Samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning. Varje kravpaket har en ägare som ansvarar för kraven inom grupperingen. Kopplingen hjälper till att avgränsa kravunderlag och filtrera krav efter relevanta grupperingar. |
 | **Normreferenser** | Kopplar kravet till externa standarder, lagar eller föreskrifter. Dessa kopplingar stödjer efterlevnadsrevision och gör det möjligt att spåra varje krav tillbaka till sitt rättsliga eller normativa ursprung. |
-| **Status** | Visar kravets aktuella livscykelfas — Utkast, Granskning, Publicerad eller Arkiverad. Status hanteras automatiskt genom arbetsflödesåtgärder och styr vilka operationer som är tillgängliga. Se avsnitten Visuell processöversikt och Kravets process nedan för detaljer. |
+| **Kravversionsstatus** | Visar aktuell kravversionsstatus — Utkast, Granskning, Publicerad eller Arkiverad. Statusen hanteras automatiskt genom arbetsflödesåtgärder och styr vilka operationer som är tillgängliga. Se avsnitten Visuell processöversikt och Kravets process nedan för detaljer. |
 <!-- markdownlint-enable MD013 -->
 
 ![Detaljpanelen — övre del](images/009-inline-detaljvy-ovre.png)
@@ -151,9 +152,9 @@ det tillfället. Användbara för revision och spårbarhet.
 ### Skapa krav — tomt formulär
 
 Navigera till "Skapa nytt krav" via knappen i kravbiblioteket. Formuläret
-innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier, kravområde,
-kategori, typ, risknivå, kvalitetsegenskaper, verifieringsmetod, normreferenser
-och kravpaket.
+innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier,
+kravområde, kategori, typ, risknivå, kvalitetsegenskaper, verifieringsmetod,
+normreferenser och kravpaket.
 
 ![Skapa krav — tomt formulär](images/013-nytt-krav-tomt.png)
 
@@ -219,8 +220,8 @@ granskningsprocessen.
 
 Ett **kravunderlag** samlar en uppsättning krav som hör ihop inom ramen för ett
 specifikt projekt, en leverans eller ett verksamhetsområde. Underlaget fungerar
-som en spårbar enhet — du kan följa användningsstatus per krav, begära
-avsteg och generera granskningsrapporter direkt från underlaget.
+som en spårbar enhet — du kan följa användningsstatus per krav, begära avsteg
+och generera granskningsrapporter direkt från underlaget.
 
 ### Kravunderlagslista
 
@@ -363,9 +364,9 @@ laddas ned som PDF.
 ### Förbättringsförslag — tom sektion
 
 Längst ned i inline-detaljvyn finns sektionen **Förbättringsförslag**. En
-kravunderlagsansvarig (upphandling, projekt, förvaltning) kan lämna ett
-förslag på förbättring av kravet. Klicka på **"+ Registrera förslag"** för att
-öppna formuläret.
+kravunderlagsansvarig (upphandling, projekt, förvaltning) kan lämna ett förslag
+på förbättring av kravet. Klicka på **"+ Registrera förslag"** för att öppna
+formuläret.
 
 ![Förbättringsförslag — tom sektion](images/036-forslag-sektion-tom.png)
 
@@ -412,11 +413,11 @@ också ange standardvyer för olika kontexter.
 
 ### Admin — Referensdata
 
-Fliken **Referensdata** innehåller länkar till taxonomihanteringssidor:
-kravområden, typer, kravversionsstatusar, risknivåer, kvalitetsegenskaper och
-genomförandeformer. Kravpaket och normreferenser hanteras
-i stället under **Kravbiblioteksförvaltning**, tillsammans med
-kravurvalsfrågor.
+Fliken **Referensdata** innehåller länkar till hantering av kravområden, typer,
+kravversionsstatusar, användningsstatusar, kravunderlagets livscykelstatusar,
+kravunderlagets kravstatusar, risknivåer, kvalitetsegenskaper,
+styrningsobjektstyper och genomförandeformer. Normreferenser hanteras i
+Normbibliotek under Kravbiblioteksförvaltning.
 
 ![Admin — Referensdata](images/042-admin-referensdata.png)
 
@@ -424,21 +425,20 @@ kravurvalsfrågor.
 
 ### Kravområden
 
-Kravområden organiserar krav efter organisatorisk domän. Varje kravområde har
-ägarens HSA-ID, ett prefix som används i krav-ID (t.ex. "SÄK" ger ID:n som
-"SÄK0001") och en beskrivning. Ägarens HSA-ID hanteras på kravområdet i
-flödet för referensdata; det finns inget separat ägarregister i Admin.
+Kravområden organiserar krav efter organisatorisk domän. Varje kravområde har en
+ägare, ett prefix som används i krav-ID (t.ex. "SÄK" ger ID:n som "SÄK0001") och
+en beskrivning.
 
-![Kravområden](images/044-kravomraden.png)
+![Kravområden](images/043-kravomraden.png)
 
 ### Kravversionsstatusar
 
 Kravversionsstatusar definierar kravversionens livscykelsteg. De fyra
-systemstyrda kravversionsstatusarna (Utkast, Granskning, Publicerad,
-Arkiverad) kan inte tas bort eller byta namn — de utgör ryggraden i
-arbetsflödet. Övriga kravversionsstatusar kan anpassas.
+systemstyrda kravversionsstatusarna (Utkast, Granskning, Publicerad, Arkiverad)
+kan inte tas bort eller byta namn — de utgör ryggraden i arbetsflödet. Övriga
+kravversionsstatusar kan anpassas.
 
-![Kravversionsstatusar](images/045-kravversionsstatusar.png)
+![Kravversionsstatusar](images/044-kravversionsstatusar.png)
 
 ### Risknivåer
 
@@ -446,7 +446,7 @@ Risknivåer klassificerar kravets kritikalitet. Varje nivå kan tilldelas en fä
 för visuell identifiering i kravbiblioteket och detaljvyer. Färgkodningen gör
 det enkelt att snabbt bedöma ett kravs vikt.
 
-![Risknivåer](images/046-risknivåer.png)
+![Risknivåer](images/045-risknivåer.png)
 
 ### Kravtyper
 
@@ -454,7 +454,7 @@ Kravtyper kategoriserar kravets karaktär (t.ex. funktionellt, icke-funktionellt
 säkerhetskrav). Typer används för filtrering, rapportering och för att
 säkerställa rätt kvalitetsegenskaper kopplas till kravet.
 
-![Kravtyper](images/047-kravtyper.png)
+![Kravtyper](images/046-kravtyper.png)
 
 ### Kvalitetsegenskaper
 
@@ -462,7 +462,7 @@ Kvalitetsegenskaper är ett hierarkiskt taxonomi som beskriver icke-funktionella
 krav (t.ex. tillgänglighet, prestanda, säkerhet). Egenskaperna kopplas till krav
 för att säkerställa täckning av kvalitetskraven.
 
-![Kvalitetsegenskaper](images/048-kvalitetsegenskaper.png)
+![Kvalitetsegenskaper](images/047-kvalitetsegenskaper.png)
 
 ### Normbibliotek
 
@@ -470,7 +470,7 @@ Normbiblioteket samlar normreferenser till externa standarder och regelverk
 (t.ex. ISO-standarder, GDPR). Krav kan referera till en eller flera
 normreferenser för att tydliggöra vilka regelverk de härstammar från.
 
-![Normbibliotek](images/049-normreferenser.png)
+![Normbibliotek](images/048-normreferenser.png)
 
 ## Rapporter
 
@@ -548,9 +548,8 @@ tillgänglig).
 Skriver ut kraven som ingår i ett specifikt kravunderlag som en formaterad
 tabell. Rapporten inkluderar underlagets metadata (namn, ID, verksamhetsområde,
 genomförandeform, underlagssyfte) som rubrik. Om kravurvalsfrågor har besvarats
-visas urvalskontexten före kravtabellen. Historiska svar som inte längre
-är aktuell urvalskontext markeras som historiska svar. CSV-exporten för
-kravunderlag är fortsatt radren och tar inte med urvalskontexten.
+visas urvalskontexten före kravtabellen. Historiska svar som inte längre är
+aktuell urvalskontext markeras som historiska svar.
 
 **Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält.
 
@@ -575,7 +574,7 @@ Markera ett eller flera krav i kravbiblioteket för att aktivera rapportknappar 
 verktygsfältet. Du kan generera PDF-rapporter för granskningsunderlag,
 avstegsöversikter, ändringshistorik och mer.
 
-![Rapportgenerering från kravbiblioteket](images/058-rapporter-kravbibliotek.png)
+![Rapportgenerering från kravbiblioteket](images/056-rapporter-kravbibliotek.png)
 
 ### Rapporter från kravdetaljsidan
 
@@ -583,4 +582,4 @@ Från kravdetaljsidan kan du öppna rapportmenyn för att ladda ned eller skriva
 ut: **Ändringshistorik** (alla versioner), **Förbättringsförslagshistorik** och
 granskningsunderlag. Rapporterna är formaterade för utskrift och PDF-export.
 
-![Rapporter från kravdetaljsidan](images/059-rapporter-kravdetalj.png)
+![Rapporter från kravdetaljsidan](images/057-rapporter-kravdetalj.png)
