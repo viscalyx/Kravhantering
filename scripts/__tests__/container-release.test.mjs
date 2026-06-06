@@ -1020,7 +1020,7 @@ describe('trusted container release helpers', () => {
         'public/infographic-single-node-access-flow.png',
       )
       expect(result.files).not.toContain(
-        'docs/adr/0001-release-artifact-production-deployment.md',
+        'docs/adr/0001-produktionsdriftsattning-fran-releaseartefakt.md',
       )
       expect(result.files).toContain('env/app.env.template')
       expect(result.files).toContain('env/release.env.template')
