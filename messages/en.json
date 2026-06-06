@@ -745,6 +745,7 @@
   "normReference": {
     "active": "Active",
     "archive": "Archive",
+    "archiveConfirm": "Archive this norm reference?",
     "archived": "Archived",
     "editNormReference": "Edit norm reference",
     "filterByName": "Filter by ID, name, type, reference, or issuer",

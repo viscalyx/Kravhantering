@@ -37,6 +37,26 @@ interface NormReferenceUsage {
   localRequirementCount: number
 }
 
+export interface NormReferenceCreateData {
+  issuer: string
+  name: string
+  normReferenceId?: string
+  reference: string
+  type: string
+  uri?: string | null
+  version?: string | null
+}
+
+export interface NormReferenceUpdateData {
+  issuer?: string
+  name?: string
+  normReferenceId?: string
+  reference?: string
+  type?: string
+  uri?: string | null
+  version?: string | null
+}
+
 interface NormReferenceDbRow {
   createdAt: Date | string
   id: number
@@ -332,15 +352,7 @@ async function resolveCollision(
 
 export async function createNormReference(
   db: SqlServerDatabase,
-  data: {
-    normReferenceId?: string
-    name: string
-    type: string
-    reference: string
-    version?: string | null
-    issuer: string
-    uri?: string | null
-  },
+  data: NormReferenceCreateData,
 ): Promise<NormReferenceRow> {
   const normReferenceId =
     data.normReferenceId?.trim() ||
@@ -368,15 +380,7 @@ export async function createNormReference(
 export async function updateNormReference(
   db: SqlServerDatabase,
   id: number,
-  data: {
-    normReferenceId?: string
-    name?: string
-    type?: string
-    reference?: string
-    version?: string | null
-    issuer?: string
-    uri?: string | null
-  },
+  data: NormReferenceUpdateData,
 ): Promise<NormReferenceRow | undefined> {
   const repository = db.getRepository(normReferenceEntity)
   const patch: Partial<NormReferenceEntity> = {}

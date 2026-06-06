@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
 import {
   countLinkedRequirements,
-  createNormReference,
   listNormReferences,
 } from '@/lib/dal/norm-references'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -19,6 +17,7 @@ import {
   positiveIntegerStringSchema,
   queryBooleanSchema,
 } from '@/lib/http/validation'
+import { createNormReferenceWithAudit } from '@/lib/requirements/norm-reference-mutations'
 
 const nullableOptionalTextSchema = optionalBusinessTextSchema
   .nullable()
@@ -80,20 +79,7 @@ export const POST = secureMutationRoute({
   policy: authenticatedMutationPolicy('norm_reference.create'),
   handler: async ({ body, context }) => {
     const db = await getRequestSqlServerDataSource()
-    try {
-      const normReference = await createNormReference(db, body)
-      await recordAllowedActionAuditEvent(db, context, {
-        action: 'norm_reference.create',
-        details: { changedFields: Object.keys(body) },
-        targetId: normReference.id,
-        targetKind: 'norm_reference',
-      })
-      return NextResponse.json(normReference, { status: 201 })
-    } catch {
-      return NextResponse.json(
-        { error: 'Failed to create norm reference' },
-        { status: 500 },
-      )
-    }
+    const normReference = await createNormReferenceWithAudit(db, body, context)
+    return NextResponse.json(normReference, { status: 201 })
   },
 })

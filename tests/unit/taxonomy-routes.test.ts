@@ -1178,9 +1178,24 @@ describe('requirement-packages routes', () => {
 })
 
 describe('norm-references routes', () => {
+  const setUnauthenticatedActor = () => {
+    authState.context.actor = {
+      ...authState.context.actor,
+      isAuthenticated: false,
+      roles: [],
+    }
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
-    authState.context.actor.roles = ['Admin']
+    authState.context.actor = {
+      displayName: 'Route Tester',
+      hsaId: 'SE5560000001-route',
+      id: 'route-test',
+      isAuthenticated: true,
+      roles: ['Admin'],
+      source: 'oidc',
+    }
     mockListNormReferences.mockResolvedValue([{ id: 1 }])
     mockCreateNormReference.mockResolvedValue({ id: 2 })
     mockUpdateNormReference.mockResolvedValue({ id: 1 })
@@ -1234,6 +1249,22 @@ describe('norm-references routes', () => {
     expect(mockListNormReferences).not.toHaveBeenCalled()
   })
 
+  it('POST returns 401 without an authenticated actor before creating', async () => {
+    setUnauthenticatedActor()
+
+    const r = await postNormReference(
+      jsonReq('POST', {
+        issuer: 'ISO',
+        name: 'ISO 27001',
+        reference: 'ISO/IEC 27001:2022',
+        type: 'Standard',
+      }),
+    )
+
+    expect(r.status).toBe(401)
+    expect(mockCreateNormReference).not.toHaveBeenCalled()
+  })
+
   it('POST creates for an authenticated user', async () => {
     authState.context.actor.roles = []
 
@@ -1274,6 +1305,18 @@ describe('norm-references routes', () => {
     })
   })
 
+  it('DELETE returns 401 without an authenticated actor before deleting', async () => {
+    setUnauthenticatedActor()
+
+    const r = await deleteNormReference(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(401)
+    expect(mockDeleteNormReference).not.toHaveBeenCalled()
+  })
+
   it('DELETE returns usage conflict when the norm reference is linked', async () => {
     mockDeleteNormReference.mockResolvedValue(0)
 
@@ -1305,6 +1348,18 @@ describe('norm-references routes', () => {
     await expect(r.json()).resolves.toEqual({ error: 'Not found' })
   })
 
+  it('POST archive returns 401 without an authenticated actor before archiving', async () => {
+    setUnauthenticatedActor()
+
+    const r = await archiveNormReference(
+      new NextRequest('http://l', { method: 'POST' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(401)
+    expect(mockArchiveNormReference).not.toHaveBeenCalled()
+  })
+
   it('POST archive requires Admin', async () => {
     authState.context.actor.roles = []
 
@@ -1327,9 +1382,31 @@ describe('norm-references routes', () => {
     expect(mockArchiveNormReference).toHaveBeenCalledWith(expect.anything(), 1)
   })
 
-  it('POST reactivate works for an authenticated user', async () => {
+  it('POST reactivate returns 401 without an authenticated actor before reactivating', async () => {
+    setUnauthenticatedActor()
+
+    const r = await reactivateNormReference(
+      new NextRequest('http://l', { method: 'POST' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(401)
+    expect(mockReactivateNormReference).not.toHaveBeenCalled()
+  })
+
+  it('POST reactivate requires Admin', async () => {
     authState.context.actor.roles = []
 
+    const r = await reactivateNormReference(
+      new NextRequest('http://l', { method: 'POST' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(403)
+    expect(mockReactivateNormReference).not.toHaveBeenCalled()
+  })
+
+  it('POST reactivate reactivates with Admin', async () => {
     const r = await reactivateNormReference(
       new NextRequest('http://l', { method: 'POST' }),
       makeParams('1'),

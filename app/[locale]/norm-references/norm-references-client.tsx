@@ -290,6 +290,26 @@ export default function NormReferencesClient() {
     }
   }
 
+  const requestArchivedStateChange = async (
+    normReference: NormReference,
+    operation: 'archive' | 'reactivate',
+    anchorEl?: HTMLElement,
+  ) => {
+    if (
+      operation === 'archive' &&
+      !(await confirm({
+        anchorEl,
+        icon: 'caution',
+        message: t('archiveConfirm'),
+        variant: 'danger',
+      }))
+    ) {
+      return
+    }
+
+    await changeArchivedState(normReference, operation)
+  }
+
   const setFormField = (field: string, value: string) => {
     controller.setForm(previousForm => ({ ...previousForm, [field]: value }))
   }
@@ -741,12 +761,13 @@ export default function NormReferencesClient() {
                                 value: archiveActionValue,
                               })}
                               disabled={busy}
-                              onClick={() => {
-                                void changeArchivedState(
+                              onClick={event => {
+                                void requestArchivedStateChange(
                                   normReference,
                                   normReference.isArchived
                                     ? 'reactivate'
                                     : 'archive',
+                                  event.currentTarget,
                                 )
                               }}
                               title={archiveActionLabel}

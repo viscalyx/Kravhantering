@@ -1465,13 +1465,13 @@ Kravbiblioteksförvaltning, not Admin Center reference data.
 1. Select `Normbibliotek`.
 1. Create a new norm reference.
 1. Edit the created norm reference.
-1. Archive and then reactivate it.
+1. Archive it, confirm the danger dialog, and then reactivate it.
 1. Return to `/sv/admin`, select `Referensdata`, and scan the cards.
 
 **Expected result:** Normbibliotek opens at
 `/sv/requirements/stewardship?tab=norms`, the norm reference can be created,
-edited, archived, and reactivated, and Admin Center `Referensdata` has no
-norm-reference card.
+edited, archived only after confirmation, and reactivated, and Admin Center
+`Referensdata` has no norm-reference card.
 
 ### ADMIN-06: action log filters and exports CSV
 

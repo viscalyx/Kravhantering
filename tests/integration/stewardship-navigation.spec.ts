@@ -66,7 +66,7 @@ test.describe('Stewardship navigation memory', () => {
         page.locator(
           '[data-developer-mode-name="transition mask"][data-developer-mode-value="stewardship"]',
         ),
-      ).toBeHidden({ timeout: 500 })
+      ).toHaveCount(0, { timeout: 2000 })
 
       await expect(page).toHaveURL(
         /\/sv\/requirements\/stewardship\?tab=questions/,

@@ -443,6 +443,40 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
+  /api/norm-references/{id}/archive:
+    parameters:
+      - $ref: '#/components/parameters/NormReferenceId'
+    post:
+      tags: [catalogs]
+      operationId: archiveNormReference
+      summary: Archive a norm reference.
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/XRequestedWith'
+      responses:
+        '200': { $ref: '#/components/responses/JsonObject' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/norm-references/{id}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/NormReferenceId'
+    post:
+      tags: [catalogs]
+      operationId: reactivateNormReference
+      summary: Reactivate an archived norm reference.
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/XRequestedWith'
+      responses:
+        '200': { $ref: '#/components/responses/JsonObject' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /api/owners:
     get:
       tags: [catalogs]
@@ -479,6 +513,13 @@ components:
         maxLength: 80
         pattern: '^.+$'
       description: Numeric database id or stable requirement unique id.
+    NormReferenceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
     VersionNumber:
       name: version
       in: path

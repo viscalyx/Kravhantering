@@ -257,6 +257,7 @@ describe('NormReferencesClient', () => {
   })
 
   it('archives and reactivates from compact icon actions', async () => {
+    confirmMock.mockResolvedValue(true)
     render(<NormReferencesClient />)
     await waitFor(() => {
       expect(screen.getByText('BBR')).toBeInTheDocument()
@@ -276,6 +277,13 @@ describe('NormReferencesClient', () => {
     )
 
     await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          icon: 'caution',
+          message: 'normReference.archiveConfirm',
+          variant: 'danger',
+        }),
+      )
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/norm-references/1/archive',
         expect.objectContaining({ method: 'POST' }),
@@ -303,5 +311,30 @@ describe('NormReferencesClient', () => {
         expect.objectContaining({ method: 'POST' }),
       )
     })
+  })
+
+  it('does not archive when the confirmation is cancelled', async () => {
+    confirmMock.mockResolvedValue(false)
+    render(<NormReferencesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('BBR')).toBeInTheDocument()
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /normReference\.archive/i }),
+    )
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'normReference.archiveConfirm',
+          variant: 'danger',
+        }),
+      )
+    })
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/norm-references/1/archive',
+      expect.objectContaining({ method: 'POST' }),
+    )
   })
 })

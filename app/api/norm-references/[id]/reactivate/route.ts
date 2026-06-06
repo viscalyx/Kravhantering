@@ -1,27 +1,23 @@
 import { NextResponse } from 'next/server'
-import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
-import { reactivateNormReference } from '@/lib/dal/norm-references'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import {
-  authenticatedMutationPolicy,
-  secureMutationRoute,
-} from '@/lib/http/secure-mutation-route'
+import { secureMutationRoute } from '@/lib/http/secure-mutation-route'
 import { idParamSchema } from '@/lib/http/validation'
+import { reactivateNormReferenceWithAudit } from '@/lib/requirements/norm-reference-mutations'
+import { normReferenceMutationPolicy } from '@/lib/requirements/norm-reference-permissions'
 
 export const POST = secureMutationRoute({
   paramsSchema: idParamSchema,
-  policy: authenticatedMutationPolicy('norm_reference.reactivate'),
+  policy: normReferenceMutationPolicy('norm_reference.reactivate'),
   handler: async ({ context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const normReference = await reactivateNormReference(db, params.id)
+    const normReference = await reactivateNormReferenceWithAudit(
+      db,
+      params.id,
+      context,
+    )
     if (!normReference) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    await recordAllowedActionAuditEvent(db, context, {
-      action: 'norm_reference.reactivate',
-      targetId: params.id,
-      targetKind: 'norm_reference',
-    })
     return NextResponse.json(normReference)
   },
 })
