@@ -9,10 +9,13 @@ import {
   createReleaseMetadata,
   createReleasePlan,
   DB_JOB_DESCRIPTION,
+  DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
   deploymentBundleArchiveName,
   ensureGitTag,
+  extractUnreleasedOperatorUpgradeNotes,
   isReleaseRelevantPath,
   packageVersionUrlFromVersions,
+  readOperatorUpgradeNotes,
   releasePlanEnv,
   renderReleaseNotes,
   resolveBundledMarkdownAssets,
@@ -209,6 +212,7 @@ describe('trusted container release helpers', () => {
     expect(isReleaseRelevantPath('docs/rhel10-production-uninstall.md')).toBe(
       true,
     )
+    expect(isReleaseRelevantPath('docs/operator-upgrade-notes.md')).toBe(true)
     expect(
       isReleaseRelevantPath(
         'docs/rhel10-production-single-node-self-contained-deploy.md',
@@ -750,6 +754,78 @@ describe('trusted container release helpers', () => {
       'Production nginx templates use dynamic Podman DNS resolution',
     )
     expect(notes).not.toContain('GHCR package visibility')
+  })
+
+  it('renders operator upgrade notes before container image evidence', () => {
+    const plan = createReleasePlan({
+      changedFiles: ['docs/operator-upgrade-notes.md'],
+      env: env(),
+      gitVersion,
+    })
+    const metadata = createReleaseMetadata(
+      plan,
+      buildxMetadata('sha256:app-manifest', 'sha256:app-image'),
+      buildxMetadata('sha256:dbjob-manifest', 'sha256:dbjob-image'),
+    )
+    const operatorNotes = extractUnreleasedOperatorUpgradeNotes(
+      [
+        '# Operator Upgrade Notes',
+        '',
+        '## Unreleased',
+        '',
+        '### Requirement area owners must have valid HSA-IDs before upgrade',
+        '',
+        'Confirm owner HSA-IDs before running `db-job migrate`.',
+        '',
+        '## 0.1.0 - 2026-01-01',
+        '',
+        'Earlier note.',
+        '',
+      ].join('\n'),
+      DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
+    )
+
+    const notes = renderReleaseNotes(plan, metadata, '', {}, operatorNotes)
+
+    expect(notes).toContain('## Operator Upgrade Notes')
+    expect(notes).toContain(
+      '### Requirement area owners must have valid HSA-IDs before upgrade',
+    )
+    expect(notes).toContain(
+      'Confirm owner HSA-IDs before running `db-job migrate`.',
+    )
+    expect(notes).not.toContain('Earlier note.')
+    expect(notes.indexOf('## Operator Upgrade Notes')).toBeLessThan(
+      notes.indexOf('## Container Images'),
+    )
+  })
+
+  it('omits empty operator upgrade notes and reports invalid note sources', () => {
+    expect(
+      extractUnreleasedOperatorUpgradeNotes(
+        [
+          '# Operator Upgrade Notes',
+          '',
+          '## Unreleased',
+          '',
+          '## 0.1.0 - 2026-01-01',
+          '',
+        ].join('\n'),
+        DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
+      ),
+    ).toBeUndefined()
+    expect(() =>
+      extractUnreleasedOperatorUpgradeNotes(
+        '# Operator Upgrade Notes\n',
+        DEFAULT_OPERATOR_UPGRADE_NOTES_PATH,
+      ),
+    ).toThrow('must contain "## Unreleased"')
+    expect(() =>
+      readOperatorUpgradeNotes(DEFAULT_OPERATOR_UPGRADE_NOTES_PATH, {
+        existsSync: () => false,
+        readFileSync: vi.fn(),
+      }),
+    ).toThrow('Operator upgrade notes file is missing')
   })
 
   it('keeps production TLS CA guidance readable for app-runtime', () => {

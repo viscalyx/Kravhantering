@@ -211,7 +211,8 @@ place.
 8. Run the database jobs once from the new release.
    Use the DBA-pre-provisioned `db-job.env` values. Do not run
    `db-job bootstrap` during a normal upgrade, and do not run `seed:demo` in
-   production.
+   production. Review the target release's Operator Upgrade Notes before
+   running `db-job migrate`.
 
    ```bash
    sudo -iu kravhantering

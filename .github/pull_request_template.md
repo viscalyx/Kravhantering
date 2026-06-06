@@ -10,6 +10,18 @@
 
 <!-- Optional: screenshots, test notes, rollout notes, or review context. -->
 
+## Operator Upgrade Impact
+
+Complete this section when the PR changes migrations or required seed data.
+
+- [ ] <!-- operator-upgrade:reviewed --> Operator upgrade impact is reviewed,
+  or explicitly not relevant.
+- [ ] <!-- operator-upgrade:no-notes --> No operator upgrade notes are needed.
+
+<!-- operator-upgrade:notes start -->
+Write operator upgrade notes here...
+<!-- operator-upgrade:notes end -->
+
 ## SSDLC Gate
 
 Complete this section when the PR changes app code, API, database migrations,

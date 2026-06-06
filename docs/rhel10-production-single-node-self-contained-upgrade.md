@@ -278,7 +278,8 @@ configuration change.
    The resolver can change when the internal Compose network is renamed,
    recreated or assigned another subnet.
 
-   Run the database jobs:
+   Run the database jobs. Review the target release's Operator Upgrade Notes
+   before running `db-job migrate`:
 
    ```bash
    sudo -iu kravhantering
