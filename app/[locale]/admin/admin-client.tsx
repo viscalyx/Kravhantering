@@ -225,7 +225,12 @@ function getAdminTabFromSearchParams(
   searchParams: URLSearchParams,
   options: { canManageAccessReviews: boolean; canUsePrivacy: boolean },
 ): AdminTab {
-  const tab = searchParams.get(ADMIN_TAB_QUERY_KEY)
+  const requestedTab = searchParams.get(ADMIN_TAB_QUERY_KEY)
+  const tab =
+    requestedTab === 'referenceData'
+      ? (adminTabs.find(item => item.id.includes('reference'))?.id ??
+        DEFAULT_ADMIN_TAB)
+      : requestedTab
 
   if (!adminTabs.some(item => item.id === tab)) {
     return DEFAULT_ADMIN_TAB
