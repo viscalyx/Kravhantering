@@ -62,7 +62,7 @@ export const POST = secureMutationRoute({
             exportData: exportPayload,
             locale: body.locale,
           }),
-          accessReviewExportFilename(exportPayload, 'pdf'),
+          accessReviewExportFilename(exportPayload, 'pdf', body.locale),
         )
       }
       return NextResponse.json(exportPayload, {

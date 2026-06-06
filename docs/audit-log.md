@@ -65,8 +65,12 @@ Supported filters:
 - `from` / `to`
 - `page` / `pageSize`
 - `format=csv`
+- `locale` (`en` or `sv`) for CSV labels; omitted locale defaults to English
 
 The action-log read and CSV export do not themselves create action-log rows.
+CSV downloads use UTF-8 with BOM, localize column headers and decision values
+for the requested locale, and keep action names, target kinds, request IDs and
+details JSON as stored evidence identifiers.
 
 ## Privacy
 

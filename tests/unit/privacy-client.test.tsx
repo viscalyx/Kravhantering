@@ -6,7 +6,9 @@ const helpContentState = vi.hoisted(() => ({
   useHelpContent: vi.fn(),
 }))
 const fetchMock = vi.fn()
-const createObjectURLMock = vi.fn(() => 'blob:self-data-export')
+const createObjectURLMock = vi.fn(
+  (_blob: Blob | MediaSource) => 'blob:self-data-export',
+)
 const revokeObjectURLMock = vi.fn()
 const anchorClickMock = vi.fn()
 
@@ -56,6 +58,15 @@ function okJson(body: unknown) {
     json: async () => body,
     ok: true,
   } as Response
+}
+
+async function expectLastCreatedBlobStartsWithUtf8Bom(): Promise<void> {
+  const blob = createObjectURLMock.mock.calls[
+    createObjectURLMock.mock.calls.length - 1
+  ]?.[0] as Blob | undefined
+  if (!blob) throw new Error('Expected a downloaded blob')
+  const bytes = new Uint8Array(await blob.arrayBuffer())
+  expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf])
 }
 
 describe('PrivacyClient', () => {
@@ -112,6 +123,7 @@ describe('PrivacyClient', () => {
       ),
     )
     expect(createObjectURLMock).toHaveBeenCalledTimes(1)
+    await expectLastCreatedBlobStartsWithUtf8Bom()
     expect(anchorClickMock).toHaveBeenCalledTimes(1)
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:self-data-export')
   })

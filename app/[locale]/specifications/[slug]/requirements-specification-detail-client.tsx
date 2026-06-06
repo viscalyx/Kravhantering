@@ -67,6 +67,7 @@ import type {
   SpecificationNeedsReference,
   SpecificationTaxonomyItem,
 } from '@/lib/specifications/preload-types'
+import { createUtf8BomBlob } from '@/lib/text-export'
 
 const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
   sections: [
@@ -1434,7 +1435,7 @@ export default function KravunderlagDetailClient({
           : r.specificationItemStatusNameEn) ?? '',
     }))
     const csv = exportToCsv(headers, csvRows)
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const blob = createUtf8BomBlob(csv, 'text/csv;charset=utf-8;')
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
