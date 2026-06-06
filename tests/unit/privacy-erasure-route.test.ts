@@ -326,7 +326,7 @@ describe('privacy erasure routes', () => {
     routeState.executePrivacyErasure.mockRejectedValueOnce(
       validationError('Unsupported privacy erasure action', {
         action: 'delete',
-        groupKey: 'owners.identity',
+        groupKey: 'requirement_areas.owner',
         reason: 'unsupported_privacy_action',
         targetHsaId: 'SE5560000001-kalle1',
       }),
@@ -334,7 +334,7 @@ describe('privacy erasure routes', () => {
     const { POST } = await import('@/app/api/privacy/erasure-requests/route')
     const response = await POST(
       jsonPost('http://localhost/api/privacy/erasure-requests', {
-        actions: { 'owners.identity': 'delete' },
+        actions: { 'requirement_areas.owner': 'delete' },
         previewToken: 'preview-token',
         target: { hsaId: 'SE5560000001-kalle1' },
       }) as never,
@@ -343,7 +343,7 @@ describe('privacy erasure routes', () => {
 
     expect(response.status).toBe(400)
     expect(body.details).toEqual({
-      groupKey: 'owners.identity',
+      groupKey: 'requirement_areas.owner',
       reason: 'unsupported_privacy_action',
     })
     expect(JSON.stringify(body)).not.toContain('SE5560000001-kalle1')
@@ -401,7 +401,7 @@ describe('privacy erasure routes', () => {
     try {
       routeState.executePrivacyErasure.mockRejectedValueOnce(
         new Error(
-          'SQL failed for SE5560000001-kalle1 while running SELECT token FROM owners',
+          'SQL failed for SE5560000001-kalle1 while running SELECT token FROM requirement_areas',
         ),
       )
       const { POST } = await import('@/app/api/privacy/erasure-requests/route')
@@ -418,7 +418,9 @@ describe('privacy erasure routes', () => {
       expect(body.debugMessage).toContain('[HSA_ID_REDACTED]')
       expect(body.debugMessage).toContain('[SQL_REDACTED]')
       expect(JSON.stringify(body)).not.toContain('SE5560000001-kalle1')
-      expect(JSON.stringify(body)).not.toContain('SELECT token FROM owners')
+      expect(JSON.stringify(body)).not.toContain(
+        'SELECT token FROM requirement_areas',
+      )
     } finally {
       vi.unstubAllEnvs()
     }

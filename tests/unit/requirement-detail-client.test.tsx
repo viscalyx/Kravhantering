@@ -292,7 +292,7 @@ function makeRequirement(
     area?: {
       id?: number
       name: string
-      ownerId?: number | null
+      ownerHsaId?: string
       ownerName?: string | null
       prefix?: string
     } | null
@@ -307,8 +307,8 @@ function makeRequirement(
         : {
             id: area?.id ?? 1,
             name: area?.name ?? 'Core platform',
-            ownerId: area?.ownerId ?? 1,
-            ownerName: area?.ownerName ?? 'Area Owner',
+            ownerHsaId: area?.ownerHsaId ?? 'SE5560000001-area1',
+            ownerName: area?.ownerName ?? 'SE5560000001-area1',
             prefix: area?.prefix ?? 'CORE',
           },
     createdAt: '2026-03-01T00:00:00Z',

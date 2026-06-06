@@ -346,7 +346,7 @@ INSERT INTO requirement_areas (
   prefix,
   name,
   description,
-  owner_id,
+  owner_hsa_id,
   next_sequence,
   created_at,
   updated_at
@@ -356,7 +356,7 @@ SELECT
   CONCAT(@uniqueIdPrefix, N'-', area_index, N'-'),
   CONCAT(N'Performance fixture area ', area_index),
   N'Dedicated requirement-list performance fixture area',
-  NULL,
+  CONCAT(N'SE5560000001-perf', area_index),
   (@requirementCount / @areaCount) + 2,
   @seededAt,
   @seededAt

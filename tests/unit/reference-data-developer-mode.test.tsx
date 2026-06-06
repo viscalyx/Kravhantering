@@ -44,19 +44,6 @@ interface MarkerSpec {
 
 const pages: MarkerSpec[] = [
   {
-    label: 'OmradesagareClient (requirement area owners)',
-    context: 'requirement area owners',
-    factory: () =>
-      import('@/app/[locale]/owners/owners-client') as Promise<{
-        default: React.ComponentType
-      }>,
-    fetchResponse: () =>
-      okJson({
-        owners: [{ id: 1, firstName: 'A', lastName: 'B', email: 'a@b.com' }],
-      }),
-    expectedMarkers: ['create button', 'crud table', 'table action'],
-  },
-  {
     label: 'KravomradenClient (areas)',
     context: 'areas',
     factory: () =>
@@ -65,23 +52,19 @@ const pages: MarkerSpec[] = [
       ) as Promise<{
         default: React.ComponentType
       }>,
-    fetchResponse: () => [
+    fetchResponse: () =>
       okJson({
         areas: [
           {
             id: 1,
-            nameSv: 'A',
-            nameEn: 'A',
+            name: 'A',
             prefix: 'A',
             description: null,
             nextSequence: 1,
-            ownerId: null,
-            ownerName: null,
+            ownerHsaId: 'SE5560000001-area1',
           },
         ],
       }),
-      okJson({ owners: [] }),
-    ],
     fetchHandler: input => {
       const url = String(input)
       if (url === '/api/requirement-areas') {
@@ -90,17 +73,14 @@ const pages: MarkerSpec[] = [
             {
               description: null,
               id: 1,
-              nameEn: 'A',
-              nameSv: 'A',
+              name: 'A',
               nextSequence: 1,
-              ownerId: null,
-              ownerName: null,
+              ownerHsaId: 'SE5560000001-area1',
               prefix: 'A',
             },
           ],
         }) as Response
       }
-      if (url === '/api/owners') return okJson({ owners: [] }) as Response
       return okJson({}) as Response
     },
     expectedMarkers: ['create button', 'crud table', 'table action'],

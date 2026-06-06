@@ -282,16 +282,14 @@ export async function collectAccessReviewAssignments(
         SELECT
           N'requirement_areas.owner' AS sourceKey,
           N'requirement_areas' AS sourceTable,
-          owner.hsa_id AS principalHsaId,
-          CONCAT(owner.first_name, CASE WHEN owner.last_name = N'' THEN N'' ELSE CONCAT(N' ', owner.last_name) END) AS principalDisplayName,
+          area.owner_hsa_id AS principalHsaId,
+          area.owner_hsa_id AS principalDisplayName,
           N'requirement_area' AS scopeType,
           CAST(area.id AS nvarchar(120)) AS scopeKey,
           CONCAT(area.prefix, N' ', area.name) AS scopeLabel,
           N'area_owner' AS permissionType,
           CAST(0 AS bit) AS canGenerateAi
         FROM requirement_areas area
-        INNER JOIN owners owner ON owner.id = area.owner_id
-        WHERE owner.hsa_id IS NOT NULL
         UNION ALL
         SELECT
           N'requirement_area_co_authors.hsa_id' AS sourceKey,

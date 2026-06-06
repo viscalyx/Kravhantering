@@ -59,7 +59,9 @@ vi.stubGlobal('fetch', fetchMock)
 
 import RequirementForm from '@/components/RequirementForm'
 
-const sampleAreas = [{ id: 1, name: 'Area 1', ownerName: 'Owner' }]
+const sampleAreas = [
+  { id: 1, name: 'Area 1', ownerHsaId: 'SE5560000001-area1' },
+]
 const sampleCategories = [{ id: 1, nameSv: 'Kat', nameEn: 'Cat' }]
 const sampleTypes = [{ id: 1, nameSv: 'Typ', nameEn: 'Type' }]
 const sampleRequirementPackages = [{ id: 1, name: 'Package Alpha' }]

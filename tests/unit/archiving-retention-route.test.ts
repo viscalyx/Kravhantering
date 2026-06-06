@@ -245,9 +245,9 @@ describe('archiving retention routes', () => {
     const payload = {
       policyId: 3,
       reason: 'Legal hold for case 2026-05',
-      sourceKey: 'owners.identity',
-      subjectId: 'SE5560000001-kalle1',
-      subjectTable: 'owners',
+      sourceKey: 'requirement_areas.unused',
+      subjectId: '12',
+      subjectTable: 'requirement_areas',
     }
     routeState.createArchivingRetentionException.mockResolvedValueOnce({
       id: 4,
@@ -276,15 +276,15 @@ describe('archiving retention routes', () => {
       expect.objectContaining({
         detail: expect.objectContaining({
           policyId: 3,
-          sourceKey: 'owners.identity',
-          subjectTable: 'owners',
+          sourceKey: 'requirement_areas.unused',
+          subjectTable: 'requirement_areas',
         }),
         event: 'admin.archiving.exception.created',
       }),
     )
     expect(
       JSON.stringify(routeState.recordSecurityEvent.mock.calls[0][0].detail),
-    ).not.toContain('SE5560000001-kalle1')
+    ).not.toContain('Legal hold for case 2026-05')
   })
 
   it('rejects retention exceptions without PrivacyOfficer', async () => {
@@ -294,9 +294,9 @@ describe('archiving retention routes', () => {
       jsonRequest('http://localhost/api/admin/archiving/exceptions', {
         policyId: 3,
         reason: 'Legal hold for case 2026-05',
-        sourceKey: 'owners.identity',
-        subjectId: 'SE5560000001-kalle1',
-        subjectTable: 'owners',
+        sourceKey: 'requirement_areas.unused',
+        subjectId: '12',
+        subjectTable: 'requirement_areas',
       }) as never,
     )
 

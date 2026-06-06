@@ -12,7 +12,7 @@ function createSqlServerDb() {
       prefix: 'KH',
       name: 'Kravhantering',
       description: 'Krav relaterade till kravhantering',
-      ownerId: 1,
+      ownerHsaId: 'SE5560000001-owner1',
       nextSequence: 1,
       createdAt: new Date('2026-05-02T08:00:00.000Z'),
       updatedAt: new Date('2026-05-02T08:00:00.000Z'),
@@ -33,7 +33,7 @@ describe('requirement-areas DAL', () => {
       prefix: 'KH',
       name: 'Kravhantering',
       description: 'Krav relaterade till kravhantering',
-      ownerId: 1,
+      ownerHsaId: 'SE5560000001-owner1',
     })
 
     expect(query).toHaveBeenCalledWith(
@@ -42,7 +42,7 @@ describe('requirement-areas DAL', () => {
         'KH',
         'Kravhantering',
         'Krav relaterade till kravhantering',
-        1,
+        'SE5560000001-owner1',
         expect.any(Date),
       ]),
     )
@@ -62,7 +62,7 @@ describe('requirement-areas DAL', () => {
 
     await listAreasActorCanAuthor(db, 'SE5560000001-owner1', false)
 
-    expect(query.mock.calls[0][0]).toContain('owner.hsa_id = @0')
+    expect(query.mock.calls[0][0]).toContain('area.owner_hsa_id = @0')
     expect(query.mock.calls[0][0]).toContain('requirement_area_co_authors')
     expect(query.mock.calls[0][0]).toContain('co_author.hsa_id = @0')
     expect(query.mock.calls[0][1]).toEqual(['SE5560000001-owner1'])
@@ -73,7 +73,7 @@ describe('requirement-areas DAL', () => {
 
     await canAuthorArea(db, 11, 'SE5560000001-owner1', false)
 
-    expect(query.mock.calls[0][0]).toContain('owner.hsa_id = @1')
+    expect(query.mock.calls[0][0]).toContain('area.owner_hsa_id = @1')
     expect(query.mock.calls[0][0]).toContain('requirement_area_co_authors')
     expect(query.mock.calls[0][0]).toContain('co_author.hsa_id = @1')
     expect(query.mock.calls[0][1]).toEqual([11, 'SE5560000001-owner1'])

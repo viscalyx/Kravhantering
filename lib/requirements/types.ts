@@ -70,7 +70,7 @@ export interface RequirementVersionDetail {
 export interface RequirementDetailArea {
   id: number
   name: string
-  ownerId: number | null
+  ownerHsaId: string
   prefix: string
 }
 
@@ -85,7 +85,7 @@ export interface RequirementDetail {
 }
 
 export interface RequirementDetailAreaResponse extends RequirementDetailArea {
-  ownerName: string | null
+  ownerName: string
 }
 
 export interface RequirementDetailResponse

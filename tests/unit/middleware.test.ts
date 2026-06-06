@@ -309,7 +309,9 @@ describe('middleware', () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
       const response = await middleware(
-        buildRequest('http://localhost/api/owners', { method: 'POST' }),
+        buildRequest('http://localhost/api/requirement-areas', {
+          method: 'POST',
+        }),
       )
       expect(response.status).toBe(401)
       expect(response.headers.get('content-type') ?? '').toContain(
@@ -325,7 +327,7 @@ describe('middleware', () => {
     try {
       const cookie = await writeSignedInCookie(1)
       const response = await middleware(
-        buildRequest('http://localhost/api/owners', {
+        buildRequest('http://localhost/api/requirement-areas', {
           cookie,
           method: 'POST',
         }),
@@ -358,7 +360,7 @@ describe('middleware', () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     try {
       const response = await middleware(
-        buildRequest('http://localhost/api/owners', {
+        buildRequest('http://localhost/api/requirement-areas', {
           cookie: 'kravhantering_session=this-is-not-a-real-session',
         }),
       )
@@ -474,7 +476,7 @@ describe('middleware', () => {
     try {
       const cookie = await writeSignedInCookie()
       const response = await middleware(
-        buildRequest('http://localhost/api/owners', {
+        buildRequest('http://localhost/api/requirement-areas', {
           cookie,
           method: 'POST',
           origin: 'http://localhost',
@@ -495,7 +497,7 @@ describe('middleware', () => {
     try {
       const cookie = await writeSignedInCookie()
       const response = await middleware(
-        buildRequest('http://localhost/api/owners', {
+        buildRequest('http://localhost/api/requirement-areas', {
           cookie,
           method: 'POST',
           origin: 'https://evil.example',
@@ -517,7 +519,7 @@ describe('middleware', () => {
     try {
       const cookie = await writeSignedInCookie()
       const response = await middleware(
-        buildRequest('http://localhost/api/owners', {
+        buildRequest('http://localhost/api/requirement-areas', {
           cookie,
           method: 'POST',
           origin: 'http://localhost',

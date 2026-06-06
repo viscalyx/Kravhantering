@@ -253,12 +253,6 @@ const SOURCE_TEXT: Record<LocaleKey, Record<string, SourceInfo>> = {
       section: 'history',
       title: 'Resolved improvement suggestion',
     },
-    'owners.identity': {
-      description:
-        'The person is stored as an owner/contact person in the application.',
-      section: 'identity',
-      title: 'Owner profile',
-    },
     'requirement_area_co_authors.created_by': {
       description:
         'This person is stored as the person who created a co-author assignment.',
@@ -378,12 +372,6 @@ const SOURCE_TEXT: Record<LocaleKey, Record<string, SourceInfo>> = {
         'Personen står sparad som den som åtgärdade ett förbättringsförslag.',
       section: 'history',
       title: 'Åtgärdad av på förbättringsförslag',
-    },
-    'owners.identity': {
-      description:
-        'Personen finns som ägare eller kontaktperson i applikationen.',
-      section: 'identity',
-      title: 'Ägarprofil',
     },
     'requirement_area_co_authors.created_by': {
       description:

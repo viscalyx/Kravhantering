@@ -65,32 +65,15 @@ query arrays are bounded, and route IDs must be positive integers.
 When `normReferenceId` is provided and non-empty after trim, the DAL
 still uses it as-is; uniqueness remains enforced by the DB unique index.
 
-## 2 — Owners
+## 2 — Requirement Area Ownership
 
-Source: `lib/dal/owners.ts`
+Requirement-area owners are no longer reference data. The requirement area row
+stores `owner_hsa_id` directly and the app displays that HSA-ID wherever the
+owner is shown. Creation requires a valid HSA-ID. Editing shows the current
+HSA-ID as read-only and uses a dedicated owner-change action for replacement.
 
-### Shape
-
-`Owner` interface: `{ id, firstName, lastName, email }`.
-
-### CRUD Contracts
-
-- `listOwners()` — orders by `lastName`, then `firstName`
-  (both ascending).
-- `getOwnerById()` — returns `null` if not found.
-- `createOwner()` — returns the persisted Owner row produced by the
-  TypeORM repository.
-- `updateOwner()` — always sets `updatedAt` to the current
-  ISO timestamp. Returns `null` if the ID does not match.
-- `deleteOwner()` — returns `boolean` indicating whether a
-  row was deleted.
-
-### Owner Validation
-
-API routes validate owner payload shape, unknown fields, required
-strings, email length, and positive integer route IDs before calling the
-DAL. The DAL does not add additional owner-specific business validation
-beyond database constraints.
+There is no `/owners` admin surface or owners REST resource, and no local
+person catalog lookup is performed in this flow.
 
 ## 3 — Specification Taxonomy Lookups
 

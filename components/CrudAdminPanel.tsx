@@ -20,6 +20,7 @@ export interface CrudAdminColumn<TItem> {
 interface CrudAdminPanelProps<TItem extends { id: CrudId }, TForm> {
   canCreate?: boolean
   canDelete?: (item: TItem) => boolean
+  children?: ReactNode
   columns: CrudAdminColumn<TItem>[]
   controller: CrudAdminResourceController<TItem, TForm>
   devContext: string
@@ -42,6 +43,7 @@ const inputClassName =
 export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
   canDelete = () => true,
   canCreate = true,
+  children,
   columns,
   controller,
   devContext,
@@ -276,6 +278,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
             </div>
           </div>
         )}
+        {children}
       </div>
     </div>
   )

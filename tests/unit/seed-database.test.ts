@@ -173,7 +173,7 @@ describe('seed profiles', () => {
     expect(seedRowsFor(rows, 'requirement_statuses').length).toBeGreaterThan(0)
     expect(seedRowsFor(rows, 'quality_characteristics')).toHaveLength(49)
     const retentionPolicies = seedRowsFor(rows, 'archiving_retention_policies')
-    expect(retentionPolicies).toHaveLength(5)
+    expect(retentionPolicies).toHaveLength(4)
     expect(retentionPolicies).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -293,41 +293,34 @@ describe('seed profiles', () => {
   })
 
   it('seeds duplicate-name privacy data with distinct HSA-ID decisions', async () => {
-    const kalleOwnerHsaIds = new Set<unknown>()
-    const duplicateNameSuggestionRows: unknown[][] = []
-    const executor = {
-      query: vi.fn(async (sql: string, params: unknown[] = []) => {
-        if (
-          sql.includes('INSERT INTO [owners]') &&
-          params[1] === 'Kalle' &&
-          params[2] === 'Svensson'
-        ) {
-          kalleOwnerHsaIds.add(params[6])
-        }
-        if (
-          sql.includes('INSERT INTO [improvement_suggestions]') &&
-          params.includes(
-            'Privacy seed proves duplicate display names are matched by HSA-ID.',
-          )
-        ) {
-          duplicateNameSuggestionRows.push(params)
-        }
-      }),
-    }
+    const { executor, rows } = collectSeedInsertRows()
 
     await seedDemoDatabase(executor)
 
-    expect(kalleOwnerHsaIds).toEqual(
+    const duplicateNameSuggestionRows = seedRowsFor(
+      rows,
+      'improvement_suggestions',
+    ).filter(
+      row =>
+        row.content ===
+        'Privacy seed proves duplicate display names are matched by HSA-ID.',
+    )
+    const kalleSpecificationHsaIds = new Set(
+      seedRowsFor(rows, 'requirements_specifications')
+        .filter(row => row.responsible_display_name === 'Kalle Svensson')
+        .map(row => row.responsible_hsa_id),
+    )
+    expect(kalleSpecificationHsaIds).toEqual(
       new Set(['SE5560000001-kalle1', 'SE5560000001-kalle2']),
     )
+    expect(seedRowsFor(rows, 'owners')).toHaveLength(0)
     expect(duplicateNameSuggestionRows).toHaveLength(1)
-    expect(duplicateNameSuggestionRows[0]).toEqual(
-      expect.arrayContaining([
-        'Kalle Svensson',
-        'SE5560000001-kalle2',
+    expect(duplicateNameSuggestionRows[0]).toMatchObject({
+      resolved_by: 'Kalle Svensson',
+      resolved_by_hsa_id: 'SE5560000001-kalle2',
+      resolution_motivation:
         'Resolved by the second duplicate-name HSA identity.',
-      ]),
-    )
+    })
   })
 
   it('seeds each requirement package name only once', async () => {
@@ -354,10 +347,6 @@ describe('seed profiles', () => {
 
     await seedDemoDatabase(executor)
 
-    const owners = seedRowsFor(rows, 'owners')
-    const linneaOwnerIds = new Set(
-      owners.filter(row => row.hsa_id === LINNEA_HSA_ID).map(row => row.id),
-    )
     const counts = {
       'access_review_items.decided_by': seedRowsFor(
         rows,
@@ -397,7 +386,6 @@ describe('seed profiles', () => {
         rows,
         'improvement_suggestions',
       ).filter(row => row.resolved_by_hsa_id === LINNEA_HSA_ID).length,
-      'owners.identity': linneaOwnerIds.size,
       'requirement_area_co_authors.created_by': seedRowsFor(
         rows,
         'requirement_area_co_authors',
@@ -407,7 +395,7 @@ describe('seed profiles', () => {
         'requirement_area_co_authors',
       ).filter(row => row.hsa_id === LINNEA_HSA_ID).length,
       'requirement_areas.owner': seedRowsFor(rows, 'requirement_areas').filter(
-        row => linneaOwnerIds.has(row.owner_id),
+        row => row.owner_hsa_id === LINNEA_HSA_ID,
       ).length,
       'requirement_packages.owner': seedRowsFor(
         rows,
@@ -450,7 +438,6 @@ describe('seed profiles', () => {
       'deviations.decided_by': 1,
       'improvement_suggestions.created_by': 1,
       'improvement_suggestions.resolved_by': 1,
-      'owners.identity': 1,
       'requirement_area_co_authors.created_by': 1,
       'requirement_area_co_authors.hsa_id': 1,
       'requirement_areas.owner': 2,
@@ -537,7 +524,6 @@ describe('seed profiles', () => {
     await seedDemoDatabase(executor)
 
     expect(RETENTION_POSITIVE_SOURCE_KEYS).toEqual([
-      'owners.identity',
       'requirement_areas.unused',
       'requirement_packages.unused',
       'norm_references.unused',
@@ -549,7 +535,6 @@ describe('seed profiles', () => {
       'requirement_selection_answers.archived',
     ])
 
-    const owners = rowById(seedRowsFor(rows, 'owners'))
     const areas = rowById(seedRowsFor(rows, 'requirement_areas'))
     const packages = rowById(seedRowsFor(rows, 'requirement_packages'))
     const norms = rowById(seedRowsFor(rows, 'norm_references'))
@@ -592,13 +577,10 @@ describe('seed profiles', () => {
       'specification_local_requirement_norm_references',
     )
 
-    expect(owners.get(RETENTION_SEED.owner.orphan)).toMatchObject({
-      hsa_id: 'SE5560000001-retentionorphan',
-      updated_at: '2023-01-15 09:00:00',
-    })
+    expect(seedRowsFor(rows, 'owners')).toHaveLength(0)
     expect(
       seedRowsFor(rows, 'requirement_areas').some(
-        row => row.owner_id === RETENTION_SEED.owner.orphan,
+        row => row.owner_hsa_id === 'SE5560000001-retentionorphan',
       ),
     ).toBe(false)
     expect(
@@ -675,12 +657,9 @@ describe('seed profiles', () => {
       ),
     ).not.toHaveProperty('requirement_area_id')
 
-    expect(owners.get(RETENTION_SEED.owner.linked)).toMatchObject({
-      hsa_id: 'SE5560000001-retentionlinked',
-    })
     expect(
       seedRowsFor(rows, 'requirement_areas').some(
-        row => row.owner_id === RETENTION_SEED.owner.linked,
+        row => row.owner_hsa_id === 'SE5560000001-retentionlinked',
       ),
     ).toBe(true)
     expect(

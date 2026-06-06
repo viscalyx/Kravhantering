@@ -80,8 +80,12 @@ test.describe('signed-in auth boundary', () => {
     })
 
     try {
-      const response = await context.post('/api/owners', {
-        data: { firstName: 'No', lastName: 'Csrf' },
+      const response = await context.post('/api/requirement-areas', {
+        data: {
+          name: 'No CSRF',
+          ownerHsaId: 'SE5560000001-1001',
+          prefix: 'NOC',
+        },
         headers: {
           Origin: new URL(baseURL).origin,
           'X-Requested-With': '',
@@ -107,8 +111,12 @@ test.describe('signed-in auth boundary', () => {
     })
 
     try {
-      const response = await context.post('/api/owners', {
-        data: { firstName: 'Cross', lastName: 'Site' },
+      const response = await context.post('/api/requirement-areas', {
+        data: {
+          name: 'Cross Site',
+          ownerHsaId: 'SE5560000001-cross1',
+          prefix: 'CRS',
+        },
         headers: {
           Origin: 'https://evil.example',
           'X-Requested-With': 'XMLHttpRequest',

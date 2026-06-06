@@ -74,7 +74,6 @@ interface QueryExecutor {
 export type PrivacyGroupKind =
   | 'coAuthor'
   | 'hsaOnly'
-  | 'owner'
   | 'ownerReference'
   | 'simpleDisplay'
 
@@ -97,43 +96,16 @@ export interface PrivacyGroupPolicy {
 
 const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   {
-    affectedReferencesSql: `/* privacy:affected:owners.identity */
-      SELECT refs.value
-      FROM (
-        SELECT
-          CONCAT(area.prefix, N' ', area.name) AS value,
-          area.prefix AS sort_value,
-          area.id AS sort_id,
-          0 AS sort_group
-        FROM requirement_areas area
-        INNER JOIN owners owner ON owner.id = area.owner_id
-        WHERE owner.hsa_id = @0
-      ) refs
-      ORDER BY refs.sort_group ASC, refs.sort_value ASC, refs.sort_id ASC`,
-    allowedActions: ['switch', 'skip'],
-    countSql: 'SELECT COUNT(*) AS count FROM owners WHERE hsa_id = @0',
-    currentDisplaySql:
-      "SELECT TOP (1) CONCAT(first_name, CASE WHEN last_name = '' THEN '' ELSE CONCAT(' ', last_name) END) AS value FROM owners WHERE hsa_id = @0 ORDER BY id ASC",
-    defaultWithReplacement: 'switch',
-    defaultWithoutReplacement: 'skip',
-    fieldKey: 'identity',
-    key: 'owners.identity',
-    kind: 'owner',
-    objectKey: 'owners',
-    warningKey: 'ownerSwitch',
-  },
-  {
     affectedReferencesSql: `/* privacy:affected:requirement_areas.owner */
       SELECT CONCAT(area.prefix, N' ', area.name) AS value
       FROM requirement_areas area
-      INNER JOIN owners owner ON owner.id = area.owner_id
-      WHERE owner.hsa_id = @0
+      WHERE area.owner_hsa_id = @0
       ORDER BY area.prefix ASC, area.id ASC`,
     allowedActions: ['switch', 'skip'],
     countSql:
-      'SELECT COUNT(*) AS count FROM requirement_areas area INNER JOIN owners owner ON owner.id = area.owner_id WHERE owner.hsa_id = @0',
+      'SELECT COUNT(*) AS count FROM requirement_areas WHERE owner_hsa_id = @0',
     currentDisplaySql:
-      "SELECT TOP (1) CONCAT(owner.first_name, CASE WHEN owner.last_name = '' THEN '' ELSE CONCAT(' ', owner.last_name) END) AS value FROM requirement_areas area INNER JOIN owners owner ON owner.id = area.owner_id WHERE owner.hsa_id = @0 ORDER BY area.id ASC",
+      'SELECT TOP (1) owner_hsa_id AS value FROM requirement_areas WHERE owner_hsa_id = @0 ORDER BY id ASC',
     defaultWithReplacement: 'switch',
     defaultWithoutReplacement: 'skip',
     fieldKey: 'owner',
@@ -618,25 +590,6 @@ function actionsAllowedForReplacement(
   return replacement ? actions : actions.filter(action => action !== 'switch')
 }
 
-interface OwnerBlockingCopyKeys {
-  area: string
-  areaAndPackage: string
-  packageOnly: string
-}
-
-function ownerBlockingCopyKey(
-  areaReferences: string[],
-  packageReferences: string[],
-  keys: OwnerBlockingCopyKeys,
-): string | null {
-  const hasAreaReferences = areaReferences.length > 0
-  const hasPackageReferences = packageReferences.length > 0
-  if (hasAreaReferences && hasPackageReferences) return keys.areaAndPackage
-  if (hasAreaReferences) return keys.area
-  if (hasPackageReferences) return keys.packageOnly
-  return null
-}
-
 function normalizeTarget(
   input: PrivacyErasureTargetInput,
 ): PrivacyErasureTargetInput {
@@ -704,35 +657,6 @@ function previewTokenFor(
   return createHash('sha256').update(stablePayload, 'utf8').digest('hex')
 }
 
-async function listOwnerRequirementAreaReferences(
-  db: QueryExecutor,
-  targetHsaId: string,
-): Promise<string[]> {
-  const rows = (await db.query(
-    `SELECT CONCAT(area.prefix, N' ', area.name) AS value
-      FROM requirement_areas area
-      INNER JOIN owners owner ON owner.id = area.owner_id
-      WHERE owner.hsa_id = @0
-      ORDER BY area.prefix ASC, area.id ASC`,
-    [targetHsaId],
-  )) as Array<Record<string, unknown>>
-  return valuesFromRows(rows)
-}
-
-async function listOwnerRequirementPackageReferences(
-  db: QueryExecutor,
-  targetHsaId: string,
-): Promise<string[]> {
-  const rows = (await db.query(
-    `SELECT pkg.name AS value
-      FROM requirement_packages pkg
-      WHERE pkg.lead_hsa_id = @0
-      ORDER BY pkg.name ASC, pkg.id ASC`,
-    [targetHsaId],
-  )) as Array<Record<string, unknown>>
-  return valuesFromRows(rows)
-}
-
 async function listAffectedReferences(
   db: QueryExecutor,
   policy: PrivacyGroupPolicy,
@@ -769,111 +693,28 @@ export async function previewPrivacyErasure(
       policy,
       target.hsaId,
     )
-    const blockingAreaReferences =
-      policy.kind === 'owner'
-        ? await listOwnerRequirementAreaReferences(db, target.hsaId)
-        : []
-    const blockingPackageReferences =
-      policy.kind === 'owner'
-        ? await listOwnerRequirementPackageReferences(db, target.hsaId)
-        : []
-    const blockingReferences: PrivacyBlockingReference[] = [
-      ...(blockingAreaReferences.length > 0
-        ? [
-            {
-              objectKey: 'requirementAreas',
-              values: blockingAreaReferences,
-            },
-          ]
-        : []),
-      ...(blockingPackageReferences.length > 0
-        ? [
-            {
-              objectKey: 'requirementPackages',
-              values: blockingPackageReferences,
-            },
-          ]
-        : []),
-    ]
-    const ownerHasBlockingReferences = blockingReferences.length > 0
-    const ownerBlockedWithoutReplacement =
-      policy.kind === 'owner' && ownerHasBlockingReferences && !replacement
-    const ownerRequiresSwitch =
-      policy.kind === 'owner' &&
-      ownerHasBlockingReferences &&
-      replacement != null
-    const ownerWithoutBlockingReferences =
-      policy.kind === 'owner' && !ownerHasBlockingReferences
-    const ownerIdentityGroupExists = groups.some(
-      group => group.key === 'owners.identity',
-    )
-    const ownerReferenceControlledByOwner =
-      policy.key === 'requirement_areas.owner' ||
-      (policy.key === 'requirement_packages.owner' && ownerIdentityGroupExists)
-    const policyAllowedActions: PrivacyErasureAction[] =
-      ownerBlockedWithoutReplacement
-        ? ['skip']
-        : ownerRequiresSwitch
-          ? ['switch', 'skip']
-          : ownerWithoutBlockingReferences
-            ? ['delete', 'skip']
-            : policy.allowedActions
     const allowedActions = actionsAllowedForReplacement(
-      policyAllowedActions,
+      policy.allowedActions,
       replacement,
     )
-    const recommendedAction = ownerBlockedWithoutReplacement
-      ? 'skip'
-      : ownerWithoutBlockingReferences
-        ? 'delete'
-        : replacement
-          ? policy.defaultWithReplacement
-          : policy.defaultWithoutReplacement
-    const ownerReplacementRequiredKey = ownerBlockingCopyKey(
-      blockingAreaReferences,
-      blockingPackageReferences,
-      {
-        area: 'ownerAreaReplacementRequired',
-        areaAndPackage: 'ownerAreaAndPackageReplacementRequired',
-        packageOnly: 'ownerPackageReplacementRequired',
-      },
-    )
-    const ownerSwitchOnlyWarningKey = ownerBlockingCopyKey(
-      blockingAreaReferences,
-      blockingPackageReferences,
-      {
-        area: 'ownerAreaSwitchOnly',
-        areaAndPackage: 'ownerAreaAndPackageSwitchOnly',
-        packageOnly: 'ownerPackageSwitchOnly',
-      },
-    )
+    const recommendedAction = replacement
+      ? policy.defaultWithReplacement
+      : policy.defaultWithoutReplacement
     groups.push({
       affectedReferences,
       allowedActions,
-      blockingReferences:
-        blockingReferences.length > 0 ? blockingReferences : undefined,
       count,
-      controlledByGroupKey: ownerReferenceControlledByOwner
-        ? 'owners.identity'
-        : null,
+      controlledByGroupKey: null,
       currentDisplayValue: valueFromRows(valueRows),
-      disabledReasonKey: ownerBlockedWithoutReplacement
-        ? ownerReplacementRequiredKey
-        : null,
+      disabledReasonKey: null,
       fieldKey: policy.fieldKey,
       key: policy.key,
       objectKey: policy.objectKey,
-      readOnlyReasonKey: ownerReferenceControlledByOwner
-        ? 'controlledByOwner'
-        : null,
+      readOnlyReasonKey: null,
       recommendedAction: allowedActions.includes(recommendedAction)
         ? recommendedAction
         : (allowedActions[0] ?? 'skip'),
-      warningKey: ownerRequiresSwitch
-        ? ownerSwitchOnlyWarningKey
-        : ownerWithoutBlockingReferences
-          ? 'ownerDelete'
-          : policy.warningKey,
+      warningKey: policy.warningKey,
     })
   }
 
@@ -883,75 +724,6 @@ export async function previewPrivacyErasure(
     targetFingerprint: privacyTargetFingerprint(target.hsaId),
     totalCount: groups.reduce((sum, group) => sum + group.count, 0),
   }
-}
-
-function splitDisplayName(displayName: string): {
-  firstName: string
-  lastName: string
-} {
-  const parts = displayName.trim().split(/\s+/)
-  return {
-    firstName: parts.shift() ?? displayName.trim(),
-    lastName: parts.join(' '),
-  }
-}
-
-function replacementOwnerName(replacement: PrivacyReplacementInput): {
-  firstName: string
-  lastName: string
-} {
-  if (replacement.firstName) {
-    return {
-      firstName: replacement.firstName,
-      lastName: replacement.lastName ?? '',
-    }
-  }
-  if (replacement.lastName) {
-    return {
-      firstName: splitDisplayName(replacement.displayName).firstName,
-      lastName: replacement.lastName,
-    }
-  }
-  return splitDisplayName(replacement.displayName)
-}
-
-async function ensureReplacementOwner(
-  tx: QueryExecutor,
-  replacement: PrivacyReplacementInput | null,
-): Promise<number | null> {
-  if (!replacement) return null
-  const { firstName, lastName } = replacementOwnerName(replacement)
-  const existing = (await tx.query(
-    'SELECT TOP (1) id, email FROM owners WHERE hsa_id = @0 ORDER BY id ASC',
-    [replacement.hsaId],
-  )) as Array<Record<string, unknown>>
-  if (existing[0]) {
-    const ownerId = Number(existing[0].id)
-    await tx.query(
-      `UPDATE owners
-        SET first_name = @1,
-            last_name = @2,
-            email = CASE WHEN @3 IS NULL THEN email ELSE @3 END,
-            updated_at = @4
-        WHERE id = @0
-          AND (
-            first_name <> @1
-            OR last_name <> @2
-            OR (@3 IS NOT NULL AND (email IS NULL OR email <> @3))
-          )`,
-      [ownerId, firstName, lastName, replacement.email ?? null, new Date()],
-    )
-    return ownerId
-  }
-
-  const now = new Date()
-  const inserted = (await tx.query(
-    `INSERT INTO owners (first_name, last_name, email, hsa_id, created_at, updated_at)
-      OUTPUT INSERTED.id AS id
-      VALUES (@0, @1, @2, @3, @4, @4)`,
-    [firstName, lastName, replacement.email ?? null, replacement.hsaId, now],
-  )) as Array<Record<string, unknown>>
-  return Number(inserted[0]?.id)
 }
 
 function resolveActions(
@@ -1001,7 +773,6 @@ async function applyOwnerReferences(
   policy: PrivacyGroupPolicy,
   action: PrivacyErasureAction,
   targetHsaId: string,
-  replacementOwnerId: number | null,
   replacement: PrivacyReplacementInput | null,
 ): Promise<void> {
   if (action !== 'switch') return
@@ -1029,9 +800,9 @@ async function applyOwnerReferences(
     )
     return
   }
-  if (replacementOwnerId == null) {
+  if (!replacement) {
     throw validationError(
-      'Replacement owner is required for switching owners',
+      'Replacement HSA-ID is required for switching requirement area owners',
       {
         groupKey: policy.key,
         reason: 'replacement_required',
@@ -1039,77 +810,12 @@ async function applyOwnerReferences(
     )
   }
   await tx.query(
-    `UPDATE t
-      SET owner_id = @1
-      FROM ${table} t
-      INNER JOIN owners owner ON owner.id = t.owner_id
-      WHERE owner.hsa_id = @0`,
-    [targetHsaId, replacementOwnerId],
+    `UPDATE requirement_areas
+      SET owner_hsa_id = @1,
+          updated_at = @2
+      WHERE owner_hsa_id = @0`,
+    [targetHsaId, replacement.hsaId, new Date()],
   )
-}
-
-async function countOwnerReferences(
-  tx: QueryExecutor,
-  ownerId: number,
-): Promise<number> {
-  const rows = (await tx.query(
-    `SELECT
-        (SELECT COUNT(*) FROM requirement_areas WHERE owner_id = @0) AS count`,
-    [ownerId],
-  )) as Array<Record<string, unknown>>
-  return countFromRows(rows)
-}
-
-async function countOwnerRequirementAreaReferences(
-  tx: QueryExecutor,
-  ownerId: number,
-): Promise<number> {
-  const rows = (await tx.query(
-    'SELECT COUNT(*) AS count FROM requirement_areas WHERE owner_id = @0',
-    [ownerId],
-  )) as Array<Record<string, unknown>>
-  return countFromRows(rows)
-}
-
-async function applyOwners(
-  tx: QueryExecutor,
-  action: PrivacyErasureAction,
-  targetHsaId: string,
-): Promise<void> {
-  if (action === 'skip') return
-  const ownerRows = (await tx.query(
-    'SELECT id FROM owners WHERE hsa_id = @0 ORDER BY id ASC',
-    [targetHsaId],
-  )) as Array<Record<string, unknown>>
-  for (const row of ownerRows) {
-    const ownerId = Number(row.id)
-    if ((await countOwnerRequirementAreaReferences(tx, ownerId)) > 0) {
-      throw validationError(
-        'Requirement areas must be switched before changing the owner identity',
-        {
-          groupKey: 'owners.identity',
-          reason: 'owner_area_references_blocking',
-        },
-      )
-    }
-    if (action !== 'delete' && action !== 'switch') {
-      throw validationError('Unsupported owner privacy erasure action', {
-        action,
-        groupKey: 'owners.identity',
-        reason: 'unsupported_owner_action',
-      })
-    }
-    if ((await countOwnerReferences(tx, ownerId)) > 0) {
-      throw validationError(
-        'Owner references must be switched before deleting the owner',
-        {
-          groupKey: 'owners.identity',
-          reason: 'owner_references_blocking',
-        },
-      )
-    }
-    await tx.query('DELETE FROM owners WHERE id = @0', [ownerId])
-  }
 }
 
 function displayColumnFor(policy: PrivacyGroupPolicy): string | null {
@@ -1222,18 +928,6 @@ export async function executePrivacyErasure(
       input.replacement && switchesIdentity
         ? normalizeReplacement(input.replacement)
         : null
-    const switchesOwnerTableReferences = preview.groups.some(group => {
-      const policy = POLICY_BY_KEY.get(group.key)
-      return (
-        policy?.key === 'requirement_areas.owner' &&
-        actions[group.key] === 'switch'
-      )
-    })
-    const replacementOwnerId =
-      input.replacement && switchesOwnerTableReferences
-        ? await ensureReplacementOwner(tx, replacement)
-        : null
-
     for (const group of preview.groups) {
       const policy = POLICY_BY_KEY.get(group.key)
       if (!policy) continue
@@ -1244,7 +938,6 @@ export async function executePrivacyErasure(
           policy,
           action,
           target.hsaId,
-          replacementOwnerId,
           replacement,
         )
       }
@@ -1254,9 +947,7 @@ export async function executePrivacyErasure(
       const policy = POLICY_BY_KEY.get(group.key)
       if (!policy) continue
       const action = actions[group.key] ?? group.recommendedAction
-      if (policy.kind === 'owner') {
-        await applyOwners(tx, action, target.hsaId)
-      } else if (policy.kind !== 'ownerReference') {
+      if (policy.kind !== 'ownerReference') {
         await applyDirectHsaGroup(tx, policy, action, target.hsaId, replacement)
       }
     }

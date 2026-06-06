@@ -253,8 +253,8 @@ vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
               area: {
                 id: 1,
                 name: 'Integration',
-                ownerId: 1,
-                ownerName: 'Area Owner',
+                ownerHsaId: 'SE5560000001-area1',
+                ownerName: 'SE5560000001-area1',
                 prefix: 'INT',
               },
               createdAt: '2026-03-01T00:00:00Z',
@@ -373,8 +373,8 @@ function makeRequirementDetail(
     area: {
       id: 1,
       name: 'Integration',
-      ownerId: 1,
-      ownerName: 'Area Owner',
+      ownerHsaId: 'SE5560000001-area1',
+      ownerName: 'SE5560000001-area1',
       prefix: 'INT',
     },
     createdAt: '2026-03-01T00:00:00Z',

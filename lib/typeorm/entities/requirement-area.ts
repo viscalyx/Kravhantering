@@ -1,5 +1,4 @@
 import { EntitySchema } from 'typeorm'
-import type { OwnerEntity } from '@/lib/typeorm/entities/owner'
 
 export interface RequirementAreaEntity {
   createdAt: Date
@@ -7,7 +6,7 @@ export interface RequirementAreaEntity {
   id: number
   name: string
   nextSequence: number
-  owner: OwnerEntity | null
+  ownerHsaId: string
   prefix: string
   updatedAt: Date
 }
@@ -30,23 +29,13 @@ export const requirementAreaEntity = new EntitySchema<RequirementAreaEntity>({
       length: 'MAX',
       nullable: true,
     },
+    ownerHsaId: { name: 'owner_hsa_id', type: 'nvarchar', length: 31 },
     nextSequence: { name: 'next_sequence', type: 'int', default: 1 },
     createdAt: { name: 'created_at', type: 'datetime2' },
     updatedAt: { name: 'updated_at', type: 'datetime2' },
   },
   uniques: [{ name: 'uq_requirement_areas_prefix', columns: ['prefix'] }],
-  relations: {
-    owner: {
-      type: 'many-to-one',
-      target: 'Owner',
-      joinColumn: {
-        name: 'owner_id',
-        referencedColumnName: 'id',
-        foreignKeyConstraintName: 'fk_requirement_areas_owner_id',
-      },
-      nullable: true,
-      onDelete: 'NO ACTION',
-      onUpdate: 'NO ACTION',
-    },
-  },
+  indices: [
+    { name: 'idx_requirement_areas_owner_hsa_id', columns: ['ownerHsaId'] },
+  ],
 })

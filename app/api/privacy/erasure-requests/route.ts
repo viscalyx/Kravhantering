@@ -29,7 +29,8 @@ import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 export const dynamic = 'force-dynamic'
 
 const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
-  message: 'HSA-ID must use format SE<10-digit org no>-<alphanumeric suffix>.',
+  message:
+    'HSA-ID must use format <two-letter country code><10-digit org no>-<alphanumeric suffix>.',
 })
 
 const privacyErasureActionValues = [

@@ -4,7 +4,7 @@
 //
 // Strategy:
 // - All new IDs use offsets well above the existing seed's max IDs to avoid
-//   any collision (areas/norms/packages/owners/specifications: 1001+; krav,
+//   any collision (areas/norms/packages/person fixtures/specifications: 1001+; krav,
 //   versions, items: 10001+).
 // - Krav are described as compact tuples in DOGFOOD_KRAV and expanded into
 //   `requirements`, `requirement_versions`, and junction-table rows.
@@ -99,7 +99,7 @@ const ID = {
     sso: 1011,
     gdprPerson: 1012,
   },
-  // Existing owners 1-3, new dogfood owners 1001+
+  // Existing person fixture IDs 1-3, new dogfood person fixture IDs 1001+
   owner: {
     sara: 1001,
     karl: 1002,
@@ -169,7 +169,7 @@ const AREA_PREFIX_BY_ID = {
   [ID.area.ARK]: 'ARK',
 }
 
-// New owners (fake persons assigned to new areas, packages and needs refs)
+// Fake persons assigned to new areas, packages and needs refs.
 const DOGFOOD_OWNERS = [
   [ID.owner.sara, 'Sara', 'Holm', 'sara.holm@example.com'],
   [ID.owner.karl, 'Karl', 'Persson', 'karl.persson@example.com'],

@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockGetRequirement = vi.fn()
 const mockManageRequirement = vi.fn()
-const mockGetOwnerById = vi.fn()
 const mockCreateRequestContext = vi.hoisted(() =>
   vi.fn(() => ({
     actor: {
@@ -54,10 +53,6 @@ vi.mock('@/lib/requirements/service', () => ({
   }),
 }))
 
-vi.mock('@/lib/dal/owners', () => ({
-  getOwnerById: (...args: unknown[]) => mockGetOwnerById(...args),
-}))
-
 import { DELETE, GET, PUT } from '@/app/api/requirements/[id]/route'
 
 function makeParams(id: string) {
@@ -87,36 +82,32 @@ describe('requirements/[id] route', () => {
   })
 
   describe('GET', () => {
-    it('returns requirement with owner name', async () => {
+    it('returns requirement with owner HSA-ID as owner name', async () => {
       mockGetRequirement.mockResolvedValue({
         requirement: {
           id: 1,
-          area: { id: 1, ownerId: 10 },
+          area: { id: 1, ownerHsaId: 'SE5560000001-annaj' },
         },
-      })
-      mockGetOwnerById.mockResolvedValue({
-        firstName: 'Anna',
-        lastName: 'Johansson',
       })
 
       const req = new NextRequest('http://localhost/api/requirements/1')
       const res = await GET(req, makeParams('1'))
       const json = (await res.json()) as { area: { ownerName: string } }
-      expect(json.area.ownerName).toBe('Anna Johansson')
+      expect(json.area.ownerName).toBe('SE5560000001-annaj')
     })
 
-    it('returns null ownerName when no owner', async () => {
+    it('returns null area when no area is linked', async () => {
       mockGetRequirement.mockResolvedValue({
         requirement: {
           id: 1,
-          area: { id: 1, ownerId: null },
+          area: null,
         },
       })
 
       const req = new NextRequest('http://localhost/api/requirements/1')
       const res = await GET(req, makeParams('1'))
-      const json = (await res.json()) as { area: { ownerName: string | null } }
-      expect(json.area.ownerName).toBeNull()
+      const json = (await res.json()) as { area: null }
+      expect(json.area).toBeNull()
     })
 
     it('returns error payload on failure', async () => {

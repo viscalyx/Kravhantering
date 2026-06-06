@@ -242,6 +242,7 @@ export async function GET(
               ? {
                   id: requirement.area.id,
                   name: requirement.area.name,
+                  ownerHsaId: requirement.area.ownerHsaId,
                   ownerName: null,
                 }
               : null,

@@ -12,8 +12,13 @@ describe('isHsaId / assertHsaId', () => {
     expect(assertHsaId('SE5560000001-1003')).toBe('SE5560000001-1003')
   })
 
+  it('accepts country codes other than SE', () => {
+    expect(isHsaId('NO5560000001-1003')).toBe(true)
+    expect(assertHsaId('DK5560000001-1003')).toBe('DK5560000001-1003')
+  })
+
   it('accepts the maximum-length HSA-id', () => {
-    // SE + 10 digits + '-' + suffix that brings the total to 31 chars.
+    // Country code + 10 digits + '-' + suffix that brings the total to 31 chars.
     const value = `SE5560000001-${'a'.repeat(HSA_ID_MAX_LENGTH - 13)}`
     expect(value.length).toBe(HSA_ID_MAX_LENGTH)
     expect(isHsaId(value)).toBe(true)
@@ -27,8 +32,12 @@ describe('isHsaId / assertHsaId', () => {
     expect(isHsaId('SE5560000001-foo@bar')).toBe(false)
   })
 
-  it('rejects values that omit the SE prefix', () => {
+  it('rejects values that omit the country code prefix', () => {
     expect(isHsaId('5560000001-1003')).toBe(false)
+  })
+
+  it('rejects lowercase country codes', () => {
+    expect(isHsaId('se5560000001-1003')).toBe(false)
   })
 
   it('rejects an organisation number with the wrong digit count', () => {

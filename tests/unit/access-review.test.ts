@@ -103,7 +103,7 @@ describe('access review service', () => {
       {
         canGenerateAi: 0,
         permissionType: 'area_owner',
-        principalDisplayName: 'Ada Admin',
+        principalDisplayName: 'SE5560000001-admin1',
         principalHsaId: 'SE5560000001-admin1',
         scopeKey: '1',
         scopeLabel: 'INT Integration',
@@ -172,6 +172,10 @@ describe('access review service', () => {
     expect(result.map(item => item.principalHsaId)).not.toContain(
       'SE5560000001-unrelated',
     )
+    expect(
+      result.find(item => item.permissionType === 'area_owner')
+        ?.principalDisplayName,
+    ).toBe('SE5560000001-admin1')
   })
 
   it('requires Admin to create a review run', async () => {

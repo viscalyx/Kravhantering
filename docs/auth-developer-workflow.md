@@ -322,10 +322,10 @@ token and userinfo response. The value is sourced from each user's
 `hsaId` attribute (see the table above). Format rules (validated by
 `lib/auth/hsa-id.ts`):
 
-- Pattern: `/^SE\d{10}-[A-Za-z0-9]+$/u` — literal `SE`, 10 digits,
-  `-`, then one or more ASCII letters/digits.
+- Pattern: `/^[A-Z]{2}\d{10}-[A-Za-z0-9]+$/u` — two uppercase country-code
+  letters, 10 digits, `-`, then one or more ASCII letters/digits.
 - Maximum length: 31 characters.
-- Example: `SE5560000001-1003`.
+- Examples: `SE5560000001-1003`, `NO5560000001-1003`.
 
 Login is rejected with 401 when the claim is missing or fails this
 check.

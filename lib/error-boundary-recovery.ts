@@ -40,7 +40,6 @@ const ADMIN_RECOVERY_PREFIXES = [
   '/specifications/implementation-types',
   '/specifications/lifecycle-statuses',
   '/specification-item-statuses',
-  '/owners',
   '/norm-references',
 ]
 

@@ -131,47 +131,6 @@ function fieldsForRow(
   )
 }
 
-async function collectOwnerIdentity(
-  db: QueryExecutor,
-  targetHsaId: string,
-): Promise<DataSubjectExportItem[]> {
-  const policy = policyFor('owners.identity')
-  const rows = (await db.query(
-    `/* privacy:data-export:owners.identity */
-      SELECT
-        owner.id AS ownerId,
-        owner.first_name AS firstName,
-        owner.last_name AS lastName,
-        owner.email AS email,
-        owner.hsa_id AS hsaId,
-        owner.created_at AS createdAt,
-        owner.updated_at AS updatedAt,
-        CONCAT(owner.first_name, CASE WHEN owner.last_name = '' THEN '' ELSE CONCAT(' ', owner.last_name) END) AS ownerLabel
-      FROM owners owner
-      WHERE owner.hsa_id = @0
-      ORDER BY owner.id ASC`,
-    [targetHsaId],
-  )) as ExportRow[]
-
-  return rows.flatMap(row =>
-    fieldsForRow(
-      policy,
-      'identity_record',
-      [
-        { fieldName: 'hsa_id', value: stringValue(row.hsaId) },
-        { fieldName: 'first_name', value: stringValue(row.firstName) },
-        { fieldName: 'last_name', value: stringValue(row.lastName) },
-        { fieldName: 'email', value: stringValue(row.email) },
-      ],
-      {
-        relatedObject: relatedObject(row, 'owner', 'ownerId', 'ownerLabel'),
-        table: 'owners',
-        timestamp: row.updatedAt ?? row.createdAt,
-      },
-    ),
-  )
-}
-
 async function collectRequirementAreaOwners(
   db: QueryExecutor,
   targetHsaId: string,
@@ -182,12 +141,10 @@ async function collectRequirementAreaOwners(
       SELECT
         area.id AS areaId,
         CONCAT(area.prefix, N' ', area.name) AS areaLabel,
-        owner.hsa_id AS hsaId,
-        CONCAT(owner.first_name, CASE WHEN owner.last_name = '' THEN '' ELSE CONCAT(' ', owner.last_name) END) AS displayName,
+        area.owner_hsa_id AS hsaId,
         area.updated_at AS updatedAt
       FROM requirement_areas area
-      INNER JOIN owners owner ON owner.id = area.owner_id
-      WHERE owner.hsa_id = @0
+      WHERE area.owner_hsa_id = @0
       ORDER BY area.prefix ASC, area.id ASC`,
     [targetHsaId],
   )) as ExportRow[]
@@ -196,13 +153,7 @@ async function collectRequirementAreaOwners(
     fieldsForRow(
       policy,
       'live_owner_assignment',
-      [
-        { fieldName: 'lead_hsa_id', value: stringValue(row.hsaId) },
-        {
-          fieldName: 'lead_display_name',
-          value: stringValue(row.displayName),
-        },
-      ],
+      [{ fieldName: 'owner_hsa_id', value: stringValue(row.hsaId) }],
       {
         relatedObject: relatedObject(
           row,
@@ -891,11 +842,6 @@ async function collectActionAuditEventActors(
 }
 
 const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
-  {
-    collect: collectOwnerIdentity,
-    policy: policyFor('owners.identity'),
-    relationToSubject: 'identity_record',
-  },
   {
     collect: collectRequirementAreaOwners,
     policy: policyFor('requirement_areas.owner'),
