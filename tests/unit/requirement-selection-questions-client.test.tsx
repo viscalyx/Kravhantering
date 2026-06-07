@@ -242,6 +242,46 @@ async function flushAsyncWork() {
   await new Promise(resolve => setTimeout(resolve, 0))
 }
 
+function getQuestionDisclosure(questionText: string): HTMLButtonElement {
+  const disclosure =
+    screen
+      .getAllByText(questionText)
+      .map(element => element.closest('button'))
+      .find(
+        (button): button is HTMLButtonElement =>
+          button instanceof HTMLButtonElement &&
+          button.dataset.developerModeName === 'question disclosure',
+      ) ?? null
+  if (!(disclosure instanceof HTMLButtonElement)) {
+    throw new Error(`Missing question disclosure for ${questionText}`)
+  }
+  return disclosure
+}
+
+function getQuestionCard(questionText: string): HTMLElement {
+  const card = getQuestionDisclosure(questionText).parentElement?.parentElement
+  if (!(card instanceof HTMLElement)) {
+    throw new Error(`Missing question card for ${questionText}`)
+  }
+  return card
+}
+
+function expandQuestion(questionText: string): HTMLElement {
+  const disclosure = getQuestionDisclosure(questionText)
+  if (disclosure.getAttribute('aria-expanded') !== 'true') {
+    fireEvent.click(disclosure)
+  }
+  return getQuestionCard(questionText)
+}
+
+function getAnswerCard(answerText: string): HTMLElement {
+  const answerCard = screen.getByText(answerText).closest('.p-3')
+  if (!(answerCard instanceof HTMLElement)) {
+    throw new Error(`Missing answer card for ${answerText}`)
+  }
+  return answerCard
+}
+
 function setupMutableQuestionAnswers(initialAnswers: TestAnswer[]) {
   let question: TestQuestion = {
     ...sampleQuestion,
@@ -381,6 +421,245 @@ describe('RequirementSelectionQuestionsClient', () => {
     ).toBeInTheDocument()
   })
 
+  it('groups questions by requirement area and keeps question details collapsed by default', async () => {
+    const architectureArea = {
+      description: 'Architecture ownership.',
+      id: 2,
+      name: 'Architecture',
+      prefix: 'ARK',
+    }
+    const architectureQuestion: TestQuestion = {
+      ...sampleQuestion,
+      answers: [
+        {
+          ...sampleAnswer,
+          id: 202,
+          questionId: 22,
+          text: 'Architecture baseline',
+        },
+      ],
+      areaId: architectureArea.id,
+      areaName: architectureArea.name,
+      areaPrefix: architectureArea.prefix,
+      id: 22,
+      questionCode: 'ARK-KUF001',
+      text: 'Which architecture profile applies?',
+    }
+    const securityQuestion: TestQuestion = {
+      ...sampleQuestion,
+      answers: [sampleAnswer],
+    }
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [architectureArea, sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [architectureQuestion, securityQuestion] })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(
+      await screen.findByText(architectureQuestion.text),
+    ).toBeInTheDocument()
+    const headings = screen.getAllByRole('heading', { level: 2 })
+    expect(headings.map(heading => heading.textContent)).toEqual([
+      architectureArea.name,
+      sampleArea.name,
+    ])
+    expect(headings[0]?.parentElement).toHaveClass('bg-primary-50/95')
+    expect(screen.getByText(architectureArea.prefix)).toBeInTheDocument()
+    expect(getQuestionDisclosure(architectureQuestion.text)).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(screen.queryByRole('button', { name: /hierarchy/i })).toBeNull()
+    expect(screen.queryByText('Architecture baseline')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add answer' })).toBeNull()
+
+    expandQuestion(architectureQuestion.text)
+
+    expect(getQuestionDisclosure(architectureQuestion.text)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(screen.getByText('Architecture baseline')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Add answer' }),
+    ).toBeInTheDocument()
+  })
+
+  it('opens a read-only hierarchy modal from a separate badge without expanding the question row', async () => {
+    const parentQuestion: TestQuestion = {
+      ...sampleQuestion,
+      answers: [sampleAnswer],
+    }
+    const childQuestion: TestQuestion = {
+      ...sampleQuestion,
+      answers: [],
+      id: 22,
+      questionCode: 'SEC-KUF002',
+      sortOrder: 1,
+      text: 'Which follow-up applies?',
+      visibilityGroups: [
+        {
+          conditions: [
+            {
+              answerId: sampleAnswer.id,
+              answerIsActive: true,
+              answerIsArchived: false,
+              answerText: sampleAnswer.text,
+              id: 1,
+              parentAreaName: parentQuestion.areaName,
+              parentQuestionCode: parentQuestion.questionCode,
+              parentQuestionId: parentQuestion.id,
+              parentQuestionIsActive: true,
+              parentQuestionIsArchived: false,
+              parentQuestionText: parentQuestion.text,
+            },
+          ],
+          id: 1,
+          sortOrder: 0,
+        },
+      ],
+    }
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [parentQuestion, childQuestion] })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(parentQuestion.text)).toBeInTheDocument()
+    expect(getQuestionDisclosure(parentQuestion.text)).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    const hierarchyBadge = screen.getByRole('button', {
+      name: /Show requirement selection question hierarchy: SEC-KUF001, 2 questions/,
+    })
+    expect(hierarchyBadge).toHaveTextContent('Hierarchy · 2')
+    expect(
+      screen.getByRole('button', {
+        name: /Show requirement selection question hierarchy: SEC-KUF002, 2 questions/,
+      }),
+    ).toHaveTextContent('Hierarchy · 2')
+
+    fireEvent.click(hierarchyBadge)
+
+    expect(getQuestionDisclosure(parentQuestion.text)).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    const dialog = screen.getByRole('dialog', {
+      name: 'Requirement Selection Question Hierarchy',
+    })
+    expect(
+      within(dialog).getByText(
+        'The lines show which requirement selection questions control other questions through visibility conditions.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('group', {
+        name: `${parentQuestion.questionCode}: ${parentQuestion.text}, current question`,
+      }),
+    ).toBeInTheDocument()
+    const childNode = within(dialog).getByRole('group', {
+      name: `${childQuestion.questionCode}: ${childQuestion.text}`,
+    })
+    expect(childNode).toBeInTheDocument()
+    expect(childNode).toHaveTextContent('Condition group 1')
+    expect(childNode).toHaveTextContent(sampleAnswer.text)
+    expect(dialog.querySelector('svg > path[d^="M"]')).toBeTruthy()
+  })
+
+  it('keeps multiple questions expanded and does not auto-expand answer search hits', async () => {
+    const secondQuestion: TestQuestion = {
+      ...sampleQuestion,
+      answers: [
+        {
+          ...sampleAnswer,
+          id: 201,
+          questionId: 22,
+          text: 'Enhanced profile',
+        },
+      ],
+      id: 22,
+      questionCode: 'SEC-KUF002',
+      text: 'Which enhanced profile applies?',
+    }
+    const questions = [
+      { ...sampleQuestion, answers: [sampleAnswer] },
+      secondQuestion,
+    ]
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    expandQuestion(sampleQuestion.text)
+    expandQuestion(secondQuestion.text)
+
+    expect(getQuestionDisclosure(sampleQuestion.text)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(getQuestionDisclosure(secondQuestion.text)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+
+    fireEvent.click(getQuestionDisclosure(sampleQuestion.text))
+    expect(getQuestionDisclosure(sampleQuestion.text)).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(getQuestionDisclosure(secondQuestion.text)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Search question ID or text' }),
+      { target: { value: sampleAnswer.text } },
+    )
+
+    expect(screen.getByText(sampleQuestion.text)).toBeInTheDocument()
+    expect(screen.queryByText(secondQuestion.text)).not.toBeInTheDocument()
+    expect(screen.queryByText(sampleAnswer.text)).not.toBeInTheDocument()
+    expect(getQuestionDisclosure(sampleQuestion.text)).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+  })
+
   it('shows field help text for question and answer forms', async () => {
     fetchMock.mockImplementation(async (url: string) => {
       if (url === '/api/requirement-areas') {
@@ -398,6 +677,7 @@ describe('RequirementSelectionQuestionsClient', () => {
     render(<RequirementSelectionQuestionsClient />)
 
     expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    expandQuestion(sampleQuestion.text)
 
     fireEvent.click(screen.getByRole('button', { name: 'Add answer' }))
     fireEvent.click(
@@ -500,13 +780,10 @@ describe('RequirementSelectionQuestionsClient', () => {
     render(<RequirementSelectionQuestionsClient />)
 
     expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
-    const questionCard = screen
-      .getByText(sampleQuestion.text)
-      .closest('button')?.parentElement
-    if (!questionCard) throw new Error('Missing question card')
+    const questionCard = expandQuestion(sampleQuestion.text)
 
     fireEvent.click(
-      within(questionCard as HTMLElement).getByRole('button', {
+      within(questionCard).getByRole('button', {
         name: 'Edit',
       }),
     )
@@ -591,12 +868,9 @@ describe('RequirementSelectionQuestionsClient', () => {
     render(<RequirementSelectionQuestionsClient />)
 
     expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
-    const questionCard = screen
-      .getByText(sampleQuestion.text)
-      .closest('button')?.parentElement
-    if (!questionCard) throw new Error('Missing question card')
+    const questionCard = expandQuestion(sampleQuestion.text)
 
-    const addButton = within(questionCard as HTMLElement).getByRole('button', {
+    const addButton = within(questionCard).getByRole('button', {
       name: 'Add answer',
     })
     expect(addButton).toHaveAttribute(
@@ -705,8 +979,11 @@ describe('RequirementSelectionQuestionsClient', () => {
     render(<RequirementSelectionQuestionsClient />)
 
     expect(await screen.findByText('Second question')).toBeInTheDocument()
-    const editButtons = screen.getAllByRole('button', { name: 'Edit' })
-    const answerEditButton = editButtons[editButtons.length - 1]
+    expandQuestion('Second question')
+    const secondAnswerCard = getAnswerCard('Second answer')
+    const answerEditButton = within(secondAnswerCard).getByRole('button', {
+      name: 'Edit',
+    })
     if (!answerEditButton) throw new Error('Missing answer edit button')
     fireEvent.click(answerEditButton)
 
@@ -760,13 +1037,14 @@ describe('RequirementSelectionQuestionsClient', () => {
 
     render(<RequirementSelectionQuestionsClient />)
 
-    expect(await screen.findByText(sampleAnswer.text)).toBeInTheDocument()
-    const answerCard = screen.getByText(sampleAnswer.text).closest('.p-3')
-    if (!answerCard) throw new Error('Missing answer card')
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    expandQuestion(sampleQuestion.text)
+    expect(screen.getByText(sampleAnswer.text)).toBeInTheDocument()
+    const answerCard = getAnswerCard(sampleAnswer.text)
 
     const openEditDialog = () => {
       fireEvent.click(
-        within(answerCard as HTMLElement).getByRole('button', {
+        within(answerCard).getByRole('button', {
           name: 'Edit',
         }),
       )
@@ -879,19 +1157,18 @@ describe('RequirementSelectionQuestionsClient', () => {
 
     render(<RequirementSelectionQuestionsClient />)
 
-    expect(await screen.findByText(sampleAnswer.text)).toBeInTheDocument()
-    const answerCard = screen.getByText(sampleAnswer.text).closest('.p-3')
-    if (!answerCard) throw new Error('Missing answer card')
-    const sourceSummary = within(answerCard as HTMLElement).getByRole('group', {
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    expandQuestion(sampleQuestion.text)
+    expect(screen.getByText(sampleAnswer.text)).toBeInTheDocument()
+    const answerCard = getAnswerCard(sampleAnswer.text)
+    const sourceSummary = within(answerCard).getByRole('group', {
       name: 'Requirement selection sources',
     })
     expect(sourceSummary).toHaveTextContent(samplePackage.name)
     expect(sourceSummary).toHaveTextContent('SEC-001')
     expect(sourceSummary).not.toHaveTextContent('301')
     expect(sourceSummary).not.toHaveTextContent('10')
-    fireEvent.click(
-      within(answerCard as HTMLElement).getByRole('button', { name: 'Edit' }),
-    )
+    fireEvent.click(within(answerCard).getByRole('button', { name: 'Edit' }))
 
     const dialog = screen.getByRole('dialog', {
       name: 'Edit requirement selection answer',
@@ -1123,22 +1400,20 @@ describe('RequirementSelectionQuestionsClient', () => {
 
     render(<RequirementSelectionQuestionsClient />)
 
-    expect(await screen.findByText(multiSourceAnswer.text)).toBeInTheDocument()
-    const answerCard = screen.getByText(multiSourceAnswer.text).closest('.p-3')
-    if (!answerCard) throw new Error('Missing answer card')
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    expandQuestion(sampleQuestion.text)
+    expect(screen.getByText(multiSourceAnswer.text)).toBeInTheDocument()
+    const answerCard = getAnswerCard(multiSourceAnswer.text)
 
-    const baselinePill = within(answerCard as HTMLElement).getByRole('button', {
+    const baselinePill = within(answerCard).getByRole('button', {
       name: 'Filter requirements by requirement package Baseline',
     })
-    const enhancedPill = within(answerCard as HTMLElement).getByRole('button', {
+    const enhancedPill = within(answerCard).getByRole('button', {
       name: 'Filter requirements by requirement package Enhanced',
     })
-    const directRequirementPill = within(answerCard as HTMLElement).getByRole(
-      'button',
-      {
-        name: 'Filter requirements by Requirement ID SEC-003',
-      },
-    )
+    const directRequirementPill = within(answerCard).getByRole('button', {
+      name: 'Filter requirements by Requirement ID SEC-003',
+    })
 
     fireEvent.click(baselinePill)
     expect(baselinePill).toHaveAttribute('aria-pressed', 'true')
@@ -1147,7 +1422,7 @@ describe('RequirementSelectionQuestionsClient', () => {
       'ring-1',
       'ring-primary-300',
     )
-    let filteredList = within(answerCard as HTMLElement).getByRole('list', {
+    let filteredList = within(answerCard).getByRole('list', {
       name: 'Requirements in selection',
     })
     expect(within(filteredList).getByText('SEC-001')).toBeInTheDocument()
@@ -1171,14 +1446,14 @@ describe('RequirementSelectionQuestionsClient', () => {
 
     fireEvent.click(enhancedPill)
     expect(enhancedPill).toHaveAttribute('aria-pressed', 'true')
-    filteredList = within(answerCard as HTMLElement).getByRole('list', {
+    filteredList = within(answerCard).getByRole('list', {
       name: 'Requirements in selection',
     })
     expect(within(filteredList).getByText('SEC-001')).toBeInTheDocument()
     expect(within(filteredList).getByText('SEC-002')).toBeInTheDocument()
     expect(within(filteredList).queryByText('SEC-003')).not.toBeInTheDocument()
     expect(
-      within(answerCard as HTMLElement).getByRole('button', {
+      within(answerCard).getByRole('button', {
         name: 'Hide requirements in selection for Baseline profile',
       }),
     ).toHaveTextContent('2/3 requirements')
@@ -1190,21 +1465,21 @@ describe('RequirementSelectionQuestionsClient', () => {
       'ring-1',
       'ring-primary-300',
     )
-    filteredList = within(answerCard as HTMLElement).getByRole('list', {
+    filteredList = within(answerCard).getByRole('list', {
       name: 'Requirements in selection',
     })
     expect(within(filteredList).getByText('SEC-001')).toBeInTheDocument()
     expect(within(filteredList).getByText('SEC-002')).toBeInTheDocument()
     expect(within(filteredList).getByText('SEC-003')).toBeInTheDocument()
     expect(
-      within(answerCard as HTMLElement).getByRole('button', {
+      within(answerCard).getByRole('button', {
         name: 'Hide requirements in selection for Baseline profile',
       }),
     ).toHaveTextContent('3/3 requirements')
 
     fireEvent.click(baselinePill)
     expect(baselinePill).toHaveAttribute('aria-pressed', 'false')
-    filteredList = within(answerCard as HTMLElement).getByRole('list', {
+    filteredList = within(answerCard).getByRole('list', {
       name: 'Requirements in selection',
     })
     expect(within(filteredList).queryByText('SEC-001')).not.toBeInTheDocument()
@@ -1232,6 +1507,7 @@ describe('RequirementSelectionQuestionsClient', () => {
     render(<RequirementSelectionQuestionsClient />)
 
     expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    expandQuestion(sampleQuestion.text)
     const deleteButton = screen.getAllByRole('button', { name: 'Delete' })[0]
     if (!deleteButton) throw new Error('Missing question delete button')
     const callCountBeforeDelete = fetchMock.mock.calls.length
@@ -1279,15 +1555,13 @@ describe('RequirementSelectionQuestionsClient', () => {
 
     render(<RequirementSelectionQuestionsClient />)
 
-    expect(await screen.findByText(sampleAnswer.text)).toBeInTheDocument()
-    const answerCard = screen.getByText(sampleAnswer.text).closest('.p-3')
-    if (!answerCard) throw new Error('Missing answer card')
-    const archiveButton = within(answerCard as HTMLElement).getByRole(
-      'button',
-      {
-        name: 'Archive',
-      },
-    )
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    expandQuestion(sampleQuestion.text)
+    expect(screen.getByText(sampleAnswer.text)).toBeInTheDocument()
+    const answerCard = getAnswerCard(sampleAnswer.text)
+    const archiveButton = within(answerCard).getByRole('button', {
+      name: 'Archive',
+    })
     fireEvent.click(archiveButton)
 
     await waitFor(() => {
@@ -1331,7 +1605,9 @@ describe('RequirementSelectionQuestionsClient', () => {
 
     render(<RequirementSelectionQuestionsClient />)
 
-    expect(await screen.findByText(sampleAnswer.text)).toBeInTheDocument()
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    expandQuestion(sampleQuestion.text)
+    expect(screen.getByText(sampleAnswer.text)).toBeInTheDocument()
     expect(countQuestionListFetches()).toBe(1)
     const sourceRow = screen.getByText(sampleAnswer.text).closest('li')
     const targetRow = screen.getByText(thirdAnswer.text).closest('li')
@@ -1417,7 +1693,9 @@ describe('RequirementSelectionQuestionsClient', () => {
 
     render(<RequirementSelectionQuestionsClient />)
 
-    expect(await screen.findByText(sampleAnswer.text)).toBeInTheDocument()
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    expandQuestion(sampleQuestion.text)
+    expect(screen.getByText(sampleAnswer.text)).toBeInTheDocument()
     const sourceRow = screen.getByText(sampleAnswer.text).closest('li')
     const targetRow = screen.getByText(secondAnswer.text).closest('li')
     const answerList = sourceRow?.closest('ul')
@@ -1471,9 +1749,10 @@ describe('RequirementSelectionQuestionsClient', () => {
 
     render(<RequirementSelectionQuestionsClient />)
 
-    expect(await screen.findByText(secondAnswer.text)).toBeInTheDocument()
-    const secondAnswerCard = screen.getByText(secondAnswer.text).closest('.p-3')
-    if (!secondAnswerCard) throw new Error('Missing second answer card')
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    expandQuestion(sampleQuestion.text)
+    expect(screen.getByText(secondAnswer.text)).toBeInTheDocument()
+    const secondAnswerCard = getAnswerCard(secondAnswer.text)
 
     fireEvent.keyDown(
       within(secondAnswerCard as HTMLElement).getByRole('button', {
@@ -1521,10 +1800,11 @@ describe('RequirementSelectionQuestionsClient', () => {
 
     render(<RequirementSelectionQuestionsClient />)
 
-    expect(await screen.findByText(sampleAnswer.text)).toBeInTheDocument()
-    const answerCard = screen.getByText(sampleAnswer.text).closest('.p-3')
-    if (!answerCard) throw new Error('Missing answer card')
-    const sourceGroup = within(answerCard as HTMLElement).getByRole('group', {
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    const questionCard = expandQuestion(sampleQuestion.text)
+    expect(screen.getByText(sampleAnswer.text)).toBeInTheDocument()
+    const answerCard = getAnswerCard(sampleAnswer.text)
+    const sourceGroup = within(answerCard).getByRole('group', {
       name: 'Requirement selection sources',
     })
     const sourceButtons = within(sourceGroup).getAllByRole('button')
@@ -1537,51 +1817,43 @@ describe('RequirementSelectionQuestionsClient', () => {
     ).toBeInTheDocument()
 
     expect(
-      within(answerCard as HTMLElement).getByRole('button', {
+      within(answerCard).getByRole('button', {
         name: 'Reorder answer',
       }),
     ).toHaveClass('min-h-11', 'w-8', 'text-secondary-700')
 
     expect(
-      within(answerCard as HTMLElement).queryByRole('button', {
+      within(answerCard).queryByRole('button', {
         name: 'Requirements in selection: 1',
       }),
     ).not.toBeInTheDocument()
     expect(
-      within(answerCard as HTMLElement).getByRole('button', {
+      within(answerCard).getByRole('button', {
         name: 'Filter requirements by requirement package Baseline',
       }),
     ).toHaveClass('min-h-7', 'rounded-full')
     expect(
-      within(answerCard as HTMLElement).getByRole('button', {
+      within(answerCard).getByRole('button', {
         name: 'Filter requirements by Requirement ID SEC-001',
       }),
     ).toHaveClass('min-h-7', 'rounded-full', 'font-mono')
     expect(
-      within(answerCard as HTMLElement).getByRole('button', {
+      within(answerCard).getByRole('button', {
         name: 'Show requirements in selection for Baseline profile',
       }),
     ).toHaveClass('min-h-7', 'rounded-full')
 
     for (const buttonName of ['Edit', 'Deactivate', 'Archive', 'Delete']) {
-      const actionButton = within(answerCard as HTMLElement).getByRole(
-        'button',
-        {
-          name: buttonName,
-        },
-      )
+      const actionButton = within(answerCard).getByRole('button', {
+        name: buttonName,
+      })
 
       expect(actionButton).toHaveClass('min-h-11', 'min-w-11', 'gap-1.5')
       expect(actionButton.querySelector('svg[aria-hidden="true"]')).toBeTruthy()
     }
 
-    const questionCard = screen
-      .getByText(sampleQuestion.text)
-      .closest('button')?.parentElement
-    if (!questionCard) throw new Error('Missing question card')
-
     expect(
-      within(questionCard as HTMLElement).getByRole('button', {
+      within(questionCard).getByRole('button', {
         name: 'Add answer',
       }),
     ).toHaveClass('min-h-11', 'min-w-11')

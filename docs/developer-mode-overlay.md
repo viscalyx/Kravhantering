@@ -166,6 +166,18 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `requirementSelectionQuestions > floating pill: new requirement selection question`.
   The new question form opens in the shared
   `dialog: new requirement selection question` surface.
+  Requirement-area group headers render as
+  `requirementSelectionQuestions > requirement area heading: <prefix>`, and
+  compact question rows render as
+  `requirementSelectionQuestions > question disclosure: <question code>`.
+  Hierarchy badges for questions that participate in visibility-condition
+  hierarchies render as
+  `requirementSelectionQuestions > hierarchy badge: <question code>`. The
+  read-only hierarchy modal renders as
+  `dialog: requirement selection question hierarchy` and marks its inner graph
+  surfaces as `requirementSelectionQuestions > hierarchy dialog: <question
+  code>`, `hierarchy graph: <question code>`, and `hierarchy node: <question
+  code>`.
   Each question renders its contextual answer-create trigger as
   `requirementSelectionQuestions > button: new requirement selection answer`.
   New and edited answer forms open as `dialog: new requirement selection answer`

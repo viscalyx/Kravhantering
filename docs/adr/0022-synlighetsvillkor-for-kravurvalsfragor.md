@@ -3,8 +3,9 @@
 Status: Antagen 2026-06-07.
 
 Kravurvalsfrågor kan vara fristående eller underordnade. En fristående
-kravurvalsfråga har inga synlighetsvillkor och visas som tidigare. En
-underordnad kravurvalsfråga visas bara när minst en villkorsgrupp matchar.
+kravurvalsfråga är varken styrd av synlighetsvillkor eller överliggande
+kravurvalsfråga i andra frågors synlighetsvillkor. En underordnad
+kravurvalsfråga visas bara när minst en villkorsgrupp matchar.
 Inuti en villkorsgrupp måste varje överliggande kravurvalsfråga ha minst ett av
 gruppens definierade kravurvalssvar valt.
 

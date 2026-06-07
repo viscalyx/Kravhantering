@@ -427,6 +427,23 @@ down.
 - The question form's free-text areas can be resized vertically, but their
   maximum height is capped relative to the viewport so the remaining form
   controls stay reachable inside the modal.
+- The question list is grouped by requirement area in the existing
+  requirement-area name order. Each group has a sticky heading that shows the
+  requirement-area name and prefix and uses a tinted background distinct from
+  the question cards.
+- Requirement-selection question rows are collapsed by default. The whole
+  compact row toggles details through a chevron disclosure and shows the
+  question code, requirement area, selection type, status, question text and
+  answer count. Help text, question actions, visibility conditions, saved
+  answers and `Lägg till svar` appear only after the row is expanded. Searching
+  can still match hidden answer text, but matching rows are not auto-expanded.
+- Questions that participate in a requirement-selection question hierarchy show
+  a separate `Hierarki · N` badge in the compact row, where `N` is the number of
+  questions in the connected hierarchy. Standalone questions do not show this
+  badge. Clicking the badge opens a read-only modal with the connected
+  hierarchy around that question, including sibling branches, one node per
+  question, a visual highlight on the selected question, and SVG connector lines
+  from every parent question to each controlled child question.
 - The answer form uses a left-form/right-workspace modal without a visible
   modal title, visible question ID, or close icon. Answer text,
   `Utan kravurval`, description, save and `Avbryt` stay in the left column; the

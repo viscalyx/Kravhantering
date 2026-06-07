@@ -12,6 +12,7 @@ test.describe('Requirement selection question detail preview', () => {
       await expect(
         page.getByRole('heading', { level: 1, name: 'Kravurvalsfrågor' }),
       ).toBeVisible()
+      await page.getByRole('button', { name: /SÄK-KUF001/ }).click()
 
       const answerRow = page
         .locator('li')

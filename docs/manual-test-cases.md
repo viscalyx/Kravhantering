@@ -605,16 +605,21 @@ management live outside Admin Center.
 1. Verify the new question form opens as a modal and create a question for a
    requirement area. After selecting `Kravområde`, verify the selected
    requirement area's description appears as small text below the dropdown.
+1. Verify the `Kravurvalsfrågor` list is grouped by sticky requirement-area
+   headings that show the area's name and prefix with a visibly different
+   background color than the question rows. Verify question rows are collapsed
+   by default, show a chevron, question code, area, status, question text and
+   answer count, and expand when the row is clicked.
 1. Open `/sv/requirements`, click `Kravbiblioteksförvaltning`, and verify the
    parent navigation returns directly to `Kravurvalsfrågor` without flashing
    `Kravpaket` first. Verify no visible `Laddar...` text appears during a fast
    route change. If the route is slowed for more than about two seconds, verify
    the delayed transition indicator is a spinner.
-1. Use `Lägg till svar` under svarlistan för en kravurvalsfråga and verify the new
-   answer form opens as a modal with answer fields on the left and a source
-   workspace on the right. Verify the answer modal does not show a visible
-   title, question ID or `Sortering` field; answer order is managed from the
-   answer list.
+1. Expand a kravurvalsfråga, use `Lägg till svar` under svarlistan, and verify
+   the new answer form opens as a modal with answer fields on the left and a
+   source workspace on the right. Verify the answer modal does not show a
+   visible title, question ID or `Sortering` field; answer order is managed
+   from the answer list.
 1. Add a normal answer linked to a package or requirement from the modal. Verify
    `Kravpaket` opens as a compact searchable checkbox popover, `Krav-ID` is
    selected by searching visible Krav-ID or kravtext and adding result chips,
@@ -664,6 +669,12 @@ management live outside Admin Center.
    a kravurvalsfråga from another kravområde and one or more of its answers,
    save, reload, and verify the question row shows a `Synlighet` indicator.
    Try to create a cycle and verify saving is rejected.
+1. Verify the linked kravurvalsfrågor show a clickable `Hierarki · N` badge
+   while unrelated fristående kravurvalsfrågor do not. Click the hierarchy
+   badge and verify a modal opens without expanding or collapsing the question
+   row, shows the connected hierarchy in top-down order with one node per
+   question, highlights the clicked question, and draws connector lines from
+   every överliggande kravurvalsfråga to the underordnade kravurvalsfrågor.
 1. In the answer edit modal, click a row in `Krav i urvalet` and verify a
    kravbibliotek-style read-only detail card appears with kravtext,
    acceptanskriterier, metadata, referenser and kravpaket using the same card

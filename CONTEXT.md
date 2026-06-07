@@ -607,12 +607,13 @@ uppfylld.
 _Avoid_: Kravpaket, svarsalternativ, kravurvalsfilter.
 
 **Fristående kravurvalsfråga**:
-En kravurvalsfråga som hör till frågesammanhanget utan synlighetsvillkor och
-därför visas oberoende av svar på andra kravurvalsfrågor.
+En kravurvalsfråga som varken styrs av synlighetsvillkor eller används som
+överliggande kravurvalsfråga i synlighetsvillkor.
 
 - `en`: Standalone requirement selection question
 
-_Avoid_: Rotfråga, huvudfråga, huvudkravurvalsfråga.
+_Avoid_: Rotfråga, huvudfråga, huvudkravurvalsfråga, toppfråga i
+kravurvalsfrågehierarki.
 
 **Överliggande kravurvalsfråga**:
 En kravurvalsfråga vars valda svar kan göra en annan kravurvalsfråga synlig.
@@ -628,6 +629,15 @@ synlighetsvillkor är uppfyllda.
 - `en`: Child requirement selection question
 
 _Avoid_: Obligatorisk fråga, kravpaket.
+
+**Kravurvalsfrågehierarki**:
+En sammanhängande struktur av kravurvalsfrågor där överliggande
+kravurvalsfrågor och underordnade kravurvalsfrågor hänger ihop genom
+synlighetsvillkor.
+
+- `en`: Requirement selection question hierarchy
+
+_Avoid_: Sorteringsordning, kravområdesgrupp, kravhierarki.
 
 **Kravtillämpning**:
 Att en publicerad kravversion från kravbiblioteket används i ett visst
