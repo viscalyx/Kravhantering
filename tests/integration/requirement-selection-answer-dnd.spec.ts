@@ -144,6 +144,10 @@ test.describe('Requirement selection answer drag and drop', () => {
       await expect(questionDropMarker).toBeVisible()
       await expect(questionRows.nth(0)).toContainText('DRF-KUF001')
       await expect(questionRows.nth(1)).toContainText('DRF-KUF002')
+      await expect(questionRows.nth(1)).toHaveCSS(
+        'transform',
+        /matrix\(1, 0, 0, 1, 0, -/,
+      )
       await page.mouse.up()
 
       await expect(questionDragPreview).toHaveCount(0)

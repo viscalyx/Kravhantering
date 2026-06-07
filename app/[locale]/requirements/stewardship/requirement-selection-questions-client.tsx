@@ -236,6 +236,15 @@ interface QuestionDropMarkerState {
   y: number
 }
 
+interface QuestionRowLayout {
+  height: number
+  left: number
+  questionId: number
+  right: number
+  top: number
+  width: number
+}
+
 function sourceFilterEquals(
   left: AnswerRequirementSourceFilter,
   right: AnswerRequirementSourceFilter,
@@ -932,6 +941,9 @@ export default function RequirementSelectionQuestionsClient() {
     useState<QuestionDragPreviewState | null>(null)
   const [questionDropMarker, setQuestionDropMarker] =
     useState<QuestionDropMarkerState | null>(null)
+  const [questionDragTransforms, setQuestionDragTransforms] = useState<
+    Record<number, number>
+  >({})
   const [reorderingQuestionId, setReorderingQuestionId] = useState<
     number | null
   >(null)
@@ -966,6 +978,7 @@ export default function RequirementSelectionQuestionsClient() {
     previewWidth: number
     question: RequirementSelectionQuestion
     questionId: number
+    rowLayouts: QuestionRowLayout[]
     startX: number
     startY: number
   } | null>(null)
@@ -995,41 +1008,94 @@ export default function RequirementSelectionQuestionsClient() {
     })
   }
 
-  const updateQuestionDropMarker = (targetCard: HTMLElement | null) => {
-    if (!targetCard) {
+  const readQuestionRowLayouts = (areaId: number): QuestionRowLayout[] =>
+    Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '[data-question-drop-target="true"]',
+      ),
+    )
+      .filter(candidate => candidate.dataset.questionAreaId === String(areaId))
+      .map(candidate => {
+        const questionId = Number(candidate.dataset.questionId)
+        const rect = candidate.getBoundingClientRect()
+        return {
+          height: rect.height,
+          left: rect.left,
+          questionId,
+          right: rect.right,
+          top: rect.top,
+          width: rect.width,
+        }
+      })
+      .filter(layout => Number.isInteger(layout.questionId))
+
+  const updateQuestionDropMarker = (targetLayout: QuestionRowLayout | null) => {
+    if (!targetLayout) {
       setQuestionDropMarker(null)
       return
     }
 
-    const targetRect = targetCard.getBoundingClientRect()
     setQuestionDropMarker({
-      height: targetRect.height,
-      width: targetRect.width,
-      x: targetRect.left,
-      y: targetRect.top,
+      height: targetLayout.height,
+      width: targetLayout.width,
+      x: targetLayout.left,
+      y: targetLayout.top,
     })
   }
 
-  const findQuestionDropTargetFromPoint = (
-    areaId: number,
+  const findQuestionDropTargetLayoutFromPoint = (
+    pointerDrag: NonNullable<typeof questionPointerDragRef.current>,
     clientX: number,
     clientY: number,
   ) => {
-    for (const candidate of document.querySelectorAll<HTMLElement>(
-      '[data-question-drop-target="true"]',
-    )) {
-      if (candidate.dataset.questionAreaId !== String(areaId)) continue
-
-      const rect = candidate.getBoundingClientRect()
+    for (const layout of pointerDrag.rowLayouts) {
       const horizontallyInside =
-        clientX >= rect.left - 24 && clientX <= rect.right + 24
-      const verticallyInside = clientY >= rect.top && clientY <= rect.bottom
+        clientX >= layout.left - 24 && clientX <= layout.right + 24
+      const verticallyInside =
+        clientY >= layout.top && clientY <= layout.top + layout.height
       if (horizontallyInside && verticallyInside) {
-        return candidate
+        return layout
       }
     }
 
     return null
+  }
+
+  const buildQuestionDragTransforms = (
+    rowLayouts: QuestionRowLayout[],
+    questionId: number,
+    targetQuestionId: number,
+  ) => {
+    const draggedIndex = rowLayouts.findIndex(
+      layout => layout.questionId === questionId,
+    )
+    const targetIndex = rowLayouts.findIndex(
+      layout => layout.questionId === targetQuestionId,
+    )
+    if (draggedIndex < 0 || targetIndex < 0 || draggedIndex === targetIndex) {
+      return {}
+    }
+
+    const transforms: Record<number, number> = {}
+    if (targetIndex < draggedIndex) {
+      for (let index = targetIndex; index < draggedIndex; index += 1) {
+        const layout = rowLayouts[index]
+        const nextLayout = rowLayouts[index + 1]
+        if (layout && nextLayout) {
+          transforms[layout.questionId] = nextLayout.top - layout.top
+        }
+      }
+      return transforms
+    }
+
+    for (let index = draggedIndex + 1; index <= targetIndex; index += 1) {
+      const layout = rowLayouts[index]
+      const previousLayout = rowLayouts[index - 1]
+      if (layout && previousLayout) {
+        transforms[layout.questionId] = previousLayout.top - layout.top
+      }
+    }
+    return transforms
   }
 
   const selectedQuestion =
@@ -1963,19 +2029,26 @@ export default function RequirementSelectionQuestionsClient() {
   }
 
   const previewQuestionDropTarget = (
-    areaId: number,
+    pointerDrag: NonNullable<typeof questionPointerDragRef.current>,
     targetQuestion: RequirementSelectionQuestion,
   ) => {
     const draggedQuestion = draggedQuestionRef.current
     if (
       !draggedQuestion ||
-      draggedQuestion.areaId !== areaId ||
+      draggedQuestion.areaId !== pointerDrag.areaId ||
       draggedQuestion.questionId === targetQuestion.id
     ) {
       return
     }
 
     setDragOverQuestionId(targetQuestion.id)
+    setQuestionDragTransforms(
+      buildQuestionDragTransforms(
+        pointerDrag.rowLayouts,
+        draggedQuestion.questionId,
+        targetQuestion.id,
+      ),
+    )
   }
 
   const restoreDraggedQuestionOrder = () => {
@@ -1999,6 +2072,7 @@ export default function RequirementSelectionQuestionsClient() {
     setDragOverQuestionId(null)
     setQuestionDragPreview(null)
     setQuestionDropMarker(null)
+    setQuestionDragTransforms({})
   }
 
   const handleQuestionDragHandlePointerDown = (
@@ -2025,6 +2099,7 @@ export default function RequirementSelectionQuestionsClient() {
     const previewOffsetY = sourceRect
       ? Math.max(0, Math.min(event.clientY - sourceRect.top, sourceRect.height))
       : 32
+    const rowLayouts = readQuestionRowLayouts(question.areaId)
     const abortController = new AbortController()
     questionPointerDragRef.current = {
       abortController,
@@ -2038,6 +2113,7 @@ export default function RequirementSelectionQuestionsClient() {
       previewWidth,
       question,
       questionId: question.id,
+      rowLayouts,
       startX: event.clientX,
       startY: event.clientY,
     }
@@ -2080,22 +2156,12 @@ export default function RequirementSelectionQuestionsClient() {
 
     event.preventDefault()
     updateQuestionDragPreview(pointerDrag, event.clientX, event.clientY)
-    const targetElement = document.elementFromPoint(
+    const targetLayout = findQuestionDropTargetLayoutFromPoint(
+      pointerDrag,
       event.clientX,
       event.clientY,
     )
-    const targetCard =
-      findQuestionDropTargetFromPoint(
-        pointerDrag.areaId,
-        event.clientX,
-        event.clientY,
-      ) ??
-      (targetElement instanceof HTMLElement
-        ? targetElement.closest<HTMLElement>(
-            '[data-question-drop-target="true"]',
-          )
-        : null)
-    const targetQuestionId = Number(targetCard?.dataset.questionId)
+    const targetQuestionId = targetLayout?.questionId ?? 0
     if (
       !Number.isInteger(targetQuestionId) ||
       targetQuestionId <= 0 ||
@@ -2103,12 +2169,13 @@ export default function RequirementSelectionQuestionsClient() {
     ) {
       pointerDrag.lastTargetQuestionId = null
       setDragOverQuestionId(pointerDrag.questionId)
+      setQuestionDragTransforms({})
       updateQuestionDropMarker(null)
       return
     }
 
     if (targetQuestionId === pointerDrag.lastTargetQuestionId) {
-      updateQuestionDropMarker(targetCard)
+      updateQuestionDropMarker(targetLayout)
       return
     }
 
@@ -2120,13 +2187,14 @@ export default function RequirementSelectionQuestionsClient() {
     if (!targetQuestion) {
       pointerDrag.lastTargetQuestionId = null
       setDragOverQuestionId(pointerDrag.questionId)
+      setQuestionDragTransforms({})
       updateQuestionDropMarker(null)
       return
     }
 
     pointerDrag.lastTargetQuestionId = targetQuestion.id
-    updateQuestionDropMarker(targetCard)
-    previewQuestionDropTarget(pointerDrag.areaId, targetQuestion)
+    updateQuestionDropMarker(targetLayout ?? null)
+    previewQuestionDropTarget(pointerDrag, targetQuestion)
   }
 
   const finishQuestionPointerDrag = (
@@ -3571,10 +3639,12 @@ export default function RequirementSelectionQuestionsClient() {
                               draggedQuestionId !== question.id
                             ? 'bg-secondary-100/95 ring-2 ring-inset ring-secondary-400/70 dark:bg-secondary-700/65 dark:ring-secondary-500/70'
                             : 'bg-white/80 dark:bg-secondary-900/60'
+                      const questionDragTransform =
+                        questionDragTransforms[question.id] ?? 0
 
                       return (
                         <li
-                          className={`overflow-hidden rounded-2xl border shadow-sm transition-colors dark:border-secondary-800 ${questionDragSurfaceClass} ${
+                          className={`overflow-hidden rounded-2xl border shadow-sm transition-all duration-150 dark:border-secondary-800 ${questionDragSurfaceClass} ${
                             selectedQuestionId === question.id
                               ? 'ring-2 ring-primary-500'
                               : ''
@@ -3587,6 +3657,13 @@ export default function RequirementSelectionQuestionsClient() {
                           data-question-drop-target="true"
                           data-question-id={question.id}
                           key={question.id}
+                          style={
+                            questionDragTransform
+                              ? {
+                                  transform: `translateY(${questionDragTransform}px)`,
+                                }
+                              : undefined
+                          }
                         >
                           <div
                             className={`flex items-stretch ${

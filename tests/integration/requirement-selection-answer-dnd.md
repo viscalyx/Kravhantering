@@ -6,7 +6,8 @@
 This suite verifies that requirement-selection questions and expanded answers can
 be reordered from their drag handles in Chromium, that question drag shows a
 visible floating row preview and destination drop marker while moving, and that
-the order is persisted without a page refresh.
+the affected destination rows slide into adjacent slots before the order is
+persisted without a page refresh.
 
 ## Overview Flowchart
 
@@ -16,13 +17,14 @@ flowchart TD
     B --> C[Drag first question handle to second question row]
     C --> D[Assert question drag preview appears]
     D --> E[Assert destination drop marker appears]
-    E --> F[Assert question order stays stable while dragging]
-    F --> G[Assert visible question order changes after release]
-    G --> H[Reset DRF-KUF001 answer order]
-    H --> I[Expand DRF-KUF001]
-    I --> J[Drag first answer handle to second answer row]
-    J --> K[Assert visible answer order changes]
-    K --> L[Reset seeded order]
+    E --> F[Assert destination row slides into the adjacent slot]
+    F --> G[Assert question order stays stable while dragging]
+    G --> H[Assert visible question order changes after release]
+    H --> I[Reset DRF-KUF001 answer order]
+    I --> J[Expand DRF-KUF001]
+    J --> K[Drag first answer handle to second answer row]
+    K --> L[Assert visible answer order changes]
+    L --> M[Reset seeded order]
 ```
 
 ## Test Setup
@@ -54,6 +56,7 @@ feedback without actually moving the question row.
    mouse events.
 1. Assert the floating drag preview is visible and shows `DRF-KUF001`.
 1. Assert the destination drop marker is visible over `DRF-KUF002`.
+1. Assert `DRF-KUF002` slides into the previous slot while the pointer is down.
 1. Assert `DRF-KUF001` remains first and `DRF-KUF002` remains second while the
    pointer is still down.
 1. Assert `DRF-KUF002` is first and `DRF-KUF001` is second.

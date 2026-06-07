@@ -231,19 +231,24 @@ function createDragDataTransfer(): DataTransfer {
   } as unknown as DataTransfer
 }
 
-function mockDocumentElementFromPoint(element: Element | null) {
-  const original = document.elementFromPoint
-  Object.defineProperty(document, 'elementFromPoint', {
+function mockElementRect(
+  element: HTMLElement,
+  rect: { height: number; left: number; top: number; width: number },
+) {
+  Object.defineProperty(element, 'getBoundingClientRect', {
     configurable: true,
-    value: vi.fn(() => element),
+    value: vi.fn(() => ({
+      bottom: rect.top + rect.height,
+      height: rect.height,
+      left: rect.left,
+      right: rect.left + rect.width,
+      toJSON: () => undefined,
+      top: rect.top,
+      width: rect.width,
+      x: rect.left,
+      y: rect.top,
+    })),
   })
-
-  return () => {
-    Object.defineProperty(document, 'elementFromPoint', {
-      configurable: true,
-      value: original,
-    })
-  }
 }
 
 function countQuestionListFetches() {
@@ -1700,9 +1705,13 @@ describe('RequirementSelectionQuestionsClient', () => {
     expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
     expect(countQuestionListFetches()).toBe(1)
     const sourceCard = getQuestionCard(sampleQuestion.text)
+    const secondCard = getQuestionCard(secondQuestion.text)
     const targetCard = getQuestionCard(thirdQuestion.text)
     const questionList = sourceCard.parentElement
     if (!questionList) throw new Error('Missing question list')
+    mockElementRect(sourceCard, { height: 80, left: 0, top: 0, width: 480 })
+    mockElementRect(secondCard, { height: 80, left: 0, top: 100, width: 480 })
+    mockElementRect(targetCard, { height: 80, left: 0, top: 200, width: 480 })
 
     expect(sourceCard).not.toHaveAttribute('draggable')
     const sourceHeader = sourceCard.firstElementChild
@@ -1716,7 +1725,6 @@ describe('RequirementSelectionQuestionsClient', () => {
     expect(dragHandle).toHaveClass('self-stretch', 'w-11')
     expect(dragHandle).not.toHaveAttribute('draggable')
 
-    const restoreElementFromPoint = mockDocumentElementFromPoint(targetCard)
     fireEvent.pointerDown(dragHandle, {
       button: 0,
       clientX: 0,
@@ -1730,7 +1738,7 @@ describe('RequirementSelectionQuestionsClient', () => {
     fireEvent.pointerMove(dragHandle, {
       buttons: 1,
       clientX: 0,
-      clientY: 8,
+      clientY: 220,
       isPrimary: true,
       pointerId: 1,
       pointerType: 'mouse',
@@ -1755,16 +1763,17 @@ describe('RequirementSelectionQuestionsClient', () => {
       expect(cards[0]).toHaveClass('bg-secondary-200/95')
       expect(cards[0]?.firstElementChild).toHaveClass('invisible')
       expect(cards[2]).toHaveClass('bg-secondary-100/95')
+      expect(cards[1]).toHaveStyle({ transform: 'translateY(-100px)' })
+      expect(cards[2]).toHaveStyle({ transform: 'translateY(-100px)' })
     })
 
     fireEvent.pointerUp(dragHandle, {
       clientX: 0,
-      clientY: 8,
+      clientY: 220,
       isPrimary: true,
       pointerId: 1,
       pointerType: 'mouse',
     })
-    restoreElementFromPoint()
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -1823,6 +1832,8 @@ describe('RequirementSelectionQuestionsClient', () => {
     const targetCard = getQuestionCard(secondQuestion.text)
     const questionList = sourceCard.parentElement
     if (!questionList) throw new Error('Missing question list')
+    mockElementRect(sourceCard, { height: 80, left: 0, top: 0, width: 480 })
+    mockElementRect(targetCard, { height: 80, left: 0, top: 100, width: 480 })
 
     const dragHandle = within(sourceCard).getByRole('button', {
       name: 'Reorder question',
@@ -1831,7 +1842,6 @@ describe('RequirementSelectionQuestionsClient', () => {
     if (!(sourceHeader instanceof HTMLElement)) {
       throw new Error('Missing question header')
     }
-    const restoreElementFromPoint = mockDocumentElementFromPoint(targetCard)
     fireEvent.pointerDown(dragHandle, {
       button: 0,
       clientX: 0,
@@ -1845,7 +1855,7 @@ describe('RequirementSelectionQuestionsClient', () => {
     fireEvent.pointerMove(dragHandle, {
       buttons: 1,
       clientX: 0,
-      clientY: 8,
+      clientY: 120,
       isPrimary: true,
       pointerId: 1,
       pointerType: 'mouse',
@@ -1865,16 +1875,16 @@ describe('RequirementSelectionQuestionsClient', () => {
       expect(cards[1]).toHaveTextContent(secondQuestion.text)
       expect(cards[0]).toHaveClass('bg-secondary-200/95')
       expect(cards[1]).toHaveClass('bg-secondary-100/95')
+      expect(cards[1]).toHaveStyle({ transform: 'translateY(-100px)' })
     })
 
     fireEvent.pointerCancel(dragHandle, {
       clientX: 0,
-      clientY: 8,
+      clientY: 120,
       isPrimary: true,
       pointerId: 1,
       pointerType: 'mouse',
     })
-    restoreElementFromPoint()
 
     await waitFor(() => {
       const cards = Array.from(questionList.children)
@@ -1897,6 +1907,69 @@ describe('RequirementSelectionQuestionsClient', () => {
           init?.method === 'PUT',
       ),
     ).toBe(false)
+  })
+
+  it('moves the destination question down while dragging upward', async () => {
+    const secondQuestion: TestQuestion = {
+      ...sampleQuestion,
+      id: 22,
+      questionCode: 'SEC-KUF002',
+      sortOrder: 1,
+      text: 'Which assurance profile applies?',
+    }
+    setupMutableQuestions([sampleQuestion, secondQuestion])
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    const targetCard = getQuestionCard(sampleQuestion.text)
+    const sourceCard = getQuestionCard(secondQuestion.text)
+    mockElementRect(targetCard, { height: 80, left: 0, top: 0, width: 480 })
+    mockElementRect(sourceCard, { height: 80, left: 0, top: 100, width: 480 })
+    const dragHandle = within(sourceCard).getByRole('button', {
+      name: 'Reorder question',
+    })
+
+    fireEvent.pointerDown(dragHandle, {
+      button: 0,
+      clientX: 0,
+      clientY: 120,
+      isPrimary: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
+    fireEvent.pointerMove(dragHandle, {
+      buttons: 1,
+      clientX: 0,
+      clientY: 20,
+      isPrimary: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
+
+    await waitFor(() => {
+      expect(targetCard).toHaveClass('bg-secondary-100/95')
+      expect(targetCard).toHaveStyle({ transform: 'translateY(100px)' })
+      expect(sourceCard).toHaveClass('bg-secondary-200/95')
+      expect(
+        document.querySelector('[data-question-drop-marker="true"]'),
+      ).toBeInTheDocument()
+    })
+
+    fireEvent.pointerCancel(dragHandle, {
+      clientX: 0,
+      clientY: 20,
+      isPrimary: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
+
+    await waitFor(() => {
+      expect(targetCard).not.toHaveStyle({ transform: 'translateY(100px)' })
+      expect(
+        document.querySelector('[data-question-drop-marker="true"]'),
+      ).not.toBeInTheDocument()
+    })
   })
 
   it('reorders questions from the handle with keyboard arrows', async () => {
