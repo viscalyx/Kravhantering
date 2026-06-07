@@ -35,8 +35,9 @@ flowchart TD
 - Seeded question and answer orders are reset through the same update APIs used
   by the UI.
 - The suite runs serially because it temporarily mutates shared seeded order.
-- The drags use real mouse sequences in Chromium so handle behavior is covered
-  at browser level.
+- The question drag uses real mouse sequences in Chromium. The answer drag arms
+  the handle and dispatches native drag events so the HTML drag-and-drop path is
+  covered without depending on Chromium's mouse drag timing.
 
 ## reorders collapsed requirement-selection questions by dragging the question handle
 
@@ -76,8 +77,8 @@ feedback while the expanded answer still could not be dragged.
 1. Reset `DRF-KUF001` answers to the seeded order.
 1. Reload the page and expand `DRF-KUF001`.
 1. Assert `Egen drift/on-premises` is first and `Molndrift` is second.
-1. Drag the first answer handle to the second answer row with Playwright mouse
-   events.
+1. Arm the first answer handle and drop the first answer row over the second
+   answer row with native drag events.
 1. Assert `Molndrift` is first and `Egen drift/on-premises` is second.
 1. Reset `DRF-KUF001` answers back to the seeded order.
 
