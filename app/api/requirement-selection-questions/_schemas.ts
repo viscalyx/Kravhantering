@@ -28,6 +28,30 @@ export const questionUpdateSchema = z
   })
   .strict()
 
+export const visibilityUpdateSchema = z
+  .object({
+    groups: z
+      .array(
+        z
+          .object({
+            conditions: z
+              .array(
+                z
+                  .object({
+                    answerIds: z.array(positiveIntegerSchema).min(1).max(200),
+                    parentQuestionId: positiveIntegerSchema,
+                  })
+                  .strict(),
+              )
+              .min(1)
+              .max(50),
+          })
+          .strict(),
+      )
+      .max(50),
+  })
+  .strict()
+
 export const answerSchema = z
   .object({
     description: optionalBusinessTextSchema,

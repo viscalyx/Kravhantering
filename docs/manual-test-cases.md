@@ -604,17 +604,31 @@ management live outside Admin Center.
    use the floating `Skapa kravurvalsfråga` pill.
 1. Verify the new question form opens as a modal and create a question for a
    requirement area. After selecting `Kravområde`, verify the selected
-   requirement area's description appears as small text below the dropdown.
+   requirement area's description appears as small text below the dropdown and
+   that the form does not show a `Sortering` field.
+1. Verify the `Kravurvalsfrågor` list is grouped by sticky requirement-area
+   headings that show the area's name and prefix with a visibly different
+   background color than the question rows. Verify question rows are collapsed
+   by default, show a chevron, question code, area, status, question text and
+   answer count, and expand when the row is clicked.
+1. Drag a kravurvalsfråga by its handle within the same kravområde and verify
+   the row moves immediately, saves without a page refresh, and keeps the new
+   order after navigating away and back. Verify the handle also supports
+   keyboard movement with pil upp, pil ned, Home and End.
+1. Enter search text or select a status filter in `Kravurvalsfrågor` and verify
+   the question reorder handles are disabled with an explanatory tooltip. Clear
+   those filters, optionally keep a `Kravområde` filter, and verify drag
+   sorting works again within the visible kravområde.
 1. Open `/sv/requirements`, click `Kravbiblioteksförvaltning`, and verify the
    parent navigation returns directly to `Kravurvalsfrågor` without flashing
    `Kravpaket` first. Verify no visible `Laddar...` text appears during a fast
    route change. If the route is slowed for more than about two seconds, verify
    the delayed transition indicator is a spinner.
-1. Use `Lägg till svar` under svarlistan för en kravurvalsfråga and verify the new
-   answer form opens as a modal with answer fields on the left and a source
-   workspace on the right. Verify the answer modal does not show a visible
-   title, question ID or `Sortering` field; answer order is managed from the
-   answer list.
+1. Expand a kravurvalsfråga, use `Lägg till svar` under svarlistan, and verify
+   the new answer form opens as a modal with answer fields on the left and a
+   source workspace on the right. Verify the answer modal does not show a
+   visible title, question ID or `Sortering` field; answer order is managed
+   from the answer list.
 1. Add a normal answer linked to a package or requirement from the modal. Verify
    `Kravpaket` opens as a compact searchable checkbox popover, `Krav-ID` is
    selected by searching visible Krav-ID or kravtext and adding result chips,
@@ -660,6 +674,16 @@ management live outside Admin Center.
    question or answer, cancel the first confirmation, then repeat and confirm.
 1. Expand an answer preview and verify it lists matching published requirements
    and flags `Saknar kravurval` when no published requirement currently matches.
+1. Open `Synlighet` for a kravurvalsfråga, add a villkorsgrupp that references
+   a kravurvalsfråga from another kravområde and one or more of its answers,
+   save, reload, and verify the question row shows a `Synlighet` indicator.
+   Try to create a cycle and verify saving is rejected.
+1. Verify the linked kravurvalsfrågor show a clickable `Hierarki · N` badge
+   while unrelated fristående kravurvalsfrågor do not. Click the hierarchy
+   badge and verify a modal opens without expanding or collapsing the question
+   row, shows the connected hierarchy in top-down order with one node per
+   question, highlights the clicked question, and draws connector lines from
+   every överliggande kravurvalsfråga to the underordnade kravurvalsfrågor.
 1. In the answer edit modal, click a row in `Krav i urvalet` and verify a
    kravbibliotek-style read-only detail card appears with kravtext,
    acceptanskriterier, metadata, referenser and kravpaket using the same card
@@ -1235,6 +1259,15 @@ requirement-selection questions.
    `Kravurvalsfrågor`.
 1. Filter the question tab by text, requirement area, and unanswered questions.
 1. Answer one single-choice question and one multiple-choice question.
+1. Answer `INT-KUF001` with `REST-API eller API Gateway`, `Asynkrona
+   meddelanden eller webhooks`, or `Filimport eller datamigrering` and verify
+   `KVA-KUF001` appears under its own kravområde with an `Obesvarad` badge.
+   Verify the parent question shows a compact follow-up link that scrolls to
+   `KVA-KUF001`.
+1. Answer `DRF-KUF001` with `Hybrid drift` and verify both `DRF-KUF002` and
+   `DRF-KUF003` appear under `Drift`. Answer either follow-up with a
+   `Hög tillgänglighet...` answer and verify `DRF-KUF004` appears for the
+   business recovery need.
 1. For a multiple-choice question, choose `Utan kravurval`.
 1. Return to `Tillgängliga krav`.
 1. Verify `Filtrera med kravurvalsfrågor` is off on fresh entry and that
@@ -1251,6 +1284,10 @@ requirement-selection questions.
    requirement selection.
 1. Choose an answer that should match requirements but currently matches no
    published requirements, if such a fixture exists.
+1. Answer the visible follow-up question, then change the parent integration
+   answer so the follow-up no longer matches. Verify the confirmation explains
+   that answered follow-up questions will be cleared, cancel once, then confirm
+   and verify the follow-up answer is removed.
 1. Generate the specification list report.
 1. Clear one saved answer.
 

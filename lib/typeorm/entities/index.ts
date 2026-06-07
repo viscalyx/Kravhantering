@@ -19,6 +19,8 @@ import { requirementSelectionAnswerPackageEntity } from '@/lib/typeorm/entities/
 import { requirementSelectionAnswerRequirementEntity } from '@/lib/typeorm/entities/requirement-selection-answer-requirement'
 import { requirementSelectionQuestionEntity } from '@/lib/typeorm/entities/requirement-selection-question'
 import { requirementSelectionQuestionSequenceEntity } from '@/lib/typeorm/entities/requirement-selection-question-sequence'
+import { requirementSelectionQuestionVisibilityConditionEntity } from '@/lib/typeorm/entities/requirement-selection-question-visibility-condition'
+import { requirementSelectionQuestionVisibilityGroupEntity } from '@/lib/typeorm/entities/requirement-selection-question-visibility-group'
 import { requirementStatusEntity } from '@/lib/typeorm/entities/requirement-status'
 import { requirementStatusTransitionEntity } from '@/lib/typeorm/entities/requirement-status-transition'
 import { requirementTypeEntity } from '@/lib/typeorm/entities/requirement-type'
@@ -65,6 +67,8 @@ export const sqlServerEntities = [
   requirementAreaCoAuthorEntity,
   requirementSelectionQuestionSequenceEntity,
   requirementSelectionQuestionEntity,
+  requirementSelectionQuestionVisibilityGroupEntity,
+  requirementSelectionQuestionVisibilityConditionEntity,
   requirementSelectionAnswerEntity,
   requirementSelectionAnswerPackageEntity,
   requirementSelectionAnswerRequirementEntity,
@@ -105,6 +109,8 @@ export type { RequirementSelectionAnswerPackageEntity } from '@/lib/typeorm/enti
 export type { RequirementSelectionAnswerRequirementEntity } from '@/lib/typeorm/entities/requirement-selection-answer-requirement'
 export type { RequirementSelectionQuestionEntity } from '@/lib/typeorm/entities/requirement-selection-question'
 export type { RequirementSelectionQuestionSequenceEntity } from '@/lib/typeorm/entities/requirement-selection-question-sequence'
+export type { RequirementSelectionQuestionVisibilityConditionEntity } from '@/lib/typeorm/entities/requirement-selection-question-visibility-condition'
+export type { RequirementSelectionQuestionVisibilityGroupEntity } from '@/lib/typeorm/entities/requirement-selection-question-visibility-group'
 export type { RequirementStatusEntity } from '@/lib/typeorm/entities/requirement-status'
 export type { RequirementStatusTransitionEntity } from '@/lib/typeorm/entities/requirement-status-transition'
 export type { RequirementTypeEntity } from '@/lib/typeorm/entities/requirement-type'
@@ -148,6 +154,8 @@ export {
   requirementSelectionAnswerRequirementEntity,
   requirementSelectionQuestionEntity,
   requirementSelectionQuestionSequenceEntity,
+  requirementSelectionQuestionVisibilityConditionEntity,
+  requirementSelectionQuestionVisibilityGroupEntity,
   requirementStatusEntity,
   requirementStatusTransitionEntity,
   requirementsSpecificationEntity,

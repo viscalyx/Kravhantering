@@ -16,6 +16,8 @@ export const DEMO_RESET_TABLES = Object.freeze([
   'specification_requirement_selection_answers',
   'requirement_selection_answer_requirements',
   'requirement_selection_answer_packages',
+  'requirement_selection_question_visibility_conditions',
+  'requirement_selection_question_visibility_groups',
   'requirement_selection_answers',
   'requirement_selection_questions',
   'requirement_selection_question_sequences',

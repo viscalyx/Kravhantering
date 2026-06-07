@@ -424,9 +424,35 @@ down.
   locked when editing the question. The edit form shows the select as disabled,
   exposes a tooltip explaining why it cannot be changed, and keeps the selected
   area's description visible.
+- The question form does not expose manual sort-order editing. New questions are
+  placed last within the selected requirement area and can be reordered from the
+  question list.
 - The question form's free-text areas can be resized vertically, but their
   maximum height is capped relative to the viewport so the remaining form
   controls stay reachable inside the modal.
+- The question list is grouped by requirement area in the existing
+  requirement-area name order. Each group has a sticky heading that shows the
+  requirement-area name and prefix and uses a tinted background distinct from
+  the question cards.
+- Requirement-selection question rows are collapsed by default. The whole
+  compact row toggles details through a chevron disclosure and shows the
+  question code, requirement area, selection type, status, question text and
+  answer count. Help text, question actions, visibility conditions, saved
+  answers and `Lägg till svar` appear only after the row is expanded. Searching
+  can still match hidden answer text, but matching rows are not auto-expanded.
+- Requirement-selection question rows include a drag handle in the compact row.
+  The handle reorders questions only within the same requirement area, persists
+  the normalized area order without a full reload, and also supports Arrow Up,
+  Arrow Down, Home and End. Search text and status filters disable the handle
+  with an explanatory tooltip; a requirement-area filter alone still permits
+  reordering because the full area order remains visible.
+- Questions that participate in a requirement-selection question hierarchy show
+  a separate `Hierarki · N` badge in the compact row, where `N` is the number of
+  questions in the connected hierarchy. Standalone questions do not show this
+  badge. Clicking the badge opens a read-only modal with the connected
+  hierarchy around that question, including sibling branches, one node per
+  question, a visual highlight on the selected question, and SVG connector lines
+  from every parent question to each controlled child question.
 - The answer form uses a left-form/right-workspace modal without a visible
   modal title, visible question ID, or close icon. Answer text,
   `Utan kravurval`, description, save and `Avbryt` stay in the left column; the
@@ -459,6 +485,14 @@ down.
 - Requirement-selection questions are always optional. Progress counts answered
   active questions against all active questions, both total and per requirement
   area, without blocking save or report actions.
+- Requirement-selection questions with visibility conditions are shown only
+  when at least one condition group matches the current saved answers in the
+  specification. Progress, area summaries, search and unanswered-only filtering
+  count only active visible questions.
+- Visible questions show an answered or unanswered badge with icon/text and a
+  subtle card tone. A parent question that reveals follow-up questions shows
+  compact links that scroll to those visible questions in their own requirement
+  area group.
 - The question tab provides lightweight search/filtering by question text,
   answer text, requirement area, and unanswered state. Questions are grouped by
   requirement area and answer rows show how many published requirements they
@@ -474,6 +508,13 @@ down.
   requirements are not narrowed.
 - Historical saved answers remain visible and clearable, but are excluded from
   filters and progress.
+- If a question is hidden by visibility conditions but has historical saved
+  answers, it is shown as a historical row with the badge
+  `Historiskt · villkor inte längre uppfyllt`.
+- When changing an answer would hide already answered follow-up questions, the
+  user must confirm before saving. Confirming recursively clears the current
+  answers on the hidden branch; stewardship-driven visibility changes mark
+  affected saved answers as historical instead.
 - Saved answers update optimistically with visible saving/error status. When the
   requirement-selection toggle is on, changed answers update the filtered
   `Tillgängliga krav` list immediately; when the toggle is off, changed answers

@@ -1,8 +1,9 @@
 'use client'
 
-import { RotateCcw, Search } from 'lucide-react'
+import { CheckCircle2, Circle, RotateCcw, Search } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
@@ -25,6 +26,7 @@ interface SelectionQuestion {
   id: number
   isActive: boolean
   isArchived: boolean
+  isVisible: boolean
   questionCode: string
   savedAnswers: Array<{
     answerId: number
@@ -33,6 +35,25 @@ interface SelectionQuestion {
   selectedAnswerIds: number[]
   selectionType: 'multiple' | 'single'
   text: string
+  visibilityGroups: Array<{
+    conditions: Array<{
+      answerId: number
+      answerIsActive: boolean
+      answerIsArchived: boolean
+      parentQuestionId: number
+      parentQuestionIsActive: boolean
+      parentQuestionIsArchived: boolean
+    }>
+    id: number
+  }>
+  visibilityState: 'hidden' | 'hidden_with_historical_answers' | 'visible'
+}
+
+interface HiddenSelectionImpact {
+  answerTexts: string[]
+  questionCode: string
+  questionId: number
+  questionText: string
 }
 
 interface Props {
@@ -71,17 +92,60 @@ const SPECIFICATION_REQUIREMENT_SELECTION_HELP: HelpContent = {
   titleKey: 'specificationRequirementSelection.title',
 }
 
+function conditionGroupMatches(
+  group: SelectionQuestion['visibilityGroups'][number],
+  questionsById: Map<number, SelectionQuestion>,
+) {
+  const allowedAnswersByParent = new Map<number, Set<number>>()
+  for (const condition of group.conditions) {
+    if (
+      !condition.parentQuestionIsActive ||
+      condition.parentQuestionIsArchived ||
+      !condition.answerIsActive ||
+      condition.answerIsArchived
+    ) {
+      continue
+    }
+    const bucket =
+      allowedAnswersByParent.get(condition.parentQuestionId) ?? new Set()
+    bucket.add(condition.answerId)
+    allowedAnswersByParent.set(condition.parentQuestionId, bucket)
+  }
+  if (allowedAnswersByParent.size === 0) return false
+
+  for (const [parentQuestionId, allowedAnswerIds] of allowedAnswersByParent) {
+    const parentQuestion = questionsById.get(parentQuestionId)
+    if (!parentQuestion?.isVisible) return false
+    if (
+      !parentQuestion.selectedAnswerIds.some(answerId =>
+        allowedAnswerIds.has(answerId),
+      )
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
 export default function SpecificationRequirementSelectionPanel({
   onChanged,
   specificationSlug,
 }: Props) {
   useHelpContent(SPECIFICATION_REQUIREMENT_SELECTION_HELP)
+  const { confirm } = useConfirmModal()
   const t = useTranslations('specificationRequirementSelection')
   const copy = {
     allAreas: t('allAreas'),
+    answered: t('answered'),
     clear: t('clear'),
+    confirmHiddenAnswerClear: (count: number, questions: string) =>
+      t('confirmHiddenAnswerClear', { count, questions }),
+    confirmHiddenAnswerClearConfirm: t('confirmHiddenAnswerClearConfirm'),
+    confirmHiddenAnswerClearTitle: t('confirmHiddenAnswerClearTitle'),
     error: t('error'),
+    followUpQuestions: t('followUpQuestions'),
     historical: t('historical'),
+    hiddenHistoricalVisibility: t('hiddenHistoricalVisibility'),
     loading: t('loading'),
     matchSummary: (count: number, added: number) =>
       t('matchSummary', { added, count }),
@@ -90,6 +154,8 @@ export default function SpecificationRequirementSelectionPanel({
     progress: t('progress'),
     saving: t('saving'),
     search: t('search'),
+    scrollToQuestion: t('scrollToQuestion'),
+    unanswered: t('unanswered'),
     unansweredOnly: t('unansweredOnly'),
   }
   const [questions, setQuestions] = useState<SelectionQuestion[]>([])
@@ -128,7 +194,8 @@ export default function SpecificationRequirementSelectionPanel({
 
   const progress = useMemo(() => {
     const activeQuestions = questions.filter(
-      question => question.isActive && !question.isArchived,
+      question =>
+        question.isActive && !question.isArchived && question.isVisible,
     )
     const answered = activeQuestions.filter(
       question => question.selectedAnswerIds.length > 0,
@@ -147,7 +214,11 @@ export default function SpecificationRequirementSelectionPanel({
     }
   }, [questions])
 
-  const save = async (question: SelectionQuestion, answerIds: number[]) => {
+  const save = async (
+    question: SelectionQuestion,
+    answerIds: number[],
+    confirmHiddenAnswerClear = false,
+  ) => {
     setSavingQuestionId(question.id)
     setError(null)
     const previousQuestions = questions
@@ -169,12 +240,37 @@ export default function SpecificationRequirementSelectionPanel({
       const response = await apiFetch(
         `/api/specifications/${specificationSlug}/requirement-selection-answers/${question.id}`,
         {
-          body: JSON.stringify({ answerIds }),
+          body: JSON.stringify({ answerIds, confirmHiddenAnswerClear }),
           headers: { 'Content-Type': 'application/json' },
           method: 'PUT',
         },
       )
       if (!response.ok) {
+        if (response.status === 409 && !confirmHiddenAnswerClear) {
+          const conflict = (await response.json()) as {
+            hiddenSelections?: HiddenSelectionImpact[]
+          }
+          const hiddenSelections = conflict.hiddenSelections ?? []
+          setQuestions(previousQuestions)
+          const confirmed = await confirm({
+            confirmText: copy.confirmHiddenAnswerClearConfirm,
+            defaultCancel: true,
+            icon: 'caution',
+            message: copy.confirmHiddenAnswerClear(
+              hiddenSelections.length,
+              hiddenSelections
+                .map(item => `${item.questionCode} ${item.questionText}`)
+                .join(', '),
+            ),
+            title: copy.confirmHiddenAnswerClearTitle,
+            variant: 'danger',
+          })
+          if (confirmed) {
+            await save(question, answerIds, true)
+          }
+          return
+        }
+        setQuestions(previousQuestions)
         setError((await readResponseMessage(response)) ?? copy.error)
         return
       }
@@ -192,15 +288,35 @@ export default function SpecificationRequirementSelectionPanel({
   }
 
   const areaOptions = useMemo(
-    () => Array.from(new Set(questions.map(question => question.areaName))),
+    () =>
+      Array.from(
+        new Set(
+          questions
+            .filter(
+              question =>
+                question.isVisible ||
+                question.visibilityState === 'hidden_with_historical_answers',
+            )
+            .map(question => question.areaName),
+        ),
+      ),
     [questions],
   )
 
   const filteredQuestions = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase()
     return questions.filter(question => {
+      const isHistoricalOnly =
+        !question.isVisible &&
+        question.visibilityState === 'hidden_with_historical_answers'
+      if (!question.isVisible && !isHistoricalOnly) return false
       if (areaFilter && question.areaName !== areaFilter) return false
-      if (unansweredOnly && question.selectedAnswerIds.length > 0) return false
+      if (
+        unansweredOnly &&
+        (!question.isVisible || question.selectedAnswerIds.length > 0)
+      ) {
+        return false
+      }
       if (!normalizedQuery) return true
       const haystack = [
         question.areaName,
@@ -223,6 +339,31 @@ export default function SpecificationRequirementSelectionPanel({
     }
     return Array.from(groups)
   }, [filteredQuestions])
+
+  const followUpLinksByQuestionId = useMemo(() => {
+    const questionsById = new Map(
+      questions.map(question => [question.id, question]),
+    )
+    const linksByParent = new Map<number, SelectionQuestion[]>()
+    for (const question of questions) {
+      if (!question.isVisible || question.visibilityGroups.length === 0) {
+        continue
+      }
+      const matchingGroups = question.visibilityGroups.filter(group =>
+        conditionGroupMatches(group, questionsById),
+      )
+      for (const group of matchingGroups) {
+        for (const condition of group.conditions) {
+          const bucket = linksByParent.get(condition.parentQuestionId) ?? []
+          if (!bucket.some(item => item.id === question.id)) {
+            bucket.push(question)
+          }
+          linksByParent.set(condition.parentQuestionId, bucket)
+        }
+      }
+    }
+    return linksByParent
+  }, [questions])
 
   const toggleMultiple = (
     question: SelectionQuestion,
@@ -279,7 +420,7 @@ export default function SpecificationRequirementSelectionPanel({
         <p className="text-sm text-secondary-600 dark:text-secondary-400">
           {copy.loading}
         </p>
-      ) : questions.length === 0 ? (
+      ) : groupedQuestions.length === 0 ? (
         <p className="text-sm text-secondary-600 dark:text-secondary-400">
           {copy.noQuestions}
         </p>
@@ -331,19 +472,61 @@ export default function SpecificationRequirementSelectionPanel({
                 const disabled =
                   savingQuestionId === question.id ||
                   !question.isActive ||
-                  question.isArchived
+                  question.isArchived ||
+                  !question.isVisible
                 const historicalAnswers = question.savedAnswers.filter(
                   item => item.isHistorical,
                 )
+                const isHistoricalOnly =
+                  !question.isVisible &&
+                  question.visibilityState === 'hidden_with_historical_answers'
+                const isAnswered = question.selectedAnswerIds.length > 0
+                const followUpQuestions =
+                  followUpLinksByQuestionId.get(question.id) ?? []
                 return (
                   <div
-                    className="rounded-xl border bg-white/80 p-4 dark:border-secondary-800 dark:bg-secondary-900/60"
+                    className={`rounded-xl border p-4 ${
+                      isHistoricalOnly
+                        ? 'border-amber-200 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/20'
+                        : isAnswered
+                          ? 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/15'
+                          : 'border-secondary-200 bg-white/80 dark:border-secondary-800 dark:bg-secondary-900/60'
+                    }`}
+                    id={`selection-question-${question.id}`}
                     key={question.id}
                   >
                     <div className="mb-3">
-                      <p className="font-medium text-secondary-950 dark:text-secondary-50">
-                        {question.text}
-                      </p>
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <p className="font-medium text-secondary-950 dark:text-secondary-50">
+                          {question.text}
+                        </p>
+                        <span
+                          className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${
+                            isHistoricalOnly
+                              ? 'border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-100'
+                              : isAnswered
+                                ? 'border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-100'
+                                : 'border-secondary-300 bg-secondary-100 text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200'
+                          }`}
+                        >
+                          {isAnswered ? (
+                            <CheckCircle2
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
+                          ) : (
+                            <Circle
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
+                          )}
+                          {isHistoricalOnly
+                            ? copy.hiddenHistoricalVisibility
+                            : isAnswered
+                              ? copy.answered
+                              : copy.unanswered}
+                        </span>
+                      </div>
                       <p className="mt-1 text-xs text-secondary-500">
                         {question.questionCode} · {question.areaName}
                         {savingQuestionId === question.id
@@ -408,6 +591,33 @@ export default function SpecificationRequirementSelectionPanel({
                         </label>
                       ))}
                     </div>
+                    {followUpQuestions.length > 0 && (
+                      <div className="mt-3 rounded-lg border border-primary-200 bg-primary-50/70 px-3 py-2 text-xs text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/30 dark:text-primary-100">
+                        <p className="font-medium">{copy.followUpQuestions}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {followUpQuestions.map(followUpQuestion => (
+                            <button
+                              className="inline-flex min-h-8 items-center rounded-md border border-primary-200 bg-white px-2 font-mono text-xs hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:border-primary-800 dark:bg-primary-950/50 dark:hover:bg-primary-900/60"
+                              key={followUpQuestion.id}
+                              onClick={() => {
+                                document
+                                  .getElementById(
+                                    `selection-question-${followUpQuestion.id}`,
+                                  )
+                                  ?.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'center',
+                                  })
+                              }}
+                              title={copy.scrollToQuestion}
+                              type="button"
+                            >
+                              {followUpQuestion.questionCode}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {question.selectedAnswerIds.length > 0 && (
                       <button
                         className="mt-3 inline-flex min-h-9 items-center gap-1 rounded-lg border px-3 text-xs disabled:opacity-50"

@@ -11,13 +11,14 @@ requirements library inline detail, while staying read-only inside the modal.
 
 ```mermaid
 flowchart TD
-    A[Open requirement-selection questions] --> B[Find seeded answer]
-    B --> C[Open edit answer modal]
-    C --> D[Expand SAK0042 in Krav i urvalet]
-    D --> E[Assert the detail card is visible]
-    E --> F[Assert Kravtext and seeded content]
-    F --> G[Assert no repeated ID heading]
-    G --> H[Assert no archive action]
+    A[Open requirement-selection questions] --> B[Expand SÄK-KUF001]
+    B --> C[Find seeded answer]
+    C --> D[Open edit answer modal]
+    D --> E[Expand SAK0042 in Krav i urvalet]
+    E --> F[Assert the detail card is visible]
+    F --> G[Assert Kravtext and seeded content]
+    G --> H[Assert no repeated ID heading]
+    H --> I[Assert no archive action]
 ```
 
 ## Test Setup
@@ -42,6 +43,7 @@ workflow.
 
 1. Navigate to `/sv/requirements/stewardship?tab=questions`.
 1. Assert the `Kravurvalsfrågor` heading is present.
+1. Expand the seeded `SÄK-KUF001` question row.
 1. Locate the seeded `Grundskydd för intern information` answer row.
 1. Click `Redigera` for that answer.
 1. Assert the `Redigera kravurvalsvar` dialog is open.
@@ -63,6 +65,8 @@ sequenceDiagram
     participant D as Detail card
 
     U->>Q: Open Kravurvalsfrågor
+    Q-->>U: Show collapsed question rows
+    U->>Q: Expand SÄK-KUF001
     Q-->>U: Show seeded answers
     U->>Q: Click Redigera
     Q->>M: Open answer modal

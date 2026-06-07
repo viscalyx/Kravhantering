@@ -236,6 +236,24 @@ function emptySeed() {
       pk: ['id'],
       rows: [],
     },
+    requirement_selection_question_visibility_groups: {
+      columns: ['id', 'question_id', 'sort_order', 'created_at', 'updated_at'],
+      pk: ['id'],
+      rows: [],
+    },
+    requirement_selection_question_visibility_conditions: {
+      columns: [
+        'id',
+        'visibility_group_id',
+        'parent_question_id',
+        'answer_id',
+        'sort_order',
+        'created_at',
+        'updated_at',
+      ],
+      pk: ['id'],
+      rows: [],
+    },
     requirement_selection_answer_packages: {
       columns: ['answer_id', 'requirement_package_id'],
       pk: ['answer_id', 'requirement_package_id'],
@@ -382,16 +400,19 @@ describe('appendDogfoodSeed', () => {
     const seed = emptySeed()
     const summary = appendDogfoodSeed(seed)
 
-    expect(summary.requirementSelectionQuestionsAdded).toBe(6)
-    expect(summary.requirementSelectionAnswersAdded).toBe(22)
-    expect(summary.specificationRequirementSelectionAnswersAdded).toBe(18)
+    expect(summary.requirementSelectionQuestionsAdded).toBe(9)
+    expect(summary.requirementSelectionAnswersAdded).toBe(31)
+    expect(summary.specificationRequirementSelectionAnswersAdded).toBe(22)
 
     const questions = seed.requirement_selection_questions.rows
-    expect(questions).toHaveLength(6)
+    expect(questions).toHaveLength(9)
     expect(questions.map(row => row[1])).toEqual([
       'SÄK-KUF001',
       'INT-KUF001',
       'DRF-KUF001',
+      'DRF-KUF002',
+      'DRF-KUF003',
+      'DRF-KUF004',
       'ANV-KUF001',
       'RAP-KUF001',
       'KVA-KUF001',
@@ -408,7 +429,7 @@ describe('appendDogfoodSeed', () => {
       new Map([
         [ID.area.SAK, 2],
         [ID.area.INT, 2],
-        [ID.area.DRF, 2],
+        [ID.area.DRF, 5],
         [ID.area.ANV, 2],
         [ID.area.RAP, 2],
         [ID.area.KVA, 2],
@@ -418,14 +439,14 @@ describe('appendDogfoodSeed', () => {
     const answers = seed.requirement_selection_answers.rows
     const packageLinks = seed.requirement_selection_answer_packages.rows
     const requirementLinks = seed.requirement_selection_answer_requirements.rows
-    expect(answers).toHaveLength(22)
-    expect(packageLinks).toHaveLength(32)
-    expect(requirementLinks).toHaveLength(36)
+    expect(answers).toHaveLength(31)
+    expect(packageLinks).toHaveLength(47)
+    expect(requirementLinks).toHaveLength(47)
 
     const noRequirementAnswerIds = new Set(
       answers.filter(row => row[5] === 1).map(row => row[0]),
     )
-    expect(noRequirementAnswerIds).toEqual(new Set([7, 16, 22]))
+    expect(noRequirementAnswerIds).toEqual(new Set([7, 11, 16, 22]))
     for (const answerId of noRequirementAnswerIds) {
       expect(packageLinks.some(row => row[0] === answerId)).toBe(false)
       expect(requirementLinks.some(row => row[0] === answerId)).toBe(false)
@@ -436,8 +457,36 @@ describe('appendDogfoodSeed', () => {
     expect(packageLinks.some(row => row[0] === 4)).toBe(true)
     expect(requirementLinks.some(row => row[0] === 4)).toBe(true)
 
+    const visibilityGroups = seed
+      .requirement_selection_question_visibility_groups.rows as Array<
+      Array<number | string>
+    >
+    const visibilityConditions = seed
+      .requirement_selection_question_visibility_conditions.rows as Array<
+      Array<number | string>
+    >
+    expect(visibilityGroups).toEqual([
+      [1, 6, 0, expect.any(String), expect.any(String)],
+      [2, 7, 0, expect.any(String), expect.any(String)],
+      [3, 8, 0, expect.any(String), expect.any(String)],
+      [4, 9, 0, expect.any(String), expect.any(String)],
+      [5, 9, 1, expect.any(String), expect.any(String)],
+    ])
+    expect(visibilityConditions.map(row => row.slice(1, 5))).toEqual([
+      [1, 2, 4, 0],
+      [1, 2, 5, 1],
+      [1, 2, 6, 2],
+      [2, 3, 8, 0],
+      [2, 3, 10, 1],
+      [3, 3, 9, 0],
+      [3, 3, 10, 1],
+      [4, 7, 25, 0],
+      [5, 8, 27, 0],
+      [5, 8, 28, 1],
+    ])
+
     const savedAnswers = seed.specification_requirement_selection_answers.rows
-    expect(savedAnswers).toHaveLength(18)
+    expect(savedAnswers).toHaveLength(22)
     expect(new Set(savedAnswers.map(row => row[0]))).toEqual(
       new Set([1, 7, 8, SPEC_KH_INFOR]),
     )
