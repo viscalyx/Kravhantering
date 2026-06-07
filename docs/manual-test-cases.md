@@ -14,8 +14,8 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [AUTH-03: signed-out API request returns JSON 401](#auth-03-signed-out-api-request-returns-json-401)
   - [AUTH-04: session projection hides raw tokens](#auth-04-session-projection-hides-raw-tokens)
   - [AUTH-05: Admin-only page accepts Admin user](#auth-05-admin-only-page-accepts-admin-user)
-  - [AUTH-06: privacy tab is disabled for Admin without PrivacyOfficer](#auth-06-privacy-tab-is-disabled-for-admin-without-privacyofficer)
-  - [AUTH-07: PrivacyOfficer can use privacy without Admin powers](#auth-07-privacyofficer-can-use-privacy-without-admin-powers)
+  - [AUTH-06: Admin-only user cannot use PrivacyOfficer tabs](#auth-06-admin-only-user-cannot-use-privacyofficer-tabs)
+  - [AUTH-07: PrivacyOfficer without Admin powers](#auth-07-privacyofficer-without-admin-powers)
   - [AUTH-08: no-role user is denied privileged work](#auth-08-no-role-user-is-denied-privileged-work)
   - [AUTH-09: auth callback failure shows a browser error page](#auth-09-auth-callback-failure-shows-a-browser-error-page)
 - [Requirements library](#requirements-library)
@@ -117,7 +117,7 @@ and must not be reused outside local testing.
 | `linnea.areaowner` | `devpass` | Linnéa AreaOwner | None | `SE5560000001-linneab` | Broad privacy preview fixture and requirement area ownership checks. |
 | `petra.specresp` | `devpass` | Petra SpecificationResp | None | `SE5560000001-specresp1` | Specification lead checks. |
 | `paul.pkgcoauthor` | `devpass` | Paul PkgCoAuthor | None | `SE5560000001-pkgco1` | Requirement-package co-author checks. |
-| `rita.reviewer` | `devpass` | Rita Reviewer | `Reviewer` | `SE5560000001-reviewer1` | Review and decision workflow checks. |
+| `rita.reviewer` | `devpass` | Rita Reviewer | `Reviewer` | `SE5560000001-reviewer1` | Review-workflow checks outside privileged Admin Center tabs. |
 | `ada.admin` | `devpass` | Ada Admin | `Admin`, `PrivacyOfficer` | `SE5560000001-admin1` | Broad Admin and PrivacyOfficer happy path. |
 | `only.admin` | `devpass` | Only Admin | `Admin` | `SE5560000001-admin2` | Admin-only checks where privacy must be disabled. |
 | `disa.privacy` | `devpass` | Disa PrivacyOfficer | `PrivacyOfficer` | `SE5560000001-privacy1` | Privacy without Admin powers. |
@@ -155,6 +155,8 @@ Useful seeded routes and identifiers:
 - Common library fixture: `INT0001`.
 - Deviation fixtures: `PWT0001`, `PWT0002`, `PWT0003`, `PWT0004`.
 - Archive fixtures: `PWT0005` through `PWT0010`.
+
+The maintained role matrix lives in [permissions.md](./permissions.md).
 
 ## Authentication and authorization
 
@@ -245,9 +247,10 @@ and `hsaId`, but does not include raw tokens, authorization codes, `state`,
 **Expected result:** The Admin Center loads, `Taxonomi` is usable, and the
 taxonomy page opens. Normreferenser are not listed under `Taxonomi`.
 
-### AUTH-06: privacy tab is disabled for Admin without PrivacyOfficer
+### AUTH-06: Admin-only user cannot use PrivacyOfficer tabs
 
-**Purpose:** Confirm the narrow privacy role is required.
+**Purpose:** Confirm the narrow PrivacyOfficer role is required for privacy
+and retention work while Admin-only surfaces remain available.
 
 **Users:** `only.admin`.
 
@@ -256,15 +259,18 @@ taxonomy page opens. Normreferenser are not listed under `Taxonomi`.
 **Steps:**
 
 1. Open `/sv/admin`.
-1. Locate the `Dataskydd` and `Arkivering` tabs.
+1. Locate `Behörighetsöversyn`, `Arkivering`, `Dataskydd`, and
+   `Åtgärdslogg`.
+1. Verify `Behörighetsöversyn` and `Åtgärdslogg` are selectable.
 1. Try to select `Dataskydd`.
 
 **Expected result:** The privacy and archiving tabs are disabled with a tooltip
 that mentions `Dataskyddshandläggare`, and the active tab does not change.
 
-### AUTH-07: PrivacyOfficer can use privacy without Admin powers
+### AUTH-07: PrivacyOfficer without Admin powers
 
-**Purpose:** Confirm privacy duties do not imply Admin-only permissions.
+**Purpose:** Confirm PrivacyOfficer duties do not imply Admin-only
+permissions, while still allowing privacy, archiving, and access-review work.
 
 **Users:** `disa.privacy`.
 
@@ -274,10 +280,14 @@ that mentions `Dataskyddshandläggare`, and the active tab does not change.
 
 1. Open `/sv/admin?tab=privacy`.
 1. Verify the `Dataskydd` panel is visible.
+1. Open `/sv/admin?tab=archiving`.
+1. Verify the `Arkivering` panel is visible.
+1. Open `/sv/admin?tab=accessReview`.
+1. Verify the `Behörighetsöversyn` panel is visible.
 1. Open `/sv/admin/audit-log`.
 
-**Expected result:** The privacy panel is usable, while the action log does not
-load as an Admin page for this user.
+**Expected result:** The PrivacyOfficer panels are usable, while the action log
+does not load as an Admin page for this user.
 
 ### AUTH-08: no-role user is denied privileged work
 
@@ -1512,9 +1522,9 @@ correctly.
 
 ### ADMIN-07: access-review decision and export
 
-**Purpose:** Confirm Admin users can decide and export access reviews.
+**Purpose:** Confirm authorized users can decide and export access reviews.
 
-**Users:** `ada.admin`.
+**Users:** `ada.admin` or `disa.privacy`.
 
 **Prerequisites:** Open `/sv/admin?tab=accessReview`.
 

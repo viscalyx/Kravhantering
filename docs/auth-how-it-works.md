@@ -11,6 +11,8 @@ It is intentionally not a replacement for the more detailed workflow docs:
 - For local Keycloak, integration-test CI dependency, test setup, and
   env-var reference, see
   [auth-developer-workflow.md](./auth-developer-workflow.md).
+- For application role and permission decisions, see
+  [permissions.md](./permissions.md).
 
 ## Reading guide
 
@@ -413,8 +415,9 @@ flowchart LR
   expose that field through the realm user-profile configuration.
 - Emit global role information in a way that resolves to the canonical app
   roles `Reviewer`, `Admin`, and `PrivacyOfficer`. For the least friction,
-  emit those exact values on a `roles` claim. `PrivacyOfficer` is only for
-  personal data erasure work and does not imply `Admin`.
+  emit those exact values on a `roles` claim. `PrivacyOfficer` is a narrow
+  role for privacy, archiving retention, and access-review handling; it does
+  not imply `Admin`.
 - Do not model authoring rights as IdP roles. The application derives
   authoring rights from area and specification assignments matched on
   `employeeHsaId`.

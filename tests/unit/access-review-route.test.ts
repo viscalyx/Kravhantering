@@ -272,7 +272,9 @@ describe('access review routes', () => {
 
   it('returns service authorization failures for forbidden create', async () => {
     routeState.createAccessReviewRun.mockRejectedValueOnce(
-      forbiddenError('Admin role is required', { reason: 'admin_required' }),
+      forbiddenError('Admin or PrivacyOfficer role is required', {
+        reason: 'access_review_role_required',
+      }),
     )
     const { POST } = await import('@/app/api/admin/access-reviews/route')
     const response = await POST(
@@ -285,7 +287,7 @@ describe('access review routes', () => {
         detail: {
           actionKind: 'access_review.create',
           errorCode: 'forbidden',
-          reason: 'admin_required',
+          reason: 'access_review_role_required',
           requestSource: 'rest',
         },
         event: 'auth.authorization.denied',

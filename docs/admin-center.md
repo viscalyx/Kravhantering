@@ -8,6 +8,8 @@ for database-backed mutation and authorization-denial review.
 
 For requirement-list interaction details such as resizing, sorting, and
 filtering, see [requirements-ui-behaviour.md](./requirements-ui-behaviour.md).
+For the cross-application role matrix, see
+[permissions.md](./permissions.md).
 
 ## Purpose
 
@@ -33,8 +35,10 @@ The admin center currently has six tabs for core administration:
 - `Archiving`
 - `Privacy`
 
-Admins also see an `Action log` tab. The tab renders the action-log
-filters, table, pagination, and CSV export directly in the Admin Center.
+The `Action log` tab renders the action-log filters, table, pagination, and
+CSV export directly in the Admin Center for users with `Admin`.
+Users without the required role still see privileged tabs, but disabled tabs
+are dimmed, cannot be selected, and explain the missing role in a tooltip.
 
 ## Action Log
 
@@ -112,8 +116,9 @@ Requirements list reset:
 
 ## Privacy
 
-The `Privacy` tab is available at `/{locale}/admin?tab=privacy`. It supports
-GDPR Article 17 erasure handling for actor identities and live assignments.
+The `Privacy` tab is available at `/{locale}/admin?tab=privacy` for users with
+`PrivacyOfficer`. It supports GDPR Article 17 erasure handling for actor
+identities and live assignments.
 After a successful preview it also supports data subject access export for the
 previewed HSA-ID. JSON is the machine-readable authoritative payload, and PDF
 is a readable report of the same scope.
@@ -242,10 +247,10 @@ presentation as the Admin Center export.
 
 ## Archiving
 
-The `Archiving` tab is available at `/{locale}/admin?tab=archiving`. Archive
-and retention work is separated from personal data erasure and data subject
-access export flows. Retention is also separate from the requirement
-lifecycle's functional `Archived` state.
+The `Archiving` tab is available at `/{locale}/admin?tab=archiving` for users
+with `PrivacyOfficer`. Archive and retention work is separated from personal
+data erasure and data subject access export flows. Retention is also separate
+from the requirement lifecycle's functional `Archived` state.
 
 A `PrivacyOfficer` can load documented retention policies, preview rows whose
 policy age and status criteria have passed, create row-level exceptions for
@@ -293,12 +298,13 @@ free-text payloads. Export responses and mutation responses use
 
 ## Access Review
 
-The `Access review` tab is available at `/{locale}/admin?tab=accessReview`.
-It supports the recurring authorization review required by the information
-security action plan. The feature inventories app-managed assignments, stores a
-point-in-time review run, assigns newly created runs to the signed-in actor from
-the verified IdP session, lets the assigned reviewer decide each item, lets
-Admin cancel mistaken pending runs without deleting evidence, and lets Admin
+The `Access review` tab is available at
+`/{locale}/admin?tab=accessReview` for users with `Admin` or
+`PrivacyOfficer`. It supports the recurring authorization review required by
+the information security action plan. The feature inventories app-managed
+assignments, stores a point-in-time review run, assigns newly created runs to
+the signed-in actor from the verified IdP session, lets authorized handlers
+decide each item, cancel mistaken pending runs without deleting evidence, and
 export the review evidence as structured JSON or a PDF rendering of the same
 payload.
 
@@ -318,18 +324,19 @@ point to that external record.
 
 Access is role-aware:
 
-- `Admin` can create, list, cancel, complete, and export access review runs.
-- The assigned reviewer can open their assigned run and decide items by
-  matching the verified session HSA-ID to the run reviewer HSA-ID.
+- `Admin` and `PrivacyOfficer` can create, list, decide, cancel, complete, and
+  export access review runs.
+- `Reviewer` alone does not grant access-review management, even when the
+  user's HSA-ID appears as the stored reviewer snapshot on a run.
 - Other users receive a server-side authorization error even if they manipulate
   the client.
 
 New runs default to an annual period and a due date 30 days after creation. Only
-one `draft` or `in_review` access review may exist at a time; the Admin UI
-disables creation while a run is open, and the create route enforces the same
-rule server-side. The create route does not accept a manual reviewer payload;
-the reviewer snapshot is derived from the same verified actor ticket that
-created the request. Each item starts as `pending` and must be changed to
+one `draft` or `in_review` access review may exist at a time; the Admin Center
+UI disables creation while a run is open, and the create route enforces the
+same rule server-side. The create route does not accept a manual reviewer
+payload; the reviewer snapshot is derived from the same verified actor ticket
+that created the request. Each item starts as `pending` and must be changed to
 `approved`,
 `revoke_required`, `changed`, or `not_applicable` before the run can be
 completed. Decision updates record the deciding actor, timestamp, and optional

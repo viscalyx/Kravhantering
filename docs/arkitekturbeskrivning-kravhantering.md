@@ -558,9 +558,11 @@ förvaltningsflikar och en administratörsflik för
    kravversionsstatusar, kravunderlagets livscykelstatusar och
    användningsstatusar.
 4. **Behörighetsöversyn** — Återkommande kontroll av
-   applikationsstyrda uppdrag och AI-behörigheter.
+   applikationsstyrda uppdrag och AI-behörigheter. Fliken kräver
+   `Admin` eller `PrivacyOfficer`.
 5. **Arkivering** — Policybaserad gallring med förhandsgranskning,
-   exportbekräftelse och undantag.
+   exportbekräftelse och undantag. Fliken kräver
+   `PrivacyOfficer`.
 6. **Dataskydd** — Förhandsgranskning och körning av
    HSA-ID-baserad radering av personuppgifter. Fliken kräver rollen
    `PrivacyOfficer` (`Dataskyddshandläggare`) och ger inte
