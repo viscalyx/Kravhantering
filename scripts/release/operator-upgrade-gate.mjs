@@ -1,38 +1,16 @@
 import fs from 'node:fs'
 
-export const OPERATOR_UPGRADE_NOTES_PATH = 'docs/operator-upgrade-notes.md'
 export const OPERATOR_UPGRADE_NOTES_START_MARKER =
-  '<!-- operator-upgrade:notes start -->'
+  '<!-- DO NOT REMOVE: operator-upgrade:notes start -->'
 export const OPERATOR_UPGRADE_NOTES_END_MARKER =
-  '<!-- operator-upgrade:notes end -->'
+  '<!-- DO NOT REMOVE: operator-upgrade:notes end -->'
 export const OPERATOR_UPGRADE_NOTES_PLACEHOLDER =
   'Write operator upgrade notes here...'
 
-export const REQUIRED_CHECKBOXES = [
-  {
-    id: 'reviewed',
-    label: 'Operator upgrade impact is reviewed, or explicitly not relevant.',
-  },
-]
-
-export const OPTIONAL_CHECKBOXES = [
-  {
-    id: 'no-notes',
-    label: 'No operator upgrade notes are needed.',
-  },
-]
-
-export const OPERATOR_UPGRADE_PATH_RULES = [
-  {
-    id: 'migration-required-seed',
-    label: 'database migration or required seed data',
-    patterns: [
-      'typeorm/migrations/**',
-      'typeorm/seed-required.mjs',
-      'typeorm/seed-runner.mjs',
-    ],
-  },
-]
+export const NO_OPERATOR_NOTES_CHECKBOX = {
+  id: 'no-notes',
+  label: 'No operator notes needed.',
+}
 
 function readNonEmpty(value) {
   if (typeof value !== 'string') return undefined
@@ -40,51 +18,9 @@ function readNonEmpty(value) {
   return trimmed.length > 0 ? trimmed : undefined
 }
 
-export function normalizeChangedFile(filePath) {
-  return String(filePath ?? '')
-    .trim()
-    .replaceAll('\\', '/')
-    .replace(/^\.\//u, '')
-}
-
-export function matchesPathPattern(filePath, pattern) {
-  const normalizedFilePath = normalizeChangedFile(filePath)
-  const normalizedPattern = normalizeChangedFile(pattern)
-
-  if (!normalizedFilePath || !normalizedPattern) return false
-
-  if (normalizedPattern.endsWith('/**')) {
-    const prefix = normalizedPattern.slice(0, -3)
-    return (
-      normalizedFilePath === prefix ||
-      normalizedFilePath.startsWith(`${prefix}/`)
-    )
-  }
-
-  return normalizedFilePath === normalizedPattern
-}
-
-export function classifyChangedFiles(
-  changedFiles,
-  rules = OPERATOR_UPGRADE_PATH_RULES,
-) {
-  const normalizedFiles = [...new Set(changedFiles.map(normalizeChangedFile))]
-    .filter(Boolean)
-    .sort()
-
-  return rules
-    .map(rule => ({
-      ...rule,
-      files: normalizedFiles.filter(file =>
-        rule.patterns.some(pattern => matchesPathPattern(file, pattern)),
-      ),
-    }))
-    .filter(rule => rule.files.length > 0)
-}
-
 function markerCheckboxRegExp(markerId) {
   return new RegExp(
-    `^[ \\t]*[-*][ \\t]*\\[([ xX])\\][ \\t]*<!--\\s*operator-upgrade:${markerId}\\s*-->`,
+    `^[ \\t]*[-*][ \\t]*\\[([ xX])\\][^\\r\\n]*<!--[^\\r\\n]*operator-upgrade:${markerId}[^\\r\\n]*-->`,
     'mu',
   )
 }
@@ -125,7 +61,7 @@ function hasMeaningfulNoteText(line) {
 function operatorUpgradeNotesBlock(prBody) {
   const body = String(prBody ?? '')
   const startMarkerMatch = body.match(
-    /^[ \t]*<!--\s*operator-upgrade:notes start\s*-->[ \t]*$/mu,
+    /^[ \t]*<!--[^\r\n]*operator-upgrade:notes start[^\r\n]*-->[ \t]*$/mu,
   )
   if (!startMarkerMatch) {
     return { notes: '', status: 'missing-start' }
@@ -135,7 +71,7 @@ function operatorUpgradeNotesBlock(prBody) {
     startMarkerMatch.index + startMarkerMatch[0].length,
   )
   const endMarkerMatch = afterStartMarker.match(
-    /^[ \t]*<!--\s*operator-upgrade:notes end\s*-->[ \t]*$/mu,
+    /^[ \t]*<!--[^\r\n]*operator-upgrade:notes end[^\r\n]*-->[ \t]*$/mu,
   )
   if (!endMarkerMatch) {
     return { notes: '', status: 'missing-end' }
@@ -155,47 +91,15 @@ export function extractOperatorUpgradeNotes(prBody) {
   return operatorUpgradeNotesBlock(prBody).notes
 }
 
-export function evaluateOperatorUpgradeGate({ changedFiles, prBody }) {
-  const scopedGroups = classifyChangedFiles(changedFiles)
-
-  if (scopedGroups.length === 0) {
-    return {
-      failures: [],
-      passed: true,
-      requiresGate: false,
-      scopedGroups,
-    }
-  }
-
-  const checkboxResults = REQUIRED_CHECKBOXES.map(checkbox => ({
-    ...checkbox,
-    state: checkboxState(prBody, checkbox.id),
-  }))
+export function evaluateOperatorUpgradeGate({ prBody }) {
   const noNotesCheckbox = {
-    ...OPTIONAL_CHECKBOXES[0],
-    state: checkboxState(prBody, OPTIONAL_CHECKBOXES[0].id),
+    ...NO_OPERATOR_NOTES_CHECKBOX,
+    state: checkboxState(prBody, NO_OPERATOR_NOTES_CHECKBOX.id),
   }
   const notesBlock = operatorUpgradeNotesBlock(prBody)
   const notes = notesBlock.notes
   const hasDefaultPlaceholder = notes === OPERATOR_UPGRADE_NOTES_PLACEHOLDER
-  const hasOperatorUpgradeNotes =
-    notesBlock.status === 'found' && Boolean(notes) && !hasDefaultPlaceholder
   const failures = []
-
-  for (const checkbox of checkboxResults) {
-    if (checkbox.state === 'missing') {
-      failures.push(
-        `Missing Operator Upgrade checkbox marker "operator-upgrade:${checkbox.id}" in the PR body.`,
-      )
-      continue
-    }
-
-    if (checkbox.state !== 'checked') {
-      failures.push(
-        `Operator Upgrade checkbox is not checked: ${checkbox.label}`,
-      )
-    }
-  }
 
   if (noNotesCheckbox.state === 'missing') {
     failures.push(
@@ -203,85 +107,48 @@ export function evaluateOperatorUpgradeGate({ changedFiles, prBody }) {
     )
   }
 
-  if (notesBlock.status === 'missing-start') {
-    failures.push(
-      `Missing Operator Upgrade notes start marker "${OPERATOR_UPGRADE_NOTES_START_MARKER}" in the PR body.`,
-    )
-  } else if (notesBlock.status === 'missing-end') {
-    failures.push(
-      `Missing Operator Upgrade notes end marker "${OPERATOR_UPGRADE_NOTES_END_MARKER}" in the PR body.`,
-    )
-  }
+  if (noNotesCheckbox.state !== 'checked') {
+    if (notesBlock.status === 'missing-start') {
+      failures.push(
+        `Missing Operator Upgrade notes start marker "${OPERATOR_UPGRADE_NOTES_START_MARKER}" in the PR body.`,
+      )
+    } else if (notesBlock.status === 'missing-end') {
+      failures.push(
+        `Missing Operator Upgrade notes end marker "${OPERATOR_UPGRADE_NOTES_END_MARKER}" in the PR body.`,
+      )
+    }
 
-  if (noNotesCheckbox.state !== 'checked' && hasDefaultPlaceholder) {
-    failures.push(
-      'Operator Upgrade notes still contain the default placeholder. Replace it with operator notes, or remove it and check the no-notes checkbox.',
-    )
-  }
+    if (hasDefaultPlaceholder) {
+      failures.push(
+        'Operator Upgrade notes still contain the default placeholder. Replace it with operator notes, or check "No operator notes needed".',
+      )
+    }
 
-  if (
-    noNotesCheckbox.state !== 'checked' &&
-    notesBlock.status === 'found' &&
-    (!notes || hasDefaultPlaceholder)
-  ) {
-    failures.push(
-      'Operator Upgrade evidence is missing. Check "No operator upgrade notes are needed" or add operator upgrade notes between the operator-upgrade notes markers.',
-    )
-  }
-
-  const normalizedFiles = new Set(changedFiles.map(normalizeChangedFile))
-  if (
-    noNotesCheckbox.state !== 'checked' &&
-    hasOperatorUpgradeNotes &&
-    !normalizedFiles.has(OPERATOR_UPGRADE_NOTES_PATH)
-  ) {
-    failures.push(
-      `Operator Upgrade notes are provided, but ${OPERATOR_UPGRADE_NOTES_PATH} is not changed.`,
-    )
+    if (notesBlock.status === 'found' && (!notes || hasDefaultPlaceholder)) {
+      failures.push(
+        'Operator Upgrade evidence is missing. Check "No operator notes needed" or add operator notes between the operator-upgrade notes markers.',
+      )
+    }
   }
 
   return {
-    checkboxResults,
     failures,
     noNotesCheckbox,
     notes,
     passed: failures.length === 0,
     requiresGate: true,
-    scopedGroups,
   }
-}
-
-function formatScopedGroups(scopedGroups) {
-  return scopedGroups
-    .map(group => {
-      const files = group.files.map(file => `    - ${file}`).join('\n')
-      return `  - ${group.label} (${group.id})\n${files}`
-    })
-    .join('\n')
 }
 
 export function formatGateReport(result) {
-  if (!result.requiresGate) {
-    return 'Operator Upgrade gate not required: no migration or required seed paths changed.'
-  }
-
-  const touchedPaths = formatScopedGroups(result.scopedGroups)
-
   if (result.passed) {
-    return [
-      'Operator Upgrade gate passed for migration or required seed changes.',
-      'Touched migration or required seed paths:',
-      touchedPaths,
-    ].join('\n')
+    return 'Operator Upgrade gate passed.'
   }
 
   return [
     'Operator Upgrade gate failed.',
     '',
-    'This PR changes migrations or required seed data but the PR body does not contain completed operator-upgrade evidence.',
-    '',
-    'Touched migration or required seed paths:',
-    touchedPaths,
+    'The PR body does not contain completed operator-upgrade evidence.',
     '',
     'Required fixes:',
     ...result.failures.map(failure => `  - ${failure}`),
@@ -319,15 +186,7 @@ export function parseArgs(args) {
 function usage() {
   return `Usage:
   node scripts/release/operator-upgrade-gate.mjs --github-pr <number>
-  node scripts/release/operator-upgrade-gate.mjs --changed-files <path> --pr-body <path>`
-}
-
-function readChangedFiles(filePath, fsImpl = fs) {
-  return fsImpl
-    .readFileSync(filePath, 'utf8')
-    .split(/\r?\n/u)
-    .map(normalizeChangedFile)
-    .filter(Boolean)
+  node scripts/release/operator-upgrade-gate.mjs --pr-body <path>`
 }
 
 async function fetchGitHubJson(url, { fetchImpl, token }) {
@@ -375,26 +234,7 @@ export async function readPullRequestFromGitHub({
     token: cleanToken,
   })
 
-  const changedFiles = []
-  for (let page = 1; page <= 100; page += 1) {
-    const files = await fetchGitHubJson(
-      `${baseUrl}/files?per_page=100&page=${page}`,
-      {
-        fetchImpl,
-        token: cleanToken,
-      },
-    )
-    for (const file of files) {
-      changedFiles.push(file.filename)
-      if (file.previous_filename) {
-        changedFiles.push(file.previous_filename)
-      }
-    }
-    if (files.length < 100) break
-  }
-
   return {
-    changedFiles,
     prBody: pullRequest.body ?? '',
   }
 }
@@ -413,15 +253,14 @@ export async function main(args = process.argv.slice(2), options = {}) {
     }
 
     let input
-    if (parsedArgs['changed-files'] || parsedArgs['pr-body']) {
-      if (!parsedArgs['changed-files'] || !parsedArgs['pr-body']) {
-        throw new Error(
-          '--changed-files and --pr-body must be provided together.',
-        )
-      }
+    if (parsedArgs['changed-files']) {
+      throw new Error(
+        '--changed-files is no longer supported; operator upgrade evidence is read from the PR body.',
+      )
+    }
 
+    if (parsedArgs['pr-body']) {
       input = {
-        changedFiles: readChangedFiles(parsedArgs['changed-files'], fsImpl),
         prBody: fsImpl.readFileSync(parsedArgs['pr-body'], 'utf8'),
       }
     } else {

@@ -3,28 +3,10 @@ import fs from 'node:fs'
 export const REQUIRED_CHECKBOXES = [
   {
     id: 'requirements',
-    label: 'Security requirements are identified, or explicitly not relevant.',
-  },
-  {
-    id: 'tests',
-    label: 'Security tests are added/run, or explicitly not required.',
-  },
-  {
-    id: 'privacy',
-    label: 'Data protection impact is assessed, or explicitly not relevant.',
-  },
-  {
-    id: 'threat-model',
-    label: 'Threat model impact is assessed, or explicitly not required.',
-  },
-  {
-    id: 'approval',
     label:
-      'Security reviewer approval is complete, requested, or covered by CODEOWNERS.',
+      'There are no security requirements, data protection impact or threat model impact, and no security tests are needed for this change.',
   },
 ]
-
-export const SSDLC_NOTES_MARKER = '<!-- ssdlc:notes -->'
 
 export const SECURITY_SENSITIVE_PATH_RULES = [
   {
@@ -165,7 +147,7 @@ export function classifyChangedFiles(
 
 function markerCheckboxRegExp(markerId) {
   return new RegExp(
-    `^[ \\t]*[-*][ \\t]*\\[([ xX])\\][ \\t]*<!--\\s*ssdlc:${markerId}\\s*-->`,
+    `^[ \\t]*[-*][ \\t]*\\[([ xX])\\][^\\r\\n]*<!--[^\\r\\n]*ssdlc:${markerId}[^\\r\\n]*-->`,
     'mu',
   )
 }
@@ -174,52 +156,6 @@ export function checkboxState(prBody, markerId) {
   const match = String(prBody ?? '').match(markerCheckboxRegExp(markerId))
   if (!match) return 'missing'
   return match[1].toLowerCase() === 'x' ? 'checked' : 'unchecked'
-}
-
-function stripHtmlCommentMarkup(value) {
-  const input = String(value ?? '')
-  let output = ''
-  let index = 0
-
-  while (index < input.length) {
-    if (input.startsWith('<!--', index)) {
-      const commentEndIndex = input.indexOf('-->', index + 4)
-      if (commentEndIndex === -1) break
-      index = commentEndIndex + 3
-      continue
-    }
-
-    const character = input.at(index)
-    if (character !== '<' && character !== '>') {
-      output += character
-    }
-    index += 1
-  }
-
-  return output
-}
-
-function hasMeaningfulNoteText(line) {
-  return /[^\s!-]/u.test(line)
-}
-
-export function extractSsdlcNotes(prBody) {
-  const body = String(prBody ?? '')
-  const markerIndex = body.indexOf(SSDLC_NOTES_MARKER)
-  if (markerIndex === -1) return ''
-
-  const afterMarker = body.slice(markerIndex + SSDLC_NOTES_MARKER.length)
-  const nextHeadingIndex = afterMarker.search(/^##\s+/mu)
-  const notesSection =
-    nextHeadingIndex === -1
-      ? afterMarker
-      : afterMarker.slice(0, nextHeadingIndex)
-
-  return stripHtmlCommentMarkup(notesSection)
-    .split(/\r?\n/u)
-    .map(line => line.trim())
-    .filter(hasMeaningfulNoteText)
-    .join('\n')
 }
 
 export function evaluateSsdlcGate({ changedFiles, prBody }) {
@@ -238,7 +174,6 @@ export function evaluateSsdlcGate({ changedFiles, prBody }) {
     ...checkbox,
     state: checkboxState(prBody, checkbox.id),
   }))
-  const notes = extractSsdlcNotes(prBody)
   const failures = []
 
   for (const checkbox of checkboxResults) {
@@ -254,16 +189,9 @@ export function evaluateSsdlcGate({ changedFiles, prBody }) {
     }
   }
 
-  if (!notes) {
-    failures.push(
-      'SSDLC notes are missing. Add requirement IDs, test evidence, privacy impact, threat-model decision, and approval context.',
-    )
-  }
-
   return {
     checkboxResults,
     failures,
-    notes,
     passed: failures.length === 0,
     requiresGate: true,
     sensitiveGroups,

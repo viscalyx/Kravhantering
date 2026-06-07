@@ -3,7 +3,6 @@ import {
   checkboxState,
   classifyChangedFiles,
   evaluateSsdlcGate,
-  extractSsdlcNotes,
   formatGateReport,
   main,
   matchesPathPattern,
@@ -13,25 +12,7 @@ import {
 
 const completePrBody = `## SSDLC Gate
 
-- [x] <!-- ssdlc:requirements --> Security requirements are identified below,
-  or explicitly not relevant.
-- [x] <!-- ssdlc:tests --> Security tests are added/run, or explicitly not
-  required.
-- [x] <!-- ssdlc:privacy --> Data protection impact is assessed, or explicitly
-  not relevant.
-- [x] <!-- ssdlc:threat-model --> Threat model impact is assessed, or
-  explicitly not required.
-- [x] <!-- ssdlc:approval --> Security reviewer approval is complete,
-  requested, or covered by CODEOWNERS.
-
-<!-- ssdlc:notes -->
-Requirements: 8.25 and 8.26.
-Tests: npm run test.
-Privacy: Not relevant because no personal data changes.
-Threat model: Existing API boundary remains unchanged.
-Approval: CODEOWNERS requests @viscalyx/security-reviewers.
-
-## Reviewer Notes
+- [x] There are no security requirements, data protection impact or threat model impact, and no security tests are needed for this change. <!-- DO NOT REMOVE: ssdlc:requirements -->
 `
 
 describe('SSDLC gate', () => {
@@ -75,38 +56,18 @@ describe('SSDLC gate', () => {
     )
   })
 
-  it('parses checkbox states and notes independently', () => {
+  it('parses checkbox states', () => {
     expect(checkboxState(completePrBody, 'requirements')).toBe('checked')
     expect(
       checkboxState(
         completePrBody.replace(
-          '- [x] <!-- ssdlc:privacy -->',
-          '- [ ] <!-- ssdlc:privacy -->',
+          '- [x] There are no security requirements, data protection impact or threat model impact, and no security tests are needed for this change. <!-- DO NOT REMOVE: ssdlc:requirements -->',
+          '- [ ] There are no security requirements, data protection impact or threat model impact, and no security tests are needed for this change. <!-- DO NOT REMOVE: ssdlc:requirements -->',
         ),
-        'privacy',
+        'requirements',
       ),
     ).toBe('unchecked')
     expect(checkboxState(completePrBody, 'unknown')).toBe('missing')
-    expect(
-      extractSsdlcNotes(`${completePrBody}\nAdditional note without heading.`),
-    ).toContain('Requirements: 8.25 and 8.26.')
-  })
-
-  it('does not count overlapping HTML comment markers as SSDLC notes', () => {
-    const commentOnlyBody = completePrBody.replace(
-      /<!-- ssdlc:notes -->[\s\S]*?## Reviewer Notes/u,
-      '<!-- ssdlc:notes -->\n<!<!-- Hidden evidence -->-->\n## Reviewer Notes',
-    )
-
-    const result = evaluateSsdlcGate({
-      changedFiles: ['scripts/security/ssdlc-gate.mjs'],
-      prBody: commentOnlyBody,
-    })
-
-    expect(extractSsdlcNotes(commentOnlyBody)).toBe('')
-    expect(result.failures).toContain(
-      'SSDLC notes are missing. Add requirement IDs, test evidence, privacy impact, threat-model decision, and approval context.',
-    )
   })
 
   it('fails when security-sensitive changes have no completed PR evidence', () => {
@@ -125,7 +86,7 @@ describe('SSDLC gate', () => {
     expect(formatGateReport(result)).toContain('app/api/requirements/route.ts')
   })
 
-  it('passes when all SSDLC checkboxes and notes are completed', () => {
+  it('passes when the SSDLC checkbox is completed', () => {
     const result = evaluateSsdlcGate({
       changedFiles: ['lib/auth/session.ts'],
       prBody: completePrBody,
@@ -133,17 +94,14 @@ describe('SSDLC gate', () => {
 
     expect(result.passed).toBe(true)
     expect(result.requiresGate).toBe(true)
-    expect(result.notes).toContain('Requirements: 8.25 and 8.26.')
     expect(formatGateReport(result)).toContain('SSDLC gate passed')
   })
 
-  it('requires checked boxes and notes, not just the template markers', () => {
-    const incompleteBody = completePrBody
-      .replace('- [x] <!-- ssdlc:tests -->', '- [ ] <!-- ssdlc:tests -->')
-      .replace(
-        /<!-- ssdlc:notes -->[\s\S]*?## Reviewer Notes/u,
-        '<!-- ssdlc:notes -->\n<!-- Still empty. -->\n\n## Reviewer Notes',
-      )
+  it('requires the SSDLC checkbox to be checked', () => {
+    const incompleteBody = completePrBody.replace(
+      '- [x] There are no security requirements, data protection impact or threat model impact, and no security tests are needed for this change. <!-- DO NOT REMOVE: ssdlc:requirements -->',
+      '- [ ] There are no security requirements, data protection impact or threat model impact, and no security tests are needed for this change. <!-- DO NOT REMOVE: ssdlc:requirements -->',
+    )
 
     const result = evaluateSsdlcGate({
       changedFiles: ['lib/privacy/display-name.ts'],
@@ -153,8 +111,7 @@ describe('SSDLC gate', () => {
     expect(result.passed).toBe(false)
     expect(result.failures).toEqual(
       expect.arrayContaining([
-        'SSDLC checkbox is not checked: Security tests are added/run, or explicitly not required.',
-        'SSDLC notes are missing. Add requirement IDs, test evidence, privacy impact, threat-model decision, and approval context.',
+        'SSDLC checkbox is not checked: There are no security requirements, data protection impact or threat model impact, and no security tests are needed for this change.',
       ]),
     )
   })
