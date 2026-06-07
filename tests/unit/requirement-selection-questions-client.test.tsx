@@ -1742,8 +1742,12 @@ describe('RequirementSelectionQuestionsClient', () => {
       const dragPreview = document.querySelector(
         '[data-question-drag-preview="true"]',
       )
+      const dropMarker = document.querySelector(
+        '[data-question-drop-marker="true"]',
+      )
       expect(dragPreview).toHaveTextContent(sampleQuestion.questionCode)
       expect(dragPreview).toHaveTextContent(sampleQuestion.text)
+      expect(dropMarker).toBeInTheDocument()
       const cards = Array.from(questionList.children)
       expect(cards[0]).toHaveTextContent(sampleQuestion.text)
       expect(cards[1]).toHaveTextContent(secondQuestion.text)
@@ -1786,6 +1790,9 @@ describe('RequirementSelectionQuestionsClient', () => {
       )
       expect(
         document.querySelector('[data-question-drag-preview="true"]'),
+      ).not.toBeInTheDocument()
+      expect(
+        document.querySelector('[data-question-drop-marker="true"]'),
       ).not.toBeInTheDocument()
       const cards = Array.from(questionList.children)
       expect(cards[0]).toHaveTextContent(secondQuestion.text)
@@ -1848,7 +1855,11 @@ describe('RequirementSelectionQuestionsClient', () => {
       const dragPreview = document.querySelector(
         '[data-question-drag-preview="true"]',
       )
+      const dropMarker = document.querySelector(
+        '[data-question-drop-marker="true"]',
+      )
       expect(dragPreview).toHaveTextContent(sampleQuestion.text)
+      expect(dropMarker).toBeInTheDocument()
       const cards = Array.from(questionList.children)
       expect(cards[0]).toHaveTextContent(sampleQuestion.text)
       expect(cards[1]).toHaveTextContent(secondQuestion.text)
@@ -1874,6 +1885,9 @@ describe('RequirementSelectionQuestionsClient', () => {
       expect(cards[0]?.firstElementChild).not.toHaveClass('invisible')
       expect(
         document.querySelector('[data-question-drag-preview="true"]'),
+      ).not.toBeInTheDocument()
+      expect(
+        document.querySelector('[data-question-drop-marker="true"]'),
       ).not.toBeInTheDocument()
     })
     expect(

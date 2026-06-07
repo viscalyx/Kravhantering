@@ -229,6 +229,13 @@ interface QuestionDragPreviewState {
   y: number
 }
 
+interface QuestionDropMarkerState {
+  height: number
+  width: number
+  x: number
+  y: number
+}
+
 function sourceFilterEquals(
   left: AnswerRequirementSourceFilter,
   right: AnswerRequirementSourceFilter,
@@ -923,6 +930,8 @@ export default function RequirementSelectionQuestionsClient() {
   )
   const [questionDragPreview, setQuestionDragPreview] =
     useState<QuestionDragPreviewState | null>(null)
+  const [questionDropMarker, setQuestionDropMarker] =
+    useState<QuestionDropMarkerState | null>(null)
   const [reorderingQuestionId, setReorderingQuestionId] = useState<
     number | null
   >(null)
@@ -984,6 +993,43 @@ export default function RequirementSelectionQuestionsClient() {
       x: clientX - pointerDrag.previewOffsetX,
       y: clientY - pointerDrag.previewOffsetY,
     })
+  }
+
+  const updateQuestionDropMarker = (targetCard: HTMLElement | null) => {
+    if (!targetCard) {
+      setQuestionDropMarker(null)
+      return
+    }
+
+    const targetRect = targetCard.getBoundingClientRect()
+    setQuestionDropMarker({
+      height: targetRect.height,
+      width: targetRect.width,
+      x: targetRect.left,
+      y: targetRect.top,
+    })
+  }
+
+  const findQuestionDropTargetFromPoint = (
+    areaId: number,
+    clientX: number,
+    clientY: number,
+  ) => {
+    for (const candidate of document.querySelectorAll<HTMLElement>(
+      '[data-question-drop-target="true"]',
+    )) {
+      if (candidate.dataset.questionAreaId !== String(areaId)) continue
+
+      const rect = candidate.getBoundingClientRect()
+      const horizontallyInside =
+        clientX >= rect.left - 24 && clientX <= rect.right + 24
+      const verticallyInside = clientY >= rect.top && clientY <= rect.bottom
+      if (horizontallyInside && verticallyInside) {
+        return candidate
+      }
+    }
+
+    return null
   }
 
   const selectedQuestion =
@@ -1952,6 +1998,7 @@ export default function RequirementSelectionQuestionsClient() {
     setDraggedQuestionId(null)
     setDragOverQuestionId(null)
     setQuestionDragPreview(null)
+    setQuestionDropMarker(null)
   }
 
   const handleQuestionDragHandlePointerDown = (
@@ -2038,18 +2085,30 @@ export default function RequirementSelectionQuestionsClient() {
       event.clientY,
     )
     const targetCard =
-      targetElement instanceof HTMLElement
+      findQuestionDropTargetFromPoint(
+        pointerDrag.areaId,
+        event.clientX,
+        event.clientY,
+      ) ??
+      (targetElement instanceof HTMLElement
         ? targetElement.closest<HTMLElement>(
             '[data-question-drop-target="true"]',
           )
-        : null
+        : null)
     const targetQuestionId = Number(targetCard?.dataset.questionId)
     if (
       !Number.isInteger(targetQuestionId) ||
       targetQuestionId <= 0 ||
-      targetQuestionId === pointerDrag.questionId ||
-      targetQuestionId === pointerDrag.lastTargetQuestionId
+      targetQuestionId === pointerDrag.questionId
     ) {
+      pointerDrag.lastTargetQuestionId = null
+      setDragOverQuestionId(pointerDrag.questionId)
+      updateQuestionDropMarker(null)
+      return
+    }
+
+    if (targetQuestionId === pointerDrag.lastTargetQuestionId) {
+      updateQuestionDropMarker(targetCard)
       return
     }
 
@@ -2058,9 +2117,15 @@ export default function RequirementSelectionQuestionsClient() {
         question.id === targetQuestionId &&
         question.areaId === pointerDrag.areaId,
     )
-    if (!targetQuestion) return
+    if (!targetQuestion) {
+      pointerDrag.lastTargetQuestionId = null
+      setDragOverQuestionId(pointerDrag.questionId)
+      updateQuestionDropMarker(null)
+      return
+    }
 
     pointerDrag.lastTargetQuestionId = targetQuestion.id
+    updateQuestionDropMarker(targetCard)
     previewQuestionDropTarget(pointerDrag.areaId, targetQuestion)
   }
 
@@ -3236,6 +3301,20 @@ export default function RequirementSelectionQuestionsClient() {
       </div>
     ) : null
 
+  const questionDropMarkerContent = questionDropMarker ? (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none fixed z-[90] rounded-2xl bg-secondary-200/45 ring-2 ring-inset ring-secondary-500/75 dark:bg-secondary-700/45 dark:ring-secondary-400/70"
+      data-question-drop-marker="true"
+      style={{
+        height: questionDropMarker.height,
+        left: questionDropMarker.x,
+        top: questionDropMarker.y,
+        width: questionDropMarker.width,
+      }}
+    />
+  ) : null
+
   const questionDragPreviewContent = questionDragPreview
     ? (() => {
         const { question } = questionDragPreview
@@ -3309,6 +3388,7 @@ export default function RequirementSelectionQuestionsClient() {
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom" ref={contentRef}>
         {questionDragPreviewContent}
+        {questionDropMarkerContent}
         <FloatingActionRail
           anchorRef={listAnchorRef}
           developerModeContext="requirementSelectionQuestions"
