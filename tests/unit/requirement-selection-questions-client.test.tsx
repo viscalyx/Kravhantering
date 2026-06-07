@@ -114,6 +114,7 @@ interface TestQuestion {
   selectionType: 'multiple' | 'single'
   sortOrder: number
   text: string
+  visibilityGroups: unknown[]
 }
 
 const sampleArea = {
@@ -137,6 +138,7 @@ const sampleQuestion: TestQuestion = {
   selectionType: 'single',
   sortOrder: 0,
   text: 'Which security profile applies?',
+  visibilityGroups: [],
 }
 
 const sampleAnswer: TestAnswer = {

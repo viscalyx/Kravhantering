@@ -459,6 +459,14 @@ down.
 - Requirement-selection questions are always optional. Progress counts answered
   active questions against all active questions, both total and per requirement
   area, without blocking save or report actions.
+- Requirement-selection questions with visibility conditions are shown only
+  when at least one condition group matches the current saved answers in the
+  specification. Progress, area summaries, search and unanswered-only filtering
+  count only active visible questions.
+- Visible questions show an answered or unanswered badge with icon/text and a
+  subtle card tone. A parent question that reveals follow-up questions shows
+  compact links that scroll to those visible questions in their own requirement
+  area group.
 - The question tab provides lightweight search/filtering by question text,
   answer text, requirement area, and unanswered state. Questions are grouped by
   requirement area and answer rows show how many published requirements they
@@ -474,6 +482,13 @@ down.
   requirements are not narrowed.
 - Historical saved answers remain visible and clearable, but are excluded from
   filters and progress.
+- If a question is hidden by visibility conditions but has historical saved
+  answers, it is shown as a historical row with the badge
+  `Historiskt · villkor inte längre uppfyllt`.
+- When changing an answer would hide already answered follow-up questions, the
+  user must confirm before saving. Confirming recursively clears the current
+  answers on the hidden branch; stewardship-driven visibility changes mark
+  affected saved answers as historical instead.
 - Saved answers update optimistically with visible saving/error status. When the
   requirement-selection toggle is on, changed answers update the filtered
   `Tillgängliga krav` list immediately; when the toggle is off, changed answers

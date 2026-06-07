@@ -71,6 +71,26 @@ function tableSection(SEED_DATA, name) {
   return t
 }
 
+function requirementSelectionQuestionSequence(questionCode) {
+  const match = /-KUF(\d+)$/.exec(questionCode)
+  if (!match) {
+    throw new Error(
+      `Dogfood seed: invalid requirement selection question code ${questionCode}`,
+    )
+  }
+  return Number.parseInt(match[1], 10)
+}
+
+function requirementSelectionQuestionNextSequenceByArea() {
+  const nextSequenceByArea = new Map()
+  for (const question of REQUIREMENT_SELECTION_QUESTIONS) {
+    const sequence = requirementSelectionQuestionSequence(question.code)
+    const current = nextSequenceByArea.get(question.areaId) ?? 1
+    nextSequenceByArea.set(question.areaId, Math.max(current, sequence + 1))
+  }
+  return nextSequenceByArea
+}
+
 const DOGFOOD_OWNER_HSA_BY_ID = new Map([
   [1001, 'SE5560000001-saraholm'],
   [1002, 'SE5560000001-karlpersson'],
@@ -132,21 +152,50 @@ const REQUIREMENT_SELECTION_QUESTIONS = [
     areaId: ID.area.DRF,
     code: 'DRF-KUF001',
     helpText:
-      'Välj driftförutsättningar som påverkar krav på plattform, återställning och belastning.',
+      'Välj driftform för leveransen. Valet styr vilka följdfrågor om tillgänglighet och återställning som visas.',
     id: 3,
-    selectionType: 'multiple',
+    selectionType: 'single',
     sortOrder: 30,
-    text: 'Vilka driftkrav är relevanta?',
+    text: 'Vilken driftform gäller?',
+  },
+  {
+    areaId: ID.area.DRF,
+    code: 'DRF-KUF002',
+    helpText:
+      'Besvara när lösningen drivs i egen miljö eller som del av hybrid drift.',
+    id: 7,
+    selectionType: 'single',
+    sortOrder: 31,
+    text: 'Vilken tillgänglighet behöver verksamheten vid egen drift/on-premises?',
+  },
+  {
+    areaId: ID.area.DRF,
+    code: 'DRF-KUF003',
+    helpText:
+      'Besvara när lösningen drivs i molnplattform eller som del av hybrid drift.',
+    id: 8,
+    selectionType: 'single',
+    sortOrder: 32,
+    text: 'Vilken tillgänglighet behöver verksamheten vid molndrift?',
+  },
+  {
+    areaId: ID.area.DRF,
+    code: 'DRF-KUF004',
+    helpText:
+      'Besvara när hög tillgänglighet har valts. Svaret beskriver verksamhetens återställningsbehov vid större avbrott.',
+    id: 9,
+    selectionType: 'single',
+    sortOrder: 33,
+    text: 'Vilket återställningsbehov har verksamheten vid större avbrott?',
   },
   {
     areaId: ID.area.ANV,
     code: 'ANV-KUF001',
-    helpText:
-      'Välj de användargrupper och tillgänglighetsbehov som ska styra kravurvalet.',
+    helpText: 'Välj var användarna ansluter från när de använder lösningen.',
     id: 4,
     selectionType: 'multiple',
     sortOrder: 40,
-    text: 'Vilka användargrupper ska stödjas?',
+    text: 'Var finns användarna när de använder lösningen?',
   },
   {
     areaId: ID.area.RAP,
@@ -250,85 +299,82 @@ const REQUIREMENT_SELECTION_ANSWERS = [
   },
   {
     description:
-      'Lyfter krav på driftsmiljö, övervakning och återställning i molnplattform.',
+      'Används när lösningen driftas i egen eller avtalad lokal miljö där organisationen ansvarar för plattformen.',
     id: 8,
+    packages: [BASE_REQUIREMENT_PACKAGE_IDS.normalDrift, ID.pkg.driftTillg],
+    questionId: 3,
+    requirementUniqueIds: ['DRF0036', 'DRF0037'],
+    sortOrder: 10,
+    text: 'Egen drift/on-premises',
+  },
+  {
+    description: 'Används när lösningen huvudsakligen driftas i molnplattform.',
+    id: 9,
     packages: [ID.pkg.molndrift, ID.pkg.driftTillg],
     questionId: 3,
     requirementUniqueIds: ['DRF0036', 'DRF0038', 'DRF0040'],
-    sortOrder: 10,
-    text: 'Molndrift och plattformsdrift',
-  },
-  {
-    description:
-      'Passar tjänster med många samtidiga användare, stora datamängder eller toppar.',
-    id: 9,
-    packages: [BASE_REQUIREMENT_PACKAGE_IDS.hogBelastning, ID.pkg.driftTillg],
-    questionId: 3,
-    requirementUniqueIds: ['DRF0038', 'DRF0039'],
     sortOrder: 20,
-    text: 'Hög belastning eller många samtidiga användare',
+    text: 'Molndrift',
   },
   {
     description:
-      'Används för leveranser som måste kunna återställas efter större avbrott.',
+      'Används när lösningen kombinerar egen drift och molnplattform.',
     id: 10,
-    packages: [
-      BASE_REQUIREMENT_PACKAGE_IDS.katastrofAterstallning,
-      ID.pkg.driftTillg,
-    ],
+    packages: [ID.pkg.molndrift, ID.pkg.driftTillg],
     questionId: 3,
-    requirementUniqueIds: ['DRF0037', 'DRF0040'],
+    requirementUniqueIds: ['DRF0036', 'DRF0038', 'DRF0040'],
     sortOrder: 30,
-    text: 'Katastrofåterställning och backup',
+    text: 'Hybrid drift',
   },
   {
     description:
-      'Basnivå för lösningar utan särskilda belastnings- eller återställningskrav.',
+      'Välj när driftformen inte är beslutad och därför inte ska påverka kravurvalet.',
     id: 11,
-    packages: [BASE_REQUIREMENT_PACKAGE_IDS.normalDrift],
+    isNoRequirementSelection: true,
+    packages: [],
     questionId: 3,
     requirementUniqueIds: [],
     sortOrder: 40,
-    text: 'Normal drift utan särskild belastning',
+    text: 'Inte beslutad',
   },
   {
-    description: 'Passar återkommande handläggningsflöden i verksamheten.',
+    description:
+      'Används när användarna ansluter från organisationens interna klientnät.',
     id: 12,
-    packages: [ID.pkg.arendehantering, ID.pkg.anvandbarhet],
+    packages: [ID.pkg.anvandbarhet],
     questionId: 4,
     requirementUniqueIds: ['ANV0037', 'ANV0038'],
     sortOrder: 10,
-    text: 'Handläggare i verksamheten',
+    text: 'Internt klientnätverk',
   },
   {
     description:
-      'Lyfter krav på responsivitet, fältarbete och användning utanför kontoret.',
+      'Används när användarna ansluter från externa klientnät via VPN.',
     id: 13,
-    packages: [ID.pkg.mobilAnvandning, ID.pkg.anvandbarhet],
+    packages: [ID.pkg.mobilAnvandning, ID.pkg.anvandbarhet, ID.pkg.infosak],
     questionId: 4,
     requirementUniqueIds: ['ANV0040', 'ANV0041'],
     sortOrder: 20,
-    text: 'Mobila fältanvändare',
+    text: 'Externt klientnätverk via VPN',
   },
   {
-    description:
-      'Passar förvaltnings- och administrationsytor med hög spårbarhet.',
+    description: 'Används när användarna når lösningen direkt från internet.',
     id: 14,
-    packages: [ID.pkg.anvandbarhet, ID.pkg.sparbarhet],
+    packages: [ID.pkg.anvandbarhet, ID.pkg.sso],
     questionId: 4,
     requirementUniqueIds: ['ANV0037', 'ANV0039'],
     sortOrder: 30,
-    text: 'Administratörer och förvaltare',
+    text: 'Internet',
   },
   {
     description:
-      'Används när digital tillgänglighet behöver vara ett tydligt urvalsvillkor.',
+      'Används när användarna finns i ett separerat internt nät med tydliga åtkomstgränser.',
     id: 15,
-    packages: [ID.pkg.tillganglighet],
+    packages: [ID.pkg.anvandbarhet, ID.pkg.behorighet, ID.pkg.infosak],
     questionId: 4,
-    requirementUniqueIds: ['TIL0001', 'TIL0002'],
+    requirementUniqueIds: ['ANV0039', 'SÄK0043'],
     sortOrder: 40,
-    text: 'Tillgänglighet enligt WCAG',
+    text: 'Internt segmenterat nätverk',
   },
   {
     description:
@@ -402,11 +448,104 @@ const REQUIREMENT_SELECTION_ANSWERS = [
     sortOrder: 40,
     text: 'Ingen extra kvalitetssäkring utöver standard',
   },
+  {
+    description:
+      'Passar verksamheter som bara behöver tillgänglighet under normal bemannad arbetstid.',
+    id: 23,
+    packages: [BASE_REQUIREMENT_PACKAGE_IDS.normalDrift],
+    questionId: 7,
+    requirementUniqueIds: [],
+    sortOrder: 10,
+    text: 'Normal kontorstid',
+  },
+  {
+    description:
+      'Används när verksamheten behöver längre öppettider men inte hög tillgänglighet dygnet runt.',
+    id: 24,
+    packages: [BASE_REQUIREMENT_PACKAGE_IDS.normalDrift, ID.pkg.driftTillg],
+    questionId: 7,
+    requirementUniqueIds: ['DRF0037'],
+    sortOrder: 20,
+    text: 'Utökad öppettid',
+  },
+  {
+    description:
+      'Används när verksamheten behöver hög tillgänglighet i egen miljö med lokal redundans.',
+    id: 25,
+    packages: [BASE_REQUIREMENT_PACKAGE_IDS.hogBelastning, ID.pkg.driftTillg],
+    questionId: 7,
+    requirementUniqueIds: ['DRF0038', 'DRF0039'],
+    sortOrder: 30,
+    text: 'Hög tillgänglighet med lokal redundans',
+  },
+  {
+    description:
+      'Passar när molnleverantörens ordinarie tjänstenivå är tillräcklig för verksamheten.',
+    id: 26,
+    packages: [ID.pkg.molndrift],
+    questionId: 8,
+    requirementUniqueIds: ['DRF0036'],
+    sortOrder: 10,
+    text: 'Leverantörens standard-SLA räcker',
+  },
+  {
+    description:
+      'Används när verksamheten behöver hög tillgänglighet inom en vald molnregion.',
+    id: 27,
+    packages: [ID.pkg.molndrift, ID.pkg.driftTillg],
+    questionId: 8,
+    requirementUniqueIds: ['DRF0038'],
+    sortOrder: 20,
+    text: 'Hög tillgänglighet i en region',
+  },
+  {
+    description:
+      'Används när verksamheten behöver hög tillgänglighet över flera zoner eller regioner.',
+    id: 28,
+    packages: [ID.pkg.molndrift, ID.pkg.driftTillg],
+    questionId: 8,
+    requirementUniqueIds: ['DRF0038', 'DRF0040'],
+    sortOrder: 30,
+    text: 'Hög tillgänglighet över flera zoner eller regioner',
+  },
+  {
+    description:
+      'Passar när verksamheten kan vänta till nästa arbetsdag efter ett större avbrott.',
+    id: 29,
+    packages: [BASE_REQUIREMENT_PACKAGE_IDS.normalDrift],
+    questionId: 9,
+    requirementUniqueIds: [],
+    sortOrder: 10,
+    text: 'Återställning nästa arbetsdag räcker',
+  },
+  {
+    description:
+      'Används när verksamheten behöver återfå tjänsten samma dag efter ett större avbrott.',
+    id: 30,
+    packages: [ID.pkg.driftTillg],
+    questionId: 9,
+    requirementUniqueIds: ['DRF0037', 'DRF0040'],
+    sortOrder: 20,
+    text: 'Återställning samma dag krävs',
+  },
+  {
+    description:
+      'Används när verksamheten behöver snabb återställning i en separat miljö efter ett större avbrott.',
+    id: 31,
+    packages: [
+      BASE_REQUIREMENT_PACKAGE_IDS.katastrofAterstallning,
+      ID.pkg.driftTillg,
+    ],
+    questionId: 9,
+    requirementUniqueIds: ['DRF0040'],
+    sortOrder: 30,
+    text: 'Snabb återställning i separat miljö krävs',
+  },
 ]
 
 const REQUIREMENT_SELECTION_SAVED_ANSWERS = [
   {
-    answerIds: [2, 4, 5, 8, 13, 15],
+    answerIds: [2, 4, 5, 9, 28, 31, 14],
     actor: { displayName: 'Sara Holm', hsaId: 'SE5560000001-saraholm' },
     specificationId: REQUIREMENT_SELECTION_DEMO_SPEC_IDS.etjanst,
   },
@@ -419,7 +558,7 @@ const REQUIREMENT_SELECTION_SAVED_ANSWERS = [
     specificationId: REQUIREMENT_SELECTION_DEMO_SPEC_IDS.khInfor,
   },
   {
-    answerIds: [4, 5, 6, 9],
+    answerIds: [4, 5, 6, 10, 25, 27, 30],
     actor: { displayName: 'Karl Persson', hsaId: 'SE5560000001-karlpersson' },
     specificationId: REQUIREMENT_SELECTION_DEMO_SPEC_IDS.intplatt,
   },
@@ -433,6 +572,107 @@ const REQUIREMENT_SELECTION_SAVED_ANSWERS = [
     actor: { displayName: 'Oscar Nilsson', hsaId: 'SE5560000001-oscarn' },
     isHistorical: true,
     specificationId: REQUIREMENT_SELECTION_DEMO_SPEC_IDS.gdpr,
+  },
+]
+
+const REQUIREMENT_SELECTION_VISIBILITY_GROUPS = [
+  {
+    id: 1,
+    questionId: 6,
+    sortOrder: 0,
+  },
+  {
+    id: 2,
+    questionId: 7,
+    sortOrder: 0,
+  },
+  {
+    id: 3,
+    questionId: 8,
+    sortOrder: 0,
+  },
+  {
+    id: 4,
+    questionId: 9,
+    sortOrder: 0,
+  },
+  {
+    id: 5,
+    questionId: 9,
+    sortOrder: 1,
+  },
+]
+
+const REQUIREMENT_SELECTION_VISIBILITY_CONDITIONS = [
+  {
+    answerId: 4,
+    groupId: 1,
+    id: 1,
+    parentQuestionId: 2,
+    sortOrder: 0,
+  },
+  {
+    answerId: 5,
+    groupId: 1,
+    id: 2,
+    parentQuestionId: 2,
+    sortOrder: 1,
+  },
+  {
+    answerId: 6,
+    groupId: 1,
+    id: 3,
+    parentQuestionId: 2,
+    sortOrder: 2,
+  },
+  {
+    answerId: 8,
+    groupId: 2,
+    id: 4,
+    parentQuestionId: 3,
+    sortOrder: 0,
+  },
+  {
+    answerId: 10,
+    groupId: 2,
+    id: 5,
+    parentQuestionId: 3,
+    sortOrder: 1,
+  },
+  {
+    answerId: 9,
+    groupId: 3,
+    id: 6,
+    parentQuestionId: 3,
+    sortOrder: 0,
+  },
+  {
+    answerId: 10,
+    groupId: 3,
+    id: 7,
+    parentQuestionId: 3,
+    sortOrder: 1,
+  },
+  {
+    answerId: 25,
+    groupId: 4,
+    id: 8,
+    parentQuestionId: 7,
+    sortOrder: 0,
+  },
+  {
+    answerId: 27,
+    groupId: 5,
+    id: 9,
+    parentQuestionId: 8,
+    sortOrder: 0,
+  },
+  {
+    answerId: 28,
+    groupId: 5,
+    id: 10,
+    parentQuestionId: 8,
+    sortOrder: 1,
   },
 ]
 
@@ -462,13 +702,39 @@ function appendRequirementSelectionDemoSeed(SEED_DATA) {
     SEED_DATA,
     'specification_requirement_selection_answers',
   )
+  const visibilityGroups = tableSection(
+    SEED_DATA,
+    'requirement_selection_question_visibility_groups',
+  )
+  const visibilityConditions = tableSection(
+    SEED_DATA,
+    'requirement_selection_question_visibility_conditions',
+  )
   const requirementIdByUnique = requirementIdByUniqueId(SEED_DATA)
   const answerById = new Map(
     REQUIREMENT_SELECTION_ANSWERS.map(answer => [answer.id, answer]),
   )
 
+  for (const [
+    areaId,
+    nextSequence,
+  ] of requirementSelectionQuestionNextSequenceByArea()) {
+    const areaIdIdx = questionSequences.columns.indexOf('area_id')
+    const nextSequenceIdx = questionSequences.columns.indexOf('next_sequence')
+    const existing = questionSequences.rows.find(
+      row => row[areaIdIdx] === areaId,
+    )
+    if (existing) {
+      existing[nextSequenceIdx] = Math.max(
+        existing[nextSequenceIdx],
+        nextSequence,
+      )
+    } else {
+      ensureRow(questionSequences, [areaId, nextSequence], ['area_id'])
+    }
+  }
+
   for (const question of REQUIREMENT_SELECTION_QUESTIONS) {
-    ensureRow(questionSequences, [question.areaId, 2], ['area_id'])
     ensureRow(
       questions,
       [
@@ -540,6 +806,30 @@ function appendRequirementSelectionDemoSeed(SEED_DATA) {
         ['answer_id', 'requirement_id'],
       )
     }
+  }
+
+  for (const group of REQUIREMENT_SELECTION_VISIBILITY_GROUPS) {
+    ensureRow(
+      visibilityGroups,
+      [group.id, group.questionId, group.sortOrder, SEED_TS, SEED_TS],
+      ['id'],
+    )
+  }
+
+  for (const condition of REQUIREMENT_SELECTION_VISIBILITY_CONDITIONS) {
+    ensureRow(
+      visibilityConditions,
+      [
+        condition.id,
+        condition.groupId,
+        condition.parentQuestionId,
+        condition.answerId,
+        condition.sortOrder,
+        SEED_TS,
+        SEED_TS,
+      ],
+      ['id'],
+    )
   }
 
   for (const savedSelection of REQUIREMENT_SELECTION_SAVED_ANSWERS) {

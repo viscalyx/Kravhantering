@@ -265,6 +265,24 @@ erDiagram
         text updated_at
     }
 
+    requirement_selection_question_visibility_groups {
+        integer id PK
+        integer question_id FK
+        integer sort_order
+        text created_at
+        text updated_at
+    }
+
+    requirement_selection_question_visibility_conditions {
+        integer id PK
+        integer visibility_group_id FK
+        integer parent_question_id FK
+        integer answer_id FK
+        integer sort_order
+        text created_at
+        text updated_at
+    }
+
     requirement_selection_answer_packages {
         integer answer_id FK, PK
         integer requirement_package_id FK, PK
@@ -565,6 +583,10 @@ erDiagram
     requirement_areas ||--|| requirement_selection_question_sequences : "allocates KUF codes"
     requirement_areas ||--o{ requirement_selection_questions : "owns"
     requirement_selection_questions ||--o{ requirement_selection_answers : "has answers"
+    requirement_selection_questions ||--o{ requirement_selection_question_visibility_groups : "has visibility groups"
+    requirement_selection_question_visibility_groups ||--o{ requirement_selection_question_visibility_conditions : "has conditions"
+    requirement_selection_questions ||--o{ requirement_selection_question_visibility_conditions : "parent question"
+    requirement_selection_answers ||--o{ requirement_selection_question_visibility_conditions : "trigger answer"
     requirement_selection_answers ||--o{ requirement_selection_answer_packages : "links packages"
     requirement_packages ||--o{ requirement_selection_answer_packages : "selected by answers"
     requirement_selection_answers ||--o{ requirement_selection_answer_requirements : "links requirements"
@@ -847,8 +869,9 @@ Tracks the next `{AREA}-KUF###` sequence per requirement area.
 <!-- markdownlint-enable MD013 -->
 
 **Demo seed:** `npm run db:seed:demo` adds sequence rows with
-`next_sequence = 2` for `SÄK`, `INT`, `DRF`, `ANV`, `RAP`, and `KVA`, matching
-the first seeded `*-KUF001` question in each area.
+`next_sequence = 2` for `SÄK`, `INT`, `ANV`, `RAP`, and `KVA`, and
+`next_sequence = 5` for `DRF`, matching the seeded `DRF-KUF001` through
+`DRF-KUF004` questions.
 
 ### `requirement_selection_questions`
 
@@ -880,9 +903,9 @@ validation.
 `chk_requirement_selection_questions_selection_type`,
 `chk_requirement_selection_questions_state`.
 
-**Demo seed:** the demo profile contains six active stewardship questions:
-`SÄK-KUF001`, `INT-KUF001`, `DRF-KUF001`, `ANV-KUF001`, `RAP-KUF001`, and
-`KVA-KUF001`.
+**Demo seed:** the demo profile contains nine active stewardship questions:
+`SÄK-KUF001`, `INT-KUF001`, `DRF-KUF001`, `DRF-KUF002`, `DRF-KUF003`,
+`DRF-KUF004`, `ANV-KUF001`, `RAP-KUF001`, and `KVA-KUF001`.
 
 ### `requirement_selection_answers`
 
@@ -914,10 +937,60 @@ that derived health state as `Saknar kravurval`.
 `idx_requirement_selection_answers_archived_at`,
 `chk_requirement_selection_answers_state`.
 
-**Demo seed:** the demo profile contains 22 active answer options. They cover
+**Demo seed:** the demo profile contains 31 active answer options. They cover
 package-only selections, explicit published-requirement selections, mixed
-package and requirement selections, and three `Utan kravurval` answers without
+package and requirement selections, and four `Utan kravurval` answers without
 links.
+
+### `requirement_selection_question_visibility_groups`
+
+Condition groups that make a requirement-selection question visible only when
+at least one group matches. A question without groups is a standalone
+requirement selection question.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `question_id` | integer FK → `requirement_selection_questions.id` (CASCADE DELETE) | Child question controlled by the group |
+| `sort_order` | integer | Display and evaluation ordering for stewardship |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Index:** `idx_requirement_selection_question_visibility_groups_question_id`.
+
+### `requirement_selection_question_visibility_conditions`
+
+Answer-level conditions inside a visibility group. Within a group, every
+referenced parent question must have at least one of its listed answers
+selected. Different groups are alternatives.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `visibility_group_id` | integer FK → `requirement_selection_question_visibility_groups.id` (CASCADE DELETE) | Owning group |
+| `parent_question_id` | integer FK → `requirement_selection_questions.id` | Parent question whose answer controls visibility |
+| `answer_id` | integer FK → `requirement_selection_answers.id` | Trigger answer on the parent question |
+| `sort_order` | integer | Ordering inside the group |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Indexes and constraints:**
+`uq_requirement_selection_question_visibility_conditions_answer`,
+`idx_requirement_selection_question_visibility_conditions_group_id`,
+`idx_requirement_selection_question_visibility_conditions_parent_question_id`,
+`idx_requirement_selection_question_visibility_conditions_answer_id`.
+
+**Demo seed:** `KVA-KUF001` is visible when `INT-KUF001` has one of
+`REST-API eller API Gateway`, `Asynkrona meddelanden eller webhooks`, or
+`Filimport eller datamigrering` selected. The `DRF` demo hierarchy starts with
+`DRF-KUF001` for deployment model: `DRF-KUF002` is shown for
+`Egen drift/on-premises` or `Hybrid drift`, `DRF-KUF003` is shown for
+`Molndrift` or `Hybrid drift`, and `DRF-KUF004` is shown when a high-availability
+answer is selected in either availability follow-up question.
 
 ### `requirement_selection_answer_packages`
 
@@ -1908,6 +1981,7 @@ its purpose and the table/column(s) it covers.
 | `uq_requirement_versions_archive_initiated_requirement_id` | `requirement_versions` | `requirement_id` where `archive_initiated_at IS NOT NULL` | Ensures a requirement has at most one archiving-in-progress version |
 | `uq_requirement_versions_published_requirement_id` | `requirement_versions` | `requirement_id` where `requirement_status_id = 3` | Ensures a requirement has at most one Published version |
 | `uq_requirement_selection_questions_question_code` | `requirement_selection_questions` | `question_code` | Ensures question code uniqueness for stewardship questions |
+| `uq_requirement_selection_question_visibility_conditions_answer` | `requirement_selection_question_visibility_conditions` | `visibility_group_id, parent_question_id, answer_id` | Prevents duplicate trigger answers in the same visibility group |
 | `uq_specification_governance_object_types_name_sv` | `specification_governance_object_types` | `name_sv` | Prevents duplicate Swedish governance object type names |
 | `uq_specification_governance_object_types_name_en` | `specification_governance_object_types` | `name_en` | Prevents duplicate English governance object type names |
 | `uq_specification_implementation_types_name_sv` | `specification_implementation_types` | `name_sv` | Prevents duplicate Swedish implementation type names |
@@ -1958,6 +2032,10 @@ its purpose and the table/column(s) it covers.
 | `idx_requirement_selection_answers_question_sort_order` | `requirement_selection_answers` | `question_id, sort_order` | Speed up answer lists per question |
 | `idx_requirement_selection_answers_state` | `requirement_selection_answers` | `is_active, is_archived` | Speed up active answer filters |
 | `idx_requirement_selection_answers_archived_at` | `requirement_selection_answers` | `is_archived, archived_at` | Speed up retention previews for archived answers |
+| `idx_requirement_selection_question_visibility_groups_question_id` | `requirement_selection_question_visibility_groups` | `question_id, sort_order` | Speed up loading visibility groups for child questions |
+| `idx_requirement_selection_question_visibility_conditions_group_id` | `requirement_selection_question_visibility_conditions` | `visibility_group_id, sort_order` | Speed up loading conditions for a visibility group |
+| `idx_requirement_selection_question_visibility_conditions_parent_question_id` | `requirement_selection_question_visibility_conditions` | `parent_question_id` | Speed up dependency checks from parent questions |
+| `idx_requirement_selection_question_visibility_conditions_answer_id` | `requirement_selection_question_visibility_conditions` | `answer_id` | Speed up dependency checks from trigger answers |
 | `idx_requirement_selection_answer_packages_package_id` | `requirement_selection_answer_packages` | `requirement_package_id` | Speed up package-to-answer lookups |
 | `idx_requirement_selection_answer_requirements_requirement_id` | `requirement_selection_answer_requirements` | `requirement_id` | Speed up requirement-to-answer lookups |
 | `idx_specification_requirement_selection_answers_historical` | `specification_requirement_selection_answers` | `specification_id, is_historical` | Speed up current saved-answer selection context for available requirements |
@@ -2051,6 +2129,10 @@ The following table lists every named FK constraint:
 | `fk_requirement_selection_question_sequences_area_id` | `requirement_selection_question_sequences` | `area_id` | `requirement_areas.id` | CASCADE | NO ACTION |
 | `fk_requirement_selection_questions_area_id` | `requirement_selection_questions` | `area_id` | `requirement_areas.id` | NO ACTION | NO ACTION |
 | `fk_requirement_selection_answers_question_id` | `requirement_selection_answers` | `question_id` | `requirement_selection_questions.id` | CASCADE | NO ACTION |
+| `fk_requirement_selection_question_visibility_groups_question_id` | `requirement_selection_question_visibility_groups` | `question_id` | `requirement_selection_questions.id` | CASCADE | NO ACTION |
+| `fk_requirement_selection_question_visibility_conditions_visibility_group_id` | `requirement_selection_question_visibility_conditions` | `visibility_group_id` | `requirement_selection_question_visibility_groups.id` | CASCADE | NO ACTION |
+| `fk_requirement_selection_question_visibility_conditions_parent_question_id` | `requirement_selection_question_visibility_conditions` | `parent_question_id` | `requirement_selection_questions.id` | NO ACTION | NO ACTION |
+| `fk_requirement_selection_question_visibility_conditions_answer_id` | `requirement_selection_question_visibility_conditions` | `answer_id` | `requirement_selection_answers.id` | NO ACTION | NO ACTION |
 | `fk_requirement_selection_answer_packages_answer_id` | `requirement_selection_answer_packages` | `answer_id` | `requirement_selection_answers.id` | CASCADE | NO ACTION |
 | `fk_requirement_selection_answer_packages_requirement_package_id` | `requirement_selection_answer_packages` | `requirement_package_id` | `requirement_packages.id` | CASCADE | NO ACTION |
 | `fk_requirement_selection_answer_requirements_answer_id` | `requirement_selection_answer_requirements` | `answer_id` | `requirement_selection_answers.id` | CASCADE | NO ACTION |
@@ -2087,6 +2169,8 @@ graph LR
         RSQS[requirement_selection_question_sequences]
         RSQ[requirement_selection_questions]
         RSA[requirement_selection_answers]
+        RSQVG[requirement_selection_question_visibility_groups]
+        RSQVC[requirement_selection_question_visibility_conditions]
         RL[risk_levels]
         NR[norm_references]
     end
@@ -2174,6 +2258,15 @@ graph LR
     RSA -- "idx_..._question_sort_order\n(question_id, sort_order)" --> RSQ
     RSA -- "idx_..._state\n(is_active, is_archived)" --> RSA
     RSA -- "idx_..._archived_at\n(is_archived, archived_at)" --> RSA
+    RSQVG -- "FK question_id" --> RSQ
+    RSQVG -- "idx_..._question_id\n(question_id, sort_order)" --> RSQ
+    RSQVC -- "FK visibility_group_id" --> RSQVG
+    RSQVC -- "FK parent_question_id" --> RSQ
+    RSQVC -- "FK answer_id" --> RSA
+    RSQVC -- "uq_..._answer\n(visibility_group_id, parent_question_id, answer_id)" --> RSQVC
+    RSQVC -- "idx_..._group_id\n(visibility_group_id, sort_order)" --> RSQVG
+    RSQVC -- "idx_..._parent_question_id\n(parent_question_id)" --> RSQ
+    RSQVC -- "idx_..._answer_id\n(answer_id)" --> RSA
     RSAP -- "FK answer_id" --> RSA
     RSAP -- "idx_..._package_id\n(requirement_package_id)" --> RPKG
     RSAR -- "FK answer_id" --> RSA

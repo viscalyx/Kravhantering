@@ -494,6 +494,7 @@
     "kravbibliotekssammanhanget",
     "kravområdesägda",
     "kravområdesägt",
+    "kravområdesgränser",
     "kravområdesnära",
     "kravområdesprefix",
     "kravinformation",
@@ -707,7 +708,8 @@
     "CAcreateserial",
     "showcerts",
     "noout",
-    "noexec"
+    "noexec",
+    "huvudkravurvalsfråga"
   ],
   "flagWords": [],
   "ignorePaths": [

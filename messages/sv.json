@@ -111,9 +111,15 @@
   },
   "specificationRequirementSelection": {
     "allAreas": "Alla kravområden",
+    "answered": "Besvarad",
     "clear": "Rensa",
+    "confirmHiddenAnswerClear": "Ändringen döljer och rensar {count, plural, one {en besvarad följdfråga} other {# besvarade följdfrågor}}: {questions}.",
+    "confirmHiddenAnswerClearConfirm": "Rensa och spara",
+    "confirmHiddenAnswerClearTitle": "Rensa dolda följdfrågesvar?",
     "error": "Kunde inte spara kravurval.",
+    "followUpQuestions": "Följdfrågor",
     "historical": "Historiskt val",
+    "hiddenHistoricalVisibility": "Historiskt · villkor inte längre uppfyllt",
     "loading": "Laddar kravurvalsfrågor...",
     "matchSummary": "{count} matchande krav, {added} redan tillagda",
     "missingRequirementSelection": "Saknar kravurval",
@@ -121,6 +127,8 @@
     "progress": "Besvarade",
     "saving": "Sparar",
     "search": "Sök fråga eller svar",
+    "scrollToQuestion": "Gå till följdfråga",
+    "unanswered": "Obesvarad",
     "unansweredOnly": "Endast obesvarade",
     "title": "Kravurvalsfrågor"
   },
@@ -162,8 +170,13 @@
       "questionText": "Skriv frågan som användaren i kravunderlaget ska besvara.",
       "requirementIds": "Sök och lägg till publicerade krav via synligt Krav-ID eller kravtext. Svaret sparar kravkopplingarna bakom kulisserna.",
       "selectionType": "Enval tillåter ett svar. Flerval tillåter flera svar. Svarstypen Utan kravurval är alltid exklusiv.",
-      "sortOrder": "Styr ordningen mellan frågor inom samma kravområde. Lägre tal visas före högre tal."
+      "sortOrder": "Styr ordningen mellan frågor inom samma kravområde. Lägre tal visas före högre tal.",
+      "visibilityAnswers": "Välj de överliggande svar som gör villkoret sant. Ett av de valda svaren på den överliggande frågan räcker.",
+      "visibilityParent": "Välj den överliggande kravurvalsfråga som måste ha ett av de valda svaren."
     },
+    "addVisibilityCondition": "Lägg till villkor",
+    "addVisibilityGroup": "Lägg till villkorsgrupp",
+    "conditionGroup": "Villkorsgrupp",
     "helpText": "Hjälptext",
     "hideRequirementsInSelection": "Dölj krav i urvalet för",
     "inactive": "Inaktiv",
@@ -184,11 +197,13 @@
     "openRequirementDetail": "Öppna kravdetaljer",
     "packageSelector": "Välj paket",
     "packages": "Kravpaket",
+    "parentQuestion": "Överliggande fråga",
     "reactivate": "Återaktivera",
     "reorderAnswer": "Ändra svarsordning",
     "reorderAnswerHint": "Dra för att ändra ordning, eller använd pil upp, pil ned, Home och End när knappen har fokus.",
     "removePackage": "Ta bort paket",
     "removeRequirement": "Ta bort krav",
+    "standaloneQuestionVisibility": "Frågan har inga synlighetsvillkor och visas oberoende av svar på andra kravurvalsfrågor.",
     "requirementsInSelection": "Krav i urvalet",
     "requirementsInSelectionEmpty": "Inga publicerade krav ingår i de aktuella källorna.",
     "requirementsInSelectionError": "Kunde inte hämta krav i urvalet.",
@@ -199,6 +214,7 @@
     "requirementIds": "Krav-ID",
     "requirementSources": "Källor för kravurval",
     "save": "Spara",
+    "saveVisibility": "Spara synlighet",
     "search": "Sök fråge-ID eller text",
     "searchRequirementIds": "Sök Krav-ID",
     "searchRequirementIdsPlaceholder": "Sök Krav-ID eller kravtext",
@@ -211,7 +227,12 @@
     "sortOrder": "Sortering",
     "status": "Status",
     "text": "Text",
-    "title": "Kravurvalsfrågor"
+    "title": "Kravurvalsfrågor",
+    "triggerAnswers": "Utlösande svar",
+    "visibilityButtonText": "Synlighetsvillkor",
+    "visibilityInactiveWarning": "Villkoret refererar inaktivt eller arkiverat innehåll. Det behålls för förvaltningen men gör inte frågan synlig.",
+    "visibilityPanelDescription": "En fråga visas när minst en villkorsgrupp matchar. Inuti en grupp måste varje överliggande fråga ha ett av de valda svaren.",
+    "visibilityPanelTitle": "Synlighetsvillkor"
   },
   "privacyDataExport": {
     "title": "Export av personuppgifter",
@@ -1676,9 +1697,13 @@
         "heading": "Svar och matchning",
         "body": "Lägg till svarsalternativ som pekar direkt på publicerade krav, på kravpaket eller på ett avsiktligt svar utan kravurval. Aktiva svar påverkar filtreringen när användare väljer dem i ett kravunderlag."
       },
+      "visibility": {
+        "heading": "Synlighet",
+        "body": "Använd frågans synlighetspanel för att göra den beroende av tidigare kravurvalssvar. En fråga utan synlighetsvillkor visas oberoende av svar på andra kravurvalsfrågor. En villkorad fråga visas när minst en villkorsgrupp matchar."
+      },
       "health": {
         "heading": "Hälsoindikatorer",
-        "body": "Svar som inte längre matchar några publicerade krav markeras som att de saknar kravurval. Granska de svaren efter att kravpaket eller kravversioner har arkiverats."
+        "body": "Svar som inte längre matchar några publicerade krav markeras som att de saknar kravurval. Granska de svaren efter att kravpaket eller kravversioner har arkiverats. Inaktiva frågor eller svar kan finnas kvar i synlighetsvillkor, men de matchar inte och visas med varning i synlighetspanelen."
       }
     },
     "normReferences": {

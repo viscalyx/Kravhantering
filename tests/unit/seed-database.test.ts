@@ -224,9 +224,20 @@ describe('seed profiles', () => {
     )
     const questionsById = rowById(questions)
     const answersById = rowById(answers)
+    const demoQuestionCodes = new Set([
+      'SÄK-KUF001',
+      'INT-KUF001',
+      'DRF-KUF001',
+      'DRF-KUF002',
+      'DRF-KUF003',
+      'DRF-KUF004',
+      'ANV-KUF001',
+      'RAP-KUF001',
+      'KVA-KUF001',
+    ])
     const demoQuestionIds = new Set(
       questions
-        .filter(row => String(row.question_code).endsWith('KUF001'))
+        .filter(row => demoQuestionCodes.has(String(row.question_code)))
         .map(row => row.id),
     )
     const demoAnswers = answers.filter(row =>
@@ -241,18 +252,18 @@ describe('seed profiles', () => {
         .map(row => row.requirement_id),
     )
 
-    expect(demoQuestionIds.size).toBe(6)
-    expect(demoAnswers).toHaveLength(22)
+    expect(demoQuestionIds.size).toBe(9)
+    expect(demoAnswers).toHaveLength(31)
     expect(new Set(questionSequences.map(row => row.next_sequence))).toEqual(
-      new Set([2]),
+      new Set([2, 5]),
     )
     expect(
       questionSequences
         .map(row => row.area_id)
         .sort((left, right) => Number(left) - Number(right)),
     ).toEqual([1, 2, 4, 9, 1002, 1004])
-    expect(answerPackages).toHaveLength(32)
-    expect(answerRequirements).toHaveLength(36)
+    expect(answerPackages).toHaveLength(47)
+    expect(answerRequirements).toHaveLength(47)
     expect(new Set(demoSavedAnswers.map(row => row.specification_id))).toEqual(
       new Set([1, 7, 8, 1002]),
     )

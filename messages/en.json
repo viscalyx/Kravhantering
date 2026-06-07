@@ -111,9 +111,15 @@
   },
   "specificationRequirementSelection": {
     "allAreas": "All requirement areas",
+    "answered": "Answered",
     "clear": "Clear",
+    "confirmHiddenAnswerClear": "This change will hide and clear {count, plural, one {one answered follow-up question} other {# answered follow-up questions}}: {questions}.",
+    "confirmHiddenAnswerClearConfirm": "Clear and save",
+    "confirmHiddenAnswerClearTitle": "Clear hidden follow-up answers?",
     "error": "Could not save selection.",
+    "followUpQuestions": "Follow-up questions",
     "historical": "Historical choice",
+    "hiddenHistoricalVisibility": "Historical · condition no longer met",
     "loading": "Loading questions...",
     "matchSummary": "{count} matching requirements, {added} already added",
     "missingRequirementSelection": "Missing requirement selection",
@@ -121,6 +127,8 @@
     "progress": "Answered",
     "saving": "Saving",
     "search": "Search question or answer",
+    "scrollToQuestion": "Go to follow-up question",
+    "unanswered": "Unanswered",
     "unansweredOnly": "Unanswered only",
     "title": "Requirement selection questions"
   },
@@ -162,8 +170,13 @@
       "questionText": "Write the question that users answer in the specification.",
       "requirementIds": "Search and add published requirements by visible Requirement ID or requirement text. The answer stores requirement links behind the scenes.",
       "selectionType": "Single choice allows one answer. Multiple choice allows several answers. No requirement selection is always exclusive.",
-      "sortOrder": "Controls the order of questions within the same requirement area. Lower numbers appear before higher numbers."
+      "sortOrder": "Controls the order of questions within the same requirement area. Lower numbers appear before higher numbers.",
+      "visibilityAnswers": "Choose the parent answers that make this condition true. At least one selected answer for the parent question is enough.",
+      "visibilityParent": "Choose the parent requirement selection question that must have one of the selected answers."
     },
+    "addVisibilityCondition": "Add condition",
+    "addVisibilityGroup": "Add condition group",
+    "conditionGroup": "Condition group",
     "helpText": "Help text",
     "hideRequirementsInSelection": "Hide requirements in selection for",
     "inactive": "Inactive",
@@ -184,11 +197,13 @@
     "openRequirementDetail": "Open requirement details",
     "packageSelector": "Choose packages",
     "packages": "Requirement packages",
+    "parentQuestion": "Parent question",
     "reactivate": "Reactivate",
     "reorderAnswer": "Reorder answer",
     "reorderAnswerHint": "Drag to reorder, or use Arrow Up, Arrow Down, Home, and End while focused.",
     "removePackage": "Remove package",
     "removeRequirement": "Remove requirement",
+    "standaloneQuestionVisibility": "This question has no visibility conditions and is shown independently of answers to other requirement selection questions.",
     "requirementsInSelection": "Requirements in selection",
     "requirementsInSelectionEmpty": "No published requirements are included by the current sources.",
     "requirementsInSelectionError": "Could not load requirements in selection.",
@@ -199,6 +214,7 @@
     "requirementIds": "Requirement IDs",
     "requirementSources": "Requirement selection sources",
     "save": "Save",
+    "saveVisibility": "Save visibility",
     "search": "Search question ID or text",
     "searchRequirementIds": "Search Requirement IDs",
     "searchRequirementIdsPlaceholder": "Search Requirement ID or requirement text",
@@ -211,7 +227,12 @@
     "sortOrder": "Sort order",
     "status": "Status",
     "text": "Text",
-    "title": "Requirement selection questions"
+    "title": "Requirement selection questions",
+    "triggerAnswers": "Trigger answers",
+    "visibilityButtonText": "Visibility conditions",
+    "visibilityInactiveWarning": "This condition references inactive or archived content. It is kept for stewardship but will not make the question visible.",
+    "visibilityPanelDescription": "A question is shown when at least one condition group matches. Inside a group, every parent question must have one of the selected answers.",
+    "visibilityPanelTitle": "Visibility conditions"
   },
   "privacyDataExport": {
     "title": "Personal data export",
@@ -1676,9 +1697,13 @@
         "heading": "Answers and matching",
         "body": "Add answer options that point to published requirements directly, to requirements packages, or to an intentional no-selection answer. Active answers influence filtering when users choose them in a specification."
       },
+      "visibility": {
+        "heading": "Visibility",
+        "body": "Use the visibility panel on a question to make it conditional on earlier requirement selection answers. A question with no visibility condition is shown independently of answers to other requirement selection questions. A conditional question is shown when at least one condition group matches."
+      },
       "health": {
         "heading": "Health indicators",
-        "body": "Answers that no longer match any published requirements are marked as missing a requirement selection. Review those answers after packages or requirement versions are archived."
+        "body": "Answers that no longer match any published requirements are marked as missing a requirement selection. Review those answers after packages or requirement versions are archived. Inactive questions or answers can remain in visibility conditions, but they do not match and are called out in the visibility panel."
       }
     },
     "normReferences": {

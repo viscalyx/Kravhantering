@@ -3,7 +3,7 @@ import {
   getSpecificationBySlug,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
-import { validationError } from '@/lib/requirements/errors'
+import { conflictError, validationError } from '@/lib/requirements/errors'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 import { toBoolean, toIsoString } from '@/lib/typeorm/value-mappers'
 
@@ -29,6 +29,40 @@ export interface RequirementSelectionAnswerRow {
   updatedAt: string
 }
 
+export interface RequirementSelectionVisibilityConditionRow {
+  answerId: number
+  answerIsActive: boolean
+  answerIsArchived: boolean
+  answerText: string
+  id: number
+  parentAreaName: string
+  parentQuestionCode: string
+  parentQuestionId: number
+  parentQuestionIsActive: boolean
+  parentQuestionIsArchived: boolean
+  parentQuestionText: string
+}
+
+export interface RequirementSelectionVisibilityGroupRow {
+  conditions: RequirementSelectionVisibilityConditionRow[]
+  id: number
+  sortOrder: number
+}
+
+export interface RequirementSelectionVisibilityInputGroup {
+  conditions: Array<{
+    answerIds: number[]
+    parentQuestionId: number
+  }>
+}
+
+export interface HiddenRequirementSelectionImpactRow {
+  answerTexts: string[]
+  questionCode: string
+  questionId: number
+  questionText: string
+}
+
 export interface RequirementSelectionQuestionRow {
   answers: RequirementSelectionAnswerRow[]
   archivedAt: string | null
@@ -45,10 +79,12 @@ export interface RequirementSelectionQuestionRow {
   sortOrder: number
   text: string
   updatedAt: string
+  visibilityGroups: RequirementSelectionVisibilityGroupRow[]
 }
 
 export interface SpecificationRequirementSelectionQuestionRow
   extends RequirementSelectionQuestionRow {
+  isVisible: boolean
   savedAnswers: Array<{
     answerId: number
     isHistorical: boolean
@@ -57,6 +93,7 @@ export interface SpecificationRequirementSelectionQuestionRow
     updatedAt: string
   }>
   selectedAnswerIds: number[]
+  visibilityState: 'hidden' | 'hidden_with_historical_answers' | 'visible'
 }
 
 export interface RequirementSelectionFilterResult {
@@ -120,6 +157,23 @@ type AnswerDbRow = {
   updatedAt: Date | string
 }
 
+type VisibilityConditionDbRow = {
+  answerId: number
+  answerIsActive: boolean | number | string
+  answerIsArchived: boolean | number | string
+  answerText: string
+  groupId: number
+  id: number
+  parentAreaName: string
+  parentQuestionCode: string
+  parentQuestionId: number
+  parentQuestionIsActive: boolean | number | string
+  parentQuestionIsArchived: boolean | number | string
+  parentQuestionText: string
+  questionId: number
+  sortOrder: number
+}
+
 type MatchedRequirementSourceDbRow = {
   description: string | null
   id: number
@@ -169,6 +223,7 @@ function mapQuestionRow(row: QuestionDbRow): RequirementSelectionQuestionRow {
     sortOrder: row.sortOrder,
     text: row.text,
     updatedAt: toIsoString(row.updatedAt),
+    visibilityGroups: [],
   }
 }
 
@@ -254,6 +309,175 @@ async function listQuestionRows(
     params,
   )) as QuestionDbRow[]
   return rows.map(mapQuestionRow)
+}
+
+async function hydrateVisibilityGroups(
+  executor: QueryExecutor,
+  questions: RequirementSelectionQuestionRow[],
+): Promise<void> {
+  const questionIds = questions.map(question => question.id)
+  if (questionIds.length === 0) return
+
+  const rows = (await executor.query(
+    `
+      SELECT
+        visibility_group.question_id AS questionId,
+        visibility_group.id AS groupId,
+        visibility_group.sort_order AS sortOrder,
+        condition.id AS id,
+        condition.parent_question_id AS parentQuestionId,
+        parent_question.question_code AS parentQuestionCode,
+        parent_question.question_text AS parentQuestionText,
+        parent_question.is_active AS parentQuestionIsActive,
+        parent_question.is_archived AS parentQuestionIsArchived,
+        parent_area.name AS parentAreaName,
+        condition.answer_id AS answerId,
+        answer.answer_text AS answerText,
+        answer.is_active AS answerIsActive,
+        answer.is_archived AS answerIsArchived
+      FROM requirement_selection_question_visibility_groups AS visibility_group
+      INNER JOIN requirement_selection_question_visibility_conditions AS condition
+        ON condition.visibility_group_id = visibility_group.id
+      INNER JOIN requirement_selection_questions AS parent_question
+        ON parent_question.id = condition.parent_question_id
+      INNER JOIN requirement_areas AS parent_area
+        ON parent_area.id = parent_question.area_id
+      INNER JOIN requirement_selection_answers AS answer
+        ON answer.id = condition.answer_id
+      WHERE visibility_group.question_id IN (${placeholders(questionIds)})
+      ORDER BY
+        visibility_group.question_id ASC,
+        visibility_group.sort_order ASC,
+        visibility_group.id ASC,
+        condition.sort_order ASC,
+        condition.id ASC
+    `,
+    questionIds,
+  )) as VisibilityConditionDbRow[]
+
+  const groupsByQuestion = new Map<
+    number,
+    RequirementSelectionVisibilityGroupRow[]
+  >()
+  const groupById = new Map<number, RequirementSelectionVisibilityGroupRow>()
+  for (const row of rows) {
+    const group =
+      groupById.get(row.groupId) ??
+      ({
+        conditions: [],
+        id: row.groupId,
+        sortOrder: row.sortOrder,
+      } satisfies RequirementSelectionVisibilityGroupRow)
+    group.conditions.push({
+      answerId: row.answerId,
+      answerIsActive: toBoolean(row.answerIsActive),
+      answerIsArchived: toBoolean(row.answerIsArchived),
+      answerText: row.answerText,
+      id: row.id,
+      parentAreaName: row.parentAreaName,
+      parentQuestionCode: row.parentQuestionCode,
+      parentQuestionId: row.parentQuestionId,
+      parentQuestionIsActive: toBoolean(row.parentQuestionIsActive),
+      parentQuestionIsArchived: toBoolean(row.parentQuestionIsArchived),
+      parentQuestionText: row.parentQuestionText,
+    })
+    groupById.set(row.groupId, group)
+    if (!groupsByQuestion.get(row.questionId)?.some(item => item === group)) {
+      const bucket = groupsByQuestion.get(row.questionId) ?? []
+      bucket.push(group)
+      groupsByQuestion.set(row.questionId, bucket)
+    }
+  }
+
+  for (const question of questions) {
+    question.visibilityGroups = groupsByQuestion.get(question.id) ?? []
+  }
+}
+
+function selectedAnswersByQuestion(
+  questions: SpecificationRequirementSelectionQuestionRow[],
+): Map<number, Set<number>> {
+  const selected = new Map<number, Set<number>>()
+  for (const question of questions) {
+    selected.set(question.id, new Set(question.selectedAnswerIds))
+  }
+  return selected
+}
+
+function computeVisibleQuestionIds(
+  questions: RequirementSelectionQuestionRow[],
+  selectedAnswerIdsByQuestion: Map<number, Set<number>>,
+): Set<number> {
+  const questionsById = new Map(
+    questions.map(question => [question.id, question]),
+  )
+  const memo = new Map<number, boolean>()
+  const visiting = new Set<number>()
+
+  const groupMatches = (
+    group: RequirementSelectionVisibilityGroupRow,
+  ): boolean => {
+    const allowedAnswersByParent = new Map<number, Set<number>>()
+    for (const condition of group.conditions) {
+      if (
+        !condition.parentQuestionIsActive ||
+        condition.parentQuestionIsArchived ||
+        !condition.answerIsActive ||
+        condition.answerIsArchived
+      ) {
+        continue
+      }
+      const bucket =
+        allowedAnswersByParent.get(condition.parentQuestionId) ?? new Set()
+      bucket.add(condition.answerId)
+      allowedAnswersByParent.set(condition.parentQuestionId, bucket)
+    }
+    if (allowedAnswersByParent.size === 0) return false
+
+    for (const [parentQuestionId, allowedAnswerIds] of allowedAnswersByParent) {
+      if (!isVisible(parentQuestionId)) return false
+      const selectedAnswers = selectedAnswerIdsByQuestion.get(parentQuestionId)
+      if (!selectedAnswers) return false
+      if (
+        !Array.from(allowedAnswerIds).some(answerId =>
+          selectedAnswers.has(answerId),
+        )
+      ) {
+        return false
+      }
+    }
+    return true
+  }
+
+  const isVisible = (questionId: number): boolean => {
+    const cached = memo.get(questionId)
+    if (cached !== undefined) return cached
+    const question = questionsById.get(questionId)
+    if (!question?.isActive || question.isArchived) {
+      memo.set(questionId, false)
+      return false
+    }
+    if (question.visibilityGroups.length === 0) {
+      memo.set(questionId, true)
+      return true
+    }
+    if (visiting.has(questionId)) {
+      memo.set(questionId, false)
+      return false
+    }
+
+    visiting.add(questionId)
+    const visible = question.visibilityGroups.some(groupMatches)
+    visiting.delete(questionId)
+    memo.set(questionId, visible)
+    return visible
+  }
+
+  return new Set(
+    questions
+      .filter(question => isVisible(question.id))
+      .map(question => question.id),
+  )
 }
 
 function mergeMatchedRequirementSourceRow(
@@ -598,6 +822,7 @@ export async function listRequirementSelectionQuestions(
     areaId: options.areaId,
     includeArchived: options.includeArchived ?? true,
   })
+  await hydrateVisibilityGroups(db, questions)
   await hydrateAnswers(db, questions)
   return questions
 }
@@ -609,6 +834,7 @@ export async function getRequirementSelectionQuestionById(
   const questions = await listQuestionRows(db, { includeArchived: true })
   const question = questions.find(item => item.id === id)
   if (!question) return null
+  await hydrateVisibilityGroups(db, [question])
   await hydrateAnswers(db, [question])
   return question
 }
@@ -1358,6 +1584,7 @@ async function getQuestionWithExecutor(
   const questions = await listQuestionRows(executor, { includeArchived: true })
   const question = questions.find(item => item.id === id)
   if (!question) return null
+  await hydrateVisibilityGroups(executor, [question])
   await hydrateAnswers(executor, [question])
   return question
 }
@@ -1372,18 +1599,19 @@ export async function resolveSpecificationId(
   return (await getSpecificationBySlug(db, idOrSlug))?.id ?? null
 }
 
-export async function listSpecificationRequirementSelectionQuestions(
-  db: SqlServerDatabase,
+async function loadSpecificationRequirementSelectionQuestionsForVisibility(
+  executor: QueryExecutor,
   specificationId: number,
 ): Promise<SpecificationRequirementSelectionQuestionRow[]> {
-  const questions = (await listQuestionRows(db, {
+  const questions = (await listQuestionRows(executor, {
     includeArchived: true,
     includeSavedForSpecificationId: specificationId,
   })) as SpecificationRequirementSelectionQuestionRow[]
-  await hydrateAnswers(db, questions, {
+  await hydrateVisibilityGroups(executor, questions)
+  await hydrateAnswers(executor, questions, {
     includeSavedForSpecificationId: specificationId,
   })
-  const savedRows = (await db.query(
+  const savedRows = (await executor.query(
     `
       SELECT
         answer_id AS answerId,
@@ -1426,6 +1654,30 @@ export async function listSpecificationRequirementSelectionQuestions(
       .filter(answer => !answer.isHistorical)
       .map(answer => answer.answerId)
   }
+  const visibleQuestionIds = computeVisibleQuestionIds(
+    questions,
+    selectedAnswersByQuestion(questions),
+  )
+  for (const question of questions) {
+    question.isVisible = visibleQuestionIds.has(question.id)
+    question.visibilityState = question.isVisible
+      ? 'visible'
+      : question.savedAnswers.some(answer => answer.isHistorical)
+        ? 'hidden_with_historical_answers'
+        : 'hidden'
+  }
+  return questions
+}
+
+export async function listSpecificationRequirementSelectionQuestions(
+  db: SqlServerDatabase,
+  specificationId: number,
+): Promise<SpecificationRequirementSelectionQuestionRow[]> {
+  const questions =
+    await loadSpecificationRequirementSelectionQuestionsForVisibility(
+      db,
+      specificationId,
+    )
   const existingRequirementIds = new Set(
     await getExistingSpecificationRequirementIds(db, specificationId),
   )
@@ -1437,12 +1689,336 @@ export async function listSpecificationRequirementSelectionQuestions(
   return questions
 }
 
+type NormalizedVisibilityGroup = Array<{
+  answerIds: number[]
+  parentQuestionId: number
+}>
+
+function normalizeVisibilityGroups(
+  questionId: number,
+  groupsInput: RequirementSelectionVisibilityInputGroup[],
+): NormalizedVisibilityGroup[] {
+  return groupsInput.map((group, groupIndex) => {
+    if (group.conditions.length === 0) {
+      throw validationError('Visibility groups need at least one condition', {
+        groupIndex,
+        reason: 'empty_visibility_group',
+      })
+    }
+    const byParentQuestion = new Map<number, Set<number>>()
+    for (const condition of group.conditions) {
+      const parentQuestionId = condition.parentQuestionId
+      if (!Number.isInteger(parentQuestionId) || parentQuestionId < 1) {
+        throw validationError(
+          'Visibility parent question IDs must be positive',
+          {
+            groupIndex,
+            reason: 'invalid_visibility_parent_question',
+          },
+        )
+      }
+      if (parentQuestionId === questionId) {
+        throw validationError('A question cannot depend on itself', {
+          groupIndex,
+          questionId,
+          reason: 'self_visibility_dependency',
+        })
+      }
+      const answerIds = uniquePositiveIntegers(condition.answerIds)
+      if (answerIds.length === 0) {
+        throw validationError(
+          'Visibility conditions need at least one answer',
+          {
+            groupIndex,
+            parentQuestionId,
+            reason: 'empty_visibility_condition_answers',
+          },
+        )
+      }
+      const bucket = byParentQuestion.get(parentQuestionId) ?? new Set()
+      for (const answerId of answerIds) bucket.add(answerId)
+      byParentQuestion.set(parentQuestionId, bucket)
+    }
+    return [...byParentQuestion].map(([parentQuestionId, answerIds]) => ({
+      answerIds: [...answerIds].sort((left, right) => left - right),
+      parentQuestionId,
+    }))
+  })
+}
+
+async function assertVisibilityAnswersBelongToParents(
+  executor: QueryExecutor,
+  groups: NormalizedVisibilityGroup[],
+): Promise<void> {
+  const answerIds = Array.from(
+    new Set(groups.flatMap(group => group.flatMap(item => item.answerIds))),
+  )
+  if (answerIds.length === 0) return
+
+  const rows = (await executor.query(
+    `
+      SELECT id, question_id AS questionId
+      FROM requirement_selection_answers
+      WHERE id IN (${placeholders(answerIds)})
+    `,
+    answerIds,
+  )) as Array<{ id: number; questionId: number }>
+  const answerQuestionById = new Map(rows.map(row => [row.id, row.questionId]))
+  const missing = answerIds.filter(
+    answerId => !answerQuestionById.has(answerId),
+  )
+  if (missing.length > 0) {
+    throw validationError('Visibility answers must exist', {
+      answerIds: missing,
+      reason: 'unknown_visibility_answer',
+    })
+  }
+  for (const group of groups) {
+    for (const condition of group) {
+      const invalidAnswerIds = condition.answerIds.filter(
+        answerId =>
+          answerQuestionById.get(answerId) !== condition.parentQuestionId,
+      )
+      if (invalidAnswerIds.length > 0) {
+        throw validationError(
+          'Visibility answers must belong to their parent question',
+          {
+            answerIds: invalidAnswerIds,
+            parentQuestionId: condition.parentQuestionId,
+            reason: 'visibility_answer_parent_mismatch',
+          },
+        )
+      }
+    }
+  }
+}
+
+async function assertNoVisibilityCycle(
+  executor: QueryExecutor,
+  questionId: number,
+  groups: NormalizedVisibilityGroup[],
+): Promise<void> {
+  const rows = (await executor.query(
+    `
+      SELECT
+        visibility_group.question_id AS childQuestionId,
+        condition.parent_question_id AS parentQuestionId
+      FROM requirement_selection_question_visibility_groups AS visibility_group
+      INNER JOIN requirement_selection_question_visibility_conditions AS condition
+        ON condition.visibility_group_id = visibility_group.id
+      WHERE visibility_group.question_id <> @0
+    `,
+    [questionId],
+  )) as Array<{ childQuestionId: number; parentQuestionId: number }>
+
+  const parentsByChild = new Map<number, Set<number>>()
+  for (const row of rows) {
+    const bucket = parentsByChild.get(row.childQuestionId) ?? new Set()
+    bucket.add(row.parentQuestionId)
+    parentsByChild.set(row.childQuestionId, bucket)
+  }
+  const replacementParents = new Set(
+    groups.flatMap(group => group.map(condition => condition.parentQuestionId)),
+  )
+  parentsByChild.set(questionId, replacementParents)
+
+  const reachesQuestion = (startQuestionId: number): boolean => {
+    const visited = new Set<number>()
+    const stack = [startQuestionId]
+    while (stack.length > 0) {
+      const current = stack.pop()
+      if (!current || visited.has(current)) continue
+      if (current === questionId) return true
+      visited.add(current)
+      for (const parent of parentsByChild.get(current) ?? []) {
+        stack.push(parent)
+      }
+    }
+    return false
+  }
+
+  for (const parentQuestionId of replacementParents) {
+    if (reachesQuestion(parentQuestionId)) {
+      throw validationError('Visibility conditions cannot create cycles', {
+        parentQuestionId,
+        questionId,
+        reason: 'visibility_cycle',
+      })
+    }
+  }
+}
+
+async function markHiddenSelectionsHistoricalForAllSpecifications(
+  executor: QueryExecutor,
+): Promise<number> {
+  const specificationRows = (await executor.query(
+    `
+      SELECT DISTINCT specification_id AS specificationId
+      FROM specification_requirement_selection_answers
+      WHERE is_historical = 0
+    `,
+  )) as Array<{ specificationId: number }>
+  let changedCount = 0
+  for (const row of specificationRows) {
+    const questions =
+      await loadSpecificationRequirementSelectionQuestionsForVisibility(
+        executor,
+        row.specificationId,
+      )
+    const hiddenQuestionIds = questions
+      .filter(
+        question =>
+          !question.isVisible && question.selectedAnswerIds.length > 0,
+      )
+      .map(question => question.id)
+    if (hiddenQuestionIds.length === 0) continue
+    const updatedRows = (await executor.query(
+      `
+        UPDATE specification_requirement_selection_answers
+        SET is_historical = 1,
+            changed_at = @${hiddenQuestionIds.length + 1}
+        OUTPUT inserted.question_id AS questionId
+        WHERE specification_id = @0
+          AND question_id IN (${placeholders(hiddenQuestionIds, 1)})
+          AND is_historical = 0
+      `,
+      [row.specificationId, ...hiddenQuestionIds, new Date()],
+    )) as Array<{ questionId: number }>
+    changedCount += updatedRows.length
+  }
+  return changedCount
+}
+
+export async function replaceRequirementSelectionQuestionVisibilityGroups(
+  db: SqlServerDatabase,
+  questionId: number,
+  groupsInput: RequirementSelectionVisibilityInputGroup[],
+): Promise<RequirementSelectionQuestionRow | null> {
+  await db.transaction(async manager => {
+    const questionRows = (await manager.query(
+      `
+        SELECT id
+        FROM requirement_selection_questions
+        WHERE id = @0
+      `,
+      [questionId],
+    )) as Array<{ id: number }>
+    if (questionRows.length === 0) return
+
+    const groups = normalizeVisibilityGroups(questionId, groupsInput)
+    await assertVisibilityAnswersBelongToParents(manager, groups)
+    await assertNoVisibilityCycle(manager, questionId, groups)
+
+    await manager.query(
+      `
+        DELETE FROM requirement_selection_question_visibility_groups
+        WHERE question_id = @0
+      `,
+      [questionId],
+    )
+    const now = new Date()
+    for (const [groupIndex, group] of groups.entries()) {
+      const groupRows = (await manager.query(
+        `
+          INSERT INTO requirement_selection_question_visibility_groups (
+            question_id,
+            sort_order,
+            created_at,
+            updated_at
+          )
+          OUTPUT inserted.id AS id
+          VALUES (@0, @1, @2, @2)
+        `,
+        [questionId, groupIndex, now],
+      )) as Array<{ id: number }>
+      const groupId = groupRows[0]?.id
+      if (!groupId) continue
+      let sortOrder = 0
+      for (const condition of group) {
+        for (const answerId of condition.answerIds) {
+          await manager.query(
+            `
+              INSERT INTO requirement_selection_question_visibility_conditions (
+                visibility_group_id,
+                parent_question_id,
+                answer_id,
+                sort_order,
+                created_at,
+                updated_at
+              ) VALUES (@0, @1, @2, @3, @4, @4)
+            `,
+            [groupId, condition.parentQuestionId, answerId, sortOrder, now],
+          )
+          sortOrder += 1
+        }
+      }
+    }
+
+    await markHiddenSelectionsHistoricalForAllSpecifications(manager)
+  })
+  return getRequirementSelectionQuestionById(db, questionId)
+}
+
+function hiddenCurrentSelectionImpact(
+  questions: SpecificationRequirementSelectionQuestionRow[],
+  changedQuestionId: number,
+  nextAnswerIds: number[],
+): HiddenRequirementSelectionImpactRow[] {
+  const selectedByQuestion = selectedAnswersByQuestion(questions)
+  if (nextAnswerIds.length > 0) {
+    selectedByQuestion.set(changedQuestionId, new Set(nextAnswerIds))
+  } else {
+    selectedByQuestion.delete(changedQuestionId)
+  }
+  const visibleQuestionIds = computeVisibleQuestionIds(
+    questions,
+    selectedByQuestion,
+  )
+  const answerTextById = new Map(
+    questions
+      .flatMap(question => question.answers)
+      .map(answer => [answer.id, answer.text]),
+  )
+
+  return questions
+    .filter(question => {
+      const selectedAnswerIds = selectedByQuestion.get(question.id)
+      return (
+        selectedAnswerIds != null &&
+        selectedAnswerIds.size > 0 &&
+        !visibleQuestionIds.has(question.id)
+      )
+    })
+    .map(question => ({
+      answerTexts: Array.from(selectedByQuestion.get(question.id) ?? [])
+        .map(answerId => answerTextById.get(answerId) ?? String(answerId))
+        .sort((left, right) => left.localeCompare(right, 'sv')),
+      questionCode: question.questionCode,
+      questionId: question.id,
+      questionText: question.text,
+    }))
+}
+
+function assertNoHiddenSelectionImpact(
+  impact: HiddenRequirementSelectionImpactRow[],
+): void {
+  if (impact.length === 0) return
+  throw conflictError(
+    'Changing this answer hides answered follow-up questions',
+    {
+      hiddenSelections: impact,
+      reason: 'hidden_selection_clear_required',
+    },
+  )
+}
+
 export async function replaceSpecificationRequirementSelectionAnswers(
   db: SqlServerDatabase,
   specificationId: number,
   questionId: number,
   answerIdsInput: number[],
   actor: { displayName: string; hsaId: string | null },
+  options: { confirmHiddenAnswerClear?: boolean } = {},
 ): Promise<SpecificationRequirementSelectionQuestionRow[]> {
   const answerIds = uniquePositiveIntegers(answerIdsInput)
   await db.transaction(async manager => {
@@ -1507,6 +2083,19 @@ export async function replaceSpecificationRequirementSelectionAnswers(
         )
       }
     }
+    const questionsBeforeChange =
+      await loadSpecificationRequirementSelectionQuestionsForVisibility(
+        manager,
+        specificationId,
+      )
+    const impact = hiddenCurrentSelectionImpact(
+      questionsBeforeChange,
+      questionId,
+      answerIds,
+    )
+    if (!options.confirmHiddenAnswerClear) {
+      assertNoHiddenSelectionImpact(impact)
+    }
     await manager.query(
       `
         DELETE FROM specification_requirement_selection_answers
@@ -1539,6 +2128,18 @@ export async function replaceSpecificationRequirementSelectionAnswers(
         ],
       )
     }
+    if (impact.length > 0) {
+      const hiddenQuestionIds = impact.map(item => item.questionId)
+      await manager.query(
+        `
+          DELETE FROM specification_requirement_selection_answers
+          WHERE specification_id = @0
+            AND question_id IN (${placeholders(hiddenQuestionIds, 1)})
+            AND is_historical = 0
+        `,
+        [specificationId, ...hiddenQuestionIds],
+      )
+    }
   })
   return listSpecificationRequirementSelectionQuestions(db, specificationId)
 }
@@ -1547,28 +2148,33 @@ export async function getRequirementSelectionFilterForSpecification(
   db: SqlServerDatabase,
   specificationId: number,
 ): Promise<RequirementSelectionFilterResult> {
-  const rows = (await db.query(
-    `
-      SELECT
-        answer.id AS answerId,
-        answer.is_no_requirement_selection AS isNoRequirementSelection
-      FROM specification_requirement_selection_answers saved
-      INNER JOIN requirement_selection_questions question
-        ON question.id = saved.question_id
-       AND question.is_active = 1
-       AND question.is_archived = 0
-      INNER JOIN requirement_selection_answers answer
-        ON answer.id = saved.answer_id
-       AND answer.is_active = 1
-       AND answer.is_archived = 0
-      WHERE saved.specification_id = @0
-        AND saved.is_historical = 0
-    `,
-    [specificationId],
-  )) as Array<{
-    answerId: number
-    isNoRequirementSelection: boolean | number | string
-  }>
+  const questions =
+    await loadSpecificationRequirementSelectionQuestionsForVisibility(
+      db,
+      specificationId,
+    )
+  const answerById = new Map(
+    questions
+      .flatMap(question => question.answers)
+      .filter(answer => answer.isActive && !answer.isArchived)
+      .map(answer => [answer.id, answer]),
+  )
+  const rows = questions
+    .filter(
+      question =>
+        question.isVisible && question.isActive && !question.isArchived,
+    )
+    .flatMap(question =>
+      question.selectedAnswerIds
+        .map(answerId => answerById.get(answerId))
+        .filter((answer): answer is RequirementSelectionAnswerRow =>
+          Boolean(answer),
+        )
+        .map(answer => ({
+          answerId: answer.id,
+          isNoRequirementSelection: answer.isNoRequirementSelection,
+        })),
+    )
   if (rows.length === 0) {
     return {
       hasCurrentAnswers: false,
@@ -1577,11 +2183,11 @@ export async function getRequirementSelectionFilterForSpecification(
       requirementIds: [],
     }
   }
-  const hasNoRequirementSelection = rows.some(row =>
-    toBoolean(row.isNoRequirementSelection),
+  const hasNoRequirementSelection = rows.some(
+    row => row.isNoRequirementSelection,
   )
   const answerIds = rows
-    .filter(row => !toBoolean(row.isNoRequirementSelection))
+    .filter(row => !row.isNoRequirementSelection)
     .map(row => row.answerId)
   if (answerIds.length === 0) {
     return {
@@ -1625,7 +2231,7 @@ export async function getRequirementSelectionFilterForSpecification(
 }
 
 export async function getExistingSpecificationRequirementIds(
-  db: SqlServerDatabase,
+  db: QueryExecutor,
   specificationId: number,
 ): Promise<number[]> {
   const rows = (await db.query(

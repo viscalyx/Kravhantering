@@ -1,11 +1,13 @@
 'use client'
 
 import {
+  AlertTriangle,
   Archive,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   Copy,
+  Eye,
   GripVertical,
   Lock,
   PauseCircle,
@@ -86,6 +88,26 @@ interface RequirementSelectionAnswer {
   text: string
 }
 
+interface RequirementSelectionVisibilityCondition {
+  answerId: number
+  answerIsActive: boolean
+  answerIsArchived: boolean
+  answerText: string
+  id: number
+  parentAreaName: string
+  parentQuestionCode: string
+  parentQuestionId: number
+  parentQuestionIsActive: boolean
+  parentQuestionIsArchived: boolean
+  parentQuestionText: string
+}
+
+interface RequirementSelectionVisibilityGroup {
+  conditions: RequirementSelectionVisibilityCondition[]
+  id: number
+  sortOrder: number
+}
+
 interface RequirementSelectionQuestion {
   answers: RequirementSelectionAnswer[]
   areaId: number
@@ -99,6 +121,7 @@ interface RequirementSelectionQuestion {
   selectionType: SelectionType
   sortOrder: number
   text: string
+  visibilityGroups: RequirementSelectionVisibilityGroup[]
 }
 
 interface QuestionForm {
@@ -116,6 +139,17 @@ interface AnswerForm {
   requirements: SelectedRequirement[]
   sortOrder: string
   text: string
+}
+
+interface VisibilityConditionForm {
+  answerIds: string[]
+  key: string
+  parentQuestionId: string
+}
+
+interface VisibilityGroupForm {
+  conditions: VisibilityConditionForm[]
+  key: string
 }
 
 type AnswerRequirementSourceFilter =
@@ -142,6 +176,28 @@ const initialAnswerForm: AnswerForm = {
   requirements: [],
   sortOrder: '0',
   text: '',
+}
+
+let visibilityFormKeySequence = 0
+
+function createVisibilityFormKey(prefix: string) {
+  visibilityFormKeySequence += 1
+  return `${prefix}-${visibilityFormKeySequence}`
+}
+
+function createEmptyVisibilityConditionForm(): VisibilityConditionForm {
+  return {
+    answerIds: [],
+    key: createVisibilityFormKey('condition'),
+    parentQuestionId: '',
+  }
+}
+
+function createEmptyVisibilityGroupForm(): VisibilityGroupForm {
+  return {
+    conditions: [createEmptyVisibilityConditionForm()],
+    key: createVisibilityFormKey('group'),
+  }
 }
 
 const inputClassName =
@@ -199,6 +255,30 @@ function answerFormFingerprint(form: AnswerForm) {
     ),
     sortOrder: form.sortOrder,
     text: form.text,
+  })
+}
+
+function visibilityFormFromQuestion(
+  question: RequirementSelectionQuestion,
+): VisibilityGroupForm[] {
+  if (question.visibilityGroups.length === 0) return []
+  return question.visibilityGroups.map(group => {
+    const answersByParent = new Map<number, string[]>()
+    for (const condition of group.conditions) {
+      const bucket = answersByParent.get(condition.parentQuestionId) ?? []
+      bucket.push(String(condition.answerId))
+      answersByParent.set(condition.parentQuestionId, bucket)
+    }
+    return {
+      conditions: Array.from(answersByParent).map(
+        ([parentQuestionId, answerIds]) => ({
+          answerIds,
+          key: createVisibilityFormKey('condition'),
+          parentQuestionId: String(parentQuestionId),
+        }),
+      ),
+      key: createVisibilityFormKey('group'),
+    }
   })
 }
 
@@ -644,6 +724,9 @@ export default function RequirementSelectionQuestionsClient() {
       helpText: t('helpText'),
       hideRequirementsInSelection: t('hideRequirementsInSelection'),
       inactive: t('inactive'),
+      addVisibilityCondition: t('addVisibilityCondition'),
+      addVisibilityGroup: t('addVisibilityGroup'),
+      conditionGroup: t('conditionGroup'),
       loading: t('loading'),
       matchingRequirements: t('matchingRequirements'),
       matchingRequirementsEmpty: t('matchingRequirementsEmpty'),
@@ -663,10 +746,12 @@ export default function RequirementSelectionQuestionsClient() {
       questionHelpTextHelp: t('fieldHelp.questionHelpText'),
       questionTextHelp: t('fieldHelp.questionText'),
       reactivate: t('reactivate'),
+      parentQuestion: t('parentQuestion'),
       reorderAnswer: t('reorderAnswer'),
       reorderAnswerHint: t('reorderAnswerHint'),
       removePackage: t('removePackage'),
       removeRequirement: t('removeRequirement'),
+      standaloneQuestionVisibility: t('standaloneQuestionVisibility'),
       requirementsInSelection: t('requirementsInSelection'),
       requirementsInSelectionEmpty: t('requirementsInSelectionEmpty'),
       requirementsInSelectionError: t('requirementsInSelectionError'),
@@ -678,6 +763,7 @@ export default function RequirementSelectionQuestionsClient() {
       requirementIdsHelp: t('fieldHelp.requirementIds'),
       requirementSources: t('requirementSources'),
       save: t('save'),
+      saveVisibility: t('saveVisibility'),
       search: t('search'),
       searchRequirementIds: t('searchRequirementIds'),
       searchRequirementIdsPlaceholder: t('searchRequirementIdsPlaceholder'),
@@ -693,7 +779,14 @@ export default function RequirementSelectionQuestionsClient() {
       status: t('status'),
       text: t('text'),
       title: t('title'),
+      triggerAnswers: t('triggerAnswers'),
       unsavedChangesConfirm: tc('unsavedChangesConfirm'),
+      visibilityButtonText: t('visibilityButtonText'),
+      visibilityAnswersHelp: t('fieldHelp.visibilityAnswers'),
+      visibilityInactiveWarning: t('visibilityInactiveWarning'),
+      visibilityPanelDescription: t('visibilityPanelDescription'),
+      visibilityPanelTitle: t('visibilityPanelTitle'),
+      visibilityParentHelp: t('fieldHelp.visibilityParent'),
     }),
     [t, tc],
   )
@@ -721,6 +814,12 @@ export default function RequirementSelectionQuestionsClient() {
   >('')
   const [showQuestionForm, setShowQuestionForm] = useState(false)
   const [showAnswerForm, setShowAnswerForm] = useState(false)
+  const [visibilityPanelQuestionId, setVisibilityPanelQuestionId] = useState<
+    number | null
+  >(null)
+  const [visibilityGroupsForm, setVisibilityGroupsForm] = useState<
+    VisibilityGroupForm[]
+  >([])
   const [packageSelectorOpen, setPackageSelectorOpen] = useState(false)
   const [packageSearch, setPackageSearch] = useState('')
   const [requirementSearch, setRequirementSearch] = useState('')
@@ -765,6 +864,9 @@ export default function RequirementSelectionQuestionsClient() {
 
   const selectedQuestion =
     questions.find(question => question.id === selectedQuestionId) ?? null
+  const visibilityPanelQuestion =
+    questions.find(question => question.id === visibilityPanelQuestionId) ??
+    null
 
   const packagesById = useMemo(
     () => new Map(packages.map(pkg => [pkg.id, pkg])),
@@ -1028,6 +1130,58 @@ export default function RequirementSelectionQuestionsClient() {
     setEditingQuestionId(question.id)
     setError(null)
     setShowQuestionForm(true)
+  }
+
+  const openVisibilityPanel = (question: RequirementSelectionQuestion) => {
+    setVisibilityPanelQuestionId(question.id)
+    const nextForm = visibilityFormFromQuestion(question)
+    setVisibilityGroupsForm(nextForm.length > 0 ? nextForm : [])
+    setError(null)
+  }
+
+  const closeVisibilityPanel = () => {
+    if (submitting) return
+    setVisibilityPanelQuestionId(null)
+    setVisibilityGroupsForm([])
+  }
+
+  const saveVisibilityGroups = async () => {
+    if (!visibilityPanelQuestion) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      const groups = visibilityGroupsForm
+        .map(group => ({
+          conditions: group.conditions
+            .filter(
+              condition =>
+                condition.parentQuestionId && condition.answerIds.length > 0,
+            )
+            .map(condition => ({
+              answerIds: condition.answerIds.map(Number),
+              parentQuestionId: Number(condition.parentQuestionId),
+            })),
+        }))
+        .filter(group => group.conditions.length > 0)
+      const response = await apiFetch(
+        `/api/requirement-selection-questions/${visibilityPanelQuestion.id}/visibility`,
+        {
+          body: JSON.stringify({ groups }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT',
+        },
+      )
+      if (!response.ok) {
+        setError((await readResponseMessage(response)) ?? copy.error)
+        return
+      }
+      closeVisibilityPanel()
+      await reload()
+    } catch {
+      setError(copy.error)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const closeQuestionForm = () => {
@@ -2482,622 +2636,1078 @@ export default function RequirementSelectionQuestionsClient() {
                   }`}
                   key={question.id}
                 >
-                  <button
-                    className="block w-full text-left"
-                    onClick={() => selectQuestion(question.id)}
-                    type="button"
+                  <div
+                    className={
+                      visibilityPanelQuestionId === question.id
+                        ? 'grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,32rem)]'
+                        : ''
+                    }
                   >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-secondary-100 px-2 py-1 font-mono text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
-                        {question.questionCode}
-                      </span>
-                      <span className="text-xs text-secondary-500">
-                        {question.areaName}
-                      </span>
-                      <span className="text-xs text-secondary-500">
-                        {question.selectionType === 'multiple'
-                          ? copy.multiple
-                          : copy.single}
-                      </span>
-                      <span className="text-xs font-medium text-secondary-700 dark:text-secondary-300">
-                        {statusText(question, copy)}
-                      </span>
-                    </div>
-                    <p className="mt-2 font-medium text-secondary-950 dark:text-secondary-50">
-                      {question.text}
-                    </p>
-                    {question.helpText && (
-                      <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">
-                        {question.helpText}
-                      </p>
-                    )}
-                  </button>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
-                      disabled={submitting}
-                      onClick={() => openQuestionEditForm(question)}
-                      type="button"
-                    >
-                      <Pencil aria-hidden="true" className="h-4 w-4" />
-                      {copy.edit}
-                    </button>
-                    <button
-                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
-                      disabled={submitting}
-                      onClick={() =>
-                        questionAction(
-                          question,
-                          question.isActive ? 'deactivate' : 'activate',
-                        )
-                      }
-                      type="button"
-                    >
-                      {question.isActive ? (
-                        <PauseCircle aria-hidden="true" className="h-4 w-4" />
-                      ) : (
-                        <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
-                      )}
-                      {question.isActive ? copy.deactivate : copy.activate}
-                    </button>
-                    <button
-                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
-                      disabled={submitting}
-                      onClick={event =>
-                        questionAction(
-                          question,
-                          question.isArchived ? 'reactivate' : 'archive',
-                          event.currentTarget,
-                        )
-                      }
-                      type="button"
-                    >
-                      {question.isArchived ? (
-                        <RotateCcw aria-hidden="true" className="h-4 w-4" />
-                      ) : (
-                        <Archive aria-hidden="true" className="h-4 w-4" />
-                      )}
-                      {question.isArchived ? copy.reactivate : copy.archive}
-                    </button>
-                    <button
-                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
-                      disabled={submitting}
-                      onClick={() => questionAction(question, 'duplicate')}
-                      type="button"
-                    >
-                      <Copy aria-hidden="true" className="h-4 w-4" />
-                      {copy.clone}
-                    </button>
-                    <button
-                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-red-200 px-3 text-sm text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
-                      disabled={submitting}
-                      onClick={event =>
-                        questionAction(question, 'delete', event.currentTarget)
-                      }
-                      type="button"
-                    >
-                      <Trash2 aria-hidden="true" className="h-4 w-4" />
-                      {copy.delete}
-                    </button>
-                  </div>
-                  {question.answers.length > 0 && (
-                    <ul className="mt-4 divide-y rounded-xl border dark:border-secondary-800">
-                      {question.answers.map(answer => (
-                        <li
-                          className={`transition-colors ${
-                            dragOverAnswerId === answer.id &&
-                            draggedAnswerId !== answer.id
-                              ? 'bg-primary-50/70 dark:bg-primary-950/20'
-                              : ''
-                          } ${
-                            reorderingAnswerId === answer.id ? 'opacity-70' : ''
-                          } ${
-                            draggedAnswerId === answer.id
-                              ? 'bg-secondary-100/80 dark:bg-secondary-800/50'
-                              : ''
-                          }`}
-                          draggable={
-                            armedDragAnswerId === answer.id &&
-                            !submitting &&
-                            question.answers.length > 1
-                              ? true
-                              : undefined
-                          }
-                          key={answer.id}
-                          onDragEnd={handleAnswerDragEnd}
-                          onDragEnter={() => setDragOverAnswerId(answer.id)}
-                          onDragOver={event => {
-                            if (!draggedAnswerId) return
-                            event.preventDefault()
-                            event.dataTransfer.dropEffect = 'move'
-                            setDragOverAnswerId(answer.id)
-                            previewAnswerMove(question.id, answer)
-                          }}
-                          onDragStart={event =>
-                            handleAnswerDragStart(event, question, answer)
-                          }
-                          onDrop={event =>
-                            handleAnswerDrop(event, question, answer)
-                          }
+                    <div className="min-w-0">
+                      <button
+                        className="block w-full text-left"
+                        onClick={() => selectQuestion(question.id)}
+                        type="button"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-md bg-secondary-100 px-2 py-1 font-mono text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                            {question.questionCode}
+                          </span>
+                          <span className="text-xs text-secondary-500">
+                            {question.areaName}
+                          </span>
+                          <span className="text-xs text-secondary-500">
+                            {question.selectionType === 'multiple'
+                              ? copy.multiple
+                              : copy.single}
+                          </span>
+                          <span className="text-xs font-medium text-secondary-700 dark:text-secondary-300">
+                            {statusText(question, copy)}
+                          </span>
+                          {question.visibilityGroups.length > 0 ? (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
+                              <Eye aria-hidden="true" className="h-3 w-3" />
+                              {copy.visibilityButtonText}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-2 font-medium text-secondary-950 dark:text-secondary-50">
+                          {question.text}
+                        </p>
+                        {question.helpText && (
+                          <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">
+                            {question.helpText}
+                          </p>
+                        )}
+                      </button>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
+                          disabled={submitting}
+                          onClick={() => openQuestionEditForm(question)}
+                          type="button"
                         >
-                          <div
-                            className={`flex gap-3 p-3 ${
-                              draggedAnswerId === answer.id ? 'invisible' : ''
-                            }`}
-                          >
-                            {/*
+                          <Pencil aria-hidden="true" className="h-4 w-4" />
+                          {copy.edit}
+                        </button>
+                        <button
+                          className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
+                          disabled={submitting}
+                          onClick={() => openVisibilityPanel(question)}
+                          type="button"
+                        >
+                          <Eye aria-hidden="true" className="h-4 w-4" />
+                          {copy.visibilityButtonText}
+                        </button>
+                        <button
+                          className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
+                          disabled={submitting}
+                          onClick={() =>
+                            questionAction(
+                              question,
+                              question.isActive ? 'deactivate' : 'activate',
+                            )
+                          }
+                          type="button"
+                        >
+                          {question.isActive ? (
+                            <PauseCircle
+                              aria-hidden="true"
+                              className="h-4 w-4"
+                            />
+                          ) : (
+                            <CheckCircle2
+                              aria-hidden="true"
+                              className="h-4 w-4"
+                            />
+                          )}
+                          {question.isActive ? copy.deactivate : copy.activate}
+                        </button>
+                        <button
+                          className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
+                          disabled={submitting}
+                          onClick={event =>
+                            questionAction(
+                              question,
+                              question.isArchived ? 'reactivate' : 'archive',
+                              event.currentTarget,
+                            )
+                          }
+                          type="button"
+                        >
+                          {question.isArchived ? (
+                            <RotateCcw aria-hidden="true" className="h-4 w-4" />
+                          ) : (
+                            <Archive aria-hidden="true" className="h-4 w-4" />
+                          )}
+                          {question.isArchived ? copy.reactivate : copy.archive}
+                        </button>
+                        <button
+                          className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
+                          disabled={submitting}
+                          onClick={() => questionAction(question, 'duplicate')}
+                          type="button"
+                        >
+                          <Copy aria-hidden="true" className="h-4 w-4" />
+                          {copy.clone}
+                        </button>
+                        <button
+                          className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-red-200 px-3 text-sm text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
+                          disabled={submitting}
+                          onClick={event =>
+                            questionAction(
+                              question,
+                              'delete',
+                              event.currentTarget,
+                            )
+                          }
+                          type="button"
+                        >
+                          <Trash2 aria-hidden="true" className="h-4 w-4" />
+                          {copy.delete}
+                        </button>
+                      </div>
+                      {question.answers.length > 0 && (
+                        <ul className="mt-4 divide-y rounded-xl border dark:border-secondary-800">
+                          {question.answers.map(answer => (
+                            <li
+                              className={`transition-colors ${
+                                dragOverAnswerId === answer.id &&
+                                draggedAnswerId !== answer.id
+                                  ? 'bg-primary-50/70 dark:bg-primary-950/20'
+                                  : ''
+                              } ${
+                                reorderingAnswerId === answer.id
+                                  ? 'opacity-70'
+                                  : ''
+                              } ${
+                                draggedAnswerId === answer.id
+                                  ? 'bg-secondary-100/80 dark:bg-secondary-800/50'
+                                  : ''
+                              }`}
+                              draggable={
+                                armedDragAnswerId === answer.id &&
+                                !submitting &&
+                                question.answers.length > 1
+                                  ? true
+                                  : undefined
+                              }
+                              key={answer.id}
+                              onDragEnd={handleAnswerDragEnd}
+                              onDragEnter={() => setDragOverAnswerId(answer.id)}
+                              onDragOver={event => {
+                                if (!draggedAnswerId) return
+                                event.preventDefault()
+                                event.dataTransfer.dropEffect = 'move'
+                                setDragOverAnswerId(answer.id)
+                                previewAnswerMove(question.id, answer)
+                              }}
+                              onDragStart={event =>
+                                handleAnswerDragStart(event, question, answer)
+                              }
+                              onDrop={event =>
+                                handleAnswerDrop(event, question, answer)
+                              }
+                            >
+                              <div
+                                className={`flex gap-3 p-3 ${
+                                  draggedAnswerId === answer.id
+                                    ? 'invisible'
+                                    : ''
+                                }`}
+                              >
+                                {/*
                               Keep the grip narrow: it is the only drag source,
                               but the whole answer row remains the drop target
                               and visible drag preview.
                             */}
-                            <button
-                              aria-describedby={`kuf-answer-reorder-hint-${answer.id}`}
-                              aria-label={copy.reorderAnswer}
-                              className="inline-flex min-h-11 w-8 shrink-0 self-stretch items-center justify-center rounded-lg border border-secondary-300 p-0 text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-950 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800 dark:hover:text-secondary-50"
-                              disabled={
-                                submitting || question.answers.length < 2
-                              }
-                              onKeyDown={event =>
-                                handleAnswerReorderKeyDown(
-                                  event,
-                                  question,
-                                  answer,
-                                )
-                              }
-                              onPointerCancel={() => setArmedDragAnswerId(null)}
-                              onPointerDown={() =>
-                                handleAnswerDragHandlePointerDown(
-                                  question,
-                                  answer,
-                                )
-                              }
-                              onPointerUp={() => setArmedDragAnswerId(null)}
-                              title={copy.reorderAnswerHint}
-                              type="button"
-                            >
-                              <span
-                                aria-hidden="true"
-                                className="flex h-full min-h-11 w-full cursor-grab items-center justify-center active:cursor-grabbing"
-                                data-answer-drag-handle="true"
-                                role="presentation"
-                              >
-                                <GripVertical
-                                  aria-hidden="true"
-                                  className="h-4 w-4"
-                                />
-                              </span>
-                            </button>
-                            <span
-                              className="sr-only"
-                              id={`kuf-answer-reorder-hint-${answer.id}`}
-                            >
-                              {copy.reorderAnswerHint}
-                            </span>
-                            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                              <div className="min-w-0 sm:flex-1">
-                                <p className="font-medium">{answer.text}</p>
-                                <p className="text-xs text-secondary-500">
-                                  {statusText(answer, copy)}
-                                  {answer.isNoRequirementSelection
-                                    ? ` · ${copy.noRequirementSelection}`
-                                    : ''}
-                                </p>
-                                {answer.description && (
-                                  <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">
-                                    {answer.description}
-                                  </p>
-                                )}
-                                {!answer.isNoRequirementSelection
-                                  ? (() => {
-                                      const packageNames = answer.packageIds
-                                        .map(packageId =>
-                                          packagesById.get(packageId),
-                                        )
-                                        .filter(
-                                          (pkg): pkg is RequirementPackage =>
-                                            Boolean(pkg),
-                                        )
-                                      const directRequirementIds = new Set(
-                                        answer.requirementIds,
-                                      )
-                                      const directRequirements =
-                                        answer.matchingRequirements.filter(
-                                          requirement =>
-                                            directRequirementIds.has(
-                                              requirement.id,
-                                            ),
-                                        )
-                                      const unresolvedPackageCount =
-                                        answer.packageIds.length -
-                                        packageNames.length
-                                      const unresolvedRequirementCount =
-                                        answer.requirementIds.length -
-                                        directRequirements.length
-                                      const hasVisibleSources =
-                                        packageNames.length > 0 ||
-                                        directRequirements.length > 0 ||
-                                        unresolvedPackageCount > 0 ||
-                                        unresolvedRequirementCount > 0
-                                      const answerExpansion =
-                                        expandedAnswerSelection?.answerId ===
-                                        answer.id
-                                          ? expandedAnswerSelection
-                                          : null
-                                      const activeFilters =
-                                        answerExpansion?.filters ?? []
-                                      const filteredRequirements =
-                                        filterMatchedRequirementsBySources(
-                                          answer.matchingRequirements,
-                                          activeFilters,
-                                        )
-                                      const hasActiveSourceFilters =
-                                        activeFilters.length > 0
-                                      const displayedRequirementCount =
-                                        hasActiveSourceFilters
-                                          ? filteredRequirements.length
-                                          : answer.matchingRequirementCount
-                                      const requirementCountLabel =
-                                        displayedRequirementCount === 1
-                                          ? copy.requirementCountSingular
-                                          : copy.requirementCountPlural
+                                <button
+                                  aria-describedby={`kuf-answer-reorder-hint-${answer.id}`}
+                                  aria-label={copy.reorderAnswer}
+                                  className="inline-flex min-h-11 w-8 shrink-0 self-stretch items-center justify-center rounded-lg border border-secondary-300 p-0 text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-950 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800 dark:hover:text-secondary-50"
+                                  disabled={
+                                    submitting || question.answers.length < 2
+                                  }
+                                  onKeyDown={event =>
+                                    handleAnswerReorderKeyDown(
+                                      event,
+                                      question,
+                                      answer,
+                                    )
+                                  }
+                                  onPointerCancel={() =>
+                                    setArmedDragAnswerId(null)
+                                  }
+                                  onPointerDown={() =>
+                                    handleAnswerDragHandlePointerDown(
+                                      question,
+                                      answer,
+                                    )
+                                  }
+                                  onPointerUp={() => setArmedDragAnswerId(null)}
+                                  title={copy.reorderAnswerHint}
+                                  type="button"
+                                >
+                                  <span
+                                    aria-hidden="true"
+                                    className="flex h-full min-h-11 w-full cursor-grab items-center justify-center active:cursor-grabbing"
+                                    data-answer-drag-handle="true"
+                                    role="presentation"
+                                  >
+                                    <GripVertical
+                                      aria-hidden="true"
+                                      className="h-4 w-4"
+                                    />
+                                  </span>
+                                </button>
+                                <span
+                                  className="sr-only"
+                                  id={`kuf-answer-reorder-hint-${answer.id}`}
+                                >
+                                  {copy.reorderAnswerHint}
+                                </span>
+                                <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                  <div className="min-w-0 sm:flex-1">
+                                    <p className="font-medium">{answer.text}</p>
+                                    <p className="text-xs text-secondary-500">
+                                      {statusText(answer, copy)}
+                                      {answer.isNoRequirementSelection
+                                        ? ` · ${copy.noRequirementSelection}`
+                                        : ''}
+                                    </p>
+                                    {answer.description && (
+                                      <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">
+                                        {answer.description}
+                                      </p>
+                                    )}
+                                    {!answer.isNoRequirementSelection
+                                      ? (() => {
+                                          const packageNames = answer.packageIds
+                                            .map(packageId =>
+                                              packagesById.get(packageId),
+                                            )
+                                            .filter(
+                                              (
+                                                pkg,
+                                              ): pkg is RequirementPackage =>
+                                                Boolean(pkg),
+                                            )
+                                          const directRequirementIds = new Set(
+                                            answer.requirementIds,
+                                          )
+                                          const directRequirements =
+                                            answer.matchingRequirements.filter(
+                                              requirement =>
+                                                directRequirementIds.has(
+                                                  requirement.id,
+                                                ),
+                                            )
+                                          const unresolvedPackageCount =
+                                            answer.packageIds.length -
+                                            packageNames.length
+                                          const unresolvedRequirementCount =
+                                            answer.requirementIds.length -
+                                            directRequirements.length
+                                          const hasVisibleSources =
+                                            packageNames.length > 0 ||
+                                            directRequirements.length > 0 ||
+                                            unresolvedPackageCount > 0 ||
+                                            unresolvedRequirementCount > 0
+                                          const answerExpansion =
+                                            expandedAnswerSelection?.answerId ===
+                                            answer.id
+                                              ? expandedAnswerSelection
+                                              : null
+                                          const activeFilters =
+                                            answerExpansion?.filters ?? []
+                                          const filteredRequirements =
+                                            filterMatchedRequirementsBySources(
+                                              answer.matchingRequirements,
+                                              activeFilters,
+                                            )
+                                          const hasActiveSourceFilters =
+                                            activeFilters.length > 0
+                                          const displayedRequirementCount =
+                                            hasActiveSourceFilters
+                                              ? filteredRequirements.length
+                                              : answer.matchingRequirementCount
+                                          const requirementCountLabel =
+                                            displayedRequirementCount === 1
+                                              ? copy.requirementCountSingular
+                                              : copy.requirementCountPlural
 
-                                      const toggleRequirementList = () => {
-                                        setExpandedAnswerSelection(current =>
-                                          current?.answerId === answer.id
-                                            ? null
-                                            : {
-                                                answerId: answer.id,
-                                                filters: [],
-                                              },
-                                        )
-                                      }
-
-                                      const toggleSourceFilter = (
-                                        filter: AnswerRequirementSourceFilter,
-                                      ) => {
-                                        setExpandedAnswerSelection(current => {
-                                          if (current?.answerId !== answer.id) {
-                                            return {
-                                              answerId: answer.id,
-                                              filters: [filter],
-                                            }
+                                          const toggleRequirementList = () => {
+                                            setExpandedAnswerSelection(
+                                              current =>
+                                                current?.answerId === answer.id
+                                                  ? null
+                                                  : {
+                                                      answerId: answer.id,
+                                                      filters: [],
+                                                    },
+                                            )
                                           }
 
-                                          const alreadyActive =
-                                            current.filters.some(item =>
+                                          const toggleSourceFilter = (
+                                            filter: AnswerRequirementSourceFilter,
+                                          ) => {
+                                            setExpandedAnswerSelection(
+                                              current => {
+                                                if (
+                                                  current?.answerId !==
+                                                  answer.id
+                                                ) {
+                                                  return {
+                                                    answerId: answer.id,
+                                                    filters: [filter],
+                                                  }
+                                                }
+
+                                                const alreadyActive =
+                                                  current.filters.some(item =>
+                                                    sourceFilterEquals(
+                                                      item,
+                                                      filter,
+                                                    ),
+                                                  )
+                                                const filters = alreadyActive
+                                                  ? current.filters.filter(
+                                                      item =>
+                                                        !sourceFilterEquals(
+                                                          item,
+                                                          filter,
+                                                        ),
+                                                    )
+                                                  : [...current.filters, filter]
+
+                                                return {
+                                                  answerId: answer.id,
+                                                  filters,
+                                                }
+                                              },
+                                            )
+                                          }
+
+                                          const isSourceFilterActive = (
+                                            filter: AnswerRequirementSourceFilter,
+                                          ) =>
+                                            activeFilters.some(item =>
                                               sourceFilterEquals(item, filter),
                                             )
-                                          const filters = alreadyActive
-                                            ? current.filters.filter(
-                                                item =>
-                                                  !sourceFilterEquals(
-                                                    item,
-                                                    filter,
-                                                  ),
-                                              )
-                                            : [...current.filters, filter]
 
-                                          return {
-                                            answerId: answer.id,
-                                            filters,
+                                          if (
+                                            packageNames.length === 0 &&
+                                            directRequirements.length === 0 &&
+                                            unresolvedPackageCount === 0 &&
+                                            unresolvedRequirementCount === 0 &&
+                                            answer.matchingRequirementCount ===
+                                              0
+                                          ) {
+                                            return null
                                           }
-                                        })
-                                      }
 
-                                      const isSourceFilterActive = (
-                                        filter: AnswerRequirementSourceFilter,
-                                      ) =>
-                                        activeFilters.some(item =>
-                                          sourceFilterEquals(item, filter),
-                                        )
-
-                                      if (
-                                        packageNames.length === 0 &&
-                                        directRequirements.length === 0 &&
-                                        unresolvedPackageCount === 0 &&
-                                        unresolvedRequirementCount === 0 &&
-                                        answer.matchingRequirementCount === 0
-                                      ) {
-                                        return null
-                                      }
-
-                                      return (
-                                        <div className="mt-2 space-y-2">
-                                          <fieldset className="flex flex-wrap items-center gap-1.5 text-xs">
-                                            <legend className="sr-only">
-                                              {copy.requirementSources}
-                                            </legend>
-                                            {/*
+                                          return (
+                                            <div className="mt-2 space-y-2">
+                                              <fieldset className="flex flex-wrap items-center gap-1.5 text-xs">
+                                                <legend className="sr-only">
+                                                  {copy.requirementSources}
+                                                </legend>
+                                                {/*
                                               AI reviewers and agents: do not increase these
                                               compact answer pill dimensions; the compact row
                                               intentionally limits real estate usage.
                                             */}
-                                            {answer.matchingRequirementCount >
-                                            0 ? (
-                                              <button
-                                                aria-expanded={Boolean(
-                                                  answerExpansion,
-                                                )}
-                                                aria-label={`${
-                                                  answerExpansion
-                                                    ? copy.hideRequirementsInSelection
-                                                    : copy.showRequirementsInSelection
-                                                } ${answer.text}`}
-                                                className="inline-flex min-h-7 items-center gap-1 rounded-full border border-secondary-300 bg-white px-2.5 py-0.5 text-xs font-semibold text-secondary-800 shadow-sm transition-colors hover:border-secondary-400 hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:border-secondary-600 dark:bg-secondary-950/60 dark:text-secondary-100 dark:hover:border-secondary-400 dark:hover:bg-secondary-800"
-                                                onClick={toggleRequirementList}
-                                                type="button"
-                                              >
-                                                <ChevronDown
-                                                  aria-hidden="true"
-                                                  className={`h-3 w-3 transition-transform ${
-                                                    answerExpansion
-                                                      ? 'rotate-180'
-                                                      : ''
-                                                  }`}
-                                                />
-                                                <span>
-                                                  {displayedRequirementCount}
-                                                  {hasActiveSourceFilters
-                                                    ? `/${answer.matchingRequirementCount}`
-                                                    : ''}{' '}
-                                                  {requirementCountLabel}
-                                                </span>
-                                              </button>
-                                            ) : null}
-                                            {answer.matchingRequirementCount >
-                                              0 && hasVisibleSources ? (
-                                              <span
-                                                aria-hidden="true"
-                                                className="mx-0.5 h-5 w-px bg-secondary-200 dark:bg-secondary-700"
-                                                data-answer-source-separator="true"
-                                              />
-                                            ) : null}
-                                            {packageNames.map(pkg => {
-                                              const filter: AnswerRequirementSourceFilter =
-                                                {
-                                                  kind: 'package',
-                                                  sourceId: pkg.id,
-                                                }
-                                              const active =
-                                                isSourceFilterActive(filter)
-                                              return (
-                                                <button
-                                                  aria-label={`${copy.filterRequirementsByPackage} ${pkg.name}`}
-                                                  aria-pressed={active}
-                                                  className={`${answerSourcePillClassName} ${
-                                                    active
-                                                      ? 'border-primary-600 bg-primary-100 text-primary-950 shadow-sm ring-1 ring-primary-300 dark:border-primary-300 dark:bg-primary-900/70 dark:text-primary-50 dark:ring-primary-700/70'
-                                                      : 'border-secondary-200 bg-secondary-50 text-secondary-700 hover:border-secondary-300 hover:bg-secondary-100 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200 dark:hover:border-secondary-500 dark:hover:bg-secondary-700'
-                                                  }`}
-                                                  key={pkg.id}
-                                                  onClick={() =>
-                                                    toggleSourceFilter(filter)
-                                                  }
-                                                  type="button"
-                                                >
-                                                  <span className="truncate">
-                                                    {pkg.name}
-                                                  </span>
-                                                </button>
-                                              )
-                                            })}
-                                            {unresolvedPackageCount > 0 ? (
-                                              <span className="inline-flex min-h-7 items-center rounded-full border border-secondary-200 bg-secondary-50 px-2 py-0.5 text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
-                                                {copy.packages}:{' '}
-                                                {unresolvedPackageCount}
-                                              </span>
-                                            ) : null}
-                                            {directRequirements.map(
-                                              requirement => {
-                                                const filter: AnswerRequirementSourceFilter =
-                                                  {
-                                                    kind: 'requirement',
-                                                    sourceId: requirement.id,
-                                                  }
-                                                const active =
-                                                  isSourceFilterActive(filter)
-                                                return (
+                                                {answer.matchingRequirementCount >
+                                                0 ? (
                                                   <button
-                                                    aria-label={`${copy.filterRequirementsByRequirementId} ${requirement.uniqueId}`}
-                                                    aria-pressed={active}
-                                                    className={`${answerSourcePillClassName} font-mono ${
-                                                      active
-                                                        ? 'border-primary-700 bg-primary-100 text-primary-950 shadow-sm ring-1 ring-primary-300 dark:border-primary-300 dark:bg-primary-900/70 dark:text-primary-50 dark:ring-primary-700/70'
-                                                        : 'border-primary-200 bg-primary-50 text-primary-900 hover:border-primary-300 hover:bg-primary-100 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100 dark:hover:border-primary-700 dark:hover:bg-primary-900/60'
-                                                    }`}
-                                                    key={requirement.id}
-                                                    onClick={() =>
-                                                      toggleSourceFilter(filter)
+                                                    aria-expanded={Boolean(
+                                                      answerExpansion,
+                                                    )}
+                                                    aria-label={`${
+                                                      answerExpansion
+                                                        ? copy.hideRequirementsInSelection
+                                                        : copy.showRequirementsInSelection
+                                                    } ${answer.text}`}
+                                                    className="inline-flex min-h-7 items-center gap-1 rounded-full border border-secondary-300 bg-white px-2.5 py-0.5 text-xs font-semibold text-secondary-800 shadow-sm transition-colors hover:border-secondary-400 hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:border-secondary-600 dark:bg-secondary-950/60 dark:text-secondary-100 dark:hover:border-secondary-400 dark:hover:bg-secondary-800"
+                                                    onClick={
+                                                      toggleRequirementList
                                                     }
                                                     type="button"
                                                   >
-                                                    {requirement.uniqueId}
+                                                    <ChevronDown
+                                                      aria-hidden="true"
+                                                      className={`h-3 w-3 transition-transform ${
+                                                        answerExpansion
+                                                          ? 'rotate-180'
+                                                          : ''
+                                                      }`}
+                                                    />
+                                                    <span>
+                                                      {
+                                                        displayedRequirementCount
+                                                      }
+                                                      {hasActiveSourceFilters
+                                                        ? `/${answer.matchingRequirementCount}`
+                                                        : ''}{' '}
+                                                      {requirementCountLabel}
+                                                    </span>
                                                   </button>
-                                                )
-                                              },
-                                            )}
-                                            {unresolvedRequirementCount > 0 ? (
-                                              <span className="inline-flex min-h-7 items-center rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
-                                                {copy.requirementIds}:{' '}
-                                                {unresolvedRequirementCount}
-                                              </span>
-                                            ) : null}
-                                          </fieldset>
-                                          {answerExpansion ? (
-                                            <ul
-                                              aria-label={
-                                                copy.requirementsInSelection
-                                              }
-                                              className="space-y-1 text-xs text-secondary-600 dark:text-secondary-300"
-                                            >
-                                              {filteredRequirements.map(
-                                                requirement => (
-                                                  <li
-                                                    className="rounded-md border border-secondary-200 bg-white px-2 py-2 dark:border-secondary-700 dark:bg-secondary-900/70"
-                                                    key={requirement.id}
-                                                  >
-                                                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                                                      <span className="font-mono font-semibold text-secondary-800 dark:text-secondary-100">
-                                                        {requirement.uniqueId}
+                                                ) : null}
+                                                {answer.matchingRequirementCount >
+                                                  0 && hasVisibleSources ? (
+                                                  <span
+                                                    aria-hidden="true"
+                                                    className="mx-0.5 h-5 w-px bg-secondary-200 dark:bg-secondary-700"
+                                                    data-answer-source-separator="true"
+                                                  />
+                                                ) : null}
+                                                {packageNames.map(pkg => {
+                                                  const filter: AnswerRequirementSourceFilter =
+                                                    {
+                                                      kind: 'package',
+                                                      sourceId: pkg.id,
+                                                    }
+                                                  const active =
+                                                    isSourceFilterActive(filter)
+                                                  return (
+                                                    <button
+                                                      aria-label={`${copy.filterRequirementsByPackage} ${pkg.name}`}
+                                                      aria-pressed={active}
+                                                      className={`${answerSourcePillClassName} ${
+                                                        active
+                                                          ? 'border-primary-600 bg-primary-100 text-primary-950 shadow-sm ring-1 ring-primary-300 dark:border-primary-300 dark:bg-primary-900/70 dark:text-primary-50 dark:ring-primary-700/70'
+                                                          : 'border-secondary-200 bg-secondary-50 text-secondary-700 hover:border-secondary-300 hover:bg-secondary-100 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200 dark:hover:border-secondary-500 dark:hover:bg-secondary-700'
+                                                      }`}
+                                                      key={pkg.id}
+                                                      onClick={() =>
+                                                        toggleSourceFilter(
+                                                          filter,
+                                                        )
+                                                      }
+                                                      type="button"
+                                                    >
+                                                      <span className="truncate">
+                                                        {pkg.name}
                                                       </span>
-                                                      {requirement.description ? (
-                                                        <span className="text-secondary-600 dark:text-secondary-300">
-                                                          {
-                                                            requirement.description
-                                                          }
-                                                        </span>
-                                                      ) : null}
-                                                    </div>
-                                                    <div className="mt-1 flex flex-wrap gap-1">
-                                                      {requirement.direct ? (
-                                                        <span className="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-[0.68rem] font-medium text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
-                                                          {
-                                                            copy.directRequirement
-                                                          }
-                                                        </span>
-                                                      ) : null}
-                                                      {requirement.sourcePackages.map(
-                                                        pkg => (
-                                                          <span
-                                                            className="inline-flex rounded-full border border-secondary-200 bg-white px-2 py-0.5 text-[0.68rem] font-medium text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200"
-                                                            key={pkg.id}
-                                                          >
-                                                            {pkg.name}
+                                                    </button>
+                                                  )
+                                                })}
+                                                {unresolvedPackageCount > 0 ? (
+                                                  <span className="inline-flex min-h-7 items-center rounded-full border border-secondary-200 bg-secondary-50 px-2 py-0.5 text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                                                    {copy.packages}:{' '}
+                                                    {unresolvedPackageCount}
+                                                  </span>
+                                                ) : null}
+                                                {directRequirements.map(
+                                                  requirement => {
+                                                    const filter: AnswerRequirementSourceFilter =
+                                                      {
+                                                        kind: 'requirement',
+                                                        sourceId:
+                                                          requirement.id,
+                                                      }
+                                                    const active =
+                                                      isSourceFilterActive(
+                                                        filter,
+                                                      )
+                                                    return (
+                                                      <button
+                                                        aria-label={`${copy.filterRequirementsByRequirementId} ${requirement.uniqueId}`}
+                                                        aria-pressed={active}
+                                                        className={`${answerSourcePillClassName} font-mono ${
+                                                          active
+                                                            ? 'border-primary-700 bg-primary-100 text-primary-950 shadow-sm ring-1 ring-primary-300 dark:border-primary-300 dark:bg-primary-900/70 dark:text-primary-50 dark:ring-primary-700/70'
+                                                            : 'border-primary-200 bg-primary-50 text-primary-900 hover:border-primary-300 hover:bg-primary-100 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100 dark:hover:border-primary-700 dark:hover:bg-primary-900/60'
+                                                        }`}
+                                                        key={requirement.id}
+                                                        onClick={() =>
+                                                          toggleSourceFilter(
+                                                            filter,
+                                                          )
+                                                        }
+                                                        type="button"
+                                                      >
+                                                        {requirement.uniqueId}
+                                                      </button>
+                                                    )
+                                                  },
+                                                )}
+                                                {unresolvedRequirementCount >
+                                                0 ? (
+                                                  <span className="inline-flex min-h-7 items-center rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
+                                                    {copy.requirementIds}:{' '}
+                                                    {unresolvedRequirementCount}
+                                                  </span>
+                                                ) : null}
+                                              </fieldset>
+                                              {answerExpansion ? (
+                                                <ul
+                                                  aria-label={
+                                                    copy.requirementsInSelection
+                                                  }
+                                                  className="space-y-1 text-xs text-secondary-600 dark:text-secondary-300"
+                                                >
+                                                  {filteredRequirements.map(
+                                                    requirement => (
+                                                      <li
+                                                        className="rounded-md border border-secondary-200 bg-white px-2 py-2 dark:border-secondary-700 dark:bg-secondary-900/70"
+                                                        key={requirement.id}
+                                                      >
+                                                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                                          <span className="font-mono font-semibold text-secondary-800 dark:text-secondary-100">
+                                                            {
+                                                              requirement.uniqueId
+                                                            }
                                                           </span>
-                                                        ),
-                                                      )}
-                                                    </div>
-                                                  </li>
-                                                ),
-                                              )}
-                                            </ul>
-                                          ) : null}
-                                        </div>
-                                      )
-                                    })()
-                                  : null}
-                                {answer.healthState ===
-                                  'missing_requirement_selection' && (
-                                  <span className="ml-2 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
-                                    {copy.missingRequirementSelection}
-                                  </span>
-                                )}
+                                                          {requirement.description ? (
+                                                            <span className="text-secondary-600 dark:text-secondary-300">
+                                                              {
+                                                                requirement.description
+                                                              }
+                                                            </span>
+                                                          ) : null}
+                                                        </div>
+                                                        <div className="mt-1 flex flex-wrap gap-1">
+                                                          {requirement.direct ? (
+                                                            <span className="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-[0.68rem] font-medium text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
+                                                              {
+                                                                copy.directRequirement
+                                                              }
+                                                            </span>
+                                                          ) : null}
+                                                          {requirement.sourcePackages.map(
+                                                            pkg => (
+                                                              <span
+                                                                className="inline-flex rounded-full border border-secondary-200 bg-white px-2 py-0.5 text-[0.68rem] font-medium text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200"
+                                                                key={pkg.id}
+                                                              >
+                                                                {pkg.name}
+                                                              </span>
+                                                            ),
+                                                          )}
+                                                        </div>
+                                                      </li>
+                                                    ),
+                                                  )}
+                                                </ul>
+                                              ) : null}
+                                            </div>
+                                          )
+                                        })()
+                                      : null}
+                                    {answer.healthState ===
+                                      'missing_requirement_selection' && (
+                                      <span className="ml-2 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+                                        {copy.missingRequirementSelection}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+                                    <button
+                                      className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
+                                      disabled={submitting}
+                                      onClick={() => editAnswer(answer)}
+                                      type="button"
+                                    >
+                                      <Pencil
+                                        aria-hidden="true"
+                                        className="h-4 w-4"
+                                      />
+                                      {copy.edit}
+                                    </button>
+                                    <button
+                                      className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
+                                      disabled={submitting}
+                                      onClick={() =>
+                                        answerAction(
+                                          question,
+                                          answer,
+                                          answer.isActive
+                                            ? 'deactivate'
+                                            : 'activate',
+                                        )
+                                      }
+                                      type="button"
+                                    >
+                                      {answer.isActive ? (
+                                        <PauseCircle
+                                          aria-hidden="true"
+                                          className="h-4 w-4"
+                                        />
+                                      ) : (
+                                        <CheckCircle2
+                                          aria-hidden="true"
+                                          className="h-4 w-4"
+                                        />
+                                      )}
+                                      {answer.isActive
+                                        ? copy.deactivate
+                                        : copy.activate}
+                                    </button>
+                                    <button
+                                      className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
+                                      disabled={submitting}
+                                      onClick={event =>
+                                        answerAction(
+                                          question,
+                                          answer,
+                                          answer.isArchived
+                                            ? 'reactivate'
+                                            : 'archive',
+                                          event.currentTarget,
+                                        )
+                                      }
+                                      type="button"
+                                    >
+                                      {answer.isArchived ? (
+                                        <RotateCcw
+                                          aria-hidden="true"
+                                          className="h-4 w-4"
+                                        />
+                                      ) : (
+                                        <Archive
+                                          aria-hidden="true"
+                                          className="h-4 w-4"
+                                        />
+                                      )}
+                                      {answer.isArchived
+                                        ? copy.reactivate
+                                        : copy.archive}
+                                    </button>
+                                    <button
+                                      className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border border-red-200 px-2 text-xs text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
+                                      disabled={submitting}
+                                      onClick={event =>
+                                        answerAction(
+                                          question,
+                                          answer,
+                                          'delete',
+                                          event.currentTarget,
+                                        )
+                                      }
+                                      type="button"
+                                    >
+                                      <Trash2
+                                        aria-hidden="true"
+                                        className="h-4 w-4"
+                                      />
+                                      {copy.delete}
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <div
+                        className={
+                          question.answers.length > 0 ? 'mt-3' : 'mt-4'
+                        }
+                      >
+                        <button
+                          className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium text-secondary-800 transition-colors hover:bg-secondary-50 disabled:opacity-50 dark:border-secondary-700 dark:text-secondary-100 dark:hover:bg-secondary-800"
+                          disabled={submitting}
+                          onClick={() => openAnswerForm(question)}
+                          type="button"
+                          {...devMarker({
+                            context: 'requirementSelectionQuestions',
+                            name: 'button',
+                            value: 'new requirement selection answer',
+                          })}
+                        >
+                          <Plus aria-hidden="true" className="h-4 w-4" />
+                          {copy.addAnswer}
+                        </button>
+                      </div>
+                    </div>
+                    {visibilityPanelQuestionId === question.id ? (
+                      <aside
+                        aria-labelledby={`requirement-selection-visibility-title-${question.id}`}
+                        className="flex max-h-[calc(100vh-10rem)] min-h-0 flex-col rounded-xl border border-secondary-200 bg-white shadow-lg dark:border-secondary-800 dark:bg-secondary-950 xl:sticky xl:top-4"
+                      >
+                        <div className="flex items-start justify-between gap-3 border-b border-secondary-200 px-4 py-3 dark:border-secondary-800">
+                          <div>
+                            <h2
+                              className="text-base font-semibold text-secondary-950 dark:text-secondary-50"
+                              id={`requirement-selection-visibility-title-${question.id}`}
+                            >
+                              {copy.visibilityPanelTitle}
+                            </h2>
+                            <p className="mt-1 text-sm text-secondary-500 dark:text-secondary-400">
+                              {copy.visibilityPanelDescription}
+                            </p>
+                          </div>
+                          <button
+                            aria-label={copy.cancel}
+                            className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-900"
+                            disabled={submitting}
+                            onClick={closeVisibilityPanel}
+                            type="button"
+                          >
+                            <X aria-hidden="true" className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+                          {error ? (
+                            <p
+                              className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                              role="alert"
+                            >
+                              {error}
+                            </p>
+                          ) : null}
+                          {visibilityGroupsForm.length === 0 ? (
+                            <div className="rounded-xl border border-secondary-200 bg-secondary-50 px-4 py-3 text-sm text-secondary-700 dark:border-secondary-800 dark:bg-secondary-900/50 dark:text-secondary-200">
+                              {copy.standaloneQuestionVisibility}
+                            </div>
+                          ) : null}
+                          {visibilityGroupsForm.map((group, groupIndex) => (
+                            <section
+                              className="rounded-xl border border-secondary-200 bg-secondary-50/70 p-4 dark:border-secondary-800 dark:bg-secondary-900/40"
+                              key={group.key}
+                            >
+                              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                <h3 className="text-sm font-semibold text-secondary-800 dark:text-secondary-100">
+                                  {copy.conditionGroup} {groupIndex + 1}
+                                </h3>
                                 <button
-                                  className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
-                                  disabled={submitting}
-                                  onClick={() => editAnswer(answer)}
-                                  type="button"
-                                >
-                                  <Pencil
-                                    aria-hidden="true"
-                                    className="h-4 w-4"
-                                  />
-                                  {copy.edit}
-                                </button>
-                                <button
-                                  className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
+                                  className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-red-200 px-2 text-xs text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
                                   disabled={submitting}
                                   onClick={() =>
-                                    answerAction(
-                                      question,
-                                      answer,
-                                      answer.isActive
-                                        ? 'deactivate'
-                                        : 'activate',
-                                    )
-                                  }
-                                  type="button"
-                                >
-                                  {answer.isActive ? (
-                                    <PauseCircle
-                                      aria-hidden="true"
-                                      className="h-4 w-4"
-                                    />
-                                  ) : (
-                                    <CheckCircle2
-                                      aria-hidden="true"
-                                      className="h-4 w-4"
-                                    />
-                                  )}
-                                  {answer.isActive
-                                    ? copy.deactivate
-                                    : copy.activate}
-                                </button>
-                                <button
-                                  className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
-                                  disabled={submitting}
-                                  onClick={event =>
-                                    answerAction(
-                                      question,
-                                      answer,
-                                      answer.isArchived
-                                        ? 'reactivate'
-                                        : 'archive',
-                                      event.currentTarget,
-                                    )
-                                  }
-                                  type="button"
-                                >
-                                  {answer.isArchived ? (
-                                    <RotateCcw
-                                      aria-hidden="true"
-                                      className="h-4 w-4"
-                                    />
-                                  ) : (
-                                    <Archive
-                                      aria-hidden="true"
-                                      className="h-4 w-4"
-                                    />
-                                  )}
-                                  {answer.isArchived
-                                    ? copy.reactivate
-                                    : copy.archive}
-                                </button>
-                                <button
-                                  className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border border-red-200 px-2 text-xs text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
-                                  disabled={submitting}
-                                  onClick={event =>
-                                    answerAction(
-                                      question,
-                                      answer,
-                                      'delete',
-                                      event.currentTarget,
+                                    setVisibilityGroupsForm(current =>
+                                      current.filter(
+                                        (_, index) => index !== groupIndex,
+                                      ),
                                     )
                                   }
                                   type="button"
                                 >
                                   <Trash2
                                     aria-hidden="true"
-                                    className="h-4 w-4"
+                                    className="h-3.5 w-3.5"
                                   />
                                   {copy.delete}
                                 </button>
                               </div>
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <div
-                    className={question.answers.length > 0 ? 'mt-3' : 'mt-4'}
-                  >
-                    <button
-                      className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium text-secondary-800 transition-colors hover:bg-secondary-50 disabled:opacity-50 dark:border-secondary-700 dark:text-secondary-100 dark:hover:bg-secondary-800"
-                      disabled={submitting}
-                      onClick={() => openAnswerForm(question)}
-                      type="button"
-                      {...devMarker({
-                        context: 'requirementSelectionQuestions',
-                        name: 'button',
-                        value: 'new requirement selection answer',
-                      })}
-                    >
-                      <Plus aria-hidden="true" className="h-4 w-4" />
-                      {copy.addAnswer}
-                    </button>
+                              <div className="space-y-4">
+                                {group.conditions.map(
+                                  (condition, conditionIndex) => {
+                                    const selectedParent = questions.find(
+                                      item =>
+                                        String(item.id) ===
+                                        condition.parentQuestionId,
+                                    )
+                                    const availableAnswers =
+                                      selectedParent?.answers ?? []
+                                    const selectedAnswerRows =
+                                      availableAnswers.filter(answer =>
+                                        condition.answerIds.includes(
+                                          String(answer.id),
+                                        ),
+                                      )
+                                    const hasInactiveReference =
+                                      Boolean(
+                                        selectedParent &&
+                                          (!selectedParent.isActive ||
+                                            selectedParent.isArchived),
+                                      ) ||
+                                      selectedAnswerRows.some(
+                                        answer =>
+                                          !answer.isActive || answer.isArchived,
+                                      )
+                                    const parentId = `visibility-parent-${groupIndex}-${conditionIndex}`
+                                    const firstAnswerInputId = `visibility-answer-${groupIndex}-${conditionIndex}-${availableAnswers[0]?.id ?? 'none'}`
+
+                                    return (
+                                      <div
+                                        className="rounded-lg border border-secondary-200 bg-white p-3 dark:border-secondary-700 dark:bg-secondary-950/40"
+                                        key={condition.key}
+                                      >
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="min-w-0 flex-1">
+                                            <FieldLabelWithHelp
+                                              help={copy.visibilityParentHelp}
+                                              htmlFor={parentId}
+                                              label={copy.parentQuestion}
+                                              required
+                                            />
+                                            <select
+                                              className={inputClassName}
+                                              id={parentId}
+                                              onChange={event =>
+                                                setVisibilityGroupsForm(
+                                                  current =>
+                                                    current.map(
+                                                      (
+                                                        currentGroup,
+                                                        currentGroupIndex,
+                                                      ) =>
+                                                        currentGroupIndex !==
+                                                        groupIndex
+                                                          ? currentGroup
+                                                          : {
+                                                              ...currentGroup,
+                                                              conditions:
+                                                                currentGroup.conditions.map(
+                                                                  (
+                                                                    currentCondition,
+                                                                    currentConditionIndex,
+                                                                  ) =>
+                                                                    currentConditionIndex !==
+                                                                    conditionIndex
+                                                                      ? currentCondition
+                                                                      : {
+                                                                          ...currentCondition,
+                                                                          answerIds:
+                                                                            [],
+                                                                          parentQuestionId:
+                                                                            event
+                                                                              .target
+                                                                              .value,
+                                                                        },
+                                                                ),
+                                                            },
+                                                    ),
+                                                )
+                                              }
+                                              value={condition.parentQuestionId}
+                                            >
+                                              <option value="">-</option>
+                                              {questions
+                                                .filter(
+                                                  item =>
+                                                    item.id !== question.id,
+                                                )
+                                                .map(item => (
+                                                  <option
+                                                    key={item.id}
+                                                    value={item.id}
+                                                  >
+                                                    {item.questionCode} ·{' '}
+                                                    {item.areaName} ·{' '}
+                                                    {item.text}
+                                                  </option>
+                                                ))}
+                                            </select>
+                                          </div>
+                                          {group.conditions.length > 1 ? (
+                                            <button
+                                              aria-label={copy.delete}
+                                              className="mt-7 inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-red-200 text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
+                                              disabled={submitting}
+                                              onClick={() =>
+                                                setVisibilityGroupsForm(
+                                                  current =>
+                                                    current.map(
+                                                      (
+                                                        currentGroup,
+                                                        currentGroupIndex,
+                                                      ) =>
+                                                        currentGroupIndex !==
+                                                        groupIndex
+                                                          ? currentGroup
+                                                          : {
+                                                              ...currentGroup,
+                                                              conditions:
+                                                                currentGroup.conditions.filter(
+                                                                  (
+                                                                    _,
+                                                                    currentConditionIndex,
+                                                                  ) =>
+                                                                    currentConditionIndex !==
+                                                                    conditionIndex,
+                                                                ),
+                                                            },
+                                                    ),
+                                                )
+                                              }
+                                              type="button"
+                                            >
+                                              <Trash2
+                                                aria-hidden="true"
+                                                className="h-4 w-4"
+                                              />
+                                            </button>
+                                          ) : null}
+                                        </div>
+                                        {selectedParent ? (
+                                          <fieldset className="mt-3">
+                                            <FieldLabelWithHelp
+                                              help={copy.visibilityAnswersHelp}
+                                              htmlFor={firstAnswerInputId}
+                                              label={copy.triggerAnswers}
+                                              required
+                                            />
+                                            <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border border-secondary-200 bg-secondary-50/70 p-2 dark:border-secondary-700 dark:bg-secondary-900/50">
+                                              {availableAnswers.map(answer => {
+                                                const answerId = String(
+                                                  answer.id,
+                                                )
+                                                const inputId = `visibility-answer-${groupIndex}-${conditionIndex}-${answer.id}`
+                                                return (
+                                                  <label
+                                                    className="flex min-h-10 items-start gap-2 rounded-md px-2 py-2 text-sm hover:bg-white dark:hover:bg-secondary-800"
+                                                    htmlFor={inputId}
+                                                    key={answer.id}
+                                                  >
+                                                    <input
+                                                      checked={condition.answerIds.includes(
+                                                        answerId,
+                                                      )}
+                                                      className="mt-1 h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+                                                      id={inputId}
+                                                      onChange={event =>
+                                                        setVisibilityGroupsForm(
+                                                          current =>
+                                                            current.map(
+                                                              (
+                                                                currentGroup,
+                                                                currentGroupIndex,
+                                                              ) =>
+                                                                currentGroupIndex !==
+                                                                groupIndex
+                                                                  ? currentGroup
+                                                                  : {
+                                                                      ...currentGroup,
+                                                                      conditions:
+                                                                        currentGroup.conditions.map(
+                                                                          (
+                                                                            currentCondition,
+                                                                            currentConditionIndex,
+                                                                          ) =>
+                                                                            currentConditionIndex !==
+                                                                            conditionIndex
+                                                                              ? currentCondition
+                                                                              : {
+                                                                                  ...currentCondition,
+                                                                                  answerIds:
+                                                                                    event
+                                                                                      .target
+                                                                                      .checked
+                                                                                      ? [
+                                                                                          ...currentCondition.answerIds.filter(
+                                                                                            id =>
+                                                                                              id !==
+                                                                                              answerId,
+                                                                                          ),
+                                                                                          answerId,
+                                                                                        ]
+                                                                                      : currentCondition.answerIds.filter(
+                                                                                          id =>
+                                                                                            id !==
+                                                                                            answerId,
+                                                                                        ),
+                                                                                },
+                                                                        ),
+                                                                    },
+                                                            ),
+                                                        )
+                                                      }
+                                                      type="checkbox"
+                                                    />
+                                                    <span>
+                                                      <span className="block">
+                                                        {answer.text}
+                                                      </span>
+                                                      {(!answer.isActive ||
+                                                        answer.isArchived) && (
+                                                        <span className="mt-1 inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+                                                          <AlertTriangle
+                                                            aria-hidden="true"
+                                                            className="h-3 w-3"
+                                                          />
+                                                          {statusText(
+                                                            answer,
+                                                            copy,
+                                                          )}
+                                                        </span>
+                                                      )}
+                                                    </span>
+                                                  </label>
+                                                )
+                                              })}
+                                            </div>
+                                          </fieldset>
+                                        ) : null}
+                                        {hasInactiveReference ? (
+                                          <p className="mt-3 inline-flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+                                            <AlertTriangle
+                                              aria-hidden="true"
+                                              className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                                            />
+                                            <span>
+                                              {copy.visibilityInactiveWarning}
+                                            </span>
+                                          </p>
+                                        ) : null}
+                                      </div>
+                                    )
+                                  },
+                                )}
+                              </div>
+                              <button
+                                className="mt-3 inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
+                                disabled={submitting}
+                                onClick={() =>
+                                  setVisibilityGroupsForm(current =>
+                                    current.map(
+                                      (currentGroup, currentGroupIndex) =>
+                                        currentGroupIndex !== groupIndex
+                                          ? currentGroup
+                                          : {
+                                              ...currentGroup,
+                                              conditions: [
+                                                ...currentGroup.conditions,
+                                                createEmptyVisibilityConditionForm(),
+                                              ],
+                                            },
+                                    ),
+                                  )
+                                }
+                                type="button"
+                              >
+                                <Plus aria-hidden="true" className="h-4 w-4" />
+                                {copy.addVisibilityCondition}
+                              </button>
+                            </section>
+                          ))}
+                          <button
+                            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-3 text-sm disabled:opacity-50"
+                            disabled={submitting}
+                            onClick={() =>
+                              setVisibilityGroupsForm(current => [
+                                ...current,
+                                createEmptyVisibilityGroupForm(),
+                              ])
+                            }
+                            type="button"
+                          >
+                            <Plus aria-hidden="true" className="h-4 w-4" />
+                            {copy.addVisibilityGroup}
+                          </button>
+                        </div>
+                        <div className="flex justify-end gap-2 border-t border-secondary-200 px-4 py-3 dark:border-secondary-800">
+                          <button
+                            className="btn-secondary inline-flex items-center gap-1.5"
+                            disabled={submitting}
+                            onClick={closeVisibilityPanel}
+                            type="button"
+                          >
+                            {copy.cancel}
+                          </button>
+                          <button
+                            className="btn-primary inline-flex items-center gap-1.5"
+                            disabled={submitting}
+                            onClick={saveVisibilityGroups}
+                            type="button"
+                          >
+                            <Save aria-hidden="true" className="h-4 w-4" />
+                            {copy.saveVisibility}
+                          </button>
+                        </div>
+                      </aside>
+                    ) : null}
                   </div>
                 </div>
               ))

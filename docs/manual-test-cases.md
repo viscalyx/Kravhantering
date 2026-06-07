@@ -660,6 +660,10 @@ management live outside Admin Center.
    question or answer, cancel the first confirmation, then repeat and confirm.
 1. Expand an answer preview and verify it lists matching published requirements
    and flags `Saknar kravurval` when no published requirement currently matches.
+1. Open `Synlighet` for a kravurvalsfråga, add a villkorsgrupp that references
+   a kravurvalsfråga from another kravområde and one or more of its answers,
+   save, reload, and verify the question row shows a `Synlighet` indicator.
+   Try to create a cycle and verify saving is rejected.
 1. In the answer edit modal, click a row in `Krav i urvalet` and verify a
    kravbibliotek-style read-only detail card appears with kravtext,
    acceptanskriterier, metadata, referenser and kravpaket using the same card
@@ -1235,6 +1239,15 @@ requirement-selection questions.
    `Kravurvalsfrågor`.
 1. Filter the question tab by text, requirement area, and unanswered questions.
 1. Answer one single-choice question and one multiple-choice question.
+1. Answer `INT-KUF001` with `REST-API eller API Gateway`, `Asynkrona
+   meddelanden eller webhooks`, or `Filimport eller datamigrering` and verify
+   `KVA-KUF001` appears under its own kravområde with an `Obesvarad` badge.
+   Verify the parent question shows a compact follow-up link that scrolls to
+   `KVA-KUF001`.
+1. Answer `DRF-KUF001` with `Hybrid drift` and verify both `DRF-KUF002` and
+   `DRF-KUF003` appear under `Drift`. Answer either follow-up with a
+   `Hög tillgänglighet...` answer and verify `DRF-KUF004` appears for the
+   business recovery need.
 1. For a multiple-choice question, choose `Utan kravurval`.
 1. Return to `Tillgängliga krav`.
 1. Verify `Filtrera med kravurvalsfrågor` is off on fresh entry and that
@@ -1251,6 +1264,10 @@ requirement-selection questions.
    requirement selection.
 1. Choose an answer that should match requirements but currently matches no
    published requirements, if such a fixture exists.
+1. Answer the visible follow-up question, then change the parent integration
+   answer so the follow-up no longer matches. Verify the confirmation explains
+   that answered follow-up questions will be cleared, cancel once, then confirm
+   and verify the follow-up answer is removed.
 1. Generate the specification list report.
 1. Clear one saved answer.
 

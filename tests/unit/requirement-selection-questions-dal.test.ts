@@ -25,6 +25,99 @@ function createTransactionalDb(query: ReturnType<typeof vi.fn>) {
   } as unknown as Parameters<typeof setRequirementSelectionQuestionState>[0]
 }
 
+function questionRow(overrides: Record<string, unknown> = {}) {
+  return {
+    areaId: 1,
+    areaName: 'Security',
+    areaPrefix: 'SAK',
+    archivedAt: null,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    helpText: null,
+    id: 1,
+    isActive: 1,
+    isArchived: 0,
+    questionCode: 'SAK-KUF001',
+    selectionType: 'single',
+    sortOrder: 10,
+    text: 'Question',
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+    ...overrides,
+  }
+}
+
+function answerRow(overrides: Record<string, unknown> = {}) {
+  return {
+    archivedAt: null,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    description: null,
+    id: 4,
+    isActive: 1,
+    isArchived: 0,
+    isNoRequirementSelection: 0,
+    questionId: 1,
+    sortOrder: 10,
+    text: 'Answer',
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+    ...overrides,
+  }
+}
+
+function createRequirementSelectionFilterDb({
+  answers,
+  finalRequirementRows = [],
+  questions,
+  savedRows,
+  visibilityRows = [],
+}: {
+  answers: Array<Record<string, unknown>>
+  finalRequirementRows?: Array<Record<string, unknown>>
+  questions: Array<Record<string, unknown>>
+  savedRows: Array<Record<string, unknown>>
+  visibilityRows?: Array<Record<string, unknown>>
+}) {
+  const query = vi.fn(async (sql: string) => {
+    if (sql.includes('FROM requirement_selection_questions AS question')) {
+      return questions
+    }
+    if (
+      sql.includes(
+        'FROM requirement_selection_question_visibility_groups AS visibility_group',
+      )
+    ) {
+      return visibilityRows
+    }
+    if (sql.includes('FROM requirement_selection_answers AS answer')) {
+      return answers
+    }
+    if (
+      sql.includes(
+        'SELECT DISTINCT answer_requirement.requirement_id AS requirementId',
+      )
+    ) {
+      return finalRequirementRows
+    }
+    if (sql.includes('FROM requirement_selection_answer_packages')) {
+      return []
+    }
+    if (
+      sql.includes('FROM requirement_selection_answer_requirements') &&
+      sql.includes('answer_id AS answerId')
+    ) {
+      return []
+    }
+    if (sql.includes('source.answerId AS answerId')) {
+      return []
+    }
+    if (sql.includes('FROM specification_requirement_selection_answers')) {
+      return savedRows
+    }
+    return []
+  })
+  return { query } as unknown as Parameters<
+    typeof getRequirementSelectionFilterForSpecification
+  >[0]
+}
+
 describe('requirement selection questions DAL', () => {
   it('loads existing requirement ids through the specification item foreign key', async () => {
     const db = createDb([{ requirementId: 101 }, { requirementId: 102 }])
@@ -44,12 +137,24 @@ describe('requirement selection questions DAL', () => {
   })
 
   it('treats no-requirement-selection answers as answered without filtering available requirements', async () => {
-    const query = vi.fn(async () => [
-      { answerId: 4, isNoRequirementSelection: 1 },
-    ])
-    const db = { query } as unknown as Parameters<
-      typeof getRequirementSelectionFilterForSpecification
-    >[0]
+    const db = createRequirementSelectionFilterDb({
+      answers: [
+        answerRow({
+          isNoRequirementSelection: 1,
+        }),
+      ],
+      questions: [questionRow()],
+      savedRows: [
+        {
+          answerId: 4,
+          isHistorical: 0,
+          questionId: 1,
+          selectedByDisplayName: 'Ada',
+          selectedByHsaId: 'SE5560000001-ada',
+          updatedAt: new Date('2026-01-01T00:00:00Z'),
+        },
+      ],
+    })
 
     await expect(
       getRequirementSelectionFilterForSpecification(db, 9),
@@ -60,17 +165,33 @@ describe('requirement selection questions DAL', () => {
       requirementIds: [],
     })
 
-    expect(query).toHaveBeenCalledTimes(1)
+    expect(
+      vi
+        .mocked(db.query)
+        .mock.calls.some(([sql]) =>
+          String(sql).includes(
+            'SELECT DISTINCT answer_requirement.requirement_id AS requirementId',
+          ),
+        ),
+    ).toBe(false)
   })
 
   it('filters explicit answer requirement links to requirements with a published version', async () => {
-    const query = vi
-      .fn()
-      .mockResolvedValueOnce([{ answerId: 4, isNoRequirementSelection: 0 }])
-      .mockResolvedValueOnce([{ requirementId: 101 }])
-    const db = { query } as unknown as Parameters<
-      typeof getRequirementSelectionFilterForSpecification
-    >[0]
+    const db = createRequirementSelectionFilterDb({
+      answers: [answerRow()],
+      finalRequirementRows: [{ requirementId: 101 }],
+      questions: [questionRow()],
+      savedRows: [
+        {
+          answerId: 4,
+          isHistorical: 0,
+          questionId: 1,
+          selectedByDisplayName: 'Ada',
+          selectedByHsaId: 'SE5560000001-ada',
+          updatedAt: new Date('2026-01-01T00:00:00Z'),
+        },
+      ],
+    })
 
     await expect(
       getRequirementSelectionFilterForSpecification(db, 9),
@@ -81,13 +202,76 @@ describe('requirement selection questions DAL', () => {
       requirementIds: [101],
     })
 
-    const filterSql = String(query.mock.calls[1]?.[0])
+    const query = vi.mocked(db.query)
+    const filterCall = query.mock.calls.find(([sql]) =>
+      String(sql).includes(
+        'SELECT DISTINCT answer_requirement.requirement_id AS requirementId',
+      ),
+    )
+    const filterSql = String(filterCall?.[0])
     expect(filterSql).toContain(
       'FROM requirement_selection_answer_requirements AS answer_requirement',
     )
     expect(filterSql).toContain('AND EXISTS (')
     expect(filterSql).toContain('explicit_version.requirement_status_id = @1')
-    expect(query.mock.calls[1]?.[1]).toEqual([4, STATUS_PUBLISHED])
+    expect(filterCall?.[1]).toEqual([4, STATUS_PUBLISHED])
+  })
+
+  it('ignores current saved answers on questions hidden by visibility conditions', async () => {
+    const db = createRequirementSelectionFilterDb({
+      answers: [
+        answerRow({ id: 4, questionId: 1, text: 'REST API' }),
+        answerRow({ id: 9, questionId: 2, text: 'E2E tests' }),
+      ],
+      questions: [
+        questionRow({ id: 1, questionCode: 'INT-KUF001' }),
+        questionRow({
+          areaId: 2,
+          areaName: 'Quality',
+          areaPrefix: 'KVA',
+          id: 2,
+          questionCode: 'KVA-KUF001',
+          text: 'Quality follow-up',
+        }),
+      ],
+      savedRows: [
+        {
+          answerId: 9,
+          isHistorical: 0,
+          questionId: 2,
+          selectedByDisplayName: 'Ada',
+          selectedByHsaId: 'SE5560000001-ada',
+          updatedAt: new Date('2026-01-01T00:00:00Z'),
+        },
+      ],
+      visibilityRows: [
+        {
+          answerId: 4,
+          answerIsActive: 1,
+          answerIsArchived: 0,
+          answerText: 'REST API',
+          groupId: 1,
+          id: 1,
+          parentAreaName: 'Integration',
+          parentQuestionCode: 'INT-KUF001',
+          parentQuestionId: 1,
+          parentQuestionIsActive: 1,
+          parentQuestionIsArchived: 0,
+          parentQuestionText: 'Integration?',
+          questionId: 2,
+          sortOrder: 0,
+        },
+      ],
+    })
+
+    await expect(
+      getRequirementSelectionFilterForSpecification(db, 9),
+    ).resolves.toEqual({
+      hasCurrentAnswers: false,
+      hasRequirementSelection: false,
+      hasNoRequirementSelection: false,
+      requirementIds: [],
+    })
   })
 
   it('returns no matched requirements without package or requirement filters', async () => {

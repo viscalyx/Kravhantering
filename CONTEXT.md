@@ -587,6 +587,48 @@ aktivt.
 _Avoid_: Vanligt tabellfilter, kravpaket, sparade kravurvalssvar när de bara
 dokumenterar urvalskontext.
 
+**Synlighetsvillkor**:
+Ett villkor som avgör när en kravurvalsfråga hör till det aktuella
+frågesammanhanget i ett kravunderlag, baserat på valda kravurvalssvar i
+överliggande kravurvalsfrågor.
+
+- `en`: Visibility condition
+
+_Avoid_: Kravurvalsfilter, obligatoriskt krav, vanligt tabellfilter.
+
+**Villkorsgrupp**:
+En samling synlighetsvillkor där alla ingående överliggande frågor måste vara
+uppfyllda för att gruppen ska göra en underordnad kravurvalsfråga synlig. Om
+en kravurvalsfråga har flera villkorsgrupper räcker det att en grupp är
+uppfylld.
+
+- `en`: Condition group
+
+_Avoid_: Kravpaket, svarsalternativ, kravurvalsfilter.
+
+**Fristående kravurvalsfråga**:
+En kravurvalsfråga som hör till frågesammanhanget utan synlighetsvillkor och
+därför visas oberoende av svar på andra kravurvalsfrågor.
+
+- `en`: Standalone requirement selection question
+
+_Avoid_: Rotfråga, huvudfråga, huvudkravurvalsfråga.
+
+**Överliggande kravurvalsfråga**:
+En kravurvalsfråga vars valda svar kan göra en annan kravurvalsfråga synlig.
+
+- `en`: Parent requirement selection question
+
+_Avoid_: Överordnat krav, kravområde.
+
+**Underordnad kravurvalsfråga**:
+En kravurvalsfråga som bara hör till frågesammanhanget när dess
+synlighetsvillkor är uppfyllda.
+
+- `en`: Child requirement selection question
+
+_Avoid_: Obligatorisk fråga, kravpaket.
+
 **Kravtillämpning**:
 Att en publicerad kravversion från kravbiblioteket används i ett visst
 kravunderlag. Kravtillämpningen bär det underlagsspecifika sammanhanget, inte

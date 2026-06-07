@@ -823,6 +823,10 @@ erDiagram
     requirement_areas ||--|| requirement_selection_question_sequences : "fördelar KUF-koder"
     requirement_areas ||--o{ requirement_selection_questions : "äger kravurvalsfrågor"
     requirement_selection_questions ||--o{ requirement_selection_answers : "har svar"
+    requirement_selection_questions ||--o{ requirement_selection_question_visibility_groups : "har synlighetsgrupper"
+    requirement_selection_question_visibility_groups ||--o{ requirement_selection_question_visibility_conditions : "har villkor"
+    requirement_selection_question_visibility_conditions }o--|| requirement_selection_questions : "överliggande fråga"
+    requirement_selection_question_visibility_conditions }o--|| requirement_selection_answers : "utlösande svar"
     requirement_selection_answers ||--o{ requirement_selection_answer_packages : "kopplar kravpaket"
     requirement_selection_answer_packages }o--|| requirement_packages : "pekar på kravpaket"
     requirement_selection_answers ||--o{ requirement_selection_answer_requirements : "kopplar krav"
@@ -892,6 +896,8 @@ applikationen.
 > bibliotekskrav, eller markera `Utan kravurval`. Kravunderlag sparar
 > svaren separat med `is_historical`, så inaktiverade eller arkiverade
 > frågor/svar kan visas historiskt utan att räknas som aktuell urvalskontext.
+> Frågor kan också ha synlighetsvillkor som gör dem till följdfrågor när
+> överliggande kravurvalsfrågor har definierade svar valda.
 > Arkiverade frågor och svar får `archived_at`; Admin > Arkivering kan
 > gallra dem efter beslutad lagringstid när inga sparade kravunderlagssvar
 > längre refererar dem.
