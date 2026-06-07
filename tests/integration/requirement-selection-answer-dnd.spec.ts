@@ -191,6 +191,10 @@ test.describe('Requirement selection answer drag and drop', () => {
       const sourceHandle = sourceRow.getByRole('button', {
         name: 'Ändra svarsordning',
       })
+      const sourceRowHandle = await sourceRow.elementHandle()
+      if (!sourceRowHandle) {
+        throw new Error('Missing answer drag source row')
+      }
       const dataTransfer = await page.evaluateHandle(() => new DataTransfer())
       await sourceHandle.dispatchEvent('pointerdown', {
         button: 0,
@@ -201,6 +205,7 @@ test.describe('Requirement selection answer drag and drop', () => {
       await sourceRow.dispatchEvent('dragstart', { dataTransfer })
       await targetRow.dispatchEvent('dragover', { dataTransfer })
       await targetRow.dispatchEvent('drop', { dataTransfer })
+      await sourceRowHandle.dispatchEvent('dragend', { dataTransfer })
 
       await expect(answerRows.nth(0)).toContainText('Molndrift')
       await expect(answerRows.nth(1)).toContainText('Egen drift/on-premises')
