@@ -908,9 +908,6 @@ export default function RequirementSelectionQuestionsClient() {
   >([])
   const [selectedPreviewRequirementId, setSelectedPreviewRequirementId] =
     useState<number | null>(null)
-  const [armedDragQuestionId, setArmedDragQuestionId] = useState<number | null>(
-    null,
-  )
   const [draggedQuestionId, setDraggedQuestionId] = useState<number | null>(
     null,
   )
@@ -939,14 +936,22 @@ export default function RequirementSelectionQuestionsClient() {
     originalQuestions: RequirementSelectionQuestion[]
     questionId: number
   } | null>(null)
+  const questionPointerDragRef = useRef<{
+    abortController: AbortController
+    areaId: number
+    areaQuestions: RequirementSelectionQuestion[]
+    hasStarted: boolean
+    lastTargetQuestionId: number | null
+    pointerId: number
+    questionId: number
+    startX: number
+    startY: number
+  } | null>(null)
   const draggedAnswerRef = useRef<{
     answerId: number
     originalAnswers: RequirementSelectionAnswer[]
     questionId: number
   } | null>(null)
-  const questionDragDropCommittedRef = useRef(false)
-  const questionDragPreviewedRef = useRef(false)
-  const armedDragQuestionIdRef = useRef<number | null>(null)
   const armedDragAnswerIdRef = useRef<number | null>(null)
   const dragDropCommittedRef = useRef(false)
   const dragPreviewedRef = useRef(false)
@@ -1914,7 +1919,6 @@ export default function RequirementSelectionQuestionsClient() {
         areaId,
         orderedQuestions,
       )
-      questionDragPreviewedRef.current = true
       questionsRef.current = nextQuestions
       return nextQuestions
     })
@@ -1935,115 +1939,159 @@ export default function RequirementSelectionQuestionsClient() {
     })
   }
 
-  const clearArmedQuestionDrag = () => {
-    armedDragQuestionIdRef.current = null
-    setArmedDragQuestionId(null)
-  }
-
   const clearQuestionDragState = () => {
     draggedQuestionRef.current = null
-    questionDragDropCommittedRef.current = false
-    questionDragPreviewedRef.current = false
-    clearArmedQuestionDrag()
     setDraggedQuestionId(null)
     setDragOverQuestionId(null)
   }
 
-  const handleQuestionDragStart = (
-    event: React.DragEvent<HTMLElement>,
-    areaQuestions: RequirementSelectionQuestion[],
-    question: RequirementSelectionQuestion,
-    sourceElement?: HTMLElement,
-  ) => {
-    const startedFromQuestionHandle =
-      armedDragQuestionId === question.id ||
-      armedDragQuestionIdRef.current === question.id ||
-      (event.target instanceof HTMLElement &&
-        Boolean(event.target.closest('[data-question-drag-handle="true"]')))
-
-    if (!startedFromQuestionHandle) return
-
-    if (submitting || isQuestionReorderFiltered || areaQuestions.length < 2) {
-      event.preventDefault()
-      return
-    }
-
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', String(question.id))
-    setVisibleDragImage(event, sourceElement)
-    draggedQuestionRef.current = {
-      areaId: question.areaId,
-      originalQuestions: areaQuestions,
-      questionId: question.id,
-    }
-    questionDragDropCommittedRef.current = false
-    questionDragPreviewedRef.current = false
-    setDraggedQuestionId(question.id)
-    setDragOverQuestionId(question.id)
-  }
-
   const handleQuestionDragHandlePointerDown = (
+    event: React.PointerEvent<HTMLElement>,
     areaQuestions: RequirementSelectionQuestion[],
     question: RequirementSelectionQuestion,
   ) => {
     if (submitting || isQuestionReorderFiltered || areaQuestions.length < 2) {
       return
     }
-    armedDragQuestionIdRef.current = question.id
-    setArmedDragQuestionId(question.id)
-  }
-
-  const handleQuestionDragEnd = () => {
-    if (!questionDragDropCommittedRef.current) {
-      restoreDraggedQuestionOrder()
+    if (event.button !== 0 || (event.pointerType && !event.isPrimary)) {
+      return
     }
-    clearQuestionDragState()
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    const abortController = new AbortController()
+    questionPointerDragRef.current = {
+      abortController,
+      areaId: question.areaId,
+      areaQuestions,
+      hasStarted: false,
+      lastTargetQuestionId: null,
+      pointerId: event.pointerId,
+      questionId: question.id,
+      startX: event.clientX,
+      startY: event.clientY,
+    }
+    window.addEventListener(
+      'pointerup',
+      pointerEvent => {
+        finishQuestionPointerDrag(pointerEvent.pointerId)
+      },
+      { signal: abortController.signal },
+    )
+    window.addEventListener(
+      'pointercancel',
+      pointerEvent => {
+        cancelQuestionPointerDrag(pointerEvent.pointerId)
+      },
+      { signal: abortController.signal },
+    )
   }
 
-  const handleQuestionDrop = (
-    event: React.DragEvent<HTMLElement>,
-    areaQuestions: RequirementSelectionQuestion[],
-    targetQuestion: RequirementSelectionQuestion,
+  const handleQuestionDragHandlePointerMove = (
+    event: React.PointerEvent<HTMLElement>,
   ) => {
+    const pointerDrag = questionPointerDragRef.current
+    if (!pointerDrag || pointerDrag.pointerId !== event.pointerId) return
+
+    if (!pointerDrag.hasStarted) {
+      const deltaX = event.clientX - pointerDrag.startX
+      const deltaY = event.clientY - pointerDrag.startY
+      if (Math.hypot(deltaX, deltaY) < 4) return
+
+      pointerDrag.hasStarted = true
+      draggedQuestionRef.current = {
+        areaId: pointerDrag.areaId,
+        originalQuestions: pointerDrag.areaQuestions,
+        questionId: pointerDrag.questionId,
+      }
+      setDraggedQuestionId(pointerDrag.questionId)
+      setDragOverQuestionId(pointerDrag.questionId)
+    }
+
     event.preventDefault()
-    const draggedId =
-      Number(event.dataTransfer.getData('text/plain')) ||
-      draggedQuestionRef.current?.questionId ||
-      draggedQuestionId
-    const draggedQuestion = draggedQuestionRef.current
-    questionDragDropCommittedRef.current = true
+    const targetElement = document.elementFromPoint(
+      event.clientX,
+      event.clientY,
+    )
+    const targetCard =
+      targetElement instanceof HTMLElement
+        ? targetElement.closest<HTMLElement>(
+            '[data-question-drop-target="true"]',
+          )
+        : null
+    const targetQuestionId = Number(targetCard?.dataset.questionId)
     if (
-      !draggedId ||
-      !draggedQuestion ||
-      draggedQuestion.areaId !== targetQuestion.areaId
+      !Number.isInteger(targetQuestionId) ||
+      targetQuestionId <= 0 ||
+      targetQuestionId === pointerDrag.questionId ||
+      targetQuestionId === pointerDrag.lastTargetQuestionId
     ) {
-      clearQuestionDragState()
       return
     }
 
-    const currentAreaQuestions = questionsRef.current.filter(
-      question => question.areaId === targetQuestion.areaId,
+    const targetQuestion = questionsRef.current.find(
+      question =>
+        question.id === targetQuestionId &&
+        question.areaId === pointerDrag.areaId,
     )
-    const orderedQuestions =
-      questionDragPreviewedRef.current || draggedId === targetQuestion.id
-        ? currentAreaQuestions
-        : (moveQuestionIntoTargetSlot(
-            currentAreaQuestions.length > 0
-              ? currentAreaQuestions
-              : areaQuestions,
-            draggedId,
-            targetQuestion.id,
-          ) ??
-          (currentAreaQuestions.length > 0
-            ? currentAreaQuestions
-            : areaQuestions))
+    if (!targetQuestion) return
 
+    pointerDrag.lastTargetQuestionId = targetQuestion.id
+    setDragOverQuestionId(targetQuestion.id)
+    previewQuestionMove(pointerDrag.areaId, targetQuestion)
+  }
+
+  const finishQuestionPointerDrag = (
+    pointerId: number,
+    captureElement?: HTMLElement,
+  ) => {
+    const pointerDrag = questionPointerDragRef.current
+    if (!pointerDrag || pointerDrag.pointerId !== pointerId) {
+      return
+    }
+
+    pointerDrag.abortController.abort()
+    captureElement?.releasePointerCapture?.(pointerId)
+    questionPointerDragRef.current = null
+    if (!pointerDrag.hasStarted) {
+      return
+    }
+
+    const orderedQuestions = questionsRef.current.filter(
+      question => question.areaId === pointerDrag.areaId,
+    )
     clearQuestionDragState()
     void persistQuestionOrder(
-      targetQuestion.areaId,
+      pointerDrag.areaId,
       orderedQuestions,
-      draggedId,
+      pointerDrag.questionId,
     )
+  }
+
+  const cancelQuestionPointerDrag = (
+    pointerId: number,
+    captureElement?: HTMLElement,
+  ) => {
+    const pointerDrag = questionPointerDragRef.current
+    if (pointerDrag && pointerDrag.pointerId === pointerId) {
+      pointerDrag.abortController.abort()
+      captureElement?.releasePointerCapture?.(pointerId)
+      questionPointerDragRef.current = null
+      if (pointerDrag.hasStarted) {
+        restoreDraggedQuestionOrder()
+      }
+    }
+    clearQuestionDragState()
+  }
+
+  const handleQuestionDragHandlePointerUp = (
+    event: React.PointerEvent<HTMLElement>,
+  ) => {
+    finishQuestionPointerDrag(event.pointerId, event.currentTarget)
+  }
+
+  const handleQuestionDragHandlePointerCancel = (
+    event: React.PointerEvent<HTMLElement>,
+  ) => {
+    cancelQuestionPointerDrag(event.pointerId, event.currentTarget)
   }
 
   const handleQuestionReorderKeyDown = (
@@ -3353,25 +3401,10 @@ export default function RequirementSelectionQuestionsClient() {
                               ? 'opacity-70'
                               : ''
                           }`}
+                          data-question-area-id={group.areaId}
+                          data-question-drop-target="true"
+                          data-question-id={question.id}
                           key={question.id}
-                          onDragEnd={handleQuestionDragEnd}
-                          onDragEnter={() => setDragOverQuestionId(question.id)}
-                          onDragOver={event => {
-                            if (!draggedQuestionId) return
-                            if (
-                              draggedQuestionRef.current?.areaId !==
-                              group.areaId
-                            ) {
-                              return
-                            }
-                            event.preventDefault()
-                            event.dataTransfer.dropEffect = 'move'
-                            setDragOverQuestionId(question.id)
-                            previewQuestionMove(group.areaId, question)
-                          }}
-                          onDrop={event =>
-                            handleQuestionDrop(event, group.questions, question)
-                          }
                         >
                           <div
                             className={`flex items-stretch ${
@@ -3379,31 +3412,12 @@ export default function RequirementSelectionQuestionsClient() {
                                 ? 'invisible'
                                 : ''
                             }`}
-                            draggable={
-                              armedDragQuestionId === question.id &&
-                              questionReorderEnabled
-                                ? true
-                                : undefined
-                            }
-                            onDragEnd={handleQuestionDragEnd}
-                            onDragStart={event => {
-                              const questionCard =
-                                event.currentTarget.closest('li')
-                              handleQuestionDragStart(
-                                event,
-                                group.questions,
-                                question,
-                                questionCard instanceof HTMLElement
-                                  ? questionCard
-                                  : undefined,
-                              )
-                            }}
-                            role="group"
                           >
                             <button
                               aria-describedby={`kuf-question-reorder-hint-${question.id}`}
                               aria-label={copy.reorderQuestion}
-                              className="inline-flex min-h-16 w-11 shrink-0 self-stretch items-center justify-center border-r border-secondary-200 p-0 text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-950 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-800 dark:text-secondary-200 dark:hover:bg-secondary-800 dark:hover:text-secondary-50"
+                              className="inline-flex min-h-16 w-11 shrink-0 touch-none select-none self-stretch items-center justify-center border-r border-secondary-200 p-0 text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-950 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-800 dark:text-secondary-200 dark:hover:bg-secondary-800 dark:hover:text-secondary-50"
+                              data-question-drag-handle="true"
                               disabled={!questionReorderEnabled}
                               onKeyDown={event =>
                                 handleQuestionReorderKeyDown(
@@ -3412,14 +3426,20 @@ export default function RequirementSelectionQuestionsClient() {
                                   question,
                                 )
                               }
-                              onPointerCancel={clearArmedQuestionDrag}
-                              onPointerDown={() =>
+                              onPointerCancel={
+                                handleQuestionDragHandlePointerCancel
+                              }
+                              onPointerDown={event =>
                                 handleQuestionDragHandlePointerDown(
+                                  event,
                                   group.questions,
                                   question,
                                 )
                               }
-                              onPointerUp={clearArmedQuestionDrag}
+                              onPointerMove={
+                                handleQuestionDragHandlePointerMove
+                              }
+                              onPointerUp={handleQuestionDragHandlePointerUp}
                               title={questionReorderHint}
                               type="button"
                               {...devMarker({

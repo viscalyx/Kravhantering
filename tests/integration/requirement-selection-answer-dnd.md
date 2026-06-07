@@ -1,41 +1,63 @@
-# Requirement Selection Answer Drag-and-Drop Integration Tests
+# Requirement Selection Drag-and-Drop Integration Tests
 
 > Test flow documentation for
 > [`requirement-selection-answer-dnd.spec.ts`](./requirement-selection-answer-dnd.spec.ts)
 
-This suite verifies that expanded requirement-selection answers can be reordered
-from their drag handle in Chromium and that the order is persisted without a page
-refresh.
+This suite verifies that requirement-selection questions and expanded answers can
+be reordered from their drag handles in Chromium and that the order is persisted
+without a page refresh.
 
 ## Overview Flowchart
 
 ```mermaid
 flowchart TD
-    A[Open requirement-selection questions] --> B[Reset DRF-KUF001 answer order]
-    B --> C[Expand DRF-KUF001]
-    C --> D[Drag first answer handle to second answer row]
-    D --> E[Assert visible order changes]
-    E --> F[Reset seeded order]
+    A[Open requirement-selection questions] --> B[Reset Drift question order]
+    B --> C[Drag first question handle to second question row]
+    C --> D[Assert visible question order changes]
+    D --> E[Reset DRF-KUF001 answer order]
+    E --> F[Expand DRF-KUF001]
+    F --> G[Drag first answer handle to second answer row]
+    G --> H[Assert visible answer order changes]
+    H --> I[Reset seeded order]
 ```
 
 ## Test Setup
 
 - The standard Playwright global setup provides an authenticated admin session.
-- The test uses the seeded `DRF-KUF001` question and its four operational-mode
-  answers.
-- The seeded order is reset before and after the test through the same answer
-  update API used by the UI.
-- The drag uses a real mouse sequence in Chromium so the expanded answer handle
-  behavior is covered at browser level.
+- The tests use the seeded Drift (`DRF`) questions and the seeded `DRF-KUF001`
+  operational-mode answers.
+- Seeded question and answer orders are reset through the same update APIs used
+  by the UI.
+- The drags use real mouse sequences in Chromium so handle behavior is covered
+  at browser level.
+
+## reorders collapsed requirement-selection questions by dragging the question handle
+
+### Question Purpose
+
+Protects the regression where a collapsed question handle could show active
+feedback without actually moving the question row.
+
+### Question Flow
+
+1. Navigate to `/sv/requirements/stewardship?tab=questions`.
+1. Assert the `Kravurvalsfrågor` heading is present.
+1. Reset Drift questions to the seeded order.
+1. Reload the page.
+1. Assert `DRF-KUF001` is first and `DRF-KUF002` is second.
+1. Drag the first question handle to the second question row with Playwright
+   mouse events.
+1. Assert `DRF-KUF002` is first and `DRF-KUF001` is second.
+1. Reset Drift questions back to the seeded order.
 
 ## reorders expanded requirement-selection answers by dragging the answer handle
 
-### Purpose
+### Answer Purpose
 
 Protects the regression where the answer drag handle could receive focus or hover
 feedback while the expanded answer still could not be dragged.
 
-### Step-by-Step Flow
+### Answer Flow
 
 1. Navigate to `/sv/requirements/stewardship?tab=questions`.
 1. Assert the `Kravurvalsfrågor` heading is present.
@@ -53,15 +75,14 @@ feedback while the expanded answer still could not be dragged.
 sequenceDiagram
     participant U as User
     participant Q as Questions page
-    participant A as Answer handle
-    participant API as Answer API
+    participant H as Drag handle
+    participant API as Update API
 
     U->>Q: Open Kravurvalsfrågor
     Q->>API: Reset seeded order
-    U->>Q: Expand DRF-KUF001
-    U->>A: Drag first answer handle
-    A->>Q: Preview reordered answers
-    U->>A: Release over second answer
-    Q->>API: Persist answer sort order
-    Q-->>U: Show reordered answers without refresh
+    U->>H: Drag first handle
+    H->>Q: Preview reordered rows
+    U->>H: Release over second row
+    Q->>API: Persist sort order
+    Q-->>U: Show reordered rows without refresh
 ```

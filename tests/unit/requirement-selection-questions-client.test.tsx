@@ -231,6 +231,21 @@ function createDragDataTransfer(): DataTransfer {
   } as unknown as DataTransfer
 }
 
+function mockDocumentElementFromPoint(element: Element | null) {
+  const original = document.elementFromPoint
+  Object.defineProperty(document, 'elementFromPoint', {
+    configurable: true,
+    value: vi.fn(() => element),
+  })
+
+  return () => {
+    Object.defineProperty(document, 'elementFromPoint', {
+      configurable: true,
+      value: original,
+    })
+  }
+}
+
 function countQuestionListFetches() {
   return fetchMock.mock.calls.filter(
     ([url]) =>
@@ -1701,25 +1716,29 @@ describe('RequirementSelectionQuestionsClient', () => {
     expect(dragHandle).toHaveClass('self-stretch', 'w-11')
     expect(dragHandle).not.toHaveAttribute('draggable')
 
-    const dataTransfer = createDragDataTransfer()
-    fireEvent.pointerDown(dragHandle)
+    const restoreElementFromPoint = mockDocumentElementFromPoint(targetCard)
+    fireEvent.pointerDown(dragHandle, {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      isPrimary: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
     expect(sourceCard).not.toHaveAttribute('draggable')
-    expect(sourceHeader).toHaveAttribute('draggable', 'true')
-    fireEvent.dragStart(sourceHeader, { dataTransfer })
-
-    await waitFor(() => {
-      expect(dataTransfer.setDragImage).toHaveBeenCalledWith(
-        expect.any(HTMLElement),
-        expect.any(Number),
-        expect.any(Number),
-      )
-      expect(sourceCard).toHaveClass('bg-secondary-200/95')
-      expect(sourceCard.firstElementChild).toHaveClass('invisible')
+    expect(sourceHeader).not.toHaveAttribute('draggable')
+    fireEvent.pointerMove(dragHandle, {
+      buttons: 1,
+      clientX: 0,
+      clientY: 8,
+      isPrimary: true,
+      pointerId: 1,
+      pointerType: 'mouse',
     })
 
-    fireEvent.dragOver(targetCard, { dataTransfer })
-
     await waitFor(() => {
+      expect(sourceCard).toHaveClass('bg-secondary-200/95')
+      expect(sourceCard.firstElementChild).toHaveClass('invisible')
       const cards = Array.from(questionList.children)
       expect(cards[0]).toHaveTextContent(secondQuestion.text)
       expect(cards[1]).toHaveTextContent(thirdQuestion.text)
@@ -1729,7 +1748,14 @@ describe('RequirementSelectionQuestionsClient', () => {
       expect(cards[2]?.firstElementChild).toHaveClass('invisible')
     })
 
-    fireEvent.drop(targetCard, { dataTransfer })
+    fireEvent.pointerUp(dragHandle, {
+      clientX: 0,
+      clientY: 8,
+      isPrimary: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
+    restoreElementFromPoint()
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -1779,7 +1805,6 @@ describe('RequirementSelectionQuestionsClient', () => {
     const questionList = sourceCard.parentElement
     if (!questionList) throw new Error('Missing question list')
 
-    const dataTransfer = createDragDataTransfer()
     const dragHandle = within(sourceCard).getByRole('button', {
       name: 'Reorder question',
     })
@@ -1787,11 +1812,25 @@ describe('RequirementSelectionQuestionsClient', () => {
     if (!(sourceHeader instanceof HTMLElement)) {
       throw new Error('Missing question header')
     }
-    fireEvent.pointerDown(dragHandle)
+    const restoreElementFromPoint = mockDocumentElementFromPoint(targetCard)
+    fireEvent.pointerDown(dragHandle, {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      isPrimary: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
     expect(sourceCard).not.toHaveAttribute('draggable')
-    expect(sourceHeader).toHaveAttribute('draggable', 'true')
-    fireEvent.dragStart(sourceHeader, { dataTransfer })
-    fireEvent.dragOver(targetCard, { dataTransfer })
+    expect(sourceHeader).not.toHaveAttribute('draggable')
+    fireEvent.pointerMove(dragHandle, {
+      buttons: 1,
+      clientX: 0,
+      clientY: 8,
+      isPrimary: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
 
     await waitFor(() => {
       const cards = Array.from(questionList.children)
@@ -1800,7 +1839,14 @@ describe('RequirementSelectionQuestionsClient', () => {
       expect(cards[0]).toHaveClass('bg-secondary-100/95')
     })
 
-    fireEvent.dragEnd(sourceHeader, { dataTransfer })
+    fireEvent.pointerCancel(dragHandle, {
+      clientX: 0,
+      clientY: 8,
+      isPrimary: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
+    restoreElementFromPoint()
 
     await waitFor(() => {
       const cards = Array.from(questionList.children)
