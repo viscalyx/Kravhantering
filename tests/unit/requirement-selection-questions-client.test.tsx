@@ -331,6 +331,54 @@ function setupMutableQuestionAnswers(initialAnswers: TestAnswer[]) {
   }
 }
 
+function sortQuestionsForTest(questions: TestQuestion[]) {
+  return [...questions].sort(
+    (left, right) =>
+      left.areaName.localeCompare(right.areaName) ||
+      left.sortOrder - right.sortOrder ||
+      left.questionCode.localeCompare(right.questionCode),
+  )
+}
+
+function setupMutableQuestions(initialQuestions: TestQuestion[]) {
+  let questions = sortQuestionsForTest(initialQuestions)
+
+  fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+    if (url === '/api/requirement-areas') {
+      return okJson({ areas: [sampleArea] })
+    }
+    if (url === '/api/requirement-packages') {
+      return okJson({ requirementPackages: [samplePackage] })
+    }
+    if (url === '/api/requirement-selection-questions?includeArchived=true') {
+      return okJson({ questions })
+    }
+
+    const questionUpdateMatch =
+      /^\/api\/requirement-selection-questions\/(\d+)$/.exec(url)
+    if (questionUpdateMatch && init?.method === 'PUT') {
+      const questionId = Number(questionUpdateMatch[1])
+      const body = JSON.parse(String(init.body ?? '{}')) as {
+        sortOrder?: number
+      }
+      questions = sortQuestionsForTest(
+        questions.map(question =>
+          question.id === questionId && typeof body.sortOrder === 'number'
+            ? { ...question, sortOrder: body.sortOrder }
+            : question,
+        ),
+      )
+      return okJson(questions.find(question => question.id === questionId))
+    }
+
+    return okJson({})
+  })
+
+  return {
+    getQuestions: () => questions,
+  }
+}
+
 describe('RequirementSelectionQuestionsClient', () => {
   afterEach(cleanup)
 
@@ -398,6 +446,9 @@ describe('RequirementSelectionQuestionsClient', () => {
       screen.getByRole('combobox', { name: /Requirement area/ }),
     ).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: /Text/ })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('spinbutton', { name: 'Sort order' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: /Help text/ })).toHaveClass(
       'max-h-[28vh]',
       'resize-y',
@@ -707,8 +758,20 @@ describe('RequirementSelectionQuestionsClient', () => {
   })
 
   it('submits a new question from the modal and closes it', async () => {
-    const createdQuestion = { ...sampleQuestion, id: 99, isActive: false }
-    let questions: unknown[] = []
+    const existingQuestion = {
+      ...sampleQuestion,
+      id: 77,
+      questionCode: 'SEC-KUF000',
+      sortOrder: 3,
+      text: 'Existing security question',
+    }
+    const createdQuestion = {
+      ...sampleQuestion,
+      id: 99,
+      isActive: false,
+      sortOrder: 4,
+    }
+    let questions: unknown[] = [existingQuestion]
 
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === '/api/requirement-areas') {
@@ -721,7 +784,7 @@ describe('RequirementSelectionQuestionsClient', () => {
         url === '/api/requirement-selection-questions' &&
         init?.method === 'POST'
       ) {
-        questions = [createdQuestion]
+        questions = [existingQuestion, createdQuestion]
         return okJson(createdQuestion)
       }
       if (url === '/api/requirement-selection-questions?includeArchived=true') {
@@ -754,6 +817,17 @@ describe('RequirementSelectionQuestionsClient', () => {
         '/api/requirement-selection-questions',
         expect.objectContaining({ method: 'POST' }),
       )
+    })
+    const createCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/requirement-selection-questions' &&
+        init?.method === 'POST',
+    )
+    expect(JSON.parse(String(createCall?.[1]?.body))).toEqual({
+      areaId: sampleArea.id,
+      selectionType: 'single',
+      sortOrder: 4,
+      text: createdQuestion.text,
     })
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -808,6 +882,11 @@ describe('RequirementSelectionQuestionsClient', () => {
     expect(areaSelect).toHaveAccessibleDescription(
       `${sampleArea.description} Requirement area is locked after the question has been created.`,
     )
+    expect(
+      within(dialog as HTMLElement).queryByRole('spinbutton', {
+        name: 'Sort order',
+      }),
+    ).not.toBeInTheDocument()
     expect(
       within(dialog as HTMLElement).getByText(sampleArea.description),
     ).toBeInTheDocument()
@@ -1580,6 +1659,261 @@ describe('RequirementSelectionQuestionsClient', () => {
     })
   })
 
+  it('live-reorders questions within an area while dragging the handle and saves sort order on drop', async () => {
+    const secondQuestion: TestQuestion = {
+      ...sampleQuestion,
+      id: 22,
+      questionCode: 'SEC-KUF002',
+      sortOrder: 1,
+      text: 'Which assurance profile applies?',
+    }
+    const thirdQuestion: TestQuestion = {
+      ...sampleQuestion,
+      id: 33,
+      questionCode: 'SEC-KUF003',
+      sortOrder: 2,
+      text: 'Which logging profile applies?',
+    }
+    const state = setupMutableQuestions([
+      sampleQuestion,
+      secondQuestion,
+      thirdQuestion,
+    ])
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    expect(countQuestionListFetches()).toBe(1)
+    const sourceCard = getQuestionCard(sampleQuestion.text)
+    const targetCard = getQuestionCard(thirdQuestion.text)
+    const questionList = sourceCard.parentElement
+    if (!questionList) throw new Error('Missing question list')
+
+    expect(sourceCard).not.toHaveAttribute('draggable')
+    const sourceHeader = sourceCard.firstElementChild
+    if (!(sourceHeader instanceof HTMLElement)) {
+      throw new Error('Missing question header')
+    }
+    expect(sourceHeader).not.toHaveAttribute('draggable')
+    const dragHandle = within(sourceCard).getByRole('button', {
+      name: 'Reorder question',
+    })
+    expect(dragHandle).toHaveClass('self-stretch', 'w-11')
+    expect(dragHandle).not.toHaveAttribute('draggable')
+
+    const dataTransfer = createDragDataTransfer()
+    fireEvent.pointerDown(dragHandle)
+    expect(sourceCard).not.toHaveAttribute('draggable')
+    expect(sourceHeader).toHaveAttribute('draggable', 'true')
+    fireEvent.dragStart(sourceHeader, { dataTransfer })
+
+    await waitFor(() => {
+      expect(dataTransfer.setDragImage).toHaveBeenCalledWith(
+        expect.any(HTMLElement),
+        expect.any(Number),
+        expect.any(Number),
+      )
+      expect(sourceCard).toHaveClass('bg-secondary-200/95')
+      expect(sourceCard.firstElementChild).toHaveClass('invisible')
+    })
+
+    fireEvent.dragOver(targetCard, { dataTransfer })
+
+    await waitFor(() => {
+      const cards = Array.from(questionList.children)
+      expect(cards[0]).toHaveTextContent(secondQuestion.text)
+      expect(cards[1]).toHaveTextContent(thirdQuestion.text)
+      expect(cards[2]).toHaveTextContent(sampleQuestion.text)
+      expect(cards[1]).toHaveClass('bg-secondary-100/95')
+      expect(cards[2]).toHaveClass('bg-secondary-200/95')
+      expect(cards[2]?.firstElementChild).toHaveClass('invisible')
+    })
+
+    fireEvent.drop(targetCard, { dataTransfer })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-selection-questions/11',
+        expect.objectContaining({
+          body: JSON.stringify({ sortOrder: 2 }),
+          method: 'PUT',
+        }),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-selection-questions/22',
+        expect.objectContaining({
+          body: JSON.stringify({ sortOrder: 0 }),
+          method: 'PUT',
+        }),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-selection-questions/33',
+        expect.objectContaining({
+          body: JSON.stringify({ sortOrder: 1 }),
+          method: 'PUT',
+        }),
+      )
+    })
+    expect(state.getQuestions().map(question => question.id)).toEqual([
+      22, 33, 11,
+    ])
+    await flushAsyncWork()
+    expect(countQuestionListFetches()).toBe(1)
+  })
+
+  it('restores the original question order when a live drag is canceled', async () => {
+    const secondQuestion: TestQuestion = {
+      ...sampleQuestion,
+      id: 22,
+      questionCode: 'SEC-KUF002',
+      sortOrder: 1,
+      text: 'Which assurance profile applies?',
+    }
+    setupMutableQuestions([sampleQuestion, secondQuestion])
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    const sourceCard = getQuestionCard(sampleQuestion.text)
+    const targetCard = getQuestionCard(secondQuestion.text)
+    const questionList = sourceCard.parentElement
+    if (!questionList) throw new Error('Missing question list')
+
+    const dataTransfer = createDragDataTransfer()
+    const dragHandle = within(sourceCard).getByRole('button', {
+      name: 'Reorder question',
+    })
+    const sourceHeader = sourceCard.firstElementChild
+    if (!(sourceHeader instanceof HTMLElement)) {
+      throw new Error('Missing question header')
+    }
+    fireEvent.pointerDown(dragHandle)
+    expect(sourceCard).not.toHaveAttribute('draggable')
+    expect(sourceHeader).toHaveAttribute('draggable', 'true')
+    fireEvent.dragStart(sourceHeader, { dataTransfer })
+    fireEvent.dragOver(targetCard, { dataTransfer })
+
+    await waitFor(() => {
+      const cards = Array.from(questionList.children)
+      expect(cards[0]).toHaveTextContent(secondQuestion.text)
+      expect(cards[1]).toHaveTextContent(sampleQuestion.text)
+      expect(cards[0]).toHaveClass('bg-secondary-100/95')
+    })
+
+    fireEvent.dragEnd(sourceHeader, { dataTransfer })
+
+    await waitFor(() => {
+      const cards = Array.from(questionList.children)
+      expect(cards[0]).toHaveTextContent(sampleQuestion.text)
+      expect(cards[1]).toHaveTextContent(secondQuestion.text)
+      expect(cards[0]).not.toHaveClass('bg-secondary-200/95')
+      expect(cards[0]).not.toHaveClass('bg-secondary-100/95')
+      expect(cards[0]?.firstElementChild).not.toHaveClass('invisible')
+    })
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          /^\/api\/requirement-selection-questions\/\d+$/.test(String(url)) &&
+          init?.method === 'PUT',
+      ),
+    ).toBe(false)
+  })
+
+  it('reorders questions from the handle with keyboard arrows', async () => {
+    const secondQuestion: TestQuestion = {
+      ...sampleQuestion,
+      id: 22,
+      questionCode: 'SEC-KUF002',
+      sortOrder: 1,
+      text: 'Which assurance profile applies?',
+    }
+    const state = setupMutableQuestions([sampleQuestion, secondQuestion])
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(secondQuestion.text)).toBeInTheDocument()
+    const secondQuestionCard = getQuestionCard(secondQuestion.text)
+
+    fireEvent.keyDown(
+      within(secondQuestionCard).getByRole('button', {
+        name: 'Reorder question',
+      }),
+      { key: 'ArrowUp' },
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-selection-questions/11',
+        expect.objectContaining({
+          body: JSON.stringify({ sortOrder: 1 }),
+          method: 'PUT',
+        }),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-selection-questions/22',
+        expect.objectContaining({
+          body: JSON.stringify({ sortOrder: 0 }),
+          method: 'PUT',
+        }),
+      )
+    })
+    expect(state.getQuestions().map(question => question.id)).toEqual([22, 11])
+  })
+
+  it('disables question reordering while search or status filters are active', async () => {
+    const secondQuestion: TestQuestion = {
+      ...sampleQuestion,
+      id: 22,
+      questionCode: 'SEC-KUF002',
+      sortOrder: 1,
+      text: 'Which assurance profile applies?',
+    }
+    setupMutableQuestions([sampleQuestion, secondQuestion])
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    const sourceCard = getQuestionCard(sampleQuestion.text)
+    const search = screen.getByRole('textbox', {
+      name: 'Search question ID or text',
+    })
+    const statusFilter = screen.getByRole('combobox', {
+      name: 'All statuses',
+    })
+
+    expect(
+      within(sourceCard).getByRole('button', { name: 'Reorder question' }),
+    ).toBeEnabled()
+
+    fireEvent.change(search, { target: { value: 'profile' } })
+    let dragHandle = within(getQuestionCard(sampleQuestion.text)).getByRole(
+      'button',
+      { name: 'Reorder question' },
+    )
+    expect(dragHandle).toBeDisabled()
+    expect(dragHandle).toHaveAttribute(
+      'title',
+      'Clear search and status filters to reorder questions.',
+    )
+
+    fireEvent.pointerDown(dragHandle)
+    expect(getQuestionCard(sampleQuestion.text)).not.toHaveAttribute(
+      'draggable',
+    )
+
+    fireEvent.change(search, { target: { value: '' } })
+    fireEvent.change(statusFilter, { target: { value: 'active' } })
+    dragHandle = within(getQuestionCard(sampleQuestion.text)).getByRole(
+      'button',
+      { name: 'Reorder question' },
+    )
+    expect(dragHandle).toBeDisabled()
+    expect(dragHandle).toHaveAttribute(
+      'title',
+      'Clear search and status filters to reorder questions.',
+    )
+  })
+
   it('live-reorders answers while dragging the handle and saves sort order on drop', async () => {
     const secondAnswer = {
       ...sampleAnswer,
@@ -1614,18 +1948,31 @@ describe('RequirementSelectionQuestionsClient', () => {
     if (!sourceRow || !targetRow) {
       throw new Error('Missing draggable answer row')
     }
-    expect(sourceRow).not.toHaveAttribute('draggable')
+    expect(sourceRow).toHaveAttribute('draggable', 'true')
     const dragHandle = within(sourceRow as HTMLElement).getByRole('button', {
       name: 'Reorder answer',
     })
-    expect(sourceRow).not.toHaveAttribute('draggable')
-    expect(dragHandle).toHaveClass('self-stretch', 'w-8', 'text-secondary-700')
+    expect(dragHandle).not.toHaveAttribute('draggable')
+    expect(dragHandle).toHaveClass(
+      'cursor-grab',
+      'self-stretch',
+      'touch-none',
+      'w-8',
+      'text-secondary-700',
+    )
     const answerList = sourceRow.closest('ul')
+    const questionCard = getQuestionCard(sampleQuestion.text)
     if (!answerList) throw new Error('Missing answer list')
+
+    const blockedDataTransfer = createDragDataTransfer()
+    fireEvent.dragStart(sourceRow, { dataTransfer: blockedDataTransfer })
+    expect(blockedDataTransfer.setDragImage).not.toHaveBeenCalled()
+    expect(sourceRow).not.toHaveClass('bg-secondary-200/95')
 
     const dataTransfer = createDragDataTransfer()
     fireEvent.pointerDown(dragHandle)
     expect(sourceRow).toHaveAttribute('draggable', 'true')
+    expect(questionCard).not.toHaveAttribute('draggable')
     fireEvent.dragStart(sourceRow, { dataTransfer })
 
     await waitFor(() => {
@@ -1634,19 +1981,23 @@ describe('RequirementSelectionQuestionsClient', () => {
         expect.any(Number),
         expect.any(Number),
       )
-      expect(sourceRow).toHaveClass('bg-secondary-100/80')
+      expect(sourceRow).toHaveClass('bg-secondary-200/95')
       expect(sourceRow.firstElementChild).toHaveClass('invisible')
+      expect(questionCard).not.toHaveClass('bg-secondary-200/95')
+      expect(questionCard.firstElementChild).not.toHaveClass('invisible')
     })
 
     fireEvent.dragOver(targetRow, { dataTransfer })
-
     await waitFor(() => {
       const rows = within(answerList as HTMLElement).getAllByRole('listitem')
       expect(rows[0]).toHaveTextContent(secondAnswer.text)
       expect(rows[1]).toHaveTextContent(thirdAnswer.text)
       expect(rows[2]).toHaveTextContent(sampleAnswer.text)
-      expect(rows[2]).toHaveClass('bg-secondary-100/80')
+      expect(rows[1]).toHaveClass('bg-secondary-100/95')
+      expect(rows[2]).toHaveClass('bg-secondary-200/95')
       expect(rows[2]?.firstElementChild).toHaveClass('invisible')
+      expect(questionCard).not.toHaveClass('bg-secondary-200/95')
+      expect(questionCard.firstElementChild).not.toHaveClass('invisible')
     })
 
     fireEvent.drop(targetRow, { dataTransfer })
@@ -1681,6 +2032,82 @@ describe('RequirementSelectionQuestionsClient', () => {
     expect(countQuestionListFetches()).toBe(1)
   })
 
+  it('starts answer drag from the handle when the answer is expanded', async () => {
+    const secondAnswer = {
+      ...sampleAnswer,
+      id: 102,
+      requirementIds: [302],
+      sortOrder: 1,
+      text: 'Enhanced profile',
+    }
+    const state = setupMutableQuestionAnswers([sampleAnswer, secondAnswer])
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(sampleQuestion.text)).toBeInTheDocument()
+    expandQuestion(sampleQuestion.text)
+    expect(screen.getByText(sampleAnswer.text)).toBeInTheDocument()
+    const answerCard = getAnswerCard(sampleAnswer.text)
+    fireEvent.click(
+      within(answerCard).getByRole('button', {
+        name: 'Show requirements in selection for Baseline profile',
+      }),
+    )
+    expect(
+      within(answerCard).getByRole('list', {
+        name: 'Requirements in selection',
+      }),
+    ).toBeInTheDocument()
+
+    const sourceRow = screen.getByText(sampleAnswer.text).closest('li')
+    const targetRow = screen.getByText(secondAnswer.text).closest('li')
+    if (!sourceRow || !targetRow) {
+      throw new Error('Missing draggable answer row')
+    }
+    const dragHandle = within(sourceRow as HTMLElement).getByRole('button', {
+      name: 'Reorder answer',
+    })
+
+    const dataTransfer = createDragDataTransfer()
+    fireEvent.pointerDown(dragHandle)
+    expect(sourceRow).toHaveAttribute('draggable', 'true')
+    fireEvent.dragStart(sourceRow, { dataTransfer })
+    await waitFor(() => {
+      expect(dataTransfer.setDragImage).toHaveBeenCalledWith(
+        expect.any(HTMLElement),
+        expect.any(Number),
+        expect.any(Number),
+      )
+      expect(sourceRow).toHaveClass('bg-secondary-200/95')
+      expect(sourceRow.firstElementChild).toHaveClass('invisible')
+    })
+
+    fireEvent.dragOver(targetRow, { dataTransfer })
+    fireEvent.drop(targetRow, { dataTransfer })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-selection-questions/11/answers/101',
+        expect.objectContaining({
+          body: JSON.stringify({ sortOrder: 1 }),
+          method: 'PUT',
+        }),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-selection-questions/11/answers/102',
+        expect.objectContaining({
+          body: JSON.stringify({ sortOrder: 0 }),
+          method: 'PUT',
+        }),
+      )
+    })
+    expect(state.getQuestion().answers.map(answer => answer.id)).toEqual([
+      102, 101,
+    ])
+    await flushAsyncWork()
+    expect(countQuestionListFetches()).toBe(1)
+  })
+
   it('restores the original answer order when a live drag is canceled', async () => {
     const secondAnswer = {
       ...sampleAnswer,
@@ -1703,10 +2130,10 @@ describe('RequirementSelectionQuestionsClient', () => {
       throw new Error('Missing draggable answer row')
     }
 
-    const dataTransfer = createDragDataTransfer()
     const dragHandle = within(sourceRow as HTMLElement).getByRole('button', {
       name: 'Reorder answer',
     })
+    const dataTransfer = createDragDataTransfer()
     fireEvent.pointerDown(dragHandle)
     expect(sourceRow).toHaveAttribute('draggable', 'true')
     fireEvent.dragStart(sourceRow, { dataTransfer })
@@ -1716,6 +2143,7 @@ describe('RequirementSelectionQuestionsClient', () => {
       const rows = within(answerList as HTMLElement).getAllByRole('listitem')
       expect(rows[0]).toHaveTextContent(secondAnswer.text)
       expect(rows[1]).toHaveTextContent(sampleAnswer.text)
+      expect(rows[0]).toHaveClass('bg-secondary-100/95')
     })
 
     fireEvent.dragEnd(sourceRow, { dataTransfer })
@@ -1724,7 +2152,8 @@ describe('RequirementSelectionQuestionsClient', () => {
       const rows = within(answerList as HTMLElement).getAllByRole('listitem')
       expect(rows[0]).toHaveTextContent(sampleAnswer.text)
       expect(rows[1]).toHaveTextContent(secondAnswer.text)
-      expect(rows[0]).not.toHaveClass('bg-secondary-100/80')
+      expect(rows[0]).not.toHaveClass('bg-secondary-200/95')
+      expect(rows[0]).not.toHaveClass('bg-secondary-100/95')
       expect(rows[0]?.firstElementChild).not.toHaveClass('invisible')
     })
     expect(

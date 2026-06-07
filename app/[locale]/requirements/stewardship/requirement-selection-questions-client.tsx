@@ -133,7 +133,6 @@ interface QuestionForm {
   areaId: string
   helpText: string
   selectionType: SelectionType
-  sortOrder: string
   text: string
 }
 
@@ -170,7 +169,6 @@ const initialQuestionForm: QuestionForm = {
   areaId: '',
   helpText: '',
   selectionType: 'single',
-  sortOrder: '0',
   text: '',
 }
 
@@ -417,6 +415,56 @@ function moveAnswerIntoTargetSlot(
 
   orderedAnswers.splice(targetIndex, 0, movedAnswer)
   return orderedAnswers
+}
+
+function moveQuestionIntoTargetSlot(
+  questions: RequirementSelectionQuestion[],
+  questionId: number,
+  targetQuestionId: number,
+) {
+  const currentIndex = questions.findIndex(
+    question => question.id === questionId,
+  )
+  const targetIndex = questions.findIndex(
+    question => question.id === targetQuestionId,
+  )
+  if (currentIndex < 0 || targetIndex < 0 || currentIndex === targetIndex) {
+    return null
+  }
+
+  const orderedQuestions = [...questions]
+  const [movedQuestion] = orderedQuestions.splice(currentIndex, 1)
+  if (!movedQuestion) return null
+
+  orderedQuestions.splice(targetIndex, 0, movedQuestion)
+  return orderedQuestions
+}
+
+function replaceAreaQuestionOrder(
+  questions: RequirementSelectionQuestion[],
+  areaId: number,
+  orderedAreaQuestions: RequirementSelectionQuestion[],
+) {
+  let inserted = false
+  const nextQuestions: RequirementSelectionQuestion[] = []
+
+  for (const question of questions) {
+    if (question.areaId !== areaId) {
+      nextQuestions.push(question)
+      continue
+    }
+
+    if (!inserted) {
+      nextQuestions.push(...orderedAreaQuestions)
+      inserted = true
+    }
+  }
+
+  if (!inserted) {
+    nextQuestions.push(...orderedAreaQuestions)
+  }
+
+  return nextQuestions
 }
 
 const REQUIREMENT_SELECTION_QUESTIONS_STEWARDSHIP_HELP: HelpContent = {
@@ -765,6 +813,9 @@ export default function RequirementSelectionQuestionsClient() {
       parentQuestion: t('parentQuestion'),
       reorderAnswer: t('reorderAnswer'),
       reorderAnswerHint: t('reorderAnswerHint'),
+      reorderQuestion: t('reorderQuestion'),
+      reorderQuestionDisabledHint: t('reorderQuestionDisabledHint'),
+      reorderQuestionHint: t('reorderQuestionHint'),
       removePackage: t('removePackage'),
       removeRequirement: t('removeRequirement'),
       standaloneQuestionVisibility: t('standaloneQuestionVisibility'),
@@ -791,8 +842,6 @@ export default function RequirementSelectionQuestionsClient() {
       showQuestionDetails: t('showQuestionDetails'),
       single: t('single'),
       sourceSelection: t('sourceSelection'),
-      sortOrder: t('sortOrder'),
-      sortOrderHelp: t('fieldHelp.sortOrder'),
       status: t('status'),
       text: t('text'),
       title: t('title'),
@@ -859,6 +908,18 @@ export default function RequirementSelectionQuestionsClient() {
   >([])
   const [selectedPreviewRequirementId, setSelectedPreviewRequirementId] =
     useState<number | null>(null)
+  const [armedDragQuestionId, setArmedDragQuestionId] = useState<number | null>(
+    null,
+  )
+  const [draggedQuestionId, setDraggedQuestionId] = useState<number | null>(
+    null,
+  )
+  const [dragOverQuestionId, setDragOverQuestionId] = useState<number | null>(
+    null,
+  )
+  const [reorderingQuestionId, setReorderingQuestionId] = useState<
+    number | null
+  >(null)
   const [armedDragAnswerId, setArmedDragAnswerId] = useState<number | null>(
     null,
   )
@@ -873,11 +934,20 @@ export default function RequirementSelectionQuestionsClient() {
   const questionsRef = useRef<RequirementSelectionQuestion[]>([])
   const packageSelectorRef = useRef<HTMLDivElement>(null)
   const packageSelectorButtonRef = useRef<HTMLButtonElement>(null)
+  const draggedQuestionRef = useRef<{
+    areaId: number
+    originalQuestions: RequirementSelectionQuestion[]
+    questionId: number
+  } | null>(null)
   const draggedAnswerRef = useRef<{
     answerId: number
     originalAnswers: RequirementSelectionAnswer[]
     questionId: number
   } | null>(null)
+  const questionDragDropCommittedRef = useRef(false)
+  const questionDragPreviewedRef = useRef(false)
+  const armedDragQuestionIdRef = useRef<number | null>(null)
+  const armedDragAnswerIdRef = useRef<number | null>(null)
   const dragDropCommittedRef = useRef(false)
   const dragPreviewedRef = useRef(false)
 
@@ -1151,6 +1221,9 @@ export default function RequirementSelectionQuestionsClient() {
     })
   }, [areaFilter, questionSearch, questions, statusFilter])
 
+  const isQuestionReorderFiltered =
+    questionSearch.trim().length > 0 || statusFilter !== ''
+
   const groupedQuestions = useMemo(() => {
     const groups: Array<{
       areaId: number
@@ -1221,7 +1294,6 @@ export default function RequirementSelectionQuestionsClient() {
       areaId: String(question.areaId),
       helpText: question.helpText ?? '',
       selectionType: question.selectionType,
-      sortOrder: String(question.sortOrder),
       text: question.text,
     })
     setEditingQuestionId(question.id)
@@ -1427,6 +1499,14 @@ export default function RequirementSelectionQuestionsClient() {
   const submitQuestion = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!questionForm.areaId) return
+    const areaId = Number(questionForm.areaId)
+    const nextSortOrder =
+      Math.max(
+        -1,
+        ...questionsRef.current
+          .filter(question => question.areaId === areaId)
+          .map(question => question.sortOrder),
+      ) + 1
     setSubmitting(true)
     setError(null)
     try {
@@ -1436,12 +1516,9 @@ export default function RequirementSelectionQuestionsClient() {
           : '/api/requirement-selection-questions',
         {
           body: JSON.stringify({
-            ...(editingQuestionId
-              ? {}
-              : { areaId: Number(questionForm.areaId) }),
+            ...(editingQuestionId ? {} : { areaId, sortOrder: nextSortOrder }),
             helpText: questionForm.helpText || undefined,
             selectionType: questionForm.selectionType,
-            sortOrder: Number(questionForm.sortOrder || 0),
             text: questionForm.text,
           }),
           headers: { 'Content-Type': 'application/json' },
@@ -1612,6 +1689,92 @@ export default function RequirementSelectionQuestionsClient() {
     setShowAnswerForm(true)
   }
 
+  const persistQuestionOrder = async (
+    areaId: number,
+    orderedQuestions: RequirementSelectionQuestion[],
+    movedQuestionId: number,
+  ) => {
+    const normalizedQuestions = orderedQuestions.map((question, index) => ({
+      ...question,
+      sortOrder: index,
+    }))
+    const updates = normalizedQuestions
+      .map(question => ({ question, sortOrder: question.sortOrder }))
+      .filter(({ question, sortOrder }) => {
+        const originalQuestion = orderedQuestions.find(
+          item => item.id === question.id,
+        )
+        return originalQuestion?.sortOrder !== sortOrder
+      })
+
+    if (updates.length === 0) return
+
+    setQuestions(current => {
+      const nextQuestions = replaceAreaQuestionOrder(
+        current,
+        areaId,
+        normalizedQuestions,
+      )
+      questionsRef.current = nextQuestions
+      return nextQuestions
+    })
+    setReorderingQuestionId(movedQuestionId)
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      const responses = await Promise.all(
+        updates.map(({ question, sortOrder }) =>
+          apiFetch(`/api/requirement-selection-questions/${question.id}`, {
+            body: JSON.stringify({ sortOrder }),
+            headers: { 'Content-Type': 'application/json' },
+            method: 'PUT',
+          }),
+        ),
+      )
+      const failedResponse = responses.find(response => !response.ok)
+      if (failedResponse) {
+        setError((await readResponseMessage(failedResponse)) ?? copy.error)
+        await reload()
+        return
+      }
+    } catch {
+      setError(copy.error)
+      await reload()
+    } finally {
+      setSubmitting(false)
+      setReorderingQuestionId(null)
+    }
+  }
+
+  const moveQuestionToIndex = (
+    areaQuestions: RequirementSelectionQuestion[],
+    questionId: number,
+    targetIndex: number,
+  ) => {
+    const currentIndex = areaQuestions.findIndex(
+      question => question.id === questionId,
+    )
+    if (currentIndex < 0) return
+
+    const boundedTargetIndex = Math.max(
+      0,
+      Math.min(targetIndex, areaQuestions.length - 1),
+    )
+    if (currentIndex === boundedTargetIndex) return
+
+    const orderedQuestions = [...areaQuestions]
+    const [movedQuestion] = orderedQuestions.splice(currentIndex, 1)
+    if (!movedQuestion) return
+
+    orderedQuestions.splice(boundedTargetIndex, 0, movedQuestion)
+    void persistQuestionOrder(
+      movedQuestion.areaId,
+      orderedQuestions,
+      questionId,
+    )
+  }
+
   const persistAnswerOrder = async (
     question: RequirementSelectionQuestion,
     orderedAnswers: RequirementSelectionAnswer[],
@@ -1692,8 +1855,11 @@ export default function RequirementSelectionQuestionsClient() {
     void persistAnswerOrder(question, orderedAnswers, answerId)
   }
 
-  const setVisibleAnswerDragImage = (event: React.DragEvent<HTMLLIElement>) => {
-    const sourceRow = event.currentTarget
+  const setVisibleDragImage = (
+    event: React.DragEvent<HTMLElement>,
+    sourceElement = event.currentTarget,
+  ) => {
+    const sourceRow = sourceElement
     const dragImage = sourceRow.cloneNode(true) as HTMLElement
     const sourceRect = sourceRow.getBoundingClientRect()
     dragImage.style.left = '-10000px'
@@ -1717,6 +1883,194 @@ export default function RequirementSelectionQuestionsClient() {
       dragImageOffsetY,
     )
     window.setTimeout(() => dragImage.remove(), 0)
+  }
+
+  const previewQuestionMove = (
+    areaId: number,
+    targetQuestion: RequirementSelectionQuestion,
+  ) => {
+    const draggedQuestion = draggedQuestionRef.current
+    if (
+      !draggedQuestion ||
+      draggedQuestion.areaId !== areaId ||
+      draggedQuestion.questionId === targetQuestion.id
+    ) {
+      return
+    }
+
+    setQuestions(current => {
+      const areaQuestions = current.filter(
+        question => question.areaId === areaId,
+      )
+      const orderedQuestions = moveQuestionIntoTargetSlot(
+        areaQuestions,
+        draggedQuestion.questionId,
+        targetQuestion.id,
+      )
+      if (!orderedQuestions) return current
+
+      const nextQuestions = replaceAreaQuestionOrder(
+        current,
+        areaId,
+        orderedQuestions,
+      )
+      questionDragPreviewedRef.current = true
+      questionsRef.current = nextQuestions
+      return nextQuestions
+    })
+  }
+
+  const restoreDraggedQuestionOrder = () => {
+    const draggedQuestion = draggedQuestionRef.current
+    if (!draggedQuestion) return
+
+    setQuestions(current => {
+      const nextQuestions = replaceAreaQuestionOrder(
+        current,
+        draggedQuestion.areaId,
+        draggedQuestion.originalQuestions,
+      )
+      questionsRef.current = nextQuestions
+      return nextQuestions
+    })
+  }
+
+  const clearArmedQuestionDrag = () => {
+    armedDragQuestionIdRef.current = null
+    setArmedDragQuestionId(null)
+  }
+
+  const clearQuestionDragState = () => {
+    draggedQuestionRef.current = null
+    questionDragDropCommittedRef.current = false
+    questionDragPreviewedRef.current = false
+    clearArmedQuestionDrag()
+    setDraggedQuestionId(null)
+    setDragOverQuestionId(null)
+  }
+
+  const handleQuestionDragStart = (
+    event: React.DragEvent<HTMLElement>,
+    areaQuestions: RequirementSelectionQuestion[],
+    question: RequirementSelectionQuestion,
+    sourceElement?: HTMLElement,
+  ) => {
+    const startedFromQuestionHandle =
+      armedDragQuestionId === question.id ||
+      armedDragQuestionIdRef.current === question.id ||
+      (event.target instanceof HTMLElement &&
+        Boolean(event.target.closest('[data-question-drag-handle="true"]')))
+
+    if (!startedFromQuestionHandle) return
+
+    if (submitting || isQuestionReorderFiltered || areaQuestions.length < 2) {
+      event.preventDefault()
+      return
+    }
+
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(question.id))
+    setVisibleDragImage(event, sourceElement)
+    draggedQuestionRef.current = {
+      areaId: question.areaId,
+      originalQuestions: areaQuestions,
+      questionId: question.id,
+    }
+    questionDragDropCommittedRef.current = false
+    questionDragPreviewedRef.current = false
+    setDraggedQuestionId(question.id)
+    setDragOverQuestionId(question.id)
+  }
+
+  const handleQuestionDragHandlePointerDown = (
+    areaQuestions: RequirementSelectionQuestion[],
+    question: RequirementSelectionQuestion,
+  ) => {
+    if (submitting || isQuestionReorderFiltered || areaQuestions.length < 2) {
+      return
+    }
+    armedDragQuestionIdRef.current = question.id
+    setArmedDragQuestionId(question.id)
+  }
+
+  const handleQuestionDragEnd = () => {
+    if (!questionDragDropCommittedRef.current) {
+      restoreDraggedQuestionOrder()
+    }
+    clearQuestionDragState()
+  }
+
+  const handleQuestionDrop = (
+    event: React.DragEvent<HTMLElement>,
+    areaQuestions: RequirementSelectionQuestion[],
+    targetQuestion: RequirementSelectionQuestion,
+  ) => {
+    event.preventDefault()
+    const draggedId =
+      Number(event.dataTransfer.getData('text/plain')) ||
+      draggedQuestionRef.current?.questionId ||
+      draggedQuestionId
+    const draggedQuestion = draggedQuestionRef.current
+    questionDragDropCommittedRef.current = true
+    if (
+      !draggedId ||
+      !draggedQuestion ||
+      draggedQuestion.areaId !== targetQuestion.areaId
+    ) {
+      clearQuestionDragState()
+      return
+    }
+
+    const currentAreaQuestions = questionsRef.current.filter(
+      question => question.areaId === targetQuestion.areaId,
+    )
+    const orderedQuestions =
+      questionDragPreviewedRef.current || draggedId === targetQuestion.id
+        ? currentAreaQuestions
+        : (moveQuestionIntoTargetSlot(
+            currentAreaQuestions.length > 0
+              ? currentAreaQuestions
+              : areaQuestions,
+            draggedId,
+            targetQuestion.id,
+          ) ??
+          (currentAreaQuestions.length > 0
+            ? currentAreaQuestions
+            : areaQuestions))
+
+    clearQuestionDragState()
+    void persistQuestionOrder(
+      targetQuestion.areaId,
+      orderedQuestions,
+      draggedId,
+    )
+  }
+
+  const handleQuestionReorderKeyDown = (
+    event: React.KeyboardEvent<HTMLElement>,
+    areaQuestions: RequirementSelectionQuestion[],
+    question: RequirementSelectionQuestion,
+  ) => {
+    if (submitting || isQuestionReorderFiltered || areaQuestions.length < 2) {
+      return
+    }
+
+    const currentIndex = areaQuestions.findIndex(
+      item => item.id === question.id,
+    )
+    if (currentIndex < 0) return
+
+    const targetIndexByKey: Partial<Record<string, number>> = {
+      ArrowDown: currentIndex + 1,
+      ArrowUp: currentIndex - 1,
+      End: areaQuestions.length - 1,
+      Home: 0,
+    }
+    const targetIndex = targetIndexByKey[event.key]
+    if (targetIndex == null) return
+
+    event.preventDefault()
+    moveQuestionToIndex(areaQuestions, question.id, targetIndex)
   }
 
   const previewAnswerMove = (
@@ -1777,28 +2131,41 @@ export default function RequirementSelectionQuestionsClient() {
     })
   }
 
+  const clearArmedAnswerDrag = () => {
+    armedDragAnswerIdRef.current = null
+    setArmedDragAnswerId(null)
+  }
+
   const clearAnswerDragState = () => {
     draggedAnswerRef.current = null
     dragDropCommittedRef.current = false
     dragPreviewedRef.current = false
-    setArmedDragAnswerId(null)
+    clearArmedAnswerDrag()
     setDraggedAnswerId(null)
     setDragOverAnswerId(null)
   }
 
   const handleAnswerDragStart = (
-    event: React.DragEvent<HTMLLIElement>,
+    event: React.DragEvent<HTMLElement>,
     question: RequirementSelectionQuestion,
     answer: RequirementSelectionAnswer,
+    sourceElement?: HTMLElement,
   ) => {
-    if (submitting || question.answers.length < 2) {
+    event.stopPropagation()
+    const startedFromAnswerHandle =
+      armedDragAnswerId === answer.id ||
+      armedDragAnswerIdRef.current === answer.id ||
+      (event.target instanceof HTMLElement &&
+        Boolean(event.target.closest('[data-answer-drag-handle="true"]')))
+
+    if (submitting || question.answers.length < 2 || !startedFromAnswerHandle) {
       event.preventDefault()
       return
     }
 
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', String(answer.id))
-    setVisibleAnswerDragImage(event)
+    setVisibleDragImage(event, sourceElement)
     draggedAnswerRef.current = {
       answerId: answer.id,
       originalAnswers: question.answers,
@@ -1815,10 +2182,12 @@ export default function RequirementSelectionQuestionsClient() {
     answer: RequirementSelectionAnswer,
   ) => {
     if (submitting || question.answers.length < 2) return
+    armedDragAnswerIdRef.current = answer.id
     setArmedDragAnswerId(answer.id)
   }
 
-  const handleAnswerDragEnd = () => {
+  const handleAnswerDragEnd = (event?: React.DragEvent<HTMLElement>) => {
+    event?.stopPropagation()
     if (!dragDropCommittedRef.current) {
       restoreDraggedAnswerOrder()
     }
@@ -1830,6 +2199,7 @@ export default function RequirementSelectionQuestionsClient() {
     question: RequirementSelectionQuestion,
     targetAnswer: RequirementSelectionAnswer,
   ) => {
+    event.stopPropagation()
     event.preventDefault()
     const draggedId =
       Number(event.dataTransfer.getData('text/plain')) ||
@@ -2007,49 +2377,27 @@ export default function RequirementSelectionQuestionsClient() {
           value={questionForm.helpText}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <FieldLabelWithHelp
-            help={copy.selectionTypeHelp}
-            htmlFor="kuf-selection-type"
-            label={copy.selectionType}
-            required
-          />
-          <select
-            className={inputClassName}
-            id="kuf-selection-type"
-            onChange={event =>
-              setQuestionForm(previous => ({
-                ...previous,
-                selectionType: event.target.value as SelectionType,
-              }))
-            }
-            value={questionForm.selectionType}
-          >
-            <option value="single">{copy.single}</option>
-            <option value="multiple">{copy.multiple}</option>
-          </select>
-        </div>
-        <div>
-          <FieldLabelWithHelp
-            help={copy.sortOrderHelp}
-            htmlFor="kuf-sort"
-            label={copy.sortOrder}
-          />
-          <input
-            className={inputClassName}
-            id="kuf-sort"
-            min="0"
-            onChange={event =>
-              setQuestionForm(previous => ({
-                ...previous,
-                sortOrder: event.target.value,
-              }))
-            }
-            type="number"
-            value={questionForm.sortOrder}
-          />
-        </div>
+      <div>
+        <FieldLabelWithHelp
+          help={copy.selectionTypeHelp}
+          htmlFor="kuf-selection-type"
+          label={copy.selectionType}
+          required
+        />
+        <select
+          className={inputClassName}
+          id="kuf-selection-type"
+          onChange={event =>
+            setQuestionForm(previous => ({
+              ...previous,
+              selectionType: event.target.value as SelectionType,
+            }))
+          }
+          value={questionForm.selectionType}
+        >
+          <option value="single">{copy.single}</option>
+          <option value="multiple">{copy.multiple}</option>
+        </select>
       </div>
       <button
         className="btn-primary inline-flex items-center gap-1.5"
@@ -2968,7 +3316,7 @@ export default function RequirementSelectionQuestionsClient() {
                       {group.areaPrefix}
                     </span>
                   </div>
-                  <div className="space-y-3">
+                  <ul className="space-y-3">
                     {group.questions.map(question => {
                       const isExpanded = expandedQuestionIds.has(question.id)
                       const detailsId = `requirement-selection-question-details-${question.id}`
@@ -2979,17 +3327,125 @@ export default function RequirementSelectionQuestionsClient() {
                       }`
                       const hierarchyCount =
                         hierarchyBadgeCounts.get(question.id) ?? 0
+                      const questionReorderEnabled =
+                        !submitting &&
+                        !isQuestionReorderFiltered &&
+                        group.questions.length > 1
+                      const questionReorderHint = isQuestionReorderFiltered
+                        ? copy.reorderQuestionDisabledHint
+                        : copy.reorderQuestionHint
+                      const questionDragSurfaceClass =
+                        draggedQuestionId === question.id
+                          ? 'bg-secondary-200/95 ring-2 ring-inset ring-secondary-500/60 dark:bg-secondary-700/85 dark:ring-secondary-500/70'
+                          : dragOverQuestionId === question.id &&
+                              draggedQuestionId !== question.id
+                            ? 'bg-secondary-100/95 ring-2 ring-inset ring-secondary-400/70 dark:bg-secondary-700/65 dark:ring-secondary-500/70'
+                            : 'bg-white/80 dark:bg-secondary-900/60'
 
                       return (
-                        <div
-                          className={`overflow-hidden rounded-2xl border bg-white/80 shadow-sm transition-colors dark:border-secondary-800 dark:bg-secondary-900/60 ${
+                        <li
+                          className={`overflow-hidden rounded-2xl border shadow-sm transition-colors dark:border-secondary-800 ${questionDragSurfaceClass} ${
                             selectedQuestionId === question.id
                               ? 'ring-2 ring-primary-500'
                               : ''
+                          } ${
+                            reorderingQuestionId === question.id
+                              ? 'opacity-70'
+                              : ''
                           }`}
                           key={question.id}
+                          onDragEnd={handleQuestionDragEnd}
+                          onDragEnter={() => setDragOverQuestionId(question.id)}
+                          onDragOver={event => {
+                            if (!draggedQuestionId) return
+                            if (
+                              draggedQuestionRef.current?.areaId !==
+                              group.areaId
+                            ) {
+                              return
+                            }
+                            event.preventDefault()
+                            event.dataTransfer.dropEffect = 'move'
+                            setDragOverQuestionId(question.id)
+                            previewQuestionMove(group.areaId, question)
+                          }}
+                          onDrop={event =>
+                            handleQuestionDrop(event, group.questions, question)
+                          }
                         >
-                          <div className="flex items-stretch">
+                          <div
+                            className={`flex items-stretch ${
+                              draggedQuestionId === question.id
+                                ? 'invisible'
+                                : ''
+                            }`}
+                            draggable={
+                              armedDragQuestionId === question.id &&
+                              questionReorderEnabled
+                                ? true
+                                : undefined
+                            }
+                            onDragEnd={handleQuestionDragEnd}
+                            onDragStart={event => {
+                              const questionCard =
+                                event.currentTarget.closest('li')
+                              handleQuestionDragStart(
+                                event,
+                                group.questions,
+                                question,
+                                questionCard instanceof HTMLElement
+                                  ? questionCard
+                                  : undefined,
+                              )
+                            }}
+                            role="group"
+                          >
+                            <button
+                              aria-describedby={`kuf-question-reorder-hint-${question.id}`}
+                              aria-label={copy.reorderQuestion}
+                              className="inline-flex min-h-16 w-11 shrink-0 self-stretch items-center justify-center border-r border-secondary-200 p-0 text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-950 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-800 dark:text-secondary-200 dark:hover:bg-secondary-800 dark:hover:text-secondary-50"
+                              disabled={!questionReorderEnabled}
+                              onKeyDown={event =>
+                                handleQuestionReorderKeyDown(
+                                  event,
+                                  group.questions,
+                                  question,
+                                )
+                              }
+                              onPointerCancel={clearArmedQuestionDrag}
+                              onPointerDown={() =>
+                                handleQuestionDragHandlePointerDown(
+                                  group.questions,
+                                  question,
+                                )
+                              }
+                              onPointerUp={clearArmedQuestionDrag}
+                              title={questionReorderHint}
+                              type="button"
+                              {...devMarker({
+                                context: 'requirementSelectionQuestions',
+                                name: 'question reorder handle',
+                                value: question.questionCode,
+                              })}
+                            >
+                              <span
+                                aria-hidden="true"
+                                className="flex h-full min-h-16 w-full cursor-grab items-center justify-center active:cursor-grabbing"
+                                data-question-drag-handle="true"
+                                role="presentation"
+                              >
+                                <GripVertical
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
+                              </span>
+                            </button>
+                            <span
+                              className="sr-only"
+                              id={`kuf-question-reorder-hint-${question.id}`}
+                            >
+                              {questionReorderHint}
+                            </span>
                             <button
                               aria-controls={detailsId}
                               aria-expanded={isExpanded}
@@ -3084,6 +3540,10 @@ export default function RequirementSelectionQuestionsClient() {
                               className={`border-t border-secondary-200 p-4 dark:border-secondary-800 ${
                                 visibilityPanelQuestionId === question.id
                                   ? 'grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,32rem)]'
+                                  : ''
+                              } ${
+                                draggedQuestionId === question.id
+                                  ? 'invisible'
                                   : ''
                               }`}
                               id={detailsId}
@@ -3215,614 +3675,628 @@ export default function RequirementSelectionQuestionsClient() {
                                 </div>
                                 {question.answers.length > 0 && (
                                   <ul className="mt-4 divide-y rounded-xl border dark:border-secondary-800">
-                                    {question.answers.map(answer => (
-                                      <li
-                                        className={`transition-colors ${
-                                          dragOverAnswerId === answer.id &&
-                                          draggedAnswerId !== answer.id
-                                            ? 'bg-primary-50/70 dark:bg-primary-950/20'
+                                    {question.answers.map(answer => {
+                                      const answerReorderEnabled =
+                                        !submitting &&
+                                        question.answers.length > 1
+                                      const answerDragSurfaceClass =
+                                        draggedAnswerId === answer.id
+                                          ? 'bg-secondary-200/95 ring-2 ring-inset ring-secondary-500/60 dark:bg-secondary-700/85 dark:ring-secondary-500/70'
+                                          : dragOverAnswerId === answer.id &&
+                                              draggedAnswerId !== answer.id
+                                            ? 'bg-secondary-100/95 ring-2 ring-inset ring-secondary-400/70 dark:bg-secondary-700/65 dark:ring-secondary-500/70'
                                             : ''
-                                        } ${
-                                          reorderingAnswerId === answer.id
-                                            ? 'opacity-70'
-                                            : ''
-                                        } ${
-                                          draggedAnswerId === answer.id
-                                            ? 'bg-secondary-100/80 dark:bg-secondary-800/50'
-                                            : ''
-                                        }`}
-                                        draggable={
-                                          armedDragAnswerId === answer.id &&
-                                          !submitting &&
-                                          question.answers.length > 1
-                                            ? true
-                                            : undefined
-                                        }
-                                        key={answer.id}
-                                        onDragEnd={handleAnswerDragEnd}
-                                        onDragEnter={() =>
-                                          setDragOverAnswerId(answer.id)
-                                        }
-                                        onDragOver={event => {
-                                          if (!draggedAnswerId) return
-                                          event.preventDefault()
-                                          event.dataTransfer.dropEffect = 'move'
-                                          setDragOverAnswerId(answer.id)
-                                          previewAnswerMove(question.id, answer)
-                                        }}
-                                        onDragStart={event =>
-                                          handleAnswerDragStart(
-                                            event,
-                                            question,
-                                            answer,
-                                          )
-                                        }
-                                        onDrop={event =>
-                                          handleAnswerDrop(
-                                            event,
-                                            question,
-                                            answer,
-                                          )
-                                        }
-                                      >
-                                        <div
-                                          className={`flex gap-3 p-3 ${
-                                            draggedAnswerId === answer.id
-                                              ? 'invisible'
+
+                                      return (
+                                        <li
+                                          className={`transition-colors ${answerDragSurfaceClass} ${
+                                            reorderingAnswerId === answer.id
+                                              ? 'opacity-70'
                                               : ''
                                           }`}
+                                          draggable={
+                                            answerReorderEnabled
+                                              ? true
+                                              : undefined
+                                          }
+                                          key={answer.id}
+                                          onDragEnd={handleAnswerDragEnd}
+                                          onDragEnter={event => {
+                                            event.stopPropagation()
+                                            setDragOverAnswerId(answer.id)
+                                          }}
+                                          onDragOver={event => {
+                                            event.stopPropagation()
+                                            if (!draggedAnswerId) return
+                                            event.preventDefault()
+                                            event.dataTransfer.dropEffect =
+                                              'move'
+                                            setDragOverAnswerId(answer.id)
+                                            previewAnswerMove(
+                                              question.id,
+                                              answer,
+                                            )
+                                          }}
+                                          onDragStart={event =>
+                                            handleAnswerDragStart(
+                                              event,
+                                              question,
+                                              answer,
+                                            )
+                                          }
+                                          onDrop={event =>
+                                            handleAnswerDrop(
+                                              event,
+                                              question,
+                                              answer,
+                                            )
+                                          }
                                         >
-                                          {/*
+                                          <div
+                                            className={`flex gap-3 p-3 ${
+                                              draggedAnswerId === answer.id
+                                                ? 'invisible'
+                                                : ''
+                                            }`}
+                                          >
+                                            {/*
                               Keep the grip narrow: it is the only drag source,
                               but the whole answer row remains the drop target
                               and visible drag preview.
                             */}
-                                          <button
-                                            aria-describedby={`kuf-answer-reorder-hint-${answer.id}`}
-                                            aria-label={copy.reorderAnswer}
-                                            className="inline-flex min-h-11 w-8 shrink-0 self-stretch items-center justify-center rounded-lg border border-secondary-300 p-0 text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-950 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800 dark:hover:text-secondary-50"
-                                            disabled={
-                                              submitting ||
-                                              question.answers.length < 2
-                                            }
-                                            onKeyDown={event =>
-                                              handleAnswerReorderKeyDown(
-                                                event,
-                                                question,
-                                                answer,
-                                              )
-                                            }
-                                            onPointerCancel={() =>
-                                              setArmedDragAnswerId(null)
-                                            }
-                                            onPointerDown={() =>
-                                              handleAnswerDragHandlePointerDown(
-                                                question,
-                                                answer,
-                                              )
-                                            }
-                                            onPointerUp={() =>
-                                              setArmedDragAnswerId(null)
-                                            }
-                                            title={copy.reorderAnswerHint}
-                                            type="button"
-                                          >
-                                            <span
-                                              aria-hidden="true"
-                                              className="flex h-full min-h-11 w-full cursor-grab items-center justify-center active:cursor-grabbing"
+                                            <button
+                                              aria-describedby={`kuf-answer-reorder-hint-${answer.id}`}
+                                              aria-label={copy.reorderAnswer}
+                                              className={`inline-flex min-h-11 w-8 shrink-0 touch-none select-none self-stretch items-center justify-center rounded-lg border border-secondary-300 p-0 text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-950 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800 dark:hover:text-secondary-50 ${
+                                                answerReorderEnabled
+                                                  ? 'cursor-grab active:cursor-grabbing'
+                                                  : 'cursor-not-allowed opacity-40'
+                                              }`}
                                               data-answer-drag-handle="true"
-                                              role="presentation"
+                                              disabled={!answerReorderEnabled}
+                                              onKeyDown={event =>
+                                                handleAnswerReorderKeyDown(
+                                                  event,
+                                                  question,
+                                                  answer,
+                                                )
+                                              }
+                                              onPointerCancel={
+                                                clearArmedAnswerDrag
+                                              }
+                                              onPointerDown={() =>
+                                                handleAnswerDragHandlePointerDown(
+                                                  question,
+                                                  answer,
+                                                )
+                                              }
+                                              onPointerUp={clearArmedAnswerDrag}
+                                              title={copy.reorderAnswerHint}
+                                              type="button"
                                             >
-                                              <GripVertical
+                                              <span
                                                 aria-hidden="true"
-                                                className="h-4 w-4"
-                                              />
+                                                className="flex h-full min-h-11 w-full cursor-grab items-center justify-center active:cursor-grabbing"
+                                                data-answer-drag-handle="true"
+                                                role="presentation"
+                                              >
+                                                <GripVertical
+                                                  aria-hidden="true"
+                                                  className="h-4 w-4"
+                                                />
+                                              </span>
+                                            </button>
+                                            <span
+                                              className="sr-only"
+                                              id={`kuf-answer-reorder-hint-${answer.id}`}
+                                            >
+                                              {copy.reorderAnswerHint}
                                             </span>
-                                          </button>
-                                          <span
-                                            className="sr-only"
-                                            id={`kuf-answer-reorder-hint-${answer.id}`}
-                                          >
-                                            {copy.reorderAnswerHint}
-                                          </span>
-                                          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                            <div className="min-w-0 sm:flex-1">
-                                              <p className="font-medium">
-                                                {answer.text}
-                                              </p>
-                                              <p className="text-xs text-secondary-500">
-                                                {statusText(answer, copy)}
-                                                {answer.isNoRequirementSelection
-                                                  ? ` · ${copy.noRequirementSelection}`
-                                                  : ''}
-                                              </p>
-                                              {answer.description && (
-                                                <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">
-                                                  {answer.description}
+                                            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                              <div className="min-w-0 sm:flex-1">
+                                                <p className="font-medium">
+                                                  {answer.text}
                                                 </p>
-                                              )}
-                                              {!answer.isNoRequirementSelection
-                                                ? (() => {
-                                                    const packageNames =
-                                                      answer.packageIds
-                                                        .map(packageId =>
-                                                          packagesById.get(
-                                                            packageId,
-                                                          ),
+                                                <p className="text-xs text-secondary-500">
+                                                  {statusText(answer, copy)}
+                                                  {answer.isNoRequirementSelection
+                                                    ? ` · ${copy.noRequirementSelection}`
+                                                    : ''}
+                                                </p>
+                                                {answer.description && (
+                                                  <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">
+                                                    {answer.description}
+                                                  </p>
+                                                )}
+                                                {!answer.isNoRequirementSelection
+                                                  ? (() => {
+                                                      const packageNames =
+                                                        answer.packageIds
+                                                          .map(packageId =>
+                                                            packagesById.get(
+                                                              packageId,
+                                                            ),
+                                                          )
+                                                          .filter(
+                                                            (
+                                                              pkg,
+                                                            ): pkg is RequirementPackage =>
+                                                              Boolean(pkg),
+                                                          )
+                                                      const directRequirementIds =
+                                                        new Set(
+                                                          answer.requirementIds,
                                                         )
-                                                        .filter(
-                                                          (
-                                                            pkg,
-                                                          ): pkg is RequirementPackage =>
-                                                            Boolean(pkg),
+                                                      const directRequirements =
+                                                        answer.matchingRequirements.filter(
+                                                          requirement =>
+                                                            directRequirementIds.has(
+                                                              requirement.id,
+                                                            ),
                                                         )
-                                                    const directRequirementIds =
-                                                      new Set(
-                                                        answer.requirementIds,
-                                                      )
-                                                    const directRequirements =
-                                                      answer.matchingRequirements.filter(
-                                                        requirement =>
-                                                          directRequirementIds.has(
-                                                            requirement.id,
-                                                          ),
-                                                      )
-                                                    const unresolvedPackageCount =
-                                                      answer.packageIds.length -
-                                                      packageNames.length
-                                                    const unresolvedRequirementCount =
-                                                      answer.requirementIds
-                                                        .length -
-                                                      directRequirements.length
-                                                    const hasVisibleSources =
-                                                      packageNames.length > 0 ||
-                                                      directRequirements.length >
-                                                        0 ||
-                                                      unresolvedPackageCount >
-                                                        0 ||
-                                                      unresolvedRequirementCount >
-                                                        0
-                                                    const answerExpansion =
-                                                      expandedAnswerSelection?.answerId ===
-                                                      answer.id
-                                                        ? expandedAnswerSelection
-                                                        : null
-                                                    const activeFilters =
-                                                      answerExpansion?.filters ??
-                                                      []
-                                                    const filteredRequirements =
-                                                      filterMatchedRequirementsBySources(
-                                                        answer.matchingRequirements,
-                                                        activeFilters,
-                                                      )
-                                                    const hasActiveSourceFilters =
-                                                      activeFilters.length > 0
-                                                    const displayedRequirementCount =
-                                                      hasActiveSourceFilters
-                                                        ? filteredRequirements.length
-                                                        : answer.matchingRequirementCount
-                                                    const requirementCountLabel =
-                                                      displayedRequirementCount ===
-                                                      1
-                                                        ? copy.requirementCountSingular
-                                                        : copy.requirementCountPlural
+                                                      const unresolvedPackageCount =
+                                                        answer.packageIds
+                                                          .length -
+                                                        packageNames.length
+                                                      const unresolvedRequirementCount =
+                                                        answer.requirementIds
+                                                          .length -
+                                                        directRequirements.length
+                                                      const hasVisibleSources =
+                                                        packageNames.length >
+                                                          0 ||
+                                                        directRequirements.length >
+                                                          0 ||
+                                                        unresolvedPackageCount >
+                                                          0 ||
+                                                        unresolvedRequirementCount >
+                                                          0
+                                                      const answerExpansion =
+                                                        expandedAnswerSelection?.answerId ===
+                                                        answer.id
+                                                          ? expandedAnswerSelection
+                                                          : null
+                                                      const activeFilters =
+                                                        answerExpansion?.filters ??
+                                                        []
+                                                      const filteredRequirements =
+                                                        filterMatchedRequirementsBySources(
+                                                          answer.matchingRequirements,
+                                                          activeFilters,
+                                                        )
+                                                      const hasActiveSourceFilters =
+                                                        activeFilters.length > 0
+                                                      const displayedRequirementCount =
+                                                        hasActiveSourceFilters
+                                                          ? filteredRequirements.length
+                                                          : answer.matchingRequirementCount
+                                                      const requirementCountLabel =
+                                                        displayedRequirementCount ===
+                                                        1
+                                                          ? copy.requirementCountSingular
+                                                          : copy.requirementCountPlural
 
-                                                    const toggleRequirementList =
-                                                      () => {
-                                                        setExpandedAnswerSelection(
-                                                          current =>
-                                                            current?.answerId ===
-                                                            answer.id
-                                                              ? null
-                                                              : {
+                                                      const toggleRequirementList =
+                                                        () => {
+                                                          setExpandedAnswerSelection(
+                                                            current =>
+                                                              current?.answerId ===
+                                                              answer.id
+                                                                ? null
+                                                                : {
+                                                                    answerId:
+                                                                      answer.id,
+                                                                    filters: [],
+                                                                  },
+                                                          )
+                                                        }
+
+                                                      const toggleSourceFilter =
+                                                        (
+                                                          filter: AnswerRequirementSourceFilter,
+                                                        ) => {
+                                                          setExpandedAnswerSelection(
+                                                            current => {
+                                                              if (
+                                                                current?.answerId !==
+                                                                answer.id
+                                                              ) {
+                                                                return {
                                                                   answerId:
                                                                     answer.id,
-                                                                  filters: [],
-                                                                },
-                                                        )
-                                                      }
+                                                                  filters: [
+                                                                    filter,
+                                                                  ],
+                                                                }
+                                                              }
 
-                                                    const toggleSourceFilter = (
-                                                      filter: AnswerRequirementSourceFilter,
-                                                    ) => {
-                                                      setExpandedAnswerSelection(
-                                                        current => {
-                                                          if (
-                                                            current?.answerId !==
-                                                            answer.id
-                                                          ) {
-                                                            return {
-                                                              answerId:
-                                                                answer.id,
-                                                              filters: [filter],
-                                                            }
-                                                          }
-
-                                                          const alreadyActive =
-                                                            current.filters.some(
-                                                              item =>
-                                                                sourceFilterEquals(
-                                                                  item,
-                                                                  filter,
-                                                                ),
-                                                            )
-                                                          const filters =
-                                                            alreadyActive
-                                                              ? current.filters.filter(
+                                                              const alreadyActive =
+                                                                current.filters.some(
                                                                   item =>
-                                                                    !sourceFilterEquals(
+                                                                    sourceFilterEquals(
                                                                       item,
                                                                       filter,
                                                                     ),
                                                                 )
-                                                              : [
-                                                                  ...current.filters,
-                                                                  filter,
-                                                                ]
+                                                              const filters =
+                                                                alreadyActive
+                                                                  ? current.filters.filter(
+                                                                      item =>
+                                                                        !sourceFilterEquals(
+                                                                          item,
+                                                                          filter,
+                                                                        ),
+                                                                    )
+                                                                  : [
+                                                                      ...current.filters,
+                                                                      filter,
+                                                                    ]
 
-                                                          return {
-                                                            answerId: answer.id,
-                                                            filters,
-                                                          }
-                                                        },
-                                                      )
-                                                    }
+                                                              return {
+                                                                answerId:
+                                                                  answer.id,
+                                                                filters,
+                                                              }
+                                                            },
+                                                          )
+                                                        }
 
-                                                    const isSourceFilterActive =
-                                                      (
-                                                        filter: AnswerRequirementSourceFilter,
-                                                      ) =>
-                                                        activeFilters.some(
-                                                          item =>
-                                                            sourceFilterEquals(
-                                                              item,
-                                                              filter,
-                                                            ),
-                                                        )
+                                                      const isSourceFilterActive =
+                                                        (
+                                                          filter: AnswerRequirementSourceFilter,
+                                                        ) =>
+                                                          activeFilters.some(
+                                                            item =>
+                                                              sourceFilterEquals(
+                                                                item,
+                                                                filter,
+                                                              ),
+                                                          )
 
-                                                    if (
-                                                      packageNames.length ===
-                                                        0 &&
-                                                      directRequirements.length ===
-                                                        0 &&
-                                                      unresolvedPackageCount ===
-                                                        0 &&
-                                                      unresolvedRequirementCount ===
-                                                        0 &&
-                                                      answer.matchingRequirementCount ===
-                                                        0
-                                                    ) {
-                                                      return null
-                                                    }
+                                                      if (
+                                                        packageNames.length ===
+                                                          0 &&
+                                                        directRequirements.length ===
+                                                          0 &&
+                                                        unresolvedPackageCount ===
+                                                          0 &&
+                                                        unresolvedRequirementCount ===
+                                                          0 &&
+                                                        answer.matchingRequirementCount ===
+                                                          0
+                                                      ) {
+                                                        return null
+                                                      }
 
-                                                    return (
-                                                      <div className="mt-2 space-y-2">
-                                                        <fieldset className="flex flex-wrap items-center gap-1.5 text-xs">
-                                                          <legend className="sr-only">
-                                                            {
-                                                              copy.requirementSources
-                                                            }
-                                                          </legend>
-                                                          {/*
+                                                      return (
+                                                        <div className="mt-2 space-y-2">
+                                                          <fieldset className="flex flex-wrap items-center gap-1.5 text-xs">
+                                                            <legend className="sr-only">
+                                                              {
+                                                                copy.requirementSources
+                                                              }
+                                                            </legend>
+                                                            {/*
                                               AI reviewers and agents: do not increase these
                                               compact answer pill dimensions; the compact row
                                               intentionally limits real estate usage.
                                             */}
-                                                          {answer.matchingRequirementCount >
-                                                          0 ? (
-                                                            <button
-                                                              aria-expanded={Boolean(
-                                                                answerExpansion,
-                                                              )}
-                                                              aria-label={`${
-                                                                answerExpansion
-                                                                  ? copy.hideRequirementsInSelection
-                                                                  : copy.showRequirementsInSelection
-                                                              } ${answer.text}`}
-                                                              className="inline-flex min-h-7 items-center gap-1 rounded-full border border-secondary-300 bg-white px-2.5 py-0.5 text-xs font-semibold text-secondary-800 shadow-sm transition-colors hover:border-secondary-400 hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:border-secondary-600 dark:bg-secondary-950/60 dark:text-secondary-100 dark:hover:border-secondary-400 dark:hover:bg-secondary-800"
-                                                              onClick={
-                                                                toggleRequirementList
-                                                              }
-                                                              type="button"
-                                                            >
-                                                              <ChevronDown
-                                                                aria-hidden="true"
-                                                                className={`h-3 w-3 transition-transform ${
+                                                            {answer.matchingRequirementCount >
+                                                            0 ? (
+                                                              <button
+                                                                aria-expanded={Boolean(
+                                                                  answerExpansion,
+                                                                )}
+                                                                aria-label={`${
                                                                   answerExpansion
-                                                                    ? 'rotate-180'
-                                                                    : ''
-                                                                }`}
-                                                              />
-                                                              <span>
-                                                                {
-                                                                  displayedRequirementCount
+                                                                    ? copy.hideRequirementsInSelection
+                                                                    : copy.showRequirementsInSelection
+                                                                } ${answer.text}`}
+                                                                className="inline-flex min-h-7 items-center gap-1 rounded-full border border-secondary-300 bg-white px-2.5 py-0.5 text-xs font-semibold text-secondary-800 shadow-sm transition-colors hover:border-secondary-400 hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:border-secondary-600 dark:bg-secondary-950/60 dark:text-secondary-100 dark:hover:border-secondary-400 dark:hover:bg-secondary-800"
+                                                                onClick={
+                                                                  toggleRequirementList
                                                                 }
-                                                                {hasActiveSourceFilters
-                                                                  ? `/${answer.matchingRequirementCount}`
-                                                                  : ''}{' '}
+                                                                type="button"
+                                                              >
+                                                                <ChevronDown
+                                                                  aria-hidden="true"
+                                                                  className={`h-3 w-3 transition-transform ${
+                                                                    answerExpansion
+                                                                      ? 'rotate-180'
+                                                                      : ''
+                                                                  }`}
+                                                                />
+                                                                <span>
+                                                                  {
+                                                                    displayedRequirementCount
+                                                                  }
+                                                                  {hasActiveSourceFilters
+                                                                    ? `/${answer.matchingRequirementCount}`
+                                                                    : ''}{' '}
+                                                                  {
+                                                                    requirementCountLabel
+                                                                  }
+                                                                </span>
+                                                              </button>
+                                                            ) : null}
+                                                            {answer.matchingRequirementCount >
+                                                              0 &&
+                                                            hasVisibleSources ? (
+                                                              <span
+                                                                aria-hidden="true"
+                                                                className="mx-0.5 h-5 w-px bg-secondary-200 dark:bg-secondary-700"
+                                                                data-answer-source-separator="true"
+                                                              />
+                                                            ) : null}
+                                                            {packageNames.map(
+                                                              pkg => {
+                                                                const filter: AnswerRequirementSourceFilter =
+                                                                  {
+                                                                    kind: 'package',
+                                                                    sourceId:
+                                                                      pkg.id,
+                                                                  }
+                                                                const active =
+                                                                  isSourceFilterActive(
+                                                                    filter,
+                                                                  )
+                                                                return (
+                                                                  <button
+                                                                    aria-label={`${copy.filterRequirementsByPackage} ${pkg.name}`}
+                                                                    aria-pressed={
+                                                                      active
+                                                                    }
+                                                                    className={`${answerSourcePillClassName} ${
+                                                                      active
+                                                                        ? 'border-primary-600 bg-primary-100 text-primary-950 shadow-sm ring-1 ring-primary-300 dark:border-primary-300 dark:bg-primary-900/70 dark:text-primary-50 dark:ring-primary-700/70'
+                                                                        : 'border-secondary-200 bg-secondary-50 text-secondary-700 hover:border-secondary-300 hover:bg-secondary-100 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200 dark:hover:border-secondary-500 dark:hover:bg-secondary-700'
+                                                                    }`}
+                                                                    key={pkg.id}
+                                                                    onClick={() =>
+                                                                      toggleSourceFilter(
+                                                                        filter,
+                                                                      )
+                                                                    }
+                                                                    type="button"
+                                                                  >
+                                                                    <span className="truncate">
+                                                                      {pkg.name}
+                                                                    </span>
+                                                                  </button>
+                                                                )
+                                                              },
+                                                            )}
+                                                            {unresolvedPackageCount >
+                                                            0 ? (
+                                                              <span className="inline-flex min-h-7 items-center rounded-full border border-secondary-200 bg-secondary-50 px-2 py-0.5 text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                                                                {copy.packages}:{' '}
                                                                 {
-                                                                  requirementCountLabel
+                                                                  unresolvedPackageCount
                                                                 }
                                                               </span>
-                                                            </button>
-                                                          ) : null}
-                                                          {answer.matchingRequirementCount >
-                                                            0 &&
-                                                          hasVisibleSources ? (
-                                                            <span
-                                                              aria-hidden="true"
-                                                              className="mx-0.5 h-5 w-px bg-secondary-200 dark:bg-secondary-700"
-                                                              data-answer-source-separator="true"
-                                                            />
-                                                          ) : null}
-                                                          {packageNames.map(
-                                                            pkg => {
-                                                              const filter: AnswerRequirementSourceFilter =
-                                                                {
-                                                                  kind: 'package',
-                                                                  sourceId:
-                                                                    pkg.id,
-                                                                }
-                                                              const active =
-                                                                isSourceFilterActive(
-                                                                  filter,
-                                                                )
-                                                              return (
-                                                                <button
-                                                                  aria-label={`${copy.filterRequirementsByPackage} ${pkg.name}`}
-                                                                  aria-pressed={
-                                                                    active
-                                                                  }
-                                                                  className={`${answerSourcePillClassName} ${
-                                                                    active
-                                                                      ? 'border-primary-600 bg-primary-100 text-primary-950 shadow-sm ring-1 ring-primary-300 dark:border-primary-300 dark:bg-primary-900/70 dark:text-primary-50 dark:ring-primary-700/70'
-                                                                      : 'border-secondary-200 bg-secondary-50 text-secondary-700 hover:border-secondary-300 hover:bg-secondary-100 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200 dark:hover:border-secondary-500 dark:hover:bg-secondary-700'
-                                                                  }`}
-                                                                  key={pkg.id}
-                                                                  onClick={() =>
-                                                                    toggleSourceFilter(
-                                                                      filter,
-                                                                    )
-                                                                  }
-                                                                  type="button"
-                                                                >
-                                                                  <span className="truncate">
-                                                                    {pkg.name}
-                                                                  </span>
-                                                                </button>
-                                                              )
-                                                            },
-                                                          )}
-                                                          {unresolvedPackageCount >
-                                                          0 ? (
-                                                            <span className="inline-flex min-h-7 items-center rounded-full border border-secondary-200 bg-secondary-50 px-2 py-0.5 text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
-                                                              {copy.packages}:{' '}
-                                                              {
-                                                                unresolvedPackageCount
-                                                              }
-                                                            </span>
-                                                          ) : null}
-                                                          {directRequirements.map(
-                                                            requirement => {
-                                                              const filter: AnswerRequirementSourceFilter =
-                                                                {
-                                                                  kind: 'requirement',
-                                                                  sourceId:
-                                                                    requirement.id,
-                                                                }
-                                                              const active =
-                                                                isSourceFilterActive(
-                                                                  filter,
-                                                                )
-                                                              return (
-                                                                <button
-                                                                  aria-label={`${copy.filterRequirementsByRequirementId} ${requirement.uniqueId}`}
-                                                                  aria-pressed={
-                                                                    active
-                                                                  }
-                                                                  className={`${answerSourcePillClassName} font-mono ${
-                                                                    active
-                                                                      ? 'border-primary-700 bg-primary-100 text-primary-950 shadow-sm ring-1 ring-primary-300 dark:border-primary-300 dark:bg-primary-900/70 dark:text-primary-50 dark:ring-primary-700/70'
-                                                                      : 'border-primary-200 bg-primary-50 text-primary-900 hover:border-primary-300 hover:bg-primary-100 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100 dark:hover:border-primary-700 dark:hover:bg-primary-900/60'
-                                                                  }`}
-                                                                  key={
-                                                                    requirement.id
-                                                                  }
-                                                                  onClick={() =>
-                                                                    toggleSourceFilter(
-                                                                      filter,
-                                                                    )
-                                                                  }
-                                                                  type="button"
-                                                                >
+                                                            ) : null}
+                                                            {directRequirements.map(
+                                                              requirement => {
+                                                                const filter: AnswerRequirementSourceFilter =
                                                                   {
-                                                                    requirement.uniqueId
+                                                                    kind: 'requirement',
+                                                                    sourceId:
+                                                                      requirement.id,
                                                                   }
-                                                                </button>
-                                                              )
-                                                            },
-                                                          )}
-                                                          {unresolvedRequirementCount >
-                                                          0 ? (
-                                                            <span className="inline-flex min-h-7 items-center rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
-                                                              {
-                                                                copy.requirementIds
+                                                                const active =
+                                                                  isSourceFilterActive(
+                                                                    filter,
+                                                                  )
+                                                                return (
+                                                                  <button
+                                                                    aria-label={`${copy.filterRequirementsByRequirementId} ${requirement.uniqueId}`}
+                                                                    aria-pressed={
+                                                                      active
+                                                                    }
+                                                                    className={`${answerSourcePillClassName} font-mono ${
+                                                                      active
+                                                                        ? 'border-primary-700 bg-primary-100 text-primary-950 shadow-sm ring-1 ring-primary-300 dark:border-primary-300 dark:bg-primary-900/70 dark:text-primary-50 dark:ring-primary-700/70'
+                                                                        : 'border-primary-200 bg-primary-50 text-primary-900 hover:border-primary-300 hover:bg-primary-100 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100 dark:hover:border-primary-700 dark:hover:bg-primary-900/60'
+                                                                    }`}
+                                                                    key={
+                                                                      requirement.id
+                                                                    }
+                                                                    onClick={() =>
+                                                                      toggleSourceFilter(
+                                                                        filter,
+                                                                      )
+                                                                    }
+                                                                    type="button"
+                                                                  >
+                                                                    {
+                                                                      requirement.uniqueId
+                                                                    }
+                                                                  </button>
+                                                                )
+                                                              },
+                                                            )}
+                                                            {unresolvedRequirementCount >
+                                                            0 ? (
+                                                              <span className="inline-flex min-h-7 items-center rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
+                                                                {
+                                                                  copy.requirementIds
+                                                                }
+                                                                :{' '}
+                                                                {
+                                                                  unresolvedRequirementCount
+                                                                }
+                                                              </span>
+                                                            ) : null}
+                                                          </fieldset>
+                                                          {answerExpansion ? (
+                                                            <ul
+                                                              aria-label={
+                                                                copy.requirementsInSelection
                                                               }
-                                                              :{' '}
-                                                              {
-                                                                unresolvedRequirementCount
-                                                              }
-                                                            </span>
-                                                          ) : null}
-                                                        </fieldset>
-                                                        {answerExpansion ? (
-                                                          <ul
-                                                            aria-label={
-                                                              copy.requirementsInSelection
-                                                            }
-                                                            className="space-y-1 text-xs text-secondary-600 dark:text-secondary-300"
-                                                          >
-                                                            {filteredRequirements.map(
-                                                              requirement => (
-                                                                <li
-                                                                  className="rounded-md border border-secondary-200 bg-white px-2 py-2 dark:border-secondary-700 dark:bg-secondary-900/70"
-                                                                  key={
-                                                                    requirement.id
-                                                                  }
-                                                                >
-                                                                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                                                                    <span className="font-mono font-semibold text-secondary-800 dark:text-secondary-100">
-                                                                      {
-                                                                        requirement.uniqueId
-                                                                      }
-                                                                    </span>
-                                                                    {requirement.description ? (
-                                                                      <span className="text-secondary-600 dark:text-secondary-300">
+                                                              className="space-y-1 text-xs text-secondary-600 dark:text-secondary-300"
+                                                            >
+                                                              {filteredRequirements.map(
+                                                                requirement => (
+                                                                  <li
+                                                                    className="rounded-md border border-secondary-200 bg-white px-2 py-2 dark:border-secondary-700 dark:bg-secondary-900/70"
+                                                                    key={
+                                                                      requirement.id
+                                                                    }
+                                                                  >
+                                                                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                                                      <span className="font-mono font-semibold text-secondary-800 dark:text-secondary-100">
                                                                         {
-                                                                          requirement.description
+                                                                          requirement.uniqueId
                                                                         }
                                                                       </span>
-                                                                    ) : null}
-                                                                  </div>
-                                                                  <div className="mt-1 flex flex-wrap gap-1">
-                                                                    {requirement.direct ? (
-                                                                      <span className="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-[0.68rem] font-medium text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
-                                                                        {
-                                                                          copy.directRequirement
-                                                                        }
-                                                                      </span>
-                                                                    ) : null}
-                                                                    {requirement.sourcePackages.map(
-                                                                      pkg => (
-                                                                        <span
-                                                                          className="inline-flex rounded-full border border-secondary-200 bg-white px-2 py-0.5 text-[0.68rem] font-medium text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200"
-                                                                          key={
-                                                                            pkg.id
-                                                                          }
-                                                                        >
+                                                                      {requirement.description ? (
+                                                                        <span className="text-secondary-600 dark:text-secondary-300">
                                                                           {
-                                                                            pkg.name
+                                                                            requirement.description
                                                                           }
                                                                         </span>
-                                                                      ),
-                                                                    )}
-                                                                  </div>
-                                                                </li>
-                                                              ),
-                                                            )}
-                                                          </ul>
-                                                        ) : null}
-                                                      </div>
-                                                    )
-                                                  })()
-                                                : null}
-                                              {answer.healthState ===
-                                                'missing_requirement_selection' && (
-                                                <span className="ml-2 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
-                                                  {
-                                                    copy.missingRequirementSelection
+                                                                      ) : null}
+                                                                    </div>
+                                                                    <div className="mt-1 flex flex-wrap gap-1">
+                                                                      {requirement.direct ? (
+                                                                        <span className="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-[0.68rem] font-medium text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
+                                                                          {
+                                                                            copy.directRequirement
+                                                                          }
+                                                                        </span>
+                                                                      ) : null}
+                                                                      {requirement.sourcePackages.map(
+                                                                        pkg => (
+                                                                          <span
+                                                                            className="inline-flex rounded-full border border-secondary-200 bg-white px-2 py-0.5 text-[0.68rem] font-medium text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200"
+                                                                            key={
+                                                                              pkg.id
+                                                                            }
+                                                                          >
+                                                                            {
+                                                                              pkg.name
+                                                                            }
+                                                                          </span>
+                                                                        ),
+                                                                      )}
+                                                                    </div>
+                                                                  </li>
+                                                                ),
+                                                              )}
+                                                            </ul>
+                                                          ) : null}
+                                                        </div>
+                                                      )
+                                                    })()
+                                                  : null}
+                                                {answer.healthState ===
+                                                  'missing_requirement_selection' && (
+                                                  <span className="ml-2 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+                                                    {
+                                                      copy.missingRequirementSelection
+                                                    }
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+                                                <button
+                                                  className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
+                                                  disabled={submitting}
+                                                  onClick={() =>
+                                                    editAnswer(answer)
                                                   }
-                                                </span>
-                                              )}
-                                            </div>
-                                            <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
-                                              <button
-                                                className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
-                                                disabled={submitting}
-                                                onClick={() =>
-                                                  editAnswer(answer)
-                                                }
-                                                type="button"
-                                              >
-                                                <Pencil
-                                                  aria-hidden="true"
-                                                  className="h-4 w-4"
-                                                />
-                                                {copy.edit}
-                                              </button>
-                                              <button
-                                                className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
-                                                disabled={submitting}
-                                                onClick={() =>
-                                                  answerAction(
-                                                    question,
-                                                    answer,
-                                                    answer.isActive
-                                                      ? 'deactivate'
-                                                      : 'activate',
-                                                  )
-                                                }
-                                                type="button"
-                                              >
-                                                {answer.isActive ? (
-                                                  <PauseCircle
+                                                  type="button"
+                                                >
+                                                  <Pencil
                                                     aria-hidden="true"
                                                     className="h-4 w-4"
                                                   />
-                                                ) : (
-                                                  <CheckCircle2
+                                                  {copy.edit}
+                                                </button>
+                                                <button
+                                                  className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
+                                                  disabled={submitting}
+                                                  onClick={() =>
+                                                    answerAction(
+                                                      question,
+                                                      answer,
+                                                      answer.isActive
+                                                        ? 'deactivate'
+                                                        : 'activate',
+                                                    )
+                                                  }
+                                                  type="button"
+                                                >
+                                                  {answer.isActive ? (
+                                                    <PauseCircle
+                                                      aria-hidden="true"
+                                                      className="h-4 w-4"
+                                                    />
+                                                  ) : (
+                                                    <CheckCircle2
+                                                      aria-hidden="true"
+                                                      className="h-4 w-4"
+                                                    />
+                                                  )}
+                                                  {answer.isActive
+                                                    ? copy.deactivate
+                                                    : copy.activate}
+                                                </button>
+                                                <button
+                                                  className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
+                                                  disabled={submitting}
+                                                  onClick={event =>
+                                                    answerAction(
+                                                      question,
+                                                      answer,
+                                                      answer.isArchived
+                                                        ? 'reactivate'
+                                                        : 'archive',
+                                                      event.currentTarget,
+                                                    )
+                                                  }
+                                                  type="button"
+                                                >
+                                                  {answer.isArchived ? (
+                                                    <RotateCcw
+                                                      aria-hidden="true"
+                                                      className="h-4 w-4"
+                                                    />
+                                                  ) : (
+                                                    <Archive
+                                                      aria-hidden="true"
+                                                      className="h-4 w-4"
+                                                    />
+                                                  )}
+                                                  {answer.isArchived
+                                                    ? copy.reactivate
+                                                    : copy.archive}
+                                                </button>
+                                                <button
+                                                  className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border border-red-200 px-2 text-xs text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
+                                                  disabled={submitting}
+                                                  onClick={event =>
+                                                    answerAction(
+                                                      question,
+                                                      answer,
+                                                      'delete',
+                                                      event.currentTarget,
+                                                    )
+                                                  }
+                                                  type="button"
+                                                >
+                                                  <Trash2
                                                     aria-hidden="true"
                                                     className="h-4 w-4"
                                                   />
-                                                )}
-                                                {answer.isActive
-                                                  ? copy.deactivate
-                                                  : copy.activate}
-                                              </button>
-                                              <button
-                                                className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
-                                                disabled={submitting}
-                                                onClick={event =>
-                                                  answerAction(
-                                                    question,
-                                                    answer,
-                                                    answer.isArchived
-                                                      ? 'reactivate'
-                                                      : 'archive',
-                                                    event.currentTarget,
-                                                  )
-                                                }
-                                                type="button"
-                                              >
-                                                {answer.isArchived ? (
-                                                  <RotateCcw
-                                                    aria-hidden="true"
-                                                    className="h-4 w-4"
-                                                  />
-                                                ) : (
-                                                  <Archive
-                                                    aria-hidden="true"
-                                                    className="h-4 w-4"
-                                                  />
-                                                )}
-                                                {answer.isArchived
-                                                  ? copy.reactivate
-                                                  : copy.archive}
-                                              </button>
-                                              <button
-                                                className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border border-red-200 px-2 text-xs text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
-                                                disabled={submitting}
-                                                onClick={event =>
-                                                  answerAction(
-                                                    question,
-                                                    answer,
-                                                    'delete',
-                                                    event.currentTarget,
-                                                  )
-                                                }
-                                                type="button"
-                                              >
-                                                <Trash2
-                                                  aria-hidden="true"
-                                                  className="h-4 w-4"
-                                                />
-                                                {copy.delete}
-                                              </button>
+                                                  {copy.delete}
+                                                </button>
+                                              </div>
                                             </div>
                                           </div>
-                                        </div>
-                                      </li>
-                                    ))}
+                                        </li>
+                                      )
+                                    })}
                                   </ul>
                                 )}
                                 <div
@@ -4298,10 +4772,10 @@ export default function RequirementSelectionQuestionsClient() {
                               ) : null}
                             </div>
                           ) : null}
-                        </div>
+                        </li>
                       )
                     })}
-                  </div>
+                  </ul>
                 </section>
               ))
             )}

@@ -15,9 +15,8 @@ test.describe('Requirement selection question detail preview', () => {
       await page.getByRole('button', { name: /SÄK-KUF001/ }).click()
 
       const answerRow = page
-        .locator('li')
-        .filter({ hasText: 'Grundskydd för intern information' })
-        .first()
+        .getByText('Grundskydd för intern information', { exact: true })
+        .locator('xpath=ancestor::li[1]')
       await expect(answerRow).toContainText('Grundskydd för intern information')
       await answerRow.getByRole('button', { name: 'Redigera' }).click()
 

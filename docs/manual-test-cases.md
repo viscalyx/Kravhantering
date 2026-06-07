@@ -604,12 +604,21 @@ management live outside Admin Center.
    use the floating `Skapa kravurvalsfråga` pill.
 1. Verify the new question form opens as a modal and create a question for a
    requirement area. After selecting `Kravområde`, verify the selected
-   requirement area's description appears as small text below the dropdown.
+   requirement area's description appears as small text below the dropdown and
+   that the form does not show a `Sortering` field.
 1. Verify the `Kravurvalsfrågor` list is grouped by sticky requirement-area
    headings that show the area's name and prefix with a visibly different
    background color than the question rows. Verify question rows are collapsed
    by default, show a chevron, question code, area, status, question text and
    answer count, and expand when the row is clicked.
+1. Drag a kravurvalsfråga by its handle within the same kravområde and verify
+   the row moves immediately, saves without a page refresh, and keeps the new
+   order after navigating away and back. Verify the handle also supports
+   keyboard movement with pil upp, pil ned, Home and End.
+1. Enter search text or select a status filter in `Kravurvalsfrågor` and verify
+   the question reorder handles are disabled with an explanatory tooltip. Clear
+   those filters, optionally keep a `Kravområde` filter, and verify drag
+   sorting works again within the visible kravområde.
 1. Open `/sv/requirements`, click `Kravbiblioteksförvaltning`, and verify the
    parent navigation returns directly to `Kravurvalsfrågor` without flashing
    `Kravpaket` first. Verify no visible `Laddar...` text appears during a fast

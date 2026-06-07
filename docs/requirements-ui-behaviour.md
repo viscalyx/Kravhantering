@@ -424,6 +424,9 @@ down.
   locked when editing the question. The edit form shows the select as disabled,
   exposes a tooltip explaining why it cannot be changed, and keeps the selected
   area's description visible.
+- The question form does not expose manual sort-order editing. New questions are
+  placed last within the selected requirement area and can be reordered from the
+  question list.
 - The question form's free-text areas can be resized vertically, but their
   maximum height is capped relative to the viewport so the remaining form
   controls stay reachable inside the modal.
@@ -437,6 +440,12 @@ down.
   answer count. Help text, question actions, visibility conditions, saved
   answers and `Lägg till svar` appear only after the row is expanded. Searching
   can still match hidden answer text, but matching rows are not auto-expanded.
+- Requirement-selection question rows include a drag handle in the compact row.
+  The handle reorders questions only within the same requirement area, persists
+  the normalized area order without a full reload, and also supports Arrow Up,
+  Arrow Down, Home and End. Search text and status filters disable the handle
+  with an explanatory tooltip; a requirement-area filter alone still permits
+  reordering because the full area order remains visible.
 - Questions that participate in a requirement-selection question hierarchy show
   a separate `Hierarki · N` badge in the compact row, where `N` is the number of
   questions in the connected hierarchy. Standalone questions do not show this

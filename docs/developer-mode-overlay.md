@@ -170,6 +170,8 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `requirementSelectionQuestions > requirement area heading: <prefix>`, and
   compact question rows render as
   `requirementSelectionQuestions > question disclosure: <question code>`.
+  Question row drag handles render as
+  `requirementSelectionQuestions > question reorder handle: <question code>`.
   Hierarchy badges for questions that participate in visibility-condition
   hierarchies render as
   `requirementSelectionQuestions > hierarchy badge: <question code>`. The
