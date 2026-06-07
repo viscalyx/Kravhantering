@@ -233,8 +233,9 @@ describe('access review service', () => {
 
   it('rejects reviewer-only users even when they are assigned reviewer', async () => {
     const db = {
-      query: vi.fn(async (sql: string) => {
+      query: vi.fn(async (sql: string, parameters?: unknown[]) => {
         if (sql.includes('FROM access_review_runs')) {
+          if (parameters?.[0] === 999) return []
           return [
             {
               ...accessReviewRunRow(1),
@@ -260,6 +261,12 @@ describe('access review service', () => {
     })
     await expect(
       getAccessReviewRun(db as never, 42, reviewerOnlyActor),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      details: { reason: 'access_review_role_required' },
+    })
+    await expect(
+      getAccessReviewRun(db as never, 999, reviewerOnlyActor),
     ).rejects.toMatchObject({
       code: 'forbidden',
       details: { reason: 'access_review_role_required' },

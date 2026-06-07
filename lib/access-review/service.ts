@@ -564,6 +564,8 @@ export async function getAccessReviewRun(
   id: number,
   actor: AccessReviewAuthContext,
 ): Promise<AccessReviewRunDetail> {
+  assertCanViewRun(actor)
+
   const runRows = (await db.query(`${runSelectSql('WHERE run.id = @0')}`, [
     id,
   ])) as Row[]
@@ -575,7 +577,6 @@ export async function getAccessReviewRun(
   }
 
   const run = mapRun(runRows[0])
-  assertCanViewRun(actor)
 
   const itemRows = (await db.query(
     `SELECT
