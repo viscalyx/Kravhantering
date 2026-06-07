@@ -4,6 +4,8 @@ import {
   getExistingSpecificationRequirementIds,
   getRequirementSelectionFilterForSpecification,
   listRequirementSelectionMatchedRequirements,
+  replaceRequirementSelectionQuestionVisibilityGroups,
+  replaceSpecificationRequirementSelectionAnswers,
   resolveRequirementSelectionQuestionId,
   setRequirementSelectionAnswerState,
   setRequirementSelectionQuestionState,
@@ -272,6 +274,309 @@ describe('requirement selection questions DAL', () => {
       hasNoRequirementSelection: false,
       requirementIds: [],
     })
+  })
+
+  it('marks confirmed hidden follow-up answers historical instead of deleting them', async () => {
+    const savedRows = [
+      {
+        answerId: 4,
+        isHistorical: 0,
+        questionId: 1,
+        selectedByDisplayName: 'Ada',
+        selectedByHsaId: 'SE5560000001-ada',
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      },
+      {
+        answerId: 9,
+        isHistorical: 0,
+        questionId: 2,
+        selectedByDisplayName: 'Ada',
+        selectedByHsaId: 'SE5560000001-ada',
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      },
+    ]
+    const query = vi.fn(async (sql: string, _params?: unknown[]) => {
+      if (sql.includes('SELECT selection_type AS selectionType')) {
+        return [{ selectionType: 'single' }]
+      }
+      if (sql.includes('is_no_requirement_selection')) {
+        return [{ id: 5, isNoRequirementSelection: 0 }]
+      }
+      if (sql.includes('FROM requirement_selection_questions AS question')) {
+        return [
+          questionRow({
+            areaName: 'Integration',
+            areaPrefix: 'INT',
+            id: 1,
+            questionCode: 'INT-KUF001',
+            text: 'Integration?',
+          }),
+          questionRow({
+            areaId: 2,
+            areaName: 'Quality',
+            areaPrefix: 'KVA',
+            id: 2,
+            questionCode: 'KVA-KUF001',
+            text: 'Quality follow-up',
+          }),
+        ]
+      }
+      if (
+        sql.includes(
+          'FROM requirement_selection_question_visibility_groups AS visibility_group',
+        )
+      ) {
+        return [
+          {
+            answerId: 4,
+            answerIsActive: 1,
+            answerIsArchived: 0,
+            answerText: 'REST API',
+            groupId: 1,
+            id: 1,
+            parentAreaName: 'Integration',
+            parentQuestionCode: 'INT-KUF001',
+            parentQuestionId: 1,
+            parentQuestionIsActive: 1,
+            parentQuestionIsArchived: 0,
+            parentQuestionText: 'Integration?',
+            questionId: 2,
+            sortOrder: 0,
+          },
+        ]
+      }
+      if (sql.includes('FROM requirement_selection_answers AS answer')) {
+        return [
+          answerRow({ id: 4, questionId: 1, text: 'REST API' }),
+          answerRow({ id: 5, questionId: 1, text: 'Message queue' }),
+          answerRow({ id: 9, questionId: 2, text: 'E2E tests' }),
+        ]
+      }
+      if (sql.includes('FROM requirement_selection_answer_packages')) {
+        return []
+      }
+      if (sql.includes('FROM requirement_selection_answer_requirements')) {
+        return []
+      }
+      if (sql.includes('source.answerId AS answerId')) {
+        return []
+      }
+      if (sql.includes('FROM specification_requirement_selection_answers')) {
+        return savedRows
+      }
+      if (sql.includes('FROM requirements_specification_items')) {
+        return []
+      }
+      return []
+    })
+    const db = createTransactionalDb(query) as unknown as Parameters<
+      typeof replaceSpecificationRequirementSelectionAnswers
+    >[0]
+
+    await replaceSpecificationRequirementSelectionAnswers(
+      db,
+      9,
+      1,
+      [5],
+      { displayName: 'Ada', hsaId: 'SE5560000001-ada' },
+      { confirmHiddenAnswerClear: true },
+    )
+
+    const hiddenFollowUpUpdate = query.mock.calls.find(([sql]) => {
+      const text = String(sql)
+      return (
+        text.includes('UPDATE specification_requirement_selection_answers') &&
+        text.includes('question_id IN (@1)') &&
+        text.includes('is_historical = 0')
+      )
+    })
+    expect(String(hiddenFollowUpUpdate?.[0])).toContain('SET is_historical = 1')
+    expect(hiddenFollowUpUpdate?.[1]).toEqual([9, 2])
+    expect(
+      query.mock.calls.some(([sql]) => {
+        const text = String(sql)
+        return (
+          text.includes(
+            'DELETE FROM specification_requirement_selection_answers',
+          ) && text.includes('question_id IN (@1)')
+        )
+      }),
+    ).toBe(false)
+  })
+
+  it('limits visibility cleanup to specifications with affected descendant answers', async () => {
+    const savedRows = [
+      {
+        answerId: 4,
+        isHistorical: 0,
+        questionId: 1,
+        selectedByDisplayName: 'Ada',
+        selectedByHsaId: 'SE5560000001-ada',
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      },
+      {
+        answerId: 9,
+        isHistorical: 0,
+        questionId: 2,
+        selectedByDisplayName: 'Ada',
+        selectedByHsaId: 'SE5560000001-ada',
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      },
+    ]
+    const query = vi.fn(async (sql: string, _params?: unknown[]) => {
+      if (sql.includes('SELECT id') && sql.includes('WHERE id = @0')) {
+        return [{ id: 1 }]
+      }
+      if (sql.includes('SELECT id, question_id AS questionId')) {
+        return [{ id: 30, questionId: 3 }]
+      }
+      if (sql.includes('childQuestionId')) {
+        return [{ childQuestionId: 2, parentQuestionId: 1 }]
+      }
+      if (
+        sql.includes(
+          'INSERT INTO requirement_selection_question_visibility_groups',
+        )
+      ) {
+        return [{ id: 100 }]
+      }
+      if (sql.includes('WITH visibility_descendants')) {
+        return [{ questionId: 1 }, { questionId: 2 }]
+      }
+      if (
+        sql.includes('SELECT DISTINCT specification_id AS specificationId') &&
+        sql.includes('question_id IN (@0, @1)')
+      ) {
+        return [{ specificationId: 9 }]
+      }
+      if (sql.includes('FROM requirement_selection_questions AS question')) {
+        return [
+          questionRow({
+            areaName: 'Integration',
+            areaPrefix: 'INT',
+            id: 1,
+            questionCode: 'INT-KUF001',
+            text: 'Integration?',
+          }),
+          questionRow({
+            areaId: 2,
+            areaName: 'Quality',
+            areaPrefix: 'KVA',
+            id: 2,
+            questionCode: 'KVA-KUF001',
+            text: 'Quality follow-up',
+          }),
+          questionRow({
+            areaId: 3,
+            areaName: 'Operations',
+            areaPrefix: 'OPS',
+            id: 3,
+            questionCode: 'OPS-KUF001',
+            text: 'Operations?',
+          }),
+        ]
+      }
+      if (
+        sql.includes(
+          'FROM requirement_selection_question_visibility_groups AS visibility_group',
+        )
+      ) {
+        return [
+          {
+            answerId: 30,
+            answerIsActive: 1,
+            answerIsArchived: 0,
+            answerText: 'Operated service',
+            groupId: 11,
+            id: 11,
+            parentAreaName: 'Operations',
+            parentQuestionCode: 'OPS-KUF001',
+            parentQuestionId: 3,
+            parentQuestionIsActive: 1,
+            parentQuestionIsArchived: 0,
+            parentQuestionText: 'Operations?',
+            questionId: 1,
+            sortOrder: 0,
+          },
+          {
+            answerId: 4,
+            answerIsActive: 1,
+            answerIsArchived: 0,
+            answerText: 'REST API',
+            groupId: 12,
+            id: 12,
+            parentAreaName: 'Integration',
+            parentQuestionCode: 'INT-KUF001',
+            parentQuestionId: 1,
+            parentQuestionIsActive: 1,
+            parentQuestionIsArchived: 0,
+            parentQuestionText: 'Integration?',
+            questionId: 2,
+            sortOrder: 0,
+          },
+        ]
+      }
+      if (sql.includes('FROM requirement_selection_answers AS answer')) {
+        return [
+          answerRow({ id: 4, questionId: 1, text: 'REST API' }),
+          answerRow({ id: 9, questionId: 2, text: 'E2E tests' }),
+          answerRow({ id: 30, questionId: 3, text: 'Operated service' }),
+        ]
+      }
+      if (sql.includes('FROM requirement_selection_answer_packages')) {
+        return []
+      }
+      if (sql.includes('FROM requirement_selection_answer_requirements')) {
+        return []
+      }
+      if (sql.includes('source.answerId AS answerId')) {
+        return []
+      }
+      if (sql.includes('UPDATE specification_requirement_selection_answers')) {
+        return [{ questionId: 1 }, { questionId: 2 }]
+      }
+      if (sql.includes('FROM specification_requirement_selection_answers')) {
+        return savedRows
+      }
+      return []
+    })
+    const db = createTransactionalDb(query) as unknown as Parameters<
+      typeof replaceRequirementSelectionQuestionVisibilityGroups
+    >[0]
+
+    await replaceRequirementSelectionQuestionVisibilityGroups(db, 1, [
+      {
+        conditions: [{ answerIds: [30], parentQuestionId: 3 }],
+      },
+    ])
+
+    const specificationQuery = query.mock.calls.find(([sql]) => {
+      const text = String(sql)
+      return text.includes(
+        'SELECT DISTINCT specification_id AS specificationId',
+      )
+    })
+    expect(String(specificationQuery?.[0])).toContain('question_id IN (@0, @1)')
+    expect(specificationQuery?.[1]).toEqual([1, 2])
+    const historicalUpdate = query.mock.calls.find(([sql]) =>
+      String(sql).includes(
+        'UPDATE specification_requirement_selection_answers',
+      ),
+    )
+    expect(String(historicalUpdate?.[0])).toContain('question_id IN (@1, @2)')
+    expect(historicalUpdate?.[1]).toEqual([9, 1, 2, expect.any(Date)])
+    expect(
+      query.mock.calls.some(([sql]) => {
+        const text = String(sql)
+        return (
+          text.includes(
+            'SELECT DISTINCT specification_id AS specificationId',
+          ) &&
+          text.includes('WHERE is_historical = 0') &&
+          !text.includes('question_id IN')
+        )
+      }),
+    ).toBe(false)
   })
 
   it('returns no matched requirements without package or requirement filters', async () => {

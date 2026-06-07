@@ -1848,16 +1848,65 @@ async function assertNoVisibilityCycle(
   }
 }
 
-async function markHiddenSelectionsHistoricalForAllSpecifications(
+async function listVisibilityAffectedQuestionIds(
   executor: QueryExecutor,
+  questionId: number,
+): Promise<number[]> {
+  const rows = (await executor.query(
+    `
+      WITH visibility_descendants AS (
+        SELECT
+          visibility_group.question_id AS questionId,
+          CAST(0 AS int) AS depth
+        FROM requirement_selection_question_visibility_groups AS visibility_group
+        INNER JOIN requirement_selection_question_visibility_conditions AS condition
+          ON condition.visibility_group_id = visibility_group.id
+        WHERE condition.parent_question_id = @0
+
+        UNION ALL
+
+        SELECT
+          visibility_group.question_id AS questionId,
+          descendant.depth + 1 AS depth
+        FROM requirement_selection_question_visibility_groups AS visibility_group
+        INNER JOIN requirement_selection_question_visibility_conditions AS condition
+          ON condition.visibility_group_id = visibility_group.id
+        INNER JOIN visibility_descendants AS descendant
+          ON descendant.questionId = condition.parent_question_id
+        WHERE descendant.depth < 100
+      )
+      SELECT DISTINCT affected.questionId
+      FROM (
+        SELECT @0 AS questionId
+
+        UNION ALL
+
+        SELECT questionId
+        FROM visibility_descendants
+      ) AS affected
+      ORDER BY affected.questionId ASC
+    `,
+    [questionId],
+  )) as Array<{ questionId: number }>
+  return rows.map(row => row.questionId)
+}
+
+async function markHiddenSelectionsHistoricalForAffectedQuestions(
+  executor: QueryExecutor,
+  affectedQuestionIds: number[],
 ): Promise<number> {
+  if (affectedQuestionIds.length === 0) return 0
   const specificationRows = (await executor.query(
     `
       SELECT DISTINCT specification_id AS specificationId
       FROM specification_requirement_selection_answers
-      WHERE is_historical = 0
+      WHERE question_id IN (${placeholders(affectedQuestionIds)})
+        AND is_historical = 0
+      ORDER BY specification_id ASC
     `,
+    affectedQuestionIds,
   )) as Array<{ specificationId: number }>
+  const affectedQuestionIdSet = new Set(affectedQuestionIds)
   let changedCount = 0
   for (const row of specificationRows) {
     const questions =
@@ -1868,7 +1917,9 @@ async function markHiddenSelectionsHistoricalForAllSpecifications(
     const hiddenQuestionIds = questions
       .filter(
         question =>
-          !question.isVisible && question.selectedAnswerIds.length > 0,
+          affectedQuestionIdSet.has(question.id) &&
+          !question.isVisible &&
+          question.selectedAnswerIds.length > 0,
       )
       .map(question => question.id)
     if (hiddenQuestionIds.length === 0) continue
@@ -1954,7 +2005,10 @@ export async function replaceRequirementSelectionQuestionVisibilityGroups(
       }
     }
 
-    await markHiddenSelectionsHistoricalForAllSpecifications(manager)
+    await markHiddenSelectionsHistoricalForAffectedQuestions(
+      manager,
+      await listVisibilityAffectedQuestionIds(manager, questionId),
+    )
   })
   return getRequirementSelectionQuestionById(db, questionId)
 }
@@ -2132,7 +2186,8 @@ export async function replaceSpecificationRequirementSelectionAnswers(
       const hiddenQuestionIds = impact.map(item => item.questionId)
       await manager.query(
         `
-          DELETE FROM specification_requirement_selection_answers
+          UPDATE specification_requirement_selection_answers
+          SET is_historical = 1
           WHERE specification_id = @0
             AND question_id IN (${placeholders(hiddenQuestionIds, 1)})
             AND is_historical = 0

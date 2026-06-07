@@ -255,7 +255,7 @@ export default function SpecificationRequirementSelectionPanel({
           const confirmed = await confirm({
             confirmText: copy.confirmHiddenAnswerClearConfirm,
             defaultCancel: true,
-            icon: 'warning',
+            icon: 'caution',
             message: copy.confirmHiddenAnswerClear(
               hiddenSelections.length,
               hiddenSelections
@@ -263,6 +263,7 @@ export default function SpecificationRequirementSelectionPanel({
                 .join(', '),
             ),
             title: copy.confirmHiddenAnswerClearTitle,
+            variant: 'danger',
           })
           if (confirmed) {
             await save(question, answerIds, true)
