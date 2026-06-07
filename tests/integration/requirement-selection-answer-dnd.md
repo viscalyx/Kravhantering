@@ -28,6 +28,7 @@ flowchart TD
   operational-mode answers.
 - Seeded question and answer orders are reset through the same update APIs used
   by the UI.
+- The suite runs serially because it temporarily mutates shared seeded order.
 - The drags use real mouse sequences in Chromium so handle behavior is covered
   at browser level.
 

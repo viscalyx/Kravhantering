@@ -112,7 +112,7 @@ interface HierarchyTopology {
 function compareQuestions(
   left: RequirementSelectionHierarchyQuestion,
   right: RequirementSelectionHierarchyQuestion,
-) {
+): number {
   const areaCompare = left.areaName.localeCompare(right.areaName)
   if (areaCompare !== 0) return areaCompare
   if (left.sortOrder !== right.sortOrder)
@@ -120,7 +120,7 @@ function compareQuestions(
   return left.questionCode.localeCompare(right.questionCode)
 }
 
-function addMapSetValue<K, V>(map: Map<K, Set<V>>, key: K, value: V) {
+function addMapSetValue<K, V>(map: Map<K, Set<V>>, key: K, value: V): void {
   const bucket = map.get(key) ?? new Set<V>()
   bucket.add(value)
   map.set(key, bucket)
@@ -188,7 +188,7 @@ function createHierarchyTopology(
 function collectConnectedQuestionIds(
   topology: HierarchyTopology,
   focusQuestionId: number,
-) {
+): Set<number> {
   if (!topology.adjacencyByQuestionId.has(focusQuestionId))
     return new Set<number>()
 
@@ -207,7 +207,7 @@ function collectConnectedQuestionIds(
 
 export function getRequirementSelectionHierarchyBadgeCounts(
   questions: RequirementSelectionHierarchyQuestion[],
-) {
+): Map<number, number> {
   const topology = createHierarchyTopology(questions)
   const counts = new Map<number, number>()
   const handled = new Set<number>()
@@ -276,7 +276,7 @@ function createConditionGroups(
     })
 }
 
-function createSvgPath(points: Point[]) {
+function createSvgPath(points: Point[]): string {
   if (points.length === 0) return ''
   return points
     .map((point, index) => {

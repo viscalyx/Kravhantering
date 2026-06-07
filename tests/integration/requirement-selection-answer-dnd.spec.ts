@@ -76,6 +76,7 @@ async function resetDriftAnswerOrder(request: APIRequestContext) {
 }
 
 test.describe('Requirement selection answer drag and drop', () => {
+  test.describe.configure({ mode: 'serial' })
   test.use({ viewport: { height: 900, width: 1280 } })
 
   test('reorders collapsed requirement-selection questions by dragging the question handle', async ({
