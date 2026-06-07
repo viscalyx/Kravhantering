@@ -1674,7 +1674,7 @@ describe('RequirementSelectionQuestionsClient', () => {
     })
   })
 
-  it('live-reorders questions within an area while dragging the handle and saves sort order on drop', async () => {
+  it('previews question drag from the handle and saves sort order on drop', async () => {
     const secondQuestion: TestQuestion = {
       ...sampleQuestion,
       id: 22,
@@ -1745,12 +1745,12 @@ describe('RequirementSelectionQuestionsClient', () => {
       expect(dragPreview).toHaveTextContent(sampleQuestion.questionCode)
       expect(dragPreview).toHaveTextContent(sampleQuestion.text)
       const cards = Array.from(questionList.children)
-      expect(cards[0]).toHaveTextContent(secondQuestion.text)
-      expect(cards[1]).toHaveTextContent(thirdQuestion.text)
-      expect(cards[2]).toHaveTextContent(sampleQuestion.text)
-      expect(cards[1]).toHaveClass('bg-secondary-100/95')
-      expect(cards[2]).toHaveClass('bg-secondary-200/95')
-      expect(cards[2]?.firstElementChild).toHaveClass('invisible')
+      expect(cards[0]).toHaveTextContent(sampleQuestion.text)
+      expect(cards[1]).toHaveTextContent(secondQuestion.text)
+      expect(cards[2]).toHaveTextContent(thirdQuestion.text)
+      expect(cards[0]).toHaveClass('bg-secondary-200/95')
+      expect(cards[0]?.firstElementChild).toHaveClass('invisible')
+      expect(cards[2]).toHaveClass('bg-secondary-100/95')
     })
 
     fireEvent.pointerUp(dragHandle, {
@@ -1787,6 +1787,10 @@ describe('RequirementSelectionQuestionsClient', () => {
       expect(
         document.querySelector('[data-question-drag-preview="true"]'),
       ).not.toBeInTheDocument()
+      const cards = Array.from(questionList.children)
+      expect(cards[0]).toHaveTextContent(secondQuestion.text)
+      expect(cards[1]).toHaveTextContent(thirdQuestion.text)
+      expect(cards[2]).toHaveTextContent(sampleQuestion.text)
     })
     expect(state.getQuestions().map(question => question.id)).toEqual([
       22, 33, 11,
@@ -1795,7 +1799,7 @@ describe('RequirementSelectionQuestionsClient', () => {
     expect(countQuestionListFetches()).toBe(1)
   })
 
-  it('restores the original question order when a live drag is canceled', async () => {
+  it('keeps the original question order when a question drag is canceled', async () => {
     const secondQuestion: TestQuestion = {
       ...sampleQuestion,
       id: 22,
@@ -1846,9 +1850,10 @@ describe('RequirementSelectionQuestionsClient', () => {
       )
       expect(dragPreview).toHaveTextContent(sampleQuestion.text)
       const cards = Array.from(questionList.children)
-      expect(cards[0]).toHaveTextContent(secondQuestion.text)
-      expect(cards[1]).toHaveTextContent(sampleQuestion.text)
-      expect(cards[0]).toHaveClass('bg-secondary-100/95')
+      expect(cards[0]).toHaveTextContent(sampleQuestion.text)
+      expect(cards[1]).toHaveTextContent(secondQuestion.text)
+      expect(cards[0]).toHaveClass('bg-secondary-200/95')
+      expect(cards[1]).toHaveClass('bg-secondary-100/95')
     })
 
     fireEvent.pointerCancel(dragHandle, {

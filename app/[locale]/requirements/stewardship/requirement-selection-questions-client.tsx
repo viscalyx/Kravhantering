@@ -1916,7 +1916,7 @@ export default function RequirementSelectionQuestionsClient() {
     window.setTimeout(() => dragImage.remove(), 0)
   }
 
-  const previewQuestionMove = (
+  const previewQuestionDropTarget = (
     areaId: number,
     targetQuestion: RequirementSelectionQuestion,
   ) => {
@@ -1929,25 +1929,7 @@ export default function RequirementSelectionQuestionsClient() {
       return
     }
 
-    setQuestions(current => {
-      const areaQuestions = current.filter(
-        question => question.areaId === areaId,
-      )
-      const orderedQuestions = moveQuestionIntoTargetSlot(
-        areaQuestions,
-        draggedQuestion.questionId,
-        targetQuestion.id,
-      )
-      if (!orderedQuestions) return current
-
-      const nextQuestions = replaceAreaQuestionOrder(
-        current,
-        areaId,
-        orderedQuestions,
-      )
-      questionsRef.current = nextQuestions
-      return nextQuestions
-    })
+    setDragOverQuestionId(targetQuestion.id)
   }
 
   const restoreDraggedQuestionOrder = () => {
@@ -2079,8 +2061,7 @@ export default function RequirementSelectionQuestionsClient() {
     if (!targetQuestion) return
 
     pointerDrag.lastTargetQuestionId = targetQuestion.id
-    setDragOverQuestionId(targetQuestion.id)
-    previewQuestionMove(pointerDrag.areaId, targetQuestion)
+    previewQuestionDropTarget(pointerDrag.areaId, targetQuestion)
   }
 
   const finishQuestionPointerDrag = (
@@ -2099,9 +2080,16 @@ export default function RequirementSelectionQuestionsClient() {
       return
     }
 
-    const orderedQuestions = questionsRef.current.filter(
+    const areaQuestions = questionsRef.current.filter(
       question => question.areaId === pointerDrag.areaId,
     )
+    const orderedQuestions = pointerDrag.lastTargetQuestionId
+      ? (moveQuestionIntoTargetSlot(
+          areaQuestions,
+          pointerDrag.questionId,
+          pointerDrag.lastTargetQuestionId,
+        ) ?? areaQuestions)
+      : areaQuestions
     clearQuestionDragState()
     void persistQuestionOrder(
       pointerDrag.areaId,

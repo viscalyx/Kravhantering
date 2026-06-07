@@ -104,7 +104,13 @@ test.describe('Requirement selection answer drag and drop', () => {
         })
         .locator('xpath=ancestor::li[1]')
       await sourceCard.scrollIntoViewIfNeeded()
-      const questionRows = sourceCard.locator('xpath=../li')
+      const questionAreaId = await sourceCard.getAttribute(
+        'data-question-area-id',
+      )
+      expect(questionAreaId).toBeTruthy()
+      const questionRows = page.locator(
+        `[data-question-drop-target="true"][data-question-area-id="${questionAreaId}"]`,
+      )
 
       await expect(questionRows.nth(0)).toContainText('DRF-KUF001')
       await expect(questionRows.nth(1)).toContainText('DRF-KUF002')
@@ -132,6 +138,8 @@ test.describe('Requirement selection answer drag and drop', () => {
       await expect(questionDragPreview).toBeVisible()
       await expect(questionDragPreview).toContainText('DRF-KUF001')
       await page.mouse.move(targetX, targetY, { steps: 8 })
+      await expect(questionRows.nth(0)).toContainText('DRF-KUF001')
+      await expect(questionRows.nth(1)).toContainText('DRF-KUF002')
       await page.mouse.up()
 
       await expect(questionDragPreview).toHaveCount(0)
