@@ -52,15 +52,8 @@ OFFLINE_BUNDLE="${OFFLINE_ROOT}.tar.gz"
 RELEASE_ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
 
-test ! -e "$OFFLINE_ROOT" || {
-  echo "Disconnected staging directory already exists: $OFFLINE_ROOT" >&2
-  exit 1
-}
-test ! -e "$OFFLINE_WORK" || {
-  echo "Disconnected work directory already exists: $OFFLINE_WORK" >&2
-  exit 1
-}
-
+# Start from a clean staging area for this version and topology.
+rm -rf -- "$OFFLINE_ROOT" "$OFFLINE_WORK"
 mkdir -p "$OFFLINE_ROOT/release" "$OFFLINE_ROOT/images" "$OFFLINE_WORK"
 cd "$OFFLINE_ROOT/release"
 
@@ -248,11 +241,8 @@ OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 RELEASE_ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
 
-test ! -e "$OFFLINE_ROOT" || {
-  echo "Disconnected staging directory already exists: $OFFLINE_ROOT" >&2
-  exit 1
-}
-
+# Start from a clean staging area for this version and topology.
+rm -rf -- "$OFFLINE_ROOT"
 mkdir -p "$OFFLINE_ROOT"
 (
   cd "$(dirname "$OFFLINE_BUNDLE")"
@@ -363,11 +353,8 @@ OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 RELEASE_ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
 
-test ! -e "$OFFLINE_ROOT" || {
-  echo "Disconnected staging directory already exists: $OFFLINE_ROOT" >&2
-  exit 1
-}
-
+# Start from a clean staging area for this version and topology.
+rm -rf -- "$OFFLINE_ROOT"
 mkdir -p "$OFFLINE_ROOT"
 (
   cd "$(dirname "$OFFLINE_BUNDLE")"
