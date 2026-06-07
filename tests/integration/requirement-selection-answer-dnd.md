@@ -4,8 +4,9 @@
 > [`requirement-selection-answer-dnd.spec.ts`](./requirement-selection-answer-dnd.spec.ts)
 
 This suite verifies that requirement-selection questions and expanded answers can
-be reordered from their drag handles in Chromium and that the order is persisted
-without a page refresh.
+be reordered from their drag handles in Chromium, that question drag shows a
+visible floating row preview, and that the order is persisted without a page
+refresh.
 
 ## Overview Flowchart
 
@@ -13,12 +14,13 @@ without a page refresh.
 flowchart TD
     A[Open requirement-selection questions] --> B[Reset Drift question order]
     B --> C[Drag first question handle to second question row]
-    C --> D[Assert visible question order changes]
-    D --> E[Reset DRF-KUF001 answer order]
-    E --> F[Expand DRF-KUF001]
-    F --> G[Drag first answer handle to second answer row]
-    G --> H[Assert visible answer order changes]
-    H --> I[Reset seeded order]
+    C --> D[Assert question drag preview appears]
+    D --> E[Assert visible question order changes]
+    E --> F[Reset DRF-KUF001 answer order]
+    F --> G[Expand DRF-KUF001]
+    G --> H[Drag first answer handle to second answer row]
+    H --> I[Assert visible answer order changes]
+    I --> J[Reset seeded order]
 ```
 
 ## Test Setup
@@ -48,6 +50,7 @@ feedback without actually moving the question row.
 1. Assert `DRF-KUF001` is first and `DRF-KUF002` is second.
 1. Drag the first question handle to the second question row with Playwright
    mouse events.
+1. Assert the floating drag preview is visible and shows `DRF-KUF001`.
 1. Assert `DRF-KUF002` is first and `DRF-KUF001` is second.
 1. Reset Drift questions back to the seeded order.
 

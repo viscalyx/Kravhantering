@@ -1739,6 +1739,11 @@ describe('RequirementSelectionQuestionsClient', () => {
     await waitFor(() => {
       expect(sourceCard).toHaveClass('bg-secondary-200/95')
       expect(sourceCard.firstElementChild).toHaveClass('invisible')
+      const dragPreview = document.querySelector(
+        '[data-question-drag-preview="true"]',
+      )
+      expect(dragPreview).toHaveTextContent(sampleQuestion.questionCode)
+      expect(dragPreview).toHaveTextContent(sampleQuestion.text)
       const cards = Array.from(questionList.children)
       expect(cards[0]).toHaveTextContent(secondQuestion.text)
       expect(cards[1]).toHaveTextContent(thirdQuestion.text)
@@ -1779,6 +1784,9 @@ describe('RequirementSelectionQuestionsClient', () => {
           method: 'PUT',
         }),
       )
+      expect(
+        document.querySelector('[data-question-drag-preview="true"]'),
+      ).not.toBeInTheDocument()
     })
     expect(state.getQuestions().map(question => question.id)).toEqual([
       22, 33, 11,
@@ -1833,6 +1841,10 @@ describe('RequirementSelectionQuestionsClient', () => {
     })
 
     await waitFor(() => {
+      const dragPreview = document.querySelector(
+        '[data-question-drag-preview="true"]',
+      )
+      expect(dragPreview).toHaveTextContent(sampleQuestion.text)
       const cards = Array.from(questionList.children)
       expect(cards[0]).toHaveTextContent(secondQuestion.text)
       expect(cards[1]).toHaveTextContent(sampleQuestion.text)
@@ -1855,6 +1867,9 @@ describe('RequirementSelectionQuestionsClient', () => {
       expect(cards[0]).not.toHaveClass('bg-secondary-200/95')
       expect(cards[0]).not.toHaveClass('bg-secondary-100/95')
       expect(cards[0]?.firstElementChild).not.toHaveClass('invisible')
+      expect(
+        document.querySelector('[data-question-drag-preview="true"]'),
+      ).not.toBeInTheDocument()
     })
     expect(
       fetchMock.mock.calls.some(

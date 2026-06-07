@@ -126,9 +126,15 @@ test.describe('Requirement selection answer drag and drop', () => {
       await page.mouse.move(sourceX, sourceY)
       await page.mouse.down()
       await page.mouse.move(sourceX, sourceY + 12)
+      const questionDragPreview = page.locator(
+        '[data-question-drag-preview="true"]',
+      )
+      await expect(questionDragPreview).toBeVisible()
+      await expect(questionDragPreview).toContainText('DRF-KUF001')
       await page.mouse.move(targetX, targetY, { steps: 8 })
       await page.mouse.up()
 
+      await expect(questionDragPreview).toHaveCount(0)
       await expect(questionRows.nth(0)).toContainText('DRF-KUF002')
       await expect(questionRows.nth(1)).toContainText('DRF-KUF001')
     } finally {

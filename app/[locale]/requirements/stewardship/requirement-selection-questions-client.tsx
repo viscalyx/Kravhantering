@@ -222,6 +222,13 @@ interface ScrollOverflowState {
   hasOverflowBelow: boolean
 }
 
+interface QuestionDragPreviewState {
+  question: RequirementSelectionQuestion
+  width: number
+  x: number
+  y: number
+}
+
 function sourceFilterEquals(
   left: AnswerRequirementSourceFilter,
   right: AnswerRequirementSourceFilter,
@@ -914,6 +921,8 @@ export default function RequirementSelectionQuestionsClient() {
   const [dragOverQuestionId, setDragOverQuestionId] = useState<number | null>(
     null,
   )
+  const [questionDragPreview, setQuestionDragPreview] =
+    useState<QuestionDragPreviewState | null>(null)
   const [reorderingQuestionId, setReorderingQuestionId] = useState<
     number | null
   >(null)
@@ -943,6 +952,10 @@ export default function RequirementSelectionQuestionsClient() {
     hasStarted: boolean
     lastTargetQuestionId: number | null
     pointerId: number
+    previewOffsetX: number
+    previewOffsetY: number
+    previewWidth: number
+    question: RequirementSelectionQuestion
     questionId: number
     startX: number
     startY: number
@@ -959,6 +972,19 @@ export default function RequirementSelectionQuestionsClient() {
   useEffect(() => {
     questionsRef.current = questions
   }, [questions])
+
+  const updateQuestionDragPreview = (
+    pointerDrag: NonNullable<typeof questionPointerDragRef.current>,
+    clientX: number,
+    clientY: number,
+  ) => {
+    setQuestionDragPreview({
+      question: pointerDrag.question,
+      width: pointerDrag.previewWidth,
+      x: clientX - pointerDrag.previewOffsetX,
+      y: clientY - pointerDrag.previewOffsetY,
+    })
+  }
 
   const selectedQuestion =
     questions.find(question => question.id === selectedQuestionId) ?? null
@@ -1943,6 +1969,7 @@ export default function RequirementSelectionQuestionsClient() {
     draggedQuestionRef.current = null
     setDraggedQuestionId(null)
     setDragOverQuestionId(null)
+    setQuestionDragPreview(null)
   }
 
   const handleQuestionDragHandlePointerDown = (
@@ -1957,6 +1984,18 @@ export default function RequirementSelectionQuestionsClient() {
       return
     }
     event.currentTarget.setPointerCapture?.(event.pointerId)
+    const sourceRow = event.currentTarget.closest<HTMLElement>(
+      '[data-question-drop-target="true"]',
+    )
+    const sourceRect = sourceRow?.getBoundingClientRect()
+    const previewWidth =
+      sourceRect && sourceRect.width > 0 ? sourceRect.width : 480
+    const previewOffsetX = sourceRect
+      ? Math.max(0, Math.min(event.clientX - sourceRect.left, previewWidth))
+      : 22
+    const previewOffsetY = sourceRect
+      ? Math.max(0, Math.min(event.clientY - sourceRect.top, sourceRect.height))
+      : 32
     const abortController = new AbortController()
     questionPointerDragRef.current = {
       abortController,
@@ -1965,6 +2004,10 @@ export default function RequirementSelectionQuestionsClient() {
       hasStarted: false,
       lastTargetQuestionId: null,
       pointerId: event.pointerId,
+      previewOffsetX,
+      previewOffsetY,
+      previewWidth,
+      question,
       questionId: question.id,
       startX: event.clientX,
       startY: event.clientY,
@@ -2007,6 +2050,7 @@ export default function RequirementSelectionQuestionsClient() {
     }
 
     event.preventDefault()
+    updateQuestionDragPreview(pointerDrag, event.clientX, event.clientY)
     const targetElement = document.elementFromPoint(
       event.clientX,
       event.clientY,
@@ -3204,9 +3248,79 @@ export default function RequirementSelectionQuestionsClient() {
       </div>
     ) : null
 
+  const questionDragPreviewContent = questionDragPreview
+    ? (() => {
+        const { question } = questionDragPreview
+        const answerCountText = `${question.answers.length} ${
+          question.answers.length === 1
+            ? copy.answerCountSingular
+            : copy.answerCountPlural
+        }`
+
+        return (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none fixed z-[80] overflow-hidden rounded-2xl border border-primary-200 bg-white/95 text-left shadow-2xl ring-2 ring-primary-300/70 backdrop-blur-sm dark:border-primary-800 dark:bg-secondary-900/95 dark:ring-primary-700/70"
+            data-question-drag-preview="true"
+            style={{
+              left: questionDragPreview.x,
+              maxWidth: 'calc(100vw - 1rem)',
+              top: questionDragPreview.y,
+              width: questionDragPreview.width,
+            }}
+          >
+            <div className="flex items-stretch">
+              <div className="inline-flex min-h-16 w-11 shrink-0 items-center justify-center border-r border-secondary-200 text-secondary-700 dark:border-secondary-800 dark:text-secondary-200">
+                <GripVertical aria-hidden="true" className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1 px-4 py-4">
+                <div className="flex items-start gap-3">
+                  <ChevronRight
+                    aria-hidden="true"
+                    className="mt-1 h-4 w-4 shrink-0 text-secondary-500 dark:text-secondary-400"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-md bg-secondary-100 px-2 py-1 font-mono text-xs text-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                        {question.questionCode}
+                      </span>
+                      <span className="text-xs text-secondary-500">
+                        {question.areaName}
+                      </span>
+                      <span className="text-xs text-secondary-500">
+                        {question.selectionType === 'multiple'
+                          ? copy.multiple
+                          : copy.single}
+                      </span>
+                      <span className="text-xs font-medium text-secondary-700 dark:text-secondary-300">
+                        {statusText(question, copy)}
+                      </span>
+                      <span className="text-xs text-secondary-500 dark:text-secondary-400">
+                        {answerCountText}
+                      </span>
+                      {question.visibilityGroups.length > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-100">
+                          <Eye aria-hidden="true" className="h-3 w-3" />
+                          {copy.visibilityButtonText}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-2 truncate font-medium text-secondary-950 dark:text-secondary-50">
+                      {question.text}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()
+    : null
+
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom" ref={contentRef}>
+        {questionDragPreviewContent}
         <FloatingActionRail
           anchorRef={listAnchorRef}
           developerModeContext="requirementSelectionQuestions"
