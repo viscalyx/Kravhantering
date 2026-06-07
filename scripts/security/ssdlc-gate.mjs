@@ -4,7 +4,7 @@ export const REQUIRED_CHECKBOXES = [
   {
     id: 'requirements',
     label:
-      'There are no security requirements, data protection impact or threat model impact, and no security tests are needed for this change.',
+      'I have reviewed SSDLC requirements for this change and addressed any security, data protection, threat-model, and security-testing impacts.',
   },
 ]
 

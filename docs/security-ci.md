@@ -36,12 +36,13 @@ security policy and review templates themselves.
 
 The pull request template contains a stable hidden marker that the script uses
 for validation. For security-sensitive changes, the SSDLC checkbox must be
-checked to confirm there are no security requirements, no data protection
-impact, no threat-model impact, and no security tests needed for the change.
+checked to confirm the author reviewed SSDLC requirements and addressed any
+security, data protection, threat-model, and security-testing impacts for the
+change.
 
-The check validates that the pull request author made this explicit assertion,
-not whether the assessment is correct. Human reviewers still own the security
-judgement.
+The check validates that the pull request author made this explicit
+assertion, not whether the assessment is correct. Human reviewers still own
+the security judgement.
 
 Do not change the SSDLC gate to check out or execute pull request code under
 `pull_request_target`. If the gate ever needs to inspect file contents, add a

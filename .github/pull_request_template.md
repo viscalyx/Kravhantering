@@ -27,4 +27,4 @@ Complete this section for every PR. You are responsible for ensuring that
 the change meets SSDLC requirements. If you are not confident you can
 check this box, request a security review.
 
-- [ ] There are no security requirements, data protection impact or threat model impact, and no security tests are needed for this change. <!-- DO NOT REMOVE: ssdlc:requirements -->
+- [ ] I have reviewed SSDLC requirements for this change and addressed any security, data protection, threat-model, and security-testing impacts. <!-- DO NOT REMOVE: ssdlc:requirements -->

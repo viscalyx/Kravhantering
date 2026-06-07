@@ -10,9 +10,12 @@ import {
   readPullRequestFromGitHub,
 } from '../ssdlc-gate.mjs'
 
+const requirementsLabel =
+  'I have reviewed SSDLC requirements for this change and addressed any security, data protection, threat-model, and security-testing impacts.'
+
 const completePrBody = `## SSDLC Gate
 
-- [x] There are no security requirements, data protection impact or threat model impact, and no security tests are needed for this change. <!-- DO NOT REMOVE: ssdlc:requirements -->
+- [x] ${requirementsLabel} <!-- DO NOT REMOVE: ssdlc:requirements -->
 `
 
 describe('SSDLC gate', () => {
@@ -59,11 +62,25 @@ describe('SSDLC gate', () => {
   it('parses checkbox states', () => {
     expect(checkboxState(completePrBody, 'requirements')).toBe('checked')
     expect(
+      checkboxState(completePrBody.replace('- [x]', '- [ ]'), 'requirements'),
+    ).toBe('unchecked')
+    expect(
       checkboxState(
         completePrBody.replace(
-          '- [x] There are no security requirements, data protection impact or threat model impact, and no security tests are needed for this change. <!-- DO NOT REMOVE: ssdlc:requirements -->',
-          '- [ ] There are no security requirements, data protection impact or threat model impact, and no security tests are needed for this change. <!-- DO NOT REMOVE: ssdlc:requirements -->',
+          '<!-- DO NOT REMOVE: ssdlc:requirements -->',
+          '<!--   reviewed before ssdlc:requirements after text   -->',
         ),
+        'requirements',
+      ),
+    ).toBe('checked')
+    expect(
+      checkboxState(
+        completePrBody
+          .replace('- [x]', '- [ ]')
+          .replace(
+            '<!-- DO NOT REMOVE: ssdlc:requirements -->',
+            '<!--   reviewed before ssdlc:requirements after text   -->',
+          ),
         'requirements',
       ),
     ).toBe('unchecked')
@@ -98,10 +115,7 @@ describe('SSDLC gate', () => {
   })
 
   it('requires the SSDLC checkbox to be checked', () => {
-    const incompleteBody = completePrBody.replace(
-      '- [x] There are no security requirements, data protection impact or threat model impact, and no security tests are needed for this change. <!-- DO NOT REMOVE: ssdlc:requirements -->',
-      '- [ ] There are no security requirements, data protection impact or threat model impact, and no security tests are needed for this change. <!-- DO NOT REMOVE: ssdlc:requirements -->',
-    )
+    const incompleteBody = completePrBody.replace('- [x]', '- [ ]')
 
     const result = evaluateSsdlcGate({
       changedFiles: ['lib/privacy/display-name.ts'],
@@ -111,7 +125,7 @@ describe('SSDLC gate', () => {
     expect(result.passed).toBe(false)
     expect(result.failures).toEqual(
       expect.arrayContaining([
-        'SSDLC checkbox is not checked: There are no security requirements, data protection impact or threat model impact, and no security tests are needed for this change.',
+        `SSDLC checkbox is not checked: ${requirementsLabel}`,
       ]),
     )
   })
