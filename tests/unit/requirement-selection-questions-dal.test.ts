@@ -391,7 +391,20 @@ describe('requirement selection questions DAL', () => {
       )
     })
     expect(String(hiddenFollowUpUpdate?.[0])).toContain('SET is_historical = 1')
-    expect(hiddenFollowUpUpdate?.[1]).toEqual([9, 2])
+    expect(String(hiddenFollowUpUpdate?.[0])).toContain('changed_at = @2')
+    expect(String(hiddenFollowUpUpdate?.[0])).toContain(
+      'changed_by_hsa_id = @3',
+    )
+    expect(String(hiddenFollowUpUpdate?.[0])).toContain(
+      'changed_by_display_name = @4',
+    )
+    expect(hiddenFollowUpUpdate?.[1]).toEqual([
+      9,
+      2,
+      expect.any(Date),
+      'SE5560000001-ada',
+      'Ada',
+    ])
     expect(
       query.mock.calls.some(([sql]) => {
         const text = String(sql)

@@ -2187,12 +2187,21 @@ export async function replaceSpecificationRequirementSelectionAnswers(
       await manager.query(
         `
           UPDATE specification_requirement_selection_answers
-          SET is_historical = 1
+          SET is_historical = 1,
+              changed_at = @${hiddenQuestionIds.length + 1},
+              changed_by_hsa_id = @${hiddenQuestionIds.length + 2},
+              changed_by_display_name = @${hiddenQuestionIds.length + 3}
           WHERE specification_id = @0
             AND question_id IN (${placeholders(hiddenQuestionIds, 1)})
             AND is_historical = 0
         `,
-        [specificationId, ...hiddenQuestionIds],
+        [
+          specificationId,
+          ...hiddenQuestionIds,
+          now,
+          actor.hsaId,
+          actor.displayName,
+        ],
       )
     }
   })
