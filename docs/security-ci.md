@@ -4,7 +4,7 @@ Continuous-integration security checks specific to this repository. The
 canonical scanner choice and rationale, plus instructions for tuning,
 extending, and replicating the scan locally.
 
-## SSDLC gate workflow
+## SSDLC (Secure Software Development Life Cycle) gate workflow
 
 Workflow file:
 [.github/workflows/ssdlc-gate.yml](../.github/workflows/ssdlc-gate.yml).
@@ -34,18 +34,15 @@ security policy and review templates themselves.
 
 ### Required pull request evidence
 
-The pull request template contains stable hidden markers that the script uses
-for validation. For security-sensitive changes, all SSDLC checkboxes must be
-checked and the notes area must contain the concrete decision record:
+The pull request template contains a stable hidden marker that the script uses
+for validation. For security-sensitive changes, the SSDLC checkbox must be
+checked to confirm the author reviewed SSDLC requirements and addressed any
+security, data protection, threat-model, and security-testing impacts for the
+change.
 
-- affected information-security requirements, for example 8.25 or 8.26
-- security tests added or run, or why no security test is relevant
-- data protection impact, or why no personal-data impact exists
-- threat-model impact, or why no threat-model update is needed
-- approval context, including CODEOWNERS or named security review
-
-The check validates completeness and traceability, not whether the assessment
-is correct. Human reviewers still own the security judgement.
+The check validates that the pull request author made this explicit
+assertion, not whether the assessment is correct. Human reviewers still own
+the security judgement.
 
 Do not change the SSDLC gate to check out or execute pull request code under
 `pull_request_target`. If the gate ever needs to inspect file contents, add a
