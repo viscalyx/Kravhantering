@@ -92,6 +92,14 @@ the host by the compose file and additionally listed in
 `http://localhost:8080` even when the devcontainer is remote (Codespaces
 or a remote SSH host).
 
+The devcontainer also includes Kong Gateway as the internal `kong` service for
+API-management verification. Kong runs DB-less with source-controlled
+configuration from `containers/kong/kong.yml`. Its proxy and Admin API are
+available only on the compose network at `kong:8000` and `kong:8001`; no Kong
+ports are forwarded to the host. Use `npm run devcontainer:kong:status` from
+the workspace to verify that the devcontainer `app` service can reach the
+internal Admin API.
+
 Inside the `app` container, however, `localhost:8080` does **not** reach
 Keycloak — Keycloak runs in the sibling `idp` container and is reachable
 on the compose network only as `idp:8080`. Because the OIDC issuer URL

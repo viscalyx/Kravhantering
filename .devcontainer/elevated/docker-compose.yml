@@ -113,6 +113,26 @@ services:
     volumes:
       - ../../dev/keycloak:/opt/keycloak/data/import:ro
 
+  kong:
+    image: docker.io/kong/kong-gateway:3.10.0.8-20260210-ubuntu@sha256:031e2abf5b973db9ce5d94ea30a46d4b29b3879088118e0b1c0ff66b8c814853
+    environment:
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+    volumes:
+      - ${WORKSPACE_HOST_ROOT:-../..}/containers/kong/kong.yml:/kong/declarative/kong.yml:ro
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      retries: 12
+      start_period: 10s
+      timeout: 5s
+
 volumes:
   sqlserver-elevated-devcontainer-data:
   codex-tmp:

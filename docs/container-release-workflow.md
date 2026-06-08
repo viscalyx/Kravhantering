@@ -52,6 +52,10 @@ Keycloak upstream tags weekly from `main` and can also be run manually with
 `keycloak`; the `include-current` input also refreshes the immutable digest
 metadata for the current selected lane.
 
+Kong is intentionally not part of this updater in phase 1. Its lock under
+`containers/kong/` is devcontainer-only until the production-like and
+single-node stack decisions are made in a later phase.
+
 The updater uses one branch and one ready-for-review PR per image lane. A lane
 is the image name plus the target major line, or the SQL Server product year:
 
