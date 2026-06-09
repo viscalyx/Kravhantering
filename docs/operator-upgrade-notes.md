@@ -7,15 +7,14 @@ target version.
 
 ## Unreleased
 
-### Requirement package and area owners must have HSA-IDs before upgrade
+### Responsibility assignments must have valid HSA-IDs before upgrade
 
-Confirm that every requirement package has an owner with a HSA-ID and every
-requirement area has an owner with a valid HSA-ID before running
-`db-job migrate`. Area owner HSA-IDs must use two uppercase country-code
-letters, 10 digits, `-`, and an alphanumeric suffix. This migration cannot be
-rolled back: it removes the legacy `owners` rows, and their original names,
-email addresses and timestamps cannot be reconstructed from
-`requirement_areas.owner_hsa_id` without data loss.
+Confirm that every live requirement-area owner, requirement-area co-author,
+specification lead, specification co-author, and requirement-package lead has a
+valid HSA-ID before running `db-job migrate`. The migration creates
+`requirement_responsibility_people`, removes duplicated live display-name
+columns, and cannot reconstruct removed name snapshots on rollback without data
+loss.
 
 ### Custom UI terminology must be exported before upgrade if it must be retained
 
