@@ -72,6 +72,8 @@ verification.
 | `VERSION` | Release artifact names | No default | Always record the release version to install, for example `1.2.3`. |
 | `APP_HOST` | `PUBLIC_HOSTNAME`, app URLs, `KC_HOSTNAME`, realm redirect/logout settings, realm web origins, TLS certificate SANs and smoke checks | No default | Always record the public DNS name without `https://`, for example `kravhantering.example.internal`. |
 | `NEXT_PUBLIC_SITE_URL` | `NEXT_PUBLIC_SITE_URL` in `app.env` | `https://<APP_HOST>` | Verify after choosing `APP_HOST`; plan only if the public URL cannot use the normal scheme and host. |
+| `HSA_PERSON_LOOKUP_URL` | `HSA_PERSON_LOOKUP_URL` in `app.env` | No default | Always record the approved server-side HSA person lookup endpoint, normally the environment's Kong or integration-platform REST facade. |
+| `HSA_PERSON_LOOKUP_TIMEOUT_MS` | `HSA_PERSON_LOOKUP_TIMEOUT_MS` in `app.env` | `5000` | Plan only if the HSA integration path needs another timeout. |
 | `KC_HOSTNAME` | `KC_HOSTNAME` in `keycloak.env` | `https://<APP_HOST>/auth` | Verify after choosing `APP_HOST`; plan only if Keycloak is deliberately exposed at another public URL. |
 | `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Verify from the actual Compose network. It can change when the internal network is renamed, recreated or assigned another subnet. |
 | `MSSQL_SA_PASSWORD` | `MSSQL_SA_PASSWORD` in `sqlserver.env` and `DB_BOOTSTRAP_ADMIN_PASSWORD` in `db-job.env` | No default | Always generate a unique SQL Server `sa` password. Use the same value in both places and follow [Generate Unique Secrets](#generate-unique-secrets). |
@@ -661,6 +663,8 @@ AUTH_SESSION_COOKIE_NAME=kravhantering_session
 AUTH_SESSION_COOKIE_PASSWORD=<at-least-32-random-characters>
 AUTH_SESSION_TTL_SECONDS=28800
 MCP_CLIENT_ID=kravhantering-mcp
+HSA_PERSON_LOOKUP_TIMEOUT_MS=5000
+HSA_PERSON_LOOKUP_URL=https://kong.example.internal/hsa/person-records/lookup
 
 NEXT_PUBLIC_DEFAULT_MODEL=
 OPENROUTER_API_KEY=
@@ -695,6 +699,13 @@ re-authenticate.
 for MCP clients. Keep it aligned with the `kravhantering-mcp` client id in the
 realm JSON, or leave the default when MCP service tokens are not used. It is not
 a secret.
+
+Set `HSA_PERSON_LOOKUP_URL` to the environment-specific server-side HSA
+lookup endpoint. The browser must not call the HSA integration directly; the
+app calls this internal Kong or integration-platform REST facade only when an
+editable HSA id needs lookup or refresh. Keep
+`HSA_PERSON_LOOKUP_TIMEOUT_MS=5000` unless the approved integration path needs
+another timeout.
 
 Leave `NEXT_PUBLIC_DEFAULT_MODEL`, `OPENROUTER_API_KEY` and
 `OPENROUTER_MGMT_API_KEY` empty unless AI requirement generation is approved
