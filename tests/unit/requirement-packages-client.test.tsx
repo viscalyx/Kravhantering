@@ -54,6 +54,7 @@ const sampleRequirementPackages = [
     id: 1,
     isArchived: false,
     leadDisplayName: 'Anna Owner',
+    leadEmail: 'anna.owner@example.test',
     leadHsaId: 'SE5560000001-anna1',
     linkedRequirementCount: 0,
     name: 'Mobile use',
@@ -65,6 +66,7 @@ const additionalRequirementPackage = {
   id: 2,
   isArchived: false,
   leadDisplayName: 'Sara Owner',
+  leadEmail: 'sara.owner@example.test',
   leadHsaId: 'SE5560000001-sara1',
   linkedRequirementCount: 3,
   name: 'API use',
@@ -74,10 +76,6 @@ const requirementPackageNameInput = () =>
   screen.getByRole('textbox', { name: /requirementPackage\.name/ })
 const requirementPackageLeadHsaIdInput = () =>
   screen.getByRole('textbox', { name: /requirementPackage\.leadHsaId/ })
-const requirementPackageLeadDisplayNameInput = () =>
-  screen.getByRole('textbox', {
-    name: /requirementPackage\.leadDisplayName/,
-  })
 
 function setupRequirementPackageMocks(
   requirementPackageDetailResponse: () => Promise<unknown> | unknown,
@@ -283,8 +281,14 @@ describe('RequirementPackagesClient', () => {
       }),
     ).toBeInTheDocument()
     expect(requirementPackageNameInput()).toBeInTheDocument()
-    expect(requirementPackageLeadHsaIdInput()).toBeInTheDocument()
-    expect(requirementPackageLeadDisplayNameInput()).toBeInTheDocument()
+    expect(
+      screen.queryByRole('textbox', {
+        name: /requirementPackage\.leadHsaId/,
+      }),
+    ).toBeNull()
+    expect(
+      screen.getByText('requirementPackage.noCoAuthors'),
+    ).toBeInTheDocument()
   })
 
   it('opens create form', async () => {
@@ -303,8 +307,11 @@ describe('RequirementPackagesClient', () => {
       }),
     ).toBeInTheDocument()
     expect(requirementPackageNameInput()).toBeInTheDocument()
-    expect(requirementPackageLeadHsaIdInput()).toBeInTheDocument()
-    expect(requirementPackageLeadDisplayNameInput()).toBeInTheDocument()
+    expect(
+      screen.queryByRole('textbox', {
+        name: /requirementPackage\.leadHsaId/,
+      }),
+    ).toBeNull()
     const nameHelpButton = screen.getByRole('button', {
       name: 'common.help: requirementPackage.name',
     })
@@ -312,9 +319,7 @@ describe('RequirementPackagesClient', () => {
     expect(nameHelpButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('requirementPackage.nameHelp')).toBeInTheDocument()
     expect(
-      screen.getByRole('button', {
-        name: 'common.help: requirementPackage.leadHsaId',
-      }),
+      screen.getByText('requirementPackage.coAuthorsHelp'),
     ).toBeInTheDocument()
   })
 
@@ -348,12 +353,6 @@ describe('RequirementPackagesClient', () => {
     fireEvent.change(requirementPackageNameInput(), {
       target: { value: 'Ny' },
     })
-    fireEvent.change(requirementPackageLeadHsaIdInput(), {
-      target: { value: 'SE5560000001-lead1' },
-    })
-    fireEvent.change(requirementPackageLeadDisplayNameInput(), {
-      target: { value: 'Lead One' },
-    })
 
     fetchMock.mockResolvedValueOnce(okJson({ id: 2 }))
     fetchMock.mockResolvedValueOnce(
@@ -365,7 +364,60 @@ describe('RequirementPackagesClient', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/requirement-packages',
-        expect.objectContaining({ method: 'POST' }),
+        expect.objectContaining({
+          body: JSON.stringify({
+            coAuthorHsaIds: [],
+            description: undefined,
+            name: 'Ny',
+          }),
+          method: 'POST',
+        }),
+      )
+    })
+  })
+
+  it('submits package co-authors as HSA-ID assignments', async () => {
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: /requirementPackage.newRequirementPackage/i,
+      }),
+    )
+    fireEvent.change(requirementPackageNameInput(), {
+      target: { value: 'Ny' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /requirementPackage\.addCoAuthor/i,
+      }),
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: /requirementPackage\.coAuthorHsaId/,
+      }),
+      { target: { value: 'SE5560000001-coa1' } },
+    )
+
+    fetchMock.mockResolvedValueOnce(okJson({ id: 2 }))
+    fetchMock.mockResolvedValueOnce(
+      okJson({ requirementPackages: sampleRequirementPackages }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-packages',
+        expect.objectContaining({
+          body: JSON.stringify({
+            coAuthorHsaIds: ['SE5560000001-coa1'],
+            name: 'Ny',
+          }),
+          method: 'POST',
+        }),
       )
     })
   })
@@ -387,6 +439,10 @@ describe('RequirementPackagesClient', () => {
     expect((requirementPackageNameInput() as HTMLInputElement).value).toBe(
       'Mobile use',
     )
+    expect(requirementPackageLeadHsaIdInput()).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /common\.hsaVerifyEmail/ }),
+    ).toHaveValue('anna.owner@example.test')
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })

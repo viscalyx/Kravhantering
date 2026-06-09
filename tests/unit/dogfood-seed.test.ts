@@ -39,7 +39,6 @@ function emptySeed() {
         'name',
         'description',
         'lead_hsa_id',
-        'lead_display_name',
         'is_archived',
         'created_at',
         'updated_at',

@@ -58,7 +58,9 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationLifecycleStatusId: 3,
           businessNeedsReference: 'Strategic need',
           responsibleHsaId: 'SE5560000001-ada1',
-          responsibleDisplayName: 'Ada Admin',
+          responsibleGivenName: 'Ada',
+          responsibleMiddleName: null,
+          responsibleSurname: 'Admin',
           canResponsibleGenerateAi: 1,
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-21T10:00:00.000Z'),
@@ -130,7 +132,9 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         specificationLifecycleStatusId: 7,
         businessNeedsReference: null,
         responsibleHsaId: 'SE5560000001-rita1',
-        responsibleDisplayName: 'Rita Reviewer',
+        responsibleGivenName: 'Rita',
+        responsibleMiddleName: null,
+        responsibleSurname: 'Reviewer',
         canResponsibleGenerateAi: 0,
         createdAt: new Date('2026-04-20T09:00:00.000Z'),
         updatedAt: new Date('2026-04-21T09:00:00.000Z'),
@@ -241,6 +245,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
   it('creates and updates specifications using OUTPUT on SQL Server', async () => {
     const { db, query } = createSqlServerDb()
     query
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
           id: 11,
@@ -251,12 +256,12 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationLifecycleStatusId: 4,
           businessNeedsReference: 'Need',
           responsibleHsaId: 'SE5560000001-ada1',
-          responsibleDisplayName: 'Ada Admin',
           canResponsibleGenerateAi: 1,
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-20T10:00:00.000Z'),
         },
       ])
+      .mockResolvedValueOnce([{ responsibleHsaId: 'SE5560000001-ada1' }])
       .mockResolvedValueOnce([
         {
           id: 11,
@@ -267,12 +272,12 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationLifecycleStatusId: 4,
           businessNeedsReference: null,
           responsibleHsaId: null,
-          responsibleDisplayName: null,
           canResponsibleGenerateAi: 0,
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-21T10:00:00.000Z'),
         },
       ])
+      .mockResolvedValueOnce([])
 
     const created = await createSpecification(db, {
       uniqueId: 'SPEC-011',
@@ -281,14 +286,19 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       specificationLifecycleStatusId: 4,
       businessNeedsReference: 'Need',
       responsibleHsaId: 'SE5560000001-ada1',
-      responsibleDisplayName: 'Ada Admin',
+      responsiblePerson: {
+        email: 'ada@example.test',
+        givenName: 'Ada',
+        hsaId: 'SE5560000001-ada1',
+        middleName: null,
+        surname: 'Admin',
+      },
       canResponsibleGenerateAi: true,
     })
     const updated = await updateSpecification(db, 11, {
       name: 'Specification Eleven Updated',
       businessNeedsReference: null,
       responsibleHsaId: null,
-      responsibleDisplayName: null,
       canResponsibleGenerateAi: false,
     })
 
@@ -312,6 +322,18 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     })
     expect(query).toHaveBeenNthCalledWith(
       1,
+      expect.stringContaining('MERGE INTO requirement_responsibility_people'),
+      [
+        'SE5560000001-ada1',
+        'Ada',
+        null,
+        'Admin',
+        'ada@example.test',
+        expect.any(Date),
+      ],
+    )
+    expect(query).toHaveBeenNthCalledWith(
+      2,
       expect.stringContaining('INSERT INTO requirements_specifications'),
       [
         'SPEC-011',
@@ -321,23 +343,14 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         4,
         'Need',
         'SE5560000001-ada1',
-        'Ada Admin',
         1,
         expect.any(Date),
       ],
     )
     expect(query).toHaveBeenNthCalledWith(
-      2,
+      4,
       expect.stringContaining('UPDATE requirements_specifications'),
-      [
-        'Specification Eleven Updated',
-        null,
-        null,
-        null,
-        0,
-        expect.any(Date),
-        11,
-      ],
+      ['Specification Eleven Updated', null, null, 0, expect.any(Date), 11],
     )
   })
 
@@ -350,21 +363,26 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(transaction).toHaveBeenCalledTimes(1)
     expect(query).toHaveBeenNthCalledWith(
       1,
-      'DELETE FROM specification_local_requirements WHERE specification_id = @0',
+      expect.stringContaining('SELECT responsible_hsa_id AS hsaId'),
       [7],
     )
     expect(query).toHaveBeenNthCalledWith(
       2,
-      'DELETE FROM requirements_specification_items WHERE requirements_specification_id = @0',
+      'DELETE FROM specification_local_requirements WHERE specification_id = @0',
       [7],
     )
     expect(query).toHaveBeenNthCalledWith(
       3,
-      'DELETE FROM specification_needs_references WHERE specification_id = @0',
+      'DELETE FROM requirements_specification_items WHERE requirements_specification_id = @0',
       [7],
     )
     expect(query).toHaveBeenNthCalledWith(
       4,
+      'DELETE FROM specification_needs_references WHERE specification_id = @0',
+      [7],
+    )
+    expect(query).toHaveBeenNthCalledWith(
+      5,
       'DELETE FROM requirements_specifications WHERE id = @0',
       [7],
     )

@@ -16,6 +16,7 @@ import {
 
 const LINNEA_HSA_ID = 'SE5560000001-linneab'
 const LINNEA_DISPLAY_NAME = 'Linnéa Bergström'
+const RESPONSIBILITY_PERSON_PLACEHOLDER = '(saknar namn, kräver nytt uppslag)'
 
 interface SeedInsertRow {
   row: Record<string, unknown>
@@ -318,7 +319,11 @@ describe('seed profiles', () => {
     )
     const kalleSpecificationHsaIds = new Set(
       seedRowsFor(rows, 'requirements_specifications')
-        .filter(row => row.responsible_display_name === 'Kalle Svensson')
+        .filter(row =>
+          ['SE5560000001-kalle1', 'SE5560000001-kalle2'].includes(
+            String(row.responsible_hsa_id),
+          ),
+        )
         .map(row => row.responsible_hsa_id),
     )
     expect(kalleSpecificationHsaIds).toEqual(
@@ -471,10 +476,14 @@ describe('seed profiles', () => {
       )?.created_by_display_name,
     ).toBe(LINNEA_DISPLAY_NAME)
     expect(
-      seedRowsFor(rows, 'specification_co_authors').find(
+      seedRowsFor(rows, 'requirement_responsibility_people').find(
         row => row.hsa_id === LINNEA_HSA_ID,
-      )?.display_name,
-    ).toBe(LINNEA_DISPLAY_NAME)
+      ),
+    ).toMatchObject({
+      given_name: RESPONSIBILITY_PERSON_PLACEHOLDER,
+      hsa_id: LINNEA_HSA_ID,
+      last_fetched_at: null,
+    })
     expect(
       seedRowsFor(rows, 'specification_co_authors').find(
         row => row.created_by_hsa_id === LINNEA_HSA_ID,
@@ -643,7 +652,7 @@ describe('seed profiles', () => {
       specifications.get(RETENTION_SEED.specification.obsolete),
     ).toMatchObject({
       name: 'RETENTION-SEED kravunderlag utanför förvaltning',
-      responsible_display_name: 'seed',
+      responsible_hsa_id: 'SE5560000001-seed',
       specification_lifecycle_status_id: 1,
       updated_at: '2023-01-15 09:00:00',
     })

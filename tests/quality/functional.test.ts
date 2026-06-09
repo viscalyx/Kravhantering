@@ -612,6 +612,8 @@ async function createArea(
   overrides: { name?: string; ownerHsaId?: string; prefix?: string } = {},
 ): Promise<{ id: number; name: string; prefix: string }> {
   const now = new Date()
+  const ownerHsaId = overrides.ownerHsaId ?? 'SE5560000001-1234'
+  await ensureResponsibilityPerson(target, ownerHsaId, now)
   const rows = (await target.query(
     `INSERT INTO requirement_areas (prefix, name, owner_hsa_id, next_sequence, created_at, updated_at)
        OUTPUT INSERTED.id AS id, INSERTED.name AS name, INSERTED.prefix AS prefix
@@ -619,35 +621,54 @@ async function createArea(
     [
       overrides.prefix ?? 'INT',
       overrides.name ?? 'Integration',
-      overrides.ownerHsaId ?? 'SE5560000001-1234',
+      ownerHsaId,
       now,
     ],
   )) as Array<{ id: number; name: string; prefix: string }>
   return rows[0] as { id: number; name: string; prefix: string }
 }
 
+async function ensureResponsibilityPerson(
+  target: SqlServerDatabase,
+  hsaId: string,
+  now: Date,
+): Promise<void> {
+  await target.query(
+    `IF NOT EXISTS (
+        SELECT 1 FROM requirement_responsibility_people WHERE hsa_id = @0
+      )
+      INSERT INTO requirement_responsibility_people (
+        hsa_id,
+        given_name,
+        middle_name,
+        surname,
+        email,
+        last_fetched_at,
+        created_at,
+        updated_at
+      )
+      VALUES (@0, @1, NULL, NULL, NULL, NULL, @2, @2)`,
+    [hsaId, '(saknar namn, kräver nytt uppslag)', now],
+  )
+}
+
 async function createRequirementPackage(
   target: SqlServerDatabase,
 ): Promise<{ id: number }> {
   const now = new Date()
+  const leadHsaId = 'SE5560000001-johlju'
+  await ensureResponsibilityPerson(target, leadHsaId, now)
   const rows = (await target.query(
     `INSERT INTO requirement_packages (
         name,
         description,
         lead_hsa_id,
-        lead_display_name,
         created_at,
         updated_at
       )
        OUTPUT INSERTED.id AS id
-       VALUES (@0, @1, @2, @3, @4, @4)`,
-    [
-      'Säkerhetspaket',
-      'Security package',
-      'SE5560000001-johlju',
-      'Paket Ansvarig',
-      now,
-    ],
+       VALUES (@0, @1, @2, @3, @3)`,
+    ['Säkerhetspaket', 'Security package', leadHsaId, now],
   )) as Array<{ id: number }>
   return rows[0] as { id: number }
 }

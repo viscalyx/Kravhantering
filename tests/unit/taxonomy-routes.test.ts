@@ -5,16 +5,35 @@ import { validationError } from '@/lib/requirements/errors'
 /* ── shared request DB mocks ─────────────────────────────────────── */
 
 const routeState = vi.hoisted(() => {
+  const query = vi.fn(async () => [{ id: 1 }])
   const transactionDb = { query: vi.fn() }
   const transaction = vi.fn(async (callback: (manager: unknown) => unknown) =>
     callback(transactionDb),
   )
   return {
-    getRequestSqlServerDataSource: vi.fn(() => ({ transaction })),
+    getRequestSqlServerDataSource: vi.fn(() => ({ query, transaction })),
+    query,
     transaction,
     transactionDb,
   }
 })
+
+const hsaLookupState = vi.hoisted(() => ({
+  lookupHsaPerson: vi.fn(async (hsaId: string) => ({
+    email: `${hsaId.toLowerCase()}@example.test`,
+    givenName: 'Test',
+    hsaId,
+    middleName: null,
+    surname: 'Person',
+  })),
+}))
+
+const responsibilityPersonState = vi.hoisted(() => ({
+  getRequirementResponsibilityPerson: vi.fn(
+    async (..._args: unknown[]) => null as unknown,
+  ),
+  upsertRequirementResponsibilityPerson: vi.fn(async () => undefined),
+}))
 
 const auditState = vi.hoisted(() => ({
   createAdminPrivilegedAuditContext: vi.fn(async () => ({
@@ -73,8 +92,28 @@ const cleanupAuditState = vi.hoisted(() => ({
   recordRequirementSelectionCleanupAudit: vi.fn(),
 }))
 
+const requirementAreaPermissionState = vi.hoisted(() => ({
+  canAuthorAnyArea: vi.fn(async (..._args: unknown[]) => true),
+  canAuthorArea: vi.fn(async (..._args: unknown[]) => true),
+}))
+
+const specificationPermissionState = vi.hoisted(() => ({
+  canAuthorSpecification: vi.fn(async (..._args: unknown[]) => true),
+}))
+
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
+}))
+
+vi.mock('@/lib/hsa/person-lookup', () => ({
+  lookupHsaPerson: hsaLookupState.lookupHsaPerson,
+}))
+
+vi.mock('@/lib/dal/requirement-responsibility-people', () => ({
+  getRequirementResponsibilityPerson:
+    responsibilityPersonState.getRequirementResponsibilityPerson,
+  upsertRequirementResponsibilityPerson:
+    responsibilityPersonState.upsertRequirementResponsibilityPerson,
 }))
 
 vi.mock('@/lib/admin/privileged-audit', () => ({
@@ -150,6 +189,10 @@ const mockUpdateReqArea = vi.fn()
 const mockDeleteReqArea = vi.fn()
 vi.mock('@/lib/dal/requirement-areas', () => ({
   listAreas: async () => [{ id: 1 }],
+  canAuthorAnyArea: (...a: unknown[]) =>
+    requirementAreaPermissionState.canAuthorAnyArea(...a),
+  canAuthorArea: (...a: unknown[]) =>
+    requirementAreaPermissionState.canAuthorArea(...a),
   createArea: async () => ({ id: 2 }),
   updateArea: (...a: unknown[]) => mockUpdateReqArea(...a),
   deleteArea: (...a: unknown[]) => mockDeleteReqArea(...a),
@@ -192,6 +235,8 @@ const mockUpdatePkg = vi.fn()
 const mockDeletePkg = vi.fn()
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   listSpecifications: async () => [{ id: 1 }],
+  canAuthorSpecification: (...a: unknown[]) =>
+    specificationPermissionState.canAuthorSpecification(...a),
   createSpecification: (...a: unknown[]) => mockCreatePkg(...a),
   updateSpecification: (...a: unknown[]) => mockUpdatePkg(...a),
   deleteSpecification: (...a: unknown[]) => mockDeletePkg(...a),
@@ -203,12 +248,21 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
 const mockUpdateRequirementPackage = vi.fn()
 const mockDeleteRequirementPackage = vi.fn()
 const mockArchiveRequirementPackage = vi.fn()
+const mockGetRequirementPackageById = vi.fn(
+  async (
+    ..._args: unknown[]
+  ): Promise<{ id: number; leadHsaId: string } | null> => ({
+    id: 1,
+    leadHsaId: 'SE5560000001-route',
+  }),
+)
 vi.mock('@/lib/dal/requirement-packages', () => ({
   listRequirementPackages: async () => [{ id: 1 }],
   countLinkedRequirementsByPackage: async () => ({}),
   createRequirementPackage: async () => ({ id: 2 }),
   getLinkedRequirementsForPackage: async () => [],
-  getRequirementPackageById: async () => null,
+  getRequirementPackageById: (...a: unknown[]) =>
+    mockGetRequirementPackageById(...a),
   getRequirementPackageUsage: async () => ({
     answerLinkCount: 0,
     libraryRequirementCount: 0,
@@ -298,6 +352,7 @@ import {
   GET as getRequirementPackages,
   POST as postRequirementPackage,
 } from '@/app/api/requirement-packages/route'
+import { POST as postRequirementResponsibilityPersonVerify } from '@/app/api/requirement-responsibility-people/verify/route'
 import { GET as getTypes } from '@/app/api/requirement-types/route'
 import {
   DELETE as deleteGovernanceObjectType,
@@ -361,6 +416,176 @@ async function expectInvalidRequest(
 }
 
 /* ── tests ───────────────────────────────────────────────────────── */
+
+describe('requirement responsibility person verify route', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    authState.context.actor = {
+      displayName: 'Route Tester',
+      hsaId: 'SE5560000001-route',
+      id: 'route-test',
+      isAuthenticated: true,
+      roles: ['RequirementsEditor'],
+      source: 'oidc',
+    }
+    routeState.query.mockResolvedValue([{ id: 1 }])
+    responsibilityPersonState.getRequirementResponsibilityPerson.mockImplementation(
+      async (_db: unknown, hsaId: unknown) => {
+        const value = String(hsaId)
+        return {
+          email: `${value.toLowerCase()}@example.test`,
+          givenName: 'Verified',
+          hsaId: value,
+          middleName: null,
+          surname: 'Person',
+        }
+      },
+    )
+    responsibilityPersonState.upsertRequirementResponsibilityPerson.mockResolvedValue(
+      undefined,
+    )
+    requirementAreaPermissionState.canAuthorAnyArea.mockResolvedValue(true)
+    requirementAreaPermissionState.canAuthorArea.mockResolvedValue(true)
+    specificationPermissionState.canAuthorSpecification.mockResolvedValue(true)
+  })
+
+  it('allows Admin to refresh-verify a requirement area owner HSA-ID', async () => {
+    authState.context.actor.roles = ['Admin']
+
+    const r = await postRequirementResponsibilityPersonVerify(
+      jsonReq('POST', {
+        hsaId: 'SE5560000001-owner1',
+        mode: 'refresh',
+        purpose: 'requirement_area_owner',
+      }),
+    )
+
+    expect(r.status).toBe(200)
+    await expect(r.json()).resolves.toEqual({
+      person: expect.objectContaining({
+        displayName: 'Test Person',
+        hsaId: 'SE5560000001-owner1',
+      }),
+    })
+    expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledWith(
+      'SE5560000001-owner1',
+    )
+    expect(
+      responsibilityPersonState.upsertRequirementResponsibilityPerson,
+    ).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ hsaId: 'SE5560000001-owner1' }),
+    )
+  })
+
+  it('reuses a local responsibility person without HSA lookup on blur mode', async () => {
+    authState.context.actor.roles = ['Admin']
+    responsibilityPersonState.getRequirementResponsibilityPerson.mockResolvedValueOnce(
+      {
+        email: 'local.owner@example.test',
+        givenName: 'Local',
+        hsaId: 'SE5560000001-owner1',
+        middleName: null,
+        surname: 'Owner',
+      },
+    )
+
+    const r = await postRequirementResponsibilityPersonVerify(
+      jsonReq('POST', {
+        hsaId: 'SE5560000001-owner1',
+        mode: 'reuse_local',
+        purpose: 'requirement_area_owner',
+      }),
+    )
+
+    expect(r.status).toBe(200)
+    await expect(r.json()).resolves.toEqual({
+      person: expect.objectContaining({
+        displayName: 'Local Owner',
+        email: 'local.owner@example.test',
+        hsaId: 'SE5560000001-owner1',
+      }),
+    })
+    expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+    expect(
+      responsibilityPersonState.upsertRequirementResponsibilityPerson,
+    ).not.toHaveBeenCalled()
+  })
+
+  it('rejects non-Admin requirement area owner verification before HSA lookup', async () => {
+    authState.context.actor.roles = []
+
+    const r = await postRequirementResponsibilityPersonVerify(
+      jsonReq('POST', {
+        hsaId: 'SE5560000001-owner1',
+        mode: 'refresh',
+        purpose: 'requirement_area_owner',
+      }),
+    )
+
+    expect(r.status).toBe(403)
+    expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+  })
+
+  it('requires scope for requirement area co-author verification', async () => {
+    const r = await postRequirementResponsibilityPersonVerify(
+      jsonReq('POST', {
+        hsaId: 'SE5560000001-coa1',
+        mode: 'refresh',
+        purpose: 'requirement_area_co_author',
+      }),
+    )
+
+    expect(r.status).toBe(403)
+    expect(requirementAreaPermissionState.canAuthorArea).not.toHaveBeenCalled()
+    expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+  })
+
+  it('checks requirement area edit permission before co-author verification lookup', async () => {
+    requirementAreaPermissionState.canAuthorArea.mockResolvedValueOnce(true)
+
+    const r = await postRequirementResponsibilityPersonVerify(
+      jsonReq('POST', {
+        hsaId: 'SE5560000001-coa1',
+        mode: 'refresh',
+        purpose: 'requirement_area_co_author',
+        scopeId: 7,
+      }),
+    )
+
+    expect(r.status).toBe(200)
+    expect(requirementAreaPermissionState.canAuthorArea).toHaveBeenCalledWith(
+      expect.anything(),
+      7,
+      'SE5560000001-route',
+      false,
+    )
+    expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledWith(
+      'SE5560000001-coa1',
+    )
+  })
+
+  it('checks specification edit permission before scoped responsible verification lookup', async () => {
+    specificationPermissionState.canAuthorSpecification.mockResolvedValueOnce(
+      false,
+    )
+
+    const r = await postRequirementResponsibilityPersonVerify(
+      jsonReq('POST', {
+        hsaId: 'SE5560000001-spec1',
+        mode: 'refresh',
+        purpose: 'requirements_specification_responsible',
+        scopeId: 9,
+      }),
+    )
+
+    expect(r.status).toBe(403)
+    expect(
+      specificationPermissionState.canAuthorSpecification,
+    ).toHaveBeenCalledWith(expect.anything(), 9, 'SE5560000001-route', false)
+    expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+  })
+})
 
 describe('specification-implementation-types routes', () => {
   beforeEach(() => {
@@ -854,13 +1079,12 @@ describe('requirement-specifications routes', () => {
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(mockCreatePkg).not.toHaveBeenCalled()
   })
-  it('POST passes specification lead fields through as an HSA-ID/name pair', async () => {
+  it('POST resolves specification lead HSA-ID from the local verified person table', async () => {
     const r = await postPkg(
       jsonReq('POST', {
         name: 'A',
         uniqueId: 'A',
         responsibleHsaId: 'SE5560000001-ada1',
-        responsibleDisplayName: 'Ada Admin',
         canResponsibleGenerateAi: true,
       }),
     )
@@ -870,12 +1094,14 @@ describe('requirement-specifications routes', () => {
       expect.anything(),
       expect.objectContaining({
         responsibleHsaId: 'SE5560000001-ada1',
-        responsibleDisplayName: 'Ada Admin',
+        responsiblePerson: expect.objectContaining({
+          hsaId: 'SE5560000001-ada1',
+        }),
         canResponsibleGenerateAi: true,
       }),
     )
   })
-  it('POST rejects a specification lead HSA-ID without a specification lead name', async () => {
+  it('POST accepts a specification lead HSA-ID without a submitted name', async () => {
     const r = await postPkg(
       jsonReq('POST', {
         name: 'A',
@@ -884,11 +1110,18 @@ describe('requirement-specifications routes', () => {
       }),
     )
 
-    expect(r.status).toBe(400)
-    await expectInvalidRequest(r, 'responsibleDisplayName')
-    expect(mockCreatePkg).not.toHaveBeenCalled()
+    expect(r.status).toBe(201)
+    expect(mockCreatePkg).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        responsibleHsaId: 'SE5560000001-ada1',
+        responsiblePerson: expect.objectContaining({
+          hsaId: 'SE5560000001-ada1',
+        }),
+      }),
+    )
   })
-  it('POST rejects a specification lead name without a specification lead HSA-ID', async () => {
+  it('POST ignores a legacy specification lead name without HSA-ID', async () => {
     const r = await postPkg(
       jsonReq('POST', {
         name: 'A',
@@ -897,9 +1130,14 @@ describe('requirement-specifications routes', () => {
       }),
     )
 
-    expect(r.status).toBe(400)
-    await expectInvalidRequest(r, 'responsibleHsaId')
-    expect(mockCreatePkg).not.toHaveBeenCalled()
+    expect(r.status).toBe(201)
+    expect(mockCreatePkg).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        responsibleHsaId: null,
+        responsiblePerson: null,
+      }),
+    )
   })
   it('PUT updates', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
@@ -919,7 +1157,6 @@ describe('requirement-specifications routes', () => {
     const r = await putPkg(
       jsonReq('PUT', {
         responsibleHsaId: 'SE5560000001-rita1',
-        responsibleDisplayName: 'Rita Reviewer',
         canResponsibleGenerateAi: true,
       }),
       makeParams('1'),
@@ -931,7 +1168,9 @@ describe('requirement-specifications routes', () => {
       1,
       expect.objectContaining({
         responsibleHsaId: 'SE5560000001-rita1',
-        responsibleDisplayName: 'Rita Reviewer',
+        responsiblePerson: expect.objectContaining({
+          hsaId: 'SE5560000001-rita1',
+        }),
         canResponsibleGenerateAi: true,
       }),
     )
@@ -990,6 +1229,11 @@ describe('requirement-packages routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     authState.context.actor.roles = ['Admin']
+    routeState.query.mockResolvedValue([{ id: 1 }])
+    mockGetRequirementPackageById.mockResolvedValue({
+      id: 1,
+      leadHsaId: 'SE5560000001-route',
+    })
   })
 
   it('GET returns requirementPackages', async () => {
@@ -1010,7 +1254,7 @@ describe('requirement-packages routes', () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
-        body: '{"name":"A","leadHsaId":"SE5560000001-lead1","leadDisplayName":"Lead One"}',
+        body: '{"name":"A","coAuthorHsaIds":["SE5560000001-coa1"]}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -1020,7 +1264,7 @@ describe('requirement-packages routes', () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
-        body: '{"name":"A","leadHsaId":"abc","leadDisplayName":"Lead One"}',
+        body: '{"name":"A","coAuthorHsaIds":["abc"]}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -1046,6 +1290,7 @@ describe('requirement-packages routes', () => {
   })
   it('PUT returns 403 without Admin before updating', async () => {
     authState.context.actor.roles = []
+    routeState.query.mockResolvedValueOnce([])
 
     const r = await putRequirementPackage(
       jsonReq('PUT', { name: 'X' }),
@@ -1160,6 +1405,7 @@ describe('requirement-packages routes', () => {
       },
       deletedCount: 0,
     })
+    mockGetRequirementPackageById.mockResolvedValueOnce(null)
     const r = await deleteRequirementPackage(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('404'),

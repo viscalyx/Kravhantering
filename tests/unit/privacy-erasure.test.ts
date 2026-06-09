@@ -25,6 +25,12 @@ function keyForPrivacySql(sql: string): string | null {
   if (sql.includes('FROM requirement_areas WHERE owner_hsa_id')) {
     return 'requirement_areas.owner'
   }
+  if (
+    sql.includes('FROM requirement_areas area') &&
+    sql.includes('area.owner_hsa_id = @0')
+  ) {
+    return 'requirement_areas.owner'
+  }
   if (sql.includes('FROM requirement_packages pkg')) {
     return 'requirement_packages.owner'
   }
@@ -357,12 +363,7 @@ describe('privacy erasure service', () => {
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE requirement_packages'),
-      [
-        TARGET_HSA_ID,
-        replacement.hsaId,
-        replacement.displayName,
-        expect.any(Date),
-      ],
+      [TARGET_HSA_ID, replacement.hsaId, expect.any(Date)],
     )
     expect(result.actions.switch).toBe(1)
   })

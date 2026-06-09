@@ -78,7 +78,7 @@ function exportPayload(): DataSubjectExportV1 {
         fieldKey: 'owner',
         items: [
           {
-            fieldName: 'lead_hsa_id',
+            fieldName: 'owner_hsa_id',
             relatedObject: {
               key: '1',
               label: 'SEC Säkerhet',
@@ -90,19 +90,6 @@ function exportPayload(): DataSubjectExportV1 {
             timestamp: '2026-05-01T10:00:00.000Z',
             value: 'SE5560000001-kalle1',
           },
-          {
-            fieldName: 'lead_display_name',
-            relatedObject: {
-              key: '1',
-              label: 'SEC Säkerhet',
-              type: 'requirement_area',
-            },
-            relationToSubject: 'live_owner_assignment',
-            sourceKey: 'requirement_areas.owner',
-            table: 'requirement_areas',
-            timestamp: '2026-05-01T10:00:00.000Z',
-            value: 'Kalle Svensson',
-          },
         ],
         key: 'requirement_areas.owner',
         objectKey: 'requirementAreas',
@@ -113,7 +100,7 @@ function exportPayload(): DataSubjectExportV1 {
         fieldKey: 'coAuthor',
         items: [
           {
-            fieldName: 'display_name',
+            fieldName: 'hsa_id',
             relatedObject: {
               key: '2',
               label: 'Användbarhet',
@@ -122,7 +109,7 @@ function exportPayload(): DataSubjectExportV1 {
             relationToSubject: 'live_co_author_assignment',
             sourceKey: 'requirement_area_co_authors.hsa_id',
             table: 'requirement_area_co_authors',
-            value: 'Kalle Svensson',
+            value: 'SE5560000001-kalle1',
           },
           {
             fieldName: 'can_generate_ai',

@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   getRequestSqlServerDataSource: vi.fn(() => 'mock-db'),
   listAreas: vi.fn(),
   createArea: vi.fn(),
+  resolveVerifiedRequirementResponsibilityPerson: vi.fn(),
   updateArea: vi.fn(),
   recordAdminPrivilegedActionSucceeded: vi.fn(),
 }))
@@ -38,6 +39,10 @@ vi.mock('@/lib/dal/requirement-areas', () => ({
   listAreas: mocks.listAreas,
   createArea: mocks.createArea,
   updateArea: mocks.updateArea,
+}))
+vi.mock('@/lib/requirements/responsibility-person-verification', () => ({
+  resolveVerifiedRequirementResponsibilityPerson:
+    mocks.resolveVerifiedRequirementResponsibilityPerson,
 }))
 
 import { PUT } from '@/app/api/requirement-areas/[id]/route'
@@ -62,6 +67,13 @@ function makeParams(id: string) {
 describe('requirement-areas route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.resolveVerifiedRequirementResponsibilityPerson.mockResolvedValue({
+      email: 'new@example.test',
+      givenName: 'New',
+      hsaId: 'NO5560000001-new1',
+      middleName: null,
+      surname: 'Owner',
+    })
   })
 
   describe('GET', () => {
@@ -98,7 +110,12 @@ describe('requirement-areas route', () => {
       const res = await POST(request(body))
       expect(res.status).toBe(201)
       expect(await res.json()).toMatchObject({ id: 3 })
-      expect(mocks.createArea).toHaveBeenCalledWith('mock-db', body)
+      expect(mocks.createArea).toHaveBeenCalledWith('mock-db', {
+        ...body,
+        ownerPerson: expect.objectContaining({
+          hsaId: 'NO5560000001-new1',
+        }),
+      })
       expect(mocks.recordAdminPrivilegedActionSucceeded).toHaveBeenCalledWith(
         expect.objectContaining({ requestId: 'request-area' }),
         {
@@ -108,6 +125,71 @@ describe('requirement-areas route', () => {
           resourceType: 'requirement_area',
         },
       )
+    })
+
+    it('uses a locally verified owner person without HSA lookup on save', async () => {
+      mocks.resolveVerifiedRequirementResponsibilityPerson.mockResolvedValueOnce(
+        {
+          email: 'verified.owner@example.test',
+          givenName: 'Verified',
+          hsaId: 'NO5560000001-new1',
+          middleName: null,
+          surname: 'Owner',
+        },
+      )
+      const body = {
+        ownerHsaId: 'NO5560000001-new1',
+        prefix: 'NEW',
+        name: 'New requirement area',
+      }
+      mocks.createArea.mockResolvedValue({ id: 4, ...body })
+
+      const res = await POST(request(body))
+
+      expect(res.status).toBe(201)
+      expect(
+        mocks.resolveVerifiedRequirementResponsibilityPerson,
+      ).toHaveBeenCalledWith('mock-db', 'NO5560000001-new1')
+      expect(mocks.createArea).toHaveBeenCalledWith('mock-db', {
+        name: 'New requirement area',
+        ownerHsaId: 'NO5560000001-new1',
+        ownerPerson: {
+          email: 'verified.owner@example.test',
+          givenName: 'Verified',
+          hsaId: 'NO5560000001-new1',
+          middleName: null,
+          surname: 'Owner',
+        },
+        prefix: 'NEW',
+      })
+      expect(mocks.recordAdminPrivilegedActionSucceeded).toHaveBeenCalledWith(
+        expect.objectContaining({ requestId: 'request-area' }),
+        expect.objectContaining({
+          changedFields: ['name', 'ownerHsaId', 'prefix'],
+        }),
+      )
+    })
+
+    it('rejects obsolete person payload fields on create', async () => {
+      const ownerPersonPayload = {
+        displayName: 'Verified Owner',
+        email: 'preview.owner@example.test',
+        givenName: 'Verified',
+        hsaId: 'NO5560000001-new1',
+        middleName: null,
+        surname: 'Owner',
+      }
+      const body = {
+        ownerHsaId: 'NO5560000001-new1',
+        ownerPersonPreview: ownerPersonPayload,
+        prefix: 'NEW',
+        name: 'New requirement area',
+      }
+
+      const res = await POST(request(body))
+
+      expect(res.status).toBe(400)
+      expect(mocks.createArea).not.toHaveBeenCalled()
     })
 
     it('requires ownerHsaId', async () => {
@@ -150,6 +232,13 @@ describe('requirement-areas route', () => {
 
   describe('PUT', () => {
     it('can change ownerHsaId', async () => {
+      mocks.resolveVerifiedRequirementResponsibilityPerson.mockResolvedValue({
+        email: 'next@example.test',
+        givenName: 'Next',
+        hsaId: 'NO5560000001-next1',
+        middleName: null,
+        surname: 'Owner',
+      })
       mocks.updateArea.mockResolvedValue({
         id: 1,
         prefix: 'INT',
@@ -170,6 +259,9 @@ describe('requirement-areas route', () => {
       expect(res.status).toBe(200)
       expect(mocks.updateArea).toHaveBeenCalledWith('mock-db', 1, {
         ownerHsaId: 'NO5560000001-next1',
+        ownerPerson: expect.objectContaining({
+          hsaId: 'NO5560000001-next1',
+        }),
       })
     })
 

@@ -644,7 +644,7 @@ describe('RequirementsSpecificationsClient', () => {
         name: /specification\.governanceObjectType/,
       }),
       screen.getByRole('textbox', {
-        name: /specification\.responsibleDisplayName/,
+        name: /common\.hsaVerifyName/,
       }),
       screen.getByRole('textbox', {
         name: /specification\.responsibleHsaId/,
@@ -687,14 +687,6 @@ describe('RequirementsSpecificationsClient', () => {
     )
     fireEvent.blur(screen.getByRole('textbox', { name: /specification\.name/ }))
     fireEvent.change(
-      screen.getByRole('textbox', {
-        name: /specification\.responsibleDisplayName/,
-      }),
-      {
-        target: { value: 'Rita Reviewer' },
-      },
-    )
-    fireEvent.change(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
       {
         target: { value: 'SE5560000001-rita1' },
@@ -736,7 +728,6 @@ describe('RequirementsSpecificationsClient', () => {
     expect(
       JSON.parse(((postCall?.[1] as RequestInit)?.body as string) ?? '{}'),
     ).toMatchObject({
-      responsibleDisplayName: 'Rita Reviewer',
       responsibleHsaId: 'SE5560000001-rita1',
       canResponsibleGenerateAi: true,
     })
@@ -791,7 +782,7 @@ describe('RequirementsSpecificationsClient', () => {
     ).toBeInTheDocument()
   })
 
-  it('requires specification lead name and HSA-ID to be saved together', async () => {
+  it('submits a specification lead HSA-ID without a submitted name', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
@@ -815,13 +806,29 @@ describe('RequirementsSpecificationsClient', () => {
       },
     )
 
-    const callsBeforeSave = fetchMock.mock.calls.length
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (opts?.method === 'POST') return Promise.resolve(okJson({ id: 2 }))
+      if (url === '/api/specifications')
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      if (url === '/api/specification-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      return Promise.resolve(okJson({}))
+    })
+
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'specification.responsiblePairRequired',
-    )
-    expect(fetchMock.mock.calls).toHaveLength(callsBeforeSave)
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specifications',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
   })
 
   it('opens edit form with existing data', async () => {
@@ -842,7 +849,7 @@ describe('RequirementsSpecificationsClient', () => {
     ).toBe('Kravunderlag sv')
     expect(
       screen.getByRole('textbox', {
-        name: /specification\.responsibleDisplayName/,
+        name: /common\.hsaVerifyName/,
       }),
     ).toHaveValue('Ada Admin')
     expect(
