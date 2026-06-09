@@ -355,21 +355,31 @@ kravunderlagslokala innehåll.
 _Avoid_: Medförfattare när sammanhanget inte visar kravunderlag.
 
 **Medförfattare**:
-Accepterad kortform för kravområdesmedförfattare eller
-kravunderlagsmedförfattare när sammanhanget tydligt visar vilket scope som
-avses.
+Accepterad kortform för kravområdesmedförfattare,
+kravpaketsmedförfattare eller kravunderlagsmedförfattare när sammanhanget
+tydligt visar vilket scope som avses.
 
 - `en`: Co-author
 
 _Avoid_: Medförfattare i sammanhang där scope är oklart.
 
-**Granskare**:
+**Kravgranskare**:
 En global roll som oberoende bedömer kravversioner och avsteg inför
 publicering, återremiss eller beslut.
 
 - `en`: Reviewer
 
-_Avoid_: Kravområdesgranskare om rollen inte är områdesbunden.
+_Avoid_: Granskare som huvudterm när begreppet kan förväxlas med en tilldelad
+granskningsperson, kravområdesgranskare om rollen inte är områdesbunden.
+
+**Tilldelad granskningsperson**:
+En person som har tilldelats att granska ett specifikt ärende eller underlag,
+till exempel inom behörighetsöversyn, dataskydd eller gallring. Begreppet
+beskriver uppdraget i ärendet, inte en global IdP-roll.
+
+- `en`: Assigned reviewer
+
+_Avoid_: Kravgranskare när den globala rollen avses, Granskare som huvudterm.
 
 **Administratör**:
 Ett systemövergripande behörighetsmandat med full rätt att utföra åtgärder i
@@ -527,6 +537,14 @@ sammanhållning och relevans över kravområden.
 
 _Avoid_: Kravområdesägare, kravunderlagsansvarig.
 
+**Kravpaketsmedförfattare**:
+En person som stödjer kravpaketsansvarig i framtagning och underhåll av ett
+kravpaket.
+
+- `en`: Requirements package co-author
+
+_Avoid_: Medförfattare när sammanhanget inte visar kravpaket.
+
 **Kravunderlagsansvarig**:
 Den person eller funktion som har huvudansvar för ett kravunderlags
 sammansättning, kravtillämpningar, kravunderlagslokala krav och avsteg.
@@ -534,6 +552,46 @@ sammansättning, kravtillämpningar, kravunderlagslokala krav och avsteg.
 - `en`: Specification lead
 
 _Avoid_: Kravunderlagsägare.
+
+**Kravansvarsperson**:
+En HSA-ID-identifierad person vars namnkomponenter och e-postadress, när sådan
+finns, används för att visa vem en aktuell eller påbörjad
+kravansvarstilldelning avser.
+Kravansvarsperson är inte samma sak som användare, konto, global roll eller
+HSA-personpost.
+
+- `en`: Requirement responsibility person
+
+_Avoid_: Användare, konto, HSA-personpost, kravansvarstilldelning.
+
+**Kravansvarstilldelning**:
+En HSA-ID-bunden tilldelning av ansvar eller medförfattarskap i kravarbete,
+till exempel för ett kravområde, ett kravunderlag eller ett kravpaket.
+Tilldelningen pekar ut en kravansvarsperson men beskriver själva
+ansvarskopplingen, inte personposten, organisatoriskt mandat, global roll eller
+konto.
+
+- `en`: Requirement responsibility assignment
+
+_Avoid_: Verksamhetsmandat, behörighetsmandat, användare, konto,
+HSA-personpost.
+
+**HSA-katalog**:
+En regional källa till hälso- och sjukvårdens adressregister med
+kvalitetsgranskade uppgifter om organisationer och personer inom vård och
+omsorg.
+
+- `en`: HSA directory
+
+_Avoid_: Medarbetarkatalog, användarkatalog, applikationsägd referensdata.
+
+**HSA-personpost**:
+En personpost i HSA-katalogen med person- och kontaktuppgifter som kan slås upp
+med HSA-ID eller annan identitet som HSA-katalogen stödjer.
+
+- `en`: HSA person record
+
+_Avoid_: Användare, konto, lokal personpost.
 
 **Kravurvalsfråga**:
 En fråga som förvaltas inom ett kravområde och stödjer urval av publicerade
