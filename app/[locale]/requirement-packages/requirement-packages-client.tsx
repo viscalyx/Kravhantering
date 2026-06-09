@@ -348,17 +348,8 @@ export default function RequirementPackagesClient() {
     },
   )
 
-  const renderPackageForm = () => (
-    <form
-      className="space-y-5"
-      {...devMarker({
-        context: 'requirementPackages',
-        name: 'crud form',
-        priority: 340,
-        value: controller.editId ? 'edit' : 'create',
-      })}
-      onSubmit={submit}
-    >
+  const renderPackageFormFields = () => (
+    <>
       <div>
         <FieldLabelWithHelp
           help={t('nameHelp')}
@@ -408,10 +399,10 @@ export default function RequirementPackagesClient() {
             label={t('leadHsaId')}
             required
           />
-            <HsaPersonVerifyField
-              disabled={controller.submitting}
-              emailLabel={tc('hsaVerifyEmail')}
-              errorFallback={tc('hsaVerifyError')}
+          <HsaPersonVerifyField
+            disabled={controller.submitting}
+            emailLabel={tc('hsaVerifyEmail')}
+            errorFallback={tc('hsaVerifyError')}
             fetchingLabel={tc('fetchingHsaPerson')}
             fetchLabel={tc('fetchHsaPerson')}
             hsaId={controller.form.leadHsaId}
@@ -448,115 +439,133 @@ export default function RequirementPackagesClient() {
             }
             purpose="requirement_package_lead"
             required
-              scopeId={controller.editId}
-              showPersonSummaryAsText
-              unavailableText={tc('hsaVerifyUnavailable')}
-            />
+            scopeId={controller.editId}
+            showPersonSummaryAsText
+            unavailableText={tc('hsaVerifyUnavailable')}
+          />
         </div>
       )}
-      <div className="space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h3 className="text-sm font-medium text-secondary-700 dark:text-secondary-300">
-              {t('coAuthors')}
-            </h3>
-            <p className="mt-1 text-sm text-secondary-500 dark:text-secondary-400">
-              {t('coAuthorsHelp')}
-            </p>
-          </div>
-          <button
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3.5 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:text-secondary-200 dark:hover:bg-secondary-800"
-            disabled={controller.submitting}
-            onClick={addCoAuthor}
-            type="button"
-          >
-            <Plus aria-hidden="true" className="h-4 w-4" />
-            {t('addCoAuthor')}
-          </button>
-        </div>
-        {controller.form.coAuthors.length === 0 ? (
-          <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-secondary-500 dark:text-secondary-400">
-            {t('noCoAuthors')}
+    </>
+  )
+
+  const renderCoAuthorsSection = () => (
+    <div className="space-y-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 className="text-sm font-medium text-secondary-700 dark:text-secondary-300">
+            {t('coAuthors')}
+          </h3>
+          <p className="mt-1 text-sm text-secondary-500 dark:text-secondary-400">
+            {t('coAuthorsHelp')}
           </p>
-        ) : (
-          <div className="space-y-3">
-            {controller.form.coAuthors.map((coAuthor, index) => {
-              const inputId = `requirement-package-co-author-${index}`
-              return (
-                <div className="rounded-xl border p-3" key={inputId}>
-                  <div className="flex items-start gap-3">
-                    <div className="min-w-0 flex-1">
-                      <FieldLabelWithHelp
-                        help={t('coAuthorHsaIdHelp')}
-                        htmlFor={inputId}
-                        label={t('coAuthorHsaId')}
-                        required
-                      />
-                      <HsaPersonVerifyField
-                        disabled={controller.submitting}
-                        emailLabel={tc('hsaVerifyEmail')}
-                        errorFallback={tc('hsaVerifyError')}
-                        fetchingLabel={tc('fetchingHsaPerson')}
-                        fetchLabel={tc('fetchHsaPerson')}
-                        hsaId={coAuthor.hsaId}
-                        initialDisplayName={coAuthor.displayName}
-                        initialEmail={coAuthor.email}
-                        inputClassName={inputClassName}
-                        inputId={inputId}
-                        nameLabel={tc('hsaVerifyName')}
-                        onHsaIdChange={value =>
-                          updateCoAuthor(index, {
-                            displayName:
-                              value.trim() === coAuthor.hsaId.trim()
-                                ? coAuthor.displayName
-                                : '',
-                            email:
-                              value.trim() === coAuthor.hsaId.trim()
-                                ? coAuthor.email
-                                : '',
-                            hsaId: value,
-                            personVerification:
-                              value.trim() ===
-                              coAuthor.personVerification?.hsaId
-                                ? coAuthor.personVerification
-                                : null,
-                          })
-                        }
-                        onVerified={person =>
-                          updateCoAuthor(index, {
-                            displayName: person.displayName,
-                            email: person.email ?? '',
-                            personVerification: person,
-                          })
-                        }
-                        purpose="requirement_package_co_author"
-                        required
-                        showPersonSummaryAsText
-                        scopeId={controller.editId ?? undefined}
-                        unavailableText={tc('hsaVerifyUnavailable')}
-                      />
-                    </div>
-                    <button
-                      aria-label={t('removeCoAuthor')}
-                      className={`${rowActionButtonClassName} mt-7 text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30`}
-                      disabled={controller.submitting}
-                      onClick={() => removeCoAuthor(index)}
-                      title={t('removeCoAuthor')}
-                      type="button"
-                    >
-                      <Trash2
-                        aria-hidden="true"
-                        className="h-4 w-4"
-                        focusable={false}
-                      />
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        </div>
+        <button
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3.5 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:text-secondary-200 dark:hover:bg-secondary-800"
+          disabled={controller.submitting}
+          onClick={addCoAuthor}
+          type="button"
+        >
+          <Plus aria-hidden="true" className="h-4 w-4" />
+          {t('addCoAuthor')}
+        </button>
       </div>
+      {controller.form.coAuthors.length === 0 ? (
+        <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-secondary-500 dark:text-secondary-400">
+          {t('noCoAuthors')}
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {controller.form.coAuthors.map((coAuthor, index) => {
+            const inputId = `requirement-package-co-author-${index}`
+            return (
+              <div className="rounded-xl border p-3" key={inputId}>
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <FieldLabelWithHelp
+                      help={t('coAuthorHsaIdHelp')}
+                      htmlFor={inputId}
+                      label={t('coAuthorHsaId')}
+                      required
+                    />
+                    <HsaPersonVerifyField
+                      disabled={controller.submitting}
+                      emailLabel={tc('hsaVerifyEmail')}
+                      errorFallback={tc('hsaVerifyError')}
+                      fetchingLabel={tc('fetchingHsaPerson')}
+                      fetchLabel={tc('fetchHsaPerson')}
+                      hsaId={coAuthor.hsaId}
+                      initialDisplayName={coAuthor.displayName}
+                      initialEmail={coAuthor.email}
+                      inputClassName={inputClassName}
+                      inputId={inputId}
+                      nameLabel={tc('hsaVerifyName')}
+                      onHsaIdChange={value =>
+                        updateCoAuthor(index, {
+                          displayName:
+                            value.trim() === coAuthor.hsaId.trim()
+                              ? coAuthor.displayName
+                              : '',
+                          email:
+                            value.trim() === coAuthor.hsaId.trim()
+                              ? coAuthor.email
+                              : '',
+                          hsaId: value,
+                          personVerification:
+                            value.trim() === coAuthor.personVerification?.hsaId
+                              ? coAuthor.personVerification
+                              : null,
+                        })
+                      }
+                      onVerified={person =>
+                        updateCoAuthor(index, {
+                          displayName: person.displayName,
+                          email: person.email ?? '',
+                          personVerification: person,
+                        })
+                      }
+                      purpose="requirement_package_co_author"
+                      required
+                      showPersonSummaryAsText
+                      scopeId={controller.editId ?? undefined}
+                      unavailableText={tc('hsaVerifyUnavailable')}
+                    />
+                  </div>
+                  <button
+                    aria-label={t('removeCoAuthor')}
+                    className={`${rowActionButtonClassName} mt-7 text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30`}
+                    disabled={controller.submitting}
+                    onClick={() => removeCoAuthor(index)}
+                    title={t('removeCoAuthor')}
+                    type="button"
+                  >
+                    <Trash2
+                      aria-hidden="true"
+                      className="h-4 w-4"
+                      focusable={false}
+                    />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+
+  const renderPackageForm = () => (
+    <form
+      className="space-y-5"
+      {...devMarker({
+        context: 'requirementPackages',
+        name: 'crud form',
+        priority: 340,
+        value: controller.editId ? 'edit' : 'create',
+      })}
+      onSubmit={submit}
+    >
+      {renderPackageFormFields()}
+      {renderCoAuthorsSection()}
       {controller.formError && (
         <p
           className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
@@ -582,6 +591,55 @@ export default function RequirementPackagesClient() {
           {tc('cancel')}
         </button>
       </div>
+    </form>
+  )
+
+  const renderEditPackageForm = () => (
+    <form
+      className="space-y-6"
+      {...devMarker({
+        context: 'requirementPackages',
+        name: 'crud form',
+        priority: 340,
+        value: 'edit',
+      })}
+      onSubmit={submit}
+    >
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <div className="space-y-5">
+          {renderPackageFormFields()}
+          {controller.formError && (
+            <p
+              className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+              role="alert"
+            >
+              {controller.formError}
+            </p>
+          )}
+        </div>
+        {renderCoAuthorsSection()}
+      </div>
+      <div className="flex gap-3">
+        <button
+          className="btn-primary"
+          disabled={controller.submitting}
+          type="submit"
+        >
+          {controller.submitting ? tc('saving') : tc('save')}
+        </button>
+        <button
+          className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
+          disabled={controller.submitting}
+          onClick={closeForm}
+          type="button"
+        >
+          {tc('cancel')}
+        </button>
+      </div>
+      <div>
+        <div className="h-px border-t-2 border-dashed border-secondary-200 dark:border-secondary-700" />
+      </div>
+      {renderLinkedRequirements()}
     </form>
   )
 
@@ -789,10 +847,7 @@ export default function RequirementPackagesClient() {
           }
         >
           {isEditing ? (
-            <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-              {renderPackageForm()}
-              {renderLinkedRequirements()}
-            </div>
+            renderEditPackageForm()
           ) : (
             renderPackageForm()
           )}
