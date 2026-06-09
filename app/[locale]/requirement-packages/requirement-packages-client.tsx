@@ -15,6 +15,9 @@ import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import HsaPersonVerifyField, {
+  type HsaPersonVerification,
+} from '@/components/HsaPersonVerifyField'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
@@ -41,19 +44,37 @@ const REQUIREMENT_PACKAGES_HELP: HelpContent = {
 }
 
 interface RequirementPackage {
+  coAuthors: RequirementPackageCoAuthor[]
   description: string | null
   id: number
   isArchived: boolean
   leadDisplayName: string
+  leadEmail: string | null
   leadHsaId: string
   linkedRequirementCount: number
   name: string
 }
 
+interface RequirementPackageCoAuthor {
+  displayName: string
+  email: string | null
+  hsaId: string
+}
+
+interface RequirementPackageCoAuthorForm {
+  displayName: string
+  email: string
+  hsaId: string
+  personVerification: HsaPersonVerification | null
+}
+
 interface RequirementPackageForm {
+  coAuthors: RequirementPackageCoAuthorForm[]
   description: string
   leadDisplayName: string
+  leadEmail: string
   leadHsaId: string
+  leadPersonVerification: HsaPersonVerification | null
   name: string
 }
 
@@ -74,27 +95,49 @@ const DESCRIPTION_TRUNCATE = 80
 const REQUIREMENT_PACKAGE_TABLE_COLUMN_COUNT = 6
 
 const getInitialForm = (): RequirementPackageForm => ({
+  coAuthors: [],
   description: '',
   leadDisplayName: '',
+  leadEmail: '',
   leadHsaId: '',
+  leadPersonVerification: null,
   name: '',
 })
 
 const toForm = (
   requirementPackage: RequirementPackage,
 ): RequirementPackageForm => ({
+  coAuthors: (requirementPackage.coAuthors ?? []).map(coAuthor => ({
+    displayName: coAuthor.displayName,
+    email: coAuthor.email ?? '',
+    hsaId: coAuthor.hsaId,
+    personVerification: null,
+  })),
   description: requirementPackage.description ?? '',
   leadDisplayName: requirementPackage.leadDisplayName,
+  leadEmail: requirementPackage.leadEmail ?? '',
   leadHsaId: requirementPackage.leadHsaId,
+  leadPersonVerification: null,
   name: requirementPackage.name,
 })
 
-const toPayload = (form: RequirementPackageForm) => ({
+const coAuthorHsaIdsFromForm = (form: RequirementPackageForm) =>
+  form.coAuthors.map(coAuthor => coAuthor.hsaId.trim()).filter(Boolean)
+
+const toCreatePayload = (form: RequirementPackageForm) => ({
+  coAuthorHsaIds: coAuthorHsaIdsFromForm(form),
   description: form.description || undefined,
-  leadDisplayName: form.leadDisplayName,
+  name: form.name,
+})
+
+const toUpdatePayload = (form: RequirementPackageForm) => ({
+  coAuthorHsaIds: coAuthorHsaIdsFromForm(form),
+  description: form.description || undefined,
   leadHsaId: form.leadHsaId,
   name: form.name,
 })
+
+const toPayload = toUpdatePayload
 
 const inputClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
@@ -139,8 +182,10 @@ export default function RequirementPackagesClient() {
     getInitialForm,
     listEndpoint: '/api/requirement-packages?includeArchived=true',
     listKey: 'requirementPackages',
+    toCreatePayload,
     toForm,
     toPayload,
+    toUpdatePayload,
   })
 
   const fetchLinkedRequirements = useCallback(
@@ -257,6 +302,34 @@ export default function RequirementPackagesClient() {
     controller.submitting ||
     controller.deletingIds.has(requirementPackage.id) ||
     stateChangingIds.has(requirementPackage.id)
+  const addCoAuthor = () => {
+    controller.setForm(previousForm => ({
+      ...previousForm,
+      coAuthors: [
+        ...previousForm.coAuthors,
+        { displayName: '', email: '', hsaId: '', personVerification: null },
+      ],
+    }))
+  }
+  const removeCoAuthor = (index: number) => {
+    controller.setForm(previousForm => ({
+      ...previousForm,
+      coAuthors: previousForm.coAuthors.filter(
+        (_, rowIndex) => rowIndex !== index,
+      ),
+    }))
+  }
+  const updateCoAuthor = (
+    index: number,
+    values: Partial<RequirementPackageCoAuthorForm>,
+  ) => {
+    controller.setForm(previousForm => ({
+      ...previousForm,
+      coAuthors: previousForm.coAuthors.map((coAuthor, rowIndex) =>
+        rowIndex === index ? { ...coAuthor, ...values } : coAuthor,
+      ),
+    }))
+  }
   const deferredNameFilter = useDeferredValue(nameFilter)
   const normalizedNameFilter = deferredNameFilter
     .trim()
@@ -327,48 +400,162 @@ export default function RequirementPackagesClient() {
           value={controller.form.description}
         />
       </div>
-      <div>
-        <FieldLabelWithHelp
-          help={t('leadHsaIdHelp')}
-          htmlFor="requirement-package-lead-hsa-id"
-          label={t('leadHsaId')}
-          required
-        />
-        <input
-          className={inputClassName}
-          disabled={controller.submitting}
-          id="requirement-package-lead-hsa-id"
-          onChange={event =>
-            controller.setForm(previousForm => ({
-              ...previousForm,
-              leadHsaId: event.target.value,
-            }))
-          }
-          pattern="[A-Z]{2}[0-9]{10}-[A-Za-z0-9]+"
-          required
-          value={controller.form.leadHsaId}
-        />
-      </div>
-      <div>
-        <FieldLabelWithHelp
-          help={t('leadDisplayNameHelp')}
-          htmlFor="requirement-package-lead-display-name"
-          label={t('leadDisplayName')}
-          required
-        />
-        <input
-          className={inputClassName}
-          disabled={controller.submitting}
-          id="requirement-package-lead-display-name"
-          onChange={event =>
-            controller.setForm(previousForm => ({
-              ...previousForm,
-              leadDisplayName: event.target.value,
-            }))
-          }
-          required
-          value={controller.form.leadDisplayName}
-        />
+      {controller.editId != null && (
+        <div>
+          <FieldLabelWithHelp
+            help={t('leadHsaIdHelp')}
+            htmlFor="requirement-package-lead-hsa-id"
+            label={t('leadHsaId')}
+            required
+          />
+            <HsaPersonVerifyField
+              disabled={controller.submitting}
+              emailLabel={tc('hsaVerifyEmail')}
+              errorFallback={tc('hsaVerifyError')}
+            fetchingLabel={tc('fetchingHsaPerson')}
+            fetchLabel={tc('fetchHsaPerson')}
+            hsaId={controller.form.leadHsaId}
+            initialDisplayName={controller.form.leadDisplayName}
+            initialEmail={controller.form.leadEmail}
+            inputClassName={inputClassName}
+            inputId="requirement-package-lead-hsa-id"
+            nameLabel={tc('hsaVerifyName')}
+            onHsaIdChange={value =>
+              controller.setForm(previousForm => ({
+                ...previousForm,
+                leadHsaId: value,
+                leadDisplayName:
+                  value.trim() === previousForm.leadHsaId.trim()
+                    ? previousForm.leadDisplayName
+                    : '',
+                leadEmail:
+                  value.trim() === previousForm.leadHsaId.trim()
+                    ? previousForm.leadEmail
+                    : '',
+                leadPersonVerification:
+                  value.trim() === previousForm.leadPersonVerification?.hsaId
+                    ? previousForm.leadPersonVerification
+                    : null,
+              }))
+            }
+            onVerified={person =>
+              controller.setForm(previousForm => ({
+                ...previousForm,
+                leadDisplayName: person.displayName,
+                leadEmail: person.email ?? '',
+                leadPersonVerification: person,
+              }))
+            }
+            purpose="requirement_package_lead"
+            required
+              scopeId={controller.editId}
+              showPersonSummaryAsText
+              unavailableText={tc('hsaVerifyUnavailable')}
+            />
+        </div>
+      )}
+      <div className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h3 className="text-sm font-medium text-secondary-700 dark:text-secondary-300">
+              {t('coAuthors')}
+            </h3>
+            <p className="mt-1 text-sm text-secondary-500 dark:text-secondary-400">
+              {t('coAuthorsHelp')}
+            </p>
+          </div>
+          <button
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3.5 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:text-secondary-200 dark:hover:bg-secondary-800"
+            disabled={controller.submitting}
+            onClick={addCoAuthor}
+            type="button"
+          >
+            <Plus aria-hidden="true" className="h-4 w-4" />
+            {t('addCoAuthor')}
+          </button>
+        </div>
+        {controller.form.coAuthors.length === 0 ? (
+          <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-secondary-500 dark:text-secondary-400">
+            {t('noCoAuthors')}
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {controller.form.coAuthors.map((coAuthor, index) => {
+              const inputId = `requirement-package-co-author-${index}`
+              return (
+                <div className="rounded-xl border p-3" key={inputId}>
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <FieldLabelWithHelp
+                        help={t('coAuthorHsaIdHelp')}
+                        htmlFor={inputId}
+                        label={t('coAuthorHsaId')}
+                        required
+                      />
+                      <HsaPersonVerifyField
+                        disabled={controller.submitting}
+                        emailLabel={tc('hsaVerifyEmail')}
+                        errorFallback={tc('hsaVerifyError')}
+                        fetchingLabel={tc('fetchingHsaPerson')}
+                        fetchLabel={tc('fetchHsaPerson')}
+                        hsaId={coAuthor.hsaId}
+                        initialDisplayName={coAuthor.displayName}
+                        initialEmail={coAuthor.email}
+                        inputClassName={inputClassName}
+                        inputId={inputId}
+                        nameLabel={tc('hsaVerifyName')}
+                        onHsaIdChange={value =>
+                          updateCoAuthor(index, {
+                            displayName:
+                              value.trim() === coAuthor.hsaId.trim()
+                                ? coAuthor.displayName
+                                : '',
+                            email:
+                              value.trim() === coAuthor.hsaId.trim()
+                                ? coAuthor.email
+                                : '',
+                            hsaId: value,
+                            personVerification:
+                              value.trim() ===
+                              coAuthor.personVerification?.hsaId
+                                ? coAuthor.personVerification
+                                : null,
+                          })
+                        }
+                        onVerified={person =>
+                          updateCoAuthor(index, {
+                            displayName: person.displayName,
+                            email: person.email ?? '',
+                            personVerification: person,
+                          })
+                        }
+                        purpose="requirement_package_co_author"
+                        required
+                        showPersonSummaryAsText
+                        scopeId={controller.editId ?? undefined}
+                        unavailableText={tc('hsaVerifyUnavailable')}
+                      />
+                    </div>
+                    <button
+                      aria-label={t('removeCoAuthor')}
+                      className={`${rowActionButtonClassName} mt-7 text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30`}
+                      disabled={controller.submitting}
+                      onClick={() => removeCoAuthor(index)}
+                      title={t('removeCoAuthor')}
+                      type="button"
+                    >
+                      <Trash2
+                        aria-hidden="true"
+                        className="h-4 w-4"
+                        focusable={false}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
       {controller.formError && (
         <p

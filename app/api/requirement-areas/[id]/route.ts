@@ -13,6 +13,7 @@ import {
   idParamSchema,
   optionalBusinessTextSchema,
 } from '@/lib/http/validation'
+import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,7 +36,14 @@ export const PUT = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const area = await updateArea(db, params.id, body)
+    const ownerPerson =
+      body.ownerHsaId === undefined
+        ? undefined
+        : await resolveVerifiedRequirementResponsibilityPerson(
+            db,
+            body.ownerHsaId,
+          )
+    const area = await updateArea(db, params.id, { ...body, ownerPerson })
     if (!area) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }

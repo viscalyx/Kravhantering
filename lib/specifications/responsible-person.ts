@@ -30,13 +30,9 @@ export function normalizeResponsibleDisplayName(
 }
 
 export function hasIncompleteResponsiblePerson(
-  input: SpecificationResponsiblePersonInput,
+  _input: SpecificationResponsiblePersonInput,
 ): boolean {
-  const hsaId = normalizeResponsibleHsaId(input.responsibleHsaId)
-  const displayName = normalizeResponsibleDisplayName(
-    input.responsibleDisplayName,
-  )
-  return Boolean(hsaId) !== Boolean(displayName)
+  return false
 }
 
 export function normalizeSpecificationResponsiblePersonInput<
@@ -67,9 +63,7 @@ export function normalizeSpecificationResponsiblePersonInput<
     ...(shouldIncludeGenerateAi
       ? {
           canResponsibleGenerateAi:
-            hsaId != null &&
-            displayName != null &&
-            input.canResponsibleGenerateAi === true,
+            hsaId != null && input.canResponsibleGenerateAi === true,
         }
       : {}),
   }

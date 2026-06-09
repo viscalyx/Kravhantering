@@ -12,6 +12,12 @@
     "edit": "Redigera",
     "create": "Ny",
     "search": "Sök",
+    "fetchHsaPerson": "Hämta",
+    "fetchingHsaPerson": "Hämtar…",
+    "hsaVerifyEmail": "E-post",
+    "hsaVerifyError": "Kunde inte hämta personuppgifter.",
+    "hsaVerifyName": "Namn",
+    "hsaVerifyUnavailable": "Inte hämtat",
     "clearSearch": "Rensa sökning",
     "filter": "Filtrera",
     "filterBy": "Filtrera efter {label}",
@@ -771,6 +777,13 @@
     "leadDisplayNameHelp": "Ange visningsnamnet för den person som ansvarar för kravpaketet.",
     "leadHsaId": "Paketansvarigs HSA-ID",
     "leadHsaIdHelp": "Ange HSA-ID för paketansvarig med två versala bokstäver för landskod, organisationsnummer med 10 siffror, bindestreck och alfanumeriskt suffix.",
+    "coAuthors": "Kravpaketsmedförfattare",
+    "coAuthorsHelp": "Lägg till HSA-ID för personer som stödjer paketansvarig.",
+    "coAuthorHsaId": "Medförfattares HSA-ID",
+    "coAuthorHsaIdHelp": "Ange medförfattarens HSA-ID med två versala bokstäver för landskod, organisationsnummer med 10 siffror, bindestreck och alfanumeriskt suffix.",
+    "addCoAuthor": "Lägg till medförfattare",
+    "removeCoAuthor": "Ta bort medförfattare",
+    "noCoAuthors": "Inga kravpaketsmedförfattare.",
     "owner": "Ägare",
     "help": {
       "owner": "Välj ägaren som ansvarar för kravpaketet och dess kopplade krav."
@@ -1043,6 +1056,7 @@
       "objects": {
         "requirementAreas": "Kravområden",
         "requirementPackages": "Kravpaket",
+        "requirementResponsibilityPeople": "Kravansvarspersoner",
         "normReferences": "Normreferenser",
         "requirementVersions": "Versioner",
         "deviations": "Avvikelser",
@@ -1052,6 +1066,7 @@
         "requirementSelectionQuestions": "Kravurvalsfrågor",
         "requirementSelectionAnswers": "Kravurvalssvar",
         "areaCoAuthors": "Kravområdesmedförfattare",
+        "packageCoAuthors": "Kravpaketsmedförfattare",
         "specificationCoAuthors": "Kravunderlagsmedförfattare",
         "accessReviewRuns": "Behörighetsöversyner",
         "accessReviewItems": "Rader i behörighetsöversyn",
@@ -1208,6 +1223,8 @@
       "permissionTypes": {
         "area_co_author": "Kravområdesmedförfattare",
         "area_owner": "Kravområdesägare",
+        "package_co_author": "Kravpaketsmedförfattare",
+        "package_owner": "Kravpaketsansvarig",
         "specification_co_author": "Kravunderlagsmedförfattare",
         "specification_responsible": "Kravunderlagsansvarig"
       }

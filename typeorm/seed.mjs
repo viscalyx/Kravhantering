@@ -10,6 +10,7 @@ const TABLE_ORDER = [
   'specification_item_statuses',
   'specification_lifecycle_statuses',
   'specification_governance_object_types',
+  'requirement_responsibility_people',
   'requirement_areas',
   'requirement_area_co_authors',
   'requirement_categories',
@@ -35,6 +36,7 @@ const TABLE_ORDER = [
   'deviations',
   'requirement_version_norm_references',
   'requirement_packages',
+  'requirement_package_co_authors',
   'requirement_selection_question_sequences',
   'requirement_selection_questions',
   'requirement_selection_answers',
@@ -11979,7 +11981,6 @@ const SEED_DATA = {
       'name',
       'description',
       'lead_hsa_id',
-      'lead_display_name',
       'is_archived',
       'created_at',
       'updated_at',
@@ -11991,7 +11992,6 @@ const SEED_DATA = {
         'Mobil användning',
         'Krav som gäller när systemet används från mobiltelefon eller surfplatta.',
         'SE5560000001-annaj',
-        'Anna Johansson',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12001,7 +12001,6 @@ const SEED_DATA = {
         'Datamigrering',
         'Krav som gäller import, export, konvertering och kvalitetssäkring av data.',
         'SE5560000001-annaj',
-        'Anna Johansson',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12011,7 +12010,6 @@ const SEED_DATA = {
         'Integration med andra system',
         'Krav som gäller tekniska gränssnitt, informationsutbyte och externa beroenden.',
         'SE5560000001-erikl',
-        'Erik Lindberg',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12021,7 +12019,6 @@ const SEED_DATA = {
         'Ärendehantering',
         'Krav som gäller registrering, handläggning, uppföljning och avslut av ärenden.',
         'SE5560000001-erikl',
-        'Erik Lindberg',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12031,7 +12028,6 @@ const SEED_DATA = {
         'Användarvänlighet',
         'Krav som gäller tydlighet, effektivitet och enkel användning för slutanvändare.',
         'SE5560000001-marias',
-        'Maria Svensson',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12041,7 +12037,6 @@ const SEED_DATA = {
         'Molndrift',
         'Krav som gäller drift, övervakning, skalning och robusthet i molnmiljö.',
         'SE5560000001-marias',
-        'Maria Svensson',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12051,7 +12046,6 @@ const SEED_DATA = {
         'Normal drift',
         'Krav som gäller ordinarie drift och vardaglig användning utan särskilda störningar.',
         'SE5560000001-marias',
-        'Maria Svensson',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12061,7 +12055,6 @@ const SEED_DATA = {
         'Hög belastning',
         'Krav som gäller när många användare, stora datamängder eller många samtidiga operationer belastar systemet.',
         'SE5560000001-marias',
-        'Maria Svensson',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12071,12 +12064,22 @@ const SEED_DATA = {
         'Katastrofåterställning',
         'Krav som gäller återställning efter större avbrott, dataförlust eller miljöbortfall.',
         'SE5560000001-marias',
-        'Maria Svensson',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
       ],
     ],
+  },
+  requirement_package_co_authors: {
+    columns: [
+      'requirement_package_id',
+      'hsa_id',
+      'created_at',
+      'created_by_hsa_id',
+      'created_by_display_name',
+    ],
+    pk: ['requirement_package_id', 'hsa_id'],
+    rows: [],
   },
   requirement_selection_question_sequences: {
     columns: ['area_id', 'next_sequence'],
@@ -12209,6 +12212,7 @@ const { RETENTION_HISTORY_ONLY_VERSION_IDS, appendArchivingRetentionSeed } =
 appendArchivingRetentionSeed(SEED_DATA)
 
 const PRIVACY_SEED_TS = '2026-04-23 09:00:00'
+const RESPONSIBILITY_PERSON_PLACEHOLDER = '(saknar namn, kräver nytt uppslag)'
 
 const HSA_BY_DISPLAY_NAME = new Map([
   ['seed', 'SE5560000001-seed'],
@@ -12488,6 +12492,67 @@ function normalizeOwnerHsaId(value) {
   )
 }
 
+function assertSeedHsaId(value, tableName, columnName) {
+  if (
+    typeof value === 'string' &&
+    /^[A-Z]{2}\d{10}-[A-Za-z0-9]+$/u.test(value) &&
+    value.length <= 31
+  ) {
+    return value
+  }
+  throw new Error(
+    `Privacy seed: invalid HSA-ID in '${tableName}.${columnName}'`,
+  )
+}
+
+function collectSeedHsaIds(hsaIds, tableName, columnName) {
+  const table = SEED_DATA[tableName]
+  if (!table) return
+  const columnIndex = table.columns.indexOf(columnName)
+  if (columnIndex < 0) return
+  for (const row of table.rows) {
+    const value = row[columnIndex]
+    if (value == null || value === '') continue
+    hsaIds.add(assertSeedHsaId(value, tableName, columnName))
+  }
+}
+
+function addRequirementResponsibilityPeopleSeed() {
+  const hsaIds = new Set()
+  collectSeedHsaIds(hsaIds, 'requirement_areas', 'owner_hsa_id')
+  collectSeedHsaIds(hsaIds, 'requirement_area_co_authors', 'hsa_id')
+  collectSeedHsaIds(hsaIds, 'requirements_specifications', 'responsible_hsa_id')
+  collectSeedHsaIds(hsaIds, 'specification_co_authors', 'hsa_id')
+  collectSeedHsaIds(hsaIds, 'requirement_packages', 'lead_hsa_id')
+  collectSeedHsaIds(hsaIds, 'requirement_package_co_authors', 'hsa_id')
+
+  SEED_DATA.requirement_responsibility_people = {
+    columns: [
+      'hsa_id',
+      'given_name',
+      'middle_name',
+      'surname',
+      'email',
+      'last_fetched_at',
+      'created_at',
+      'updated_at',
+    ],
+    pk: ['hsa_id'],
+    rows: [...hsaIds]
+      .sort()
+      .map(hsaId => [
+        hsaId,
+        RESPONSIBILITY_PERSON_PLACEHOLDER,
+        null,
+        null,
+        null,
+        null,
+        PRIVACY_SEED_TS,
+        PRIVACY_SEED_TS,
+      ]),
+  }
+}
+
 function addHsaColumnForDisplay(tableName, displayColumn, hsaColumn) {
   const table = seedTable(tableName)
   const displayIndex = table.columns.indexOf(displayColumn)
@@ -12687,18 +12752,12 @@ function applyPrivacyIdentitySeed() {
       SPEC_RESPONSIBLE_BY_ID.get(row[specIdIndex])?.hsaId ??
       'SE5560000001-seed',
   )
-  ensureColumn(
-    specifications,
-    'responsible_display_name',
-    row => SPEC_RESPONSIBLE_BY_ID.get(row[specIdIndex])?.displayName ?? 'seed',
-  )
   ensureColumn(specifications, 'can_responsible_generate_ai', () => 0)
 
   SEED_DATA.requirement_area_co_authors = {
     columns: [
       'area_id',
       'hsa_id',
-      'display_name',
       'can_generate_ai',
       'created_at',
       'created_by_hsa_id',
@@ -12709,7 +12768,6 @@ function applyPrivacyIdentitySeed() {
       [
         1,
         'SE5560000001-kalle1',
-        'Kalle Svensson',
         1,
         PRIVACY_SEED_TS,
         'SE5560000001-seed',
@@ -12718,7 +12776,6 @@ function applyPrivacyIdentitySeed() {
       [
         2,
         'SE5560000001-kalle2',
-        'Kalle Svensson',
         0,
         PRIVACY_SEED_TS,
         'SE5560000001-seed',
@@ -12727,7 +12784,6 @@ function applyPrivacyIdentitySeed() {
       [
         1001,
         'SE5560000001-linneab',
-        'Linnéa Bergström',
         1,
         PRIVACY_SEED_TS,
         'SE5560000001-linneab',
@@ -12740,7 +12796,6 @@ function applyPrivacyIdentitySeed() {
     columns: [
       'specification_id',
       'hsa_id',
-      'display_name',
       'can_generate_ai',
       'created_at',
       'created_by_hsa_id',
@@ -12751,7 +12806,6 @@ function applyPrivacyIdentitySeed() {
       [
         1,
         'SE5560000001-kalle1',
-        'Kalle Svensson',
         1,
         PRIVACY_SEED_TS,
         'SE5560000001-seed',
@@ -12760,7 +12814,6 @@ function applyPrivacyIdentitySeed() {
       [
         2,
         'SE5560000001-kalle2',
-        'Kalle Svensson',
         0,
         PRIVACY_SEED_TS,
         'SE5560000001-seed',
@@ -12769,7 +12822,6 @@ function applyPrivacyIdentitySeed() {
       [
         1001,
         'SE5560000001-saraholm',
-        'Sara Holm',
         1,
         PRIVACY_SEED_TS,
         'SE5560000001-seeddogfood',
@@ -12778,7 +12830,6 @@ function applyPrivacyIdentitySeed() {
       [
         6,
         'SE5560000001-linneab',
-        'Linnéa Bergström',
         1,
         PRIVACY_SEED_TS,
         'SE5560000001-linneab',
@@ -12999,6 +13050,8 @@ function applyPrivacyIdentitySeed() {
       ],
     ],
   }
+
+  addRequirementResponsibilityPeopleSeed()
 }
 
 applyPrivacyIdentitySeed()

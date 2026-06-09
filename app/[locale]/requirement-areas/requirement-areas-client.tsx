@@ -9,8 +9,11 @@ import CrudAdminPanel, {
 } from '@/components/CrudAdminPanel'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import HsaPersonVerifyField, {
+  type HsaPersonVerification,
+} from '@/components/HsaPersonVerifyField'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
-import { HSA_ID_MAX_LENGTH, isHsaId } from '@/lib/auth/hsa-id'
+import { isHsaId } from '@/lib/auth/hsa-id'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
@@ -46,6 +49,7 @@ interface AreaForm {
   description: string
   name: string
   ownerHsaId: string
+  ownerPersonVerification: HsaPersonVerification | null
   prefix: string
 }
 
@@ -54,6 +58,7 @@ interface OwnerChangeState {
   currentOwnerHsaId: string
   error: string | null
   nextOwnerHsaId: string
+  nextOwnerPersonVerification: HsaPersonVerification | null
   submitting: boolean
 }
 
@@ -61,6 +66,7 @@ const getInitialForm = (): AreaForm => ({
   description: '',
   name: '',
   ownerHsaId: '',
+  ownerPersonVerification: null,
   prefix: '',
 })
 
@@ -68,6 +74,7 @@ const toForm = (area: Area): AreaForm => ({
   description: area.description ?? '',
   name: area.name,
   ownerHsaId: area.ownerHsaId,
+  ownerPersonVerification: null,
   prefix: area.prefix,
 })
 
@@ -109,6 +116,7 @@ export default function RequirementAreasClient() {
       currentOwnerHsaId,
       error: null,
       nextOwnerHsaId: '',
+      nextOwnerPersonVerification: null,
       submitting: false,
     })
   }
@@ -308,19 +316,36 @@ export default function RequirementAreasClient() {
                 </button>
               </div>
             ) : (
-              <input
-                className={inputClassName}
+              <HsaPersonVerifyField
                 disabled={disabled}
-                id="area-owner"
-                maxLength={HSA_ID_MAX_LENGTH}
-                onChange={event =>
+                emailLabel={tc('hsaVerifyEmail')}
+                errorFallback={tc('hsaVerifyError')}
+                fetchingLabel={tc('fetchingHsaPerson')}
+                fetchLabel={tc('fetchHsaPerson')}
+                hsaId={form.ownerHsaId}
+                inputClassName={inputClassName}
+                inputId="area-owner"
+                nameLabel={tc('hsaVerifyName')}
+                onHsaIdChange={value =>
                   setForm(previousForm => ({
                     ...previousForm,
-                    ownerHsaId: event.target.value,
+                    ownerHsaId: value,
+                    ownerPersonVerification:
+                      value.trim() ===
+                      previousForm.ownerPersonVerification?.hsaId
+                        ? previousForm.ownerPersonVerification
+                        : null,
                   }))
                 }
+                onVerified={person =>
+                  setForm(previousForm => ({
+                    ...previousForm,
+                    ownerPersonVerification: person,
+                  }))
+                }
+                purpose="requirement_area_owner"
                 required
-                value={form.ownerHsaId}
+                unavailableText={tc('hsaVerifyUnavailable')}
               />
             )}
           </div>
@@ -380,23 +405,42 @@ export default function RequirementAreasClient() {
                     label={t('newOwner')}
                     required
                   />
-                  <input
-                    className={AREA_INPUT_CLASS_NAME}
+                  <HsaPersonVerifyField
                     disabled={ownerChange.submitting}
-                    id="area-new-owner"
-                    maxLength={HSA_ID_MAX_LENGTH}
-                    onChange={event =>
+                    emailLabel={tc('hsaVerifyEmail')}
+                    errorFallback={tc('hsaVerifyError')}
+                    fetchingLabel={tc('fetchingHsaPerson')}
+                    fetchLabel={tc('fetchHsaPerson')}
+                    hsaId={ownerChange.nextOwnerHsaId}
+                    inputClassName={AREA_INPUT_CLASS_NAME}
+                    inputId="area-new-owner"
+                    nameLabel={tc('hsaVerifyName')}
+                    onHsaIdChange={value =>
                       setOwnerChange(current =>
                         current
                           ? {
                               ...current,
                               error: null,
-                              nextOwnerHsaId: event.target.value,
+                              nextOwnerHsaId: value,
+                              nextOwnerPersonVerification:
+                                value.trim() ===
+                                current.nextOwnerPersonVerification?.hsaId
+                                  ? current.nextOwnerPersonVerification
+                                  : null,
                             }
                           : current,
                       )
                     }
-                    value={ownerChange.nextOwnerHsaId}
+                    onVerified={person =>
+                      setOwnerChange(current =>
+                        current
+                          ? { ...current, nextOwnerPersonVerification: person }
+                          : current,
+                      )
+                    }
+                    purpose="requirement_area_owner"
+                    required
+                    unavailableText={tc('hsaVerifyUnavailable')}
                   />
                 </div>
                 {ownerChange.error && (

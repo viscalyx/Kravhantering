@@ -264,10 +264,28 @@ const SOURCE_TEXT: Record<LocaleKey, Record<string, SourceInfo>> = {
       section: 'coAuthoring',
       title: 'Requirement area co-author',
     },
+    'requirement_package_co_authors.created_by': {
+      description:
+        'This person is stored as the person who created a package co-author assignment.',
+      section: 'history',
+      title: 'Created package co-author assignment',
+    },
+    'requirement_package_co_authors.hsa_id': {
+      description:
+        'The person is an active co-author for a requirements package.',
+      section: 'coAuthoring',
+      title: 'Requirements package co-author',
+    },
     'requirement_areas.owner': {
       description: 'The person is assigned as owner for a requirement area.',
       section: 'activeAssignments',
       title: 'Requirement area owner',
+    },
+    'requirement_responsibility_people.identity': {
+      description:
+        'The person is stored once for active requirement responsibility assignments.',
+      section: 'activeAssignments',
+      title: 'Requirement responsibility person',
     },
     'requirement_packages.owner': {
       description:
@@ -384,10 +402,27 @@ const SOURCE_TEXT: Record<LocaleKey, Record<string, SourceInfo>> = {
       section: 'coAuthoring',
       title: 'Medförfattare i kravområde',
     },
+    'requirement_package_co_authors.created_by': {
+      description:
+        'Personen står sparad som den som skapade en tilldelning som kravpaketsmedförfattare.',
+      section: 'history',
+      title: 'Skapad tilldelning som kravpaketsmedförfattare',
+    },
+    'requirement_package_co_authors.hsa_id': {
+      description: 'Personen är aktiv medförfattare i ett kravpaket.',
+      section: 'coAuthoring',
+      title: 'Medförfattare i kravpaket',
+    },
     'requirement_areas.owner': {
       description: 'Personen är utsedd ägare för ett kravområde.',
       section: 'activeAssignments',
       title: 'Ägare för kravområde',
+    },
+    'requirement_responsibility_people.identity': {
+      description:
+        'Personen lagras en gång för aktiva kravansvarstilldelningar.',
+      section: 'activeAssignments',
+      title: 'Kravansvarsperson',
     },
     'requirement_packages.owner': {
       description: 'Personen är utsedd ägare för ett kravpaket.',
@@ -453,12 +488,15 @@ const FIELD_LABELS: Record<LocaleKey, Record<string, string>> = {
     external_evidence_reference: 'External evidence',
     familyName: 'Family name',
     first_name: 'First name',
+    given_name: 'Given name',
     givenName: 'Given name',
     hsa_id: 'HSA-ID',
     hsaId: 'HSA-ID',
+    last_fetched_at: 'Last fetched',
     last_name: 'Last name',
     lead_display_name: 'Name',
     lead_hsa_id: 'HSA-ID',
+    middle_name: 'Middle name',
     name: 'Name',
     owner_display_name: 'Name',
     owner_hsa_id: 'HSA-ID',
@@ -478,6 +516,7 @@ const FIELD_LABELS: Record<LocaleKey, Record<string, string>> = {
     scope_type: 'Scope type',
     source_key: 'Permission source',
     status: 'Status',
+    surname: 'Surname',
     target_kind: 'Affected object type',
     target_unique_id: 'Affected object',
   },
@@ -503,12 +542,15 @@ const FIELD_LABELS: Record<LocaleKey, Record<string, string>> = {
     external_evidence_reference: 'Extern evidens',
     familyName: 'Efternamn',
     first_name: 'Förnamn',
+    given_name: 'Förnamn',
     givenName: 'Förnamn',
     hsa_id: 'HSA-ID',
     hsaId: 'HSA-ID',
+    last_fetched_at: 'Senast hämtad',
     last_name: 'Efternamn',
     lead_display_name: 'Namn',
     lead_hsa_id: 'HSA-ID',
+    middle_name: 'Mellannamn',
     name: 'Namn',
     owner_display_name: 'Namn',
     owner_hsa_id: 'HSA-ID',
@@ -528,6 +570,7 @@ const FIELD_LABELS: Record<LocaleKey, Record<string, string>> = {
     scope_type: 'Typ av omfattning',
     source_key: 'Källa för behörighet',
     status: 'Status',
+    surname: 'Efternamn',
     target_kind: 'Typ av berört objekt',
     target_unique_id: 'Berört objekt',
   },
@@ -573,12 +616,16 @@ const PERMISSION_LABELS: Record<LocaleKey, Record<string, string>> = {
   en: {
     area_co_author: 'Requirement area co-author',
     area_owner: 'Requirement area owner',
+    package_co_author: 'Requirements package co-author',
+    package_owner: 'Requirements package owner',
     specification_co_author: 'Requirements specification co-author',
     specification_responsible: 'Requirements specification lead',
   },
   sv: {
     area_co_author: 'Medförfattare i kravområde',
     area_owner: 'Ägare för kravområde',
+    package_co_author: 'Medförfattare i kravpaket',
+    package_owner: 'Ägare för kravpaket',
     specification_co_author: 'Medförfattare i kravunderlag',
     specification_responsible: 'Ansvarig för kravunderlag',
   },

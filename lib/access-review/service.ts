@@ -75,6 +75,20 @@ const ACCESS_REVIEW_ITEM_INSERT_PARAMETER_COUNT = 11
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
+function requirementResponsibilityPersonNameSql(alias: string): string {
+  return `NULLIF(LTRIM(RTRIM(CONCAT(
+    ${alias}.given_name,
+    CASE
+      WHEN ${alias}.middle_name IS NULL OR LTRIM(RTRIM(${alias}.middle_name)) = N'' THEN N''
+      ELSE CONCAT(N' ', ${alias}.middle_name)
+    END,
+    CASE
+      WHEN ${alias}.surname IS NULL OR LTRIM(RTRIM(${alias}.surname)) = N'' THEN N''
+      ELSE CONCAT(N' ', ${alias}.surname)
+    END
+  ))), N'')`
+}
+
 function isAdmin(actor: AccessReviewAuthContext): boolean {
   return actor.roles.includes(ADMIN_ROLE)
 }
@@ -273,19 +287,35 @@ export async function collectAccessReviewAssignments(
           N'requirement_areas.owner' AS sourceKey,
           N'requirement_areas' AS sourceTable,
           area.owner_hsa_id AS principalHsaId,
-          area.owner_hsa_id AS principalDisplayName,
+          ${requirementResponsibilityPersonNameSql('owner_person')} AS principalDisplayName,
           N'requirement_area' AS scopeType,
           CAST(area.id AS nvarchar(120)) AS scopeKey,
           CONCAT(area.prefix, N' ', area.name) AS scopeLabel,
           N'area_owner' AS permissionType,
           CAST(0 AS bit) AS canGenerateAi
         FROM requirement_areas area
+        INNER JOIN requirement_responsibility_people owner_person
+          ON owner_person.hsa_id = area.owner_hsa_id
+        UNION ALL
+        SELECT
+          N'requirement_packages.owner' AS sourceKey,
+          N'requirement_packages' AS sourceTable,
+          pkg.lead_hsa_id AS principalHsaId,
+          ${requirementResponsibilityPersonNameSql('lead_person')} AS principalDisplayName,
+          N'requirement_package' AS scopeType,
+          CAST(pkg.id AS nvarchar(120)) AS scopeKey,
+          pkg.name AS scopeLabel,
+          N'package_owner' AS permissionType,
+          CAST(0 AS bit) AS canGenerateAi
+        FROM requirement_packages pkg
+        INNER JOIN requirement_responsibility_people lead_person
+          ON lead_person.hsa_id = pkg.lead_hsa_id
         UNION ALL
         SELECT
           N'requirement_area_co_authors.hsa_id' AS sourceKey,
           N'requirement_area_co_authors' AS sourceTable,
           co_author.hsa_id AS principalHsaId,
-          co_author.display_name AS principalDisplayName,
+          ${requirementResponsibilityPersonNameSql('co_author_person')} AS principalDisplayName,
           N'requirement_area' AS scopeType,
           CAST(area.id AS nvarchar(120)) AS scopeKey,
           CONCAT(area.prefix, N' ', area.name) AS scopeLabel,
@@ -293,25 +323,45 @@ export async function collectAccessReviewAssignments(
           co_author.can_generate_ai AS canGenerateAi
         FROM requirement_area_co_authors co_author
         INNER JOIN requirement_areas area ON area.id = co_author.area_id
+        INNER JOIN requirement_responsibility_people co_author_person
+          ON co_author_person.hsa_id = co_author.hsa_id
+        UNION ALL
+        SELECT
+          N'requirement_package_co_authors.hsa_id' AS sourceKey,
+          N'requirement_package_co_authors' AS sourceTable,
+          co_author.hsa_id AS principalHsaId,
+          ${requirementResponsibilityPersonNameSql('co_author_person')} AS principalDisplayName,
+          N'requirement_package' AS scopeType,
+          CAST(pkg.id AS nvarchar(120)) AS scopeKey,
+          pkg.name AS scopeLabel,
+          N'package_co_author' AS permissionType,
+          CAST(0 AS bit) AS canGenerateAi
+        FROM requirement_package_co_authors co_author
+        INNER JOIN requirement_packages pkg
+          ON pkg.id = co_author.requirement_package_id
+        INNER JOIN requirement_responsibility_people co_author_person
+          ON co_author_person.hsa_id = co_author.hsa_id
         UNION ALL
         SELECT
           N'requirements_specifications.responsible' AS sourceKey,
           N'requirements_specifications' AS sourceTable,
           spec.responsible_hsa_id AS principalHsaId,
-          spec.responsible_display_name AS principalDisplayName,
+          ${requirementResponsibilityPersonNameSql('responsible_person')} AS principalDisplayName,
           N'requirements_specification' AS scopeType,
           CAST(spec.id AS nvarchar(120)) AS scopeKey,
           CONCAT(spec.unique_id, N' ', spec.name) AS scopeLabel,
           N'specification_responsible' AS permissionType,
           spec.can_responsible_generate_ai AS canGenerateAi
         FROM requirements_specifications spec
+        INNER JOIN requirement_responsibility_people responsible_person
+          ON responsible_person.hsa_id = spec.responsible_hsa_id
         WHERE spec.responsible_hsa_id IS NOT NULL
         UNION ALL
         SELECT
           N'specification_co_authors.hsa_id' AS sourceKey,
           N'specification_co_authors' AS sourceTable,
           co_author.hsa_id AS principalHsaId,
-          co_author.display_name AS principalDisplayName,
+          ${requirementResponsibilityPersonNameSql('co_author_person')} AS principalDisplayName,
           N'requirements_specification' AS scopeType,
           CAST(spec.id AS nvarchar(120)) AS scopeKey,
           CONCAT(spec.unique_id, N' ', spec.name) AS scopeLabel,
@@ -320,6 +370,8 @@ export async function collectAccessReviewAssignments(
         FROM specification_co_authors co_author
         INNER JOIN requirements_specifications spec
           ON spec.id = co_author.specification_id
+        INNER JOIN requirement_responsibility_people co_author_person
+          ON co_author_person.hsa_id = co_author.hsa_id
       ) assignments
       WHERE assignments.principalHsaId IS NOT NULL
       ORDER BY

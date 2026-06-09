@@ -217,7 +217,6 @@ function addRetentionTaxonomy(seedData) {
       description: `${pkg.name} för deterministiska arkiveringstester.`,
       id: pkg.id,
       is_archived: 0,
-      lead_display_name: 'Retention Linked',
       lead_hsa_id: 'SE5560000001-retentionlinked',
       name: pkg.name,
       updated_at: pkg.updatedAt,

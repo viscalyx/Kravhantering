@@ -23,6 +23,9 @@ import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import HsaPersonVerifyField, {
+  type HsaPersonVerification,
+} from '@/components/HsaPersonVerifyField'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { Link } from '@/i18n/routing'
 import { isHsaId } from '@/lib/auth/hsa-id'
@@ -37,10 +40,7 @@ import type {
   Specification,
   SpecificationTaxonomyItem,
 } from '@/lib/specifications/preload-types'
-import {
-  normalizeResponsibleDisplayName,
-  normalizeResponsibleHsaId,
-} from '@/lib/specifications/responsible-person'
+import { normalizeResponsibleHsaId } from '@/lib/specifications/responsible-person'
 
 const REQUIREMENT_SPECIFICATIONS_HELP: HelpContent = {
   sections: [
@@ -372,6 +372,7 @@ export default function RequirementsSpecificationsClient({
     businessNeedsReference: '',
     responsibleDisplayName: '',
     responsibleHsaId: '',
+    responsiblePersonVerification: null as HsaPersonVerification | null,
     canResponsibleGenerateAi: false,
   })
   const deferredNameFilter = useDeferredValue(nameFilter)
@@ -392,6 +393,7 @@ export default function RequirementsSpecificationsClient({
     businessNeedsReference: '',
     responsibleDisplayName: '',
     responsibleHsaId: '',
+    responsiblePersonVerification: null as HsaPersonVerification | null,
     canResponsibleGenerateAi: false,
   })
 
@@ -453,14 +455,6 @@ export default function RequirementsSpecificationsClient({
 
   const buildResponsiblePayload = () => {
     const responsibleHsaId = normalizeResponsibleHsaId(form.responsibleHsaId)
-    const responsibleDisplayName = normalizeResponsibleDisplayName(
-      form.responsibleDisplayName,
-    )
-
-    if (Boolean(responsibleHsaId) !== Boolean(responsibleDisplayName)) {
-      setSaveError(t('responsiblePairRequired'))
-      return null
-    }
 
     if (responsibleHsaId && !isHsaId(responsibleHsaId)) {
       setSaveError(t('invalidResponsibleHsaId'))
@@ -469,11 +463,8 @@ export default function RequirementsSpecificationsClient({
 
     return {
       responsibleHsaId,
-      responsibleDisplayName,
       canResponsibleGenerateAi:
-        responsibleHsaId != null &&
-        responsibleDisplayName != null &&
-        form.canResponsibleGenerateAi,
+        responsibleHsaId != null && form.canResponsibleGenerateAi,
     }
   }
 
@@ -557,6 +548,7 @@ export default function RequirementsSpecificationsClient({
         ? (getResponsibleDisplayName(spec) ?? '')
         : '',
       responsibleHsaId: spec.responsibleHsaId ?? '',
+      responsiblePersonVerification: null,
       canResponsibleGenerateAi:
         spec.responsibleHsaId != null &&
         spec.responsibleDisplayName != null &&
@@ -779,46 +771,7 @@ export default function RequirementsSpecificationsClient({
                   ))}
                 </select>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <div className="mb-1 flex items-center gap-1.5">
-                    <label
-                      className="block text-sm font-medium"
-                      htmlFor="spec-responsible-name"
-                    >
-                      {t('responsibleDisplayName')}
-                    </label>
-                    {helpButton(
-                      'spec-responsible-name',
-                      t('responsibleDisplayName'),
-                    )}
-                  </div>
-                  {helpPanel(
-                    'responsibleDisplayNameHelp',
-                    'spec-responsible-name',
-                  )}
-                  <input
-                    autoComplete="off"
-                    className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                    id="spec-responsible-name"
-                    onChange={e =>
-                      setForm(f => {
-                        const next = {
-                          ...f,
-                          responsibleDisplayName: e.target.value,
-                        }
-                        if (
-                          !next.responsibleDisplayName.trim() ||
-                          !next.responsibleHsaId.trim()
-                        ) {
-                          next.canResponsibleGenerateAi = false
-                        }
-                        return next
-                      })
-                    }
-                    value={form.responsibleDisplayName}
-                  />
-                </div>
+              <div className="grid gap-3">
                 <div>
                   <div className="mb-1 flex items-center gap-1.5">
                     <label
@@ -833,23 +786,47 @@ export default function RequirementsSpecificationsClient({
                     )}
                   </div>
                   {helpPanel('responsibleHsaIdHelp', 'spec-responsible-hsa-id')}
-                  <input
-                    autoComplete="off"
-                    className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 font-mono text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                    id="spec-responsible-hsa-id"
-                    onChange={e =>
+                  <HsaPersonVerifyField
+                    disabled={isSubmitting}
+                    emailLabel={tc('hsaVerifyEmail')}
+                    errorFallback={tc('hsaVerifyError')}
+                    fetchingLabel={tc('fetchingHsaPerson')}
+                    fetchLabel={tc('fetchHsaPerson')}
+                    hsaId={form.responsibleHsaId}
+                    initialDisplayName={form.responsibleDisplayName}
+                    inputClassName="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                    inputId="spec-responsible-hsa-id"
+                    nameLabel={tc('hsaVerifyName')}
+                    onHsaIdChange={value =>
                       setForm(f => {
-                        const next = { ...f, responsibleHsaId: e.target.value }
-                        if (
-                          !next.responsibleDisplayName.trim() ||
-                          !next.responsibleHsaId.trim()
-                        ) {
+                        const next = {
+                          ...f,
+                          responsibleDisplayName:
+                            value.trim() === f.responsibleHsaId.trim()
+                              ? f.responsibleDisplayName
+                              : '',
+                          responsibleHsaId: value,
+                          responsiblePersonVerification:
+                            value.trim() ===
+                            f.responsiblePersonVerification?.hsaId
+                              ? f.responsiblePersonVerification
+                              : null,
+                        }
+                        if (!next.responsibleHsaId.trim()) {
                           next.canResponsibleGenerateAi = false
                         }
                         return next
                       })
                     }
-                    value={form.responsibleHsaId}
+                    onVerified={person =>
+                      setForm(f => ({
+                        ...f,
+                        responsibleDisplayName: person.displayName,
+                        responsiblePersonVerification: person,
+                      }))
+                    }
+                    purpose="requirements_specification_responsible"
+                    unavailableText={tc('hsaVerifyUnavailable')}
                   />
                 </div>
               </div>
@@ -874,10 +851,7 @@ export default function RequirementsSpecificationsClient({
                   <input
                     checked={form.canResponsibleGenerateAi}
                     className="h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={
-                      !form.responsibleDisplayName.trim() ||
-                      !form.responsibleHsaId.trim()
-                    }
+                    disabled={!form.responsibleHsaId.trim()}
                     id="spec-can-responsible-generate-ai"
                     onChange={e =>
                       setForm(f => ({

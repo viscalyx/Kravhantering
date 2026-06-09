@@ -1,25 +1,24 @@
 import { EntitySchema } from 'typeorm'
-import type { RequirementAreaEntity } from '@/lib/typeorm/entities/requirement-area'
+import type { RequirementPackageEntity } from '@/lib/typeorm/entities/requirement-package'
 import type { RequirementResponsibilityPersonEntity } from '@/lib/typeorm/entities/requirement-responsibility-person'
 
-export interface RequirementAreaCoAuthorEntity {
-  area: RequirementAreaEntity
-  areaId: number
-  canGenerateAi: boolean
+export interface RequirementPackageCoAuthorEntity {
   createdAt: Date
   createdByDisplayName: string | null
   createdByHsaId: string | null
   hsaId: string
   person: RequirementResponsibilityPersonEntity
+  requirementPackage: RequirementPackageEntity
+  requirementPackageId: number
 }
 
-export const requirementAreaCoAuthorEntity =
-  new EntitySchema<RequirementAreaCoAuthorEntity>({
-    name: 'RequirementAreaCoAuthor',
-    tableName: 'requirement_area_co_authors',
+export const requirementPackageCoAuthorEntity =
+  new EntitySchema<RequirementPackageCoAuthorEntity>({
+    name: 'RequirementPackageCoAuthor',
+    tableName: 'requirement_package_co_authors',
     columns: {
-      areaId: {
-        name: 'area_id',
+      requirementPackageId: {
+        name: 'requirement_package_id',
         primary: true,
         type: 'int',
       },
@@ -28,11 +27,6 @@ export const requirementAreaCoAuthorEntity =
         primary: true,
         type: 'nvarchar',
         length: 31,
-      },
-      canGenerateAi: {
-        name: 'can_generate_ai',
-        type: 'bit',
-        default: false,
       },
       createdAt: {
         name: 'created_at',
@@ -53,22 +47,23 @@ export const requirementAreaCoAuthorEntity =
     },
     indices: [
       {
-        name: 'idx_requirement_area_co_authors_hsa_id',
+        name: 'idx_requirement_package_co_authors_hsa_id',
         columns: ['hsaId'],
       },
       {
-        name: 'idx_requirement_area_co_authors_created_by_hsa_id',
+        name: 'idx_requirement_package_co_authors_created_by_hsa_id',
         columns: ['createdByHsaId'],
       },
     ],
     relations: {
-      area: {
+      requirementPackage: {
         type: 'many-to-one',
-        target: 'RequirementArea',
+        target: 'RequirementPackage',
         joinColumn: {
-          name: 'area_id',
+          name: 'requirement_package_id',
           referencedColumnName: 'id',
-          foreignKeyConstraintName: 'fk_requirement_area_co_authors_area_id',
+          foreignKeyConstraintName:
+            'fk_requirement_package_co_authors_requirement_package_id',
         },
         nullable: false,
         onDelete: 'CASCADE',
@@ -80,7 +75,7 @@ export const requirementAreaCoAuthorEntity =
         joinColumn: {
           name: 'hsa_id',
           referencedColumnName: 'hsaId',
-          foreignKeyConstraintName: 'fk_requirement_area_co_authors_hsa_id',
+          foreignKeyConstraintName: 'fk_requirement_package_co_authors_hsa_id',
         },
         nullable: false,
         onDelete: 'NO ACTION',

@@ -9,23 +9,39 @@ import {
 } from '@/lib/dal/requirement-packages'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  authenticatedMutationPolicy,
+  customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
+  ARRAY_INPUT_MAX_ITEMS,
   boundedDbStringSchema,
   optionalBusinessTextSchema,
   parseSearchParams,
   queryBooleanSchema,
 } from '@/lib/http/validation'
+import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
+import { validationError } from '@/lib/requirements/errors'
+import { requireRequirementPackageCreatePermission } from '@/lib/requirements/requirement-package-permissions'
+import {
+  resolveVerifiedRequirementResponsibilityPeople,
+  resolveVerifiedRequirementResponsibilityPerson,
+} from '@/lib/requirements/responsibility-person-verification'
+
+const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
+  message: 'Expected a valid HSA-ID',
+})
+
+const coAuthorHsaIdsSchema = z
+  .array(hsaIdSchema)
+  .max(ARRAY_INPUT_MAX_ITEMS)
+  .refine(values => new Set(values).size === values.length, {
+    message: 'Expected unique HSA-IDs',
+  })
 
 const requirementPackageSchema = z
   .object({
+    coAuthorHsaIds: coAuthorHsaIdsSchema.optional().default([]),
     description: optionalBusinessTextSchema,
-    leadDisplayName: boundedDbStringSchema,
-    leadHsaId: boundedDbStringSchema.refine(isHsaId, {
-      message: 'Expected a valid HSA-ID',
-    }),
     name: boundedDbStringSchema,
   })
   .strict()
@@ -61,13 +77,38 @@ export async function GET(request: Request) {
 
 export const POST = secureMutationRoute({
   bodySchema: requirementPackageSchema,
-  policy: authenticatedMutationPolicy('requirement_package.create'),
+  policy: customMutationPolicy('requirement_package.create', async args => {
+    const db = await getRequestSqlServerDataSource()
+    await requireRequirementPackageCreatePermission(db, args.context)
+  }),
   handler: async ({ body, context }) => {
     const db = await getRequestSqlServerDataSource()
-    const requirementPackage = await createRequirementPackage(db, body)
+    const actor = requireHumanActorSnapshot(context)
+    if (body.coAuthorHsaIds.includes(actor.hsaId)) {
+      throw validationError('Package lead cannot also be package co-author', {
+        reason: 'package_lead_cannot_be_co_author',
+      })
+    }
+    const leadPerson = await resolveVerifiedRequirementResponsibilityPerson(
+      db,
+      actor.hsaId,
+    )
+    const coAuthorPeople = await resolveVerifiedRequirementResponsibilityPeople(
+      db,
+      body.coAuthorHsaIds,
+    )
+    const requirementPackage = await createRequirementPackage(db, {
+      ...body,
+      createdBy: actor,
+      coAuthorPeople,
+      leadHsaId: actor.hsaId,
+      leadPerson,
+    })
     await recordAllowedActionAuditEvent(db, context, {
       action: 'requirement_package.create',
-      details: { changedFields: Object.keys(body) },
+      details: {
+        changedFields: ['leadHsaId', ...Object.keys(body)],
+      },
       targetId: requirementPackage.id,
       targetKind: 'requirement_package',
     })

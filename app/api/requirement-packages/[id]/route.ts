@@ -17,35 +17,59 @@ import {
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
+  ARRAY_INPUT_MAX_ITEMS,
   boundedDbStringSchema,
   idParamSchema,
   optionalBusinessTextSchema,
   parseRouteParams,
 } from '@/lib/http/validation'
-import { requireRequirementPackagePermission } from '@/lib/requirements/requirement-package-permissions'
+import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
+import { validationError } from '@/lib/requirements/errors'
+import {
+  requireRequirementPackageLeadOrAdmin,
+  requireRequirementPackagePermission,
+} from '@/lib/requirements/requirement-package-permissions'
+import {
+  resolveVerifiedRequirementResponsibilityPeople,
+  resolveVerifiedRequirementResponsibilityPerson,
+} from '@/lib/requirements/responsibility-person-verification'
 
 export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
 
+const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
+  message: 'Expected a valid HSA-ID',
+})
+
+const coAuthorHsaIdsSchema = z
+  .array(hsaIdSchema)
+  .max(ARRAY_INPUT_MAX_ITEMS)
+  .refine(values => new Set(values).size === values.length, {
+    message: 'Expected unique HSA-IDs',
+  })
+
 const updateRequirementPackageSchema = z
   .object({
+    coAuthorHsaIds: coAuthorHsaIdsSchema.optional(),
     description: optionalBusinessTextSchema,
-    leadDisplayName: boundedDbStringSchema.optional(),
-    leadHsaId: boundedDbStringSchema
-      .refine(isHsaId, {
-        message: 'Expected a valid HSA-ID',
-      })
-      .optional(),
+    leadHsaId: hsaIdSchema.optional(),
     name: boundedDbStringSchema.optional(),
   })
   .strict()
   .refine(
     body =>
-      ['description', 'leadDisplayName', 'leadHsaId', 'name'].some(key =>
+      ['coAuthorHsaIds', 'description', 'leadHsaId', 'name'].some(key =>
         Object.hasOwn(body, key),
       ),
     { message: 'At least one field must be provided for update' },
+  )
+  .refine(
+    body => !body.leadHsaId || !body.coAuthorHsaIds?.includes(body.leadHsaId),
+    {
+      message: 'Package lead cannot also be package co-author',
+      path: ['coAuthorHsaIds'],
+    },
   )
 
 export async function GET(
@@ -76,16 +100,51 @@ export async function GET(
 export const PUT = secureMutationRoute({
   bodySchema: updateRequirementPackageSchema,
   paramsSchema: idParamSchema,
-  policy: customMutationPolicy('requirement_package.update', ({ context }) => {
-    requireRequirementPackagePermission(context, 'requirement_package.update')
+  policy: customMutationPolicy<
+    z.infer<typeof updateRequirementPackageSchema>,
+    z.infer<typeof idParamSchema>
+  >('requirement_package.update', async ({ context, params }) => {
+    const db = await getRequestSqlServerDataSource()
+    await requireRequirementPackageLeadOrAdmin(
+      db,
+      context,
+      params.id,
+      'requirement_package.update',
+    )
   }),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const requirementPackage = await updateRequirementPackage(
-      db,
-      params.id,
-      body,
-    )
+    const existing = await getRequirementPackageById(db, params.id)
+    if (!existing) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    const nextLeadHsaId = body.leadHsaId ?? existing.leadHsaId
+    if (body.coAuthorHsaIds?.includes(nextLeadHsaId)) {
+      throw validationError('Package lead cannot also be package co-author', {
+        reason: 'package_lead_cannot_be_co_author',
+      })
+    }
+    const actor = requireHumanActorSnapshot(context)
+    const leadPerson =
+      body.leadHsaId === undefined
+        ? undefined
+        : await resolveVerifiedRequirementResponsibilityPerson(
+            db,
+            body.leadHsaId,
+          )
+    const coAuthorPeople =
+      body.coAuthorHsaIds === undefined
+        ? undefined
+        : await resolveVerifiedRequirementResponsibilityPeople(
+            db,
+            body.coAuthorHsaIds,
+          )
+    const requirementPackage = await updateRequirementPackage(db, params.id, {
+      ...body,
+      changedBy: actor,
+      coAuthorPeople,
+      leadPerson,
+    })
     if (!requirementPackage) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }

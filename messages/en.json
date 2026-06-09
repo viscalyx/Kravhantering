@@ -12,6 +12,12 @@
     "edit": "Edit",
     "create": "New",
     "search": "Search",
+    "fetchHsaPerson": "Fetch",
+    "fetchingHsaPerson": "Fetching…",
+    "hsaVerifyEmail": "Email",
+    "hsaVerifyError": "Could not fetch person details.",
+    "hsaVerifyName": "Name",
+    "hsaVerifyUnavailable": "Not fetched",
     "clearSearch": "Clear search",
     "filter": "Filter",
     "filterBy": "Filter by {label}",
@@ -771,6 +777,13 @@
     "leadDisplayNameHelp": "Enter the display name for the person responsible for this requirements package.",
     "leadHsaId": "Package lead HSA-ID",
     "leadHsaIdHelp": "Enter the package lead HSA-ID with two uppercase country-code letters, a 10-digit organization number, a hyphen, and an alphanumeric suffix.",
+    "coAuthors": "Package co-authors",
+    "coAuthorsHelp": "Add HSA-IDs for people who support the package lead.",
+    "coAuthorHsaId": "Co-author HSA-ID",
+    "coAuthorHsaIdHelp": "Enter the co-author HSA-ID with two uppercase country-code letters, a 10-digit organization number, a hyphen, and an alphanumeric suffix.",
+    "addCoAuthor": "Add co-author",
+    "removeCoAuthor": "Remove co-author",
+    "noCoAuthors": "No package co-authors.",
     "owner": "Requirements package owner",
     "help": {
       "owner": "Choose the owner responsible for this requirements package and its linked requirements."
@@ -1043,6 +1056,7 @@
       "objects": {
         "requirementAreas": "Requirement areas",
         "requirementPackages": "Requirement packages",
+        "requirementResponsibilityPeople": "Requirement responsibility people",
         "normReferences": "Norm references",
         "requirementVersions": "Requirement versions",
         "deviations": "Deviations",
@@ -1052,6 +1066,7 @@
         "requirementSelectionQuestions": "Requirement selection questions",
         "requirementSelectionAnswers": "Requirement selection answers",
         "areaCoAuthors": "Requirement area co-authors",
+        "packageCoAuthors": "Requirement package co-authors",
         "specificationCoAuthors": "Specification co-authors",
         "accessReviewRuns": "Access review rounds",
         "accessReviewItems": "Access review rows",
@@ -1208,6 +1223,8 @@
       "permissionTypes": {
         "area_co_author": "Requirement area co-author",
         "area_owner": "Requirement area owner",
+        "package_co_author": "Requirement package co-author",
+        "package_owner": "Requirement package owner",
         "specification_co_author": "Specification co-author",
         "specification_responsible": "Specification lead"
       }

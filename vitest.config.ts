@@ -15,9 +15,10 @@ export default defineConfig({
     // Test file patterns (equivalent to Jest's testMatch)
     include: ['**/*.{spec,test}.{ts,tsx,js,jsx,mjs}'],
 
-    // Exclude Playwright integration/release-smoke tests, guide tests, and
-    // .git directory.
+    // Exclude Playwright integration/release-smoke tests, guide tests, the HSA
+    // mock's node:test contract suite, node_modules, and .git.
     exclude: [
+      'containers/hsa-directory-mock/test/**',
       '**/tests/integration/**',
       '**/tests/guide/**',
       '**/tests/release-smoke/**',

@@ -6,7 +6,6 @@ import {
   positiveIntegerSchema,
 } from '@/lib/http/validation'
 import {
-  hasIncompleteResponsiblePerson,
   normalizeResponsibleHsaId,
   normalizeSpecificationResponsiblePersonInput,
   type SpecificationResponsiblePersonInput,
@@ -51,32 +50,15 @@ function validateResponsiblePerson(
   data: SpecificationResponsiblePersonInput,
   ctx: RefinementCtx,
 ) {
-  if (data.canResponsibleGenerateAi === true && !hasResponsibleField(data)) {
-    ctx.addIssue({
-      code: 'custom',
-      message: 'Specification lead is required for AI permission',
-      path: ['canResponsibleGenerateAi'],
-    })
-  }
+  const hsaId = normalizeResponsibleHsaId(data.responsibleHsaId)
 
-  if (hasResponsibleField(data) && hasIncompleteResponsiblePerson(data)) {
-    const hasHsaId = normalizeResponsibleHsaId(data.responsibleHsaId) != null
+  if (data.canResponsibleGenerateAi === true && hsaId == null) {
     ctx.addIssue({
       code: 'custom',
-      message: 'Specification lead HSA-ID and name must be provided together',
-      path: hasHsaId ? ['responsibleDisplayName'] : ['responsibleHsaId'],
-    })
-  }
-
-  if (
-    data.canResponsibleGenerateAi === true &&
-    hasResponsibleField(data) &&
-    hasIncompleteResponsiblePerson(data)
-  ) {
-    ctx.addIssue({
-      code: 'custom',
-      message: 'Specification lead is required for AI permission',
-      path: ['canResponsibleGenerateAi'],
+      message: 'Specification lead HSA-ID is required for AI permission',
+      path: hasResponsibleField(data)
+        ? ['responsibleHsaId']
+        : ['canResponsibleGenerateAi'],
     })
   }
 }

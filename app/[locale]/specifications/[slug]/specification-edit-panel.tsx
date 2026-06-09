@@ -5,16 +5,16 @@ import { HelpCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { type FormEvent, useEffect, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import HsaPersonVerifyField, {
+  type HsaPersonVerification,
+} from '@/components/HsaPersonVerifyField'
 import { isHsaId } from '@/lib/auth/hsa-id'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
 import { normalizeSlugInput } from '@/lib/slug'
-import {
-  normalizeResponsibleDisplayName,
-  normalizeResponsibleHsaId,
-} from '@/lib/specifications/responsible-person'
+import { normalizeResponsibleHsaId } from '@/lib/specifications/responsible-person'
 
 interface TaxonomyItem {
   id: number
@@ -25,6 +25,7 @@ interface TaxonomyItem {
 interface SpecificationMeta {
   businessNeedsReference: string | null
   canResponsibleGenerateAi: boolean
+  id: number
   name: string
   responsibleDisplayName: string | null
   responsibleHsaId: string | null
@@ -51,6 +52,7 @@ interface SpecificationFormState {
   name: string
   responsibleDisplayName: string
   responsibleHsaId: string
+  responsiblePersonVerification: HsaPersonVerification | null
   specificationGovernanceObjectTypeId: string
   specificationImplementationTypeId: string
   specificationLifecycleStatusId: string
@@ -77,6 +79,7 @@ function buildFormState(
     name: spec.name,
     responsibleDisplayName: responsibleDisplayName ?? '',
     responsibleHsaId: spec.responsibleHsaId ?? '',
+    responsiblePersonVerification: null,
     specificationImplementationTypeId:
       spec.specificationImplementationTypeId?.toString() ?? '',
     specificationLifecycleStatusId:
@@ -147,14 +150,6 @@ export default function SpecificationEditPanel({
 
   const buildResponsiblePayload = () => {
     const responsibleHsaId = normalizeResponsibleHsaId(form.responsibleHsaId)
-    const responsibleDisplayName = normalizeResponsibleDisplayName(
-      form.responsibleDisplayName,
-    )
-
-    if (Boolean(responsibleHsaId) !== Boolean(responsibleDisplayName)) {
-      setSubmitError(t('responsiblePairRequired'))
-      return null
-    }
 
     if (responsibleHsaId && !isHsaId(responsibleHsaId)) {
       setSubmitError(t('invalidResponsibleHsaId'))
@@ -163,11 +158,8 @@ export default function SpecificationEditPanel({
 
     return {
       responsibleHsaId,
-      responsibleDisplayName,
       canResponsibleGenerateAi:
-        responsibleHsaId != null &&
-        responsibleDisplayName != null &&
-        form.canResponsibleGenerateAi,
+        responsibleHsaId != null && form.canResponsibleGenerateAi,
     }
   }
 
@@ -334,40 +326,7 @@ export default function SpecificationEditPanel({
         </select>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <div className="mb-1 flex items-center gap-1.5">
-            <label
-              className="block text-sm font-medium"
-              htmlFor="spec-responsible-name"
-            >
-              {t('responsibleDisplayName')}
-            </label>
-            {helpButton('spec-responsible-name', t('responsibleDisplayName'))}
-          </div>
-          {helpPanel('responsibleDisplayNameHelp', 'spec-responsible-name')}
-          <input
-            autoComplete="off"
-            className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-            id="spec-responsible-name"
-            onChange={event =>
-              setForm(current => {
-                const next = {
-                  ...current,
-                  responsibleDisplayName: event.target.value,
-                }
-                if (
-                  !next.responsibleDisplayName.trim() ||
-                  !next.responsibleHsaId.trim()
-                ) {
-                  next.canResponsibleGenerateAi = false
-                }
-                return next
-              })
-            }
-            value={form.responsibleDisplayName}
-          />
-        </div>
+      <div className="grid gap-3">
         <div>
           <div className="mb-1 flex items-center gap-1.5">
             <label
@@ -379,26 +338,48 @@ export default function SpecificationEditPanel({
             {helpButton('spec-responsible-hsa-id', t('responsibleHsaId'))}
           </div>
           {helpPanel('responsibleHsaIdHelp', 'spec-responsible-hsa-id')}
-          <input
-            autoComplete="off"
-            className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 font-mono text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-            id="spec-responsible-hsa-id"
-            onChange={event =>
+          <HsaPersonVerifyField
+            disabled={isSubmitting}
+            emailLabel={tc('hsaVerifyEmail')}
+            errorFallback={tc('hsaVerifyError')}
+            fetchingLabel={tc('fetchingHsaPerson')}
+            fetchLabel={tc('fetchHsaPerson')}
+            hsaId={form.responsibleHsaId}
+            initialDisplayName={form.responsibleDisplayName}
+            inputClassName="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+            inputId="spec-responsible-hsa-id"
+            nameLabel={tc('hsaVerifyName')}
+            onHsaIdChange={value =>
               setForm(current => {
                 const next = {
                   ...current,
-                  responsibleHsaId: event.target.value,
+                  responsibleDisplayName:
+                    value.trim() === current.responsibleHsaId.trim()
+                      ? current.responsibleDisplayName
+                      : '',
+                  responsibleHsaId: value,
+                  responsiblePersonVerification:
+                    value.trim() ===
+                    current.responsiblePersonVerification?.hsaId
+                      ? current.responsiblePersonVerification
+                      : null,
                 }
-                if (
-                  !next.responsibleDisplayName.trim() ||
-                  !next.responsibleHsaId.trim()
-                ) {
+                if (!next.responsibleHsaId.trim()) {
                   next.canResponsibleGenerateAi = false
                 }
                 return next
               })
             }
-            value={form.responsibleHsaId}
+            onVerified={person =>
+              setForm(current => ({
+                ...current,
+                responsibleDisplayName: person.displayName,
+                responsiblePersonVerification: person,
+              }))
+            }
+            purpose="requirements_specification_responsible"
+            scopeId={spec.id}
+            unavailableText={tc('hsaVerifyUnavailable')}
           />
         </div>
       </div>
@@ -424,10 +405,7 @@ export default function SpecificationEditPanel({
           <input
             checked={form.canResponsibleGenerateAi}
             className="h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={
-              !form.responsibleDisplayName.trim() ||
-              !form.responsibleHsaId.trim()
-            }
+            disabled={!form.responsibleHsaId.trim()}
             id="spec-can-responsible-generate-ai"
             onChange={event =>
               setForm(current => ({

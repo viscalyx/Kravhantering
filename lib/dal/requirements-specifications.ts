@@ -1,4 +1,8 @@
 import { validateRequirementTaxonomyReferences } from '@/lib/dal/requirement-reference-validation'
+import {
+  cleanupUnassignedRequirementResponsibilityPeople,
+  upsertRequirementResponsibilityPerson,
+} from '@/lib/dal/requirement-responsibility-people'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   conflictError,
@@ -6,6 +10,10 @@ import {
   validationError,
 } from '@/lib/requirements/errors'
 import type { RequirementRow } from '@/lib/requirements/list-view'
+import {
+  formatRequirementResponsibilityPersonName,
+  type RequirementResponsibilityPersonRecord,
+} from '@/lib/requirements/responsibility-person'
 import {
   STATUS_DRAFT,
   STATUS_PUBLISHED,
@@ -177,6 +185,18 @@ function toStr(value: unknown): string | null {
   return String(value)
 }
 
+function displayNameFromResponsibilityPerson(row: Row): string | null {
+  const hsaId = toStr(row.responsibleHsaId)
+  const givenName = toStr(row.responsibleGivenName)
+  if (!hsaId || !givenName) return null
+  return formatRequirementResponsibilityPersonName({
+    givenName,
+    hsaId,
+    middleName: toStr(row.responsibleMiddleName),
+    surname: toStr(row.responsibleSurname),
+  })
+}
+
 function buildInClause(startIndex: number, values: number[]): string {
   return values.map((_, index) => `@${startIndex + index}`).join(', ')
 }
@@ -265,7 +285,10 @@ export async function listSpecifications(db: SqlServerDatabase) {
         specification_record.specification_lifecycle_status_id AS specificationLifecycleStatusId,
         specification_record.business_needs_reference AS businessNeedsReference,
         specification_record.responsible_hsa_id AS responsibleHsaId,
-        specification_record.responsible_display_name AS responsibleDisplayName,
+        responsible_person.given_name AS responsibleGivenName,
+        responsible_person.middle_name AS responsibleMiddleName,
+        responsible_person.surname AS responsibleSurname,
+        responsible_person.email AS responsibleEmail,
         CAST(specification_record.can_responsible_generate_ai AS int) AS canResponsibleGenerateAi,
         specification_record.created_at AS createdAt,
         specification_record.updated_at AS updatedAt,
@@ -282,6 +305,8 @@ export async function listSpecifications(db: SqlServerDatabase) {
         ON implementation_type.id = specification_record.specification_implementation_type_id
       LEFT JOIN specification_lifecycle_statuses lifecycle_status
         ON lifecycle_status.id = specification_record.specification_lifecycle_status_id
+      LEFT JOIN requirement_responsibility_people responsible_person
+        ON responsible_person.hsa_id = specification_record.responsible_hsa_id
       ORDER BY specification_record.name
     `,
   )) as Row[]
@@ -365,7 +390,7 @@ export async function listSpecifications(db: SqlServerDatabase) {
       specificationLifecycleStatusId,
       businessNeedsReference: toStr(row.businessNeedsReference),
       responsibleHsaId: toStr(row.responsibleHsaId),
-      responsibleDisplayName: toStr(row.responsibleDisplayName),
+      responsibleDisplayName: displayNameFromResponsibilityPerson(row),
       canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
       createdAt: toIso(row.createdAt) ?? '',
       updatedAt: toIso(row.updatedAt) ?? '',
@@ -445,7 +470,7 @@ function mapSpecificationRow(row: Row | undefined): SpecificationRecord | null {
     specificationLifecycleStatusId,
     businessNeedsReference: toStr(row.businessNeedsReference),
     responsibleHsaId: toStr(row.responsibleHsaId),
-    responsibleDisplayName: toStr(row.responsibleDisplayName),
+    responsibleDisplayName: displayNameFromResponsibilityPerson(row),
     canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
     createdAt: toIso(row.createdAt) ?? '',
     updatedAt: toIso(row.updatedAt) ?? '',
@@ -493,7 +518,10 @@ const SPECIFICATION_SELECT_WITH_JOINS = `
     specification_record.specification_lifecycle_status_id AS specificationLifecycleStatusId,
     specification_record.business_needs_reference AS businessNeedsReference,
     specification_record.responsible_hsa_id AS responsibleHsaId,
-    specification_record.responsible_display_name AS responsibleDisplayName,
+    responsible_person.given_name AS responsibleGivenName,
+    responsible_person.middle_name AS responsibleMiddleName,
+    responsible_person.surname AS responsibleSurname,
+    responsible_person.email AS responsibleEmail,
     CAST(specification_record.can_responsible_generate_ai AS int) AS canResponsibleGenerateAi,
     specification_record.created_at AS createdAt,
     specification_record.updated_at AS updatedAt,
@@ -510,6 +538,8 @@ const SPECIFICATION_SELECT_WITH_JOINS = `
     ON implementation_type.id = specification_record.specification_implementation_type_id
   LEFT JOIN specification_lifecycle_statuses lifecycle_status
     ON lifecycle_status.id = specification_record.specification_lifecycle_status_id
+  LEFT JOIN requirement_responsibility_people responsible_person
+    ON responsible_person.hsa_id = specification_record.responsible_hsa_id
 `
 
 export async function getSpecificationById(db: SqlServerDatabase, id: number) {
@@ -588,80 +618,92 @@ export async function createSpecification(
     businessNeedsReference?: string | null
     responsibleHsaId?: string | null
     responsibleDisplayName?: string | null
+    responsiblePerson?: RequirementResponsibilityPersonRecord | null
     canResponsibleGenerateAi?: boolean
   },
 ) {
   const now = new Date()
-  const rows = (await db.query(
-    `
-      INSERT INTO requirements_specifications (
-        unique_id,
-        name,
-        specification_governance_object_type_id,
-        specification_implementation_type_id,
-        specification_lifecycle_status_id,
-        business_needs_reference,
-        responsible_hsa_id,
-        responsible_display_name,
-        can_responsible_generate_ai,
-        created_at,
-        updated_at
-      )
-      OUTPUT
-        INSERTED.id AS id,
-        INSERTED.unique_id AS uniqueId,
-        INSERTED.name AS name,
-        INSERTED.specification_governance_object_type_id AS specificationGovernanceObjectTypeId,
-        INSERTED.specification_implementation_type_id AS specificationImplementationTypeId,
-        INSERTED.specification_lifecycle_status_id AS specificationLifecycleStatusId,
-        INSERTED.business_needs_reference AS businessNeedsReference,
-        INSERTED.responsible_hsa_id AS responsibleHsaId,
-        INSERTED.responsible_display_name AS responsibleDisplayName,
-        INSERTED.can_responsible_generate_ai AS canResponsibleGenerateAi,
-        INSERTED.created_at AS createdAt,
-        INSERTED.updated_at AS updatedAt
-      VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @9)
-    `,
-    [
-      data.uniqueId,
-      data.name,
-      data.specificationGovernanceObjectTypeId ?? null,
-      data.specificationImplementationTypeId ?? null,
-      data.specificationLifecycleStatusId ?? null,
-      data.businessNeedsReference ?? null,
-      data.responsibleHsaId ?? null,
-      data.responsibleDisplayName ?? null,
-      data.canResponsibleGenerateAi ? 1 : 0,
-      now,
-    ],
-  )) as Row[]
+  const responsiblePerson = data.responsiblePerson
+  const insertSpecification = async (executor: SqlExecutor) => {
+    const rows = (await executor.query(
+      `
+        INSERT INTO requirements_specifications (
+          unique_id,
+          name,
+          specification_governance_object_type_id,
+          specification_implementation_type_id,
+          specification_lifecycle_status_id,
+          business_needs_reference,
+          responsible_hsa_id,
+          can_responsible_generate_ai,
+          created_at,
+          updated_at
+        )
+        OUTPUT
+          INSERTED.id AS id,
+          INSERTED.unique_id AS uniqueId,
+          INSERTED.name AS name,
+          INSERTED.specification_governance_object_type_id AS specificationGovernanceObjectTypeId,
+          INSERTED.specification_implementation_type_id AS specificationImplementationTypeId,
+          INSERTED.specification_lifecycle_status_id AS specificationLifecycleStatusId,
+          INSERTED.business_needs_reference AS businessNeedsReference,
+          INSERTED.responsible_hsa_id AS responsibleHsaId,
+          INSERTED.can_responsible_generate_ai AS canResponsibleGenerateAi,
+          INSERTED.created_at AS createdAt,
+          INSERTED.updated_at AS updatedAt
+        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @8)
+      `,
+      [
+        data.uniqueId,
+        data.name,
+        data.specificationGovernanceObjectTypeId ?? null,
+        data.specificationImplementationTypeId ?? null,
+        data.specificationLifecycleStatusId ?? null,
+        data.businessNeedsReference ?? null,
+        data.responsibleHsaId ?? null,
+        data.canResponsibleGenerateAi ? 1 : 0,
+        now,
+      ],
+    )) as Row[]
 
-  const row = rows[0]
-  if (!row) {
-    throw new Error('Failed to create requirements specification')
+    const row = rows[0]
+    if (!row) {
+      throw new Error('Failed to create requirements specification')
+    }
+    return {
+      id: Number(row.id),
+      uniqueId: String(row.uniqueId),
+      name: String(row.name),
+      specificationGovernanceObjectTypeId: toNum(
+        row.specificationGovernanceObjectTypeId,
+      ),
+      specificationImplementationTypeId: toNum(
+        row.specificationImplementationTypeId,
+      ),
+      specificationLifecycleStatusId: toNum(row.specificationLifecycleStatusId),
+      businessNeedsReference: toStr(row.businessNeedsReference),
+      responsibleHsaId: toStr(row.responsibleHsaId),
+      responsibleDisplayName: responsiblePerson
+        ? formatRequirementResponsibilityPersonName(responsiblePerson)
+        : null,
+      canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
+      createdAt: toIso(row.createdAt) ?? '',
+      updatedAt: toIso(row.updatedAt) ?? '',
+    }
   }
-  return {
-    id: Number(row.id),
-    uniqueId: String(row.uniqueId),
-    name: String(row.name),
-    specificationGovernanceObjectTypeId: toNum(
-      row.specificationGovernanceObjectTypeId,
-    ),
-    specificationImplementationTypeId: toNum(
-      row.specificationImplementationTypeId,
-    ),
-    specificationLifecycleStatusId: toNum(row.specificationLifecycleStatusId),
-    businessNeedsReference: toStr(row.businessNeedsReference),
-    responsibleHsaId: toStr(row.responsibleHsaId),
-    responsibleDisplayName: toStr(row.responsibleDisplayName),
-    canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
-    createdAt: toIso(row.createdAt) ?? '',
-    updatedAt: toIso(row.updatedAt) ?? '',
+
+  if (responsiblePerson) {
+    return db.transaction(async manager => {
+      await upsertRequirementResponsibilityPerson(manager, responsiblePerson)
+      return insertSpecification(manager)
+    })
   }
+
+  return insertSpecification(db)
 }
 
-export async function updateSpecification(
-  db: SqlServerDatabase,
+async function updateSpecificationFields(
+  db: SqlExecutor,
   id: number,
   data: {
     uniqueId?: string
@@ -671,8 +713,8 @@ export async function updateSpecification(
     specificationLifecycleStatusId?: number | null
     businessNeedsReference?: string | null
     responsibleHsaId?: string | null
-    responsibleDisplayName?: string | null
     canResponsibleGenerateAi?: boolean
+    responsiblePerson?: RequirementResponsibilityPersonRecord | null
   },
 ) {
   const setClauses: string[] = []
@@ -708,10 +750,6 @@ export async function updateSpecification(
     setClauses.push(`responsible_hsa_id = @${params.length}`)
     params.push(data.responsibleHsaId ?? null)
   }
-  if ('responsibleDisplayName' in data) {
-    setClauses.push(`responsible_display_name = @${params.length}`)
-    params.push(data.responsibleDisplayName ?? null)
-  }
   if ('canResponsibleGenerateAi' in data) {
     setClauses.push(`can_responsible_generate_ai = @${params.length}`)
     params.push(data.canResponsibleGenerateAi ? 1 : 0)
@@ -736,7 +774,6 @@ export async function updateSpecification(
         INSERTED.specification_lifecycle_status_id AS specificationLifecycleStatusId,
         INSERTED.business_needs_reference AS businessNeedsReference,
         INSERTED.responsible_hsa_id AS responsibleHsaId,
-        INSERTED.responsible_display_name AS responsibleDisplayName,
         INSERTED.can_responsible_generate_ai AS canResponsibleGenerateAi,
         INSERTED.created_at AS createdAt,
         INSERTED.updated_at AS updatedAt
@@ -760,15 +797,71 @@ export async function updateSpecification(
     specificationLifecycleStatusId: toNum(row.specificationLifecycleStatusId),
     businessNeedsReference: toStr(row.businessNeedsReference),
     responsibleHsaId: toStr(row.responsibleHsaId),
-    responsibleDisplayName: toStr(row.responsibleDisplayName),
+    responsibleDisplayName: data.responsiblePerson
+      ? formatRequirementResponsibilityPersonName(data.responsiblePerson)
+      : null,
     canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
     createdAt: toIso(row.createdAt) ?? '',
     updatedAt: toIso(row.updatedAt) ?? '',
   }
 }
 
+export async function updateSpecification(
+  db: SqlServerDatabase,
+  id: number,
+  data: {
+    uniqueId?: string
+    name?: string
+    specificationGovernanceObjectTypeId?: number | null
+    specificationImplementationTypeId?: number | null
+    specificationLifecycleStatusId?: number | null
+    businessNeedsReference?: string | null
+    responsibleHsaId?: string | null
+    responsibleDisplayName?: string | null
+    responsiblePerson?: RequirementResponsibilityPersonRecord | null
+    canResponsibleGenerateAi?: boolean
+  },
+) {
+  if (!('responsibleHsaId' in data)) {
+    return updateSpecificationFields(db, id, data)
+  }
+
+  return db.transaction(async manager => {
+    const oldRows = (await manager.query(
+      `
+        SELECT responsible_hsa_id AS responsibleHsaId
+        FROM requirements_specifications
+        WHERE id = @0
+      `,
+      [id],
+    )) as Array<{ responsibleHsaId: string | null }>
+    const responsiblePerson = data.responsiblePerson
+    if (responsiblePerson) {
+      await upsertRequirementResponsibilityPerson(manager, responsiblePerson)
+    }
+    const updated = await updateSpecificationFields(manager, id, data)
+    await cleanupUnassignedRequirementResponsibilityPeople(
+      manager,
+      oldRows.map(row => row.responsibleHsaId),
+    )
+    return updated
+  })
+}
+
 export async function deleteSpecification(db: SqlServerDatabase, id: number) {
   await db.transaction(async (manager: SqlExecutor) => {
+    const assignmentRows = (await manager.query(
+      `
+        SELECT responsible_hsa_id AS hsaId
+        FROM requirements_specifications
+        WHERE id = @0 AND responsible_hsa_id IS NOT NULL
+        UNION
+        SELECT hsa_id AS hsaId
+        FROM specification_co_authors
+        WHERE specification_id = @0
+      `,
+      [id],
+    )) as Array<{ hsaId: string }>
     await manager.query(
       `DELETE FROM specification_local_requirements WHERE specification_id = @0`,
       [id],
@@ -784,6 +877,10 @@ export async function deleteSpecification(db: SqlServerDatabase, id: number) {
     await manager.query(
       `DELETE FROM requirements_specifications WHERE id = @0`,
       [id],
+    )
+    await cleanupUnassignedRequirementResponsibilityPeople(
+      manager,
+      assignmentRows.map(row => row.hsaId),
     )
   })
 }

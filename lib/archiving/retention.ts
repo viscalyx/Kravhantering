@@ -1125,7 +1125,7 @@ async function exportSpecification(
         specification.business_needs_reference AS businessNeedsReference,
         specification.created_at AS createdAt,
         specification.updated_at AS updatedAt,
-        CASE WHEN specification.responsible_display_name IS NULL THEN NULL ELSE N'no-user' END AS responsibleDisplayName,
+        CASE WHEN specification.responsible_hsa_id IS NULL THEN NULL ELSE N'no-user' END AS responsibleDisplayName,
         CAST(NULL AS nvarchar(64)) AS responsibleHsaId,
         CAST(specification.can_responsible_generate_ai AS int) AS canResponsibleGenerateAi,
         governance_object_type.id AS governanceObjectTypeId,

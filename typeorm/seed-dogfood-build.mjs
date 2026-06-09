@@ -883,7 +883,7 @@ export function appendDogfoodSeed(SEED_DATA) {
     const lead = dogfoodOwnerIdentity(ownerId)
     ensureRow(
       requirementPackages,
-      [id, sv, dsv, lead.hsaId, lead.displayName, 0, SEED_TS, SEED_TS],
+      [id, sv, dsv, lead.hsaId, 0, SEED_TS, SEED_TS],
       ['id'],
     )
   }

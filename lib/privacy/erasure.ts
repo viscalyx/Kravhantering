@@ -1,8 +1,16 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { isHsaId } from '@/lib/auth/hsa-id'
+import {
+  cleanupUnassignedRequirementResponsibilityPeople,
+  upsertRequirementResponsibilityPerson,
+} from '@/lib/dal/requirement-responsibility-people'
 import type { SqlServerDatabase } from '@/lib/db'
 import { DELETED_USER_INTERNAL_NAME } from '@/lib/privacy/display-name'
 import { conflictError, validationError } from '@/lib/requirements/errors'
+import {
+  REQUIREMENT_RESPONSIBILITY_PERSON_MISSING_NAME,
+  type RequirementResponsibilityPersonRecord,
+} from '@/lib/requirements/responsibility-person'
 
 export { DELETED_USER_INTERNAL_NAME }
 
@@ -94,7 +102,37 @@ export interface PrivacyGroupPolicy {
   warningKey: string | null
 }
 
+function requirementResponsibilityPersonNameSql(alias: string): string {
+  return `NULLIF(LTRIM(RTRIM(CONCAT(
+    ${alias}.given_name,
+    CASE
+      WHEN ${alias}.middle_name IS NULL OR LTRIM(RTRIM(${alias}.middle_name)) = N'' THEN N''
+      ELSE CONCAT(N' ', ${alias}.middle_name)
+    END,
+    CASE
+      WHEN ${alias}.surname IS NULL OR LTRIM(RTRIM(${alias}.surname)) = N'' THEN N''
+      ELSE CONCAT(N' ', ${alias}.surname)
+    END
+  ))), N'')`
+}
+
 const GROUP_POLICIES: PrivacyGroupPolicy[] = [
+  {
+    allowedActions: ['skip'],
+    countSql:
+      'SELECT COUNT(*) AS count FROM requirement_responsibility_people WHERE hsa_id = @0',
+    currentDisplaySql: `SELECT TOP (1) ${requirementResponsibilityPersonNameSql('person')} AS value
+      FROM requirement_responsibility_people person
+      WHERE person.hsa_id = @0`,
+    defaultWithReplacement: 'skip',
+    defaultWithoutReplacement: 'skip',
+    fieldKey: 'identity',
+    key: 'requirement_responsibility_people.identity',
+    kind: 'hsaOnly',
+    objectKey: 'requirementResponsibilityPeople',
+    table: 'requirement_responsibility_people',
+    warningKey: null,
+  },
   {
     affectedReferencesSql: `/* privacy:affected:requirement_areas.owner */
       SELECT CONCAT(area.prefix, N' ', area.name) AS value
@@ -104,8 +142,11 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
     allowedActions: ['switch', 'skip'],
     countSql:
       'SELECT COUNT(*) AS count FROM requirement_areas WHERE owner_hsa_id = @0',
-    currentDisplaySql:
-      'SELECT TOP (1) owner_hsa_id AS value FROM requirement_areas WHERE owner_hsa_id = @0 ORDER BY id ASC',
+    currentDisplaySql: `SELECT TOP (1) ${requirementResponsibilityPersonNameSql('person')} AS value
+      FROM requirement_areas area
+      INNER JOIN requirement_responsibility_people person ON person.hsa_id = area.owner_hsa_id
+      WHERE area.owner_hsa_id = @0
+      ORDER BY area.id ASC`,
     defaultWithReplacement: 'switch',
     defaultWithoutReplacement: 'skip',
     fieldKey: 'owner',
@@ -123,8 +164,11 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
     allowedActions: ['switch', 'skip'],
     countSql:
       'SELECT COUNT(*) AS count FROM requirement_packages pkg WHERE pkg.lead_hsa_id = @0',
-    currentDisplaySql:
-      'SELECT TOP (1) pkg.lead_display_name AS value FROM requirement_packages pkg WHERE pkg.lead_hsa_id = @0 ORDER BY pkg.id ASC',
+    currentDisplaySql: `SELECT TOP (1) ${requirementResponsibilityPersonNameSql('person')} AS value
+      FROM requirement_packages pkg
+      INNER JOIN requirement_responsibility_people person ON person.hsa_id = pkg.lead_hsa_id
+      WHERE pkg.lead_hsa_id = @0
+      ORDER BY pkg.id ASC`,
     defaultWithReplacement: 'switch',
     defaultWithoutReplacement: 'skip',
     fieldKey: 'owner',
@@ -132,6 +176,54 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
     kind: 'ownerReference',
     objectKey: 'requirementPackages',
     warningKey: 'liveAssignment',
+  },
+  {
+    affectedReferencesSql: `/* privacy:affected:requirement_package_co_authors.hsa_id */
+      SELECT pkg.name AS value
+      FROM requirement_package_co_authors co_author
+      INNER JOIN requirement_packages pkg ON pkg.id = co_author.requirement_package_id
+      WHERE co_author.hsa_id = @0
+      ORDER BY pkg.name ASC, pkg.id ASC`,
+    allowedActions: ['switch', 'delete', 'skip'],
+    countSql:
+      'SELECT COUNT(*) AS count FROM requirement_package_co_authors WHERE hsa_id = @0',
+    currentDisplaySql: `SELECT TOP (1) ${requirementResponsibilityPersonNameSql('person')} AS value
+      FROM requirement_package_co_authors co_author
+      INNER JOIN requirement_responsibility_people person ON person.hsa_id = co_author.hsa_id
+      WHERE co_author.hsa_id = @0
+      ORDER BY co_author.requirement_package_id ASC`,
+    defaultWithReplacement: 'switch',
+    defaultWithoutReplacement: 'delete',
+    fieldKey: 'coAuthor',
+    hsaColumn: 'hsa_id',
+    key: 'requirement_package_co_authors.hsa_id',
+    kind: 'coAuthor',
+    objectKey: 'packageCoAuthors',
+    table: 'requirement_package_co_authors',
+    warningKey: 'liveAssignment',
+  },
+  {
+    affectedReferencesSql: `/* privacy:affected:requirement_package_co_authors.created_by */
+      SELECT pkg.name AS value
+      FROM requirement_package_co_authors co_author
+      INNER JOIN requirement_packages pkg ON pkg.id = co_author.requirement_package_id
+      WHERE co_author.created_by_hsa_id = @0
+      ORDER BY pkg.name ASC, pkg.id ASC`,
+    allowedActions: ['anonymize', 'switch', 'skip'],
+    countSql:
+      'SELECT COUNT(*) AS count FROM requirement_package_co_authors WHERE created_by_hsa_id = @0',
+    currentDisplaySql:
+      'SELECT TOP (1) created_by_display_name AS value FROM requirement_package_co_authors WHERE created_by_hsa_id = @0 ORDER BY requirement_package_id ASC',
+    defaultWithReplacement: 'anonymize',
+    defaultWithoutReplacement: 'anonymize',
+    displayColumn: 'created_by_display_name',
+    fieldKey: 'createdBy',
+    hsaColumn: 'created_by_hsa_id',
+    key: 'requirement_package_co_authors.created_by',
+    kind: 'hsaOnly',
+    objectKey: 'packageCoAuthors',
+    table: 'requirement_package_co_authors',
+    warningKey: 'historySwitch',
   },
   {
     affectedReferencesSql: `/* privacy:affected:requirement_versions.created_by */
@@ -324,8 +416,11 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
     allowedActions: ['switch', 'anonymize', 'skip'],
     countSql:
       'SELECT COUNT(*) AS count FROM requirements_specifications WHERE responsible_hsa_id = @0',
-    currentDisplaySql:
-      'SELECT TOP (1) responsible_display_name AS value FROM requirements_specifications WHERE responsible_hsa_id = @0 ORDER BY id ASC',
+    currentDisplaySql: `SELECT TOP (1) ${requirementResponsibilityPersonNameSql('person')} AS value
+      FROM requirements_specifications spec
+      INNER JOIN requirement_responsibility_people person ON person.hsa_id = spec.responsible_hsa_id
+      WHERE spec.responsible_hsa_id = @0
+      ORDER BY spec.id ASC`,
     defaultWithReplacement: 'switch',
     defaultWithoutReplacement: 'anonymize',
     fieldKey: 'responsible',
@@ -346,8 +441,11 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
     allowedActions: ['switch', 'delete', 'skip'],
     countSql:
       'SELECT COUNT(*) AS count FROM requirement_area_co_authors WHERE hsa_id = @0',
-    currentDisplaySql:
-      'SELECT TOP (1) display_name AS value FROM requirement_area_co_authors WHERE hsa_id = @0 ORDER BY area_id ASC',
+    currentDisplaySql: `SELECT TOP (1) ${requirementResponsibilityPersonNameSql('person')} AS value
+      FROM requirement_area_co_authors co_author
+      INNER JOIN requirement_responsibility_people person ON person.hsa_id = co_author.hsa_id
+      WHERE co_author.hsa_id = @0
+      ORDER BY co_author.area_id ASC`,
     defaultWithReplacement: 'switch',
     defaultWithoutReplacement: 'delete',
     fieldKey: 'coAuthor',
@@ -391,8 +489,11 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
     allowedActions: ['switch', 'delete', 'skip'],
     countSql:
       'SELECT COUNT(*) AS count FROM specification_co_authors WHERE hsa_id = @0',
-    currentDisplaySql:
-      'SELECT TOP (1) display_name AS value FROM specification_co_authors WHERE hsa_id = @0 ORDER BY specification_id ASC',
+    currentDisplaySql: `SELECT TOP (1) ${requirementResponsibilityPersonNameSql('person')} AS value
+      FROM specification_co_authors co_author
+      INNER JOIN requirement_responsibility_people person ON person.hsa_id = co_author.hsa_id
+      WHERE co_author.hsa_id = @0
+      ORDER BY co_author.specification_id ASC`,
     defaultWithReplacement: 'switch',
     defaultWithoutReplacement: 'delete',
     fieldKey: 'coAuthor',
@@ -620,6 +721,29 @@ function normalizeReplacement(
   return { displayName, email, firstName, hsaId, lastName }
 }
 
+function personFromReplacement(
+  replacement: PrivacyReplacementInput,
+): RequirementResponsibilityPersonRecord {
+  return {
+    email: replacement.email ?? null,
+    givenName:
+      replacement.firstName ?? REQUIREMENT_RESPONSIBILITY_PERSON_MISSING_NAME,
+    hsaId: replacement.hsaId,
+    middleName: null,
+    surname: replacement.lastName ?? null,
+  }
+}
+
+async function upsertReplacementResponsibilityPerson(
+  tx: QueryExecutor,
+  replacement: PrivacyReplacementInput,
+): Promise<void> {
+  await upsertRequirementResponsibilityPerson(
+    tx,
+    personFromReplacement(replacement),
+  )
+}
+
 export function privacyTargetFingerprint(hsaId: string): string {
   return createHash('sha256')
     .update(`privacy-erasure:${hsaId}`, 'utf8')
@@ -790,13 +914,13 @@ async function applyOwnerReferences(
         },
       )
     }
+    await upsertReplacementResponsibilityPerson(tx, replacement)
     await tx.query(
       `UPDATE requirement_packages
         SET lead_hsa_id = @1,
-            lead_display_name = @2,
-            updated_at = @3
+            updated_at = @2
         WHERE lead_hsa_id = @0`,
-      [targetHsaId, replacement.hsaId, replacement.displayName, new Date()],
+      [targetHsaId, replacement.hsaId, new Date()],
     )
     return
   }
@@ -809,6 +933,7 @@ async function applyOwnerReferences(
       },
     )
   }
+  await upsertReplacementResponsibilityPerson(tx, replacement)
   await tx.query(
     `UPDATE requirement_areas
       SET owner_hsa_id = @1,
@@ -821,10 +946,8 @@ async function applyOwnerReferences(
 function displayColumnFor(policy: PrivacyGroupPolicy): string | null {
   if (policy.displayColumn) return policy.displayColumn
   if (policy.kind === 'hsaOnly') return null
-  if (policy.table === 'requirements_specifications') {
-    return 'responsible_display_name'
-  }
-  if (policy.kind === 'coAuthor') return 'display_name'
+  if (policy.table === 'requirements_specifications') return null
+  if (policy.kind === 'coAuthor') return null
   if (policy.fieldKey === 'createdBy') return 'created_by'
   if (policy.fieldKey === 'decidedBy') return 'decided_by'
   if (policy.fieldKey === 'resolvedBy') return 'resolved_by'
@@ -853,6 +976,12 @@ async function applyDirectHsaGroup(
         groupKey: policy.key,
         reason: 'replacement_required',
       })
+    }
+    if (
+      policy.kind === 'coAuthor' ||
+      policy.table === 'requirements_specifications'
+    ) {
+      await upsertReplacementResponsibilityPerson(tx, replacement)
     }
     if (displayColumn) {
       await tx.query(
@@ -883,6 +1012,19 @@ async function applyDirectHsaGroup(
   await tx.query(
     `UPDATE ${policy.table} SET ${policy.hsaColumn} = NULL WHERE ${policy.hsaColumn} = @0`,
     [targetHsaId],
+  )
+}
+
+function usesRequirementResponsibilityPerson(
+  policy: PrivacyGroupPolicy,
+): boolean {
+  return (
+    policy.key === 'requirement_areas.owner' ||
+    policy.key === 'requirement_packages.owner' ||
+    policy.key === 'requirements_specifications.responsible' ||
+    policy.key === 'requirement_area_co_authors.hsa_id' ||
+    policy.key === 'requirement_package_co_authors.hsa_id' ||
+    policy.key === 'specification_co_authors.hsa_id'
   )
 }
 
@@ -923,6 +1065,7 @@ export async function executePrivacyErasure(
       )
     }
     const actions = resolveActions(preview, input.actions)
+    const responsibilityPersonCleanupHsaIds = new Set<string>()
     const switchesIdentity = Object.values(actions).includes('switch')
     const replacement =
       input.replacement && switchesIdentity
@@ -940,6 +1083,9 @@ export async function executePrivacyErasure(
           target.hsaId,
           replacement,
         )
+        if (action !== 'skip' && usesRequirementResponsibilityPerson(policy)) {
+          responsibilityPersonCleanupHsaIds.add(target.hsaId)
+        }
       }
     }
 
@@ -949,8 +1095,15 @@ export async function executePrivacyErasure(
       const action = actions[group.key] ?? group.recommendedAction
       if (policy.kind !== 'ownerReference') {
         await applyDirectHsaGroup(tx, policy, action, target.hsaId, replacement)
+        if (action !== 'skip' && usesRequirementResponsibilityPerson(policy)) {
+          responsibilityPersonCleanupHsaIds.add(target.hsaId)
+        }
       }
     }
+
+    await cleanupUnassignedRequirementResponsibilityPeople(tx, [
+      ...responsibilityPersonCleanupHsaIds,
+    ])
 
     result = {
       actions: summarizeActions(preview, actions),

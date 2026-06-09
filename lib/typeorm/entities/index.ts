@@ -14,6 +14,8 @@ import { requirementAreaCoAuthorEntity } from '@/lib/typeorm/entities/requiremen
 import { requirementCategoryEntity } from '@/lib/typeorm/entities/requirement-category'
 import { requirementListColumnDefaultEntity } from '@/lib/typeorm/entities/requirement-list-column-default'
 import { requirementPackageEntity } from '@/lib/typeorm/entities/requirement-package'
+import { requirementPackageCoAuthorEntity } from '@/lib/typeorm/entities/requirement-package-co-author'
+import { requirementResponsibilityPersonEntity } from '@/lib/typeorm/entities/requirement-responsibility-person'
 import { requirementSelectionAnswerEntity } from '@/lib/typeorm/entities/requirement-selection-answer'
 import { requirementSelectionAnswerPackageEntity } from '@/lib/typeorm/entities/requirement-selection-answer-package'
 import { requirementSelectionAnswerRequirementEntity } from '@/lib/typeorm/entities/requirement-selection-answer-requirement'
@@ -62,6 +64,7 @@ export const sqlServerEntities = [
   specificationNeedsReferenceEntity,
   specificationGovernanceObjectTypeEntity,
   qualityCharacteristicEntity,
+  requirementResponsibilityPersonEntity,
   requirementEntity,
   requirementAreaEntity,
   requirementAreaCoAuthorEntity,
@@ -86,6 +89,7 @@ export const sqlServerEntities = [
   specificationCoAuthorEntity,
   specificationRequirementSelectionAnswerEntity,
   requirementPackageEntity,
+  requirementPackageCoAuthorEntity,
 ]
 
 export type { AccessReviewItemEntity } from '@/lib/typeorm/entities/access-review-item'
@@ -104,6 +108,8 @@ export type { RequirementAreaCoAuthorEntity } from '@/lib/typeorm/entities/requi
 export type { RequirementCategoryEntity } from '@/lib/typeorm/entities/requirement-category'
 export type { RequirementListColumnDefaultEntity } from '@/lib/typeorm/entities/requirement-list-column-default'
 export type { RequirementPackageEntity } from '@/lib/typeorm/entities/requirement-package'
+export type { RequirementPackageCoAuthorEntity } from '@/lib/typeorm/entities/requirement-package-co-author'
+export type { RequirementResponsibilityPersonEntity } from '@/lib/typeorm/entities/requirement-responsibility-person'
 export type { RequirementSelectionAnswerEntity } from '@/lib/typeorm/entities/requirement-selection-answer'
 export type { RequirementSelectionAnswerPackageEntity } from '@/lib/typeorm/entities/requirement-selection-answer-package'
 export type { RequirementSelectionAnswerRequirementEntity } from '@/lib/typeorm/entities/requirement-selection-answer-requirement'
@@ -148,7 +154,9 @@ export {
   requirementCategoryEntity,
   requirementEntity,
   requirementListColumnDefaultEntity,
+  requirementPackageCoAuthorEntity,
   requirementPackageEntity,
+  requirementResponsibilityPersonEntity,
   requirementSelectionAnswerEntity,
   requirementSelectionAnswerPackageEntity,
   requirementSelectionAnswerRequirementEntity,

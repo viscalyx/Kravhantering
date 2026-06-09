@@ -10,6 +10,7 @@ import {
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 
 export async function GET(request: NextRequest) {
@@ -36,7 +37,16 @@ export const POST = secureMutationRoute({
       return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
     }
 
-    const spec = await createSpecification(db, body)
+    const responsiblePerson = body.responsibleHsaId
+      ? await resolveVerifiedRequirementResponsibilityPerson(
+          db,
+          body.responsibleHsaId,
+        )
+      : null
+    const spec = await createSpecification(db, {
+      ...body,
+      responsiblePerson,
+    })
     return NextResponse.json(spec, { status: 201 })
   },
 })

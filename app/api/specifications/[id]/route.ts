@@ -18,6 +18,7 @@ import {
   parseRouteParams,
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
+import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,7 +65,17 @@ export const PUT = secureMutationRoute({
       return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
     }
 
-    const updated = await updateSpecification(db, spec.id, body)
+    const responsiblePerson =
+      body.responsibleHsaId === undefined || body.responsibleHsaId == null
+        ? null
+        : await resolveVerifiedRequirementResponsibilityPerson(
+            db,
+            body.responsibleHsaId,
+          )
+    const updated = await updateSpecification(db, spec.id, {
+      ...body,
+      ...(body.responsibleHsaId === undefined ? {} : { responsiblePerson }),
+    })
     return NextResponse.json(updated)
   },
 })

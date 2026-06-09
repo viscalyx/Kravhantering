@@ -1,4 +1,5 @@
 import { EntitySchema } from 'typeorm'
+import type { RequirementResponsibilityPersonEntity } from '@/lib/typeorm/entities/requirement-responsibility-person'
 
 export interface RequirementAreaEntity {
   createdAt: Date
@@ -6,6 +7,7 @@ export interface RequirementAreaEntity {
   id: number
   name: string
   nextSequence: number
+  owner: RequirementResponsibilityPersonEntity
   ownerHsaId: string
   prefix: string
   updatedAt: Date
@@ -38,4 +40,18 @@ export const requirementAreaEntity = new EntitySchema<RequirementAreaEntity>({
   indices: [
     { name: 'idx_requirement_areas_owner_hsa_id', columns: ['ownerHsaId'] },
   ],
+  relations: {
+    owner: {
+      type: 'many-to-one',
+      target: 'RequirementResponsibilityPerson',
+      joinColumn: {
+        name: 'owner_hsa_id',
+        referencedColumnName: 'hsaId',
+        foreignKeyConstraintName: 'fk_requirement_areas_owner_hsa_id',
+      },
+      nullable: false,
+      onDelete: 'NO ACTION',
+      onUpdate: 'NO ACTION',
+    },
+  },
 })
