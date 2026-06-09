@@ -593,9 +593,19 @@ management live outside Admin Center.
 1. Use `Filtrera på namn eller beskrivning` to search for a package by name and
    by description, verify the table is narrowed to matching packages in both
    cases, then click `Rensa sökning` and verify all packages are shown again.
-1. Create or edit a package with `Namn`, `Beskrivning`, `HSA-ID` and
-   `Visningsnamn`. Verify editing opens in a modal and shows linked
-   requirements beside the form.
+1. Create a package with `Namn` and `Beskrivning`. Verify the initial
+   `Kravpaketsansvarig` is set from the signed-in user's HSA-ID rather than a
+   client-entered field.
+1. Edit a package and verify `Kravpaketsansvarig` shows an HSA-ID field with a
+   fetch/refresh icon and read-only name and e-mail. Leave the HSA-ID field and
+   verify a locally known `Kravansvarsperson` is shown without manual refresh;
+   click the icon and verify the details are fetched again.
+1. Add a `Kravpaketsmedförfattare` by HSA-ID, use the fetch/refresh button to
+   verify the name and e-mail, save, reopen the package and verify the
+   co-author remains as an HSA-ID assignment with person details from
+   `Kravansvarsperson`. Remove the co-author and verify it no longer appears.
+1. Verify editing opens in a modal and shows linked requirements beside the
+   form.
 1. Verify long `Beskrivning` values in the package list wrap inside the
    description column instead of being truncated to one line.
 1. Verify package row actions are icon-only buttons. Hover the icons and verify
