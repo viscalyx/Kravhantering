@@ -28,9 +28,11 @@ No Kong ports are published to the host. The Admin API has no local dev token
 in this phase because it is reachable only from containers on the same
 devcontainer Compose network.
 
-`kong.yml` is intentionally an empty skeleton until the HSA Mock-API exists.
-It proves that Kong can boot and load source-controlled declarative
-configuration without pretending that phase 2 routes already exist.
+`kong.yml` contains the devcontainer routes for the HSA directory mock. Kong
+proxies `POST /svr-hsaws2/hsaws` and `POST /hsa/person-records/lookup` to the
+`hsa-directory-mock` service on the internal Compose network. Kravhantering
+uses the REST route through `HSA_PERSON_LOOKUP_URL`; the SOAP route remains
+available so the mock can verify the external HSA contract.
 
 ## Lifecycle Scripts
 
@@ -61,6 +63,12 @@ Pass additional `docker compose logs` options after `--`, for example:
 npm run devcontainer:kong:logs -- --follow
 ```
 
+After changing `kong.yml`, recreate Kong so the DB-less config is reloaded:
+
+```sh
+npm run devcontainer:kong:recreate
+```
+
 ## Image Lock Updates
 
 `image.lock.json` pins the upstream image by tag, manifest digest and image ID.
@@ -79,9 +87,11 @@ To update it manually:
 
 ## Update Rules
 
-- Keep Kong DB-less and file-configured for phase 1.
+- Keep Kong DB-less and file-configured for the devcontainer.
 - Keep the Admin API internal to the devcontainer Compose network.
-- Do not add app environment variables or HSA routes until the application
-  call is implemented in a later phase.
+- Keep the HSA routes plain and DB-less in the devcontainer. The current REST
+  route is a proxy to the mock-owned JSON facade; do not claim a production
+  Kong SOAP transformation or HSA authentication plugin until that
+  API-management contract is designed and implemented.
 - Do not add Kong to the production-like, release-smoke, CI, or single-node
   stacks in this phase.

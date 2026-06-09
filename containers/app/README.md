@@ -103,6 +103,8 @@ Required application values:
 - `AUTH_OIDC_REDIRECT_URI` and `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` must
   match the Keycloak realm imported for the stack.
 - `AUTH_SESSION_COOKIE_PASSWORD` must be at least 32 characters.
+- `HSA_PERSON_LOOKUP_URL` must point to the server-side Kong or
+  integration-platform REST facade for HSA person lookup.
 
 Optional application values:
 
@@ -114,6 +116,7 @@ Optional application values:
 - `AUTH_OIDC_ROLES_CLAIM`, `AUTH_OIDC_SCOPES`,
   `AUTH_SESSION_COOKIE_NAME`, and `AUTH_SESSION_TTL_SECONDS` override
   defaults.
+- `HSA_PERSON_LOOKUP_TIMEOUT_MS` overrides the HSA lookup timeout.
 - `OPENROUTER_API_KEY`, `OPENROUTER_MGMT_API_KEY`, and
   `NEXT_PUBLIC_DEFAULT_MODEL` enable optional AI integrations.
 

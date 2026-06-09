@@ -32,6 +32,8 @@ services:
     environment:
       DATABASE_READONLY_PASSWORD_ENV: ${DATABASE_READONLY_PASSWORD_ENV:-DATABASE_READONLY_PASSWORD}
       DB_TRUST_SERVER_CERTIFICATE: ${DB_TRUST_SERVER_CERTIFICATE:-true}
+      HSA_PERSON_LOOKUP_TIMEOUT_MS: ${HSA_PERSON_LOOKUP_TIMEOUT_MS:-5000}
+      HSA_PERSON_LOOKUP_URL: ${HSA_PERSON_LOOKUP_URL:-http://kong:8000/hsa/person-records/lookup}
       NODE_ENV: ${NODE_ENV:-development}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-1}
     extra_hosts:
@@ -128,6 +130,26 @@ services:
       - ${WORKSPACE_HOST_ROOT:-../..}/containers/kong/kong.yml:/kong/declarative/kong.yml:ro
     healthcheck:
       test: ["CMD", "kong", "health"]
+      interval: 10s
+      retries: 12
+      start_period: 10s
+      timeout: 5s
+
+  hsa-directory-mock:
+    build:
+      context: ${WORKSPACE_BUILD_ROOT:-../..}/containers/hsa-directory-mock
+      dockerfile: Dockerfile
+    environment:
+      PORT: 8080
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "--input-type=module",
+          "-e",
+          "const response = await fetch('http://127.0.0.1:8080/health'); if (!response.ok) process.exit(1);"
+        ]
       interval: 10s
       retries: 12
       start_period: 10s

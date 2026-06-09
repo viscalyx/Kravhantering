@@ -1,0 +1,14 @@
+{
+  "name": "@kravhantering/hsa-directory-mock",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SOAP GetHsaPerson mock for the HSA directory",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "saxes": "6.0.0"
+  }
+}
