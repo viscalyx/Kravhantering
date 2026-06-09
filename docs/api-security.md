@@ -69,6 +69,11 @@ Deferred from this contract:
   v1 contract for the same reason. The read-only `GET /api/norm-references`
   catalog route stays in scope; create, update, archive, reactivate, and delete
   are covered by secure-route and focused route/UI tests.
+- HSA person verification remains outside the OpenAPI/Schemathesis v1
+  contract. `POST /api/requirement-responsibility-people/verify` is a
+  same-origin, CSRF-protected editing helper that is only useful with an
+  authenticated session, assignment purpose, and, where applicable, scoped edit
+  permission. The app does not expose a browser-usable general HSA search route.
 - ZAP API scan, role-matrix DAST, full active scans, and paid vendor scanners
   that require service-specific CI secrets.
 
