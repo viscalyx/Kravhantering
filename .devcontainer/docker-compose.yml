@@ -1,4 +1,4 @@
-name: kravhantering-devcontainer-elevated
+name: kravhantering-devcontainer
 
 services:
   app:
