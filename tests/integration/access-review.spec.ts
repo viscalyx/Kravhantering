@@ -4,7 +4,6 @@ function accessReviewDetail(decision = 'pending') {
   return {
     items: [
       {
-        canGenerateAi: true,
         comment: decision === 'pending' ? null : 'Fortsatt uppdrag',
         createdAt: '2026-05-12T12:00:00.000Z',
         decidedAt: decision === 'pending' ? null : '2026-05-12T12:10:00.000Z',
@@ -144,7 +143,6 @@ test('admin can decide and export an access review run', async ({ page }) => {
     page.getByRole('heading', { name: 'Behörighetsöversyn' }),
   ).toBeVisible()
   await expect(page.getByText('Kalle Svensson')).toBeVisible()
-  await expect(page.getByText('AI på')).toBeVisible()
 
   const row = page.getByRole('row').filter({ hasText: 'Kalle Svensson' })
   await row.getByRole('textbox').fill('Fortsatt uppdrag')

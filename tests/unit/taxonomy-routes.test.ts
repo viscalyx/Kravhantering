@@ -1119,7 +1119,6 @@ describe('requirement-specifications routes', () => {
         name: 'A',
         uniqueId: 'A',
         responsibleHsaId: 'SE5560000001-ada1',
-        canResponsibleGenerateAi: true,
       }),
     )
 
@@ -1131,7 +1130,6 @@ describe('requirement-specifications routes', () => {
         responsiblePerson: expect.objectContaining({
           hsaId: 'SE5560000001-ada1',
         }),
-        canResponsibleGenerateAi: true,
       }),
     )
   })
@@ -1186,12 +1184,11 @@ describe('requirement-specifications routes', () => {
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(mockUpdatePkg).not.toHaveBeenCalled()
   })
-  it('PUT updates specification lead and AI permission fields', async () => {
+  it('PUT updates specification lead fields', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
     const r = await putPkg(
       jsonReq('PUT', {
         responsibleHsaId: 'SE5560000001-rita1',
-        canResponsibleGenerateAi: true,
       }),
       makeParams('1'),
     )
@@ -1205,7 +1202,6 @@ describe('requirement-specifications routes', () => {
         responsiblePerson: expect.objectContaining({
           hsaId: 'SE5560000001-rita1',
         }),
-        canResponsibleGenerateAi: true,
       }),
     )
   })
@@ -1225,7 +1221,6 @@ describe('requirement-specifications routes', () => {
       expect.objectContaining({
         responsibleHsaId: null,
         responsibleDisplayName: null,
-        canResponsibleGenerateAi: false,
       }),
     )
   })
@@ -1245,7 +1240,6 @@ describe('requirement-specifications routes', () => {
       expect.objectContaining({
         responsibleHsaId: null,
         responsibleDisplayName: null,
-        canResponsibleGenerateAi: false,
       }),
     )
   })

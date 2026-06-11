@@ -109,7 +109,6 @@ function reviewDetail() {
   return {
     items: [
       {
-        canGenerateAi: true,
         comment: null,
         createdAt: '2026-05-12T12:00:00.000Z',
         decidedAt: null,

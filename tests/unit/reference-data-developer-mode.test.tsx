@@ -186,7 +186,6 @@ const pages: MarkerSpec[] = [
             businessNeedsReference: null,
             responsibleDisplayName: null,
             responsibleHsaId: null,
-            canResponsibleGenerateAi: false,
           },
         ],
       }),
@@ -215,7 +214,6 @@ const pages: MarkerSpec[] = [
               businessNeedsReference: null,
               responsibleDisplayName: null,
               responsibleHsaId: null,
-              canResponsibleGenerateAi: false,
             },
           ],
         }) as Response

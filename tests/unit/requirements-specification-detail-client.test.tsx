@@ -204,7 +204,6 @@ let availableRequirementsSelectionFilter:
 
 const initialSpec = {
   businessNeedsReference: 'Shared IAM business case',
-  canResponsibleGenerateAi: true,
   id: 8,
   implementationType: { id: 2, nameEn: 'Program', nameSv: 'Program' },
   lifecycleStatus: { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
@@ -364,7 +363,6 @@ describe('RequirementsSpecificationDetailClient', () => {
               name: 'Authorization and IAM',
               responsibleDisplayName: 'Ada Admin',
               responsibleHsaId: 'SE5560000001-ada1',
-              canResponsibleGenerateAi: true,
               specificationImplementationTypeId: 2,
               specificationLifecycleStatusId: 3,
               specificationGovernanceObjectTypeId: 1,

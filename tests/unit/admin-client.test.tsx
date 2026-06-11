@@ -184,7 +184,6 @@ function accessReviewDetail() {
   return {
     items: [
       {
-        canGenerateAi: true,
         comment: null,
         createdAt: '2026-05-12T12:00:00.000Z',
         decidedAt: null,
@@ -921,7 +920,6 @@ describe('AdminClient', () => {
     expect(row).toHaveTextContent(
       'admin.accessReview.permissionTypes.area_co_author',
     )
-    expect(row).toHaveTextContent('admin.accessReview.aiEnabled')
     const displayedEvidenceReference = screen.getByText('IDM-2026')
     expect(displayedEvidenceReference).toHaveClass('truncate')
     expect(displayedEvidenceReference).toHaveAttribute('title', 'IDM-2026')

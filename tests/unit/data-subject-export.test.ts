@@ -200,14 +200,13 @@ describe('data-subject export service', () => {
       'access_review_items.principal': [
         {
           actorTimestamp: new Date('2026-05-04T10:00:00Z'),
-          canGenerateAi: true,
           decision: 'approved',
           displayName: 'Kalle Svensson',
           hsaId: TARGET_HSA_ID,
           itemKey: '42:7',
           permissionType: 'area_co_author',
           scopeKey: '1',
-          scopeLabel: 'AI på',
+          scopeLabel: 'INT Integration',
           scopeType: 'requirement_area',
           sourceKey: 'requirement_area_co_authors.hsa_id',
         },

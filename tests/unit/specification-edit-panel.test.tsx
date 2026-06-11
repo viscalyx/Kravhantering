@@ -24,7 +24,6 @@ const governanceObjectTypes = [
 ]
 const spec = {
   businessNeedsReference: 'Current business need',
-  canResponsibleGenerateAi: true,
   id: 7,
   name: 'Upphandling av e-tjänstplattform',
   responsibleDisplayName: 'Ada Admin',
@@ -71,36 +70,11 @@ describe('SpecificationEditPanel', () => {
     expect(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     ).toHaveValue('SE5560000001-ada1')
-    expect(
-      screen.getByRole('checkbox', {
-        name: /specification\.canResponsibleGenerateAi/,
-      }),
-    ).toBeChecked()
 
     const form = container.querySelector(
       '[data-developer-mode-name="crud form"][data-developer-mode-context="requirements specification detail"]',
     )
     expect(form).toHaveAttribute('data-developer-mode-value', 'edit')
-  })
-
-  it('keeps responsible AI generation enabled when display name is missing', () => {
-    render(
-      <SpecificationEditPanel
-        governanceObjectTypes={governanceObjectTypes}
-        implementationTypes={implementationTypes}
-        lifecycleStatuses={lifecycleStatuses}
-        onCancel={() => {}}
-        onSaved={() => {}}
-        spec={{ ...spec, responsibleDisplayName: null }}
-        specificationSlug="ETJANST-UPP-2026"
-      />,
-    )
-
-    expect(
-      screen.getByRole('checkbox', {
-        name: /specification\.canResponsibleGenerateAi/,
-      }),
-    ).toBeChecked()
   })
 
   it('calls onCancel when the cancel button is pressed', () => {
@@ -320,7 +294,6 @@ describe('SpecificationEditPanel', () => {
       businessNeedsReference: 'Current business need',
       name: 'Nytt kravunderlagsnamn',
       responsibleHsaId: 'SE5560000001-ada1',
-      canResponsibleGenerateAi: true,
       specificationImplementationTypeId: 2,
       specificationLifecycleStatusId: 3,
       specificationGovernanceObjectTypeId: 1,

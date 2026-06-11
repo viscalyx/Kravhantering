@@ -61,7 +61,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           responsibleGivenName: 'Ada',
           responsibleMiddleName: null,
           responsibleSurname: 'Admin',
-          canResponsibleGenerateAi: 1,
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-21T10:00:00.000Z'),
           governanceObjectTypeNameSv: 'Plattform',
@@ -96,7 +95,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         businessNeedsReference: 'Strategic need',
         responsibleHsaId: 'SE5560000001-ada1',
         responsibleDisplayName: 'Ada Admin',
-        canResponsibleGenerateAi: true,
         createdAt: '2026-04-20T10:00:00.000Z',
         updatedAt: '2026-04-21T10:00:00.000Z',
         governanceObjectType: {
@@ -135,7 +133,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         responsibleGivenName: 'Rita',
         responsibleMiddleName: null,
         responsibleSurname: 'Reviewer',
-        canResponsibleGenerateAi: 0,
         createdAt: new Date('2026-04-20T09:00:00.000Z'),
         updatedAt: new Date('2026-04-21T09:00:00.000Z'),
         governanceObjectTypeId: 1,
@@ -162,7 +159,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       businessNeedsReference: null,
       responsibleHsaId: 'SE5560000001-rita1',
       responsibleDisplayName: 'Rita Reviewer',
-      canResponsibleGenerateAi: false,
       createdAt: '2026-04-20T09:00:00.000Z',
       updatedAt: '2026-04-21T09:00:00.000Z',
       governanceObjectType: { id: 1, nameSv: 'Säkerhet', nameEn: 'Security' },
@@ -256,7 +252,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationLifecycleStatusId: 4,
           businessNeedsReference: 'Need',
           responsibleHsaId: 'SE5560000001-ada1',
-          canResponsibleGenerateAi: 1,
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-20T10:00:00.000Z'),
         },
@@ -272,7 +267,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationLifecycleStatusId: 4,
           businessNeedsReference: null,
           responsibleHsaId: null,
-          canResponsibleGenerateAi: 0,
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-21T10:00:00.000Z'),
         },
@@ -290,7 +284,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           responsibleGivenName: null,
           responsibleMiddleName: null,
           responsibleSurname: null,
-          canResponsibleGenerateAi: 0,
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-21T10:00:00.000Z'),
         },
@@ -311,13 +304,11 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         middleName: null,
         surname: 'Admin',
       },
-      canResponsibleGenerateAi: true,
     })
     const updated = await updateSpecification(db, 11, {
       name: 'Specification Eleven Updated',
       businessNeedsReference: null,
       responsibleHsaId: null,
-      canResponsibleGenerateAi: false,
     })
 
     expect(created).toMatchObject({
@@ -328,7 +319,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       specificationLifecycleStatusId: 4,
       responsibleHsaId: 'SE5560000001-ada1',
       responsibleDisplayName: 'Ada Admin',
-      canResponsibleGenerateAi: true,
     })
     expect(updated).toMatchObject({
       id: 11,
@@ -336,7 +326,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       businessNeedsReference: null,
       responsibleHsaId: null,
       responsibleDisplayName: null,
-      canResponsibleGenerateAi: false,
     })
     expect(query).toHaveBeenNthCalledWith(
       1,
@@ -361,14 +350,13 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         4,
         'Need',
         'SE5560000001-ada1',
-        1,
         expect.any(Date),
       ],
     )
     expect(query).toHaveBeenNthCalledWith(
       4,
       expect.stringContaining('UPDATE requirements_specifications'),
-      ['Specification Eleven Updated', null, null, 0, expect.any(Date), 11],
+      ['Specification Eleven Updated', null, null, expect.any(Date), 11],
     )
   })
 
@@ -385,7 +373,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationLifecycleStatusId: 4,
           businessNeedsReference: 'Need',
           responsibleHsaId: 'SE5560000001-ada1',
-          canResponsibleGenerateAi: 1,
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-21T10:00:00.000Z'),
         },
@@ -403,7 +390,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           responsibleGivenName: 'Ada',
           responsibleMiddleName: null,
           responsibleSurname: 'Admin',
-          canResponsibleGenerateAi: 1,
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-21T10:00:00.000Z'),
         },
@@ -1241,7 +1227,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationItemStatusId: 1,
           note: null,
           statusUpdatedAt: null,
-          unused1: null,
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
         },
       ])
@@ -1280,7 +1265,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationItemStatusId: 1,
           note: null,
           statusUpdatedAt: null,
-          unused1: null,
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
         },
       ])

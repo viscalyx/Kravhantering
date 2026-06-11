@@ -186,7 +186,6 @@ function emptySeed() {
         'requirement_id',
         'requirement_version_id',
         'needs_reference_id',
-        'unused_1',
         'created_at',
         'specification_item_status_id',
         'note',

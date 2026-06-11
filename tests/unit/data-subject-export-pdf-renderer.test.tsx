@@ -111,18 +111,6 @@ function exportPayload(): DataSubjectExportV1 {
             table: 'requirement_area_co_authors',
             value: 'SE5560000001-kalle1',
           },
-          {
-            fieldName: 'can_generate_ai',
-            relatedObject: {
-              key: '2',
-              label: 'Användbarhet',
-              type: 'requirement_area',
-            },
-            relationToSubject: 'live_co_author_assignment',
-            sourceKey: 'requirement_area_co_authors.hsa_id',
-            table: 'requirement_area_co_authors',
-            value: true,
-          },
         ],
         key: 'requirement_area_co_authors.hsa_id',
         objectKey: 'areaCoAuthors',
@@ -297,7 +285,6 @@ describe('DataSubjectExportPdfRenderer', () => {
     expect(text).toContain('Kravpaket')
     expect(text).toContain('Kravområde')
     expect(text).toContain('Skapad av')
-    expect(text).toContain('Ja')
     expect(text).toContain('Anonym')
     expect(text).toContain('Krav skapades')
     expect(text).toContain('Fritextfält söks inte igenom')
@@ -322,7 +309,6 @@ describe('DataSubjectExportPdfRenderer', () => {
     expect(text).toContain('Requirements package')
     expect(text).toContain('Requirement area')
     expect(text).toContain('Created by')
-    expect(text).toContain('Yes')
     expect(text).toContain('Anonymous')
     expect(text).toContain('Requirement created')
 

@@ -94,7 +94,6 @@ const sampleSpecifications = [
     businessNeedsReference: null,
     responsibleHsaId: 'SE5560000001-ada1',
     responsibleDisplayName: 'Ada Admin',
-    canResponsibleGenerateAi: true,
   },
 ]
 
@@ -157,7 +156,6 @@ describe('RequirementsSpecificationsClient', () => {
                 ...sampleSpecifications[0],
                 responsibleDisplayName: 'no-user',
                 responsibleHsaId: null,
-                canResponsibleGenerateAi: false,
               },
             ],
           }),
@@ -658,14 +656,6 @@ describe('RequirementsSpecificationsClient', () => {
     ]) {
       expect(field.className).toContain('min-h-11')
     }
-
-    expect(
-      screen
-        .getByRole('checkbox', {
-          name: /specification\.canResponsibleGenerateAi/,
-        })
-        .closest('div')?.className,
-    ).toContain('min-h-11')
   })
 
   it('submits create form', async () => {
@@ -691,11 +681,6 @@ describe('RequirementsSpecificationsClient', () => {
       {
         target: { value: 'SE5560000001-rita1' },
       },
-    )
-    fireEvent.click(
-      screen.getByRole('checkbox', {
-        name: /specification\.canResponsibleGenerateAi/,
-      }),
     )
 
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
@@ -729,7 +714,6 @@ describe('RequirementsSpecificationsClient', () => {
       JSON.parse(((postCall?.[1] as RequestInit)?.body as string) ?? '{}'),
     ).toMatchObject({
       responsibleHsaId: 'SE5560000001-rita1',
-      canResponsibleGenerateAi: true,
     })
   })
 
@@ -855,54 +839,6 @@ describe('RequirementsSpecificationsClient', () => {
     expect(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     ).toHaveValue('SE5560000001-ada1')
-    expect(
-      screen.getByRole('checkbox', {
-        name: /specification\.canResponsibleGenerateAi/,
-      }),
-    ).toBeChecked()
-  })
-
-  it('keeps responsible AI generation enabled on edit when display name is missing', async () => {
-    fetchMock.mockImplementation((url: string) => {
-      if (url === '/api/specifications')
-        return Promise.resolve(
-          okJson({
-            specifications: [
-              {
-                ...sampleSpecifications[0],
-                responsibleDisplayName: null,
-              },
-            ],
-          }),
-        )
-      if (url === '/api/specification-governance-object-types')
-        return Promise.resolve(
-          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
-        )
-      if (url === '/api/specification-implementation-types')
-        return Promise.resolve(okJson({ types: sampleTypes }))
-      if (url === '/api/specification-lifecycle-statuses')
-        return Promise.resolve(okJson({ statuses: sampleStatuses }))
-      return Promise.resolve(okJson({}))
-    })
-
-    render(<RequirementsSpecificationsClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
-    })
-
-    fireEvent.click(
-      screen.getAllByRole('button', {
-        name: /common\.edit/i,
-      })[0],
-    )
-
-    const responsibleAiCheckbox = screen.getByRole('checkbox', {
-      name: /specification\.canResponsibleGenerateAi/,
-    })
-
-    expect(responsibleAiCheckbox).toBeChecked()
-    expect(responsibleAiCheckbox).toBeEnabled()
   })
 
   it('closes form on cancel', async () => {
