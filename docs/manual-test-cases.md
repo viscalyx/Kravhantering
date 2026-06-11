@@ -601,9 +601,9 @@ management live outside Admin Center.
    `Kravpaketsansvarig` is set from the signed-in user's HSA-ID rather than a
    client-entered field.
 1. Edit `Mobil användning` and verify `Kravpaketsansvarig` shows an HSA-ID
-   field with a fetch/refresh icon and read-only name and e-mail. Leave a
-   locally known HSA-ID field and verify the stored `Kravansvarsperson` is shown
-   without manual refresh.
+   field with a fetch/refresh icon and read-only name and e-mail. Leave the
+   field set to a locally known HSA-ID value and verify the stored
+   `Kravansvarsperson` is shown without manual refresh.
 1. For the seeded co-author `SE5560000001-pkgco1`, verify the local person
    details initially show `(saknar namn, kräver nytt uppslag)`. Click the
    fetch/refresh icon and verify the HSA mock updates the details to
