@@ -15,7 +15,6 @@ export interface RequirementsSpecificationItemEntity {
   requirementVersion: RequirementVersionEntity
   specificationItemStatus: SpecificationItemStatusEntity
   statusUpdatedAt: Date | null
-  unused1: string | null
 }
 
 export const requirementsSpecificationItemEntity =
@@ -28,12 +27,6 @@ export const requirementsSpecificationItemEntity =
         primary: true,
         type: 'int',
         generated: 'increment',
-      },
-      unused1: {
-        name: 'unused_1',
-        type: 'nvarchar',
-        length: 'MAX',
-        nullable: true,
       },
       createdAt: { name: 'created_at', type: 'datetime2' },
       note: {

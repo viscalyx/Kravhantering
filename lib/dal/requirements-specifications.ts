@@ -289,7 +289,6 @@ export async function listSpecifications(db: SqlServerDatabase) {
         responsible_person.middle_name AS responsibleMiddleName,
         responsible_person.surname AS responsibleSurname,
         responsible_person.email AS responsibleEmail,
-        CAST(specification_record.can_responsible_generate_ai AS int) AS canResponsibleGenerateAi,
         specification_record.created_at AS createdAt,
         specification_record.updated_at AS updatedAt,
         governance_object_type.name_sv AS governanceObjectTypeNameSv,
@@ -391,7 +390,6 @@ export async function listSpecifications(db: SqlServerDatabase) {
       businessNeedsReference: toStr(row.businessNeedsReference),
       responsibleHsaId: toStr(row.responsibleHsaId),
       responsibleDisplayName: displayNameFromResponsibilityPerson(row),
-      canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
       createdAt: toIso(row.createdAt) ?? '',
       updatedAt: toIso(row.updatedAt) ?? '',
       governanceObjectType:
@@ -434,7 +432,6 @@ export async function listSpecifications(db: SqlServerDatabase) {
 
 interface SpecificationRecord {
   businessNeedsReference: string | null
-  canResponsibleGenerateAi: boolean
   createdAt: string
   governanceObjectType: { id: number; nameSv: string; nameEn: string } | null
   id: number
@@ -471,7 +468,6 @@ function mapSpecificationRow(row: Row | undefined): SpecificationRecord | null {
     businessNeedsReference: toStr(row.businessNeedsReference),
     responsibleHsaId: toStr(row.responsibleHsaId),
     responsibleDisplayName: displayNameFromResponsibilityPerson(row),
-    canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
     createdAt: toIso(row.createdAt) ?? '',
     updatedAt: toIso(row.updatedAt) ?? '',
     governanceObjectType:
@@ -522,7 +518,6 @@ const SPECIFICATION_SELECT_WITH_JOINS = `
     responsible_person.middle_name AS responsibleMiddleName,
     responsible_person.surname AS responsibleSurname,
     responsible_person.email AS responsibleEmail,
-    CAST(specification_record.can_responsible_generate_ai AS int) AS canResponsibleGenerateAi,
     specification_record.created_at AS createdAt,
     specification_record.updated_at AS updatedAt,
     governance_object_type.name_sv AS governanceObjectTypeNameSv,
@@ -619,7 +614,6 @@ export async function createSpecification(
     responsibleHsaId?: string | null
     responsibleDisplayName?: string | null
     responsiblePerson?: RequirementResponsibilityPersonRecord | null
-    canResponsibleGenerateAi?: boolean
   },
 ) {
   const now = new Date()
@@ -635,7 +629,6 @@ export async function createSpecification(
           specification_lifecycle_status_id,
           business_needs_reference,
           responsible_hsa_id,
-          can_responsible_generate_ai,
           created_at,
           updated_at
         )
@@ -648,10 +641,9 @@ export async function createSpecification(
           INSERTED.specification_lifecycle_status_id AS specificationLifecycleStatusId,
           INSERTED.business_needs_reference AS businessNeedsReference,
           INSERTED.responsible_hsa_id AS responsibleHsaId,
-          INSERTED.can_responsible_generate_ai AS canResponsibleGenerateAi,
           INSERTED.created_at AS createdAt,
           INSERTED.updated_at AS updatedAt
-        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @8)
+        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @7)
       `,
       [
         data.uniqueId,
@@ -661,7 +653,6 @@ export async function createSpecification(
         data.specificationLifecycleStatusId ?? null,
         data.businessNeedsReference ?? null,
         data.responsibleHsaId ?? null,
-        data.canResponsibleGenerateAi ? 1 : 0,
         now,
       ],
     )) as Row[]
@@ -686,7 +677,6 @@ export async function createSpecification(
       responsibleDisplayName: responsiblePerson
         ? formatRequirementResponsibilityPersonName(responsiblePerson)
         : null,
-      canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
       createdAt: toIso(row.createdAt) ?? '',
       updatedAt: toIso(row.updatedAt) ?? '',
     }
@@ -713,7 +703,6 @@ async function updateSpecificationFields(
     specificationLifecycleStatusId?: number | null
     businessNeedsReference?: string | null
     responsibleHsaId?: string | null
-    canResponsibleGenerateAi?: boolean
     responsiblePerson?: RequirementResponsibilityPersonRecord | null
   },
 ) {
@@ -750,11 +739,6 @@ async function updateSpecificationFields(
     setClauses.push(`responsible_hsa_id = @${params.length}`)
     params.push(data.responsibleHsaId ?? null)
   }
-  if ('canResponsibleGenerateAi' in data) {
-    setClauses.push(`can_responsible_generate_ai = @${params.length}`)
-    params.push(data.canResponsibleGenerateAi ? 1 : 0)
-  }
-
   setClauses.push(`updated_at = @${params.length}`)
   params.push(new Date())
 
@@ -774,7 +758,6 @@ async function updateSpecificationFields(
         INSERTED.specification_lifecycle_status_id AS specificationLifecycleStatusId,
         INSERTED.business_needs_reference AS businessNeedsReference,
         INSERTED.responsible_hsa_id AS responsibleHsaId,
-        INSERTED.can_responsible_generate_ai AS canResponsibleGenerateAi,
         INSERTED.created_at AS createdAt,
         INSERTED.updated_at AS updatedAt
       WHERE id = ${idPlaceholder}
@@ -804,7 +787,6 @@ export async function updateSpecification(
     responsibleHsaId?: string | null
     responsibleDisplayName?: string | null
     responsiblePerson?: RequirementResponsibilityPersonRecord | null
-    canResponsibleGenerateAi?: boolean
   },
 ) {
   if (!('responsibleHsaId' in data)) {

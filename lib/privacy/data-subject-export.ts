@@ -64,16 +64,6 @@ function stringValue(value: unknown): string | null {
   return String(value)
 }
 
-function booleanValue(value: unknown): boolean | null {
-  if (value == null) return null
-  if (typeof value === 'boolean') return value
-  if (typeof value === 'number') return value !== 0
-  if (typeof value === 'string') {
-    return value === '1' || value.toLowerCase() === 'true'
-  }
-  return Boolean(value)
-}
-
 function relatedObject(
   row: ExportRow,
   type: string,
@@ -482,7 +472,6 @@ async function collectSpecificationResponsible(
         spec.id AS specificationId,
         CONCAT(spec.unique_id, N' ', spec.name) AS specificationLabel,
         spec.responsible_hsa_id AS hsaId,
-        spec.can_responsible_generate_ai AS canGenerateAi,
         spec.updated_at AS updatedAt
       FROM requirements_specifications spec
       WHERE spec.responsible_hsa_id = @0
@@ -494,13 +483,7 @@ async function collectSpecificationResponsible(
     fieldsForRow(
       policy,
       'live_responsible_assignment',
-      [
-        { fieldName: 'responsible_hsa_id', value: stringValue(row.hsaId) },
-        {
-          fieldName: 'can_responsible_generate_ai',
-          value: booleanValue(row.canGenerateAi),
-        },
-      ],
+      [{ fieldName: 'responsible_hsa_id', value: stringValue(row.hsaId) }],
       {
         relatedObject: relatedObject(
           row,
@@ -525,7 +508,6 @@ async function collectAreaCoAuthors(
         co_author.area_id AS areaId,
         CONCAT(area.prefix, N' ', area.name) AS areaLabel,
         co_author.hsa_id AS hsaId,
-        co_author.can_generate_ai AS canGenerateAi,
         co_author.created_at AS createdAt
       FROM requirement_area_co_authors co_author
       INNER JOIN requirement_areas area ON area.id = co_author.area_id
@@ -538,13 +520,7 @@ async function collectAreaCoAuthors(
     fieldsForRow(
       policy,
       'live_co_author_assignment',
-      [
-        { fieldName: 'hsa_id', value: stringValue(row.hsaId) },
-        {
-          fieldName: 'can_generate_ai',
-          value: booleanValue(row.canGenerateAi),
-        },
-      ],
+      [{ fieldName: 'hsa_id', value: stringValue(row.hsaId) }],
       {
         relatedObject: relatedObject(
           row,
@@ -694,7 +670,6 @@ async function collectSpecificationCoAuthors(
         co_author.specification_id AS specificationId,
         CONCAT(spec.unique_id, N' ', spec.name) AS specificationLabel,
         co_author.hsa_id AS hsaId,
-        co_author.can_generate_ai AS canGenerateAi,
         co_author.created_at AS createdAt
       FROM specification_co_authors co_author
       INNER JOIN requirements_specifications spec ON spec.id = co_author.specification_id
@@ -707,13 +682,7 @@ async function collectSpecificationCoAuthors(
     fieldsForRow(
       policy,
       'live_co_author_assignment',
-      [
-        { fieldName: 'hsa_id', value: stringValue(row.hsaId) },
-        {
-          fieldName: 'can_generate_ai',
-          value: booleanValue(row.canGenerateAi),
-        },
-      ],
+      [{ fieldName: 'hsa_id', value: stringValue(row.hsaId) }],
       {
         relatedObject: relatedObject(
           row,
@@ -863,7 +832,6 @@ async function collectAccessReviewItemActor(
         item.scope_key AS scopeKey,
         item.scope_label AS scopeLabel,
         item.permission_type AS permissionType,
-        item.can_generate_ai AS canGenerateAi,
         item.decision AS decision,
         item.${options.timestampField} AS actorTimestamp
       FROM access_review_items item
@@ -889,10 +857,6 @@ async function collectAccessReviewItemActor(
         {
           fieldName: 'permission_type',
           value: stringValue(row.permissionType),
-        },
-        {
-          fieldName: 'can_generate_ai',
-          value: booleanValue(row.canGenerateAi),
         },
         { fieldName: 'decision', value: stringValue(row.decision) },
       ],

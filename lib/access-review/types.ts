@@ -25,7 +25,6 @@ export interface AccessReviewActor {
 }
 
 export interface AccessReviewItem {
-  canGenerateAi: boolean
   comment: string | null
   createdAt: string
   decidedAt: string | null

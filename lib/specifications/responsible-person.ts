@@ -1,5 +1,4 @@
 export interface SpecificationResponsiblePersonInput {
-  canResponsibleGenerateAi?: boolean
   responsibleDisplayName?: string | null
   responsibleHsaId?: string | null
 }
@@ -35,7 +34,6 @@ export function normalizeSpecificationResponsiblePersonInput<
   const preserveOmittedFields = options.preserveOmittedFields === true
   const hasHsaIdField = hasOwn(input, 'responsibleHsaId')
   const hasDisplayNameField = hasOwn(input, 'responsibleDisplayName')
-  const hasGenerateAiField = hasOwn(input, 'canResponsibleGenerateAi')
   const hsaId = normalizeResponsibleHsaId(input.responsibleHsaId)
   const displayName = normalizeResponsibleDisplayName(
     input.responsibleDisplayName,
@@ -43,8 +41,6 @@ export function normalizeSpecificationResponsiblePersonInput<
   const hasResponsibleFields = hasHsaIdField || hasDisplayNameField
   const shouldIncludeResponsibleFields =
     !preserveOmittedFields || hasResponsibleFields
-  const shouldIncludeGenerateAi =
-    !preserveOmittedFields || hasResponsibleFields || hasGenerateAiField
 
   return {
     ...input,
@@ -52,12 +48,6 @@ export function normalizeSpecificationResponsiblePersonInput<
       ? {
           responsibleDisplayName: displayName,
           responsibleHsaId: hsaId,
-        }
-      : {}),
-    ...(shouldIncludeGenerateAi
-      ? {
-          canResponsibleGenerateAi:
-            hsaId != null && input.canResponsibleGenerateAi === true,
         }
       : {}),
   }

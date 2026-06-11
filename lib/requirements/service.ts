@@ -237,7 +237,6 @@ export interface ListSpecificationsOutput {
   message: string
   specifications: {
     businessNeedsReference: string | null
-    canResponsibleGenerateAi?: boolean
     createdAt?: string
     id: number
     implementationType: { id?: number; nameSv: string; nameEn: string } | null

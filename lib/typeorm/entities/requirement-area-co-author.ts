@@ -5,7 +5,6 @@ import type { RequirementResponsibilityPersonEntity } from '@/lib/typeorm/entiti
 export interface RequirementAreaCoAuthorEntity {
   area: RequirementAreaEntity
   areaId: number
-  canGenerateAi: boolean
   createdAt: Date
   createdByDisplayName: string | null
   createdByHsaId: string | null
@@ -28,11 +27,6 @@ export const requirementAreaCoAuthorEntity =
         primary: true,
         type: 'nvarchar',
         length: 31,
-      },
-      canGenerateAi: {
-        name: 'can_generate_ai',
-        type: 'bit',
-        default: false,
       },
       createdAt: {
         name: 'created_at',

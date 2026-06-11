@@ -18,7 +18,6 @@ export interface SpecificationTaxonomyItem {
 
 export interface SpecificationMeta {
   businessNeedsReference: string | null
-  canResponsibleGenerateAi: boolean
   governanceObjectType: SpecificationTaxonomyItem | null
   id: number
   implementationType: SpecificationTaxonomyItem | null
@@ -88,7 +87,6 @@ export interface SpecificationRequirementArea {
 
 export interface Specification {
   businessNeedsReference: string | null
-  canResponsibleGenerateAi: boolean
   governanceObjectType: SpecificationTaxonomyItem | null
   id: number
   implementationType: SpecificationTaxonomyItem | null

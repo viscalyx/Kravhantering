@@ -24,7 +24,6 @@ interface TaxonomyItem {
 
 interface SpecificationMeta {
   businessNeedsReference: string | null
-  canResponsibleGenerateAi: boolean
   id: number
   name: string
   responsibleDisplayName: string | null
@@ -48,7 +47,6 @@ interface SpecificationEditPanelProps {
 
 interface SpecificationFormState {
   businessNeedsReference: string
-  canResponsibleGenerateAi: boolean
   name: string
   responsibleDisplayName: string
   responsibleHsaId: string
@@ -72,8 +70,6 @@ function buildFormState(
 
   return {
     businessNeedsReference: spec.businessNeedsReference ?? '',
-    canResponsibleGenerateAi:
-      spec.responsibleHsaId != null && spec.canResponsibleGenerateAi,
     name: spec.name,
     responsibleDisplayName: responsibleDisplayName ?? '',
     responsibleHsaId: spec.responsibleHsaId ?? '',
@@ -156,8 +152,6 @@ export default function SpecificationEditPanel({
 
     return {
       responsibleHsaId,
-      canResponsibleGenerateAi:
-        responsibleHsaId != null && form.canResponsibleGenerateAi,
     }
   }
 
@@ -362,9 +356,6 @@ export default function SpecificationEditPanel({
                       ? current.responsiblePersonVerification
                       : null,
                 }
-                if (!next.responsibleHsaId.trim()) {
-                  next.canResponsibleGenerateAi = false
-                }
                 return next
               })
             }
@@ -378,40 +369,6 @@ export default function SpecificationEditPanel({
             purpose="requirements_specification_responsible"
             scopeId={spec.id}
             unavailableText={tc('hsaVerifyUnavailable')}
-          />
-        </div>
-      </div>
-
-      <div>
-        <div className="mb-1 flex items-center gap-1.5">
-          <label
-            className="block text-sm font-medium"
-            htmlFor="spec-can-responsible-generate-ai"
-          >
-            {t('canResponsibleGenerateAi')}
-          </label>
-          {helpButton(
-            'spec-can-responsible-generate-ai',
-            t('canResponsibleGenerateAi'),
-          )}
-        </div>
-        {helpPanel(
-          'canResponsibleGenerateAiHelp',
-          'spec-can-responsible-generate-ai',
-        )}
-        <div className="flex min-h-11 items-center rounded-xl border bg-white px-3.5 py-2.5 transition-all duration-200 dark:bg-secondary-800/50">
-          <input
-            checked={form.canResponsibleGenerateAi}
-            className="h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!form.responsibleHsaId.trim()}
-            id="spec-can-responsible-generate-ai"
-            onChange={event =>
-              setForm(current => ({
-                ...current,
-                canResponsibleGenerateAi: event.target.checked,
-              }))
-            }
-            type="checkbox"
           />
         </div>
       </div>

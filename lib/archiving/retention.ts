@@ -1127,7 +1127,6 @@ async function exportSpecification(
         specification.updated_at AS updatedAt,
         CASE WHEN specification.responsible_hsa_id IS NULL THEN NULL ELSE N'no-user' END AS responsibleDisplayName,
         CAST(NULL AS nvarchar(64)) AS responsibleHsaId,
-        CAST(specification.can_responsible_generate_ai AS int) AS canResponsibleGenerateAi,
         governance_object_type.id AS governanceObjectTypeId,
         governance_object_type.name_sv AS governanceObjectTypeNameSv,
         governance_object_type.name_en AS governanceObjectTypeNameEn,
@@ -1183,7 +1182,6 @@ async function exportSpecification(
       `SELECT
           N'no-user' AS displayName,
           CAST(NULL AS nvarchar(64)) AS hsaId,
-          CAST(can_generate_ai AS int) AS canGenerateAi,
           created_at AS createdAt,
           CASE WHEN created_by_display_name IS NULL THEN NULL ELSE N'no-user' END AS createdByDisplayName,
           CAST(NULL AS nvarchar(64)) AS createdByHsaId

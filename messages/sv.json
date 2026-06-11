@@ -470,8 +470,6 @@
     "responsibleDisplayNameHelp": "Ange visningsnamnet för kravunderlagsansvarig. Använd inte detta för användaren som registrerar ett avsteg om den personen inte också är kravunderlagsansvarig.",
     "responsibleHsaId": "HSA-ID för kravunderlagsansvarig",
     "responsibleHsaIdHelp": "Ange HSA-ID för kravunderlagsansvarig. HSA-ID och visningsnamn måste sparas tillsammans så att dataskyddsexport, radering och behörighetsöversyn kan identifiera tilldelningen.",
-    "canResponsibleGenerateAi": "Kravunderlagsansvarig får använda AI",
-    "canResponsibleGenerateAiHelp": "Aktivera bara när kravunderlagsansvarig får använda AI-stöd för detta kravunderlag.",
     "responsiblePairRequired": "Ange både kravunderlagsansvarig och HSA-ID för kravunderlagsansvarig, eller lämna båda tomma.",
     "invalidResponsibleHsaId": "Kontrollera HSA-ID för kravunderlagsansvarig. Formatet ska vara två versala bokstäver för landskod, 10 siffror, bindestreck och en alfanumerisk ändelse.",
     "implementationType": "Genomförandeform",
@@ -955,7 +953,7 @@
     "taxonomyDescription": "Öppna klassningssidor som används för filtrering, rapportering och AI-stöd.",
     "statusesAndWorkflows": "Statusar och arbetsflöden",
     "statusesAndWorkflowsDescription": "Öppna statuskataloger som styr livscykler, arbetsflödessteg och hur krav används i kravunderlag.",
-    "accessReviewDescription": "Skapa återkommande granskningar av uppdrag och AI-behörigheter som applikationen styr, besluta varje behörighetsrad och exportera granskningsevidens.",
+    "accessReviewDescription": "Skapa återkommande granskningar av uppdrag som applikationen styr, besluta varje behörighetsrad och exportera granskningsevidens.",
     "privacyDescription": "Förhandsgranska HSA-ID-baserade träffar, exportera data och kör GDPR-radering för aktörsidentiteter och aktiva tilldelningar.",
     "auditLog": {
       "title": "Åtgärdslogg",
@@ -1155,8 +1153,6 @@
       "title": "Behörighetsöversyn",
       "disabledTooltip": "Du behöver rollen Administratör eller Dataskyddshandläggare.",
       "action": "Åtgärd",
-      "aiDisabled": "AI av",
-      "aiEnabled": "AI på",
       "cancel": "Avbryt granskning",
       "cancelConfirmMessage": "Granskning #{id} markeras som avbruten. Granskningsraderna behålls som historik, men kan inte längre beslutas eller slutföras.",
       "cancelConfirmTitle": "Avbryt granskning?",
@@ -1597,7 +1593,7 @@
       },
       "accessReview": {
         "heading": "Behörighetsöversyn",
-        "body": "Använd behörighetsöversyn för återkommande granskningar av uppdrag och AI-behörigheter som applikationen styr. Globala roller granskas i identitetsverktyget."
+        "body": "Använd behörighetsöversyn för återkommande granskningar av uppdrag som applikationen styr. Globala roller granskas i identitetsverktyget."
       }
     },
     "adminPrivacy": {
@@ -1647,7 +1643,7 @@
       },
       "scope": {
         "heading": "Omfattning",
-        "body": "Applikationen inventerar kravområdesägare, kravområdesmedförfattare, kravunderlagsansvariga, kravunderlagsmedförfattare och deras AI-behörigheter i applikationen. Globala roller, källkodsåtkomst och extern klientåtkomst granskas i sina källverktyg."
+        "body": "Applikationen inventerar kravområdesägare, kravområdesmedförfattare, kravpaketsansvariga, kravpaketsmedförfattare, kravunderlagsansvariga och kravunderlagsmedförfattare. Globala roller, källkodsåtkomst och extern klientåtkomst granskas i sina källverktyg."
       },
       "decisions": {
         "heading": "Beslut",

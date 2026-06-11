@@ -470,8 +470,6 @@
     "responsibleDisplayNameHelp": "Enter the display name for the specification lead. Do not use this for the user who registers a deviation unless that person is also the specification lead.",
     "responsibleHsaId": "Specification lead HSA-ID",
     "responsibleHsaIdHelp": "Enter the HSA-ID for the specification lead. The HSA-ID and display name must be saved together so privacy export, erasure, and access review can identify the assignment.",
-    "canResponsibleGenerateAi": "Specification lead may use AI",
-    "canResponsibleGenerateAiHelp": "Enable this only when the specification lead is allowed to use AI support for this requirements specification.",
     "responsiblePairRequired": "Enter both specification lead name and specification lead HSA-ID, or leave both empty.",
     "invalidResponsibleHsaId": "Check the specification lead HSA-ID. The format is two uppercase country-code letters, 10 digits, a hyphen, and an alphanumeric suffix.",
     "implementationType": "Implementation type",
@@ -955,7 +953,7 @@
     "taxonomyDescription": "Open classification pages used for filtering, reporting, and AI support.",
     "statusesAndWorkflows": "Statuses and workflows",
     "statusesAndWorkflowsDescription": "Open status catalogs that control life cycles, workflow steps, and requirement use in specifications.",
-    "accessReviewDescription": "Create recurring reviews of app-managed assignments and AI permissions, decide each access row, and export review evidence.",
+    "accessReviewDescription": "Create recurring reviews of app-managed assignments, decide each access row, and export review evidence.",
     "privacyDescription": "Preview HSA-ID based matches, export data, and execute GDPR erasure for actor identity snapshots and live assignments.",
     "auditLog": {
       "title": "Action log",
@@ -1155,8 +1153,6 @@
       "title": "Access review",
       "disabledTooltip": "You need the Administrator or Privacy officer role.",
       "action": "Action",
-      "aiDisabled": "AI disabled",
-      "aiEnabled": "AI enabled",
       "cancel": "Cancel review",
       "cancelConfirmMessage": "Review #{id} will be marked as cancelled. The review rows are kept as history, but can no longer be decided or completed.",
       "cancelConfirmTitle": "Cancel review?",
@@ -1597,7 +1593,7 @@
       },
       "accessReview": {
         "heading": "Access review",
-        "body": "Use Access review to create recurring review rounds for app-managed assignments and AI permissions. Global IdP roles are reviewed in the identity-management tool."
+        "body": "Use Access review to create recurring review rounds for app-managed assignments. Global IdP roles are reviewed in the identity-management tool."
       }
     },
     "adminPrivacy": {
@@ -1647,7 +1643,7 @@
       },
       "scope": {
         "heading": "Scope",
-        "body": "The app inventories requirement area owners, requirement area co-authors, specification leads, specification co-authors, and their app-managed AI permissions. Global IdP roles, source-code access, and external client provisioning are reviewed in their source tools."
+        "body": "The app inventories requirement area owners, requirement area co-authors, requirement package leads, requirement package co-authors, specification leads, and specification co-authors. Global IdP roles, source-code access, and external client provisioning are reviewed in their source tools."
       },
       "decisions": {
         "heading": "Decisions",

@@ -454,7 +454,6 @@ function addRetentionSpecifications(seedData) {
       requirements_specification_id: RETENTION_SEED.specification.obsolete,
       specification_item_status_id: 1,
       status_updated_at: OLD_730_TS,
-      unused_1: null,
     })
   }
 

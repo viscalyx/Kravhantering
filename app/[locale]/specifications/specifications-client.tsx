@@ -373,7 +373,6 @@ export default function RequirementsSpecificationsClient({
     responsibleDisplayName: '',
     responsibleHsaId: '',
     responsiblePersonVerification: null as HsaPersonVerification | null,
-    canResponsibleGenerateAi: false,
   })
   const deferredNameFilter = useDeferredValue(nameFilter)
   const normalizedNameFilter = deferredNameFilter
@@ -394,7 +393,6 @@ export default function RequirementsSpecificationsClient({
     responsibleDisplayName: '',
     responsibleHsaId: '',
     responsiblePersonVerification: null as HsaPersonVerification | null,
-    canResponsibleGenerateAi: false,
   })
 
   const toggleHelp = (field: string) => {
@@ -463,8 +461,6 @@ export default function RequirementsSpecificationsClient({
 
     return {
       responsibleHsaId,
-      canResponsibleGenerateAi:
-        responsibleHsaId != null && form.canResponsibleGenerateAi,
     }
   }
 
@@ -549,8 +545,6 @@ export default function RequirementsSpecificationsClient({
         : '',
       responsibleHsaId: spec.responsibleHsaId ?? '',
       responsiblePersonVerification: null,
-      canResponsibleGenerateAi:
-        spec.responsibleHsaId != null && spec.canResponsibleGenerateAi,
     })
     setShowForm(true)
   }
@@ -810,9 +804,6 @@ export default function RequirementsSpecificationsClient({
                               ? f.responsiblePersonVerification
                               : null,
                         }
-                        if (!next.responsibleHsaId.trim()) {
-                          next.canResponsibleGenerateAi = false
-                        }
                         return next
                       })
                     }
@@ -825,39 +816,6 @@ export default function RequirementsSpecificationsClient({
                     }
                     purpose="requirements_specification_responsible"
                     unavailableText={tc('hsaVerifyUnavailable')}
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="mb-1 flex items-center gap-1.5">
-                  <label
-                    className="block text-sm font-medium"
-                    htmlFor="spec-can-responsible-generate-ai"
-                  >
-                    {t('canResponsibleGenerateAi')}
-                  </label>
-                  {helpButton(
-                    'spec-can-responsible-generate-ai',
-                    t('canResponsibleGenerateAi'),
-                  )}
-                </div>
-                {helpPanel(
-                  'canResponsibleGenerateAiHelp',
-                  'spec-can-responsible-generate-ai',
-                )}
-                <div className="flex min-h-11 items-center rounded-xl border bg-white px-3.5 py-2.5 transition-all duration-200 dark:bg-secondary-800/50">
-                  <input
-                    checked={form.canResponsibleGenerateAi}
-                    className="h-4 w-4 rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={!form.responsibleHsaId.trim()}
-                    id="spec-can-responsible-generate-ai"
-                    onChange={e =>
-                      setForm(f => ({
-                        ...f,
-                        canResponsibleGenerateAi: e.target.checked,
-                      }))
-                    }
-                    type="checkbox"
                   />
                 </div>
               </div>

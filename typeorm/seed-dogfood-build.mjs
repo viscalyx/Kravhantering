@@ -1151,7 +1151,6 @@ export function appendDogfoodSeed(SEED_DATA) {
       i % 8 === 0 && khNeedsRefIds.length > 0
         ? khNeedsRefIds[(i / 8) % khNeedsRefIds.length]
         : null,
-      null, // unused_1
       SEED_TS, // created_at
       k.item, // specification_item_status_id
       null, // note
@@ -1171,7 +1170,6 @@ export function appendDogfoodSeed(SEED_DATA) {
       SPEC_KH_INFOR,
       m.requirementId,
       m.versionId,
-      null,
       null,
       SEED_TS,
       // For the controlled introduction we mark most items as "Inkluderad";

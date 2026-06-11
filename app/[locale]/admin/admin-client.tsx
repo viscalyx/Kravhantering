@@ -2601,11 +2601,6 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                                     `accessReview.permissionTypes.${item.permissionType}`,
                                   )}
                                 </div>
-                                <div className="text-xs text-secondary-500 dark:text-secondary-400">
-                                  {item.canGenerateAi
-                                    ? ta('accessReview.aiEnabled')
-                                    : ta('accessReview.aiDisabled')}
-                                </div>
                               </td>
                               <td className="whitespace-nowrap px-4 py-3 text-left align-middle">
                                 {canChooseDecision ? (

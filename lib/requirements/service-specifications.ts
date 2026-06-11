@@ -234,7 +234,6 @@ export function createSpecificationWorkflow({
               requirementAreas: p.requirementAreas,
               responsibleDisplayName: p.responsibleDisplayName,
               responsibleHsaId: p.responsibleHsaId,
-              canResponsibleGenerateAi: p.canResponsibleGenerateAi,
               governanceObjectType: p.governanceObjectType
                 ? {
                     id: p.governanceObjectType.id,

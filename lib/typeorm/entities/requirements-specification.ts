@@ -6,7 +6,6 @@ import type { SpecificationLifecycleStatusEntity } from '@/lib/typeorm/entities/
 
 export interface RequirementsSpecificationEntity {
   businessNeedsReference: string | null
-  canResponsibleGenerateAi: boolean
   createdAt: Date
   id: number
   localRequirementNextSequence: number
@@ -61,11 +60,6 @@ export const requirementsSpecificationEntity =
         type: 'nvarchar',
         length: 31,
         nullable: true,
-      },
-      canResponsibleGenerateAi: {
-        name: 'can_responsible_generate_ai',
-        type: 'bit',
-        default: false,
       },
     },
     uniques: [
