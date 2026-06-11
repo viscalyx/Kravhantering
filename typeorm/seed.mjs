@@ -217,7 +217,7 @@ const SEED_DATA = {
       [
         7,
         'orphaned_responsibility_people_delete',
-        'Fristående Kravansvarspersoner',
+        'Kravansvarspersoner utan kravansvarstilldelning',
         'delete',
         730,
         'Kravansvarspersoner utan aktuella kravansvarstilldelningar och äldre än två år',

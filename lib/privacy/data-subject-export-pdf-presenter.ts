@@ -280,7 +280,7 @@ const SOURCE_TEXT: Record<LocaleKey, Record<string, SourceInfo>> = {
     },
     'requirement_responsibility_people.identity': {
       description:
-        'The person is stored once for active requirement responsibility assignments.',
+        'The local person row stores identity details for requirement responsibility assignments until retention removes it.',
       section: 'activeAssignments',
       title: 'Requirement responsibility person',
     },
@@ -417,7 +417,7 @@ const SOURCE_TEXT: Record<LocaleKey, Record<string, SourceInfo>> = {
     },
     'requirement_responsibility_people.identity': {
       description:
-        'Personen lagras en gång för aktiva kravansvarstilldelningar.',
+        'Den lokala personraden lagrar identitetsuppgifter för kravansvarstilldelningar tills gallring tar bort den.',
       section: 'activeAssignments',
       title: 'Kravansvarsperson',
     },

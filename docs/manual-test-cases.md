@@ -1,4 +1,4 @@
-<!-- cSpell:words ManualArea ManualPkg PkgCoAuthor RetentionFresh -->
+<!-- cSpell:words ManualArea ManualPkg ManualSpec PkgCoAuthor RetentionFresh -->
 <!-- cSpell:words RetentionLinked RetentionOrphan -->
 
 # Manual Test Cases
@@ -98,6 +98,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [PRIV-06: anonymize and skip actions](#priv-06-anonymize-and-skip-actions)
   - [PRIV-07: stale preview is rejected](#priv-07-stale-preview-is-rejected)
   - [PRIV-08: privacy execution emits action-log evidence](#priv-08-privacy-execution-emits-action-log-evidence)
+  - [PRIV-09: unassigned responsibility person export](#priv-09-unassigned-responsibility-person-export)
 - [Developer and resilience surfaces](#developer-and-resilience-surfaces)
   - [DEVTOOLS-01: Developer Mode chip copies a reference](#devtools-01-developer-mode-chip-copies-a-reference)
   - [DEVTOOLS-02: Developer Mode persists across navigation](#devtools-02-developer-mode-persists-across-navigation)
@@ -1076,11 +1077,16 @@ visible specifications.
 1. Select the floating `Nytt kravunderlag` pill.
 1. Fill name, specification lifecycle status, governance object type, and
    implementation type.
+1. Enter `SE5560000001-manualspec1` in
+   `HSA-ID för kravunderlagsansvarig`, use the fetch/refresh button, and
+   verify the resolved person is `Sam ManualSpec` with
+   `sam.manualspec@example.test`.
 1. Add a business need reference if required.
 1. Save.
 
 **Expected result:** The new specification appears in the list with a stable
-slug and selected metadata.
+slug, selected metadata, and a `Kravunderlagsansvarig` resolved from the local
+`Kravansvarsperson` row after HSA verification.
 
 ### SPEC-03: edit a specification from detail title action
 
@@ -1625,7 +1631,7 @@ row.
 
 1. As `ada.admin`, open `/sv/admin?tab=archiving`.
 1. Verify retention controls are visible.
-1. Select `Fristående Kravansvarspersoner` and run
+1. Select `Kravansvarspersoner utan kravansvarstilldelning` and run
    `Förhandsgranska gallring`.
 1. Verify the preview lists `Rolf RetentionOrphan`, but not
    `Lena RetentionLinked` and not `Freja RetentionFresh`.
@@ -1633,7 +1639,8 @@ row.
 1. Sign in as `disa.privacy` and open the same URL.
 
 **Expected result:** `ada.admin` and `disa.privacy` can use archiving privacy
-tools, including the standalone responsibility-person retention preview;
+tools, including the preview for Kravansvarspersoner utan
+kravansvarstilldelning,
 `only.admin` is redirected to the default tab or sees disabled access.
 
 ### ADMIN-10: status and risk icons render across requirement surfaces
@@ -1875,6 +1882,32 @@ partial unexpected changes are made.
 
 **Expected result:** The action-log event includes counts and target fingerprint,
 but does not expose the raw target HSA-ID in details.
+
+### PRIV-09: unassigned responsibility person export
+
+**Purpose:** Confirm personuppgiftsutdrag includes a local
+`Kravansvarsperson` row even when no current or started
+kravansvarstilldelning points to it.
+
+**Users:** `ada.admin` or `disa.privacy`.
+
+**Prerequisites:** Open `/sv/admin?tab=privacy` with demo seed data that
+includes the `RETENTION-SEED` responsibility-person fixtures.
+
+**Steps:**
+
+1. Enter `SE5560000001-retentionorphan` in `HSA-ID att söka efter`.
+1. Select `Förhandsgranska`.
+1. Verify the preview includes `Kravansvarsperson` for
+   `Rolf RetentionOrphan`.
+1. Select `Exportera JSON`.
+1. Select `Exportera PDF`.
+
+**Expected result:** The export includes the local person row with HSA-ID,
+name, e-mail and fetched/updated timestamps for `Rolf RetentionOrphan`, even
+though no current or started kravansvarstilldelning points to that HSA-ID.
+The preview and exports do not include `Lena RetentionLinked` or
+`Freja RetentionFresh`.
 
 ## Developer and resilience surfaces
 

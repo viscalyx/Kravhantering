@@ -183,7 +183,7 @@ describe('seed profiles', () => {
           policy_key: 'archived_requirement_selection_delete',
         }),
         expect.objectContaining({
-          information_set: 'Fristående Kravansvarspersoner',
+          information_set: 'Kravansvarspersoner utan kravansvarstilldelning',
           policy_key: 'orphaned_responsibility_people_delete',
         }),
       ]),

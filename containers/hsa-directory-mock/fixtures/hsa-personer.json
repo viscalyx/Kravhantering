@@ -296,7 +296,7 @@
       "mail": "rolf.retentionorphan@example.test",
       "DN": "cn=Rolf RetentionOrphan,ou=retention,o=kravhantering,c=se",
       "purposes": [
-        "Gammal fristående Kravansvarsperson för förhandsgranskning av gallring."
+        "Gammal Kravansvarsperson utan kravansvarstilldelning för förhandsgranskning av gallring."
       ]
     },
     {
@@ -305,7 +305,9 @@
       "sn": "RetentionFresh",
       "mail": "freja.retentionfresh@example.test",
       "DN": "cn=Freja RetentionFresh,ou=retention,o=kravhantering,c=se",
-      "purposes": ["Ny fristående Kravansvarsperson som inte ska gallras ännu."]
+      "purposes": [
+        "Ny Kravansvarsperson utan kravansvarstilldelning som inte ska gallras ännu."
+      ]
     },
     {
       "hsaIdentity": "SE5560000001-3001",
