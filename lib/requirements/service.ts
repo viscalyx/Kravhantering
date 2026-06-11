@@ -245,7 +245,7 @@ export interface ListSpecificationsOutput {
     name: string
     requirementAreas?: { id: number; name: string }[]
     responsibleDisplayName?: string | null
-    responsibleHsaId?: string | null
+    responsibleHsaId?: string
     governanceObjectType: { id?: number; nameSv: string; nameEn: string } | null
     specificationImplementationTypeId?: number | null
     specificationLifecycleStatusId?: number | null

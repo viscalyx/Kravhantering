@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { updateSpecificationSchema } from '@/app/api/specifications/schema'
 import {
+  canAuthorSpecification,
   deleteSpecification,
   getSpecificationById,
   getSpecificationBySlug,
@@ -18,6 +19,7 @@ import {
   parseRouteParams,
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
+import { forbiddenError, validationError } from '@/lib/requirements/errors'
 import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 
 export const dynamic = 'force-dynamic'
@@ -33,6 +35,10 @@ const specificationParamSchema = z
 async function resolveSpecification(db: SqlServerDatabase, idOrSlug: string) {
   if (/^\d+$/.test(idOrSlug)) return getSpecificationById(db, Number(idOrSlug))
   return getSpecificationBySlug(db, idOrSlug)
+}
+
+function isAdmin(roles: readonly string[]): boolean {
+  return roles.includes('Admin')
 }
 
 export async function GET(
@@ -53,7 +59,27 @@ export async function GET(
 export const PUT = secureMutationRoute({
   bodySchema: updateSpecificationSchema,
   paramsSchema: specificationParamSchema,
-  policy: customMutationPolicy('specification.update', () => {}),
+  policy: customMutationPolicy(
+    'specification.update',
+    async ({ context, params }) => {
+      const db = await getRequestSqlServerDataSource()
+      const { id } = params as z.infer<typeof specificationParamSchema>
+      const spec = await resolveSpecification(db, id)
+      if (!spec) return
+
+      const allowed = await canAuthorSpecification(
+        db,
+        spec.id,
+        context.actor.hsaId,
+        isAdmin(context.actor.roles),
+      )
+      if (!allowed) {
+        throw forbiddenError('Missing specification author permission', {
+          reason: 'specification_author_required',
+        })
+      }
+    },
+  ),
   handler: async ({ body, params }) => {
     const { id } = params
     const db = await getRequestSqlServerDataSource()
@@ -65,9 +91,27 @@ export const PUT = secureMutationRoute({
       return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
     }
 
+    if (body.responsibleHsaId !== undefined) {
+      const coAuthorRows = (await db.query(
+        `
+          SELECT TOP (1) specification_id AS specificationId
+          FROM specification_co_authors
+          WHERE specification_id = @0
+            AND hsa_id = @1
+        `,
+        [spec.id, body.responsibleHsaId],
+      )) as Array<{ specificationId: number }>
+      if (coAuthorRows.length > 0) {
+        throw validationError(
+          'Specification lead cannot also be specification co-author',
+          { reason: 'specification_lead_cannot_be_co_author' },
+        )
+      }
+    }
+
     const responsiblePerson =
-      body.responsibleHsaId === undefined || body.responsibleHsaId == null
-        ? null
+      body.responsibleHsaId === undefined
+        ? undefined
         : await resolveVerifiedRequirementResponsibilityPerson(
             db,
             body.responsibleHsaId,

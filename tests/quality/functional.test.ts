@@ -461,6 +461,19 @@ function makeContext(headers?: HeadersInit): Promise<RequestContext> {
   return createRequestContext(request, 'rest')
 }
 
+function specificationResponsibleFields() {
+  return {
+    responsibleHsaId: 'SE5560000001-functional1',
+    responsiblePerson: {
+      email: null,
+      givenName: 'Functional',
+      hsaId: 'SE5560000001-functional1',
+      middleName: null,
+      surname: 'Test Actor',
+    },
+  }
+}
+
 function makeMcpRequest() {
   const request = new Request('https://example.test/api/mcp')
   attachVerifiedActor(request, {
@@ -938,6 +951,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Scenario specification',
+      ...specificationResponsibleFields(),
       uniqueId: 'SCENARIO-SPECIFICATION',
     })
 
@@ -1025,6 +1039,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Status clearing specification',
+      ...specificationResponsibleFields(),
       uniqueId: 'STATUS-CLEARING-SPECIFICATION',
     })
 
@@ -1395,6 +1410,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     })
     const spec = await createSpecification(appDb(), {
       name: 'Scenario 17 specification',
+      ...specificationResponsibleFields(),
       uniqueId: 'SCENARIO-17-SPECIFICATION',
     })
     const service = createRequirementsService(appDb())
@@ -1457,6 +1473,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     const normReference = await createNormReference(appDb())
     const spec = await createSpecification(appDb(), {
       name: 'Graduation specification',
+      ...specificationResponsibleFields(),
       uniqueId: 'GRADUATION-SPECIFICATION',
     })
     const localItem = await createSpecificationLocalRequirement(
@@ -1593,6 +1610,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Link specification',
+      ...specificationResponsibleFields(),
       uniqueId: 'LINK-SPECIFICATION',
     })
 
@@ -1677,6 +1695,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Decision specification',
+      ...specificationResponsibleFields(),
       uniqueId: 'DECISION-SPECIFICATION',
     })
 

@@ -112,6 +112,14 @@ export const POST = secureMutationRoute({
         body.purpose === 'requirements_specification_responsible' ||
         body.purpose === 'requirements_specification_co_author'
       ) {
+        if (
+          body.purpose === 'requirements_specification_responsible' &&
+          !body.scopeId &&
+          context.actor.hsaId &&
+          body.hsaId === context.actor.hsaId
+        ) {
+          return
+        }
         if (!body.scopeId) {
           throw forbiddenError('Missing specification scope', {
             reason: 'scope_required',

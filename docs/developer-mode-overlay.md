@@ -279,6 +279,8 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   wide screens and the metadata cards stay on one horizontal row. That layout
   does not introduce any separate developer-mode marker beyond the existing edit
   action.
+- Specification lead changes stay inside the existing specification `crud form`
+  surfaces. The separate change modal uses `dialog: change specification lead`.
 - The specification-detail page no longer renders a separate breadcrumb-style
   back control in that header area; browser navigation is the supported
   way back from this compact header.

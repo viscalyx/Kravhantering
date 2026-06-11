@@ -2100,6 +2100,18 @@ export default function KravunderlagDetailClient({
                   key="specification-edit-panel"
                   lifecycleStatuses={specificationLifecycleStatuses}
                   onCancel={() => setShowEditSpecificationForm(false)}
+                  onResponsibleChanged={updatedSpec => {
+                    setSpec(current =>
+                      current
+                        ? {
+                            ...current,
+                            responsibleDisplayName:
+                              updatedSpec.responsibleDisplayName,
+                            responsibleHsaId: updatedSpec.responsibleHsaId,
+                          }
+                        : current,
+                    )
+                  }}
                   onSaved={async result => {
                     setShowEditSpecificationForm(false)
                     if (

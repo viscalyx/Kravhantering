@@ -9,6 +9,7 @@ import {
   Plus,
   Search,
   Trash2,
+  UserRoundCog,
   X,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
@@ -23,12 +24,14 @@ import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import HsaPersonChangeModal, {
+  type HsaPersonChangeSubmitResult,
+} from '@/components/HsaPersonChangeModal'
 import HsaPersonVerifyField, {
   type HsaPersonVerification,
 } from '@/components/HsaPersonVerifyField'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { Link } from '@/i18n/routing'
-import { isHsaId } from '@/lib/auth/hsa-id'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
@@ -40,7 +43,6 @@ import type {
   Specification,
   SpecificationTaxonomyItem,
 } from '@/lib/specifications/preload-types'
-import { normalizeResponsibleHsaId } from '@/lib/specifications/responsible-person'
 
 const REQUIREMENT_SPECIFICATIONS_HELP: HelpContent = {
   sections: [
@@ -67,6 +69,18 @@ const EMPTY_INITIAL_DATA: RequirementsSpecificationsInitialData = {
   specifications: [],
 }
 
+interface CurrentUser {
+  displayName: string
+  email: string
+  hsaId: string
+  roles: string[]
+}
+
+interface ResponsibleChangeState {
+  currentResponsibleHsaId: string
+  specificationId: number
+}
+
 async function readJsonOrThrow<T>(response: Response, fallbackMessage: string) {
   if (!response.ok) {
     const details = await readResponseMessage(response)
@@ -77,6 +91,63 @@ async function readJsonOrThrow<T>(response: Response, fallbackMessage: string) {
 
   return (await response.json()) as T
 }
+
+function readCurrentUser(body: unknown): CurrentUser | null {
+  if (!body || typeof body !== 'object') return null
+  const record = body as Record<string, unknown>
+  if (record.authenticated !== true || typeof record.hsaId !== 'string') {
+    return null
+  }
+
+  const hsaId = record.hsaId.trim()
+  if (!hsaId) return null
+
+  const name =
+    typeof record.name === 'string' && record.name.trim()
+      ? record.name.trim()
+      : hsaId
+  const email = typeof record.email === 'string' ? record.email : ''
+
+  return {
+    displayName: name,
+    email,
+    hsaId,
+    roles: Array.isArray(record.roles)
+      ? record.roles.filter((role): role is string => typeof role === 'string')
+      : [],
+  }
+}
+
+const specificationEditableSignature = (form: {
+  businessNeedsReference: string
+  name: string
+  specificationGovernanceObjectTypeId: string
+  specificationImplementationTypeId: string
+  specificationLifecycleStatusId: string
+  uniqueId: string
+}) =>
+  JSON.stringify({
+    businessNeedsReference: form.businessNeedsReference,
+    name: form.name,
+    specificationGovernanceObjectTypeId:
+      form.specificationGovernanceObjectTypeId,
+    specificationImplementationTypeId: form.specificationImplementationTypeId,
+    specificationLifecycleStatusId: form.specificationLifecycleStatusId,
+    uniqueId: form.uniqueId,
+  })
+
+const specificationEditableSignatureFromItem = (spec: Specification) =>
+  JSON.stringify({
+    businessNeedsReference: spec.businessNeedsReference ?? '',
+    name: spec.name,
+    specificationGovernanceObjectTypeId:
+      spec.specificationGovernanceObjectTypeId?.toString() ?? '',
+    specificationImplementationTypeId:
+      spec.specificationImplementationTypeId?.toString() ?? '',
+    specificationLifecycleStatusId:
+      spec.specificationLifecycleStatusId?.toString() ?? '',
+    uniqueId: spec.uniqueId,
+  })
 
 function RequirementAreaPills({
   areas,
@@ -199,6 +270,7 @@ export default function RequirementsSpecificationsClient({
   const contentRef = useRef<HTMLDivElement>(null)
   const tableAnchorRef = useRef<HTMLDivElement>(null)
   const nameFilterRef = useRef<HTMLInputElement>(null)
+  const editFormSignatureRef = useRef<string | null>(null)
   const hasInitialData = initialData !== undefined
   const resolvedInitialData = initialData ?? EMPTY_INITIAL_DATA
   const initialDataErrorKeys = new Set(
@@ -363,6 +435,11 @@ export default function RequirementsSpecificationsClient({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [slugError, setSlugError] = useState<string | null>(null)
   const [nameFilter, setNameFilter] = useState('')
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+  const [currentUserLoading, setCurrentUserLoading] = useState(true)
+  const [currentUserUnavailable, setCurrentUserUnavailable] = useState(false)
+  const [responsibleChange, setResponsibleChange] =
+    useState<ResponsibleChangeState | null>(null)
   const [form, setForm] = useState({
     name: '',
     uniqueId: '',
@@ -427,6 +504,45 @@ export default function RequirementsSpecificationsClient({
   )
 
   useEffect(() => {
+    const controller = new AbortController()
+    setCurrentUserLoading(true)
+    setCurrentUserUnavailable(false)
+
+    async function loadCurrentUser() {
+      try {
+        const response = await apiFetch('/api/auth/me', {
+          signal: controller.signal,
+        })
+        if (!response.ok) {
+          throw new Error('Failed to load current user')
+        }
+        const user = readCurrentUser(await response.json())
+        if (!user) {
+          setCurrentUser(null)
+          setCurrentUserUnavailable(true)
+          return
+        }
+        setCurrentUser(user)
+      } catch (error) {
+        if (controller.signal.aborted) return
+        console.error('Failed to load current user for specifications', error)
+        setCurrentUser(null)
+        setCurrentUserUnavailable(true)
+      } finally {
+        if (!controller.signal.aborted) {
+          setCurrentUserLoading(false)
+        }
+      }
+    }
+
+    void loadCurrentUser()
+
+    return () => {
+      controller.abort()
+    }
+  }, [])
+
+  useEffect(() => {
     if (!isFetchingSpecifications) {
       if (spinnerTimerRef.current) {
         clearTimeout(spinnerTimerRef.current)
@@ -451,28 +567,11 @@ export default function RequirementsSpecificationsClient({
     }
   }, [isFetchingSpecifications])
 
-  const buildResponsiblePayload = () => {
-    const responsibleHsaId = normalizeResponsibleHsaId(form.responsibleHsaId)
-
-    if (responsibleHsaId && !isHsaId(responsibleHsaId)) {
-      setSaveError(t('invalidResponsibleHsaId'))
-      return null
-    }
-
-    return {
-      responsibleHsaId,
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (isSubmitting) return
     setSlugError(null)
     setSaveError(null)
-    const responsiblePayload = buildResponsiblePayload()
-    if (!responsiblePayload) {
-      return
-    }
     setIsSubmitting(true)
     try {
       const method = editSpec ? 'PUT' : 'POST'
@@ -497,7 +596,6 @@ export default function RequirementsSpecificationsClient({
             ? Number(form.specificationLifecycleStatusId)
             : null,
           businessNeedsReference: form.businessNeedsReference || null,
-          ...responsiblePayload,
         }),
       })
       if (res.status === 409) {
@@ -513,6 +611,8 @@ export default function RequirementsSpecificationsClient({
       }
       setShowForm(false)
       setEditSpec(null)
+      setResponsibleChange(null)
+      editFormSignatureRef.current = null
       setOpenHelp(new Set())
       setSlugEdited(false)
       setForm(resetForm())
@@ -526,6 +626,8 @@ export default function RequirementsSpecificationsClient({
 
   const handleEdit = (spec: Specification) => {
     setEditSpec(spec)
+    setResponsibleChange(null)
+    editFormSignatureRef.current = specificationEditableSignatureFromItem(spec)
     setOpenHelp(new Set())
     setSlugEdited(true)
     setSlugError(null)
@@ -540,10 +642,8 @@ export default function RequirementsSpecificationsClient({
       specificationLifecycleStatusId:
         spec.specificationLifecycleStatusId?.toString() ?? '',
       businessNeedsReference: spec.businessNeedsReference ?? '',
-      responsibleDisplayName: spec.responsibleHsaId
-        ? (getResponsibleDisplayName(spec) ?? '')
-        : '',
-      responsibleHsaId: spec.responsibleHsaId ?? '',
+      responsibleDisplayName: getResponsibleDisplayName(spec) ?? '',
+      responsibleHsaId: spec.responsibleHsaId,
       responsiblePersonVerification: null,
     })
     setShowForm(true)
@@ -596,14 +696,124 @@ export default function RequirementsSpecificationsClient({
   }
 
   const openCreateForm = () => {
+    if (!currentUser) {
+      setSaveError(
+        currentUserUnavailable
+          ? t('currentUserUnavailable')
+          : t('currentUserLoading'),
+      )
+      return
+    }
     setShowForm(true)
     setEditSpec(null)
+    setResponsibleChange(null)
+    editFormSignatureRef.current = null
     setOpenHelp(new Set())
     setSlugEdited(false)
     setSlugError(null)
     setSaveError(null)
-    setForm(resetForm())
+    setForm({
+      ...resetForm(),
+      responsibleDisplayName: currentUser.displayName,
+      responsibleHsaId: currentUser.hsaId,
+      responsiblePersonVerification: null,
+    })
   }
+
+  const closeForm = () => {
+    if (isSubmitting) return
+    setOpenHelp(new Set())
+    setShowForm(false)
+    setResponsibleChange(null)
+    editFormSignatureRef.current = null
+  }
+
+  const openResponsibleChange = () => {
+    if (!editSpec) return
+    setResponsibleChange({
+      currentResponsibleHsaId: form.responsibleHsaId,
+      specificationId: editSpec.id,
+    })
+  }
+
+  const closeResponsibleChange = () => {
+    setResponsibleChange(null)
+  }
+
+  const hasUnsavedSpecificationEdits = () =>
+    editFormSignatureRef.current !== null &&
+    editFormSignatureRef.current !== specificationEditableSignature(form)
+
+  const submitResponsibleChange = async (
+    nextResponsibleHsaId: string,
+    person: HsaPersonVerification | null,
+  ): Promise<HsaPersonChangeSubmitResult> => {
+    if (!responsibleChange || !editSpec) return { ok: false }
+
+    const isAdmin = currentUser?.roles.includes('Admin') ?? false
+    const shouldCloseFormAfterChange = !isAdmin
+    if (shouldCloseFormAfterChange && hasUnsavedSpecificationEdits()) {
+      const confirmed = await confirm({
+        cancelText: tc('cancel'),
+        confirmText: t('changeResponsible'),
+        defaultCancel: true,
+        icon: 'warning',
+        message: t('responsibleChangeUnsavedConfirm'),
+        title: t('changeResponsibleTitle'),
+      })
+      if (!confirmed) return { ok: false }
+    }
+
+    try {
+      const response = await apiFetch(
+        `/api/specifications/${editSpec.uniqueId}`,
+        {
+          body: JSON.stringify({ responsibleHsaId: nextResponsibleHsaId }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT',
+        },
+      )
+      if (!response.ok) {
+        return {
+          error:
+            (await readResponseMessage(response)) ??
+            t('responsibleChangeError'),
+          ok: false,
+        }
+      }
+
+      const payload = (await response.json()) as Partial<Specification>
+      setResponsibleChange(null)
+      if (shouldCloseFormAfterChange) {
+        setShowForm(false)
+        setEditSpec(null)
+        editFormSignatureRef.current = null
+      } else {
+        const nextDisplayName =
+          payload.responsibleDisplayName ??
+          person?.displayName ??
+          nextResponsibleHsaId
+        setForm(previousForm => ({
+          ...previousForm,
+          responsibleDisplayName: nextDisplayName,
+          responsibleHsaId: payload.responsibleHsaId ?? nextResponsibleHsaId,
+          responsiblePersonVerification: person,
+        }))
+      }
+      await specificationsResource.reload()
+      return { ok: true }
+    } catch {
+      return { error: t('responsibleChangeError'), ok: false }
+    }
+  }
+
+  const currentUserError = currentUserUnavailable
+    ? t('currentUserUnavailable')
+    : null
+  const createDisabled = currentUserLoading || !currentUser
+  const createDisabledReason = currentUserLoading
+    ? t('currentUserLoading')
+    : currentUserError
 
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
@@ -615,9 +825,11 @@ export default function RequirementsSpecificationsClient({
             {
               ariaLabel: t('newSpecification'),
               developerModeValue: 'new specification',
+              disabled: createDisabled,
               icon: <Plus aria-hidden="true" className="h-4 w-4" />,
               id: 'create',
               onClick: openCreateForm,
+              tooltip: createDisabledReason ?? t('newSpecification'),
               variant: 'primary',
             },
           ]}
@@ -634,6 +846,14 @@ export default function RequirementsSpecificationsClient({
             role="alert"
           >
             {loadWarning}
+          </p>
+        ) : null}
+        {currentUserError ? (
+          <p
+            className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+            role="alert"
+          >
+            {currentUserError}
           </p>
         ) : null}
 
@@ -778,45 +998,63 @@ export default function RequirementsSpecificationsClient({
                     )}
                   </div>
                   {helpPanel('responsibleHsaIdHelp', 'spec-responsible-hsa-id')}
-                  <HsaPersonVerifyField
-                    disabled={isSubmitting}
-                    emailLabel={tc('hsaVerifyEmail')}
-                    errorFallback={tc('hsaVerifyError')}
-                    fetchingLabel={tc('fetchingHsaPerson')}
-                    fetchLabel={tc('fetchHsaPerson')}
-                    hsaId={form.responsibleHsaId}
-                    initialDisplayName={form.responsibleDisplayName}
-                    inputClassName="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                    inputId="spec-responsible-hsa-id"
-                    nameLabel={tc('hsaVerifyName')}
-                    onHsaIdChange={value =>
-                      setForm(f => {
-                        const next = {
+                  {editSpec ? (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          aria-readonly="true"
+                          className="min-h-11 w-full rounded-xl border bg-secondary-100 px-3.5 py-2.5 font-mono text-sm text-secondary-500 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800 dark:text-secondary-400"
+                          id="spec-responsible-hsa-id"
+                          readOnly
+                          value={form.responsibleHsaId}
+                        />
+                        <button
+                          aria-label={t('changeResponsible')}
+                          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:text-secondary-300 dark:hover:bg-secondary-800"
+                          disabled={isSubmitting || currentUserLoading}
+                          onClick={openResponsibleChange}
+                          title={t('changeResponsible')}
+                          type="button"
+                        >
+                          <UserRoundCog
+                            aria-hidden="true"
+                            className="h-4 w-4"
+                            focusable={false}
+                          />
+                        </button>
+                      </div>
+                      <p className="mt-1 text-xs italic text-secondary-700 dark:text-secondary-300">
+                        {form.responsibleDisplayName ||
+                          tc('hsaVerifyUnavailable')}
+                      </p>
+                    </div>
+                  ) : (
+                    <HsaPersonVerifyField
+                      disabled={isSubmitting}
+                      emailLabel={tc('hsaVerifyEmail')}
+                      errorFallback={tc('hsaVerifyError')}
+                      fetchingLabel={tc('fetchingHsaPerson')}
+                      fetchLabel={tc('fetchHsaPerson')}
+                      hsaId={form.responsibleHsaId}
+                      initialDisplayName={form.responsibleDisplayName}
+                      inputClassName="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                      inputId="spec-responsible-hsa-id"
+                      nameLabel={tc('hsaVerifyName')}
+                      onHsaIdChange={() => undefined}
+                      onVerified={person =>
+                        setForm(f => ({
                           ...f,
-                          responsibleDisplayName:
-                            value.trim() === f.responsibleHsaId.trim()
-                              ? f.responsibleDisplayName
-                              : '',
-                          responsibleHsaId: value,
-                          responsiblePersonVerification:
-                            value.trim() ===
-                            f.responsiblePersonVerification?.hsaId
-                              ? f.responsiblePersonVerification
-                              : null,
-                        }
-                        return next
-                      })
-                    }
-                    onVerified={person =>
-                      setForm(f => ({
-                        ...f,
-                        responsibleDisplayName: person.displayName,
-                        responsiblePersonVerification: person,
-                      }))
-                    }
-                    purpose="requirements_specification_responsible"
-                    unavailableText={tc('hsaVerifyUnavailable')}
-                  />
+                          responsibleDisplayName: person.displayName,
+                          responsiblePersonVerification: person,
+                        }))
+                      }
+                      purpose="requirements_specification_responsible"
+                      readOnly
+                      required
+                      showPersonSummaryAsText
+                      unavailableText={tc('hsaVerifyUnavailable')}
+                    />
+                  )}
                 </div>
               </div>
               <div>
@@ -923,11 +1161,7 @@ export default function RequirementsSpecificationsClient({
                 <button
                   className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
                   disabled={isSubmitting}
-                  onClick={() => {
-                    if (isSubmitting) return
-                    setOpenHelp(new Set())
-                    setShowForm(false)
-                  }}
+                  onClick={closeForm}
                   type="button"
                 >
                   {tc('cancel')}
@@ -936,6 +1170,39 @@ export default function RequirementsSpecificationsClient({
             </motion.form>
           )}
         </AnimatePresence>
+        {responsibleChange && (
+          <HsaPersonChangeModal
+            blockedError={t('responsibleChangeCoAuthorConflict')}
+            cancelLabel={tc('cancel')}
+            currentHelp={t('currentResponsibleHsaIdHelp')}
+            currentHsaId={responsibleChange.currentResponsibleHsaId}
+            currentInputId="spec-current-responsible-hsa-id"
+            currentLabel={t('currentResponsibleHsaId')}
+            description={t('changeResponsibleDescription')}
+            developerModeValue="change specification lead"
+            emailLabel={tc('hsaVerifyEmail')}
+            errorFallback={tc('hsaVerifyError')}
+            fetchingLabel={tc('fetchingHsaPerson')}
+            fetchLabel={tc('fetchHsaPerson')}
+            inputClassName="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+            invalidError={t('responsibleChangeInvalid')}
+            nameLabel={tc('hsaVerifyName')}
+            newHelp={t('newResponsibleHsaIdHelp')}
+            newInputId="spec-new-responsible-hsa-id"
+            newLabel={t('newResponsibleHsaId')}
+            onClose={closeResponsibleChange}
+            onSubmit={submitResponsibleChange}
+            open
+            purpose="requirements_specification_responsible"
+            sameError={t('responsibleChangeSame')}
+            scopeId={responsibleChange.specificationId}
+            submitLabel={t('changeResponsible')}
+            submittingLabel={tc('saving')}
+            title={t('changeResponsibleTitle')}
+            titleId="spec-responsible-change-title"
+            unavailableText={tc('hsaVerifyUnavailable')}
+          />
+        )}
 
         <div className="mb-4">
           {!loading && specifications.length > 0 && (
@@ -1051,11 +1318,9 @@ export default function RequirementsSpecificationsClient({
                             <div className="font-medium text-secondary-800 dark:text-secondary-100">
                               {getResponsibleDisplayName(spec)}
                             </div>
-                            {spec.responsibleHsaId ? (
-                              <div className="mt-0.5 font-mono text-xs text-secondary-500 dark:text-secondary-400">
-                                {spec.responsibleHsaId}
-                              </div>
-                            ) : null}
+                            <div className="mt-0.5 font-mono text-xs text-secondary-500 dark:text-secondary-400">
+                              {spec.responsibleHsaId}
+                            </div>
                           </div>
                         ) : (
                           '—'

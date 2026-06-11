@@ -5,26 +5,21 @@ import {
   nullableBusinessTextSchema,
   positiveIntegerSchema,
 } from '@/lib/http/validation'
-import { normalizeSpecificationResponsiblePersonInput } from '@/lib/specifications/responsible-person'
-
-const optionalNullableResponsibleHsaIdSchema = z.preprocess(
-  value => (typeof value === 'string' && value.trim() === '' ? null : value),
-  z
-    .string()
-    .trim()
-    .max(HSA_ID_MAX_LENGTH)
-    .refine(isHsaId, {
-      message:
-        'Expected HSA-ID format <two-letter country code><10-digit org no>-<alphanumeric suffix>',
-    })
-    .nullable()
-    .optional(),
-)
 
 const optionalNullableResponsibleDisplayNameSchema = z.preprocess(
   value => (typeof value === 'string' && value.trim() === '' ? null : value),
   nullableBusinessTextSchema.optional(),
 )
+
+const optionalResponsibleHsaIdSchema = z
+  .string()
+  .trim()
+  .max(HSA_ID_MAX_LENGTH)
+  .refine(isHsaId, {
+    message:
+      'Expected HSA-ID format <two-letter country code><10-digit org no>-<alphanumeric suffix>',
+  })
+  .optional()
 
 export const specificationSlugSchema = boundedDbStringSchema
   .regex(/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/, {
@@ -39,8 +34,6 @@ export const createSpecificationSchema = z
   .object({
     businessNeedsReference: nullableBusinessTextSchema.optional(),
     name: boundedDbStringSchema,
-    responsibleDisplayName: optionalNullableResponsibleDisplayNameSchema,
-    responsibleHsaId: optionalNullableResponsibleHsaIdSchema,
     specificationImplementationTypeId: positiveIntegerSchema
       .nullable()
       .optional(),
@@ -51,14 +44,13 @@ export const createSpecificationSchema = z
     uniqueId: specificationSlugSchema,
   })
   .strict()
-  .transform(data => normalizeSpecificationResponsiblePersonInput(data))
 
 export const updateSpecificationSchema = z
   .object({
     businessNeedsReference: nullableBusinessTextSchema.optional(),
     name: boundedDbStringSchema.optional(),
     responsibleDisplayName: optionalNullableResponsibleDisplayNameSchema,
-    responsibleHsaId: optionalNullableResponsibleHsaIdSchema,
+    responsibleHsaId: optionalResponsibleHsaIdSchema,
     specificationImplementationTypeId: positiveIntegerSchema
       .nullable()
       .optional(),
@@ -69,8 +61,3 @@ export const updateSpecificationSchema = z
     uniqueId: specificationSlugSchema.optional(),
   })
   .strict()
-  .transform(data =>
-    normalizeSpecificationResponsiblePersonInput(data, {
-      preserveOmittedFields: true,
-    }),
-  )

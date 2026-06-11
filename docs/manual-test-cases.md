@@ -1081,18 +1081,15 @@ visible specifications.
 **Steps:**
 
 1. Select the floating `Nytt kravunderlag` pill.
+1. Verify `HSA-ID för kravunderlagsansvarig` is locked to the signed-in user's
+   HSA-ID and shows the HSA person summary/fetch button.
 1. Fill name, specification lifecycle status, governance object type, and
    implementation type.
-1. Enter `SE5560000001-manualspec1` in
-   `HSA-ID för kravunderlagsansvarig`, use the fetch/refresh button, and
-   verify the resolved person is `Sam ManualSpec` with
-   `sam.manualspec@example.test`.
 1. Add a business need reference if required.
 1. Save.
 
 **Expected result:** The new specification appears in the list with a stable
-slug, selected metadata, and a `Kravunderlagsansvarig` resolved from the local
-`Kravansvarsperson` row after HSA verification.
+slug, selected metadata, and the signed-in user as `Kravunderlagsansvarig`.
 
 ### SPEC-03: edit a specification from detail title action
 
@@ -1106,7 +1103,10 @@ slug, selected metadata, and a `Kravunderlagsansvarig` resolved from the local
 
 1. Verify heading `Upphandling av e-tjänstplattform`.
 1. Select `Redigera kravunderlag`.
-1. Check the edit form.
+1. Verify `HSA-ID för kravunderlagsansvarig` is locked, shows a person row, and
+   exposes a `Byt kravunderlagsansvarig` icon button.
+1. Select the icon button and verify the modal shows current and new
+   `Kravunderlagsansvarig`.
 
 **Expected result:** The form heading says `Redigera kravunderlag` and the name
 field is prefilled with the current specification name.

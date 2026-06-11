@@ -185,6 +185,14 @@ function toStr(value: unknown): string | null {
   return String(value)
 }
 
+function requireStr(value: unknown, fieldName: string): string {
+  const str = toStr(value)
+  if (!str) {
+    throw new Error(`Expected non-empty ${fieldName}`)
+  }
+  return str
+}
+
 function displayNameFromResponsibilityPerson(row: Row): string | null {
   const hsaId = toStr(row.responsibleHsaId)
   const givenName = toStr(row.responsibleGivenName)
@@ -388,7 +396,7 @@ export async function listSpecifications(db: SqlServerDatabase) {
       specificationImplementationTypeId,
       specificationLifecycleStatusId,
       businessNeedsReference: toStr(row.businessNeedsReference),
-      responsibleHsaId: toStr(row.responsibleHsaId),
+      responsibleHsaId: requireStr(row.responsibleHsaId, 'responsibleHsaId'),
       responsibleDisplayName: displayNameFromResponsibilityPerson(row),
       createdAt: toIso(row.createdAt) ?? '',
       updatedAt: toIso(row.updatedAt) ?? '',
@@ -439,7 +447,7 @@ interface SpecificationRecord {
   lifecycleStatus: { id: number; nameSv: string; nameEn: string } | null
   name: string
   responsibleDisplayName: string | null
-  responsibleHsaId: string | null
+  responsibleHsaId: string
   specificationGovernanceObjectTypeId: number | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
@@ -466,7 +474,7 @@ function mapSpecificationRow(row: Row | undefined): SpecificationRecord | null {
     specificationImplementationTypeId,
     specificationLifecycleStatusId,
     businessNeedsReference: toStr(row.businessNeedsReference),
-    responsibleHsaId: toStr(row.responsibleHsaId),
+    responsibleHsaId: requireStr(row.responsibleHsaId, 'responsibleHsaId'),
     responsibleDisplayName: displayNameFromResponsibilityPerson(row),
     createdAt: toIso(row.createdAt) ?? '',
     updatedAt: toIso(row.updatedAt) ?? '',
@@ -611,7 +619,7 @@ export async function createSpecification(
     specificationImplementationTypeId?: number | null
     specificationLifecycleStatusId?: number | null
     businessNeedsReference?: string | null
-    responsibleHsaId?: string | null
+    responsibleHsaId: string
     responsibleDisplayName?: string | null
     responsiblePerson?: RequirementResponsibilityPersonRecord | null
   },
@@ -652,7 +660,7 @@ export async function createSpecification(
         data.specificationImplementationTypeId ?? null,
         data.specificationLifecycleStatusId ?? null,
         data.businessNeedsReference ?? null,
-        data.responsibleHsaId ?? null,
+        data.responsibleHsaId,
         now,
       ],
     )) as Row[]
@@ -673,7 +681,7 @@ export async function createSpecification(
       ),
       specificationLifecycleStatusId: toNum(row.specificationLifecycleStatusId),
       businessNeedsReference: toStr(row.businessNeedsReference),
-      responsibleHsaId: toStr(row.responsibleHsaId),
+      responsibleHsaId: requireStr(row.responsibleHsaId, 'responsibleHsaId'),
       responsibleDisplayName: responsiblePerson
         ? formatRequirementResponsibilityPersonName(responsiblePerson)
         : null,
@@ -702,7 +710,7 @@ async function updateSpecificationFields(
     specificationImplementationTypeId?: number | null
     specificationLifecycleStatusId?: number | null
     businessNeedsReference?: string | null
-    responsibleHsaId?: string | null
+    responsibleHsaId?: string
     responsiblePerson?: RequirementResponsibilityPersonRecord | null
   },
 ) {
@@ -737,7 +745,7 @@ async function updateSpecificationFields(
   }
   if ('responsibleHsaId' in data) {
     setClauses.push(`responsible_hsa_id = @${params.length}`)
-    params.push(data.responsibleHsaId ?? null)
+    params.push(data.responsibleHsaId)
   }
   setClauses.push(`updated_at = @${params.length}`)
   params.push(new Date())
@@ -784,7 +792,7 @@ export async function updateSpecification(
     specificationImplementationTypeId?: number | null
     specificationLifecycleStatusId?: number | null
     businessNeedsReference?: string | null
-    responsibleHsaId?: string | null
+    responsibleHsaId?: string
     responsibleDisplayName?: string | null
     responsiblePerson?: RequirementResponsibilityPersonRecord | null
   },
@@ -801,7 +809,7 @@ export async function updateSpecification(
         WHERE id = @0
       `,
       [id],
-    )) as Array<{ responsibleHsaId: string | null }>
+    )) as Array<{ responsibleHsaId: string }>
     const responsiblePerson = data.responsiblePerson
     if (responsiblePerson) {
       await upsertRequirementResponsibilityPerson(manager, responsiblePerson)

@@ -227,3 +227,19 @@ describe('sqlServerEntities FK referential-action drift', () => {
     })
   }
 })
+
+describe('requirements specification responsible migration', () => {
+  it('fails fast on null responsible HSA-IDs before enforcing NOT NULL', () => {
+    const source = readUpStatements(
+      '0031_require_specification_responsible_hsa_id.mjs',
+    )
+
+    expect(source).toContain('WHERE [responsible_hsa_id] IS NULL')
+    expect(source).toContain(
+      'Cannot require specification lead HSA-ID: every requirements specification must have responsible_hsa_id before this migration.',
+    )
+    expect(source).toContain(
+      'ALTER COLUMN [responsible_hsa_id] nvarchar(31) NOT NULL',
+    )
+  })
+})

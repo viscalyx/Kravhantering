@@ -24,7 +24,7 @@ export interface SpecificationMeta {
   lifecycleStatus: SpecificationTaxonomyItem | null
   name: string
   responsibleDisplayName: string | null
-  responsibleHsaId: string | null
+  responsibleHsaId: string
   specificationGovernanceObjectTypeId: number | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
@@ -95,7 +95,7 @@ export interface Specification {
   name: string
   requirementAreas: SpecificationRequirementArea[]
   responsibleDisplayName: string | null
-  responsibleHsaId: string | null
+  responsibleHsaId: string
   specificationGovernanceObjectTypeId: number | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null

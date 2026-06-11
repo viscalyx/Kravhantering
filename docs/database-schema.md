@@ -1405,7 +1405,7 @@ specific procurement or project.
 | `specification_implementation_type_id` | integer FK → `specification_implementation_types.id` | Implementation type classification (nullable) |
 | `specification_lifecycle_status_id` | integer FK → `specification_lifecycle_statuses.id` | Specification lifecycle status classification (nullable) |
 | `business_needs_reference` | text | Optional free-text reference to the underlying business need |
-| `responsible_hsa_id` | text FK → `requirement_responsibility_people.hsa_id` | HSA-ID for the live specification lead (nullable) |
+| `responsible_hsa_id` | text FK → `requirement_responsibility_people.hsa_id` | HSA-ID for the live specification lead |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->

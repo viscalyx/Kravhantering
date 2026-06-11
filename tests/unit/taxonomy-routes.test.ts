@@ -604,7 +604,25 @@ describe('requirement responsibility person verify route', () => {
     expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
   })
 
-  it('requires scope for specification responsibility verification before lookup', async () => {
+  it('allows specification responsibility verification without scope for the actor on create', async () => {
+    const r = await postRequirementResponsibilityPersonVerify(
+      jsonReq('POST', {
+        hsaId: 'SE5560000001-route',
+        mode: 'refresh',
+        purpose: 'requirements_specification_responsible',
+      }),
+    )
+
+    expect(r.status).toBe(200)
+    expect(
+      specificationPermissionState.canAuthorSpecification,
+    ).not.toHaveBeenCalled()
+    expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledWith(
+      'SE5560000001-route',
+    )
+  })
+
+  it('requires scope for specification responsibility verification of another HSA-ID before lookup', async () => {
     const r = await postRequirementResponsibilityPersonVerify(
       jsonReq('POST', {
         hsaId: 'SE5560000001-spec1',
@@ -1026,6 +1044,16 @@ describe('requirement-areas/[id] routes', () => {
 describe('requirement-specifications routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    authState.context.actor = {
+      displayName: 'Route Tester',
+      hsaId: 'SE5560000001-route',
+      id: 'route-test',
+      isAuthenticated: true,
+      roles: ['RequirementsEditor'],
+      source: 'oidc',
+    }
+    routeState.query.mockResolvedValue([])
+    specificationPermissionState.canAuthorSpecification.mockResolvedValue(true)
   })
 
   it('GET returns specifications', async () => {
@@ -1127,7 +1155,26 @@ describe('requirement-specifications routes', () => {
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(mockCreatePkg).not.toHaveBeenCalled()
   })
-  it('POST resolves specification lead HSA-ID from the local verified person table', async () => {
+  it('POST sets the specification lead from the authenticated actor', async () => {
+    const r = await postPkg(
+      jsonReq('POST', {
+        name: 'A',
+        uniqueId: 'A',
+      }),
+    )
+
+    expect(r.status).toBe(201)
+    expect(mockCreatePkg).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        responsibleHsaId: 'SE5560000001-route',
+        responsiblePerson: expect.objectContaining({
+          hsaId: 'SE5560000001-route',
+        }),
+      }),
+    )
+  })
+  it('POST rejects a client-selected specification lead HSA-ID', async () => {
     const r = await postPkg(
       jsonReq('POST', {
         name: 'A',
@@ -1136,38 +1183,12 @@ describe('requirement-specifications routes', () => {
       }),
     )
 
-    expect(r.status).toBe(201)
-    expect(mockCreatePkg).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        responsibleHsaId: 'SE5560000001-ada1',
-        responsiblePerson: expect.objectContaining({
-          hsaId: 'SE5560000001-ada1',
-        }),
-      }),
-    )
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockCreatePkg).not.toHaveBeenCalled()
   })
-  it('POST accepts a specification lead HSA-ID without a submitted name', async () => {
-    const r = await postPkg(
-      jsonReq('POST', {
-        name: 'A',
-        uniqueId: 'A',
-        responsibleHsaId: 'SE5560000001-ada1',
-      }),
-    )
-
-    expect(r.status).toBe(201)
-    expect(mockCreatePkg).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        responsibleHsaId: 'SE5560000001-ada1',
-        responsiblePerson: expect.objectContaining({
-          hsaId: 'SE5560000001-ada1',
-        }),
-      }),
-    )
-  })
-  it('POST ignores a legacy specification lead name without HSA-ID', async () => {
+  it('POST rejects a client-selected specification lead display name', async () => {
     const r = await postPkg(
       jsonReq('POST', {
         name: 'A',
@@ -1176,14 +1197,10 @@ describe('requirement-specifications routes', () => {
       }),
     )
 
-    expect(r.status).toBe(201)
-    expect(mockCreatePkg).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        responsibleHsaId: null,
-        responsiblePerson: null,
-      }),
-    )
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockCreatePkg).not.toHaveBeenCalled()
   })
   it('PUT updates', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
@@ -1243,8 +1260,7 @@ describe('requirement-specifications routes', () => {
       responsibilityPersonState.getRequirementResponsibilityPerson,
     ).not.toHaveBeenCalled()
   })
-  it('PUT clears the specification lead fields as a pair using HSA-ID', async () => {
-    mockUpdatePkg.mockResolvedValue({ id: 1 })
+  it('PUT rejects clearing the specification lead HSA-ID', async () => {
     const r = await putPkg(
       jsonReq('PUT', {
         responsibleHsaId: '',
@@ -1252,15 +1268,36 @@ describe('requirement-specifications routes', () => {
       makeParams('1'),
     )
 
-    expect(r.status).toBe(200)
-    expect(mockUpdatePkg).toHaveBeenCalledWith(
-      expect.anything(),
-      1,
-      expect.objectContaining({
-        responsibleHsaId: null,
-        responsiblePerson: null,
-      }),
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'responsibleHsaId')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockUpdatePkg).not.toHaveBeenCalled()
+  })
+  it('PUT returns 403 without specification author permission', async () => {
+    specificationPermissionState.canAuthorSpecification.mockResolvedValueOnce(
+      false,
     )
+
+    const r = await putPkg(jsonReq('PUT', { name: 'X' }), makeParams('1'))
+
+    expect(r.status).toBe(403)
+    expect(mockUpdatePkg).not.toHaveBeenCalled()
+  })
+  it('PUT rejects changing the responsible to an existing specification co-author', async () => {
+    routeState.query.mockResolvedValueOnce([{ id: 9 }])
+
+    const r = await putPkg(
+      jsonReq('PUT', {
+        responsibleHsaId: 'SE5560000001-coa1',
+      }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(400)
+    await expect(r.json()).resolves.toMatchObject({
+      error: 'Specification lead cannot also be specification co-author',
+    })
+    expect(mockUpdatePkg).not.toHaveBeenCalled()
   })
   it('DELETE deletes', async () => {
     mockDeletePkg.mockResolvedValue(undefined)

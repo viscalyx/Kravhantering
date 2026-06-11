@@ -1,20 +1,21 @@
 'use client'
 
 import { motion, useReducedMotion } from 'framer-motion'
-import { HelpCircle } from 'lucide-react'
+import { HelpCircle, UserRoundCog } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { type FormEvent, useEffect, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
-import HsaPersonVerifyField, {
-  type HsaPersonVerification,
-} from '@/components/HsaPersonVerifyField'
-import { isHsaId } from '@/lib/auth/hsa-id'
+import { useConfirmModal } from '@/components/ConfirmModal'
+import HsaPersonChangeModal, {
+  type HsaPersonChangeSubmitResult,
+} from '@/components/HsaPersonChangeModal'
+import type { HsaPersonVerification } from '@/components/HsaPersonVerifyField'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
 import { normalizeSlugInput } from '@/lib/slug'
-import { normalizeResponsibleHsaId } from '@/lib/specifications/responsible-person'
 
 interface TaxonomyItem {
   id: number
@@ -27,7 +28,7 @@ interface SpecificationMeta {
   id: number
   name: string
   responsibleDisplayName: string | null
-  responsibleHsaId: string | null
+  responsibleHsaId: string
   specificationGovernanceObjectTypeId: number | null
   specificationImplementationTypeId: number | null
   specificationLifecycleStatusId: number | null
@@ -40,6 +41,7 @@ interface SpecificationEditPanelProps {
   implementationTypes: TaxonomyItem[]
   lifecycleStatuses: TaxonomyItem[]
   onCancel: () => void
+  onResponsibleChanged?: (spec: SpecificationMeta) => Promise<void> | void
   onSaved: (result: { newUniqueId: string }) => Promise<void> | void
   spec: SpecificationMeta
   specificationSlug: string
@@ -59,20 +61,59 @@ interface SpecificationFormState {
 
 export const SPECIFICATION_EDIT_FORM_ID = 'requirement-specification-edit-form'
 
+interface CurrentUser {
+  hsaId: string
+  roles: string[]
+}
+
+interface ResponsibleChangeState {
+  currentResponsibleHsaId: string
+  specificationId: number
+}
+
+function readCurrentUser(body: unknown): CurrentUser | null {
+  if (!body || typeof body !== 'object') return null
+  const record = body as Record<string, unknown>
+  if (record.authenticated !== true || typeof record.hsaId !== 'string') {
+    return null
+  }
+
+  const hsaId = record.hsaId.trim()
+  if (!hsaId) return null
+
+  return {
+    hsaId,
+    roles: Array.isArray(record.roles)
+      ? record.roles.filter((role): role is string => typeof role === 'string')
+      : [],
+  }
+}
+
+const editableSignature = (form: SpecificationFormState) =>
+  JSON.stringify({
+    businessNeedsReference: form.businessNeedsReference,
+    name: form.name,
+    specificationGovernanceObjectTypeId:
+      form.specificationGovernanceObjectTypeId,
+    specificationImplementationTypeId: form.specificationImplementationTypeId,
+    specificationLifecycleStatusId: form.specificationLifecycleStatusId,
+    uniqueId: form.uniqueId,
+  })
+
 function buildFormState(
   spec: SpecificationMeta,
   locale: string,
 ): SpecificationFormState {
-  const responsibleDisplayName =
-    spec.responsibleHsaId != null
-      ? formatActorDisplayNameForLocale(spec.responsibleDisplayName, locale)
-      : null
+  const responsibleDisplayName = formatActorDisplayNameForLocale(
+    spec.responsibleDisplayName,
+    locale,
+  )
 
   return {
     businessNeedsReference: spec.businessNeedsReference ?? '',
     name: spec.name,
     responsibleDisplayName: responsibleDisplayName ?? '',
-    responsibleHsaId: spec.responsibleHsaId ?? '',
+    responsibleHsaId: spec.responsibleHsaId,
     responsiblePersonVerification: null,
     specificationImplementationTypeId:
       spec.specificationImplementationTypeId?.toString() ?? '',
@@ -89,6 +130,7 @@ export default function SpecificationEditPanel({
   implementationTypes,
   lifecycleStatuses,
   onCancel,
+  onResponsibleChanged,
   onSaved,
   specificationSlug,
   spec,
@@ -98,18 +140,62 @@ export default function SpecificationEditPanel({
   const tc = useTranslations('common')
   const locale = useLocale()
   const shouldReduceMotion = useReducedMotion()
+  const { confirm } = useConfirmModal()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [slugError, setSlugError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+  const [currentUserLoading, setCurrentUserLoading] = useState(true)
+  const [responsibleChange, setResponsibleChange] =
+    useState<ResponsibleChangeState | null>(null)
   const [form, setForm] = useState<SpecificationFormState>(() =>
     buildFormState(spec, locale),
   )
+  const [formSignature, setFormSignature] = useState(() =>
+    editableSignature(buildFormState(spec, locale)),
+  )
 
   useEffect(() => {
-    setForm(buildFormState(spec, locale))
+    const nextForm = buildFormState(spec, locale)
+    setForm(nextForm)
+    setFormSignature(editableSignature(nextForm))
     setOpenHelp(new Set())
+    setResponsibleChange(null)
   }, [locale, spec])
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadCurrentUser() {
+      try {
+        const response = await apiFetch('/api/auth/me', {
+          signal: controller.signal,
+        })
+        if (!response.ok) {
+          throw new Error('Failed to load current user')
+        }
+        setCurrentUser(readCurrentUser(await response.json()))
+      } catch (error) {
+        if (controller.signal.aborted) return
+        console.error(
+          'Failed to load current user for specification edit panel',
+          error,
+        )
+        setCurrentUser(null)
+      } finally {
+        if (!controller.signal.aborted) {
+          setCurrentUserLoading(false)
+        }
+      }
+    }
+
+    void loadCurrentUser()
+
+    return () => {
+      controller.abort()
+    }
+  }, [])
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -142,28 +228,11 @@ export default function SpecificationEditPanel({
     </AnimatedHelpPanel>
   )
 
-  const buildResponsiblePayload = () => {
-    const responsibleHsaId = normalizeResponsibleHsaId(form.responsibleHsaId)
-
-    if (responsibleHsaId && !isHsaId(responsibleHsaId)) {
-      setSubmitError(t('invalidResponsibleHsaId'))
-      return null
-    }
-
-    return {
-      responsibleHsaId,
-    }
-  }
-
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (isSubmitting) return
     setSlugError(null)
     setSubmitError(null)
-    const responsiblePayload = buildResponsiblePayload()
-    if (!responsiblePayload) {
-      return
-    }
     setIsSubmitting(true)
 
     try {
@@ -187,7 +256,6 @@ export default function SpecificationEditPanel({
               ? Number(form.specificationLifecycleStatusId)
               : null,
             businessNeedsReference: form.businessNeedsReference || null,
-            ...responsiblePayload,
           }),
         },
       )
@@ -219,6 +287,84 @@ export default function SpecificationEditPanel({
       setSubmitError(tc('error'))
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const openResponsibleChange = () => {
+    setResponsibleChange({
+      currentResponsibleHsaId: form.responsibleHsaId,
+      specificationId: spec.id,
+    })
+  }
+
+  const closeResponsibleChange = () => {
+    setResponsibleChange(null)
+  }
+
+  const hasUnsavedSpecificationEdits = () =>
+    formSignature !== editableSignature(form)
+
+  const submitResponsibleChange = async (
+    nextResponsibleHsaId: string,
+    person: HsaPersonVerification | null,
+  ): Promise<HsaPersonChangeSubmitResult> => {
+    if (!responsibleChange) return { ok: false }
+
+    const isAdmin = currentUser?.roles.includes('Admin') ?? false
+    const shouldCloseFormAfterChange = !isAdmin
+    if (shouldCloseFormAfterChange && hasUnsavedSpecificationEdits()) {
+      const confirmed = await confirm({
+        cancelText: tc('cancel'),
+        confirmText: t('changeResponsible'),
+        defaultCancel: true,
+        icon: 'warning',
+        message: t('responsibleChangeUnsavedConfirm'),
+        title: t('changeResponsibleTitle'),
+      })
+      if (!confirmed) return { ok: false }
+    }
+
+    try {
+      const response = await apiFetch(
+        `/api/specifications/${specificationSlug}`,
+        {
+          body: JSON.stringify({ responsibleHsaId: nextResponsibleHsaId }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT',
+        },
+      )
+      if (!response.ok) {
+        return {
+          error:
+            (await readResponseMessage(response)) ??
+            t('responsibleChangeError'),
+          ok: false,
+        }
+      }
+
+      const payload = (await response.json()) as SpecificationMeta
+      setResponsibleChange(null)
+      await onResponsibleChanged?.(payload)
+      if (shouldCloseFormAfterChange) {
+        onCancel()
+      } else {
+        const nextForm = {
+          ...form,
+          responsibleDisplayName:
+            formatActorDisplayNameForLocale(
+              payload.responsibleDisplayName,
+              locale,
+            ) ??
+            person?.displayName ??
+            nextResponsibleHsaId,
+          responsibleHsaId: payload.responsibleHsaId,
+          responsiblePersonVerification: person,
+        }
+        setForm(nextForm)
+      }
+      return { ok: true }
+    } catch {
+      return { error: t('responsibleChangeError'), ok: false }
     }
   }
 
@@ -330,46 +476,34 @@ export default function SpecificationEditPanel({
             {helpButton('spec-responsible-hsa-id', t('responsibleHsaId'))}
           </div>
           {helpPanel('responsibleHsaIdHelp', 'spec-responsible-hsa-id')}
-          <HsaPersonVerifyField
-            disabled={isSubmitting}
-            emailLabel={tc('hsaVerifyEmail')}
-            errorFallback={tc('hsaVerifyError')}
-            fetchingLabel={tc('fetchingHsaPerson')}
-            fetchLabel={tc('fetchHsaPerson')}
-            hsaId={form.responsibleHsaId}
-            initialDisplayName={form.responsibleDisplayName}
-            inputClassName="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-            inputId="spec-responsible-hsa-id"
-            nameLabel={tc('hsaVerifyName')}
-            onHsaIdChange={value =>
-              setForm(current => {
-                const next = {
-                  ...current,
-                  responsibleDisplayName:
-                    value.trim() === current.responsibleHsaId.trim()
-                      ? current.responsibleDisplayName
-                      : '',
-                  responsibleHsaId: value,
-                  responsiblePersonVerification:
-                    value.trim() ===
-                    current.responsiblePersonVerification?.hsaId
-                      ? current.responsiblePersonVerification
-                      : null,
-                }
-                return next
-              })
-            }
-            onVerified={person =>
-              setForm(current => ({
-                ...current,
-                responsibleDisplayName: person.displayName,
-                responsiblePersonVerification: person,
-              }))
-            }
-            purpose="requirements_specification_responsible"
-            scopeId={spec.id}
-            unavailableText={tc('hsaVerifyUnavailable')}
-          />
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <input
+                aria-readonly="true"
+                className="min-h-11 w-full rounded-xl border bg-secondary-100 px-3.5 py-2.5 font-mono text-sm text-secondary-500 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800 dark:text-secondary-400"
+                id="spec-responsible-hsa-id"
+                readOnly
+                value={form.responsibleHsaId}
+              />
+              <button
+                aria-label={t('changeResponsible')}
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:text-secondary-300 dark:hover:bg-secondary-800"
+                disabled={isSubmitting || currentUserLoading}
+                onClick={openResponsibleChange}
+                title={t('changeResponsible')}
+                type="button"
+              >
+                <UserRoundCog
+                  aria-hidden="true"
+                  className="h-4 w-4"
+                  focusable={false}
+                />
+              </button>
+            </div>
+            <p className="mt-1 text-xs italic text-secondary-700 dark:text-secondary-300">
+              {form.responsibleDisplayName || tc('hsaVerifyUnavailable')}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -476,6 +610,39 @@ export default function SpecificationEditPanel({
           {tc('cancel')}
         </button>
       </div>
+      {responsibleChange && (
+        <HsaPersonChangeModal
+          blockedError={t('responsibleChangeCoAuthorConflict')}
+          cancelLabel={tc('cancel')}
+          currentHelp={t('currentResponsibleHsaIdHelp')}
+          currentHsaId={responsibleChange.currentResponsibleHsaId}
+          currentInputId="spec-detail-current-responsible-hsa-id"
+          currentLabel={t('currentResponsibleHsaId')}
+          description={t('changeResponsibleDescription')}
+          developerModeValue="change specification lead"
+          emailLabel={tc('hsaVerifyEmail')}
+          errorFallback={tc('hsaVerifyError')}
+          fetchingLabel={tc('fetchingHsaPerson')}
+          fetchLabel={tc('fetchHsaPerson')}
+          inputClassName="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+          invalidError={t('responsibleChangeInvalid')}
+          nameLabel={tc('hsaVerifyName')}
+          newHelp={t('newResponsibleHsaIdHelp')}
+          newInputId="spec-detail-new-responsible-hsa-id"
+          newLabel={t('newResponsibleHsaId')}
+          onClose={closeResponsibleChange}
+          onSubmit={submitResponsibleChange}
+          open
+          purpose="requirements_specification_responsible"
+          sameError={t('responsibleChangeSame')}
+          scopeId={responsibleChange.specificationId}
+          submitLabel={t('changeResponsible')}
+          submittingLabel={tc('saving')}
+          title={t('changeResponsibleTitle')}
+          titleId="spec-detail-responsible-change-title"
+          unavailableText={tc('hsaVerifyUnavailable')}
+        />
+      )}
     </motion.form>
   )
 }

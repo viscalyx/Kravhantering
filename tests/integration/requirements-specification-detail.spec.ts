@@ -32,6 +32,34 @@ for (const viewport of viewports) {
       await expect(page.getByLabel('Namn *')).toHaveValue(
         'Upphandling av e-tjänstplattform',
       )
+      const editForm = page.locator(
+        '[data-developer-mode-context="requirements specification detail"][data-developer-mode-value="edit"]',
+      )
+      const responsibleInput = editForm.getByRole('textbox', {
+        name: 'Kravunderlagsansvarigs HSA-ID',
+      })
+      await expect(responsibleInput).toHaveAttribute('readonly', '')
+      await expect(editForm.getByText('Emma Lindqvist')).toBeVisible()
+
+      const currentResponsibleHsaId = await responsibleInput.inputValue()
+      await editForm
+        .getByRole('button', { name: 'Byt kravunderlagsansvarig' })
+        .click()
+
+      const changeDialog = page.getByRole('dialog', {
+        name: 'Byt kravunderlagsansvarig',
+      })
+      await expect(changeDialog).toBeVisible()
+      await expect(
+        changeDialog.getByRole('textbox', {
+          name: 'Förra kravunderlagsansvarigs HSA-ID',
+        }),
+      ).toHaveValue(currentResponsibleHsaId)
+      await expect(
+        changeDialog.getByRole('textbox', {
+          name: 'Nya kravunderlagsansvarigs HSA-ID',
+        }),
+      ).toBeVisible()
     })
 
     if (viewport.name === 'desktop') {

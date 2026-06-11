@@ -257,6 +257,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         },
       ])
       .mockResolvedValueOnce([{ responsibleHsaId: 'SE5560000001-ada1' }])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
           id: 11,
@@ -266,7 +267,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationImplementationTypeId: null,
           specificationLifecycleStatusId: 4,
           businessNeedsReference: null,
-          responsibleHsaId: null,
+          responsibleHsaId: 'SE5560000001-rita1',
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-21T10:00:00.000Z'),
         },
@@ -280,10 +281,10 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           specificationImplementationTypeId: null,
           specificationLifecycleStatusId: 4,
           businessNeedsReference: null,
-          responsibleHsaId: null,
-          responsibleGivenName: null,
+          responsibleHsaId: 'SE5560000001-rita1',
+          responsibleGivenName: 'Rita',
           responsibleMiddleName: null,
-          responsibleSurname: null,
+          responsibleSurname: 'Reviewer',
           createdAt: new Date('2026-04-20T10:00:00.000Z'),
           updatedAt: new Date('2026-04-21T10:00:00.000Z'),
         },
@@ -308,7 +309,14 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     const updated = await updateSpecification(db, 11, {
       name: 'Specification Eleven Updated',
       businessNeedsReference: null,
-      responsibleHsaId: null,
+      responsibleHsaId: 'SE5560000001-rita1',
+      responsiblePerson: {
+        email: 'rita@example.test',
+        givenName: 'Rita',
+        hsaId: 'SE5560000001-rita1',
+        middleName: null,
+        surname: 'Reviewer',
+      },
     })
 
     expect(created).toMatchObject({
@@ -324,8 +332,8 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       id: 11,
       name: 'Specification Eleven Updated',
       businessNeedsReference: null,
-      responsibleHsaId: null,
-      responsibleDisplayName: null,
+      responsibleHsaId: 'SE5560000001-rita1',
+      responsibleDisplayName: 'Rita Reviewer',
     })
     expect(query).toHaveBeenNthCalledWith(
       1,
@@ -354,9 +362,15 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       ],
     )
     expect(query).toHaveBeenNthCalledWith(
-      4,
+      5,
       expect.stringContaining('UPDATE requirements_specifications'),
-      ['Specification Eleven Updated', null, null, expect.any(Date), 11],
+      [
+        'Specification Eleven Updated',
+        null,
+        'SE5560000001-rita1',
+        expect.any(Date),
+        11,
+      ],
     )
   })
 

@@ -10,8 +10,8 @@ export interface RequirementsSpecificationEntity {
   id: number
   localRequirementNextSequence: number
   name: string
-  responsibleHsaId: string | null
-  responsiblePerson: RequirementResponsibilityPersonEntity | null
+  responsibleHsaId: string
+  responsiblePerson: RequirementResponsibilityPersonEntity
   specificationGovernanceObjectType: SpecificationGovernanceObjectTypeEntity | null
   specificationImplementationType: SpecificationImplementationTypeEntity | null
   specificationLifecycleStatus: SpecificationLifecycleStatusEntity | null
@@ -59,7 +59,6 @@ export const requirementsSpecificationEntity =
         name: 'responsible_hsa_id',
         type: 'nvarchar',
         length: 31,
-        nullable: true,
       },
     },
     uniques: [
@@ -84,7 +83,6 @@ export const requirementsSpecificationEntity =
           foreignKeyConstraintName:
             'fk_requirements_specifications_specification_governance_object_type_id',
         },
-        nullable: true,
         onDelete: 'NO ACTION',
         onUpdate: 'NO ACTION',
       },

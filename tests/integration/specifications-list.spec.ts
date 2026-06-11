@@ -61,6 +61,75 @@ for (const viewport of viewports) {
         )
       }
 
+      await test.step('show the signed-in specification lead when creating', async () => {
+        await createButton.click()
+
+        const createForm = page.locator(
+          '[data-developer-mode-context="specifications"][data-developer-mode-value="create"]',
+        )
+        await expect(createForm).toBeVisible()
+        const responsibleInput = createForm.getByRole('textbox', {
+          name: 'Kravunderlagsansvarigs HSA-ID',
+        })
+        await expect(responsibleInput).toHaveValue('SE5560000001-admin1')
+        await expect(responsibleInput).toHaveAttribute('readonly', '')
+        await expect(
+          createForm.getByRole('button', { name: 'Hämta' }),
+        ).toBeVisible()
+        await expect(createForm.getByText(/Ada Admin/)).toBeVisible()
+
+        await createForm.getByRole('button', { name: 'Avbryt' }).click()
+        await expect(createForm).toBeHidden()
+      })
+
+      await test.step('open responsible change modal from the list edit form', async () => {
+        const row = page.getByRole('row', {
+          name: /Upphandling av e-tjänstplattform/,
+        })
+        await row.getByRole('button', { name: 'Redigera' }).click()
+
+        const editForm = page.locator(
+          '[data-developer-mode-context="specifications"][data-developer-mode-name="crud form"][data-developer-mode-value="edit"]',
+        )
+        await expect(editForm).toBeVisible()
+        const responsibleInput = editForm.getByRole('textbox', {
+          name: 'Kravunderlagsansvarigs HSA-ID',
+        })
+        await expect(responsibleInput).toHaveAttribute('readonly', '')
+        await expect(editForm.getByText('Emma Lindqvist')).toBeVisible()
+
+        const currentResponsibleHsaId = await responsibleInput.inputValue()
+        await editForm
+          .getByRole('button', { name: 'Byt kravunderlagsansvarig' })
+          .click()
+
+        const changeDialog = page.getByRole('dialog', {
+          name: 'Byt kravunderlagsansvarig',
+        })
+        await expect(changeDialog).toBeVisible()
+        await expect(
+          changeDialog.getByRole('textbox', {
+            name: 'Förra kravunderlagsansvarigs HSA-ID',
+          }),
+        ).toHaveValue(currentResponsibleHsaId)
+        const newResponsibleInput = changeDialog.getByRole('textbox', {
+          name: 'Nya kravunderlagsansvarigs HSA-ID',
+        })
+        await expect(newResponsibleInput).toBeVisible()
+        await expect(
+          changeDialog.getByRole('button', { name: 'Hämta' }),
+        ).toBeVisible()
+
+        await newResponsibleInput.fill(currentResponsibleHsaId)
+        await expect(changeDialog.getByRole('alert')).toContainText(
+          'måste skilja sig',
+        )
+        await changeDialog.getByRole('button', { name: 'Avbryt' }).click()
+        await expect(changeDialog).toBeHidden()
+        await editForm.getByRole('button', { name: 'Avbryt' }).click()
+        await expect(editForm).toBeHidden()
+      })
+
       const hasMultiAreaSpecification = await page.evaluate(() =>
         Array.from(
           document.querySelectorAll(

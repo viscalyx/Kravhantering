@@ -1,6 +1,14 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SpecificationEditPanel from '@/app/[locale]/specifications/[slug]/specification-edit-panel'
+
+const confirmMock = vi.fn()
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
@@ -8,9 +16,21 @@ vi.mock('next-intl', () => ({
     ns ? `${ns}.${key}` : key,
 }))
 
+vi.mock('@/components/ConfirmModal', () => ({
+  useConfirmModal: () => ({ confirm: confirmMock }),
+}))
+
 function okJson(body: unknown) {
   const text = JSON.stringify(body)
   return { ok: true, json: async () => body, text: async () => text }
+}
+
+async function getEnabledChangeResponsibleButton() {
+  const button = screen.getByRole('button', {
+    name: /specification\.changeResponsible/,
+  })
+  await waitFor(() => expect(button).not.toBeDisabled())
+  return button
 }
 
 let fetchMock: ReturnType<typeof vi.fn>
@@ -37,9 +57,21 @@ const spec = {
 describe('SpecificationEditPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    confirmMock.mockReset()
     fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
-    fetchMock.mockResolvedValue(okJson({ ok: true }))
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/auth/me') {
+        return Promise.resolve(
+          okJson({
+            authenticated: true,
+            hsaId: 'SE5560000001-ada1',
+            roles: ['Admin'],
+          }),
+        )
+      }
+      return Promise.resolve(okJson({ ok: true }))
+    })
   })
 
   afterEach(() => {
@@ -63,13 +95,17 @@ describe('SpecificationEditPanel', () => {
       screen.getByRole('textbox', { name: /specification\.name/ }),
     ).toHaveValue('Upphandling av e-tjänstplattform')
     expect(
-      screen.getByRole('textbox', {
-        name: /common\.hsaVerifyName/,
-      }),
-    ).toHaveValue('Ada Admin')
-    expect(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     ).toHaveValue('SE5560000001-ada1')
+    expect(
+      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
+    ).toHaveAttribute('readonly')
+    expect(screen.getByText('Ada Admin')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: /specification\.changeResponsible/,
+      }),
+    ).toBeInTheDocument()
 
     const form = container.querySelector(
       '[data-developer-mode-name="crud form"][data-developer-mode-context="requirements specification detail"]',
@@ -116,19 +152,33 @@ describe('SpecificationEditPanel', () => {
     expect(screen.getByText('specification.help.name')).toBeInTheDocument()
   })
 
-  it('sends the specification id when verifying the responsible HSA-ID', async () => {
-    fetchMock.mockResolvedValueOnce(
-      okJson({
-        person: {
-          displayName: 'Ada Admin',
-          email: 'ada.admin@example.test',
-          givenName: 'Ada',
-          hsaId: 'SE5560000001-ada1',
-          middleName: null,
-          surname: 'Admin',
-        },
-      }),
-    )
+  it('sends the specification id when verifying a new responsible HSA-ID in the modal', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/auth/me') {
+        return Promise.resolve(
+          okJson({
+            authenticated: true,
+            hsaId: 'SE5560000001-ada1',
+            roles: ['Admin'],
+          }),
+        )
+      }
+      if (url === '/api/requirement-responsibility-people/verify') {
+        return Promise.resolve(
+          okJson({
+            person: {
+              displayName: 'Rita Reviewer',
+              email: 'rita.reviewer@example.test',
+              givenName: 'Rita',
+              hsaId: 'SE5560000001-rita1',
+              middleName: null,
+              surname: 'Reviewer',
+            },
+          }),
+        )
+      }
+      return Promise.resolve(okJson({ ok: true }))
+    })
 
     render(
       <SpecificationEditPanel
@@ -142,38 +192,40 @@ describe('SpecificationEditPanel', () => {
       />,
     )
 
+    fireEvent.click(await getEnabledChangeResponsibleButton())
+    const dialog = screen.getByRole('dialog', {
+      name: 'specification.changeResponsibleTitle',
+    })
+    fireEvent.change(
+      within(dialog).getByRole('textbox', {
+        name: /specification\.newResponsibleHsaId/,
+      }),
+      { target: { value: 'SE5560000001-rita1' } },
+    )
     fireEvent.click(
-      screen.getByRole('button', { name: /common\.fetchHsaPerson/ }),
+      within(dialog).getByRole('button', { name: /common\.fetchHsaPerson/ }),
     )
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
-    const [url, requestInit] = fetchMock.mock.calls.at(0) as [
-      string,
-      RequestInit,
-    ]
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-responsibility-people/verify',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+    const [url, requestInit] = fetchMock.mock.calls.find(
+      ([calledUrl]) =>
+        calledUrl === '/api/requirement-responsibility-people/verify',
+    ) as [string, RequestInit]
     expect(url).toBe('/api/requirement-responsibility-people/verify')
     expect(JSON.parse((requestInit.body as string) ?? '{}')).toMatchObject({
-      hsaId: 'SE5560000001-ada1',
+      hsaId: 'SE5560000001-rita1',
       mode: 'refresh',
       purpose: 'requirements_specification_responsible',
       scopeId: 7,
     })
   })
 
-  it('uses local-first verification when leaving the responsible HSA-ID field', async () => {
-    fetchMock.mockResolvedValueOnce(
-      okJson({
-        person: {
-          displayName: 'Ada Admin',
-          email: 'ada.admin@example.test',
-          givenName: 'Ada',
-          hsaId: 'SE5560000001-ada1',
-          middleName: null,
-          surname: 'Admin',
-        },
-      }),
-    )
-
+  it('does not verify from the locked main responsible HSA-ID field', async () => {
     render(
       <SpecificationEditPanel
         governanceObjectTypes={governanceObjectTypes}
@@ -190,63 +242,92 @@ describe('SpecificationEditPanel', () => {
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     )
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
-    const [url, requestInit] = fetchMock.mock.calls.at(0) as [
-      string,
-      RequestInit,
-    ]
-    expect(url).toBe('/api/requirement-responsibility-people/verify')
-    expect(JSON.parse((requestInit.body as string) ?? '{}')).toMatchObject({
-      hsaId: 'SE5560000001-ada1',
-      mode: 'reuse_local',
-      purpose: 'requirements_specification_responsible',
-      scopeId: 7,
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/auth/me', expect.any(Object))
     })
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/requirement-responsibility-people/verify',
+      expect.anything(),
+    )
   })
 
-  it('does not send person details when saving after verification', async () => {
-    const verifiedPerson = {
-      displayName: 'Ada Admin',
-      email: 'ada.admin@example.test',
-      givenName: 'Ada',
-      hsaId: 'SE5560000001-ada1',
-      middleName: null,
-      surname: 'Admin',
-    }
-    fetchMock.mockResolvedValueOnce(okJson({ person: verifiedPerson }))
-    fetchMock.mockResolvedValueOnce(okJson({ ok: true }))
-
+  it('changes responsible through the modal using a dedicated payload', async () => {
+    const onResponsibleChanged = vi.fn()
+    const onCancel = vi.fn()
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url === '/api/auth/me') {
+        return Promise.resolve(
+          okJson({
+            authenticated: true,
+            hsaId: 'SE5560000001-ada1',
+            roles: ['Admin'],
+          }),
+        )
+      }
+      if (opts?.method === 'PUT') {
+        return Promise.resolve(
+          okJson({
+            ...spec,
+            responsibleDisplayName: 'Rita Reviewer',
+            responsibleHsaId: 'SE5560000001-rita1',
+          }),
+        )
+      }
+      return Promise.resolve(okJson({ ok: true }))
+    })
     render(
       <SpecificationEditPanel
         governanceObjectTypes={governanceObjectTypes}
         implementationTypes={implementationTypes}
         lifecycleStatuses={lifecycleStatuses}
-        onCancel={() => {}}
+        onCancel={onCancel}
+        onResponsibleChanged={onResponsibleChanged}
         onSaved={() => {}}
         spec={spec}
         specificationSlug="ETJANST-UPP-2026"
       />,
     )
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /common\.fetchHsaPerson/ }),
-    )
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
-    await waitFor(() =>
-      expect(
-        screen.getByRole('textbox', { name: /common\.hsaVerifyEmail/ }),
-      ).toHaveValue('ada.admin@example.test'),
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
-
-    const [, requestInit] = fetchMock.mock.calls.at(-1) as [string, RequestInit]
-    const body = JSON.parse((requestInit.body as string) ?? '{}')
-    expect(body).toMatchObject({
-      responsibleHsaId: 'SE5560000001-ada1',
+    fireEvent.click(await getEnabledChangeResponsibleButton())
+    const dialog = screen.getByRole('dialog', {
+      name: 'specification.changeResponsibleTitle',
     })
-    expect(body).not.toHaveProperty('responsiblePersonPreview')
+    fireEvent.change(
+      within(dialog).getByRole('textbox', {
+        name: /specification\.newResponsibleHsaId/,
+      }),
+      { target: { value: 'SE5560000001-rita1' } },
+    )
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: /specification\.changeResponsible/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specifications/ETJANST-UPP-2026',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
+
+    const [, requestInit] = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/specifications/ETJANST-UPP-2026' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    ) as [string, RequestInit]
+    const body = JSON.parse((requestInit.body as string) ?? '{}')
+    expect(body).toEqual({ responsibleHsaId: 'SE5560000001-rita1' })
+    expect(onResponsibleChanged).toHaveBeenCalledWith(
+      expect.objectContaining({
+        responsibleDisplayName: 'Rita Reviewer',
+        responsibleHsaId: 'SE5560000001-rita1',
+      }),
+    )
+    expect(onCancel).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
+    ).toHaveValue('SE5560000001-rita1')
   })
 
   it('submits the updated specification information', async () => {
@@ -293,16 +374,98 @@ describe('SpecificationEditPanel', () => {
     expect(JSON.parse((requestInit?.body as string) ?? '{}')).toMatchObject({
       businessNeedsReference: 'Current business need',
       name: 'Nytt kravunderlagsnamn',
-      responsibleHsaId: 'SE5560000001-ada1',
       specificationImplementationTypeId: 2,
       specificationLifecycleStatusId: 3,
       specificationGovernanceObjectTypeId: 1,
       uniqueId: 'ETJANST-UPP-2026',
     })
+    expect(
+      JSON.parse((requestInit?.body as string) ?? '{}'),
+    ).not.toHaveProperty('responsibleHsaId')
+  })
+
+  it('confirms unsaved edits and closes after non-admin responsible changes', async () => {
+    confirmMock.mockResolvedValue(true)
+    const onCancel = vi.fn()
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url === '/api/auth/me') {
+        return Promise.resolve(
+          okJson({
+            authenticated: true,
+            hsaId: 'SE5560000001-ada1',
+            roles: ['RequirementsEditor'],
+          }),
+        )
+      }
+      if (opts?.method === 'PUT') {
+        return Promise.resolve(
+          okJson({
+            ...spec,
+            responsibleDisplayName: 'Rita Reviewer',
+            responsibleHsaId: 'SE5560000001-rita1',
+          }),
+        )
+      }
+      return Promise.resolve(okJson({ ok: true }))
+    })
+
+    render(
+      <SpecificationEditPanel
+        governanceObjectTypes={governanceObjectTypes}
+        implementationTypes={implementationTypes}
+        lifecycleStatuses={lifecycleStatuses}
+        onCancel={onCancel}
+        onSaved={() => {}}
+        spec={spec}
+        specificationSlug="ETJANST-UPP-2026"
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+      { target: { value: 'Osparat namn' } },
+    )
+    fireEvent.click(await getEnabledChangeResponsibleButton())
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'specification.changeResponsibleTitle',
+    })
+    fireEvent.change(
+      within(dialog).getByRole('textbox', {
+        name: /specification\.newResponsibleHsaId/,
+      }),
+      { target: { value: 'SE5560000001-rita1' } },
+    )
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: /specification\.changeResponsible/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultCancel: true,
+          message: 'specification.responsibleChangeUnsavedConfirm',
+        }),
+      )
+      expect(onCancel).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('ignores repeated submits while a save is already in progress', async () => {
-    fetchMock.mockReturnValue(new Promise(() => undefined))
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/auth/me') {
+        return Promise.resolve(
+          okJson({
+            authenticated: true,
+            hsaId: 'SE5560000001-ada1',
+            roles: ['Admin'],
+          }),
+        )
+      }
+      return new Promise(() => undefined)
+    })
 
     render(
       <SpecificationEditPanel
@@ -325,6 +488,14 @@ describe('SpecificationEditPanel', () => {
     fireEvent.submit(form as HTMLFormElement)
     fireEvent.submit(form as HTMLFormElement)
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.filter(
+          ([url, init]) =>
+            url === '/api/specifications/ETJANST-UPP-2026' &&
+            (init as RequestInit | undefined)?.method === 'PUT',
+        ),
+      ).toHaveLength(1)
+    })
   })
 })
