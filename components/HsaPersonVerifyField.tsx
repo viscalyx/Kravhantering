@@ -38,6 +38,7 @@ interface HsaPersonVerifyFieldProps {
   onHsaIdChange: (value: string) => void
   onVerified?: (person: HsaPersonVerification) => void
   purpose: HsaPersonVerificationPurpose
+  readOnly?: boolean
   required?: boolean
   scopeId?: number
   showPersonSummaryAsText?: boolean
@@ -60,6 +61,7 @@ export default function HsaPersonVerifyField({
   onHsaIdChange,
   onVerified,
   purpose,
+  readOnly = false,
   required = false,
   showPersonSummaryAsText = false,
   scopeId,
@@ -140,8 +142,13 @@ export default function HsaPersonVerifyField({
     <div className="space-y-2">
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
+          aria-readonly={readOnly || undefined}
           autoComplete="off"
-          className={`${inputClassName} font-mono`}
+          className={`${inputClassName} font-mono${
+            readOnly
+              ? ' read-only:cursor-default read-only:border-secondary-200 read-only:bg-secondary-100 read-only:text-secondary-500 read-only:focus:border-secondary-300 read-only:focus:ring-secondary-300/40 read-only:dark:border-secondary-700 read-only:dark:bg-secondary-800 read-only:dark:text-secondary-400'
+              : ''
+          }`}
           disabled={disabled}
           id={inputId}
           maxLength={HSA_ID_MAX_LENGTH}
@@ -154,6 +161,7 @@ export default function HsaPersonVerifyField({
             onHsaIdChange(event.target.value)
           }}
           pattern="[A-Z]{2}[0-9]{10}-[A-Za-z0-9]+"
+          readOnly={readOnly}
           required={required}
           value={hsaId}
         />

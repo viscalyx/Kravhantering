@@ -68,4 +68,63 @@ describe('HsaPersonVerifyField', () => {
     expect(screen.queryByText('Could not verify')).not.toBeInTheDocument()
     expect(screen.queryByText('Old request failed')).not.toBeInTheDocument()
   })
+
+  it('keeps read-only HSA-ID fields verifiable', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            person: {
+              displayName: 'Ada Admin',
+              email: 'ada.admin@example.test',
+              givenName: 'Ada',
+              hsaId: 'SE5560000001-admin1',
+              middleName: null,
+              surname: 'Admin',
+            },
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+          },
+        ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <HsaPersonVerifyField
+        emailLabel="Email"
+        errorFallback="Could not verify"
+        fetchingLabel="Fetching"
+        fetchLabel="Fetch"
+        hsaId="SE5560000001-admin1"
+        inputClassName="input"
+        inputId="hsa-id"
+        nameLabel="Name"
+        onHsaIdChange={vi.fn()}
+        purpose="requirement_package_lead"
+        readOnly
+        showPersonSummaryAsText
+        unavailableText="Unavailable"
+      />,
+    )
+
+    const input = screen.getByRole('textbox')
+    expect(input).toHaveAttribute('readonly')
+    expect(input).not.toBeDisabled()
+    expect(input.className).toContain('read-only:bg-secondary-100')
+    expect(input.className).toContain('read-only:text-secondary-500')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fetch' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-responsibility-people/verify',
+        expect.objectContaining({ method: 'POST' }),
+      )
+      expect(
+        screen.getByText('Ada Admin (ada.admin@example.test)'),
+      ).toBeInTheDocument()
+    })
+  })
 })

@@ -1,7 +1,6 @@
 'use client'
 
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { UserRoundCog, X } from 'lucide-react'
+import { UserRoundCog } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import CrudAdminPanel, {
@@ -9,14 +8,15 @@ import CrudAdminPanel, {
 } from '@/components/CrudAdminPanel'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import HsaPersonChangeModal, {
+  type HsaPersonChangeSubmitResult,
+} from '@/components/HsaPersonChangeModal'
 import HsaPersonVerifyField, {
   type HsaPersonVerification,
 } from '@/components/HsaPersonVerifyField'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
-import { isHsaId } from '@/lib/auth/hsa-id'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
-import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 
 const REQUIREMENT_AREAS_HELP: HelpContent = {
   sections: [
@@ -56,10 +56,6 @@ interface AreaForm {
 interface OwnerChangeState {
   areaId: number
   currentOwnerHsaId: string
-  error: string | null
-  nextOwnerHsaId: string
-  nextOwnerPersonVerification: HsaPersonVerification | null
-  submitting: boolean
 }
 
 const getInitialForm = (): AreaForm => ({
@@ -95,7 +91,6 @@ export default function RequirementAreasClient() {
   const t = useTranslations('area')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
-  const shouldReduceMotion = useReducedMotion()
   const [ownerChange, setOwnerChange] = useState<OwnerChangeState | null>(null)
 
   const controller = useCrudAdminResource<Area, AreaForm>({
@@ -114,35 +109,17 @@ export default function RequirementAreasClient() {
     setOwnerChange({
       areaId,
       currentOwnerHsaId,
-      error: null,
-      nextOwnerHsaId: '',
-      nextOwnerPersonVerification: null,
-      submitting: false,
     })
   }
 
   const closeOwnerChange = () => {
-    setOwnerChange(current => (current?.submitting ? current : null))
+    setOwnerChange(null)
   }
 
-  const submitOwnerChange = async () => {
-    if (!ownerChange || ownerChange.submitting) return
-    const nextOwnerHsaId = ownerChange.nextOwnerHsaId.trim()
-    if (!isHsaId(nextOwnerHsaId)) {
-      setOwnerChange(current =>
-        current ? { ...current, error: t('ownerChangeInvalid') } : current,
-      )
-      return
-    }
-    if (nextOwnerHsaId === ownerChange.currentOwnerHsaId) {
-      setOwnerChange(current =>
-        current ? { ...current, error: t('ownerChangeSame') } : current,
-      )
-      return
-    }
-    setOwnerChange(current =>
-      current ? { ...current, error: null, submitting: true } : current,
-    )
+  const submitOwnerChange = async (
+    nextOwnerHsaId: string,
+  ): Promise<HsaPersonChangeSubmitResult> => {
+    if (!ownerChange) return { ok: false }
     try {
       const response = await apiFetch(
         `/api/requirement-areas/${ownerChange.areaId}`,
@@ -155,16 +132,7 @@ export default function RequirementAreasClient() {
       if (!response.ok) {
         const message =
           (await readResponseMessage(response)) ?? t('ownerChangeError')
-        setOwnerChange(current =>
-          current
-            ? {
-                ...current,
-                error: message,
-                submitting: false,
-              }
-            : current,
-        )
-        return
+        return { error: message, ok: false }
       }
       controller.setForm(previousForm => ({
         ...previousForm,
@@ -172,12 +140,9 @@ export default function RequirementAreasClient() {
       }))
       setOwnerChange(null)
       await controller.reload()
+      return { ok: true }
     } catch {
-      setOwnerChange(current =>
-        current
-          ? { ...current, error: t('ownerChangeError'), submitting: false }
-          : current,
-      )
+      return { error: t('ownerChangeError'), ok: false }
     }
   }
 
@@ -353,132 +318,38 @@ export default function RequirementAreasClient() {
       )}
       title={tn('areas')}
     >
-      <AnimatePresence>
-        {ownerChange && (
-          <motion.div
-            {...fadeMotion(shouldReduceMotion)}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-secondary-950/60 px-4 py-6"
-          >
-            <motion.div
-              {...dialogPanelMotion(shouldReduceMotion)}
-              aria-modal="true"
-              className="w-full max-w-md rounded-2xl border bg-white p-6 shadow-xl dark:bg-secondary-900"
-              role="dialog"
-            >
-              <div className="mb-5 flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
-                    {t('changeOwnerTitle')}
-                  </h2>
-                  <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">
-                    {t('changeOwnerDescription')}
-                  </p>
-                </div>
-                <button
-                  aria-label={tc('cancel')}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-secondary-500 transition-colors hover:bg-secondary-100 focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:hover:bg-secondary-800"
-                  disabled={ownerChange.submitting}
-                  onClick={closeOwnerChange}
-                  type="button"
-                >
-                  <X aria-hidden="true" className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <FieldLabelWithHelp
-                    help={t('help.currentOwner')}
-                    htmlFor="area-current-owner"
-                    label={t('currentOwner')}
-                  />
-                  <input
-                    className={`${AREA_INPUT_CLASS_NAME} bg-secondary-100 text-secondary-500 dark:bg-secondary-800 dark:text-secondary-400`}
-                    disabled
-                    id="area-current-owner"
-                    value={ownerChange.currentOwnerHsaId}
-                  />
-                </div>
-                <div>
-                  <FieldLabelWithHelp
-                    help={t('help.newOwner')}
-                    htmlFor="area-new-owner"
-                    label={t('newOwner')}
-                    required
-                  />
-                  <HsaPersonVerifyField
-                    disabled={ownerChange.submitting}
-                    emailLabel={tc('hsaVerifyEmail')}
-                    errorFallback={tc('hsaVerifyError')}
-                    fetchingLabel={tc('fetchingHsaPerson')}
-                    fetchLabel={tc('fetchHsaPerson')}
-                    hsaId={ownerChange.nextOwnerHsaId}
-                    inputClassName={AREA_INPUT_CLASS_NAME}
-                    inputId="area-new-owner"
-                    nameLabel={tc('hsaVerifyName')}
-                    onHsaIdChange={value =>
-                      setOwnerChange(current =>
-                        current
-                          ? {
-                              ...current,
-                              error: null,
-                              nextOwnerHsaId: value,
-                              nextOwnerPersonVerification:
-                                value.trim() ===
-                                current.nextOwnerPersonVerification?.hsaId
-                                  ? current.nextOwnerPersonVerification
-                                  : null,
-                            }
-                          : current,
-                      )
-                    }
-                    onVerified={person =>
-                      setOwnerChange(current =>
-                        current
-                          ? { ...current, nextOwnerPersonVerification: person }
-                          : current,
-                      )
-                    }
-                    purpose="requirement_area_owner"
-                    required
-                    unavailableText={tc('hsaVerifyUnavailable')}
-                  />
-                </div>
-                {ownerChange.error && (
-                  <p
-                    className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
-                    role="alert"
-                  >
-                    {ownerChange.error}
-                  </p>
-                )}
-                <div className="flex justify-end gap-3">
-                  <button
-                    className="rounded-xl border px-4 py-2.5 text-sm text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:opacity-60 dark:text-secondary-300 dark:hover:bg-secondary-800"
-                    disabled={ownerChange.submitting}
-                    onClick={closeOwnerChange}
-                    type="button"
-                  >
-                    {tc('cancel')}
-                  </button>
-                  <button
-                    className="btn-primary"
-                    disabled={
-                      ownerChange.submitting ||
-                      !isHsaId(ownerChange.nextOwnerHsaId.trim()) ||
-                      ownerChange.nextOwnerHsaId.trim() ===
-                        ownerChange.currentOwnerHsaId
-                    }
-                    onClick={submitOwnerChange}
-                    type="button"
-                  >
-                    {ownerChange.submitting ? tc('saving') : t('changeOwner')}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {ownerChange && (
+        <HsaPersonChangeModal
+          blockedError={t('ownerChangeCoAuthorConflict')}
+          cancelLabel={tc('cancel')}
+          currentHelp={t('help.currentOwner')}
+          currentHsaId={ownerChange.currentOwnerHsaId}
+          currentInputId="area-current-owner"
+          currentLabel={t('currentOwner')}
+          description={t('changeOwnerDescription')}
+          developerModeValue="change requirement area owner"
+          emailLabel={tc('hsaVerifyEmail')}
+          errorFallback={tc('hsaVerifyError')}
+          fetchingLabel={tc('fetchingHsaPerson')}
+          fetchLabel={tc('fetchHsaPerson')}
+          inputClassName={AREA_INPUT_CLASS_NAME}
+          invalidError={t('ownerChangeInvalid')}
+          nameLabel={tc('hsaVerifyName')}
+          newHelp={t('help.newOwner')}
+          newInputId="area-new-owner"
+          newLabel={t('newOwner')}
+          onClose={closeOwnerChange}
+          onSubmit={submitOwnerChange}
+          open
+          purpose="requirement_area_owner"
+          sameError={t('ownerChangeSame')}
+          submitLabel={t('changeOwner')}
+          submittingLabel={tc('saving')}
+          title={t('changeOwnerTitle')}
+          titleId="area-owner-change-title"
+          unavailableText={tc('hsaVerifyUnavailable')}
+        />
+      )}
     </CrudAdminPanel>
   )
 }

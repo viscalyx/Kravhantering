@@ -961,6 +961,20 @@ describe('requirement-areas/[id] routes', () => {
     const r = await putReqArea(jsonReq('PUT', { name: 'X' }), makeParams('1'))
     expect(((await r.json()) as { id: number }).id).toBe(1)
   })
+  it('PUT rejects changing the owner to an existing area co-author', async () => {
+    routeState.query.mockResolvedValueOnce([{ id: 1 }])
+
+    const r = await putReqArea(
+      jsonReq('PUT', { ownerHsaId: 'SE5560000001-coa1' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(400)
+    await expect(r.json()).resolves.toMatchObject({
+      error: 'Requirement area owner cannot also be requirement area co-author',
+    })
+    expect(mockUpdateReqArea).not.toHaveBeenCalled()
+  })
   it('PUT returns 404 without audit when the requirement area is missing', async () => {
     mockUpdateReqArea.mockResolvedValue(undefined)
     const r = await putReqArea(

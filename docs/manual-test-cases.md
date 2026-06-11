@@ -593,17 +593,23 @@ management live outside Admin Center.
    inline subnavigation closes.
 1. Click `Kravbiblioteksförvaltning` once more to return to `Kravpaket`.
 1. On `Kravpaket`, use the floating `Nytt kravpaket` pill and verify the new
-   package form opens as a modal.
+   package form opens as a modal with the same two-column layout as the edit
+   form.
 1. Use `Filtrera på namn eller beskrivning` to search for a package by name and
    by description, verify the table is narrowed to matching packages in both
    cases, then click `Rensa sökning` and verify all packages are shown again.
-1. Create a package with `Namn` and `Beskrivning`. Verify the initial
-   `Kravpaketsansvarig` is set from the signed-in user's HSA-ID rather than a
-   client-entered field.
-1. Edit `Mobil användning` and verify `Kravpaketsansvarig` shows an HSA-ID
-   field with a fetch/refresh icon and read-only name and e-mail. Leave the
-   field set to a locally known HSA-ID value and verify the stored
-   `Kravansvarsperson` is shown without manual refresh.
+1. Create a package with `Namn` and `Beskrivning`. Verify
+   `Kravpaketsansvarigs HSA-ID` is locked in the create form, prefilled from
+   the signed-in user's HSA-ID, and shown with the fetch/refresh icon and
+   read-only person summary. Verify `Kopplade krav` is not shown while creating
+   the package, and that `Kravpaketsmedförfattare` is shown beside the package
+   fields on desktop.
+1. Edit `Mobil användning` and verify `Kravpaketsansvarigs HSA-ID` is locked,
+   shown with the kravpaketsansvarig's name and e-mail, and has a
+   `Byt kravpaketsansvarig` icon button instead of a fetch/refresh icon.
+1. Click `Byt kravpaketsansvarig` and verify the modal shows the current
+   kravpaketsansvarig HSA-ID, a new HSA-ID field with person lookup, and
+   blocks choosing a kravpaketsmedförfattare as kravpaketsansvarig.
 1. For the seeded co-author `SE5560000001-pkgco1`, verify the local person
    details initially show `(saknar namn, kräver nytt uppslag)`. Click the
    fetch/refresh icon and verify the HSA mock updates the details to

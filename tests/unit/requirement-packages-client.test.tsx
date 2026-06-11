@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -35,6 +36,13 @@ vi.mock('@/components/StatusBadge', () => ({
 function okJson(body: unknown) {
   return { ok: true, json: async () => body }
 }
+
+function requestUrl(input: unknown): string {
+  if (typeof input === 'string') return input
+  if (input instanceof Request) return input.url
+  return String(input)
+}
+
 function notOk(body: unknown = { error: 'Bad request' }) {
   return new Response(JSON.stringify(body), {
     headers: { 'content-type': 'application/json' },
@@ -47,6 +55,14 @@ const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
 import RequirementPackagesClient from '@/app/[locale]/requirement-packages/requirement-packages-client'
+
+const currentAuthMe = {
+  authenticated: true,
+  email: 'ada.admin@example.test',
+  hsaId: 'SE5560000001-admin1',
+  name: 'Ada Admin',
+  roles: ['Admin'],
+}
 
 const sampleRequirementPackages = [
   {
@@ -81,10 +97,12 @@ function setupRequirementPackageMocks(
   requirementPackageDetailResponse: () => Promise<unknown> | unknown,
 ) {
   fetchMock.mockImplementation(async (url: string) => {
-    if (url.startsWith('/api/requirement-packages?')) {
+    const urlString = requestUrl(url)
+    if (urlString === '/api/auth/me') return okJson(currentAuthMe)
+    if (urlString.startsWith('/api/requirement-packages?')) {
       return okJson({ requirementPackages: sampleRequirementPackages })
     }
-    if (url === '/api/requirement-packages/1')
+    if (urlString === '/api/requirement-packages/1')
       return requirementPackageDetailResponse()
     return okJson({})
   })
@@ -109,7 +127,9 @@ describe('RequirementPackagesClient', () => {
     vi.clearAllMocks()
     i18nState.commonSuffix = ''
     fetchMock.mockImplementation(async (url: string) => {
-      if (url.startsWith('/api/requirement-packages?')) {
+      const urlString = requestUrl(url)
+      if (urlString === '/api/auth/me') return okJson(currentAuthMe)
+      if (urlString.startsWith('/api/requirement-packages?')) {
         return okJson({ requirementPackages: sampleRequirementPackages })
       }
       return okJson({})
@@ -128,6 +148,62 @@ describe('RequirementPackagesClient', () => {
     expect(createButton).toHaveAttribute('data-floating-action-id', 'create')
     await waitFor(() => {
       expect(screen.getByText('Mobile use')).toBeInTheDocument()
+      expect(createButton).toBeEnabled()
+    })
+  })
+
+  it('keeps create disabled until the signed-in HSA-ID is loaded', async () => {
+    let resolveAuth!: (response: unknown) => void
+    const authPromise = new Promise(resolve => {
+      resolveAuth = resolve
+    })
+    fetchMock.mockImplementation(async (url: string) => {
+      const urlString = requestUrl(url)
+      if (urlString === '/api/auth/me') return authPromise
+      if (urlString.startsWith('/api/requirement-packages?')) {
+        return okJson({ requirementPackages: sampleRequirementPackages })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementPackagesClient />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+    const createButton = await screen.findByRole('button', {
+      name: /requirementPackage.newRequirementPackage/i,
+    })
+    expect(createButton).toBeDisabled()
+
+    resolveAuth(okJson(currentAuthMe))
+
+    await waitFor(() => {
+      expect(createButton).toBeEnabled()
+    })
+  })
+
+  it('shows an error and keeps create disabled when the signed-in HSA-ID is missing', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      const urlString = requestUrl(url)
+      if (urlString === '/api/auth/me') return okJson({ authenticated: false })
+      if (urlString.startsWith('/api/requirement-packages?')) {
+        return okJson({ requirementPackages: sampleRequirementPackages })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementPackagesClient />)
+
+    const createButton = await screen.findByRole('button', {
+      name: /requirementPackage.newRequirementPackage/i,
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+      expect(createButton).toBeDisabled()
+      expect(
+        screen.getByText('requirementPackage.currentUserUnavailable'),
+      ).toBeInTheDocument()
     })
   })
 
@@ -191,7 +267,9 @@ describe('RequirementPackagesClient', () => {
 
   it('filters requirement packages by name or description and clears the search', async () => {
     fetchMock.mockImplementation(async (url: string) => {
-      if (url.startsWith('/api/requirement-packages?')) {
+      const urlString = requestUrl(url)
+      if (urlString === '/api/auth/me') return okJson(currentAuthMe)
+      if (urlString.startsWith('/api/requirement-packages?')) {
         return okJson({
           requirementPackages: [
             ...sampleRequirementPackages,
@@ -257,7 +335,9 @@ describe('RequirementPackagesClient', () => {
 
   it('renders an empty-state row with a create CTA', async () => {
     fetchMock.mockImplementation(async (url: string) => {
-      if (url.startsWith('/api/requirement-packages?')) {
+      const urlString = requestUrl(url)
+      if (urlString === '/api/auth/me') return okJson(currentAuthMe)
+      if (urlString.startsWith('/api/requirement-packages?')) {
         return okJson({ requirementPackages: [] })
       }
       return okJson({})
@@ -272,19 +352,27 @@ describe('RequirementPackagesClient', () => {
       name: /common\.create/i,
     })
     expect(createButtons).toHaveLength(1)
+    await waitFor(() => {
+      expect(createButtons[0]).toBeEnabled()
+    })
 
     fireEvent.click(createButtons[0])
 
-    expect(
-      screen.getByRole('dialog', {
-        name: /requirementPackage\.newRequirementPackage/i,
-      }),
-    ).toBeInTheDocument()
+    const dialog = screen.getByRole('dialog', {
+      name: /requirementPackage\.newRequirementPackage/i,
+    })
+    expect(dialog).toBeInTheDocument()
+    expect(dialog).toHaveClass('max-w-5xl')
     expect(requirementPackageNameInput()).toBeInTheDocument()
+    expect(requirementPackageLeadHsaIdInput()).toHaveValue(
+      'SE5560000001-admin1',
+    )
+    expect(requirementPackageLeadHsaIdInput()).toHaveAttribute('readonly')
     expect(
-      screen.queryByRole('textbox', {
-        name: /requirementPackage\.leadHsaId/,
-      }),
+      screen.getByText('Ada Admin (ada.admin@example.test)'),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).queryByText('requirementPackage.linkedRequirements'),
     ).toBeNull()
     expect(
       screen.getByText('requirementPackage.noCoAuthors'),
@@ -296,21 +384,33 @@ describe('RequirementPackagesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: /requirementPackage.newRequirementPackage/i,
-      }),
+    const createButton = await screen.findByRole('button', {
+      name: /requirementPackage.newRequirementPackage/i,
+    })
+    await waitFor(() => {
+      expect(createButton).toBeEnabled()
+    })
+    fireEvent.click(createButton)
+    const dialog = screen.getByRole('dialog', {
+      name: /requirementPackage\.newRequirementPackage/i,
+    })
+    expect(dialog).toBeInTheDocument()
+    expect(dialog).toHaveClass('max-w-5xl')
+    const form = dialog.querySelector('[data-developer-mode-name="crud form"]')
+    expect(form).toHaveClass('space-y-6')
+    const layoutGrid = form?.firstElementChild
+    expect(layoutGrid).toHaveClass('grid')
+    expect(layoutGrid).toHaveClass('grid-cols-1')
+    expect(layoutGrid).toHaveClass(
+      'lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]',
     )
-    expect(
-      screen.getByRole('dialog', {
-        name: /requirementPackage\.newRequirementPackage/i,
-      }),
-    ).toBeInTheDocument()
     expect(requirementPackageNameInput()).toBeInTheDocument()
+    expect(requirementPackageLeadHsaIdInput()).toHaveValue(
+      'SE5560000001-admin1',
+    )
+    expect(requirementPackageLeadHsaIdInput()).toHaveAttribute('readonly')
     expect(
-      screen.queryByRole('textbox', {
-        name: /requirementPackage\.leadHsaId/,
-      }),
+      within(dialog).queryByText('requirementPackage.linkedRequirements'),
     ).toBeNull()
     const nameHelpButton = screen.getByRole('button', {
       name: 'common.help: requirementPackage.name',
@@ -329,11 +429,13 @@ describe('RequirementPackagesClient', () => {
       expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
 
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: /requirementPackage.newRequirementPackage/i,
-      }),
-    )
+    const createButton = await screen.findByRole('button', {
+      name: /requirementPackage.newRequirementPackage/i,
+    })
+    await waitFor(() => {
+      expect(createButton).toBeEnabled()
+    })
+    fireEvent.click(createButton)
 
     expect(
       fetchMock.mock.calls.some(([url]) => String(url) === '/api/owners/all'),
@@ -345,11 +447,13 @@ describe('RequirementPackagesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: /requirementPackage.newRequirementPackage/i,
-      }),
-    )
+    const createButton = await screen.findByRole('button', {
+      name: /requirementPackage.newRequirementPackage/i,
+    })
+    await waitFor(() => {
+      expect(createButton).toBeEnabled()
+    })
+    fireEvent.click(createButton)
     fireEvent.change(requirementPackageNameInput(), {
       target: { value: 'Ny' },
     })
@@ -381,11 +485,13 @@ describe('RequirementPackagesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: /requirementPackage.newRequirementPackage/i,
-      }),
-    )
+    const createButton = await screen.findByRole('button', {
+      name: /requirementPackage.newRequirementPackage/i,
+    })
+    await waitFor(() => {
+      expect(createButton).toBeEnabled()
+    })
+    fireEvent.click(createButton)
     fireEvent.change(requirementPackageNameInput(), {
       target: { value: 'Ny' },
     })
@@ -440,11 +546,204 @@ describe('RequirementPackagesClient', () => {
       'Mobile use',
     )
     expect(requirementPackageLeadHsaIdInput()).toBeInTheDocument()
+    expect(requirementPackageLeadHsaIdInput()).toHaveAttribute('readonly')
+    expect(
+      screen.getByRole('button', { name: /requirementPackage\.changeLead/ }),
+    ).toBeInTheDocument()
+    expect(
+      within(
+        screen.getByRole('dialog', {
+          name: /requirementPackage\.editRequirementPackage/i,
+        }),
+      ).queryByRole('button', { name: /common\.fetchHsaPerson/ }),
+    ).toBeNull()
     expect(
       screen.getByText('Anna Owner (anna.owner@example.test)'),
     ).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
+    })
+  })
+
+  it('saves ordinary package edits without leadHsaId in the payload', async () => {
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    fireEvent.change(requirementPackageNameInput(), {
+      target: { value: 'Updated mobile use' },
+    })
+
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      const urlString = requestUrl(url)
+      if (urlString === '/api/auth/me') return okJson(currentAuthMe)
+      if (urlString === '/api/requirement-packages/1' && init?.method === 'PUT')
+        return okJson({ id: 1 })
+      if (urlString.startsWith('/api/requirement-packages?')) {
+        return okJson({ requirementPackages: sampleRequirementPackages })
+      }
+      return okJson({})
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-packages/1',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/requirement-packages/1' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    )
+    expect((putCall?.[1] as RequestInit).body).toBe(
+      JSON.stringify({
+        coAuthorHsaIds: [],
+        description: 'Requirements for mobile access and responsive flows.',
+        name: 'Updated mobile use',
+      }),
+    )
+  })
+
+  it('changes the package lead in a separate modal and keeps admin editing open', async () => {
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /requirementPackage\.changeLead/ }),
+    )
+
+    const changeDialog = screen.getByRole('dialog', {
+      name: /requirementPackage\.changeLeadTitle/,
+    })
+    expect(
+      within(changeDialog).getByRole('textbox', {
+        name: /requirementPackage\.currentLeadHsaId/,
+      }),
+    ).toHaveValue('SE5560000001-anna1')
+    fireEvent.change(
+      within(changeDialog).getByRole('textbox', {
+        name: /requirementPackage\.newLeadHsaId/,
+      }),
+      { target: { value: 'SE5560000001-new1' } },
+    )
+
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      const urlString = requestUrl(url)
+      if (urlString === '/api/auth/me') return okJson(currentAuthMe)
+      if (urlString === '/api/requirement-packages/1' && init?.method === 'PUT')
+        return okJson({
+          id: 1,
+          leadDisplayName: 'New Lead',
+          leadEmail: 'new.lead@example.test',
+          leadHsaId: 'SE5560000001-new1',
+        })
+      if (urlString.startsWith('/api/requirement-packages?')) {
+        return okJson({ requirementPackages: sampleRequirementPackages })
+      }
+      return okJson({})
+    })
+
+    fireEvent.click(
+      within(changeDialog).getByRole('button', {
+        name: /requirementPackage\.changeLead/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-packages/1',
+        expect.objectContaining({
+          body: JSON.stringify({ leadHsaId: 'SE5560000001-new1' }),
+          method: 'PUT',
+        }),
+      )
+      expect(
+        screen.queryByRole('dialog', {
+          name: /requirementPackage\.changeLeadTitle/,
+        }),
+      ).toBeNull()
+    })
+    expect(
+      screen.getByRole('dialog', {
+        name: /requirementPackage\.editRequirementPackage/i,
+      }),
+    ).toBeInTheDocument()
+    expect(requirementPackageLeadHsaIdInput()).toHaveValue('SE5560000001-new1')
+    expect(
+      screen.getByText('New Lead (new.lead@example.test)'),
+    ).toBeInTheDocument()
+  })
+
+  it('confirms unsaved edits before a non-admin changes away from their package lead assignment', async () => {
+    const nonAdminAuthMe = {
+      ...currentAuthMe,
+      hsaId: 'SE5560000001-anna1',
+      roles: [],
+    }
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      const urlString = requestUrl(url)
+      if (urlString === '/api/auth/me') return okJson(nonAdminAuthMe)
+      if (urlString === '/api/requirement-packages/1' && init?.method === 'PUT')
+        return okJson({ id: 1, leadHsaId: 'SE5560000001-next1' })
+      if (urlString.startsWith('/api/requirement-packages?')) {
+        return okJson({ requirementPackages: sampleRequirementPackages })
+      }
+      return okJson({})
+    })
+    confirmMock.mockResolvedValue(true)
+
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    fireEvent.change(requirementPackageNameInput(), {
+      target: { value: 'Unsaved package name' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: /requirementPackage\.changeLead/ }),
+    )
+    const changeDialog = screen.getByRole('dialog', {
+      name: /requirementPackage\.changeLeadTitle/,
+    })
+    fireEvent.change(
+      within(changeDialog).getByRole('textbox', {
+        name: /requirementPackage\.newLeadHsaId/,
+      }),
+      { target: { value: 'SE5560000001-next1' } },
+    )
+    fireEvent.click(
+      within(changeDialog).getByRole('button', {
+        name: /requirementPackage\.changeLead/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'requirementPackage.leadChangeUnsavedConfirm',
+        }),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-packages/1',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', {
+          name: /requirementPackage\.editRequirementPackage/i,
+        }),
+      ).toBeNull()
     })
   })
 
@@ -537,11 +836,13 @@ describe('RequirementPackagesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: /requirementPackage.newRequirementPackage/i,
-      }),
-    )
+    const createButton = await screen.findByRole('button', {
+      name: /requirementPackage.newRequirementPackage/i,
+    })
+    await waitFor(() => {
+      expect(createButton).toBeEnabled()
+    })
+    fireEvent.click(createButton)
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
     expect(
       screen.queryByRole('textbox', {

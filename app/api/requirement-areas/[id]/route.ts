@@ -13,6 +13,7 @@ import {
   idParamSchema,
   optionalBusinessTextSchema,
 } from '@/lib/http/validation'
+import { validationError } from '@/lib/requirements/errors'
 import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 
 export const dynamic = 'force-dynamic'
@@ -36,6 +37,23 @@ export const PUT = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
+    if (body.ownerHsaId !== undefined) {
+      const coAuthorRows = (await db.query(
+        `
+          SELECT TOP (1) area_id AS areaId
+          FROM requirement_area_co_authors
+          WHERE area_id = @0
+            AND hsa_id = @1
+        `,
+        [params.id, body.ownerHsaId],
+      )) as Array<{ areaId: number }>
+      if (coAuthorRows.length > 0) {
+        throw validationError(
+          'Requirement area owner cannot also be requirement area co-author',
+          { reason: 'area_owner_cannot_be_co_author' },
+        )
+      }
+    }
     const ownerPerson =
       body.ownerHsaId === undefined
         ? undefined

@@ -1,31 +1,35 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({
-  createAdminPrivilegedAuditContext: vi.fn(async () => ({
-    actor: {
-      displayName: 'Ada Admin',
-      hsaId: 'SE5560000001-admin1',
-      id: 'admin-sub',
-      isAuthenticated: true,
-      roles: ['Admin'],
-      source: 'oidc',
-    },
-    request: {
-      method: 'POST',
-      path: '/api/requirement-areas',
+const mocks = vi.hoisted(() => {
+  const db = { query: vi.fn() }
+  return {
+    createAdminPrivilegedAuditContext: vi.fn(async () => ({
+      actor: {
+        displayName: 'Ada Admin',
+        hsaId: 'SE5560000001-admin1',
+        id: 'admin-sub',
+        isAuthenticated: true,
+        roles: ['Admin'],
+        source: 'oidc',
+      },
+      request: {
+        method: 'POST',
+        path: '/api/requirement-areas',
+        requestId: 'request-area',
+      },
+      correlationId: 'correlation-area',
       requestId: 'request-area',
-    },
-    correlationId: 'correlation-area',
-    requestId: 'request-area',
-    source: 'rest',
-  })),
-  getRequestSqlServerDataSource: vi.fn(() => 'mock-db'),
-  listAreas: vi.fn(),
-  createArea: vi.fn(),
-  resolveVerifiedRequirementResponsibilityPerson: vi.fn(),
-  updateArea: vi.fn(),
-  recordAdminPrivilegedActionSucceeded: vi.fn(),
-}))
+      source: 'rest',
+    })),
+    db,
+    getRequestSqlServerDataSource: vi.fn(() => db),
+    listAreas: vi.fn(),
+    createArea: vi.fn(),
+    resolveVerifiedRequirementResponsibilityPerson: vi.fn(),
+    updateArea: vi.fn(),
+    recordAdminPrivilegedActionSucceeded: vi.fn(),
+  }
+})
 
 vi.mock('@/lib/admin/privileged-audit', () => ({
   createAdminPrivilegedAuditContext: mocks.createAdminPrivilegedAuditContext,
@@ -67,6 +71,7 @@ function makeParams(id: string) {
 describe('requirement-areas route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.db.query.mockResolvedValue([])
     mocks.resolveVerifiedRequirementResponsibilityPerson.mockResolvedValue({
       email: 'new@example.test',
       givenName: 'New',
@@ -110,7 +115,7 @@ describe('requirement-areas route', () => {
       const res = await POST(request(body))
       expect(res.status).toBe(201)
       expect(await res.json()).toMatchObject({ id: 3 })
-      expect(mocks.createArea).toHaveBeenCalledWith('mock-db', {
+      expect(mocks.createArea).toHaveBeenCalledWith(mocks.db, {
         ...body,
         ownerPerson: expect.objectContaining({
           hsaId: 'NO5560000001-new1',
@@ -149,8 +154,8 @@ describe('requirement-areas route', () => {
       expect(res.status).toBe(201)
       expect(
         mocks.resolveVerifiedRequirementResponsibilityPerson,
-      ).toHaveBeenCalledWith('mock-db', 'NO5560000001-new1')
-      expect(mocks.createArea).toHaveBeenCalledWith('mock-db', {
+      ).toHaveBeenCalledWith(mocks.db, 'NO5560000001-new1')
+      expect(mocks.createArea).toHaveBeenCalledWith(mocks.db, {
         name: 'New requirement area',
         ownerHsaId: 'NO5560000001-new1',
         ownerPerson: {
@@ -257,12 +262,32 @@ describe('requirement-areas route', () => {
       )
 
       expect(res.status).toBe(200)
-      expect(mocks.updateArea).toHaveBeenCalledWith('mock-db', 1, {
+      expect(mocks.updateArea).toHaveBeenCalledWith(mocks.db, 1, {
         ownerHsaId: 'NO5560000001-next1',
         ownerPerson: expect.objectContaining({
           hsaId: 'NO5560000001-next1',
         }),
       })
+    })
+
+    it('rejects changing ownerHsaId to an existing co-author', async () => {
+      mocks.db.query.mockResolvedValueOnce([{ areaId: 1 }])
+
+      const res = await PUT(
+        request(
+          { ownerHsaId: 'NO5560000001-next1' },
+          'http://localhost/api/requirement-areas/1',
+          'PUT',
+        ),
+        makeParams('1'),
+      )
+
+      expect(res.status).toBe(400)
+      await expect(res.json()).resolves.toMatchObject({
+        error:
+          'Requirement area owner cannot also be requirement area co-author',
+      })
+      expect(mocks.updateArea).not.toHaveBeenCalled()
     })
 
     it('rejects legacy ownerId and ownerName fields', async () => {

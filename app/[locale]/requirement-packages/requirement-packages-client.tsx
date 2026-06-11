@@ -7,14 +7,25 @@ import {
   RotateCcw,
   Search,
   Trash2,
+  UserRoundCog,
   X,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useDeferredValue, useRef, useState } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
+import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import HsaPersonChangeModal, {
+  type HsaPersonChangeSubmitResult,
+} from '@/components/HsaPersonChangeModal'
 import HsaPersonVerifyField, {
   type HsaPersonVerification,
 } from '@/components/HsaPersonVerifyField'
@@ -92,6 +103,18 @@ interface LinkedRequirement {
   versionNumber: number
 }
 
+interface CurrentUser {
+  displayName: string
+  email: string
+  hsaId: string
+  roles: string[]
+}
+
+interface PackageLeadChangeState {
+  currentLeadHsaId: string
+  packageId: number
+}
+
 const DESCRIPTION_TRUNCATE = 80
 const REQUIREMENT_PACKAGE_TABLE_COLUMN_COUNT = 6
 let coAuthorClientIdSequence = 0
@@ -143,11 +166,57 @@ const toCreatePayload = (form: RequirementPackageForm) => ({
 const toUpdatePayload = (form: RequirementPackageForm) => ({
   coAuthorHsaIds: coAuthorHsaIdsFromForm(form),
   description: form.description || undefined,
-  leadHsaId: form.leadHsaId,
   name: form.name,
 })
 
 const toPayload = toUpdatePayload
+
+function readCurrentUser(body: unknown): CurrentUser | null {
+  if (!body || typeof body !== 'object') return null
+  const record = body as Record<string, unknown>
+  if (record.authenticated !== true || typeof record.hsaId !== 'string') {
+    return null
+  }
+
+  const hsaId = record.hsaId.trim()
+  if (!hsaId) return null
+
+  const name =
+    typeof record.name === 'string' && record.name.trim()
+      ? record.name.trim()
+      : hsaId
+  const email = typeof record.email === 'string' ? record.email : ''
+
+  return {
+    displayName: name,
+    email,
+    hsaId,
+    roles: Array.isArray(record.roles)
+      ? record.roles.filter((role): role is string => typeof role === 'string')
+      : [],
+  }
+}
+
+const packageEditableSignature = (form: RequirementPackageForm) =>
+  JSON.stringify({
+    coAuthorHsaIds: coAuthorHsaIdsFromForm(form),
+    description: form.description,
+    name: form.name,
+  })
+
+const packageEditableSignatureFromItem = (
+  requirementPackage: RequirementPackage,
+) =>
+  JSON.stringify({
+    coAuthorHsaIds: (requirementPackage.coAuthors ?? [])
+      .map(coAuthor => coAuthor.hsaId.trim())
+      .filter(Boolean),
+    description: requirementPackage.description ?? '',
+    name: requirementPackage.name,
+  })
+
+const uniqueTrimmedHsaIds = (values: readonly string[]) =>
+  Array.from(new Set(values.map(value => value.trim()).filter(Boolean)))
 
 const inputClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
@@ -167,6 +236,7 @@ export default function RequirementPackagesClient() {
   const tableAnchorRef = useRef<HTMLDivElement>(null)
   const nameFilterRef = useRef<HTMLInputElement>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const { confirm } = useConfirmModal()
   const [nameFilter, setNameFilter] = useState('')
   const [stateError, setStateError] = useState<string | null>(null)
   const [stateChangingIds, setStateChangingIds] = useState<Set<number>>(
@@ -180,7 +250,15 @@ export default function RequirementPackagesClient() {
   >(null)
   const [linkedRequirementsLoading, setLinkedRequirementsLoading] =
     useState(false)
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+  const [currentUserLoading, setCurrentUserLoading] = useState(true)
+  const [currentUserUnavailable, setCurrentUserUnavailable] = useState(false)
+  const [leadChange, setLeadChange] = useState<PackageLeadChangeState | null>(
+    null,
+  )
   const linkedReqRequestId = useRef(0)
+  const editFormSignatureRef = useRef<string | null>(null)
+  const persistedCoAuthorHsaIdsRef = useRef<string[]>([])
 
   const controller = useCrudAdminResource<
     RequirementPackage,
@@ -197,6 +275,46 @@ export default function RequirementPackagesClient() {
     toPayload,
     toUpdatePayload,
   })
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadCurrentUser = async () => {
+      setCurrentUserLoading(true)
+      setCurrentUserUnavailable(false)
+      try {
+        const response = await apiFetch('/api/auth/me', {
+          cache: 'no-store',
+          credentials: 'same-origin',
+        })
+        if (cancelled) return
+        if (!response.ok) {
+          setCurrentUser(null)
+          setCurrentUserUnavailable(true)
+          return
+        }
+        const user = readCurrentUser(await response.json())
+        if (cancelled) return
+        setCurrentUser(user)
+        setCurrentUserUnavailable(user === null)
+      } catch {
+        if (!cancelled) {
+          setCurrentUser(null)
+          setCurrentUserUnavailable(true)
+        }
+      } finally {
+        if (!cancelled) {
+          setCurrentUserLoading(false)
+        }
+      }
+    }
+
+    void loadCurrentUser()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const fetchLinkedRequirements = useCallback(
     async (requirementPackageId: number) => {
@@ -232,17 +350,47 @@ export default function RequirementPackagesClient() {
     [tc],
   )
 
+  const currentUserError = currentUserUnavailable
+    ? t('currentUserUnavailable')
+    : null
+  const createDisabled =
+    controller.submitting || currentUserLoading || !currentUser
+  const createDisabledReason = currentUserLoading
+    ? tc('loading')
+    : currentUserError
+  const createActionTooltip = createDisabledReason ?? t('newRequirementPackage')
+  const isCurrentUserAdmin = currentUser?.roles.includes('Admin') ?? false
+
   const openCreate = () => {
+    if (!currentUser) {
+      setStateError(currentUserError ?? t('currentUserUnavailable'))
+      return
+    }
     linkedReqRequestId.current++
     setLinkedRequirements([])
     setLinkedRequirementsError(null)
     setLinkedRequirementsLoading(false)
     setStateError(null)
     controller.openCreate()
+    editFormSignatureRef.current = null
+    persistedCoAuthorHsaIdsRef.current = []
+    controller.setForm(previousForm => ({
+      ...previousForm,
+      leadDisplayName: currentUser.displayName,
+      leadEmail: currentUser.email,
+      leadHsaId: currentUser.hsaId,
+      leadPersonVerification: null,
+    }))
   }
 
   const openEdit = (requirementPackage: RequirementPackage) => {
     setStateError(null)
+    setLeadChange(null)
+    editFormSignatureRef.current =
+      packageEditableSignatureFromItem(requirementPackage)
+    persistedCoAuthorHsaIdsRef.current = (requirementPackage.coAuthors ?? [])
+      .map(coAuthor => coAuthor.hsaId.trim())
+      .filter(Boolean)
     controller.openEdit(requirementPackage)
     void fetchLinkedRequirements(requirementPackage.id)
   }
@@ -252,6 +400,9 @@ export default function RequirementPackagesClient() {
     setLinkedRequirements([])
     setLinkedRequirementsError(null)
     setLinkedRequirementsLoading(false)
+    setLeadChange(null)
+    editFormSignatureRef.current = null
+    persistedCoAuthorHsaIdsRef.current = []
     controller.closeForm()
   }
 
@@ -262,6 +413,9 @@ export default function RequirementPackagesClient() {
       setLinkedRequirements([])
       setLinkedRequirementsError(null)
       setLinkedRequirementsLoading(false)
+      setLeadChange(null)
+      editFormSignatureRef.current = null
+      persistedCoAuthorHsaIdsRef.current = []
     }
   }
 
@@ -270,6 +424,95 @@ export default function RequirementPackagesClient() {
     if (didRemove && controller.editId === id) {
       setLinkedRequirements([])
       setLinkedRequirementsError(null)
+    }
+  }
+
+  const openLeadChange = () => {
+    if (typeof controller.editId !== 'number') return
+    setLeadChange({
+      currentLeadHsaId: controller.form.leadHsaId,
+      packageId: controller.editId,
+    })
+  }
+
+  const closeLeadChange = () => {
+    setLeadChange(null)
+  }
+
+  const hasUnsavedPackageEdits = () =>
+    editFormSignatureRef.current !== null &&
+    editFormSignatureRef.current !== packageEditableSignature(controller.form)
+
+  const blockedLeadHsaIds = () =>
+    uniqueTrimmedHsaIds([
+      ...persistedCoAuthorHsaIdsRef.current,
+      ...coAuthorHsaIdsFromForm(controller.form),
+    ])
+
+  const submitLeadChange = async (
+    nextLeadHsaId: string,
+    person: HsaPersonVerification | null,
+  ): Promise<HsaPersonChangeSubmitResult> => {
+    if (!leadChange) return { ok: false }
+    if (blockedLeadHsaIds().includes(nextLeadHsaId)) {
+      return { error: t('leadChangeCoAuthorConflict'), ok: false }
+    }
+
+    const shouldCloseFormAfterChange = !isCurrentUserAdmin
+    if (shouldCloseFormAfterChange && hasUnsavedPackageEdits()) {
+      const confirmed = await confirm({
+        cancelText: tc('cancel'),
+        confirmText: t('changeLead'),
+        defaultCancel: true,
+        icon: 'warning',
+        message: t('leadChangeUnsavedConfirm'),
+        title: t('changeLeadTitle'),
+      })
+      if (!confirmed) return { ok: false }
+    }
+
+    try {
+      const response = await apiFetch(
+        `/api/requirement-packages/${leadChange.packageId}`,
+        {
+          body: JSON.stringify({ leadHsaId: nextLeadHsaId }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT',
+        },
+      )
+      if (!response.ok) {
+        return {
+          error: (await readResponseMessage(response)) ?? t('leadChangeError'),
+          ok: false,
+        }
+      }
+
+      const payload = (await response.json()) as Partial<RequirementPackage>
+      setLeadChange(null)
+      if (shouldCloseFormAfterChange) {
+        linkedReqRequestId.current++
+        setLinkedRequirements([])
+        setLinkedRequirementsError(null)
+        setLinkedRequirementsLoading(false)
+        editFormSignatureRef.current = null
+        persistedCoAuthorHsaIdsRef.current = []
+        controller.closeForm()
+      } else {
+        const nextDisplayName =
+          payload.leadDisplayName ?? person?.displayName ?? nextLeadHsaId
+        const nextEmail = payload.leadEmail ?? person?.email ?? ''
+        controller.setForm(previousForm => ({
+          ...previousForm,
+          leadDisplayName: nextDisplayName,
+          leadEmail: nextEmail,
+          leadHsaId: payload.leadHsaId ?? nextLeadHsaId,
+          leadPersonVerification: person,
+        }))
+      }
+      await controller.reload()
+      return { ok: true }
+    } catch {
+      return { error: t('leadChangeError'), ok: false }
     }
   }
 
@@ -407,14 +650,14 @@ export default function RequirementPackagesClient() {
           value={controller.form.description}
         />
       </div>
-      {controller.editId != null && (
-        <div>
-          <FieldLabelWithHelp
-            help={t('leadHsaIdHelp')}
-            htmlFor="requirement-package-lead-hsa-id"
-            label={t('leadHsaId')}
-            required
-          />
+      <div>
+        <FieldLabelWithHelp
+          help={t('leadHsaIdHelp')}
+          htmlFor="requirement-package-lead-hsa-id"
+          label={t('leadHsaId')}
+          required
+        />
+        {controller.editId == null ? (
           <HsaPersonVerifyField
             disabled={controller.submitting}
             emailLabel={tc('hsaVerifyEmail')}
@@ -427,24 +670,7 @@ export default function RequirementPackagesClient() {
             inputClassName={inputClassName}
             inputId="requirement-package-lead-hsa-id"
             nameLabel={tc('hsaVerifyName')}
-            onHsaIdChange={value =>
-              controller.setForm(previousForm => ({
-                ...previousForm,
-                leadHsaId: value,
-                leadDisplayName:
-                  value.trim() === previousForm.leadHsaId.trim()
-                    ? previousForm.leadDisplayName
-                    : '',
-                leadEmail:
-                  value.trim() === previousForm.leadHsaId.trim()
-                    ? previousForm.leadEmail
-                    : '',
-                leadPersonVerification:
-                  value.trim() === previousForm.leadPersonVerification?.hsaId
-                    ? previousForm.leadPersonVerification
-                    : null,
-              }))
-            }
+            onHsaIdChange={() => undefined}
             onVerified={person =>
               controller.setForm(previousForm => ({
                 ...previousForm,
@@ -454,13 +680,46 @@ export default function RequirementPackagesClient() {
               }))
             }
             purpose="requirement_package_lead"
+            readOnly
             required
-            scopeId={controller.editId}
             showPersonSummaryAsText
             unavailableText={tc('hsaVerifyUnavailable')}
           />
-        </div>
-      )}
+        ) : (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <input
+                aria-readonly="true"
+                className={`${inputClassName} bg-secondary-100 font-mono text-secondary-500 dark:bg-secondary-800 dark:text-secondary-400`}
+                id="requirement-package-lead-hsa-id"
+                readOnly
+                value={controller.form.leadHsaId}
+              />
+              <button
+                aria-label={t('changeLead')}
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:text-secondary-300 dark:hover:bg-secondary-800"
+                disabled={controller.submitting}
+                onClick={openLeadChange}
+                title={t('changeLead')}
+                type="button"
+              >
+                <UserRoundCog
+                  aria-hidden="true"
+                  className="h-4 w-4"
+                  focusable={false}
+                />
+              </button>
+            </div>
+            <p className="mt-1 text-xs italic text-secondary-700 dark:text-secondary-300">
+              {controller.form.leadDisplayName && controller.form.leadEmail
+                ? `${controller.form.leadDisplayName} (${controller.form.leadEmail})`
+                : controller.form.leadDisplayName ||
+                  controller.form.leadEmail ||
+                  tc('hsaVerifyUnavailable')}
+            </p>
+          </div>
+        )}
+      </div>
     </>
   )
 
@@ -571,7 +830,7 @@ export default function RequirementPackagesClient() {
 
   const renderPackageForm = () => (
     <form
-      className="space-y-5"
+      className="space-y-6"
       {...devMarker({
         context: 'requirementPackages',
         name: 'crud form',
@@ -580,16 +839,20 @@ export default function RequirementPackagesClient() {
       })}
       onSubmit={submit}
     >
-      {renderPackageFormFields()}
-      {renderCoAuthorsSection()}
-      {controller.formError && (
-        <p
-          className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
-          role="alert"
-        >
-          {controller.formError}
-        </p>
-      )}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <div className="space-y-5">
+          {renderPackageFormFields()}
+          {controller.formError && (
+            <p
+              className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+              role="alert"
+            >
+              {controller.formError}
+            </p>
+          )}
+        </div>
+        {renderCoAuthorsSection()}
+      </div>
       <div className="flex gap-3">
         <button
           className="btn-primary"
@@ -766,10 +1029,11 @@ export default function RequirementPackagesClient() {
             {
               ariaLabel: t('newRequirementPackage'),
               developerModeValue: 'new requirement package',
-              disabled: controller.submitting,
+              disabled: createDisabled,
               icon: <Plus aria-hidden="true" className="h-4 w-4" />,
               id: 'create',
               onClick: openCreate,
+              tooltip: createActionTooltip,
               variant: 'primary',
             },
           ]}
@@ -827,7 +1091,10 @@ export default function RequirementPackagesClient() {
           )}
         </div>
 
-        {(controller.deleteError || controller.loadError || stateError) && (
+        {(controller.deleteError ||
+          controller.loadError ||
+          stateError ||
+          currentUserError) && (
           <p
             className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
             {...devMarker({
@@ -838,11 +1105,16 @@ export default function RequirementPackagesClient() {
                 ? 'delete-error'
                 : stateError
                   ? 'state-error'
-                  : 'load-error',
+                  : currentUserError
+                    ? 'current-user-error'
+                    : 'load-error',
             })}
             role="alert"
           >
-            {controller.deleteError ?? controller.loadError ?? stateError}
+            {controller.deleteError ??
+              controller.loadError ??
+              stateError ??
+              currentUserError}
           </p>
         )}
 
@@ -852,7 +1124,7 @@ export default function RequirementPackagesClient() {
             isEditing ? 'edit requirement package' : 'new requirement package'
           }
           initialFocusRef={nameInputRef}
-          maxWidthClassName={isEditing ? 'max-w-5xl' : undefined}
+          maxWidthClassName="max-w-5xl"
           onClose={closeForm}
           open={controller.showForm}
           title={formModalTitle}
@@ -864,6 +1136,41 @@ export default function RequirementPackagesClient() {
         >
           {isEditing ? renderEditPackageForm() : renderPackageForm()}
         </FormModal>
+
+        {leadChange && (
+          <HsaPersonChangeModal
+            blockedError={t('leadChangeCoAuthorConflict')}
+            blockedHsaIds={blockedLeadHsaIds()}
+            cancelLabel={tc('cancel')}
+            currentHelp={t('currentLeadHsaIdHelp')}
+            currentHsaId={leadChange.currentLeadHsaId}
+            currentInputId="requirement-package-current-lead-hsa-id"
+            currentLabel={t('currentLeadHsaId')}
+            description={t('changeLeadDescription')}
+            developerModeValue="change requirements package lead"
+            emailLabel={tc('hsaVerifyEmail')}
+            errorFallback={tc('hsaVerifyError')}
+            fetchingLabel={tc('fetchingHsaPerson')}
+            fetchLabel={tc('fetchHsaPerson')}
+            inputClassName={inputClassName}
+            invalidError={t('leadChangeInvalid')}
+            nameLabel={tc('hsaVerifyName')}
+            newHelp={t('newLeadHsaIdHelp')}
+            newInputId="requirement-package-new-lead-hsa-id"
+            newLabel={t('newLeadHsaId')}
+            onClose={closeLeadChange}
+            onSubmit={submitLeadChange}
+            open
+            purpose="requirement_package_lead"
+            sameError={t('leadChangeSame')}
+            scopeId={leadChange.packageId}
+            submitLabel={t('changeLead')}
+            submittingLabel={tc('saving')}
+            title={t('changeLeadTitle')}
+            titleId="requirement-package-lead-change-title"
+            unavailableText={tc('hsaVerifyUnavailable')}
+          />
+        )}
 
         {controller.loading ? (
           <p
@@ -917,8 +1224,9 @@ export default function RequirementPackagesClient() {
                             name: 'empty state create button',
                             priority: 330,
                           })}
-                          disabled={controller.submitting}
+                          disabled={createDisabled}
                           onClick={openCreate}
+                          title={createActionTooltip}
                           type="button"
                         >
                           <Plus aria-hidden="true" className="h-4 w-4" />

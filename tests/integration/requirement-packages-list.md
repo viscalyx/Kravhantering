@@ -7,7 +7,8 @@ This suite verifies that the requirement packages list supports name or
 description filtering, shows the no-results state for unmatched searches, clears
 the search back to the full list, and keeps the floating `Nytt kravpaket` create
 button anchored to the right side of the package list rather than to the search
-field.
+field. It also checks that package lead changes use the separate edit-modal
+flow.
 
 ## Overview Flowchart
 
@@ -28,6 +29,8 @@ flowchart TD
     L --> M[No-results state appears]
     M --> N[Clear search]
     N --> O[All package rows return]
+    O --> P[Open package edit modal]
+    P --> Q[Assert locked lead field and change-lead modal]
 ```
 
 ## Test Setup
@@ -67,6 +70,12 @@ action.
 1. Assert `Inga resultat hittades` appears and package rows are hidden.
 1. Click `Rensa sökning`.
 1. Assert the filter is empty and both package rows are visible again.
+1. Open `Mobil användning` for editing.
+1. Assert `Kravpaketsansvarigs HSA-ID` is locked and has a
+   `Byt kravpaketsansvarig` action.
+1. Open `Byt kravpaketsansvarig` and assert the current and new HSA-ID fields
+   are shown.
+1. Enter a seeded package co-author HSA-ID and assert the conflict is shown.
 
 ### Sequence Diagram
 
