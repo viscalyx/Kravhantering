@@ -420,6 +420,11 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       responsibleHsaId: 'SE5560000001-ada1',
     })
     expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('UPDATE requirements_specifications'),
+      ['Specification Eleven Updated', expect.any(Date), 11],
+    )
+    expect(query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('FROM requirements_specifications'),
       [11],

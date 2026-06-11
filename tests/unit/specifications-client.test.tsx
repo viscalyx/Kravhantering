@@ -897,11 +897,12 @@ describe('RequirementsSpecificationsClient', () => {
       })[0],
     )
 
-    expect(
-      screen.getByRole('checkbox', {
-        name: /specification\.canResponsibleGenerateAi/,
-      }),
-    ).toBeChecked()
+    const responsibleAiCheckbox = screen.getByRole('checkbox', {
+      name: /specification\.canResponsibleGenerateAi/,
+    })
+
+    expect(responsibleAiCheckbox).toBeChecked()
+    expect(responsibleAiCheckbox).toBeEnabled()
   })
 
   it('closes form on cancel', async () => {
