@@ -19,3 +19,7 @@ Follow the rules in `.github/copilot-instructions.md` and the instructions in `.
   - the word is a common abbreviation or acronym that is widely recognized in the
     context of the project
 - If the word is a misspelling, correct the spelling in the text.
+
+### Issue tracker
+
+Issues are tracked as GitHub issues in repository `viscalyx/Kravhantering`.
