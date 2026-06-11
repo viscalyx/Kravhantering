@@ -161,8 +161,8 @@ _Avoid_: Säkerhetsaudit, säkerhetsrevision när loggströmmen avses,
 Åtgärdslogg, vanlig applikationslogg, tillämpningsspårbarhet.
 
 **Behörighetsöversyn**:
-En formell genomgång av uppdrag, roller och AI-behörigheter där varje
-behörighetsrad bedöms och beslutas.
+En formell genomgång av uppdrag och roller där varje behörighetsrad bedöms och
+beslutas.
 
 - `en`: Access review
 
