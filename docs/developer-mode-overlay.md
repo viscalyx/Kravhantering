@@ -148,8 +148,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `link: requirements recovery` or `link: admin recovery`.
 - Requirements specification list filtering exposes
   `specifications > text field: name filter` on the Name search input above
-  the table. Its create trigger lives in the fixed `floating action rail`
-  as `specifications > floating pill: new specification`.
+  the table. Its create trigger is anchored beside the table in the fixed
+  `floating action rail` as
+  `specifications > floating pill: new specification`.
 - Requirements packages expose their create trigger in the fixed
   `floating action rail` as
   `requirementPackages > floating pill: new requirement package`. The new

@@ -44,21 +44,29 @@ for (const viewport of viewports) {
       await expect(deleteAction.locator('svg')).toBeVisible()
 
       if (viewport.name === 'desktop') {
-        const filterBox = await nameFilter.boundingBox()
-        const buttonBox = await createButton.boundingBox()
+        const tableSurface = page.getByRole('table')
 
-        expect(filterBox).not.toBeNull()
+        await expect(tableSurface).toHaveCount(1)
+
+        const buttonBox = await createButton.boundingBox()
+        const tableBox = await tableSurface.boundingBox()
+
         expect(buttonBox).not.toBeNull()
-        expect(
-          Math.abs(
-            (buttonBox?.y ?? 0) +
-              (buttonBox?.height ?? 0) -
-              ((filterBox?.y ?? 0) + (filterBox?.height ?? 0)),
-          ),
-        ).toBeLessThanOrEqual(6)
+        expect(tableBox).not.toBeNull()
         expect(buttonBox?.x ?? 0).toBeGreaterThan(
-          (filterBox?.x ?? 0) + (filterBox?.width ?? 0),
+          (tableBox?.x ?? 0) + (tableBox?.width ?? 0) - 60,
         )
+        expect(
+          Math.abs((buttonBox?.y ?? 0) - ((tableBox?.y ?? 0) + 4)),
+        ).toBeLessThanOrEqual(12)
+        await expect(
+          page.locator('[data-floating-action-rail-placement="fixed-right"]'),
+        ).toBeVisible()
+        await expect(
+          createButton.locator(
+            'xpath=ancestor::*[@data-floating-action-rail="true"]',
+          ),
+        ).toHaveAttribute('data-floating-action-rail-placement', 'fixed-right')
       }
 
       await test.step('show the signed-in specification lead when creating', async () => {

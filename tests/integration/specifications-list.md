@@ -8,7 +8,7 @@ that compact static requirement-area pills are present, that the name filter
 narrows the visible specifications, that row actions render as icon-only buttons,
 that overflowing requirement-area pills can be expanded on demand, and that the
 clear-search action restores the full list. On desktop it additionally asserts
-that the filter field and the create button are horizontally aligned.
+that the floating create button is anchored to the right side of the list.
 
 ## Overview Flowchart
 
@@ -19,7 +19,7 @@ flowchart TD
     B --> B1[Assert static requirement-area pill]
     B1 --> B2[Assert icon-only edit and delete actions]
     B2 --> C{Desktop?}
-    C -- Yes --> D[Assert filter and button are aligned]
+    C -- Yes --> D[Assert create button tracks list edge]
     C -- No --> B3[Force narrow pill column and toggle overflow]
     D --> B3
     B3 --> E[Fill name filter]
@@ -41,7 +41,8 @@ sizes.
 
 Confirms that typing in the name filter hides non-matching specifications and that
 clicking the clear button restores all specifications. On desktop it also verifies
-that the filter input and the "Nytt kravunderlag" button share the same row.
+that the "Nytt kravunderlag" button stays in the fixed floating rail beside the
+list.
 
 ### Step-by-Step Flow
 
@@ -54,9 +55,8 @@ that the filter input and the "Nytt kravunderlag" button share the same row.
    link.
 1. Assert the row edit/delete actions are icon-only buttons with accessible
    names.
-1. *(Desktop only)* Assert that the bottom edges of the filter and button are
-   within 6 px of each other and that the button starts to the right of the
-   filter.
+1. *(Desktop only)* Assert that `Nytt kravunderlag` is positioned at the right
+   edge of the list in the fixed floating rail.
 1. Force a narrow requirement-area pill list and assert the chevron toggle
    expands and collapses the hidden pills.
 1. Type `e-tjänst` into the name filter.

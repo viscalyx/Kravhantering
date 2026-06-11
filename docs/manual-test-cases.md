@@ -1080,7 +1080,7 @@ visible specifications.
 
 **Steps:**
 
-1. Select the floating `Nytt kravunderlag` pill.
+1. Select the floating `Nytt kravunderlag` pill beside the list.
 1. Verify `HSA-ID för kravunderlagsansvarig` is locked to the signed-in user's
    HSA-ID and shows the HSA person summary/fetch button.
 1. Fill name, specification lifecycle status, governance object type, and
