@@ -214,6 +214,19 @@ const SEED_DATA = {
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
       ],
+      [
+        7,
+        'orphaned_responsibility_people_delete',
+        'Fristående Kravansvarspersoner',
+        'delete',
+        730,
+        'Kravansvarspersoner utan aktuella kravansvarstilldelningar och äldre än två år',
+        1,
+        'docs/informationsmangder-kravhantering.md#gallrings--och-arkiveringsmatris',
+        null,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
     ],
   },
   archiving_retention_runs: {
@@ -12234,6 +12247,167 @@ appendArchivingRetentionSeed(SEED_DATA)
 
 const PRIVACY_SEED_TS = '2026-04-23 09:00:00'
 const RESPONSIBILITY_PERSON_PLACEHOLDER = '(saknar namn, kräver nytt uppslag)'
+const RETENTION_OLD_PERSON_TS = '2023-01-15 09:00:00'
+const RETENTION_FRESH_PERSON_TS = '2026-04-25 09:00:00'
+const RESPONSIBILITY_PERSON_REFRESH_FIXTURE_HSA_ID = 'SE5560000001-pkgco1'
+
+const EXPLICIT_REQUIREMENT_RESPONSIBILITY_PERSON_HSA_IDS = [
+  'SE5560000001-retentionorphan',
+  'SE5560000001-retentionfresh',
+]
+
+const REQUIREMENT_RESPONSIBILITY_PERSON_TIMESTAMPS = new Map([
+  ['SE5560000001-retentionlinked', RETENTION_OLD_PERSON_TS],
+  ['SE5560000001-retentionorphan', RETENTION_OLD_PERSON_TS],
+  ['SE5560000001-retentionfresh', RETENTION_FRESH_PERSON_TS],
+])
+
+const REQUIREMENT_RESPONSIBILITY_PERSON_BY_HSA_ID = new Map([
+  [
+    'SE5560000001-2002',
+    {
+      email: 'pontus.paket@example.test',
+      givenName: 'Pontus',
+      middleName: null,
+      surname: 'Paket',
+    },
+  ],
+  [
+    'SE5560000001-annaj',
+    {
+      email: 'anna.johansson@example.test',
+      givenName: 'Anna',
+      middleName: null,
+      surname: 'Johansson',
+    },
+  ],
+  [
+    'SE5560000001-emmal',
+    {
+      email: 'emma.lindqvist@example.test',
+      givenName: 'Emma',
+      middleName: null,
+      surname: 'Lindqvist',
+    },
+  ],
+  [
+    'SE5560000001-erikl',
+    {
+      email: 'erik.lindberg@example.test',
+      givenName: 'Erik',
+      middleName: null,
+      surname: 'Lindberg',
+    },
+  ],
+  [
+    'SE5560000001-kalle1',
+    {
+      email: 'kalle.one@example.test',
+      givenName: 'Kalle',
+      middleName: null,
+      surname: 'Svensson',
+    },
+  ],
+  [
+    'SE5560000001-kalle2',
+    {
+      email: 'kalle.two@example.test',
+      givenName: 'Kalle',
+      middleName: null,
+      surname: 'Svensson',
+    },
+  ],
+  [
+    'SE5560000001-karlpersson',
+    {
+      email: 'karl.persson@example.test',
+      givenName: 'Karl',
+      middleName: null,
+      surname: 'Persson',
+    },
+  ],
+  [
+    'SE5560000001-linneab',
+    {
+      email: 'linnea.bergstrom@example.test',
+      givenName: 'Linnea',
+      middleName: null,
+      surname: 'Bergström',
+    },
+  ],
+  [
+    'SE5560000001-mariaj',
+    {
+      email: 'maria.johansson@example.test',
+      givenName: 'Maria',
+      middleName: null,
+      surname: 'Johansson',
+    },
+  ],
+  [
+    'SE5560000001-marias',
+    {
+      email: 'maria.svensson@example.test',
+      givenName: 'Maria',
+      middleName: null,
+      surname: 'Svensson',
+    },
+  ],
+  [
+    'SE5560000001-oscarn',
+    {
+      email: 'oscar.nilsson@example.test',
+      givenName: 'Oscar',
+      middleName: null,
+      surname: 'Nilsson',
+    },
+  ],
+  [
+    'SE5560000001-retentionfresh',
+    {
+      email: 'freja.retentionfresh@example.test',
+      givenName: 'Freja',
+      middleName: null,
+      surname: 'RetentionFresh',
+    },
+  ],
+  [
+    'SE5560000001-retentionlinked',
+    {
+      email: 'lena.retentionlinked@example.test',
+      givenName: 'Lena',
+      middleName: null,
+      surname: 'RetentionLinked',
+    },
+  ],
+  [
+    'SE5560000001-retentionorphan',
+    {
+      email: 'rolf.retentionorphan@example.test',
+      givenName: 'Rolf',
+      middleName: null,
+      surname: 'RetentionOrphan',
+    },
+  ],
+  [
+    'SE5560000001-saraholm',
+    {
+      email: 'sara.holm@example.test',
+      givenName: 'Sara',
+      middleName: null,
+      surname: 'Holm',
+    },
+  ],
+  [
+    'SE5560000001-seed',
+    {
+      email: 'seed.fixture@example.test',
+      givenName: 'Seed',
+      middleName: null,
+      surname: 'Fixture',
+    },
+  ],
+])
 
 const HSA_BY_DISPLAY_NAME = new Map([
   ['seed', 'SE5560000001-seed'],
@@ -12554,6 +12728,11 @@ function addRequirementResponsibilityPeopleSeed() {
   collectSeedHsaIds(hsaIds, 'specification_co_authors', 'hsa_id')
   collectSeedHsaIds(hsaIds, 'requirement_packages', 'lead_hsa_id')
   collectSeedHsaIds(hsaIds, 'requirement_package_co_authors', 'hsa_id')
+  for (const hsaId of EXPLICIT_REQUIREMENT_RESPONSIBILITY_PERSON_HSA_IDS) {
+    hsaIds.add(
+      assertSeedHsaId(hsaId, 'requirement_responsibility_people', 'hsa_id'),
+    )
+  }
 
   SEED_DATA.requirement_responsibility_people = {
     columns: [
@@ -12567,18 +12746,39 @@ function addRequirementResponsibilityPeopleSeed() {
       'updated_at',
     ],
     pk: ['hsa_id'],
-    rows: [...hsaIds]
-      .sort()
-      .map(hsaId => [
+    rows: [...hsaIds].sort().map(hsaId => {
+      const timestamp =
+        REQUIREMENT_RESPONSIBILITY_PERSON_TIMESTAMPS.get(hsaId) ??
+        PRIVACY_SEED_TS
+      if (hsaId === RESPONSIBILITY_PERSON_REFRESH_FIXTURE_HSA_ID) {
+        return [
+          hsaId,
+          RESPONSIBILITY_PERSON_PLACEHOLDER,
+          null,
+          null,
+          null,
+          null,
+          timestamp,
+          timestamp,
+        ]
+      }
+      const person = REQUIREMENT_RESPONSIBILITY_PERSON_BY_HSA_ID.get(hsaId)
+      if (!person) {
+        throw new Error(
+          `Privacy seed: missing requirement responsibility person details for '${hsaId}'`,
+        )
+      }
+      return [
         hsaId,
-        RESPONSIBILITY_PERSON_PLACEHOLDER,
-        null,
-        null,
-        null,
-        null,
-        PRIVACY_SEED_TS,
-        PRIVACY_SEED_TS,
-      ]),
+        person.givenName,
+        person.middleName,
+        person.surname,
+        person.email,
+        timestamp,
+        timestamp,
+        timestamp,
+      ]
+    }),
   }
 }
 

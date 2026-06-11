@@ -45,6 +45,11 @@ export const RETENTION_SEED = Object.freeze({
     unused: 910020,
     used: 910021,
   },
+  responsibilityPerson: {
+    freshOrphan: 'SE5560000001-retentionfresh',
+    orphan: 'SE5560000001-retentionorphan',
+    stillAssigned: 'SE5560000001-retentionlinked',
+  },
   requirementVersion: {
     archivedUnused: 910101,
     archiveReview: 910105,
@@ -92,6 +97,7 @@ export const RETENTION_POSITIVE_SOURCE_KEYS = [
   'requirements_specifications.obsolete',
   'requirement_selection_questions.archived',
   'requirement_selection_answers.archived',
+  'requirement_responsibility_people.orphaned',
 ]
 
 function tableSection(seedData, name) {

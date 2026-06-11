@@ -564,6 +564,18 @@ HSA-personpost.
 
 _Avoid_: Användare, konto, HSA-personpost, kravansvarstilldelning.
 
+**Kravansvarsperson utan kravansvarstilldelning**:
+En lokal kravansvarsperson som inte pekas ut av någon aktuell eller påbörjad
+kravansvarstilldelning. Personen kan åter bli utpekad av en ny
+kravansvarstilldelning innan gallring, eller raderas när beslutad lagringstid
+har passerat.
+
+- `en`: Unassigned requirement responsibility person
+
+_Avoid_: Fristående Kravansvarsperson, fristående ägare, ej tilldelad person,
+oanvänd person, kravområdesägare när personen inte har en aktuell eller
+påbörjad kravansvarstilldelning.
+
 **Kravansvarstilldelning**:
 En HSA-ID-bunden tilldelning av ansvar eller medförfattarskap i kravarbete,
 till exempel för ett kravområde, ett kravunderlag eller ett kravpaket.

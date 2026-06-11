@@ -78,6 +78,14 @@
       "purposes": ["Seedad kravpaketsansvarig och kravområdesägare."]
     },
     {
+      "hsaIdentity": "SE5560000001-mariaj",
+      "givenName": "Maria",
+      "sn": "Johansson",
+      "mail": "maria.johansson@example.test",
+      "DN": "cn=Maria Johansson,ou=kravbibliotek,o=kravhantering,c=se",
+      "purposes": ["Seedad kravunderlagsansvarig."]
+    },
+    {
       "hsaIdentity": "SE5560000001-saraholm",
       "givenName": "Sara",
       "sn": "Holm",
@@ -174,6 +182,38 @@
       "purposes": ["Dev-auth-person för kravpaketsmedförfattare."]
     },
     {
+      "hsaIdentity": "SE5560000001-manualarea1",
+      "givenName": "Maja",
+      "sn": "ManualArea",
+      "mail": "maja.manualarea@example.test",
+      "DN": "cn=Maja ManualArea,ou=manual-test,o=kravhantering,c=se",
+      "purposes": ["Manuell testperson för ny kravområdesägare."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-manualarea2",
+      "givenName": "Mats",
+      "sn": "ManualArea",
+      "mail": "mats.manualarea@example.test",
+      "DN": "cn=Mats ManualArea,ou=manual-test,o=kravhantering,c=se",
+      "purposes": ["Manuell testperson för byte av kravområdesägare."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-manualspec1",
+      "givenName": "Sam",
+      "sn": "ManualSpec",
+      "mail": "sam.manualspec@example.test",
+      "DN": "cn=Sam ManualSpec,ou=manual-test,o=kravhantering,c=se",
+      "purposes": ["Manuell testperson för kravunderlagsansvarig."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-manualpkg1",
+      "givenName": "Paula",
+      "sn": "ManualPkg",
+      "mail": "paula.manualpkg@example.test",
+      "DN": "cn=Paula ManualPkg,ou=manual-test,o=kravhantering,c=se",
+      "purposes": ["Manuell testperson för kravpaketsansvar."]
+    },
+    {
       "hsaIdentity": "SE5560000001-reviewer1",
       "givenName": "Rita",
       "sn": "Reviewer",
@@ -230,6 +270,42 @@
       "mail": "pontus.paket@example.test",
       "DN": "cn=Pontus Paket,ou=kravpaket,o=kravhantering,c=se",
       "purposes": ["Extra HSA-personpost för kravpaketsmedförfattare."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-seed",
+      "givenName": "Seed",
+      "sn": "Fixture",
+      "mail": "seed.fixture@example.test",
+      "DN": "cn=Seed Fixture,ou=retention,o=kravhantering,c=se",
+      "purposes": ["Seedad kravunderlagsansvarig för test av gallring."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-retentionlinked",
+      "givenName": "Lena",
+      "sn": "RetentionLinked",
+      "mail": "lena.retentionlinked@example.test",
+      "DN": "cn=Lena RetentionLinked,ou=retention,o=kravhantering,c=se",
+      "purposes": [
+        "Gammal Kravansvarsperson som fortfarande har kravansvarstilldelning."
+      ]
+    },
+    {
+      "hsaIdentity": "SE5560000001-retentionorphan",
+      "givenName": "Rolf",
+      "sn": "RetentionOrphan",
+      "mail": "rolf.retentionorphan@example.test",
+      "DN": "cn=Rolf RetentionOrphan,ou=retention,o=kravhantering,c=se",
+      "purposes": [
+        "Gammal fristående Kravansvarsperson för förhandsgranskning av gallring."
+      ]
+    },
+    {
+      "hsaIdentity": "SE5560000001-retentionfresh",
+      "givenName": "Freja",
+      "sn": "RetentionFresh",
+      "mail": "freja.retentionfresh@example.test",
+      "DN": "cn=Freja RetentionFresh,ou=retention,o=kravhantering,c=se",
+      "purposes": ["Ny fristående Kravansvarsperson som inte ska gallras ännu."]
     },
     {
       "hsaIdentity": "SE5560000001-3001",

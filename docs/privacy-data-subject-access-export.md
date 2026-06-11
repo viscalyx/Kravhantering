@@ -75,6 +75,8 @@ sources include:
 - specification lead
 - requirement-area and specification co-authors
 - requirement-area and package owner references
+- local requirement responsibility person identity rows, including standalone
+  rows until retention deletes them
 - current auth session claims for self-export only
 
 Matching is exact HSA-ID matching only. Names and email addresses are never used

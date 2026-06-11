@@ -152,6 +152,7 @@ interface RetentionSourceDefinition {
   requiresExport?: boolean
   selectSql: string
   sourceKey: string
+  subjectIdKind?: 'number' | 'string'
   subjectTable: string
 }
 
@@ -160,6 +161,8 @@ const OLD_REQUIREMENT_VERSIONS_POLICY_KEY = 'old_requirement_versions_delete'
 const OBSOLETE_SPECIFICATIONS_POLICY_KEY = 'obsolete_specifications_delete'
 const ARCHIVED_REQUIREMENT_SELECTION_POLICY_KEY =
   'archived_requirement_selection_delete'
+const ORPHANED_RESPONSIBILITY_PEOPLE_POLICY_KEY =
+  'orphaned_responsibility_people_delete'
 const SPECIFICATION_MANAGEMENT_STATUS_ID = 4
 const EXPORT_CONFIRMATION_TTL_MS = 15 * 60 * 1000
 
@@ -254,6 +257,20 @@ const DELETE_REQUIREMENT_SELECTION_ANSWER_SQL = `DECLARE @answer_id int;
         DELETE FROM requirement_selection_answer_requirements WHERE answer_id = @answer_id;
         DELETE FROM requirement_selection_answers WHERE id = @answer_id;
       END`
+
+function requirementResponsibilityPersonNameSql(alias: string): string {
+  return `NULLIF(LTRIM(RTRIM(CONCAT(
+    ${alias}.given_name,
+    CASE
+      WHEN ${alias}.middle_name IS NULL OR LTRIM(RTRIM(${alias}.middle_name)) = N'' THEN N''
+      ELSE CONCAT(N' ', ${alias}.middle_name)
+    END,
+    CASE
+      WHEN ${alias}.surname IS NULL OR LTRIM(RTRIM(${alias}.surname)) = N'' THEN N''
+      ELSE CONCAT(N' ', ${alias}.surname)
+    END
+  ))), N'')`
+}
 
 const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
   {
@@ -561,6 +578,72 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
       ORDER BY source.reference ASC`,
     sourceKey: 'requirement_selection_answers.archived',
     subjectTable: 'requirement_selection_answers',
+  },
+  {
+    action: 'delete',
+    executeSql: `DELETE person
+      FROM requirement_responsibility_people person
+      WHERE person.hsa_id = @0
+        AND NOT EXISTS (
+          SELECT 1 FROM requirement_areas area WHERE area.owner_hsa_id = person.hsa_id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM requirement_area_co_authors co_author WHERE co_author.hsa_id = person.hsa_id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM requirements_specifications specification_record
+          WHERE specification_record.responsible_hsa_id = person.hsa_id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM specification_co_authors co_author WHERE co_author.hsa_id = person.hsa_id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM requirement_packages requirement_package
+          WHERE requirement_package.lead_hsa_id = person.hsa_id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM requirement_package_co_authors co_author WHERE co_author.hsa_id = person.hsa_id
+        )`,
+    fieldKey: 'identity',
+    objectKey: 'requirementResponsibilityPeople',
+    policyKey: ORPHANED_RESPONSIBILITY_PEOPLE_POLICY_KEY,
+    selectSql: `SELECT *
+      FROM (
+        SELECT
+          N'requirement_responsibility_people.orphaned' AS source_key,
+          N'requirement_responsibility_people' AS subject_table,
+          person.hsa_id AS subject_id,
+          COALESCE(${requirementResponsibilityPersonNameSql('person')}, N'Kravansvarsperson') AS reference,
+          ${requirementResponsibilityPersonNameSql('person')} AS current_display_value,
+          person.updated_at AS age_basis
+        FROM requirement_responsibility_people person
+        WHERE person.updated_at <= @0
+          AND NOT EXISTS (
+            SELECT 1 FROM requirement_areas area WHERE area.owner_hsa_id = person.hsa_id
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM requirement_area_co_authors co_author WHERE co_author.hsa_id = person.hsa_id
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM requirements_specifications specification_record
+            WHERE specification_record.responsible_hsa_id = person.hsa_id
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM specification_co_authors co_author WHERE co_author.hsa_id = person.hsa_id
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM requirement_packages requirement_package
+            WHERE requirement_package.lead_hsa_id = person.hsa_id
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM requirement_package_co_authors co_author WHERE co_author.hsa_id = person.hsa_id
+          )
+      ) source
+      WHERE ${ACTIVE_EXCEPTION_SQL}
+      ORDER BY source.reference ASC`,
+    sourceKey: 'requirement_responsibility_people.orphaned',
+    subjectIdKind: 'string',
+    subjectTable: 'requirement_responsibility_people',
   },
 ]
 
@@ -926,6 +1009,15 @@ function numericSubjectId(candidate: ArchivingRetentionCandidate): number {
   return id
 }
 
+function subjectIdParameter(
+  candidate: ArchivingRetentionCandidate,
+  source: RetentionSourceDefinition,
+): number | string {
+  return source.subjectIdKind === 'string'
+    ? candidate.subjectId
+    : numericSubjectId(candidate)
+}
+
 async function executeCandidate(
   tx: QueryExecutor,
   candidate: ArchivingRetentionCandidate,
@@ -955,7 +1047,7 @@ async function executeCandidate(
         ])
       : null
   const result = (await tx.query(source.executeSql, [
-    numericSubjectId(candidate),
+    subjectIdParameter(candidate, source),
   ])) as { affected?: number } | undefined
   return {
     changed: result?.affected == null || result.affected > 0,

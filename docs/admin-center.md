@@ -266,6 +266,9 @@ V1 supports direct deletion after preview and confirmation for:
   specification dependency
 - archived requirement-selection questions and answers older than one year
   when no saved requirements-specification answers still reference them
+- unassigned requirement responsibility people older than the policy age when
+  no live requirement area, specification or package assignment references
+  their HSA-ID
 
 Local seed data includes deterministic `RETENTION-SEED` fixtures for every
 active policy source and the main exclusion cases, so a freshly seeded

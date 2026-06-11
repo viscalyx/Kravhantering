@@ -1,3 +1,6 @@
+<!-- cSpell:words ManualArea ManualPkg PkgCoAuthor RetentionFresh -->
+<!-- cSpell:words RetentionLinked RetentionOrphan -->
+
 # Manual Test Cases
 
 This guide is for local and development manual QA against the seeded SQL Server
@@ -596,14 +599,19 @@ management live outside Admin Center.
 1. Create a package with `Namn` and `Beskrivning`. Verify the initial
    `Kravpaketsansvarig` is set from the signed-in user's HSA-ID rather than a
    client-entered field.
-1. Edit a package and verify `Kravpaketsansvarig` shows an HSA-ID field with a
-   fetch/refresh icon and read-only name and e-mail. Leave the HSA-ID field and
-   verify a locally known `Kravansvarsperson` is shown without manual refresh;
-   click the icon and verify the details are fetched again.
-1. Add a `Kravpaketsmedförfattare` by HSA-ID, use the fetch/refresh button to
-   verify the name and e-mail, save, reopen the package and verify the
-   co-author remains as an HSA-ID assignment with person details from
-   `Kravansvarsperson`. Remove the co-author and verify it no longer appears.
+1. Edit `Mobil användning` and verify `Kravpaketsansvarig` shows an HSA-ID
+   field with a fetch/refresh icon and read-only name and e-mail. Leave a
+   locally known HSA-ID field and verify the stored `Kravansvarsperson` is shown
+   without manual refresh.
+1. For the seeded co-author `SE5560000001-pkgco1`, verify the local person
+   details initially show `(saknar namn, kräver nytt uppslag)`. Click the
+   fetch/refresh icon and verify the HSA mock updates the details to
+   `Paul PkgCoAuthor` and `paul.pkgcoauthor@example.test`.
+1. Add a `Kravpaketsmedförfattare` with `SE5560000001-manualpkg1`, use the
+   fetch/refresh button to verify `Paula ManualPkg`, save, reopen the package
+   and verify the co-author remains as an HSA-ID assignment with person details
+   from `Kravansvarsperson`. Remove the co-author and verify it no longer
+   appears.
 1. Verify editing opens in a modal and shows linked requirements beside the
    form.
 1. Verify long `Beskrivning` values in the package list wrap inside the
@@ -1617,11 +1625,16 @@ row.
 
 1. As `ada.admin`, open `/sv/admin?tab=archiving`.
 1. Verify retention controls are visible.
+1. Select `Fristående Kravansvarspersoner` and run
+   `Förhandsgranska gallring`.
+1. Verify the preview lists `Rolf RetentionOrphan`, but not
+   `Lena RetentionLinked` and not `Freja RetentionFresh`.
 1. Sign in as `only.admin` and open the same URL.
 1. Sign in as `disa.privacy` and open the same URL.
 
 **Expected result:** `ada.admin` and `disa.privacy` can use archiving privacy
-tools; `only.admin` is redirected to the default tab or sees disabled access.
+tools, including the standalone responsibility-person retention preview;
+`only.admin` is redirected to the default tab or sees disabled access.
 
 ### ADMIN-10: status and risk icons render across requirement surfaces
 
@@ -1695,16 +1708,16 @@ archived requirement-selection rows that have no saved
 1. Verify there is no separate `Kravområdesägare` card.
 1. Open `Kravområden`.
 1. Create a disposable requirement area with a unique prefix and a valid HSA-ID
-   in the owner field, for example `NO5560000001-9999`.
+   in the owner field, using `SE5560000001-manualarea1`.
 1. Edit the created area and confirm the owner HSA-ID is dimmed and read-only.
 1. Select the owner-change icon next to the dimmed HSA-ID.
-1. Confirm the modal shows the previous HSA-ID, enter a different valid HSA-ID,
-   and select `Byt ägare`.
+1. Confirm the modal shows the previous HSA-ID, enter
+   `SE5560000001-manualarea2`, and select `Byt ägare`.
 
 **Expected result:** The requirement area is created with the entered HSA-ID,
 the edit form cannot change owner inline, `Byt ägare` stays disabled until the
-new HSA-ID is valid and different, and after saving the dimmed field shows the
-new owner HSA-ID.
+new HSA-ID is valid and different, and after saving the dimmed field shows
+`SE5560000001-manualarea2`.
 
 ## Privacy and personal data access
 

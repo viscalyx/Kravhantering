@@ -12,10 +12,12 @@ import {
   seedRequiredDatabase,
 } from '../../typeorm/seed-required.mjs'
 
-// cspell:ignore linneab repobehörighetsöversyn retentionlinked retentionorphan
+// cspell:ignore linneab manualarea manualpkg manualspec repobehörighetsöversyn
+// cspell:ignore retentionfresh retentionlinked retentionorphan
 
 const LINNEA_HSA_ID = 'SE5560000001-linneab'
 const LINNEA_DISPLAY_NAME = 'Linnéa Bergström'
+const PRIVACY_SEED_TS = '2026-04-23 09:00:00'
 const RESPONSIBILITY_PERSON_PLACEHOLDER = '(saknar namn, kräver nytt uppslag)'
 
 interface SeedInsertRow {
@@ -174,11 +176,15 @@ describe('seed profiles', () => {
     expect(seedRowsFor(rows, 'requirement_statuses').length).toBeGreaterThan(0)
     expect(seedRowsFor(rows, 'quality_characteristics')).toHaveLength(49)
     const retentionPolicies = seedRowsFor(rows, 'archiving_retention_policies')
-    expect(retentionPolicies).toHaveLength(4)
+    expect(retentionPolicies).toHaveLength(5)
     expect(retentionPolicies).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           policy_key: 'archived_requirement_selection_delete',
+        }),
+        expect.objectContaining({
+          information_set: 'Fristående Kravansvarspersoner',
+          policy_key: 'orphaned_responsibility_people_delete',
         }),
       ]),
     )
@@ -387,6 +393,104 @@ describe('seed profiles', () => {
     }
   })
 
+  it('seeds local responsibility people from live assignments and HSA mock details', async () => {
+    const { executor, rows } = collectSeedInsertRows()
+
+    await seedDemoDatabase(executor)
+
+    const hsaFixture = JSON.parse(
+      readFileSync(
+        path.join(
+          process.cwd(),
+          'containers/hsa-directory-mock/fixtures/hsa-personer.json',
+        ),
+        'utf8',
+      ),
+    ) as {
+      hsaPersonRecords: Array<{
+        givenName: string
+        hsaIdentity: string
+        mail?: string
+        middleName?: string
+        sn?: string
+      }>
+    }
+    const hsaMockById = new Map(
+      hsaFixture.hsaPersonRecords.map(record => [record.hsaIdentity, record]),
+    )
+    const responsibilityPeople = seedRowsFor(
+      rows,
+      'requirement_responsibility_people',
+    )
+    const liveAssignmentColumns = [
+      ['requirement_areas', 'owner_hsa_id'],
+      ['requirement_area_co_authors', 'hsa_id'],
+      ['requirements_specifications', 'responsible_hsa_id'],
+      ['specification_co_authors', 'hsa_id'],
+      ['requirement_packages', 'lead_hsa_id'],
+      ['requirement_package_co_authors', 'hsa_id'],
+    ] as const
+    const expectedHsaIds = new Set([
+      'SE5560000001-retentionorphan',
+      'SE5560000001-retentionfresh',
+    ])
+    for (const [table, column] of liveAssignmentColumns) {
+      for (const row of seedRowsFor(rows, table)) {
+        if (row[column]) expectedHsaIds.add(String(row[column]))
+      }
+    }
+
+    expect(responsibilityPeople.map(row => row.hsa_id).sort()).toEqual(
+      [...expectedHsaIds].sort(),
+    )
+    expect(
+      [...expectedHsaIds].filter(hsaId => !hsaMockById.has(hsaId)),
+    ).toEqual([])
+
+    for (const personRow of responsibilityPeople) {
+      if (personRow.hsa_id === 'SE5560000001-pkgco1') {
+        expect(personRow).toMatchObject({
+          email: null,
+          given_name: RESPONSIBILITY_PERSON_PLACEHOLDER,
+          last_fetched_at: null,
+        })
+        continue
+      }
+      const hsaPerson = hsaMockById.get(String(personRow.hsa_id))
+      expect(personRow).toMatchObject({
+        email: hsaPerson?.mail ?? null,
+        given_name: hsaPerson?.givenName,
+        last_fetched_at: expect.any(String),
+        middle_name: hsaPerson?.middleName ?? null,
+        surname: hsaPerson?.sn ?? null,
+      })
+    }
+    expect(
+      responsibilityPeople.find(
+        row => row.hsa_id === 'SE5560000001-retentionorphan',
+      ),
+    ).toMatchObject({
+      given_name: 'Rolf',
+      updated_at: '2023-01-15 09:00:00',
+    })
+    expect(
+      responsibilityPeople.find(
+        row => row.hsa_id === 'SE5560000001-retentionfresh',
+      ),
+    ).toMatchObject({
+      given_name: 'Freja',
+      updated_at: '2026-04-25 09:00:00',
+    })
+    expect(
+      responsibilityPeople.find(
+        row => row.hsa_id === 'SE5560000001-retentionlinked',
+      ),
+    ).toMatchObject({
+      given_name: 'Lena',
+      updated_at: '2023-01-15 09:00:00',
+    })
+  })
+
   it('seeds Linnea privacy data with decisions and improvement suggestions', async () => {
     const { executor, rows } = collectSeedInsertRows()
 
@@ -509,9 +613,11 @@ describe('seed profiles', () => {
         row => row.hsa_id === LINNEA_HSA_ID,
       ),
     ).toMatchObject({
-      given_name: RESPONSIBILITY_PERSON_PLACEHOLDER,
+      email: 'linnea.bergstrom@example.test',
+      given_name: 'Linnea',
       hsa_id: LINNEA_HSA_ID,
-      last_fetched_at: null,
+      last_fetched_at: PRIVACY_SEED_TS,
+      surname: 'Bergström',
     })
     expect(
       seedRowsFor(rows, 'specification_co_authors').find(
@@ -582,6 +688,7 @@ describe('seed profiles', () => {
       'requirements_specifications.obsolete',
       'requirement_selection_questions.archived',
       'requirement_selection_answers.archived',
+      'requirement_responsibility_people.orphaned',
     ])
 
     const areas = rowById(seedRowsFor(rows, 'requirement_areas'))
@@ -597,6 +704,12 @@ describe('seed profiles', () => {
     )
     const requirementSelectionAnswers = rowById(
       seedRowsFor(rows, 'requirement_selection_answers'),
+    )
+    const responsibilityPeople = new Map(
+      seedRowsFor(rows, 'requirement_responsibility_people').map(row => [
+        row.hsa_id,
+        row,
+      ]),
     )
     const savedRequirementSelectionAnswers = seedRowsFor(
       rows,
@@ -651,6 +764,29 @@ describe('seed profiles', () => {
     expect(norms.get(RETENTION_SEED.normReference.unused)).toMatchObject({
       name: 'RETENTION-SEED oanvänd normreferens',
       updated_at: '2023-01-15 09:00:00',
+    })
+    expect(
+      responsibilityPeople.get(RETENTION_SEED.responsibilityPerson.orphan),
+    ).toMatchObject({
+      given_name: 'Rolf',
+      surname: 'RetentionOrphan',
+      updated_at: '2023-01-15 09:00:00',
+    })
+    expect(
+      responsibilityPeople.get(
+        RETENTION_SEED.responsibilityPerson.stillAssigned,
+      ),
+    ).toMatchObject({
+      given_name: 'Lena',
+      surname: 'RetentionLinked',
+      updated_at: '2023-01-15 09:00:00',
+    })
+    expect(
+      responsibilityPeople.get(RETENTION_SEED.responsibilityPerson.freshOrphan),
+    ).toMatchObject({
+      given_name: 'Freja',
+      surname: 'RetentionFresh',
+      updated_at: '2026-04-25 09:00:00',
     })
 
     expect(

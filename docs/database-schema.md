@@ -1662,6 +1662,9 @@ Seeded policies:
 - `archived_requirement_selection_delete` — deletes archived
   requirement-selection questions and answers after 365 days when no saved
   requirements-specification answers still reference them.
+- `orphaned_responsibility_people_delete` — deletes unassigned
+  requirement responsibility people after 730 days when no live responsibility
+  assignment still references their HSA-ID.
 
 ### `archiving_retention_runs`
 

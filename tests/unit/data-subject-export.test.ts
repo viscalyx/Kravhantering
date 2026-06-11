@@ -5,6 +5,8 @@ import {
 } from '@/lib/privacy/data-subject-export'
 import { PRIVACY_ERASURE_GROUP_POLICIES } from '@/lib/privacy/erasure'
 
+// cspell:ignore retentionorphan RetentionOrphan
+
 const TARGET_HSA_ID = 'SE5560000001-kalle1'
 const OTHER_HSA_ID = 'SE5560000001-kalle2'
 
@@ -91,6 +93,50 @@ describe('data-subject export service', () => {
         expect.objectContaining({
           fieldName: 'owner_hsa_id',
           value: TARGET_HSA_ID,
+        }),
+      ]),
+    )
+  })
+
+  it('exports unassigned local responsibility person identity data', async () => {
+    const { db } = createExportDb({
+      'requirement_responsibility_people.identity': [
+        {
+          email: 'rolf.retentionorphan@example.test',
+          givenName: 'Rolf',
+          hsaId: TARGET_HSA_ID,
+          lastFetchedAt: new Date('2023-01-15T09:00:00Z'),
+          middleName: null,
+          surname: 'RetentionOrphan',
+          updatedAt: new Date('2023-01-15T09:00:00Z'),
+        },
+      ],
+    })
+
+    const result = await collectDataSubjectExport(db, {
+      generatedBy: generatedBy(),
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(result.sources).toEqual([
+      expect.objectContaining({
+        key: 'requirement_responsibility_people.identity',
+        relationToSubject: 'requirement_responsibility_person',
+      }),
+    ])
+    expect(result.sources[0].items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldName: 'hsa_id',
+          value: TARGET_HSA_ID,
+        }),
+        expect.objectContaining({
+          fieldName: 'given_name',
+          value: 'Rolf',
+        }),
+        expect.objectContaining({
+          fieldName: 'email',
+          value: 'rolf.retentionorphan@example.test',
         }),
       ]),
     )
