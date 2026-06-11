@@ -441,8 +441,8 @@ describe('RequirementPackagesClient', () => {
     )
     expect(requirementPackageLeadHsaIdInput()).toBeInTheDocument()
     expect(
-      screen.getByRole('textbox', { name: /common\.hsaVerifyEmail/ }),
-    ).toHaveValue('anna.owner@example.test')
+      screen.getByText('Anna Owner (anna.owner@example.test)'),
+    ).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })

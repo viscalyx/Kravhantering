@@ -71,11 +71,11 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     employeeHsaId: 'SE5560000001-linneab',
     roles: [],
   },
-  SpecificationResp: {
+  specresp: {
     sub: 'mock-specresp-sub',
     given_name: 'Petra',
-    family_name: 'SpecificationResp',
-    name: 'Petra SpecificationResp',
+    family_name: 'specresp',
+    name: 'Petra specresp',
     email: 'petra.specresp@example.test',
     preferred_username: 'petra.specresp',
     employeeHsaId: 'SE5560000001-specresp1',

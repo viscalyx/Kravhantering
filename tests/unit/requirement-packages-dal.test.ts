@@ -206,7 +206,7 @@ describe('requirement-packages DAL', () => {
         displayName: 'Ada Admin',
         hsaId: 'SE5560000001-admin1',
       },
-      coAuthorHsaIds: ['SE5560000001-new1'],
+      coAuthorHsaIds: [' SE5560000001-new1 ', ' ', 'SE5560000001-new1'],
       coAuthorPeople: [
         {
           email: 'new@example.test',

@@ -160,9 +160,9 @@
     {
       "hsaIdentity": "SE5560000001-specresp1",
       "givenName": "Petra",
-      "sn": "SpecificationResp",
+      "sn": "specresp",
       "mail": "petra.specresp@example.test",
-      "DN": "cn=Petra SpecificationResp,ou=dev-auth,o=kravhantering,c=se",
+      "DN": "cn=Petra specresp,ou=dev-auth,o=kravhantering,c=se",
       "purposes": ["Dev-auth-person för kravunderlagsansvarig."]
     },
     {

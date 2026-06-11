@@ -97,20 +97,27 @@ export const POST = secureMutationRoute({
       db,
       body.coAuthorHsaIds,
     )
-    const requirementPackage = await createRequirementPackage(db, {
-      ...body,
-      createdBy: actor,
-      coAuthorPeople,
-      leadHsaId: actor.hsaId,
-      leadPerson,
-    })
-    await recordAllowedActionAuditEvent(db, context, {
-      action: 'requirement_package.create',
-      details: {
-        changedFields: ['leadHsaId', ...Object.keys(body)],
-      },
-      targetId: requirementPackage.id,
-      targetKind: 'requirement_package',
+    const requirementPackage = await db.transaction(async manager => {
+      const createdRequirementPackage = await createRequirementPackage(
+        manager,
+        {
+          ...body,
+          createdBy: actor,
+          coAuthorPeople,
+          leadHsaId: actor.hsaId,
+          leadPerson,
+        },
+        { useExistingTransaction: true },
+      )
+      await recordAllowedActionAuditEvent(manager, context, {
+        action: 'requirement_package.create',
+        details: {
+          changedFields: ['leadHsaId', ...Object.keys(body)],
+        },
+        targetId: createdRequirementPackage.id,
+        targetKind: 'requirement_package',
+      })
+      return createdRequirementPackage
     })
     return NextResponse.json(requirementPackage, { status: 201 })
   },

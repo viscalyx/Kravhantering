@@ -282,8 +282,9 @@ export async function updateArea(
       `,
       [id],
     )) as Array<{ ownerHsaId: string }>
-    await upsertRequirementResponsibilityPerson(manager, ownerPerson)
     const updated = await updateAreaFields(manager, id, data)
+    if (!updated) return undefined
+    await upsertRequirementResponsibilityPerson(manager, ownerPerson)
     await cleanupUnassignedRequirementResponsibilityPeople(
       manager,
       oldRows.map(row => row.ownerHsaId),

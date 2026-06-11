@@ -300,7 +300,7 @@ describe('privacy erasure service', () => {
   })
 
   it('allows only skip for a requirement package lead when no replacement exists', async () => {
-    const { db } = createPrivacyDb({
+    const { db, query } = createPrivacyDb({
       'requirement_packages.owner': {
         affectedValues: ['SPR Språkstöd'],
         count: 1,
@@ -322,6 +322,22 @@ describe('privacy erasure service', () => {
         recommendedAction: 'skip',
       }),
     ])
+
+    query.mockClear()
+
+    await executePrivacyErasure(createTransactionalDb(query), {
+      actions: { 'requirement_packages.owner': 'skip' },
+      previewToken: preview.previewToken,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(
+      query.mock.calls.some(
+        ([sql, parameters]) =>
+          String(sql).includes('DELETE person') &&
+          parameters?.[0] === TARGET_HSA_ID,
+      ),
+    ).toBe(true)
   })
 
   it('allows package-lead switching when the target is not an owner row', async () => {
@@ -364,6 +380,17 @@ describe('privacy erasure service', () => {
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE requirement_packages'),
       [TARGET_HSA_ID, replacement.hsaId, expect.any(Date)],
+    )
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('MERGE INTO requirement_responsibility_people'),
+      [
+        replacement.hsaId,
+        replacement.displayName,
+        null,
+        null,
+        null,
+        expect.any(Date),
+      ],
     )
     expect(result.actions.switch).toBe(1)
   })

@@ -1,3 +1,4 @@
+import { isHsaId } from '@/lib/auth/hsa-id'
 import {
   getRequirementResponsibilityPerson,
   upsertRequirementResponsibilityPerson,
@@ -30,6 +31,13 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+function assertValidNormalizedHsaId(normalizedHsaId: string): void {
+  if (isHsaId(normalizedHsaId)) return
+  throw validationError('Expected a valid HSA-ID', {
+    reason: 'invalid_hsa_id',
+  })
+}
+
 export function toRequirementResponsibilityPersonVerificationPayload(
   person: RequirementResponsibilityPersonRecord,
 ): RequirementResponsibilityPersonVerificationPayload {
@@ -45,6 +53,7 @@ export async function verifyRequirementResponsibilityPerson(
   mode: RequirementResponsibilityPersonVerificationMode,
 ): Promise<RequirementResponsibilityPersonRecord> {
   const normalizedHsaId = hsaId.trim()
+  assertValidNormalizedHsaId(normalizedHsaId)
 
   if (mode === 'reuse_local') {
     const existing = await getRequirementResponsibilityPerson(
@@ -65,6 +74,7 @@ export async function resolveVerifiedRequirementResponsibilityPerson(
   options: ResolveVerifiedPersonOptions = {},
 ): Promise<RequirementResponsibilityPersonRecord> {
   const normalizedHsaId = hsaId.trim()
+  assertValidNormalizedHsaId(normalizedHsaId)
   const firstRead = await getRequirementResponsibilityPerson(
     db,
     normalizedHsaId,

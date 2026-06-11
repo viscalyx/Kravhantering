@@ -74,7 +74,7 @@
       "email": "petra.specresp@example.test",
       "emailVerified": true,
       "firstName": "Petra",
-      "lastName": "SpecificationResp",
+      "lastName": "specresp",
       "attributes": {
         "hsaId": ["SE5560000001-specresp1"]
       },

@@ -83,6 +83,26 @@ describe('SpecificationEditPanel', () => {
     expect(form).toHaveAttribute('data-developer-mode-value', 'edit')
   })
 
+  it('keeps responsible AI generation enabled when display name is missing', () => {
+    render(
+      <SpecificationEditPanel
+        governanceObjectTypes={governanceObjectTypes}
+        implementationTypes={implementationTypes}
+        lifecycleStatuses={lifecycleStatuses}
+        onCancel={() => {}}
+        onSaved={() => {}}
+        spec={{ ...spec, responsibleDisplayName: null }}
+        specificationSlug="ETJANST-UPP-2026"
+      />,
+    )
+
+    expect(
+      screen.getByRole('checkbox', {
+        name: /specification\.canResponsibleGenerateAi/,
+      }),
+    ).toBeChecked()
+  })
+
   it('calls onCancel when the cancel button is pressed', () => {
     const onCancel = vi.fn()
 

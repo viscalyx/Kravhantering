@@ -86,6 +86,9 @@ export default function HsaPersonVerifyField({
 
   useEffect(() => {
     currentHsaIdRef.current = trimmedHsaId
+    setError(null)
+    setLoading(false)
+    setVerification(null)
   }, [trimmedHsaId])
 
   const verifyPerson = async (mode: 'refresh' | 'reuse_local') => {
@@ -108,6 +111,7 @@ export default function HsaPersonVerifyField({
         },
       )
       if (!response.ok) {
+        if (currentHsaIdRef.current !== requestedHsaId) return
         setError((await readResponseMessage(response)) ?? errorFallback)
         return
       }
@@ -115,6 +119,7 @@ export default function HsaPersonVerifyField({
         person?: HsaPersonVerification
       }
       if (!payload.person) {
+        if (currentHsaIdRef.current !== requestedHsaId) return
         setError(errorFallback)
         return
       }
@@ -122,9 +127,12 @@ export default function HsaPersonVerifyField({
       setVerification(payload.person)
       onVerified?.(payload.person)
     } catch {
+      if (currentHsaIdRef.current !== requestedHsaId) return
       setError(errorFallback)
     } finally {
-      setLoading(false)
+      if (currentHsaIdRef.current === requestedHsaId) {
+        setLoading(false)
+      }
     }
   }
 

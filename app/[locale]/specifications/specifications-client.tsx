@@ -550,9 +550,7 @@ export default function RequirementsSpecificationsClient({
       responsibleHsaId: spec.responsibleHsaId ?? '',
       responsiblePersonVerification: null,
       canResponsibleGenerateAi:
-        spec.responsibleHsaId != null &&
-        spec.responsibleDisplayName != null &&
-        spec.canResponsibleGenerateAi,
+        spec.responsibleHsaId != null && spec.canResponsibleGenerateAi,
     })
     setShowForm(true)
   }

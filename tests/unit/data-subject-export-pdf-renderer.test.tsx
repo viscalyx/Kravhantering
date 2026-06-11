@@ -165,6 +165,27 @@ function exportPayload(): DataSubjectExportV1 {
         table: 'requirement_versions',
       },
       {
+        fieldKey: 'principal',
+        items: [
+          {
+            fieldName: 'scope_type',
+            relatedObject: {
+              key: '42:7',
+              label: 'access_review_item:42:7',
+              type: 'access_review_item',
+            },
+            relationToSubject: 'access_review_principal',
+            sourceKey: 'access_review_items.principal',
+            table: 'access_review_items',
+            value: 'requirement_package',
+          },
+        ],
+        key: 'access_review_items.principal',
+        objectKey: 'accessReviewItems',
+        relationToSubject: 'access_review_principal',
+        table: 'access_review_items',
+      },
+      {
         fieldKey: 'actor',
         items: [
           {
@@ -215,9 +236,9 @@ function exportPayload(): DataSubjectExportV1 {
       targetFingerprint: '0123456789abcdef0123456789abcdef',
     },
     summary: {
-      itemCount: 12,
+      itemCount: 13,
       limitationCount: 2,
-      sourceCount: 5,
+      sourceCount: 6,
     },
   }
 }
@@ -273,6 +294,7 @@ describe('DataSubjectExportPdfRenderer', () => {
 
     expect(text).toContain('Export av personuppgifter')
     expect(text).toContain('Aktiva uppdrag')
+    expect(text).toContain('Kravpaket')
     expect(text).toContain('Kravområde')
     expect(text).toContain('Skapad av')
     expect(text).toContain('Ja')
@@ -297,6 +319,7 @@ describe('DataSubjectExportPdfRenderer', () => {
 
     expect(text).toContain('Personal data export')
     expect(text).toContain('Active assignments')
+    expect(text).toContain('Requirements package')
     expect(text).toContain('Requirement area')
     expect(text).toContain('Created by')
     expect(text).toContain('Yes')

@@ -358,6 +358,35 @@ describe('seed profiles', () => {
     expect(matchingPackages[0]).toMatchObject({ id: 5 })
   })
 
+  it('seeds requirement package co-author relationships', async () => {
+    const { executor, rows } = collectSeedInsertRows()
+
+    await seedDemoDatabase(executor)
+
+    const packageIds = new Set(
+      seedRowsFor(rows, 'requirement_packages').map(row => row.id),
+    )
+    const responsibilityPersonHsaIds = new Set(
+      seedRowsFor(rows, 'requirement_responsibility_people').map(
+        row => row.hsa_id,
+      ),
+    )
+    const coAuthors = seedRowsFor(rows, 'requirement_package_co_authors')
+
+    expect(coAuthors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          hsa_id: 'SE5560000001-pkgco1',
+          requirement_package_id: 1,
+        }),
+      ]),
+    )
+    for (const coAuthor of coAuthors) {
+      expect(packageIds.has(coAuthor.requirement_package_id)).toBe(true)
+      expect(responsibilityPersonHsaIds.has(coAuthor.hsa_id)).toBe(true)
+    }
+  })
+
   it('seeds Linnea privacy data with decisions and improvement suggestions', async () => {
     const { executor, rows } = collectSeedInsertRows()
 

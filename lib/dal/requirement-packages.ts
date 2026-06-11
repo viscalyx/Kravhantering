@@ -126,7 +126,13 @@ function mapRequirementPackageCoAuthorRow(
 }
 
 function uniqueHsaIds(hsaIds: string[] | undefined): string[] {
-  return [...new Set((hsaIds ?? []).map(hsaId => hsaId.trim()))]
+  return [...new Set((hsaIds ?? []).map(hsaId => hsaId.trim()).filter(Boolean))]
+}
+
+function canStartTransaction(
+  db: QueryExecutor,
+): db is QueryExecutor & Pick<SqlServerDatabase, 'transaction'> {
+  return typeof (db as Partial<SqlServerDatabase>).transaction === 'function'
 }
 
 async function listRequirementPackageCoAuthors(
@@ -348,7 +354,7 @@ export async function getRequirementPackageUsage(
 }
 
 export async function createRequirementPackage(
-  db: SqlServerDatabase,
+  db: SqlServerDatabase | QueryExecutor,
   data: {
     coAuthorHsaIds?: string[]
     coAuthorPeople?: RequirementResponsibilityPersonRecord[]
@@ -358,6 +364,7 @@ export async function createRequirementPackage(
     leadPerson?: RequirementResponsibilityPersonRecord
     name: string
   },
+  options: { useExistingTransaction?: boolean } = {},
 ): Promise<RequirementPackageRow> {
   const now = new Date()
   const leadPerson = data.leadPerson
@@ -406,19 +413,31 @@ export async function createRequirementPackage(
     )
   }
 
-  if (leadPerson || coAuthorPeople.length > 0 || coAuthorHsaIds.length > 0) {
+  const shouldWriteResponsibilityPeople =
+    leadPerson || coAuthorPeople.length > 0 || coAuthorHsaIds.length > 0
+  const createWithResponsibilityPeople = async (executor: QueryExecutor) => {
+    if (leadPerson) {
+      await upsertRequirementResponsibilityPerson(executor, leadPerson)
+    }
+    for (const coAuthorPerson of coAuthorPeople) {
+      await upsertRequirementResponsibilityPerson(executor, coAuthorPerson)
+    }
+    return insertPackage(executor)
+  }
+
+  if (
+    shouldWriteResponsibilityPeople &&
+    !options.useExistingTransaction &&
+    canStartTransaction(db)
+  ) {
     return db.transaction(async manager => {
-      if (leadPerson) {
-        await upsertRequirementResponsibilityPerson(manager, leadPerson)
-      }
-      for (const coAuthorPerson of coAuthorPeople) {
-        await upsertRequirementResponsibilityPerson(manager, coAuthorPerson)
-      }
-      return insertPackage(manager)
+      return createWithResponsibilityPeople(manager)
     })
   }
 
-  return insertPackage(db)
+  return shouldWriteResponsibilityPeople
+    ? createWithResponsibilityPeople(db)
+    : insertPackage(db)
 }
 
 export async function updateRequirementPackage(

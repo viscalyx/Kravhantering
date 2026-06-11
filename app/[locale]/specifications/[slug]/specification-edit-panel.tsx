@@ -73,9 +73,7 @@ function buildFormState(
   return {
     businessNeedsReference: spec.businessNeedsReference ?? '',
     canResponsibleGenerateAi:
-      spec.responsibleHsaId != null &&
-      spec.responsibleDisplayName != null &&
-      spec.canResponsibleGenerateAi,
+      spec.responsibleHsaId != null && spec.canResponsibleGenerateAi,
     name: spec.name,
     responsibleDisplayName: responsibleDisplayName ?? '',
     responsibleHsaId: spec.responsibleHsaId ?? '',

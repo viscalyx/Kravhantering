@@ -727,7 +727,9 @@ function personFromReplacement(
   return {
     email: replacement.email ?? null,
     givenName:
-      replacement.firstName ?? REQUIREMENT_RESPONSIBILITY_PERSON_MISSING_NAME,
+      replacement.firstName ??
+      replacement.displayName ??
+      REQUIREMENT_RESPONSIBILITY_PERSON_MISSING_NAME,
     hsaId: replacement.hsaId,
     middleName: null,
     surname: replacement.lastName ?? null,
@@ -1083,7 +1085,7 @@ export async function executePrivacyErasure(
           target.hsaId,
           replacement,
         )
-        if (action !== 'skip' && usesRequirementResponsibilityPerson(policy)) {
+        if (usesRequirementResponsibilityPerson(policy)) {
           responsibilityPersonCleanupHsaIds.add(target.hsaId)
         }
       }
@@ -1095,7 +1097,7 @@ export async function executePrivacyErasure(
       const action = actions[group.key] ?? group.recommendedAction
       if (policy.kind !== 'ownerReference') {
         await applyDirectHsaGroup(tx, policy, action, target.hsaId, replacement)
-        if (action !== 'skip' && usesRequirementResponsibilityPerson(policy)) {
+        if (usesRequirementResponsibilityPerson(policy)) {
           responsibilityPersonCleanupHsaIds.add(target.hsaId)
         }
       }

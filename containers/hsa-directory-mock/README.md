@@ -161,7 +161,7 @@ Kravansvarstilldelningar.
   Dev-auth requirement-area owner fixture.
 - `SE5560000001-areaco1`: Cora CoAuthor.
   Dev-auth requirement-area co-author fixture.
-- `SE5560000001-specresp1`: Petra SpecificationResp.
+- `SE5560000001-specresp1`: Petra specresp.
   Dev-auth specification lead fixture.
 - `SE5560000001-pkgco1`: Paul PkgCoAuthor.
   Dev-auth requirement-package co-author fixture.

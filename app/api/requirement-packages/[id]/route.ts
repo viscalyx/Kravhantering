@@ -119,7 +119,11 @@ export const PUT = secureMutationRoute({
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     const nextLeadHsaId = body.leadHsaId ?? existing.leadHsaId
-    if (body.coAuthorHsaIds?.includes(nextLeadHsaId)) {
+    const effectiveCoAuthorIds =
+      body.coAuthorHsaIds ??
+      existing.coAuthors?.map(coAuthor => coAuthor.hsaId) ??
+      []
+    if (effectiveCoAuthorIds.includes(nextLeadHsaId)) {
       throw validationError('Package lead cannot also be package co-author', {
         reason: 'package_lead_cannot_be_co_author',
       })

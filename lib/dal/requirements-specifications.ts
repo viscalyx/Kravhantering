@@ -784,26 +784,11 @@ async function updateSpecificationFields(
 
   const row = rows[0]
   if (!row) return null
-  return {
-    id: Number(row.id),
-    uniqueId: String(row.uniqueId),
-    name: String(row.name),
-    specificationGovernanceObjectTypeId: toNum(
-      row.specificationGovernanceObjectTypeId,
-    ),
-    specificationImplementationTypeId: toNum(
-      row.specificationImplementationTypeId,
-    ),
-    specificationLifecycleStatusId: toNum(row.specificationLifecycleStatusId),
-    businessNeedsReference: toStr(row.businessNeedsReference),
-    responsibleHsaId: toStr(row.responsibleHsaId),
-    responsibleDisplayName: data.responsiblePerson
-      ? formatRequirementResponsibilityPersonName(data.responsiblePerson)
-      : null,
-    canResponsibleGenerateAi: toBool(row.canResponsibleGenerateAi),
-    createdAt: toIso(row.createdAt) ?? '',
-    updatedAt: toIso(row.updatedAt) ?? '',
-  }
+  const updatedRows = (await db.query(
+    `${SPECIFICATION_SELECT_WITH_JOINS} WHERE specification_record.id = @0`,
+    [Number(row.id)],
+  )) as Row[]
+  return mapSpecificationRow(updatedRows[0])
 }
 
 export async function updateSpecification(

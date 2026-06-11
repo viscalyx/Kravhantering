@@ -3,6 +3,7 @@ import {
   canAuthorArea,
   createArea,
   listAreasActorCanAuthor,
+  updateArea,
 } from '@/lib/dal/requirement-areas'
 
 function createSqlServerDb() {
@@ -77,5 +78,36 @@ describe('requirement-areas DAL', () => {
     expect(query.mock.calls[0][0]).toContain('requirement_area_co_authors')
     expect(query.mock.calls[0][0]).toContain('co_author.hsa_id = @1')
     expect(query.mock.calls[0][1]).toEqual([11, 'SE5560000001-owner1'])
+  })
+
+  it('does not upsert a responsibility person when updating a missing area', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ ownerHsaId: 'SE5560000001-old1' }])
+      .mockResolvedValueOnce([])
+    const manager = { query }
+    const db = {
+      transaction: vi.fn(async callback => callback(manager)),
+    } as unknown as Parameters<typeof updateArea>[0]
+
+    await expect(
+      updateArea(db, 99, {
+        ownerHsaId: 'SE5560000001-new1',
+        ownerPerson: {
+          email: 'new.owner@example.test',
+          givenName: 'New',
+          hsaId: 'SE5560000001-new1',
+          middleName: null,
+          surname: 'Owner',
+        },
+      }),
+    ).resolves.toBeUndefined()
+
+    expect(query).toHaveBeenCalledTimes(2)
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('MERGE INTO requirement_responsibility_people'),
+      ),
+    ).toBe(false)
   })
 })

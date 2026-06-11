@@ -112,6 +112,26 @@ describe('responsibility person verification', () => {
     expect(mocks.lookupHsaPerson).not.toHaveBeenCalled()
   })
 
+  it('fails invalid HSA-ID formats before local reads or retry delay', async () => {
+    await expect(
+      resolveVerifiedRequirementResponsibilityPerson(
+        'mock-db' as never,
+        'not-a-valid-hsa-id',
+        { retryDelayMs: 10_000 },
+      ),
+    ).rejects.toSatisfy(error => {
+      expect(isRequirementsServiceError(error)).toBe(true)
+      if (isRequirementsServiceError(error)) {
+        expect(error.code).toBe('validation')
+        expect(error.details).toMatchObject({ reason: 'invalid_hsa_id' })
+      }
+      return true
+    })
+
+    expect(mocks.getRequirementResponsibilityPerson).not.toHaveBeenCalled()
+    expect(mocks.lookupHsaPerson).not.toHaveBeenCalled()
+  })
+
   it('retries the local table once before failing save validation', async () => {
     mocks.getRequirementResponsibilityPerson
       .mockResolvedValueOnce(null)

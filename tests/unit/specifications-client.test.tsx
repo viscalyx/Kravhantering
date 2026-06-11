@@ -862,6 +862,48 @@ describe('RequirementsSpecificationsClient', () => {
     ).toBeChecked()
   })
 
+  it('keeps responsible AI generation enabled on edit when display name is missing', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/specifications')
+        return Promise.resolve(
+          okJson({
+            specifications: [
+              {
+                ...sampleSpecifications[0],
+                responsibleDisplayName: null,
+              },
+            ],
+          }),
+        )
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      if (url === '/api/specification-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<RequirementsSpecificationsClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
+    })
+
+    fireEvent.click(
+      screen.getAllByRole('button', {
+        name: /common\.edit/i,
+      })[0],
+    )
+
+    expect(
+      screen.getByRole('checkbox', {
+        name: /specification\.canResponsibleGenerateAi/,
+      }),
+    ).toBeChecked()
+  })
+
   it('closes form on cancel', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {

@@ -57,6 +57,11 @@ const auditState = vi.hoisted(() => ({
   recordAdminPrivilegedActionSucceeded: vi.fn(),
 }))
 
+const actionAuditState = vi.hoisted(() => ({
+  recordAllowedActionAuditEvent: vi.fn(async () => undefined),
+  recordDeniedActionAuditEvent: vi.fn(async () => undefined),
+}))
+
 const requirementsRuntimeState = vi.hoisted(() => {
   const listSpecifications = vi.fn(async () => ({
     message: 'ok',
@@ -124,8 +129,8 @@ vi.mock('@/lib/admin/privileged-audit', () => ({
 }))
 
 vi.mock('@/lib/audit/action-audit', () => ({
-  recordAllowedActionAuditEvent: vi.fn(),
-  recordDeniedActionAuditEvent: vi.fn(),
+  recordAllowedActionAuditEvent: actionAuditState.recordAllowedActionAuditEvent,
+  recordDeniedActionAuditEvent: actionAuditState.recordDeniedActionAuditEvent,
 }))
 
 vi.mock('@/lib/audit/requirement-selection-cleanup-audit', () => ({
@@ -245,13 +250,25 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
   isSlugTaken: async () => false,
 }))
 
+const mockCreateRequirementPackage = vi.fn(async (..._args: unknown[]) => ({
+  id: 2,
+}))
 const mockUpdateRequirementPackage = vi.fn()
 const mockDeleteRequirementPackage = vi.fn()
 const mockArchiveRequirementPackage = vi.fn()
 const mockGetRequirementPackageById = vi.fn(
   async (
     ..._args: unknown[]
-  ): Promise<{ id: number; leadHsaId: string } | null> => ({
+  ): Promise<{
+    coAuthors?: Array<{
+      createdAt: string
+      displayName: string
+      email: string | null
+      hsaId: string
+    }>
+    id: number
+    leadHsaId: string
+  } | null> => ({
     id: 1,
     leadHsaId: 'SE5560000001-route',
   }),
@@ -259,7 +276,8 @@ const mockGetRequirementPackageById = vi.fn(
 vi.mock('@/lib/dal/requirement-packages', () => ({
   listRequirementPackages: async () => [{ id: 1 }],
   countLinkedRequirementsByPackage: async () => ({}),
-  createRequirementPackage: async () => ({ id: 2 }),
+  createRequirementPackage: (...a: unknown[]) =>
+    mockCreateRequirementPackage(...a),
   getLinkedRequirementsForPackage: async () => [],
   getRequirementPackageById: (...a: unknown[]) =>
     mockGetRequirementPackageById(...a),
@@ -583,6 +601,22 @@ describe('requirement responsibility person verify route', () => {
     expect(
       specificationPermissionState.canAuthorSpecification,
     ).toHaveBeenCalledWith(expect.anything(), 9, 'SE5560000001-route', false)
+    expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+  })
+
+  it('requires scope for specification responsibility verification before lookup', async () => {
+    const r = await postRequirementResponsibilityPersonVerify(
+      jsonReq('POST', {
+        hsaId: 'SE5560000001-spec1',
+        mode: 'refresh',
+        purpose: 'requirements_specification_responsible',
+      }),
+    )
+
+    expect(r.status).toBe(403)
+    expect(
+      specificationPermissionState.canAuthorSpecification,
+    ).not.toHaveBeenCalled()
     expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
   })
 })
@@ -1260,6 +1294,35 @@ describe('requirement-packages routes', () => {
     )
     expect(r.status).toBe(201)
   })
+  it('POST creates requirement package and audit row in one transaction', async () => {
+    const r = await postRequirementPackage(
+      new Request('http://l', {
+        method: 'POST',
+        body: '{"name":"A","coAuthorHsaIds":["SE5560000001-coa1"]}',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    expect(r.status).toBe(201)
+    expect(routeState.transaction).toHaveBeenCalledTimes(1)
+    expect(mockCreateRequirementPackage).toHaveBeenCalledWith(
+      routeState.transactionDb,
+      expect.objectContaining({
+        coAuthorHsaIds: ['SE5560000001-coa1'],
+        name: 'A',
+      }),
+      { useExistingTransaction: true },
+    )
+    expect(actionAuditState.recordAllowedActionAuditEvent).toHaveBeenCalledWith(
+      routeState.transactionDb,
+      expect.anything(),
+      expect.objectContaining({
+        action: 'requirement_package.create',
+        targetId: 2,
+        targetKind: 'requirement_package',
+      }),
+    )
+  })
   it('POST returns 400 for invalid payload', async () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
@@ -1279,6 +1342,31 @@ describe('requirement-packages routes', () => {
       makeParams('1'),
     )
     expect(((await r.json()) as { id: number }).id).toBe(1)
+  })
+  it('PUT rejects changing the lead to an existing persisted co-author', async () => {
+    mockGetRequirementPackageById.mockResolvedValueOnce({
+      coAuthors: [
+        {
+          createdAt: '2026-05-02T08:00:00.000Z',
+          displayName: 'Co Author',
+          email: null,
+          hsaId: 'SE5560000001-coa1',
+        },
+      ],
+      id: 1,
+      leadHsaId: 'SE5560000001-lead1',
+    })
+
+    const r = await putRequirementPackage(
+      jsonReq('PUT', { leadHsaId: 'SE5560000001-coa1' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(400)
+    await expect(r.json()).resolves.toMatchObject({
+      error: 'Package lead cannot also be package co-author',
+    })
+    expect(mockUpdateRequirementPackage).not.toHaveBeenCalled()
   })
   it('PUT returns 400 for empty updates', async () => {
     const r = await putRequirementPackage(jsonReq('PUT', {}), makeParams('1'))

@@ -634,10 +634,12 @@ const PERMISSION_LABELS: Record<LocaleKey, Record<string, string>> = {
 const SCOPE_LABELS: Record<LocaleKey, Record<string, string>> = {
   en: {
     requirement_area: 'Requirement area',
+    requirement_package: 'Requirements package',
     requirements_specification: 'Requirements specification',
   },
   sv: {
     requirement_area: 'Kravområde',
+    requirement_package: 'Kravpaket',
     requirements_specification: 'Kravunderlag',
   },
 }

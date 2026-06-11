@@ -33,6 +33,7 @@ describe('devcontainer Kong helper', () => {
   it('detects running services from state or status fields', () => {
     expect(isRunning({ State: 'running' })).toBe(true)
     expect(isRunning({ Status: 'Up 5 seconds (healthy)' })).toBe(true)
+    expect(isRunning({ Status: 'setup failed' })).toBe(false)
     expect(isRunning({ State: 'exited', Status: 'Exited (0)' })).toBe(false)
     expect(isRunning(null)).toBe(false)
   })

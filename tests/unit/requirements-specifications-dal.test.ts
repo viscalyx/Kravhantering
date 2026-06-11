@@ -277,6 +277,24 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           updatedAt: new Date('2026-04-21T10:00:00.000Z'),
         },
       ])
+      .mockResolvedValueOnce([
+        {
+          id: 11,
+          uniqueId: 'SPEC-011',
+          name: 'Specification Eleven Updated',
+          specificationGovernanceObjectTypeId: 2,
+          specificationImplementationTypeId: null,
+          specificationLifecycleStatusId: 4,
+          businessNeedsReference: null,
+          responsibleHsaId: null,
+          responsibleGivenName: null,
+          responsibleMiddleName: null,
+          responsibleSurname: null,
+          canResponsibleGenerateAi: 0,
+          createdAt: new Date('2026-04-20T10:00:00.000Z'),
+          updatedAt: new Date('2026-04-21T10:00:00.000Z'),
+        },
+      ])
       .mockResolvedValueOnce([])
 
     const created = await createSpecification(db, {
@@ -351,6 +369,60 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       4,
       expect.stringContaining('UPDATE requirements_specifications'),
       ['Specification Eleven Updated', null, null, 0, expect.any(Date), 11],
+    )
+  })
+
+  it('preserves responsible display name when partial updates omit responsibility fields', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          id: 11,
+          uniqueId: 'SPEC-011',
+          name: 'Specification Eleven Updated',
+          specificationGovernanceObjectTypeId: 2,
+          specificationImplementationTypeId: null,
+          specificationLifecycleStatusId: 4,
+          businessNeedsReference: 'Need',
+          responsibleHsaId: 'SE5560000001-ada1',
+          canResponsibleGenerateAi: 1,
+          createdAt: new Date('2026-04-20T10:00:00.000Z'),
+          updatedAt: new Date('2026-04-21T10:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 11,
+          uniqueId: 'SPEC-011',
+          name: 'Specification Eleven Updated',
+          specificationGovernanceObjectTypeId: 2,
+          specificationImplementationTypeId: null,
+          specificationLifecycleStatusId: 4,
+          businessNeedsReference: 'Need',
+          responsibleHsaId: 'SE5560000001-ada1',
+          responsibleGivenName: 'Ada',
+          responsibleMiddleName: null,
+          responsibleSurname: 'Admin',
+          canResponsibleGenerateAi: 1,
+          createdAt: new Date('2026-04-20T10:00:00.000Z'),
+          updatedAt: new Date('2026-04-21T10:00:00.000Z'),
+        },
+      ])
+
+    const updated = await updateSpecification(db, 11, {
+      name: 'Specification Eleven Updated',
+    })
+
+    expect(updated).toMatchObject({
+      id: 11,
+      name: 'Specification Eleven Updated',
+      responsibleDisplayName: 'Ada Admin',
+      responsibleHsaId: 'SE5560000001-ada1',
+    })
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('FROM requirements_specifications'),
+      [11],
     )
   })
 

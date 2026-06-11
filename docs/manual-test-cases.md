@@ -115,7 +115,7 @@ and must not be reused outside local testing.
 | `olle.areaowner` | `devpass` | Olle AreaOwner | None | `SE5560000001-areaowner1` | Requirement-area owner assignment checks. |
 | `cora.coauthor` | `devpass` | Cora CoAuthor | None | `SE5560000001-areaco1` | Requirement-area co-author checks. |
 | `linnea.areaowner` | `devpass` | Linnéa AreaOwner | None | `SE5560000001-linneab` | Broad privacy preview fixture and requirement area ownership checks. |
-| `petra.specresp` | `devpass` | Petra SpecificationResp | None | `SE5560000001-specresp1` | Specification lead checks. |
+| `petra.specresp` | `devpass` | Petra specresp | None | `SE5560000001-specresp1` | Specification lead checks. |
 | `paul.pkgcoauthor` | `devpass` | Paul PkgCoAuthor | None | `SE5560000001-pkgco1` | Requirement-package co-author checks. |
 | `rita.reviewer` | `devpass` | Rita Reviewer | `Reviewer` | `SE5560000001-reviewer1` | Review-workflow checks outside privileged Admin Center tabs. |
 | `ada.admin` | `devpass` | Ada Admin | `Admin`, `PrivacyOfficer` | `SE5560000001-admin1` | Broad Admin and PrivacyOfficer happy path. |

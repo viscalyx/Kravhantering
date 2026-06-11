@@ -87,7 +87,7 @@ export function forbiddenError(
 export function serviceUnavailableError(
   message = 'A required service is unavailable',
   details?: Record<string, unknown>,
-) {
+): RequirementsServiceError {
   return createRequirementsError('service_unavailable', message, details)
 }
 

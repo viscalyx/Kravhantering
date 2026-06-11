@@ -29,12 +29,6 @@ export function normalizeResponsibleDisplayName(
   return trimmed.length > 0 ? trimmed : null
 }
 
-export function hasIncompleteResponsiblePerson(
-  _input: SpecificationResponsiblePersonInput,
-): boolean {
-  return false
-}
-
 export function normalizeSpecificationResponsiblePersonInput<
   T extends SpecificationResponsiblePersonInput,
 >(input: T, options: SpecificationResponsiblePersonNormalizeOptions = {}): T {

@@ -60,7 +60,7 @@ export function parseComposeJson(output) {
 export function isRunning(row) {
   const state = String(row?.State ?? row?.state ?? '').toLowerCase()
   const status = String(row?.Status ?? row?.status ?? '').toLowerCase()
-  return state === 'running' || status.includes('up')
+  return state === 'running' || status === 'up' || status.startsWith('up ')
 }
 
 function runningService(profile, serviceName) {

@@ -12079,7 +12079,29 @@ const SEED_DATA = {
       'created_by_display_name',
     ],
     pk: ['requirement_package_id', 'hsa_id'],
-    rows: [],
+    rows: [
+      [
+        1,
+        'SE5560000001-pkgco1',
+        '2026-04-20 20:07:00',
+        'SE5560000001-admin1',
+        'Ada Admin',
+      ],
+      [
+        2,
+        'SE5560000001-2002',
+        '2026-04-20 20:07:00',
+        'SE5560000001-admin1',
+        'Ada Admin',
+      ],
+      [
+        3,
+        'SE5560000001-kalle1',
+        '2026-04-20 20:07:00',
+        'SE5560000001-admin1',
+        'Ada Admin',
+      ],
+    ],
   },
   requirement_selection_question_sequences: {
     columns: ['area_id', 'next_sequence'],
@@ -12507,9 +12529,17 @@ function assertSeedHsaId(value, tableName, columnName) {
 
 function collectSeedHsaIds(hsaIds, tableName, columnName) {
   const table = SEED_DATA[tableName]
-  if (!table) return
+  if (!table) {
+    throw new Error(
+      `Privacy seed: missing seed table '${tableName}' while collecting '${columnName}'`,
+    )
+  }
   const columnIndex = table.columns.indexOf(columnName)
-  if (columnIndex < 0) return
+  if (columnIndex < 0) {
+    throw new Error(
+      `Privacy seed: table '${tableName}' lacks HSA-ID column '${columnName}'`,
+    )
+  }
   for (const row of table.rows) {
     const value = row[columnIndex]
     if (value == null || value === '') continue

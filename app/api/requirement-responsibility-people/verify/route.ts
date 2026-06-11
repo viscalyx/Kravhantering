@@ -109,10 +109,14 @@ export const POST = secureMutationRoute({
       }
 
       if (
-        (body.purpose === 'requirements_specification_responsible' ||
-          body.purpose === 'requirements_specification_co_author') &&
-        body.scopeId
+        body.purpose === 'requirements_specification_responsible' ||
+        body.purpose === 'requirements_specification_co_author'
       ) {
+        if (!body.scopeId) {
+          throw forbiddenError('Missing specification scope', {
+            reason: 'scope_required',
+          })
+        }
         const allowed = await canAuthorSpecification(
           await getDb(),
           body.scopeId,

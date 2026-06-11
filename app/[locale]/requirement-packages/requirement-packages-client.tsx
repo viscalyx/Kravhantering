@@ -62,6 +62,7 @@ interface RequirementPackageCoAuthor {
 }
 
 interface RequirementPackageCoAuthorForm {
+  clientId: string
   displayName: string
   email: string
   hsaId: string
@@ -93,6 +94,14 @@ interface LinkedRequirement {
 
 const DESCRIPTION_TRUNCATE = 80
 const REQUIREMENT_PACKAGE_TABLE_COLUMN_COUNT = 6
+let coAuthorClientIdSequence = 0
+
+const createCoAuthorClientId = () => {
+  const randomId = globalThis.crypto?.randomUUID?.()
+  if (randomId) return randomId
+  coAuthorClientIdSequence += 1
+  return `co-author-${coAuthorClientIdSequence}`
+}
 
 const getInitialForm = (): RequirementPackageForm => ({
   coAuthors: [],
@@ -108,6 +117,7 @@ const toForm = (
   requirementPackage: RequirementPackage,
 ): RequirementPackageForm => ({
   coAuthors: (requirementPackage.coAuthors ?? []).map(coAuthor => ({
+    clientId: createCoAuthorClientId(),
     displayName: coAuthor.displayName,
     email: coAuthor.email ?? '',
     hsaId: coAuthor.hsaId,
@@ -307,7 +317,13 @@ export default function RequirementPackagesClient() {
       ...previousForm,
       coAuthors: [
         ...previousForm.coAuthors,
-        { displayName: '', email: '', hsaId: '', personVerification: null },
+        {
+          clientId: createCoAuthorClientId(),
+          displayName: '',
+          email: '',
+          hsaId: '',
+          personVerification: null,
+        },
       ],
     }))
   }
@@ -476,9 +492,9 @@ export default function RequirementPackagesClient() {
       ) : (
         <div className="space-y-3">
           {controller.form.coAuthors.map((coAuthor, index) => {
-            const inputId = `requirement-package-co-author-${index}`
+            const inputId = `requirement-package-co-author-${coAuthor.clientId}`
             return (
-              <div className="rounded-xl border p-3" key={inputId}>
+              <div className="rounded-xl border p-3" key={coAuthor.clientId}>
                 <div className="flex items-start gap-3">
                   <div className="min-w-0 flex-1">
                     <FieldLabelWithHelp
@@ -525,8 +541,8 @@ export default function RequirementPackagesClient() {
                       }
                       purpose="requirement_package_co_author"
                       required
-                      showPersonSummaryAsText
                       scopeId={controller.editId ?? undefined}
+                      showPersonSummaryAsText
                       unavailableText={tc('hsaVerifyUnavailable')}
                     />
                   </div>
@@ -846,11 +862,7 @@ export default function RequirementPackagesClient() {
               : 'requirement-package-create-title'
           }
         >
-          {isEditing ? (
-            renderEditPackageForm()
-          ) : (
-            renderPackageForm()
-          )}
+          {isEditing ? renderEditPackageForm() : renderPackageForm()}
         </FormModal>
 
         {controller.loading ? (
