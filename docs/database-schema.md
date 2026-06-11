@@ -364,7 +364,6 @@ erDiagram
         integer specification_lifecycle_status_id FK
         text business_needs_reference
         text responsible_hsa_id FK
-        integer can_responsible_generate_ai "boolean"
         text created_at
         text updated_at
     }
@@ -434,7 +433,6 @@ erDiagram
         integer specification_item_status_id FK
         text note
         text status_updated_at
-        text unused_1
         text created_at
     }
 
@@ -457,7 +455,6 @@ erDiagram
     requirement_area_co_authors {
         integer area_id PK, FK
         text hsa_id PK, FK
-        integer can_generate_ai "boolean"
         text created_at
         text created_by_hsa_id
         text created_by_display_name
@@ -466,7 +463,6 @@ erDiagram
     specification_co_authors {
         integer specification_id PK, FK
         text hsa_id PK, FK
-        integer can_generate_ai "boolean"
         text created_at
         text created_by_hsa_id
         text created_by_display_name
@@ -509,7 +505,6 @@ erDiagram
         text scope_key
         text scope_label
         text permission_type
-        integer can_generate_ai "boolean"
         text decision
         text decided_at
         text decided_by_hsa_id
@@ -1411,7 +1406,6 @@ specific procurement or project.
 | `specification_lifecycle_status_id` | integer FK → `specification_lifecycle_statuses.id` | Specification lifecycle status classification (nullable) |
 | `business_needs_reference` | text | Optional free-text reference to the underlying business need |
 | `responsible_hsa_id` | text FK → `requirement_responsibility_people.hsa_id` | HSA-ID for the live specification lead (nullable) |
-| `can_responsible_generate_ai` | integer NOT NULL DEFAULT 0 | Whether the specification lead assignment may use live AI-assisted authoring |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
@@ -1562,7 +1556,6 @@ Point-in-time snapshot of one app-managed assignment in an access-review run.
 | `scope_key` | text | Stable scope identifier inside the source family |
 | `scope_label` | text | Human-readable scope label |
 | `permission_type` | text | App permission type such as requirement area owner, co-author, or specification lead |
-| `can_generate_ai` | integer NOT NULL DEFAULT 0 | Whether the assignment had app-managed AI permission at snapshot time |
 | `decision` | text | Review decision: `pending`, `approved`, `revoke_required`, `changed`, or `not_applicable` |
 | `decided_at` | text (ISO 8601) | Decision timestamp (nullable) |
 | `decided_by_hsa_id` | text | HSA-ID for the actor that recorded the decision (nullable after privacy erasure) |
@@ -1735,7 +1728,6 @@ directly and do not reference `owners`.
 | -------- | ------ | ------------- |
 | `area_id` | integer FK → `requirement_areas.id` (CASCADE DELETE), PK part 1 | Requirement area assignment |
 | `hsa_id` | text FK → `requirement_responsibility_people.hsa_id`, PK part 2 | HSA-ID for the co-author |
-| `can_generate_ai` | integer NOT NULL DEFAULT 0 | Whether this assignment may use live AI-assisted authoring |
 | `created_at` | text (ISO 8601) | Assignment creation timestamp |
 | `created_by_hsa_id` | text | HSA-ID of the actor that created the assignment (nullable after privacy erasure) |
 | `created_by_display_name` | text | Display-name snapshot for the actor that created the assignment |
@@ -1754,7 +1746,6 @@ HSA-ID directly and do not reference `owners`.
 | -------- | ------ | ------------- |
 | `specification_id` | integer FK → `requirements_specifications.id` (CASCADE DELETE), PK part 1 | Specification assignment |
 | `hsa_id` | text FK → `requirement_responsibility_people.hsa_id`, PK part 2 | HSA-ID for the co-author |
-| `can_generate_ai` | integer NOT NULL DEFAULT 0 | Whether this assignment may use live AI-assisted authoring |
 | `created_at` | text (ISO 8601) | Assignment creation timestamp |
 | `created_by_hsa_id` | text | HSA-ID of the actor that created the assignment (nullable after privacy erasure) |
 | `created_by_display_name` | text | Display-name snapshot for the actor that created the assignment |
@@ -1899,7 +1890,6 @@ Links individual requirements (pinned to a specific version) into a specificatio
 | `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Required usage status, defaults to Included (ID 1) |
 | `note` | text | Optional free-text note (nullable) |
 | `status_updated_at` | text (ISO 8601) | When the usage status was last changed (nullable) |
-| `unused_1` | text | Retired legacy column kept for migration compatibility |
 | `created_at` | text (ISO 8601) | When the item was added |
 <!-- markdownlint-enable MD013 -->
 

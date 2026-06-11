@@ -558,7 +558,7 @@ förvaltningsflikar och en administratörsflik för
    kravversionsstatusar, kravunderlagets livscykelstatusar och
    användningsstatusar.
 4. **Behörighetsöversyn** — Återkommande kontroll av
-   applikationsstyrda uppdrag och AI-behörigheter. Fliken kräver
+   applikationsstyrda uppdrag. Fliken kräver
    `Admin` eller `PrivacyOfficer`.
 5. **Arkivering** — Policybaserad gallring med förhandsgranskning,
    exportbekräftelse och undantag. Fliken kräver

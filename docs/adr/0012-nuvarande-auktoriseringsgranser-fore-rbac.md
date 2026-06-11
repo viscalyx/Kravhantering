@@ -16,7 +16,7 @@ uppdragsbaserad RBAC-modell. Dessa arbetsflöden har i dag en
 auktoriseringstjänstegräns och viss autentisering eller rollstyrning på
 route-nivå, men resource-scoped fail-closed decisions baserade på
 kravområdesägare, kravområdesmedförfattare, kravunderlagsansvariga,
-kravunderlagsmedförfattare och AI permission flags är fortsatt planerade i
+kravunderlagsmedförfattare och andra uppdrag är fortsatt planerade i
 [issue #270](https://github.com/viscalyx/Kravhantering/issues/270).
 
 När issue #270 implementeras ska denna ADR antingen ersättas av en ny ADR för

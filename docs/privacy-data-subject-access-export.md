@@ -54,8 +54,8 @@ related-object reference where one is available.
 The PDF report hides raw database field names, table names, schema identifiers,
 source keys, relation keys, and target fingerprints. It groups the collected
 data into human-readable sections such as identity and contact details, active
-assignments, co-authoring and AI access, historical traces, access reviews,
-action log entries, and important limitations.
+assignments, co-authoring, historical traces, access reviews, action log
+entries, and important limitations.
 
 The report uses the requested locale. Swedish exports use plain Swedish labels
 such as `Aktiva uppdrag`, `Kravområde`, `Skapad av`, `Ja` and `Nej`. English
