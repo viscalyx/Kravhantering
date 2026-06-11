@@ -14,16 +14,38 @@ services:
         # OIDC discovery happens lazily on first sign-in.
         condition: service_started
     volumes:
+      # Mount the root folder that contains .git
       - ../..:/workspace:cached
       # Persistent npm cache for faster installs across rebuilds (commented out - not needed for infrequent rebuilds)
       # - npm-cache:/home/vscode/.npm
+
+      # Persist SQLite state/logs within the default Codex HOME
+      - type: volume
+        source: codex-state
+        target: /home/vscode/.codex/sqlite
+
+      # Bind-mount only the subdirectories you want to persist on the host
       - type: bind
-        source: ${HOME}/.codex
-        target: /home/vscode/.codex
-        bind:
-          create_host_path: true
-      # Keep Codex runtime temp wrappers container-local.
+        source: ${HOME}/.codex/sessions
+        target: /home/vscode/.codex/sessions
+      - type: bind
+        source: ${HOME}/.codex/plugins
+        target: /home/vscode/.codex/plugins
+      - type: bind
+        source: ${HOME}/.codex/skills
+        target: /home/vscode/.codex/skills
+      - type: bind
+        source: ${HOME}/.codex/rules
+        target: /home/vscode/.codex/rules
+
+      # Re-use auth file from host
+      - type: bind
+        source: ${HOME}/.codex/auth.json
+        target: /home/vscode/.codex/auth.json
+
+      # Keep runtime temp wrappers container-local
       - codex-tmp:/home/vscode/.codex/tmp
+    # Keep container running
     command: sleep infinity
     env_file:
     # Even if we reference the parent .env here, we still need to copy it to the elevated folder because docker-compose doesn't seem to support referencing files outside the compose file's directory for env_file.
@@ -158,3 +180,4 @@ services:
 volumes:
   sqlserver-elevated-devcontainer-data:
   codex-tmp:
+  codex-state:
