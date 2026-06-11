@@ -38,17 +38,14 @@ export function normalizeSpecificationResponsiblePersonInput<
   const displayName = normalizeResponsibleDisplayName(
     input.responsibleDisplayName,
   )
-  const hasResponsibleFields = hasHsaIdField || hasDisplayNameField
-  const shouldIncludeResponsibleFields =
-    !preserveOmittedFields || hasResponsibleFields
+  const shouldIncludeDisplayName = !preserveOmittedFields || hasDisplayNameField
+  const shouldIncludeHsaId = !preserveOmittedFields || hasHsaIdField
 
   return {
     ...input,
-    ...(shouldIncludeResponsibleFields
-      ? {
-          responsibleDisplayName: displayName,
-          responsibleHsaId: hsaId,
-        }
+    ...(shouldIncludeDisplayName
+      ? { responsibleDisplayName: displayName }
       : {}),
+    ...(shouldIncludeHsaId ? { responsibleHsaId: hsaId } : {}),
   }
 }

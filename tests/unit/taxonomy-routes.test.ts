@@ -1205,7 +1205,7 @@ describe('requirement-specifications routes', () => {
       }),
     )
   })
-  it('PUT clears the specification lead fields as a pair', async () => {
+  it('PUT ignores a legacy specification lead name without HSA-ID', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
     const r = await putPkg(
       jsonReq('PUT', {
@@ -1219,10 +1219,15 @@ describe('requirement-specifications routes', () => {
       expect.anything(),
       1,
       expect.objectContaining({
-        responsibleHsaId: null,
         responsibleDisplayName: null,
       }),
     )
+    const payload = mockUpdatePkg.mock.calls[0]?.[2] as Record<string, unknown>
+    expect(payload).not.toHaveProperty('responsibleHsaId')
+    expect(payload).not.toHaveProperty('responsiblePerson')
+    expect(
+      responsibilityPersonState.getRequirementResponsibilityPerson,
+    ).not.toHaveBeenCalled()
   })
   it('PUT clears the specification lead fields as a pair using HSA-ID', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
@@ -1239,7 +1244,7 @@ describe('requirement-specifications routes', () => {
       1,
       expect.objectContaining({
         responsibleHsaId: null,
-        responsibleDisplayName: null,
+        responsiblePerson: null,
       }),
     )
   })
