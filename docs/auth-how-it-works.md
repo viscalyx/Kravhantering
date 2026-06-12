@@ -12,7 +12,7 @@ It is intentionally not a replacement for the more detailed workflow docs:
   env-var reference, see
   [auth-developer-workflow.md](./auth-developer-workflow.md).
 - For application role and permission decisions, see
-  [permissions.md](./permissions.md).
+  [behörigheter.md](./behörigheter.md).
 
 ## Reading guide
 

@@ -9,7 +9,7 @@ database-backed mutation and authorization-denial review.
 For requirement-list interaction details such as resizing, sorting, and
 filtering, see [requirements-ui-behaviour.md](./requirements-ui-behaviour.md).
 For the cross-application role matrix, see
-[permissions.md](./permissions.md).
+[behörigheter.md](./behörigheter.md).
 
 ## Purpose
 

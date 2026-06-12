@@ -161,7 +161,7 @@ Useful seeded routes and identifiers:
 - Deviation fixtures: `PWT0001`, `PWT0002`, `PWT0003`, `PWT0004`.
 - Archive fixtures: `PWT0005` through `PWT0010`.
 
-The maintained role matrix lives in [permissions.md](./permissions.md).
+The maintained role matrix lives in [behörigheter.md](./behörigheter.md).
 
 ## Authentication and authorization
 
