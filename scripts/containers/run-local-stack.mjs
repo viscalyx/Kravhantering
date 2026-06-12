@@ -4,12 +4,14 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DEFAULT_INTERNAL_NETWORK_NAME } from './generate-compose.mjs'
 import { assertStackLockSchema } from './generate-stack-lock.mjs'
+import { assertTestSupportLockSchema } from './generate-test-support-lock.mjs'
 
 // cSpell:ignore noheading
 
 export const DEFAULT_COMPOSE_FILE = 'container-stack.compose.yml'
 export const DEFAULT_LOCK_FILE = 'container-stack.lock.json'
 export const DEFAULT_STATE_FILE = 'tmp/container-stack-local-state.json'
+export const DEFAULT_TEST_SUPPORT_LOCK_FILE = 'container-test-support.lock.json'
 export const DEFAULT_TLS_DIR = './tmp/container-tls'
 export const DEFAULT_PODMAN_COMPOSE_PROVIDER = 'podman-compose'
 export const DEFAULT_PODMAN_STORAGE_DRIVER = 'vfs'
@@ -17,9 +19,15 @@ export const DEFAULT_TEST_SQLSERVER_HOST_PORT = '127.0.0.1:15433'
 export const DEFAULT_RELEASE_SMOKE_SQLSERVER_HOST_PORT = '127.0.0.1:15435'
 export const LOCAL_APP_IMAGE_NAME = 'localhost/kravhantering/app-runtime'
 export const LOCAL_DB_JOB_IMAGE_NAME = 'localhost/kravhantering/db-job'
+export const LOCAL_HSA_DIRECTORY_MOCK_IMAGE_NAME =
+  'localhost/kravhantering/hsa-directory-mock'
 export const LOCAL_IMAGE_TAG = 'local'
 export const LOCAL_APP_IMAGE = `${LOCAL_APP_IMAGE_NAME}:${LOCAL_IMAGE_TAG}`
 export const LOCAL_DB_JOB_IMAGE = `${LOCAL_DB_JOB_IMAGE_NAME}:${LOCAL_IMAGE_TAG}`
+export const LOCAL_HSA_DIRECTORY_MOCK_IMAGE = `${LOCAL_HSA_DIRECTORY_MOCK_IMAGE_NAME}:${LOCAL_IMAGE_TAG}`
+export const RELEASE_SMOKE_HSA_PERSON_LOOKUP_URL =
+  'http://kong:8000/hsa/person-records/lookup'
+export const RELEASE_SMOKE_HSA_PERSON_LOOKUP_TIMEOUT_MS = '5000'
 
 const ENV_LOCAL_FILES = [
   ['app', 'containers/app/.env.app.local'],
@@ -37,11 +45,14 @@ Options:
   --lock-file <path>     Stack lock file path
   --network-name <name>   Internal Compose network name
   --release-images-from-lock
-                         Pull app-runtime and db-job by manifest digest from the stack lock
+                         Pull project and release-smoke test support images by
+                         manifest digest from lock files
   --run-id <id>          Stable run id for ephemeral modes
   --skip-build           Reuse already built Docker images and load them into Podman
   --state-file <path>    Local state file path
   --sqlserver-host-port <value>
+  --test-lock-file <path>
+                         Test support lock file for release-smoke HSA services
   --tls-dir <path>       Runtime TLS directory
   --mode <test|release-smoke>
                          test and release-smoke use run-specific volumes`
@@ -99,6 +110,8 @@ export function parseArgs(args) {
     skipBuild,
     sqlServerHostPort: readNonEmpty(options['sqlserver-host-port']),
     stateFile: readNonEmpty(options['state-file']) ?? DEFAULT_STATE_FILE,
+    testSupportLockFile:
+      readNonEmpty(options['test-lock-file']) ?? DEFAULT_TEST_SUPPORT_LOCK_FILE,
     tlsDir: readNonEmpty(options['tls-dir']) ?? DEFAULT_TLS_DIR,
   }
 }
@@ -142,6 +155,11 @@ export function createLocalStackConfig(options = {}) {
     source: 'local-build',
     tag: LOCAL_IMAGE_TAG,
   })
+  const hsaDirectoryMockImage = readEnvImageConfig(env, 'HSA_DIRECTORY_MOCK', {
+    image: LOCAL_HSA_DIRECTORY_MOCK_IMAGE_NAME,
+    source: 'local-build',
+    tag: LOCAL_IMAGE_TAG,
+  })
 
   return {
     appRuntimeImage,
@@ -149,6 +167,8 @@ export function createLocalStackConfig(options = {}) {
     composeFile: options.composeFile ?? DEFAULT_COMPOSE_FILE,
     dbJobImage,
     dbJobImageReference: imageReference(dbJobImage),
+    hsaDirectoryMockImage,
+    hsaDirectoryMockImageReference: imageReference(hsaDirectoryMockImage),
     lockFile: options.lockFile ?? DEFAULT_LOCK_FILE,
     mode,
     networkName:
@@ -160,6 +180,8 @@ export function createLocalStackConfig(options = {}) {
     sqlServerHostPort,
     sqlServerVolumeName: `${projectName}-sqlserver-data`,
     stateFile: options.stateFile ?? DEFAULT_STATE_FILE,
+    testSupportLockFile:
+      options.testSupportLockFile ?? DEFAULT_TEST_SUPPORT_LOCK_FILE,
     tlsDir: options.tlsDir ?? DEFAULT_TLS_DIR,
   }
 }
@@ -372,6 +394,16 @@ function readStackLock(config, options = {}) {
   return stackLock
 }
 
+function readTestSupportLock(config, options = {}) {
+  const cwd = options.cwd ?? process.cwd()
+  const fsImpl = options.fsImpl ?? fs
+  const lock = JSON.parse(
+    fsImpl.readFileSync(path.resolve(cwd, config.testSupportLockFile), 'utf8'),
+  )
+  assertTestSupportLockSchema(lock, config.testSupportLockFile)
+  return lock
+}
+
 function lockedProjectService(config, serviceName, options = {}) {
   const stackLock = readStackLock(config, options)
   const service = stackLock.services?.find(item => item.name === serviceName)
@@ -389,11 +421,36 @@ function lockedProjectService(config, serviceName, options = {}) {
   return service
 }
 
+function lockedTestSupportService(config, serviceName, options = {}) {
+  const testSupportLock = readTestSupportLock(config, options)
+  const service = testSupportLock.services?.find(
+    item => item.name === serviceName,
+  )
+
+  if (
+    !service?.image ||
+    !service.tag ||
+    !service.manifestDigest ||
+    !service.imageId ||
+    !service.source
+  ) {
+    throw new Error(
+      `Missing ${serviceName} image lock in ${config.testSupportLockFile}.`,
+    )
+  }
+
+  return service
+}
+
 function withReleaseImagesFromLock(config, options = {}) {
   if (!config.releaseImagesFromLock) return config
 
   const appRuntimeImage = lockedProjectService(config, 'app-runtime', options)
   const dbJobImage = lockedProjectService(config, 'db-job', options)
+  const hsaDirectoryMockImage =
+    config.mode === 'release-smoke'
+      ? lockedTestSupportService(config, 'hsa-directory-mock', options)
+      : undefined
 
   return {
     ...config,
@@ -401,6 +458,14 @@ function withReleaseImagesFromLock(config, options = {}) {
     appRuntimeImageReference: imageManifestDigestReference(appRuntimeImage),
     dbJobImage,
     dbJobImageReference: imageManifestDigestReference(dbJobImage),
+    ...(hsaDirectoryMockImage
+      ? {
+          hsaDirectoryMockImage,
+          hsaDirectoryMockImageReference: imageManifestDigestReference(
+            hsaDirectoryMockImage,
+          ),
+        }
+      : {}),
   }
 }
 
@@ -474,7 +539,7 @@ function containerName(config, service) {
 
 function projectNameFromContainerName(name) {
   const match = String(name).match(
-    /^(kravhantering-container-stack-(?:test|release-smoke)-[^_]+)_(?:app-runtime|db-bootstrap|db-migrate|db-seed-demo|db-seed-required|keycloak|nginx|sqlserver)_\d+$/u,
+    /^(kravhantering-container-stack-(?:test|release-smoke)-[^_]+)_(?:app-runtime|db-bootstrap|db-migrate|db-seed-demo|db-seed-required|hsa-directory-mock|keycloak|kong|nginx|sqlserver)_\d+$/u,
   )
   return match?.[1] ?? null
 }
@@ -588,10 +653,47 @@ function lockedVendorImageReference(config, serviceName, options = {}) {
   return `${service.image}@${service.manifestDigest}`
 }
 
+function lockedTestSupportImageReference(config, serviceName, options = {}) {
+  const testSupportLock = readTestSupportLock(config, options)
+  const service = testSupportLock.services?.find(
+    item => item.name === serviceName,
+  )
+
+  if (!service?.image || !service.manifestDigest) {
+    throw new Error(
+      `Missing ${serviceName} image lock in ${config.testSupportLockFile}.`,
+    )
+  }
+
+  return `${service.image}@${service.manifestDigest}`
+}
+
+function lockedImageLockReference(relativePath, options = {}) {
+  const cwd = options.cwd ?? process.cwd()
+  const fsImpl = options.fsImpl ?? fs
+  const service = JSON.parse(
+    fsImpl.readFileSync(path.resolve(cwd, relativePath), 'utf8'),
+  )
+  if (!service?.image || !service.manifestDigest) {
+    throw new Error(`${relativePath} is missing image or manifestDigest.`)
+  }
+  return `${service.image}@${service.manifestDigest}`
+}
+
 function pullReleaseProjectImages(config, options = {}) {
   for (const imageRef of [
     config.appRuntimeImageReference,
     config.dbJobImageReference,
+  ]) {
+    runCommand('podman', ['pull', imageRef], options)
+  }
+}
+
+function pullReleaseTestSupportImages(config, options = {}) {
+  if (config.mode !== 'release-smoke') return
+  for (const imageRef of [
+    lockedTestSupportImageReference(config, 'kong', options),
+    config.hsaDirectoryMockImageReference,
   ]) {
     runCommand('podman', ['pull', imageRef], options)
   }
@@ -652,6 +754,15 @@ function runDatabaseJob(service, config, options = {}) {
 
 function runAppRuntime(config, options = {}) {
   const cwd = options.cwd ?? process.cwd()
+  const releaseSmokeHsaEnv =
+    config.mode === 'release-smoke'
+      ? [
+          '--env',
+          `HSA_PERSON_LOOKUP_URL=${RELEASE_SMOKE_HSA_PERSON_LOOKUP_URL}`,
+          '--env',
+          `HSA_PERSON_LOOKUP_TIMEOUT_MS=${RELEASE_SMOKE_HSA_PERSON_LOOKUP_TIMEOUT_MS}`,
+        ]
+      : []
   runCommand(
     'podman',
     [
@@ -665,6 +776,7 @@ function runAppRuntime(config, options = {}) {
       appEnvFilePath(options),
       '--env',
       'NODE_EXTRA_CA_CERTS=/run/kravhantering/tls/ca.crt',
+      ...releaseSmokeHsaEnv,
       '--volume',
       `${path.resolve(cwd, config.tlsDir, 'ca.crt')}:/run/kravhantering/tls/ca.crt:ro`,
       '--net',
@@ -710,6 +822,68 @@ function runNginx(config, options = {}) {
   )
 }
 
+function runHsaDirectoryMock(config, options = {}) {
+  runCommand(
+    'podman',
+    [
+      'run',
+      '--name',
+      containerName(config, 'hsa-directory-mock'),
+      '--detach',
+      '--env',
+      'PORT=8080',
+      '--net',
+      podmanComposeNetworkName(config),
+      '--network-alias',
+      'hsa-directory-mock',
+      ...podmanLabelArgs(config, 'hsa-directory-mock'),
+      config.hsaDirectoryMockImageReference,
+    ],
+    options,
+  )
+}
+
+function runKong(config, options = {}) {
+  const cwd = options.cwd ?? process.cwd()
+  const kongImageReference = config.releaseImagesFromLock
+    ? lockedTestSupportImageReference(config, 'kong', options)
+    : lockedImageLockReference('containers/kong/image.lock.json', options)
+  runCommand(
+    'podman',
+    [
+      'run',
+      '--name',
+      containerName(config, 'kong'),
+      '--detach',
+      '--env',
+      'KONG_ADMIN_ACCESS_LOG=/dev/stdout',
+      '--env',
+      'KONG_ADMIN_ERROR_LOG=/dev/stderr',
+      '--env',
+      'KONG_ADMIN_LISTEN=0.0.0.0:8001',
+      '--env',
+      'KONG_DATABASE=off',
+      '--env',
+      'KONG_DECLARATIVE_CONFIG=/kong/declarative/kong.yml',
+      '--env',
+      'KONG_PROXY_ACCESS_LOG=/dev/stdout',
+      '--env',
+      'KONG_PROXY_ERROR_LOG=/dev/stderr',
+      '--env',
+      'KONG_PROXY_LISTEN=0.0.0.0:8000',
+      '--volume',
+      `${path.resolve(cwd, 'containers/kong/kong.yml')}:/kong/declarative/kong.yml:ro`,
+      '--net',
+      podmanComposeNetworkName(config),
+      '--network-alias',
+      'kong',
+      ...podmanLabelArgs(config, 'kong'),
+      kongImageReference,
+    ],
+    options,
+  )
+}
+
 async function up(config, options = {}) {
   const runtimeConfig = withReleaseImagesFromLock(config, options)
   runCommand('podman', ['--version'], options)
@@ -733,15 +907,25 @@ async function up(config, options = {}) {
   if (!runtimeConfig.releaseImagesFromLock && !runtimeConfig.skipBuild) {
     runCommand('npm', ['run', 'container:build:app-runtime'], options)
     runCommand('npm', ['run', 'container:build:db-job'], options)
+    if (runtimeConfig.mode === 'release-smoke') {
+      runCommand('npm', ['run', 'container:build:hsa-directory-mock'], options)
+    }
   }
   if (runtimeConfig.releaseImagesFromLock) {
     pullReleaseProjectImages(runtimeConfig, options)
+    pullReleaseTestSupportImages(runtimeConfig, options)
   } else {
     await loadDockerImageIntoPodman(
       runtimeConfig.appRuntimeImageReference,
       options,
     )
     await loadDockerImageIntoPodman(runtimeConfig.dbJobImageReference, options)
+    if (runtimeConfig.mode === 'release-smoke') {
+      await loadDockerImageIntoPodman(
+        runtimeConfig.hsaDirectoryMockImageReference,
+        options,
+      )
+    }
 
     const appImageId = inspectImageId(
       runtimeConfig.appRuntimeImageReference,
@@ -826,6 +1010,8 @@ async function up(config, options = {}) {
   }
   if (runtimeConfig.mode === 'release-smoke') {
     runDatabaseJob('db-seed-demo', runtimeConfig, options)
+    runHsaDirectoryMock(runtimeConfig, options)
+    runKong(runtimeConfig, options)
   }
 
   runAppRuntime(runtimeConfig, options)

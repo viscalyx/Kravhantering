@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { assertStackLockSchema } from '../containers/generate-stack-lock.mjs'
+import { assertTestSupportLockSchema } from '../containers/generate-test-support-lock.mjs'
 import {
   buildDemoUsersDocument,
   DEFAULT_DEMO_USERS_PATH,
@@ -11,6 +12,7 @@ import {
 
 export const APP_RUNTIME_PACKAGE = 'kravhantering-app-runtime'
 export const DB_JOB_PACKAGE = 'kravhantering-db-job'
+export const HSA_DIRECTORY_MOCK_PACKAGE = 'kravhantering-hsa-directory-mock'
 export const DEFAULT_RELEASE_OUTPUT_DIR = 'tmp/container-release-artifacts'
 export const DEFAULT_OPERATOR_UPGRADE_NOTES_PATH =
   'docs/operator-upgrade-notes.md'
@@ -19,12 +21,14 @@ export const APP_RUNTIME_DESCRIPTION =
   'Runnable Next.js application image for the production web runtime.'
 export const DB_JOB_DESCRIPTION =
   'Database job image for SQL Server health checks, migrations and required seed operations.'
+export const HSA_DIRECTORY_MOCK_DESCRIPTION =
+  'Test-only HSA directory mock image for the single-node-demo release support topology.'
 
 const USAGE = `Usage:
   node scripts/release/container-release.mjs plan --gitversion-json <path> --output <path> [--github-env <path>] [--changed-files <path>]
-  node scripts/release/container-release.mjs identities --plan <path> --app-metadata <path> --db-job-metadata <path> --output <path> [--github-env <path>]
+  node scripts/release/container-release.mjs identities --plan <path> --app-metadata <path> --db-job-metadata <path> [--hsa-directory-mock-metadata <path>] --output <path> [--github-env <path>]
   node scripts/release/container-release.mjs notes --plan <path> --metadata <path> --hashes <path> --output <path> [--operator-notes <path>]
-  node scripts/release/container-release.mjs bundle --plan <path> --metadata <path> --stack-lock <path> --output-dir <path> [--build-json <path>] [--hashes <path>] [--sbom-dir <path>]
+  node scripts/release/container-release.mjs bundle --plan <path> --metadata <path> --stack-lock <path> --output-dir <path> [--test-support-lock <path>] [--build-json <path>] [--hashes <path>] [--sbom-dir <path>]
   node scripts/release/container-release.mjs ensure-tag --plan <path>`
 
 const RELEVANT_PATH_PREFIXES = [
@@ -32,6 +36,7 @@ const RELEVANT_PATH_PREFIXES = [
   'app/',
   'components/',
   'containers/',
+  'containers/kong/',
   'i18n/',
   'lib/',
   'messages/',
@@ -102,6 +107,7 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
   { source: 'containers/production/compose', target: 'compose' },
   { source: 'containers/production/env', target: 'env' },
   { source: 'containers/production/keycloak', target: 'keycloak' },
+  { source: 'containers/kong/kong.yml', target: 'kong/kong.yml' },
   { source: 'containers/production/nginx', target: 'nginx' },
   { source: 'containers/production/sqlserver', target: 'sqlserver' },
   { source: 'containers/production/systemd', target: 'systemd' },
@@ -334,6 +340,7 @@ export function createReleasePlan(input = {}) {
     isStableRelease || shouldCreatePreviewRelease ? `v${version}` : ''
   const appRuntimeImage = `ghcr.io/${owner}/${APP_RUNTIME_PACKAGE}`
   const dbJobImage = `ghcr.io/${owner}/${DB_JOB_PACKAGE}`
+  const hsaDirectoryMockImage = `ghcr.io/${owner}/${HSA_DIRECTORY_MOCK_PACKAGE}`
   const commitTags = [`main-${shortSha}`, `sha-${sha}`]
   const tags = isStableRelease
     ? [version]
@@ -354,6 +361,9 @@ export function createReleasePlan(input = {}) {
     dbJobTags: tags.map(tag => `${dbJobImage}:${tag}`),
     eventName,
     hasRelevantChange,
+    hsaDirectoryMockImage,
+    hsaDirectoryMockPackage: HSA_DIRECTORY_MOCK_PACKAGE,
+    hsaDirectoryMockTags: tags.map(tag => `${hsaDirectoryMockImage}:${tag}`),
     isMain,
     isStableRelease,
     makeLatest: isStableRelease,
@@ -395,6 +405,12 @@ export function releasePlanEnv(plan) {
     DB_JOB_PRIMARY_TAG: plan.dbJobTags[0],
     DB_JOB_PRIMARY_TAG_NAME: plan.tags[0],
     DB_JOB_TAGS_CSV: csv(plan.dbJobTags),
+    HSA_DIRECTORY_MOCK_DESCRIPTION,
+    HSA_DIRECTORY_MOCK_IMAGE: plan.hsaDirectoryMockImage,
+    HSA_DIRECTORY_MOCK_PACKAGE: plan.hsaDirectoryMockPackage,
+    HSA_DIRECTORY_MOCK_PRIMARY_TAG: plan.hsaDirectoryMockTags[0],
+    HSA_DIRECTORY_MOCK_PRIMARY_TAG_NAME: plan.tags[0],
+    HSA_DIRECTORY_MOCK_TAGS_CSV: csv(plan.hsaDirectoryMockTags),
     RELEASE_CREATE_GITHUB_RELEASE: String(plan.createGitHubRelease),
     RELEASE_IS_STABLE: String(plan.isStableRelease),
     RELEASE_MAKE_LATEST: String(plan.makeLatest),
@@ -446,40 +462,54 @@ export function extractBuildxImageId(metadata) {
   return imageId
 }
 
+function createImageMetadata(image, tags, buildxMetadata) {
+  const manifestDigest = extractBuildxManifestDigest(buildxMetadata)
+  const imageId = extractBuildxImageId(buildxMetadata)
+  return {
+    imageId,
+    image,
+    manifestDigest,
+    manifestRef: `${image}@${manifestDigest}`,
+    tags,
+  }
+}
+
 export function createReleaseMetadata(
   plan,
   appBuildxMetadata,
   dbJobBuildxMetadata,
+  hsaDirectoryMockBuildxMetadata,
 ) {
-  const appRuntimeManifestDigest =
-    extractBuildxManifestDigest(appBuildxMetadata)
-  const appRuntimeImageId = extractBuildxImageId(appBuildxMetadata)
-  const dbJobManifestDigest = extractBuildxManifestDigest(dbJobBuildxMetadata)
-  const dbJobImageId = extractBuildxImageId(dbJobBuildxMetadata)
+  const testSupport = hsaDirectoryMockBuildxMetadata
+    ? {
+        hsaDirectoryMock: createImageMetadata(
+          plan.hsaDirectoryMockImage,
+          plan.hsaDirectoryMockTags,
+          hsaDirectoryMockBuildxMetadata,
+        ),
+      }
+    : undefined
   return {
-    appRuntime: {
-      imageId: appRuntimeImageId,
-      image: plan.appRuntimeImage,
-      manifestDigest: appRuntimeManifestDigest,
-      manifestRef: `${plan.appRuntimeImage}@${appRuntimeManifestDigest}`,
-      tags: plan.appRuntimeTags,
-    },
+    appRuntime: createImageMetadata(
+      plan.appRuntimeImage,
+      plan.appRuntimeTags,
+      appBuildxMetadata,
+    ),
     commitSha: plan.commitSha,
-    dbJob: {
-      imageId: dbJobImageId,
-      image: plan.dbJobImage,
-      manifestDigest: dbJobManifestDigest,
-      manifestRef: `${plan.dbJobImage}@${dbJobManifestDigest}`,
-      tags: plan.dbJobTags,
-    },
+    dbJob: createImageMetadata(
+      plan.dbJobImage,
+      plan.dbJobTags,
+      dbJobBuildxMetadata,
+    ),
     generatedAt: new Date().toISOString(),
     releaseTagName: plan.releaseTagName,
+    ...(testSupport ? { testSupport } : {}),
     version: plan.version,
   }
 }
 
 export function releaseMetadataEnv(metadata) {
-  return {
+  const values = {
     APP_RUNTIME_IMAGE_ID: metadata.appRuntime.imageId,
     APP_RUNTIME_MANIFEST_DIGEST: metadata.appRuntime.manifestDigest,
     APP_RUNTIME_MANIFEST_DIGEST_REF: metadata.appRuntime.manifestRef,
@@ -487,6 +517,13 @@ export function releaseMetadataEnv(metadata) {
     DB_JOB_MANIFEST_DIGEST: metadata.dbJob.manifestDigest,
     DB_JOB_MANIFEST_DIGEST_REF: metadata.dbJob.manifestRef,
   }
+  const hsaDirectoryMock = metadata.testSupport?.hsaDirectoryMock
+  if (hsaDirectoryMock) {
+    values.HSA_DIRECTORY_MOCK_IMAGE_ID = hsaDirectoryMock.imageId
+    values.HSA_DIRECTORY_MOCK_MANIFEST_DIGEST = hsaDirectoryMock.manifestDigest
+    values.HSA_DIRECTORY_MOCK_MANIFEST_DIGEST_REF = hsaDirectoryMock.manifestRef
+  }
+  return values
 }
 
 export function deploymentBundleBaseName(version) {
@@ -517,8 +554,12 @@ export function createDeploymentBundleManifest({
   metadata,
   plan,
   stackLock,
+  testSupportLock,
 } = {}) {
   assertStackLockSchema(stackLock)
+  if (testSupportLock) {
+    assertTestSupportLockSchema(testSupportLock)
+  }
   const timestamp = readNonEmpty(generatedAt) ?? new Date().toISOString()
   const services = {
     appRuntime: serviceByName(stackLock, 'app-runtime'),
@@ -527,6 +568,12 @@ export function createDeploymentBundleManifest({
     nginx: serviceByName(stackLock, 'nginx'),
     sqlserver: serviceByName(stackLock, 'sqlserver'),
   }
+  const testSupportServices = testSupportLock
+    ? {
+        hsaDirectoryMock: serviceByName(testSupportLock, 'hsa-directory-mock'),
+        kong: serviceByName(testSupportLock, 'kong'),
+      }
+    : undefined
 
   return {
     schemaVersion: DEPLOYMENT_BUNDLE_SCHEMA_VERSION,
@@ -553,9 +600,26 @@ export function createDeploymentBundleManifest({
       sqlserver: imageId(services.sqlserver),
       keycloak: imageId(services.keycloak),
     },
+    ...(testSupportServices
+      ? {
+          testSupportImages: {
+            hsaDirectoryMock:
+              metadata.testSupport?.hsaDirectoryMock?.manifestRef ??
+              manifestRef(testSupportServices.hsaDirectoryMock),
+            kong: manifestRef(testSupportServices.kong),
+          },
+          testSupportImageIds: {
+            hsaDirectoryMock:
+              metadata.testSupport?.hsaDirectoryMock?.imageId ??
+              imageId(testSupportServices.hsaDirectoryMock),
+            kong: imageId(testSupportServices.kong),
+          },
+        }
+      : {}),
     supportedTopologies: [
       'app-node-external-sql-external-idp',
       'single-node-internal-sql-internal-keycloak',
+      ...(testSupportServices ? ['single-node-demo'] : []),
     ],
     files: [...files].sort(),
   }
@@ -703,6 +767,7 @@ export function stageProductionDeploymentBundle(options = {}) {
   const plan = options.plan
   const metadata = options.metadata
   const stackLock = options.stackLock
+  const testSupportLock = options.testSupportLock
 
   if (!plan || !metadata || !stackLock) {
     throw new Error('plan, metadata and stackLock are required.')
@@ -730,6 +795,7 @@ export function stageProductionDeploymentBundle(options = {}) {
 
   const dynamicFiles = [
     [options.stackLockPath, 'container-stack.lock.json'],
+    [options.testSupportLockPath, 'container-test-support.lock.json'],
     [options.metadataPath, 'release-metadata.json'],
     [options.buildJsonPath, 'public/build.json'],
     [options.hashesPath, 'hashes.sha256'],
@@ -742,6 +808,10 @@ export function stageProductionDeploymentBundle(options = {}) {
         'sbom/app-runtime.spdx.json',
       ],
       [path.join(sbomDir, 'db-job.spdx.json'), 'sbom/db-job.spdx.json'],
+      [
+        path.join(sbomDir, 'hsa-directory-mock.spdx.json'),
+        'sbom/hsa-directory-mock.spdx.json',
+      ],
     )
   }
 
@@ -757,6 +827,7 @@ export function stageProductionDeploymentBundle(options = {}) {
     metadata,
     plan,
     stackLock,
+    testSupportLock,
   })
   writeJsonFile(
     path.join(bundleRoot, 'DEPLOYMENT-MANIFEST.json'),
@@ -899,6 +970,8 @@ export function withReleasePackageUrls(plan, metadata, options = {}) {
   const rawTags = plan.tags ?? []
   const appRuntimePackage = plan.appRuntimePackage ?? APP_RUNTIME_PACKAGE
   const dbJobPackage = plan.dbJobPackage ?? DB_JOB_PACKAGE
+  const hsaDirectoryMockPackage =
+    plan.hsaDirectoryMockPackage ?? HSA_DIRECTORY_MOCK_PACKAGE
   const appRuntimeTagUrls = resolvePackageTagUrls(
     plan,
     appRuntimePackage,
@@ -911,6 +984,10 @@ export function withReleasePackageUrls(plan, metadata, options = {}) {
     rawTags,
     options,
   )
+  const hsaDirectoryMock = metadata.testSupport?.hsaDirectoryMock
+  const hsaDirectoryMockTagUrls = hsaDirectoryMock
+    ? resolvePackageTagUrls(plan, hsaDirectoryMockPackage, rawTags, options)
+    : {}
   return {
     ...metadata,
     appRuntime: {
@@ -925,6 +1002,21 @@ export function withReleasePackageUrls(plan, metadata, options = {}) {
       ...metadata.dbJob,
       tagUrls: imageTagUrls(metadata.dbJob.tags, rawTags, dbJobTagUrls),
     },
+    ...(hsaDirectoryMock
+      ? {
+          testSupport: {
+            ...metadata.testSupport,
+            hsaDirectoryMock: {
+              ...hsaDirectoryMock,
+              tagUrls: imageTagUrls(
+                hsaDirectoryMock.tags,
+                rawTags,
+                hsaDirectoryMockTagUrls,
+              ),
+            },
+          },
+        }
+      : {}),
   }
 }
 
@@ -1083,6 +1175,24 @@ function renderContainerImageBlock(packageName, description, imageMetadata) {
   ]
 }
 
+function renderTestSupportContainerImagesSection(plan, metadata) {
+  const hsaDirectoryMock = metadata.testSupport?.hsaDirectoryMock
+  if (!hsaDirectoryMock) return []
+
+  return [
+    '',
+    '## Test Support Container Images',
+    '',
+    'These images support the test-only `single-node-demo` topology and are not part of the production runtime topology.',
+    '',
+    ...renderContainerImageBlock(
+      plan.hsaDirectoryMockPackage ?? HSA_DIRECTORY_MOCK_PACKAGE,
+      HSA_DIRECTORY_MOCK_DESCRIPTION,
+      hsaDirectoryMock,
+    ),
+  ]
+}
+
 function renderOperatorUpgradeNotesSection(operatorUpgradeNotes) {
   const notes = readNonEmpty(operatorUpgradeNotes)
   if (!notes) return undefined
@@ -1116,6 +1226,7 @@ export function renderReleaseNotes(
       DB_JOB_DESCRIPTION,
       metadata.dbJob,
     ),
+    ...renderTestSupportContainerImagesSection(plan, metadata),
     '',
     '## Production Deployment Bundle',
     '',
@@ -1207,10 +1318,16 @@ export async function main(args, dependencies = {}) {
 
     if (command === 'identities' || command === 'digests') {
       const plan = readJsonFile(options.plan, fsImpl)
+      const hsaDirectoryMockBuildxMetadata = options[
+        'hsa-directory-mock-metadata'
+      ]
+        ? readJsonFile(options['hsa-directory-mock-metadata'], fsImpl)
+        : undefined
       const metadata = createReleaseMetadata(
         plan,
         readJsonFile(options['app-metadata'], fsImpl),
         readJsonFile(options['db-job-metadata'], fsImpl),
+        hsaDirectoryMockBuildxMetadata,
       )
       writeJsonFile(options.output, metadata, fsImpl)
       appendGithubEnv(
@@ -1264,6 +1381,9 @@ export async function main(args, dependencies = {}) {
       const plan = readJsonFile(options.plan, fsImpl)
       const metadata = readJsonFile(options.metadata, fsImpl)
       const stackLock = readJsonFile(options['stack-lock'], fsImpl)
+      const testSupportLock = options['test-support-lock']
+        ? readJsonFile(options['test-support-lock'], fsImpl)
+        : undefined
       const result = stageProductionDeploymentBundle({
         buildJsonPath: options['build-json'],
         cwd: dependencies.cwd,
@@ -1277,6 +1397,8 @@ export async function main(args, dependencies = {}) {
         sbomDir: options['sbom-dir'],
         stackLock,
         stackLockPath: options['stack-lock'],
+        testSupportLock,
+        testSupportLockPath: options['test-support-lock'],
       })
       consoleObj.log(
         `Staged ${path.relative(dependencies.cwd ?? process.cwd(), result.bundleRoot)}`,

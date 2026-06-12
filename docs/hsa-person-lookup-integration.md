@@ -17,7 +17,7 @@ Read views do not call HSA. Save routes also do not call HSA. Person lookup
 happens before save through the app-owned verify route, and the result is
 stored as a local `Kravansvarsperson` row keyed by HSA-id.
 
-## Devcontainer services
+## Devcontainer and Release Test Support
 
 The devcontainer includes Kong Gateway as the internal `kong` service for
 API-management verification and an HSA directory mock as
@@ -37,13 +37,18 @@ devcontainer `app` service can reach the internal Admin API. Use
 request through Kong at `http://kong:8000/svr-hsaws2/hsaws` and a REST person
 lookup through Kong at `http://kong:8000/hsa/person-records/lookup`.
 
+The release bundle also includes a test-only `single-node-demo` overlay that
+starts Kong and the HSA directory mock on the internal single-node network.
+That overlay supports release-smoke and disposable demo environments. It is not
+the production HSA integration path.
+
 ## Runtime configuration
 
 The app calls the configured person lookup endpoint through
-`HSA_PERSON_LOOKUP_URL`. In devcontainer this points at Kong on the internal
-Compose network. Test and production environments should point at the approved
-environment-specific Kong route or integration-platform REST facade. The
-browser must never receive this endpoint or call it directly.
+`HSA_PERSON_LOOKUP_URL`. In devcontainer and `single-node-demo` this points at
+Kong on the internal Compose network. Production environments should point at
+the approved environment-specific Kong route or integration-platform REST
+facade. The browser must never receive this endpoint or call it directly.
 
 `HSA_PERSON_LOOKUP_TIMEOUT_MS` controls the app-side timeout. Keep the default
 unless the approved integration path for an environment requires a different

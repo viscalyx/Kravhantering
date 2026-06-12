@@ -6,13 +6,16 @@ tags such as `vX.Y.Z-preview.N` are created by the `main` run and are excluded
 from the tag trigger so the preview tag push does not start a second container
 release workflow.
 
-The workflow builds `app-runtime` and `db-job`, publishes them to GHCR, and
-records two image identities in `container-stack.lock.json`. The
+The workflow builds the production `app-runtime` and `db-job` images plus the
+test-only `hsa-directory-mock` image, publishes them to GHCR, and records the
+production image identities in `container-stack.lock.json`. The
 `manifestDigest` is the registry manifest digest used for GitHub Artifact
 Attestations, SBOM subjects and GHCR release smoke tests. The `imageId` is the
 container image ID used by production operators to verify runtime equivalence
 after tag-based pulls, internal-registry mirroring or disconnected image
 transport.
+The test support identities are recorded separately in
+`container-test-support.lock.json`.
 The release smoke test starts Podman Compose from verified GHCR manifest digest
 references, but production deployment and upgrade guides use tag-style runtime
 refs and verify them against locked image IDs.
@@ -46,16 +49,26 @@ local images, `run-local-stack.mjs` passes that path to
 
 ## Vendor Image Lock Updates
 
-`.github/workflows/vendor-image-updates.yml` checks nginx, SQL Server and
-Keycloak upstream tags weekly from `main` and can also be run manually with
-`workflow_dispatch`. Manual runs may select `all`, `nginx`, `sqlserver` or
-`keycloak`; the `include-current` input also refreshes the immutable digest
-metadata for the current selected lane.
+`.github/workflows/vendor-image-updates.yml` checks nginx, SQL Server,
+Keycloak and Kong upstream tags weekly from `main` and can also be run
+manually with `workflow_dispatch`. Manual runs may select `all`, `nginx`,
+`sqlserver`, `keycloak` or `kong`; the `include-current` input also refreshes
+the immutable digest metadata for the current selected lane.
 
-Kong and the HSA directory mock are intentionally not part of this updater.
-Kong's lock under `containers/kong/` is devcontainer-only, and the HSA mock is
-a locally built devcontainer service, until the production-like and single-node
-stack decisions are made.
+Kong is a vendor-updated test support image. Its lock under
+`containers/kong/` is copied into `container-test-support.lock.json` during
+container releases and is used by the test-only `single-node-demo` topology.
+Kong is not part of the production runtime topology.
+
+The HSA directory mock is project-owned test support, not a vendor image. The
+container release workflow builds and publishes
+`kravhantering-hsa-directory-mock` to GHCR with the same release tags as
+`app-runtime` and `db-job`, records it in `container-test-support.lock.json`,
+and publishes SBOM plus provenance attestations for that image. It is excluded
+from the vendor-image updater because its source lives in this repository.
+The current demo path uses the mock-owned REST facade behind Kong. Real HSA
+SOAP integration still requires a later adapter that handles the
+REST/JSON-to-SOAP transformation, authentication and certificates.
 
 The updater uses one branch and one ready-for-review PR per image lane. A lane
 is the image name plus the target major line, or the SQL Server product year:
@@ -64,6 +77,7 @@ is the image name plus the target major line, or the SQL Server product year:
 - `automation/vendor-image/keycloak-27`
 - `automation/vendor-image/nginx-1`
 - `automation/vendor-image/sqlserver-2025`
+- `automation/vendor-image/kong-3`
 
 Within a lane, newer patch and minor releases update the existing PR instead
 of opening another PR. For example, a Keycloak `26.7.1` release updates the
@@ -78,7 +92,10 @@ The updater resolves `linux/amd64` registry manifests and records both the
 platform manifest digest and the image config digest in the matching
 `containers/<image>/image.lock.json` file. Keycloak updates also keep
 `docker-compose.idp.yml`, both devcontainer Compose files and the developer
-auth documentation on the same tag. SQL Server updates keep
+auth documentation on the same tag. Kong updates keep both devcontainer
+Compose files digest-pinned and keep the public direct-pull example in
+`containers/production/env/release.env.template` aligned with the lock. SQL
+Server updates keep
 `docker-compose.sqlserver.yml` and both devcontainer Compose files on the same
 tag. nginx updates keep the public direct-pull example in
 `containers/production/env/release.env.template` aligned with the lock; nginx
@@ -113,6 +130,11 @@ generation, for example
 If the package-version lookup is unavailable, the notes fall back to the
 repository package page.
 
+When a release includes test support metadata, the generated notes also include
+`Test Support Container Images`. That section lists
+`kravhantering-hsa-directory-mock` separately from the production runtime
+images so operators do not mistake it for a required production service.
+
 Release notes also include automatic change notes. Stable releases compare
 against the previous published stable GitHub Release. Preview releases compare
 against the previous published pre-release GitHub Release. When no previous
@@ -131,6 +153,9 @@ Each trusted run also writes runtime evidence:
 - `container-stack.lock.json` lists the exact image name, tag,
   `manifestDigest`, `imageId`, source and role for `app-runtime`, `db-job`,
   nginx, SQL Server and Keycloak.
+- `container-test-support.lock.json` lists the exact image name, tag,
+  `manifestDigest`, `imageId`, source and role for the test-only Kong and HSA
+  directory mock support images.
 - `container-stack.compose.yml` is the generated Compose file that the smoke
   test started.
 - `hashes.sha256` contains checksums for saved runtime evidence.
@@ -181,6 +206,8 @@ artifacts anonymously:
 
 - `ghcr.io/<owner>/kravhantering-app-runtime`
 - `ghcr.io/<owner>/kravhantering-db-job`
+- `ghcr.io/<owner>/kravhantering-hsa-directory-mock` for test-only
+  `single-node-demo` support
 <!-- cSpell:ignore opencontainers -->
 The publish steps attach `org.opencontainers.image.description` as both an
 image label and a manifest annotation. GHCR reads labels for normal image
@@ -256,8 +283,11 @@ to verify the `db-job` image. Production runtime verification is separate:
 after choosing site-specific tag-style image refs in `release.env`, pull those
 refs when the host can reach the registry, then run the bundled
 `bin/kravhantering-images.sh verify` command for the target topology to compare
-Podman image inspect `.Id` values with the locked `imageId` values. Third-party
-upstream tags can move after release, so production sites should prefer
+Podman image inspect `.Id` values with the locked `imageId` values. The
+test-only `single-node-demo` topology uses both `container-stack.lock.json` and
+`container-test-support.lock.json`; production topologies use only
+`container-stack.lock.json`. Third-party upstream tags can move after release,
+so production sites should prefer
 release-specific internal mirror tags and treat the lock file as the source of
 truth. For disconnected transport, export only after the source host has
 already pulled and verified the local refs.

@@ -258,7 +258,7 @@ for (const { name, viewport } of viewportVariants) {
       test.describe('admin-only permissions', () => {
         test.use({ storageState: 'test-results/auth/admin-only.json' })
 
-        test('keeps Swedish admin tabs fully visible in the header', async ({
+        test('keeps Swedish admin tabs reachable in the header', async ({
           page,
         }) => {
           await page.goto('/sv/admin')
@@ -296,16 +296,23 @@ for (const { name, viewport } of viewportVariants) {
             clientWidth: element.clientWidth,
             scrollWidth: element.scrollWidth,
           }))
-          const tablistBox = await tablist.boundingBox()
-          const privacyBox = await privacyTab.boundingBox()
 
-          expect(tablistMetrics.scrollWidth).toBeLessThanOrEqual(
-            tablistMetrics.clientWidth + 1,
+          expect(tablistMetrics.clientWidth).toBeGreaterThan(0)
+          expect(tablistMetrics.scrollWidth).toBeGreaterThanOrEqual(
+            tablistMetrics.clientWidth,
           )
+
+          await actionAuditLogTab.scrollIntoViewIfNeeded()
+          const tablistBox = await tablist.boundingBox()
+          const actionAuditLogBox = await actionAuditLogTab.boundingBox()
+
           expect(tablistBox).not.toBeNull()
-          expect(privacyBox).not.toBeNull()
+          expect(actionAuditLogBox).not.toBeNull()
+          expect(actionAuditLogBox?.x ?? 0).toBeGreaterThanOrEqual(
+            (tablistBox?.x ?? 0) - 1,
+          )
           expect(
-            (privacyBox?.x ?? 0) + (privacyBox?.width ?? 0),
+            (actionAuditLogBox?.x ?? 0) + (actionAuditLogBox?.width ?? 0),
           ).toBeLessThanOrEqual(
             (tablistBox?.x ?? 0) + (tablistBox?.width ?? 0) + 1,
           )

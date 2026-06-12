@@ -1,10 +1,10 @@
 # HSA Directory Mock Contract
 
-This directory owns the devcontainer-local mock for the HSA directory SOAP
-method `GetHsaPerson` and a narrow JSON lookup facade used by the local Kong
-route. The mock exists so Kravhantering can verify the future HSA lookup
-integration through Kong before the production API-management and real HSA
-integration are known.
+This directory owns the mock for the HSA directory SOAP method `GetHsaPerson`
+and a narrow JSON lookup facade used by the Kong route. The mock is used in the
+devcontainer and in the release test-only `single-node-demo` topology so
+Kravhantering can verify HSA lookup through Kong before the production
+API-management and real HSA integration are known.
 
 ## Scope
 
@@ -33,7 +33,7 @@ found, and `409` when matching HSA records conflict. It intentionally does not
 implement authentication, authorization, client certificates, organization
 lookups, or non-person HSA methods.
 
-In devcontainer use, Kong exposes the SOAP path at
+In devcontainer and `single-node-demo` use, Kong exposes the SOAP path at
 `http://kong:8000/svr-hsaws2/hsaws` and the REST lookup path at
 `http://kong:8000/hsa/person-records/lookup`. Kong routes both paths to
 `http://hsa-directory-mock:8080`; the JSON-to-person adapter is mock-owned
@@ -219,3 +219,12 @@ Run the mock's non-Docker SOAP contract tests with:
 ```sh
 npm run test:hsa-mock
 ```
+
+## Release Test Support
+
+The container release workflow publishes this mock as
+`ghcr.io/<owner>/kravhantering-hsa-directory-mock` with the same release tags
+as `app-runtime` and `db-job`. The generated
+`container-test-support.lock.json` records its manifest digest and image ID for
+the test-only `single-node-demo` topology. Do not use this mock for production
+HSA integration.

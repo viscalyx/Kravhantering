@@ -7,6 +7,11 @@ for the self-contained single-node RHEL 10 production topology, where nginx,
 `app-runtime`, SQL Server, Keycloak and `db-job` run in one rootless Podman
 Compose network.
 
+The default disconnected topology is `single-node`. The optional
+`single-node-demo` topology is test-only and adds Kong plus the HSA directory
+mock from `container-test-support.lock.json`. Use `single-node-demo` only for
+release smoke, disposable demos or other non-production environments.
+
 Use this guide before starting a first install in a disconnected environment
 with
 [rhel10-production-single-node-self-contained-deploy.md](./rhel10-production-single-node-self-contained-deploy.md),
@@ -38,6 +43,7 @@ Set the release version and download source:
 ```bash
 VERSION=1.2.3 # Change to the version being deployed.
 TOPOLOGY=single-node
+# Test/demo only: set TOPOLOGY=single-node-demo.
 
 # Default: internal release repository.
 RELEASE_DOWNLOAD_URL="https://release.example.internal/kravhantering/${VERSION}"
@@ -110,6 +116,10 @@ preserves repository paths. Rewrite only the registry host:
 
 ```bash
 TARGET_IMAGE_REGISTRY=registry.example.internal
+update_ref() {
+  sed -i "s#^${1}=.*#${1}=${2}#" "$OFFLINE_ROOT/release.env"
+}
+
 LOCK_FILE="$OFFLINE_WORK/container-stack.lock.json"
 service_image() {
   jq -r --arg name "$1" \
@@ -144,13 +154,54 @@ Use this when the connected export host pulls from an internal mirror with a
 custom repository layout. Edit the five `*_IMAGE_REF` values in
 `$OFFLINE_ROOT/release.env` manually before continuing.
 
+#### Optional Test Support Refs For `single-node-demo`
+
+Use this only when `TOPOLOGY=single-node-demo`. The test support refs come from
+`container-test-support.lock.json` and are not part of the production
+`single-node` topology.
+
+After Alternative A or B, run:
+
+```bash
+if [ "$TOPOLOGY" = "single-node-demo" ]; then
+  TEST_LOCK_FILE="$OFFLINE_WORK/container-test-support.lock.json"
+  test_service_image() {
+    jq -r --arg name "$1" \
+      '.services[] | select(.name == $name) | .image' "$TEST_LOCK_FILE"
+  }
+  test_service_tag() {
+    jq -r --arg name "$1" \
+      '.services[] | select(.name == $name) | .tag' "$TEST_LOCK_FILE"
+  }
+  test_service_ref() {
+    local image tag
+    image="$(test_service_image "$1")"
+    tag="$(test_service_tag "$1")"
+    if [ -n "${TARGET_IMAGE_REGISTRY:-}" ]; then
+      printf '%s/%s:%s\n' \
+        "$TARGET_IMAGE_REGISTRY" "${image#*/}" "$tag"
+      return
+    fi
+    printf '%s:%s\n' "$image" "$tag"
+  }
+
+  update_ref KONG_IMAGE_REF \
+    "$(test_service_ref kong)"
+  update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
+    "$(test_service_ref hsa-directory-mock)"
+fi
+```
+
+For Alternative C, manually edit `KONG_IMAGE_REF` and
+`HSA_DIRECTORY_MOCK_IMAGE_REF` as well.
+
 ### Pull, Verify And Export Images
 
-After completing exactly one image-ref alternative above, pull, verify and
-export the images with the same connected-host account. Do not prefix the
-helper commands with `sudo`; they must use the same Podman image store as the
-pull commands. The `bash` invocation also works when `/tmp` is mounted
-`noexec`:
+After completing exactly one image-ref alternative above, and the optional
+test support refs when `TOPOLOGY=single-node-demo`, pull, verify and export the
+images with the same connected-host account. Do not prefix the helper commands
+with `sudo`; they must use the same Podman image store as the pull commands.
+The `bash` invocation also works when `/tmp` is mounted `noexec`:
 
 ```bash
 set -a
@@ -163,13 +214,24 @@ podman pull "$NGINX_IMAGE_REF"
 podman pull "$SQLSERVER_IMAGE_REF"
 podman pull "$KEYCLOAK_IMAGE_REF"
 
-bash "$OFFLINE_WORK/bin/kravhantering-images.sh" --topology single-node \
+TEST_LOCK_ARGS=()
+if [ "$TOPOLOGY" = "single-node-demo" ]; then
+  podman pull "$KONG_IMAGE_REF"
+  podman pull "$HSA_DIRECTORY_MOCK_IMAGE_REF"
+  TEST_LOCK_ARGS=(
+    --test-lock-file "$OFFLINE_WORK/container-test-support.lock.json"
+  )
+fi
+
+bash "$OFFLINE_WORK/bin/kravhantering-images.sh" --topology "$TOPOLOGY" \
   --lock-file "$OFFLINE_WORK/container-stack.lock.json" \
+  "${TEST_LOCK_ARGS[@]}" \
   --env-file "$OFFLINE_ROOT/release.env" \
   verify
 
-bash "$OFFLINE_WORK/bin/kravhantering-images.sh" --topology single-node \
+bash "$OFFLINE_WORK/bin/kravhantering-images.sh" --topology "$TOPOLOGY" \
   --lock-file "$OFFLINE_WORK/container-stack.lock.json" \
+  "${TEST_LOCK_ARGS[@]}" \
   --env-file "$OFFLINE_ROOT/release.env" \
   export --output "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
 ```
@@ -188,6 +250,8 @@ jq -n \
   --arg nginx "$NGINX_IMAGE_REF" \
   --arg sqlserver "$SQLSERVER_IMAGE_REF" \
   --arg keycloak "$KEYCLOAK_IMAGE_REF" \
+  --arg kong "${KONG_IMAGE_REF:-}" \
+  --arg hsaDirectoryMock "${HSA_DIRECTORY_MOCK_IMAGE_REF:-}" \
   '{
     schemaVersion: 1,
     kind: "kravhantering-offline-bundle",
@@ -196,13 +260,16 @@ jq -n \
     releaseArchive: $releaseArchive,
     releaseChecksum: $releaseChecksum,
     imageBundle: $imageBundle,
-    imageRefs: {
+    imageRefs: ({
       "app-runtime": $appRuntime,
       "db-job": $dbJob,
       nginx: $nginx,
       sqlserver: $sqlserver,
       keycloak: $keycloak
-    }
+    } + (if $topology == "single-node-demo" then {
+      kong: $kong,
+      "hsa-directory-mock": $hsaDirectoryMock
+    } else {} end))
   }' > "$OFFLINE_ROOT/offline-manifest.json"
 
 (
@@ -249,6 +316,7 @@ Unpack and verify the disconnected bundle:
 ```bash
 VERSION=1.2.3 # Change to the version being deployed.
 TOPOLOGY=single-node
+# Test/demo only: set TOPOLOGY=single-node-demo.
 OFFLINE_BUNDLE="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}.tar.gz"
 OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 RELEASE_ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
@@ -340,6 +408,11 @@ update_ref DB_JOB_IMAGE_REF "$(target_ref db-job)"
 update_ref NGINX_IMAGE_REF "$(target_ref nginx)"
 update_ref SQLSERVER_IMAGE_REF "$(target_ref sqlserver)"
 update_ref KEYCLOAK_IMAGE_REF "$(target_ref keycloak)"
+if [ "$TOPOLOGY" = "single-node-demo" ]; then
+  update_ref KONG_IMAGE_REF "$(target_ref kong)"
+  update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
+    "$(target_ref hsa-directory-mock)"
+fi
 ```
 
 Load, tag and verify the images as the rootless service user:
@@ -348,11 +421,17 @@ Load, tag and verify the images as the rootless service user:
 sudo -iu kravhantering
 VERSION=1.2.3 # Change to the version being deployed.
 TOPOLOGY=single-node
+# Test/demo only: set TOPOLOGY=single-node-demo.
 OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
 cd /opt/kravhantering/current
-bin/kravhantering-images.sh --topology single-node \
+TEST_LOCK_ARGS=()
+if [ "$TOPOLOGY" = "single-node-demo" ]; then
+  TEST_LOCK_ARGS=(--test-lock-file container-test-support.lock.json)
+fi
+bin/kravhantering-images.sh --topology "$TOPOLOGY" \
   --lock-file container-stack.lock.json \
+  "${TEST_LOCK_ARGS[@]}" \
   --env-file /etc/kravhantering/release.env \
   load --bundle "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
 exit
@@ -375,6 +454,7 @@ Unpack and verify the disconnected bundle:
 ```bash
 VERSION=1.2.4 # Change to the version being deployed.
 TOPOLOGY=single-node
+# Test/demo only: set TOPOLOGY=single-node-demo.
 OFFLINE_BUNDLE="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}.tar.gz"
 OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 RELEASE_ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
@@ -442,6 +522,11 @@ update_ref DB_JOB_IMAGE_REF "$(target_ref db-job)"
 update_ref NGINX_IMAGE_REF "$(target_ref nginx)"
 update_ref SQLSERVER_IMAGE_REF "$(target_ref sqlserver)"
 update_ref KEYCLOAK_IMAGE_REF "$(target_ref keycloak)"
+if [ "$TOPOLOGY" = "single-node-demo" ]; then
+  update_ref KONG_IMAGE_REF "$(target_ref kong)"
+  update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
+    "$(target_ref hsa-directory-mock)"
+fi
 ```
 
 Load, tag and verify the images as the rootless service user:
@@ -450,11 +535,17 @@ Load, tag and verify the images as the rootless service user:
 sudo -iu kravhantering
 VERSION=1.2.4 # Change to the version being deployed.
 TOPOLOGY=single-node
+# Test/demo only: set TOPOLOGY=single-node-demo.
 OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
 cd /opt/kravhantering/current
-bin/kravhantering-images.sh --topology single-node \
+TEST_LOCK_ARGS=()
+if [ "$TOPOLOGY" = "single-node-demo" ]; then
+  TEST_LOCK_ARGS=(--test-lock-file container-test-support.lock.json)
+fi
+bin/kravhantering-images.sh --topology "$TOPOLOGY" \
   --lock-file container-stack.lock.json \
+  "${TEST_LOCK_ARGS[@]}" \
   --env-file /etc/kravhantering/release.env \
   load --bundle "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
 exit

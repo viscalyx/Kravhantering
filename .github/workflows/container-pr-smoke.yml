@@ -20,6 +20,7 @@ jobs:
     env:
       APP_RUNTIME_IMAGE: localhost/kravhantering/app-runtime
       DB_JOB_IMAGE: localhost/kravhantering/db-job
+      HSA_DIRECTORY_MOCK_IMAGE: localhost/kravhantering/hsa-directory-mock
       NEXT_PUBLIC_SITE_URL: https://kravhantering.test
       PODMAN_COMPOSE_PROVIDER: podman-compose
       STORAGE_DRIVER: vfs
@@ -146,6 +147,8 @@ jobs:
             echo "CONTAINER_STACK_RUN_ID=${GITHUB_RUN_ID}"
             echo "DB_JOB_SOURCE=pr-build"
             echo "DB_JOB_TAG=${image_tag}"
+            echo "HSA_DIRECTORY_MOCK_SOURCE=pr-build"
+            echo "HSA_DIRECTORY_MOCK_TAG=${image_tag}"
             echo "RELEASE_SMOKE_RUN_ID=${GITHUB_RUN_ID}"
           } >> "${GITHUB_ENV}"
 
@@ -178,6 +181,16 @@ jobs:
             --tag "${DB_JOB_IMAGE}:${DB_JOB_TAG}" \
             --load \
             .
+
+      - name: Build HSA directory mock image
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --file containers/hsa-directory-mock/Dockerfile \
+            --platform linux/amd64 \
+            --tag "${HSA_DIRECTORY_MOCK_IMAGE}:${HSA_DIRECTORY_MOCK_TAG}" \
+            --load \
+            containers/hsa-directory-mock
 
       - name: Create per-container local env files
         run: npm run container:env:local

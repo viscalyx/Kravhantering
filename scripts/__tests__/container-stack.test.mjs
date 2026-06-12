@@ -41,6 +41,36 @@ describe('container stack helpers', () => {
     return subprocess
   }
 
+  function kongLock() {
+    return {
+      imageId: 'sha256:kong-image',
+      image: 'docker.io/kong/kong-gateway',
+      manifestDigest: 'sha256:kong',
+      name: 'kong',
+      role: 'api-management',
+      source: 'docker-hub',
+      tag: '3.10.0.8-20260210-ubuntu',
+    }
+  }
+
+  function testSupportLock() {
+    return {
+      schemaVersion: 1,
+      services: [
+        kongLock(),
+        {
+          imageId: 'sha256:hsa-directory-mock-image',
+          image: 'ghcr.io/viscalyx/kravhantering-hsa-directory-mock',
+          manifestDigest: 'sha256:hsa-directory-mock-release',
+          name: 'hsa-directory-mock',
+          role: 'hsa-directory-test-support',
+          source: 'ghcr-release',
+          tag: '1.2.3',
+        },
+      ],
+    }
+  }
+
   it('plans run-specific test and release-smoke stack names', () => {
     const testConfig = createLocalStackConfig({
       mode: 'test',
@@ -173,21 +203,25 @@ describe('container stack helpers', () => {
       fsImpl: {
         existsSync: filePath => String(filePath).includes('.env.'),
         mkdirSync: vi.fn(),
-        readFileSync: vi.fn(filePath =>
-          String(filePath).endsWith('custom-stack.lock.json')
-            ? JSON.stringify({
-                schemaVersion: 2,
-                services: [
-                  {
-                    imageId: 'sha256:nginx-image',
-                    image: 'docker.io/library/nginx',
-                    manifestDigest: 'sha256:nginx',
-                    name: 'nginx',
-                  },
-                ],
-              })
-            : '',
-        ),
+        readFileSync: vi.fn(filePath => {
+          if (String(filePath).endsWith('containers/kong/image.lock.json')) {
+            return JSON.stringify(kongLock())
+          }
+          if (String(filePath).endsWith('custom-stack.lock.json')) {
+            return JSON.stringify({
+              schemaVersion: 2,
+              services: [
+                {
+                  imageId: 'sha256:nginx-image',
+                  image: 'docker.io/library/nginx',
+                  manifestDigest: 'sha256:nginx',
+                  name: 'nginx',
+                },
+              ],
+            })
+          }
+          return ''
+        }),
         writeFileSync: vi.fn(),
       },
       spawn: vi.fn((command, args) => {
@@ -219,11 +253,15 @@ describe('container stack helpers', () => {
     const commandText = commands.join('\n')
     expect(commandText).not.toContain('container:build:app-runtime')
     expect(commandText).not.toContain('container:build:db-job')
+    expect(commandText).not.toContain('container:build:hsa-directory-mock')
     expect(spawned).toContain(
       'docker save localhost/kravhantering/app-runtime:pr-7-99-deadbeef',
     )
     expect(spawned).toContain(
       'docker save localhost/kravhantering/db-job:pr-7-99-deadbeef',
+    )
+    expect(spawned).toContain(
+      'docker save localhost/kravhantering/hsa-directory-mock:local',
     )
     expect(commandText).toContain(
       'generate-stack-lock.mjs generate --lock-file tmp/custom-stack.lock.json',
@@ -545,21 +583,25 @@ describe('container stack helpers', () => {
       fsImpl: {
         existsSync: filePath => String(filePath).includes('.env.'),
         mkdirSync: vi.fn(),
-        readFileSync: vi.fn(filePath =>
-          String(filePath).endsWith('container-stack.lock.json')
-            ? JSON.stringify({
-                schemaVersion: 2,
-                services: [
-                  {
-                    imageId: 'sha256:nginx-image',
-                    image: 'docker.io/library/nginx',
-                    manifestDigest: 'sha256:nginx',
-                    name: 'nginx',
-                  },
-                ],
-              })
-            : '',
-        ),
+        readFileSync: vi.fn(filePath => {
+          if (String(filePath).endsWith('containers/kong/image.lock.json')) {
+            return JSON.stringify(kongLock())
+          }
+          if (String(filePath).endsWith('container-stack.lock.json')) {
+            return JSON.stringify({
+              schemaVersion: 2,
+              services: [
+                {
+                  imageId: 'sha256:nginx-image',
+                  image: 'docker.io/library/nginx',
+                  manifestDigest: 'sha256:nginx',
+                  name: 'nginx',
+                },
+              ],
+            })
+          }
+          return ''
+        }),
         writeFileSync: vi.fn(),
       },
       spawn: vi.fn(() => fakeProcess()),
@@ -638,21 +680,25 @@ describe('container stack helpers', () => {
       fsImpl: {
         existsSync: filePath => String(filePath).includes('.env.'),
         mkdirSync: vi.fn(),
-        readFileSync: vi.fn(filePath =>
-          String(filePath).endsWith('container-stack.lock.json')
-            ? JSON.stringify({
-                schemaVersion: 2,
-                services: [
-                  {
-                    imageId: 'sha256:nginx-image',
-                    image: 'docker.io/library/nginx',
-                    manifestDigest: 'sha256:nginx',
-                    name: 'nginx',
-                  },
-                ],
-              })
-            : '',
-        ),
+        readFileSync: vi.fn(filePath => {
+          if (String(filePath).endsWith('containers/kong/image.lock.json')) {
+            return JSON.stringify(kongLock())
+          }
+          if (String(filePath).endsWith('container-stack.lock.json')) {
+            return JSON.stringify({
+              schemaVersion: 2,
+              services: [
+                {
+                  imageId: 'sha256:nginx-image',
+                  image: 'docker.io/library/nginx',
+                  manifestDigest: 'sha256:nginx',
+                  name: 'nginx',
+                },
+              ],
+            })
+          }
+          return ''
+        }),
         writeFileSync: vi.fn(),
       },
       spawn: vi.fn(() => fakeProcess()),
@@ -677,12 +723,28 @@ describe('container stack helpers', () => {
         'podman run --name kravhantering-container-stack-release-smoke-smoke_app-runtime_1 --detach',
       ),
     )
+    const hsaIndex = commands.findIndex(command =>
+      command.includes(
+        'podman run --name kravhantering-container-stack-release-smoke-smoke_hsa-directory-mock_1 --detach',
+      ),
+    )
+    const kongIndex = commands.findIndex(command =>
+      command.includes(
+        'podman run --name kravhantering-container-stack-release-smoke-smoke_kong_1 --detach',
+      ),
+    )
 
     expect(commands).toContain(
       'podman compose -f container-stack.compose.yml --project-name kravhantering-container-stack-release-smoke-smoke up -d sqlserver keycloak',
     )
+    expect(commands).toContain('npm run container:build:hsa-directory-mock')
     expect(seedDemoIndex).toBeGreaterThan(-1)
-    expect(appRuntimeIndex).toBeGreaterThan(seedDemoIndex)
+    expect(hsaIndex).toBeGreaterThan(seedDemoIndex)
+    expect(kongIndex).toBeGreaterThan(hsaIndex)
+    expect(appRuntimeIndex).toBeGreaterThan(kongIndex)
+    expect(commands[appRuntimeIndex]).toContain(
+      'HSA_PERSON_LOOKUP_URL=http://kong:8000/hsa/person-records/lookup',
+    )
   })
 
   it('uses manifest-locked release images from the stack lock without local build or load', async () => {
@@ -707,37 +769,41 @@ describe('container stack helpers', () => {
       fsImpl: {
         existsSync: filePath => String(filePath).includes('.env.'),
         mkdirSync: vi.fn(),
-        readFileSync: vi.fn(filePath =>
-          String(filePath).endsWith('container-stack.lock.json')
-            ? JSON.stringify({
-                schemaVersion: 2,
-                services: [
-                  {
-                    imageId: 'sha256:app-runtime-image',
-                    image: 'ghcr.io/viscalyx/kravhantering-app-runtime',
-                    manifestDigest: 'sha256:app-runtime-release',
-                    name: 'app-runtime',
-                    source: 'ghcr-release',
-                    tag: '1.2.3',
-                  },
-                  {
-                    imageId: 'sha256:db-job-image',
-                    image: 'ghcr.io/viscalyx/kravhantering-db-job',
-                    manifestDigest: 'sha256:db-job-release',
-                    name: 'db-job',
-                    source: 'ghcr-release',
-                    tag: '1.2.3',
-                  },
-                  {
-                    imageId: 'sha256:nginx-image',
-                    image: 'docker.io/library/nginx',
-                    manifestDigest: 'sha256:nginx',
-                    name: 'nginx',
-                  },
-                ],
-              })
-            : '',
-        ),
+        readFileSync: vi.fn(filePath => {
+          if (String(filePath).endsWith('container-test-support.lock.json')) {
+            return JSON.stringify(testSupportLock())
+          }
+          if (String(filePath).endsWith('container-stack.lock.json')) {
+            return JSON.stringify({
+              schemaVersion: 2,
+              services: [
+                {
+                  imageId: 'sha256:app-runtime-image',
+                  image: 'ghcr.io/viscalyx/kravhantering-app-runtime',
+                  manifestDigest: 'sha256:app-runtime-release',
+                  name: 'app-runtime',
+                  source: 'ghcr-release',
+                  tag: '1.2.3',
+                },
+                {
+                  imageId: 'sha256:db-job-image',
+                  image: 'ghcr.io/viscalyx/kravhantering-db-job',
+                  manifestDigest: 'sha256:db-job-release',
+                  name: 'db-job',
+                  source: 'ghcr-release',
+                  tag: '1.2.3',
+                },
+                {
+                  imageId: 'sha256:nginx-image',
+                  image: 'docker.io/library/nginx',
+                  manifestDigest: 'sha256:nginx',
+                  name: 'nginx',
+                },
+              ],
+            })
+          }
+          return ''
+        }),
         writeFileSync: vi.fn(),
       },
       spawn: vi.fn((command, args) => {
@@ -774,6 +840,12 @@ describe('container stack helpers', () => {
     expect(commands).toContain(
       'podman pull ghcr.io/viscalyx/kravhantering-db-job@sha256:db-job-release',
     )
+    expect(commands).toContain(
+      'podman pull docker.io/kong/kong-gateway@sha256:kong',
+    )
+    expect(commands).toContain(
+      'podman pull ghcr.io/viscalyx/kravhantering-hsa-directory-mock@sha256:hsa-directory-mock-release',
+    )
     expect(commandText).toContain('generate-compose.mjs --mode release')
     expect(
       commands.some(command =>
@@ -793,5 +865,27 @@ describe('container stack helpers', () => {
           ),
       ),
     ).toBe(true)
+    expect(
+      commands.some(
+        command =>
+          command.includes(
+            'podman run --name kravhantering-container-stack-release-smoke-release_kong_1 --detach',
+          ) && command.includes('docker.io/kong/kong-gateway@sha256:kong'),
+      ),
+    ).toBe(true)
+    expect(
+      commands.some(
+        command =>
+          command.includes(
+            'podman run --name kravhantering-container-stack-release-smoke-release_hsa-directory-mock_1 --detach',
+          ) &&
+          command.includes(
+            'ghcr.io/viscalyx/kravhantering-hsa-directory-mock@sha256:hsa-directory-mock-release',
+          ),
+      ),
+    ).toBe(true)
+    expect(commandText).toContain(
+      'HSA_PERSON_LOOKUP_URL=http://kong:8000/hsa/person-records/lookup',
+    )
   })
 })

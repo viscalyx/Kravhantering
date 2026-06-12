@@ -3,22 +3,26 @@ set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
 DEFAULT_LOCK_FILE="./container-stack.lock.json"
+DEFAULT_TEST_LOCK_FILE="./container-test-support.lock.json"
 DEFAULT_ENV_FILE="/etc/kravhantering/release.env"
 CLEANUP_WORK_DIR=""
 
 usage() {
   cat <<USAGE
 Usage:
-  ${SCRIPT_NAME} --topology <app-node|single-node|all> [options] verify
-  ${SCRIPT_NAME} --topology <app-node|single-node|all> [options] export --output <path>
-  ${SCRIPT_NAME} --topology <app-node|single-node|all> [options] load --bundle <path>
+  ${SCRIPT_NAME} --topology <app-node|single-node|single-node-demo|all> [options] verify
+  ${SCRIPT_NAME} --topology <app-node|single-node|single-node-demo|all> [options] export --output <path>
+  ${SCRIPT_NAME} --topology <app-node|single-node|single-node-demo|all> [options] load --bundle <path>
 
 Options:
-  --lock-file <path>  Release container-stack.lock.json path
-  --env-file <path>   release.env path with *_IMAGE_REF values
-  --output <path>     Exported disconnected image bundle path. Export verifies
-                      and saves local images; pull images before running export.
-  --bundle <path>     Disconnected image bundle to load
+  --lock-file <path>       Release container-stack.lock.json path
+  --test-lock-file <path>  Test support container-test-support.lock.json path
+                           used by single-node-demo
+  --env-file <path>        release.env path with *_IMAGE_REF values
+  --output <path>          Exported disconnected image bundle path. Export
+                           verifies and saves local images; pull images before
+                           running export.
+  --bundle <path>          Disconnected image bundle to load
 USAGE
 }
 
@@ -51,6 +55,8 @@ service_env_prefix() {
     nginx) printf 'NGINX\n' ;;
     sqlserver) printf 'SQLSERVER\n' ;;
     keycloak) printf 'KEYCLOAK\n' ;;
+    kong) printf 'KONG\n' ;;
+    hsa-directory-mock) printf 'HSA_DIRECTORY_MOCK\n' ;;
     *) fail "Unsupported service: $1" ;;
   esac
 }
@@ -59,7 +65,24 @@ services_for_topology() {
   case "$1" in
     app-node) printf '%s\n' app-runtime db-job nginx ;;
     single-node | all) printf '%s\n' app-runtime db-job nginx sqlserver keycloak ;;
+    single-node-demo)
+      printf '%s\n' app-runtime db-job nginx sqlserver keycloak kong hsa-directory-mock
+      ;;
     *) fail "Unsupported topology: $1" ;;
+  esac
+}
+
+service_lock_file() {
+  case "$1" in
+    kong | hsa-directory-mock) printf '%s\n' "$TEST_LOCK_FILE" ;;
+    *) printf '%s\n' "$LOCK_FILE" ;;
+  esac
+}
+
+service_lock_schema_version() {
+  case "$1" in
+    kong | hsa-directory-mock) printf '1\n' ;;
+    *) printf '2\n' ;;
   esac
 }
 
@@ -84,16 +107,21 @@ image_ref_for_service() {
 locked_service_field() {
   local service="$1"
   local field="$2"
-  local value
-  value="$(jq -r --arg name "$service" --arg field "$field" '
-    if .schemaVersion != 2 then
-      error("container-stack.lock.json must use schemaVersion 2")
+  local lock_file schema_version value
+  lock_file="$(service_lock_file "$service")"
+  schema_version="$(service_lock_schema_version "$service")"
+  value="$(jq -r \
+    --arg name "$service" \
+    --arg field "$field" \
+    --arg schemaVersion "$schema_version" '
+    if .schemaVersion != ($schemaVersion | tonumber) then
+      error("lock file has unexpected schemaVersion")
     else
       .services[] | select(.name == $name) | .[$field]
     end
-  ' "$LOCK_FILE")"
+  ' "$lock_file")"
   [[ "$value" != "null" && -n "$value" ]] ||
-    fail "$LOCK_FILE is missing $field for $service."
+    fail "$lock_file is missing $field for $service."
   printf '%s\n' "$value"
 }
 
@@ -179,6 +207,9 @@ export_images() {
   trap cleanup_work_dir EXIT
   mkdir -p "$work_dir/images"
   cp "$LOCK_FILE" "$work_dir/container-stack.lock.json"
+  if [[ "$TOPOLOGY" == "single-node-demo" ]]; then
+    cp "$TEST_LOCK_FILE" "$work_dir/container-test-support.lock.json"
+  fi
 
   for service in "${SERVICES[@]}"; do
     local image_ref
@@ -193,10 +224,18 @@ export_images() {
   write_transport_manifest "$work_dir/transport-manifest.json" "${SERVICES[@]}"
   (
     cd "$work_dir"
-    sha256sum container-stack.lock.json transport-manifest.json images/*.oci.tar.gz \
-      > hashes.sha256
-    tar -czf "$output_path" container-stack.lock.json transport-manifest.json \
-      hashes.sha256 images
+    hash_inputs=(container-stack.lock.json)
+    if [[ -f container-test-support.lock.json ]]; then
+      hash_inputs+=(container-test-support.lock.json)
+    fi
+    hash_inputs+=(transport-manifest.json images/*.oci.tar.gz)
+    sha256sum "${hash_inputs[@]}" > hashes.sha256
+    tar_inputs=(container-stack.lock.json)
+    if [[ -f container-test-support.lock.json ]]; then
+      tar_inputs+=(container-test-support.lock.json)
+    fi
+    tar_inputs+=(transport-manifest.json hashes.sha256 images)
+    tar -czf "$output_path" "${tar_inputs[@]}"
   )
   printf 'Wrote %s\n' "$output_path"
 }
@@ -229,6 +268,7 @@ load_images() {
 
 TOPOLOGY=""
 LOCK_FILE="$DEFAULT_LOCK_FILE"
+TEST_LOCK_FILE="$DEFAULT_TEST_LOCK_FILE"
 ENV_FILE="$DEFAULT_ENV_FILE"
 OUTPUT_PATH=""
 BUNDLE_PATH=""
@@ -242,6 +282,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --lock-file)
       LOCK_FILE="${2:-}"
+      shift 2
+      ;;
+    --test-lock-file)
+      TEST_LOCK_FILE="${2:-}"
       shift 2
       ;;
     --env-file)
@@ -277,6 +321,9 @@ done
 }
 [[ -n "$TOPOLOGY" ]] || fail "Missing --topology."
 [[ -f "$LOCK_FILE" ]] || fail "Missing lock file: $LOCK_FILE"
+if [[ "$TOPOLOGY" == "single-node-demo" ]]; then
+  [[ -f "$TEST_LOCK_FILE" ]] || fail "Missing test lock file: $TEST_LOCK_FILE"
+fi
 
 need_command jq
 need_command podman

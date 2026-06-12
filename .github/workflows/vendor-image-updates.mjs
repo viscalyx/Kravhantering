@@ -3,6 +3,7 @@ import childProcess from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const MAIN_BRANCH = 'main'
 const BRANCH_PREFIX = 'automation/vendor-image'
@@ -21,7 +22,7 @@ const ACCEPT_MANIFESTS = [
 
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/iu
 
-const IMAGE_CONFIGS = {
+export const IMAGE_CONFIGS = {
   nginx: {
     companionFiles: ['containers/production/env/release.env.template'],
     image: 'docker.io/library/nginx',
@@ -81,6 +82,30 @@ const IMAGE_CONFIGS = {
       version.revision,
     ],
   },
+  kong: {
+    companionFiles: [
+      '.devcontainer/docker-compose.yml',
+      '.devcontainer/elevated/docker-compose.yml',
+      'containers/production/env/release.env.template',
+    ],
+    image: 'docker.io/kong/kong-gateway',
+    laneDescription: lane => `Kong Gateway ${lane}.x`,
+    laneFromVersion: version => String(version.major),
+    laneSortValue: lane => Number(lane),
+    listTags: () => fetchDockerHubTags('kong', 'kong-gateway'),
+    lockPath: 'containers/kong/image.lock.json',
+    name: 'kong',
+    parseTag: parseKongTag,
+    registryHost: 'registry-1.docker.io',
+    registryRepository: 'kong/kong-gateway',
+    versionSortValue: version => [
+      version.major,
+      version.minor,
+      version.patch,
+      version.revision,
+      version.buildDate,
+    ],
+  },
 }
 
 function readNonEmpty(value) {
@@ -93,7 +118,7 @@ function parseBoolean(value) {
   return /^(?:1|true|yes)$/iu.test(String(value ?? '').trim())
 }
 
-function parseArgs(argv, env) {
+export function parseArgs(argv, env) {
   const options = {
     image: readNonEmpty(env.VENDOR_IMAGE_UPDATE_IMAGE) ?? 'all',
     includeCurrent: parseBoolean(env.VENDOR_IMAGE_UPDATE_INCLUDE_CURRENT),
@@ -119,14 +144,14 @@ function parseArgs(argv, env) {
 
   if (options.image !== 'all' && !IMAGE_CONFIGS[options.image]) {
     throw new Error(
-      `Unsupported image "${options.image}". Expected all, nginx, sqlserver or keycloak.`,
+      `Unsupported image "${options.image}". Expected all, nginx, sqlserver, keycloak or kong.`,
     )
   }
 
   return options
 }
 
-function parseKeycloakTag(tag) {
+export function parseKeycloakTag(tag) {
   const match = tag.match(
     /^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<revision>0|[1-9]\d*))?$/u,
   )
@@ -141,7 +166,7 @@ function parseKeycloakTag(tag) {
   }
 }
 
-function parseNginxTag(tag) {
+export function parseNginxTag(tag) {
   const match = tag.match(
     /^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)-alpine$/u,
   )
@@ -154,7 +179,7 @@ function parseNginxTag(tag) {
   }
 }
 
-function parseSqlServerTag(tag) {
+export function parseSqlServerTag(tag) {
   const match = tag.match(
     /^(?<year>20\d{2})-CU(?<cu>0|[1-9]\d*)-ubuntu-24\.04$/u,
   )
@@ -163,6 +188,21 @@ function parseSqlServerTag(tag) {
     cu: Number(match.groups.cu),
     tag,
     year: Number(match.groups.year),
+  }
+}
+
+export function parseKongTag(tag) {
+  const match = tag.match(
+    /^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)\.(?<revision>0|[1-9]\d*)-(?<buildDate>20\d{6})-ubuntu$/u,
+  )
+  if (!match?.groups) return null
+  return {
+    buildDate: Number(match.groups.buildDate),
+    major: Number(match.groups.major),
+    minor: Number(match.groups.minor),
+    patch: Number(match.groups.patch),
+    revision: Number(match.groups.revision),
+    tag,
   }
 }
 
@@ -208,13 +248,13 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
 
-function replaceImageRef(filePath, image, tag) {
+function replaceImageRef(filePath, image, replacementRef) {
   const source = fs.readFileSync(filePath, 'utf8')
   const pattern = new RegExp(`${escapeRegExp(image)}:[^\\s"'<>]+`, 'gu')
   let replacements = 0
   const updated = source.replace(pattern, () => {
     replacements += 1
-    return `${image}:${tag}`
+    return replacementRef
   })
 
   if (replacements === 0) {
@@ -616,6 +656,14 @@ function closeStalePrs(config, currentLane, expectedBranches, results) {
   }
 }
 
+export function companionImageReference(config, filePath, candidate, identity) {
+  const taggedRef = `${config.image}:${candidate.version.tag}`
+  if (config.name === 'kong' && filePath.startsWith('.devcontainer/')) {
+    return `${taggedRef}@${identity.manifestDigest}`
+  }
+  return taggedRef
+}
+
 function updateFiles(config, currentLock, candidate, identity) {
   const nextLock = {
     ...currentLock,
@@ -626,7 +674,11 @@ function updateFiles(config, currentLock, candidate, identity) {
   writeJson(config.lockPath, nextLock)
 
   for (const filePath of config.companionFiles) {
-    replaceImageRef(filePath, config.image, candidate.version.tag)
+    replaceImageRef(
+      filePath,
+      config.image,
+      companionImageReference(config, filePath, candidate, identity),
+    )
   }
 }
 
@@ -800,7 +852,7 @@ function appendSummary(results) {
   fs.appendFileSync(summaryPath, lines.join('\n'))
 }
 
-async function main(argv = process.argv.slice(2), env = process.env) {
+export async function main(argv = process.argv.slice(2), env = process.env) {
   const options = parseArgs(argv, env)
   const results = {
     closed: [],
@@ -832,12 +884,18 @@ async function main(argv = process.argv.slice(2), env = process.env) {
   return results.failed.length > 0 ? 1 : 0
 }
 
-main().then(
-  exitCode => {
-    process.exitCode = exitCode
-  },
-  error => {
-    console.error(error)
-    process.exitCode = 1
-  },
-)
+const isDirectRun =
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (isDirectRun) {
+  main().then(
+    exitCode => {
+      process.exitCode = exitCode
+    },
+    error => {
+      console.error(error)
+      process.exitCode = 1
+    },
+  )
+}

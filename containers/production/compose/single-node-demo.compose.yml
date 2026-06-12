@@ -1,0 +1,54 @@
+# Test-only overlay for the self-contained single-node stack.
+# Do not use this Compose file in production.
+
+services:
+  hsa-directory-mock:
+    image: ${HSA_DIRECTORY_MOCK_IMAGE_REF:?set HSA_DIRECTORY_MOCK_IMAGE_REF}
+    environment:
+      PORT: 8080
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "--input-type=module",
+          "-e",
+          "const response = await fetch('http://127.0.0.1:8080/health'); if (!response.ok) process.exit(1);"
+        ]
+      interval: 10s
+      retries: 12
+      start_period: 10s
+      timeout: 5s
+    networks:
+      - kravhantering-internal
+    restart: unless-stopped
+
+  kong:
+    image: ${KONG_IMAGE_REF:?set KONG_IMAGE_REF}
+    depends_on:
+      hsa-directory-mock:
+        condition: service_healthy
+    environment:
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+    volumes:
+      - ../kong/kong.yml:/kong/declarative/kong.yml:ro
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      retries: 12
+      start_period: 10s
+      timeout: 5s
+    networks:
+      - kravhantering-internal
+    restart: unless-stopped
+
+networks:
+  kravhantering-internal:
+    name: kravhantering-internal

@@ -6,8 +6,8 @@
 This suite verifies the administration centre entrypoint: navigating from the
 requirements library, persisting column-order changes across page reloads,
 administering HSA-id-prefixes, preserving the selected taxonomy tab in browser
-history,
-touch-target accessibility on mobile, and locale-specific page loads.
+history, admin-only tab permissions, touch-target accessibility on mobile, and
+locale-specific page loads.
 
 ## Data Model
 
@@ -34,6 +34,9 @@ flowchart TD
     H --> I[Navigate to /sv/requirements]
     I --> K[Assert column order]
     K --> L[Reload and re-assert]
+    B -- admin-only permissions --> AA[Open /sv/admin with admin-only session]
+    AA --> AB[Assert privileged tab states]
+    AB --> AC[Scroll last tab into view]
     B -- identity prefixes --> W[Open /sv/admin?tab=identity]
     W --> X[Edit HSA-id-prefix rows]
     X --> Y[Open HSA-id edit flow]
@@ -156,6 +159,37 @@ flowchart LR
     D -- No --> E[Click Flytta upp on first mismatch]
     E --> C
     D -- Yes --> F[Save]
+```
+
+## keeps Swedish admin tabs reachable in the header
+
+### Purpose: Admin-Only Permissions
+
+Confirms that an Admin-only user can use the admin tabs they are permitted to
+open, sees privacy-officer-only tabs disabled with explanatory tooltips, and can
+reach the final tab in the horizontally scrollable desktop tab strip.
+
+### Step-by-Step Flow: Admin-Only Permissions
+
+1. Navigate to `/sv/admin` with the `admin-only` storage state.
+1. Assert `Behörighetsöversyn` and `Åtgärdslogg` are enabled.
+1. Assert `Arkivering` and `Dataskydd` are disabled and explain that the
+   `Dataskyddshandläggare` role is required.
+1. Assert the tablist has measurable width and scrollable content.
+1. Scroll `Åtgärdslogg` into view and assert it fits inside the tablist bounds.
+
+### Sequence Diagram: Admin-Only Permissions
+
+```mermaid
+sequenceDiagram
+    participant U as AdminOnlyUser
+    participant A as AdminPage
+
+    U->>A: Open /sv/admin
+    Note over A: ✓ Admin tabs enabled
+    Note over A: ✓ Privacy-officer tabs disabled with tooltip
+    U->>A: Scroll Åtgärdslogg into view
+    Note over A: ✓ Final tab is reachable within tablist bounds
 ```
 
 ## browser back returns to the taxonomy tab after opening a taxonomy page

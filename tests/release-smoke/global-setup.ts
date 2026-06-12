@@ -12,6 +12,15 @@ export const RELEASE_SMOKE_USER: RoleSpec = {
   filePath: 'test-results/release-smoke/auth/release-smoke-user.json',
 }
 
+export const RELEASE_SMOKE_ADMIN: RoleSpec = {
+  role: 'release-smoke-admin',
+  username: 'release-smoke-admin',
+  password: 'release-smoke-admin-not-for-production',
+  filePath: 'test-results/release-smoke/auth/release-smoke-admin.json',
+}
+
+const RELEASE_SMOKE_ROLES = [RELEASE_SMOKE_USER, RELEASE_SMOKE_ADMIN]
+
 export default async function globalSetup(config: FullConfig): Promise<void> {
   if (process.env.PLAYWRIGHT_SKIP_AUTH_SETUP) {
     console.warn(
@@ -22,14 +31,16 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
 
   const baseUrl = getPlaywrightBaseUrl(config, 'https://kravhantering.test')
   try {
-    await loginAndSaveStorageState(baseUrl, RELEASE_SMOKE_USER)
-    console.info(
-      `[release-smoke global-setup] Stored ${RELEASE_SMOKE_USER.role} session at ${RELEASE_SMOKE_USER.filePath}`,
-    )
+    for (const role of RELEASE_SMOKE_ROLES) {
+      await loginAndSaveStorageState(baseUrl, role)
+      console.info(
+        `[release-smoke global-setup] Stored ${role.role} session at ${role.filePath}`,
+      )
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     throw new Error(
-      `Failed to obtain ${RELEASE_SMOKE_USER.role} storageState via Keycloak. Make sure the container stack is running at ${baseUrl} and NODE_EXTRA_CA_CERTS points at tmp/container-tls/ca.crt. Original error: ${message}`,
+      `Failed to obtain release-smoke storageState via Keycloak. Make sure the container stack is running at ${baseUrl} and NODE_EXTRA_CA_CERTS points at tmp/container-tls/ca.crt. Original error: ${message}`,
     )
   }
 }

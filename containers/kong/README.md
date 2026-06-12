@@ -1,9 +1,10 @@
 # Kong Devcontainer Contract
 
 This directory owns the local devcontainer contract for the Kong Gateway
-vendor container. Kong is introduced only for development-time verification of
-DB-less API-management wiring. It is not part of the production-like,
-release-smoke, CI, or single-node container stack in this phase.
+vendor container and the release test support Kong configuration. Kong is used
+for development-time verification of DB-less API-management wiring and for the
+test-only `single-node-demo` release topology. It is not part of the
+production runtime topology.
 
 ## Owned Configuration
 
@@ -28,8 +29,8 @@ No Kong ports are published to the host. The Admin API has no local dev token
 in this phase because it is reachable only from containers on the same
 devcontainer Compose network.
 
-`kong.yml` contains the devcontainer routes for the HSA directory mock. Kong
-proxies `POST /svr-hsaws2/hsaws` and `POST /hsa/person-records/lookup` to the
+`kong.yml` contains the routes for the HSA directory mock. Kong proxies
+`POST /svr-hsaws2/hsaws` and `POST /hsa/person-records/lookup` to the
 `hsa-directory-mock` service on the internal Compose network. Kravhantering
 uses the REST route through `HSA_PERSON_LOOKUP_URL`; the SOAP route remains
 available so the mock can verify the external HSA contract.
@@ -84,14 +85,17 @@ To update it manually:
 4. Update `tag`, `manifestDigest` and `imageId` together.
 5. Run `npm run devcontainer:kong:pull`, `npm run devcontainer:kong:up` and
    `npm run devcontainer:kong:status`.
+6. Verify that `.github/workflows/vendor-image-updates.mjs` still keeps both
+   devcontainer Compose files digest-pinned and the `release.env.template`
+   public test-support example tag-only.
 
 ## Update Rules
 
 - Keep Kong DB-less and file-configured for the devcontainer.
-- Keep the Admin API internal to the devcontainer Compose network.
-- Keep the HSA routes plain and DB-less in the devcontainer. The current REST
-  route is a proxy to the mock-owned JSON facade; do not claim a production
-  Kong SOAP transformation or HSA authentication plugin until that
-  API-management contract is designed and implemented.
-- Do not add Kong to the production-like, release-smoke, CI, or single-node
-  stacks in this phase.
+- Keep the Admin API internal to the active Compose network.
+- Keep the HSA routes plain and DB-less. The current REST route is a proxy to
+  the mock-owned JSON facade; do not claim a production Kong SOAP
+  transformation or HSA authentication plugin until that API-management
+  contract is designed and implemented.
+- Do not add Kong to the production runtime topology. Its release use is
+  limited to `single-node-demo` test support.

@@ -12,9 +12,10 @@ path without duplicating the full integration suite.
 <!-- markdownlint-disable MD013 -->
 | Property | Source | Purpose |
 | --- | --- | --- |
-| `storageState` | `tests/release-smoke/global-setup.ts` | Reuses the `release-smoke-user` browser session. |
+| `storageState` | `tests/release-smoke/global-setup.ts` | Reuses the `release-smoke-user` and `release-smoke-admin` browser sessions. |
 | `RELEASE_SMOKE_RUN_ID` | Environment | Optional stable prefix for created smoke requirements. |
 | `build.json` | `/build.json` | Public build metadata embedded in the app image. |
+| HSA fixture | `containers/hsa-directory-mock/fixtures/hsa-personer.json` | Provides deterministic person data through Kong. |
 <!-- markdownlint-enable MD013 -->
 
 Example build metadata shape:
@@ -35,15 +36,17 @@ flowchart TD
     A[Release smoke config] --> B[Global setup]
     B --> C[Login via nginx /auth]
     C --> D[Store release-smoke-user storageState]
-    D --> E[GET /api/auth/me]
-    E --> F[Open /sv/requirements]
-    F --> G[Verify seeded SQL Server data]
-    G --> H[Verify Next static assets]
-    H --> I[Attach screenshot]
-    I --> J[GET /build.json]
-    J --> K[Attach build metadata]
-    K --> L[POST /api/requirements]
-    L --> M[GET /api/requirements/:id]
+    D --> E[Store release-smoke-admin storageState]
+    E --> F[GET /api/auth/me]
+    F --> G[Open /sv/requirements]
+    G --> H[Verify seeded SQL Server data]
+    H --> I[Verify Next static assets]
+    I --> J[Attach screenshot]
+    J --> K[GET /build.json]
+    K --> L[Attach build metadata]
+    L --> M[POST /api/requirements]
+    M --> N[GET /api/requirements/:id]
+    N --> O[Admin verifies HSA person through Kong]
 ```
 
 ## Test Setup
@@ -55,21 +58,25 @@ flowchart TD
   so the suite uses regular HTTPS verification. In the devcontainer,
   `npm run container:release-smoke:up` runs
   `.devcontainer/trust-container-ca.sh` after generating the CA.
-- `global-setup.ts` signs in as `release-smoke-user` with the committed
-  non-production password from the container Keycloak realm.
+- `global-setup.ts` signs in as `release-smoke-user` and
+  `release-smoke-admin` with the committed non-production passwords from the
+  container Keycloak realm.
+- `container:release-smoke:up` starts Kong and the HSA directory mock for the
+  release-smoke stack. The app runtime receives
+  `HSA_PERSON_LOOKUP_URL=http://kong:8000/hsa/person-records/lookup`.
 - The config adds same-origin and `X-Requested-With` headers so API mutations
   exercise the same CSRF path as the browser UI.
 
 ## proves HTTPS, auth, SQL Server reads and writes, assets, and build metadata
 
-### Purpose
+### Browser Purpose
 
 This test verifies that the externally visible container route can serve the
 app over HTTPS, authenticate through Keycloak, read seeded SQL Server data,
 serve static image contents, expose build metadata, and persist one small
 CSRF-protected requirement mutation.
 
-### Step-by-Step Flow
+### Browser Flow
 
 1. Request `/api/auth/me` with the stored session and verify
    `release-smoke-user` is authenticated with the expected HSA-id.
@@ -84,7 +91,7 @@ CSRF-protected requirement mutation.
    `release-smoke-<run-id>`.
 9. GET the created requirement by id and verify it matches the POST result.
 
-### Sequence Diagram
+### Browser Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -118,4 +125,41 @@ sequenceDiagram
     PW->>APP: GET /api/requirements/:id
     APP->>DB: Read created requirement
     Note over PW,DB: ✓ SQL Server write path is proven
+```
+
+## verifies HSA person lookup through Kong and the HSA mock
+
+### HSA Purpose
+
+This test proves that the release-smoke stack contains the locked test support
+path for HSA verification. It uses the admin session because verifying a new
+kravområdesägare requires the `Admin` role.
+
+### HSA Flow
+
+1. Create an API request context with the stored `release-smoke-admin`
+   `storageState`.
+2. POST `/api/requirement-responsibility-people/verify` with
+   `mode=refresh`, `purpose=requirement_area_owner` and
+   `SE5560000001-manualarea1`.
+3. Verify that the response contains normalized person data for Maja
+   ManualArea from the HSA mock fixture.
+
+### HSA Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant PW as Playwright
+    participant APP as App
+    participant K as Kong
+    participant HSA as HSA mock
+    participant DB as SQL Server
+
+    PW->>APP: POST /api/requirement-responsibility-people/verify
+    APP->>K: POST /hsa/person-records/lookup
+    K->>HSA: Forward REST lookup
+    HSA-->>K: Normalized Maja ManualArea record
+    K-->>APP: Person JSON
+    APP->>DB: Upsert Kravansvarsperson
+    APP-->>PW: Verified person payload
 ```

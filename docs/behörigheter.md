@@ -71,7 +71,7 @@ behörighetsstyrt per syfte:
 
 Kravområden och byte av kravområdesägare hanteras som administrativ
 referensdata. Bara `Admin` kan skapa, ändra eller ta bort kravområden och byta
-kravområdesägare. Ett kravområdesägar-HSA-id måste vara verifierat som
+kravområdesägare. Ett HSA-id för kravområdesägare måste vara verifierat som
 kravansvarsperson innan det sparas.
 
 Samma HSA-id får inte samtidigt vara kravområdesägare och
@@ -95,7 +95,7 @@ kravpaketsansvarig.
 
 Kravpaketsansvarig och `Admin` får ändra kravpaketets metadata, byta
 kravpaketsansvarig och hantera kravpaketsmedförfattare. En
-kravpaketsmedförfattare är ett appägt uppdrag som visas i dataskydd och
+kravpaketsmedförfattare är ett uppdrag som ägs av appen och visas i dataskydd och
 behörighetsöversyn, men ger inte i sig rätt att byta ansvarig eller delegera
 kravpaketets uppdrag vidare.
 
@@ -123,7 +123,7 @@ och byte av kravunderlagsansvarig. Där krävs kravunderlagsansvarig,
 kravunderlagsmedförfattare eller `Admin`.
 
 Flera innehållsrutter för kravunderlag ligger fortfarande bakom generell
-inloggning eller den äldre auktoriseringstjänstegränsen. Det gäller bland
+inloggning eller den äldre gränsen för auktoriseringstjänsten. Det gäller bland
 annat vissa ändringar av behovsreferenser, kravurvalssvar, tillägg och borttag
 av publicerade bibliotekskrav, kravunderlagslokala krav och avsteg. Den
 uppdragsbaserade policyn för dessa rutter är målbilden för återstående
@@ -141,7 +141,7 @@ innehåll, men inte delegera behörighet vidare. Bara kravunderlagsansvarig och
 kravunderlagsmedförfattare.
 
 Samma HSA-id får inte samtidigt vara kravunderlagsansvarig och
-kravunderlagsmedförfattare för samma kravunderlag. Om ansvarigbytet skulle ge
+kravunderlagsmedförfattare för samma kravunderlag. Om bytet av ansvarig skulle ge
 en sådan dubbel roll stoppar tjänsten ändringen.
 
 ## Bibliotekskrav i kravunderlag
@@ -160,7 +160,7 @@ aktören behöver behörighet i båda sammanhangen:
   kravområdesmedförfattare eller `Admin`
 
 Servern kontrollerar i dag författarbehörigheten i målkravområdet vid lyftet.
-Källkravunderlagets uppdragskontroll hör till den återstående
+Uppdragskontrollen för kravunderlaget som källa hör till den återstående
 RBAC-införingen.
 
 Att vara kravområdesägare eller kravområdesmedförfattare ger inte full

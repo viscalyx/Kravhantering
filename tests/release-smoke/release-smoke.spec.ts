@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test'
+import { expect, request as playwrightRequest, test } from '@playwright/test'
+import { RELEASE_SMOKE_ADMIN } from './global-setup'
 
 interface AuthMeResponse {
   authenticated?: boolean
@@ -49,6 +50,17 @@ interface BuildMetadataResponse {
   version?: unknown
 }
 
+interface HsaVerificationResponse {
+  person?: {
+    displayName?: string
+    email?: string | null
+    givenName?: string
+    hsaId?: string
+    middleName?: string | null
+    surname?: string | null
+  }
+}
+
 function expectNonEmptyString(
   value: unknown,
   fieldName: string,
@@ -66,6 +78,19 @@ function releaseSmokeRunId() {
     process.env.GITHUB_RUN_ID ??
     `local-${Date.now().toString(36)}`
   )
+}
+
+function releaseSmokeBaseUrl(configuredBaseUrl: unknown) {
+  return (
+    process.env.PLAYWRIGHT_BASE_URL ??
+    (typeof configuredBaseUrl === 'string'
+      ? configuredBaseUrl
+      : 'https://kravhantering.test')
+  )
+}
+
+function originHeader(baseUrl: string) {
+  return new URL(baseUrl).origin
 }
 
 test.describe('Release smoke container flow', () => {
@@ -178,5 +203,45 @@ test.describe('Release smoke container flow', () => {
       expect(readBack.uniqueId).toBe(created.requirement.uniqueId)
       expect(readBack.versions?.[0]?.description).toBe(description)
     })
+  })
+
+  test('verifies HSA person lookup through Kong and the HSA mock', async ({
+    baseURL: configuredBaseUrl,
+  }) => {
+    const baseURL = releaseSmokeBaseUrl(configuredBaseUrl)
+    const adminRequest = await playwrightRequest.newContext({
+      baseURL,
+      extraHTTPHeaders: {
+        Origin: originHeader(baseURL),
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      storageState: RELEASE_SMOKE_ADMIN.filePath,
+    })
+
+    try {
+      const verifyResponse = await adminRequest.post(
+        '/api/requirement-responsibility-people/verify',
+        {
+          data: {
+            hsaId: 'SE5560000001-manualarea1',
+            mode: 'refresh',
+            purpose: 'requirement_area_owner',
+          },
+        },
+      )
+      expect(verifyResponse.ok()).toBe(true)
+      const payload = (await verifyResponse.json()) as HsaVerificationResponse
+
+      expect(payload.person).toMatchObject({
+        displayName: 'Maja ManualArea',
+        email: 'maja.manualarea@example.test',
+        givenName: 'Maja',
+        hsaId: 'SE5560000001-manualarea1',
+        middleName: null,
+        surname: 'ManualArea',
+      })
+    } finally {
+      await adminRequest.dispose()
+    }
   })
 })

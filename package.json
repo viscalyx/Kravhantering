@@ -41,6 +41,7 @@
     "container:build:app-runtime:no-cache": "docker buildx build --no-cache --file containers/app/Dockerfile --target app-runtime --tag localhost/kravhantering/app-runtime:local --load .",
     "container:build:db-job": "docker buildx build --file containers/app/Dockerfile --target db-job --tag localhost/kravhantering/db-job:local --load .",
     "container:build:db-job:no-cache": "docker buildx build --no-cache --file containers/app/Dockerfile --target db-job --tag localhost/kravhantering/db-job:local --load .",
+    "container:build:hsa-directory-mock": "docker buildx build --file containers/hsa-directory-mock/Dockerfile --tag localhost/kravhantering/hsa-directory-mock:local --load containers/hsa-directory-mock",
     "container:stack-lock:generate": "node scripts/containers/generate-stack-lock.mjs generate",
     "container:stack-lock:check": "node scripts/containers/generate-stack-lock.mjs check",
     "container:compose:generate:pr": "node scripts/containers/generate-compose.mjs --mode pr",
