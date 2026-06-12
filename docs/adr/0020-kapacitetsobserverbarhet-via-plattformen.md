@@ -12,7 +12,7 @@ Det håller capacity observability separat från applikationens `Åtgärdslogg`
 och från `Säkerhetslogg`-strömmen. Capacity events får innehålla säkra metrics
 som duration, item counts, token counts, cost och retry-after seconds, men får
 inte innehålla prompts, kravtext, images, raw query strings, tokens,
-hemligheter eller HSA IDs.
+hemligheter eller HSA-id-värden.
 
 V1 throttling är process-local och in-memory. Det duger som application
 guardrail och kapacitetssignal, men skalad throttling i produktion måste flytta

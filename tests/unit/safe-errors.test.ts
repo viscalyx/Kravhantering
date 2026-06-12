@@ -7,7 +7,7 @@ import {
 } from '@/lib/http/safe-errors'
 
 describe('safe error helpers', () => {
-  it('redacts provider keys, bearer tokens, JWTs, HSA IDs, secrets, and SQL fragments', () => {
+  it('redacts provider keys, bearer tokens, JWTs, HSA-id values, secrets, and SQL fragments', () => {
     const text = [
       'OpenRouter sk-or-v1-secret123 failed',
       'Authorization: Bearer eyJhbGciOi.demo.payload',

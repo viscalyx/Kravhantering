@@ -64,7 +64,8 @@ kravunderlag" button stays in the fixed floating rail beside the list.
 1. Open "Redigera" for `Upphandling av e-tjänstplattform` and assert the modal
    dialog is prefilled.
 1. Open `Byt kravunderlagsansvarig` from the edit dialog and assert the separate
-   change modal validates the current/new HSA IDs.
+   change modal validates current and new HSA-id values through its editable
+   prefix and suffix controls.
 1. *(Desktop only)* Assert that `Nytt kravunderlag` is positioned at the right
    edge of the list in the fixed floating rail.
 1. Force a narrow requirement-area pill list and assert the chevron toggle
@@ -93,7 +94,7 @@ sequenceDiagram
     U->>P: Open create/edit specification dialogs
     Note over P: ✓ Dialogs are visible and prefilled
     U->>P: Open change-responsible modal
-    Note over P: ✓ Separate modal validates HSA IDs
+    Note over P: ✓ Separate modal validates HSA-id prefix/suffix values
     U->>P: Toggle overflowing requirement-area pills
     Note over P: ✓ Hidden pills expand and collapse
     U->>F: Fill "e-tjänst"

@@ -68,7 +68,7 @@ Safe metrics may be included when relevant:
 - `retry_after_seconds`
 
 The capacity log must not contain prompts, requirement text, images, raw query
-strings, tokens, secrets, or HSA IDs.
+strings, tokens, secrets, or HSA-id values.
 
 ## Measured Flows
 

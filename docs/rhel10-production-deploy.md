@@ -511,7 +511,7 @@ leave the default when MCP service tokens are not used. It is not a secret.
 Set `HSA_PERSON_LOOKUP_URL` to the environment-specific server-side HSA
 lookup endpoint. The browser must not call the HSA integration directly; the
 app calls this internal Kong or integration-platform REST facade only when an
-editable HSA id needs lookup or refresh. Keep
+editable HSA-id needs lookup or refresh. Keep
 `HSA_PERSON_LOOKUP_TIMEOUT_MS=5000` unless the approved integration path needs
 another timeout.
 

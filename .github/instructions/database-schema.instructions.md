@@ -93,13 +93,13 @@ ALTER TABLE [<table>]
   field, update the Admin Center Privacy / Dataskydd erasure workflow in the
   same change.
 - Add or update the relevant `GROUP_POLICIES` entry in
-  `lib/privacy/erasure.ts` so preview and execution handle the field by HSA-ID.
-- Use HSA-ID as the durable identity key. Names, email addresses, and display
+  `lib/privacy/erasure.ts` so preview and execution handle the field by HSA-id.
+- Use HSA-id as the durable identity key. Names, email addresses, and display
   names are snapshots or contact details, never matching keys for erasure.
 - Add or update seeded privacy scenarios in `typeorm/seed.mjs`, including
-  representative HSA-ID values and duplicate-name coverage when ambiguity is
+  representative HSA-id values and duplicate-name coverage when ambiguity is
   possible.
-- Add or update tests for preview, execution, exact HSA-ID matching, duplicate
+- Add or update tests for preview, execution, exact HSA-id matching, duplicate
   name safety, no-replacement anonymization, and UI/i18n copy when the field is
   visible in Admin Privacy.
 - Update `docs/admin-center.md`, `docs/database-schema.md`, and relevant auth

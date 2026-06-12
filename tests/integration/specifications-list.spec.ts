@@ -1,9 +1,33 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Locator, test } from '@playwright/test'
 
 const viewports = [
   { name: 'mobile', width: 375, height: 812 },
   { name: 'desktop', width: 1280, height: 720 },
 ]
+
+function splitHsaId(hsaId: string): { prefix: string; suffix: string } {
+  const separatorIndex = hsaId.indexOf('-')
+  if (separatorIndex < 0) {
+    throw new Error(`Expected full HSA-id with prefix and suffix: ${hsaId}`)
+  }
+
+  return {
+    prefix: hsaId.slice(0, separatorIndex),
+    suffix: hsaId.slice(separatorIndex + 1),
+  }
+}
+
+async function fillEditableHsaId(
+  scope: Locator,
+  inputName: string,
+  hsaId: string,
+): Promise<void> {
+  const { prefix, suffix } = splitHsaId(hsaId)
+  await scope
+    .getByRole('combobox', { name: 'HSA-id-prefix' })
+    .selectOption(prefix)
+  await scope.getByRole('textbox', { name: inputName }).fill(suffix)
+}
 
 for (const viewport of viewports) {
   test.describe(`Requirements specifications list filter — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
@@ -148,7 +172,11 @@ for (const viewport of viewports) {
           changeDialog.getByRole('button', { name: 'Hämta' }),
         ).toBeVisible()
 
-        await newResponsibleInput.fill(currentResponsibleHsaId)
+        await fillEditableHsaId(
+          changeDialog,
+          'Nya kravunderlagsansvarigs HSA-id',
+          currentResponsibleHsaId,
+        )
         await expect(changeDialog.getByRole('alert')).toContainText(
           'måste skilja sig',
         )

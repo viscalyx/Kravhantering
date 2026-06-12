@@ -29,7 +29,7 @@ The suite covers:
 - Tool allowlist: exactly the documented 11 tools are exposed, and unknown
   tool names fail without invoking the requirements service.
 - Bearer auth: missing, invalid, wrong-issuer, wrong-audience, missing
-  `employeeHsaId`, and invalid HSA ID.
+  `employeeHsaId`, and invalid HSA-id.
 - Authorization seams: representative MCP calls receive a `RequestContext`
   with `source: "mcp"`, the expected `toolName`, the request ID, and the
   verified actor attached at the HTTP edge.
