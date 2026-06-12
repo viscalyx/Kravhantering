@@ -108,15 +108,17 @@ HSA-id fields compose the selected HSA-id-prefix and the entered
 HSA-id-suffix into the existing full HSA-id value before calling existing APIs.
 Read-only HSA-id values remain full values.
 
-If no visible HSA-id-prefix exists, editable HSA-id suffix fields are locked and
-explain that an administrator must configure a prefix. If an existing assignment
-uses a hidden prefix, that prefix is shown only for that row so the current
-value remains editable without reintroducing the prefix for new empty fields.
+If no HSA-id-prefix row exists, editable HSA-id suffix fields are locked and
+explain that an administrator must configure a prefix. Once a prefix list has
+been configured, at least one prefix must remain visible. If an existing
+assignment uses a hidden prefix, that prefix is shown only for that row so the
+current value remains editable without reintroducing the prefix for new empty
+fields.
 
 Used prefixes cannot be removed because they may exist in active or historical
 HSA-id fields. They can be hidden from user-facing lists. Unused prefixes can be
-removed. If at least one prefix is visible, exactly one visible prefix must be
-default; when no prefix is visible, there is no default.
+removed. A non-empty prefix list must have at least one visible prefix and
+exactly one visible prefix must be default. An empty prefix list has no default.
 
 Demo seed data contains `SE5560000001` as the visible default prefix. Required
 seed data intentionally does not create any HSA-id-prefix rows, so a clean

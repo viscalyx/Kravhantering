@@ -272,6 +272,21 @@ describe('ui-settings DAL', () => {
     ).rejects.toMatchObject({ code: 'default_required' })
   })
 
+  it('updateHsaIdPrefixes rejects non-empty lists without a visible prefix', async () => {
+    const { db } = createSqlServerDb()
+
+    await expect(
+      updateHsaIdPrefixes(db, [
+        {
+          isDefault: false,
+          isVisible: false,
+          label: null,
+          prefix: 'SE5560000001',
+        },
+      ]),
+    ).rejects.toMatchObject({ code: 'visible_prefix_required' })
+  })
+
   it('updateHsaIdPrefixes blocks deleting or changing a used prefix', async () => {
     const { db, query } = createSqlServerDb()
     query.mockImplementation(async (sql: string, parameters?: unknown[]) => {

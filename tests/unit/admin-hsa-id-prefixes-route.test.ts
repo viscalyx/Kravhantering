@@ -232,4 +232,34 @@ describe('admin HSA-id prefixes route', () => {
     expect(response.status).toBe(400)
     expect(body.code).toBe('default_hidden')
   })
+
+  it('returns a bad request when a non-empty list has no visible prefix', async () => {
+    routeState.updateHsaIdPrefixes.mockRejectedValueOnce(
+      new routeState.HsaIdPrefixSettingsError(
+        'visible_prefix_required',
+        'At least one configured HSA-id prefix must be visible.',
+      ),
+    )
+
+    const response = await PUT(
+      new NextRequest('https://example.test/api/admin/hsa-id-prefixes', {
+        body: JSON.stringify({
+          prefixes: [
+            {
+              id: 1,
+              isDefault: false,
+              isVisible: false,
+              label: null,
+              prefix: 'SE5560000001',
+            },
+          ],
+        }),
+        method: 'PUT',
+      }),
+    )
+    const body = (await response.json()) as { code?: string }
+
+    expect(response.status).toBe(400)
+    expect(body.code).toBe('visible_prefix_required')
+  })
 })

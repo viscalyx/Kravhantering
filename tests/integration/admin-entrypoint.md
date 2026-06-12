@@ -5,7 +5,8 @@
 
 This suite verifies the administration centre entrypoint: navigating from the
 requirements library, persisting column-order changes across page reloads,
-administering HSA-id-prefixes, preserving the selected taxonomy tab in browser history,
+administering HSA-id-prefixes, preserving the selected taxonomy tab in browser
+history,
 touch-target accessibility on mobile, and locale-specific page loads.
 
 ## Data Model

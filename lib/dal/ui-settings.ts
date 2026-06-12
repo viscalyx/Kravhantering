@@ -268,6 +268,12 @@ function normalizeHsaIdPrefixInputs(
 
   const visibleCount = normalized.filter(value => value.isVisible).length
   const defaultCount = normalized.filter(value => value.isDefault).length
+  if (normalized.length > 0 && visibleCount === 0) {
+    throw new HsaIdPrefixSettingsError(
+      'visible_prefix_required',
+      'At least one configured HSA-id prefix must be visible.',
+    )
+  }
   if (visibleCount === 0 && defaultCount > 0) {
     throw new HsaIdPrefixSettingsError(
       'default_without_visible_prefix',

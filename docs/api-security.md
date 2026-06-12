@@ -251,7 +251,8 @@ their auth/CSRF behavior is understood.
 - Do not add production URLs, production secrets, vendor tokens, or external
   scan targets.
 - For privacy paths, include only disposable seeded identities and assert that
-  generated examples never log or expose raw target HSA-id values in audit details.
+  generated examples never log or expose raw target HSA-id values in audit
+  details.
   Data-subject export should remain outside this contract until the privacy
   route policy explicitly covers both self-export and `PrivacyOfficer`
   cross-user export.

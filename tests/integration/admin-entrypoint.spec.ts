@@ -361,8 +361,10 @@ for (const { name, viewport } of viewportVariants) {
           .getByRole('textbox', { name: 'Etikett' })
           .fill('Norsk testorganisation')
         await temporaryPrefixRow
-          .getByRole('radio', { name: 'Standard' })
-          .check()
+          .getByRole('radio', {
+            name: `Standard: ${TEMPORARY_HSA_ID_PREFIX}`,
+          })
+          .check({ force: true })
         await page.getByRole('button', { name: 'Spara' }).click()
         await expect(page.getByText('Sparat')).toBeVisible()
         await expect(temporaryPrefixRow).toBeVisible()

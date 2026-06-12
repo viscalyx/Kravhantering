@@ -988,6 +988,7 @@
       "title": "Identitet",
       "description": "Hantera de HSA-id-prefix som erbjuds när användare anger HSA-id.",
       "addPrefix": "Lägg till prefix",
+      "defaultSelected": "Valt standardprefix",
       "defaultMustBeVisible": "Standardprefixet för HSA-id måste vara synligt.",
       "defaultPrefix": "Standard",
       "defaultRequired": "Välj ett synligt HSA-id-prefix som standard.",
@@ -995,20 +996,25 @@
       "duplicatePrefix": "Varje HSA-id-prefix måste vara unikt.",
       "emptyPrefixes": "Inga HSA-id-prefix är konfigurerade. HSA-id-suffixfält är låsta tills en administratör lägger till ett synligt prefix.",
       "fieldHelp": {
-        "defaultPrefix": "Välj prefixet som ska vara förvalt i nya tomma HSA-id-fält. Standardprefixet måste vara synligt.",
+        "defaultPrefix": "Stjärnan markerar prefixet som är förvalt i nya tomma HSA-id-fält. Om du väljer ett dolt prefix som standard görs det synligt samtidigt.",
         "label": "Lägg valfritt till en kort visningsetikett. Användare ser etiketten tillsammans med prefixet i listor över HSA-id-prefix.",
         "prefix": "Ange delen före bindestrecket i ett HSA-id: två versala bokstäver för landskod följt av tio siffror.",
-        "visible": "Synliga prefix erbjuds i listor över HSA-id-prefix. Dölj ett använt prefix när det ska fortsätta gälla för befintliga tilldelningar men inte längre erbjudas för nya."
+        "visible": "Ögat styr om prefixet erbjuds i listor över HSA-id-prefix. Dölj ett använt prefix när det ska fortsätta gälla för befintliga tilldelningar men inte längre erbjudas för nya. En icke-tom lista måste alltid ha minst ett synligt prefix."
       },
+      "hidePrefix": "Dölj prefix",
       "invalidPrefix": "Ange varje HSA-id-prefix som två versala bokstäver följt av tio siffror.",
       "label": "Etikett",
       "loadError": "Kunde inte läsa HSA-id-prefix.",
+      "newPrefix": "Nytt prefix",
       "prefix": "HSA-id-prefix",
       "removePrefix": "Ta bort prefix",
       "saveError": "Kunde inte spara HSA-id-prefix.",
+      "setDefaultPrefix": "Välj som standard",
+      "showPrefix": "Visa prefix",
       "usedPrefix": "Detta prefix har använts i ett HSA-id och kan döljas, men inte tas bort.",
       "usedPrefixDeleteBlocked": "Använda HSA-id-prefix kan inte tas bort. Dölj prefixet i stället.",
-      "visible": "Synligt"
+      "visible": "Synligt",
+      "visibleRequired": "Minst ett HSA-id-prefix måste vara synligt."
     },
     "identityDescription": "Hantera HSA-id-prefix för redigerbara ansvarsfält.",
     "taxonomy": "Taxonomi",
@@ -1660,6 +1666,29 @@
       "accessReview": {
         "heading": "Behörighetsöversyn",
         "body": "Använd behörighetsöversyn för återkommande granskningar av uppdrag som applikationen styr. Globala roller granskas i identitetsverktyget."
+      },
+      "archiving": {
+        "heading": "Arkivering och gallring",
+        "body": "Använd arkiveringsfliken för att förhandsgranska och köra godkända gallringsregler samt exportera arkivunderlag innan data tas bort. Dataskyddsradering hanteras separat."
+      }
+    },
+    "adminIdentity": {
+      "title": "Identitet",
+      "overview": {
+        "heading": "Syfte",
+        "body": "Identitetsfliken styr vilka HSA-id-prefix som erbjuds när användare fyller i redigerbara HSA-id-fält. Prefixen är stöd i gränssnittet, inte en serverpolicy."
+      },
+      "prefixes": {
+        "heading": "Prefix och etiketter",
+        "body": "Ange prefixet som delen före bindestrecket i ett HSA-id. Etiketten är valfri och används bara för att göra listan lättare att känna igen."
+      },
+      "visibility": {
+        "heading": "Synlighet",
+        "body": "Synliga prefix visas i användarnas prefixlistor. Dölj ett prefix när det ska kunna ligga kvar på befintliga tilldelningar men inte längre erbjudas för nya HSA-id. En icke-tom lista måste alltid ha minst ett synligt prefix."
+      },
+      "defaultPrefix": {
+        "heading": "Standardprefix",
+        "body": "Standardprefixet är förvalt i nya tomma HSA-id-fält. Det måste vara synligt; väljer du ett dolt prefix som standard görs det synligt samtidigt."
       }
     },
     "adminPrivacy": {

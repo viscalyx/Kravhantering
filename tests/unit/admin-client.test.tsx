@@ -719,6 +719,68 @@ describe('AdminClient', () => {
     expect(await screen.findByText('admin.saved')).toBeVisible()
   })
 
+  it('renders HSA-id prefix visibility and default as icon controls', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=identity')
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/admin/hsa-id-prefixes') {
+        return Promise.resolve(
+          okJson({
+            prefixes: [
+              {
+                id: 1,
+                isDefault: true,
+                isUsed: true,
+                isVisible: true,
+                label: null,
+                prefix: 'SE5560000001',
+              },
+              {
+                id: 2,
+                isDefault: false,
+                isUsed: false,
+                isVisible: false,
+                label: null,
+                prefix: 'NO5560000001',
+              },
+            ],
+          }),
+        )
+      }
+      return Promise.reject(new Error(`Unexpected fetch ${url}`))
+    })
+
+    render(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+      />,
+    )
+
+    const onlyVisibleToggle = await screen.findByRole('button', {
+      name: 'admin.identity.hidePrefix: SE5560000001',
+    })
+    expect(onlyVisibleToggle).toBeDisabled()
+
+    const hiddenToggle = screen.getByRole('button', {
+      name: 'admin.identity.showPrefix: NO5560000001',
+    })
+    expect(hiddenToggle).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(hiddenToggle)
+
+    expect(
+      screen.getByRole('button', {
+        name: 'admin.identity.hidePrefix: NO5560000001',
+      }),
+    ).toHaveAttribute('aria-pressed', 'true')
+
+    const noDefaultRadio = screen.getByRole('radio', {
+      name: 'admin.identity.defaultPrefix: NO5560000001',
+    })
+    fireEvent.click(noDefaultRadio)
+    expect(noDefaultRadio).toBeChecked()
+  })
+
   it('blocks the identity tab without Admin permission', () => {
     searchParamsMock.current = new URLSearchParams('tab=identity')
 
@@ -1012,6 +1074,32 @@ describe('AdminClient', () => {
     await waitFor(() =>
       expect(screen.getByTestId('help-title')).toHaveTextContent(
         'adminAccessReview.title',
+      ),
+    )
+  })
+
+  it('switches the header help content when the identity tab is selected', async () => {
+    fetchMock.mockResolvedValue(okJson({ prefixes: [] }))
+
+    renderWithConfirmModal(
+      <HelpProvider>
+        <AdminClient
+          currentUserRoles={['Admin']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        />
+        <HelpContentProbe />
+      </HelpProvider>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByTestId('help-title')).toHaveTextContent('admin.title'),
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.identity.title' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('help-title')).toHaveTextContent(
+        'adminIdentity.title',
       ),
     )
   })

@@ -7,7 +7,9 @@ import {
 } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import SpecificationFormModal from '@/app/[locale]/specifications/specification-form-modal'
+import SpecificationFormModal, {
+  SPECIFICATION_FORM_ID,
+} from '@/app/[locale]/specifications/specification-form-modal'
 
 const confirmMock = vi.fn()
 
@@ -47,6 +49,12 @@ const lifecycleStatuses = [
 const governanceObjectTypes = [
   { id: 1, nameEn: 'Platform', nameSv: 'Plattform' },
 ]
+const currentUser = {
+  displayName: 'Ada Admin',
+  email: 'ada.admin@example.test',
+  hsaId: 'SE5560000001-ada1',
+  roles: ['Admin'],
+}
 const spec = {
   businessNeedsReference: 'Current business need',
   id: 7,
@@ -64,12 +72,7 @@ function renderEditModal(
 ) {
   return render(
     <SpecificationFormModal
-      currentUser={{
-        displayName: 'Ada Admin',
-        email: 'ada.admin@example.test',
-        hsaId: 'SE5560000001-ada1',
-        roles: ['Admin'],
-      }}
+      currentUser={currentUser}
       governanceObjectTypes={governanceObjectTypes}
       implementationTypes={implementationTypes}
       lifecycleStatuses={lifecycleStatuses}
@@ -82,6 +85,30 @@ function renderEditModal(
       {...props}
     />,
   )
+}
+
+function createModalElement(
+  props: Partial<ComponentProps<typeof SpecificationFormModal>> = {},
+) {
+  return (
+    <SpecificationFormModal
+      currentUser={currentUser}
+      governanceObjectTypes={governanceObjectTypes}
+      implementationTypes={implementationTypes}
+      lifecycleStatuses={lifecycleStatuses}
+      mode="create"
+      onClose={() => {}}
+      onSaved={() => {}}
+      open
+      {...props}
+    />
+  )
+}
+
+function renderCreateModal(
+  props: Partial<ComponentProps<typeof SpecificationFormModal>> = {},
+) {
+  return render(createModalElement(props))
 }
 
 describe('SpecificationFormModal', () => {
@@ -344,6 +371,58 @@ describe('SpecificationFormModal', () => {
         name: /specification\.changeResponsible/,
       }),
     ).toBeDisabled()
+  })
+
+  it('blocks create saves when the current user HSA-id is unavailable', () => {
+    renderCreateModal({
+      currentUser: null,
+      currentUserLoading: false,
+      currentUserUnavailable: true,
+    })
+
+    expect(
+      screen.getByText('specification.currentUserUnavailable'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /common\.save/i })).toBeDisabled()
+
+    fireEvent.submit(document.getElementById(SPECIFICATION_FORM_ID) as Element)
+
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          url === '/api/specifications' &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      ),
+    ).toBe(false)
+  })
+
+  it('fills the create responsible fields when the current user becomes available', async () => {
+    const view = renderCreateModal({
+      currentUser: null,
+      currentUserLoading: true,
+      currentUserUnavailable: false,
+    })
+
+    expect(screen.getByRole('button', { name: /common\.save/i })).toBeDisabled()
+    expect(
+      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
+    ).toHaveValue('')
+
+    view.rerender(createModalElement({ currentUser }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('textbox', {
+          name: /specification\.responsibleHsaId/,
+        }),
+      ).toHaveValue(currentUser.hsaId)
+    })
+    expect(
+      screen.getByRole('button', { name: /common\.save/i }),
+    ).not.toBeDisabled()
+    expect(
+      screen.getByText(new RegExp(currentUser.displayName)),
+    ).toBeInTheDocument()
   })
 
   it('changes responsible through the modal using a dedicated payload', async () => {

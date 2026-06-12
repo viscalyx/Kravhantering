@@ -2,7 +2,7 @@
 
 import { UserRoundCog } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FormModal from '@/components/FormModal'
@@ -250,10 +250,24 @@ export default function SpecificationFormModal({
     currentUser === undefined
       ? loadedCurrentUserUnavailable
       : currentUserUnavailable
+  const effectiveCurrentUserHsaId = effectiveCurrentUser?.hsaId.trim() ?? ''
+  const effectiveCurrentUserDisplayName =
+    effectiveCurrentUser?.displayName ?? effectiveCurrentUserHsaId
+  const effectiveCurrentUserEmail = effectiveCurrentUser?.email ?? ''
+  const isCreate = mode === 'create'
   const isEdit = mode === 'edit' && !!spec
+  const createCurrentUserBlocked =
+    isCreate &&
+    (effectiveCurrentUserLoading ||
+      effectiveCurrentUserUnavailable ||
+      !effectiveCurrentUserHsaId)
+  const createCurrentUserMessage = effectiveCurrentUserLoading
+    ? t('currentUserLoading')
+    : t('currentUserUnavailable')
+  const formControlsDisabled = isSubmitting || createCurrentUserBlocked
   const formResetKey = isEdit
     ? `edit:${spec.id}:${spec.uniqueId}:${locale}`
-    : `create:${effectiveCurrentUser?.hsaId ?? ''}:${effectiveCurrentUser?.displayName ?? ''}:${effectiveCurrentUser?.email ?? ''}`
+    : `create:${effectiveCurrentUserHsaId}:${effectiveCurrentUserDisplayName}:${effectiveCurrentUserEmail}`
   const title = isEdit ? t('editSpecification') : t('newSpecification')
   const formDeveloperModeContext =
     developerModeContext ??
@@ -265,6 +279,31 @@ export default function SpecificationFormModal({
   const inputClassName =
     'min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50'
   const selectClassName = inputClassName
+  const applyEffectiveCurrentUserResponsible = useCallback(
+    (current: SpecificationFormState): SpecificationFormState => {
+      if (!effectiveCurrentUserHsaId) return current
+      if (
+        current.responsibleHsaId === effectiveCurrentUserHsaId &&
+        current.responsibleDisplayName === effectiveCurrentUserDisplayName &&
+        current.responsibleEmail === effectiveCurrentUserEmail
+      ) {
+        return current
+      }
+
+      return {
+        ...current,
+        responsibleDisplayName: effectiveCurrentUserDisplayName,
+        responsibleEmail: effectiveCurrentUserEmail,
+        responsibleHsaId: effectiveCurrentUserHsaId,
+        responsiblePersonVerification: null,
+      }
+    },
+    [
+      effectiveCurrentUserDisplayName,
+      effectiveCurrentUserEmail,
+      effectiveCurrentUserHsaId,
+    ],
+  )
 
   useEffect(() => {
     if (!open || currentUser !== undefined) return
@@ -328,6 +367,16 @@ export default function SpecificationFormModal({
     setSlugError(null)
     formResetKeyRef.current = formResetKey
   }, [effectiveCurrentUser, formResetKey, locale, mode, open, spec])
+
+  useEffect(() => {
+    if (!open || !isCreate || !effectiveCurrentUserHsaId) return
+    setForm(applyEffectiveCurrentUserResponsible)
+  }, [
+    applyEffectiveCurrentUserResponsible,
+    effectiveCurrentUserHsaId,
+    isCreate,
+    open,
+  ])
 
   const closeDirectly = () => {
     setResponsibleChange(null)
@@ -424,6 +473,10 @@ export default function SpecificationFormModal({
     event.preventDefault()
     if (isSubmitting) return
     if (mode === 'edit' && !editSpecificationSlug) return
+    if (createCurrentUserBlocked) {
+      setSaveError(t('currentUserUnavailable'))
+      return
+    }
 
     setSlugError(null)
     setSaveError(null)
@@ -451,7 +504,7 @@ export default function SpecificationFormModal({
           ? specificationPayload
           : {
               ...specificationPayload,
-              responsibleHsaId: form.responsibleHsaId || null,
+              responsibleHsaId: effectiveCurrentUserHsaId,
             }
       const response = await apiFetch(
         mode === 'edit'
@@ -532,6 +585,7 @@ export default function SpecificationFormModal({
                 />
                 <input
                   className={inputClassName}
+                  disabled={formControlsDisabled}
                   id="spec-name"
                   onBlur={() => {
                     if (!slugEdited && form.name) {
@@ -574,6 +628,7 @@ export default function SpecificationFormModal({
                   }
                   aria-invalid={!!slugError}
                   className={`${inputClassName} font-mono${slugError ? ' border-red-500 focus:ring-red-400/50' : ''}`}
+                  disabled={formControlsDisabled}
                   id="spec-unique-id"
                   onChange={event => {
                     setSlugEdited(true)
@@ -611,6 +666,7 @@ export default function SpecificationFormModal({
                 />
                 <textarea
                   className={`${inputClassName} resize-none`}
+                  disabled={formControlsDisabled}
                   id="spec-business-ref"
                   onChange={event =>
                     setForm(current => ({
@@ -669,18 +725,20 @@ export default function SpecificationFormModal({
                   </div>
                 ) : (
                   <HsaPersonVerifyField
-                    disabled={isSubmitting}
+                    disabled={formControlsDisabled}
                     emailLabel={tc('hsaVerifyEmail')}
                     errorFallback={tc('hsaVerifyError')}
                     fetchingLabel={tc('fetchingHsaPerson')}
                     fetchLabel={tc('fetchHsaPerson')}
-                    hsaId={form.responsibleHsaId}
-                    initialDisplayName={form.responsibleDisplayName}
-                    initialEmail={form.responsibleEmail}
+                    hsaId={effectiveCurrentUserHsaId}
+                    initialDisplayName={effectiveCurrentUserDisplayName}
+                    initialEmail={effectiveCurrentUserEmail}
                     inputClassName={inputClassName}
                     inputId="spec-responsible-hsa-id"
                     nameLabel={tc('hsaVerifyName')}
-                    onHsaIdChange={() => undefined}
+                    onHsaIdChange={() =>
+                      setForm(applyEffectiveCurrentUserResponsible)
+                    }
                     onVerified={person =>
                       setForm(current => ({
                         ...current,
@@ -696,6 +754,14 @@ export default function SpecificationFormModal({
                     unavailableText={tc('hsaVerifyUnavailable')}
                   />
                 )}
+                {createCurrentUserBlocked ? (
+                  <p
+                    className="mt-2 rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                    role="alert"
+                  >
+                    {createCurrentUserMessage}
+                  </p>
+                ) : null}
               </div>
 
               <div>
@@ -706,6 +772,7 @@ export default function SpecificationFormModal({
                 />
                 <select
                   className={selectClassName}
+                  disabled={formControlsDisabled}
                   id="spec-area"
                   onChange={event =>
                     setForm(current => ({
@@ -732,6 +799,7 @@ export default function SpecificationFormModal({
                 />
                 <select
                   className={selectClassName}
+                  disabled={formControlsDisabled}
                   id="spec-impl-type"
                   onChange={event =>
                     setForm(current => ({
@@ -763,6 +831,7 @@ export default function SpecificationFormModal({
                 />
                 <select
                   className={selectClassName}
+                  disabled={formControlsDisabled}
                   id="spec-lifecycle-status"
                   onChange={event =>
                     setForm(current => ({
@@ -802,7 +871,7 @@ export default function SpecificationFormModal({
             </button>
             <button
               className="btn-primary"
-              disabled={isSubmitting}
+              disabled={formControlsDisabled}
               type="submit"
             >
               {isSubmitting ? tc('saving') : tc('save')}

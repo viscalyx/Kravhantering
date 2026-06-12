@@ -12,6 +12,8 @@ import {
   CircleMinus,
   ClipboardCheck,
   ClipboardList,
+  Eye,
+  EyeOff,
   FileJson,
   FileText,
   FolderTree,
@@ -27,6 +29,7 @@ import {
   RotateCcw,
   Save,
   ShieldCheck,
+  Star,
   Tags,
   Trash2,
   Wrench,
@@ -164,6 +167,32 @@ const ADMIN_PRIVACY_HELP: HelpContent = {
     },
   ],
   titleKey: 'adminPrivacy.title',
+}
+
+const ADMIN_IDENTITY_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'adminIdentity.overview.body',
+      headingKey: 'adminIdentity.overview.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'adminIdentity.prefixes.body',
+      headingKey: 'adminIdentity.prefixes.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'adminIdentity.visibility.body',
+      headingKey: 'adminIdentity.visibility.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'adminIdentity.defaultPrefix.body',
+      headingKey: 'adminIdentity.defaultPrefix.heading',
+    },
+  ],
+  titleKey: 'adminIdentity.title',
 }
 
 const ADMIN_ACCESS_REVIEW_HELP: HelpContent = {
@@ -496,9 +525,11 @@ function IdentitySettingsPanel() {
   const [prefixes, setPrefixes] = useState<HsaIdPrefixAdminItem[]>([])
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [message, setMessage] = useState<string | null>(null)
+  const panelRef = useRef<HTMLElement | null>(null)
   const saveTokenRef = useRef(0)
   const isSaving = saveState === 'saving'
   const loadErrorMessage = ta('identity.loadError')
+  const visiblePrefixCount = prefixes.filter(item => item.isVisible).length
 
   const loadPrefixes = useCallback(async () => {
     setSaveState('saving')
@@ -531,6 +562,30 @@ function IdentitySettingsPanel() {
   useEffect(() => {
     void loadPrefixes()
   }, [loadPrefixes])
+
+  useEffect(() => {
+    if (openIdentityHelp === null) return
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpenIdentityHelp(null)
+      }
+    }
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target
+      if (target instanceof Node && panelRef.current?.contains(target)) {
+        return
+      }
+      setOpenIdentityHelp(null)
+    }
+
+    document.addEventListener('keydown', closeOnEscape)
+    document.addEventListener('pointerdown', closeOnOutsidePointer)
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape)
+      document.removeEventListener('pointerdown', closeOnOutsidePointer)
+    }
+  }, [openIdentityHelp])
 
   const setPrefix = (
     clientId: string,
@@ -577,7 +632,25 @@ function IdentitySettingsPanel() {
     setMessage(null)
   }
 
-  const helpButton = (key: string, label: string, controls: string) => (
+  const toggleVisible = (clientId: string) => {
+    setPrefixes(current => {
+      const currentVisibleCount = current.filter(item => item.isVisible).length
+      return current.map(item => {
+        if (item.clientId !== clientId) return item
+        if (item.isVisible && currentVisibleCount <= 1) return item
+        const isVisible = !item.isVisible
+        return {
+          ...item,
+          isDefault: isVisible ? item.isDefault : false,
+          isVisible,
+        }
+      })
+    })
+    setSaveState('idle')
+    setMessage(null)
+  }
+
+  const inlineHelpButton = (key: string, label: string, controls: string) => (
     <button
       aria-controls={controls}
       aria-expanded={openIdentityHelp === key}
@@ -592,7 +665,7 @@ function IdentitySettingsPanel() {
     </button>
   )
 
-  const helpPanel = (
+  const inlineHelpPanel = (
     key: string,
     id: string,
     translationKey: Parameters<typeof ta>[0],
@@ -600,6 +673,38 @@ function IdentitySettingsPanel() {
     <AnimatedHelpPanel id={id} isOpen={openIdentityHelp === key}>
       {ta(translationKey)}
     </AnimatedHelpPanel>
+  )
+
+  const floatingHelpButton = (
+    key: string,
+    label: string,
+    id: string,
+    translationKey: Parameters<typeof ta>[0],
+  ) => (
+    <span className="relative inline-flex">
+      <button
+        aria-controls={id}
+        aria-describedby={openIdentityHelp === key ? id : undefined}
+        aria-expanded={openIdentityHelp === key}
+        aria-label={`${tc('help')}: ${label}`}
+        className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+        onClick={() =>
+          setOpenIdentityHelp(current => (current === key ? null : key))
+        }
+        type="button"
+      >
+        <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+      </button>
+      {openIdentityHelp === key ? (
+        <span
+          className="absolute right-0 top-full z-30 mt-2 w-64 max-w-[min(16rem,calc(100vw-2rem))] rounded-lg border border-secondary-200 bg-white px-3 py-2 text-left text-xs text-secondary-600 shadow-lg dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-300"
+          id={id}
+          role="tooltip"
+        >
+          {ta(translationKey)}
+        </span>
+      ) : null}
+    </span>
   )
 
   const validatePrefixes = () => {
@@ -614,6 +719,9 @@ function IdentitySettingsPanel() {
     }
     const visiblePrefixes = prefixes.filter(item => item.isVisible)
     const defaultPrefixes = prefixes.filter(item => item.isDefault)
+    if (prefixes.length > 0 && visiblePrefixes.length === 0) {
+      return ta('identity.visibleRequired')
+    }
     if (visiblePrefixes.length > 0 && defaultPrefixes.length !== 1) {
       return ta('identity.defaultRequired')
     }
@@ -692,6 +800,7 @@ function IdentitySettingsPanel() {
         value: 'identity',
       })}
       id="identity-panel"
+      ref={panelRef}
       role="tabpanel"
     >
       <div className="flex flex-col gap-4 border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60 lg:flex-row lg:items-center lg:justify-between">
@@ -760,6 +869,9 @@ function IdentitySettingsPanel() {
             const labelHelpId = `${labelInputId}-help`
             const visibleHelpId = `${visibleInputId}-help`
             const defaultHelpId = `${defaultInputId}-help`
+            const isLastVisiblePrefix =
+              item.isVisible && visiblePrefixCount === 1
+            const prefixLabel = item.prefix || ta('identity.newPrefix')
 
             return (
               <article
@@ -775,14 +887,23 @@ function IdentitySettingsPanel() {
                     >
                       {ta('identity.prefix')}
                     </label>
-                    {helpButton(
+                    {inlineHelpButton(
                       prefixHelpKey,
                       ta('identity.prefix'),
                       prefixHelpId,
                     )}
                   </div>
+                  {inlineHelpPanel(
+                    prefixHelpKey,
+                    prefixHelpId,
+                    'identity.fieldHelp.prefix',
+                  )}
                   <input
-                    aria-describedby={prefixHelpId}
+                    aria-describedby={
+                      openIdentityHelp === prefixHelpKey
+                        ? prefixHelpId
+                        : undefined
+                    }
                     className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 font-mono text-sm uppercase dark:bg-secondary-900"
                     disabled={isSaving || item.isUsed}
                     id={prefixInputId}
@@ -795,11 +916,6 @@ function IdentitySettingsPanel() {
                     }
                     value={item.prefix}
                   />
-                  {helpPanel(
-                    prefixHelpKey,
-                    prefixHelpId,
-                    'identity.fieldHelp.prefix',
-                  )}
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between gap-2">
@@ -809,14 +925,23 @@ function IdentitySettingsPanel() {
                     >
                       {ta('identity.label')}
                     </label>
-                    {helpButton(
+                    {inlineHelpButton(
                       labelHelpKey,
                       ta('identity.label'),
                       labelHelpId,
                     )}
                   </div>
+                  {inlineHelpPanel(
+                    labelHelpKey,
+                    labelHelpId,
+                    'identity.fieldHelp.label',
+                  )}
                   <input
-                    aria-describedby={labelHelpId}
+                    aria-describedby={
+                      openIdentityHelp === labelHelpKey
+                        ? labelHelpId
+                        : undefined
+                    }
                     className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm dark:bg-secondary-900"
                     disabled={isSaving}
                     id={labelInputId}
@@ -828,76 +953,100 @@ function IdentitySettingsPanel() {
                     }
                     value={item.label}
                   />
-                  {helpPanel(
-                    labelHelpKey,
-                    labelHelpId,
-                    'identity.fieldHelp.label',
-                  )}
                 </div>
                 <div className="space-y-1 self-end">
-                  <div className="flex items-center justify-end">
-                    {helpButton(
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-secondary-700 dark:text-secondary-200">
+                      {ta('identity.visible')}
+                    </span>
+                    {floatingHelpButton(
                       visibleHelpKey,
                       ta('identity.visible'),
                       visibleHelpId,
+                      'identity.fieldHelp.visible',
                     )}
                   </div>
-                  <label
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-secondary-200 bg-white px-3 text-sm dark:border-secondary-700 dark:bg-secondary-900"
-                    htmlFor={visibleInputId}
+                  <button
+                    aria-describedby={
+                      openIdentityHelp === visibleHelpKey
+                        ? visibleHelpId
+                        : undefined
+                    }
+                    aria-label={
+                      item.isVisible
+                        ? `${ta('identity.hidePrefix')}: ${prefixLabel}`
+                        : `${ta('identity.showPrefix')}: ${prefixLabel}`
+                    }
+                    aria-pressed={item.isVisible}
+                    className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 ${
+                      item.isVisible
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800/70 dark:bg-emerald-950/40 dark:text-emerald-300'
+                        : 'border-secondary-200 bg-white text-secondary-500 hover:bg-secondary-100 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-300 dark:hover:bg-secondary-800'
+                    }`}
+                    disabled={isSaving || isLastVisiblePrefix}
+                    onClick={() => toggleVisible(item.clientId)}
+                    title={
+                      isLastVisiblePrefix
+                        ? ta('identity.visibleRequired')
+                        : item.isVisible
+                          ? ta('identity.hidePrefix')
+                          : ta('identity.showPrefix')
+                    }
+                    type="button"
                   >
-                    <input
-                      aria-describedby={visibleHelpId}
-                      checked={item.isVisible}
-                      disabled={isSaving}
-                      id={visibleInputId}
-                      onChange={event =>
-                        setPrefix(item.clientId, current => ({
-                          ...current,
-                          isDefault: event.target.checked
-                            ? current.isDefault
-                            : false,
-                          isVisible: event.target.checked,
-                        }))
-                      }
-                      type="checkbox"
-                    />
-                    {ta('identity.visible')}
-                  </label>
-                  {helpPanel(
-                    visibleHelpKey,
-                    visibleHelpId,
-                    'identity.fieldHelp.visible',
-                  )}
+                    {item.isVisible ? (
+                      <Eye aria-hidden="true" className="h-4 w-4" />
+                    ) : (
+                      <EyeOff aria-hidden="true" className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
                 <div className="space-y-1 self-end">
-                  <div className="flex items-center justify-end">
-                    {helpButton(
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-secondary-700 dark:text-secondary-200">
+                      {ta('identity.defaultPrefix')}
+                    </span>
+                    {floatingHelpButton(
                       defaultHelpKey,
                       ta('identity.defaultPrefix'),
                       defaultHelpId,
+                      'identity.fieldHelp.defaultPrefix',
                     )}
                   </div>
                   <label
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-secondary-200 bg-white px-3 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                    className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border transition-colors focus-within:outline-none focus-within:ring-2 focus-within:ring-primary-500 ${
+                      item.isDefault
+                        ? 'border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-800/70 dark:bg-primary-950/40 dark:text-primary-300'
+                        : 'border-secondary-200 bg-white text-secondary-500 hover:bg-secondary-100 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-300 dark:hover:bg-secondary-800'
+                    } ${isSaving ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                     htmlFor={defaultInputId}
+                    title={
+                      item.isDefault
+                        ? ta('identity.defaultSelected')
+                        : ta('identity.setDefaultPrefix')
+                    }
                   >
                     <input
-                      aria-describedby={defaultHelpId}
+                      aria-describedby={
+                        openIdentityHelp === defaultHelpKey
+                          ? defaultHelpId
+                          : undefined
+                      }
+                      aria-label={`${ta('identity.defaultPrefix')}: ${prefixLabel}`}
                       checked={item.isDefault}
-                      disabled={isSaving || !item.isVisible}
+                      className="sr-only"
+                      disabled={isSaving}
                       id={defaultInputId}
                       name="hsa-id-prefix-default"
                       onChange={() => selectDefault(item.clientId)}
                       type="radio"
                     />
-                    {ta('identity.defaultPrefix')}
+                    <Star
+                      aria-hidden="true"
+                      className="h-4 w-4"
+                      fill={item.isDefault ? 'currentColor' : 'none'}
+                    />
                   </label>
-                  {helpPanel(
-                    defaultHelpKey,
-                    defaultHelpId,
-                    'identity.fieldHelp.defaultPrefix',
-                  )}
                 </div>
                 <button
                   aria-label={ta('identity.removePrefix')}
@@ -3226,7 +3375,9 @@ export default function AdminClient({
       ? ADMIN_PRIVACY_HELP
       : activeTab === 'accessReview'
         ? ADMIN_ACCESS_REVIEW_HELP
-        : ADMIN_HELP,
+        : activeTab === 'identity'
+          ? ADMIN_IDENTITY_HELP
+          : ADMIN_HELP,
   )
   const orderedColumns = useMemo(
     () => getOrderedRequirementListColumns(columnDefaults),

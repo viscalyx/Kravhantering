@@ -988,6 +988,7 @@
       "title": "Identity",
       "description": "Manage the HSA-id prefixes that are offered when users enter HSA-id values.",
       "addPrefix": "Add prefix",
+      "defaultSelected": "Selected default prefix",
       "defaultMustBeVisible": "The default HSA-id prefix must be visible.",
       "defaultPrefix": "Default",
       "defaultRequired": "Select one visible HSA-id prefix as the default.",
@@ -995,20 +996,25 @@
       "duplicatePrefix": "Each HSA-id prefix must be unique.",
       "emptyPrefixes": "No HSA-id prefixes are configured. HSA-id suffix fields stay locked until an administrator adds a visible prefix.",
       "fieldHelp": {
-        "defaultPrefix": "Choose the prefix that should be preselected for new empty HSA-id fields. The default prefix must be visible.",
+        "defaultPrefix": "The star marks the prefix preselected in new empty HSA-id fields. Selecting a hidden prefix as default also makes it visible.",
         "label": "Optionally add a short display label. Users see the label together with the prefix in HSA-id prefix lists.",
         "prefix": "Enter the part before the hyphen in an HSA-id: two uppercase country-code letters followed by ten digits.",
-        "visible": "Visible prefixes are offered in HSA-id prefix lists. Hide a used prefix when it should remain valid for existing assignments but no longer be offered for new ones."
+        "visible": "The eye controls whether the prefix is offered in HSA-id prefix lists. Hide a used prefix when it should remain valid for existing assignments but no longer be offered for new ones. A non-empty list must always have at least one visible prefix."
       },
+      "hidePrefix": "Hide prefix",
       "invalidPrefix": "Enter each HSA-id prefix as two uppercase letters followed by ten digits.",
       "label": "Label",
       "loadError": "Could not load HSA-id prefixes.",
+      "newPrefix": "New prefix",
       "prefix": "HSA-id prefix",
       "removePrefix": "Remove prefix",
       "saveError": "Could not save HSA-id prefixes.",
+      "setDefaultPrefix": "Select as default",
+      "showPrefix": "Show prefix",
       "usedPrefix": "This prefix has been used in an HSA-id and can be hidden, but not removed.",
       "usedPrefixDeleteBlocked": "Used HSA-id prefixes cannot be removed. Hide the prefix instead.",
-      "visible": "Visible"
+      "visible": "Visible",
+      "visibleRequired": "At least one HSA-id prefix must be visible."
     },
     "identityDescription": "Manage HSA-id prefixes for editable responsibility fields.",
     "taxonomy": "Taxonomy",
@@ -1660,6 +1666,29 @@
       "accessReview": {
         "heading": "Access review",
         "body": "Use Access review to create recurring review rounds for app-managed assignments. Global IdP roles are reviewed in the identity-management tool."
+      },
+      "archiving": {
+        "heading": "Archiving and retention",
+        "body": "Use the Archiving tab to preview and run approved retention rules and export archive evidence before data is removed. Privacy erasure is handled separately."
+      }
+    },
+    "adminIdentity": {
+      "title": "Identity",
+      "overview": {
+        "heading": "Purpose",
+        "body": "The Identity tab controls which HSA-id prefixes are offered when users fill in editable HSA-id fields. The prefixes are UI guidance, not server-side policy."
+      },
+      "prefixes": {
+        "heading": "Prefixes and labels",
+        "body": "Enter the prefix as the part before the hyphen in an HSA-id. The label is optional and only helps users recognize choices in the list."
+      },
+      "visibility": {
+        "heading": "Visibility",
+        "body": "Visible prefixes appear in users' prefix lists. Hide a prefix when it should remain on existing assignments but no longer be offered for new HSA-id values. A non-empty list must always have at least one visible prefix."
+      },
+      "defaultPrefix": {
+        "heading": "Default prefix",
+        "body": "The default prefix is preselected in new empty HSA-id fields. It must be visible; selecting a hidden prefix as default also makes it visible."
       }
     },
     "adminPrivacy": {
