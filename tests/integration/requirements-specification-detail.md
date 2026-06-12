@@ -3,8 +3,8 @@
 > Test flow documentation for
 > [`requirements-specification-detail.spec.ts`](tests/integration/requirements-specification-detail.spec.ts)
 
-This suite verifies the requirements specification detail page: that the edit form
-opens from the title action and that the two side-by-side requirement lists
+This suite verifies the requirements specification detail page: that the edit
+dialog opens from the title action and that the two side-by-side requirement lists
 ("Krav i underlaget" and "Tillgängliga krav") scroll independently without moving
 the page, while keeping the sticky title bar fixed at the top of each panel.
 The page also exposes a left-panel action for creating specification-local
@@ -32,7 +32,7 @@ flowchart TD
     A[Start viewport variant] --> B[Open /sv/specifications/ETJANST-UPP-2026]
     B --> C[Assert heading visible]
     C --> D[Click Redigera kravunderlag]
-    D --> E[Assert edit form visible with prefilled name]
+    D --> E[Assert edit dialog visible with prefilled name]
     B --> F{Desktop?}
     F -- Yes --> G[Set viewport to 560 px height]
     G --> H[Assert both panels fill the viewport]
@@ -64,21 +64,20 @@ flowchart TD
   If neither panel overflows even after expanding a row, the scroll-sync
   assertion is skipped (see inline comment in the spec).
 
-## opens the requirements specification edit view from the title action
+## opens the requirements specification edit dialog from the title action
 
 ### Purpose
 
-Verifies that clicking "Redigera kravunderlag" opens the edit form and pre-fills
-the specification name, confirming the edit action is correctly wired to the
-detail page title.
+Verifies that clicking "Redigera kravunderlag" opens the edit dialog, pre-fills
+the specification name, and leaves the detail split-panel layout unchanged.
 
 ### Step-by-Step Flow
 
 1. Navigate to `/sv/specifications/ETJANST-UPP-2026`.
 2. Assert the `h1` "Upphandling av e-tjänstplattform" heading is visible.
 3. Click "Redigera kravunderlag".
-4. Assert the `h2` "Redigera kravunderlag" heading is visible.
-5. Assert the name text input has value `"Upphandling av e-tjänstplattform"`.
+4. Assert the `role="dialog"` surface named "Redigera kravunderlag" is visible.
+5. Assert the `Namn` field is prefilled and the split-panel classes are stable.
 
 ### Sequence Diagram
 
@@ -86,14 +85,15 @@ detail page title.
 sequenceDiagram
     participant U as User
     participant P as Page
-    participant F as EditForm
+    participant D as EditDialog
 
     U->>P: Open /sv/specifications/ETJANST-UPP-2026
     Note over P: ✓ h1 "Upphandling av e-tjänstplattform" visible
     U->>P: Click "Redigera kravunderlag"
-    P->>F: Open edit form
-    Note over F: ✓ h2 "Redigera kravunderlag" visible
-    Note over F: ✓ Name input = "Upphandling av e-tjänstplattform"
+    P->>D: Open edit dialog
+    Note over D: ✓ Dialog "Redigera kravunderlag" visible
+    Note over D: ✓ Name input = "Upphandling av e-tjänstplattform"
+    Note over P: ✓ Split-panel classes unchanged
 ```
 
 <!-- markdownlint-disable MD013 -->

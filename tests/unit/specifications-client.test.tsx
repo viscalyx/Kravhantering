@@ -616,6 +616,18 @@ describe('RequirementsSpecificationsClient', () => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
     await openCreateSpecificationForm()
+    const dialog = screen.getByRole('dialog', {
+      name: /specification\.newSpecification/,
+    })
+    expect(dialog).toHaveAttribute(
+      'data-developer-mode-value',
+      'new specification',
+    )
+    const form = document.body.querySelector(
+      '[data-developer-mode-name="crud form"][data-developer-mode-context="specifications"]',
+    )
+    expect(form).toHaveAttribute('data-developer-mode-value', 'create')
+    expect(form?.firstElementChild).toHaveClass('lg:grid-cols-2')
     expect(
       screen.getByRole('textbox', { name: /specification\.name/ }),
     ).toBeInTheDocument()
@@ -893,6 +905,15 @@ describe('RequirementsSpecificationsClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[0])
+    expect(
+      screen.getByRole('dialog', {
+        name: /specification\.editSpecification/,
+      }),
+    ).toHaveAttribute('data-developer-mode-value', 'edit specification')
+    const form = document.body.querySelector(
+      '[data-developer-mode-name="crud form"][data-developer-mode-context="specifications"]',
+    )
+    expect(form).toHaveAttribute('data-developer-mode-value', 'edit')
     expect(
       (
         screen.getByRole('textbox', {

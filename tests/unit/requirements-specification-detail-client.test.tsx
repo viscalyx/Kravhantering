@@ -353,6 +353,17 @@ describe('RequirementsSpecificationDetailClient', () => {
         const method =
           init?.method ?? (typeof input === 'string' ? 'GET' : input.method)
 
+        if (url === '/api/auth/me') {
+          return Promise.resolve(
+            okJson({
+              authenticated: true,
+              hsaId: 'SE5560000001-ada1',
+              name: 'Ada Admin',
+              roles: ['Admin'],
+            }),
+          )
+        }
+
         if (url === '/api/specifications/ETJANST-UPP-2026') {
           return Promise.resolve(
             okJson({
@@ -821,7 +832,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(params.has('statuses')).toBe(false)
   })
 
-  it('opens and closes the specification edit view from the title action', async () => {
+  it('opens and closes the specification edit dialog from the title action', async () => {
     const { container } = renderRequirementsSpecificationDetailClient()
 
     await waitFor(() => {
@@ -905,11 +916,14 @@ describe('RequirementsSpecificationDetailClient', () => {
     fireEvent.click(editButton)
 
     expect(editButton).toHaveAttribute('aria-expanded', 'true')
+    const dialog = screen.getByRole('dialog', {
+      name: /specification\.editSpecification/i,
+    })
     expect(
-      screen.getByRole('textbox', { name: /specification\.name/ }),
+      within(dialog).getByRole('textbox', { name: /specification\.name/ }),
     ).toHaveValue('Authorization and IAM')
 
-    const form = container.querySelector(
+    const form = document.body.querySelector(
       '[data-developer-mode-name="crud form"][data-developer-mode-context="requirements specification detail"]',
     )
     expect(form).toHaveAttribute('data-developer-mode-value', 'edit')

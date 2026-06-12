@@ -88,9 +88,11 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Keep the control `name` stable and move runtime identity into `value`,
   for example `sort button: requirement id`, `filter button: status`, or
   theme state values like `light`, `dark`, and `auto`.
-- Requirements specification create/edit forms continue to use the `crud form`
-  marker; their specification-field help toggles are part of that same form
-  surface rather than separate developer-mode markers.
+- Requirements specification create/edit dialogs use the shared `dialog`
+  marker with values `new specification` and `edit specification`. Their inner
+  forms continue to use the `crud form` marker, and specification-field help
+  toggles are part of that same form surface rather than separate
+  developer-mode markers.
 - Reference-data CRUD forms may use shared field help toggles; those
   triggers stay inside the existing `crud form` surface rather than
   adding separate developer-mode markers.
@@ -150,7 +152,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `specifications > text field: name filter` on the Name search input above
   the table. Its create trigger is anchored beside the table in the fixed
   `floating action rail` as
-  `specifications > floating pill: new specification`.
+  `specifications > floating pill: new specification`. Creating opens
+  `dialog: new specification`; list row editing opens
+  `dialog: edit specification`.
 - Requirements packages expose their create trigger in the fixed
   `floating action rail` as
   `requirementPackages > floating pill: new requirement package`. The new
@@ -211,7 +215,7 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   surface; they do not add separate developer-mode marker names.
 - Requirements specification list responsible-person metadata renders inside the
   existing `specifications > crud table` surface, and the create/edit controls
-  stay inside the existing `specifications > crud form` surface.
+  stay inside the modal `specifications > crud form` surface.
 - Requirements specification list edit and delete row actions render as icon-only
   buttons, but keep the existing `specifications > table action: edit` and
   `specifications > table action: delete` markers.
@@ -221,7 +225,8 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Requirements specification detail header edit affordances use the
   `requirements specification detail` context with
   `detail action: edit specification` on the icon trigger and
-  `crud form: edit` on the opened editor.
+  `dialog: edit specification` on the modal, with `crud form: edit` on the
+  modal form.
 - Requirements specification detail left-panel create affordances use the
   `requirements specification detail` context with `table action` values
   `create local requirement` and `create needs reference`. They live in the
@@ -280,8 +285,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   wide screens and the metadata cards stay on one horizontal row. That layout
   does not introduce any separate developer-mode marker beyond the existing edit
   action.
-- Specification lead changes stay inside the existing specification `crud form`
-  surfaces. The separate change modal uses `dialog: change specification lead`.
+- Specification lead changes start inside the existing specification `crud form`
+  surfaces. The separate change modal is layered above the edit dialog and uses
+  `dialog: change specification lead`.
 - The specification-detail page no longer renders a separate breadcrumb-style
   back control in that header area; browser navigation is the supported
   way back from this compact header.

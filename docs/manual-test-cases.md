@@ -1081,6 +1081,8 @@ visible specifications.
 **Steps:**
 
 1. Select the floating `Nytt kravunderlag` pill beside the list.
+1. Verify a modal dialog titled `Nytt kravunderlag` opens and focus starts in
+   `Namn`.
 1. Verify `HSA-ID för kravunderlagsansvarig` is locked to the signed-in user's
    HSA-ID and shows the HSA person summary/fetch button.
 1. Fill name, specification lifecycle status, governance object type, and
@@ -1103,13 +1105,15 @@ slug, selected metadata, and the signed-in user as `Kravunderlagsansvarig`.
 
 1. Verify heading `Upphandling av e-tjänstplattform`.
 1. Select `Redigera kravunderlag`.
+1. Verify a modal dialog titled `Redigera kravunderlag` opens without changing
+   the split-panel layout behind it.
 1. Verify `HSA-ID för kravunderlagsansvarig` is locked, shows a person row, and
    exposes a `Byt kravunderlagsansvarig` icon button.
 1. Select the icon button and verify the modal shows current and new
    `Kravunderlagsansvarig`.
 
-**Expected result:** The form heading says `Redigera kravunderlag` and the name
-field is prefilled with the current specification name.
+**Expected result:** The dialog heading says `Redigera kravunderlag` and the
+name field is prefilled with the current specification name.
 
 ### SPEC-04: delete a specification with confirmation
 

@@ -72,10 +72,20 @@ for (const viewport of viewports) {
       await test.step('show the signed-in specification lead when creating', async () => {
         await createButton.click()
 
+        const createDialog = page.getByRole('dialog', {
+          name: 'Nytt kravunderlag',
+        })
+        await expect(createDialog).toBeVisible()
         const createForm = page.locator(
           '[data-developer-mode-context="specifications"][data-developer-mode-value="create"]',
         )
         await expect(createForm).toBeVisible()
+        await expect(createForm.locator('> div').first()).toHaveClass(
+          /lg:grid-cols-2/,
+        )
+        await expect(
+          createDialog.getByRole('textbox', { name: 'Namn *' }),
+        ).toBeFocused()
         const responsibleInput = createForm.getByRole('textbox', {
           name: 'Kravunderlagsansvarigs HSA-ID',
         })
@@ -87,7 +97,7 @@ for (const viewport of viewports) {
         await expect(createForm.getByText(/Ada Admin/)).toBeVisible()
 
         await createForm.getByRole('button', { name: 'Avbryt' }).click()
-        await expect(createForm).toBeHidden()
+        await expect(createDialog).toBeHidden()
       })
 
       await test.step('open responsible change modal from the list edit form', async () => {
@@ -96,10 +106,20 @@ for (const viewport of viewports) {
         })
         await row.getByRole('button', { name: 'Redigera' }).click()
 
+        const editDialog = page.getByRole('dialog', {
+          name: 'Redigera kravunderlag',
+        })
+        await expect(editDialog).toBeVisible()
         const editForm = page.locator(
           '[data-developer-mode-context="specifications"][data-developer-mode-name="crud form"][data-developer-mode-value="edit"]',
         )
         await expect(editForm).toBeVisible()
+        await expect(editForm.locator('> div').first()).toHaveClass(
+          /lg:grid-cols-2/,
+        )
+        await expect(
+          editDialog.getByRole('textbox', { name: 'Namn *' }),
+        ).toHaveValue('Upphandling av e-tjänstplattform')
         const responsibleInput = editForm.getByRole('textbox', {
           name: 'Kravunderlagsansvarigs HSA-ID',
         })
@@ -135,7 +155,7 @@ for (const viewport of viewports) {
         await changeDialog.getByRole('button', { name: 'Avbryt' }).click()
         await expect(changeDialog).toBeHidden()
         await editForm.getByRole('button', { name: 'Avbryt' }).click()
-        await expect(editForm).toBeHidden()
+        await expect(editDialog).toBeHidden()
       })
 
       const hasMultiAreaSpecification = await page.evaluate(() =>

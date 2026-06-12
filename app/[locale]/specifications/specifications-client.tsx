@@ -1,15 +1,12 @@
 'use client'
 
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   ChevronDown,
   ChevronUp,
-  HelpCircle,
   Pencil,
   Plus,
   Search,
   Trash2,
-  UserRoundCog,
   X,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
@@ -20,29 +17,23 @@ import {
   useRef,
   useState,
 } from 'react'
-import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
-import HsaPersonChangeModal, {
-  type HsaPersonChangeSubmitResult,
-} from '@/components/HsaPersonChangeModal'
-import HsaPersonVerifyField, {
-  type HsaPersonVerification,
-} from '@/components/HsaPersonVerifyField'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
-import { offsetPanelMotion } from '@/lib/reduced-motion'
-import { generateSpecificationSlug, normalizeSlugInput } from '@/lib/slug'
 import type {
   RequirementsSpecificationsInitialData,
   Specification,
   SpecificationTaxonomyItem,
 } from '@/lib/specifications/preload-types'
+import SpecificationFormModal, {
+  type SpecificationFormModalCurrentUser,
+} from './specification-form-modal'
 
 const REQUIREMENT_SPECIFICATIONS_HELP: HelpContent = {
   sections: [
@@ -69,18 +60,6 @@ const EMPTY_INITIAL_DATA: RequirementsSpecificationsInitialData = {
   specifications: [],
 }
 
-interface CurrentUser {
-  displayName: string
-  email: string
-  hsaId: string
-  roles: string[]
-}
-
-interface ResponsibleChangeState {
-  currentResponsibleHsaId: string
-  specificationId: number
-}
-
 async function readJsonOrThrow<T>(response: Response, fallbackMessage: string) {
   if (!response.ok) {
     const details = await readResponseMessage(response)
@@ -92,7 +71,9 @@ async function readJsonOrThrow<T>(response: Response, fallbackMessage: string) {
   return (await response.json()) as T
 }
 
-function readCurrentUser(body: unknown): CurrentUser | null {
+function readCurrentUser(
+  body: unknown,
+): SpecificationFormModalCurrentUser | null {
   if (!body || typeof body !== 'object') return null
   const record = body as Record<string, unknown>
   if (record.authenticated !== true || typeof record.hsaId !== 'string') {
@@ -117,37 +98,6 @@ function readCurrentUser(body: unknown): CurrentUser | null {
       : [],
   }
 }
-
-const specificationEditableSignature = (form: {
-  businessNeedsReference: string
-  name: string
-  specificationGovernanceObjectTypeId: string
-  specificationImplementationTypeId: string
-  specificationLifecycleStatusId: string
-  uniqueId: string
-}) =>
-  JSON.stringify({
-    businessNeedsReference: form.businessNeedsReference,
-    name: form.name,
-    specificationGovernanceObjectTypeId:
-      form.specificationGovernanceObjectTypeId,
-    specificationImplementationTypeId: form.specificationImplementationTypeId,
-    specificationLifecycleStatusId: form.specificationLifecycleStatusId,
-    uniqueId: form.uniqueId,
-  })
-
-const specificationEditableSignatureFromItem = (spec: Specification) =>
-  JSON.stringify({
-    businessNeedsReference: spec.businessNeedsReference ?? '',
-    name: spec.name,
-    specificationGovernanceObjectTypeId:
-      spec.specificationGovernanceObjectTypeId?.toString() ?? '',
-    specificationImplementationTypeId:
-      spec.specificationImplementationTypeId?.toString() ?? '',
-    specificationLifecycleStatusId:
-      spec.specificationLifecycleStatusId?.toString() ?? '',
-    uniqueId: spec.uniqueId,
-  })
 
 function RequirementAreaPills({
   areas,
@@ -266,10 +216,8 @@ export default function RequirementsSpecificationsClient({
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const locale = useLocale()
-  const shouldReduceMotion = useReducedMotion()
   const contentRef = useRef<HTMLDivElement>(null)
   const tableAnchorRef = useRef<HTMLDivElement>(null)
-  const editFormSignatureRef = useRef<string | null>(null)
   const hasInitialData = initialData !== undefined
   const resolvedInitialData = initialData ?? EMPTY_INITIAL_DATA
   const initialDataErrorKeys = new Set(
@@ -428,28 +376,11 @@ export default function RequirementsSpecificationsClient({
   const spinnerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editSpec, setEditSpec] = useState<Specification | null>(null)
-  const [slugEdited, setSlugEdited] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [slugError, setSlugError] = useState<string | null>(null)
   const [nameFilter, setNameFilter] = useState('')
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+  const [currentUser, setCurrentUser] =
+    useState<SpecificationFormModalCurrentUser | null>(null)
   const [currentUserLoading, setCurrentUserLoading] = useState(true)
   const [currentUserUnavailable, setCurrentUserUnavailable] = useState(false)
-  const [responsibleChange, setResponsibleChange] =
-    useState<ResponsibleChangeState | null>(null)
-  const [form, setForm] = useState({
-    name: '',
-    uniqueId: '',
-    specificationGovernanceObjectTypeId: '' as string,
-    specificationImplementationTypeId: '' as string,
-    specificationLifecycleStatusId: '' as string,
-    businessNeedsReference: '',
-    responsibleDisplayName: '',
-    responsibleHsaId: '',
-    responsiblePersonVerification: null as HsaPersonVerification | null,
-  })
   const deferredNameFilter = useDeferredValue(nameFilter)
   const normalizedNameFilter = deferredNameFilter
     .trim()
@@ -457,49 +388,6 @@ export default function RequirementsSpecificationsClient({
   const hasActiveNameFilter = nameFilter.trim().length > 0
   const filteredSpecifications = specifications.filter(spec =>
     getName(spec).toLocaleLowerCase(locale).includes(normalizedNameFilter),
-  )
-
-  const resetForm = () => ({
-    name: '',
-    uniqueId: '',
-    specificationGovernanceObjectTypeId: '' as string,
-    specificationImplementationTypeId: '' as string,
-    specificationLifecycleStatusId: '' as string,
-    businessNeedsReference: '',
-    responsibleDisplayName: '',
-    responsibleHsaId: '',
-    responsiblePersonVerification: null as HsaPersonVerification | null,
-  })
-
-  const toggleHelp = (field: string) => {
-    setOpenHelp(prev => {
-      const next = new Set(prev)
-      if (next.has(field)) {
-        next.delete(field)
-      } else {
-        next.add(field)
-      }
-      return next
-    })
-  }
-
-  const helpButton = (field: string, label: string) => (
-    <button
-      aria-controls={`help-${field}`}
-      aria-expanded={openHelp.has(field)}
-      aria-label={`${tc('help')}: ${label}`}
-      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
-      onClick={() => toggleHelp(field)}
-      type="button"
-    >
-      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
-    </button>
-  )
-
-  const helpPanel = (helpKey: string, field: string) => (
-    <AnimatedHelpPanel id={`help-${field}`} isOpen={openHelp.has(field)}>
-      {t(helpKey)}
-    </AnimatedHelpPanel>
   )
 
   useEffect(() => {
@@ -566,85 +454,8 @@ export default function RequirementsSpecificationsClient({
     }
   }, [isFetchingSpecifications])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (isSubmitting) return
-    setSlugError(null)
-    setSaveError(null)
-    setIsSubmitting(true)
-    try {
-      const method = editSpec ? 'PUT' : 'POST'
-      const url = editSpec
-        ? `/api/specifications/${editSpec.uniqueId}`
-        : '/api/specifications'
-      const res = await apiFetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          uniqueId: form.uniqueId,
-          name: form.name,
-          specificationGovernanceObjectTypeId:
-            form.specificationGovernanceObjectTypeId
-              ? Number(form.specificationGovernanceObjectTypeId)
-              : null,
-          specificationImplementationTypeId:
-            form.specificationImplementationTypeId
-              ? Number(form.specificationImplementationTypeId)
-              : null,
-          specificationLifecycleStatusId: form.specificationLifecycleStatusId
-            ? Number(form.specificationLifecycleStatusId)
-            : null,
-          businessNeedsReference: form.businessNeedsReference || null,
-        }),
-      })
-      if (res.status === 409) {
-        setSlugError(t('uniqueIdTaken'))
-        return
-      }
-      if (!res.ok) {
-        const details = await readResponseMessage(res)
-        setSaveError(
-          details ? `${t('saveFailed')}: ${details}` : t('saveFailed'),
-        )
-        return
-      }
-      setShowForm(false)
-      setEditSpec(null)
-      setResponsibleChange(null)
-      editFormSignatureRef.current = null
-      setOpenHelp(new Set())
-      setSlugEdited(false)
-      setForm(resetForm())
-      void specificationsResource.reload()
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : t('saveFailed'))
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
   const handleEdit = (spec: Specification) => {
     setEditSpec(spec)
-    setResponsibleChange(null)
-    editFormSignatureRef.current = specificationEditableSignatureFromItem(spec)
-    setOpenHelp(new Set())
-    setSlugEdited(true)
-    setSlugError(null)
-    setSaveError(null)
-    setForm({
-      name: spec.name,
-      uniqueId: spec.uniqueId,
-      specificationGovernanceObjectTypeId:
-        spec.specificationGovernanceObjectTypeId?.toString() ?? '',
-      specificationImplementationTypeId:
-        spec.specificationImplementationTypeId?.toString() ?? '',
-      specificationLifecycleStatusId:
-        spec.specificationLifecycleStatusId?.toString() ?? '',
-      businessNeedsReference: spec.businessNeedsReference ?? '',
-      responsibleDisplayName: getResponsibleDisplayName(spec) ?? '',
-      responsibleHsaId: spec.responsibleHsaId,
-      responsiblePersonVerification: null,
-    })
     setShowForm(true)
   }
 
@@ -696,114 +507,15 @@ export default function RequirementsSpecificationsClient({
 
   const openCreateForm = () => {
     if (!currentUser) {
-      setSaveError(
-        currentUserUnavailable
-          ? t('currentUserUnavailable')
-          : t('currentUserLoading'),
-      )
       return
     }
     setShowForm(true)
     setEditSpec(null)
-    setResponsibleChange(null)
-    editFormSignatureRef.current = null
-    setOpenHelp(new Set())
-    setSlugEdited(false)
-    setSlugError(null)
-    setSaveError(null)
-    setForm({
-      ...resetForm(),
-      responsibleDisplayName: currentUser.displayName,
-      responsibleHsaId: currentUser.hsaId,
-      responsiblePersonVerification: null,
-    })
   }
 
   const closeForm = () => {
-    if (isSubmitting) return
-    setOpenHelp(new Set())
     setShowForm(false)
-    setResponsibleChange(null)
-    editFormSignatureRef.current = null
-  }
-
-  const openResponsibleChange = () => {
-    if (!editSpec) return
-    setResponsibleChange({
-      currentResponsibleHsaId: form.responsibleHsaId,
-      specificationId: editSpec.id,
-    })
-  }
-
-  const closeResponsibleChange = () => {
-    setResponsibleChange(null)
-  }
-
-  const hasUnsavedSpecificationEdits = () =>
-    editFormSignatureRef.current !== null &&
-    editFormSignatureRef.current !== specificationEditableSignature(form)
-
-  const submitResponsibleChange = async (
-    nextResponsibleHsaId: string,
-    person: HsaPersonVerification | null,
-  ): Promise<HsaPersonChangeSubmitResult> => {
-    if (!responsibleChange || !editSpec) return { ok: false }
-
-    const isAdmin = currentUser?.roles.includes('Admin') ?? false
-    const shouldCloseFormAfterChange = !isAdmin
-    if (shouldCloseFormAfterChange && hasUnsavedSpecificationEdits()) {
-      const confirmed = await confirm({
-        cancelText: tc('cancel'),
-        confirmText: t('changeResponsible'),
-        defaultCancel: true,
-        icon: 'warning',
-        message: t('responsibleChangeUnsavedConfirm'),
-        title: t('changeResponsibleTitle'),
-      })
-      if (!confirmed) return { ok: false }
-    }
-
-    try {
-      const response = await apiFetch(
-        `/api/specifications/${editSpec.uniqueId}`,
-        {
-          body: JSON.stringify({ responsibleHsaId: nextResponsibleHsaId }),
-          headers: { 'Content-Type': 'application/json' },
-          method: 'PUT',
-        },
-      )
-      if (!response.ok) {
-        return {
-          error:
-            (await readResponseMessage(response)) ??
-            t('responsibleChangeError'),
-          ok: false,
-        }
-      }
-
-      const payload = (await response.json()) as Partial<Specification>
-      setResponsibleChange(null)
-      if (shouldCloseFormAfterChange) {
-        setShowForm(false)
-        setEditSpec(null)
-        editFormSignatureRef.current = null
-      } else {
-        const nextDisplayName =
-          payload.responsibleDisplayName ??
-          person?.displayName ??
-          nextResponsibleHsaId
-        setForm(previousForm => ({
-          ...previousForm,
-          responsibleDisplayName: nextDisplayName,
-          responsibleHsaId: payload.responsibleHsaId ?? nextResponsibleHsaId,
-          responsiblePersonVerification: person,
-        }))
-      }
-      await specificationsResource.reload()
-      return { ok: true }
-    } catch {
-      return { error: t('responsibleChangeError'), ok: false }
-    }
+    setEditSpec(null)
   }
 
   const currentUserError = currentUserUnavailable
@@ -856,352 +568,26 @@ export default function RequirementsSpecificationsClient({
           </p>
         ) : null}
 
-        <AnimatePresence>
-          {showForm && (
-            <motion.form
-              className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg"
-              {...offsetPanelMotion(shouldReduceMotion)}
-              {...devMarker({
-                context: 'specifications',
-                name: 'crud form',
-                priority: 340,
-                value: editSpec ? 'edit' : 'create',
-              })}
-              onSubmit={handleSubmit}
-            >
-              <h2 className="text-lg font-semibold">
-                {editSpec ? t('editSpecification') : t('newSpecification')}
-              </h2>
-              <div>
-                <div className="mb-1 flex items-center gap-1.5">
-                  <label
-                    className="block text-sm font-medium"
-                    htmlFor="spec-name"
-                  >
-                    {t('name')} <span aria-hidden="true">*</span>
-                  </label>
-                  {helpButton('spec-name', t('name'))}
-                </div>
-                {helpPanel('help.name', 'spec-name')}
-                <input
-                  className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                  id="spec-name"
-                  onBlur={() => {
-                    if (!slugEdited && form.name) {
-                      const nextUniqueId = generateSpecificationSlug(form.name)
-                      if (!nextUniqueId) {
-                        setSlugError(t('uniqueIdGenerationFailed'))
-                        return
-                      }
-                      if (form.uniqueId !== nextUniqueId) {
-                        setSlugError(null)
-                        setForm(f => ({
-                          ...f,
-                          uniqueId: nextUniqueId,
-                        }))
-                      }
-                    }
-                  }}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  required
-                  value={form.name}
-                />
-              </div>
-              <div>
-                <div className="mb-1 flex items-center gap-1.5">
-                  <label
-                    className="block text-sm font-medium"
-                    htmlFor="spec-unique-id"
-                  >
-                    {t('uniqueId')} <span aria-hidden="true">*</span>
-                  </label>
-                  {helpButton('spec-unique-id', t('uniqueId'))}
-                </div>
-                {helpPanel('uniqueIdHelp', 'spec-unique-id')}
-                <input
-                  aria-describedby={
-                    slugError ? 'spec-unique-id-error' : undefined
-                  }
-                  aria-invalid={!!slugError}
-                  className={`min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-mono transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50${slugError ? ' border-red-500 focus:ring-red-400/50' : ''}`}
-                  id="spec-unique-id"
-                  onChange={e => {
-                    setSlugEdited(true)
-                    setSlugError(null)
-                    setForm(f => ({
-                      ...f,
-                      uniqueId: normalizeSlugInput(e.target.value),
-                    }))
-                  }}
-                  onInvalid={() => setSlugError(t('uniqueIdRequired'))}
-                  placeholder={t('uniqueIdPlaceholder')}
-                  required
-                  value={form.uniqueId}
-                />
-                {slugError ? (
-                  <p
-                    className="mt-1 text-xs text-red-600 dark:text-red-400"
-                    id="spec-unique-id-error"
-                    role="alert"
-                  >
-                    {slugError}
-                  </p>
-                ) : (
-                  <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                    {t('uniqueIdHelp')}
-                  </p>
-                )}
-              </div>
-              <div>
-                <div className="mb-1 flex items-center gap-1.5">
-                  <label
-                    className="block text-sm font-medium"
-                    htmlFor="spec-area"
-                  >
-                    {t('governanceObjectType')}
-                  </label>
-                  {helpButton('spec-area', t('governanceObjectType'))}
-                </div>
-                {helpPanel('governanceObjectTypeHelp', 'spec-area')}
-                <select
-                  className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                  id="spec-area"
-                  onChange={e =>
-                    setForm(f => ({
-                      ...f,
-                      specificationGovernanceObjectTypeId: e.target.value,
-                    }))
-                  }
-                  value={form.specificationGovernanceObjectTypeId}
-                >
-                  <option value="">—</option>
-                  {governanceObjectTypes.map(a => (
-                    <option key={a.id} value={a.id}>
-                      {locale === 'sv' ? a.nameSv : a.nameEn}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid gap-3">
-                <div>
-                  <div className="mb-1 flex items-center gap-1.5">
-                    <label
-                      className="block text-sm font-medium"
-                      htmlFor="spec-responsible-hsa-id"
-                    >
-                      {t('responsibleHsaId')}
-                    </label>
-                    {helpButton(
-                      'spec-responsible-hsa-id',
-                      t('responsibleHsaId'),
-                    )}
-                  </div>
-                  {helpPanel('responsibleHsaIdHelp', 'spec-responsible-hsa-id')}
-                  {editSpec ? (
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <input
-                          aria-readonly="true"
-                          className="min-h-11 w-full rounded-xl border bg-secondary-100 px-3.5 py-2.5 font-mono text-sm text-secondary-500 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800 dark:text-secondary-400"
-                          id="spec-responsible-hsa-id"
-                          readOnly
-                          value={form.responsibleHsaId}
-                        />
-                        <button
-                          aria-label={t('changeResponsible')}
-                          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:text-secondary-300 dark:hover:bg-secondary-800"
-                          disabled={isSubmitting || currentUserLoading}
-                          onClick={openResponsibleChange}
-                          title={t('changeResponsible')}
-                          type="button"
-                        >
-                          <UserRoundCog
-                            aria-hidden="true"
-                            className="h-4 w-4"
-                            focusable={false}
-                          />
-                        </button>
-                      </div>
-                      <p className="mt-1 text-xs italic text-secondary-700 dark:text-secondary-300">
-                        {form.responsibleDisplayName ||
-                          tc('hsaVerifyUnavailable')}
-                      </p>
-                    </div>
-                  ) : (
-                    <HsaPersonVerifyField
-                      disabled={isSubmitting}
-                      emailLabel={tc('hsaVerifyEmail')}
-                      errorFallback={tc('hsaVerifyError')}
-                      fetchingLabel={tc('fetchingHsaPerson')}
-                      fetchLabel={tc('fetchHsaPerson')}
-                      hsaId={form.responsibleHsaId}
-                      initialDisplayName={form.responsibleDisplayName}
-                      inputClassName="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                      inputId="spec-responsible-hsa-id"
-                      nameLabel={tc('hsaVerifyName')}
-                      onHsaIdChange={() => undefined}
-                      onVerified={person =>
-                        setForm(f => ({
-                          ...f,
-                          responsibleDisplayName: person.displayName,
-                          responsiblePersonVerification: person,
-                        }))
-                      }
-                      purpose="requirements_specification_responsible"
-                      readOnly
-                      required
-                      showPersonSummaryAsText
-                      unavailableText={tc('hsaVerifyUnavailable')}
-                    />
-                  )}
-                </div>
-              </div>
-              <div>
-                <div className="mb-1 flex items-center gap-1.5">
-                  <label
-                    className="block text-sm font-medium"
-                    htmlFor="spec-impl-type"
-                  >
-                    {t('implementationType')}
-                  </label>
-                  {helpButton('spec-impl-type', t('implementationType'))}
-                </div>
-                {helpPanel('implementationTypeHelp', 'spec-impl-type')}
-                <select
-                  className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                  id="spec-impl-type"
-                  onChange={e =>
-                    setForm(f => ({
-                      ...f,
-                      specificationImplementationTypeId: e.target.value,
-                    }))
-                  }
-                  value={form.specificationImplementationTypeId}
-                >
-                  <option value="">—</option>
-                  {implementationTypes.map(it => (
-                    <option key={it.id} value={it.id}>
-                      {locale === 'sv' ? it.nameSv : it.nameEn}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <div className="mb-1 flex items-center gap-1.5">
-                  <label
-                    className="block text-sm font-medium"
-                    htmlFor="spec-lifecycle-status"
-                  >
-                    {t('lifecycleStatus')}
-                  </label>
-                  {helpButton('spec-lifecycle-status', t('lifecycleStatus'))}
-                </div>
-                {helpPanel('lifecycleStatusHelp', 'spec-lifecycle-status')}
-                <select
-                  className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                  id="spec-lifecycle-status"
-                  onChange={e =>
-                    setForm(f => ({
-                      ...f,
-                      specificationLifecycleStatusId: e.target.value,
-                    }))
-                  }
-                  value={form.specificationLifecycleStatusId}
-                >
-                  <option value="">—</option>
-                  {lifecycleStatuses.map(ls => (
-                    <option key={ls.id} value={ls.id}>
-                      {locale === 'sv' ? ls.nameSv : ls.nameEn}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <div className="mb-1 flex items-center gap-1.5">
-                  <label
-                    className="block text-sm font-medium"
-                    htmlFor="spec-business-ref"
-                  >
-                    {t('businessNeedsReference')}
-                  </label>
-                  {helpButton('spec-business-ref', t('businessNeedsReference'))}
-                </div>
-                {helpPanel('businessNeedsReferenceHelp', 'spec-business-ref')}
-                <textarea
-                  className="min-h-11 w-full resize-none rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                  id="spec-business-ref"
-                  onChange={e =>
-                    setForm(f => ({
-                      ...f,
-                      businessNeedsReference: e.target.value,
-                    }))
-                  }
-                  placeholder={t('businessNeedsReferencePlaceholder')}
-                  rows={2}
-                  value={form.businessNeedsReference}
-                />
-              </div>
-              {saveError && (
-                <p
-                  className="text-sm text-red-600 dark:text-red-400"
-                  role="alert"
-                >
-                  {saveError}
-                </p>
-              )}
-              <div className="flex gap-3">
-                <button
-                  className="btn-primary"
-                  disabled={isSubmitting}
-                  type="submit"
-                >
-                  {isSubmitting ? tc('saving') : tc('save')}
-                </button>
-                <button
-                  className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                  disabled={isSubmitting}
-                  onClick={closeForm}
-                  type="button"
-                >
-                  {tc('cancel')}
-                </button>
-              </div>
-            </motion.form>
-          )}
-        </AnimatePresence>
-        {responsibleChange && (
-          <HsaPersonChangeModal
-            blockedError={t('responsibleChangeCoAuthorConflict')}
-            cancelLabel={tc('cancel')}
-            currentHelp={t('currentResponsibleHsaIdHelp')}
-            currentHsaId={responsibleChange.currentResponsibleHsaId}
-            currentInputId="spec-current-responsible-hsa-id"
-            currentLabel={t('currentResponsibleHsaId')}
-            description={t('changeResponsibleDescription')}
-            developerModeValue="change specification lead"
-            emailLabel={tc('hsaVerifyEmail')}
-            errorFallback={tc('hsaVerifyError')}
-            fetchingLabel={tc('fetchingHsaPerson')}
-            fetchLabel={tc('fetchHsaPerson')}
-            inputClassName="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-            invalidError={t('responsibleChangeInvalid')}
-            nameLabel={tc('hsaVerifyName')}
-            newHelp={t('newResponsibleHsaIdHelp')}
-            newInputId="spec-new-responsible-hsa-id"
-            newLabel={t('newResponsibleHsaId')}
-            onClose={closeResponsibleChange}
-            onSubmit={submitResponsibleChange}
-            open
-            purpose="requirements_specification_responsible"
-            sameError={t('responsibleChangeSame')}
-            scopeId={responsibleChange.specificationId}
-            submitLabel={t('changeResponsible')}
-            submittingLabel={tc('saving')}
-            title={t('changeResponsibleTitle')}
-            titleId="spec-responsible-change-title"
-            unavailableText={tc('hsaVerifyUnavailable')}
-          />
-        )}
+        <SpecificationFormModal
+          currentUser={currentUser}
+          currentUserLoading={currentUserLoading}
+          developerModeContext="specifications"
+          governanceObjectTypes={governanceObjectTypes}
+          implementationTypes={implementationTypes}
+          lifecycleStatuses={lifecycleStatuses}
+          mode={editSpec ? 'edit' : 'create'}
+          onClose={closeForm}
+          onResponsibleChanged={async () => {
+            await specificationsResource.reload()
+          }}
+          onSaved={async () => {
+            closeForm()
+            await specificationsResource.reload()
+          }}
+          open={showForm}
+          spec={editSpec}
+          specificationSlug={editSpec?.uniqueId}
+        />
 
         <div className="mb-4">
           {!loading && specifications.length > 0 && (

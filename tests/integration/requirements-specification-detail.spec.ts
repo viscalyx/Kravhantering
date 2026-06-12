@@ -1,4 +1,28 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
+
+const specificationSlug = 'ETJANST-UPP-2026'
+
+async function warmSpecificationDetailApi(page: Page): Promise<void> {
+  const url = `/api/specifications/${specificationSlug}/available-requirements?limit=5&locale=sv&sortBy=uniqueId&sortDirection=asc`
+  const response = await page.request.get(url, {
+    headers: { Accept: 'application/json' },
+  })
+  if (response.ok()) return
+
+  throw new Error(
+    `Specification detail API warmup failed for ${url}: ${response.status()} ${(
+      await response.text()
+    ).slice(0, 500)}`,
+  )
+}
+
+async function gotoSpecificationDetail(page: Page): Promise<void> {
+  await warmSpecificationDetailApi(page)
+  await page.goto(`/sv/specifications/${specificationSlug}`)
+  await expect(
+    page.getByText(/^Det gick inte att läsa in tillgängliga krav:/),
+  ).toBeHidden({ timeout: 10_000 })
+}
 
 const viewports = [
   { name: 'mobile', width: 375, height: 812 },
@@ -9,10 +33,10 @@ for (const viewport of viewports) {
   test.describe(`Requirements specification detail edit action — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } })
 
-    test('opens the specification edit view from the title action', async ({
+    test('opens the specification edit dialog from the title action', async ({
       page,
     }) => {
-      await page.goto('/sv/specifications/ETJANST-UPP-2026')
+      await gotoSpecificationDetail(page)
 
       await expect(
         page.getByRole('heading', {
@@ -24,14 +48,25 @@ for (const viewport of viewports) {
         page.getByRole('button', { name: 'Nytt unikt krav' }),
       ).toBeVisible()
 
+      const splitPanel = page.locator(
+        '[data-specification-detail-split-panel="true"]',
+      )
+      const splitPanelClassesBefore = await splitPanel.getAttribute('class')
+      expect(splitPanelClassesBefore).not.toBeNull()
+      if (splitPanelClassesBefore === null) {
+        throw new Error('Specification detail split panel has no class list.')
+      }
+
       await page.getByRole('button', { name: 'Redigera kravunderlag' }).click()
 
-      await expect(
-        page.getByRole('heading', { level: 2, name: 'Redigera kravunderlag' }),
-      ).toBeVisible()
-      await expect(page.getByLabel('Namn *')).toHaveValue(
+      const editDialog = page.getByRole('dialog', {
+        name: 'Redigera kravunderlag',
+      })
+      await expect(editDialog).toBeVisible()
+      await expect(editDialog.getByLabel('Namn *')).toHaveValue(
         'Upphandling av e-tjänstplattform',
       )
+      await expect(splitPanel).toHaveAttribute('class', splitPanelClassesBefore)
       const editForm = page.locator(
         '[data-developer-mode-context="requirements specification detail"][data-developer-mode-value="edit"]',
       )
@@ -67,7 +102,7 @@ for (const viewport of viewports) {
         page,
       }) => {
         await page.setViewportSize({ width: viewport.width, height: 560 })
-        await page.goto('/sv/specifications/ETJANST-UPP-2026')
+        await gotoSpecificationDetail(page)
         const activeViewport = page.viewportSize()
         const activeViewportWidth = activeViewport?.width ?? viewport.width
         const activeViewportHeight = activeViewport?.height ?? 560
@@ -259,7 +294,7 @@ for (const viewport of viewports) {
         await page.addInitScript(() => {
           globalThis.localStorage.clear()
         })
-        await page.goto('/sv/specifications/ETJANST-UPP-2026')
+        await gotoSpecificationDetail(page)
 
         const leftPanel = page.locator(
           '[data-specification-detail-list-panel="items"]',

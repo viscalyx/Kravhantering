@@ -25,10 +25,8 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requirement-detail-client'
-import SpecificationEditPanel, {
-  SPECIFICATION_EDIT_FORM_ID,
-} from '@/app/[locale]/specifications/[slug]/specification-edit-panel'
 import SpecificationRequirementSelectionPanel from '@/app/[locale]/specifications/[slug]/specification-requirement-selection-panel'
+import SpecificationFormModal from '@/app/[locale]/specifications/specification-form-modal'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
@@ -1897,15 +1895,11 @@ export default function KravunderlagDetailClient({
   const splitPanelHeaderClassName = `sticky ${specificationDetailStickyTopOffsetClassName} z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80`
   const leftPanelActionPillClassName =
     'inline-flex h-11 w-11 items-center justify-center rounded-full border border-primary-600/80 bg-primary-700 text-white shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:border-primary-700 hover:bg-primary-800 hover:shadow-[0_14px_36px_-20px_rgba(67,56,202,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-primary-500/80 dark:bg-primary-600 dark:hover:border-primary-400 dark:hover:bg-primary-700 dark:focus-visible:ring-offset-secondary-950'
-  const specificationDetailPageShellClassName = showEditSpecificationForm
-    ? specificationDetailPagePaddingClassName
-    : `${specificationDetailPagePaddingClassName} xl:flex xl:h-[calc(100dvh-4rem)] xl:flex-col xl:overflow-hidden`
-  const specificationDetailContainerClassName = showEditSpecificationForm
-    ? 'container-custom max-w-none'
-    : 'container-custom max-w-none xl:flex xl:min-h-0 xl:flex-1 xl:flex-col'
-  const specificationDetailSplitPanelClassName = showEditSpecificationForm
-    ? 'grid grid-cols-1 gap-6 items-start xl:grid-cols-2'
-    : 'grid grid-cols-1 gap-6 items-start xl:-mx-8 xl:min-h-0 xl:flex-1 xl:grid-cols-2 xl:grid-rows-[minmax(0,1fr)] xl:items-stretch xl:gap-4 xl:overflow-hidden'
+  const specificationDetailPageShellClassName = `${specificationDetailPagePaddingClassName} xl:flex xl:h-[calc(100dvh-4rem)] xl:flex-col xl:overflow-hidden`
+  const specificationDetailContainerClassName =
+    'container-custom max-w-none xl:flex xl:min-h-0 xl:flex-1 xl:flex-col'
+  const specificationDetailSplitPanelClassName =
+    'grid grid-cols-1 gap-6 items-start xl:-mx-8 xl:min-h-0 xl:flex-1 xl:grid-cols-2 xl:grid-rows-[minmax(0,1fr)] xl:items-stretch xl:gap-4 xl:overflow-hidden'
   const responsibleDisplayName = formatActorDisplayNameForLocale(
     spec.responsibleDisplayName,
     locale,
@@ -2015,8 +2009,8 @@ export default function KravunderlagDetailClient({
                     {specName}
                   </h1>
                   <button
-                    aria-controls={SPECIFICATION_EDIT_FORM_ID}
                     aria-expanded={showEditSpecificationForm}
+                    aria-haspopup="dialog"
                     aria-label={t('editSpecification')}
                     className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-white/80 text-secondary-700 shadow-sm transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:bg-secondary-900/70 dark:text-secondary-200 dark:hover:bg-secondary-800"
                     {...devMarker({
@@ -2025,9 +2019,7 @@ export default function KravunderlagDetailClient({
                       priority: 350,
                       value: 'edit specification',
                     })}
-                    onClick={() =>
-                      setShowEditSpecificationForm(current => !current)
-                    }
+                    onClick={() => setShowEditSpecificationForm(true)}
                     title={t('editSpecification')}
                     type="button"
                   >
@@ -2091,43 +2083,6 @@ export default function KravunderlagDetailClient({
                 )}
               </dl>
             </div>
-            <AnimatePresence initial={false}>
-              {showEditSpecificationForm ? (
-                <SpecificationEditPanel
-                  className="mt-4"
-                  governanceObjectTypes={specificationGovernanceObjectTypes}
-                  implementationTypes={specificationImplementationTypes}
-                  key="specification-edit-panel"
-                  lifecycleStatuses={specificationLifecycleStatuses}
-                  onCancel={() => setShowEditSpecificationForm(false)}
-                  onResponsibleChanged={updatedSpec => {
-                    setSpec(current =>
-                      current
-                        ? {
-                            ...current,
-                            responsibleDisplayName:
-                              updatedSpec.responsibleDisplayName,
-                            responsibleHsaId: updatedSpec.responsibleHsaId,
-                          }
-                        : current,
-                    )
-                  }}
-                  onSaved={async result => {
-                    setShowEditSpecificationForm(false)
-                    if (
-                      result.newUniqueId &&
-                      result.newUniqueId !== specificationSlug
-                    ) {
-                      router.replace(`/specifications/${result.newUniqueId}`)
-                    } else {
-                      await fetchSpecificationMeta()
-                    }
-                  }}
-                  spec={spec}
-                  specificationSlug={specificationSlug}
-                />
-              ) : null}
-            </AnimatePresence>
           </div>
 
           {/* Split panel */}
@@ -2761,6 +2716,36 @@ export default function KravunderlagDetailClient({
           </div>
         </div>
       </div>
+      <SpecificationFormModal
+        developerModeContext="requirements specification detail"
+        governanceObjectTypes={specificationGovernanceObjectTypes}
+        implementationTypes={specificationImplementationTypes}
+        lifecycleStatuses={specificationLifecycleStatuses}
+        mode="edit"
+        onClose={() => setShowEditSpecificationForm(false)}
+        onResponsibleChanged={updatedSpec => {
+          setSpec(current =>
+            current
+              ? {
+                  ...current,
+                  responsibleDisplayName: updatedSpec.responsibleDisplayName,
+                  responsibleHsaId: updatedSpec.responsibleHsaId,
+                }
+              : current,
+          )
+        }}
+        onSaved={async result => {
+          setShowEditSpecificationForm(false)
+          if (result.newUniqueId && result.newUniqueId !== specificationSlug) {
+            router.replace(`/specifications/${result.newUniqueId}`)
+          } else {
+            await fetchSpecificationMeta()
+          }
+        }}
+        open={showEditSpecificationForm}
+        spec={spec}
+        specificationSlug={specificationSlug}
+      />
       {addModal}
       {createLocalRequirementModal}
       {needsReferenceFormModal}

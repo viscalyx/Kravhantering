@@ -5,8 +5,9 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
+import type { ComponentProps } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import SpecificationEditPanel from '@/app/[locale]/specifications/[slug]/specification-edit-panel'
+import SpecificationFormModal from '@/app/[locale]/specifications/specification-form-modal'
 
 const confirmMock = vi.fn()
 
@@ -54,7 +55,32 @@ const spec = {
   uniqueId: 'ETJANST-UPP-2026',
 }
 
-describe('SpecificationEditPanel', () => {
+function renderEditModal(
+  props: Partial<ComponentProps<typeof SpecificationFormModal>> = {},
+) {
+  return render(
+    <SpecificationFormModal
+      currentUser={{
+        displayName: 'Ada Admin',
+        email: 'ada.admin@example.test',
+        hsaId: 'SE5560000001-ada1',
+        roles: ['Admin'],
+      }}
+      governanceObjectTypes={governanceObjectTypes}
+      implementationTypes={implementationTypes}
+      lifecycleStatuses={lifecycleStatuses}
+      mode="edit"
+      onClose={() => {}}
+      onSaved={() => {}}
+      open
+      spec={spec}
+      specificationSlug="ETJANST-UPP-2026"
+      {...props}
+    />,
+  )
+}
+
+describe('SpecificationFormModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     confirmMock.mockReset()
@@ -79,17 +105,13 @@ describe('SpecificationEditPanel', () => {
   })
 
   it('prefills the specification edit form and exposes developer-mode metadata', () => {
-    const { container } = render(
-      <SpecificationEditPanel
-        governanceObjectTypes={governanceObjectTypes}
-        implementationTypes={implementationTypes}
-        lifecycleStatuses={lifecycleStatuses}
-        onCancel={() => {}}
-        onSaved={() => {}}
-        spec={spec}
-        specificationSlug="ETJANST-UPP-2026"
-      />,
-    )
+    renderEditModal()
+
+    expect(
+      screen.getByRole('dialog', {
+        name: /specification\.editSpecification/,
+      }),
+    ).toHaveAttribute('data-developer-mode-value', 'edit specification')
 
     expect(
       screen.getByRole('textbox', { name: /specification\.name/ }),
@@ -107,43 +129,110 @@ describe('SpecificationEditPanel', () => {
       }),
     ).toBeInTheDocument()
 
-    const form = container.querySelector(
+    const form = document.body.querySelector(
       '[data-developer-mode-name="crud form"][data-developer-mode-context="requirements specification detail"]',
     )
     expect(form).toHaveAttribute('data-developer-mode-value', 'edit')
+    expect(form?.firstElementChild).toHaveClass('grid')
+    expect(form?.firstElementChild).toHaveClass('grid-cols-1')
+    expect(form?.firstElementChild).toHaveClass('lg:grid-cols-2')
   })
 
-  it('calls onCancel when the cancel button is pressed', () => {
-    const onCancel = vi.fn()
+  it('calls onClose when the unchanged modal cancel button is pressed', () => {
+    const onClose = vi.fn()
 
-    render(
-      <SpecificationEditPanel
-        governanceObjectTypes={governanceObjectTypes}
-        implementationTypes={implementationTypes}
-        lifecycleStatuses={lifecycleStatuses}
-        onCancel={onCancel}
-        onSaved={() => {}}
-        spec={spec}
-        specificationSlug="ETJANST-UPP-2026"
-      />,
-    )
+    renderEditModal({ onClose })
 
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
-    expect(onCancel).toHaveBeenCalledTimes(1)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('confirms before closing a dirty modal', async () => {
+    confirmMock.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+    const onClose = vi.fn()
+
+    renderEditModal({ onClose })
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+      { target: { value: 'Osparat namn' } },
+    )
+    fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          confirmText: 'common.discardChanges',
+          defaultCancel: true,
+          message: 'common.unsavedChangesConfirm',
+        }),
+      )
+    })
+    expect(onClose).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+    ).toHaveValue('Osparat namn')
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it.each([
+    {
+      name: 'close button',
+      trigger: () =>
+        fireEvent.click(screen.getByRole('button', { name: /common\.close/i })),
+    },
+    {
+      name: 'backdrop',
+      trigger: () => {
+        const backdrop = document.body.querySelector(
+          '.absolute.inset-0',
+        ) as HTMLElement | null
+        expect(backdrop).not.toBeNull()
+        fireEvent.click(backdrop as HTMLElement)
+      },
+    },
+    {
+      name: 'Escape',
+      trigger: () =>
+        fireEvent.keyDown(
+          screen.getByRole('dialog', {
+            name: /specification\.editSpecification/,
+          }),
+          { key: 'Escape' },
+        ),
+    },
+  ])('confirms before closing a dirty modal via $name', async ({ trigger }) => {
+    confirmMock.mockResolvedValue(false)
+    const onClose = vi.fn()
+
+    renderEditModal({ onClose })
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+      { target: { value: 'Osparat namn' } },
+    )
+
+    trigger()
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          confirmText: 'common.discardChanges',
+          defaultCancel: true,
+          message: 'common.unsavedChangesConfirm',
+        }),
+      )
+    })
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('shows contextual help for specification fields', () => {
-    render(
-      <SpecificationEditPanel
-        governanceObjectTypes={governanceObjectTypes}
-        implementationTypes={implementationTypes}
-        lifecycleStatuses={lifecycleStatuses}
-        onCancel={() => {}}
-        onSaved={() => {}}
-        spec={spec}
-        specificationSlug="ETJANST-UPP-2026"
-      />,
-    )
+    renderEditModal()
 
     fireEvent.click(
       screen.getByRole('button', { name: 'common.help: specification.name' }),
@@ -180,17 +269,7 @@ describe('SpecificationEditPanel', () => {
       return Promise.resolve(okJson({ ok: true }))
     })
 
-    render(
-      <SpecificationEditPanel
-        governanceObjectTypes={governanceObjectTypes}
-        implementationTypes={implementationTypes}
-        lifecycleStatuses={lifecycleStatuses}
-        onCancel={() => {}}
-        onSaved={() => {}}
-        spec={spec}
-        specificationSlug="ETJANST-UPP-2026"
-      />,
-    )
+    renderEditModal()
 
     fireEvent.click(await getEnabledChangeResponsibleButton())
     const dialog = screen.getByRole('dialog', {
@@ -226,34 +305,23 @@ describe('SpecificationEditPanel', () => {
   })
 
   it('does not verify from the locked main responsible HSA-ID field', async () => {
-    render(
-      <SpecificationEditPanel
-        governanceObjectTypes={governanceObjectTypes}
-        implementationTypes={implementationTypes}
-        lifecycleStatuses={lifecycleStatuses}
-        onCancel={() => {}}
-        onSaved={() => {}}
-        spec={spec}
-        specificationSlug="ETJANST-UPP-2026"
-      />,
-    )
+    renderEditModal()
 
     fireEvent.blur(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     )
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/auth/me', expect.any(Object))
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        '/api/requirement-responsibility-people/verify',
+        expect.anything(),
+      )
     })
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      '/api/requirement-responsibility-people/verify',
-      expect.anything(),
-    )
   })
 
   it('changes responsible through the modal using a dedicated payload', async () => {
     const onResponsibleChanged = vi.fn()
-    const onCancel = vi.fn()
+    const onClose = vi.fn()
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
       if (url === '/api/auth/me') {
         return Promise.resolve(
@@ -275,18 +343,10 @@ describe('SpecificationEditPanel', () => {
       }
       return Promise.resolve(okJson({ ok: true }))
     })
-    render(
-      <SpecificationEditPanel
-        governanceObjectTypes={governanceObjectTypes}
-        implementationTypes={implementationTypes}
-        lifecycleStatuses={lifecycleStatuses}
-        onCancel={onCancel}
-        onResponsibleChanged={onResponsibleChanged}
-        onSaved={() => {}}
-        spec={spec}
-        specificationSlug="ETJANST-UPP-2026"
-      />,
-    )
+    renderEditModal({
+      onClose,
+      onResponsibleChanged,
+    })
 
     fireEvent.click(await getEnabledChangeResponsibleButton())
     const dialog = screen.getByRole('dialog', {
@@ -324,7 +384,7 @@ describe('SpecificationEditPanel', () => {
         responsibleHsaId: 'SE5560000001-rita1',
       }),
     )
-    expect(onCancel).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
     expect(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     ).toHaveValue('SE5560000001-rita1')
@@ -333,17 +393,7 @@ describe('SpecificationEditPanel', () => {
   it('submits the updated specification information', async () => {
     const onSaved = vi.fn((_result: { newUniqueId: string }) => {})
 
-    render(
-      <SpecificationEditPanel
-        governanceObjectTypes={governanceObjectTypes}
-        implementationTypes={implementationTypes}
-        lifecycleStatuses={lifecycleStatuses}
-        onCancel={() => {}}
-        onSaved={onSaved}
-        spec={spec}
-        specificationSlug="ETJANST-UPP-2026"
-      />,
-    )
+    renderEditModal({ onSaved })
 
     fireEvent.change(
       screen.getByRole('textbox', { name: /specification\.name/ }),
@@ -386,7 +436,7 @@ describe('SpecificationEditPanel', () => {
 
   it('confirms unsaved edits and closes after non-admin responsible changes', async () => {
     confirmMock.mockResolvedValue(true)
-    const onCancel = vi.fn()
+    const onClose = vi.fn()
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
       if (url === '/api/auth/me') {
         return Promise.resolve(
@@ -409,17 +459,15 @@ describe('SpecificationEditPanel', () => {
       return Promise.resolve(okJson({ ok: true }))
     })
 
-    render(
-      <SpecificationEditPanel
-        governanceObjectTypes={governanceObjectTypes}
-        implementationTypes={implementationTypes}
-        lifecycleStatuses={lifecycleStatuses}
-        onCancel={onCancel}
-        onSaved={() => {}}
-        spec={spec}
-        specificationSlug="ETJANST-UPP-2026"
-      />,
-    )
+    renderEditModal({
+      currentUser: {
+        displayName: 'Ada Admin',
+        email: 'ada.admin@example.test',
+        hsaId: 'SE5560000001-ada1',
+        roles: ['RequirementsEditor'],
+      },
+      onClose,
+    })
 
     fireEvent.change(
       screen.getByRole('textbox', { name: /specification\.name/ }),
@@ -449,7 +497,7 @@ describe('SpecificationEditPanel', () => {
           message: 'specification.responsibleChangeUnsavedConfirm',
         }),
       )
-      expect(onCancel).toHaveBeenCalledTimes(1)
+      expect(onClose).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -467,17 +515,7 @@ describe('SpecificationEditPanel', () => {
       return new Promise(() => undefined)
     })
 
-    render(
-      <SpecificationEditPanel
-        governanceObjectTypes={governanceObjectTypes}
-        implementationTypes={implementationTypes}
-        lifecycleStatuses={lifecycleStatuses}
-        onCancel={() => {}}
-        onSaved={() => {}}
-        spec={spec}
-        specificationSlug="ETJANST-UPP-2026"
-      />,
-    )
+    renderEditModal()
 
     const form = screen
       .getByRole('button', { name: /common\.save/i })
@@ -487,6 +525,15 @@ describe('SpecificationEditPanel', () => {
 
     fireEvent.submit(form as HTMLFormElement)
     fireEvent.submit(form as HTMLFormElement)
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /common\.cancel/i }),
+      ).toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: /common\.close/i }),
+      ).toBeDisabled()
+    })
 
     await waitFor(() => {
       expect(
