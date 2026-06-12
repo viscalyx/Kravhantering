@@ -76,8 +76,8 @@ for (const viewport of viewports) {
           name: 'Nytt kravunderlag',
         })
         await expect(createDialog).toBeVisible()
-        const createForm = page.locator(
-          '[data-developer-mode-context="specifications"][data-developer-mode-value="create"]',
+        const createForm = createDialog.locator(
+          'form#requirement-specification-form',
         )
         await expect(createForm).toBeVisible()
         await expect(createForm.locator('> div').first()).toHaveClass(
@@ -110,8 +110,8 @@ for (const viewport of viewports) {
           name: 'Redigera kravunderlag',
         })
         await expect(editDialog).toBeVisible()
-        const editForm = page.locator(
-          '[data-developer-mode-context="specifications"][data-developer-mode-name="crud form"][data-developer-mode-value="edit"]',
+        const editForm = editDialog.locator(
+          'form#requirement-specification-form',
         )
         await expect(editForm).toBeVisible()
         await expect(editForm.locator('> div').first()).toHaveClass(

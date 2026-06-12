@@ -67,9 +67,7 @@ for (const viewport of viewports) {
         'Upphandling av e-tjänstplattform',
       )
       await expect(splitPanel).toHaveAttribute('class', splitPanelClassesBefore)
-      const editForm = page.locator(
-        '[data-developer-mode-context="requirements specification detail"][data-developer-mode-value="edit"]',
-      )
+      const editForm = editDialog.locator('form#requirement-specification-form')
       const responsibleInput = editForm.getByRole('textbox', {
         name: 'Kravunderlagsansvarigs HSA-ID',
       })
