@@ -312,11 +312,27 @@ describe('SpecificationFormModal', () => {
     )
 
     await waitFor(() => {
-      expect(fetchMock).not.toHaveBeenCalledWith(
-        '/api/requirement-responsibility-people/verify',
-        expect.anything(),
-      )
+      expect(
+        fetchMock.mock.calls.some(
+          ([calledUrl]) =>
+            calledUrl === '/api/requirement-responsibility-people/verify',
+        ),
+      ).toBe(false)
     })
+  })
+
+  it('keeps responsible changes disabled when the current user is unavailable', () => {
+    renderEditModal({
+      currentUser: null,
+      currentUserLoading: false,
+      currentUserUnavailable: true,
+    })
+
+    expect(
+      screen.getByRole('button', {
+        name: /specification\.changeResponsible/,
+      }),
+    ).toBeDisabled()
   })
 
   it('changes responsible through the modal using a dedicated payload', async () => {

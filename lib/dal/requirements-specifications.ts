@@ -1,3 +1,4 @@
+import { isHsaId } from '@/lib/auth/hsa-id'
 import { validateRequirementTaxonomyReferences } from '@/lib/dal/requirement-reference-validation'
 import {
   cleanupUnassignedRequirementResponsibilityPeople,
@@ -191,6 +192,16 @@ function requireStr(value: unknown, fieldName: string): string {
     throw new Error(`Expected non-empty ${fieldName}`)
   }
   return str
+}
+
+function normalizeRequiredResponsibleHsaId(value: string): string {
+  const hsaId = value.trim()
+  if (!isHsaId(hsaId)) {
+    throw validationError('Expected a valid responsibleHsaId', {
+      reason: 'invalid_responsible_hsa_id',
+    })
+  }
+  return hsaId
 }
 
 function displayNameFromResponsibilityPerson(row: Row): string | null {
@@ -625,6 +636,9 @@ export async function createSpecification(
   },
 ) {
   const now = new Date()
+  const responsibleHsaId = normalizeRequiredResponsibleHsaId(
+    data.responsibleHsaId,
+  )
   const responsiblePerson = data.responsiblePerson
   const insertSpecification = async (executor: SqlExecutor) => {
     const rows = (await executor.query(
@@ -660,7 +674,7 @@ export async function createSpecification(
         data.specificationImplementationTypeId ?? null,
         data.specificationLifecycleStatusId ?? null,
         data.businessNeedsReference ?? null,
-        data.responsibleHsaId,
+        responsibleHsaId,
         now,
       ],
     )) as Row[]

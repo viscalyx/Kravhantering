@@ -3,7 +3,6 @@ import {
   getRequirementResponsibilityPerson,
   upsertRequirementResponsibilityPerson,
 } from '@/lib/dal/requirement-responsibility-people'
-import type { SqlServerDatabase } from '@/lib/db'
 import { lookupHsaPerson } from '@/lib/hsa/person-lookup'
 import { validationError } from '@/lib/requirements/errors'
 import {
@@ -24,6 +23,10 @@ export interface RequirementResponsibilityPersonVerificationPayload
 
 interface ResolveVerifiedPersonOptions {
   retryDelayMs?: number
+}
+
+interface QueryExecutor {
+  query(sql: string, parameters?: unknown[]): Promise<unknown>
 }
 
 function sleep(ms: number): Promise<void> {
@@ -48,7 +51,7 @@ export function toRequirementResponsibilityPersonVerificationPayload(
 }
 
 export async function verifyRequirementResponsibilityPerson(
-  db: SqlServerDatabase,
+  db: QueryExecutor,
   hsaId: string,
   mode: RequirementResponsibilityPersonVerificationMode,
 ): Promise<RequirementResponsibilityPersonRecord> {
@@ -69,7 +72,7 @@ export async function verifyRequirementResponsibilityPerson(
 }
 
 export async function resolveVerifiedRequirementResponsibilityPerson(
-  db: SqlServerDatabase,
+  db: QueryExecutor,
   hsaId: string,
   options: ResolveVerifiedPersonOptions = {},
 ): Promise<RequirementResponsibilityPersonRecord> {
@@ -99,7 +102,7 @@ export async function resolveVerifiedRequirementResponsibilityPerson(
 }
 
 export async function resolveVerifiedRequirementResponsibilityPeople(
-  db: SqlServerDatabase,
+  db: QueryExecutor,
   hsaIds: string[],
   options: ResolveVerifiedPersonOptions = {},
 ): Promise<RequirementResponsibilityPersonRecord[]> {

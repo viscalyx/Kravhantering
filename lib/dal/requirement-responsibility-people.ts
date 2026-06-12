@@ -1,4 +1,3 @@
-import type { SqlServerDatabase } from '@/lib/db'
 import type { RequirementResponsibilityPersonRecord } from '@/lib/requirements/responsibility-person'
 
 interface QueryExecutor {
@@ -114,7 +113,7 @@ export async function cleanupUnassignedRequirementResponsibilityPeople(
 }
 
 export async function getRequirementResponsibilityPerson(
-  db: SqlServerDatabase,
+  db: QueryExecutor,
   hsaId: string,
 ): Promise<RequirementResponsibilityPersonRecord | null> {
   const rows = (await db.query(

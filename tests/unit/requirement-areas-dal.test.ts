@@ -4,6 +4,7 @@ import {
   createArea,
   listAreasActorCanAuthor,
   updateArea,
+  updateAreaWithOwnerCheck,
 } from '@/lib/dal/requirement-areas'
 
 function createSqlServerDb() {
@@ -19,7 +20,26 @@ function createSqlServerDb() {
       updatedAt: new Date('2026-05-02T08:00:00.000Z'),
     },
   ])
-  return { db: { query } as unknown as Parameters<typeof createArea>[0], query }
+  const transaction = vi.fn(
+    async (
+      isolationOrCallback:
+        | string
+        | ((manager: { query: typeof query }) => Promise<unknown>),
+      maybeCallback?: (manager: { query: typeof query }) => Promise<unknown>,
+    ) => {
+      const callback =
+        typeof isolationOrCallback === 'function'
+          ? isolationOrCallback
+          : maybeCallback
+      if (!callback) throw new Error('Missing transaction callback')
+      return callback({ query })
+    },
+  )
+  return {
+    db: { query, transaction } as unknown as Parameters<typeof createArea>[0],
+    query,
+    transaction,
+  }
 }
 
 describe('requirement-areas DAL', () => {
@@ -107,6 +127,85 @@ describe('requirement-areas DAL', () => {
     expect(
       query.mock.calls.some(([sql]) =>
         String(sql).includes('MERGE INTO requirement_responsibility_people'),
+      ),
+    ).toBe(false)
+  })
+
+  it('checks owner and co-author exclusivity inside a locked transaction', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([{ ownerHsaId: 'SE5560000001-old1' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 11,
+          prefix: 'KH',
+          name: 'Kravhantering',
+          description: 'Krav relaterade till kravhantering',
+          ownerHsaId: 'SE5560000001-new1',
+          nextSequence: 1,
+          createdAt: new Date('2026-05-02T08:00:00.000Z'),
+          updatedAt: new Date('2026-05-03T08:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([])
+    const resolveOwnerPerson = vi.fn(async () => ({
+      email: 'new.owner@example.test',
+      givenName: 'New',
+      hsaId: 'SE5560000001-new1',
+      middleName: null,
+      surname: 'Owner',
+    }))
+
+    const result = await updateAreaWithOwnerCheck(db, 11, {
+      ownerHsaId: 'SE5560000001-new1',
+      resolveOwnerPerson,
+    })
+
+    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(transaction.mock.calls[0]?.[0]).toBe('SERIALIZABLE')
+    expect(query.mock.calls[0]?.[0]).toContain('WITH (UPDLOCK, HOLDLOCK)')
+    expect(query.mock.calls[1]?.[0]).toContain('WITH (UPDLOCK, HOLDLOCK)')
+    expect(query.mock.calls[1]?.[0]).toContain(
+      'FROM requirement_area_co_authors',
+    )
+    expect(resolveOwnerPerson).toHaveBeenCalledWith(
+      expect.objectContaining({ query }),
+      'SE5560000001-new1',
+    )
+    expect(query.mock.calls[2]?.[0]).toContain(
+      'MERGE INTO requirement_responsibility_people',
+    )
+    expect(query.mock.calls[3]?.[0]).toContain('UPDATE requirement_areas')
+    expect(result).toMatchObject({
+      id: 11,
+      ownerHsaId: 'SE5560000001-new1',
+    })
+  })
+
+  it('rejects owner changes to an existing co-author before resolving the owner person', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([{ ownerHsaId: 'SE5560000001-old1' }])
+      .mockResolvedValueOnce([{ areaId: 11 }])
+    const resolveOwnerPerson = vi.fn()
+
+    await expect(
+      updateAreaWithOwnerCheck(db, 11, {
+        ownerHsaId: 'SE5560000001-coa1',
+        resolveOwnerPerson,
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'area_owner_cannot_be_co_author' },
+    })
+
+    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(resolveOwnerPerson).not.toHaveBeenCalled()
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('UPDATE requirement_areas'),
       ),
     ).toBe(false)
   })

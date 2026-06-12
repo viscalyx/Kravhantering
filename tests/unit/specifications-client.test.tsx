@@ -697,6 +697,40 @@ describe('RequirementsSpecificationsClient', () => {
     ).toBeDisabled()
   })
 
+  it('keeps responsible changes disabled when current user loading fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/auth/me') {
+        return Promise.reject(new Error('auth unavailable'))
+      }
+      if (url === '/api/specifications')
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      if (url === '/api/specification-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<RequirementsSpecificationsClient />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'specification.currentUserUnavailable',
+    )
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+
+    expect(
+      screen.getByRole('button', {
+        name: /specification\.changeResponsible/,
+      }),
+    ).toBeDisabled()
+    consoleError.mockRestore()
+  })
+
   it('shows inline help for specification form fields', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {

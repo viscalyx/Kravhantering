@@ -1205,7 +1205,10 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'skapa-kravunderlag',
           'Skapa nytt kravunderlag',
-          'Klicka på **"Nytt kravunderlag"** för att öppna dialogrutan för nytt kravunderlag. Ange ett namn — ett unikt ID (slug) genereras automatiskt. Kravunderlag används för att samla krav som hör till ett specifikt projekt eller leverans.',
+          'Klicka på **"Nytt kravunderlag"** för att öppna dialogrutan för nytt\n' +
+            'kravunderlag. Ange ett namn — ett unikt ID (slug) genereras automatiskt.\n' +
+            'Kravunderlag används för att samla krav som hör till ett specifikt projekt eller\n' +
+            'leverans.',
           { fullPage: false },
         )
         await page.keyboard.press('Escape')

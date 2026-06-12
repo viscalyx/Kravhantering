@@ -571,6 +571,7 @@ export default function RequirementsSpecificationsClient({
         <SpecificationFormModal
           currentUser={currentUser}
           currentUserLoading={currentUserLoading}
+          currentUserUnavailable={currentUserUnavailable}
           developerModeContext="specifications"
           governanceObjectTypes={governanceObjectTypes}
           implementationTypes={implementationTypes}

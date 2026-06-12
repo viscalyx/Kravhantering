@@ -66,6 +66,7 @@ interface ResponsibleChangeState {
 interface SpecificationFormModalProps {
   currentUser?: SpecificationFormModalCurrentUser | null
   currentUserLoading?: boolean
+  currentUserUnavailable?: boolean
   developerModeContext?: string
   governanceObjectTypes: TaxonomyItem[]
   implementationTypes: TaxonomyItem[]
@@ -204,6 +205,7 @@ async function readSuccessUniqueId(
 export default function SpecificationFormModal({
   currentUser,
   currentUserLoading = false,
+  currentUserUnavailable = false,
   developerModeContext,
   governanceObjectTypes,
   implementationTypes,
@@ -226,6 +228,8 @@ export default function SpecificationFormModal({
     useState<SpecificationFormModalCurrentUser | null>(null)
   const [loadedCurrentUserLoading, setLoadedCurrentUserLoading] =
     useState(false)
+  const [loadedCurrentUserUnavailable, setLoadedCurrentUserUnavailable] =
+    useState(false)
   const [form, setForm] = useState<SpecificationFormState>(() =>
     blankFormState(),
   )
@@ -242,6 +246,10 @@ export default function SpecificationFormModal({
   const effectiveCurrentUser = currentUser ?? loadedCurrentUser
   const effectiveCurrentUserLoading =
     currentUser === undefined ? loadedCurrentUserLoading : currentUserLoading
+  const effectiveCurrentUserUnavailable =
+    currentUser === undefined
+      ? loadedCurrentUserUnavailable
+      : currentUserUnavailable
   const isEdit = mode === 'edit' && !!spec
   const formResetKey = isEdit
     ? `edit:${spec.id}:${spec.uniqueId}:${locale}`
@@ -263,6 +271,7 @@ export default function SpecificationFormModal({
 
     const controller = new AbortController()
     setLoadedCurrentUserLoading(true)
+    setLoadedCurrentUserUnavailable(false)
 
     async function loadCurrentUser() {
       try {
@@ -272,7 +281,9 @@ export default function SpecificationFormModal({
         if (!response.ok) {
           throw new Error('Failed to load current user')
         }
-        setLoadedCurrentUser(readCurrentUser(await response.json()))
+        const user = readCurrentUser(await response.json())
+        setLoadedCurrentUser(user)
+        setLoadedCurrentUserUnavailable(user === null)
       } catch (error) {
         if (controller.signal.aborted) return
         console.error(
@@ -280,6 +291,7 @@ export default function SpecificationFormModal({
           error,
         )
         setLoadedCurrentUser(null)
+        setLoadedCurrentUserUnavailable(true)
       } finally {
         if (!controller.signal.aborted) {
           setLoadedCurrentUserLoading(false)
@@ -345,8 +357,11 @@ export default function SpecificationFormModal({
     person: HsaPersonVerification | null,
   ): Promise<HsaPersonChangeSubmitResult> => {
     if (!responsibleChange || !editSpecificationSlug) return { ok: false }
+    if (!effectiveCurrentUser) {
+      return { error: t('currentUserUnavailable'), ok: false }
+    }
 
-    const isAdmin = effectiveCurrentUser?.roles.includes('Admin') ?? false
+    const isAdmin = effectiveCurrentUser.roles.includes('Admin')
     const shouldCloseFormAfterChange = !isAdmin
     if (shouldCloseFormAfterChange && hasUnsavedSpecificationEdits()) {
       const confirmed = await confirm({
@@ -622,7 +637,12 @@ export default function SpecificationFormModal({
                       <button
                         aria-label={t('changeResponsible')}
                         className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:text-secondary-300 dark:hover:bg-secondary-800"
-                        disabled={isSubmitting || effectiveCurrentUserLoading}
+                        disabled={
+                          isSubmitting ||
+                          effectiveCurrentUserLoading ||
+                          effectiveCurrentUserUnavailable ||
+                          !effectiveCurrentUser
+                        }
                         onClick={openResponsibleChange}
                         title={t('changeResponsible')}
                         type="button"

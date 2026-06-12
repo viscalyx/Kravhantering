@@ -105,6 +105,12 @@ sequenceDiagram
     U->>F: Click clear search
     F->>P: Reset filter
     Note over P: ✓ Full list returns
+    U->>P: Open edit
+    Note over P: ✓ Package lead field is locked
+    U->>P: Open lead-change modal
+    Note over P: ✓ Current and new lead HSA-ID fields are shown
+    U->>P: Trigger co-author conflict check
+    Note over P: ✓ Co-author conflict validation shown
 ```
 
 ### Supplementary Flowchart

@@ -374,6 +374,24 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     )
   })
 
+  it('validates responsible HSA-ID before creating a specification', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+
+    await expect(
+      createSpecification(db, {
+        uniqueId: 'SPEC-012',
+        name: 'Specification Twelve',
+        responsibleHsaId: ' ',
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'invalid_responsible_hsa_id' },
+    })
+
+    expect(query).not.toHaveBeenCalled()
+    expect(transaction).not.toHaveBeenCalled()
+  })
+
   it('preserves responsible display name when partial updates omit responsibility fields', async () => {
     const { db, query } = createSqlServerDb()
     query

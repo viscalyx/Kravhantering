@@ -200,6 +200,7 @@ vi.mock('@/lib/dal/requirement-areas', () => ({
     requirementAreaPermissionState.canAuthorArea(...a),
   createArea: async () => ({ id: 2 }),
   updateArea: (...a: unknown[]) => mockUpdateReqArea(...a),
+  updateAreaWithOwnerCheck: (...a: unknown[]) => mockUpdateReqArea(...a),
   deleteArea: (...a: unknown[]) => mockDeleteReqArea(...a),
 }))
 
@@ -980,7 +981,12 @@ describe('requirement-areas/[id] routes', () => {
     expect(((await r.json()) as { id: number }).id).toBe(1)
   })
   it('PUT rejects changing the owner to an existing area co-author', async () => {
-    routeState.query.mockResolvedValueOnce([{ id: 1 }])
+    mockUpdateReqArea.mockRejectedValueOnce(
+      validationError(
+        'Requirement area owner cannot also be requirement area co-author',
+        { reason: 'area_owner_cannot_be_co_author' },
+      ),
+    )
 
     const r = await putReqArea(
       jsonReq('PUT', { ownerHsaId: 'SE5560000001-coa1' }),
@@ -991,7 +997,11 @@ describe('requirement-areas/[id] routes', () => {
     await expect(r.json()).resolves.toMatchObject({
       error: 'Requirement area owner cannot also be requirement area co-author',
     })
-    expect(mockUpdateReqArea).not.toHaveBeenCalled()
+    expect(mockUpdateReqArea).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      expect.objectContaining({ ownerHsaId: 'SE5560000001-coa1' }),
+    )
   })
   it('PUT returns 404 without audit when the requirement area is missing', async () => {
     mockUpdateReqArea.mockResolvedValue(undefined)
@@ -1217,6 +1227,15 @@ describe('requirement-specifications routes', () => {
   })
   it('PUT updates specification lead fields', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
+    responsibilityPersonState.getRequirementResponsibilityPerson.mockResolvedValueOnce(
+      {
+        email: 'rita.reviewer@example.test',
+        givenName: 'Rita',
+        hsaId: 'SE5560000001-rita1',
+        middleName: null,
+        surname: 'Reviewer',
+      },
+    )
     const r = await putPkg(
       jsonReq('PUT', {
         responsibleHsaId: 'SE5560000001-rita1',

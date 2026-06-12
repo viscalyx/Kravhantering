@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => {
     createArea: vi.fn(),
     resolveVerifiedRequirementResponsibilityPerson: vi.fn(),
     updateArea: vi.fn(),
+    updateAreaWithOwnerCheck: vi.fn(),
     recordAdminPrivilegedActionSucceeded: vi.fn(),
   }
 })
@@ -43,6 +44,7 @@ vi.mock('@/lib/dal/requirement-areas', () => ({
   listAreas: mocks.listAreas,
   createArea: mocks.createArea,
   updateArea: mocks.updateArea,
+  updateAreaWithOwnerCheck: mocks.updateAreaWithOwnerCheck,
 }))
 vi.mock('@/lib/requirements/responsibility-person-verification', () => ({
   resolveVerifiedRequirementResponsibilityPerson:
@@ -244,7 +246,7 @@ describe('requirement-areas route', () => {
         middleName: null,
         surname: 'Owner',
       })
-      mocks.updateArea.mockResolvedValue({
+      mocks.updateAreaWithOwnerCheck.mockResolvedValue({
         id: 1,
         prefix: 'INT',
         name: 'Integration',
@@ -262,16 +264,24 @@ describe('requirement-areas route', () => {
       )
 
       expect(res.status).toBe(200)
-      expect(mocks.updateArea).toHaveBeenCalledWith(mocks.db, 1, {
-        ownerHsaId: 'NO5560000001-next1',
-        ownerPerson: expect.objectContaining({
-          hsaId: 'NO5560000001-next1',
+      expect(mocks.updateAreaWithOwnerCheck).toHaveBeenCalledWith(
+        mocks.db,
+        1,
+        expect.objectContaining({
+          ownerHsaId: 'NO5560000001-next1',
+          resolveOwnerPerson: expect.any(Function),
         }),
-      })
+      )
     })
 
     it('rejects changing ownerHsaId to an existing co-author', async () => {
-      mocks.db.query.mockResolvedValueOnce([{ areaId: 1 }])
+      const { validationError } = await import('@/lib/requirements/errors')
+      mocks.updateAreaWithOwnerCheck.mockRejectedValueOnce(
+        validationError(
+          'Requirement area owner cannot also be requirement area co-author',
+          { reason: 'area_owner_cannot_be_co_author' },
+        ),
+      )
 
       const res = await PUT(
         request(
@@ -301,7 +311,7 @@ describe('requirement-areas route', () => {
       )
 
       expect(res.status).toBe(400)
-      expect(mocks.updateArea).not.toHaveBeenCalled()
+      expect(mocks.updateAreaWithOwnerCheck).not.toHaveBeenCalled()
     })
   })
 })

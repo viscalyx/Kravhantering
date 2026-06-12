@@ -69,6 +69,9 @@ describe('HsaPersonChangeModal', () => {
     const submitButton = within(dialog).getByRole('button', {
       name: 'Change',
     })
+    const cancelButton = within(dialog).getByRole('button', { name: 'Cancel' })
+    expect(cancelButton).toHaveClass('min-h-11')
+    expect(cancelButton).toHaveClass('min-w-11')
     expect(submitButton).toBeDisabled()
 
     fireEvent.change(newInput, { target: { value: 'bad' } })

@@ -3,6 +3,7 @@ import {
   upsertRequirementResponsibilityPerson,
 } from '@/lib/dal/requirement-responsibility-people'
 import type { SqlServerDatabase } from '@/lib/db'
+import { validationError } from '@/lib/requirements/errors'
 import type { RequirementResponsibilityPersonRecord } from '@/lib/requirements/responsibility-person'
 import { toIsoString } from '@/lib/typeorm/value-mappers'
 
@@ -17,9 +18,14 @@ export interface RequirementAreaRow {
   updatedAt: Date | string
 }
 
-interface QueryExecutor {
+export interface QueryExecutor {
   query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
 }
+
+export type RequirementAreaOwnerPersonResolver = (
+  executor: QueryExecutor,
+  ownerHsaId: string,
+) => Promise<RequirementResponsibilityPersonRecord>
 
 function mapAreaRow(row: RequirementAreaRow): RequirementAreaRow {
   return {
@@ -285,6 +291,68 @@ export async function updateArea(
     const updated = await updateAreaFields(manager, id, data)
     if (!updated) return undefined
     await upsertRequirementResponsibilityPerson(manager, ownerPerson)
+    await cleanupUnassignedRequirementResponsibilityPeople(
+      manager,
+      oldRows.map(row => row.ownerHsaId),
+    )
+    return updated
+  })
+}
+
+export async function updateAreaWithOwnerCheck(
+  db: SqlServerDatabase,
+  id: number,
+  data: {
+    name?: string
+    description?: string
+    ownerHsaId?: string
+    ownerPerson?: RequirementResponsibilityPersonRecord
+    resolveOwnerPerson?: RequirementAreaOwnerPersonResolver
+  },
+): Promise<RequirementAreaRow | undefined> {
+  if (data.ownerHsaId === undefined) {
+    return updateArea(db, id, data)
+  }
+
+  const ownerHsaId = data.ownerHsaId
+  return db.transaction('SERIALIZABLE', async manager => {
+    const oldRows = (await manager.query(
+      `
+        SELECT owner_hsa_id AS ownerHsaId
+        FROM requirement_areas WITH (UPDLOCK, HOLDLOCK)
+        WHERE id = @0
+      `,
+      [id],
+    )) as Array<{ ownerHsaId: string }>
+    if (oldRows.length === 0) return undefined
+
+    const coAuthorRows = (await manager.query(
+      `
+        SELECT TOP (1) area_id AS areaId
+        FROM requirement_area_co_authors WITH (UPDLOCK, HOLDLOCK)
+        WHERE area_id = @0
+          AND hsa_id = @1
+      `,
+      [id, ownerHsaId],
+    )) as Array<{ areaId: number }>
+    if (coAuthorRows.length > 0) {
+      throw validationError(
+        'Requirement area owner cannot also be requirement area co-author',
+        { reason: 'area_owner_cannot_be_co_author' },
+      )
+    }
+
+    const ownerPerson =
+      data.ownerPerson ??
+      (data.resolveOwnerPerson
+        ? await data.resolveOwnerPerson(manager, ownerHsaId)
+        : undefined)
+    if (ownerPerson) {
+      await upsertRequirementResponsibilityPerson(manager, ownerPerson)
+    }
+
+    const updated = await updateAreaFields(manager, id, data)
+    if (!updated) return undefined
     await cleanupUnassignedRequirementResponsibilityPeople(
       manager,
       oldRows.map(row => row.ownerHsaId),
