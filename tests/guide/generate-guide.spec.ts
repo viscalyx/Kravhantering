@@ -1245,9 +1245,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           .first()
           .locator('input[type="checkbox"]')
         if ((await firstCheckbox.count()) > 0) {
-          await firstCheckbox.evaluate((checkbox: HTMLInputElement) => {
-            checkbox.click()
-          })
+          await firstCheckbox.click()
         } else {
           await rightRows
             .first()

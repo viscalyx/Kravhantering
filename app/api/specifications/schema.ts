@@ -11,7 +11,7 @@ const optionalNullableResponsibleDisplayNameSchema = z.preprocess(
   nullableBusinessTextSchema.optional(),
 )
 
-const optionalResponsibleHsaIdSchema = z
+const responsibleHsaIdSchema = z
   .string()
   .trim()
   .max(HSA_ID_MAX_LENGTH)
@@ -19,7 +19,13 @@ const optionalResponsibleHsaIdSchema = z
     message:
       'Expected HSA-ID format <two-letter country code><10-digit org no>-<alphanumeric suffix>',
   })
-  .optional()
+
+const optionalNullableResponsibleHsaIdSchema = z.preprocess(
+  value => (typeof value === 'string' && value.trim() === '' ? null : value),
+  responsibleHsaIdSchema.nullable().optional(),
+)
+
+const optionalResponsibleHsaIdSchema = responsibleHsaIdSchema.optional()
 
 export const specificationSlugSchema = boundedDbStringSchema
   .regex(/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/, {
@@ -41,6 +47,7 @@ export const createSpecificationSchema = z
     specificationGovernanceObjectTypeId: positiveIntegerSchema
       .nullable()
       .optional(),
+    responsibleHsaId: optionalNullableResponsibleHsaIdSchema,
     uniqueId: specificationSlugSchema,
   })
   .strict()

@@ -1184,6 +1184,26 @@ describe('requirement-specifications routes', () => {
       }),
     )
   })
+  it('POST accepts the authenticated actor as the specification lead HSA-ID', async () => {
+    const r = await postPkg(
+      jsonReq('POST', {
+        name: 'A',
+        uniqueId: 'A',
+        responsibleHsaId: 'SE5560000001-route',
+      }),
+    )
+
+    expect(r.status).toBe(201)
+    expect(mockCreatePkg).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        responsibleHsaId: 'SE5560000001-route',
+        responsiblePerson: expect.objectContaining({
+          hsaId: 'SE5560000001-route',
+        }),
+      }),
+    )
+  })
   it('POST rejects a client-selected specification lead HSA-ID', async () => {
     const r = await postPkg(
       jsonReq('POST', {
@@ -1194,7 +1214,11 @@ describe('requirement-specifications routes', () => {
     )
 
     expect(r.status).toBe(400)
-    await expectInvalidRequest(r)
+    await expect(r.json()).resolves.toMatchObject({
+      code: 'validation',
+      error:
+        'Specification lead must match the authenticated actor when creating a specification',
+    })
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(mockCreatePkg).not.toHaveBeenCalled()
   })

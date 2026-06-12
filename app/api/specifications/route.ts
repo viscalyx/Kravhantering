@@ -10,6 +10,7 @@ import {
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
+import { validationError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
@@ -32,18 +33,25 @@ export const POST = secureMutationRoute({
   bodySchema: createSpecificationSchema,
   policy: customMutationPolicy('specification.create', () => {}),
   handler: async ({ body, context }) => {
-    const db = await getRequestSqlServerDataSource()
     const actor = requireHumanActorSnapshot(context)
+    const responsibleHsaId = body.responsibleHsaId ?? actor.hsaId
+    if (responsibleHsaId !== actor.hsaId) {
+      throw validationError(
+        'Specification lead must match the authenticated actor when creating a specification',
+        { reason: 'specification_lead_must_match_actor' },
+      )
+    }
 
+    const db = await getRequestSqlServerDataSource()
     if (await isSlugTaken(db, body.uniqueId)) {
       return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
     }
 
     const responsiblePerson =
-      await resolveVerifiedRequirementResponsibilityPerson(db, actor.hsaId)
+      await resolveVerifiedRequirementResponsibilityPerson(db, responsibleHsaId)
     const spec = await createSpecification(db, {
       ...body,
-      responsibleHsaId: actor.hsaId,
+      responsibleHsaId,
       responsiblePerson,
     })
     return NextResponse.json(spec, { status: 201 })

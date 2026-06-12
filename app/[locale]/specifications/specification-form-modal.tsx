@@ -253,7 +253,7 @@ export default function SpecificationFormModal({
   const isEdit = mode === 'edit' && !!spec
   const formResetKey = isEdit
     ? `edit:${spec.id}:${spec.uniqueId}:${locale}`
-    : `create:${currentUser?.hsaId ?? ''}:${currentUser?.displayName ?? ''}:${currentUser?.email ?? ''}`
+    : `create:${effectiveCurrentUser?.hsaId ?? ''}:${effectiveCurrentUser?.displayName ?? ''}:${effectiveCurrentUser?.email ?? ''}`
   const title = isEdit ? t('editSpecification') : t('newSpecification')
   const formDeveloperModeContext =
     developerModeContext ??
@@ -317,7 +317,7 @@ export default function SpecificationFormModal({
     const nextForm =
       mode === 'edit' && spec
         ? buildEditFormState(spec, locale)
-        : buildCreateFormState(currentUser)
+        : buildCreateFormState(effectiveCurrentUser)
 
     setForm(nextForm)
     setInitialSignature(editableSignature(nextForm))
@@ -327,7 +327,7 @@ export default function SpecificationFormModal({
     setSlugEdited(mode === 'edit')
     setSlugError(null)
     formResetKeyRef.current = formResetKey
-  }, [currentUser, formResetKey, locale, mode, open, spec])
+  }, [effectiveCurrentUser, formResetKey, locale, mode, open, spec])
 
   const closeDirectly = () => {
     setResponsibleChange(null)
@@ -430,27 +430,35 @@ export default function SpecificationFormModal({
     setIsSubmitting(true)
 
     try {
+      const specificationPayload = {
+        uniqueId: form.uniqueId,
+        name: form.name,
+        specificationGovernanceObjectTypeId:
+          form.specificationGovernanceObjectTypeId
+            ? Number(form.specificationGovernanceObjectTypeId)
+            : null,
+        specificationImplementationTypeId:
+          form.specificationImplementationTypeId
+            ? Number(form.specificationImplementationTypeId)
+            : null,
+        specificationLifecycleStatusId: form.specificationLifecycleStatusId
+          ? Number(form.specificationLifecycleStatusId)
+          : null,
+        businessNeedsReference: form.businessNeedsReference || null,
+      }
+      const requestBody =
+        mode === 'edit'
+          ? specificationPayload
+          : {
+              ...specificationPayload,
+              responsibleHsaId: form.responsibleHsaId || null,
+            }
       const response = await apiFetch(
         mode === 'edit'
           ? `/api/specifications/${editSpecificationSlug}`
           : '/api/specifications',
         {
-          body: JSON.stringify({
-            uniqueId: form.uniqueId,
-            name: form.name,
-            specificationGovernanceObjectTypeId:
-              form.specificationGovernanceObjectTypeId
-                ? Number(form.specificationGovernanceObjectTypeId)
-                : null,
-            specificationImplementationTypeId:
-              form.specificationImplementationTypeId
-                ? Number(form.specificationImplementationTypeId)
-                : null,
-            specificationLifecycleStatusId: form.specificationLifecycleStatusId
-              ? Number(form.specificationLifecycleStatusId)
-              : null,
-            businessNeedsReference: form.businessNeedsReference || null,
-          }),
+          body: JSON.stringify(requestBody),
           headers: { 'Content-Type': 'application/json' },
           method: mode === 'edit' ? 'PUT' : 'POST',
         },

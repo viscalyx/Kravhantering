@@ -202,6 +202,35 @@ describe('RequirementsSpecificationsClient', () => {
     expect(screen.queryByText('no-user')).toBeNull()
   })
 
+  it('shows the responsible HSA-ID when a specification has no responsible display name', async () => {
+    mockApi((url: string) => {
+      if (url === '/api/specifications')
+        return Promise.resolve(
+          okJson({
+            specifications: [
+              {
+                ...sampleSpecifications[0],
+                responsibleDisplayName: null,
+              },
+            ],
+          }),
+        )
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      if (url === '/api/specification-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<RequirementsSpecificationsClient />)
+
+    expect(await screen.findByText('SE5560000001-ada1')).toBeInTheDocument()
+  })
+
   it('fetches and displays kravunderlag after strict-mode effect replays', async () => {
     render(
       <StrictMode>
@@ -829,7 +858,7 @@ describe('RequirementsSpecificationsClient', () => {
     )
     expect(
       JSON.parse(((postCall?.[1] as RequestInit)?.body as string) ?? '{}'),
-    ).not.toHaveProperty('responsibleHsaId')
+    ).toHaveProperty('responsibleHsaId', sampleCurrentUser.hsaId)
   })
 
   it('shows an inline save error for non-conflict failures', async () => {
@@ -895,9 +924,12 @@ describe('RequirementsSpecificationsClient', () => {
     })
     expect(responsibleInput).toHaveValue(sampleCurrentUser.hsaId)
     expect(responsibleInput).toHaveAttribute('readonly')
-    expect(screen.getAllByText(sampleCurrentUser.name).length).toBeGreaterThan(
-      0,
-    )
+    const dialog = screen.getByRole('dialog', {
+      name: /specification\.newSpecification/,
+    })
+    expect(
+      within(dialog).getByText(new RegExp(sampleCurrentUser.name)),
+    ).toBeInTheDocument()
 
     mockApi((url: string, opts?: RequestInit) => {
       if (opts?.method === 'POST') return Promise.resolve(okJson({ id: 2 }))
@@ -927,7 +959,7 @@ describe('RequirementsSpecificationsClient', () => {
     )
     expect(
       JSON.parse(((postCall?.[1] as RequestInit)?.body as string) ?? '{}'),
-    ).not.toHaveProperty('responsibleHsaId')
+    ).toHaveProperty('responsibleHsaId', sampleCurrentUser.hsaId)
   })
 
   it('opens edit form with existing data', async () => {
@@ -939,11 +971,13 @@ describe('RequirementsSpecificationsClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[0])
-    expect(
-      screen.getByRole('dialog', {
-        name: /specification\.editSpecification/,
-      }),
-    ).toHaveAttribute('data-developer-mode-value', 'edit specification')
+    const dialog = screen.getByRole('dialog', {
+      name: /specification\.editSpecification/,
+    })
+    expect(dialog).toHaveAttribute(
+      'data-developer-mode-value',
+      'edit specification',
+    )
     const form = document.body.querySelector(
       '[data-developer-mode-name="crud form"][data-developer-mode-context="specifications"]',
     )
@@ -961,7 +995,7 @@ describe('RequirementsSpecificationsClient', () => {
     expect(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     ).toHaveAttribute('readonly')
-    expect(screen.getAllByText('Ada Admin').length).toBeGreaterThan(0)
+    expect(within(dialog).getByText('Ada Admin')).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
         name: /specification\.changeResponsible/,

@@ -698,11 +698,14 @@ export default function RequirementsSpecificationsClient({
                         </Link>
                       </td>
                       <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                        {getResponsibleDisplayName(spec) ? (
+                        {getResponsibleDisplayName(spec) ||
+                        spec.responsibleHsaId ? (
                           <div className="min-w-36">
-                            <div className="font-medium text-secondary-800 dark:text-secondary-100">
-                              {getResponsibleDisplayName(spec)}
-                            </div>
+                            {getResponsibleDisplayName(spec) ? (
+                              <div className="font-medium text-secondary-800 dark:text-secondary-100">
+                                {getResponsibleDisplayName(spec)}
+                              </div>
+                            ) : null}
                             <div className="mt-0.5 font-mono text-xs text-secondary-500 dark:text-secondary-400">
                               {spec.responsibleHsaId}
                             </div>

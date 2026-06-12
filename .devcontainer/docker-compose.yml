@@ -8,11 +8,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      hsa-directory-mock:
+        condition: service_healthy
       idp:
         # Don't block on healthy — Keycloak takes ~30s to start and would
         # slow every devcontainer attach. The app boots fine without it;
         # OIDC discovery happens lazily on first sign-in.
         condition: service_started
+      kong:
+        condition: service_healthy
     volumes:
       # Mount the root folder that contains .git
       - ..:/workspace:cached
