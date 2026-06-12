@@ -42,10 +42,10 @@ Deferred from this contract:
   (`POST /api/privacy/erasure-preview`,
   `POST /api/privacy/erasure-requests`,
   `POST /api/privacy/data-subject-export`). They require the separate
-  `PrivacyOfficer` role, strict CSRF/origin handling, HSA-ID-only matching,
+  `PrivacyOfficer` role, strict CSRF/origin handling, HSA-id-only matching,
   stale-preview rejection, and audit-redaction checks before they should be
   added to the OpenAPI fuzzing contract. The access export route also supports
-  self-service export for the signed-in user's own HSA-ID, returns
+  self-service export for the signed-in user's own HSA-id, returns
   `Cache-Control: no-store`, and records only a non-reversible target
   fingerprint in audit details.
 - Access-review routes remain outside the OpenAPI/Schemathesis contract for
@@ -58,7 +58,7 @@ Deferred from this contract:
   cancellation is a status change rather than hard deletion; the assigned
   reviewer can decide their own run; other users receive 403; export responses
   use `Cache-Control: no-store`; and audit detail never contains a raw reviewed
-  HSA-ID list.
+  HSA-id list.
 - Requirement-selection stewardship routes and specification saved-answer
   mutations remain outside the OpenAPI/Schemathesis v1 contract. They are still
   protected by `secureMutationRoute`, CSRF/origin checks, route/body validation,
@@ -251,7 +251,7 @@ their auth/CSRF behavior is understood.
 - Do not add production URLs, production secrets, vendor tokens, or external
   scan targets.
 - For privacy paths, include only disposable seeded identities and assert that
-  generated examples never log or expose raw target HSA-IDs in audit details.
+  generated examples never log or expose raw target HSA-id values in audit details.
   Data-subject export should remain outside this contract until the privacy
   route policy explicitly covers both self-export and `PrivacyOfficer`
   cross-user export.

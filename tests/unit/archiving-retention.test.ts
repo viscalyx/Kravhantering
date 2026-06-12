@@ -359,7 +359,7 @@ describe('archiving retention service', () => {
     ).toBe(true)
   })
 
-  it('previews and deletes old unassigned responsibility people by HSA-ID', async () => {
+  it('previews and deletes old unassigned responsibility people by HSA-id', async () => {
     const { db, query } = createRetentionDb({
       policy: {
         action: 'delete',

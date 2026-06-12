@@ -15,7 +15,7 @@ only talks to the app's protected same-origin routes.
 
 Read views do not call HSA. Save routes also do not call HSA. Person lookup
 happens before save through the app-owned verify route, and the result is
-stored as a local `Kravansvarsperson` row keyed by HSA-ID.
+stored as a local `Kravansvarsperson` row keyed by HSA-id.
 
 ## Devcontainer services
 
@@ -57,7 +57,7 @@ session, CSRF, purpose, and scope before any local read or HSA lookup.
 
 The route has two explicit modes:
 
-- `reuse_local` is used when the editor leaves an HSA-ID field. If a local
+- `reuse_local` is used when the editor leaves an HSA-id field. If a local
   `Kravansvarsperson` row already exists, the app reuses it without calling
   HSA. If the row is missing, the app calls `HSA_PERSON_LOOKUP_URL`, normalizes
   the response, and updates or inserts the local person row.
@@ -82,7 +82,7 @@ sequenceDiagram
     alt Person found
         Upstream-->>Kong: 200 { hsaId, givenName, middleName, surname, email }
         Kong-->>App: 200 person JSON
-        App->>App: Validate HSA-ID and normalize fields
+        App->>App: Validate HSA-id and normalize fields
     else Upstream not found
         Upstream-->>Kong: 404 { code: "not_found" }
         Kong-->>App: 404
@@ -114,12 +114,12 @@ sequenceDiagram
     participant Save as App assignment API
     participant DB as SQL Server
 
-    Editor->>UI: Enter HSA-ID
+    Editor->>UI: Enter HSA-id
     alt Field leaves focus
         UI->>Verify: POST /api/requirement-responsibility-people/verify mode=reuse_local
         Verify->>Policy: Validate session, CSRF, purpose and scope
         Policy-->>Verify: Allowed
-        Verify->>DB: Read Kravansvarsperson by HSA-ID
+        Verify->>DB: Read Kravansvarsperson by HSA-id
         alt Local person exists
             DB-->>Verify: Local person row
         else Local person missing
@@ -140,25 +140,25 @@ sequenceDiagram
         Editor->>UI: Save form
         UI->>Save: POST/PUT area, specification or package route
         Save->>Policy: Validate mutation permission
-        Save->>DB: Read Kravansvarsperson by HSA-ID
+        Save->>DB: Read Kravansvarsperson by HSA-id
         alt Local person missing
             Save->>Save: Wait briefly
             Save->>DB: Read Kravansvarsperson again
         end
         alt Local person still missing
-            Save-->>UI: Error: verify HSA-ID first
+            Save-->>UI: Error: verify HSA-id first
         else Local person exists
-            Save->>DB: Store assignment HSA-ID
+            Save->>DB: Store assignment HSA-id
             DB-->>Save: Updated responsibility data
             Save-->>UI: Saved response with local person data
         end
     end
 ```
 
-The save routes require a local `Kravansvarsperson` row for the HSA-ID being
+The save routes require a local `Kravansvarsperson` row for the HSA-id being
 assigned. They retry the local read once after a short delay to handle a
 verification request that just completed. If the local row is still missing,
-the route returns an error asking the editor to verify the HSA-ID first.
+the route returns an error asking the editor to verify the HSA-id first.
 
 ## Related decisions
 

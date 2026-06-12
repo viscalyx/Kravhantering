@@ -26,6 +26,10 @@ function okJson(body: unknown) {
   return { ok: true, json: async () => body, text: async () => text }
 }
 
+const hsaIdPrefixPayload = {
+  prefixes: [{ id: 1, isDefault: true, label: null, prefix: 'SE5560000001' }],
+}
+
 async function getEnabledChangeResponsibleButton() {
   const button = screen.getByRole('button', {
     name: /specification\.changeResponsible/,
@@ -95,6 +99,9 @@ describe('SpecificationFormModal', () => {
             roles: ['Admin'],
           }),
         )
+      }
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
       return Promise.resolve(okJson({ ok: true }))
     })
@@ -241,7 +248,7 @@ describe('SpecificationFormModal', () => {
     expect(screen.getByText('specification.help.name')).toBeInTheDocument()
   })
 
-  it('sends the specification id when verifying a new responsible HSA-ID in the modal', async () => {
+  it('sends the specification id when verifying a new responsible HSA-id in the modal', async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/auth/me') {
         return Promise.resolve(
@@ -251,6 +258,9 @@ describe('SpecificationFormModal', () => {
             roles: ['Admin'],
           }),
         )
+      }
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
       if (url === '/api/requirement-responsibility-people/verify') {
         return Promise.resolve(
@@ -275,12 +285,13 @@ describe('SpecificationFormModal', () => {
     const dialog = screen.getByRole('dialog', {
       name: 'specification.changeResponsibleTitle',
     })
-    fireEvent.change(
-      within(dialog).getByRole('textbox', {
-        name: /specification\.newResponsibleHsaId/,
-      }),
-      { target: { value: 'SE5560000001-rita1' } },
-    )
+    const newResponsibleInput = within(dialog).getByRole('textbox', {
+      name: /specification\.newResponsibleHsaId/,
+    })
+    await waitFor(() => {
+      expect(newResponsibleInput).toBeEnabled()
+    })
+    fireEvent.change(newResponsibleInput, { target: { value: 'rita1' } })
     fireEvent.click(
       within(dialog).getByRole('button', { name: /common\.fetchHsaPerson/ }),
     )
@@ -304,7 +315,7 @@ describe('SpecificationFormModal', () => {
     })
   })
 
-  it('does not verify from the locked main responsible HSA-ID field', async () => {
+  it('does not verify from the locked main responsible HSA-id field', async () => {
     renderEditModal()
 
     fireEvent.blur(
@@ -348,6 +359,9 @@ describe('SpecificationFormModal', () => {
           }),
         )
       }
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(okJson(hsaIdPrefixPayload))
+      }
       if (opts?.method === 'PUT') {
         return Promise.resolve(
           okJson({
@@ -368,12 +382,13 @@ describe('SpecificationFormModal', () => {
     const dialog = screen.getByRole('dialog', {
       name: 'specification.changeResponsibleTitle',
     })
-    fireEvent.change(
-      within(dialog).getByRole('textbox', {
-        name: /specification\.newResponsibleHsaId/,
-      }),
-      { target: { value: 'SE5560000001-rita1' } },
-    )
+    const newResponsibleInput = within(dialog).getByRole('textbox', {
+      name: /specification\.newResponsibleHsaId/,
+    })
+    await waitFor(() => {
+      expect(newResponsibleInput).toBeEnabled()
+    })
+    fireEvent.change(newResponsibleInput, { target: { value: 'rita1' } })
     fireEvent.click(
       within(dialog).getByRole('button', {
         name: /specification\.changeResponsible/,
@@ -463,6 +478,9 @@ describe('SpecificationFormModal', () => {
           }),
         )
       }
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(okJson(hsaIdPrefixPayload))
+      }
       if (opts?.method === 'PUT') {
         return Promise.resolve(
           okJson({
@@ -494,12 +512,13 @@ describe('SpecificationFormModal', () => {
     const dialog = screen.getByRole('dialog', {
       name: 'specification.changeResponsibleTitle',
     })
-    fireEvent.change(
-      within(dialog).getByRole('textbox', {
-        name: /specification\.newResponsibleHsaId/,
-      }),
-      { target: { value: 'SE5560000001-rita1' } },
-    )
+    const newResponsibleInput = within(dialog).getByRole('textbox', {
+      name: /specification\.newResponsibleHsaId/,
+    })
+    await waitFor(() => {
+      expect(newResponsibleInput).toBeEnabled()
+    })
+    fireEvent.change(newResponsibleInput, { target: { value: 'rita1' } })
     fireEvent.click(
       within(dialog).getByRole('button', {
         name: /specification\.changeResponsible/,

@@ -340,3 +340,19 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   report real add/remove outcomes without deleting underlying requirements?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 17: requirements specification MCP tools enforce identifiers and mutation outcomes"`
+
+## 26. Scenario 18: HSA-id prefixes stay UI guidance with a visible default rule
+
+- **Code:** `typeorm/migrations/0032_hsa_id_prefixes.mjs`,
+  `typeorm/seed.mjs`, `lib/dal/ui-settings.ts`,
+  `app/api/admin/hsa-id-prefixes/route.ts`, and
+  `components/HsaPersonVerifyField.tsx`.
+- **Spec:** `docs/admin-center.md`, `docs/database-schema.md`, and
+  `docs/hsa-id.md`.
+- **Req tag:** `[Req: formal — docs/admin-center.md "Identity"]`
+- **Question:** Do HSA-id-prefixes remain optional UI guidance, with no required
+  seed rows, one visible default when visible prefixes exist, delete/change
+  protection for used prefixes, audited admin saves, and editable fields that
+  still submit complete syntactically valid HSA-id values?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 18: HSA-id prefixes stay UI guidance with a visible default rule"`

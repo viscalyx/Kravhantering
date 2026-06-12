@@ -306,7 +306,7 @@ async function handleRestPersonLookup(req, res, fixtures) {
   }
 
   if (fixtures.notFoundIdentities.has(hsaId)) {
-    jsonResponse(res, 404, { code: 'not_found', error: 'HSA-ID not found.' })
+    jsonResponse(res, 404, { code: 'not_found', error: 'HSA-id not found.' })
     return
   }
 
@@ -316,7 +316,7 @@ async function handleRestPersonLookup(req, res, fixtures) {
     .filter(person => person.hsaId && person.givenName)
 
   if (people.length === 0) {
-    jsonResponse(res, 404, { code: 'not_found', error: 'HSA-ID not found.' })
+    jsonResponse(res, 404, { code: 'not_found', error: 'HSA-id not found.' })
     return
   }
 
@@ -324,7 +324,7 @@ async function handleRestPersonLookup(req, res, fixtures) {
   if (normalizedKeys.size > 1) {
     jsonResponse(res, 409, {
       code: 'conflict',
-      error: 'HSA-ID matched conflicting person records.',
+      error: 'HSA-id matched conflicting person records.',
     })
     return
   }

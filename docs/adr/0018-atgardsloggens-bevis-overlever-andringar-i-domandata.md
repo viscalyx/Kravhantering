@@ -27,5 +27,5 @@ aktiv Kravhantering.
   eftersom viktiga åtgärds- och auktoriseringsbevis skulle försvinna med
   verksamhetsobjektet.
 - Lagra fullständiga before/after business payloads i åtgärdsloggen: avvisat
-  eftersom kravtext, prompts, kommentarer, namn, HSA-ID:n, e-postadresser och
+  eftersom kravtext, prompts, kommentarer, namn, HSA-id:n, e-postadresser och
   annan fritext skulle göra dataskydd och retention svårare att kontrollera.

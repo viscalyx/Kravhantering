@@ -1,10 +1,10 @@
 # Admin Center
 
 This document describes the contributor-facing admin center for default
-requirement-list columns, recurring access review,
+requirement-list columns, HSA-id prefix guidance, recurring access review,
 personal data erasure and data subject access export, archiving retention, and
-taxonomy/status entrypoints. Admin users also get an action-log entrypoint
-for database-backed mutation and authorization-denial review.
+taxonomy/status entrypoints. Admin users also get an action-log entrypoint for
+database-backed mutation and authorization-denial review.
 
 For requirement-list interaction details such as resizing, sorting, and
 filtering, see [requirements-ui-behaviour.md](./requirements-ui-behaviour.md).
@@ -26,14 +26,16 @@ grouped in the admin center instead.
 
 ## Tabs
 
-The admin center currently has six tabs for core administration:
+The admin center currently has eight tabs for core administration:
 
 - `Columns`
+- `Identity`
 - `Taxonomy`
 - `Statuses and workflows`
 - `Access review`
 - `Archiving`
 - `Privacy`
+- `Action log`
 
 The `Action log` tab renders the action-log filters, table, pagination, and
 CSV export directly in the Admin Center for users with `Admin`.
@@ -45,7 +47,7 @@ are dimmed, cannot be selected, and explain the missing role in a tooltip.
 The action log is available at `/{locale}/admin/audit-log` for users with
 the `Admin` role, and also inline from the Admin Center `Action log` tab
 at `/{locale}/admin?tab=actionAuditLog`. It reads `action_audit_events`, shows
-the latest 50 events by default, supports filters for actor HSA-ID, action,
+the latest 50 events by default, supports filters for actor HSA-id, action,
 target, decision, and date range, plus client IP when a validated
 `X-Forwarded-For` value was available, and exports the filtered result as CSV.
 The CSV export follows the active locale for column headers and decision values,
@@ -79,6 +81,46 @@ Admin-managed column settings include:
 
 - they are always visible
 - they still participate in the admin-managed order
+
+## Identity
+
+The `Identity` tab is available for users with `Admin`. It manages
+HSA-id-prefix rows that are offered as UI guidance when users edit HSA-id
+assignments.
+
+The source of truth is:
+
+- table: `hsa_id_prefixes`
+- DAL: `lib/dal/ui-settings.ts`
+- admin API: `GET/PUT /api/admin/hsa-id-prefixes`
+- form API: `GET /api/hsa-id-prefixes`
+
+Admin-managed prefix settings include:
+
+- prefix value, written as two uppercase letters followed by ten digits
+- optional display label
+- whether the prefix is visible in user-facing HSA-id prefix lists
+- which visible prefix is the default for new empty HSA-id fields
+
+The prefix list is UI support, not HSA policy. Server-side HSA-id validation and
+existing API fields still accept any syntactically valid HSA-id. Editable
+HSA-id fields compose the selected HSA-id-prefix and the entered
+HSA-id-suffix into the existing full HSA-id value before calling existing APIs.
+Read-only HSA-id values remain full values.
+
+If no visible HSA-id-prefix exists, editable HSA-id suffix fields are locked and
+explain that an administrator must configure a prefix. If an existing assignment
+uses a hidden prefix, that prefix is shown only for that row so the current
+value remains editable without reintroducing the prefix for new empty fields.
+
+Used prefixes cannot be removed because they may exist in active or historical
+HSA-id fields. They can be hidden from user-facing lists. Unused prefixes can be
+removed. If at least one prefix is visible, exactly one visible prefix must be
+default; when no prefix is visible, there is no default.
+
+Demo seed data contains `SE5560000001` as the visible default prefix. Required
+seed data intentionally does not create any HSA-id-prefix rows, so a clean
+installation starts without organization-specific prefix policy.
 
 ## Precedence Rules
 
@@ -120,7 +162,7 @@ The `Privacy` tab is available at `/{locale}/admin?tab=privacy` for users with
 `PrivacyOfficer`. It supports GDPR Article 17 erasure handling for actor
 identities and live assignments.
 After a successful preview it also supports data subject access export for the
-previewed HSA-ID. JSON is the machine-readable authoritative payload, and PDF
+previewed HSA-id. JSON is the machine-readable authoritative payload, and PDF
 is a readable report of the same scope.
 
 Access is intentionally narrow:
@@ -138,22 +180,23 @@ In the dev realm, use `ada.admin` for combined admin + privacy testing and
 `only.admin` for Admin-only permission checks.
 
 The global Help button switches to Dataskydd-specific guidance while the
-Privacy tab is active. The guidance explains permissions, HSA-ID matching,
+Privacy tab is active. The guidance explains permissions, HSA-id matching,
 replacement handling, preview rows, action choices, execution status, audit
 logging, and limits. Each privacy form field also has inline help behind a
 question-mark icon so an operator can understand the expected input without
 leaving the workflow.
 
-The workflow matches by HSA-ID only. The UI accepts a replacement display name,
+The workflow matches by HSA-id only. The UI accepts a replacement display name,
 optional explicit first/last name values, and optional replacement email address
 when a replacement person is supplied, but target matching never uses names or
 email addresses and name-only erasure requests are rejected. Requirement-area
 owner switches update `requirement_areas.owner_hsa_id` directly. Requirement
-package lead switches update the package lead HSA-ID and display-name snapshot.
+package lead switches update the package lead HSA-id and display-name snapshot.
 
 Local seed data includes two users named `Kalle Svensson` with different
-HSA-IDs. The second identity resolves an improvement suggestion so UI tests can
-verify that erasing one HSA-ID does not match the other person by name.
+HSA-id values. The second identity resolves an improvement suggestion so UI
+tests can verify that erasing one HSA-id does not match the other person by
+name.
 
 <!-- cspell:ignore linneab -->
 
@@ -166,16 +209,16 @@ creator, reviewer, completer, reviewed-principal, decision snapshots, and
 action-audit actor snapshots. The access-review fixture includes two completed
 reviews: one created by the Linnéa HSA identity and one created by another user
 where the Linnéa HSA identity is
-the reviewer. This lets the privacy UI be tested end-to-end with one HSA-ID.
+the reviewer. This lets the privacy UI be tested end-to-end with one HSA-id.
 
-The preview groups HSA-ID occurrences by object and field, shows the affected
+The preview groups HSA-id occurrences by object and field, shows the affected
 objects by name or stable identifier, shows the current actor display snapshot,
 recommends an action, and allows only policy-approved overrides. Live
-assignments are usually switched to a replacement HSA-ID.
+assignments are usually switched to a replacement HSA-id.
 Historical creator, decision, and resolution fields are usually anonymized
 instead of reassigned. Decision fields include stronger warning copy because
 switching a historical decision changes accountability semantics.
-The `Switch` action is never offered when no complete replacement HSA-ID/name
+The `Switch` action is never offered when no complete replacement HSA-id/name
 has been supplied; explicit first/last names and replacement email are optional.
 If the replacement identity is cleared after preview, switch options disappear
 from the visible dropdowns before execution.
@@ -188,31 +231,31 @@ hidden. If execution fails with a safe row key, only that row is marked red;
 stale previews and unexpected failures remain global errors because no row has
 been changed.
 
-After preview, the handler can export the same HSA-ID scope as JSON or PDF.
+After preview, the handler can export the same HSA-id scope as JSON or PDF.
 The JSON payload is the authoritative machine-readable format and uses schema
 version `privacy-data-subject-export.v1`; the PDF is rendered server-side and
 returned as `application/pdf` with attachment headers. The PDF is a localized
 human-readable report in Swedish or English. It explains the collected personal
 data in plain terms and does not show raw database fields, table names, schema
 keys, relation keys, or target fingerprints. Download filenames use a
-non-reversible target fingerprint and date, not the raw HSA-ID. JSON downloads
+non-reversible target fingerprint and date, not the raw HSA-id. JSON downloads
 use UTF-8 with BOM for Windows text-tool compatibility, while API JSON responses
 remain BOM-free. The export route checks authorization server-side:
-the signed-in user may export their own HSA-ID, while cross-user export requires
+the signed-in user may export their own HSA-id, while cross-user export requires
 `PrivacyOfficer`.
 
-Requirement-area ownership is direct HSA-ID data on
+Requirement-area ownership is direct HSA-id data on
 `requirement_areas.owner_hsa_id`, not a separate owner catalog. Preview rows for
 requirement areas are shown as greyed informational rows; their available
 actions are governed by the requirement-area owner assignment. Requirement
-package leads remain separate HSA-ID/display-name snapshot rows governed by
+package leads remain separate HSA-id/display-name snapshot rows governed by
 their package-lead rows.
 
-When one or more requirement areas reference the target HSA-ID, the
+When one or more requirement areas reference the target HSA-id, the
 requirement-area owner assignment allows only `Switch` or `Skip`. `Switch`
 updates the linked requirement areas to the replacement `owner_hsa_id` in one
 transaction. `Anonymize` and `Delete` are rejected while those requirement-area
-references exist. When no requirement area references the target HSA-ID, there
+references exist. When no requirement area references the target HSA-id, there
 is no requirement-area owner assignment to change; only unrelated rows can keep
 their own valid actions, and `Switch`/`Anonymize` are not valid for a
 non-existent requirement-area owner assignment. There is no standalone
@@ -220,8 +263,8 @@ owner-catalog fallback action for unreferenced owner rows.
 
 If no replacement person is supplied, display snapshots are anonymized with the
 internal sentinel `no-user`, shown through localization as `Anonym` in Swedish
-and `Anonymous` in English. HSA-ID fields that can be cleared become `NULL`;
-the app never writes a fake HSA-ID.
+and `Anonymous` in English. HSA-id fields that can be cleared become `NULL`;
+the app never writes a fake HSA-id.
 
 Description and other free-text fields are not scanned or rewritten by this
 workflow. Their help text tells users not to enter names or other details that
@@ -231,17 +274,17 @@ The execution endpoint recomputes matches in a single transaction and rejects
 stale previews. Privacy execution emits both the platform security-log event
 and a database action-audit event. Platform security logs are outside this
 privacy matrix, but `action_audit_events.actor` is included: erasure preserves
-the row and may anonymize or switch only the actor HSA-ID/display-name
+the row and may anonymize or switch only the actor HSA-id/display-name
 snapshot. Those events include request id, action counts, and a non-reversible
-target fingerprint; they do not log the raw target HSA-ID in details. Client IP
+target fingerprint; they do not log the raw target HSA-id in details. Client IP
 values in `action_audit_events.client_ip` are not handled by the Privacy
 workflow in this slice.
 Retention or redaction of handler identity in external security logs is handled
 by the platform logging policy, because removing it can reduce traceability.
 
 Signed-in users can export their own data at `/{locale}/privacy`. That
-self-service path sends no target HSA-ID in the request body; the server derives
-the subject from the verified session HSA-ID and includes current session claims
+self-service path sends no target HSA-id in the request body; the server derives
+the subject from the verified session HSA-id and includes current session claims
 only for that self-export. The self-service PDF uses the same readable report
 presentation as the Admin Center export.
 
@@ -268,7 +311,7 @@ V1 supports direct deletion after preview and confirmation for:
   when no saved requirements-specification answers still reference them
 - unassigned requirement responsibility people older than the policy age when
   no live requirement area, specification or package assignment references
-  their HSA-ID
+  their HSA-id
 
 Local seed data includes deterministic `RETENTION-SEED` fixtures for every
 active policy source and the main exclusion cases, so a freshly seeded
@@ -295,7 +338,7 @@ downloads use UTF-8 with BOM and locale-specific ASCII-safe filenames beginning
 with `arkivexport` or `archive-export`.
 
 The retention run emits security-audit events with policy key, counts, request
-id and export confirmation fingerprint, but not raw target HSA-ID values or
+id and export confirmation fingerprint, but not raw target HSA-id values or
 free-text payloads. Export responses and mutation responses use
 `Cache-Control: no-store`.
 
@@ -330,7 +373,7 @@ Access is role-aware:
 - `Admin` and `PrivacyOfficer` can create, list, decide, cancel, complete, and
   export access review runs.
 - `Reviewer` alone does not grant access-review management, even when the
-  user's HSA-ID appears as the stored reviewer snapshot on a run.
+  user's HSA-id appears as the stored reviewer snapshot on a run.
 - Other users receive a server-side authorization error even if they manipulate
   the client.
 
@@ -358,7 +401,7 @@ ASCII-safe stems.
 Action-log events are emitted for run creation, item decisions, cancellation,
 completion, and export. Action-log detail contains review id, counts, delivery,
 decision, and status
-where relevant; it does not contain the raw list of reviewed HSA-IDs.
+where relevant; it does not contain the raw list of reviewed HSA-id values.
 
 ## Taxonomy And Statuses
 
@@ -399,16 +442,16 @@ with text-only labels until an admin selects one.
 
 ### Requirement Area Owner
 
-Each requirement area must have an assigned owner HSA-ID. A new requirement area
-is created with an editable HSA-ID field. When an existing requirement area is
-edited, the current HSA-ID is shown as read-only; the icon button next to it
-opens the owner-change dialog where admins enter the replacement HSA-ID and
+Each requirement area must have an assigned owner HSA-id. A new requirement area
+is created with an editable HSA-id field. When an existing requirement area is
+edited, the current HSA-id is shown as read-only; the icon button next to it
+opens the owner-change dialog where admins enter the replacement HSA-id and
 confirm with `Byt ägare`.
 
-- as HSA-ID in the requirement area taxonomy table
-- as HSA-ID under the requirement area dropdown in the requirement
+- as HSA-id in the requirement area taxonomy table
+- as HSA-id under the requirement area dropdown in the requirement
   create/edit form
-- as HSA-ID in the requirement detail pane (inline and full-page sidebar)
+- as HSA-id in the requirement detail pane (inline and full-page sidebar)
 
 ## Contributor Notes
 

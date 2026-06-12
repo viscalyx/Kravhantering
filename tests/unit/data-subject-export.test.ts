@@ -41,14 +41,14 @@ function generatedBy() {
 }
 
 describe('data-subject export service', () => {
-  it('uses the same HSA-ID backed source keys as privacy erasure', () => {
+  it('uses the same HSA-id backed source keys as privacy erasure', () => {
     expect(new Set(DATA_SUBJECT_EXPORT_SOURCE_KEYS)).toEqual(
       new Set(PRIVACY_ERASURE_GROUP_POLICIES.map(policy => policy.key)),
     )
     expect(Object.isFrozen(PRIVACY_ERASURE_GROUP_POLICIES)).toBe(true)
   })
 
-  it('collects requirement-area owner HSA-ID data and self-session claims', async () => {
+  it('collects requirement-area owner HSA-id data and self-session claims', async () => {
     const { db } = createExportDb({
       'requirement_areas.owner': [
         {
@@ -142,7 +142,7 @@ describe('data-subject export service', () => {
     )
   })
 
-  it('matches by exact HSA-ID and does not export duplicate display-name rows', async () => {
+  it('matches by exact HSA-id and does not export duplicate display-name rows', async () => {
     const { db, query } = createExportDb({
       'improvement_suggestions.resolved_by': [
         {

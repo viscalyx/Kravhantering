@@ -5,6 +5,7 @@ import { archivingRetentionExceptionEntity } from '@/lib/typeorm/entities/archiv
 import { archivingRetentionPolicyEntity } from '@/lib/typeorm/entities/archiving-retention-policy'
 import { archivingRetentionRunEntity } from '@/lib/typeorm/entities/archiving-retention-run'
 import { deviationEntity } from '@/lib/typeorm/entities/deviation'
+import { hsaIdPrefixEntity } from '@/lib/typeorm/entities/hsa-id-prefix'
 import { improvementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 import { normReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
 import { qualityCharacteristicEntity } from '@/lib/typeorm/entities/quality-characteristic'
@@ -50,6 +51,7 @@ export const sqlServerEntities = [
   accessReviewItemEntity,
   deviationEntity,
   improvementSuggestionEntity,
+  hsaIdPrefixEntity,
   normReferenceEntity,
   archivingRetentionPolicyEntity,
   archivingRetentionRunEntity,
@@ -99,6 +101,7 @@ export type { ArchivingRetentionExceptionEntity } from '@/lib/typeorm/entities/a
 export type { ArchivingRetentionPolicyEntity } from '@/lib/typeorm/entities/archiving-retention-policy'
 export type { ArchivingRetentionRunEntity } from '@/lib/typeorm/entities/archiving-retention-run'
 export type { DeviationEntity } from '@/lib/typeorm/entities/deviation'
+export type { HsaIdPrefixEntity } from '@/lib/typeorm/entities/hsa-id-prefix'
 export type { ImprovementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 export type { NormReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
 export type { QualityCharacteristicEntity } from '@/lib/typeorm/entities/quality-characteristic'
@@ -146,6 +149,7 @@ export {
   archivingRetentionPolicyEntity,
   archivingRetentionRunEntity,
   deviationEntity,
+  hsaIdPrefixEntity,
   improvementSuggestionEntity,
   normReferenceEntity,
   qualityCharacteristicEntity,

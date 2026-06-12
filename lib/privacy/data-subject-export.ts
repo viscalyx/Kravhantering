@@ -1183,7 +1183,7 @@ export function dataSubjectExportLimitations(): DataSubjectExportV1['limitations
     },
     {
       description:
-        'Auth session claims are included only for self-export because sessions are stored in the signed browser session cookie and are not queryable for another HSA-ID.',
+        'Auth session claims are included only for self-export because sessions are stored in the signed browser session cookie and are not queryable for another HSA-id.',
       key: 'session_claims_self_only',
     },
   ]

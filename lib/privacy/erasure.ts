@@ -696,7 +696,7 @@ function normalizeTarget(
 ): PrivacyErasureTargetInput {
   const hsaId = input.hsaId.trim()
   if (!isHsaId(hsaId)) {
-    throw validationError('Target HSA-ID is required and must be valid', {
+    throw validationError('Target HSA-id is required and must be valid', {
       reason: 'invalid_target_hsa_id',
     })
   }
@@ -714,7 +714,7 @@ function normalizeReplacement(
   const lastName = input.lastName?.trim() || null
   if (!isHsaId(hsaId) || !displayName) {
     throw validationError(
-      'Replacement requires both a valid HSA-ID and display name',
+      'Replacement requires both a valid HSA-id and display name',
       { reason: 'invalid_replacement' },
     )
   }
@@ -928,7 +928,7 @@ async function applyOwnerReferences(
   }
   if (!replacement) {
     throw validationError(
-      'Replacement HSA-ID is required for switching requirement area owners',
+      'Replacement HSA-id is required for switching requirement area owners',
       {
         groupKey: policy.key,
         reason: 'replacement_required',

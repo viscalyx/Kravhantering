@@ -229,7 +229,7 @@ describe('sqlServerEntities FK referential-action drift', () => {
 })
 
 describe('requirements specification responsible migration', () => {
-  it('fails fast on null responsible HSA-IDs before enforcing NOT NULL', () => {
+  it('fails fast on null responsible HSA-id values before enforcing NOT NULL', () => {
     const source = readUpStatements(
       '0031_require_specification_responsible_hsa_id.mjs',
     )

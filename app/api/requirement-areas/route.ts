@@ -16,7 +16,7 @@ import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requiremen
 
 const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
   message:
-    'HSA-ID must use format <two-letter country code><10-digit org no>-<alphanumeric suffix>.',
+    'HSA-id must use format <two-letter country code><10-digit org no>-<alphanumeric suffix>.',
 })
 
 const createAreaSchema = z

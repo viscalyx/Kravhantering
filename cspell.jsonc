@@ -57,6 +57,7 @@
     "preprod",
     "unlocalized",
     "HOLDLOCK",
+    "PATINDEX",
     "Kravunderlag",
     "Kravunderlagsansvarig",
     "Kravunderlagsansvarigs",

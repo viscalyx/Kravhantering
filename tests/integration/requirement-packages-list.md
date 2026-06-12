@@ -71,11 +71,11 @@ action.
 1. Click `Rensa sökning`.
 1. Assert the filter is empty and both package rows are visible again.
 1. Open `Mobil användning` for editing.
-1. Assert `Kravpaketsansvarigs HSA-ID` is locked and has a
+1. Assert `Kravpaketsansvarigs HSA-id` is locked and has a
    `Byt kravpaketsansvarig` action.
-1. Open `Byt kravpaketsansvarig` and assert the current and new HSA-ID fields
+1. Open `Byt kravpaketsansvarig` and assert the current and new HSA-id fields
    are shown.
-1. Enter a seeded package co-author HSA-ID and assert the conflict is shown.
+1. Enter a seeded package co-author HSA-id and assert the conflict is shown.
 
 ### Sequence Diagram
 
@@ -108,7 +108,7 @@ sequenceDiagram
     U->>P: Open edit
     Note over P: ✓ Package lead field is locked
     U->>P: Open lead-change modal
-    Note over P: ✓ Current and new lead HSA-ID fields are shown
+    Note over P: ✓ Current and new lead HSA-id fields are shown
     U->>P: Trigger co-author conflict check
     Note over P: ✓ Co-author conflict validation shown
 ```

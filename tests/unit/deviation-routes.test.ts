@@ -138,7 +138,7 @@ describe('deviation mutation routes', () => {
   it('rejects deviation updates before loading the database when no human actor is present', async () => {
     routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
       throw validationError(
-        'Authenticated actor with a verified HSA-ID is required for this write',
+        'Authenticated actor with a verified HSA-id is required for this write',
         { reason: 'missing_actor_hsa_id' },
       )
     })
@@ -223,7 +223,7 @@ describe('deviation mutation routes', () => {
   it('rejects deviation request-review before loading the database when no human actor is present', async () => {
     routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
       throw validationError(
-        'Authenticated actor with a verified HSA-ID is required for this write',
+        'Authenticated actor with a verified HSA-id is required for this write',
         { reason: 'missing_actor_hsa_id' },
       )
     })
@@ -264,7 +264,7 @@ describe('deviation mutation routes', () => {
   it('rejects deviation revert-to-draft before loading the database when no human actor is present', async () => {
     routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
       throw validationError(
-        'Authenticated actor with a verified HSA-ID is required for this write',
+        'Authenticated actor with a verified HSA-id is required for this write',
         { reason: 'missing_actor_hsa_id' },
       )
     })
@@ -305,7 +305,7 @@ describe('deviation mutation routes', () => {
   it('rejects deviation deletes before loading the database when no human actor is present', async () => {
     routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
       throw validationError(
-        'Authenticated actor with a verified HSA-ID is required for this write',
+        'Authenticated actor with a verified HSA-id is required for this write',
         { reason: 'missing_actor_hsa_id' },
       )
     })
@@ -391,7 +391,7 @@ describe('deviation mutation routes', () => {
   it('rejects specification-local deviation updates before loading the database when no human actor is present', async () => {
     routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
       throw validationError(
-        'Authenticated actor with a verified HSA-ID is required for this write',
+        'Authenticated actor with a verified HSA-id is required for this write',
         { reason: 'missing_actor_hsa_id' },
       )
     })
@@ -415,7 +415,7 @@ describe('deviation mutation routes', () => {
   it('rejects specification-local deviation deletes before loading the database when no human actor is present', async () => {
     routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
       throw validationError(
-        'Authenticated actor with a verified HSA-ID is required for this write',
+        'Authenticated actor with a verified HSA-id is required for this write',
         { reason: 'missing_actor_hsa_id' },
       )
     })

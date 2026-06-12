@@ -106,7 +106,7 @@ function dogfoodOwnerIdentity(ownerId) {
   }
   const hsaId = DOGFOOD_OWNER_HSA_BY_ID.get(ownerId)
   if (!hsaId) {
-    throw new Error(`Dogfood seed: missing package owner HSA-ID ${ownerId}`)
+    throw new Error(`Dogfood seed: missing package owner HSA-id ${ownerId}`)
   }
   return {
     displayName: `${owner[1]} ${owner[2]}`,
@@ -927,7 +927,7 @@ export function appendDogfoodSeed(SEED_DATA) {
     if (existingAreaIds.has(id)) continue
     const ownerHsaId = DOGFOOD_OWNER_HSA_BY_ID.get(ownerId)
     if (!ownerHsaId) {
-      throw new Error(`Dogfood seed: missing area owner HSA-ID ${ownerId}`)
+      throw new Error(`Dogfood seed: missing area owner HSA-id ${ownerId}`)
     }
     areas.rows.push([
       id,

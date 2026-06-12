@@ -160,6 +160,22 @@ sak som åtgärdsloggen och hör hemma i plattformens logg- och SIEM-flöde.
 _Avoid_: Säkerhetsaudit, säkerhetsrevision när loggströmmen avses,
 Åtgärdslogg, vanlig applikationslogg, tillämpningsspårbarhet.
 
+**HSA-id-prefix**:
+Delen före bindestrecket i ett HSA-id. Ett HSA-id-prefix består av två versala
+bokstäver för landskod följt av tio siffror för organisationsnummer och skrivs
+utan bindestreck.
+
+- `en`: HSA-id prefix
+
+_Avoid_: HSA-prefix, HSA-id-prefix med bindestreck inkluderat.
+
+**HSA-id-suffix**:
+Delen efter bindestrecket i ett HSA-id.
+
+- `en`: HSA-id suffix
+
+_Avoid_: HSA-id-prefix, ändelse när den exakta HSA-id-termen behövs.
+
 **Behörighetsöversyn**:
 En formell genomgång av uppdrag och roller där varje behörighetsrad bedöms och
 beslutas.
@@ -330,7 +346,7 @@ _Avoid_: Benämningar som huvudterm.
 _Avoid_: Huvudterm i UI och dokumentation.
 
 **Kravområdesägare**:
-Den person, identifierad med HSA-ID, som har huvudansvar för förvaltning av ett
+Den person, identifierad med HSA-id, som har huvudansvar för förvaltning av ett
 kravområde och dess krav i kravbiblioteket. Kravområdesägare administreras på
 kravområdet, inte som en egen katalog.
 
@@ -399,7 +415,7 @@ exempel förhandsgranskning, export och radering.
 _Avoid_: Administratör när dataskyddsmandat avses.
 
 **Radering av personuppgifter**:
-Ett dataskyddsflöde där personkopplade fält för en registrerad HSA-ID hanteras
+Ett dataskyddsflöde där personkopplade fält för en registrerad HSA-id hanteras
 genom att raderas, anonymiseras, hoppas över eller bytas till en ersättare.
 Radering av personuppgifter ska inte ta bort verksamhetshistorik som behöver
 finnas kvar.
@@ -410,7 +426,7 @@ _Avoid_: GDPR-radering, gallring, arkivering, borttagning av kravhistorik.
 
 **Personuppgiftsutdrag**:
 Ett dataskyddsunderlag som visar vilka personuppgifter Kravhantering kan
-koppla till en registrerad HSA-ID, var uppgifterna förekommer i applikationen
+koppla till en registrerad HSA-id, var uppgifterna förekommer i applikationen
 och vilka begränsningar utdraget har. JSON är det maskinläsbara och
 auktoritativa formatet; PDF är en läsbar återgivning av samma uppgifter.
 
@@ -554,7 +570,7 @@ sammansättning, kravtillämpningar, kravunderlagslokala krav och avsteg.
 _Avoid_: Kravunderlagsägare.
 
 **Kravansvarsperson**:
-En HSA-ID-identifierad person vars namnkomponenter och e-postadress, när sådan
+En HSA-id-identifierad person vars namnkomponenter och e-postadress, när sådan
 finns, används för att visa vem en aktuell eller påbörjad
 kravansvarstilldelning avser.
 Kravansvarsperson är inte samma sak som användare, konto, global roll eller
@@ -577,7 +593,7 @@ oanvänd person, kravområdesägare när personen inte har en aktuell eller
 påbörjad kravansvarstilldelning.
 
 **Kravansvarstilldelning**:
-En HSA-ID-bunden tilldelning av ansvar eller medförfattarskap i kravarbete,
+En HSA-id-bunden tilldelning av ansvar eller medförfattarskap i kravarbete,
 till exempel för ett kravområde, ett kravunderlag eller ett kravpaket.
 Tilldelningen pekar ut en kravansvarsperson men beskriver själva
 ansvarskopplingen, inte personposten, organisatoriskt mandat, global roll eller
@@ -599,7 +615,7 @@ _Avoid_: Medarbetarkatalog, användarkatalog, applikationsägd referensdata.
 
 **HSA-personpost**:
 En personpost i HSA-katalogen med person- och kontaktuppgifter som kan slås upp
-med HSA-ID eller annan identitet som HSA-katalogen stödjer.
+med HSA-id eller annan identitet som HSA-katalogen stödjer.
 
 - `en`: HSA person record
 

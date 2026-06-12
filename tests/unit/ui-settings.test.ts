@@ -3,6 +3,9 @@ import {
   createUiSettingsLoader,
   formatUiSettingsLoadError,
   getRequirementListColumnDefaults,
+  getVisibleHsaIdPrefixes,
+  HsaIdPrefixSettingsError,
+  updateHsaIdPrefixes,
   updateRequirementListColumnDefaults,
 } from '@/lib/dal/ui-settings'
 import type { SqlServerDatabase } from '@/lib/db'
@@ -75,6 +78,46 @@ describe('ui-settings DAL', () => {
     expect(query).toHaveBeenCalledTimes(1)
   })
 
+  it('getVisibleHsaIdPrefixes loads visible prefixes in display order', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        id: 2,
+        isDefault: 0,
+        isVisible: 1,
+        label: null,
+        prefix: 'NO5560000001',
+      },
+      {
+        id: 1,
+        isDefault: 1,
+        isVisible: 1,
+        label: 'Demo',
+        prefix: 'SE5560000001',
+      },
+    ])
+
+    const result = await getVisibleHsaIdPrefixes(db)
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('WHERE is_visible = 1'),
+    )
+    expect(result).toEqual([
+      {
+        id: 1,
+        isDefault: true,
+        label: 'Demo',
+        prefix: 'SE5560000001',
+      },
+      {
+        id: 2,
+        isDefault: false,
+        label: null,
+        prefix: 'NO5560000001',
+      },
+    ])
+  })
+
   it('updateRequirementListColumnDefaults clears and reinserts within a transaction', async () => {
     const { db, query, transaction } = createSqlServerDb()
     query.mockResolvedValue([])
@@ -106,5 +149,171 @@ describe('ui-settings DAL', () => {
         /INSERT INTO action_audit_events/.test(sql),
       ),
     ).toBe(true)
+  })
+
+  it('updateHsaIdPrefixes inserts, updates, deletes unused rows, and audits in one transaction', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    const audit = vi.fn(async executor => {
+      await executor.query('INSERT INTO action_audit_events (...) VALUES (...)')
+    })
+    query.mockImplementation(async (sql: string) => {
+      if (/FROM hsa_id_prefixes/.test(sql)) {
+        return [
+          {
+            id: 1,
+            isDefault: 1,
+            isVisible: 1,
+            label: null,
+            prefix: 'SE5560000001',
+          },
+          {
+            id: 2,
+            isDefault: 0,
+            isVisible: 0,
+            label: null,
+            prefix: 'NO5560000001',
+          },
+        ]
+      }
+      return []
+    })
+
+    await updateHsaIdPrefixes(
+      db,
+      [
+        {
+          id: 1,
+          isDefault: true,
+          isVisible: true,
+          label: 'Demo',
+          prefix: 'SE5560000001',
+        },
+        {
+          isDefault: false,
+          isVisible: true,
+          label: null,
+          prefix: 'DK5560000001',
+        },
+      ],
+      { audit },
+    )
+
+    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(
+      query.mock.calls.some(
+        ([sql, params]) =>
+          /DELETE FROM hsa_id_prefixes WHERE id = @0/.test(sql) &&
+          params?.[0] === 2,
+      ),
+    ).toBe(true)
+    expect(
+      query.mock.calls.some(([sql]) => /UPDATE hsa_id_prefixes/.test(sql)),
+    ).toBe(true)
+    const clearDefaultIndex = query.mock.calls.findIndex(([sql]) =>
+      /UPDATE hsa_id_prefixes SET is_default = 0/.test(sql),
+    )
+    const insertIndex = query.mock.calls.findIndex(([sql]) =>
+      /INSERT INTO hsa_id_prefixes/.test(sql),
+    )
+    expect(clearDefaultIndex).toBeGreaterThanOrEqual(0)
+    expect(insertIndex).toBeGreaterThan(clearDefaultIndex)
+    expect(
+      query.mock.calls.some(([sql]) => /INSERT INTO hsa_id_prefixes/.test(sql)),
+    ).toBe(true)
+    expect(audit).toHaveBeenCalledTimes(1)
+  })
+
+  it('updateHsaIdPrefixes rejects invalid default and duplicate inputs before querying', async () => {
+    const { db, query } = createSqlServerDb()
+
+    await expect(
+      updateHsaIdPrefixes(db, [
+        {
+          isDefault: true,
+          isVisible: false,
+          label: null,
+          prefix: 'SE5560000001',
+        },
+      ]),
+    ).rejects.toMatchObject({ code: 'default_hidden' })
+
+    await expect(
+      updateHsaIdPrefixes(db, [
+        {
+          isDefault: true,
+          isVisible: true,
+          label: null,
+          prefix: 'SE5560000001',
+        },
+        {
+          isDefault: false,
+          isVisible: true,
+          label: null,
+          prefix: 'SE5560000001',
+        },
+      ]),
+    ).rejects.toMatchObject({ code: 'duplicate_prefix' })
+
+    expect(query).not.toHaveBeenCalled()
+  })
+
+  it('updateHsaIdPrefixes rejects visible lists without one default', async () => {
+    const { db } = createSqlServerDb()
+
+    await expect(
+      updateHsaIdPrefixes(db, [
+        {
+          isDefault: false,
+          isVisible: true,
+          label: null,
+          prefix: 'SE5560000001',
+        },
+      ]),
+    ).rejects.toMatchObject({ code: 'default_required' })
+  })
+
+  it('updateHsaIdPrefixes blocks deleting or changing a used prefix', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockImplementation(async (sql: string, parameters?: unknown[]) => {
+      if (/FROM hsa_id_prefixes/.test(sql)) {
+        return [
+          {
+            id: 1,
+            isDefault: 1,
+            isVisible: 1,
+            label: null,
+            prefix: 'SE5560000001',
+          },
+        ]
+      }
+      if (parameters?.[0] === 'SE5560000001-%') {
+        return [{ hsaId: 'SE5560000001-used1' }]
+      }
+      return []
+    })
+
+    await expect(updateHsaIdPrefixes(db, [])).rejects.toMatchObject({
+      code: 'used_prefix_cannot_delete',
+    })
+    await expect(
+      updateHsaIdPrefixes(db, [
+        {
+          id: 1,
+          isDefault: true,
+          isVisible: true,
+          label: null,
+          prefix: 'NO5560000001',
+        },
+      ]),
+    ).rejects.toMatchObject({ code: 'used_prefix_cannot_change' })
+  })
+
+  it('HsaIdPrefixSettingsError exposes stable error codes', () => {
+    const error = new HsaIdPrefixSettingsError('example', 'Example')
+    expect(error).toMatchObject({
+      code: 'example',
+      message: 'Example',
+      name: 'HsaIdPrefixSettingsError',
+    })
   })
 })

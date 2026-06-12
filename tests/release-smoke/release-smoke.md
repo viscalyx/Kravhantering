@@ -72,7 +72,7 @@ CSRF-protected requirement mutation.
 ### Step-by-Step Flow
 
 1. Request `/api/auth/me` with the stored session and verify
-   `release-smoke-user` is authenticated with the expected HSA-ID.
+   `release-smoke-user` is authenticated with the expected HSA-id.
 2. Open `/sv/requirements` and wait for the app to fetch
    `/api/requirements`.
 3. Assert at least one seeded requirement is returned and visible in the page.

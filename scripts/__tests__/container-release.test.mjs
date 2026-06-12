@@ -773,9 +773,9 @@ describe('trusted container release helpers', () => {
         '',
         '## Unreleased',
         '',
-        '### Requirement area owners must have valid HSA-IDs before upgrade',
+        '### Requirement area owners must have valid HSA-id values before upgrade',
         '',
-        'Confirm owner HSA-IDs before running `db-job migrate`.',
+        'Confirm owner HSA-id values before running `db-job migrate`.',
         '',
         '## 0.1.0 - 2026-01-01',
         '',
@@ -789,10 +789,10 @@ describe('trusted container release helpers', () => {
 
     expect(notes).toContain('## Operator Upgrade Notes')
     expect(notes).toContain(
-      '### Requirement area owners must have valid HSA-IDs before upgrade',
+      '### Requirement area owners must have valid HSA-id values before upgrade',
     )
     expect(notes).toContain(
-      'Confirm owner HSA-IDs before running `db-job migrate`.',
+      'Confirm owner HSA-id values before running `db-job migrate`.',
     )
     expect(notes).not.toContain('Earlier note.')
     expect(notes.indexOf('## Operator Upgrade Notes')).toBeLessThan(

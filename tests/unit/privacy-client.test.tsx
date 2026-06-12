@@ -91,7 +91,7 @@ describe('PrivacyClient', () => {
     })
   })
 
-  it('downloads the signed-in user export without sending a target HSA-ID', async () => {
+  it('downloads the signed-in user export without sending a target HSA-id', async () => {
     fetchMock.mockResolvedValueOnce(okJson(exportPayload()))
 
     render(

@@ -38,6 +38,7 @@ export const DEMO_RESET_TABLES = Object.freeze([
   'access_review_runs',
   'specification_co_authors',
   'requirements_specifications',
+  'hsa_id_prefixes',
   'requirement_area_co_authors',
   'requirement_areas',
   'requirement_responsibility_people',

@@ -8,7 +8,7 @@
       "sn": "Karlsson",
       "mail": "kalle@sos.se",
       "DN": "cn=Kalle Karlsson,ou=enheten,o=ozon,c=se",
-      "purposes": ["Kontraktsexempel med en träff via HSA-ID och personnummer."]
+      "purposes": ["Kontraktsexempel med en träff via HSA-id och personnummer."]
     },
     {
       "hsaIdentity": "SE1000-005",

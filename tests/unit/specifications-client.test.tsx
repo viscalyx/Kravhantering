@@ -104,6 +104,9 @@ const sampleCurrentUser = {
   name: 'Ada Admin',
   roles: ['Admin'],
 }
+const hsaIdPrefixPayload = {
+  prefixes: [{ id: 1, isDefault: true, label: null, prefix: 'SE5560000001' }],
+}
 
 function mockApi(
   handler: (url: string, opts?: RequestInit) => Promise<unknown>,
@@ -111,6 +114,8 @@ function mockApi(
   fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
     if (url === '/api/auth/me')
       return Promise.resolve(okJson(sampleCurrentUser))
+    if (url === '/api/hsa-id-prefixes')
+      return Promise.resolve(okJson(hsaIdPrefixPayload))
     return handler(url, opts)
   })
 }
@@ -202,7 +207,7 @@ describe('RequirementsSpecificationsClient', () => {
     expect(screen.queryByText('no-user')).toBeNull()
   })
 
-  it('shows the responsible HSA-ID when a specification has no responsible display name', async () => {
+  it('shows the responsible HSA-id when a specification has no responsible display name', async () => {
     mockApi((url: string) => {
       if (url === '/api/specifications')
         return Promise.resolve(
@@ -668,7 +673,7 @@ describe('RequirementsSpecificationsClient', () => {
     ).toHaveAttribute('readonly')
   })
 
-  it('disables create until the current user HSA-ID is loaded', async () => {
+  it('disables create until the current user HSA-id is loaded', async () => {
     const authRequest = createDeferred<ReturnType<typeof okJson>>()
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/auth/me') return authRequest.promise
@@ -697,7 +702,7 @@ describe('RequirementsSpecificationsClient', () => {
     await waitFor(() => expect(createButton).not.toBeDisabled())
   })
 
-  it('shows an error and keeps create disabled when the signed-in user has no HSA-ID', async () => {
+  it('shows an error and keeps create disabled when the signed-in user has no HSA-id', async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/auth/me')
         return Promise.resolve(okJson({ authenticated: true, hsaId: '' }))
@@ -1006,7 +1011,7 @@ describe('RequirementsSpecificationsClient', () => {
     ).toBeNull()
   })
 
-  it('omits the responsible HSA-ID from ordinary edit saves', async () => {
+  it('omits the responsible HSA-id from ordinary edit saves', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
@@ -1067,12 +1072,13 @@ describe('RequirementsSpecificationsClient', () => {
     const dialog = screen.getByRole('dialog', {
       name: 'specification.changeResponsibleTitle',
     })
-    fireEvent.change(
-      within(dialog).getByRole('textbox', {
-        name: /specification\.newResponsibleHsaId/,
-      }),
-      { target: { value: 'SE5560000001-rita1' } },
-    )
+    const newResponsibleInput = within(dialog).getByRole('textbox', {
+      name: /specification\.newResponsibleHsaId/,
+    })
+    await waitFor(() => {
+      expect(newResponsibleInput).toBeEnabled()
+    })
+    fireEvent.change(newResponsibleInput, { target: { value: 'rita1' } })
 
     mockApi((url: string, opts?: RequestInit) => {
       if (opts?.method === 'PUT') {
@@ -1132,6 +1138,8 @@ describe('RequirementsSpecificationsClient', () => {
         return Promise.resolve(
           okJson({ ...sampleCurrentUser, roles: ['RequirementsEditor'] }),
         )
+      if (url === '/api/hsa-id-prefixes')
+        return Promise.resolve(okJson(hsaIdPrefixPayload))
       if (opts?.method === 'PUT') {
         return Promise.resolve(
           okJson({
@@ -1173,12 +1181,13 @@ describe('RequirementsSpecificationsClient', () => {
     const dialog = screen.getByRole('dialog', {
       name: 'specification.changeResponsibleTitle',
     })
-    fireEvent.change(
-      within(dialog).getByRole('textbox', {
-        name: /specification\.newResponsibleHsaId/,
-      }),
-      { target: { value: 'SE5560000001-rita1' } },
-    )
+    const newResponsibleInput = within(dialog).getByRole('textbox', {
+      name: /specification\.newResponsibleHsaId/,
+    })
+    await waitFor(() => {
+      expect(newResponsibleInput).toBeEnabled()
+    })
+    fireEvent.change(newResponsibleInput, { target: { value: 'rita1' } })
     fireEvent.click(
       within(dialog).getByRole('button', {
         name: /specification\.changeResponsible/,

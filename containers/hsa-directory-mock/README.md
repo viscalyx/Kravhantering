@@ -28,7 +28,7 @@ Content-Type: application/json
 ```
 
 The facade returns a single normalized person record when all HSA records for
-the submitted HSA-ID agree on name and e-mail, `404` when the HSA-ID is not
+the submitted HSA-id agree on name and e-mail, `404` when the HSA-id is not
 found, and `409` when matching HSA records conflict. It intentionally does not
 implement authentication, authorization, client certificates, organization
 lookups, or non-person HSA methods.
@@ -124,7 +124,7 @@ Other HTTP statuses:
 
 The fixture source of truth is
 [fixtures/hsa-personer.json](./fixtures/hsa-personer.json). It contains HSA
-person records, not application users. Some records intentionally share HSA-ID
+person records, not application users. Some records intentionally share HSA-id
 values with Keycloak dev users or SQL seed data so application integration
 tests can look up person and contact data for existing
 Kravansvarstilldelningar.

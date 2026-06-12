@@ -15,6 +15,7 @@ const TABLE_ORDER = [
   'requirement_area_co_authors',
   'requirement_categories',
   'requirement_list_column_defaults',
+  'hsa_id_prefixes',
   'requirements_specifications',
   'specification_co_authors',
   'access_review_runs',
@@ -527,6 +528,29 @@ const SEED_DATA = {
       [13, 'riskLevel', 12, 0, '2026-04-20 20:07:00'],
       [14, 'specificationItemStatus', 13, 0, '2026-04-20 20:07:00'],
       [15, 'suggestionCount', 14, 0, '2026-04-20 20:07:00'],
+    ],
+  },
+  hsa_id_prefixes: {
+    columns: [
+      'id',
+      'prefix',
+      'label',
+      'is_visible',
+      'is_default',
+      'created_at',
+      'updated_at',
+    ],
+    pk: ['id'],
+    rows: [
+      [
+        1,
+        'SE5560000001',
+        null,
+        1,
+        1,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
     ],
   },
   requirements_specifications: {
@@ -12670,7 +12694,7 @@ function hsaForDisplayName(displayName) {
   const hsaId = HSA_BY_DISPLAY_NAME.get(displayName)
   if (!hsaId) {
     throw new Error(
-      `Privacy seed: missing explicit HSA-ID mapping for display name '${displayName}'`,
+      `Privacy seed: missing explicit HSA-id mapping for display name '${displayName}'`,
     )
   }
   return hsaId
@@ -12696,7 +12720,7 @@ function assertSeedHsaId(value, tableName, columnName) {
     return value
   }
   throw new Error(
-    `Privacy seed: invalid HSA-ID in '${tableName}.${columnName}'`,
+    `Privacy seed: invalid HSA-id in '${tableName}.${columnName}'`,
   )
 }
 
@@ -12710,7 +12734,7 @@ function collectSeedHsaIds(hsaIds, tableName, columnName) {
   const columnIndex = table.columns.indexOf(columnName)
   if (columnIndex < 0) {
     throw new Error(
-      `Privacy seed: table '${tableName}' lacks HSA-ID column '${columnName}'`,
+      `Privacy seed: table '${tableName}' lacks HSA-id column '${columnName}'`,
     )
   }
   for (const row of table.rows) {
@@ -12799,7 +12823,7 @@ function addDuplicateNameImprovementSuggestionSeed() {
     suggestions,
     seedRowFromColumns(suggestions, {
       content:
-        'Privacy seed proves duplicate display names are matched by HSA-ID.',
+        'Privacy seed proves duplicate display names are matched by HSA-id.',
       created_at: PRIVACY_SEED_TS,
       created_by: 'seed',
       created_by_hsa_id: 'SE5560000001-seed',
@@ -12830,7 +12854,7 @@ function addLinneaPrivacyExerciseSeed() {
     suggestions,
     seedRowFromColumns(suggestions, {
       content:
-        'Privacy seed: submitted improvement suggestion for HSA-ID erasure preview coverage.',
+        'Privacy seed: submitted improvement suggestion for HSA-id erasure preview coverage.',
       created_at: PRIVACY_SEED_TS,
       created_by: 'Linnéa Bergström',
       created_by_hsa_id: 'SE5560000001-linneab',
@@ -12881,7 +12905,7 @@ function addLinneaPrivacyExerciseSeed() {
       id: 990001,
       is_review_requested: 1,
       motivation:
-        'Privacy seed deviation used to verify HSA-ID based decision erasure.',
+        'Privacy seed deviation used to verify HSA-id based decision erasure.',
       specification_item_id: 1,
       updated_at: PRIVACY_SEED_TS,
     }),
@@ -12905,7 +12929,7 @@ function addLinneaPrivacyExerciseSeed() {
       id: 990001,
       is_review_requested: 1,
       motivation:
-        'Privacy seed local deviation used to verify HSA-ID based decision erasure.',
+        'Privacy seed local deviation used to verify HSA-id based decision erasure.',
       specification_local_requirement_id: 2,
       updated_at: PRIVACY_SEED_TS,
     }),
@@ -12929,7 +12953,7 @@ function applyPrivacyIdentitySeed() {
         normalizeOwnerHsaId(currentOwnerValue)
       if (!ownerHsaId) {
         throw new Error(
-          `Privacy seed: missing owner HSA-ID for requirement area owner ${currentOwnerValue}`,
+          `Privacy seed: missing owner HSA-id for requirement area owner ${currentOwnerValue}`,
         )
       }
       row[ownerHsaIndex] = ownerHsaId

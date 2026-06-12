@@ -310,7 +310,7 @@ describe('seed profiles', () => {
     }
   })
 
-  it('seeds duplicate-name privacy data with distinct HSA-ID decisions', async () => {
+  it('seeds duplicate-name privacy data with distinct HSA-id decisions', async () => {
     const { executor, rows } = collectSeedInsertRows()
 
     await seedDemoDatabase(executor)
@@ -321,7 +321,7 @@ describe('seed profiles', () => {
     ).filter(
       row =>
         row.content ===
-        'Privacy seed proves duplicate display names are matched by HSA-ID.',
+        'Privacy seed proves duplicate display names are matched by HSA-id.',
     )
     const kalleSpecificationHsaIds = new Set(
       seedRowsFor(rows, 'requirements_specifications')

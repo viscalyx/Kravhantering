@@ -98,7 +98,7 @@ describe('action audit helper', () => {
     expect(JSON.stringify(details)).not.toContain('must not be stored')
   })
 
-  it('maps MCP actors without storing synthetic HSA-IDs', async () => {
+  it('maps MCP actors without storing synthetic HSA-id values', async () => {
     const query = vi.fn().mockResolvedValue([])
 
     await recordAllowedActionAuditEventWithExecutor(

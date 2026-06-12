@@ -99,6 +99,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Admin Center Dataskydd field help toggles stay inside the existing
   `tab panel: privacy` surface rather than adding separate developer-mode
   markers.
+- Admin Center Identitet HSA-id-prefix controls and field help toggles stay
+  inside the existing `tab panel: identity` surface rather than adding separate
+  developer-mode markers.
 - Admin Center Behörighetsöversyn controls stay inside the existing
   `tab panel: access review` surface. Individual review rows, decision
   selectors, comments, field help toggles, cancel buttons, and export buttons
@@ -361,6 +364,7 @@ The current canonical labels include:
 - `edge tab`
   - Admin Center uses this marker for all top tabs, including privileged tabs
     that render disabled when the current user lacks the required role.
+    The HSA-id-prefix tab uses value `identity`.
 - `floating action rail`
 - `floating pill`
 - `floating pill menu`

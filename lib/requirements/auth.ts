@@ -62,7 +62,7 @@ export function requireHumanActorSnapshot(
   const hsaId = context.actor.hsaId
   if (!context.actor.isAuthenticated || !hsaId || hsaId.startsWith('mcp-')) {
     throw validationError(
-      'Authenticated actor with a verified HSA-ID is required for this write',
+      'Authenticated actor with a verified HSA-id is required for this write',
       {
         reason: 'missing_actor_hsa_id',
         source: context.actor.source,

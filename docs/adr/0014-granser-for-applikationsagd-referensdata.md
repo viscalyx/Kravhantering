@@ -17,7 +17,7 @@ referensdata i `Taxonomi` för klassningar och `Statusar och arbetsflöden` för
 livscykel- och användningsstatusar. `Referensdata` kvarstår som
 samlingsbegrepp, inte som synlig flik.
 
-Kravområdesägarskap lagras direkt på varje kravområde som ägarens HSA-ID. Det
+Kravområdesägarskap lagras direkt på varje kravområde som ägarens HSA-id. Det
 är ett operativt ägaruppdrag, inte en fristående referensdatakatalog och inte
 en personpost i applikationen.
 

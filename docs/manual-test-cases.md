@@ -88,12 +88,13 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [ADMIN-09: archiving retention preview is privacy-gated](#admin-09-archiving-retention-preview-is-privacy-gated)
   - [ADMIN-10: status and risk icons render across requirement surfaces](#admin-10-status-and-risk-icons-render-across-requirement-surfaces)
   - [ADMIN-11: archived requirement-selection retention excludes saved history](#admin-11-archived-requirement-selection-retention-excludes-saved-history)
-  - [ADMIN-12: requirement area owner changes use HSA-ID](#admin-12-requirement-area-owner-changes-use-hsa-id)
+  - [ADMIN-12: requirement area owner changes use HSA-id](#admin-12-requirement-area-owner-changes-use-hsa-id)
+  - [ADMIN-13: HSA-id prefixes are administered from Identitet](#admin-13-hsa-id-prefixes-are-administered-from-identitet)
 - [Privacy and personal data access](#privacy-and-personal-data-access)
   - [PRIV-01: self-service privacy export](#priv-01-self-service-privacy-export)
-  - [PRIV-02: PrivacyOfficer preview by HSA-ID](#priv-02-privacyofficer-preview-by-hsa-id)
+  - [PRIV-02: PrivacyOfficer preview by HSA-id](#priv-02-privacyofficer-preview-by-hsa-id)
   - [PRIV-03: preview target exports JSON and PDF](#priv-03-preview-target-exports-json-and-pdf)
-  - [PRIV-04: duplicate-name privacy search uses HSA-ID only](#priv-04-duplicate-name-privacy-search-uses-hsa-id-only)
+  - [PRIV-04: duplicate-name privacy search uses HSA-id only](#priv-04-duplicate-name-privacy-search-uses-hsa-id-only)
   - [PRIV-05: replacement-person switch action](#priv-05-replacement-person-switch-action)
   - [PRIV-06: anonymize and skip actions](#priv-06-anonymize-and-skip-actions)
   - [PRIV-07: stale preview is rejected](#priv-07-stale-preview-is-rejected)
@@ -599,16 +600,16 @@ management live outside Admin Center.
    by description, verify the table is narrowed to matching packages in both
    cases, then click `Rensa sökning` and verify all packages are shown again.
 1. Create a package with `Namn` and `Beskrivning`. Verify
-   `Kravpaketsansvarigs HSA-ID` is locked in the create form, prefilled from
-   the signed-in user's HSA-ID, and shown with the fetch/refresh icon and
+   `Kravpaketsansvarigs HSA-id` is locked in the create form, prefilled from
+   the signed-in user's HSA-id, and shown with the fetch/refresh icon and
    read-only person summary. Verify `Kopplade krav` is not shown while creating
    the package, and that `Kravpaketsmedförfattare` is shown beside the package
    fields on desktop.
-1. Edit `Mobil användning` and verify `Kravpaketsansvarigs HSA-ID` is locked,
+1. Edit `Mobil användning` and verify `Kravpaketsansvarigs HSA-id` is locked,
    shown with the kravpaketsansvarig's name and e-mail, and has a
    `Byt kravpaketsansvarig` icon button instead of a fetch/refresh icon.
 1. Click `Byt kravpaketsansvarig` and verify the modal shows the current
-   kravpaketsansvarig HSA-ID, a new HSA-ID field with person lookup, and
+   kravpaketsansvarig HSA-id, a new HSA-id field with person lookup, and
    blocks choosing a kravpaketsmedförfattare as kravpaketsansvarig.
 1. For the seeded co-author `SE5560000001-pkgco1`, verify the local person
    details initially show `(saknar namn, kräver nytt uppslag)`. Click the
@@ -616,7 +617,7 @@ management live outside Admin Center.
    `Paul PkgCoAuthor` and `paul.pkgcoauthor@example.test`.
 1. Add a `Kravpaketsmedförfattare` with `SE5560000001-manualpkg1`, use the
    fetch/refresh button to verify `Paula ManualPkg`, save, reopen the package
-   and verify the co-author remains as an HSA-ID assignment with person details
+   and verify the co-author remains as an HSA-id assignment with person details
    from `Kravansvarsperson`. Remove the co-author and verify it no longer
    appears.
 1. Verify editing opens in a modal and shows linked requirements beside the
@@ -718,7 +719,7 @@ management live outside Admin Center.
 
 **Expected result:** The last stewardship tab is restored, only the active
 stewardship view title is shown as the page heading, package leads use direct
-HSA-ID/display-name fields, the question gets a stable `KUF` code, questions
+HSA-id/display-name fields, the question gets a stable `KUF` code, questions
 have no required/mandatory setting, cancelled destructive actions leave the
 question or answer unchanged, confirmed destructive actions complete, and active
 answers without links remain editable as action-required health items.
@@ -1083,8 +1084,8 @@ visible specifications.
 1. Select the floating `Nytt kravunderlag` pill beside the list.
 1. Verify a modal dialog titled `Nytt kravunderlag` opens and focus starts in
    `Namn`.
-1. Verify `HSA-ID för kravunderlagsansvarig` is locked to the signed-in user's
-   HSA-ID and shows the HSA person summary/fetch button.
+1. Verify `HSA-id för kravunderlagsansvarig` is locked to the signed-in user's
+   HSA-id and shows the HSA person summary/fetch button.
 1. Fill name, specification lifecycle status, governance object type, and
    implementation type.
 1. Add a business need reference if required.
@@ -1107,7 +1108,7 @@ slug, selected metadata, and the signed-in user as `Kravunderlagsansvarig`.
 1. Select `Redigera kravunderlag`.
 1. Verify a modal dialog titled `Redigera kravunderlag` opens without changing
    the split-panel layout behind it.
-1. Verify `HSA-ID för kravunderlagsansvarig` is locked, shows a person row, and
+1. Verify `HSA-id för kravunderlagsansvarig` is locked, shows a person row, and
    exposes a `Byt kravunderlagsansvarig` icon button.
 1. Select the icon button and verify the modal shows current and new
    `Kravunderlagsansvarig`.
@@ -1711,7 +1712,7 @@ history.
 archived requirement-selection rows that have no saved
 `specification_requirement_selection_answers` references are deleted.
 
-### ADMIN-12: requirement area owner changes use HSA-ID
+### ADMIN-12: requirement area owner changes use HSA-id
 
 **Purpose:** Confirm requirement-area ownership is administered from
 `Kravområden`, not as a separate owner catalog.
@@ -1724,17 +1725,45 @@ archived requirement-selection rows that have no saved
 
 1. Verify there is no separate `Kravområdesägare` card.
 1. Open `Kravområden`.
-1. Create a disposable requirement area with a unique prefix and a valid HSA-ID
+1. Create a disposable requirement area with a unique prefix and a valid HSA-id
    in the owner field, using `SE5560000001-manualarea1`.
-1. Edit the created area and confirm the owner HSA-ID is dimmed and read-only.
-1. Select the owner-change icon next to the dimmed HSA-ID.
-1. Confirm the modal shows the previous HSA-ID, enter
+1. Edit the created area and confirm the owner HSA-id is dimmed and read-only.
+1. Select the owner-change icon next to the dimmed HSA-id.
+1. Confirm the modal shows the previous HSA-id, enter
    `SE5560000001-manualarea2`, and select `Byt ägare`.
 
-**Expected result:** The requirement area is created with the entered HSA-ID,
+**Expected result:** The requirement area is created with the entered HSA-id,
 the edit form cannot change owner inline, `Byt ägare` stays disabled until the
-new HSA-ID is valid and different, and after saving the dimmed field shows
+new HSA-id is valid and different, and after saving the dimmed field shows
 `SE5560000001-manualarea2`.
+
+### ADMIN-13: HSA-id prefixes are administered from Identitet
+
+**Purpose:** Confirm the Admin Center `Identitet` tab controls the HSA-id-prefix
+dropdown used by editable HSA-id fields.
+
+**Users:** `ada.admin`.
+
+**Prerequisites:** Open `/sv/admin?tab=identity` with demo seed data.
+
+**Steps:**
+
+1. Verify the tab is named `Identitet`.
+1. Verify `SE5560000001` is visible and marked as the default HSA-id-prefix.
+1. Add a disposable prefix such as `SE5560000099`, add a label, keep it
+   visible, mark it as default, and save.
+1. Open a flow that edits an HSA-id, for example the requirement-area owner
+   change modal.
+1. Verify the HSA-id field is split into a prefix dropdown and suffix field and
+   that the disposable prefix is preselected for a new empty field.
+1. Return to `Identitet`, hide the disposable prefix, restore
+   `SE5560000001` as default, save, and remove the disposable prefix if it has
+   not been used.
+
+**Expected result:** Prefix rows are listed alphabetically, invalid prefix
+values are rejected, exactly one visible prefix is default when visible prefixes
+exist, hidden prefixes disappear from new HSA-id dropdowns, and used prefixes
+can be hidden but not removed.
 
 ## Privacy and personal data access
 
@@ -1753,16 +1782,16 @@ new HSA-ID is valid and different, and after saving the dimmed field shows
 1. Select `Exportera JSON`.
 1. Select `Exportera PDF`.
 
-**Expected result:** Both exports are generated for the signed-in user's HSA-ID
-without entering a target HSA-ID. JSON remains structured and machine-readable,
+**Expected result:** Both exports are generated for the signed-in user's HSA-id
+without entering a target HSA-id. JSON remains structured and machine-readable,
 uses a filename beginning with `personuppgiftsutdrag`, and opens with Swedish
 characters intact in Windows text tools. PDF is a readable Swedish report that
 explains the person's data without raw database field names, schema keys,
 relation keys, or target fingerprints.
 
-### PRIV-02: PrivacyOfficer preview by HSA-ID
+### PRIV-02: PrivacyOfficer preview by HSA-id
 
-**Purpose:** Confirm privacy preview uses exact HSA-ID matching.
+**Purpose:** Confirm privacy preview uses exact HSA-id matching.
 
 **Users:** `ada.admin` or `disa.privacy`.
 
@@ -1770,7 +1799,7 @@ relation keys, or target fingerprints.
 
 **Steps:**
 
-1. Enter `SE5560000001-linneab` in `HSA-ID att söka efter`.
+1. Enter `SE5560000001-linneab` in `HSA-id att söka efter`.
 1. Select `Förhandsgranska`.
 1. Review the preview groups.
 
@@ -1798,10 +1827,10 @@ structured and machine-readable, uses a filename beginning with
 text tools. PDF delivery downloads a readable Swedish report that uses plain
 labels such as `Aktiva uppdrag`, `Kravområde` and `Skapad av` instead of raw
 database fields, source keys or relation keys. Filenames use a fingerprint
-rather than the raw HSA-ID, but the fingerprint is not printed in the PDF
+rather than the raw HSA-id, but the fingerprint is not printed in the PDF
 report.
 
-### PRIV-04: duplicate-name privacy search uses HSA-ID only
+### PRIV-04: duplicate-name privacy search uses HSA-id only
 
 **Purpose:** Confirm duplicate names do not cause overbroad matching.
 
@@ -1816,7 +1845,7 @@ report.
 1. Preview `SE5560000001-kalle2`.
 1. Compare the affected rows.
 
-**Expected result:** The two `Kalle Svensson` users produce distinct HSA-ID
+**Expected result:** The two `Kalle Svensson` users produce distinct HSA-id
 matches; name alone does not join their records.
 
 ### PRIV-05: replacement-person switch action
@@ -1830,8 +1859,8 @@ matches; name alone does not join their records.
 **Steps:**
 
 1. Open `/sv/admin?tab=privacy`.
-1. Enter a target HSA-ID with live assignments.
-1. Enter replacement display name and replacement HSA-ID.
+1. Enter a target HSA-id with live assignments.
+1. Enter replacement display name and replacement HSA-id.
 1. Select `Förhandsgranska`.
 1. Choose switch actions where available.
 1. Execute the erasure.
@@ -1891,7 +1920,7 @@ partial unexpected changes are made.
 1. Inspect the details.
 
 **Expected result:** The action-log event includes counts and target fingerprint,
-but does not expose the raw target HSA-ID in details.
+but does not expose the raw target HSA-id in details.
 
 ### PRIV-09: unassigned responsibility person export
 
@@ -1906,16 +1935,16 @@ includes the `RETENTION-SEED` responsibility-person fixtures.
 
 **Steps:**
 
-1. Enter `SE5560000001-retentionorphan` in `HSA-ID att söka efter`.
+1. Enter `SE5560000001-retentionorphan` in `HSA-id att söka efter`.
 1. Select `Förhandsgranska`.
 1. Verify the preview includes `Kravansvarsperson` for
    `Rolf RetentionOrphan`.
 1. Select `Exportera JSON`.
 1. Select `Exportera PDF`.
 
-**Expected result:** The export includes the local person row with HSA-ID,
+**Expected result:** The export includes the local person row with HSA-id,
 name, e-mail and fetched/updated timestamps for `Rolf RetentionOrphan`, even
-though no current or started kravansvarstilldelning points to that HSA-ID.
+though no current or started kravansvarstilldelning points to that HSA-id.
 The preview and exports do not include `Lena RetentionLinked` or
 `Freja RetentionFresh`.
 

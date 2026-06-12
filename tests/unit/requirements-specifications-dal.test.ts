@@ -374,7 +374,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     )
   })
 
-  it('validates responsible HSA-ID before creating a specification', async () => {
+  it('validates responsible HSA-id before creating a specification', async () => {
     const { db, query, transaction } = createSqlServerDb()
 
     await expect(

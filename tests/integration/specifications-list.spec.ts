@@ -87,7 +87,7 @@ for (const viewport of viewports) {
           createDialog.getByRole('textbox', { name: 'Namn *' }),
         ).toBeFocused()
         const responsibleInput = createForm.getByRole('textbox', {
-          name: 'Kravunderlagsansvarigs HSA-ID',
+          name: 'Kravunderlagsansvarigs HSA-id',
         })
         await expect(responsibleInput).toHaveValue('SE5560000001-admin1')
         await expect(responsibleInput).toHaveAttribute('readonly', '')
@@ -121,7 +121,7 @@ for (const viewport of viewports) {
           editDialog.getByRole('textbox', { name: 'Namn *' }),
         ).toHaveValue('Upphandling av e-tjänstplattform')
         const responsibleInput = editForm.getByRole('textbox', {
-          name: 'Kravunderlagsansvarigs HSA-ID',
+          name: 'Kravunderlagsansvarigs HSA-id',
         })
         await expect(responsibleInput).toHaveAttribute('readonly', '')
         await expect(editForm.getByText('Emma Lindqvist')).toBeVisible()
@@ -137,11 +137,11 @@ for (const viewport of viewports) {
         await expect(changeDialog).toBeVisible()
         await expect(
           changeDialog.getByRole('textbox', {
-            name: 'Förra kravunderlagsansvarigs HSA-ID',
+            name: 'Förra kravunderlagsansvarigs HSA-id',
           }),
         ).toHaveValue(currentResponsibleHsaId)
         const newResponsibleInput = changeDialog.getByRole('textbox', {
-          name: 'Nya kravunderlagsansvarigs HSA-ID',
+          name: 'Nya kravunderlagsansvarigs HSA-id',
         })
         await expect(newResponsibleInput).toBeVisible()
         await expect(

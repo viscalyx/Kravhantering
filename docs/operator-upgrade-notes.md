@@ -7,11 +7,11 @@ target version.
 
 ## Unreleased
 
-### Responsibility assignments must have valid HSA-IDs before upgrade
+### Responsibility assignments must have valid HSA-id values before upgrade
 
 Confirm that every live requirement-area owner, requirement-area co-author,
 specification lead, specification co-author, and requirement-package lead has a
-valid HSA-ID before running `db-job migrate`. The migration creates
+valid HSA-id before running `db-job migrate`. The migration creates
 `requirement_responsibility_people`, removes duplicated live display-name
 columns, and cannot reconstruct removed name snapshots on rollback without data
 loss.

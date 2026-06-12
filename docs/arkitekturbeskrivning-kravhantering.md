@@ -564,7 +564,7 @@ förvaltningsflikar och en administratörsflik för
    exportbekräftelse och undantag. Fliken kräver
    `PrivacyOfficer`.
 6. **Dataskydd** — Förhandsgranskning och körning av
-   HSA-ID-baserad radering av personuppgifter. Fliken kräver rollen
+   HSA-id-baserad radering av personuppgifter. Fliken kräver rollen
    `PrivacyOfficer` (`Dataskyddshandläggare`) och ger inte
    övriga administratörsrättigheter.
 
@@ -576,9 +576,9 @@ separerad från plattformens `security-audit`-ström för
 operativa säkerhetshändelser. När ingress eller reverse
 proxy validerar klient-IP kan loggen även visa detta som
 forensisk metadata; IP-värdet ingår inte i det
-HSA-ID-baserade dataskyddsflödet.
+HSA-id-baserade dataskyddsflödet.
 
-Dataskyddsflödet matchar endast på HSA-ID. Namn visas för
+Dataskyddsflödet matchar endast på HSA-id. Namn visas för
 operatörens kontroll, men namn används inte som nyckel och
 begäran med endast namn avvisas. Historiska aktörsfält
 anonymiseras normalt till det interna sentinel-värdets visningsnamn
@@ -628,7 +628,7 @@ personuppslag:
 | MCP-server | HTTP/JSON (Streamable) | AI-agenter | Kravfrågor, mutation, statusövergångar |
 | Export | CSV, PDF | Slutanvändare | Rapporter och datautbyte |
 | OIDC-integration | HTTPS / OIDC | Extern identitetsleverantör | Inloggning, tokenutbyte, JWKS, utloggning |
-| HSA-personuppslag | Server-side HTTP/JSON via Kong eller integrationsplattform | Applikationens tilldelningsflöden | Verifiera HSA-ID och hämta namnkomponenter/e-post för Kravansvarsperson |
+| HSA-personuppslag | Server-side HTTP/JSON via Kong eller integrationsplattform | Applikationens tilldelningsflöden | Verifiera HSA-id och hämta namnkomponenter/e-post för Kravansvarsperson |
 <!-- markdownlint-enable MD013 -->
 
 ### MCP-integration (AI-agenter)
@@ -674,7 +674,7 @@ SQL Server-databas.
 
 För aktuella kravansvarstilldelningar gör applikationen ett
 server-side personuppslag mot HSA när en behörig användare
-verifierar eller manuellt hämtar om ett HSA-ID i redigeringsflöden.
+verifierar eller manuellt hämtar om ett HSA-id i redigeringsflöden.
 Om en lokal Kravansvarsperson redan finns återanvänds den när fältet
 lämnas. Webbläsaren anropar endast applikationens
 egna skyddade API:er, till exempel
@@ -689,9 +689,9 @@ integrationsplattform, där transformation mot HSA SOAP hanteras utanför
 Kravhanterings applikationskod.
 
 Svaret används för att skapa eller uppdatera
-`requirement_responsibility_people`, där HSA-ID, namnkomponenter,
+`requirement_responsibility_people`, där HSA-id, namnkomponenter,
 e-post och hämtningstid samlas för aktuell visning. Levande
-tilldelningstabeller sparar bara HSA-ID och pekar på
+tilldelningstabeller sparar bara HSA-id och pekar på
 Kravansvarsperson. Sparflöden gör inga HSA-anrop utan kräver att
 Kravansvarsperson redan finns lokalt, med en kort omläsning för att
 fånga en verifiering som nyss slutförts. Läsvyer gör inga HSA-anrop
@@ -782,7 +782,7 @@ Webbläsaren initierar autentiseringsbegäran och tar emot svaret via
 applikationens callback, medan applikationsgränsen ansvarar för
 tokenutbyte, JWKS-/nyckelhämtning och logout mot identitetsleverantören.
 HSA-flödet är däremot enbart server-side: redigeringsflöden i
-applikationen verifierar HSA-ID via Kong eller integrationsplattformen,
+applikationen verifierar HSA-id via Kong eller integrationsplattformen,
 hämtar persondata när lokal Kravansvarsperson saknas eller när användaren
 begär ny hämtning, och sparar resultatet lokalt som Kravansvarsperson.
 
@@ -846,6 +846,14 @@ ansvar:
 
 ```mermaid
 erDiagram
+    hsa_id_prefixes {
+        integer id PK
+        text prefix UK
+        text label
+        integer is_visible
+        integer is_default
+    }
+
     requirements ||--o{ requirement_versions : "har versioner"
     requirements }o--|| requirement_areas : "tillhör kravområde"
     requirement_versions }o--|| requirement_statuses : "kravversionsstatus"
@@ -925,7 +933,7 @@ kravbibliotek kan användas i flera verksamhetssammanhang.
 `specification_needs_references` är kravunderlagslokala etiketter med valfri
 beskrivning och uppdateringstid; både bibliotekskrav och kravunderlagets unika
 krav pekar på dem inom samma kravunderlag.
-Kravområden, kravunderlag och kravpaket lagrar bara HSA-ID för levande
+Kravområden, kravunderlag och kravpaket lagrar bara HSA-id för levande
 kravansvarstilldelningar. Namnkomponenter och e-post för aktuell visning
 samlas i `requirement_responsibility_people`, så samma Kravansvarsperson inte
 upprepas på varje tilldelning.
@@ -937,7 +945,7 @@ upprepas på varje tilldelning.
 > Kravpaket är författat enspråkigt innehåll med `name`,
 > `description`, `lead_hsa_id` och `is_archived`; de ägs inte längre via
 > `owners`. `requirement_package_co_authors` lagrar kravpaketsmedförfattare
-> som HSA-ID-tilldelningar.
+> som HSA-id-tilldelningar.
 >
 > **Kravurvalsfrågor.**
 > Kravområden äger frivilliga kravurvalsfrågor med stabila

@@ -17,6 +17,13 @@
     "hsaVerifyEmail": "Email",
     "hsaVerifyError": "Could not fetch person details.",
     "hsaVerifyName": "Name",
+    "hsaPrefixCurrent": "Current prefix",
+    "hsaPrefixLabel": "HSA-id prefix",
+    "hsaPrefixLoadError": "Could not load HSA-id prefixes.",
+    "hsaPrefixMissing": "No HSA-id prefix has been configured. Ask an administrator to add one in Admin center.",
+    "hsaPrefixMissingOption": "No prefix configured",
+    "hsaSuffixLabel": "HSA-id suffix",
+    "hsaSuffixPlaceholder": "Suffix",
     "hsaVerifyUnavailable": "Not fetched",
     "clearSearch": "Clear search",
     "filter": "Filter",
@@ -106,7 +113,7 @@
     "continueSession": "Continue until expiry",
     "signedInAs": "Signed in as {name}",
     "userInfoTitle": "Account details",
-    "userInfoHsaId": "HSA-ID",
+    "userInfoHsaId": "HSA-id",
     "userInfoName": "Name",
     "userInfoEmail": "Email",
     "userInfoSubject": "Subject",
@@ -255,9 +262,9 @@
   },
   "privacyDataExport": {
     "title": "Personal data export",
-    "description": "Download the personal data that is connected to your HSA-ID in a structured JSON file or as a readable PDF.",
+    "description": "Download the personal data that is connected to your HSA-id in a structured JSON file or as a readable PDF.",
     "name": "Name",
-    "hsaId": "HSA-ID",
+    "hsaId": "HSA-id",
     "email": "Email",
     "exportJson": "Export JSON",
     "exportPdf": "Export PDF",
@@ -431,20 +438,20 @@
     "owner": "Requirement area owner",
     "changeOwner": "Change owner",
     "changeOwnerTitle": "Change requirement area owner",
-    "changeOwnerDescription": "Enter the HSA-ID that should own this requirement area from now on.",
-    "currentOwner": "Previous owner's HSA-ID",
-    "newOwner": "New owner's HSA-ID",
+    "changeOwnerDescription": "Enter the HSA-id that should own this requirement area from now on.",
+    "currentOwner": "Previous owner's HSA-id",
+    "newOwner": "New owner's HSA-id",
     "ownerChangeError": "Could not change owner.",
-    "ownerChangeInvalid": "Enter a valid HSA-ID.",
-    "ownerChangeSame": "Enter a different HSA-ID.",
+    "ownerChangeInvalid": "Enter a valid HSA-id.",
+    "ownerChangeSame": "Enter a different HSA-id.",
     "ownerChangeCoAuthorConflict": "The requirement area owner cannot also be requirement area co-author.",
     "help": {
       "prefix": "Enter the short uppercase prefix used when requirement IDs are generated for this requirement area. The prefix can only be changed when creating a new requirement area.",
       "name": "Enter the display name for this requirement area.",
       "description": "Optionally describe what kinds of requirements belong in this requirement area. Do not enter names or other details that can identify a living person.",
-      "owner": "Enter the HSA-ID for the person responsible for this requirement area. In edit mode the HSA-ID is read-only; use the change-owner button to switch owner.",
-      "currentOwner": "Shows the HSA-ID currently assigned to the requirement area.",
-      "newOwner": "Enter the replacement HSA-ID. The value must use the HSA-ID format and differ from the previous owner."
+      "owner": "Enter the HSA-id for the person responsible for this requirement area. In edit mode the HSA-id is read-only; use the change-owner button to switch owner.",
+      "currentOwner": "Shows the HSA-id currently assigned to the requirement area.",
+      "newOwner": "Enter the replacement HSA-id. The value must use the HSA-id format and differ from the previous owner."
     },
     "newArea": "New requirement area",
     "editArea": "Edit requirement area",
@@ -469,21 +476,21 @@
     "responsible": "Specification lead",
     "responsibleDisplayName": "Specification lead name",
     "responsibleDisplayNameHelp": "Enter the display name for the specification lead. Do not use this for the user who registers a deviation unless that person is also the specification lead.",
-    "responsibleHsaId": "Requirements specification lead HSA-ID",
-    "responsibleHsaIdHelp": "The specification lead is resolved by HSA-ID. When creating a specification, the field is locked to the signed-in user; when editing, use the change button to switch lead.",
-    "responsiblePairRequired": "Enter both specification lead name and specification lead HSA-ID, or leave both empty.",
-    "invalidResponsibleHsaId": "Check the specification lead HSA-ID. The format is two uppercase country-code letters, 10 digits, a hyphen, and an alphanumeric suffix.",
+    "responsibleHsaId": "Requirements specification lead HSA-id",
+    "responsibleHsaIdHelp": "The specification lead is resolved by HSA-id. When creating a specification, the field is locked to the signed-in user; when editing, use the change button to switch lead.",
+    "responsiblePairRequired": "Enter both specification lead name and specification lead HSA-id, or leave both empty.",
+    "invalidResponsibleHsaId": "Check the specification lead HSA-id. The format is two uppercase country-code letters, 10 digits, a hyphen, and an alphanumeric suffix.",
     "currentUserLoading": "Loading signed-in user…",
-    "currentUserUnavailable": "Could not read the signed-in user's HSA-ID. A requirements specification cannot be created until an HSA-ID is available.",
+    "currentUserUnavailable": "Could not read the signed-in user's HSA-id. A requirements specification cannot be created until an HSA-id is available.",
     "changeResponsible": "Change specification lead",
     "changeResponsibleTitle": "Change specification lead",
-    "changeResponsibleDescription": "Change the specification lead by entering and verifying a new HSA-ID.",
-    "currentResponsibleHsaId": "Previous requirements specification lead HSA-ID",
-    "currentResponsibleHsaIdHelp": "Shows the HSA-ID currently assigned to this specification.",
-    "newResponsibleHsaId": "New requirements specification lead HSA-ID",
-    "newResponsibleHsaIdHelp": "Enter the replacement HSA-ID. The value must use the HSA-ID format and differ from the current lead.",
+    "changeResponsibleDescription": "Change the specification lead by entering and verifying a new HSA-id.",
+    "currentResponsibleHsaId": "Previous requirements specification lead HSA-id",
+    "currentResponsibleHsaIdHelp": "Shows the HSA-id currently assigned to this specification.",
+    "newResponsibleHsaId": "New requirements specification lead HSA-id",
+    "newResponsibleHsaIdHelp": "Enter the replacement HSA-id. The value must use the HSA-id format and differ from the current lead.",
     "responsibleChangeError": "Could not change the specification lead.",
-    "responsibleChangeInvalid": "Check the new specification lead HSA-ID.",
+    "responsibleChangeInvalid": "Check the new specification lead HSA-id.",
     "responsibleChangeSame": "The new specification lead must differ from the current lead.",
     "responsibleChangeCoAuthorConflict": "The specification lead cannot also be specification co-author.",
     "responsibleChangeUnsavedConfirm": "You have unsaved changes in the specification. The lead change is saved separately and your unsaved changes are discarded if the form closes.",
@@ -788,25 +795,25 @@
     "lead": "Requirements package lead",
     "leadDisplayName": "Requirements package lead name",
     "leadDisplayNameHelp": "Enter the display name for the person responsible for this requirements package.",
-    "leadHsaId": "Requirements package lead HSA-ID",
-    "leadHsaIdHelp": "Enter the requirements package lead HSA-ID with two uppercase country-code letters, a 10-digit organization number, a hyphen, and an alphanumeric suffix.",
+    "leadHsaId": "Requirements package lead HSA-id",
+    "leadHsaIdHelp": "Enter the requirements package lead HSA-id with two uppercase country-code letters, a 10-digit organization number, a hyphen, and an alphanumeric suffix.",
     "changeLead": "Change requirements package lead",
     "changeLeadTitle": "Change requirements package lead",
-    "changeLeadDescription": "Enter the HSA-ID that should lead this requirements package from now on.",
-    "currentLeadHsaId": "Previous requirements package lead HSA-ID",
-    "currentLeadHsaIdHelp": "Shows the HSA-ID currently assigned to the requirements package.",
-    "newLeadHsaId": "New requirements package lead HSA-ID",
-    "newLeadHsaIdHelp": "Enter the replacement HSA-ID. The value must use the HSA-ID format, differ from the previous lead, and must not be a package co-author.",
+    "changeLeadDescription": "Enter the HSA-id that should lead this requirements package from now on.",
+    "currentLeadHsaId": "Previous requirements package lead HSA-id",
+    "currentLeadHsaIdHelp": "Shows the HSA-id currently assigned to the requirements package.",
+    "newLeadHsaId": "New requirements package lead HSA-id",
+    "newLeadHsaIdHelp": "Enter the replacement HSA-id. The value must use the HSA-id format, differ from the previous lead, and must not be a package co-author.",
     "leadChangeError": "Could not change requirements package lead.",
-    "leadChangeInvalid": "Enter a valid HSA-ID.",
-    "leadChangeSame": "Enter a different HSA-ID.",
+    "leadChangeInvalid": "Enter a valid HSA-id.",
+    "leadChangeSame": "Enter a different HSA-id.",
     "leadChangeCoAuthorConflict": "The requirements package lead cannot also be requirements package co-author.",
     "leadChangeUnsavedConfirm": "You have unsaved changes in this requirements package. If you change the requirements package lead now, the form will close and those changes will be lost.",
-    "currentUserUnavailable": "The signed-in user's HSA-ID could not be loaded. Sign in again before creating a requirements package.",
+    "currentUserUnavailable": "The signed-in user's HSA-id could not be loaded. Sign in again before creating a requirements package.",
     "coAuthors": "Package co-authors",
-    "coAuthorsHelp": "Add HSA-IDs for people who support the requirements package lead.",
-    "coAuthorHsaId": "Co-author HSA-ID",
-    "coAuthorHsaIdHelp": "Enter the co-author HSA-ID with two uppercase country-code letters, a 10-digit organization number, a hyphen, and an alphanumeric suffix.",
+    "coAuthorsHelp": "Add HSA-id values for people who support the requirements package lead.",
+    "coAuthorHsaId": "Co-author HSA-id",
+    "coAuthorHsaIdHelp": "Enter the co-author HSA-id with two uppercase country-code letters, a 10-digit organization number, a hyphen, and an alphanumeric suffix.",
     "addCoAuthor": "Add co-author",
     "removeCoAuthor": "Remove co-author",
     "noCoAuthors": "No package co-authors.",
@@ -977,18 +984,45 @@
     "adminCenterDescription": "Update default column settings and admin settings.",
     "columns": "Columns",
     "columnsDescription": "Control the default order and visibility of the requirements list columns.",
+    "identity": {
+      "title": "Identity",
+      "description": "Manage the HSA-id prefixes that are offered when users enter HSA-id values.",
+      "addPrefix": "Add prefix",
+      "defaultMustBeVisible": "The default HSA-id prefix must be visible.",
+      "defaultPrefix": "Default",
+      "defaultRequired": "Select one visible HSA-id prefix as the default.",
+      "disabledTooltip": "You need the Administrator role.",
+      "duplicatePrefix": "Each HSA-id prefix must be unique.",
+      "emptyPrefixes": "No HSA-id prefixes are configured. HSA-id suffix fields stay locked until an administrator adds a visible prefix.",
+      "fieldHelp": {
+        "defaultPrefix": "Choose the prefix that should be preselected for new empty HSA-id fields. The default prefix must be visible.",
+        "label": "Optionally add a short display label. Users see the label together with the prefix in HSA-id prefix lists.",
+        "prefix": "Enter the part before the hyphen in an HSA-id: two uppercase country-code letters followed by ten digits.",
+        "visible": "Visible prefixes are offered in HSA-id prefix lists. Hide a used prefix when it should remain valid for existing assignments but no longer be offered for new ones."
+      },
+      "invalidPrefix": "Enter each HSA-id prefix as two uppercase letters followed by ten digits.",
+      "label": "Label",
+      "loadError": "Could not load HSA-id prefixes.",
+      "prefix": "HSA-id prefix",
+      "removePrefix": "Remove prefix",
+      "saveError": "Could not save HSA-id prefixes.",
+      "usedPrefix": "This prefix has been used in an HSA-id and can be hidden, but not removed.",
+      "usedPrefixDeleteBlocked": "Used HSA-id prefixes cannot be removed. Hide the prefix instead.",
+      "visible": "Visible"
+    },
+    "identityDescription": "Manage HSA-id prefixes for editable responsibility fields.",
     "taxonomy": "Taxonomy",
     "taxonomyDescription": "Open classification pages used for filtering, reporting, and AI support.",
     "statusesAndWorkflows": "Statuses and workflows",
     "statusesAndWorkflowsDescription": "Open status catalogs that control life cycles, workflow steps, and requirement use in specifications.",
     "accessReviewDescription": "Create recurring reviews of app-managed assignments, decide each access row, and export review evidence.",
-    "privacyDescription": "Preview HSA-ID based matches, export data, and execute GDPR erasure for actor identity snapshots and live assignments.",
+    "privacyDescription": "Preview HSA-id based matches, export data, and execute GDPR erasure for actor identity snapshots and live assignments.",
     "auditLog": {
       "title": "Action log",
       "eyebrow": "Action log",
       "description": "Search application mutations and authorization denials recorded in the database.",
       "exportCsv": "Export CSV",
-      "actorHsaId": "Actor HSA-ID",
+      "actorHsaId": "Actor HSA-id",
       "action": "Action",
       "targetKind": "Target type",
       "targetId": "Target ID",
@@ -1013,17 +1047,17 @@
     },
     "privacy": {
       "title": "Privacy",
-      "targetHsaId": "HSA-ID to search for",
-      "replacementHsaId": "Replacement HSA-ID",
+      "targetHsaId": "HSA-id to search for",
+      "replacementHsaId": "Replacement HSA-id",
       "replacementName": "Replacement name",
       "replacementFirstName": "Replacement first name",
       "replacementLastName": "Replacement last name",
       "replacementEmail": "Replacement email address",
       "replacementEmailOptional": "Email address is optional.",
       "fieldHelp": {
-        "targetHsaId": "Enter the HSA-ID to search for before preview, export, or erasure. Every match uses the exact HSA-ID. Names are not used for matching, so there is no separate name search field.",
-        "replacementHsaId": "Enter the HSA-ID for the person who should take over live assignments, such as owner, co-author, or specification lead. This field must be combined with replacement name before the Switch action can be used.",
-        "replacementName": "Enter the display name snapshot to store for the replacement person. The name helps the operator confirm the switch, but HSA-ID remains the durable identity.",
+        "targetHsaId": "Enter the HSA-id to search for before preview, export, or erasure. Every match uses the exact HSA-id. Names are not used for matching, so there is no separate name search field.",
+        "replacementHsaId": "Enter the HSA-id for the person who should take over live assignments, such as owner, co-author, or specification lead. This field must be combined with replacement name before the Switch action can be used.",
+        "replacementName": "Enter the display name snapshot to store for the replacement person. The name helps the operator confirm the switch, but HSA-id remains the durable identity.",
         "replacementFirstName": "Optional. Enter the exact first-name value for the owner record when the display name cannot be split reliably.",
         "replacementLastName": "Optional. Enter the exact last-name value for the owner record when the display name cannot be split reliably.",
         "replacementEmail": "Optional. Enter an email address when a replacement owner should be created or updated so requirement areas and packages keep the right contact details after the switch."
@@ -1039,9 +1073,9 @@
       "executeError": "Could not execute privacy erasure.",
       "disabledTooltip": "You need the Privacy officer permission.",
       "permissionError": "You need the Privacy officer role. Sign in as a privacy officer to run privacy erasure.",
-      "replacementIncomplete": "Enter both replacement HSA-ID and replacement name, or leave both fields empty to anonymize.",
+      "replacementIncomplete": "Enter both replacement HSA-id and replacement name, or leave both fields empty to anonymize.",
       "invalidReplacementEmail": "Check the replacement email address.",
-      "invalidHsaId": "Check the HSA-ID. The format is two uppercase country-code letters, 10 digits, a hyphen, and an alphanumeric suffix.",
+      "invalidHsaId": "Check the HSA-id. The format is two uppercase country-code letters, 10 digits, a hyphen, and an alphanumeric suffix.",
       "serverPreviewError": "The server could not preview privacy erasure.",
       "serverExecuteError": "The server could not execute privacy erasure.",
       "serverErrorWithDetail": "{message} Technical detail: {detail}",
@@ -1051,8 +1085,8 @@
       "confirmTitle": "Execute privacy erasure",
       "confirmMessage": "This will switch {switch}, anonymize {anonymize}, delete {delete}, and skip {skip} occurrence(s).",
       "guidanceTitle": "Recommended handling and export",
-      "guidanceBody": "Use the preview to verify exactly which HSA-ID matches can be exported or erased. Export does not change the data. Live assignments, including specification leads, are usually switched to another HSA-ID during erasure. Historical creator, decision, and resolution fields are usually anonymized instead of reassigned. Description and free-text fields are not scanned because the UI instructs users not to enter person-identifying details there.",
-      "previewResult": "{count} HSA-ID occurrence(s)",
+      "guidanceBody": "Use the preview to verify exactly which HSA-id matches can be exported or erased. Export does not change the data. Live assignments, including specification leads, are usually switched to another HSA-id during erasure. Historical creator, decision, and resolution fields are usually anonymized instead of reassigned. Description and free-text fields are not scanned because the UI instructs users not to enter person-identifying details there.",
+      "previewResult": "{count} HSA-id occurrence(s)",
       "object": "Object",
       "count": "Count",
       "affected": "Affected objects",
@@ -1075,7 +1109,7 @@
       "executionErrors": {
         "owner_area_references_blocking": "Requirement areas must be switched before the owner can be changed.",
         "owner_references_blocking": "Owner references must be switched before the owner can be deleted.",
-        "replacement_required": "Replacement HSA-ID and replacement name are required for the selected action.",
+        "replacement_required": "Replacement HSA-id and replacement name are required for the selected action.",
         "unsupported_owner_action": "The owner row does not support the selected action.",
         "unsupported_privacy_action": "The row does not support the selected action."
       },
@@ -1121,14 +1155,14 @@
         "ownerAreaSwitchOnly": "This owner is assigned to requirement areas. Switch those assignments to the replacement owner, or skip the owner row.",
         "ownerPackageSwitchOnly": "This owner is assigned to requirement packages. Switch those assignments to the replacement owner, or skip the owner row.",
         "ownerAreaAndPackageSwitchOnly": "This owner is assigned to requirement areas and packages. Switch those assignments to the replacement owner, or skip the owner row.",
-        "liveAssignment": "Live assignments normally switch to the replacement HSA-ID. Without a replacement, remove co-author rows or keep the anonymized owner.",
+        "liveAssignment": "Live assignments normally switch to the replacement HSA-id. Without a replacement, remove co-author rows or keep the anonymized owner.",
         "historySwitch": "Switching historical authorship can change the record's meaning. Anonymize is the default.",
         "decisionSwitch": "Decisions and resolutions should not be reassigned unless legally documented. Anonymize is the default."
       },
       "blockers": {
-        "ownerAreaReplacementRequired": "This owner is assigned to requirement areas. Update those areas first or specify a replacement HSA-ID and name.",
-        "ownerPackageReplacementRequired": "This owner is assigned to requirement packages. Update those packages first or specify a replacement HSA-ID and name.",
-        "ownerAreaAndPackageReplacementRequired": "This owner is assigned to requirement areas and packages. Update those assignments first or specify a replacement HSA-ID and name."
+        "ownerAreaReplacementRequired": "This owner is assigned to requirement areas. Update those areas first or specify a replacement HSA-id and name.",
+        "ownerPackageReplacementRequired": "This owner is assigned to requirement packages. Update those packages first or specify a replacement HSA-id and name.",
+        "ownerAreaAndPackageReplacementRequired": "This owner is assigned to requirement areas and packages. Update those assignments first or specify a replacement HSA-id and name."
       },
       "readOnly": {
         "controlledByOwner": "Shown for information. Requirement areas and packages are switched automatically when the owner row is switched."
@@ -1607,6 +1641,10 @@
         "heading": "Default columns",
         "body": "Set which columns appear by default in the requirements library and in what order. Users can still override column visibility per session. Locked columns are always shown."
       },
+      "identity": {
+        "heading": "Identity settings",
+        "body": "Manage HSA-id prefixes used by editable HSA-id fields. Prefixes are UI guidance only; server-side HSA-id validation still accepts every syntactically valid HSA-id."
+      },
       "taxonomy": {
         "heading": "Taxonomy",
         "body": "Quick links to classifications used for filtering, reporting, and AI support: requirement areas, categories, types, risk levels, quality characteristics, governance object types, and implementation types."
@@ -1617,7 +1655,7 @@
       },
       "privacy": {
         "heading": "Privacy erasure",
-        "body": "Use the Privacy tab for GDPR erasure work. Matches are made by HSA-ID only; names are shown for confirmation and never create matches."
+        "body": "Use the Privacy tab for GDPR erasure work. Matches are made by HSA-id only; names are shown for confirmation and never create matches."
       },
       "accessReview": {
         "heading": "Access review",
@@ -1628,19 +1666,19 @@
       "title": "Privacy",
       "overview": {
         "heading": "Purpose",
-        "body": "The Privacy tab is used when an authorized officer needs to preview and execute GDPR erasure for actor identities. It handles structured identity fields such as requirement area owner HSA-IDs, package leads, creators, decision makers, and co-authors. Free-text fields are not scanned because users are instructed not to enter person-identifying details there."
+        "body": "The Privacy tab is used when an authorized officer needs to preview and execute GDPR erasure for actor identities. It handles structured identity fields such as requirement area owner HSA-id values, package leads, creators, decision makers, and co-authors. Free-text fields are not scanned because users are instructed not to enter person-identifying details there."
       },
       "permissions": {
         "heading": "Permission",
         "body": "The workflow requires the Privacy officer role. The role is intentionally narrow: it grants access to this privacy workflow but should not grant unrelated administrative powers."
       },
       "search": {
-        "heading": "Search by HSA-ID",
-        "body": "Start by entering the person's HSA-ID. Every match uses the exact HSA-ID, not the name. That prevents two people with the same name from being mixed together. Names are shown only as confirmation support in the preview."
+        "heading": "Search by HSA-id",
+        "body": "Start by entering the person's HSA-id. Every match uses the exact HSA-id, not the name. That prevents two people with the same name from being mixed together. Names are shown only as confirmation support in the preview."
       },
       "replacement": {
         "heading": "Replacement",
-        "body": "Enter a replacement HSA-ID when live assignments should move to another person. If no replacement is supplied, historical identity fields are anonymized where allowed."
+        "body": "Enter a replacement HSA-id when live assignments should move to another person. If no replacement is supplied, historical identity fields are anonymized where allowed."
       },
       "preview": {
         "heading": "Preview",
@@ -1656,7 +1694,7 @@
       },
       "audit": {
         "heading": "Traceability",
-        "body": "The system writes a security audit event to the platform log stream with the handler identity, request id, action counts, and a non-reversible target fingerprint. That log is not a database table, is not shown in the preview, and is not rewritten by this workflow. The raw HSA-ID and name for the erased person are not logged."
+        "body": "The system writes a security audit event to the platform log stream with the handler identity, request id, action counts, and a non-reversible target fingerprint. That log is not a database table, is not shown in the preview, and is not rewritten by this workflow. The raw HSA-id and name for the erased person are not logged."
       },
       "caveats": {
         "heading": "Important limits",
@@ -1686,7 +1724,7 @@
       "title": "Personal data export",
       "description": {
         "heading": "What is included",
-        "body": "The export contains structured personal data that is connected to your verified HSA-ID, such as owner records, creator snapshots, decisions, co-author assignments, and current session claims."
+        "body": "The export contains structured personal data that is connected to your verified HSA-id, such as owner records, creator snapshots, decisions, co-author assignments, and current session claims."
       },
       "formats": {
         "heading": "JSON and PDF",

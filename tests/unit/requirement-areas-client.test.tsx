@@ -48,6 +48,13 @@ const sampleAreas = [
   },
 ]
 
+const hsaIdPrefixPayload = {
+  prefixes: [
+    { id: 1, isDefault: true, label: null, prefix: 'SE5560000001' },
+    { id: 2, isDefault: false, label: null, prefix: 'NO5560000001' },
+  ],
+}
+
 describe('RequirementAreasClient', () => {
   afterEach(cleanup)
 
@@ -56,11 +63,12 @@ describe('RequirementAreasClient', () => {
     fetchMock.mockImplementation(async (url: string) => {
       if (url === '/api/requirement-areas')
         return okJson({ areas: sampleAreas })
+      if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
       return okJson({})
     })
   })
 
-  it('renders areas with owner HSA-ID', async () => {
+  it('renders areas with owner HSA-id', async () => {
     render(<RequirementAreasClient />)
 
     await waitFor(() => {
@@ -73,7 +81,7 @@ describe('RequirementAreasClient', () => {
     expect(urls).not.toContain('/api/owners')
   })
 
-  it('creates a requirement area with an editable owner HSA-ID field', async () => {
+  it('creates a requirement area with an editable owner HSA-id field', async () => {
     render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
@@ -88,9 +96,11 @@ describe('RequirementAreasClient', () => {
       target: { value: 'New requirement area' },
     })
     const ownerInput = screen.getByRole('textbox', { name: /area\.owner/ })
-    expect(ownerInput).toBeEnabled()
+    await waitFor(() => {
+      expect(ownerInput).toBeEnabled()
+    })
     fireEvent.change(ownerInput, {
-      target: { value: 'SE5560000001-new1' },
+      target: { value: 'new1' },
     })
 
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
@@ -98,6 +108,7 @@ describe('RequirementAreasClient', () => {
         return okJson({ id: 3 })
       if (url === '/api/requirement-areas')
         return okJson({ areas: sampleAreas })
+      if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
       return okJson({})
     })
 
@@ -124,7 +135,7 @@ describe('RequirementAreasClient', () => {
     )
   })
 
-  it('shows owner HSA-ID as read-only when editing', async () => {
+  it('shows owner HSA-id as read-only when editing', async () => {
     render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
@@ -200,14 +211,23 @@ describe('RequirementAreasClient', () => {
       name: /area\.changeOwner/,
     })
     expect(changeOwnerButton).toBeDisabled()
+    await waitFor(() => {
+      expect(newOwnerInput).toBeEnabled()
+    })
 
     fireEvent.change(newOwnerInput, {
-      target: { value: 'SE5560000001-annaj' },
+      target: { value: 'annaj' },
     })
     expect(changeOwnerButton).toBeDisabled()
 
+    fireEvent.change(
+      within(dialog).getByRole('combobox', {
+        name: /common\.hsaPrefixLabel/,
+      }),
+      { target: { value: 'NO5560000001' } },
+    )
     fireEvent.change(newOwnerInput, {
-      target: { value: 'NO5560000001-next1' },
+      target: { value: 'next1' },
     })
     expect(changeOwnerButton).toBeEnabled()
 
@@ -224,6 +244,7 @@ describe('RequirementAreasClient', () => {
             sampleAreas[1],
           ],
         })
+      if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
       return okJson({})
     })
 
@@ -261,16 +282,20 @@ describe('RequirementAreasClient', () => {
     fireEvent.click(screen.getByRole('button', { name: /area\.changeOwner/ }))
 
     const dialog = screen.getByRole('dialog')
-    fireEvent.change(
-      within(dialog).getByRole('textbox', { name: /area\.newOwner/ }),
-      { target: { value: 'SE5560000001-next1' } },
-    )
+    const newOwnerInput = within(dialog).getByRole('textbox', {
+      name: /area\.newOwner/,
+    })
+    await waitFor(() => {
+      expect(newOwnerInput).toBeEnabled()
+    })
+    fireEvent.change(newOwnerInput, { target: { value: 'next1' } })
 
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === '/api/requirement-areas/1' && init?.method === 'PUT')
         return errJson({ error: 'Owner change failed' }, 400, 'Bad Request')
       if (url === '/api/requirement-areas')
         return okJson({ areas: sampleAreas })
+      if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
       return okJson({})
     })
 

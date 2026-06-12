@@ -4,11 +4,11 @@ Status: Antagen 2026-06-05.
 
 Kravhantering auktoriserar i dag från det verifierade aktörssammanhang som
 beskrivs i ADR 0007, med kanoniska IdP-roller som `Admin`, `Reviewer` och
-`PrivacyOfficer`, samt HSA-ID-matchning där ett arbetsflöde har en tilldelad
+`PrivacyOfficer`, samt HSA-id-matchning där ett arbetsflöde har en tilldelad
 aktör. `Admin` skyddar Admin Center och mutationer av referensdata,
 `PrivacyOfficer` skyddar dataskydds- och retentionsflöden, och körningar för
 behörighetsöversyn hanteras av administratörer medan tilldelade granskare får
-besluta sina egna granskningsrader genom verifierat HSA-ID.
+besluta sina egna granskningsrader genom verifierat HSA-id.
 
 Behörighet för kravbibliotek, kravunderlag, avsteg, förslag, rapporter och
 live AI-assisterat författande dokumenteras avsiktligt inte här som en färdig

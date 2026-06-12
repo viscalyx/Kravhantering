@@ -33,7 +33,7 @@ Each row contains:
 
 `details_json` is restricted to operational metadata such as IDs, counts,
 operation names, status IDs, tool names, and route/source. It must not contain
-requirement text, prompts, comments, names, e-mail, target HSA-ID values,
+requirement text, prompts, comments, names, e-mail, target HSA-id values,
 tokens, secrets, or submitted free text.
 
 Requirement-selection cleanup events use action

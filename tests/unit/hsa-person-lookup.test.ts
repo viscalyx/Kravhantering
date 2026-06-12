@@ -27,7 +27,7 @@ describe('HSA person lookup', () => {
     })
   })
 
-  it('posts HSA-ID as JSON and maps split person fields', async () => {
+  it('posts HSA-id as JSON and maps split person fields', async () => {
     const fetchImpl = vi.fn(
       async () =>
         new Response(
@@ -67,7 +67,7 @@ describe('HSA person lookup', () => {
     })
   })
 
-  it('rejects invalid HSA-ID before calling the integration endpoint', async () => {
+  it('rejects invalid HSA-id before calling the integration endpoint', async () => {
     const fetchImpl = vi.fn()
 
     await expect(

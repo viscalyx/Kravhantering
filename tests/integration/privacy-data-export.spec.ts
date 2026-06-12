@@ -52,7 +52,7 @@ test('admin privacy preview can export JSON and PDF for the preview target', asy
 
   await page.goto('/sv/admin?tab=privacy')
   await page
-    .getByRole('textbox', { name: 'HSA-ID att söka efter' })
+    .getByRole('textbox', { name: 'HSA-id att söka efter' })
     .fill('SE5560000001-linneab')
   await page.getByRole('button', { name: 'Förhandsgranska' }).click()
 

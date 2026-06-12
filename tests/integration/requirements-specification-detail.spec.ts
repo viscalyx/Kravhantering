@@ -69,7 +69,7 @@ for (const viewport of viewports) {
       await expect(splitPanel).toHaveAttribute('class', splitPanelClassesBefore)
       const editForm = editDialog.locator('form#requirement-specification-form')
       const responsibleInput = editForm.getByRole('textbox', {
-        name: 'Kravunderlagsansvarigs HSA-ID',
+        name: 'Kravunderlagsansvarigs HSA-id',
       })
       await expect(responsibleInput).toHaveAttribute('readonly', '')
       await expect(editForm.getByText('Emma Lindqvist')).toBeVisible()
@@ -85,12 +85,12 @@ for (const viewport of viewports) {
       await expect(changeDialog).toBeVisible()
       await expect(
         changeDialog.getByRole('textbox', {
-          name: 'Förra kravunderlagsansvarigs HSA-ID',
+          name: 'Förra kravunderlagsansvarigs HSA-id',
         }),
       ).toHaveValue(currentResponsibleHsaId)
       await expect(
         changeDialog.getByRole('textbox', {
-          name: 'Nya kravunderlagsansvarigs HSA-ID',
+          name: 'Nya kravunderlagsansvarigs HSA-id',
         }),
       ).toBeVisible()
     })

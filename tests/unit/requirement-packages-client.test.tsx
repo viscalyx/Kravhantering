@@ -63,6 +63,9 @@ const currentAuthMe = {
   name: 'Ada Admin',
   roles: ['Admin'],
 }
+const hsaIdPrefixPayload = {
+  prefixes: [{ id: 1, isDefault: true, label: null, prefix: 'SE5560000001' }],
+}
 
 const sampleRequirementPackages = [
   {
@@ -99,6 +102,7 @@ function setupRequirementPackageMocks(
   fetchMock.mockImplementation(async (url: string) => {
     const urlString = requestUrl(url)
     if (urlString === '/api/auth/me') return okJson(currentAuthMe)
+    if (urlString === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
     if (urlString.startsWith('/api/requirement-packages?')) {
       return okJson({ requirementPackages: sampleRequirementPackages })
     }
@@ -129,6 +133,8 @@ describe('RequirementPackagesClient', () => {
     fetchMock.mockImplementation(async (url: string) => {
       const urlString = requestUrl(url)
       if (urlString === '/api/auth/me') return okJson(currentAuthMe)
+      if (urlString === '/api/hsa-id-prefixes')
+        return okJson(hsaIdPrefixPayload)
       if (urlString.startsWith('/api/requirement-packages?')) {
         return okJson({ requirementPackages: sampleRequirementPackages })
       }
@@ -152,7 +158,7 @@ describe('RequirementPackagesClient', () => {
     })
   })
 
-  it('keeps create disabled until the signed-in HSA-ID is loaded', async () => {
+  it('keeps create disabled until the signed-in HSA-id is loaded', async () => {
     let resolveAuth!: (response: unknown) => void
     const authPromise = new Promise(resolve => {
       resolveAuth = resolve
@@ -183,7 +189,7 @@ describe('RequirementPackagesClient', () => {
     })
   })
 
-  it('shows an error and keeps create disabled when the signed-in HSA-ID is missing', async () => {
+  it('shows an error and keeps create disabled when the signed-in HSA-id is missing', async () => {
     fetchMock.mockImplementation(async (url: string) => {
       const urlString = requestUrl(url)
       if (urlString === '/api/auth/me') return okJson({ authenticated: false })
@@ -480,7 +486,7 @@ describe('RequirementPackagesClient', () => {
     })
   })
 
-  it('submits package co-authors as HSA-ID assignments', async () => {
+  it('submits package co-authors as HSA-id assignments', async () => {
     render(<RequirementPackagesClient />)
     await waitFor(() => {
       expect(screen.getByText('Mobile use')).toBeInTheDocument()
@@ -500,12 +506,13 @@ describe('RequirementPackagesClient', () => {
         name: /requirementPackage\.addCoAuthor/i,
       }),
     )
-    fireEvent.change(
-      screen.getByRole('textbox', {
-        name: /requirementPackage\.coAuthorHsaId/,
-      }),
-      { target: { value: 'SE5560000001-coa1' } },
-    )
+    const coAuthorInput = screen.getByRole('textbox', {
+      name: /requirementPackage\.coAuthorHsaId/,
+    })
+    await waitFor(() => {
+      expect(coAuthorInput).toBeEnabled()
+    })
+    fireEvent.change(coAuthorInput, { target: { value: 'coa1' } })
 
     fetchMock.mockResolvedValueOnce(okJson({ id: 2 }))
     fetchMock.mockResolvedValueOnce(
@@ -628,16 +635,19 @@ describe('RequirementPackagesClient', () => {
         name: /requirementPackage\.currentLeadHsaId/,
       }),
     ).toHaveValue('SE5560000001-anna1')
-    fireEvent.change(
-      within(changeDialog).getByRole('textbox', {
-        name: /requirementPackage\.newLeadHsaId/,
-      }),
-      { target: { value: 'SE5560000001-new1' } },
-    )
+    const newLeadInput = within(changeDialog).getByRole('textbox', {
+      name: /requirementPackage\.newLeadHsaId/,
+    })
+    await waitFor(() => {
+      expect(newLeadInput).toBeEnabled()
+    })
+    fireEvent.change(newLeadInput, { target: { value: 'new1' } })
 
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       const urlString = requestUrl(url)
       if (urlString === '/api/auth/me') return okJson(currentAuthMe)
+      if (urlString === '/api/hsa-id-prefixes')
+        return okJson(hsaIdPrefixPayload)
       if (urlString === '/api/requirement-packages/1' && init?.method === 'PUT')
         return okJson({
           id: 1,
@@ -691,6 +701,8 @@ describe('RequirementPackagesClient', () => {
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       const urlString = requestUrl(url)
       if (urlString === '/api/auth/me') return okJson(nonAdminAuthMe)
+      if (urlString === '/api/hsa-id-prefixes')
+        return okJson(hsaIdPrefixPayload)
       if (urlString === '/api/requirement-packages/1' && init?.method === 'PUT')
         return okJson({ id: 1, leadHsaId: 'SE5560000001-next1' })
       if (urlString.startsWith('/api/requirement-packages?')) {
@@ -715,12 +727,13 @@ describe('RequirementPackagesClient', () => {
     const changeDialog = screen.getByRole('dialog', {
       name: /requirementPackage\.changeLeadTitle/,
     })
-    fireEvent.change(
-      within(changeDialog).getByRole('textbox', {
-        name: /requirementPackage\.newLeadHsaId/,
-      }),
-      { target: { value: 'SE5560000001-next1' } },
-    )
+    const newLeadInput = within(changeDialog).getByRole('textbox', {
+      name: /requirementPackage\.newLeadHsaId/,
+    })
+    await waitFor(() => {
+      expect(newLeadInput).toBeEnabled()
+    })
+    fireEvent.change(newLeadInput, { target: { value: 'next1' } })
     fireEvent.click(
       within(changeDialog).getByRole('button', {
         name: /requirementPackage\.changeLead/,

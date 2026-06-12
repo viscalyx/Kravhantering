@@ -630,6 +630,117 @@ describe('AdminClient', () => {
     )
   })
 
+  it('loads and saves HSA-id prefixes from the identity tab', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=identity')
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        const method = init?.method ?? 'GET'
+        if (url === '/api/admin/hsa-id-prefixes' && method === 'GET') {
+          return Promise.resolve(
+            okJson({
+              prefixes: [
+                {
+                  id: 1,
+                  isDefault: true,
+                  isUsed: true,
+                  isVisible: true,
+                  label: null,
+                  prefix: 'SE5560000001',
+                },
+              ],
+            }),
+          )
+        }
+        if (url === '/api/admin/hsa-id-prefixes' && method === 'PUT') {
+          return Promise.resolve(
+            okJson({
+              prefixes: [
+                {
+                  id: 1,
+                  isDefault: true,
+                  isUsed: true,
+                  isVisible: true,
+                  label: 'Demo',
+                  prefix: 'SE5560000001',
+                },
+              ],
+            }),
+          )
+        }
+        return Promise.reject(new Error(`Unexpected fetch ${method} ${url}`))
+      },
+    )
+
+    render(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+      />,
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'admin.identity.title' }),
+    ).toBeVisible()
+    const saveButton = await screen.findByRole('button', {
+      name: 'common.save',
+    })
+    expect(saveButton).toBeEnabled()
+    expect(screen.getByDisplayValue('SE5560000001')).toBeDisabled()
+    fireEvent.change(screen.getByLabelText('admin.identity.label'), {
+      target: { value: 'Demo' },
+    })
+    fireEvent.click(saveButton)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/admin/hsa-id-prefixes',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/admin/hsa-id-prefixes' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    )
+    expect(
+      JSON.parse(((putCall?.[1] as RequestInit)?.body as string) ?? '{}'),
+    ).toEqual({
+      prefixes: [
+        {
+          id: 1,
+          isDefault: true,
+          isVisible: true,
+          label: 'Demo',
+          prefix: 'SE5560000001',
+        },
+      ],
+    })
+    expect(await screen.findByText('admin.saved')).toBeVisible()
+  })
+
+  it('blocks the identity tab without Admin permission', () => {
+    searchParamsMock.current = new URLSearchParams('tab=identity')
+
+    render(
+      <AdminClient
+        currentUserRoles={['PrivacyOfficer']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+      />,
+    )
+
+    const identityTab = screen.getByRole('tab', {
+      name: 'admin.identity.title',
+    })
+    expect(identityTab).toHaveAttribute('aria-disabled', 'true')
+    expect(identityTab).toHaveAttribute(
+      'title',
+      'admin.identity.disabledTooltip',
+    )
+    expect(identityTab).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'columns-panel')
+  })
+
   it.each([
     ['tab=accessReview', 'admin.accessReview.title'],
     ['tab=actionAuditLog', 'admin.auditLog.title'],
@@ -1898,7 +2009,7 @@ describe('AdminClient', () => {
     expect(screen.queryByText('SPEC0001 Gammalt kravunderlag')).toBeNull()
   })
 
-  it('previews duplicate-name privacy erasure by HSA-ID instead of name', async () => {
+  it('previews duplicate-name privacy erasure by HSA-id instead of name', async () => {
     searchParamsMock.current = new URLSearchParams('tab=privacy')
     fetchMock.mockResolvedValueOnce(
       okJson({
@@ -2345,7 +2456,7 @@ describe('AdminClient', () => {
     ).toBeNull()
   })
 
-  it('clears stale privacy preview rows when the target HSA-ID changes', async () => {
+  it('clears stale privacy preview rows when the target HSA-id changes', async () => {
     searchParamsMock.current = new URLSearchParams('tab=privacy')
     fetchMock.mockResolvedValueOnce(
       okJson({
@@ -2852,7 +2963,7 @@ describe('AdminClient', () => {
     expect(requirementAreaRow).toHaveTextContent('SEC Säkerhet')
   })
 
-  it('hides switch actions if the replacement HSA-ID is cleared after preview', async () => {
+  it('hides switch actions if the replacement HSA-id is cleared after preview', async () => {
     searchParamsMock.current = new URLSearchParams('tab=privacy')
     fetchMock.mockResolvedValueOnce(
       okJson({
@@ -3026,7 +3137,7 @@ describe('AdminClient', () => {
     )
   })
 
-  it('explains that replacement switching needs both HSA-ID and name', async () => {
+  it('explains that replacement switching needs both HSA-id and name', async () => {
     searchParamsMock.current = new URLSearchParams('tab=privacy')
     fetchMock.mockResolvedValueOnce({
       json: async () => ({

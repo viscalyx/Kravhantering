@@ -52,7 +52,7 @@ function requireAuthenticatedHumanHsaId(context: RequestContext): string {
 
   const hsaId = context.actor.hsaId
   if (!hsaId) {
-    throw forbiddenError('Verified actor HSA-ID is required', {
+    throw forbiddenError('Verified actor HSA-id is required', {
       reason: 'missing_actor_hsa_id',
     })
   }
@@ -95,7 +95,7 @@ export async function requireRequirementPackageLeadOrAdmin(
 
   const actorHsaId = context.actor.hsaId
   if (!actorHsaId) {
-    throw forbiddenError('Verified actor HSA-ID is required', {
+    throw forbiddenError('Verified actor HSA-id is required', {
       reason: 'missing_actor_hsa_id',
       requiredPermission: permission,
     })

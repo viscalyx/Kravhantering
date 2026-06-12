@@ -340,7 +340,7 @@ attribute with the `employeeHsaId` protocol mapper.
 The `kravhantering-mcp` Keycloak client is configured with the
 `oidc-hardcoded-claim-mapper` protocol mapper that emits
 `employeeHsaId = SE5560000001-mcp1` on the access token used by the MCP
-service-account flow. This gives MCP write workflows a real-format HSA-ID
+service-account flow. This gives MCP write workflows a real-format HSA-id
 for actor stamping in requirement history, deviations, and improvement
 suggestions.
 

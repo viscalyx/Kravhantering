@@ -112,7 +112,7 @@ describe('responsibility person verification', () => {
     expect(mocks.lookupHsaPerson).not.toHaveBeenCalled()
   })
 
-  it('fails invalid HSA-ID formats before local reads or retry delay', async () => {
+  it('fails invalid HSA-id formats before local reads or retry delay', async () => {
     await expect(
       resolveVerifiedRequirementResponsibilityPerson(
         'mock-db' as never,

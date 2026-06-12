@@ -151,8 +151,30 @@ const riskLevelsRoutePath = join(
   '[id]',
   'route.ts',
 )
+const adminHsaIdPrefixesRoutePath = join(
+  repoRoot,
+  'app',
+  'api',
+  'admin',
+  'hsa-id-prefixes',
+  'route.ts',
+)
 const adminCenterDocPath = join(repoRoot, 'docs', 'admin-center.md')
 const databaseSchemaDocPath = join(repoRoot, 'docs', 'database-schema.md')
+const hsaIdPrefixMigrationPath = join(
+  repoRoot,
+  'typeorm',
+  'migrations',
+  '0032_hsa_id_prefixes.mjs',
+)
+const seedPath = join(repoRoot, 'typeorm', 'seed.mjs')
+const requiredSeedPath = join(repoRoot, 'typeorm', 'seed-required.mjs')
+const uiSettingsPath = join(repoRoot, 'lib', 'dal', 'ui-settings.ts')
+const hsaPersonVerifyFieldPath = join(
+  repoRoot,
+  'components',
+  'HsaPersonVerifyField.tsx',
+)
 const requirementsServicePath = join(
   repoRoot,
   'lib',
@@ -300,6 +322,48 @@ it('Scenario 15: configurable status and risk icons use an allowlist and stay ad
   expect(databaseSchemaDoc).toContain('icon_name')
   expect(databaseSchemaDoc).toContain('`PenLine`')
   expect(databaseSchemaDoc).toContain('`ShieldCheck`')
+})
+
+it('Scenario 18: HSA-id prefixes stay UI guidance with a visible default rule', () => {
+  const migrationSource = readFileSync(hsaIdPrefixMigrationPath, 'utf8')
+  const seedSource = readFileSync(seedPath, 'utf8')
+  const requiredSeedSource = readFileSync(requiredSeedPath, 'utf8')
+  const uiSettingsSource = readFileSync(uiSettingsPath, 'utf8')
+  const routeSource = readFileSync(adminHsaIdPrefixesRoutePath, 'utf8')
+  const fieldSource = readFileSync(hsaPersonVerifyFieldPath, 'utf8')
+  const adminCenterDoc = readFileSync(adminCenterDocPath, 'utf8')
+  const databaseSchemaDoc = readFileSync(databaseSchemaDocPath, 'utf8')
+
+  expect(migrationSource).toContain('CREATE TABLE [hsa_id_prefixes]')
+  expect(migrationSource).toContain(
+    'CONSTRAINT [chk_hsa_id_prefixes_default_visible]',
+  )
+  expect(migrationSource).toContain('ORDER BY [usage_count] DESC, [prefix] ASC')
+  expect(migrationSource).toContain('CROSS JOIN default_prefix')
+
+  expect(seedSource).toContain('hsa_id_prefixes:')
+  expect(seedSource).toContain('SE5560000001')
+  expect(requiredSeedSource).not.toContain('hsa_id_prefixes')
+  expect(requiredSeedSource).not.toContain('SE5560000001')
+
+  expect(uiSettingsSource).toContain('default_hidden')
+  expect(uiSettingsSource).toContain('default_required')
+  expect(uiSettingsSource).toContain('used_prefix_cannot_delete')
+  expect(uiSettingsSource).toContain('used_prefix_cannot_change')
+  expect(uiSettingsSource).toContain('getVisibleHsaIdPrefixes')
+
+  expect(routeSource).toContain('adminMutationPolicy()')
+  expect(routeSource).toContain("resourceType: 'hsa_id_prefix'")
+  expect(routeSource).toContain('HsaIdPrefixSettingsError')
+
+  expect(fieldSource).toContain("apiFetch('/api/hsa-id-prefixes')")
+  expect(fieldSource).toContain('composeHsaId(selectedPrefix')
+  expect(fieldSource).toContain('hsaPrefixMissing')
+
+  expect(adminCenterDoc).toContain('The prefix list is UI support')
+  expect(adminCenterDoc).toContain('Used prefixes cannot be removed')
+  expect(databaseSchemaDoc).toContain('hsa_id_prefixes')
+  expect(databaseSchemaDoc).toContain('uq_hsa_id_prefixes_default')
 })
 
 function resolveFunctionalTestsUrl(): string | null {

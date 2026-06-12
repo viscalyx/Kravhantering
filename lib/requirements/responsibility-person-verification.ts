@@ -36,7 +36,7 @@ function sleep(ms: number): Promise<void> {
 
 function assertValidNormalizedHsaId(normalizedHsaId: string): void {
   if (isHsaId(normalizedHsaId)) return
-  throw validationError('Expected a valid HSA-ID', {
+  throw validationError('Expected a valid HSA-id', {
     reason: 'invalid_hsa_id',
   })
 }
@@ -93,7 +93,7 @@ export async function resolveVerifiedRequirementResponsibilityPerson(
   if (secondRead) return secondRead
 
   throw validationError(
-    'HSA-ID is not verified. Verify that the HSA-ID is valid and that the requirement responsibility person could be fetched.',
+    'HSA-id is not verified. Verify that the HSA-id is valid and that the requirement responsibility person could be fetched.',
     {
       httpStatus: 422,
       reason: 'requirement_responsibility_person_not_verified',

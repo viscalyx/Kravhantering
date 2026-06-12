@@ -103,7 +103,7 @@ for (const viewport of viewports) {
         })
 
         const leadInput = dialog.getByRole('textbox', {
-          name: 'Kravpaketsansvarigs HSA-ID',
+          name: 'Kravpaketsansvarigs HSA-id',
         })
         await expect(nameInput).toBeVisible()
         await expect(coAuthorsHeading).toBeVisible()
@@ -146,7 +146,7 @@ for (const viewport of viewports) {
         })
         await expect(dialog).toBeVisible()
         const leadInput = dialog.getByRole('textbox', {
-          name: 'Kravpaketsansvarigs HSA-ID',
+          name: 'Kravpaketsansvarigs HSA-id',
         })
         await expect(leadInput).toHaveAttribute('readonly', '')
         await expect(dialog.getByText(/\(.+@.+\)/)).toBeVisible()
@@ -165,11 +165,11 @@ for (const viewport of viewports) {
         await expect(changeDialog).toBeVisible()
         await expect(
           changeDialog.getByRole('textbox', {
-            name: 'Förra kravpaketsansvarigs HSA-ID',
+            name: 'Förra kravpaketsansvarigs HSA-id',
           }),
         ).toHaveValue(currentLeadHsaId)
         const nextLeadInput = changeDialog.getByRole('textbox', {
-          name: 'Nya kravpaketsansvarigs HSA-ID',
+          name: 'Nya kravpaketsansvarigs HSA-id',
         })
         await expect(nextLeadInput).toBeVisible()
         await expect(

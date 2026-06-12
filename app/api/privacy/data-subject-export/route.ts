@@ -40,7 +40,7 @@ export const dynamic = 'force-dynamic'
 
 const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
   message:
-    'HSA-ID must use format <two-letter country code><10-digit org no>-<alphanumeric suffix>.',
+    'HSA-id must use format <two-letter country code><10-digit org no>-<alphanumeric suffix>.',
 })
 
 const dataSubjectExportSchema = z
@@ -107,7 +107,7 @@ export const POST = secureMutationRoute({
     unknown
   >('privacy.data_subject_export', ({ body, context }) => {
     if (!context.actor.hsaId) {
-      throw unauthorizedError('Authentication with HSA-ID is required', {
+      throw unauthorizedError('Authentication with HSA-id is required', {
         reason: 'missing_actor_hsa_id',
       })
     }
@@ -117,7 +117,7 @@ export const POST = secureMutationRoute({
   handler: async ({ body, context, request }) => {
     try {
       if (!context.actor.hsaId) {
-        throw unauthorizedError('Authentication with HSA-ID is required', {
+        throw unauthorizedError('Authentication with HSA-id is required', {
           reason: 'missing_actor_hsa_id',
         })
       }

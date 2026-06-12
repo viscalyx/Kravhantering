@@ -468,7 +468,7 @@ describe('requirement responsibility person verify route', () => {
     specificationPermissionState.canAuthorSpecification.mockResolvedValue(true)
   })
 
-  it('allows Admin to refresh-verify a requirement area owner HSA-ID', async () => {
+  it('allows Admin to refresh-verify a requirement area owner HSA-id', async () => {
     authState.context.actor.roles = ['Admin']
 
     const r = await postRequirementResponsibilityPersonVerify(
@@ -623,7 +623,7 @@ describe('requirement responsibility person verify route', () => {
     )
   })
 
-  it('requires scope for specification responsibility verification of another HSA-ID before lookup', async () => {
+  it('requires scope for specification responsibility verification of another HSA-id before lookup', async () => {
     const r = await postRequirementResponsibilityPersonVerify(
       jsonReq('POST', {
         hsaId: 'SE5560000001-spec1',
@@ -1184,7 +1184,7 @@ describe('requirement-specifications routes', () => {
       }),
     )
   })
-  it('POST accepts the authenticated actor as the specification lead HSA-ID', async () => {
+  it('POST accepts the authenticated actor as the specification lead HSA-id', async () => {
     const r = await postPkg(
       jsonReq('POST', {
         name: 'A',
@@ -1204,7 +1204,7 @@ describe('requirement-specifications routes', () => {
       }),
     )
   })
-  it('POST rejects a client-selected specification lead HSA-ID', async () => {
+  it('POST rejects a client-selected specification lead HSA-id', async () => {
     const r = await postPkg(
       jsonReq('POST', {
         name: 'A',
@@ -1279,7 +1279,7 @@ describe('requirement-specifications routes', () => {
       }),
     )
   })
-  it('PUT ignores a legacy specification lead name without HSA-ID', async () => {
+  it('PUT ignores a legacy specification lead name without HSA-id', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
     const r = await putPkg(
       jsonReq('PUT', {
@@ -1303,7 +1303,7 @@ describe('requirement-specifications routes', () => {
       responsibilityPersonState.getRequirementResponsibilityPerson,
     ).not.toHaveBeenCalled()
   })
-  it('PUT rejects clearing the specification lead HSA-ID', async () => {
+  it('PUT rejects clearing the specification lead HSA-id', async () => {
     const r = await putPkg(
       jsonReq('PUT', {
         responsibleHsaId: '',

@@ -36,7 +36,7 @@ const verifyModeSchema = z.enum(['reuse_local', 'refresh'])
 const verifySchema = z
   .object({
     hsaId: boundedDbStringSchema.refine(isHsaId, {
-      message: 'Expected a valid HSA-ID',
+      message: 'Expected a valid HSA-id',
     }),
     mode: verifyModeSchema,
     purpose: verifyPurposeSchema,

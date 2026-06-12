@@ -207,7 +207,7 @@ describe('production Keycloak realm template', () => {
     })
   })
 
-  it('emits the expected MCP audience and real-format HSA-ID', () => {
+  it('emits the expected MCP audience and real-format HSA-id', () => {
     const realm = readProductionRealm()
     const mcpClient = getClient(realm, 'kravhantering-mcp')
 
@@ -268,7 +268,7 @@ describe('dev Keycloak realm', () => {
     expectWebClaimMappers(devClient)
   })
 
-  it('emits the expected audience and real-format HSA-ID for MCP tokens', () => {
+  it('emits the expected audience and real-format HSA-id for MCP tokens', () => {
     const realm = readDevRealm()
     const mcpClient = getClient(realm, 'kravhantering-mcp')
 
@@ -409,7 +409,7 @@ describe('container Keycloak realm', () => {
     expectWebClaimMappers(appClient)
   })
 
-  it('emits the expected MCP audience and real-format HSA-ID', () => {
+  it('emits the expected MCP audience and real-format HSA-id', () => {
     const realm = readContainerRealm()
     const mcpClient = getClient(realm, 'kravhantering-mcp')
 

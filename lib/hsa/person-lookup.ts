@@ -104,7 +104,7 @@ function mapLookupHttpError(status: number, payload: unknown): never {
       ? stringField((payload as Record<string, unknown>).code)
       : null
   if (code === 'not_found') {
-    throw validationError('HSA-ID was not found in the HSA directory', {
+    throw validationError('HSA-id was not found in the HSA directory', {
       reason: LOOKUP_REASON.notFound,
     })
   }
@@ -123,7 +123,7 @@ export async function lookupHsaPerson(
   options: LookupOptions = {},
 ): Promise<RequirementResponsibilityPersonRecord> {
   if (!isHsaId(hsaId)) {
-    throw validationError('Invalid HSA-ID format', {
+    throw validationError('Invalid HSA-id format', {
       reason: 'invalid_hsa_id',
     })
   }

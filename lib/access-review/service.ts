@@ -112,7 +112,7 @@ function requireAccessReviewRole(
 
 function requireActor(actor: AccessReviewAuthContext): AccessReviewActor {
   if (!actor.hsaId) {
-    throw forbiddenError('Verified actor HSA-ID is required', {
+    throw forbiddenError('Verified actor HSA-id is required', {
       reason: 'missing_actor_hsa_id',
     })
   }

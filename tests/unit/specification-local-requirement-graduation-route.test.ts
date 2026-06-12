@@ -135,7 +135,7 @@ describe('specification-local requirement graduation routes', () => {
     )
   })
 
-  it('rejects graduation before runtime when the actor lacks a verified HSA-ID', async () => {
+  it('rejects graduation before runtime when the actor lacks a verified HSA-id', async () => {
     mocks.createRequestContext.mockResolvedValueOnce({
       ...mockContext,
       actor: {

@@ -17,7 +17,7 @@ const responsibleHsaIdSchema = z
   .max(HSA_ID_MAX_LENGTH)
   .refine(isHsaId, {
     message:
-      'Expected HSA-ID format <two-letter country code><10-digit org no>-<alphanumeric suffix>',
+      'Expected HSA-id format <two-letter country code><10-digit org no>-<alphanumeric suffix>',
   })
 
 const optionalNullableResponsibleHsaIdSchema = z.preprocess(

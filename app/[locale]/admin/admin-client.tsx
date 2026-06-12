@@ -18,14 +18,17 @@ import {
   Gauge,
   HelpCircle,
   Info,
+  KeyRound,
   Layers,
   LayoutPanelTop,
   type LucideIcon,
+  Plus,
   RefreshCw,
   RotateCcw,
   Save,
   ShieldCheck,
   Tags,
+  Trash2,
   Wrench,
   X,
   XCircle,
@@ -77,6 +80,11 @@ const ADMIN_HELP: HelpContent = {
       kind: 'text',
       bodyKey: 'admin.columns.body',
       headingKey: 'admin.columns.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'admin.identity.body',
+      headingKey: 'admin.identity.heading',
     },
     {
       kind: 'text',
@@ -189,6 +197,7 @@ type AdminTab =
   | 'actionAuditLog'
   | 'archiving'
   | 'columns'
+  | 'identity'
   | 'privacy'
   | 'statusesAndWorkflows'
   | 'taxonomy'
@@ -201,6 +210,7 @@ const EMPTY_USER_ROLES: string[] = []
 
 const adminTabs: { icon: LucideIcon; id: AdminTab }[] = [
   { icon: LayoutPanelTop, id: 'columns' },
+  { icon: KeyRound, id: 'identity' },
   { icon: Tags, id: 'taxonomy' },
   { icon: CircleDot, id: 'statusesAndWorkflows' },
   { icon: ClipboardCheck, id: 'accessReview' },
@@ -214,6 +224,7 @@ const ADMIN_TAB_DEVELOPER_MODE_VALUES: Record<AdminTab, string> = {
   actionAuditLog: 'action log',
   archiving: 'archiving',
   columns: 'columns',
+  identity: 'identity',
   privacy: 'privacy',
   statusesAndWorkflows: 'statuses and workflows',
   taxonomy: 'taxonomy',
@@ -226,6 +237,7 @@ const ADMIN_TAB_DISABLED_TOOLTIP_KEYS: Partial<Record<AdminTab, string>> = {
   accessReview: 'accessReview.disabledTooltip',
   actionAuditLog: 'auditLog.disabledTooltip',
   archiving: 'archiving.disabledTooltip',
+  identity: 'identity.disabledTooltip',
   privacy: 'privacy.disabledTooltip',
 }
 
@@ -238,6 +250,10 @@ function canAccessAdminTab(tab: AdminTab, roles: string[]): boolean {
   }
 
   if (tab === 'actionAuditLog') {
+    return isAdmin
+  }
+
+  if (tab === 'identity') {
     return isAdmin
   }
 
@@ -441,6 +457,475 @@ const ACCESS_REVIEW_DECISIONS: Exclude<AccessReviewDecision, 'pending'>[] = [
   'changed',
   'not_applicable',
 ]
+
+interface HsaIdPrefixAdminItem {
+  clientId: string
+  id?: number
+  isDefault: boolean
+  isUsed: boolean
+  isVisible: boolean
+  label: string
+  prefix: string
+}
+
+const HSA_ID_PREFIX_PATTERN = /^[A-Z]{2}\d{10}$/u
+
+function toHsaIdPrefixAdminItem(row: {
+  id: number
+  isDefault: boolean
+  isUsed: boolean
+  isVisible: boolean
+  label: string | null
+  prefix: string
+}): HsaIdPrefixAdminItem {
+  return {
+    clientId: `stored-${row.id}`,
+    id: row.id,
+    isDefault: row.isDefault,
+    isUsed: row.isUsed,
+    isVisible: row.isVisible,
+    label: row.label ?? '',
+    prefix: row.prefix,
+  }
+}
+
+function IdentitySettingsPanel() {
+  const ta = useTranslations('admin')
+  const tc = useTranslations('common')
+  const [openIdentityHelp, setOpenIdentityHelp] = useState<string | null>(null)
+  const [prefixes, setPrefixes] = useState<HsaIdPrefixAdminItem[]>([])
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [message, setMessage] = useState<string | null>(null)
+  const saveTokenRef = useRef(0)
+  const isSaving = saveState === 'saving'
+  const loadErrorMessage = ta('identity.loadError')
+
+  const loadPrefixes = useCallback(async () => {
+    setSaveState('saving')
+    setMessage(null)
+    try {
+      const response = await apiFetch('/api/admin/hsa-id-prefixes')
+      if (!response.ok) {
+        setSaveState('error')
+        setMessage((await readResponseMessage(response)) ?? loadErrorMessage)
+        return
+      }
+      const payload = (await response.json()) as {
+        prefixes?: Array<{
+          id: number
+          isDefault: boolean
+          isUsed: boolean
+          isVisible: boolean
+          label: string | null
+          prefix: string
+        }>
+      }
+      setPrefixes((payload.prefixes ?? []).map(toHsaIdPrefixAdminItem))
+      setSaveState('idle')
+    } catch {
+      setSaveState('error')
+      setMessage(loadErrorMessage)
+    }
+  }, [loadErrorMessage])
+
+  useEffect(() => {
+    void loadPrefixes()
+  }, [loadPrefixes])
+
+  const setPrefix = (
+    clientId: string,
+    updater: (item: HsaIdPrefixAdminItem) => HsaIdPrefixAdminItem,
+  ) => {
+    setPrefixes(current =>
+      current.map(item => (item.clientId === clientId ? updater(item) : item)),
+    )
+    setSaveState('idle')
+    setMessage(null)
+  }
+
+  const addPrefix = () => {
+    setPrefixes(current => [
+      ...current,
+      {
+        clientId: `new-${Date.now()}-${current.length}`,
+        isDefault: current.every(item => !item.isVisible),
+        isUsed: false,
+        isVisible: true,
+        label: '',
+        prefix: '',
+      },
+    ])
+    setSaveState('idle')
+    setMessage(null)
+  }
+
+  const removePrefix = (clientId: string) => {
+    setPrefixes(current => current.filter(item => item.clientId !== clientId))
+    setSaveState('idle')
+    setMessage(null)
+  }
+
+  const selectDefault = (clientId: string) => {
+    setPrefixes(current =>
+      current.map(item => ({
+        ...item,
+        isDefault: item.clientId === clientId,
+        isVisible: item.clientId === clientId ? true : item.isVisible,
+      })),
+    )
+    setSaveState('idle')
+    setMessage(null)
+  }
+
+  const helpButton = (key: string, label: string, controls: string) => (
+    <button
+      aria-controls={controls}
+      aria-expanded={openIdentityHelp === key}
+      aria-label={`${tc('help')}: ${label}`}
+      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+      onClick={() =>
+        setOpenIdentityHelp(current => (current === key ? null : key))
+      }
+      type="button"
+    >
+      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+    </button>
+  )
+
+  const helpPanel = (
+    key: string,
+    id: string,
+    translationKey: Parameters<typeof ta>[0],
+  ) => (
+    <AnimatedHelpPanel id={id} isOpen={openIdentityHelp === key}>
+      {ta(translationKey)}
+    </AnimatedHelpPanel>
+  )
+
+  const validatePrefixes = () => {
+    const normalizedPrefixes = prefixes.map(item => item.prefix.trim())
+    if (
+      normalizedPrefixes.some(prefix => !HSA_ID_PREFIX_PATTERN.test(prefix))
+    ) {
+      return ta('identity.invalidPrefix')
+    }
+    if (new Set(normalizedPrefixes).size !== normalizedPrefixes.length) {
+      return ta('identity.duplicatePrefix')
+    }
+    const visiblePrefixes = prefixes.filter(item => item.isVisible)
+    const defaultPrefixes = prefixes.filter(item => item.isDefault)
+    if (visiblePrefixes.length > 0 && defaultPrefixes.length !== 1) {
+      return ta('identity.defaultRequired')
+    }
+    if (defaultPrefixes.some(item => !item.isVisible)) {
+      return ta('identity.defaultMustBeVisible')
+    }
+    return null
+  }
+
+  const savePrefixes = async () => {
+    const validationMessage = validatePrefixes()
+    if (validationMessage) {
+      setSaveState('error')
+      setMessage(validationMessage)
+      return
+    }
+
+    const requestToken = saveTokenRef.current + 1
+    saveTokenRef.current = requestToken
+    setSaveState('saving')
+    setMessage(null)
+    try {
+      const response = await apiFetch('/api/admin/hsa-id-prefixes', {
+        body: JSON.stringify({
+          prefixes: prefixes.map(item => ({
+            ...(item.id === undefined ? {} : { id: item.id }),
+            isDefault: item.isDefault,
+            isVisible: item.isVisible,
+            label: item.label.trim() || null,
+            prefix: item.prefix.trim(),
+          })),
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PUT',
+      })
+      if (requestToken !== saveTokenRef.current) return
+
+      if (!response.ok) {
+        setSaveState('error')
+        setMessage(
+          (await readResponseMessage(response)) ?? ta('identity.saveError'),
+        )
+        return
+      }
+
+      const payload = (await response.json()) as {
+        prefixes?: Array<{
+          id: number
+          isDefault: boolean
+          isUsed: boolean
+          isVisible: boolean
+          label: string | null
+          prefix: string
+        }>
+      }
+      if (requestToken !== saveTokenRef.current) return
+      setPrefixes((payload.prefixes ?? []).map(toHsaIdPrefixAdminItem))
+      setSaveState('saved')
+      setMessage(null)
+    } catch {
+      if (requestToken === saveTokenRef.current) {
+        setSaveState('error')
+        setMessage(ta('identity.saveError'))
+      }
+    }
+  }
+
+  return (
+    <section
+      aria-labelledby="identity-tab"
+      className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+      {...devMarker({
+        context: 'admin center',
+        name: 'tab panel',
+        priority: 340,
+        value: 'identity',
+      })}
+      id="identity-panel"
+      role="tabpanel"
+    >
+      <div className="flex flex-col gap-4 border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
+            {ta('identity.title')}
+          </h2>
+          <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+            {ta('identity.description')}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {saveState === 'saved' ? (
+            <span
+              className="text-xs font-medium text-emerald-700 dark:text-emerald-300"
+              role="status"
+            >
+              {ta('saved')}
+            </span>
+          ) : null}
+          {saveState === 'error' && message ? (
+            <span
+              className="text-sm font-medium text-red-700 dark:text-red-400"
+              role="alert"
+            >
+              {message}
+            </span>
+          ) : null}
+          <button
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border border-secondary-200 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+            disabled={isSaving}
+            onClick={addPrefix}
+            type="button"
+          >
+            <Plus aria-hidden="true" className="h-4 w-4" />
+            {ta('identity.addPrefix')}
+          </button>
+          <button
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
+            disabled={isSaving}
+            onClick={savePrefixes}
+            type="button"
+          >
+            <Save aria-hidden="true" className="h-4 w-4" />
+            {isSaving ? tc('loading') : tc('save')}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 space-y-3">
+        {prefixes.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-secondary-300 px-4 py-5 text-sm text-secondary-600 dark:border-secondary-700 dark:text-secondary-300">
+            {ta('identity.emptyPrefixes')}
+          </p>
+        ) : (
+          prefixes.map(item => {
+            const prefixInputId = `hsa-id-prefix-${item.clientId}`
+            const labelInputId = `hsa-id-prefix-label-${item.clientId}`
+            const visibleInputId = `hsa-id-prefix-visible-${item.clientId}`
+            const defaultInputId = `hsa-id-prefix-default-${item.clientId}`
+            const prefixHelpKey = `${item.clientId}:prefix`
+            const labelHelpKey = `${item.clientId}:label`
+            const visibleHelpKey = `${item.clientId}:visible`
+            const defaultHelpKey = `${item.clientId}:default`
+            const prefixHelpId = `${prefixInputId}-help`
+            const labelHelpId = `${labelInputId}-help`
+            const visibleHelpId = `${visibleInputId}-help`
+            const defaultHelpId = `${defaultInputId}-help`
+
+            return (
+              <article
+                className="grid gap-3 rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40 lg:grid-cols-[minmax(10rem,0.8fr)_minmax(10rem,1fr)_auto_auto_auto]"
+                data-testid={`hsa-id-prefix-row-${item.prefix || item.clientId}`}
+                key={item.clientId}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <label
+                      className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
+                      htmlFor={prefixInputId}
+                    >
+                      {ta('identity.prefix')}
+                    </label>
+                    {helpButton(
+                      prefixHelpKey,
+                      ta('identity.prefix'),
+                      prefixHelpId,
+                    )}
+                  </div>
+                  <input
+                    aria-describedby={prefixHelpId}
+                    className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 font-mono text-sm uppercase dark:bg-secondary-900"
+                    disabled={isSaving || item.isUsed}
+                    id={prefixInputId}
+                    maxLength={12}
+                    onChange={event =>
+                      setPrefix(item.clientId, current => ({
+                        ...current,
+                        prefix: event.target.value.toUpperCase(),
+                      }))
+                    }
+                    value={item.prefix}
+                  />
+                  {helpPanel(
+                    prefixHelpKey,
+                    prefixHelpId,
+                    'identity.fieldHelp.prefix',
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <label
+                      className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
+                      htmlFor={labelInputId}
+                    >
+                      {ta('identity.label')}
+                    </label>
+                    {helpButton(
+                      labelHelpKey,
+                      ta('identity.label'),
+                      labelHelpId,
+                    )}
+                  </div>
+                  <input
+                    aria-describedby={labelHelpId}
+                    className="min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm dark:bg-secondary-900"
+                    disabled={isSaving}
+                    id={labelInputId}
+                    onChange={event =>
+                      setPrefix(item.clientId, current => ({
+                        ...current,
+                        label: event.target.value,
+                      }))
+                    }
+                    value={item.label}
+                  />
+                  {helpPanel(
+                    labelHelpKey,
+                    labelHelpId,
+                    'identity.fieldHelp.label',
+                  )}
+                </div>
+                <div className="space-y-1 self-end">
+                  <div className="flex items-center justify-end">
+                    {helpButton(
+                      visibleHelpKey,
+                      ta('identity.visible'),
+                      visibleHelpId,
+                    )}
+                  </div>
+                  <label
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-secondary-200 bg-white px-3 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                    htmlFor={visibleInputId}
+                  >
+                    <input
+                      aria-describedby={visibleHelpId}
+                      checked={item.isVisible}
+                      disabled={isSaving}
+                      id={visibleInputId}
+                      onChange={event =>
+                        setPrefix(item.clientId, current => ({
+                          ...current,
+                          isDefault: event.target.checked
+                            ? current.isDefault
+                            : false,
+                          isVisible: event.target.checked,
+                        }))
+                      }
+                      type="checkbox"
+                    />
+                    {ta('identity.visible')}
+                  </label>
+                  {helpPanel(
+                    visibleHelpKey,
+                    visibleHelpId,
+                    'identity.fieldHelp.visible',
+                  )}
+                </div>
+                <div className="space-y-1 self-end">
+                  <div className="flex items-center justify-end">
+                    {helpButton(
+                      defaultHelpKey,
+                      ta('identity.defaultPrefix'),
+                      defaultHelpId,
+                    )}
+                  </div>
+                  <label
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-secondary-200 bg-white px-3 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                    htmlFor={defaultInputId}
+                  >
+                    <input
+                      aria-describedby={defaultHelpId}
+                      checked={item.isDefault}
+                      disabled={isSaving || !item.isVisible}
+                      id={defaultInputId}
+                      name="hsa-id-prefix-default"
+                      onChange={() => selectDefault(item.clientId)}
+                      type="radio"
+                    />
+                    {ta('identity.defaultPrefix')}
+                  </label>
+                  {helpPanel(
+                    defaultHelpKey,
+                    defaultHelpId,
+                    'identity.fieldHelp.defaultPrefix',
+                  )}
+                </div>
+                <button
+                  aria-label={ta('identity.removePrefix')}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center self-end rounded-xl border border-secondary-200 text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary-700 dark:text-red-300 dark:hover:bg-red-950/30"
+                  disabled={isSaving || item.isUsed}
+                  onClick={() => removePrefix(item.clientId)}
+                  title={
+                    item.isUsed
+                      ? ta('identity.usedPrefixDeleteBlocked')
+                      : ta('identity.removePrefix')
+                  }
+                  type="button"
+                >
+                  <Trash2 aria-hidden="true" className="h-4 w-4" />
+                </button>
+                {item.isUsed ? (
+                  <p className="text-xs text-secondary-500 dark:text-secondary-400 lg:col-span-5">
+                    {ta('identity.usedPrefix')}
+                  </p>
+                ) : null}
+              </article>
+            )
+          })
+        )}
+      </div>
+    </section>
+  )
+}
 
 function accessReviewDecisionClass(decision: AccessReviewDecision): string {
   if (decision === 'approved') {
@@ -2719,6 +3204,7 @@ export default function AdminClient({
   const searchParams = useSearchParams()
   const canUseAccessReview = canAccessAdminTab('accessReview', currentUserRoles)
   const canUseArchiving = canAccessAdminTab('archiving', currentUserRoles)
+  const canUseIdentity = canAccessAdminTab('identity', currentUserRoles)
   const canUsePrivacy = canAccessAdminTab('privacy', currentUserRoles)
   const canViewActionAuditLog = canAccessAdminTab(
     'actionAuditLog',
@@ -3034,11 +3520,13 @@ export default function AdminClient({
                     ? ta('privacy.title')
                     : tab.id === 'accessReview'
                       ? ta('accessReview.title')
-                      : tab.id === 'archiving'
-                        ? ta('archiving.title')
-                        : tab.id === 'actionAuditLog'
-                          ? ta('auditLog.title')
-                          : ta(tab.id)
+                      : tab.id === 'identity'
+                        ? ta('identity.title')
+                        : tab.id === 'archiving'
+                          ? ta('archiving.title')
+                          : tab.id === 'actionAuditLog'
+                            ? ta('auditLog.title')
+                            : ta(tab.id)
 
                 return (
                   <button
@@ -3191,6 +3679,10 @@ export default function AdminClient({
               })}
             </div>
           </section>
+        ) : null}
+
+        {activeTab === 'identity' && canUseIdentity ? (
+          <IdentitySettingsPanel />
         ) : null}
 
         {activeTab === 'taxonomy' ? (

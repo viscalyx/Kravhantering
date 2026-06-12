@@ -23,10 +23,21 @@ const viewportVariants = [
 
 const DEFAULT_COLUMN_PAYLOAD: RequirementListColumnDefault[] =
   DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS.map(column => ({ ...column }))
+const DEFAULT_HSA_ID_PREFIX = 'SE5560000001'
+const TEMPORARY_HSA_ID_PREFIX = 'NO5560000099'
 const VISIBLE_REQUIREMENTS_HEADER_SELECTOR =
   '[data-sticky-table-header-table="true"] thead'
 const VISIBLE_REQUIREMENTS_HEADER_CELL_SELECTOR =
   '[data-sticky-table-header-table="true"] thead th'
+
+interface AdminHsaIdPrefixRow {
+  id: number
+  isDefault: boolean
+  isUsed: boolean
+  isVisible: boolean
+  label: string | null
+  prefix: string
+}
 
 async function assertOkResponse(
   requestName: string,
@@ -47,6 +58,45 @@ async function resetAdminSettings(request: APIRequestContext) {
     await request.put('/api/admin/requirement-columns', {
       data: {
         columns: DEFAULT_COLUMN_PAYLOAD,
+      },
+    }),
+  )
+
+  const currentPrefixesResponse = await request.get(
+    '/api/admin/hsa-id-prefixes',
+  )
+  await assertOkResponse('HSA-id prefixes load', currentPrefixesResponse)
+  const currentPrefixes = (await currentPrefixesResponse.json()) as {
+    prefixes?: AdminHsaIdPrefixRow[]
+  }
+  const preservedUsedPrefixes =
+    currentPrefixes.prefixes
+      ?.filter(row => row.prefix !== DEFAULT_HSA_ID_PREFIX && row.isUsed)
+      .map(row => ({
+        id: row.id,
+        isDefault: false,
+        isVisible: false,
+        label: row.label,
+        prefix: row.prefix,
+      })) ?? []
+  const existingDefaultPrefix = currentPrefixes.prefixes?.find(
+    row => row.prefix === DEFAULT_HSA_ID_PREFIX,
+  )
+
+  await assertOkResponse(
+    'HSA-id prefixes',
+    await request.put('/api/admin/hsa-id-prefixes', {
+      data: {
+        prefixes: [
+          {
+            ...(existingDefaultPrefix ? { id: existingDefaultPrefix.id } : {}),
+            isDefault: true,
+            isVisible: true,
+            label: null,
+            prefix: DEFAULT_HSA_ID_PREFIX,
+          },
+          ...preservedUsedPrefixes,
+        ],
       },
     }),
   )
@@ -280,6 +330,60 @@ for (const { name, viewport } of viewportVariants) {
         await expect(page).toHaveURL('/en/admin?tab=taxonomy')
         await expect(taxonomyTab).toHaveAttribute('aria-selected', 'true')
         await expect(page.getByTestId('taxonomy-card-areas')).toBeVisible()
+      })
+
+      test('administers HSA-id prefixes and uses them in HSA-id fields', async ({
+        page,
+      }) => {
+        await page.goto('/sv/admin?tab=identity')
+
+        const identityTab = page.getByRole('tab', { name: 'Identitet' })
+        await expect(identityTab).toHaveAttribute('aria-selected', 'true')
+        await expect(
+          page.getByRole('heading', { name: 'Identitet' }),
+        ).toBeVisible()
+        await expect(
+          page.getByRole('textbox', { name: 'HSA-id-prefix' }),
+        ).toHaveValue(DEFAULT_HSA_ID_PREFIX)
+        await expect(
+          page.getByTestId(`hsa-id-prefix-row-${DEFAULT_HSA_ID_PREFIX}`),
+        ).toBeVisible()
+
+        await page.getByRole('button', { name: 'Lägg till prefix' }).click()
+        const newRow = page.locator('[data-testid^="hsa-id-prefix-row-new-"]')
+        await newRow
+          .getByRole('textbox', { name: 'HSA-id-prefix' })
+          .fill(TEMPORARY_HSA_ID_PREFIX)
+        const temporaryPrefixRow = page.getByTestId(
+          `hsa-id-prefix-row-${TEMPORARY_HSA_ID_PREFIX}`,
+        )
+        await temporaryPrefixRow
+          .getByRole('textbox', { name: 'Etikett' })
+          .fill('Norsk testorganisation')
+        await temporaryPrefixRow
+          .getByRole('radio', { name: 'Standard' })
+          .check()
+        await page.getByRole('button', { name: 'Spara' }).click()
+        await expect(page.getByText('Sparat')).toBeVisible()
+        await expect(temporaryPrefixRow).toBeVisible()
+
+        await page.goto('/sv/requirement-areas')
+        await page.getByRole('button', { name: 'Ny' }).click()
+
+        const prefixSelect = page.getByRole('combobox', {
+          name: 'HSA-id-prefix',
+        })
+        await expect(prefixSelect).toBeEnabled()
+        await expect(prefixSelect).toHaveValue(TEMPORARY_HSA_ID_PREFIX)
+        await expect(
+          prefixSelect.locator(`option[value="${TEMPORARY_HSA_ID_PREFIX}"]`),
+        ).toHaveText(`Norsk testorganisation - ${TEMPORARY_HSA_ID_PREFIX}`)
+
+        const suffixInput = page.getByRole('textbox', {
+          name: 'Kravområdesägare',
+        })
+        await expect(suffixInput).toBeEnabled()
+        await expect(suffixInput).toHaveAttribute('placeholder', 'Suffix')
       })
     }
 

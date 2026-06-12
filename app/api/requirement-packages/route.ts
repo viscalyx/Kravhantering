@@ -28,14 +28,14 @@ import {
 } from '@/lib/requirements/responsibility-person-verification'
 
 const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
-  message: 'Expected a valid HSA-ID',
+  message: 'Expected a valid HSA-id',
 })
 
 const coAuthorHsaIdsSchema = z
   .array(hsaIdSchema)
   .max(ARRAY_INPUT_MAX_ITEMS)
   .refine(values => new Set(values).size === values.length, {
-    message: 'Expected unique HSA-IDs',
+    message: 'Expected unique HSA-id values',
   })
 
 const requirementPackageSchema = z

@@ -17,7 +17,7 @@ Applikationen lagrar inte den strömmen i SQL och exponerar den inte via
 Vissa arbetsflöden kan skriva till båda kanalerna när de både är
 säkerhetsrelevanta och möjliga att granska i applikationen. I båda kanalerna
 ska payloads vara begränsade och redigerade: inga hemligheter, tokens,
-inskickad fritext, kravtext, råa target HSA-IDs eller andra onödiga
+inskickad fritext, kravtext, råa target HSA-id values eller andra onödiga
 personuppgifter ska skrivas som details.
 
 ## Övervägda alternativ
