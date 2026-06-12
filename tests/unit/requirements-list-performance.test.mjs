@@ -38,6 +38,11 @@ describe('requirements-list-performance.mjs', () => {
     ])
     expect(seedSql).toContain('WHERE unique_id LIKE @uniqueIdLike')
     expect(seedSql).toContain("CONCAT(@uniqueIdPrefix, N'-'")
+    expect(seedSql).toContain('INSERT INTO requirement_responsibility_people')
+    expect(
+      seedSql.indexOf('INSERT INTO requirement_responsibility_people'),
+    ).toBeLessThan(seedSql.indexOf('INSERT INTO requirement_areas'))
+    expect(seedSql).toContain("CONCAT(N'SE5560000001-perf', area.area_index)")
     expect(seedSql).toContain('SET IDENTITY_INSERT requirements ON')
     expect(seedSql).toContain('published_version_number')
     expect(seedSql).not.toContain('WHEN v.version_number = 1 THEN 3')
