@@ -12,7 +12,7 @@ import {
   seedRequiredDatabase,
 } from '../../typeorm/seed-required.mjs'
 
-// cspell:ignore linneab manualarea manualpkg manualspec repobehörighetsöversyn
+// cspell:ignore linneab manualarea manualpkg manualspec pkglead repobehörighetsöversyn specco
 // cspell:ignore retentionfresh retentionlinked retentionorphan
 
 const LINNEA_HSA_ID = 'SE5560000001-linneab'
@@ -391,6 +391,64 @@ describe('seed profiles', () => {
       expect(packageIds.has(coAuthor.requirement_package_id)).toBe(true)
       expect(responsibilityPersonHsaIds.has(coAuthor.hsa_id)).toBe(true)
     }
+  })
+
+  it('seeds deterministic authorization fixtures for role testing', async () => {
+    const { executor, rows } = collectSeedInsertRows()
+
+    await seedDemoDatabase(executor)
+
+    expect(seedRowsFor(rows, 'requirement_areas')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 910100,
+          owner_hsa_id: 'SE5560000001-areaowner1',
+          prefix: 'AUTHZ',
+        }),
+      ]),
+    )
+    expect(seedRowsFor(rows, 'requirement_area_co_authors')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          area_id: 910100,
+          hsa_id: 'SE5560000001-areaco1',
+        }),
+      ]),
+    )
+    expect(seedRowsFor(rows, 'requirements_specifications')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 910400,
+          responsible_hsa_id: 'SE5560000001-specresp1',
+          unique_id: 'AUTHZ-SPEC-2026',
+        }),
+      ]),
+    )
+    expect(seedRowsFor(rows, 'specification_co_authors')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          hsa_id: 'SE5560000001-specco1',
+          specification_id: 910400,
+        }),
+      ]),
+    )
+    expect(seedRowsFor(rows, 'requirement_packages')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 910200,
+          lead_hsa_id: 'SE5560000001-pkglead1',
+          name: 'AUTHZ kravpaket',
+        }),
+      ]),
+    )
+    expect(seedRowsFor(rows, 'requirement_package_co_authors')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          hsa_id: 'SE5560000001-pkgco1',
+          requirement_package_id: 910200,
+        }),
+      ]),
+    )
   })
 
   it('seeds local responsibility people from live assignments and HSA mock details', async () => {

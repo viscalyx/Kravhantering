@@ -492,6 +492,16 @@ const SEED_DATA = {
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
       ],
+      [
+        910100,
+        'AUTHZ',
+        'Behörighetstestområde AUTHZ',
+        'Deterministiskt kravområde för manuella och automatiska behörighetstester',
+        'SE5560000001-areaowner1',
+        1,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
     ],
   },
   requirement_categories: {
@@ -697,6 +707,18 @@ const SEED_DATA = {
         'Deterministiskt kravunderlag för Playwright-tester av avsteg och arkivering',
         'PLAYWRIGHT-LIFECYCLE-2026',
         'Playwright lifecycle fixtures',
+        3,
+        1,
+      ],
+      [
+        910400,
+        2,
+        2,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+        'Deterministiskt kravunderlag för manuella och automatiska behörighetstester',
+        'AUTHZ-SPEC-2026',
+        'Behörighetstest kravunderlag AUTHZ',
         3,
         1,
       ],
@@ -12104,6 +12126,15 @@ const SEED_DATA = {
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
       ],
+      [
+        910200,
+        'AUTHZ kravpaket',
+        'Deterministiskt kravpaket för manuella och automatiska behörighetstester.',
+        'SE5560000001-pkglead1',
+        0,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
     ],
   },
   requirement_package_co_authors: {
@@ -12133,6 +12164,13 @@ const SEED_DATA = {
       [
         3,
         'SE5560000001-kalle1',
+        '2026-04-20 20:07:00',
+        'SE5560000001-admin1',
+        'Ada Admin',
+      ],
+      [
+        910200,
+        'SE5560000001-pkgco1',
         '2026-04-20 20:07:00',
         'SE5560000001-admin1',
         'Ada Admin',
@@ -12297,6 +12335,24 @@ const REQUIREMENT_RESPONSIBILITY_PERSON_BY_HSA_ID = new Map([
     },
   ],
   [
+    'SE5560000001-areaco1',
+    {
+      email: 'cora.coauthor@example.test',
+      givenName: 'Cora',
+      middleName: null,
+      surname: 'CoAuthor',
+    },
+  ],
+  [
+    'SE5560000001-areaowner1',
+    {
+      email: 'olle.areaowner@example.test',
+      givenName: 'Olle',
+      middleName: null,
+      surname: 'AreaOwner',
+    },
+  ],
+  [
     'SE5560000001-annaj',
     {
       email: 'anna.johansson@example.test',
@@ -12387,6 +12443,15 @@ const REQUIREMENT_RESPONSIBILITY_PERSON_BY_HSA_ID = new Map([
     },
   ],
   [
+    'SE5560000001-pkglead1',
+    {
+      email: 'leo.pkglead@example.test',
+      givenName: 'Leo',
+      middleName: null,
+      surname: 'PackageLead',
+    },
+  ],
+  [
     'SE5560000001-retentionfresh',
     {
       email: 'freja.retentionfresh@example.test',
@@ -12429,6 +12494,24 @@ const REQUIREMENT_RESPONSIBILITY_PERSON_BY_HSA_ID = new Map([
       givenName: 'Seed',
       middleName: null,
       surname: 'Fixture',
+    },
+  ],
+  [
+    'SE5560000001-specco1',
+    {
+      email: 'signe.speccoauthor@example.test',
+      givenName: 'Signe',
+      middleName: null,
+      surname: 'SpecCoAuthor',
+    },
+  ],
+  [
+    'SE5560000001-specresp1',
+    {
+      email: 'petra.specresp@example.test',
+      givenName: 'Petra',
+      middleName: null,
+      surname: 'specresp',
     },
   ],
 ])
@@ -12489,6 +12572,7 @@ const SPEC_RESPONSIBLE_BY_ID = new Map([
   [910300, { displayName: 'seed', hsaId: 'SE5560000001-seed' }],
   [910301, { displayName: 'Oscar Nilsson', hsaId: 'SE5560000001-oscarn' }],
   [910302, { displayName: 'Emma Lindqvist', hsaId: 'SE5560000001-emmal' }],
+  [910400, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
 ])
 
 function seedTable(name) {
@@ -13025,6 +13109,13 @@ function applyPrivacyIdentitySeed() {
         'SE5560000001-linneab',
         'Linnéa Bergström',
       ],
+      [
+        910100,
+        'SE5560000001-areaco1',
+        PRIVACY_SEED_TS,
+        'SE5560000001-admin1',
+        'Ada Admin',
+      ],
     ],
   }
 
@@ -13053,6 +13144,13 @@ function applyPrivacyIdentitySeed() {
         PRIVACY_SEED_TS,
         'SE5560000001-linneab',
         'Linnéa Bergström',
+      ],
+      [
+        910400,
+        'SE5560000001-specco1',
+        PRIVACY_SEED_TS,
+        'SE5560000001-admin1',
+        'Ada Admin',
       ],
     ],
   }

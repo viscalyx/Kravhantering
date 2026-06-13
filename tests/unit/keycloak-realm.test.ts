@@ -325,6 +325,16 @@ describe('dev Keycloak realm', () => {
         username: 'petra.specresp',
       },
       {
+        hsaId: 'SE5560000001-specco1',
+        roles: [],
+        username: 'signe.speccoauthor',
+      },
+      {
+        hsaId: 'SE5560000001-pkglead1',
+        roles: [],
+        username: 'leo.pkglead',
+      },
+      {
         hsaId: 'SE5560000001-pkgco1',
         roles: [],
         username: 'paul.pkgcoauthor',

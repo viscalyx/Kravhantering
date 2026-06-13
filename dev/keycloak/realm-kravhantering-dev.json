@@ -84,6 +84,36 @@
       "realmRoles": []
     },
     {
+      "username": "signe.speccoauthor",
+      "enabled": true,
+      "email": "signe.speccoauthor@example.test",
+      "emailVerified": true,
+      "firstName": "Signe",
+      "lastName": "SpecCoAuthor",
+      "attributes": {
+        "hsaId": ["SE5560000001-specco1"]
+      },
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": []
+    },
+    {
+      "username": "leo.pkglead",
+      "enabled": true,
+      "email": "leo.pkglead@example.test",
+      "emailVerified": true,
+      "firstName": "Leo",
+      "lastName": "PackageLead",
+      "attributes": {
+        "hsaId": ["SE5560000001-pkglead1"]
+      },
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": []
+    },
+    {
       "username": "paul.pkgcoauthor",
       "enabled": true,
       "email": "paul.pkgcoauthor@example.test",
