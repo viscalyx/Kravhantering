@@ -373,7 +373,6 @@ Current extension points:
 - `AuthorizationService`
 - `createRequestContext(...)`
 - `AssignmentBasedAuthorizationService`
-- `AllowAllAuthorizationService`
 - `RoleBasedAuthorizationService`
 
 Current behavior:
@@ -396,9 +395,10 @@ Current behavior:
 - The default REST and MCP service wiring uses
   `AssignmentBasedAuthorizationService` via
   `createDefaultAuthorizationService(db)`. It resolves the target resource in
-  the database and fails closed for unknown or unresolvable actions.
-  `AllowAllAuthorizationService` remains only an explicit test seam for
-  business-flow tests that intentionally bypass authorization.
+  the database and fails closed for unknown or unresolvable actions. Tests that
+  isolate business-flow behavior may inject a local test `AuthorizationService`
+  double, but shared runtime wiring must not provide a permissive authorization
+  implementation.
 
 When implementing auth:
 

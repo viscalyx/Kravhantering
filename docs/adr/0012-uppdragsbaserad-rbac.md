@@ -63,9 +63,10 @@ inloggningsgränsen.
 
 ## Övervägda alternativ
 
-- Behålla `AllowAllAuthorizationService` som produktionsstandard: avvisat
+- Behålla eller återinföra en återanvändbar allow-all-auktorisering: avvisat
   eftersom okända åtgärder eller mål som inte har slagits upp då inte nekas
-  stängt.
+  stängt. Tester som isolerar affärsflöden får i stället injicera en lokal
+  testdubbel explicit i testkoden.
 - Låta `Admin` ersätta `Reviewer` i granskningsbeslut: avvisat eftersom
   administration och sakkunnig granskning är separata ansvar.
 - Förbjuda egna granskningsbeslut: avvisat eftersom små organisationer annars

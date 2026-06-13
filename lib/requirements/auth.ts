@@ -186,10 +186,6 @@ export interface AuthorizationService {
   ): Promise<void>
 }
 
-export class AllowAllAuthorizationService implements AuthorizationService {
-  async assertAuthorized() {}
-}
-
 export class RoleBasedAuthorizationService implements AuthorizationService {
   constructor(
     private readonly policies: Partial<
@@ -227,8 +223,8 @@ export class RoleBasedAuthorizationService implements AuthorizationService {
 
 /**
  * Default production authorization service for REST and MCP runtime wiring.
- * Tests that exercise business workflows in isolation may still instantiate
- * `AllowAllAuthorizationService` explicitly.
+ * Tests that exercise business workflows in isolation should inject a local
+ * test `AuthorizationService` explicitly.
  */
 export function createDefaultAuthorizationService(
   db?: SqlServerDatabase,

@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { resetAuthConfigForTests } from '@/lib/auth/config'
 import {
-  AllowAllAuthorizationService,
   attachVerifiedActor,
   createRequestContext,
   RoleBasedAuthorizationService,
@@ -165,13 +164,6 @@ describe('requirements auth', () => {
         source: 'anonymous',
         isAuthenticated: false,
       })
-    })
-  })
-
-  describe('AllowAllAuthorizationService', () => {
-    it('allows all actions', async () => {
-      const service = new AllowAllAuthorizationService()
-      await expect(service.assertAuthorized()).resolves.toBeUndefined()
     })
   })
 

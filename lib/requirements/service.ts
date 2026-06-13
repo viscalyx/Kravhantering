@@ -16,7 +16,6 @@ import type { SqlServerDatabase } from '@/lib/db'
 import { recordCapacityEvent } from '@/lib/observability/capacity'
 import { checkInMemoryThrottle } from '@/lib/observability/throttle'
 import {
-  AllowAllAuthorizationService,
   type AuthorizationService,
   createDefaultAuthorizationService,
   type RequestContext,
@@ -474,17 +473,6 @@ export interface RequirementsService {
   }>
 }
 
-function createDefaultServiceAuthorization(db: SqlServerDatabase) {
-  if (
-    process.env.NODE_ENV === 'test' &&
-    typeof (db as Partial<SqlServerDatabase>).query !== 'function'
-  ) {
-    return new AllowAllAuthorizationService()
-  }
-
-  return createDefaultAuthorizationService(db)
-}
-
 async function resolveSpecificationIdOrThrow(
   db: SqlServerDatabase,
   input: SpecificationRefInput,
@@ -516,7 +504,7 @@ async function resolveSpecificationIdOrThrow(
 export function createRequirementsService(
   db: SqlServerDatabase,
   {
-    authorization = createDefaultServiceAuthorization(db),
+    authorization = createDefaultAuthorizationService(db),
     logger = createRequirementsLogger(),
   }: {
     authorization?: AuthorizationService
