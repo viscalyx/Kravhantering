@@ -350,7 +350,7 @@ export default function SpecificationLocalRequirementDetailClient({
 
     try {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/local-requirements/${localRequirementId}`,
+        `/api/requirements-specifications/${specificationSlug}/local-requirements/${localRequirementId}`,
       )
 
       if (!response.ok) {
@@ -425,7 +425,7 @@ export default function SpecificationLocalRequirementDetailClient({
       setGraduationTargetAreasLoaded(false)
       try {
         const response = await apiFetch(
-          `/api/specifications/${specificationSlug}/local-requirements/${localRequirementId}/graduation-target-areas`,
+          `/api/requirements-specifications/${specificationSlug}/local-requirements/${localRequirementId}/graduation-target-areas`,
           signal ? { signal } : undefined,
         )
 
@@ -516,7 +516,7 @@ export default function SpecificationLocalRequirementDetailClient({
   const handleEditSubmit = useCallback(
     async (payload: SpecificationLocalRequirementSubmitPayload) => {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/local-requirements/${localRequirementId}`,
+        `/api/requirements-specifications/${specificationSlug}/local-requirements/${localRequirementId}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -555,7 +555,7 @@ export default function SpecificationLocalRequirementDetailClient({
       setIsDeleting(true)
       try {
         const response = await apiFetch(
-          `/api/specifications/${specificationSlug}/local-requirements/${localRequirementId}`,
+          `/api/requirements-specifications/${specificationSlug}/local-requirements/${localRequirementId}`,
           {
             method: 'DELETE',
           },
@@ -597,7 +597,7 @@ export default function SpecificationLocalRequirementDetailClient({
 
     try {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/local-requirements/${localRequirementId}/graduate`,
+        `/api/requirements-specifications/${specificationSlug}/local-requirements/${localRequirementId}/graduate`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

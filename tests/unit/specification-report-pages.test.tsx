@@ -190,7 +190,7 @@ describe('requirements specification report pages', () => {
 
     expect(await screen.findByText('reports.errorTitle')).toBeInTheDocument()
     expect(failingFetchMock).toHaveBeenCalledWith(
-      '/api/specifications/spec%2F' + 'with%20slash',
+      '/api/requirements-specifications/spec%2F' + 'with%20slash',
     )
     expect(
       screen.getByText(

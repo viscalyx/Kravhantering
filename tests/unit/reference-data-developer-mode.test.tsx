@@ -196,7 +196,7 @@ const pages: MarkerSpec[] = [
     fetchHandler: input => {
       const url = String(input)
 
-      if (url === '/api/specifications') {
+      if (url === '/api/requirements-specifications') {
         return okJson({
           specifications: [
             {

@@ -3,7 +3,7 @@ import { expect, type Page, test } from '@playwright/test'
 const specificationSlug = 'ETJANST-UPP-2026'
 
 async function warmSpecificationDetailApi(page: Page): Promise<void> {
-  const url = `/api/specifications/${specificationSlug}/available-requirements?limit=5&locale=sv&sortBy=uniqueId&sortDirection=asc`
+  const url = `/api/requirements-specifications/${specificationSlug}/available-requirements?limit=5&locale=sv&sortBy=uniqueId&sortDirection=asc`
   const response = await page.request.get(url, {
     headers: { Accept: 'application/json' },
   })

@@ -79,7 +79,7 @@ import {
   GET,
   PATCH,
   POST,
-} from '@/app/api/specifications/[id]/items/route'
+} from '@/app/api/requirements-specifications/[id]/items/route'
 import { validationError } from '@/lib/requirements/errors'
 
 function makeParams(id: string) {
@@ -103,7 +103,7 @@ async function expectInvalidRequest(
   }
 }
 
-describe('specifications/[id]/items route', () => {
+describe('requirements-specifications/[id]/items route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDb.transaction.mockImplementation(
@@ -148,7 +148,7 @@ describe('specifications/[id]/items route', () => {
     )
 
     const request = new NextRequest(
-      'http://localhost/api/specifications/spec/items',
+      'http://localhost/api/requirements-specifications/spec/items',
       {
         body: JSON.stringify({
           needsReferenceId: 99,
@@ -202,7 +202,9 @@ describe('specifications/[id]/items route', () => {
     )
 
     const response = await GET(
-      new NextRequest('http://localhost/api/specifications/spec/items'),
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/spec/items',
+      ),
       makeParams('spec'),
     )
 
@@ -229,7 +231,7 @@ describe('specifications/[id]/items route', () => {
 
   it('delegates requirement linking to the requirements service', async () => {
     const request = new NextRequest(
-      'http://localhost/api/specifications/spec/items',
+      'http://localhost/api/requirements-specifications/spec/items',
       {
         body: JSON.stringify({
           needsReferenceDescription: 'Shared description',
@@ -267,7 +269,7 @@ describe('specifications/[id]/items route', () => {
     })
 
     const request = new NextRequest(
-      'http://localhost/api/specifications/spec/items',
+      'http://localhost/api/requirements-specifications/spec/items',
       {
         body: JSON.stringify({
           needsReferenceText: 'Shared need',
@@ -294,7 +296,7 @@ describe('specifications/[id]/items route', () => {
 
   it('rejects malformed requirementIds before any database work runs', async () => {
     const request = new NextRequest(
-      'http://localhost/api/specifications/spec/items',
+      'http://localhost/api/requirements-specifications/spec/items',
       {
         body: JSON.stringify({
           requirementIds: [1, '2'],
@@ -313,7 +315,7 @@ describe('specifications/[id]/items route', () => {
 
   it('rejects duplicate requirementIds before any database work runs', async () => {
     const request = new NextRequest(
-      'http://localhost/api/specifications/spec/items',
+      'http://localhost/api/requirements-specifications/spec/items',
       {
         body: JSON.stringify({
           requirementIds: [1, 1],
@@ -332,7 +334,7 @@ describe('specifications/[id]/items route', () => {
 
   it('rejects ambiguous needs-reference payloads', async () => {
     const request = new NextRequest(
-      'http://localhost/api/specifications/spec/items',
+      'http://localhost/api/requirements-specifications/spec/items',
       {
         body: JSON.stringify({
           needsReferenceId: 7,
@@ -353,7 +355,7 @@ describe('specifications/[id]/items route', () => {
 
   it('rejects needs-reference descriptions without new needs-reference text', async () => {
     const request = new NextRequest(
-      'http://localhost/api/specifications/spec/items',
+      'http://localhost/api/requirements-specifications/spec/items',
       {
         body: JSON.stringify({
           needsReferenceDescription: 'Context without a reference',
@@ -384,7 +386,7 @@ describe('specifications/[id]/items route', () => {
     )
 
     const request = new NextRequest(
-      'http://localhost/api/specifications/spec/items',
+      'http://localhost/api/requirements-specifications/spec/items',
       {
         body: JSON.stringify({
           requirementIds: [1],
@@ -406,7 +408,7 @@ describe('specifications/[id]/items route', () => {
 
   it('rejects malformed delete payloads before unlinking items', async () => {
     const request = new NextRequest(
-      'http://localhost/api/specifications/spec/items',
+      'http://localhost/api/requirements-specifications/spec/items',
       {
         body: JSON.stringify({
           requirementIds: [0],
@@ -433,7 +435,7 @@ describe('specifications/[id]/items route', () => {
 
     try {
       const request = new NextRequest(
-        'http://localhost/api/specifications/spec/items',
+        'http://localhost/api/requirements-specifications/spec/items',
         {
           body: JSON.stringify({
             needsReferenceText: 'Shared need',
@@ -473,7 +475,7 @@ describe('specifications/[id]/items route', () => {
 
   it('unlinks requirement items for valid delete payloads', async () => {
     const request = new NextRequest(
-      'http://localhost/api/specifications/spec/items',
+      'http://localhost/api/requirements-specifications/spec/items',
       {
         body: JSON.stringify({
           requirementIds: [1, 2],
@@ -500,7 +502,7 @@ describe('specifications/[id]/items route', () => {
 
   it('bulk-updates needs references by item refs', async () => {
     const request = new NextRequest(
-      'http://localhost/api/specifications/spec/items',
+      'http://localhost/api/requirements-specifications/spec/items',
       {
         body: JSON.stringify({
           itemRefs: ['lib:31', 'local:41'],
@@ -536,7 +538,7 @@ describe('specifications/[id]/items route', () => {
 
     try {
       const request = new NextRequest(
-        'http://localhost/api/specifications/spec/items',
+        'http://localhost/api/requirements-specifications/spec/items',
         {
           body: JSON.stringify({
             requirementIds: [1, 2],
@@ -572,7 +574,7 @@ describe('specifications/[id]/items route', () => {
 
   it('deletes mixed requirement applications by itemRef when itemRefs are supplied', async () => {
     const request = new NextRequest(
-      'http://localhost/api/specifications/spec/items',
+      'http://localhost/api/requirements-specifications/spec/items',
       {
         body: JSON.stringify({
           itemRefs: ['lib:31', 'local:2'],

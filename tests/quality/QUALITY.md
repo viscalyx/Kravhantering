@@ -612,7 +612,7 @@ creation does the same in
 only numeric status IDs from
 `app/[locale]/specifications/[slug]/requirements-specification-detail-client.tsx:722-752`,
 and the PATCH schema accepts only positive integer status IDs in
-`app/api/specifications/[id]/items/[itemId]/route.ts:44-57`. DAL updates
+`app/api/requirements-specifications/[id]/items/[itemId]/route.ts:44-57`. DAL updates
 validate allowed status IDs in
 `lib/dal/requirements-specifications.ts:2363-2387` and reject null clearing in
 `lib/dal/requirements-specifications.ts:2394-2477` before any SQL update. The

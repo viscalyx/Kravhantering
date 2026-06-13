@@ -72,8 +72,8 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
 import {
   DELETE,
   PUT,
-} from '@/app/api/specifications/[id]/local-requirements/[localRequirementId]/route'
-import { POST as postLocalRequirement } from '@/app/api/specifications/[id]/local-requirements/route'
+} from '@/app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/route'
+import { POST as postLocalRequirement } from '@/app/api/requirements-specifications/[id]/local-requirements/route'
 import {
   forbiddenError,
   RequirementsServiceError,
@@ -100,7 +100,7 @@ async function expectInvalidRequest(
   }
 }
 
-describe('specifications/[id]/local-requirements/[localRequirementId] route', () => {
+describe('requirements-specifications/[id]/local-requirements/[localRequirementId] route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     authState.assertAuthorized.mockResolvedValue(undefined)
@@ -120,7 +120,7 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
     try {
       const response = await DELETE(
         new NextRequest(
-          'http://localhost/api/specifications/spec/local-requirements/41',
+          'http://localhost/api/requirements-specifications/spec/local-requirements/41',
         ),
         makeParams('spec', '41'),
       )
@@ -158,7 +158,7 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
     try {
       const response = await DELETE(
         new NextRequest(
-          'http://localhost/api/specifications/spec/local-requirements/41',
+          'http://localhost/api/requirements-specifications/spec/local-requirements/41',
         ),
         makeParams('spec', '41'),
       )
@@ -189,7 +189,7 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
 
     const response = await PUT(
       new NextRequest(
-        'http://localhost/api/specifications/spec/local-requirements/41',
+        'http://localhost/api/requirements-specifications/spec/local-requirements/41',
         {
           body: JSON.stringify({
             description: 'Updated local requirement',
@@ -232,7 +232,7 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
 
     const response = await postLocalRequirement(
       new NextRequest(
-        'http://localhost/api/specifications/spec/local-requirements',
+        'http://localhost/api/requirements-specifications/spec/local-requirements',
         {
           body: JSON.stringify({
             description: 'New local requirement',
@@ -275,7 +275,7 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
   it('returns 400 when localRequirementId is not a positive integer', async () => {
     const response = await DELETE(
       new NextRequest(
-        'http://localhost/api/specifications/spec/local-requirements/abc',
+        'http://localhost/api/requirements-specifications/spec/local-requirements/abc',
       ),
       makeParams('spec', 'abc'),
     )
@@ -290,7 +290,7 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
 
     const response = await DELETE(
       new NextRequest(
-        'http://localhost/api/specifications/missing/local-requirements/41',
+        'http://localhost/api/requirements-specifications/missing/local-requirements/41',
       ),
       makeParams('missing', '41'),
     )
@@ -305,7 +305,7 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
 
     const response = await DELETE(
       new NextRequest(
-        'http://localhost/api/specifications/spec/local-requirements/41',
+        'http://localhost/api/requirements-specifications/spec/local-requirements/41',
       ),
       makeParams('spec', '41'),
     )
@@ -326,7 +326,7 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
 
     const response = await DELETE(
       new NextRequest(
-        'http://localhost/api/specifications/spec/local-requirements/41',
+        'http://localhost/api/requirements-specifications/spec/local-requirements/41',
       ),
       makeParams('spec', '41'),
     )
@@ -363,7 +363,7 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
 
     const response = await DELETE(
       new NextRequest(
-        'http://localhost/api/specifications/spec/local-requirements/41',
+        'http://localhost/api/requirements-specifications/spec/local-requirements/41',
       ),
       makeParams('spec', '41'),
     )

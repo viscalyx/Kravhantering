@@ -215,7 +215,7 @@ const specificationsRoutePath = join(
   repoRoot,
   'app',
   'api',
-  'specifications',
+  'requirements-specifications',
   'route.ts',
 )
 

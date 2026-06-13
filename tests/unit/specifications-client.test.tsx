@@ -147,7 +147,7 @@ describe('RequirementsSpecificationsClient', () => {
     fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     mockApi((url: string) => {
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -185,7 +185,7 @@ describe('RequirementsSpecificationsClient', () => {
 
   it('formats anonymized responsible display names in the table', async () => {
     mockApi((url: string) => {
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(
           okJson({
             specifications: [
@@ -215,7 +215,7 @@ describe('RequirementsSpecificationsClient', () => {
 
   it('shows the responsible HSA-id when a specification has no responsible display name', async () => {
     mockApi((url: string) => {
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(
           okJson({
             specifications: [
@@ -263,7 +263,7 @@ describe('RequirementsSpecificationsClient', () => {
       .mockImplementation(() => undefined)
 
     mockApi((url: string) => {
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -322,7 +322,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications',
+        '/api/requirements-specifications',
         expect.any(Object),
       )
       expect(fetchMock).toHaveBeenCalledWith(
@@ -346,7 +346,7 @@ describe('RequirementsSpecificationsClient', () => {
 
   it('filters specifications by the name column and clears the search', async () => {
     mockApi((url: string) => {
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(
           okJson({
             specifications: [
@@ -416,7 +416,7 @@ describe('RequirementsSpecificationsClient', () => {
 
   it('shows a no-results row when the name filter matches no specifications', async () => {
     mockApi((url: string) => {
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(
           okJson({
             specifications: [
@@ -459,7 +459,7 @@ describe('RequirementsSpecificationsClient', () => {
 
   it('renders an empty-state row when there are no specifications', async () => {
     mockApi((url: string) => {
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: [] }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -481,7 +481,7 @@ describe('RequirementsSpecificationsClient', () => {
 
   it('renders requirement-area badges as compact static pills', async () => {
     mockApi((url: string) => {
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(
           okJson({
             specifications: [
@@ -519,7 +519,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     try {
       mockApi((url: string) => {
-        if (url === '/api/specifications')
+        if (url === '/api/requirements-specifications')
           return Promise.resolve(
             okJson({
               specifications: [
@@ -683,7 +683,7 @@ describe('RequirementsSpecificationsClient', () => {
     const authRequest = createDeferred<ReturnType<typeof okJson>>()
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/auth/me') return authRequest.promise
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -712,7 +712,7 @@ describe('RequirementsSpecificationsClient', () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/auth/me')
         return Promise.resolve(okJson({ authenticated: true, hsaId: '' }))
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -743,7 +743,7 @@ describe('RequirementsSpecificationsClient', () => {
       if (url === '/api/auth/me') {
         return Promise.reject(new Error('auth unavailable'))
       }
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -850,7 +850,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     mockApi((url: string, opts?: RequestInit) => {
       if (opts?.method === 'POST') return Promise.resolve(okJson({ id: 2 }))
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -867,7 +867,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications',
+        '/api/requirements-specifications',
         expect.objectContaining({ method: 'POST' }),
       )
     })
@@ -902,7 +902,7 @@ describe('RequirementsSpecificationsClient', () => {
           text: async () => 'Backend unavailable',
         })
       }
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -952,7 +952,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     mockApi((url: string, opts?: RequestInit) => {
       if (opts?.method === 'POST') return Promise.resolve(okJson({ id: 2 }))
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -969,7 +969,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications',
+        '/api/requirements-specifications',
         expect.objectContaining({ method: 'POST' }),
       )
     })
@@ -1047,7 +1047,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     mockApi((url: string, opts?: RequestInit) => {
       if (opts?.method === 'PUT') return Promise.resolve(okJson({ id: 1 }))
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -1064,13 +1064,13 @@ describe('RequirementsSpecificationsClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/KRAVUNDERLAG-SV',
+        '/api/requirements-specifications/KRAVUNDERLAG-SV',
         expect.objectContaining({ method: 'PUT' }),
       )
     })
     const putCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url === '/api/specifications/KRAVUNDERLAG-SV' &&
+        url === '/api/requirements-specifications/KRAVUNDERLAG-SV' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     )
     expect(
@@ -1112,7 +1112,7 @@ describe('RequirementsSpecificationsClient', () => {
           }),
         )
       }
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -1133,13 +1133,14 @@ describe('RequirementsSpecificationsClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/KRAVUNDERLAG-SV/responsible',
+        '/api/requirements-specifications/KRAVUNDERLAG-SV/responsible',
         expect.objectContaining({ method: 'PUT' }),
       )
     })
     const putCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url === '/api/specifications/KRAVUNDERLAG-SV/responsible' &&
+        url ===
+          '/api/requirements-specifications/KRAVUNDERLAG-SV/responsible' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     )
     expect(
@@ -1171,7 +1172,7 @@ describe('RequirementsSpecificationsClient', () => {
           }),
         )
       }
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -1250,7 +1251,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     mockApi((url: string, opts?: RequestInit) => {
       if (opts?.method === 'DELETE') return Promise.resolve(okJson({}))
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: [] }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -1273,7 +1274,7 @@ describe('RequirementsSpecificationsClient', () => {
         expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/KRAVUNDERLAG-SV',
+        '/api/requirements-specifications/KRAVUNDERLAG-SV',
         expect.objectContaining({ method: 'DELETE' }),
       )
     })
@@ -1292,7 +1293,7 @@ describe('RequirementsSpecificationsClient', () => {
           status: 409,
         })
       }
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -1372,7 +1373,7 @@ describe('RequirementsSpecificationsClient', () => {
       if (opts?.method === 'POST') {
         return postRequest.promise
       }
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -1429,7 +1430,7 @@ describe('RequirementsSpecificationsClient', () => {
           text: async () => 'Delete failed',
         })
       }
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -1473,7 +1474,7 @@ describe('RequirementsSpecificationsClient', () => {
       .mockImplementation(() => undefined)
 
     mockApi((url: string) => {
-      if (url === '/api/specifications') {
+      if (url === '/api/requirements-specifications') {
         return Promise.resolve({
           ok: false,
           status: 503,

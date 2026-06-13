@@ -5,7 +5,7 @@ import {
   GET,
   PATCH,
   POST,
-} from '@/app/api/specifications/[id]/needs-references/route'
+} from '@/app/api/requirements-specifications/[id]/needs-references/route'
 import { conflictError } from '@/lib/requirements/errors'
 
 const mockDb = {}
@@ -71,7 +71,7 @@ function makeMutationRequest(
   body: unknown,
 ) {
   return new NextRequest(
-    'http://localhost/api/specifications/spec/needs-references',
+    'http://localhost/api/requirements-specifications/spec/needs-references',
     {
       body: JSON.stringify(body),
       headers: { 'Content-Type': 'application/json' },
@@ -80,7 +80,7 @@ function makeMutationRequest(
   )
 }
 
-describe('specifications/[id]/needs-references route', () => {
+describe('requirements-specifications/[id]/needs-references route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.createSpecificationNeedsReference.mockResolvedValue({
@@ -110,7 +110,7 @@ describe('specifications/[id]/needs-references route', () => {
   it('lists specification needs references', async () => {
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/specifications/spec/needs-references',
+        'http://localhost/api/requirements-specifications/spec/needs-references',
       ),
       makeParams('spec'),
     )

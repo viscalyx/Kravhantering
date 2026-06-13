@@ -1219,7 +1219,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
     await guideStep(page, 'Kravunderlagsdetalj', async () => {
       await warmGuideApi(
         page,
-        `/api/specifications/${GUIDE_SPECIFICATION_SLUG}/available-requirements?limit=5&locale=sv&sortBy=uniqueId&sortDirection=asc`,
+        `/api/requirements-specifications/${GUIDE_SPECIFICATION_SLUG}/available-requirements?limit=5&locale=sv&sortBy=uniqueId&sortDirection=asc`,
       )
       await guideGoto(page, `/sv/specifications/${GUIDE_SPECIFICATION_SLUG}`)
       await expect(

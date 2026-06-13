@@ -426,7 +426,7 @@ describe('SpecificationFormModal', () => {
     expect(
       fetchMock.mock.calls.some(
         ([url, init]) =>
-          url === '/api/specifications' &&
+          url === '/api/requirements-specifications' &&
           (init as RequestInit | undefined)?.method === 'POST',
       ),
     ).toBe(false)
@@ -512,14 +512,15 @@ describe('SpecificationFormModal', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/ETJANST-UPP-2026/responsible',
+        '/api/requirements-specifications/ETJANST-UPP-2026/responsible',
         expect.objectContaining({ method: 'PUT' }),
       )
     })
 
     const [, requestInit] = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url === '/api/specifications/ETJANST-UPP-2026/responsible' &&
+        url ===
+          '/api/requirements-specifications/ETJANST-UPP-2026/responsible' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     ) as [string, RequestInit]
     const body = JSON.parse((requestInit.body as string) ?? '{}')
@@ -553,7 +554,8 @@ describe('SpecificationFormModal', () => {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
       if (
-        url === '/api/specifications/ETJANST-UPP-2026/responsible' &&
+        url ===
+          '/api/requirements-specifications/ETJANST-UPP-2026/responsible' &&
         opts?.method === 'PUT'
       ) {
         return Promise.resolve(
@@ -618,10 +620,10 @@ describe('SpecificationFormModal', () => {
 
     const [url, requestInit] = fetchMock.mock.calls.find(
       ([calledUrl, init]) =>
-        calledUrl === '/api/specifications/ETJANST-UPP-2026' &&
+        calledUrl === '/api/requirements-specifications/ETJANST-UPP-2026' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     ) as [string, RequestInit]
-    expect(url).toBe('/api/specifications/ETJANST-UPP-2026')
+    expect(url).toBe('/api/requirements-specifications/ETJANST-UPP-2026')
     expect(requestInit?.method).toBe('PUT')
     expect(
       Object.fromEntries(new Headers(requestInit?.headers).entries()),
@@ -656,7 +658,9 @@ describe('SpecificationFormModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
-      if (url === '/api/specifications/ETJANST-UPP-2026/co-authors') {
+      if (
+        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
+      ) {
         if (opts?.method === 'PUT') {
           return Promise.resolve(okJson({ ok: true }))
         }
@@ -704,7 +708,7 @@ describe('SpecificationFormModal', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/ETJANST-UPP-2026/co-authors',
+        '/api/requirements-specifications/ETJANST-UPP-2026/co-authors',
         expect.objectContaining({ method: 'PUT' }),
       )
     })
@@ -718,7 +722,8 @@ describe('SpecificationFormModal', () => {
     })
     const putCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url === '/api/specifications/ETJANST-UPP-2026/co-authors' &&
+        url ===
+          '/api/requirements-specifications/ETJANST-UPP-2026/co-authors' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     ) as [string, RequestInit]
     expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
@@ -741,7 +746,9 @@ describe('SpecificationFormModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
-      if (url === '/api/specifications/ETJANST-UPP-2026/co-authors') {
+      if (
+        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
+      ) {
         if (opts?.method === 'PUT') {
           return Promise.resolve(
             errJson(
@@ -817,7 +824,9 @@ describe('SpecificationFormModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
-      if (url === '/api/specifications/ETJANST-UPP-2026/co-authors') {
+      if (
+        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
+      ) {
         if (opts?.method === 'PUT') {
           return Promise.resolve(okJson({ ok: true }))
         }
@@ -853,13 +862,14 @@ describe('SpecificationFormModal', () => {
         }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/ETJANST-UPP-2026/co-authors',
+        '/api/requirements-specifications/ETJANST-UPP-2026/co-authors',
         expect.objectContaining({ method: 'PUT' }),
       )
     })
     const putCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url === '/api/specifications/ETJANST-UPP-2026/co-authors' &&
+        url ===
+          '/api/requirements-specifications/ETJANST-UPP-2026/co-authors' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     ) as [string, RequestInit]
     expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
@@ -882,7 +892,9 @@ describe('SpecificationFormModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
-      if (url === '/api/specifications/ETJANST-UPP-2026/co-authors') {
+      if (
+        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
+      ) {
         if (opts?.method === 'PUT') {
           return Promise.resolve(
             errJson(
@@ -924,7 +936,8 @@ describe('SpecificationFormModal', () => {
     expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
     const putCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url === '/api/specifications/ETJANST-UPP-2026/co-authors' &&
+        url ===
+          '/api/requirements-specifications/ETJANST-UPP-2026/co-authors' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     ) as [string, RequestInit]
     expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
@@ -1047,7 +1060,7 @@ describe('SpecificationFormModal', () => {
       expect(
         fetchMock.mock.calls.filter(
           ([url, init]) =>
-            url === '/api/specifications/ETJANST-UPP-2026' &&
+            url === '/api/requirements-specifications/ETJANST-UPP-2026' &&
             (init as RequestInit | undefined)?.method === 'PUT',
         ),
       ).toHaveLength(1)

@@ -248,7 +248,7 @@ The behaviors below apply to the requirement list rendered by:
 - In the **specification detail** left panel (items in specification), the
   column renders
   an inline `<select>` dropdown for each item that has a `specificationItemId`.
-  Changing the dropdown value calls `PATCH /api/specifications/{id}/items/{itemId}`
+  Changing the dropdown value calls `PATCH /api/requirements-specifications/{id}/items/{itemId}`
   and applies an optimistic update to the local row state.
 - The same inline status control is also available for unique requirements via
   specification-context item refs (`lib:*` / `local:*`) even though unique rows

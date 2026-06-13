@@ -531,7 +531,7 @@ function setupFetch({
         return response({})
       }
 
-      if (url === '/api/specifications' && method === 'GET') {
+      if (url === '/api/requirements-specifications' && method === 'GET') {
         if (specificationsHandler) {
           return specificationsHandler()
         }
@@ -539,7 +539,7 @@ function setupFetch({
       }
 
       const needsReferencesMatch = url.match(
-        /^\/api\/specifications\/([^/]+)\/needs-references$/,
+        /^\/api\/requirements-specifications\/([^/]+)\/needs-references$/,
       )
       if (needsReferencesMatch) {
         if (needsReferencesHandler) {
@@ -552,7 +552,7 @@ function setupFetch({
       }
 
       const specificationItemDetailMatch = url.match(
-        /^\/api\/specifications\/([^/]+)\/items\/(\d+)$/,
+        /^\/api\/requirements-specifications\/([^/]+)\/items\/(\d+)$/,
       )
       if (method === 'GET' && specificationItemDetailMatch) {
         return response(
@@ -576,7 +576,7 @@ function setupFetch({
       }
 
       const addToSpecificationMatch = url.match(
-        /^\/api\/specifications\/([^/]+)\/items$/,
+        /^\/api\/requirements-specifications\/([^/]+)\/items$/,
       )
       if (method === 'POST' && addToSpecificationMatch) {
         if (addToSpecificationHandler) {

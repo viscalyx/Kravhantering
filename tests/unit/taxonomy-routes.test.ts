@@ -401,6 +401,16 @@ import {
 } from '@/app/api/requirement-packages/route'
 import { POST as postRequirementResponsibilityPersonVerify } from '@/app/api/requirement-responsibility-people/verify/route'
 import { GET as getTypes } from '@/app/api/requirement-types/route'
+import { PUT as putSpecCoAuthors } from '@/app/api/requirements-specifications/[id]/co-authors/route'
+import { PUT as putSpecResponsible } from '@/app/api/requirements-specifications/[id]/responsible/route'
+import {
+  DELETE as deletePkg,
+  PUT as putPkg,
+} from '@/app/api/requirements-specifications/[id]/route'
+import {
+  GET as getPkgs,
+  POST as postPkg,
+} from '@/app/api/requirements-specifications/route'
 import {
   DELETE as deleteGovernanceObjectType,
   PUT as putGovernanceObjectType,
@@ -425,13 +435,6 @@ import {
   GET as getLifecycleStatuses,
   POST as postLifecycle,
 } from '@/app/api/specification-lifecycle-statuses/route'
-import { PUT as putSpecCoAuthors } from '@/app/api/specifications/[id]/co-authors/route'
-import { PUT as putSpecResponsible } from '@/app/api/specifications/[id]/responsible/route'
-import {
-  DELETE as deletePkg,
-  PUT as putPkg,
-} from '@/app/api/specifications/[id]/route'
-import { GET as getPkgs, POST as postPkg } from '@/app/api/specifications/route'
 
 /* ── helpers ─────────────────────────────────────────────────────── */
 

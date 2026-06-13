@@ -53,13 +53,13 @@ vi.mock('@/lib/requirements/server', () => ({
     mocks.createRequirementsRestRuntime(...args),
 }))
 
-import { GET } from '@/app/api/specifications/[id]/available-requirements/route'
+import { GET } from '@/app/api/requirements-specifications/[id]/available-requirements/route'
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
 }
 
-describe('specifications/[id]/available-requirements route', () => {
+describe('requirements-specifications/[id]/available-requirements route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.createRequirementsRestRuntime.mockResolvedValue({
@@ -84,7 +84,7 @@ describe('specifications/[id]/available-requirements route', () => {
   it('accepts legacy status query params while keeping the published-only filter', async () => {
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/specifications/IAM-INFOR-2026/available-requirements?limit=15&locale=sv&sortBy=uniqueId&sortDirection=asc&statuses=3',
+        'http://localhost/api/requirements-specifications/IAM-INFOR-2026/available-requirements?limit=15&locale=sv&sortBy=uniqueId&sortDirection=asc&statuses=3',
       ),
       makeParams('IAM-INFOR-2026'),
     )
@@ -128,7 +128,7 @@ describe('specifications/[id]/available-requirements route', () => {
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/specifications/IAM-INFOR-2026/available-requirements?applyRequirementSelectionFilter=true',
+        'http://localhost/api/requirements-specifications/IAM-INFOR-2026/available-requirements?applyRequirementSelectionFilter=true',
       ),
       makeParams('IAM-INFOR-2026'),
     )
@@ -164,7 +164,7 @@ describe('specifications/[id]/available-requirements route', () => {
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/specifications/IAM-INFOR-2026/available-requirements',
+        'http://localhost/api/requirements-specifications/IAM-INFOR-2026/available-requirements',
       ),
       makeParams('IAM-INFOR-2026'),
     )
@@ -196,7 +196,7 @@ describe('specifications/[id]/available-requirements route', () => {
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/specifications/IAM-INFOR-2026/available-requirements?applyRequirementSelectionFilter=true&limit=15',
+        'http://localhost/api/requirements-specifications/IAM-INFOR-2026/available-requirements?applyRequirementSelectionFilter=true&limit=15',
       ),
       makeParams('IAM-INFOR-2026'),
     )
@@ -226,7 +226,7 @@ describe('specifications/[id]/available-requirements route', () => {
   it('rejects needs-reference filters because the available list does not use them', async () => {
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/specifications/IAM-INFOR-2026/available-requirements?needsReferenceIds=1',
+        'http://localhost/api/requirements-specifications/IAM-INFOR-2026/available-requirements?needsReferenceIds=1',
       ),
       makeParams('IAM-INFOR-2026'),
     )
@@ -244,7 +244,7 @@ describe('specifications/[id]/available-requirements route', () => {
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/specifications/IAM-INFOR-2026/available-requirements?limit=15&locale=sv',
+        'http://localhost/api/requirements-specifications/IAM-INFOR-2026/available-requirements?limit=15&locale=sv',
       ),
       makeParams('IAM-INFOR-2026'),
     )

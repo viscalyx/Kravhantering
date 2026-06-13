@@ -327,7 +327,7 @@ function availableRequirementsFetchUrls(): string[] {
     )
     .filter(url =>
       url.startsWith(
-        '/api/specifications/ETJANST-UPP-2026/available-requirements?',
+        '/api/requirements-specifications/ETJANST-UPP-2026/available-requirements?',
       ),
     )
 }
@@ -370,7 +370,7 @@ describe('RequirementsSpecificationDetailClient', () => {
           )
         }
 
-        if (url === '/api/specifications/ETJANST-UPP-2026') {
+        if (url === '/api/requirements-specifications/ETJANST-UPP-2026') {
           return Promise.resolve(
             okJson({
               businessNeedsReference: 'Shared IAM business case',
@@ -390,7 +390,7 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/items' &&
+          url === '/api/requirements-specifications/ETJANST-UPP-2026/items' &&
           method === 'POST'
         ) {
           return Promise.resolve({
@@ -400,7 +400,7 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/items' &&
+          url === '/api/requirements-specifications/ETJANST-UPP-2026/items' &&
           method === 'PATCH'
         ) {
           if (bulkNeedsReferencePatchError) {
@@ -417,7 +417,7 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/items' &&
+          url === '/api/requirements-specifications/ETJANST-UPP-2026/items' &&
           method === 'GET'
         ) {
           if (failNextSpecificationItemsFetch) {
@@ -462,7 +462,7 @@ describe('RequirementsSpecificationDetailClient', () => {
 
         if (
           url.startsWith(
-            '/api/specifications/ETJANST-UPP-2026/available-requirements?',
+            '/api/requirements-specifications/ETJANST-UPP-2026/available-requirements?',
           ) ||
           url.startsWith('/api/requirements?')
         ) {
@@ -475,7 +475,7 @@ describe('RequirementsSpecificationDetailClient', () => {
           }
 
           const isSpecificationAvailableRequirements = url.startsWith(
-            '/api/specifications/ETJANST-UPP-2026/available-requirements?',
+            '/api/requirements-specifications/ETJANST-UPP-2026/available-requirements?',
           )
           const applyRequirementSelectionFilter =
             isSpecificationAvailableRequirements &&
@@ -543,14 +543,16 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/items/lib%3A31' &&
+          url ===
+            '/api/requirements-specifications/ETJANST-UPP-2026/items/lib%3A31' &&
           method === 'PATCH'
         ) {
           return Promise.resolve(okJson({ ok: true }))
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          url ===
+            '/api/requirements-specifications/ETJANST-UPP-2026/needs-references' &&
           method === 'POST'
         ) {
           return Promise.resolve(
@@ -567,7 +569,8 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          url ===
+            '/api/requirements-specifications/ETJANST-UPP-2026/needs-references' &&
           method === 'PATCH'
         ) {
           return Promise.resolve(
@@ -584,14 +587,16 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          url ===
+            '/api/requirements-specifications/ETJANST-UPP-2026/needs-references' &&
           method === 'DELETE'
         ) {
           return Promise.resolve(okJson({ ok: true }))
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          url ===
+            '/api/requirements-specifications/ETJANST-UPP-2026/needs-references' &&
           method === 'GET'
         ) {
           return Promise.resolve(okJson({ needsReferences: [] }))
@@ -599,7 +604,7 @@ describe('RequirementsSpecificationDetailClient', () => {
 
         if (
           url ===
-          '/api/specifications/ETJANST-UPP-2026/requirement-selection-answers'
+          '/api/requirements-specifications/ETJANST-UPP-2026/requirement-selection-answers'
         ) {
           return Promise.resolve(okJson({ questions: [] }))
         }
@@ -1563,14 +1568,15 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/ETJANST-UPP-2026/needs-references',
+        '/api/requirements-specifications/ETJANST-UPP-2026/needs-references',
         expect.objectContaining({ method: 'POST' }),
       )
     })
 
     const postCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+        url ===
+          '/api/requirements-specifications/ETJANST-UPP-2026/needs-references' &&
         (init as RequestInit | undefined)?.method === 'POST',
     )
     expect(JSON.parse(String((postCall?.[1] as RequestInit).body))).toEqual({
@@ -1625,7 +1631,7 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/ETJANST-UPP-2026/items/lib%3A31',
+        '/api/requirements-specifications/ETJANST-UPP-2026/items/lib%3A31',
         expect.objectContaining({
           body: JSON.stringify({ needsReferenceId: 81 }),
           method: 'PATCH',
@@ -1664,7 +1670,7 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/ETJANST-UPP-2026/items',
+        '/api/requirements-specifications/ETJANST-UPP-2026/items',
         expect.objectContaining({
           body: JSON.stringify({
             itemRefs: ['lib:31'],
