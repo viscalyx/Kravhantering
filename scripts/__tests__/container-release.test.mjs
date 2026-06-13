@@ -1295,9 +1295,9 @@ describe('trusted container release helpers', () => {
     const shaPinnedUsesReferences =
       workflow.match(/uses:[^@]+@[0-9a-f]{40}/g) ?? []
     expect(shaPinnedUsesReferences).toHaveLength(usesReferences.length)
-    expect(
-      workflow.match(/uses: actions\/attest@[0-9a-f]{40}/g),
-    ).toHaveLength(6)
+    expect(workflow.match(/uses: actions\/attest@[0-9a-f]{40}/g)).toHaveLength(
+      6,
+    )
     expect(workflow.match(/persist-credentials:\s*false/g)).not.toBeNull()
     expect(workflow.match(/--provenance=false/g)).toHaveLength(3)
     const appRuntimeDescriptionEnv = '$' + '{APP_RUNTIME_DESCRIPTION}'
