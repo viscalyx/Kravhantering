@@ -184,6 +184,15 @@ beslutas.
 
 _Avoid_: Åtkomstgranskning som huvudterm, granskning av kravversioner.
 
+**Behörighetssammanhang**:
+Den resurs eller arbetsyta inom kravhanteringen som en behörighetsprövning
+avser, till exempel ett kravområde eller kravunderlag. Behörighetssammanhanget
+anger var en användare får utföra en åtgärd, inte en separat roll.
+
+- `en`: Authorization context
+
+_Avoid_: Scope som svensk term, separat behörighet, roll.
+
 **Kravområde**:
 En ansvarsbärande domän- eller ämnesindelning i kravbiblioteket. Kravområdet
 anger var ett krav hör hemma, vilket krav-ID-prefix som används och vem som
@@ -373,11 +382,11 @@ _Avoid_: Medförfattare när sammanhanget inte visar kravunderlag.
 **Medförfattare**:
 Accepterad kortform för kravområdesmedförfattare,
 kravpaketsmedförfattare eller kravunderlagsmedförfattare när sammanhanget
-tydligt visar vilket scope som avses.
+tydligt visar vilket behörighetssammanhang som avses.
 
 - `en`: Co-author
 
-_Avoid_: Medförfattare i sammanhang där scope är oklart.
+_Avoid_: Medförfattare när behörighetssammanhanget är oklart.
 
 **Kravgranskare**:
 En global roll som oberoende bedömer kravversioner och avsteg inför

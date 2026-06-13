@@ -17,9 +17,10 @@ kravunderlagsmedförfattare är däremot applikationsägda HSA-id-tilldelningar
 för en viss resurs.
 
 `Admin` är ett generellt administrativt undantag för författande, läsning,
-rapporter, exporter och live AI-scope. Undantaget är granskningsbeslut:
-publicering, arkiveringsbeslut och avstegsbeslut kräver `Reviewer`.
-`Admin` utan `Reviewer` räcker därför inte för granskningsbeslut.
+rapporter, exporter och AI-assisterat författande utan angivet
+behörighetssammanhang. Undantaget är granskningsbeslut: publicering,
+arkiveringsbeslut och avstegsbeslut kräver `Reviewer`. `Admin` utan `Reviewer`
+räcker därför inte för granskningsbeslut.
 
 `Reviewer` får fatta beslut även när aktören själv har skapat underlaget,
 avsteget eller förslaget. Sådana egna beslut är tillåtna för att inte blockera
@@ -49,13 +50,16 @@ kravunderlaget. Förbättringsförslag kan skapas och ändras av inloggade
 användare, medan lösning eller beslut att avvisa kräver författare i
 kravområdet eller `Admin`. Egen lösning högriskloggas.
 
-AI-assisterat författande använder inte de borttagna AI-flaggorna från ADR
-0026. En användare utan `Admin` måste ange exakt ett auktoriserat scope:
+AI-assisterat författande styrs av den generella autentiserings- och
+auktoriseringsgränsen och har ingen separat AI-behörighet i nuvarande modell.
+En användare utan `Admin` måste ange exakt ett auktoriserat
+behörighetssammanhang:
 `requirement_area` för författande i kravområde eller `specification` för
 författande i kravunderlag. Detta gäller lista över modeller,
 kreditinformation, REST-generering och MCP-generering innan någon
-OpenRouter-körväg anropas.
-`Admin` får utelämna scope.
+OpenRouter-körväg anropas. `Admin` får utelämna behörighetssammanhang. Om
+AI-assisterat författande senare behöver en separat behörighetsmodell ska den
+beslutas som en ny uttrycklig policy med egna skäl.
 
 Kravpaket och normreferenser följer `docs/behörigheter.md`. Kravpaketens
 återaktivering kräver `Admin` för att stänga den tidigare generella
@@ -72,5 +76,5 @@ inloggningsgränsen.
 - Förbjuda egna granskningsbeslut: avvisat eftersom små organisationer annars
   kan blockeras operativt. Högriskloggning ger spårbarhet utan att stoppa
   arbetet.
-- Återinföra AI-behörighetsflaggor: avvisat enligt ADR 0026. AI-rätten följer
-  i stället det uppdrag som ger rätt att författa i valt scope.
+- Införa en separat AI-behörighet i detta beslut: avvisat eftersom AI-rätten
+  följer det uppdrag som ger rätt att författa i valt behörighetssammanhang.

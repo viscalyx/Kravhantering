@@ -1,13 +1,13 @@
 # Ta bort AI-behörighetsflaggor
 
-Status: Antagen 2026-06-11.
+Status: Antagen 2026-06-11. Uppdaterad 2026-06-13 för hänvisning till
+efterföljande AI-policy i ADR 0012.
 
 Kravhantering tar bort AI-behörighetsflaggorna i databasen för kravområden och
 uppdrag i kravunderlag eftersom de inte användes för faktisk åtkomstkontroll av
 AI-assisterat författande. Att behålla flaggorna skulle ge en missvisande
-säkerhetssignal i UI, dataskyddsexport och behörighetsöversyn; AI-assisterat
-författande styrs i stället av den generella autentiserings- och
-auktoriseringsgränsen tills en verklig resource-scoped policy införs.
+säkerhetssignal i UI, dataskyddsexport och behörighetsöversyn. Den nuvarande
+uppdragsbaserade AI-policyn beskrivs i ADR 0012.
 
 ## Övervägda alternativ
 

@@ -188,18 +188,21 @@ eller `Admin`. Egen lösning loggas som högriskhändelse.
 
 ## AI-assisterat författande
 
-AI-assisterat författande använder samma uppdragsbaserade gräns som
+AI-assisterat författande styrs av den generella autentiserings- och
+auktoriseringsgränsen och använder samma uppdragsbaserade gräns som
 författande i Kravhantering. En användare utan `Admin` måste välja exakt ett
-auktoriserat scope innan tjänsten hämtar modeller, hämtar kreditinformation
-eller skickar en prompt till OpenRouter:
+auktoriserat behörighetssammanhang innan tjänsten hämtar modeller, hämtar
+kreditinformation eller skickar en prompt till OpenRouter:
 
 - `requirement_area` med ett kravområde där användaren är kravområdesägare
   eller kravområdesmedförfattare
 - `specification` med ett kravunderlag där användaren är
   kravunderlagsansvarig eller kravunderlagsmedförfattare
 
-`Admin` får använda AI-assisterat författande utan att ange scope. Äldre
-AI-behörighetsflaggor används inte och ska inte återinföras.
+`Admin` får använda AI-assisterat författande utan att ange
+behörighetssammanhang. Det finns ingen separat AI-behörighet i nuvarande
+modell. Om AI-assisterat författande senare behöver en separat
+behörighetsmodell ska den beslutas som en egen policy med egna skäl.
 
 ## Normbibliotek
 
@@ -250,9 +253,9 @@ kravpaketsmedförfattare, kravunderlagsansvarig och
 kravunderlagsmedförfattare. Globala IdP-roller granskas i identitetssystemet,
 inte i Kravhantering.
 
-Äldre AI-behörighetsflaggor ingår inte längre i behörighetsöversynen. De
-användes inte som faktisk åtkomstkontroll och ska inte presenteras som om de
-ger eller begränsar åtkomst.
+En separat AI-behörighet ingår inte i behörighetsöversynen i nuvarande modell.
+AI-användning följer granskningen av de uppdrag som ger författarbehörighet i
+berört kravområde eller kravunderlag.
 
 ## Dataskyddsarbete
 
