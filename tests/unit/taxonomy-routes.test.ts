@@ -55,6 +55,7 @@ const auditState = vi.hoisted(() => ({
     source: 'rest',
   })),
   recordAdminPrivilegedActionSucceeded: vi.fn(),
+  recordDelegatedPrivilegedActionSucceeded: vi.fn(),
 }))
 
 const actionAuditState = vi.hoisted(() => ({
@@ -140,6 +141,8 @@ vi.mock('@/lib/admin/privileged-audit', () => ({
     auditState.createAdminPrivilegedAuditContext,
   recordAdminPrivilegedActionSucceeded:
     auditState.recordAdminPrivilegedActionSucceeded,
+  recordDelegatedPrivilegedActionSucceeded:
+    auditState.recordDelegatedPrivilegedActionSucceeded,
 }))
 
 vi.mock('@/lib/audit/action-audit', () => ({

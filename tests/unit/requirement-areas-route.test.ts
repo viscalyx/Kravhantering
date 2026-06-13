@@ -44,6 +44,7 @@ const mocks = vi.hoisted(() => {
     updateArea: vi.fn(),
     updateAreaWithOwnerCheck: vi.fn(),
     recordAdminPrivilegedActionSucceeded: vi.fn(),
+    recordDelegatedPrivilegedActionSucceeded: vi.fn(),
   }
 })
 
@@ -51,6 +52,8 @@ vi.mock('@/lib/admin/privileged-audit', () => ({
   createAdminPrivilegedAuditContext: mocks.createAdminPrivilegedAuditContext,
   recordAdminPrivilegedActionSucceeded:
     mocks.recordAdminPrivilegedActionSucceeded,
+  recordDelegatedPrivilegedActionSucceeded:
+    mocks.recordDelegatedPrivilegedActionSucceeded,
 }))
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: mocks.getRequestSqlServerDataSource,
@@ -303,6 +306,69 @@ describe('requirement-areas route', () => {
           resolveOwnerPerson: expect.any(Function),
         }),
       )
+      expect(mocks.recordAdminPrivilegedActionSucceeded).toHaveBeenCalledWith(
+        expect.objectContaining({ requestId: 'request-area' }),
+        {
+          changedFields: ['ownerHsaId'],
+          operation: 'update',
+          resourceId: 1,
+          resourceType: 'requirement_area',
+        },
+      )
+      expect(
+        mocks.recordDelegatedPrivilegedActionSucceeded,
+      ).not.toHaveBeenCalled()
+    })
+
+    it('records delegated audit for non-admin area manager updates', async () => {
+      const delegatedContext = {
+        actor: {
+          displayName: 'Area Owner',
+          hsaId: 'SE5560000001-owner1',
+          id: 'owner-sub',
+          isAuthenticated: true,
+          roles: ['RequirementsEditor'],
+          source: 'oidc',
+        },
+        correlationId: 'correlation-area',
+        requestId: 'request-area',
+        source: 'rest',
+      }
+      mocks.createRequestContext.mockResolvedValueOnce(delegatedContext)
+      mocks.updateAreaWithOwnerCheck.mockResolvedValue({
+        id: 1,
+        prefix: 'INT',
+        name: 'Updated integration',
+        description: null,
+        ownerHsaId: 'SE5560000001-owner1',
+      })
+
+      const res = await PUT(
+        request(
+          { name: 'Updated integration' },
+          'http://localhost/api/requirement-areas/1',
+          'PUT',
+        ),
+        makeParams('1'),
+      )
+
+      expect(res.status).toBe(200)
+      expect(mocks.canManageAreaCoAuthors).toHaveBeenCalledWith(
+        mocks.db,
+        1,
+        'SE5560000001-owner1',
+        false,
+      )
+      expect(mocks.recordAdminPrivilegedActionSucceeded).not.toHaveBeenCalled()
+      expect(
+        mocks.recordDelegatedPrivilegedActionSucceeded,
+      ).toHaveBeenCalledWith(delegatedContext, {
+        actorRole: 'delegated_area_manager',
+        changedFields: ['name'],
+        operation: 'update',
+        resourceId: 1,
+        resourceType: 'requirement_area',
+      })
     })
 
     it('rejects changing ownerHsaId to an existing co-author', async () => {

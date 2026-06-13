@@ -314,9 +314,9 @@ export default function SpecificationFormModal({
     : t('currentUserUnavailable')
   const loadCoAuthorsFailedMessage = t('loadCoAuthorsFailed')
   const saveCoAuthorsFailedMessage = t('saveCoAuthorsFailed')
-  const canEditContent = isCreate || (spec?.permissions?.canEditContent ?? true)
+  const canEditContent = isCreate || spec?.permissions?.canEditContent === true
   const canManageAssignments =
-    isCreate || (spec?.permissions?.canManageAssignments ?? true)
+    isCreate || spec?.permissions?.canManageAssignments === true
   const formControlsDisabled = isSubmitting || createCurrentUserBlocked
   const metadataControlsDisabled =
     formControlsDisabled || (isEdit && !canEditContent)

@@ -23,6 +23,7 @@ const mockContext = {
 }
 
 const mocks = {
+  createSpecificationLocalRequirement: vi.fn(),
   deleteSpecificationLocalRequirement: vi.fn(),
   getSpecificationById: vi.fn(),
   getSpecificationBySlug: vi.fn(),
@@ -55,6 +56,8 @@ vi.mock('@/lib/requirements/auth', async importOriginal => {
 })
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
+  createSpecificationLocalRequirement: (...args: unknown[]) =>
+    mocks.createSpecificationLocalRequirement(...args),
   deleteSpecificationLocalRequirement: (...args: unknown[]) =>
     mocks.deleteSpecificationLocalRequirement(...args),
   getSpecificationById: (...args: unknown[]) =>
@@ -70,6 +73,7 @@ import {
   DELETE,
   PUT,
 } from '@/app/api/specifications/[id]/local-requirements/[localRequirementId]/route'
+import { POST as postLocalRequirement } from '@/app/api/specifications/[id]/local-requirements/route'
 import {
   forbiddenError,
   RequirementsServiceError,
@@ -211,6 +215,59 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
       expect.objectContaining({
         description: 'Updated local requirement',
         requirementPackageIds: [13],
+      }),
+    )
+  })
+
+  it('creates a specification-local requirement using the authorized route DB', async () => {
+    const createdLocalRequirement = {
+      description: 'New local requirement',
+      id: 41,
+      itemRef: 'local:41',
+      uniqueId: 'LOCAL-001',
+    }
+    mocks.createSpecificationLocalRequirement.mockResolvedValueOnce(
+      createdLocalRequirement,
+    )
+
+    const response = await postLocalRequirement(
+      new NextRequest(
+        'http://localhost/api/specifications/spec/local-requirements',
+        {
+          body: JSON.stringify({
+            description: 'New local requirement',
+            requiresTesting: true,
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        },
+      ),
+      { params: Promise.resolve({ id: 'spec' }) },
+    )
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toEqual({
+      localRequirement: createdLocalRequirement,
+      ok: true,
+    })
+    expect(authState.assertAuthorized).toHaveBeenCalledWith(
+      {
+        kind: 'manage_specification_local_requirement',
+        operation: 'create',
+        specificationId: undefined,
+        specificationSlug: 'spec',
+      },
+      expect.objectContaining({ requestId: 'request-1' }),
+    )
+    expect(mocks.getSpecificationBySlug).toHaveBeenCalledWith(mockDb, 'spec')
+    expect(mocks.createSpecificationLocalRequirement).toHaveBeenCalledWith(
+      mockDb,
+      5,
+      expect.objectContaining({
+        description: 'New local requirement',
+        normReferenceIds: [],
+        requirementPackageIds: [],
+        requiresTesting: true,
       }),
     )
   })

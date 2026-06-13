@@ -46,6 +46,25 @@ function uniqueHsaIds(hsaIds: string[] | undefined): string[] {
   return [...new Set((hsaIds ?? []).map(hsaId => hsaId.trim()).filter(Boolean))]
 }
 
+function normalizeHsaIdForComparison(hsaId: string): string {
+  return hsaId.trim().toLowerCase()
+}
+
+function assertResponsibilityPersonHsaId(
+  person: RequirementResponsibilityPersonRecord,
+  expectedHsaId: string,
+  reason: string,
+  message: string,
+): RequirementResponsibilityPersonRecord {
+  if (
+    normalizeHsaIdForComparison(person.hsaId) !==
+    normalizeHsaIdForComparison(expectedHsaId)
+  ) {
+    throw validationError(message, { reason })
+  }
+  return person
+}
+
 function toStr(value: unknown): string | null {
   if (value == null) return null
   return String(value)
@@ -475,10 +494,21 @@ export async function updateAreaWithOwnerCheck(
     const ownerPerson =
       ownerHsaId === undefined
         ? undefined
-        : (data.ownerPerson ??
-          (data.resolveOwnerPerson
-            ? await data.resolveOwnerPerson(manager, ownerHsaId)
-            : undefined))
+        : data.ownerPerson
+          ? assertResponsibilityPersonHsaId(
+              data.ownerPerson,
+              ownerHsaId,
+              'owner_person_hsa_id_mismatch',
+              'Requirement area owner person must match owner HSA-id',
+            )
+          : data.resolveOwnerPerson
+            ? assertResponsibilityPersonHsaId(
+                await data.resolveOwnerPerson(manager, ownerHsaId),
+                ownerHsaId,
+                'owner_person_hsa_id_mismatch',
+                'Requirement area owner person must match owner HSA-id',
+              )
+            : undefined
     if (ownerPerson) {
       await upsertRequirementResponsibilityPerson(manager, ownerPerson)
     }
@@ -599,7 +629,18 @@ export async function replaceRequirementAreaCoAuthors(
       )
     }
 
+    const coAuthorHsaIdSet = new Set(
+      coAuthorHsaIds.map(normalizeHsaIdForComparison),
+    )
     for (const coAuthorPerson of data.coAuthorPeople ?? []) {
+      if (
+        !coAuthorHsaIdSet.has(normalizeHsaIdForComparison(coAuthorPerson.hsaId))
+      ) {
+        throw validationError(
+          'Requirement area co-author person must match a co-author HSA-id',
+          { reason: 'co_author_person_hsa_id_mismatch' },
+        )
+      }
       await upsertRequirementResponsibilityPerson(manager, coAuthorPerson)
     }
     const removedHsaIds = await syncRequirementAreaCoAuthors(

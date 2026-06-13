@@ -70,6 +70,12 @@ const spec = {
   businessNeedsReference: 'Current business need',
   id: 7,
   name: 'Upphandling av e-tjänstplattform',
+  permissions: {
+    canEditContent: true,
+    canManageAssignments: true,
+    canReviewDecisions: false,
+    canUseAi: true,
+  },
   responsibleDisplayName: 'Ada Admin',
   responsibleHsaId: 'SE5560000001-ada1',
   specificationImplementationTypeId: 2,
@@ -184,6 +190,22 @@ describe('SpecificationFormModal', () => {
     expect(form?.firstElementChild).toHaveClass('grid')
     expect(form?.firstElementChild).toHaveClass('grid-cols-1')
     expect(form?.firstElementChild).toHaveClass('lg:grid-cols-2')
+  })
+
+  it('keeps edit controls disabled when server permissions are missing', () => {
+    const { permissions: omittedPermissions, ...specWithoutPermissions } = spec
+    void omittedPermissions
+
+    renderEditModal({ spec: specWithoutPermissions })
+
+    expect(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', {
+        name: /specification\.changeResponsible/,
+      }),
+    ).toBeDisabled()
   })
 
   it('calls onClose when the unchanged modal cancel button is pressed', () => {

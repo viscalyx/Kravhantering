@@ -208,6 +208,12 @@ const initialSpec = {
   implementationType: { id: 2, nameEn: 'Program', nameSv: 'Program' },
   lifecycleStatus: { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
   name: 'Authorization and IAM',
+  permissions: {
+    canEditContent: true,
+    canManageAssignments: true,
+    canReviewDecisions: false,
+    canUseAi: true,
+  },
   responsibleDisplayName: 'Ada Admin',
   responsibleHsaId: 'SE5560000001-ada1',
   specificationImplementationTypeId: 2,
@@ -936,6 +942,32 @@ describe('RequirementsSpecificationDetailClient', () => {
       ).not.toBeInTheDocument()
     })
     expect(editButton).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('does not fail open when specification permissions are missing', async () => {
+    const { permissions: omittedPermissions, ...specWithoutPermissions } =
+      initialSpec
+    void omittedPermissions
+
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      spec: specWithoutPermissions,
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: 'Authorization and IAM',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    expect(
+      screen.queryByRole('button', {
+        name: /specification\.editSpecification/i,
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('ignores stale and invalid stored detail column ids', async () => {

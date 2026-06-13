@@ -37,6 +37,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [REQ-11: localized library error recovery](#req-11-localized-library-error-recovery)
   - [REQ-12: detail action menus are keyboard accessible](#req-12-detail-action-menus-are-keyboard-accessible)
   - [REQ-13: requirement-library stewardship manages packages and questions](#req-13-requirement-library-stewardship-manages-packages-and-questions)
+  - [REQ-14: AI requirement generator resets scope-bound results](#req-14-ai-requirement-generator-resets-scope-bound-results)
 - [Requirement creation and lifecycle](#requirement-creation-and-lifecycle)
   - [LIFE-01: create a requirement from the UI](#life-01-create-a-requirement-from-the-ui)
   - [LIFE-02: validate required fields on create](#life-02-validate-required-fields-on-create)
@@ -775,6 +776,26 @@ HSA-id/display-name fields, the question gets a stable `KUF` code, questions
 have no required/mandatory setting, cancelled destructive actions leave the
 question or answer unchanged, confirmed destructive actions complete, and active
 answers without links remain editable as action-required health items.
+
+### REQ-14: AI requirement generator resets scope-bound results
+
+**Purpose:** Confirm generated AI requirement drafts cannot be created under a
+different requirement area than the one used for generation.
+
+**Users:** `ada.admin`.
+
+**Prerequisites:** Open `/sv/requirements`.
+
+**Steps:**
+
+1. Open the AI requirement generator from the requirements page.
+1. Enter a topic, select a requirement area, and generate requirements.
+1. After generated requirement cards are visible, change the requirement area.
+1. Change the area quickly twice and watch the credit badge.
+
+**Expected result:** Changing the area after generation clears the generated
+cards and the create button. The credit badge reflects the latest selected area
+and does not revert to an earlier area after a delayed response.
 
 ## Requirement creation and lifecycle
 

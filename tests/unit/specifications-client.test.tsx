@@ -93,6 +93,12 @@ const sampleSpecifications = [
     itemCount: 0,
     requirementAreas: [],
     businessNeedsReference: null,
+    permissions: {
+      canEditContent: true,
+      canManageAssignments: true,
+      canReviewDecisions: false,
+      canUseAi: true,
+    },
     responsibleHsaId: 'SE5560000001-ada1',
     responsibleDisplayName: 'Ada Admin',
   },

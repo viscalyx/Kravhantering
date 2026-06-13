@@ -6,7 +6,6 @@ import {
   getSpecificationBySlug,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
-import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
@@ -48,9 +47,11 @@ export const POST = secureMutationRoute({
     specificationSlug: /^\d+$/.test(params.id) ? undefined : params.id,
     specificationId: /^\d+$/.test(params.id) ? Number(params.id) : undefined,
   })),
-  handler: async ({ body, params }) => {
+  handler: async ({ body, db, params }) => {
     const { id } = params
-    const db = await getRequestSqlServerDataSource()
+    if (!db) {
+      throw new Error('Missing authorized database context')
+    }
 
     const specificationId = await resolveSpecificationId(db, id)
     if (specificationId === null) {

@@ -268,7 +268,8 @@ jobs:
             container-status-after-down.json \
             public/build.json \
             tmp/container-pr-artifacts/oci/app-runtime.oci.tar.gz \
-            tmp/container-pr-artifacts/oci/db-job.oci.tar.gz || true
+            tmp/container-pr-artifacts/oci/db-job.oci.tar.gz \
+            tmp/container-pr-artifacts/oci/hsa-directory-mock.oci.tar.gz || true
 
       - name: Stage runtime artifacts
         if: always()

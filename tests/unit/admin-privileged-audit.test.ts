@@ -22,6 +22,7 @@ vi.mock('@/lib/db', () => ({
 import {
   createAdminPrivilegedAuditContext,
   recordAdminPrivilegedActionSucceeded,
+  recordDelegatedPrivilegedActionSucceeded,
 } from '@/lib/admin/privileged-audit'
 import type { RequestContext } from '@/lib/requirements/auth'
 
@@ -154,6 +155,89 @@ describe('admin privileged action audit', () => {
           'user',
           null,
           'admin.requirement_area.update',
+          'requirement_area',
+          '7',
+          null,
+          'allowed',
+        ]),
+      )
+    } finally {
+      infoSpy.mockRestore()
+    }
+  })
+
+  it('emits delegated privileged-action details for assignment-based updates', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const context: RequestContext = {
+      actor: {
+        displayName: 'Area Owner',
+        hsaId: 'SE5560000001-owner1',
+        id: 'owner-sub',
+        isAuthenticated: true,
+        roles: ['RequirementsEditor'],
+        source: 'oidc',
+      },
+      request: {
+        method: 'PUT',
+        path: '/api/requirement-areas/7',
+        requestId: 'request-789',
+      },
+      correlationId: 'correlation-789',
+      requestId: 'request-789',
+      source: 'rest',
+    }
+
+    try {
+      await recordDelegatedPrivilegedActionSucceeded(context, {
+        actorRole: 'delegated_area_manager',
+        changedFields: ['name'],
+        operation: 'update',
+        resourceId: 7,
+        resourceType: 'requirement_area',
+      })
+
+      const event = JSON.parse(String(infoSpy.mock.calls[0][0])) as {
+        actor: Record<string, unknown>
+        channel: string
+        detail: Record<string, unknown>
+        event: string
+        outcome: string
+        request: Record<string, unknown>
+      }
+      expect(event).toMatchObject({
+        actor: {
+          hsaId: 'SE5560000001-owner1',
+          source: 'oidc',
+          sub: 'owner-sub',
+        },
+        channel: 'security-audit',
+        event: 'delegated.privileged_action.succeeded',
+        outcome: 'success',
+        request: {
+          method: 'PUT',
+          path: '/api/requirement-areas/7',
+          requestId: 'request-789',
+        },
+      })
+      expect(event.detail).toEqual({
+        actionKind: 'delegated.privileged_action',
+        actorRole: 'delegated_area_manager',
+        actorRoles: ['RequirementsEditor'],
+        changedFields: ['name'],
+        operation: 'update',
+        privilegeSource: 'resource_assignment',
+        requestSource: 'rest',
+        resourceId: 7,
+        resourceType: 'requirement_area',
+      })
+      expect(auditState.query).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO action_audit_events'),
+        expect.arrayContaining([
+          'SE5560000001-owner1',
+          'Area Owner',
+          'user',
+          null,
+          'delegated.requirement_area.update',
           'requirement_area',
           '7',
           null,

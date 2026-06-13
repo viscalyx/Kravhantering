@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { routing } from '@/i18n/routing'
+import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import { loadRequirementsSpecificationDetailInitialData } from '@/lib/specifications/preload'
 import RequirementsSpecificationDetailClient from './requirements-specification-detail-client'
 
@@ -24,8 +25,9 @@ export default async function RequirementsSpecificationDetailPage({
   params: Params
 }) {
   const { locale: requestedLocale, slug } = await params
+  const locale = resolveLocale(requestedLocale)
   const initialData = await loadRequirementsSpecificationDetailInitialData({
-    locale: resolveLocale(requestedLocale),
+    locale,
     slug,
   })
   if (initialData.notFound) {
@@ -33,12 +35,18 @@ export default async function RequirementsSpecificationDetailPage({
   }
   if (initialData.forbidden) {
     const t = await getTranslations({
-      locale: resolveLocale(requestedLocale),
+      locale,
       namespace: 'specification',
     })
     const responsibleName =
-      initialData.forbidden.responsible.displayName ??
-      initialData.forbidden.responsible.hsaId
+      formatActorDisplayNameForLocale(
+        initialData.forbidden.responsible.displayName,
+        locale,
+      ) ??
+      formatActorDisplayNameForLocale(
+        initialData.forbidden.responsible.hsaId,
+        locale,
+      )
     return (
       <main className="section-padding px-4 sm:px-6 lg:px-8">
         <div className="container-custom max-w-3xl">

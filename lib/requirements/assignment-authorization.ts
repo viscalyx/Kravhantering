@@ -517,15 +517,6 @@ export class AssignmentBasedAuthorizationService
     context: RequestContext,
     action: Extract<RequirementsAction, { kind: 'manage_suggestion' }>,
   ): Promise<void> {
-    if (
-      action.operation === 'create' ||
-      action.operation === 'edit' ||
-      action.operation === 'request_review' ||
-      action.operation === 'revert_to_draft'
-    ) {
-      return
-    }
-
     const areaId = await this.resolveSuggestionRequirementArea(action)
     await this.assertAreaAuthor(context, areaId)
   }

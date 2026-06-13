@@ -1464,14 +1464,15 @@ export default function KravunderlagDetailClient({
 
   const specName = spec ? spec.name : '…'
   const permissions = spec?.permissions ?? {
-    canEditContent: true,
-    canManageAssignments: true,
-    canReviewDecisions: true,
-    canUseAi: true,
+    canEditContent: false,
+    canManageAssignments: false,
+    canReviewDecisions: false,
+    canUseAi: false,
   }
-  const canEditContent = permissions.canEditContent
+  const canEditContent = permissions.canEditContent === true
   const canMutateSpecification =
-    permissions.canEditContent || permissions.canManageAssignments
+    permissions.canEditContent === true ||
+    permissions.canManageAssignments === true
 
   const localName = (obj: { nameSv: string; nameEn: string } | null) =>
     obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null

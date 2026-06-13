@@ -27,7 +27,9 @@ function makeContext(
 }
 
 function makeDb(rows: Array<Record<string, unknown>>[] = []) {
-  const query = vi.fn(async () => rows.shift() ?? [])
+  const query = vi.fn(
+    async (_sql?: string, _parameters?: unknown[]) => rows.shift() ?? [],
+  )
   return {
     db: { query } as unknown as SqlServerDatabase,
     query,
@@ -171,6 +173,47 @@ describe('AssignmentBasedAuthorizationService', () => {
       expect.stringContaining('area.id = @0'),
       [7, 'SE5560000001-user1'],
     )
+  })
+
+  it('requires requirement area authorship when creating suggestions', async () => {
+    const { db, query } = makeDb([[requirementTargetRow()], []])
+    const service = new AssignmentBasedAuthorizationService(db)
+
+    await expect(
+      service.assertAuthorized(
+        {
+          kind: 'manage_suggestion',
+          operation: 'create',
+          requirementId: 11,
+        },
+        makeContext([]),
+      ),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      details: { reason: 'requirement_area_author_required' },
+    })
+    expect(query).toHaveBeenCalledTimes(2)
+    expect(query.mock.calls[0]?.[0]).toContain('FROM requirements requirement')
+    expect(query.mock.calls[1]?.[0]).toContain('FROM requirement_areas area')
+  })
+
+  it('allows suggestion review state changes for requirement area authors', async () => {
+    const { db, query } = makeDb([[{ areaId: 7 }], [{ id: 7 }]])
+    const service = new AssignmentBasedAuthorizationService(db)
+
+    await expect(
+      service.assertAuthorized(
+        {
+          kind: 'manage_suggestion',
+          operation: 'request_review',
+          suggestionId: 5,
+        },
+        makeContext([]),
+      ),
+    ).resolves.toBeUndefined()
+    expect(query).toHaveBeenCalledTimes(2)
+    expect(query.mock.calls[0]?.[0]).toContain('FROM improvement_suggestions')
+    expect(query.mock.calls[1]?.[0]).toContain('FROM requirement_areas area')
   })
 
   it('does not let Admin alone publish a requirement', async () => {

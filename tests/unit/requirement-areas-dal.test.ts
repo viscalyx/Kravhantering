@@ -3,6 +3,7 @@ import {
   canAuthorArea,
   createArea,
   listAreasActorCanAuthor,
+  replaceRequirementAreaCoAuthors,
   updateArea,
   updateAreaWithOwnerCheck,
 } from '@/lib/dal/requirement-areas'
@@ -206,6 +207,78 @@ describe('requirement-areas DAL', () => {
     expect(
       query.mock.calls.some(([sql]) =>
         String(sql).includes('UPDATE requirement_areas'),
+      ),
+    ).toBe(false)
+  })
+
+  it('rejects owner person records that do not match the requested owner HSA-id', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        { ownerHsaId: 'SE5560000001-old1', prefix: 'KH' },
+      ])
+      .mockResolvedValueOnce([])
+
+    await expect(
+      updateAreaWithOwnerCheck(db, 11, {
+        ownerHsaId: 'SE5560000001-new1',
+        ownerPerson: {
+          email: 'other.owner@example.test',
+          givenName: 'Other',
+          hsaId: 'SE5560000001-other1',
+          middleName: null,
+          surname: 'Owner',
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'owner_person_hsa_id_mismatch' },
+    })
+
+    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('MERGE INTO requirement_responsibility_people'),
+      ),
+    ).toBe(false)
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('UPDATE requirement_areas'),
+      ),
+    ).toBe(false)
+  })
+
+  it('rejects co-author people that do not match requested co-author HSA-ids', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query.mockResolvedValueOnce([{ ownerHsaId: 'SE5560000001-owner1' }])
+
+    await expect(
+      replaceRequirementAreaCoAuthors(db, 11, {
+        coAuthorHsaIds: ['SE5560000001-coa1'],
+        coAuthorPeople: [
+          {
+            email: 'other.coauthor@example.test',
+            givenName: 'Other',
+            hsaId: 'SE5560000001-other1',
+            middleName: null,
+            surname: 'Coauthor',
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'co_author_person_hsa_id_mismatch' },
+    })
+
+    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('MERGE INTO requirement_responsibility_people'),
+      ),
+    ).toBe(false)
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('INSERT INTO requirement_area_co_authors'),
       ),
     ).toBe(false)
   })

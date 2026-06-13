@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import {
+  recordAdminPrivilegedActionSucceeded,
+  recordDelegatedPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
 import { isHsaId } from '@/lib/auth/hsa-id'
 import {
   canManageAreaCoAuthors,
@@ -83,12 +86,20 @@ export const PUT = secureMutationRoute({
     if (!area) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    await recordAdminPrivilegedActionSucceeded(context, {
+    const auditDetail = {
       changedFields: Object.keys(body),
       operation: 'update',
       resourceId: params.id,
       resourceType: 'requirement_area',
-    })
+    } as const
+    if (isAdmin(context.actor.roles)) {
+      await recordAdminPrivilegedActionSucceeded(context, auditDetail)
+    } else {
+      await recordDelegatedPrivilegedActionSucceeded(context, {
+        ...auditDetail,
+        actorRole: 'delegated_area_manager',
+      })
+    }
     return NextResponse.json(area)
   },
 })
