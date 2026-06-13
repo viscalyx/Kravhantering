@@ -341,7 +341,7 @@ export default function RequirementsSpecificationsClient({
   const lifecycleStatuses = lifecycleStatusesResource.data ?? []
   const specificationsResource = useAsyncResource<Specification[]>({
     fetcher: async signal => {
-      const res = await apiFetch('/api/specifications', { signal })
+      const res = await apiFetch('/api/requirements-specifications', { signal })
       if (!res.ok) {
         const details = await readResponseMessage(res)
         throw new Error(
@@ -491,9 +491,12 @@ export default function RequirementsSpecificationsClient({
       return
 
     try {
-      const res = await apiFetch(`/api/specifications/${spec.uniqueId}`, {
-        method: 'DELETE',
-      })
+      const res = await apiFetch(
+        `/api/requirements-specifications/${spec.uniqueId}`,
+        {
+          method: 'DELETE',
+        },
+      )
 
       if (!res.ok) {
         const details = (await res.text()).trim()

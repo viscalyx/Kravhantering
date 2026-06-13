@@ -171,7 +171,7 @@ export default function SpecificationRequirementSelectionPanel({
     setError(null)
     try {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/requirement-selection-answers`,
+        `/api/requirements-specifications/${specificationSlug}/requirement-selection-answers`,
       )
       if (!response.ok) {
         setError((await readResponseMessage(response)) ?? copy.error)
@@ -238,7 +238,7 @@ export default function SpecificationRequirementSelectionPanel({
     )
     try {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/requirement-selection-answers/${question.id}`,
+        `/api/requirements-specifications/${specificationSlug}/requirement-selection-answers/${question.id}`,
         {
           body: JSON.stringify({ answerIds, confirmHiddenAnswerClear }),
           headers: { 'Content-Type': 'application/json' },

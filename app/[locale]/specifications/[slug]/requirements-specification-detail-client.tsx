@@ -369,7 +369,7 @@ export default function KravunderlagDetailClient({
   const specResource = useAsyncResource<SpecificationMeta | null>({
     fetcher: async signal => {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}`,
+        `/api/requirements-specifications/${specificationSlug}`,
         {
           signal,
         },
@@ -390,7 +390,7 @@ export default function KravunderlagDetailClient({
   const specificationItemsResource = useAsyncResource<SpecificationListItem[]>({
     fetcher: async signal => {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/items`,
+        `/api/requirements-specifications/${specificationSlug}/items`,
         { signal },
       )
       const data = await readJsonOrThrow<{ items?: SpecificationListItem[] }>(
@@ -412,7 +412,7 @@ export default function KravunderlagDetailClient({
     useAsyncResource<AvailableRequirementsData>({
       fetcher: async signal => {
         const response = await apiFetch(
-          `/api/specifications/${specificationSlug}/available-requirements?${availableRequirementsParams}`,
+          `/api/requirements-specifications/${specificationSlug}/available-requirements?${availableRequirementsParams}`,
           { signal },
         )
         const data = await readJsonOrThrow<{
@@ -440,7 +440,7 @@ export default function KravunderlagDetailClient({
   >({
     fetcher: async signal => {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/needs-references`,
+        `/api/requirements-specifications/${specificationSlug}/needs-references`,
         { signal },
       )
       const data = await readJsonOrThrow<{
@@ -722,7 +722,7 @@ export default function KravunderlagDetailClient({
         pagination?: { hasMore?: boolean }
       }>(
         await apiFetch(
-          `/api/specifications/${specificationSlug}/available-requirements?${params}`,
+          `/api/requirements-specifications/${specificationSlug}/available-requirements?${params}`,
         ),
         t('loadAvailableRequirementsFailed'),
       )
@@ -823,7 +823,7 @@ export default function KravunderlagDetailClient({
         body.needsReferenceDescription = addNeedsRefDescription.trim() || null
       }
       const res = await apiFetch(
-        `/api/specifications/${specificationSlug}/items`,
+        `/api/requirements-specifications/${specificationSlug}/items`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -866,7 +866,7 @@ export default function KravunderlagDetailClient({
   const handleCreateLocalRequirement = useCallback(
     async (payload: SpecificationLocalRequirementSubmitPayload) => {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/local-requirements`,
+        `/api/requirements-specifications/${specificationSlug}/local-requirements`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -893,7 +893,7 @@ export default function KravunderlagDetailClient({
     setNeedsReferenceError(null)
     try {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/needs-references`,
+        `/api/requirements-specifications/${specificationSlug}/needs-references`,
         {
           method: needsReferenceForm.id == null ? 'POST' : 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -952,7 +952,7 @@ export default function KravunderlagDetailClient({
       if (!confirmed) return
 
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/needs-references`,
+        `/api/requirements-specifications/${specificationSlug}/needs-references`,
         {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
@@ -1004,7 +1004,7 @@ export default function KravunderlagDetailClient({
 
       try {
         const response = await apiFetch(
-          `/api/specifications/${specificationSlug}/items/${encodeURIComponent(
+          `/api/requirements-specifications/${specificationSlug}/items/${encodeURIComponent(
             itemRef,
           )}`,
           {
@@ -1043,7 +1043,7 @@ export default function KravunderlagDetailClient({
 
     try {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/items`,
+        `/api/requirements-specifications/${specificationSlug}/items`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -1100,7 +1100,7 @@ export default function KravunderlagDetailClient({
 
       try {
         const res = await apiFetch(
-          `/api/specifications/${spec.id}/items/${encodeURIComponent(itemRef)}`,
+          `/api/requirements-specifications/${spec.id}/items/${encodeURIComponent(itemRef)}`,
           {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -1179,7 +1179,7 @@ export default function KravunderlagDetailClient({
 
       try {
         const response = await apiFetch(
-          `/api/specifications/${specificationSlug}/items`,
+          `/api/requirements-specifications/${specificationSlug}/items`,
           {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },

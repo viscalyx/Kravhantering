@@ -263,7 +263,7 @@ export function useAddToSpecificationDialog({
     if (state.specifications.length === 0) {
       dispatch({ type: 'load_specifications_start' })
       try {
-        const res = await apiFetch('/api/specifications')
+        const res = await apiFetch('/api/requirements-specifications')
         if (!res.ok) {
           const details = await readResponseMessage(res)
           throw new Error(
@@ -312,7 +312,7 @@ export function useAddToSpecificationDialog({
 
       try {
         const res = await apiFetch(
-          `/api/specifications/${specificationId}/needs-references`,
+          `/api/requirements-specifications/${specificationId}/needs-references`,
           { signal: controller.signal },
         )
         if (!res.ok) {
@@ -399,7 +399,7 @@ export function useAddToSpecificationDialog({
       }
       try {
         const res = await apiFetch(
-          `/api/specifications/${state.specificationId}/items`,
+          `/api/requirements-specifications/${state.specificationId}/items`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

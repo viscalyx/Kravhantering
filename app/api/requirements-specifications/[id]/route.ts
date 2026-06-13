@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { updateSpecificationSchema } from '@/app/api/specifications/schema'
+import { updateSpecificationSchema } from '@/app/api/requirements-specifications/schema'
 import {
   canAuthorSpecification,
   deleteSpecification,

@@ -443,7 +443,7 @@ export default function SpecificationFormModal({
     async function loadCoAuthors() {
       try {
         const response = await apiFetch(
-          `/api/specifications/${editSpecificationSlug}/co-authors`,
+          `/api/requirements-specifications/${editSpecificationSlug}/co-authors`,
           { signal: controller.signal },
         )
         if (!response.ok) {
@@ -549,7 +549,7 @@ export default function SpecificationFormModal({
 
     try {
       const response = await apiFetch(
-        `/api/specifications/${editSpecificationSlug}/responsible`,
+        `/api/requirements-specifications/${editSpecificationSlug}/responsible`,
         {
           body: JSON.stringify({ responsibleHsaId: nextResponsibleHsaId }),
           headers: { 'Content-Type': 'application/json' },
@@ -600,7 +600,7 @@ export default function SpecificationFormModal({
     setCoAuthorsError(null)
     try {
       const response = await apiFetch(
-        `/api/specifications/${editSpecificationSlug}/co-authors`,
+        `/api/requirements-specifications/${editSpecificationSlug}/co-authors`,
         {
           body: JSON.stringify({
             coAuthorHsaIds: nextCoAuthors.map(coAuthor => coAuthor.hsaId),
@@ -709,8 +709,8 @@ export default function SpecificationFormModal({
             }
       const response = await apiFetch(
         mode === 'edit'
-          ? `/api/specifications/${editSpecificationSlug}`
-          : '/api/specifications',
+          ? `/api/requirements-specifications/${editSpecificationSlug}`
+          : '/api/requirements-specifications',
         {
           body: JSON.stringify(requestBody),
           headers: { 'Content-Type': 'application/json' },

@@ -41,7 +41,7 @@ export function useSpecificationItemContext({
 
     try {
       const res = await apiFetch(
-        `/api/specifications/${encodeURIComponent(
+        `/api/requirements-specifications/${encodeURIComponent(
           specificationSlug,
         )}/items/${specificationItemId}`,
         { signal: controller.signal },

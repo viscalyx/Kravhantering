@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { createSpecificationSchema } from '@/app/api/specifications/schema'
+import { createSpecificationSchema } from '@/app/api/requirements-specifications/schema'
 import {
   createSpecification,
   isSlugTaken,
