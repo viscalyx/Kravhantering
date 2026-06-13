@@ -3,12 +3,15 @@ import { z } from 'zod'
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import { isHsaId } from '@/lib/auth/hsa-id'
 import {
+  canManageAreaCoAuthors,
   deleteArea,
+  getAreaById,
   updateAreaWithOwnerCheck,
 } from '@/lib/dal/requirement-areas'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   adminMutationPolicy,
+  customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
@@ -16,6 +19,7 @@ import {
   idParamSchema,
   optionalBusinessTextSchema,
 } from '@/lib/http/validation'
+import { forbiddenError } from '@/lib/requirements/errors'
 import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 
 export const dynamic = 'force-dynamic'
@@ -30,13 +34,39 @@ const updateAreaSchema = z
     description: optionalBusinessTextSchema,
     name: boundedDbStringSchema.optional(),
     ownerHsaId: hsaIdSchema.optional(),
+    prefix: boundedDbStringSchema.optional(),
   })
   .strict()
+
+function isAdmin(roles: readonly string[]): boolean {
+  return roles.includes('Admin')
+}
 
 export const PUT = secureMutationRoute({
   bodySchema: updateAreaSchema,
   paramsSchema: idParamSchema,
-  policy: adminMutationPolicy(),
+  policy: customMutationPolicy(
+    'requirement_area.update',
+    async ({ context, params }) => {
+      const db = await getRequestSqlServerDataSource()
+      const { id } = params as z.infer<typeof idParamSchema>
+      const area = await getAreaById(db, id)
+      if (!area) return
+
+      const allowed = await canManageAreaCoAuthors(
+        db,
+        id,
+        context.actor.hsaId,
+        isAdmin(context.actor.roles),
+      )
+      if (!allowed) {
+        throw forbiddenError(
+          'Missing requirement area metadata management permission',
+          { reason: 'requirement_area_manager_required' },
+        )
+      }
+    },
+  ),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const area = await updateAreaWithOwnerCheck(db, params.id, {

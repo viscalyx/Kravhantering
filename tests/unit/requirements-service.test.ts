@@ -34,6 +34,8 @@ const mocks = vi.hoisted(() => ({
   listStatuses: vi.fn(),
   listTransitions: vi.fn(),
   listSpecifications: vi.fn(),
+  listSpecificationsForActor: vi.fn(),
+  listSpecificationCoAuthorHsaIdsBySpecification: vi.fn(),
   getSpecificationBySlug: vi.fn(),
   listSpecificationItems: vi.fn(),
   getPublishedVersionIdForRequirement: vi.fn(),
@@ -130,6 +132,9 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
   linkRequirementsToSpecification: mocks.linkRequirementsToSpecification,
   listSpecificationItems: mocks.listSpecificationItems,
   listSpecifications: mocks.listSpecifications,
+  listSpecificationsForActor: mocks.listSpecificationsForActor,
+  listSpecificationCoAuthorHsaIdsBySpecification:
+    mocks.listSpecificationCoAuthorHsaIdsBySpecification,
   unlinkRequirementsFromSpecification:
     mocks.unlinkRequirementsFromSpecification,
 }))
@@ -1285,7 +1290,7 @@ describe('createRequirementsService', () => {
   })
 
   it('authorizes and logs specification listing operations', async () => {
-    mocks.listSpecifications.mockResolvedValue([
+    mocks.listSpecificationsForActor.mockResolvedValue([
       {
         businessNeedsReference: null,
         id: 7,
@@ -1294,9 +1299,13 @@ describe('createRequirementsService', () => {
         lifecycleStatus: null,
         name: 'IAM Specification',
         governanceObjectType: null,
+        responsibleHsaId: 'SE5560000001-alice1',
         uniqueId: 'IAM-SPECIFICATION',
       },
     ])
+    mocks.listSpecificationCoAuthorHsaIdsBySpecification.mockResolvedValue(
+      new Map([[7, []]]),
+    )
     const authorization = {
       assertAuthorized: vi.fn().mockResolvedValue(undefined),
     }

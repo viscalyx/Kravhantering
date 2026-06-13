@@ -185,7 +185,7 @@ describe('specification-local requirement graduation routes', () => {
     expect(response.status).toBe(403)
     await expect(response.json()).resolves.toEqual({
       code: 'forbidden',
-      error: 'Missing target requirement area owner or co-author permission',
+      error: 'Forbidden',
     })
   })
 })

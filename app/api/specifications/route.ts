@@ -14,6 +14,7 @@ import { validationError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
+import { canCreateSpecification } from '@/lib/specifications/permissions'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +23,12 @@ export async function GET(request: NextRequest) {
       includeRestFields: true,
       responseFormat: 'json',
     })
-    return NextResponse.json({ specifications: payload.specifications })
+    return NextResponse.json({
+      collectionPermissions: {
+        canCreateSpecification: canCreateSpecification(context),
+      },
+      specifications: payload.specifications,
+    })
   } catch (error) {
     const { body, status } = toHttpErrorPayload(error)
     return NextResponse.json(body, { status })

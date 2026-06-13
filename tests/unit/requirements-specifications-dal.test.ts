@@ -83,6 +83,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       expect.stringContaining(
         'FROM requirements_specifications specification_record',
       ),
+      [],
     )
     expect(result).toEqual([
       {

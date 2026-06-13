@@ -22,7 +22,12 @@ import { observeCapacity } from '@/lib/observability/capacity'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
 import { requirementPackageName } from '@/lib/reports/package-name'
-import { createRequestContext } from '@/lib/requirements/auth'
+import {
+  createDefaultAuthorizationService,
+  createRequestContext,
+} from '@/lib/requirements/auth'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { authorize } from '@/lib/requirements/service-shared'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
 export const dynamic = 'force-dynamic'
@@ -186,6 +191,24 @@ export async function GET(
       if (!spec) {
         return applyResponseCorrelationHeaders(
           NextResponse.json({ error: 'Not found' }, { status: 404 }),
+          context,
+        )
+      }
+
+      try {
+        await authorize(
+          createDefaultAuthorizationService(db),
+          {
+            kind: 'get_specification_items',
+            specificationId: spec.id,
+            specificationSlug: /^\d+$/.test(id) ? undefined : id,
+          },
+          context,
+        )
+      } catch (error) {
+        const { body, status } = toHttpErrorPayload(error)
+        return applyResponseCorrelationHeaders(
+          NextResponse.json(body, { status }),
           context,
         )
       }

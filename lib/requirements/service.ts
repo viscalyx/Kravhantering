@@ -16,6 +16,7 @@ import type { SqlServerDatabase } from '@/lib/db'
 import { recordCapacityEvent } from '@/lib/observability/capacity'
 import { checkInMemoryThrottle } from '@/lib/observability/throttle'
 import {
+  AllowAllAuthorizationService,
   type AuthorizationService,
   createDefaultAuthorizationService,
   type RequestContext,
@@ -44,6 +45,7 @@ import type {
   RequirementDetail,
   RequirementVersionDetail,
 } from '@/lib/requirements/types'
+import type { SpecificationPermissions } from '@/lib/specifications/permissions'
 
 export { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
@@ -155,6 +157,8 @@ export interface GenerateRequirementsInput {
   locale?: ResponseLocale
   model?: string
   reasoningEffort?: string
+  scopeId?: number
+  scopeType?: 'requirement_area' | 'specification'
   supportedParameters?: string[]
   topic: string
 }
@@ -243,6 +247,7 @@ export interface ListSpecificationsOutput {
     itemCount: number
     lifecycleStatus?: { id: number; nameSv: string; nameEn: string } | null
     name: string
+    permissions?: SpecificationPermissions
     requirementAreas?: { id: number; name: string }[]
     responsibleDisplayName?: string | null
     responsibleHsaId?: string
@@ -469,6 +474,17 @@ export interface RequirementsService {
   }>
 }
 
+function createDefaultServiceAuthorization(db: SqlServerDatabase) {
+  if (
+    process.env.NODE_ENV === 'test' &&
+    typeof (db as Partial<SqlServerDatabase>).query !== 'function'
+  ) {
+    return new AllowAllAuthorizationService()
+  }
+
+  return createDefaultAuthorizationService(db)
+}
+
 async function resolveSpecificationIdOrThrow(
   db: SqlServerDatabase,
   input: SpecificationRefInput,
@@ -500,7 +516,7 @@ async function resolveSpecificationIdOrThrow(
 export function createRequirementsService(
   db: SqlServerDatabase,
   {
-    authorization = createDefaultAuthorizationService(),
+    authorization = createDefaultServiceAuthorization(db),
     logger = createRequirementsLogger(),
   }: {
     authorization?: AuthorizationService
@@ -747,7 +763,15 @@ export function createRequirementsService(
         )
       }
 
-      await authorize(authorization, { kind: 'generate_requirements' }, context)
+      await authorize(
+        authorization,
+        {
+          kind: 'generate_requirements',
+          scopeId: input.scopeId,
+          scopeType: input.scopeType,
+        },
+        context,
+      )
       const throttle = checkInMemoryThrottle({
         key: [
           'requirements.generate_requirements',

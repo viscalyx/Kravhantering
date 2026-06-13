@@ -7,6 +7,7 @@ import {
   getSpecificationById,
   getSpecificationBySlug,
   isSlugTaken,
+  listSpecificationCoAuthorHsaIds,
   updateSpecification,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
@@ -19,8 +20,14 @@ import {
   parseRouteParams,
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
-import { forbiddenError, validationError } from '@/lib/requirements/errors'
-import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
+import {
+  createDefaultAuthorizationService,
+  createRequestContext,
+} from '@/lib/requirements/auth'
+import { forbiddenError } from '@/lib/requirements/errors'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { authorize } from '@/lib/requirements/service-shared'
+import { specificationPermissions } from '@/lib/specifications/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,18 +49,40 @@ function isAdmin(roles: readonly string[]): boolean {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(params, specificationParamSchema)
   if (!parsedParams.ok) {
     return parsedParams.response
   }
-  const { id } = parsedParams.data
-  const db = await getRequestSqlServerDataSource()
-  const spec = await resolveSpecification(db, id)
-  if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json(spec)
+  try {
+    const { id } = parsedParams.data
+    const db = await getRequestSqlServerDataSource()
+    const context = await createRequestContext(request, 'rest')
+    const spec = await resolveSpecification(db, id)
+    if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    await authorize(
+      createDefaultAuthorizationService(db),
+      {
+        kind: 'get_specification_items',
+        specificationId: spec.id,
+        specificationSlug: /^\d+$/.test(id) ? undefined : id,
+      },
+      context,
+    )
+    const coAuthorHsaIds = await listSpecificationCoAuthorHsaIds(db, spec.id)
+    return NextResponse.json({
+      ...spec,
+      permissions: specificationPermissions(context, {
+        coAuthorHsaIds,
+        responsibleHsaId: spec.responsibleHsaId,
+      }),
+    })
+  } catch (error) {
+    const { body, status } = toHttpErrorPayload(error)
+    return NextResponse.json(body, { status })
+  }
 }
 
 export const PUT = secureMutationRoute({
@@ -91,42 +120,34 @@ export const PUT = secureMutationRoute({
       return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
     }
 
-    if (body.responsibleHsaId !== undefined) {
-      const coAuthorRows = (await db.query(
-        `
-          SELECT TOP (1) specification_id AS specificationId
-          FROM specification_co_authors
-          WHERE specification_id = @0
-            AND hsa_id = @1
-        `,
-        [spec.id, body.responsibleHsaId],
-      )) as Array<{ specificationId: number }>
-      if (coAuthorRows.length > 0) {
-        throw validationError(
-          'Specification lead cannot also be specification co-author',
-          { reason: 'specification_lead_cannot_be_co_author' },
-        )
-      }
-    }
-
-    const responsiblePerson =
-      body.responsibleHsaId === undefined
-        ? undefined
-        : await resolveVerifiedRequirementResponsibilityPerson(
-            db,
-            body.responsibleHsaId,
-          )
-    const updated = await updateSpecification(db, spec.id, {
-      ...body,
-      ...(body.responsibleHsaId === undefined ? {} : { responsiblePerson }),
-    })
+    const updated = await updateSpecification(db, spec.id, body)
     return NextResponse.json(updated)
   },
 })
 
 export const DELETE = secureMutationRoute({
   paramsSchema: specificationParamSchema,
-  policy: customMutationPolicy('specification.delete', () => {}),
+  policy: customMutationPolicy(
+    'specification.delete',
+    async ({ context, params }) => {
+      const db = await getRequestSqlServerDataSource()
+      const { id } = params as z.infer<typeof specificationParamSchema>
+      const spec = await resolveSpecification(db, id)
+      if (!spec) return
+
+      const allowed = await canAuthorSpecification(
+        db,
+        spec.id,
+        context.actor.hsaId,
+        isAdmin(context.actor.roles),
+      )
+      if (!allowed) {
+        throw forbiddenError('Missing specification author permission', {
+          reason: 'specification_author_required',
+        })
+      }
+    },
+  ),
   handler: async ({ params }) => {
     const { id } = params
     const db = await getRequestSqlServerDataSource()

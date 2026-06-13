@@ -21,6 +21,9 @@ import {
   positiveIntegerSchema,
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { createRequirementsRestRuntime } from '@/lib/requirements/server'
+import { authorize } from '@/lib/requirements/service-shared'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,23 +72,39 @@ function specificationActionReference(idOrSlug: string) {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(params, specificationParamSchema)
   if (!parsedParams.ok) {
     return parsedParams.response
   }
-  const { id } = parsedParams.data
-  const db = await getRequestSqlServerDataSource()
-  const specificationId = await resolveSpecificationId(db, id)
-  if (specificationId === null)
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const needsReferences = await listSpecificationNeedsReferences(
-    db,
-    specificationId,
-  )
-  return NextResponse.json({ needsReferences })
+  try {
+    const { id } = parsedParams.data
+    const { authorization, context, db } =
+      await createRequirementsRestRuntime(request)
+    const specificationId = await resolveSpecificationId(db, id)
+    if (specificationId === null) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    await authorize(
+      authorization,
+      {
+        kind: 'get_specification_items',
+        specificationId,
+        specificationSlug: /^\d+$/.test(id) ? undefined : id,
+      },
+      context,
+    )
+    const needsReferences = await listSpecificationNeedsReferences(
+      db,
+      specificationId,
+    )
+    return NextResponse.json({ needsReferences })
+  } catch (error) {
+    const { body, status } = toHttpErrorPayload(error)
+    return NextResponse.json(body, { status })
+  }
 }
 
 export const POST = secureMutationRoute<

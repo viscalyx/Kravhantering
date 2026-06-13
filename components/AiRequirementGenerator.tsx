@@ -328,6 +328,10 @@ export default function AiRequirementGenerator({
       const buildModelsUrl = (filters: string[]) => {
         const params = new URLSearchParams()
         if (refresh) params.set('refresh', '1')
+        if (typeof areaId === 'number') {
+          params.set('scopeType', 'requirement_area')
+          params.set('scopeId', String(areaId))
+        }
         if (filters.length > 0) {
           params.set('supported_parameters', filters.join(','))
         }
@@ -415,7 +419,7 @@ export default function AiRequirementGenerator({
           if (!ac.signal.aborted) setModelsLoading(false)
         })
     },
-    [activeFilters, t],
+    [activeFilters, areaId, t],
   )
 
   useEffect(() => {
@@ -426,7 +430,13 @@ export default function AiRequirementGenerator({
   // Fetch credits on open
   useEffect(() => {
     if (!open) return
-    apiFetch('/api/ai/credits')
+    const params = new URLSearchParams()
+    if (typeof areaId === 'number') {
+      params.set('scopeType', 'requirement_area')
+      params.set('scopeId', String(areaId))
+    }
+    const qs = params.toString()
+    apiFetch(`/api/ai/credits${qs ? `?${qs}` : ''}`)
       .then(r => r.json() as Promise<CreditInfo & { error?: string }>)
       .then(data => {
         if (data.error) {
@@ -439,7 +449,7 @@ export default function AiRequirementGenerator({
       .catch(() => {
         setCreditsError(t('creditsUnreachable'))
       })
-  }, [open, t])
+  }, [areaId, open, t])
 
   // Lock body scroll while modal is open
   useEffect(() => {
@@ -657,6 +667,8 @@ export default function AiRequirementGenerator({
               ? providerPreferences
               : undefined,
           reasoningEffort,
+          scopeId: areaId,
+          scopeType: 'requirement_area',
           supportedParameters: selectedModel?.supportedParameters,
           topic: topic.trim(),
           ...(visionEnabled &&

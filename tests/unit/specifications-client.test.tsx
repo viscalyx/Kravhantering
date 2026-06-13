@@ -757,6 +757,14 @@ describe('RequirementsSpecificationsClient', () => {
     )
     fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
 
+    await waitFor(() => {
+      expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
+    })
+    await waitFor(() => {
+      expect(
+        screen.getByRole('textbox', { name: /specification\.coAuthorHsaId/ }),
+      ).toBeDisabled()
+    })
     expect(
       screen.getByRole('button', {
         name: /specification\.changeResponsible/,
@@ -976,6 +984,14 @@ describe('RequirementsSpecificationsClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[0])
+    await waitFor(() => {
+      expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
+    })
+    await waitFor(() => {
+      expect(
+        screen.getByRole('textbox', { name: /specification\.coAuthorHsaId/ }),
+      ).toBeEnabled()
+    })
     const dialog = screen.getByRole('dialog', {
       name: /specification\.editSpecification/,
     })
@@ -1007,8 +1023,8 @@ describe('RequirementsSpecificationsClient', () => {
       }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /common\.fetchHsaPerson/ }),
-    ).toBeNull()
+      screen.getByRole('button', { name: /common\.fetchHsaPerson/ }),
+    ).toBeDisabled()
   })
 
   it('omits the responsible HSA-id from ordinary edit saves', async () => {
@@ -1111,13 +1127,13 @@ describe('RequirementsSpecificationsClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/KRAVUNDERLAG-SV',
+        '/api/specifications/KRAVUNDERLAG-SV/responsible',
         expect.objectContaining({ method: 'PUT' }),
       )
     })
     const putCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url === '/api/specifications/KRAVUNDERLAG-SV' &&
+        url === '/api/specifications/KRAVUNDERLAG-SV/responsible' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     )
     expect(

@@ -731,6 +731,32 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 18: HSA-id 
 ```
 <!-- markdownlint-enable MD013 -->
 
+### Scenario 19: assignment RBAC denies hidden broad access
+
+**Requirement tag:** `[Req: formal - docs/adr/0012-uppdragsbaserad-rbac.md]`
+
+**What happened:** The old authorization boundary could fall back to broad
+allow-all behavior for requirement workflows. With assignment RBAC, decisions
+must resolve the target resource in the database, ordinary authenticated users
+must see only published library content and assigned requirements
+specifications, non-admin AI calls must provide one authorized authoring scope,
+and `Admin` must not replace `Reviewer` for review decisions.
+
+**The requirement:** Unknown or unresolved requirement actions fail closed.
+`Admin` may bypass authoring scope, including live AI scope, but not
+Reviewer-only decisions. Requirement-area and specification assignments are the
+source of authoring authority. Ordinary users with no assigned requirements
+specifications receive an empty list, unauthorized existing resources return
+403 and produce denial audit evidence, and missing resources return 404.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/unit/requirements-assignment-authorization.test.ts
+```
+<!-- markdownlint-enable MD013 -->
+
 ## AI Session Quality Discipline
 
 1. Read `tests/quality/QUALITY.md` before changing lifecycle, specification, MCP,

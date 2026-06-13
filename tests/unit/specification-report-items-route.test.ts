@@ -64,6 +64,7 @@ vi.mock('@/lib/requirements/auth', async importOriginal => {
     await importOriginal<typeof import('@/lib/requirements/auth')>()
   return {
     ...actual,
+    createDefaultAuthorizationService: () => ({ assertAuthorized: vi.fn() }),
     createRequestContext: vi.fn(async () => mockContext),
   }
 })

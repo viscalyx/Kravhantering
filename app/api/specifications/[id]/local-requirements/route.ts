@@ -9,7 +9,7 @@ import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
-  customMutationPolicy,
+  requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { specificationLocalRequirementSchema } from '@/lib/http/specification-local-requirement-validation'
@@ -39,10 +39,15 @@ async function resolveSpecificationId(
 export const POST = secureMutationRoute({
   bodySchema: specificationLocalRequirementSchema,
   paramsSchema: specificationParamSchema,
-  policy: customMutationPolicy(
-    'specification_local_requirement.create',
-    () => {},
-  ),
+  policy: requirementsMutationPolicy<
+    z.infer<typeof specificationLocalRequirementSchema>,
+    z.infer<typeof specificationParamSchema>
+  >(({ params }) => ({
+    kind: 'manage_specification_local_requirement',
+    operation: 'create',
+    specificationSlug: /^\d+$/.test(params.id) ? undefined : params.id,
+    specificationId: /^\d+$/.test(params.id) ? Number(params.id) : undefined,
+  })),
   handler: async ({ body, params }) => {
     const { id } = params
     const db = await getRequestSqlServerDataSource()

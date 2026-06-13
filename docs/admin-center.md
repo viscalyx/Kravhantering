@@ -362,7 +362,8 @@ The in-app scope is deliberately limited to permissions Kravhantering owns:
 - requirement-area co-authors
 - specification lead
 - specification co-authors
-- the assignment-bound AI flags on those co-author/responsible rows
+- requirement-package leads
+- requirement-package co-authors
 
 Global IdP roles such as `Admin`, `Reviewer`, and `PrivacyOfficer`, source-code
 repository access, and externally provisioned MCP/client access are reviewed in

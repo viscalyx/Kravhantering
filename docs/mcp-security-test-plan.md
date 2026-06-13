@@ -73,7 +73,8 @@ secrets for this smoke check.
   are not part of this pass.
 - Browser CSRF checks on `/api/mcp` are excluded; it remains Bearer-token
   scoped.
-- RBAC policy rollout is deferred; these tests prove MCP passes correct context
-  into the shared service, and role policy activation remains later RBAC work.
+- Full RBAC policy coverage is handled by the shared service and focused RBAC
+  tests. These transport tests prove MCP passes the verified actor context into
+  that service boundary instead of trusting caller-supplied headers.
 - External DAST is deferred. Authenticated dynamic scanning of `/api/mcp`
   belongs after this unit/transport hardening layer is green.

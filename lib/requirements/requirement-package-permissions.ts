@@ -7,6 +7,7 @@ export type RequirementPackagePermission =
   | 'requirement_package.archive'
   | 'requirement_package.delete'
   | 'requirement_package.create'
+  | 'requirement_package.reactivate'
   | 'requirement_package.update'
 
 const REQUIREMENT_PACKAGE_PERMISSION_ROLES: Record<
@@ -16,6 +17,7 @@ const REQUIREMENT_PACKAGE_PERMISSION_ROLES: Record<
   'requirement_package.archive': ['Admin'],
   'requirement_package.create': [],
   'requirement_package.delete': ['Admin'],
+  'requirement_package.reactivate': ['Admin'],
   'requirement_package.update': ['Admin'],
 }
 

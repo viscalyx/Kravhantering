@@ -121,6 +121,7 @@ describe('specifications/[id]/items route', () => {
     })
     mocks.createRequirementsRestRuntime.mockImplementation(
       async (_request: Request, options?: { db?: unknown }) => ({
+        authorization: { assertAuthorized: vi.fn() },
         context: mockContext,
         db: options?.db ?? mockDb,
         service: {

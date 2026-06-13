@@ -1463,6 +1463,15 @@ export default function KravunderlagDetailClient({
   ])
 
   const specName = spec ? spec.name : '…'
+  const permissions = spec?.permissions ?? {
+    canEditContent: true,
+    canManageAssignments: true,
+    canReviewDecisions: true,
+    canUseAi: true,
+  }
+  const canEditContent = permissions.canEditContent
+  const canMutateSpecification =
+    permissions.canEditContent || permissions.canManageAssignments
 
   const localName = (obj: { nameSv: string; nameEn: string } | null) =>
     obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null
@@ -1905,6 +1914,7 @@ export default function KravunderlagDetailClient({
     locale,
   )
   const openNeedsReferenceForm = () => {
+    if (!canEditContent) return
     setNeedsReferenceError(null)
     setNeedsReferenceForm({
       description: '',
@@ -1994,6 +2004,14 @@ export default function KravunderlagDetailClient({
               {loadWarning}
             </p>
           ) : null}
+          {!canEditContent ? (
+            <p
+              className="mb-4 rounded-xl border border-secondary-200 bg-secondary-50 px-4 py-3 text-sm text-secondary-700 dark:border-secondary-800 dark:bg-secondary-900/60 dark:text-secondary-200"
+              role="status"
+            >
+              {t('readOnlyNotice')}
+            </p>
+          ) : null}
           {/* Header */}
           <div className="mb-5">
             <div
@@ -2008,23 +2026,25 @@ export default function KravunderlagDetailClient({
                   <h1 className="min-w-0 text-2xl font-bold text-secondary-900 dark:text-secondary-100 xl:text-[2rem] xl:leading-tight">
                     {specName}
                   </h1>
-                  <button
-                    aria-expanded={showEditSpecificationForm}
-                    aria-haspopup="dialog"
-                    aria-label={t('editSpecification')}
-                    className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-white/80 text-secondary-700 shadow-sm transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:bg-secondary-900/70 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                    {...devMarker({
-                      context: 'requirements specification detail',
-                      name: 'detail action',
-                      priority: 350,
-                      value: 'edit specification',
-                    })}
-                    onClick={() => setShowEditSpecificationForm(true)}
-                    title={t('editSpecification')}
-                    type="button"
-                  >
-                    <Pencil aria-hidden="true" className="h-4 w-4" />
-                  </button>
+                  {canMutateSpecification ? (
+                    <button
+                      aria-expanded={showEditSpecificationForm}
+                      aria-haspopup="dialog"
+                      aria-label={t('editSpecification')}
+                      className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-white/80 text-secondary-700 shadow-sm transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:bg-secondary-900/70 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                      {...devMarker({
+                        context: 'requirements specification detail',
+                        name: 'detail action',
+                        priority: 350,
+                        value: 'edit specification',
+                      })}
+                      onClick={() => setShowEditSpecificationForm(true)}
+                      title={t('editSpecification')}
+                      type="button"
+                    >
+                      <Pencil aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                  ) : null}
                 </div>
                 {spec.businessNeedsReference && (
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary-700 dark:text-secondary-200">
@@ -2099,22 +2119,26 @@ export default function KravunderlagDetailClient({
                 >
                   <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
-                    <button
-                      aria-label={t('newNeedsReference')}
-                      className={leftPanelActionPillClassName}
-                      {...devMarker({
-                        context: 'requirements specification detail',
-                        name: 'table action',
-                        priority: 350,
-                        value: 'create needs reference',
-                      })}
-                      onClick={openNeedsReferenceForm}
-                      title={t('newNeedsReference')}
-                      type="button"
-                    >
-                      <Plus aria-hidden="true" className="h-4 w-4" />
-                      <span className="sr-only">{t('newNeedsReference')}</span>
-                    </button>
+                    {canEditContent ? (
+                      <button
+                        aria-label={t('newNeedsReference')}
+                        className={leftPanelActionPillClassName}
+                        {...devMarker({
+                          context: 'requirements specification detail',
+                          name: 'table action',
+                          priority: 350,
+                          value: 'create needs reference',
+                        })}
+                        onClick={openNeedsReferenceForm}
+                        title={t('newNeedsReference')}
+                        type="button"
+                      >
+                        <Plus aria-hidden="true" className="h-4 w-4" />
+                        <span className="sr-only">
+                          {t('newNeedsReference')}
+                        </span>
+                      </button>
+                    ) : null}
                   </div>
                   {needsReferenceError ? (
                     <p
@@ -2207,46 +2231,53 @@ export default function KravunderlagDetailClient({
                                   </td>
                                   <td className="px-3 py-2">
                                     <div className="flex justify-end gap-2">
-                                      <button
-                                        aria-label={t('editNeedsReference')}
-                                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-secondary-200 text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                                        onClick={() => {
-                                          setNeedsReferenceError(null)
-                                          setNeedsReferenceForm({
-                                            description: ref.description ?? '',
-                                            id: ref.id,
-                                            text: ref.text,
-                                          })
-                                        }}
-                                        type="button"
-                                      >
-                                        <Pencil
-                                          aria-hidden="true"
-                                          className="h-4 w-4"
-                                        />
-                                      </button>
-                                      <button
-                                        aria-label={t('deleteNeedsReference')}
-                                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-red-200 text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/20"
-                                        disabled={linkedCount > 0}
-                                        onClick={event =>
-                                          void handleDeleteNeedsReference(
-                                            ref,
-                                            event.currentTarget as HTMLElement,
-                                          )
-                                        }
-                                        title={
-                                          linkedCount > 0
-                                            ? t('deleteNeedsReferenceDisabled')
-                                            : t('deleteNeedsReference')
-                                        }
-                                        type="button"
-                                      >
-                                        <Trash2
-                                          aria-hidden="true"
-                                          className="h-4 w-4"
-                                        />
-                                      </button>
+                                      {canEditContent ? (
+                                        <button
+                                          aria-label={t('editNeedsReference')}
+                                          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-secondary-200 text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                                          onClick={() => {
+                                            setNeedsReferenceError(null)
+                                            setNeedsReferenceForm({
+                                              description:
+                                                ref.description ?? '',
+                                              id: ref.id,
+                                              text: ref.text,
+                                            })
+                                          }}
+                                          type="button"
+                                        >
+                                          <Pencil
+                                            aria-hidden="true"
+                                            className="h-4 w-4"
+                                          />
+                                        </button>
+                                      ) : null}
+                                      {canEditContent ? (
+                                        <button
+                                          aria-label={t('deleteNeedsReference')}
+                                          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-red-200 text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/20"
+                                          disabled={linkedCount > 0}
+                                          onClick={event =>
+                                            void handleDeleteNeedsReference(
+                                              ref,
+                                              event.currentTarget as HTMLElement,
+                                            )
+                                          }
+                                          title={
+                                            linkedCount > 0
+                                              ? t(
+                                                  'deleteNeedsReferenceDisabled',
+                                                )
+                                              : t('deleteNeedsReference')
+                                          }
+                                          type="button"
+                                        >
+                                          <Trash2
+                                            aria-hidden="true"
+                                            className="h-4 w-4"
+                                          />
+                                        </button>
+                                      ) : null}
                                     </div>
                                   </td>
                                 </tr>
@@ -2343,26 +2374,28 @@ export default function KravunderlagDetailClient({
                 >
                   <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
-                    <button
-                      aria-label={t('newLocalRequirement')}
-                      className={leftPanelActionPillClassName}
-                      {...devMarker({
-                        context: 'requirements specification detail',
-                        name: 'table action',
-                        priority: 350,
-                        value: 'create local requirement',
-                      })}
-                      onClick={() =>
-                        void handleOpenCreateLocalRequirementModal()
-                      }
-                      title={t('newLocalRequirement')}
-                      type="button"
-                    >
-                      <Plus aria-hidden="true" className="h-4 w-4" />
-                      <span className="sr-only">
-                        {t('newLocalRequirement')}
-                      </span>
-                    </button>
+                    {canEditContent ? (
+                      <button
+                        aria-label={t('newLocalRequirement')}
+                        className={leftPanelActionPillClassName}
+                        {...devMarker({
+                          context: 'requirements specification detail',
+                          name: 'table action',
+                          priority: 350,
+                          value: 'create local requirement',
+                        })}
+                        onClick={() =>
+                          void handleOpenCreateLocalRequirementModal()
+                        }
+                        title={t('newLocalRequirement')}
+                        type="button"
+                      >
+                        <Plus aria-hidden="true" className="h-4 w-4" />
+                        <span className="sr-only">
+                          {t('newLocalRequirement')}
+                        </span>
+                      </button>
+                    ) : null}
                   </div>
                   <div className="p-8 text-center text-sm text-secondary-500 dark:text-secondary-400">
                     {t('noItems')}
@@ -2380,18 +2413,24 @@ export default function KravunderlagDetailClient({
                     filterValues={leftFilters}
                     floatingActionRailPlacement="inline-top"
                     floatingActions={[
-                      {
-                        ariaLabel: t('newLocalRequirement'),
-                        developerModeContext:
-                          'requirements specification detail',
-                        developerModeValue: 'create local requirement',
-                        icon: <Plus aria-hidden="true" className="h-4 w-4" />,
-                        id: 'create-local',
-                        onClick: () =>
-                          void handleOpenCreateLocalRequirementModal(),
-                        position: 'beforeColumns',
-                        variant: 'primary' as const,
-                      },
+                      ...(canEditContent
+                        ? [
+                            {
+                              ariaLabel: t('newLocalRequirement'),
+                              developerModeContext:
+                                'requirements specification detail',
+                              developerModeValue: 'create local requirement',
+                              icon: (
+                                <Plus aria-hidden="true" className="h-4 w-4" />
+                              ),
+                              id: 'create-local',
+                              onClick: () =>
+                                void handleOpenCreateLocalRequirementModal(),
+                              position: 'beforeColumns' as const,
+                              variant: 'primary' as const,
+                            },
+                          ]
+                        : []),
                       {
                         ariaLabel: tc('print'),
                         icon: (
@@ -2427,14 +2466,20 @@ export default function KravunderlagDetailClient({
                     needsReferenceOptions={availableNeedsRefs}
                     normReferences={leftNormReferenceOptions}
                     onFilterChange={setLeftFilters}
-                    onNeedsReferenceChange={handleNeedsReferenceAssignment}
+                    onNeedsReferenceChange={
+                      canEditContent
+                        ? handleNeedsReferenceAssignment
+                        : undefined
+                    }
                     onRowClick={id =>
                       setLeftExpandedId(prev => (prev === id ? null : id))
                     }
                     onSelectionChange={setLeftSelectedIds}
                     onSortChange={setLeftSort}
                     onSpecificationItemStatusChange={
-                      handleSpecificationItemStatusChange
+                      canEditContent
+                        ? handleSpecificationItemStatusChange
+                        : undefined
                     }
                     onVisibleColumnsChange={setLeftVisibleCols}
                     renderExpanded={id => {
@@ -2482,7 +2527,7 @@ export default function KravunderlagDetailClient({
                     specificationItemStatuses={specificationItemStatuses}
                     stickyTitle={renderLeftPanelTabs()}
                     stickyTitleActions={
-                      leftSelectedIds.size > 0 ? (
+                      leftSelectedIds.size > 0 && canEditContent ? (
                         <>
                           <div className="flex flex-wrap items-start gap-2">
                             <div className="flex min-w-0 flex-col gap-1">
@@ -2674,7 +2719,7 @@ export default function KravunderlagDetailClient({
                               }
                             />
                           )}
-                          {rightSelectedIds.size > 0 ? (
+                          {rightSelectedIds.size > 0 && canEditContent ? (
                             <button
                               className="btn-primary inline-flex items-center gap-1.5"
                               onClick={handleOpenAddModal}

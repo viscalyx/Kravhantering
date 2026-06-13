@@ -28,6 +28,17 @@ function okJson(body: unknown) {
   return { ok: true, json: async () => body, text: async () => text }
 }
 
+function errJson(body: unknown, status = 500, statusText = 'Server Error') {
+  const text = JSON.stringify(body)
+  return {
+    json: async () => body,
+    ok: false,
+    status,
+    statusText,
+    text: async () => text,
+  }
+}
+
 const hsaIdPrefixPayload = {
   prefixes: [{ id: 1, isDefault: true, label: null, prefix: 'SE5560000001' }],
 }
@@ -128,7 +139,10 @@ describe('SpecificationFormModal', () => {
         )
       }
       if (url === '/api/hsa-id-prefixes') {
-        return Promise.resolve(okJson(hsaIdPrefixPayload))
+        return new Promise(() => undefined)
+      }
+      if (url.endsWith('/co-authors')) {
+        return new Promise(() => undefined)
       }
       return Promise.resolve(okJson({ ok: true }))
     })
@@ -476,14 +490,14 @@ describe('SpecificationFormModal', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/ETJANST-UPP-2026',
+        '/api/specifications/ETJANST-UPP-2026/responsible',
         expect.objectContaining({ method: 'PUT' }),
       )
     })
 
     const [, requestInit] = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url === '/api/specifications/ETJANST-UPP-2026' &&
+        url === '/api/specifications/ETJANST-UPP-2026/responsible' &&
         (init as RequestInit | undefined)?.method === 'PUT',
     ) as [string, RequestInit]
     const body = JSON.parse((requestInit.body as string) ?? '{}')
@@ -498,6 +512,67 @@ describe('SpecificationFormModal', () => {
     expect(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     ).toHaveValue('SE5560000001-rita1')
+  })
+
+  it('keeps the responsible modal open and shows an error when responsible handover fails', async () => {
+    const onResponsibleChanged = vi.fn()
+    const onClose = vi.fn()
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url === '/api/auth/me') {
+        return Promise.resolve(
+          okJson({
+            authenticated: true,
+            hsaId: 'SE5560000001-ada1',
+            roles: ['Admin'],
+          }),
+        )
+      }
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(okJson(hsaIdPrefixPayload))
+      }
+      if (
+        url === '/api/specifications/ETJANST-UPP-2026/responsible' &&
+        opts?.method === 'PUT'
+      ) {
+        return Promise.resolve(
+          errJson({ error: 'Responsible handover failed' }, 409, 'Conflict'),
+        )
+      }
+      return Promise.resolve(okJson({ ok: true }))
+    })
+    renderEditModal({
+      onClose,
+      onResponsibleChanged,
+    })
+
+    fireEvent.click(await getEnabledChangeResponsibleButton())
+    const dialog = screen.getByRole('dialog', {
+      name: 'specification.changeResponsibleTitle',
+    })
+    const newResponsibleInput = within(dialog).getByRole('textbox', {
+      name: /specification\.newResponsibleHsaId/,
+    })
+    await waitFor(() => {
+      expect(newResponsibleInput).toBeEnabled()
+    })
+    fireEvent.change(newResponsibleInput, { target: { value: 'rita1' } })
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: /specification\.changeResponsible/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(within(dialog).getByRole('alert')).toHaveTextContent(
+        'Responsible handover failed',
+      )
+    })
+    expect(dialog).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
+    ).toHaveValue('SE5560000001-ada1')
+    expect(onResponsibleChanged).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('submits the updated specification information', async () => {
@@ -519,10 +594,11 @@ describe('SpecificationFormModal', () => {
       expect.objectContaining({ newUniqueId: expect.any(String) }),
     )
 
-    const [url, requestInit] = fetchMock.mock.calls.at(-1) as [
-      string,
-      RequestInit,
-    ]
+    const [url, requestInit] = fetchMock.mock.calls.find(
+      ([calledUrl, init]) =>
+        calledUrl === '/api/specifications/ETJANST-UPP-2026' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    ) as [string, RequestInit]
     expect(url).toBe('/api/specifications/ETJANST-UPP-2026')
     expect(requestInit?.method).toBe('PUT')
     expect(
@@ -542,6 +618,296 @@ describe('SpecificationFormModal', () => {
     expect(
       JSON.parse((requestInit?.body as string) ?? '{}'),
     ).not.toHaveProperty('responsibleHsaId')
+  })
+
+  it('autosaves a verified specification co-author assignment', async () => {
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url === '/api/auth/me') {
+        return Promise.resolve(
+          okJson({
+            authenticated: true,
+            hsaId: 'SE5560000001-ada1',
+            roles: ['Admin'],
+          }),
+        )
+      }
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(okJson(hsaIdPrefixPayload))
+      }
+      if (url === '/api/specifications/ETJANST-UPP-2026/co-authors') {
+        if (opts?.method === 'PUT') {
+          return Promise.resolve(okJson({ ok: true }))
+        }
+        return Promise.resolve(okJson({ coAuthors: [] }))
+      }
+      if (url === '/api/requirement-responsibility-people/verify') {
+        return Promise.resolve(
+          okJson({
+            person: {
+              displayName: 'Cora CoAuthor',
+              email: 'cora.coauthor@example.test',
+              givenName: 'Cora',
+              hsaId: 'SE5560000001-coa1',
+              middleName: null,
+              surname: 'CoAuthor',
+            },
+          }),
+        )
+      }
+      return Promise.resolve(okJson({ ok: true }))
+    })
+
+    renderEditModal()
+
+    await waitFor(() => {
+      expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
+    })
+    const coAuthorInput = screen.getByRole('textbox', {
+      name: /specification\.coAuthorHsaId/,
+    })
+    await waitFor(() => {
+      expect(coAuthorInput).toBeEnabled()
+    })
+    fireEvent.change(coAuthorInput, { target: { value: 'coa1' } })
+    let verifyButton: HTMLButtonElement | undefined
+    await waitFor(() => {
+      verifyButton = screen
+        .getAllByRole('button', { name: /common\.fetchHsaPerson/ })
+        .find(button => !(button as HTMLButtonElement).disabled) as
+        | HTMLButtonElement
+        | undefined
+      expect(verifyButton).toBeTruthy()
+    })
+    fireEvent.click(verifyButton as HTMLButtonElement)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specifications/ETJANST-UPP-2026/co-authors',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
+    const verifyCall = fetchMock.mock.calls.find(
+      ([url]) => url === '/api/requirement-responsibility-people/verify',
+    ) as [string, RequestInit]
+    expect(JSON.parse((verifyCall[1].body as string) ?? '{}')).toMatchObject({
+      hsaId: 'SE5560000001-coa1',
+      purpose: 'requirements_specification_co_author',
+      scopeId: 7,
+    })
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/specifications/ETJANST-UPP-2026/co-authors' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    ) as [string, RequestInit]
+    expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
+      coAuthorHsaIds: ['SE5560000001-coa1'],
+    })
+    expect(await screen.findByText('Cora CoAuthor')).toBeInTheDocument()
+  })
+
+  it('shows an error and keeps the specification co-author draft when assignment autosave fails', async () => {
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url === '/api/auth/me') {
+        return Promise.resolve(
+          okJson({
+            authenticated: true,
+            hsaId: 'SE5560000001-ada1',
+            roles: ['Admin'],
+          }),
+        )
+      }
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(okJson(hsaIdPrefixPayload))
+      }
+      if (url === '/api/specifications/ETJANST-UPP-2026/co-authors') {
+        if (opts?.method === 'PUT') {
+          return Promise.resolve(
+            errJson(
+              { error: 'Specification co-author autosave failed' },
+              409,
+              'Conflict',
+            ),
+          )
+        }
+        return Promise.resolve(okJson({ coAuthors: [] }))
+      }
+      if (url === '/api/requirement-responsibility-people/verify') {
+        return Promise.resolve(
+          okJson({
+            person: {
+              displayName: 'Cora CoAuthor',
+              email: 'cora.coauthor@example.test',
+              givenName: 'Cora',
+              hsaId: 'SE5560000001-coa1',
+              middleName: null,
+              surname: 'CoAuthor',
+            },
+          }),
+        )
+      }
+      return Promise.resolve(okJson({ ok: true }))
+    })
+
+    renderEditModal()
+
+    await waitFor(() => {
+      expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
+    })
+    const coAuthorInput = screen.getByRole('textbox', {
+      name: /specification\.coAuthorHsaId/,
+    })
+    await waitFor(() => {
+      expect(coAuthorInput).toBeEnabled()
+    })
+    fireEvent.change(coAuthorInput, { target: { value: 'coa1' } })
+    let verifyButton: HTMLButtonElement | undefined
+    await waitFor(() => {
+      verifyButton = screen
+        .getAllByRole('button', { name: /common\.fetchHsaPerson/ })
+        .find(button => !(button as HTMLButtonElement).disabled) as
+        | HTMLButtonElement
+        | undefined
+      expect(verifyButton).toBeTruthy()
+    })
+    fireEvent.click(verifyButton as HTMLButtonElement)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Specification co-author autosave failed',
+      )
+    })
+    expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
+    expect(coAuthorInput).toHaveValue('coa1')
+  })
+
+  it('confirms and autosaves specification co-author removal', async () => {
+    confirmMock.mockResolvedValue(true)
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url === '/api/auth/me') {
+        return Promise.resolve(
+          okJson({
+            authenticated: true,
+            hsaId: 'SE5560000001-ada1',
+            roles: ['Admin'],
+          }),
+        )
+      }
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(okJson(hsaIdPrefixPayload))
+      }
+      if (url === '/api/specifications/ETJANST-UPP-2026/co-authors') {
+        if (opts?.method === 'PUT') {
+          return Promise.resolve(okJson({ ok: true }))
+        }
+        return Promise.resolve(
+          okJson({
+            coAuthors: [
+              {
+                displayName: 'Cora CoAuthor',
+                email: 'cora.coauthor@example.test',
+                hsaId: 'SE5560000001-coa1',
+              },
+            ],
+          }),
+        )
+      }
+      return Promise.resolve(okJson({ ok: true }))
+    })
+
+    renderEditModal()
+
+    await waitFor(() => {
+      expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: /specification\.removeCoAuthor/ }),
+    )
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'specification.removeCoAuthorConfirm',
+          variant: 'danger',
+        }),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specifications/ETJANST-UPP-2026/co-authors',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/specifications/ETJANST-UPP-2026/co-authors' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    ) as [string, RequestInit]
+    expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
+      coAuthorHsaIds: [],
+    })
+  })
+
+  it('shows an error and keeps the specification co-author when removal autosave fails', async () => {
+    confirmMock.mockResolvedValue(true)
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url === '/api/auth/me') {
+        return Promise.resolve(
+          okJson({
+            authenticated: true,
+            hsaId: 'SE5560000001-ada1',
+            roles: ['Admin'],
+          }),
+        )
+      }
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(okJson(hsaIdPrefixPayload))
+      }
+      if (url === '/api/specifications/ETJANST-UPP-2026/co-authors') {
+        if (opts?.method === 'PUT') {
+          return Promise.resolve(
+            errJson(
+              { error: 'Specification co-author removal failed' },
+              409,
+              'Conflict',
+            ),
+          )
+        }
+        return Promise.resolve(
+          okJson({
+            coAuthors: [
+              {
+                displayName: 'Cora CoAuthor',
+                email: 'cora.coauthor@example.test',
+                hsaId: 'SE5560000001-coa1',
+              },
+            ],
+          }),
+        )
+      }
+      return Promise.resolve(okJson({ ok: true }))
+    })
+
+    renderEditModal()
+
+    await waitFor(() => {
+      expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: /specification\.removeCoAuthor/ }),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Specification co-author removal failed',
+      )
+    })
+    expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/specifications/ETJANST-UPP-2026/co-authors' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    ) as [string, RequestInit]
+    expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
+      coAuthorHsaIds: [],
+    })
   })
 
   it('confirms unsaved edits and closes after non-admin responsible changes', async () => {
@@ -637,6 +1003,12 @@ describe('SpecificationFormModal', () => {
 
     expect(form).toBeTruthy()
 
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+      {
+        target: { value: 'Nytt kravunderlagsnamn' },
+      },
+    )
     fireEvent.submit(form as HTMLFormElement)
     fireEvent.submit(form as HTMLFormElement)
 

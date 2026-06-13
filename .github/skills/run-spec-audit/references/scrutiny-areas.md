@@ -356,3 +356,21 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   still submit complete syntactically valid HSA-id values?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 18: HSA-id prefixes stay UI guidance with a visible default rule"`
+
+## 27. Scenario 19: assignment RBAC denies hidden broad access
+
+- **Code:** `lib/requirements/assignment-authorization.ts`,
+  `lib/requirements/service-specifications.ts`,
+  `lib/specifications/preload.ts`, `lib/specifications/permissions.ts`, and
+  `app/api/specifications/route.ts`.
+- **Spec:** `docs/adr/0012-uppdragsbaserad-rbac.md` and
+  `docs/behörigheter.md`.
+- **Req tag:** `[Req: formal — docs/adr/0012-uppdragsbaserad-rbac.md]`
+- **Question:** Do requirement and specification actions resolve the target
+  resource before authorization, list only assigned requirements
+  specifications for ordinary users, keep Admin/Reviewer broad read
+  explicit, return 403 for existing unauthorized resources, and expose
+  server-derived permission payloads for UI state without treating the UI as
+  the authorization boundary?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 19: assignment RBAC denies hidden broad access"`

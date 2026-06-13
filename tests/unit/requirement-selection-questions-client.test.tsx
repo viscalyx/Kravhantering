@@ -1948,6 +1948,20 @@ describe('RequirementSelectionQuestionsClient', () => {
     })
 
     await waitFor(() => {
+      expect(
+        document.querySelector('[data-question-drag-preview="true"]'),
+      ).toBeInTheDocument()
+    })
+    fireEvent.pointerMove(dragHandle, {
+      buttons: 1,
+      clientX: 0,
+      clientY: 20,
+      isPrimary: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
+
+    await waitFor(() => {
       expect(targetCard).toHaveClass('bg-secondary-100/95')
       expect(targetCard).toHaveStyle({ transform: 'translateY(100px)' })
       expect(sourceCard).toHaveClass('bg-secondary-200/95')

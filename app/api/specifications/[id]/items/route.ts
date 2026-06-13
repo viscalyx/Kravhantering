@@ -28,6 +28,7 @@ import {
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
+import { authorize } from '@/lib/requirements/service-shared'
 
 export const dynamic = 'force-dynamic'
 
@@ -124,30 +125,48 @@ function specificationActionReference(idOrSlug: string) {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(params, specificationParamSchema)
   if (!parsedParams.ok) {
     return parsedParams.response
   }
-  const { id } = parsedParams.data
-  const db = await getRequestSqlServerDataSource()
-  const specificationId = await resolveSpecificationId(db, id)
-  if (specificationId === null)
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const items = await listSpecificationItems(db, specificationId)
-  const deviationCounts = await countDeviationsPerItemRef(db, specificationId)
-  const enrichedItems = items.map(item => {
-    const dc = item.itemRef ? deviationCounts.get(item.itemRef) : undefined
-    return {
-      ...item,
-      deviationCount: dc?.total ?? 0,
-      hasApprovedDeviation: (dc?.approved ?? 0) > 0,
-      hasPendingDeviation: (dc?.pending ?? 0) > 0,
-    }
-  })
-  return NextResponse.json({ items: enrichedItems })
+  try {
+    const { id } = parsedParams.data
+    const db = await getRequestSqlServerDataSource()
+    const specificationId = await resolveSpecificationId(db, id)
+    if (specificationId === null)
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const { authorization, context } = await createRequirementsRestRuntime(
+      request,
+      { db },
+    )
+    await authorize(
+      authorization,
+      {
+        kind: 'get_specification_items',
+        specificationId,
+        specificationSlug: /^\d+$/.test(id) ? undefined : id,
+      },
+      context,
+    )
+    const items = await listSpecificationItems(db, specificationId)
+    const deviationCounts = await countDeviationsPerItemRef(db, specificationId)
+    const enrichedItems = items.map(item => {
+      const dc = item.itemRef ? deviationCounts.get(item.itemRef) : undefined
+      return {
+        ...item,
+        deviationCount: dc?.total ?? 0,
+        hasApprovedDeviation: (dc?.approved ?? 0) > 0,
+        hasPendingDeviation: (dc?.pending ?? 0) > 0,
+      }
+    })
+    return NextResponse.json({ items: enrichedItems })
+  } catch (error) {
+    const { body, status } = toHttpErrorPayload(error)
+    return NextResponse.json(body, { status })
+  }
 }
 
 export const POST = secureMutationRoute({

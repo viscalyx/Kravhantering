@@ -54,35 +54,43 @@ Innan ett nytt HSA-id kan sparas i ett sådant uppdrag måste användaren hämta
 eller återanvända en lokal kravansvarsperson. HSA-personuppslaget är
 behörighetsstyrt per syfte:
 
-- kravområdesägare får bara verifieras av `Admin`
-- kravområdesmedförfattare får verifieras av kravområdesägare,
-  kravområdesmedförfattare eller `Admin` för kravområdet
+- kravområdesägare får verifieras av `Admin` vid skapande av kravområde, eller
+  av aktuell kravområdesägare eller `Admin` vid överlämning av ett befintligt
+  kravområde
+- kravområdesmedförfattare får verifieras av aktuell kravområdesägare eller
+  `Admin` för kravområdet
 - kravpaketsansvarig och kravpaketsmedförfattare får verifieras av
   kravpaketsansvarig eller `Admin` för ett befintligt kravpaket
 - vid skapande av kravpaket får HSA-id verifieras av en användare som får
   skapa kravpaket
 - kravunderlagsansvarig och kravunderlagsmedförfattare får verifieras av
-  kravunderlagsansvarig, kravunderlagsmedförfattare eller `Admin` för
-  kravunderlaget
+  kravunderlagsansvarig eller `Admin` för kravunderlaget
 - vid skapande av kravunderlag får den inloggade användaren verifiera sitt
   eget HSA-id som kravunderlagsansvarig
 
 ## Kravområden
 
-Kravområden och byte av kravområdesägare hanteras som administrativ
-referensdata. Bara `Admin` kan skapa, ändra eller ta bort kravområden och byta
-kravområdesägare. Ett HSA-id för kravområdesägare måste vara verifierat som
-kravansvarsperson innan det sparas.
+Kravområden skapas och tas bort av `Admin`. När ett kravområde finns kan
+aktuell kravområdesägare, utöver `Admin`, ändra namn, beskrivning, prefix,
+kravområdesmedförfattare och lämna över ägarskapet för sitt eget kravområde.
+Ett HSA-id för kravområdesägare måste vara verifierat som kravansvarsperson
+innan det sparas.
 
 Samma HSA-id får inte samtidigt vara kravområdesägare och
-kravområdesmedförfattare för samma kravområde. Om en administratör försöker
-byta ägare till en person som redan är medförfattare stoppar tjänsten
-ändringen.
+kravområdesmedförfattare för samma kravområde. Om `Admin` eller aktuell
+kravområdesägare försöker byta ägare till en person som redan är
+medförfattare stoppar tjänsten ändringen.
 
 Kravområdesägare och kravområdesmedförfattare används som
 författarbehörighet inom kravområdet. Den behörigheten används bland annat när
 ett kravunderlagslokalt krav ska lyftas till kravbiblioteket och när en
 användare ska få skapa kravpaket.
+
+Kravområdesmedförfattare kan författa innehåll, men kan inte ändra
+kravområdets metadata, byta ägare eller hantera kravområdesmedförfattare.
+Kravområdets prefix kan bara ändras av `Admin` eller aktuell
+kravområdesägare så länge kravområdet saknar kravrader. När ett krav finns i
+området returnerar prefixändring `409 conflict`.
 
 ## Kravpaket
 
@@ -102,9 +110,7 @@ kravpaketets uppdrag vidare.
 Samma HSA-id får inte samtidigt vara kravpaketsansvarig och
 kravpaketsmedförfattare för samma kravpaket.
 
-Arkivering och borttag av kravpaket kräver `Admin`. Återaktivering av
-kravpaket ligger i dag bakom den generella inloggningskontrollen och är inte
-ännu uppdragsstyrd.
+Arkivering, återaktivering och borttag av kravpaket kräver `Admin`.
 
 ## Kravunderlag
 
@@ -116,18 +122,10 @@ HSA-id. Den inloggade användaren blir kravunderlagsansvarig. Om anropet anger
 en annan kravunderlagsansvarig än den inloggade användaren stoppar tjänsten
 skapandet.
 
-Kravunderlagsansvarig, kravunderlagsmedförfattare och `Admin` är den avsedda
-uppdragsgruppen för att ändra kravunderlagets innehåll. Den
-uppdragskontroll som finns i servern i dag omfattar kravunderlagets metadata
-och byte av kravunderlagsansvarig. Där krävs kravunderlagsansvarig,
-kravunderlagsmedförfattare eller `Admin`.
-
-Flera innehållsrutter för kravunderlag ligger fortfarande bakom generell
-inloggning eller den äldre gränsen för auktoriseringstjänsten. Det gäller bland
-annat vissa ändringar av behovsreferenser, kravurvalssvar, tillägg och borttag
-av publicerade bibliotekskrav, kravunderlagslokala krav och avsteg. Den
-uppdragsbaserade policyn för dessa rutter är målbilden för återstående
-RBAC-införing.
+Kravunderlagsansvarig, kravunderlagsmedförfattare och `Admin` kan ändra
+kravunderlagets innehåll. Det omfattar metadata, behovsreferenser,
+kravurvalssvar, tillägg och borttag av publicerade bibliotekskrav,
+kravunderlagslokala krav och avsteg.
 
 En kravområdesägare eller kravområdesmedförfattare får inte automatiskt
 skrivbehörighet till ett kravunderlag bara för att kravunderlaget använder krav
@@ -135,43 +133,73 @@ från området. Om personen ska hjälpa till att ändra ett specifikt kravunderl
 måste kravunderlagsansvarig eller en administratör lägga till personen som
 kravunderlagsmedförfattare.
 
-Målpolicyn är att kravunderlagsmedförfattare kan ändra kravunderlagets
-innehåll, men inte delegera behörighet vidare. Bara kravunderlagsansvarig och
-`Admin` ska kunna ändra kravunderlagsansvarig eller hantera
+Kravunderlagsmedförfattare kan ändra kravunderlagets innehåll, men inte
+delegera behörighet vidare. Bara kravunderlagsansvarig och `Admin` kan ändra
+kravunderlagsansvarig eller hantera
 kravunderlagsmedförfattare.
 
 Samma HSA-id får inte samtidigt vara kravunderlagsansvarig och
 kravunderlagsmedförfattare för samma kravunderlag. Om bytet av ansvarig skulle ge
 en sådan dubbel roll stoppar tjänsten ändringen.
 
+`Admin` och `Reviewer` kan lista och läsa alla kravunderlag. Andra inloggade
+användare ser bara sina tilldelade kravunderlag, där tilldelningen kommer från
+att vara kravunderlagsansvarig eller kravunderlagsmedförfattare. Om användaren
+saknar tilldelade kravunderlag visas en tom lista. En direktlänk till ett
+befintligt men otillåtet kravunderlag stoppas med 403, medan ett saknat
+kravunderlag stoppas med 404.
+
 ## Bibliotekskrav i kravunderlag
 
-Målpolicyn är att användare som kan ändra ett kravunderlag kan lägga till
-publicerade bibliotekskrav från vilket kravområde som helst. När ett publicerat
+Användare som kan ändra ett kravunderlag kan lägga till publicerade
+bibliotekskrav från vilket kravområde som helst. När ett publicerat
 bibliotekskrav läggs till registreras att kravet används i kravunderlaget; det
 ändrar inte bibliotekskravet eller kravområdet.
 
-När ett kravunderlagslokalt krav lyfts till kravbiblioteket är målpolicyn att
-aktören behöver behörighet i båda sammanhangen:
+När ett kravunderlagslokalt krav lyfts till kravbiblioteket behöver aktören
+behörighet i båda sammanhangen:
 
 - skrivbehörighet i kravunderlaget som källa, som
   kravunderlagsansvarig, kravunderlagsmedförfattare eller `Admin`
 - författarbehörighet i målkravområdet, som kravområdesägare,
   kravområdesmedförfattare eller `Admin`
 
-Servern kontrollerar i dag författarbehörigheten i målkravområdet vid lyftet.
-Uppdragskontrollen för kravunderlaget som källa hör till den återstående
-RBAC-införingen.
-
 Att vara kravområdesägare eller kravområdesmedförfattare ger inte full
 läsbehörighet till varje kravunderlag där områdets krav används. Användning kan
 visas genom rapporter, statistik eller tillämpningsspårbarhet utan att hela
 kravunderlagets sammanhang exponeras.
 
-Denna uppdragspolicy är målbilden för den återstående RBAC-införingen. Vissa
-rutter gör redan uppdragsbaserade behörighetskontroller, och återstående
-arbete med auktorisering i API, MCP, rapporter och användargränssnitt följs i
-[ärende #270](https://github.com/viscalyx/Kravhantering/issues/270).
+## Kravbibliotek
+
+Inloggade användare kan läsa publicerade bibliotekskrav och publik taxonomi.
+Utkast, granskning, historik och arkiveringsarbete kräver
+kravområdesägare, kravområdesmedförfattare, `Reviewer` eller `Admin` beroende
+på åtgärd och kravområde.
+
+Kravområdesägare, kravområdesmedförfattare och `Admin` kan författa
+kravområdets krav och kravurvalsfrågor. Beslut i gransknings- och
+arkiveringsflöden kräver däremot `Reviewer`; `Admin` räcker inte ensamt för
+sådana beslut. En `Reviewer` får besluta om sitt eget förslag eller avsteg,
+men tjänsten loggar detta som en högriskhändelse.
+
+Förbättringsförslag kan skapas och ändras av inloggade användare. Att lösa ett
+förslag eller besluta att avvisa det kräver författarbehörighet i kravområdet
+eller `Admin`. Egen lösning loggas som högriskhändelse.
+
+## AI-assisterat författande
+
+AI-assisterat författande använder samma uppdragsbaserade gräns som
+författande i Kravhantering. En användare utan `Admin` måste välja exakt ett
+auktoriserat scope innan tjänsten hämtar modeller, hämtar kreditinformation
+eller skickar en prompt till OpenRouter:
+
+- `requirement_area` med ett kravområde där användaren är kravområdesägare
+  eller kravområdesmedförfattare
+- `specification` med ett kravunderlag där användaren är
+  kravunderlagsansvarig eller kravunderlagsmedförfattare
+
+`Admin` får använda AI-assisterat författande utan att ange scope. Äldre
+AI-behörighetsflaggor används inte och ska inte återinföras.
 
 ## Normbibliotek
 

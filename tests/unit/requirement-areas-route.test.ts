@@ -21,7 +21,22 @@ const mocks = vi.hoisted(() => {
       requestId: 'request-area',
       source: 'rest',
     })),
+    createRequestContext: vi.fn(async () => ({
+      actor: {
+        displayName: 'Ada Admin',
+        hsaId: 'SE5560000001-admin1',
+        id: 'admin-sub',
+        isAuthenticated: true,
+        roles: ['Admin'],
+        source: 'oidc',
+      },
+      correlationId: 'correlation-area',
+      requestId: 'request-area',
+      source: 'rest',
+    })),
+    canManageAreaCoAuthors: vi.fn(),
     db,
+    getAreaById: vi.fn(),
     getRequestSqlServerDataSource: vi.fn(() => db),
     listAreas: vi.fn(),
     createArea: vi.fn(),
@@ -41,8 +56,10 @@ vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: mocks.getRequestSqlServerDataSource,
 }))
 vi.mock('@/lib/dal/requirement-areas', () => ({
+  canManageAreaCoAuthors: mocks.canManageAreaCoAuthors,
   listAreas: mocks.listAreas,
   createArea: mocks.createArea,
+  getAreaById: mocks.getAreaById,
   updateArea: mocks.updateArea,
   updateAreaWithOwnerCheck: mocks.updateAreaWithOwnerCheck,
 }))
@@ -50,6 +67,14 @@ vi.mock('@/lib/requirements/responsibility-person-verification', () => ({
   resolveVerifiedRequirementResponsibilityPerson:
     mocks.resolveVerifiedRequirementResponsibilityPerson,
 }))
+vi.mock('@/lib/requirements/auth', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/lib/requirements/auth')>()
+  return {
+    ...actual,
+    createRequestContext: mocks.createRequestContext,
+  }
+})
 
 import { PUT } from '@/app/api/requirement-areas/[id]/route'
 import { GET, POST } from '@/app/api/requirement-areas/route'
@@ -61,7 +86,11 @@ function request(
 ) {
   return new Request(url, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: 'http://localhost:3000',
+      'X-Requested-With': 'XMLHttpRequest',
+    },
     body: JSON.stringify(body),
   })
 }
@@ -73,7 +102,9 @@ function makeParams(id: string) {
 describe('requirement-areas route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.canManageAreaCoAuthors.mockResolvedValue(true)
     mocks.db.query.mockResolvedValue([])
+    mocks.getAreaById.mockResolvedValue({ id: 1 })
     mocks.resolveVerifiedRequirementResponsibilityPerson.mockResolvedValue({
       email: 'new@example.test',
       givenName: 'New',

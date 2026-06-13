@@ -277,7 +277,7 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
     expect(response.status).toBe(403)
     await expect(response.json()).resolves.toEqual({
       code: 'forbidden',
-      error: 'Missing specification-local requirement permission',
+      error: 'Forbidden',
     })
     expect(authState.assertAuthorized).toHaveBeenCalledWith(
       {

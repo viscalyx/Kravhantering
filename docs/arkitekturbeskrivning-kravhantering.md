@@ -458,8 +458,8 @@ gransknings- och beslutsprocesserna:
    [Assigned to]  [Assigned to]  [Assigned to]  [Assigned]
          ▼              ▼              ▼            ▼
   ┌────────────┐ ┌───────────┐ ┌────────────┐ ┌─────────┐
-  │ Författare │ │ Granskare │ │ Förvaltare │ │  Admin  │
-  │ (Author)   │ │ (Reviewer)│ │ (Manager)  │ │         │
+  │ Områdes-   │ │ Granskare │ │ Underlags- │ │  Admin  │
+  │ författare │ │ Reviewer  │ │ ansvarig   │ │         │
   └────────────┘ └───────────┘ └────────────┘ └─────────┘
 ```
 
@@ -1107,21 +1107,17 @@ Identitetsmodellen i applikationen utgår från:
   som krävs i både webb- och MCP-flöden
 - **`roles`** — globala IdP-roller. Nuvarande
   autentiseringskontrakt normaliserar `roles` till
-  `Reviewer` och `Admin`. Detta är en avsiktlig
-  förenkling av den tekniska rolluppgiften, men inte en
-  permanent förenkling av målmodellen. Målmodellen
-  innehåller `Author`, `Reviewer`, `Manager` och `Admin`:
-  `Reviewer` och `Admin` bevaras som globala roller,
-  `Author` ska härledas från uppdrag som ägare eller
-  medförfattare via `employeeHsaId`, och `Manager`
-  motsvaras i nuläget inte av en egen `roles`-post utan
-  tappar sin separata funktionsavgränsning tills
-  policybaserad auktorisering införs.
+  `Admin`, `Reviewer` och `PrivacyOfficer`. Författande
+  och uppdragsförvaltning är däremot inte globala
+  IdP-roller. De härleds från applikationsägda HSA-id-
+  uppdrag som kravområdesägare, kravområdesmedförfattare,
+  kravunderlagsansvarig och kravunderlagsmedförfattare.
 
 Det är dock viktigt att skilja på autentisering och
-auktorisering: verifierad identitet finns, men
-domänspecifik skrivbehörighet är ännu inte fullt
-finfördelad för alla arbetsflöden.
+auktorisering: verifierad identitet etablerar aktören,
+medan den uppdragsbaserade auktoriseringstjänsten slår upp
+målresursen innan den tillåter läsning, författande,
+uppdragsändringar eller granskningsbeslut.
 
 ### Befintliga säkerhetsmekanismer
 

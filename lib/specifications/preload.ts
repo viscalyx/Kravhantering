@@ -7,9 +7,12 @@ import { listAreas } from '@/lib/dal/requirement-areas'
 import { listRequirementPackages } from '@/lib/dal/requirement-packages'
 import {
   getSpecificationBySlug,
+  getSpecificationForbiddenSummaryBySlug,
+  listSpecificationCoAuthorHsaIds,
+  listSpecificationCoAuthorHsaIdsBySpecification,
   listSpecificationItems,
   listSpecificationNeedsReferences,
-  listSpecifications,
+  listSpecificationsForActor,
 } from '@/lib/dal/requirements-specifications'
 import { listSpecificationGovernanceObjectTypes } from '@/lib/dal/specification-governance-object-types'
 import { listSpecificationImplementationTypes } from '@/lib/dal/specification-implementation-types'
@@ -17,6 +20,7 @@ import { listSpecificationItemStatuses } from '@/lib/dal/specification-item-stat
 import { listSpecificationLifecycleStatuses } from '@/lib/dal/specification-lifecycle-statuses'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { forbiddenError } from '@/lib/requirements/errors'
 import { queryRequirementList } from '@/lib/requirements/list-query'
 import {
   type AreaOption,
@@ -25,7 +29,15 @@ import {
   type RequirementRow,
   type SpecificationItemStatusOption,
 } from '@/lib/requirements/list-view'
+import { recordAuthorizationDenied } from '@/lib/requirements/security-audit'
+import { createServerComponentRequestContext } from '@/lib/requirements/server-component-context'
 import { DEVIATED_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
+import {
+  canCreateSpecification,
+  canReadAllSpecifications,
+  canReadSpecification,
+  specificationPermissions,
+} from '@/lib/specifications/permissions'
 import type {
   NormReferenceOption,
   RequirementsSpecificationDetailInitialData,
@@ -136,6 +148,10 @@ async function loadSpecificationItems(
 function emptyDetailInitialData(
   spec: SpecificationMeta | null,
   errors: SpecificationPreloadError[] = [],
+  extras: Pick<
+    RequirementsSpecificationDetailInitialData,
+    'forbidden' | 'notFound'
+  > = {},
 ): RequirementsSpecificationDetailInitialData {
   return {
     areas: [],
@@ -146,6 +162,7 @@ function emptyDetailInitialData(
     requirementPackages: [],
     rightNormReferenceOptions: [],
     spec,
+    ...extras,
     specificationImplementationTypes: [],
     specificationItemStatuses: [],
     specificationItems: [],
@@ -162,6 +179,9 @@ export async function loadRequirementsSpecificationDetailInitialData({
   slug: string
 }): Promise<RequirementsSpecificationDetailInitialData> {
   const db = await getRequestSqlServerDataSource()
+  const context = await createServerComponentRequestContext({
+    path: `/specifications/${slug}`,
+  })
   const specResult = await capture<SpecificationMeta | null>(
     'specification',
     null,
@@ -173,9 +193,58 @@ export async function loadRequirementsSpecificationDetailInitialData({
     return emptyDetailInitialData(
       null,
       specResult.error ? [specResult.error] : [],
+      { notFound: true },
     )
   }
-  const spec = specResult.value
+  const coAuthorHsaIds = await listSpecificationCoAuthorHsaIds(
+    db,
+    specResult.value.id,
+  )
+
+  if (
+    !canReadSpecification(context, {
+      coAuthorHsaIds,
+      responsibleHsaId: specResult.value.responsibleHsaId,
+    })
+  ) {
+    const denied = forbiddenError('Specification assignment is required', {
+      reason: 'specification_assignment_required',
+      specificationId: specResult.value.id,
+    })
+    await recordAuthorizationDenied(
+      context,
+      {
+        kind: 'get_specification_items',
+        specificationId: specResult.value.id,
+        specificationSlug: slug,
+      },
+      denied,
+    )
+    const summary = await getSpecificationForbiddenSummaryBySlug(db, slug)
+    return emptyDetailInitialData(
+      null,
+      specResult.error ? [specResult.error] : [],
+      {
+        forbidden: summary
+          ? {
+              responsible: summary.responsible,
+              specification: {
+                name: summary.name,
+                uniqueId: summary.uniqueId,
+              },
+            }
+          : undefined,
+      },
+    )
+  }
+
+  const spec: SpecificationMeta = {
+    ...specResult.value,
+    permissions: specificationPermissions(context, {
+      coAuthorHsaIds,
+      responsibleHsaId: specResult.value.responsibleHsaId,
+    }),
+  }
 
   const [
     areas,
@@ -272,17 +341,33 @@ export async function loadRequirementsSpecificationDetailInitialData({
 
 export async function loadRequirementsSpecificationsInitialData(): Promise<RequirementsSpecificationsInitialData> {
   const db = await getRequestSqlServerDataSource()
+  const context = await createServerComponentRequestContext({
+    path: '/specifications',
+  })
   const [
     specifications,
     governanceObjectTypes,
     implementationTypes,
     lifecycleStatuses,
   ] = await Promise.all([
-    capture<Specification[]>(
-      'requirements specifications',
-      [],
-      async () => (await listSpecifications(db)) as Specification[],
-    ),
+    capture<Specification[]>('requirements specifications', [], async () => {
+      const specs = (await listSpecificationsForActor(db, {
+        actorHsaId: context.actor.hsaId,
+        canReadAll: canReadAllSpecifications(context),
+      })) as Specification[]
+      const coAuthorIdsBySpecification =
+        await listSpecificationCoAuthorHsaIdsBySpecification(
+          db,
+          specs.map(spec => spec.id),
+        )
+      return specs.map(spec => ({
+        ...spec,
+        permissions: specificationPermissions(context, {
+          coAuthorHsaIds: coAuthorIdsBySpecification.get(spec.id) ?? [],
+          responsibleHsaId: spec.responsibleHsaId,
+        }),
+      }))
+    }),
     capture<SpecificationTaxonomyItem[]>(
       'specification governance object types',
       [],
@@ -301,6 +386,9 @@ export async function loadRequirementsSpecificationsInitialData(): Promise<Requi
   ])
 
   return {
+    collectionPermissions: {
+      canCreateSpecification: canCreateSpecification(context),
+    },
     errors: [
       specifications.error,
       governanceObjectTypes.error,

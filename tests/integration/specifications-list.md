@@ -9,7 +9,8 @@ workflows open modal dialogs, that the name filter narrows the visible
 specifications, that row actions render as icon-only buttons, that overflowing
 requirement-area pills can be expanded on demand, and that the clear-search
 action restores the full list. On desktop it additionally asserts that the
-floating create button is anchored to the right side of the list.
+floating create button is clamped to the visible right edge while aligned with
+the list.
 
 ## Overview Flowchart
 
@@ -22,7 +23,7 @@ flowchart TD
     B2 --> B3[Open new specification dialog]
     B3 --> B4[Open edit specification dialog]
     B4 --> C{Desktop?}
-    C -- Yes --> D[Assert create button tracks list edge]
+    C -- Yes --> D[Assert create button tracks viewport edge]
     C -- No --> B5[Force narrow pill column and toggle overflow]
     D --> B5
     B5 --> E[Fill name filter]
@@ -46,7 +47,8 @@ Confirms that typing in the name filter hides non-matching specifications and th
 clicking the clear button restores all specifications. The same flow opens the
 create and edit dialogs and verifies that the responsible-person controls stay
 inside those modal forms. On desktop it also verifies that the "Nytt
-kravunderlag" button stays in the fixed floating rail beside the list.
+kravunderlag" button stays in the fixed floating rail at the visible viewport
+edge while aligned with the list.
 
 ### Step-by-Step Flow
 
@@ -66,8 +68,9 @@ kravunderlag" button stays in the fixed floating rail beside the list.
 1. Open `Byt kravunderlagsansvarig` from the edit dialog and assert the separate
    change modal validates current and new HSA-id values through its editable
    prefix and suffix controls.
-1. *(Desktop only)* Assert that `Nytt kravunderlag` is positioned at the right
-   edge of the list surface in the fixed floating rail.
+1. *(Desktop only)* Assert that `Nytt kravunderlag` is positioned at the visible
+   right edge in the fixed floating rail and remains vertically aligned with the
+   list surface.
 1. Force a narrow requirement-area pill list and assert the chevron toggle
    expands and collapses the hidden pills.
 1. Type `e-tjänst` into the name filter.

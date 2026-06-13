@@ -179,7 +179,11 @@ function actionAuditDetail(
         suggestionId: action.suggestionId,
       }
     case 'generate_requirements':
-      return { actionKind: action.kind }
+      return {
+        actionKind: action.kind,
+        scopeId: action.scopeId,
+        scopeType: action.scopeType,
+      }
   }
 }
 

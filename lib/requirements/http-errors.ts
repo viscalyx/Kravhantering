@@ -123,9 +123,11 @@ export function toHttpErrorPayload(error: unknown): HttpErrorPayload {
         code: error.code,
         ...(details ? { details } : {}),
         error:
-          error.code === 'internal'
-            ? 'An internal error occurred'
-            : error.message,
+          error.code === 'forbidden'
+            ? 'Forbidden'
+            : error.code === 'internal'
+              ? 'An internal error occurred'
+              : error.message,
       },
       status,
     }
@@ -135,7 +137,7 @@ export function toHttpErrorPayload(error: unknown): HttpErrorPayload {
     return {
       body: {
         code: toRequirementsCode(error.status),
-        error: error.message,
+        error: error.status === 403 ? 'Forbidden' : error.message,
       },
       status: error.status,
     }

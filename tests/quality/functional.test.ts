@@ -187,6 +187,37 @@ const contributorGuidePath = join(
   'mcp-server-contributor-guide.md',
 )
 const userGuidePath = join(repoRoot, 'docs', 'mcp-server-user-guide.md')
+const assignmentAuthorizationPath = join(
+  repoRoot,
+  'lib',
+  'requirements',
+  'assignment-authorization.ts',
+)
+const specificationPermissionsPath = join(
+  repoRoot,
+  'lib',
+  'specifications',
+  'permissions.ts',
+)
+const specificationPreloadPath = join(
+  repoRoot,
+  'lib',
+  'specifications',
+  'preload.ts',
+)
+const specificationServicePath = join(
+  repoRoot,
+  'lib',
+  'requirements',
+  'service-specifications.ts',
+)
+const specificationsRoutePath = join(
+  repoRoot,
+  'app',
+  'api',
+  'specifications',
+  'route.ts',
+)
 
 function countRegisterToolCalls(source: string): number {
   return source.match(/\bserver\.registerTool\s*\(/g)?.length ?? 0
@@ -364,6 +395,36 @@ it('Scenario 18: HSA-id prefixes stay UI guidance with a visible default rule', 
   expect(adminCenterDoc).toContain('Used prefixes cannot be removed')
   expect(databaseSchemaDoc).toContain('hsa_id_prefixes')
   expect(databaseSchemaDoc).toContain('uq_hsa_id_prefixes_default')
+})
+
+it('Scenario 19: assignment RBAC denies hidden broad access', () => {
+  const assignmentAuthorizationSource = readFileSync(
+    assignmentAuthorizationPath,
+    'utf8',
+  )
+  const permissionsSource = readFileSync(specificationPermissionsPath, 'utf8')
+  const preloadSource = readFileSync(specificationPreloadPath, 'utf8')
+  const serviceSource = readFileSync(specificationServicePath, 'utf8')
+  const routeSource = readFileSync(specificationsRoutePath, 'utf8')
+
+  expect(assignmentAuthorizationSource).toContain("case 'list_specifications'")
+  expect(assignmentAuthorizationSource).toContain(
+    "case 'get_specification_items'",
+  )
+  expect(assignmentAuthorizationSource).toContain(
+    'return this.assertCanReadSpecification(context, specificationId)',
+  )
+  expect(permissionsSource).toContain("hasRole(context.actor, 'Admin')")
+  expect(permissionsSource).toContain("hasRole(context.actor, 'Reviewer')")
+  expect(permissionsSource).toContain(
+    'canManageAssignments: isAdmin || isResponsible',
+  )
+  expect(serviceSource).toContain('listSpecificationsForActor')
+  expect(preloadSource).toContain('listSpecificationsForActor')
+  expect(preloadSource).toContain('recordAuthorizationDenied')
+  expect(preloadSource).toContain('specification_assignment_required')
+  expect(routeSource).toContain('collectionPermissions')
+  expect(routeSource).toContain('canCreateSpecification')
 })
 
 function resolveFunctionalTestsUrl(): string | null {

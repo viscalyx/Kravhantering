@@ -4,6 +4,7 @@ import type {
   RequirementRow,
   SpecificationItemStatusOption,
 } from '@/lib/requirements/list-view'
+import type { SpecificationPermissions } from '@/lib/specifications/permissions'
 
 export interface SpecificationPreloadError {
   key: string
@@ -23,6 +24,7 @@ export interface SpecificationMeta {
   implementationType: SpecificationTaxonomyItem | null
   lifecycleStatus: SpecificationTaxonomyItem | null
   name: string
+  permissions?: SpecificationPermissions
   responsibleDisplayName: string | null
   responsibleHsaId: string
   specificationGovernanceObjectTypeId: number | null
@@ -69,7 +71,19 @@ export interface RequirementsSpecificationDetailInitialData {
   availableNeedsRefs: SpecificationNeedsReference[]
   availableRequirements: AvailableRequirementsData
   errors: SpecificationPreloadError[]
+  forbidden?: {
+    responsible: {
+      displayName: string | null
+      email: string | null
+      hsaId: string
+    }
+    specification: {
+      name: string
+      uniqueId: string
+    }
+  }
   leftNormReferenceOptions: NormReferenceOption[]
+  notFound?: boolean
   requirementPackages: RequirementPackageOption[]
   rightNormReferenceOptions: NormReferenceOption[]
   spec: SpecificationMeta | null
@@ -93,6 +107,7 @@ export interface Specification {
   itemCount: number
   lifecycleStatus: SpecificationTaxonomyItem | null
   name: string
+  permissions?: SpecificationPermissions
   requirementAreas: SpecificationRequirementArea[]
   responsibleDisplayName: string | null
   responsibleHsaId: string
@@ -103,6 +118,9 @@ export interface Specification {
 }
 
 export interface RequirementsSpecificationsInitialData {
+  collectionPermissions?: {
+    canCreateSpecification: boolean
+  }
   errors: SpecificationPreloadError[]
   governanceObjectTypes: SpecificationTaxonomyItem[]
   implementationTypes: SpecificationTaxonomyItem[]

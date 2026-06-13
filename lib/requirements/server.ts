@@ -33,7 +33,7 @@ export interface CreateRequirementsRestRuntimeOptions {
 export function createRequirementsRuntime(
   db: SqlServerDatabase,
 ): RequirementsRuntime {
-  const authorization = createDefaultAuthorizationService()
+  const authorization = createDefaultAuthorizationService(db)
   const logger = createRequirementsLogger()
   const service = createRequirementsService(db, {
     authorization,

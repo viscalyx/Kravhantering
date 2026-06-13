@@ -74,12 +74,19 @@ for (const viewport of viewports) {
 
         const buttonBox = await createButton.boundingBox()
         const tableBox = await tableSurface.boundingBox()
+        const viewportSize = page.viewportSize()
 
         expect(buttonBox).not.toBeNull()
         expect(tableBox).not.toBeNull()
-        expect(buttonBox?.x ?? 0).toBeGreaterThan(
-          (tableBox?.x ?? 0) + (tableBox?.width ?? 0) - 60,
+        expect(viewportSize).not.toBeNull()
+        expect(buttonBox?.x ?? 0).toBeGreaterThanOrEqual(
+          (viewportSize?.width ?? viewport.width) -
+            (buttonBox?.width ?? 0) -
+            16,
         )
+        expect(
+          (buttonBox?.x ?? 0) + (buttonBox?.width ?? 0),
+        ).toBeLessThanOrEqual((viewportSize?.width ?? viewport.width) + 1)
         expect(
           Math.abs((buttonBox?.y ?? 0) - ((tableBox?.y ?? 0) + 4)),
         ).toBeLessThanOrEqual(12)

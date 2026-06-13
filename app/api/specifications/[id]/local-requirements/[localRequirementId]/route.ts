@@ -110,9 +110,9 @@ export const PUT = secureMutationRoute<
   policy: requirementsMutationPolicy(({ params }) =>
     specificationLocalRequirementAction('update', params),
   ),
-  handler: async ({ body, params }) => {
+  handler: async ({ body, db: authorizationDb, params }) => {
     const { id, localRequirementId: numericLocalRequirementId } = params
-    const db = await getRequestSqlServerDataSource()
+    const db = authorizationDb ?? (await getRequestSqlServerDataSource())
     const specificationId = await resolveSpecificationId(db, id)
     if (specificationId === null) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -165,9 +165,9 @@ export const DELETE = secureMutationRoute<
   policy: requirementsMutationPolicy(({ params }) =>
     specificationLocalRequirementAction('delete', params),
   ),
-  handler: async ({ params }) => {
+  handler: async ({ db: authorizationDb, params }) => {
     const { id, localRequirementId: numericLocalRequirementId } = params
-    const db = await getRequestSqlServerDataSource()
+    const db = authorizationDb ?? (await getRequestSqlServerDataSource())
     const specificationId = await resolveSpecificationId(db, id)
     if (specificationId === null) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })

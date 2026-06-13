@@ -209,4 +209,60 @@ describe('requirement-areas DAL', () => {
       ),
     ).toBe(false)
   })
+
+  it('allows prefix changes while the requirement area has no requirements', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        { ownerHsaId: 'SE5560000001-old1', prefix: 'KH' },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 11,
+          prefix: 'NY',
+          name: 'Kravhantering',
+          description: 'Krav relaterade till kravhantering',
+          ownerHsaId: 'SE5560000001-old1',
+          nextSequence: 1,
+          createdAt: new Date('2026-05-02T08:00:00.000Z'),
+          updatedAt: new Date('2026-05-03T08:00:00.000Z'),
+        },
+      ])
+
+    const result = await updateAreaWithOwnerCheck(db, 11, { prefix: 'NY' })
+
+    expect(transaction).toHaveBeenCalledWith('SERIALIZABLE', expect.anything())
+    expect(query.mock.calls[1]?.[0]).toContain('FROM requirements')
+    expect(query.mock.calls[2]?.[0]).toContain('UPDATE requirement_areas')
+    expect(query.mock.calls[2]?.[0]).toContain('prefix = @0')
+    expect(result).toMatchObject({ id: 11, prefix: 'NY' })
+  })
+
+  it('rejects prefix changes after the requirement area has requirements', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        { ownerHsaId: 'SE5560000001-old1', prefix: 'KH' },
+      ])
+      .mockResolvedValueOnce([{ id: 99 }])
+
+    await expect(
+      updateAreaWithOwnerCheck(db, 11, { prefix: 'NY' }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      details: {
+        reason: 'requirement_area_prefix_locked',
+        requirementAreaId: 11,
+      },
+      status: 409,
+    })
+
+    expect(transaction).toHaveBeenCalledWith('SERIALIZABLE', expect.anything())
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('UPDATE requirement_areas'),
+      ),
+    ).toBe(false)
+  })
 })

@@ -7,7 +7,9 @@ import {
   isSignedIn,
   type LoggedInSession,
 } from '@/lib/auth/session'
+import type { SqlServerDatabase } from '@/lib/db'
 import { resolveRequestCorrelationIds } from '@/lib/observability/request-ids'
+import { AssignmentBasedAuthorizationService } from '@/lib/requirements/assignment-authorization'
 import { forbiddenError, validationError } from '@/lib/requirements/errors'
 
 // In-process attachment of verified actor identities to Request objects.
@@ -134,9 +136,11 @@ export type RequirementsAction =
       uniqueId?: string
       id?: number
       versionNumber?: number
+      view?: 'detail' | 'history' | 'version'
     }
   | {
       kind: 'manage_requirement'
+      areaId?: number
       operation: string
       uniqueId?: string
       id?: number
@@ -171,6 +175,8 @@ export type RequirementsAction =
     }
   | {
       kind: 'generate_requirements'
+      scopeId?: number
+      scopeType?: 'requirement_area' | 'specification'
     }
 
 export interface AuthorizationService {
@@ -220,14 +226,14 @@ export class RoleBasedAuthorizationService implements AuthorizationService {
 }
 
 /**
- * Default authorization service used by `createRequirementsService` when no
- * explicit service is provided. While the role catalogue / policy is being
- * defined, we intentionally return `AllowAllAuthorizationService` so
- * authenticated users can operate. Replace with a real
- * `RoleBasedAuthorizationService({ ... })` once policies are declared.
+ * Default production authorization service for REST and MCP runtime wiring.
+ * Tests that exercise business workflows in isolation may still instantiate
+ * `AllowAllAuthorizationService` explicitly.
  */
-export function createDefaultAuthorizationService(): AuthorizationService {
-  return new AllowAllAuthorizationService()
+export function createDefaultAuthorizationService(
+  db?: SqlServerDatabase,
+): AuthorizationService {
+  return new AssignmentBasedAuthorizationService(db)
 }
 
 async function getActorContextFromSession(

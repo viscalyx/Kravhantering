@@ -692,6 +692,60 @@ describe('RequirementPackagesClient', () => {
     ).toBeInTheDocument()
   })
 
+  it('keeps the package lead modal open and shows an error when lead handover fails', async () => {
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /requirementPackage\.changeLead/ }),
+    )
+
+    const changeDialog = screen.getByRole('dialog', {
+      name: /requirementPackage\.changeLeadTitle/,
+    })
+    const newLeadInput = within(changeDialog).getByRole('textbox', {
+      name: /requirementPackage\.newLeadHsaId/,
+    })
+    await waitFor(() => {
+      expect(newLeadInput).toBeEnabled()
+    })
+    fireEvent.change(newLeadInput, { target: { value: 'new1' } })
+
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      const urlString = requestUrl(url)
+      if (urlString === '/api/auth/me') return okJson(currentAuthMe)
+      if (urlString === '/api/hsa-id-prefixes')
+        return okJson(hsaIdPrefixPayload)
+      if (urlString === '/api/requirement-packages/1' && init?.method === 'PUT')
+        return notOk({ error: 'Package lead handover failed' })
+      if (urlString.startsWith('/api/requirement-packages?')) {
+        return okJson({ requirementPackages: sampleRequirementPackages })
+      }
+      return okJson({})
+    })
+
+    fireEvent.click(
+      within(changeDialog).getByRole('button', {
+        name: /requirementPackage\.changeLead/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(within(changeDialog).getByRole('alert')).toHaveTextContent(
+        'Package lead handover failed',
+      )
+    })
+    expect(
+      screen.getByRole('dialog', {
+        name: /requirementPackage\.changeLeadTitle/,
+      }),
+    ).toBeInTheDocument()
+    expect(requirementPackageLeadHsaIdInput()).toHaveValue('SE5560000001-anna1')
+  })
+
   it('confirms unsaved edits before a non-admin changes away from their package lead assignment', async () => {
     const nonAdminAuthMe = {
       ...currentAuthMe,

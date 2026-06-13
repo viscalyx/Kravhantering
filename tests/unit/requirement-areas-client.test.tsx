@@ -143,6 +143,15 @@ describe('RequirementAreasClient', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
 
+    await waitFor(() => {
+      expect(screen.getByText('area.noCoAuthors')).toBeInTheDocument()
+    })
+    await waitFor(() => {
+      expect(
+        screen.getByRole('textbox', { name: /area\.coAuthorHsaId/ }),
+      ).toBeEnabled()
+    })
+
     const ownerInput = screen.getByRole('textbox', { name: /area\.owner/ })
     expect(ownerInput).toBeDisabled()
     expect(ownerInput).toHaveValue('SE5560000001-annaj')
@@ -187,8 +196,261 @@ describe('RequirementAreasClient', () => {
       JSON.stringify({
         description: 'System integration',
         name: 'Updated',
+        prefix: 'INT',
       }),
     )
+  })
+
+  it('autosaves a verified requirement area co-author assignment', async () => {
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas')
+        return okJson({ areas: sampleAreas })
+      if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
+      if (url === '/api/requirement-areas/1/co-authors') {
+        if (init?.method === 'PUT') return okJson({ ok: true })
+        return okJson({ coAuthors: [] })
+      }
+      if (url === '/api/requirement-responsibility-people/verify') {
+        return okJson({
+          person: {
+            displayName: 'Cora CoAuthor',
+            email: 'cora.coauthor@example.test',
+            givenName: 'Cora',
+            hsaId: 'SE5560000001-coa1',
+            middleName: null,
+            surname: 'CoAuthor',
+          },
+        })
+      }
+      return okJson({})
+    })
+    render(<RequirementAreasClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Integration')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+
+    await waitFor(() => {
+      expect(screen.getByText('area.noCoAuthors')).toBeInTheDocument()
+    })
+    const coAuthorInput = screen.getByRole('textbox', {
+      name: /area\.coAuthorHsaId/,
+    })
+    await waitFor(() => {
+      expect(coAuthorInput).toBeEnabled()
+    })
+    fireEvent.change(coAuthorInput, { target: { value: 'coa1' } })
+    let verifyButton: HTMLButtonElement | undefined
+    await waitFor(() => {
+      verifyButton = screen
+        .getAllByRole('button', { name: /common\.fetchHsaPerson/ })
+        .find(button => !(button as HTMLButtonElement).disabled) as
+        | HTMLButtonElement
+        | undefined
+      expect(verifyButton).toBeTruthy()
+    })
+    fireEvent.click(verifyButton as HTMLButtonElement)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-areas/1/co-authors',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
+    const verifyCall = fetchMock.mock.calls.find(
+      ([url]) => url === '/api/requirement-responsibility-people/verify',
+    ) as [string, RequestInit]
+    expect(JSON.parse((verifyCall[1].body as string) ?? '{}')).toMatchObject({
+      hsaId: 'SE5560000001-coa1',
+      purpose: 'requirement_area_co_author',
+      scopeId: 1,
+    })
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/requirement-areas/1/co-authors' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    ) as [string, RequestInit]
+    expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
+      coAuthorHsaIds: ['SE5560000001-coa1'],
+    })
+    expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
+  })
+
+  it('shows an error and keeps the requirement area co-author draft when assignment autosave fails', async () => {
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas')
+        return okJson({ areas: sampleAreas })
+      if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
+      if (url === '/api/requirement-areas/1/co-authors') {
+        if (init?.method === 'PUT')
+          return errJson(
+            { error: 'Requirement area co-author autosave failed' },
+            409,
+            'Conflict',
+          )
+        return okJson({ coAuthors: [] })
+      }
+      if (url === '/api/requirement-responsibility-people/verify') {
+        return okJson({
+          person: {
+            displayName: 'Cora CoAuthor',
+            email: 'cora.coauthor@example.test',
+            givenName: 'Cora',
+            hsaId: 'SE5560000001-coa1',
+            middleName: null,
+            surname: 'CoAuthor',
+          },
+        })
+      }
+      return okJson({})
+    })
+    render(<RequirementAreasClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Integration')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+
+    await waitFor(() => {
+      expect(screen.getByText('area.noCoAuthors')).toBeInTheDocument()
+    })
+    const coAuthorInput = screen.getByRole('textbox', {
+      name: /area\.coAuthorHsaId/,
+    })
+    await waitFor(() => {
+      expect(coAuthorInput).toBeEnabled()
+    })
+    fireEvent.change(coAuthorInput, { target: { value: 'coa1' } })
+    let verifyButton: HTMLButtonElement | undefined
+    await waitFor(() => {
+      verifyButton = screen
+        .getAllByRole('button', { name: /common\.fetchHsaPerson/ })
+        .find(button => !(button as HTMLButtonElement).disabled) as
+        | HTMLButtonElement
+        | undefined
+      expect(verifyButton).toBeTruthy()
+    })
+    fireEvent.click(verifyButton as HTMLButtonElement)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Requirement area co-author autosave failed',
+      )
+    })
+    expect(screen.getByText('area.noCoAuthors')).toBeInTheDocument()
+    expect(coAuthorInput).toHaveValue('coa1')
+  })
+
+  it('confirms and autosaves requirement area co-author removal', async () => {
+    confirmMock.mockResolvedValue(true)
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas')
+        return okJson({ areas: sampleAreas })
+      if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
+      if (url === '/api/requirement-areas/1/co-authors') {
+        if (init?.method === 'PUT') return okJson({ ok: true })
+        return okJson({
+          coAuthors: [
+            {
+              displayName: 'Cora CoAuthor',
+              email: 'cora.coauthor@example.test',
+              hsaId: 'SE5560000001-coa1',
+            },
+          ],
+        })
+      }
+      return okJson({})
+    })
+    render(<RequirementAreasClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Integration')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+
+    await waitFor(() => {
+      expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: /area\.removeCoAuthor/ }),
+    )
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'area.removeCoAuthorConfirm',
+          variant: 'danger',
+        }),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-areas/1/co-authors',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/requirement-areas/1/co-authors' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    ) as [string, RequestInit]
+    expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
+      coAuthorHsaIds: [],
+    })
+  })
+
+  it('shows an error and keeps the requirement area co-author when removal autosave fails', async () => {
+    confirmMock.mockResolvedValue(true)
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas')
+        return okJson({ areas: sampleAreas })
+      if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
+      if (url === '/api/requirement-areas/1/co-authors') {
+        if (init?.method === 'PUT')
+          return errJson(
+            { error: 'Requirement area co-author removal failed' },
+            409,
+            'Conflict',
+          )
+        return okJson({
+          coAuthors: [
+            {
+              displayName: 'Cora CoAuthor',
+              email: 'cora.coauthor@example.test',
+              hsaId: 'SE5560000001-coa1',
+            },
+          ],
+        })
+      }
+      return okJson({})
+    })
+    render(<RequirementAreasClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Integration')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+
+    await waitFor(() => {
+      expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: /area\.removeCoAuthor/ }),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Requirement area co-author removal failed',
+      )
+    })
+    expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/requirement-areas/1/co-authors' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    ) as [string, RequestInit]
+    expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
+      coAuthorHsaIds: [],
+    })
   })
 
   it('changes owner through the owner-change modal', async () => {

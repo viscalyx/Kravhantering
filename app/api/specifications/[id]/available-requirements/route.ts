@@ -23,6 +23,7 @@ import {
 } from '@/lib/requirements/list-view'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { toHttpErrorPayload } from '@/lib/requirements/service'
+import { authorize } from '@/lib/requirements/service-shared'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
 type Params = Promise<{ id: string }>
@@ -81,6 +82,17 @@ export async function GET(
     if (!specificationId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
+    await authorize(
+      authorization,
+      {
+        kind: 'get_specification_items',
+        specificationId,
+        specificationSlug: /^\d+$/.test(parsedParams.data.id)
+          ? undefined
+          : parsedParams.data.id,
+      },
+      context,
+    )
 
     const [selectionFilter, existingRequirementIds] = await Promise.all([
       getRequirementSelectionFilterForSpecification(db, specificationId),

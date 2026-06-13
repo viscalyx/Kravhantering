@@ -1,4 +1,5 @@
-<!-- cSpell:words ManualArea ManualPkg ManualSpec PkgCoAuthor RetentionFresh -->
+<!-- cSpell:words ManualArea ManualPkg ManualSpec PkgCoAuthor RBAC -->
+<!-- cSpell:words RetentionFresh -->
 <!-- cSpell:words RetentionLinked RetentionOrphan -->
 
 # Manual Test Cases
@@ -21,6 +22,7 @@ the exact Swedish UI labels used by the seeded Playwright flows.
   - [AUTH-07: PrivacyOfficer without Admin powers](#auth-07-privacyofficer-without-admin-powers)
   - [AUTH-08: no-role user is denied privileged work](#auth-08-no-role-user-is-denied-privileged-work)
   - [AUTH-09: auth callback failure shows a browser error page](#auth-09-auth-callback-failure-shows-a-browser-error-page)
+  - [AUTH-10: assignment RBAC matrix](#auth-10-assignment-rbac-matrix)
 - [Requirements library](#requirements-library)
   - [REQ-01: library loads with seeded requirements](#req-01-library-loads-with-seeded-requirements)
   - [REQ-02: language switch keeps the library usable](#req-02-language-switch-keeps-the-library-usable)
@@ -335,6 +337,56 @@ check shows the Kravhantering error page, not the Keycloak 404 page.
 In deployed or production-like environments, the server log for the original
 callback failure should contain sanitized diagnostics for TLS, Secure-cookie
 handling, and callback host configuration.
+
+### AUTH-10: assignment RBAC matrix
+
+**Purpose:** Confirm the final assignment-based RBAC boundary is enforced in
+REST, MCP-adjacent APIs, and visible UI controls.
+
+**Users:** `olle.areaowner`, `cora.coauthor`, `petra.specresp`,
+`rita.reviewer`, `only.admin`, `noah.noroles`.
+
+**Prerequisites:** Seeded database is available and the app is running.
+
+**Steps:**
+
+1. Sign in as `noah.noroles`, open `/sv/requirements`, and confirm published
+   library content is visible while edit and review actions are unavailable.
+1. As `noah.noroles`, open `/sv/specifications` and confirm the page returns a
+   successful empty list instead of an authorization error. Open the seeded
+   specification detail `/sv/specifications/ETJANST-UPP-2026` directly and
+   confirm the page shows a forbidden message with specification ID, name, and
+   kravunderlagsansvarig contact, but no specification content. Open a
+   non-existing specification slug and confirm the not-found behavior.
+1. As `olle.areaowner`, edit a requirement or requirement-selection question
+   in the owned area. Manage the same area's metadata and co-authors as
+   `olle.areaowner`, then confirm the same co-author management is unavailable
+   for `cora.coauthor`.
+1. As `petra.specresp`, edit seeded specification content and try changing
+   specification co-authors. Then try the same co-author change as a seeded
+   specification co-author and confirm content authoring remains available but
+   assignment management is unavailable.
+1. As `rita.reviewer` and `only.admin`, open `/sv/specifications` and confirm
+   seeded specifications are listed broadly. As `rita.reviewer`, verify
+   read-only specification controls are hidden or disabled unless the user also
+   has an assignment.
+1. As `only.admin`, verify AI model and credit endpoints work without
+   `scopeType` and `scopeId`, but requirement review decisions are still
+   unavailable without `Reviewer`.
+1. As `rita.reviewer`, approve or reject a seeded review item and confirm the
+   decision succeeds even when the reviewer is also the creator; check that
+   the action log records a high-risk event.
+1. As a non-admin author, call AI model, credit, REST generation, or MCP
+   generation without scope and then with the correct
+   `scopeType`/`scopeId`.
+
+**Expected result:** Requirements specifications list successfully with only
+assigned items for ordinary users and an empty list when no assignments exist.
+Existing unauthorized resources return 403 and create a denial audit row;
+missing resources return 404. REST 403 payloads stay generic. UI controls are
+hidden or disabled according to server-derived permissions, while API calls
+remain the security boundary. Non-admin AI calls require exactly one
+authorized scope before any provider call.
 
 ## Requirements library
 

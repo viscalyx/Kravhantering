@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { isHsaId } from '@/lib/auth/hsa-id'
-import { canAuthorArea } from '@/lib/dal/requirement-areas'
-import { canAuthorSpecification } from '@/lib/dal/requirements-specifications'
+import { canManageAreaCoAuthors } from '@/lib/dal/requirement-areas'
+import { canManageSpecificationAssignments } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   customMutationPolicy,
@@ -60,14 +60,27 @@ export const POST = secureMutationRoute({
         return db
       }
 
-      if (
-        body.purpose === 'requirement_area_owner' &&
-        !context.actor.roles.includes('Admin')
-      ) {
-        throw forbiddenError('Missing required role for HSA verification', {
-          reason: 'required_role_missing',
-          requiredRoles: ['Admin'],
-        })
+      if (body.purpose === 'requirement_area_owner') {
+        if (context.actor.roles.includes('Admin')) {
+          return
+        }
+        if (!body.scopeId) {
+          throw forbiddenError('Requirement area scope is required', {
+            reason: 'scope_required',
+          })
+        }
+        const allowed = await canManageAreaCoAuthors(
+          await getDb(),
+          body.scopeId,
+          context.actor.hsaId,
+          false,
+        )
+        if (!allowed) {
+          throw forbiddenError(
+            'Missing requirement area owner management permission',
+            { reason: 'requirement_area_owner_manager_required' },
+          )
+        }
       }
 
       if (body.purpose === 'requirement_area_co_author') {
@@ -76,16 +89,17 @@ export const POST = secureMutationRoute({
             reason: 'scope_required',
           })
         }
-        const allowed = await canAuthorArea(
+        const allowed = await canManageAreaCoAuthors(
           await getDb(),
           body.scopeId,
           context.actor.hsaId,
           isAdmin(context.actor.roles),
         )
         if (!allowed) {
-          throw forbiddenError('Missing requirement area author permission', {
-            reason: 'requirement_area_author_required',
-          })
+          throw forbiddenError(
+            'Missing requirement area co-author management permission',
+            { reason: 'requirement_area_co_author_manager_required' },
+          )
         }
       }
 
@@ -125,16 +139,17 @@ export const POST = secureMutationRoute({
             reason: 'scope_required',
           })
         }
-        const allowed = await canAuthorSpecification(
+        const allowed = await canManageSpecificationAssignments(
           await getDb(),
           body.scopeId,
           context.actor.hsaId,
           isAdmin(context.actor.roles),
         )
         if (!allowed) {
-          throw forbiddenError('Missing specification author permission', {
-            reason: 'specification_author_required',
-          })
+          throw forbiddenError(
+            'Missing specification assignment management permission',
+            { reason: 'specification_assignment_manager_required' },
+          )
         }
       }
     },

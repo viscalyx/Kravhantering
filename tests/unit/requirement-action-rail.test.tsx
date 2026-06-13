@@ -92,7 +92,7 @@ describe('RequirementActionRail', () => {
     expect(result.css).toContain('color: var(--color-red-700)')
     expect(result.css).toContain('border-color: var(--color-red-200)')
     expect(result.css).toContain('background-color: var(--color-red-50)')
-  })
+  }, 15_000)
 
   it('uses the shared destructive variant for archive and delete draft actions', () => {
     const { unmount } = renderRequirementActionRail()

@@ -6,11 +6,6 @@ import {
   positiveIntegerSchema,
 } from '@/lib/http/validation'
 
-const optionalNullableResponsibleDisplayNameSchema = z.preprocess(
-  value => (typeof value === 'string' && value.trim() === '' ? null : value),
-  nullableBusinessTextSchema.optional(),
-)
-
 const responsibleHsaIdSchema = z
   .string()
   .trim()
@@ -24,8 +19,6 @@ const optionalNullableResponsibleHsaIdSchema = z.preprocess(
   value => (typeof value === 'string' && value.trim() === '' ? null : value),
   responsibleHsaIdSchema.nullable().optional(),
 )
-
-const optionalResponsibleHsaIdSchema = responsibleHsaIdSchema.optional()
 
 export const specificationSlugSchema = boundedDbStringSchema
   .regex(/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/, {
@@ -56,8 +49,6 @@ export const updateSpecificationSchema = z
   .object({
     businessNeedsReference: nullableBusinessTextSchema.optional(),
     name: boundedDbStringSchema.optional(),
-    responsibleDisplayName: optionalNullableResponsibleDisplayNameSchema,
-    responsibleHsaId: optionalResponsibleHsaIdSchema,
     specificationImplementationTypeId: positiveIntegerSchema
       .nullable()
       .optional(),

@@ -2139,7 +2139,7 @@ export function createKravhanteringMcpServer(
             .positive()
             .optional()
             .describe(
-              'Requirement area ID to assign to generated requirements when creating them via requirements_manage_requirement',
+              'Requirement area ID to assign to generated requirements when creating them via requirements_manage_requirement. Also used as the requirement_area AI authorization scope when scopeType/scopeId are omitted.',
             ),
           customInstruction: z
             .string()
@@ -2159,6 +2159,20 @@ export function createKravhanteringMcpServer(
             .describe(
               'OpenRouter model ID (e.g. "anthropic/claude-sonnet-4"). Uses NEXT_PUBLIC_DEFAULT_MODEL env var if omitted.',
             ),
+          scopeId: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+              'Authorized AI scope ID. Required for non-Admin actors unless areaId is provided as a requirement_area scope.',
+            ),
+          scopeType: z
+            .enum(['requirement_area', 'specification'])
+            .optional()
+            .describe(
+              'Authorized AI scope type. Use requirement_area for kravbibliotek authoring or specification for kravunderlag authoring.',
+            ),
           topic: z
             .string()
             .min(1)
@@ -2173,9 +2187,17 @@ export function createKravhanteringMcpServer(
     },
     async input => {
       try {
+        const generateInput = input as GenerateRequirementsInput & {
+          areaId?: number
+        }
+        if (!generateInput.scopeType && !generateInput.scopeId) {
+          generateInput.scopeId = generateInput.areaId
+          generateInput.scopeType =
+            generateInput.areaId == null ? undefined : 'requirement_area'
+        }
         const payload = await service.generateRequirements(
           await getBaseContext(request, 'requirements_generate_requirements'),
-          input as GenerateRequirementsInput,
+          generateInput,
         )
 
         const reqSummary = payload.requirements

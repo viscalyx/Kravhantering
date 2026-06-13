@@ -53,6 +53,7 @@ const REQUIREMENT_SPECIFICATIONS_HELP: HelpContent = {
 
 const REQUIREMENT_AREA_PILL_ROW_HEIGHT = 24
 const EMPTY_INITIAL_DATA: RequirementsSpecificationsInitialData = {
+  collectionPermissions: { canCreateSpecification: true },
   errors: [],
   implementationTypes: [],
   lifecycleStatuses: [],
@@ -220,6 +221,11 @@ export default function RequirementsSpecificationsClient({
   const tableAnchorRef = useRef<HTMLDivElement>(null)
   const hasInitialData = initialData !== undefined
   const resolvedInitialData = initialData ?? EMPTY_INITIAL_DATA
+  const [collectionPermissions, setCollectionPermissions] = useState(
+    resolvedInitialData.collectionPermissions ?? {
+      canCreateSpecification: true,
+    },
+  )
   const initialDataErrorKeys = new Set(
     resolvedInitialData.errors.map(error => error.key),
   )
@@ -344,10 +350,15 @@ export default function RequirementsSpecificationsClient({
             : t('loadSpecificationsFailed'),
         )
       }
-      return (
-        ((await res.json()) as { specifications?: Specification[] })
-          .specifications ?? []
-      )
+      const body = (await res.json()) as {
+        collectionPermissions?: { canCreateSpecification?: boolean }
+        specifications?: Specification[]
+      }
+      setCollectionPermissions({
+        canCreateSpecification:
+          body.collectionPermissions?.canCreateSpecification ?? true,
+      })
+      return body.specifications ?? []
     },
     getErrorMessage: error => {
       console.error('Failed to load requirements specifications', error)
@@ -455,6 +466,13 @@ export default function RequirementsSpecificationsClient({
   }, [isFetchingSpecifications])
 
   const handleEdit = (spec: Specification) => {
+    if (
+      spec.permissions &&
+      !spec.permissions.canEditContent &&
+      !spec.permissions.canManageAssignments
+    ) {
+      return
+    }
     setEditSpec(spec)
     setShowForm(true)
   }
@@ -521,10 +539,16 @@ export default function RequirementsSpecificationsClient({
   const currentUserError = currentUserUnavailable
     ? t('currentUserUnavailable')
     : null
-  const createDisabled = currentUserLoading || !currentUser
+  const createDisabled =
+    currentUserLoading ||
+    !currentUser ||
+    !collectionPermissions.canCreateSpecification
   const createDisabledReason = currentUserLoading
     ? t('currentUserLoading')
-    : currentUserError
+    : currentUserError ||
+      (!collectionPermissions.canCreateSpecification
+        ? t('readOnlyNotice')
+        : null)
 
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
@@ -745,44 +769,52 @@ export default function RequirementsSpecificationsClient({
                       </td>
                       <td className="py-3 px-4 align-top">
                         <div className="flex justify-end gap-1">
-                          <button
-                            aria-label={tc('edit')}
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-primary-300 dark:hover:bg-primary-950/30"
-                            {...devMarker({
-                              context: 'specifications',
-                              name: 'table action',
-                              value: 'edit',
-                            })}
-                            onClick={() => handleEdit(spec)}
-                            title={tc('edit')}
-                            type="button"
-                          >
-                            <Pencil
-                              aria-hidden="true"
-                              className="h-4 w-4"
-                              focusable={false}
-                            />
-                          </button>
-                          <button
-                            aria-label={tc('delete')}
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-red-400 dark:hover:bg-red-950/30"
-                            {...devMarker({
-                              context: 'specifications',
-                              name: 'table action',
-                              value: 'delete',
-                            })}
-                            onClick={e =>
-                              handleDelete(spec, e.currentTarget as HTMLElement)
-                            }
-                            title={tc('delete')}
-                            type="button"
-                          >
-                            <Trash2
-                              aria-hidden="true"
-                              className="h-4 w-4"
-                              focusable={false}
-                            />
-                          </button>
+                          {(spec.permissions?.canEditContent ?? true) ||
+                          (spec.permissions?.canManageAssignments ?? false) ? (
+                            <button
+                              aria-label={tc('edit')}
+                              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-primary-300 dark:hover:bg-primary-950/30"
+                              {...devMarker({
+                                context: 'specifications',
+                                name: 'table action',
+                                value: 'edit',
+                              })}
+                              onClick={() => handleEdit(spec)}
+                              title={tc('edit')}
+                              type="button"
+                            >
+                              <Pencil
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                                focusable={false}
+                              />
+                            </button>
+                          ) : null}
+                          {(spec.permissions?.canEditContent ?? true) ? (
+                            <button
+                              aria-label={tc('delete')}
+                              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-red-400 dark:hover:bg-red-950/30"
+                              {...devMarker({
+                                context: 'specifications',
+                                name: 'table action',
+                                value: 'delete',
+                              })}
+                              onClick={e =>
+                                handleDelete(
+                                  spec,
+                                  e.currentTarget as HTMLElement,
+                                )
+                              }
+                              title={tc('delete')}
+                              type="button"
+                            >
+                              <Trash2
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                                focusable={false}
+                              />
+                            </button>
+                          ) : null}
                         </div>
                       </td>
                     </tr>

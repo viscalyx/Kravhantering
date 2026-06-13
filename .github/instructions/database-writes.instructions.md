@@ -13,6 +13,18 @@ applyTo: "{lib/dal/**/*.ts,lib/requirements/service*.ts,app/api/**/*.ts}"
 - Prefer one DAL or service helper that owns the full multi-table mutation.
 - If atomic execution is impossible, implement deterministic cleanup in the same helper before returning success.
 
+## Assignment Authorization
+
+- For requirement, requirement-area, requirement-package, and requirements
+  specification writes, resolve the target resource before writing and enforce
+  the shared assignment policy for the requested action.
+- Do not infer requirements specification access from requirement-area
+  authorship. Specification reads and writes use specification responsibility
+  assignments: responsible HSA-id, co-author HSA-id, or an applicable global
+  role such as `Admin` or `Reviewer` where the policy explicitly allows it.
+- Manager-only assignment writes must remain manager-only in both HSA-id
+  verification routes and the final mutation route.
+
 ## Verification
 
 - Add or update focused tests for rollback behavior when one step fails.

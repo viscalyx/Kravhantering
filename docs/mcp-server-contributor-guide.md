@@ -372,6 +372,7 @@ Current extension points:
 - `RequestContext`
 - `AuthorizationService`
 - `createRequestContext(...)`
+- `AssignmentBasedAuthorizationService`
 - `AllowAllAuthorizationService`
 - `RoleBasedAuthorizationService`
 
@@ -392,10 +393,12 @@ Current behavior:
   verified actors.
 - Missing or invalid Bearer tokens return `401` with `WWW-Authenticate:
   Bearer` and a JSON-RPC error body before service or tool handling runs.
-- The default service wiring uses `AllowAllAuthorizationService` via
-  `createDefaultAuthorizationService()`. Replace with
-  `RoleBasedAuthorizationService` when role policies are declared
-  (tracked in viscalyx/Kravhantering#39).
+- The default REST and MCP service wiring uses
+  `AssignmentBasedAuthorizationService` via
+  `createDefaultAuthorizationService(db)`. It resolves the target resource in
+  the database and fails closed for unknown or unresolvable actions.
+  `AllowAllAuthorizationService` remains only an explicit test seam for
+  business-flow tests that intentionally bypass authorization.
 
 When implementing auth:
 
