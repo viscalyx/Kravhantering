@@ -283,6 +283,27 @@ describe('requirement-areas DAL', () => {
     ).toBe(false)
   })
 
+  it('rejects owner and co-author conflicts after normalizing whitespace and case', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query.mockResolvedValueOnce([{ ownerHsaId: ' SE5560000001-Owner1 ' }])
+
+    await expect(
+      replaceRequirementAreaCoAuthors(db, 11, {
+        coAuthorHsaIds: ['se5560000001-owner1'],
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'area_owner_cannot_be_co_author' },
+    })
+
+    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('INSERT INTO requirement_area_co_authors'),
+      ),
+    ).toBe(false)
+  })
+
   it('allows prefix changes while the requirement area has no requirements', async () => {
     const { db, query, transaction } = createSqlServerDb()
     query

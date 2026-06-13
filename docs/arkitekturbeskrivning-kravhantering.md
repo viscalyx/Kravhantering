@@ -542,28 +542,30 @@ och visar samtliga kravtillämpningar i underlaget med:
 
 ### Administrationscenter
 
-Administrationscentret (`/admin`) erbjuder sex centrala
+Administrationscentret (`/admin`) erbjuder sju centrala
 förvaltningsflikar och en administratörsflik för
 åtgärdslogg:
 
 1. **Kolumner** — Ange standardkolumner och ordning
    för kravlistan organisationsövergripande.
-2. **Taxonomi** — Navigeringsnav till klassningar som kravområden,
+2. **Identitet** — Hantera vilka HSA-id-prefix som erbjuds i
+   redigerbara ansvarsfält. Fliken kräver rollen `Admin`.
+3. **Taxonomi** — Navigeringsnav till klassningar som kravområden,
    kategorier, typer, risknivåer, kvalitetskaraktäristiker och
    underlagsklassningar. Risknivåer är en fast
    klassningsskala där administratören kan underhålla
    namn, färg, ikon och ordning men inte lägga till
    eller ta bort nivåer.
-3. **Statusar och arbetsflöden** — Navigeringsnav till
+4. **Statusar och arbetsflöden** — Navigeringsnav till
    kravversionsstatusar, kravunderlagets livscykelstatusar och
    användningsstatusar.
-4. **Behörighetsöversyn** — Återkommande kontroll av
+5. **Behörighetsöversyn** — Återkommande kontroll av
    applikationsstyrda uppdrag. Fliken kräver
    `Admin` eller `PrivacyOfficer`.
-5. **Arkivering** — Policybaserad gallring med förhandsgranskning,
+6. **Arkivering** — Policybaserad gallring med förhandsgranskning,
    exportbekräftelse och undantag. Fliken kräver
    `PrivacyOfficer`.
-6. **Dataskydd** — Förhandsgranskning och körning av
+7. **Dataskydd** — Förhandsgranskning och körning av
    HSA-id-baserad radering av personuppgifter. Fliken kräver rollen
    `PrivacyOfficer` (`Dataskyddshandläggare`) och ger inte
    övriga administratörsrättigheter.

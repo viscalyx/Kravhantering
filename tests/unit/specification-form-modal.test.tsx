@@ -834,7 +834,7 @@ describe('SpecificationFormModal', () => {
           okJson({
             coAuthors: [
               {
-                displayName: 'Cora CoAuthor',
+                displayName: 'no-user',
                 email: 'cora.coauthor@example.test',
                 hsaId: 'SE5560000001-coa1',
               },
@@ -848,8 +848,9 @@ describe('SpecificationFormModal', () => {
     renderEditModal()
 
     await waitFor(() => {
-      expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
+      expect(screen.getByText('Anonymous')).toBeInTheDocument()
     })
+    expect(screen.queryByText('no-user')).not.toBeInTheDocument()
     fireEvent.click(
       screen.getByRole('button', { name: /specification\.removeCoAuthor/ }),
     )

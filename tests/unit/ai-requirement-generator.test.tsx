@@ -613,7 +613,7 @@ describe('AiRequirementGenerator', () => {
             riskLevels: [],
             types: [],
           },
-          thinking: '',
+          thinking: 'Prior thinking trace',
         }
         const body = new ReadableStream({
           start(controller) {
@@ -640,6 +640,7 @@ describe('AiRequirementGenerator', () => {
     expect(
       await screen.findByText('Generated security requirement'),
     ).toBeInTheDocument()
+    expect(screen.getByText('Prior thinking trace')).toBeInTheDocument()
 
     await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '2')
 
@@ -647,6 +648,7 @@ describe('AiRequirementGenerator', () => {
       expect(
         screen.queryByText('Generated security requirement'),
       ).not.toBeInTheDocument()
+      expect(screen.queryByText('Prior thinking trace')).not.toBeInTheDocument()
     })
     expect(
       screen.queryByRole('button', { name: /createSelected/i }),

@@ -975,6 +975,37 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('does not show a read-only notice for assignment-only managers', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      spec: {
+        ...initialSpec,
+        permissions: {
+          canEditContent: false,
+          canManageAssignments: true,
+          canReviewDecisions: false,
+          canUseAi: false,
+        },
+      },
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: 'Authorization and IAM',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    expect(
+      screen.getByRole('button', {
+        name: /specification\.editSpecification/i,
+      }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('specification.readOnlyNotice')).toBeNull()
+  })
+
   it('ignores stale and invalid stored detail column ids', async () => {
     window.localStorage.setItem(
       'requirements-specifications.visibleColumns.left.v2',

@@ -6,8 +6,8 @@ import {
   expectStatus,
   HSA,
   newRoleContext,
-  ROLE_STORAGE_STATE,
   type RequirementPackageResponse,
+  ROLE_STORAGE_STATE,
   referenceManualCases,
 } from './authorization-test-helpers'
 

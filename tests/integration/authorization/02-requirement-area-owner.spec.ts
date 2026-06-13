@@ -6,8 +6,8 @@ import {
   expectStatus,
   HSA,
   newRoleContext,
-  ROLE_STORAGE_STATE,
   type RequirementAreaResponse,
+  ROLE_STORAGE_STATE,
   referenceManualCases,
 } from './authorization-test-helpers'
 
@@ -46,9 +46,9 @@ test('AUTH-10/AUTH-11: requirement area owners can manage their area and co-auth
       form.getByRole('textbox', { name: 'Kravområdesägare' }),
     ).toHaveValue(HSA.areaOwner)
     await expect(form.getByText('Cora CoAuthor')).toBeVisible()
-    await form.getByRole('textbox', { name: 'Beskrivning' }).fill(
-      updatedDescription,
-    )
+    await form
+      .getByRole('textbox', { name: 'Beskrivning' })
+      .fill(updatedDescription)
     await form.getByRole('button', { name: 'Spara' }).click()
     await expect(form).toBeHidden()
     await expect(page.getByText(updatedDescription)).toBeVisible()

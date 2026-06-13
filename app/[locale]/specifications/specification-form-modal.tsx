@@ -174,8 +174,12 @@ function blankCoAuthorDraft(): SpecificationCoAuthorDraft {
   }
 }
 
-function coAuthorLabel(coAuthor: SpecificationCoAuthorForm): string {
-  return coAuthor.displayName || coAuthor.email || coAuthor.hsaId
+function coAuthorLabel(
+  coAuthor: SpecificationCoAuthorForm,
+  locale: string,
+): string {
+  const value = coAuthor.displayName || coAuthor.email || coAuthor.hsaId
+  return formatActorDisplayNameForLocale(value, locale) ?? value
 }
 
 function buildCreateFormState(
@@ -656,7 +660,7 @@ export default function SpecificationFormModal({
       confirmText: tc('delete'),
       icon: 'caution',
       message: t('removeCoAuthorConfirm', {
-        name: coAuthorLabel(coAuthor),
+        name: coAuthorLabel(coAuthor, locale),
       }),
       title: t('removeCoAuthor'),
       variant: 'danger',
@@ -1102,7 +1106,7 @@ export default function SpecificationFormModal({
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-secondary-800 dark:text-secondary-100">
-                          {coAuthorLabel(coAuthor)}
+                          {coAuthorLabel(coAuthor, locale)}
                         </p>
                         <p className="mt-0.5 truncate font-mono text-xs text-secondary-500 dark:text-secondary-400">
                           {coAuthor.hsaId}

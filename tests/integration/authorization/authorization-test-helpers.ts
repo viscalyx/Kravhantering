@@ -44,7 +44,8 @@ const MANUAL_CASE_LINKS = {
     'docs/manuella-testfall.md#auth-07-dataskyddsansvarig-utan-adminbehorighet',
   'AUTH-08':
     'docs/manuella-testfall.md#auth-08-anvandare-utan-roll-nekas-privilegierat-arbete',
-  'AUTH-10': 'docs/manuella-testfall.md#auth-10-behorighetsmatris-for-ansvarstilldelningar',
+  'AUTH-10':
+    'docs/manuella-testfall.md#auth-10-behorighetsmatris-for-ansvarstilldelningar',
   'AUTH-11':
     'docs/manuella-testfall.md#auth-11-playwrightfaser-for-behorighetsroller',
 } as const

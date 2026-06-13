@@ -622,7 +622,11 @@ export async function replaceRequirementAreaCoAuthors(
     if (!area) return undefined
 
     const coAuthorHsaIds = uniqueHsaIds(data.coAuthorHsaIds)
-    if (coAuthorHsaIds.includes(area.ownerHsaId)) {
+    const normalizedOwnerHsaId = normalizeHsaIdForComparison(area.ownerHsaId)
+    const normalizedCoAuthorHsaIds = coAuthorHsaIds.map(
+      normalizeHsaIdForComparison,
+    )
+    if (normalizedCoAuthorHsaIds.includes(normalizedOwnerHsaId)) {
       throw validationError(
         'Requirement area owner cannot also be requirement area co-author',
         { reason: 'area_owner_cannot_be_co_author' },

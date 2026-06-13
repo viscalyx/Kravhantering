@@ -469,6 +469,7 @@ export default function AiRequirementGenerator({
     if (previousAreaId === areaId || phase !== 'done') return
 
     setPhase('idle')
+    setThinking('')
     setError('')
     setRawResponse('')
     setCreateError('')

@@ -1241,6 +1241,33 @@ describe('requirement-specifications routes', () => {
     )
     expect(r.status).toBe(201)
   })
+  it('POST denies authenticated actors without a verified HSA-id', async () => {
+    Object.assign(authState.context.actor, { hsaId: null })
+
+    const r = await postPkg(
+      jsonReq('POST', {
+        name: 'A',
+        uniqueId: 'A',
+      }),
+    )
+
+    expect(r.status).toBe(403)
+    await expect(r.json()).resolves.toMatchObject({
+      code: 'forbidden',
+      error: 'Forbidden',
+    })
+    expect(mockCreatePkg).not.toHaveBeenCalled()
+    expect(actionAuditState.recordDeniedActionAuditEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        actor: expect.objectContaining({ hsaId: null }),
+      }),
+      expect.objectContaining({
+        action: 'specification.create.denied',
+        denialReason: 'specification_create_requires_hsa_id',
+      }),
+    )
+  })
   it('POST accepts long existing-style specification slugs', async () => {
     const r = await postPkg(
       jsonReq('POST', {

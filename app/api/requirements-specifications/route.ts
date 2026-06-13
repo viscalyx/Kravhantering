@@ -10,7 +10,7 @@ import {
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
-import { validationError } from '@/lib/requirements/errors'
+import { forbiddenError, validationError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
@@ -37,7 +37,13 @@ export async function GET(request: NextRequest) {
 
 export const POST = secureMutationRoute({
   bodySchema: createSpecificationSchema,
-  policy: customMutationPolicy('specification.create', () => {}),
+  policy: customMutationPolicy('specification.create', ({ context }) => {
+    if (!canCreateSpecification(context)) {
+      throw forbiddenError('Missing specification create permission', {
+        reason: 'specification_create_requires_hsa_id',
+      })
+    }
+  }),
   handler: async ({ body, context }) => {
     const actor = requireHumanActorSnapshot(context)
     const responsibleHsaId = body.responsibleHsaId ?? actor.hsaId

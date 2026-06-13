@@ -16,11 +16,13 @@ import {
   listSpecificationItems,
   listSpecificationNeedsReferences,
   listSpecifications,
+  replaceSpecificationCoAuthors,
   unlinkRequirementsFromSpecification,
   updateSpecification,
   updateSpecificationItemFieldsByItemRef,
   updateSpecificationLocalRequirement,
   updateSpecificationNeedsReference,
+  updateSpecificationResponsible,
 } from '@/lib/dal/requirements-specifications'
 import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 
@@ -28,9 +30,16 @@ function createSqlServerDb() {
   const query =
     vi.fn<(sql: string, parameters?: unknown[]) => Promise<unknown[]>>()
   const getRepository = vi.fn()
-  const transaction = vi.fn(async (callback: (manager: unknown) => unknown) =>
-    callback({ query }),
-  )
+  const transaction = vi.fn(async (...args: unknown[]) => {
+    const callback =
+      typeof args[0] === 'function'
+        ? args[0]
+        : typeof args[1] === 'function'
+          ? args[1]
+          : null
+    if (!callback) throw new Error('Missing transaction callback')
+    return (callback as (manager: unknown) => unknown)({ query })
+  })
   const db = {
     getRepository,
     query,
@@ -85,6 +94,18 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       ),
       [],
     )
+    expect(String(query.mock.calls[1]?.[0])).toContain(
+      'WHERE requirements_specification_id IN (@0)',
+    )
+    expect(query.mock.calls[1]?.[1]).toEqual([1])
+    expect(String(query.mock.calls[2]?.[0])).toContain(
+      'WHERE specification_id IN (@0)',
+    )
+    expect(query.mock.calls[2]?.[1]).toEqual([1])
+    expect(String(query.mock.calls[3]?.[0])).toContain(
+      'WHERE specification_item.requirements_specification_id IN (@0)',
+    )
+    expect(query.mock.calls[3]?.[1]).toEqual([1])
     expect(result).toEqual([
       {
         id: 1,
@@ -391,6 +412,122 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
 
     expect(query).not.toHaveBeenCalled()
     expect(transaction).not.toHaveBeenCalled()
+  })
+
+  it('normalizes responsible HSA-ids before updating assignment fields', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([{ responsibleHsaId: 'SE5560000001-ada1' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 11,
+          uniqueId: 'SPEC-011',
+          name: 'Specification Eleven',
+          specificationGovernanceObjectTypeId: 2,
+          specificationImplementationTypeId: null,
+          specificationLifecycleStatusId: 4,
+          businessNeedsReference: null,
+          responsibleHsaId: 'SE5560000001-rita1',
+          createdAt: new Date('2026-04-20T10:00:00.000Z'),
+          updatedAt: new Date('2026-04-21T10:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 11,
+          uniqueId: 'SPEC-011',
+          name: 'Specification Eleven',
+          specificationGovernanceObjectTypeId: 2,
+          specificationImplementationTypeId: null,
+          specificationLifecycleStatusId: 4,
+          businessNeedsReference: null,
+          responsibleHsaId: 'SE5560000001-rita1',
+          responsibleGivenName: 'Rita',
+          responsibleMiddleName: null,
+          responsibleSurname: 'Reviewer',
+          createdAt: new Date('2026-04-20T10:00:00.000Z'),
+          updatedAt: new Date('2026-04-21T10:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([])
+
+    const result = await updateSpecificationResponsible(db, 11, {
+      responsibleHsaId: ' SE5560000001-rita1 ',
+    })
+
+    expect(transaction).toHaveBeenCalledWith('SERIALIZABLE', expect.anything())
+    expect(query.mock.calls[1]?.[1]).toEqual([11, 'SE5560000001-rita1'])
+    expect(query.mock.calls[2]?.[1]).toEqual([
+      'SE5560000001-rita1',
+      expect.any(Date),
+      11,
+    ])
+    expect(result).toMatchObject({
+      responsibleHsaId: 'SE5560000001-rita1',
+      responsibleDisplayName: 'Rita Reviewer',
+    })
+  })
+
+  it('rejects invalid specification co-author HSA-ids before syncing assignments', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([{ responsibleHsaId: 'SE5560000001-ada1' }])
+
+    await expect(
+      replaceSpecificationCoAuthors(db, 11, {
+        coAuthorHsaIds: ['not-a-hsa-id'],
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'invalid_responsible_hsa_id' },
+    })
+
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('INSERT INTO specification_co_authors'),
+      ),
+    ).toBe(false)
+  })
+
+  it('normalizes and deduplicates specification co-author HSA-ids before persisting', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([{ responsibleHsaId: 'SE5560000001-ada1' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+
+    const result = await replaceSpecificationCoAuthors(db, 11, {
+      coAuthorHsaIds: [' SE5560000001-coa1 ', 'SE5560000001-coa1'],
+    })
+
+    expect(result).toEqual({
+      coAuthorHsaIds: ['SE5560000001-coa1'],
+      specificationId: 11,
+    })
+    expect(query.mock.calls[2]?.[1]).toEqual([
+      11,
+      'SE5560000001-coa1',
+      expect.any(Date),
+      null,
+      null,
+    ])
+  })
+
+  it('rejects specification lead and co-author conflicts after normalization', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([{ responsibleHsaId: 'SE5560000001-Coa1' }])
+
+    await expect(
+      replaceSpecificationCoAuthors(db, 11, {
+        coAuthorHsaIds: [' SE5560000001-coa1 '],
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'specification_lead_cannot_be_co_author' },
+    })
+
+    expect(query).toHaveBeenCalledTimes(1)
   })
 
   it('preserves responsible display name when partial updates omit responsibility fields', async () => {

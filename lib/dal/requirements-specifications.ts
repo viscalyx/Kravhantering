@@ -205,7 +205,11 @@ function normalizeRequiredResponsibleHsaId(value: string): string {
 }
 
 function uniqueHsaIds(hsaIds: string[] | undefined): string[] {
-  return [...new Set((hsaIds ?? []).map(hsaId => hsaId.trim()).filter(Boolean))]
+  return [...new Set((hsaIds ?? []).map(normalizeRequiredResponsibleHsaId))]
+}
+
+function normalizeHsaIdForComparison(hsaId: string): string {
+  return hsaId.trim().toLowerCase()
 }
 
 function displayNameFromResponsibilityPerson(row: Row): string | null {
@@ -345,20 +349,26 @@ async function mapSpecificationRows(db: SqlServerDatabase, specRows: Row[]) {
     return []
   }
 
+  const specIds = [...new Set(specRows.map(row => Number(row.id)))]
+  const specIdClause = buildInClause(0, specIds)
   const [libraryCounts, localCounts, libraryAreas] = await Promise.all([
     db.query(
       `
           SELECT requirements_specification_id AS specificationId, COUNT(*) AS count
           FROM requirements_specification_items
+          WHERE requirements_specification_id IN (${specIdClause})
           GROUP BY requirements_specification_id
         `,
+      specIds,
     ) as Promise<Row[]>,
     db.query(
       `
           SELECT specification_id AS specificationId, COUNT(*) AS count
           FROM specification_local_requirements
+          WHERE specification_id IN (${specIdClause})
           GROUP BY specification_id
         `,
+      specIds,
     ) as Promise<Row[]>,
     db.query(
       `
@@ -371,8 +381,10 @@ async function mapSpecificationRows(db: SqlServerDatabase, specRows: Row[]) {
             ON requirement.id = specification_item.requirement_id
           INNER JOIN requirement_areas requirement_area
             ON requirement_area.id = requirement.requirement_area_id
+          WHERE specification_item.requirements_specification_id IN (${specIdClause})
           GROUP BY specification_item.requirements_specification_id, requirement_area.id, requirement_area.name
         `,
+      specIds,
     ) as Promise<Row[]>,
   ])
 
@@ -961,8 +973,11 @@ async function updateSpecificationFields(
     params.push(data.businessNeedsReference ?? null)
   }
   if ('responsibleHsaId' in data) {
+    const responsibleHsaId = normalizeRequiredResponsibleHsaId(
+      data.responsibleHsaId ?? '',
+    )
     setClauses.push(`responsible_hsa_id = @${params.length}`)
-    params.push(data.responsibleHsaId)
+    params.push(responsibleHsaId)
   }
   setClauses.push(`updated_at = @${params.length}`)
   params.push(new Date())
@@ -1049,6 +1064,9 @@ export async function updateSpecificationResponsible(
   },
 ) {
   return db.transaction('SERIALIZABLE', async manager => {
+    const responsibleHsaId = normalizeRequiredResponsibleHsaId(
+      data.responsibleHsaId,
+    )
     const oldRows = (await manager.query(
       `
         SELECT responsible_hsa_id AS responsibleHsaId
@@ -1066,7 +1084,7 @@ export async function updateSpecificationResponsible(
         WHERE specification_id = @0
           AND hsa_id = @1
       `,
-      [id, data.responsibleHsaId],
+      [id, responsibleHsaId],
     )) as Array<{ specificationId: number }>
     if (coAuthorRows.length > 0) {
       throw validationError(
@@ -1081,7 +1099,10 @@ export async function updateSpecificationResponsible(
         data.responsiblePerson,
       )
     }
-    const updated = await updateSpecificationFields(manager, id, data)
+    const updated = await updateSpecificationFields(manager, id, {
+      ...data,
+      responsibleHsaId,
+    })
     await cleanupUnassignedRequirementResponsibilityPeople(
       manager,
       oldRows.map(row => row.responsibleHsaId),
@@ -1187,7 +1208,13 @@ export async function replaceSpecificationCoAuthors(
     if (!specification) return undefined
 
     const coAuthorHsaIds = uniqueHsaIds(data.coAuthorHsaIds)
-    if (coAuthorHsaIds.includes(specification.responsibleHsaId)) {
+    const normalizedResponsibleHsaId = normalizeHsaIdForComparison(
+      specification.responsibleHsaId,
+    )
+    const normalizedCoAuthorHsaIds = coAuthorHsaIds.map(
+      normalizeHsaIdForComparison,
+    )
+    if (normalizedCoAuthorHsaIds.includes(normalizedResponsibleHsaId)) {
       throw validationError(
         'Specification lead cannot also be specification co-author',
         { reason: 'specification_lead_cannot_be_co_author' },

@@ -2005,7 +2005,7 @@ export default function KravunderlagDetailClient({
               {loadWarning}
             </p>
           ) : null}
-          {!canEditContent ? (
+          {!canMutateSpecification ? (
             <p
               className="mb-4 rounded-xl border border-secondary-200 bg-secondary-50 px-4 py-3 text-sm text-secondary-700 dark:border-secondary-800 dark:bg-secondary-900/60 dark:text-secondary-200"
               role="status"
