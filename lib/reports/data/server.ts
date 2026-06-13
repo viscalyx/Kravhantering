@@ -206,7 +206,7 @@ function mapDeviationVersion(
   }
 }
 
-function parseDeviationItemId(value: string): number {
+export function parseLibrarySpecificationItemId(value: string): number {
   const decoded = decodeSegment(value)
   const parsed = parseSpecificationItemRef(decoded)
   if (parsed?.kind === 'specificationLocal') {
@@ -240,7 +240,7 @@ export async function collectDeviationForReport(
     collectRequirementForReport(db, requirementId),
     listDeviationsForSpecificationItem(
       db,
-      parseDeviationItemId(specificationItemId),
+      parseLibrarySpecificationItemId(specificationItemId),
     ),
   ])
 

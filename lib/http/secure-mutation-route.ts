@@ -275,10 +275,12 @@ export function secureMutationRoute<TBody = undefined, TParams = undefined>(
 
     try {
       const response = await options.handler(args)
-      scheduleActorResponsibilityPersonRefresh(
-        () => args.db ?? getRequestSqlServerDataSource(),
-        context,
-      )
+      if (response.ok) {
+        scheduleActorResponsibilityPersonRefresh(
+          () => args.db ?? getRequestSqlServerDataSource(),
+          context,
+        )
+      }
       return response
     } catch (error) {
       return decorateErrorResponse(options, errorResponse(errorMessage, error))

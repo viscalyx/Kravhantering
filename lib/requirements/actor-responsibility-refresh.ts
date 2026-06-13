@@ -24,8 +24,7 @@ function refreshIdentityFromContext(
   const hsaId = cleanString(actor.hsaId)
   if (!hsaId) return null
 
-  const givenName =
-    cleanString(actor.givenName) ?? cleanString(actor.displayName)
+  const givenName = cleanString(actor.givenName)
   const surname = cleanString(actor.familyName)
   if (!givenName || !surname) return null
 

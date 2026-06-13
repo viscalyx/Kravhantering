@@ -603,8 +603,9 @@ hjälptexterna förbjuder personidentifierande uppgifter där.
   Webbläsaren importerar inte React-PDF, vilket gör rapportflödet kompatibelt
   med strikt Content Security Policy utan `unsafe-eval` eller
   `wasm-unsafe-eval`. Server-PDF-rutter auktoriserar innan rapportdata hämtas;
-  PDF från kravlistan använder bara publicerade kravversioner medan historik-
-  och granskningsrapporter kräver åtkomst till historik.
+  PDF från kravlistan använder bara publicerade kravversioner. Rapporter för
+  historik, granskning, kombinerad granskning och förslagshistorik kräver
+  åtkomst till historik.
 - **Kravunderlagsrapporter** — Kravlistor för kravunderlag kompletterar
   rubrikdata med kravurval före kravtabellen. CSV-exporten för
   kravunderlag förblir radbaserad utan extra urvalskontext.
@@ -702,12 +703,13 @@ e-post och hämtningstid samlas för aktuell visning. Levande
 tilldelningstabeller sparar bara HSA-id och pekar på
 Kravansvarsperson. Sparflöden gör inga HSA-anrop utan kräver att
 Kravansvarsperson redan finns lokalt, med en kort omläsning för att
-fånga en verifiering som nyss slutförts. Läsvyer gör inga HSA-anrop
-utan använder den lokalt sparade personraden via join i databasen.
-Efter lyckade auktoriserade mutationer kan servern asynkront fräscha upp den
-aktuella aktörens levande personrad från verifierade sessionsfält. Det sker
-utanför inloggningsflödet, gör inget HSA-uppslag och får inte blockera eller
-fälla den ursprungliga åtgärden.
+  fånga en verifiering som nyss slutförts. Läsvyer gör inga HSA-anrop
+  utan använder den lokalt sparade personraden via join i databasen.
+  Efter lyckade auktoriserade mutationer kan servern asynkront fräscha upp den
+  aktuella aktörens levande personrad från verifierade sessionsfält, men bara
+  när aktörens aktuella HSA-id fortfarande är kopplat till en levande
+  kravansvarstilldelning. Det sker utanför inloggningsflödet, gör inget
+  HSA-uppslag och får inte blockera eller fälla den ursprungliga åtgärden.
 
 ### Nuvarande integrationslandskap
 

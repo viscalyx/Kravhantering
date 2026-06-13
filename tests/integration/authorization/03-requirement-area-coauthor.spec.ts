@@ -23,20 +23,37 @@ test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
   fixture = await createAuthorizationFixture(testInfo)
 })
 
-test.fixme('AUTH-10/AUTH-11: requirement area co-authors can create requirements in assigned areas (blocked by #321)', async ({
+test('AUTH-10/AUTH-11: requirement area co-authors can create requirements in assigned areas', async ({
   page,
 }, testInfo) => {
   referenceManualCases(testInfo, 'AUTH-10', 'AUTH-11')
-  const requirementText = `Area co-author requirement ${Date.now()}`
+  const areaCoauthor = await newRoleContext(testInfo, 'areaCoauthor')
+  const timestamp = Date.now()
+  const apiRequirementText = `Area co-author API requirement ${timestamp}`
+  const uiRequirementText = `Area co-author UI requirement ${timestamp}`
 
-  await page.goto('/sv/requirements/new')
-  await page.selectOption('#areaId', String(fixture.areaId))
-  await page.fill('#description', requirementText)
-  await page.click('button[type="submit"]')
-  await expect(page).toHaveURL(/\/sv\/requirements(?:\?|$)/)
-  await expect(
-    page.locator('[data-expanded-detail-cell="true"]').first(),
-  ).toContainText(requirementText)
+  try {
+    const apiResponse = await areaCoauthor.post('/api/requirements', {
+      data: {
+        areaId: fixture.areaId,
+        description: apiRequirementText,
+        requiresTesting: false,
+      },
+    })
+    await expectStatus(apiResponse, 201, 'area co-author requirement create')
+
+    await page.goto('/sv/requirements/new')
+    await page.selectOption('#areaId', String(fixture.areaId))
+    await page.fill('#description', uiRequirementText)
+    await page.click('button[type="submit"]')
+    await expect(page).toHaveURL(/\/sv\/requirements(?:\?|$)/)
+    expect(page.url()).not.toContain('undefined')
+    await expect(
+      page.locator('[data-expanded-detail-cell="true"]').first(),
+    ).toContainText(uiRequirementText)
+  } finally {
+    await areaCoauthor.dispose()
+  }
 })
 
 test('AUTH-10/AUTH-11: requirement area co-authors cannot delegate area access', async ({

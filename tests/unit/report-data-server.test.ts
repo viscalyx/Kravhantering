@@ -4,6 +4,7 @@ import {
   collectDeviationForReport,
   collectPublishedRequirementForReport,
   collectSpecificationItemsForReport,
+  parseLibrarySpecificationItemId,
   type ReportDataError,
 } from '@/lib/reports/data/server'
 import {
@@ -155,6 +156,26 @@ describe('report data server helpers', () => {
       name: 'ReportDataError',
       status: 500,
     } satisfies Partial<ReportDataError>)
+  })
+
+  it('parses library and numeric item refs for deviation reports', () => {
+    dalState.parseSpecificationItemRef.mockImplementation((value: string) =>
+      value === 'lib:55' ? { id: 55, kind: 'library' } : null,
+    )
+
+    expect(parseLibrarySpecificationItemId('lib%3A55')).toBe(55)
+    expect(parseLibrarySpecificationItemId('77')).toBe(77)
+  })
+
+  it('rejects specification-local item refs for deviation reports', () => {
+    dalState.parseSpecificationItemRef.mockReturnValue({
+      id: 7,
+      kind: 'specificationLocal',
+    })
+
+    expect(() => parseLibrarySpecificationItemId('local%3A7')).toThrow(
+      'Deviation review PDF is only available for library requirement applications',
+    )
   })
 
   it('loads specification report items concurrently after validating refs', async () => {

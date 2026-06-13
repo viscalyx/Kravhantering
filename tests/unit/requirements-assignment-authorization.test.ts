@@ -687,6 +687,7 @@ describe('SqlAssignmentLookup', () => {
   it('resolves deviation targets before deviation authorization', async () => {
     const { db, query } = makeDb([
       [{ createdByHsaId: 'SE5560000001-user1', specificationId: 42 }],
+      [],
     ])
     const lookup = new SqlAssignmentLookup(db)
 
@@ -700,10 +701,38 @@ describe('SqlAssignmentLookup', () => {
       createdByHsaId: 'SE5560000001-user1',
       specificationId: 42,
     })
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('deviation_target'),
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('FROM deviations deviation'),
       [5],
     )
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining(
+        'FROM specification_local_requirement_deviations',
+      ),
+      [5],
+    )
+  })
+
+  it('rejects ambiguous deviation targets that exist in both deviation tables', async () => {
+    const { db, query } = makeDb([
+      [{ createdByHsaId: 'SE5560000001-library', specificationId: 42 }],
+      [{ createdByHsaId: 'SE5560000001-local', specificationId: 99 }],
+    ])
+    const lookup = new SqlAssignmentLookup(db)
+
+    await expect(
+      lookup.resolveDeviationTarget({
+        deviationId: 5,
+        kind: 'manage_deviation',
+        operation: 'edit',
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { deviationId: 5, reason: 'ambiguous_deviation_id' },
+    })
+    expect(query).toHaveBeenCalledTimes(2)
   })
 
   it('resolves suggestion requirement areas from suggestion or requirement references', async () => {

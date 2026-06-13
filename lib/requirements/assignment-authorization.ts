@@ -270,37 +270,53 @@ export class SqlAssignmentLookup implements AssignmentLookup {
   ): Promise<DeviationTarget> {
     const db = await this.getDb()
     if (action.deviationId != null) {
-      const rows = (await db.query(
+      const libraryRows = (await db.query(
         `
           SELECT TOP (1)
-            deviation_target.specificationId,
-            deviation_target.createdByHsaId
-          FROM (
-            SELECT
-              item.requirements_specification_id AS specificationId,
-              deviation.created_by_hsa_id AS createdByHsaId
-            FROM deviations deviation
-            INNER JOIN requirements_specification_items item
-              ON item.id = deviation.specification_item_id
-            WHERE deviation.id = @0
-            UNION ALL
-            SELECT
-              local_requirement.specification_id AS specificationId,
-              local_deviation.created_by_hsa_id AS createdByHsaId
-            FROM specification_local_requirement_deviations local_deviation
-            INNER JOIN specification_local_requirements local_requirement
-              ON local_requirement.id =
-                local_deviation.specification_local_requirement_id
-            WHERE local_deviation.id = @0
-          ) deviation_target
+            item.requirements_specification_id AS specificationId,
+            deviation.created_by_hsa_id AS createdByHsaId
+          FROM deviations deviation
+          INNER JOIN requirements_specification_items item
+            ON item.id = deviation.specification_item_id
+          WHERE deviation.id = @0
         `,
         [action.deviationId],
       )) as Array<Record<string, unknown>>
-      const specificationId = firstNumber(rows, 'specificationId')
-      if (specificationId != null) {
+      const localRows = (await db.query(
+        `
+          SELECT TOP (1)
+            local_requirement.specification_id AS specificationId,
+            local_deviation.created_by_hsa_id AS createdByHsaId
+          FROM specification_local_requirement_deviations local_deviation
+          INNER JOIN specification_local_requirements local_requirement
+            ON local_requirement.id =
+              local_deviation.specification_local_requirement_id
+          WHERE local_deviation.id = @0
+        `,
+        [action.deviationId],
+      )) as Array<Record<string, unknown>>
+
+      const librarySpecificationId = firstNumber(libraryRows, 'specificationId')
+      const localSpecificationId = firstNumber(localRows, 'specificationId')
+
+      if (librarySpecificationId != null && localSpecificationId != null) {
+        throw validationError('Ambiguous deviation target', {
+          deviationId: action.deviationId,
+          reason: 'ambiguous_deviation_id',
+        })
+      }
+
+      if (librarySpecificationId != null) {
         return {
-          createdByHsaId: firstString(rows, 'createdByHsaId'),
-          specificationId,
+          createdByHsaId: firstString(libraryRows, 'createdByHsaId'),
+          specificationId: librarySpecificationId,
+        }
+      }
+
+      if (localSpecificationId != null) {
+        return {
+          createdByHsaId: firstString(localRows, 'createdByHsaId'),
+          specificationId: localSpecificationId,
         }
       }
       throw notFoundError('Deviation not found', {

@@ -336,17 +336,13 @@ tilldelningar.
 
 1. Logga in som `cora.coauthor`.
 1. Öppna kravområdet `AUTHZ-AREA-2026`.
-1. Gör en tillåten innehållsändring inom området och verifiera efter omladdning.
+1. Skapa ett krav i det tilldelade kravområdet via API eller UI och verifiera
+   att kravet sparas.
 1. Försök ändra kravområdets ägare eller listan över medförfattare.
 1. Kör API-kontroll mot samma otillåtna tilldelningsändring.
 
-**Förväntat resultat:** Cora kan bidra inom området men får 403 för
+**Förväntat resultat:** Cora kan skapa krav inom området men får 403 för
 tilldelningsstyrning och global Admin.
-
-**Känd blockerare:** Det positiva steget att skapa krav i tilldelat kravområde
-är blockerat av <https://github.com/viscalyx/Kravhantering/issues/321> tills
-produktionsauktoriseringen skickar med `areaId` till policyn för
-kravskapande.
 
 ### AUTHZ-04: kravunderlagsansvarig
 
@@ -658,8 +654,8 @@ gången.
 kontrollera rapportmenyn.
 
 **Förväntat resultat:** Tillgängliga rapporter matchar kravets status.
-Rapporter för historik, granskning och förslagshistorik går bara att hämta
-när användaren har åtkomst till kravets historik.
+Rapporter för historik, granskning, kombinerad granskning och förslagshistorik
+går bara att hämta när användaren har åtkomst till kravets historik.
 
 ## Samarbete i kravdetalj
 

@@ -265,6 +265,29 @@ describe('secureMutationRoute', () => {
     )
   })
 
+  it('does not schedule background actor refresh after failed handler responses', async () => {
+    authState.createRequestContext.mockResolvedValueOnce({
+      ...context([]),
+      actor: {
+        ...context([]).actor,
+        email: 'ada@example.test',
+        familyName: 'Admin',
+        givenName: 'Ada',
+      },
+    })
+    const route = secureMutationRoute({
+      handler: () => NextResponse.json({ error: 'Invalid' }, { status: 422 }),
+      policy: customMutationPolicy('allow', () => undefined),
+    })
+
+    const response = await route(jsonRequest({}))
+
+    expect(response.status).toBe(422)
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(auditState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  })
+
   it('exposes an explicit authenticated-only custom policy', async () => {
     const policy = authenticatedMutationPolicy('authenticated.example')
 

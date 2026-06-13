@@ -51,6 +51,11 @@ describe('actor responsibility person refresh', () => {
       ),
     ).toBe(false)
     expect(
+      canRefreshActorResponsibilityPerson(
+        context({ displayName: 'Ada Lovelace', givenName: undefined }),
+      ),
+    ).toBe(false)
+    expect(
       canRefreshActorResponsibilityPerson(context({ source: 'mcp' })),
     ).toBe(false)
   })

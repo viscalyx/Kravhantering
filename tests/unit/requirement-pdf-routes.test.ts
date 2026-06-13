@@ -40,6 +40,7 @@ const routeState = vi.hoisted(() => ({
     assertAuthorized: vi.fn(),
   },
   listSpecificationRequirementSelectionQuestions: vi.fn(),
+  parseLibrarySpecificationItemId: vi.fn(),
   parseSpecificationItemRef: vi.fn(),
   renderReportModelPdfResponse: vi.fn(),
   resolveSpecificationId: vi.fn(),
@@ -59,6 +60,7 @@ vi.mock('@/lib/reports/data/server', () => ({
   collectRequirementForReport: routeState.collectRequirementForReport,
   collectSpecificationItemsForReport:
     routeState.collectSpecificationItemsForReport,
+  parseLibrarySpecificationItemId: routeState.parseLibrarySpecificationItemId,
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
@@ -171,6 +173,7 @@ describe('requirement PDF routes', () => {
       id: 55,
       kind: 'library',
     })
+    routeState.parseLibrarySpecificationItemId.mockReturnValue(55)
     routeState.resolveSpecificationId.mockResolvedValue(42)
     routeState.renderReportModelPdfResponse.mockImplementation(
       (_model, _locale, filename) => Promise.resolve(pdfResponse(filename)),
@@ -399,6 +402,9 @@ describe('requirement PDF routes', () => {
     )
 
     expect(response.status).toBe(403)
+    expect(routeState.parseLibrarySpecificationItemId).toHaveBeenCalledWith(
+      'lib:55',
+    )
     expect(routeState.getSpecificationItemById).toHaveBeenCalledWith(
       { db: true },
       55,

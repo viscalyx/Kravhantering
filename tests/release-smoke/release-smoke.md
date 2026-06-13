@@ -1,5 +1,3 @@
-<!-- cSpell:words AUTHZ -->
-
 # Release Smoke Container Flow Tests
 
 > Test flow documentation for [`release-smoke.spec.ts`](release-smoke.spec.ts)
