@@ -241,24 +241,47 @@ test.describe('Requirements table column resizing', () => {
         await expect(handle).toBeVisible()
         await expect(bottomSegment).toBeVisible()
 
-        const detailBox = await detailCell.boundingBox()
-        const topHandleBox = await handle.boundingBox()
-        const bottomSegmentBox = await bottomSegment.boundingBox()
+        const getResizeBoxes = async () => {
+          const detailBox = await detailCell.boundingBox()
+          const topHandleBox = await handle.boundingBox()
+          const bottomSegmentBox = await bottomSegment.boundingBox()
 
-        expect(detailBox).not.toBeNull()
-        if (!detailBox) {
-          throw new Error('Expanded detail pane did not expose a bounding box.')
+          expect(detailBox).not.toBeNull()
+          if (!detailBox) {
+            throw new Error(
+              'Expanded detail pane did not expose a bounding box.',
+            )
+          }
+          expect(topHandleBox).not.toBeNull()
+          if (!topHandleBox) {
+            throw new Error('Top resize handle did not expose a bounding box.')
+          }
+          expect(bottomSegmentBox).not.toBeNull()
+          if (!bottomSegmentBox) {
+            throw new Error(
+              'Bottom resize segment did not expose a bounding box.',
+            )
+          }
+
+          return { bottomSegmentBox, detailBox, topHandleBox }
         }
-        expect(topHandleBox).not.toBeNull()
-        if (!topHandleBox) {
-          throw new Error('Top resize handle did not expose a bounding box.')
-        }
-        expect(bottomSegmentBox).not.toBeNull()
-        if (!bottomSegmentBox) {
-          throw new Error(
-            'Bottom resize segment did not expose a bounding box.',
-          )
-        }
+
+        await expect
+          .poll(async () => {
+            const { bottomSegmentBox, detailBox, topHandleBox } =
+              await getResizeBoxes()
+            return (
+              Math.round(topHandleBox.y + topHandleBox.height) <=
+                Math.round(detailBox.y) &&
+              Math.round(bottomSegmentBox.y) >=
+                Math.round(detailBox.y + detailBox.height) &&
+              Math.round(bottomSegmentBox.height) <= 48
+            )
+          })
+          .toBe(true)
+
+        const { bottomSegmentBox, detailBox, topHandleBox } =
+          await getResizeBoxes()
 
         expect(
           Math.round(topHandleBox.y + topHandleBox.height),

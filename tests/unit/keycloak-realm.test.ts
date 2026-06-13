@@ -129,6 +129,21 @@ function expectWebClaimMappers(client: KeycloakRealmClient | undefined) {
   })
 }
 
+function expectLocalMcpPrivilegedRoleMapper(
+  client: KeycloakRealmClient | undefined,
+) {
+  const rolesMapper = getMapper(client, 'mcp-roles')
+  expect(rolesMapper?.protocolMapper).toBe('oidc-hardcoded-claim-mapper')
+  expect(rolesMapper?.config).toMatchObject({
+    'access.token.claim': 'true',
+    'claim.name': 'roles',
+    'claim.value': 'Admin Reviewer',
+    'id.token.claim': 'false',
+    'jsonType.label': 'String',
+    'userinfo.token.claim': 'false',
+  })
+}
+
 describe('production Keycloak realm template', () => {
   it('targets the production issuer realm and canonical clients', () => {
     const realm = readProductionRealm()
@@ -268,7 +283,7 @@ describe('dev Keycloak realm', () => {
     expectWebClaimMappers(devClient)
   })
 
-  it('emits the expected audience and real-format HSA-id for MCP tokens', () => {
+  it('emits the expected audience, local privileged roles, and real-format HSA-id for MCP tokens', () => {
     const realm = readDevRealm()
     const mcpClient = getClient(realm, 'kravhantering-mcp')
 
@@ -287,6 +302,7 @@ describe('dev Keycloak realm', () => {
     expect(hsaMapper?.config?.['access.token.claim']).toBe('true')
     expect(employeeHsaId).toBe('SE5560000001-mcp1')
     expect(isHsaId(employeeHsaId)).toBe(true)
+    expectLocalMcpPrivilegedRoleMapper(mcpClient)
   })
 
   it('keeps canonical realm roles and all documented fixture users', () => {
@@ -419,7 +435,7 @@ describe('container Keycloak realm', () => {
     expectWebClaimMappers(appClient)
   })
 
-  it('emits the expected MCP audience and real-format HSA-id', () => {
+  it('emits the expected MCP audience, local privileged roles, and real-format HSA-id', () => {
     const realm = readContainerRealm()
     const mcpClient = getClient(realm, 'kravhantering-mcp')
 
@@ -442,6 +458,7 @@ describe('container Keycloak realm', () => {
     expect(hsaMapper?.config?.['access.token.claim']).toBe('true')
     expect(employeeHsaId).toBe('SE5560000001-mcp1')
     expect(isHsaId(employeeHsaId)).toBe(true)
+    expectLocalMcpPrivilegedRoleMapper(mcpClient)
   })
 
   it('keeps canonical roles and minimal smoke users', () => {

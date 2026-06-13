@@ -173,7 +173,9 @@ for (const viewport of viewports) {
           name: 'Kravpaketsansvarigs HSA-id',
         })
         await expect(leadInput).toHaveAttribute('readonly', '')
-        await expect(dialog.getByText(/\(.+@.+\)/)).toBeVisible()
+        await expect(
+          leadInput.locator('xpath=../following-sibling::p'),
+        ).toContainText(/\(.+@.+\)/)
         await expect(
           dialog.getByRole('button', { name: 'Byt kravpaketsansvarig' }),
         ).toBeVisible()
