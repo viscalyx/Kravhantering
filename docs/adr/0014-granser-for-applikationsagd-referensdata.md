@@ -1,6 +1,6 @@
 # Gränser för applikationsägd referensdata
 
-Status: Antagen 2026-06-05. Uppdaterad 2026-06-06.
+Status: Antagen 2026-06-05. Uppdaterad 2026-06-13.
 
 Kravhantering äger den `Referensdata` som formar kravarbete i applikationen.
 Det omfattar taxonomi som kravområden, kategorier, typer,
@@ -17,9 +17,11 @@ referensdata i `Taxonomi` för klassningar och `Statusar och arbetsflöden` för
 livscykel- och användningsstatusar. `Referensdata` kvarstår som
 samlingsbegrepp, inte som synlig flik.
 
-Kravområdesägarskap lagras direkt på varje kravområde som ägarens HSA-id. Det
-är ett operativt ägaruppdrag, inte en fristående referensdatakatalog och inte
-en personpost i applikationen.
+Kravområdesägarskap är en kravansvarstilldelning på kravområdet. Själva
+ägaruppdraget är inte en fristående referensdatakatalog eller personkatalog.
+När HSA-uppslag behövs kan uppdraget peka på en lokal `Kravansvarsperson`
+enligt ADR 0025; den personraden stödjer verifiering och visning men ersätter
+inte uppdraget eller HSA-katalogen.
 
 Kravpaket och kravurvalsfrågor är innehåll i kravbiblioteksförvaltningen, inte
 referensdata i Admin Center. De stödjer kravurval och filtrering, men
