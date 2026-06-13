@@ -13,11 +13,36 @@ const routeState = vi.hoisted(() => ({
   },
   buildListReport: vi.fn(),
   buildCombinedReviewReport: vi.fn(),
+  buildDeviationReviewReport: vi.fn(),
   buildReviewReport: vi.fn(),
+  collectDeviationForReport: vi.fn(),
   collectMultipleRequirementsForReport: vi.fn(),
+  collectMultiplePublishedRequirementsForReport: vi.fn(),
   collectRequirementForReport: vi.fn(),
+  collectSpecificationItemsForReport: vi.fn(),
+  context: {
+    actor: {
+      displayName: 'Report Tester',
+      hsaId: 'SE5560000001-report',
+      id: 'report-test',
+      isAuthenticated: true,
+      roles: [],
+      source: 'oidc',
+    },
+    correlationId: 'corr-report',
+    requestId: 'req-report',
+    source: 'rest',
+  },
+  createRequirementsRestRuntime: vi.fn(),
+  getSpecificationItemById: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
+  authorization: {
+    assertAuthorized: vi.fn(),
+  },
+  listSpecificationRequirementSelectionQuestions: vi.fn(),
+  parseSpecificationItemRef: vi.fn(),
   renderReportModelPdfResponse: vi.fn(),
+  resolveSpecificationId: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -26,9 +51,29 @@ vi.mock('@/lib/db', () => ({
 
 vi.mock('@/lib/reports/data/server', () => ({
   ReportDataError: routeState.ReportDataError,
+  collectDeviationForReport: routeState.collectDeviationForReport,
   collectMultipleRequirementsForReport:
     routeState.collectMultipleRequirementsForReport,
+  collectMultiplePublishedRequirementsForReport:
+    routeState.collectMultiplePublishedRequirementsForReport,
   collectRequirementForReport: routeState.collectRequirementForReport,
+  collectSpecificationItemsForReport:
+    routeState.collectSpecificationItemsForReport,
+}))
+
+vi.mock('@/lib/dal/requirements-specifications', () => ({
+  getSpecificationItemById: routeState.getSpecificationItemById,
+  parseSpecificationItemRef: routeState.parseSpecificationItemRef,
+}))
+
+vi.mock('@/lib/dal/requirement-selection-questions', () => ({
+  listSpecificationRequirementSelectionQuestions:
+    routeState.listSpecificationRequirementSelectionQuestions,
+  resolveSpecificationId: routeState.resolveSpecificationId,
+}))
+
+vi.mock('@/lib/requirements/server', () => ({
+  createRequirementsRestRuntime: routeState.createRequirementsRestRuntime,
 }))
 
 vi.mock('@/lib/reports/templates/list-template', () => ({
@@ -37,6 +82,10 @@ vi.mock('@/lib/reports/templates/list-template', () => ({
 
 vi.mock('@/lib/reports/templates/combined-review-template', () => ({
   buildCombinedReviewReport: routeState.buildCombinedReviewReport,
+}))
+
+vi.mock('@/lib/reports/templates/deviation-review-template', () => ({
+  buildDeviationReviewReport: routeState.buildDeviationReviewReport,
 }))
 
 vi.mock('@/lib/reports/templates/review-template', () => ({
@@ -75,16 +124,54 @@ function reportIds(count: number): string[] {
 describe('requirement PDF routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    routeState.authorization.assertAuthorized.mockResolvedValue(undefined)
+    routeState.createRequirementsRestRuntime.mockResolvedValue({
+      authorization: routeState.authorization,
+      context: routeState.context,
+      db: { db: true },
+    })
     routeState.collectRequirementForReport.mockResolvedValue(requirement())
+    routeState.collectDeviationForReport.mockResolvedValue({
+      requirementUniqueId: 'REQ-1',
+    })
     routeState.collectMultipleRequirementsForReport.mockResolvedValue([
+      requirement('REQ-1'),
+      requirement('REQ-2'),
+    ])
+    routeState.collectMultiplePublishedRequirementsForReport.mockResolvedValue([
       requirement('REQ-1'),
       requirement('REQ-2'),
     ])
     routeState.buildCombinedReviewReport.mockReturnValue({
       kind: 'combined-review',
     })
+    routeState.buildDeviationReviewReport.mockReturnValue({
+      kind: 'deviation-review',
+    })
     routeState.buildReviewReport.mockReturnValue({ kind: 'review' })
     routeState.buildListReport.mockReturnValue({ kind: 'list' })
+    routeState.collectSpecificationItemsForReport.mockResolvedValue({
+      requirements: [requirement('REQ-1')],
+      specification: {
+        businessNeedsReference: null,
+        governanceObjectType: null,
+        implementationType: null,
+        lifecycleStatus: null,
+        name: 'Specification',
+        uniqueId: 'SPEC-1',
+      },
+    })
+    routeState.getSpecificationItemById.mockResolvedValue({
+      specificationId: 42,
+    })
+    routeState.listSpecificationRequirementSelectionQuestions.mockResolvedValue(
+      [],
+    )
+    routeState.parseSpecificationItemRef.mockReturnValue({
+      id: 55,
+      kind: 'library',
+    })
+    routeState.resolveSpecificationId.mockResolvedValue(42)
     routeState.renderReportModelPdfResponse.mockImplementation(
       (_model, _locale, filename) => Promise.resolve(pdfResponse(filename)),
     )
@@ -106,6 +193,10 @@ describe('requirement PDF routes', () => {
     expect(routeState.collectRequirementForReport).toHaveBeenCalledWith(
       { db: true },
       '1',
+    )
+    expect(routeState.authorization.assertAuthorized).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'get_requirement', view: 'history' }),
+      routeState.context,
     )
     expect(routeState.buildReviewReport).toHaveBeenCalledWith(
       requirement(),
@@ -155,8 +246,12 @@ describe('requirement PDF routes', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('Content-Type')).toBe('application/pdf')
     expect(
-      routeState.collectMultipleRequirementsForReport,
+      routeState.collectMultiplePublishedRequirementsForReport,
     ).toHaveBeenCalledWith({ db: true }, ['1', 'REQ-2'])
+    expect(routeState.authorization.assertAuthorized).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'get_requirement', view: 'detail' }),
+      routeState.context,
+    )
     expect(routeState.buildListReport).toHaveBeenCalledWith(
       [requirement('REQ-1'), requirement('REQ-2')],
       'en',
@@ -183,7 +278,7 @@ describe('requirement PDF routes', () => {
 
     expect(response.status).toBe(200)
     expect(
-      routeState.collectMultipleRequirementsForReport,
+      routeState.collectMultiplePublishedRequirementsForReport,
     ).toHaveBeenCalledWith({ db: true }, ids)
   })
 
@@ -232,8 +327,83 @@ describe('requirement PDF routes', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(body.error).toBe('No requirement IDs provided')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
     expect(
-      routeState.collectMultipleRequirementsForReport,
+      routeState.collectMultiplePublishedRequirementsForReport,
     ).not.toHaveBeenCalled()
+  })
+
+  it('rejects review PDFs before collecting data when authorization is denied', async () => {
+    routeState.authorization.assertAuthorized.mockRejectedValueOnce(
+      Object.assign(new Error('Forbidden'), {
+        code: 'forbidden',
+        status: 403,
+      }),
+    )
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/review/[id]/route'
+    )
+
+    const response = await GET(
+      new NextRequest('http://localhost/sv/requirements/reports/pdf/review/1'),
+      { params: Promise.resolve({ id: '1', locale: 'sv' }) },
+    )
+    const body = (await response.json()) as { error: string }
+
+    expect(response.status).toBe(403)
+    expect(body.error).toBe('Forbidden')
+    expect(routeState.collectRequirementForReport).not.toHaveBeenCalled()
+    expect(routeState.renderReportModelPdfResponse).not.toHaveBeenCalled()
+  })
+
+  it('authorizes specification list PDFs before collecting report items', async () => {
+    const { GET } = await import(
+      '@/app/[locale]/specifications/[slug]/reports/pdf/list/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/specifications/SPEC-1/reports/pdf/list?refs=lib:55',
+      ),
+      { params: Promise.resolve({ locale: 'en', slug: 'SPEC-1' }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(routeState.authorization.assertAuthorized).toHaveBeenCalledWith(
+      { kind: 'get_specification_items', specificationId: 42 },
+      routeState.context,
+    )
+    expect(routeState.collectSpecificationItemsForReport).toHaveBeenCalledWith(
+      { db: true },
+      'SPEC-1',
+      ['lib:55'],
+    )
+  })
+
+  it('rejects deviation review PDFs before collecting report data when specification authorization is denied', async () => {
+    routeState.authorization.assertAuthorized.mockRejectedValueOnce(
+      Object.assign(new Error('Forbidden'), {
+        code: 'forbidden',
+        status: 403,
+      }),
+    )
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/deviation-review/[id]/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/sv/requirements/reports/pdf/deviation-review/1?item=lib:55',
+      ),
+      { params: Promise.resolve({ id: '1', locale: 'sv' }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(routeState.getSpecificationItemById).toHaveBeenCalledWith(
+      { db: true },
+      55,
+    )
+    expect(routeState.collectDeviationForReport).not.toHaveBeenCalled()
+    expect(routeState.renderReportModelPdfResponse).not.toHaveBeenCalled()
   })
 })

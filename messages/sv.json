@@ -385,6 +385,7 @@
     "afterSaveInline": "Listvy",
     "afterSavePage": "Detaljsida",
     "noPublishedVersion": "Det finns ingen publicerad version av detta krav.",
+    "readOnlyNotice": "Du kan läsa kravet, men du kan inte ändra dess livscykel eller innehåll.",
     "printHistoryReport": "Skriv ut historikrapport",
     "downloadHistoryReportPdf": "Ladda ner historikrapport (PDF)",
     "printReviewReport": "Skriv ut granskningsrapport",

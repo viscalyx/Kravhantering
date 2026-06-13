@@ -242,9 +242,13 @@ logga in på nytt.
 1. För varje positiv åtgärd, gör en liten ändring och ladda om sidan.
 1. För varje negativ åtgärd, kontrollera både UI-denial och API-denial när
    API-yta finns.
+1. Öppna kravdetalj där användaren får läsa men inte ändra och kontrollera att
+   sidan visar skrivskyddat läge utan livscykelkontroller.
 
 **Förväntat resultat:** Varje användare får bara göra det som rollen eller
-ansvarstilldelningen uttryckligen medger.
+ansvarstilldelningen uttryckligen medger. Otillåtna åtgärder på kravets
+detaljsida saknas eller är inaktiva redan i UI:t, och API:t nekar samma
+åtgärd.
 
 <a id="auth-11-playwrightfaser-for-behorighetsroller"></a>
 
@@ -540,7 +544,9 @@ metadata, referenser och paket.
 **Steg:** Öppna rapport-/utskriftsmenyn från kravbiblioteket och välj en
 listbaserad rapport.
 
-**Förväntat resultat:** Rapporten öppnas eller laddas ned utan fel.
+**Förväntat resultat:** Rapporten öppnas eller laddas ned utan fel. PDF från
+kravlistan innehåller bara publicerade kravversioner även om listan innehåller
+krav med utkast eller granskning.
 
 ### REQ-11: lokaliserad felåterhämtning
 
@@ -648,6 +654,8 @@ gången.
 kontrollera rapportmenyn.
 
 **Förväntat resultat:** Tillgängliga rapporter matchar kravets status.
+Rapporter för historik, granskning och förslagshistorik går bara att hämta
+när användaren har åtkomst till kravets historik.
 
 ## Samarbete i kravdetalj
 
@@ -758,7 +766,9 @@ panel.
 
 **Steg:** Öppna rapportmenyn från kravunderlagslistan.
 
-**Förväntat resultat:** Rapporten genereras utan fel.
+**Förväntat resultat:** Rapporten genereras utan fel för användare med
+läsåtkomst till kravunderlaget och nekas innan data visas för användare utan
+läsåtkomst.
 
 ### SPEC-11: återställ kolumnvyer för kravunderlag
 
@@ -893,7 +903,10 @@ taxonomiflik i Admincenter.
 
 **Steg:** Ändra kravområdesägare via HSA-id, verifiera personuppslag och spara.
 
-**Förväntat resultat:** Ägarskapet sparas på HSA-id och visas med persondetaljer.
+**Förväntat resultat:** Ägarskapet sparas på HSA-id och visas med
+persondetaljer. Efter nästa lyckade ändring kan den inloggade aktörens egen
+levande personrad uppdateras från sessionen utan att inloggning eller sparande
+fördröjs.
 
 ### ADMIN-13: HSA-id-prefix administreras från Identitet
 

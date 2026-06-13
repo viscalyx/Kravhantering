@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { getTransitionsFrom } from '@/lib/dal/requirement-statuses'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
@@ -12,9 +13,21 @@ import {
   refOrPositiveIntegerSegmentSchema,
   uniquePositiveIntegerArraySchema,
 } from '@/lib/http/validation'
+import type {
+  AuthorizationService,
+  RequestContext,
+  RequirementsAction,
+} from '@/lib/requirements/auth'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { toHttpErrorPayload } from '@/lib/requirements/service'
-import type { RequirementDetailResponse } from '@/lib/requirements/types'
+import {
+  STATUS_ARCHIVED,
+  STATUS_PUBLISHED,
+} from '@/lib/requirements/status-constants.mjs'
+import type {
+  RequirementDetailPermissions,
+  RequirementDetailResponse,
+} from '@/lib/requirements/types'
 import { parseRequirementRef } from '../parse-requirement-ref'
 
 export const dynamic = 'force-dynamic'
@@ -59,6 +72,19 @@ const requirementEditSchema = z
   })
   .strict()
 
+async function canAuthorize(
+  authorization: AuthorizationService,
+  action: RequirementsAction,
+  context: RequestContext,
+): Promise<boolean> {
+  try {
+    await authorization.assertAuthorized(action, context)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
@@ -71,16 +97,110 @@ export async function GET(
   const { id } = parsedParams.data
 
   try {
-    const { context, service } = await createRequirementsRestRuntime(_request)
+    const { authorization, context, db, service } =
+      await createRequirementsRestRuntime(_request)
     const ref = parseRequirementRef(id)
+    const canViewHistory = await canAuthorize(
+      authorization,
+      {
+        ...ref,
+        kind: 'get_requirement',
+        view: 'history',
+      },
+      context,
+    )
     const result = await service.getRequirement(context, {
       ...ref,
-      view: 'history',
+      view: canViewHistory ? 'history' : 'detail',
     })
     const req = result.requirement
+    const canonicalRef = { id: req.id, uniqueId: req.uniqueId }
+    const latestStatusId = req.versions[0]?.status ?? null
+    const transitionTargets =
+      latestStatusId == null ? [] : await getTransitionsFrom(db, latestStatusId)
+    const transitionCandidateIds = new Set(
+      transitionTargets.map(transition => transition.id),
+    )
+    transitionCandidateIds.add(STATUS_ARCHIVED)
+    transitionCandidateIds.add(STATUS_PUBLISHED)
+    const allowedTransitionStatusIds: number[] = []
+    for (const toStatusId of transitionCandidateIds) {
+      if (
+        await canAuthorize(
+          authorization,
+          {
+            ...canonicalRef,
+            kind: 'transition_requirement',
+            toStatusId,
+          },
+          context,
+        )
+      ) {
+        allowedTransitionStatusIds.push(toStatusId)
+      }
+    }
+    const permissions: RequirementDetailPermissions = {
+      allowedTransitionStatusIds,
+      canArchive: await canAuthorize(
+        authorization,
+        {
+          ...canonicalRef,
+          kind: 'manage_requirement',
+          operation: 'archive',
+        },
+        context,
+      ),
+      canDeleteDraft: await canAuthorize(
+        authorization,
+        {
+          ...canonicalRef,
+          kind: 'manage_requirement',
+          operation: 'delete_draft',
+        },
+        context,
+      ),
+      canEdit: await canAuthorize(
+        authorization,
+        {
+          ...canonicalRef,
+          kind: 'manage_requirement',
+          operation: 'edit',
+        },
+        context,
+      ),
+      canManageSuggestions: await canAuthorize(
+        authorization,
+        {
+          kind: 'manage_suggestion',
+          operation: 'create',
+          requirementId: req.id,
+        },
+        context,
+      ),
+      canReactivate: await canAuthorize(
+        authorization,
+        {
+          ...canonicalRef,
+          kind: 'manage_requirement',
+          operation: 'reactivate',
+        },
+        context,
+      ),
+      canRestore: await canAuthorize(
+        authorization,
+        {
+          ...canonicalRef,
+          kind: 'manage_requirement',
+          operation: 'restore_version',
+        },
+        context,
+      ),
+      canViewHistory,
+    }
     const responseBody: RequirementDetailResponse = {
       ...req,
       area: req.area ? { ...req.area, ownerName: req.area.ownerHsaId } : null,
+      permissions,
     }
     return NextResponse.json(responseBody)
   } catch (error) {

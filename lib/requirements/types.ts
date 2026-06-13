@@ -84,6 +84,17 @@ export interface RequirementDetail {
   versions: RequirementVersionDetail[]
 }
 
+export interface RequirementDetailPermissions {
+  allowedTransitionStatusIds: number[]
+  canArchive: boolean
+  canDeleteDraft: boolean
+  canEdit: boolean
+  canManageSuggestions: boolean
+  canReactivate: boolean
+  canRestore: boolean
+  canViewHistory: boolean
+}
+
 export interface RequirementDetailAreaResponse extends RequirementDetailArea {
   ownerName: string
 }
@@ -91,6 +102,7 @@ export interface RequirementDetailAreaResponse extends RequirementDetailArea {
 export interface RequirementDetailResponse
   extends Omit<RequirementDetail, 'area'> {
   area: RequirementDetailAreaResponse | null
+  permissions: RequirementDetailPermissions
 }
 
 export interface RequirementVersionResponse {

@@ -172,6 +172,8 @@ const requirementMutationSchema = z
   })
   .strict()
 
+type RequirementMutationBody = z.infer<typeof requirementMutationSchema>
+
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const parsedQuery = parseSearchParams(
@@ -275,12 +277,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export const POST = secureMutationRoute({
+export const POST = secureMutationRoute<RequirementMutationBody>({
   bodySchema: requirementMutationSchema,
-  policy: requirementsMutationPolicy({
+  policy: requirementsMutationPolicy<RequirementMutationBody>(({ body }) => ({
+    areaId: body.areaId,
     kind: 'manage_requirement',
     operation: 'create',
-  }),
+  })),
   handler: async ({ body, context, request }) => {
     try {
       const { service } = await createRequirementsRestRuntime(request, {

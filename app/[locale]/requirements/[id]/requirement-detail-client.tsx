@@ -26,6 +26,7 @@ import {
 } from '@/lib/requirements/status-constants.mjs'
 import type {
   DeleteDraftResult,
+  RequirementDetailPermissions,
   RequirementDetailResponse,
 } from '@/lib/requirements/types'
 import AddToSpecificationDialog from './_detail/AddToSpecificationDialog'
@@ -348,6 +349,25 @@ export default function RequirementDetailClient({
   const detailContext = inline
     ? `requirements table > inline detail pane: ${req.uniqueId}`
     : `requirement detail: ${req.uniqueId}`
+  const permissions: RequirementDetailPermissions = req.permissions ?? {
+    allowedTransitionStatusIds: [],
+    canArchive: false,
+    canDeleteDraft: false,
+    canEdit: false,
+    canManageSuggestions: false,
+    canReactivate: false,
+    canRestore: false,
+    canViewHistory: false,
+  }
+  const canMutateRequirementLifecycle =
+    permissions.canArchive ||
+    permissions.canDeleteDraft ||
+    permissions.canEdit ||
+    permissions.canReactivate ||
+    permissions.canRestore ||
+    permissions.allowedTransitionStatusIds.length > 0
+  const showReadOnlyNotice =
+    !isSpecificationItemContext && !canMutateRequirementLifecycle
 
   const buildDetailSectionContext = (sectionName: string) =>
     `${detailContext} > detail section: ${sectionName}`
@@ -821,6 +841,16 @@ export default function RequirementDetailClient({
           </div>
         )}
 
+        {showReadOnlyNotice && (
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-sm text-secondary-700 dark:border-secondary-700 dark:bg-secondary-900/60 dark:text-secondary-200">
+            <AlertCircle
+              aria-hidden="true"
+              className="mt-0.5 h-4 w-4 shrink-0 text-secondary-500 dark:text-secondary-400"
+            />
+            <p>{t('readOnlyNotice')}</p>
+          </div>
+        )}
+
         <div
           className="mb-5 scroll-mt-32"
           data-requirement-detail-stepper-anchor="true"
@@ -1002,7 +1032,14 @@ export default function RequirementDetailClient({
                 />
               ) : (
                 <RequirementActionRail
+                  allowedTransitionStatusIds={
+                    permissions.allowedTransitionStatusIds
+                  }
                   canAddToSpecification={canAddToSpecification}
+                  canArchive={permissions.canArchive}
+                  canDeleteDraft={permissions.canDeleteDraft}
+                  canEdit={permissions.canEdit}
+                  canRestore={permissions.canRestore}
                   currentStatusId={currentStatusId}
                   detailContext={detailContext}
                   displayVersionNumber={displayVersion?.versionNumber}

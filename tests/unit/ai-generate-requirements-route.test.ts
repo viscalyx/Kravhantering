@@ -7,6 +7,8 @@ const routeState = vi.hoisted(() => ({
   generateChatStream: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
   loadTaxonomy: vi.fn(),
+  query: vi.fn(),
+  transaction: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -66,7 +68,16 @@ describe('POST /api/ai/generate-requirements', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     clearInMemoryThrottleForTests()
-    routeState.getRequestSqlServerDataSource.mockResolvedValue({})
+    routeState.getRequestSqlServerDataSource.mockResolvedValue({
+      query: routeState.query,
+      transaction: routeState.transaction,
+    })
+    routeState.query.mockResolvedValue([])
+    routeState.transaction.mockImplementation(
+      async (
+        callback: (manager: { query: typeof routeState.query }) => unknown,
+      ) => callback({ query: routeState.query }),
+    )
     routeState.loadTaxonomy.mockResolvedValue({
       categories: [{ id: 2, name: 'Security' }],
       qualityCharacteristics: [{ id: 3, name: 'Confidentiality' }],
@@ -116,6 +127,26 @@ describe('POST /api/ai/generate-requirements', () => {
     } finally {
       consoleInfoSpy.mockRestore()
     }
+  })
+
+  it('denies generation before loading taxonomy or calling the provider', async () => {
+    const request = makeRequest()
+    attachVerifiedActor(request, {
+      displayName: 'AI User',
+      hsaId: 'SE5560000001-ai1',
+      id: 'ai-user',
+      isAuthenticated: true,
+      roles: [],
+      source: 'oidc',
+    })
+
+    const response = await POST(request)
+    const body = (await response.json()) as { error: string }
+
+    expect(response.status).toBe(403)
+    expect(body.error).toBe('Forbidden')
+    expect(routeState.loadTaxonomy).not.toHaveBeenCalled()
+    expect(routeState.generateChatStream).not.toHaveBeenCalled()
   })
 
   it('streams sanitized provider errors only', async () => {

@@ -233,6 +233,38 @@ describe('secureMutationRoute', () => {
     )
   })
 
+  it('does not fail successful mutations when background actor refresh fails', async () => {
+    const refreshQuery = vi.fn(async () => {
+      throw new Error('refresh failed')
+    })
+    auditState.getRequestSqlServerDataSource.mockResolvedValueOnce({
+      query: refreshQuery,
+    })
+    authState.createRequestContext.mockResolvedValueOnce({
+      ...context([]),
+      actor: {
+        ...context([]).actor,
+        email: 'ada@example.test',
+        familyName: 'Admin',
+        givenName: 'Ada',
+      },
+    })
+    const route = secureMutationRoute({
+      handler: () => NextResponse.json({ ok: true }),
+      policy: requirementsMutationPolicy({ kind: 'generate_requirements' }),
+    })
+
+    const response = await route(jsonRequest({}))
+
+    expect(response.status).toBe(200)
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(refreshQuery).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE person'),
+      expect.arrayContaining(['SE5560000001-admin1', 'Ada', 'Admin']),
+    )
+  })
+
   it('exposes an explicit authenticated-only custom policy', async () => {
     const policy = authenticatedMutationPolicy('authenticated.example')
 

@@ -1304,6 +1304,40 @@ describe('createRequirementsService', () => {
     )
   })
 
+  it('does not call AI provider work when MCP generation authorization is denied', async () => {
+    const authorization = {
+      assertAuthorized: vi.fn(async () => {
+        throw forbiddenError('AI generation requires one authorized scope', {
+          reason: 'ai_scope_required',
+        })
+      }),
+    }
+    const service = createRequirementsService({} as never, {
+      authorization,
+      logger,
+    })
+
+    await expect(
+      service.generateRequirements(
+        {
+          ...makeContext(),
+          source: 'mcp',
+          toolName: 'requirements_generate_requirements',
+        },
+        {
+          locale: 'sv',
+          topic: 'kapacitetshantering',
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      details: { reason: 'ai_scope_required' },
+    })
+
+    expect(mocks.loadTaxonomy).not.toHaveBeenCalled()
+    expect(mocks.generateChat).not.toHaveBeenCalled()
+  })
+
   it('rejects specification workflows without a specification reference', async () => {
     const service = createTestRequirementsService()
 

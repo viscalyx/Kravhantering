@@ -1,12 +1,13 @@
 import type { NextRequest } from 'next/server'
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
-import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   collectRequirementForReport,
   collectSuggestionsForReport,
 } from '@/lib/reports/data/server'
 import { buildSuggestionHistoryReport } from '@/lib/reports/templates/suggestion-history-template'
 import {
+  authorizeRequirementReportRead,
+  createReportRuntime,
   type ReportRouteParams,
   reportErrorResponse,
 } from '../../route-helpers'
@@ -20,10 +21,16 @@ export async function GET(
   const { id, locale } = await params
 
   try {
-    const db = await getRequestSqlServerDataSource()
+    const runtime = await createReportRuntime(_request)
+    await authorizeRequirementReportRead(
+      runtime.authorization,
+      runtime.context,
+      id,
+      'history',
+    )
     const [requirement, suggestions] = await Promise.all([
-      collectRequirementForReport(db, id),
-      collectSuggestionsForReport(db, id),
+      collectRequirementForReport(runtime.db, id),
+      collectSuggestionsForReport(runtime.db, id),
     ])
     const label =
       locale === 'sv'

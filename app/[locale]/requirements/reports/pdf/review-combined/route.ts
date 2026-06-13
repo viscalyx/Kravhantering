@@ -1,12 +1,13 @@
 import type { NextRequest } from 'next/server'
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
-import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   collectMultipleRequirementsForReport,
   ReportDataError,
 } from '@/lib/reports/data/server'
 import { buildCombinedReviewReport } from '@/lib/reports/templates/combined-review-template'
 import {
+  authorizeRequirementReportRead,
+  createReportRuntime,
   type ReportRouteParams,
   reportErrorResponse,
   splitCsvParam,
@@ -27,8 +28,19 @@ export async function GET(
       throw new ReportDataError('No requirement IDs provided', 400)
     }
 
-    const db = await getRequestSqlServerDataSource()
-    const requirements = await collectMultipleRequirementsForReport(db, ids)
+    const runtime = await createReportRuntime(request)
+    for (const id of ids) {
+      await authorizeRequirementReportRead(
+        runtime.authorization,
+        runtime.context,
+        id,
+        'history',
+      )
+    }
+    const requirements = await collectMultipleRequirementsForReport(
+      runtime.db,
+      ids,
+    )
     const label =
       locale === 'sv'
         ? 'Kombinerad granskningsrapport'

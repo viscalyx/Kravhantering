@@ -22,6 +22,7 @@ interface RequirementAreasResponse {
   areas?: Array<{
     id: number
     name: string
+    prefix: string
   }>
 }
 
@@ -92,6 +93,8 @@ function releaseSmokeBaseUrl(configuredBaseUrl: unknown) {
 function originHeader(baseUrl: string) {
   return new URL(baseUrl).origin
 }
+
+const RELEASE_SMOKE_AREA_PREFIX = 'AUTHZ'
 
 test.describe('Release smoke container flow', () => {
   test('proves HTTPS, auth, SQL Server reads and writes, assets, and build metadata', async ({
@@ -173,9 +176,15 @@ test.describe('Release smoke container flow', () => {
       expect(areasResponse.ok()).toBe(true)
       const areasPayload =
         (await areasResponse.json()) as RequirementAreasResponse
-      const area = areasPayload.areas?.[0]
+      const area = areasPayload.areas?.find(
+        candidate => candidate.prefix === RELEASE_SMOKE_AREA_PREFIX,
+      )
       expect(area).toBeDefined()
-      if (!area) throw new Error('No requirement area returned for smoke test')
+      if (!area) {
+        throw new Error(
+          `No ${RELEASE_SMOKE_AREA_PREFIX} requirement area returned for smoke test`,
+        )
+      }
 
       const description = `release-smoke-${releaseSmokeRunId()}-${Date.now().toString(36)}`
       const createResponse = await request.post('/api/requirements', {

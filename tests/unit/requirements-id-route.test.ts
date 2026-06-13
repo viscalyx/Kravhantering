@@ -22,9 +22,14 @@ const mockAuthorization = vi.hoisted(() => ({ assertAuthorized: vi.fn() }))
 const mockCreateDefaultAuthorizationService = vi.hoisted(() =>
   vi.fn(() => mockAuthorization),
 )
+const mockGetTransitionsFrom = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: () => ({}),
+}))
+
+vi.mock('@/lib/dal/requirement-statuses', () => ({
+  getTransitionsFrom: mockGetTransitionsFrom,
 }))
 
 vi.mock('@/lib/requirements/auth', () => ({
@@ -79,6 +84,8 @@ async function expectInvalidRequest(
 describe('requirements/[id] route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAuthorization.assertAuthorized.mockResolvedValue(undefined)
+    mockGetTransitionsFrom.mockResolvedValue([{ id: 2 }])
   })
 
   describe('GET', () => {
@@ -86,21 +93,31 @@ describe('requirements/[id] route', () => {
       mockGetRequirement.mockResolvedValue({
         requirement: {
           id: 1,
+          uniqueId: 'REQ-001',
           area: { id: 1, ownerHsaId: 'SE5560000001-annaj' },
+          versions: [{ status: 3 }],
         },
       })
 
       const req = new NextRequest('http://localhost/api/requirements/1')
       const res = await GET(req, makeParams('1'))
-      const json = (await res.json()) as { area: { ownerName: string } }
+      const json = (await res.json()) as {
+        area: { ownerName: string }
+        permissions: { allowedTransitionStatusIds: number[] }
+      }
       expect(json.area.ownerName).toBe('SE5560000001-annaj')
+      expect(json.permissions.allowedTransitionStatusIds).toEqual(
+        expect.arrayContaining([2, 3, 4]),
+      )
     })
 
     it('returns null area when no area is linked', async () => {
       mockGetRequirement.mockResolvedValue({
         requirement: {
           id: 1,
+          uniqueId: 'REQ-001',
           area: null,
+          versions: [{ status: 3 }],
         },
       })
 
@@ -108,6 +125,36 @@ describe('requirements/[id] route', () => {
       const res = await GET(req, makeParams('1'))
       const json = (await res.json()) as { area: null }
       expect(json.area).toBeNull()
+    })
+
+    it('uses published detail view when history permission is denied', async () => {
+      mockAuthorization.assertAuthorized.mockImplementation(action => {
+        if (action.kind === 'get_requirement' && action.view === 'history') {
+          return Promise.reject(new Error('history denied'))
+        }
+        return Promise.resolve()
+      })
+      mockGetRequirement.mockResolvedValue({
+        requirement: {
+          id: 1,
+          uniqueId: 'REQ-001',
+          area: { id: 1, ownerHsaId: 'SE5560000001-annaj' },
+          versions: [{ status: 3 }],
+        },
+      })
+
+      const req = new NextRequest('http://localhost/api/requirements/1')
+      const res = await GET(req, makeParams('1'))
+      const json = (await res.json()) as {
+        permissions: { canViewHistory: boolean }
+      }
+
+      expect(res.status).toBe(200)
+      expect(mockGetRequirement).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ id: 1, view: 'detail' }),
+      )
+      expect(json.permissions.canViewHistory).toBe(false)
     })
 
     it('returns error payload on failure', async () => {

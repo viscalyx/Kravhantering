@@ -1,9 +1,10 @@
 import type { NextRequest } from 'next/server'
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
-import { getRequestSqlServerDataSource } from '@/lib/db'
 import { collectRequirementForReport } from '@/lib/reports/data/server'
 import { buildHistoryReport } from '@/lib/reports/templates/history-template'
 import {
+  authorizeRequirementReportRead,
+  createReportRuntime,
   type ReportRouteParams,
   reportErrorResponse,
 } from '../../route-helpers'
@@ -17,8 +18,14 @@ export async function GET(
   const { id, locale } = await params
 
   try {
-    const db = await getRequestSqlServerDataSource()
-    const requirement = await collectRequirementForReport(db, id)
+    const runtime = await createReportRuntime(_request)
+    await authorizeRequirementReportRead(
+      runtime.authorization,
+      runtime.context,
+      id,
+      'history',
+    )
+    const requirement = await collectRequirementForReport(runtime.db, id)
     const label = locale === 'sv' ? 'Historikrapport' : 'History Report'
     return renderReportModelPdfResponse(
       buildHistoryReport(requirement, locale),

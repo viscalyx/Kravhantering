@@ -1,5 +1,7 @@
 import type { NextRequest } from 'next/server'
 import {
+  authorizeSpecificationReportRead,
+  createReportRuntime,
   type ReportRouteParams,
   reportErrorResponse,
   splitCsvParam,
@@ -9,7 +11,6 @@ import {
   listSpecificationRequirementSelectionQuestions,
   resolveSpecificationId,
 } from '@/lib/dal/requirement-selection-questions'
-import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   collectSpecificationItemsForReport,
   ReportDataError,
@@ -57,18 +58,24 @@ export async function GET(
       throw new ReportDataError('No requirement application refs provided', 400)
     }
 
-    const db = await getRequestSqlServerDataSource()
+    const runtime = await createReportRuntime(request)
+    const specificationId = await resolveSpecificationId(runtime.db, slug)
+    if (!specificationId) {
+      throw new ReportDataError(`Specification not found: ${slug}`, 404)
+    }
+    await authorizeSpecificationReportRead(
+      runtime.authorization,
+      runtime.context,
+      specificationId,
+    )
     const { requirements, specification } =
-      await collectSpecificationItemsForReport(db, slug, itemRefs)
-    const specificationId = await resolveSpecificationId(db, slug)
-    const selectionContext = specificationId
-      ? buildSelectionContext(
-          await listSpecificationRequirementSelectionQuestions(
-            db,
-            specificationId,
-          ),
-        )
-      : []
+      await collectSpecificationItemsForReport(runtime.db, slug, itemRefs)
+    const selectionContext = buildSelectionContext(
+      await listSpecificationRequirementSelectionQuestions(
+        runtime.db,
+        specificationId,
+      ),
+    )
     const label = locale === 'sv' ? 'Kravlista' : 'Requirements List'
     return renderReportModelPdfResponse(
       buildListReport(

@@ -12497,6 +12497,15 @@ const REQUIREMENT_RESPONSIBILITY_PERSON_BY_HSA_ID = new Map([
     },
   ],
   [
+    'SE5560000001-smoke1',
+    {
+      email: 'release-smoke-user@example.test',
+      givenName: 'Release',
+      middleName: null,
+      surname: 'SmokeUser',
+    },
+  ],
+  [
     'SE5560000001-specco1',
     {
       email: 'signe.speccoauthor@example.test',
@@ -13112,6 +13121,13 @@ function applyPrivacyIdentitySeed() {
       [
         910100,
         'SE5560000001-areaco1',
+        PRIVACY_SEED_TS,
+        'SE5560000001-admin1',
+        'Ada Admin',
+      ],
+      [
+        910100,
+        'SE5560000001-smoke1',
         PRIVACY_SEED_TS,
         'SE5560000001-admin1',
         'Ada Admin',

@@ -385,6 +385,7 @@
     "afterSaveInline": "List view",
     "afterSavePage": "Detail page",
     "noPublishedVersion": "There is no published version of this requirement.",
+    "readOnlyNotice": "You can read this requirement, but you cannot change its lifecycle or content.",
     "printHistoryReport": "Print History Report",
     "downloadHistoryReportPdf": "Download History Report (PDF)",
     "printReviewReport": "Print Review Change Report",

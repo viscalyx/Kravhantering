@@ -45,6 +45,8 @@ formatted table.
 - Does not apply an application-level item-count cap; visible rows are carried
   through the existing `ids` query string, subject to practical URL length
   limits
+- Server PDF output uses the latest published version for each included
+  requirement and omits requirements without a published version
 - Header shows total count and generation timestamp
 
 ### 4. Combined Review Report
@@ -149,20 +151,34 @@ Server PDF Engine
 
 ### Data Flow
 
+1. Route/page authorizes the requested report scope
 1. Route/page collects report data server-side
-2. Template function converts raw data into a `ReportModel` (array of typed
+1. Template function converts raw data into a `ReportModel` (array of typed
    sections like header, diff, version-summary, timeline-entry, etc.)
-3. Engine-specific renderer consumes the `ReportModel` and produces output
-4. PDF routes return binary `application/pdf` responses with attachment
+1. Engine-specific renderer consumes the `ReportModel` and produces output
+1. PDF routes return binary `application/pdf` responses with attachment
    headers and `Cache-Control: no-store`
+
+### Authorization
+
+Server PDF routes authorize before collecting report data. Requirement list
+PDFs are available to ordinary authenticated users, but collect only published
+requirement versions. History, review, combined review, and suggestion-history
+PDFs require history access for each requested requirement before any report
+data helper runs. Specification list PDFs authorize against the specification
+before collecting items or saved-answer context.
+
+Report builders and template functions stay pure. They receive already
+authorized report data and do not call the authorization service themselves.
 
 ### Adding a New Report Type
 
 1. Create a template in `lib/reports/templates/` that returns a `ReportModel`
 2. Add route pages/handlers under both `app/.../reports/print/` and
    `app/.../reports/pdf/`
-3. Add menu items in the detail view or list view to open the report
-4. Add translations to both `messages/en.json` and `messages/sv.json`
+3. In server PDF handlers, authorize the report scope before collecting data
+4. Add menu items in the detail view or list view to open the report
+5. Add translations to both `messages/en.json` and `messages/sv.json`
 
 ### Adding or Removing an Engine
 

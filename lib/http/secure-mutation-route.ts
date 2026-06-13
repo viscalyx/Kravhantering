@@ -10,6 +10,7 @@ import {
   redactSensitiveText,
 } from '@/lib/http/safe-errors'
 import { parseRouteParams, readJsonWithSchema } from '@/lib/http/validation'
+import { scheduleActorResponsibilityPersonRefresh } from '@/lib/requirements/actor-responsibility-refresh'
 import {
   createDefaultAuthorizationService,
   createRequestContext,
@@ -273,7 +274,12 @@ export function secureMutationRoute<TBody = undefined, TParams = undefined>(
     }
 
     try {
-      return await options.handler(args)
+      const response = await options.handler(args)
+      scheduleActorResponsibilityPersonRefresh(
+        () => args.db ?? getRequestSqlServerDataSource(),
+        context,
+      )
+      return response
     } catch (error) {
       return decorateErrorResponse(options, errorResponse(errorMessage, error))
     }
