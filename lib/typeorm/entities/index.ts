@@ -5,6 +5,7 @@ import { archivingRetentionExceptionEntity } from '@/lib/typeorm/entities/archiv
 import { archivingRetentionPolicyEntity } from '@/lib/typeorm/entities/archiving-retention-policy'
 import { archivingRetentionRunEntity } from '@/lib/typeorm/entities/archiving-retention-run'
 import { deviationEntity } from '@/lib/typeorm/entities/deviation'
+import { hsaIdPrefixEntity } from '@/lib/typeorm/entities/hsa-id-prefix'
 import { improvementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 import { normReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
 import { qualityCharacteristicEntity } from '@/lib/typeorm/entities/quality-characteristic'
@@ -14,6 +15,8 @@ import { requirementAreaCoAuthorEntity } from '@/lib/typeorm/entities/requiremen
 import { requirementCategoryEntity } from '@/lib/typeorm/entities/requirement-category'
 import { requirementListColumnDefaultEntity } from '@/lib/typeorm/entities/requirement-list-column-default'
 import { requirementPackageEntity } from '@/lib/typeorm/entities/requirement-package'
+import { requirementPackageCoAuthorEntity } from '@/lib/typeorm/entities/requirement-package-co-author'
+import { requirementResponsibilityPersonEntity } from '@/lib/typeorm/entities/requirement-responsibility-person'
 import { requirementSelectionAnswerEntity } from '@/lib/typeorm/entities/requirement-selection-answer'
 import { requirementSelectionAnswerPackageEntity } from '@/lib/typeorm/entities/requirement-selection-answer-package'
 import { requirementSelectionAnswerRequirementEntity } from '@/lib/typeorm/entities/requirement-selection-answer-requirement'
@@ -48,6 +51,7 @@ export const sqlServerEntities = [
   accessReviewItemEntity,
   deviationEntity,
   improvementSuggestionEntity,
+  hsaIdPrefixEntity,
   normReferenceEntity,
   archivingRetentionPolicyEntity,
   archivingRetentionRunEntity,
@@ -62,6 +66,7 @@ export const sqlServerEntities = [
   specificationNeedsReferenceEntity,
   specificationGovernanceObjectTypeEntity,
   qualityCharacteristicEntity,
+  requirementResponsibilityPersonEntity,
   requirementEntity,
   requirementAreaEntity,
   requirementAreaCoAuthorEntity,
@@ -86,6 +91,7 @@ export const sqlServerEntities = [
   specificationCoAuthorEntity,
   specificationRequirementSelectionAnswerEntity,
   requirementPackageEntity,
+  requirementPackageCoAuthorEntity,
 ]
 
 export type { AccessReviewItemEntity } from '@/lib/typeorm/entities/access-review-item'
@@ -95,6 +101,7 @@ export type { ArchivingRetentionExceptionEntity } from '@/lib/typeorm/entities/a
 export type { ArchivingRetentionPolicyEntity } from '@/lib/typeorm/entities/archiving-retention-policy'
 export type { ArchivingRetentionRunEntity } from '@/lib/typeorm/entities/archiving-retention-run'
 export type { DeviationEntity } from '@/lib/typeorm/entities/deviation'
+export type { HsaIdPrefixEntity } from '@/lib/typeorm/entities/hsa-id-prefix'
 export type { ImprovementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 export type { NormReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
 export type { QualityCharacteristicEntity } from '@/lib/typeorm/entities/quality-characteristic'
@@ -104,6 +111,8 @@ export type { RequirementAreaCoAuthorEntity } from '@/lib/typeorm/entities/requi
 export type { RequirementCategoryEntity } from '@/lib/typeorm/entities/requirement-category'
 export type { RequirementListColumnDefaultEntity } from '@/lib/typeorm/entities/requirement-list-column-default'
 export type { RequirementPackageEntity } from '@/lib/typeorm/entities/requirement-package'
+export type { RequirementPackageCoAuthorEntity } from '@/lib/typeorm/entities/requirement-package-co-author'
+export type { RequirementResponsibilityPersonEntity } from '@/lib/typeorm/entities/requirement-responsibility-person'
 export type { RequirementSelectionAnswerEntity } from '@/lib/typeorm/entities/requirement-selection-answer'
 export type { RequirementSelectionAnswerPackageEntity } from '@/lib/typeorm/entities/requirement-selection-answer-package'
 export type { RequirementSelectionAnswerRequirementEntity } from '@/lib/typeorm/entities/requirement-selection-answer-requirement'
@@ -140,6 +149,7 @@ export {
   archivingRetentionPolicyEntity,
   archivingRetentionRunEntity,
   deviationEntity,
+  hsaIdPrefixEntity,
   improvementSuggestionEntity,
   normReferenceEntity,
   qualityCharacteristicEntity,
@@ -148,7 +158,9 @@ export {
   requirementCategoryEntity,
   requirementEntity,
   requirementListColumnDefaultEntity,
+  requirementPackageCoAuthorEntity,
   requirementPackageEntity,
+  requirementResponsibilityPersonEntity,
   requirementSelectionAnswerEntity,
   requirementSelectionAnswerPackageEntity,
   requirementSelectionAnswerRequirementEntity,

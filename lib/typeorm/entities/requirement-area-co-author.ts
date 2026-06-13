@@ -1,15 +1,15 @@
 import { EntitySchema } from 'typeorm'
 import type { RequirementAreaEntity } from '@/lib/typeorm/entities/requirement-area'
+import type { RequirementResponsibilityPersonEntity } from '@/lib/typeorm/entities/requirement-responsibility-person'
 
 export interface RequirementAreaCoAuthorEntity {
   area: RequirementAreaEntity
   areaId: number
-  canGenerateAi: boolean
   createdAt: Date
   createdByDisplayName: string | null
   createdByHsaId: string | null
-  displayName: string
   hsaId: string
+  person: RequirementResponsibilityPersonEntity
 }
 
 export const requirementAreaCoAuthorEntity =
@@ -26,17 +26,7 @@ export const requirementAreaCoAuthorEntity =
         name: 'hsa_id',
         primary: true,
         type: 'nvarchar',
-        length: 64,
-      },
-      displayName: {
-        name: 'display_name',
-        type: 'nvarchar',
-        length: 'MAX',
-      },
-      canGenerateAi: {
-        name: 'can_generate_ai',
-        type: 'bit',
-        default: false,
+        length: 31,
       },
       createdAt: {
         name: 'created_at',
@@ -76,6 +66,18 @@ export const requirementAreaCoAuthorEntity =
         },
         nullable: false,
         onDelete: 'CASCADE',
+        onUpdate: 'NO ACTION',
+      },
+      person: {
+        type: 'many-to-one',
+        target: 'RequirementResponsibilityPerson',
+        joinColumn: {
+          name: 'hsa_id',
+          referencedColumnName: 'hsaId',
+          foreignKeyConstraintName: 'fk_requirement_area_co_authors_hsa_id',
+        },
+        nullable: false,
+        onDelete: 'NO ACTION',
         onUpdate: 'NO ACTION',
       },
     },

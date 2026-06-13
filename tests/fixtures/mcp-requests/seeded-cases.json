@@ -83,22 +83,22 @@
       }
     },
     {
-      "name": "add published requirement to specification",
+      "name": "add published disposable requirement to specification",
       "tool": "requirements_add_to_specification",
       "kind": "mutation",
       "arguments": {
         "specificationId": "${specification.id}",
-        "requirementIds": ["${publishedRequirement.id}"],
+        "requirementIds": ["${disposableRequirement.id}"],
         "responseFormat": "json"
       }
     },
     {
-      "name": "remove published requirement from specification",
+      "name": "remove published disposable requirement from specification",
       "tool": "requirements_remove_from_specification",
       "kind": "mutation",
       "arguments": {
         "specificationId": "${specification.id}",
-        "requirementIds": ["${publishedRequirement.id}"],
+        "requirementIds": ["${disposableRequirement.id}"],
         "responseFormat": "json"
       }
     },

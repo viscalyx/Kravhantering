@@ -52,7 +52,10 @@ vi.mock('@/lib/requirements/auth', async importOriginal => {
   }
 })
 
-import { GET, PATCH } from '@/app/api/specifications/[id]/items/[itemId]/route'
+import {
+  GET,
+  PATCH,
+} from '@/app/api/requirements-specifications/[id]/items/[itemId]/route'
 
 function makeParams(id: string, itemId: string) {
   return { params: Promise.resolve({ id, itemId }) }
@@ -96,7 +99,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     ])
 
     const request = new NextRequest(
-      'http://localhost/api/specifications/ETJANST-UPP-2026/items/31',
+      'http://localhost/api/requirements-specifications/ETJANST-UPP-2026/items/31',
     )
 
     const response = await GET(request, makeParams('ETJANST-UPP-2026', '31'))
@@ -124,7 +127,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     })
 
     const request = new NextRequest(
-      'http://localhost/api/specifications/ETJANST-UPP-2026/items/lib%3A31',
+      'http://localhost/api/requirements-specifications/ETJANST-UPP-2026/items/lib%3A31',
       {
         body: JSON.stringify({ specificationItemStatusId: 5 }),
         headers: { 'Content-Type': 'application/json' },
@@ -160,7 +163,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     '2',
   ])('rejects malformed usage status id %s', async specificationItemStatusId => {
     const request = new NextRequest(
-      'http://localhost/api/specifications/ETJANST-UPP-2026/items/lib%3A31',
+      'http://localhost/api/requirements-specifications/ETJANST-UPP-2026/items/lib%3A31',
       {
         body: JSON.stringify({ specificationItemStatusId }),
         headers: { 'Content-Type': 'application/json' },
@@ -188,7 +191,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     })
 
     const request = new NextRequest(
-      'http://localhost/api/specifications/ETJANST-UPP-2026/items/lib%3A31',
+      'http://localhost/api/requirements-specifications/ETJANST-UPP-2026/items/lib%3A31',
       {
         body: JSON.stringify({ note: 'Follow-up' }),
         headers: { 'Content-Type': 'application/json' },
@@ -212,7 +215,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
 
   it('rejects empty patch payloads before resolving the specification', async () => {
     const request = new NextRequest(
-      'http://localhost/api/specifications/ETJANST-UPP-2026/items/lib%3A31',
+      'http://localhost/api/requirements-specifications/ETJANST-UPP-2026/items/lib%3A31',
       {
         body: JSON.stringify({}),
         headers: { 'Content-Type': 'application/json' },

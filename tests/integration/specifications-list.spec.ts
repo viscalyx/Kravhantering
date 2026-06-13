@@ -1,9 +1,33 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Locator, test } from '@playwright/test'
 
 const viewports = [
   { name: 'mobile', width: 375, height: 812 },
   { name: 'desktop', width: 1280, height: 720 },
 ]
+
+function splitHsaId(hsaId: string): { prefix: string; suffix: string } {
+  const separatorIndex = hsaId.indexOf('-')
+  if (separatorIndex < 0) {
+    throw new Error(`Expected full HSA-id with prefix and suffix: ${hsaId}`)
+  }
+
+  return {
+    prefix: hsaId.slice(0, separatorIndex),
+    suffix: hsaId.slice(separatorIndex + 1),
+  }
+}
+
+async function fillEditableHsaId(
+  scope: Locator,
+  inputName: string,
+  hsaId: string,
+): Promise<void> {
+  const { prefix, suffix } = splitHsaId(hsaId)
+  await scope
+    .getByRole('combobox', { name: 'HSA-id-prefix' })
+    .selectOption(prefix)
+  await scope.getByRole('textbox', { name: inputName }).fill(suffix)
+}
 
 for (const viewport of viewports) {
   test.describe(`Requirements specifications list filter — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
@@ -44,22 +68,130 @@ for (const viewport of viewports) {
       await expect(deleteAction.locator('svg')).toBeVisible()
 
       if (viewport.name === 'desktop') {
-        const filterBox = await nameFilter.boundingBox()
-        const buttonBox = await createButton.boundingBox()
+        const tableSurface = page.getByRole('table')
 
-        expect(filterBox).not.toBeNull()
+        await expect(tableSurface).toHaveCount(1)
+
+        const buttonBox = await createButton.boundingBox()
+        const tableBox = await tableSurface.boundingBox()
+        const viewportSize = page.viewportSize()
+
         expect(buttonBox).not.toBeNull()
-        expect(
-          Math.abs(
-            (buttonBox?.y ?? 0) +
-              (buttonBox?.height ?? 0) -
-              ((filterBox?.y ?? 0) + (filterBox?.height ?? 0)),
-          ),
-        ).toBeLessThanOrEqual(6)
-        expect(buttonBox?.x ?? 0).toBeGreaterThan(
-          (filterBox?.x ?? 0) + (filterBox?.width ?? 0),
+        expect(tableBox).not.toBeNull()
+        expect(viewportSize).not.toBeNull()
+        expect(buttonBox?.x ?? 0).toBeGreaterThanOrEqual(
+          (viewportSize?.width ?? viewport.width) -
+            (buttonBox?.width ?? 0) -
+            16,
         )
+        expect(
+          (buttonBox?.x ?? 0) + (buttonBox?.width ?? 0),
+        ).toBeLessThanOrEqual((viewportSize?.width ?? viewport.width) + 1)
+        expect(
+          Math.abs((buttonBox?.y ?? 0) - ((tableBox?.y ?? 0) + 4)),
+        ).toBeLessThanOrEqual(12)
+        await expect(
+          page.locator('[data-floating-action-rail-placement="fixed-right"]'),
+        ).toBeVisible()
+        await expect(
+          createButton.locator(
+            'xpath=ancestor::*[@data-floating-action-rail="true"]',
+          ),
+        ).toHaveAttribute('data-floating-action-rail-placement', 'fixed-right')
       }
+
+      await test.step('show the signed-in specification lead when creating', async () => {
+        await createButton.click()
+
+        const createDialog = page.getByRole('dialog', {
+          name: 'Nytt kravunderlag',
+        })
+        await expect(createDialog).toBeVisible()
+        const createForm = createDialog.locator(
+          'form#requirement-specification-form',
+        )
+        await expect(createForm).toBeVisible()
+        await expect(createForm.locator('> div').first()).toHaveClass(
+          /lg:grid-cols-2/,
+        )
+        await expect(
+          createDialog.getByRole('textbox', { name: 'Namn *' }),
+        ).toBeFocused()
+        const responsibleInput = createForm.getByRole('textbox', {
+          name: 'Kravunderlagsansvarigs HSA-id',
+        })
+        await expect(responsibleInput).toHaveValue('SE5560000001-admin1')
+        await expect(responsibleInput).toHaveAttribute('readonly', '')
+        await expect(
+          createForm.getByRole('button', { name: 'Hämta' }),
+        ).toBeVisible()
+        await expect(createForm.getByText(/Ada Admin/)).toBeVisible()
+
+        await createForm.getByRole('button', { name: 'Avbryt' }).click()
+        await expect(createDialog).toBeHidden()
+      })
+
+      await test.step('open responsible change modal from the list edit form', async () => {
+        const row = page.getByRole('row', {
+          name: /Upphandling av e-tjänstplattform/,
+        })
+        await row.getByRole('button', { name: 'Redigera' }).click()
+
+        const editDialog = page.getByRole('dialog', {
+          name: 'Redigera kravunderlag',
+        })
+        await expect(editDialog).toBeVisible()
+        const editForm = editDialog.locator(
+          'form#requirement-specification-form',
+        )
+        await expect(editForm).toBeVisible()
+        await expect(editForm.locator('> div').first()).toHaveClass(
+          /lg:grid-cols-2/,
+        )
+        await expect(
+          editDialog.getByRole('textbox', { name: 'Namn *' }),
+        ).toHaveValue('Upphandling av e-tjänstplattform')
+        const responsibleInput = editForm.getByRole('textbox', {
+          name: 'Kravunderlagsansvarigs HSA-id',
+        })
+        await expect(responsibleInput).toHaveAttribute('readonly', '')
+        await expect(editForm.getByText('Emma Lindqvist')).toBeVisible()
+
+        const currentResponsibleHsaId = await responsibleInput.inputValue()
+        await editForm
+          .getByRole('button', { name: 'Byt kravunderlagsansvarig' })
+          .click()
+
+        const changeDialog = page.getByRole('dialog', {
+          name: 'Byt kravunderlagsansvarig',
+        })
+        await expect(changeDialog).toBeVisible()
+        await expect(
+          changeDialog.getByRole('textbox', {
+            name: 'Förra kravunderlagsansvarigs HSA-id',
+          }),
+        ).toHaveValue(currentResponsibleHsaId)
+        const newResponsibleInput = changeDialog.getByRole('textbox', {
+          name: 'Nya kravunderlagsansvarigs HSA-id',
+        })
+        await expect(newResponsibleInput).toBeVisible()
+        await expect(
+          changeDialog.getByRole('button', { name: 'Hämta' }),
+        ).toBeVisible()
+
+        await fillEditableHsaId(
+          changeDialog,
+          'Nya kravunderlagsansvarigs HSA-id',
+          currentResponsibleHsaId,
+        )
+        await expect(changeDialog.getByRole('alert')).toContainText(
+          'måste skilja sig',
+        )
+        await changeDialog.getByRole('button', { name: 'Avbryt' }).click()
+        await expect(changeDialog).toBeHidden()
+        await editForm.getByRole('button', { name: 'Avbryt' }).click()
+        await expect(editDialog).toBeHidden()
+      })
 
       const hasMultiAreaSpecification = await page.evaluate(() =>
         Array.from(

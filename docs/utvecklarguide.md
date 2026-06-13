@@ -47,10 +47,14 @@ Utvecklaren behöver kunna köra eller nå dessa tjänster:
 
 - SQL Server Developer för applikationsdatabasen.
 - Keycloak för lokal OIDC-inloggning.
+- Kong Gateway för devcontainer-lokal API-management-verifiering.
+- HSA-katalogmock för devcontainer-lokal SOAP-verifiering av `GetHsaPerson`
+  och REST-verifiering av personuppslag via Kong.
 - OpenRouter-konto och API-nyckel om AI-stödet ska testas.
 
-I devcontainer, Codespaces och Dev Spaces hanteras SQL Server och Keycloak som
-sidotjänster. Vid host-baserad utveckling krävs lokal Docker Compose-körning.
+I devcontainer, Codespaces och Dev Spaces hanteras SQL Server, Keycloak, Kong
+och HSA-katalogmocken som sidotjänster. Vid host-baserad utveckling krävs lokal
+Docker Compose-körning.
 
 ## Databasverktyg
 

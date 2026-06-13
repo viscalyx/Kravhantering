@@ -78,11 +78,37 @@ function writeLockFile(dir) {
   return lockPath
 }
 
+function writeTestLockFile(dir) {
+  const lockPath = path.join(dir, 'container-test-support.lock.json')
+  writeJson(lockPath, {
+    schemaVersion: 1,
+    services: [
+      service(
+        'kong',
+        'registry.example/kong',
+        '3.10.0.8-20260210-ubuntu',
+        'sha256:kong-manifest',
+        'sha256:kong-image',
+      ),
+      service(
+        'hsa-directory-mock',
+        'registry.example/hsa-directory-mock',
+        '1.2.3',
+        'sha256:hsa-manifest',
+        'sha256:hsa-image',
+      ),
+    ],
+  })
+  return lockPath
+}
+
 function writeEnvFile(dir, overrides = {}) {
   const values = {
     APP_RUNTIME_IMAGE_REF: 'registry.example/app-runtime:1.2.3',
     DB_JOB_IMAGE_REF: 'registry.example/db-job:1.2.3',
+    HSA_DIRECTORY_MOCK_IMAGE_REF: 'registry.example/hsa-directory-mock:1.2.3',
     KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.6.2-2',
+    KONG_IMAGE_REF: 'registry.example/kong:3.10.0.8-20260210-ubuntu',
     NGINX_IMAGE_REF: 'registry.example/nginx:1.31.1-alpine',
     SQLSERVER_IMAGE_REF: 'registry.example/sqlserver:2025-CU5-ubuntu-24.04',
     ...overrides,
@@ -118,6 +144,8 @@ if [[ "$1 $2" == "image inspect" ]]; then
     *nginx*|sha256:nginx-image) printf '%s\\n' 'sha256:nginx-image' ;;
     *sqlserver*|sha256:sql-image) printf '%s\\n' 'sha256:sql-image' ;;
     *keycloak*|sha256:keycloak-image) printf '%s\\n' 'sha256:keycloak-image' ;;
+    *kong*|sha256:kong-image) printf '%s\\n' 'sha256:kong-image' ;;
+    *hsa-directory-mock*|sha256:hsa-image) printf '%s\\n' 'sha256:hsa-image' ;;
     *) printf '%s\\n' 'sha256:unknown' ;;
   esac
   exit 0
@@ -203,6 +231,37 @@ describe('production image helper', () => {
       'image inspect registry.example/app-runtime:1.2.3 --format {{.Id}}',
     )
     expect(result.log).not.toContain('registry.example/sqlserver')
+  })
+
+  it('verifies production and test support locks for single-node-demo', () => {
+    const dir = makeTempDir()
+    const lockFile = writeLockFile(dir)
+    const testLockFile = writeTestLockFile(dir)
+    const envFile = writeEnvFile(dir)
+
+    const result = runHelper(dir, [
+      '--topology',
+      'single-node-demo',
+      '--lock-file',
+      lockFile,
+      '--test-lock-file',
+      testLockFile,
+      '--env-file',
+      envFile,
+      'verify',
+    ])
+
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('Verified app-runtime')
+    expect(result.stdout).toContain('Verified keycloak')
+    expect(result.stdout).toContain('Verified kong')
+    expect(result.stdout).toContain('Verified hsa-directory-mock')
+    expect(result.log).toContain(
+      'image inspect registry.example/kong:3.10.0.8-20260210-ubuntu --format {{.Id}}',
+    )
+    expect(result.log).toContain(
+      'image inspect registry.example/hsa-directory-mock:1.2.3 --format {{.Id}}',
+    )
   })
 
   it('fails verification when a local image ID differs from the lock', () => {

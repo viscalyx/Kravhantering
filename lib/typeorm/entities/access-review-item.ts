@@ -9,7 +9,6 @@ export type AccessReviewDecision =
   | 'revoke_required'
 
 export interface AccessReviewItemEntity {
-  canGenerateAi: boolean
   comment: string | null
   createdAt: Date
   decidedAt: Date | null
@@ -78,11 +77,6 @@ export const accessReviewItemEntity = new EntitySchema<AccessReviewItemEntity>({
       length: 64,
       name: 'permission_type',
       type: 'nvarchar',
-    },
-    canGenerateAi: {
-      default: false,
-      name: 'can_generate_ai',
-      type: 'bit',
     },
     decision: {
       default: 'pending',

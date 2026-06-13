@@ -3,7 +3,7 @@ import type { ZodType } from 'zod'
 import { createAdminPrivilegedAuditContext } from '@/lib/admin/privileged-audit'
 import { recordDeniedActionAuditEvent } from '@/lib/audit/action-audit'
 import { CsrfError } from '@/lib/auth/csrf'
-import { getRequestSqlServerDataSource } from '@/lib/db'
+import { getRequestSqlServerDataSource, type SqlServerDatabase } from '@/lib/db'
 import {
   getErrorMessage,
   logSanitizedError,
@@ -56,6 +56,7 @@ export type MutationPolicy<TBody, TParams> =
 export interface SecureMutationHandlerArgs<TBody, TParams> {
   body: TBody
   context: RequestContext
+  db?: SqlServerDatabase
   params: TParams
   request: Request
 }
@@ -158,7 +159,8 @@ async function authorizeMutation<TBody, TParams>(
       typeof policy.action === 'function'
         ? await policy.action(args)
         : policy.action
-    await createDefaultAuthorizationService().assertAuthorized(
+    args.db ??= await getRequestSqlServerDataSource()
+    await createDefaultAuthorizationService(args.db).assertAuthorized(
       action,
       args.context,
     )
@@ -172,6 +174,7 @@ async function recordAuthorizationDeniedForPolicy<TBody, TParams>(
   policy: MutationPolicy<TBody, TParams>,
   context: RequestContext,
   error: unknown,
+  db?: SqlServerDatabase,
 ): Promise<void> {
   if (
     !isRequirementsServiceError(error) ||
@@ -184,8 +187,8 @@ async function recordAuthorizationDeniedForPolicy<TBody, TParams>(
     typeof error.details?.reason === 'string'
       ? error.details.reason
       : error.code
-  const db = await getRequestSqlServerDataSource()
-  await recordDeniedActionAuditEvent(db, context, {
+  const auditDb = db ?? (await getRequestSqlServerDataSource())
+  await recordDeniedActionAuditEvent(auditDb, context, {
     action:
       policy.kind === 'admin'
         ? 'admin.authorization.denied'
@@ -207,7 +210,7 @@ async function recordPolicyAuthorizationDenied<TBody, TParams>(
   args: SecureMutationHandlerArgs<TBody, TParams>,
   error: unknown,
 ): Promise<void> {
-  await recordAuthorizationDeniedForPolicy(policy, args.context, error)
+  await recordAuthorizationDeniedForPolicy(policy, args.context, error, args.db)
 }
 
 export function secureMutationRoute<TBody = undefined, TParams = undefined>(

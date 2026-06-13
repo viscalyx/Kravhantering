@@ -1,5 +1,5 @@
 /**
- * HSA-ID format validator.
+ * HSA-id format validator.
  *
  * HSA-id format:
  *   <country-code><organisation-number>-<suffix>
@@ -19,15 +19,42 @@
 
 /** Maximum length of an HSA-id (inclusive). */
 export const HSA_ID_MAX_LENGTH = 31
+export const HSA_ID_PREFIX_LENGTH = 12
 
 // Anchored regex with the unicode flag so `[A-Za-z]` cannot match `å/ä/ö`.
 const HSA_ID_PATTERN = /^[A-Z]{2}\d{10}-[A-Za-z0-9]+$/u
+const HSA_ID_PREFIX_PATTERN = /^[A-Z]{2}\d{10}$/u
+const HSA_ID_SUFFIX_PATTERN = /^[A-Za-z0-9]+$/u
 
 /** True when `value` is a syntactically valid HSA-id. */
 export function isHsaId(value: unknown): value is string {
   if (typeof value !== 'string') return false
   if (value.length > HSA_ID_MAX_LENGTH) return false
   return HSA_ID_PATTERN.test(value)
+}
+
+export function isHsaIdPrefix(value: unknown): value is string {
+  return typeof value === 'string' && HSA_ID_PREFIX_PATTERN.test(value)
+}
+
+export function isHsaIdSuffix(value: unknown): value is string {
+  return typeof value === 'string' && HSA_ID_SUFFIX_PATTERN.test(value)
+}
+
+export function splitHsaId(value: string): { prefix: string; suffix: string } {
+  const separatorIndex = value.indexOf('-')
+  if (separatorIndex < 0) {
+    return { prefix: '', suffix: value }
+  }
+
+  return {
+    prefix: value.slice(0, separatorIndex),
+    suffix: value.slice(separatorIndex + 1),
+  }
+}
+
+export function composeHsaId(prefix: string, suffix: string): string {
+  return prefix && suffix ? `${prefix}-${suffix}` : ''
 }
 
 /**

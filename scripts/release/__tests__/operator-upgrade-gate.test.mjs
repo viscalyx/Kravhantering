@@ -26,7 +26,7 @@ const operatorNotesPrBody = noActionPrBody
   )
   .replace(
     '<!-- DO NOT REMOVE: operator-upgrade:notes start -->\n',
-    '<!-- DO NOT REMOVE: operator-upgrade:notes start -->\nAdded owner HSA-ID pre-upgrade note.\n',
+    '<!-- DO NOT REMOVE: operator-upgrade:notes start -->\nAdded owner HSA-id pre-upgrade note.\n',
   )
 
 const placeholderPrBody = noActionPrBody
@@ -53,7 +53,7 @@ describe('Operator Upgrade gate', () => {
     ).toBe('unchecked')
     expect(checkboxState(noActionPrBody, 'unknown')).toBe('missing')
     expect(extractOperatorUpgradeNotes(operatorNotesPrBody)).toContain(
-      'Added owner HSA-ID pre-upgrade note.',
+      'Added owner HSA-id pre-upgrade note.',
     )
     expect(extractOperatorUpgradeNotes(noActionPrBody)).toBe('')
     expect(extractOperatorUpgradeNotes(placeholderPrBody)).toBe(
@@ -127,7 +127,7 @@ describe('Operator Upgrade gate', () => {
 
     expect(notesResult.passed).toBe(true)
     expect(notesResult.noNotesCheckbox.state).toBe('checked')
-    expect(notesResult.notes).toContain('Added owner HSA-ID pre-upgrade note.')
+    expect(notesResult.notes).toContain('Added owner HSA-id pre-upgrade note.')
 
     const placeholderResult = evaluateOperatorUpgradeGate({
       prBody: placeholderPrBody.replace(

@@ -5,6 +5,8 @@ import {
 } from '@/lib/privacy/data-subject-export'
 import { PRIVACY_ERASURE_GROUP_POLICIES } from '@/lib/privacy/erasure'
 
+// cspell:ignore retentionorphan RetentionOrphan
+
 const TARGET_HSA_ID = 'SE5560000001-kalle1'
 const OTHER_HSA_ID = 'SE5560000001-kalle2'
 
@@ -39,14 +41,14 @@ function generatedBy() {
 }
 
 describe('data-subject export service', () => {
-  it('uses the same HSA-ID backed source keys as privacy erasure', () => {
+  it('uses the same HSA-id backed source keys as privacy erasure', () => {
     expect(new Set(DATA_SUBJECT_EXPORT_SOURCE_KEYS)).toEqual(
       new Set(PRIVACY_ERASURE_GROUP_POLICIES.map(policy => policy.key)),
     )
     expect(Object.isFrozen(PRIVACY_ERASURE_GROUP_POLICIES)).toBe(true)
   })
 
-  it('collects requirement-area owner HSA-ID data and self-session claims', async () => {
+  it('collects requirement-area owner HSA-id data and self-session claims', async () => {
     const { db } = createExportDb({
       'requirement_areas.owner': [
         {
@@ -96,7 +98,51 @@ describe('data-subject export service', () => {
     )
   })
 
-  it('matches by exact HSA-ID and does not export duplicate display-name rows', async () => {
+  it('exports unassigned local responsibility person identity data', async () => {
+    const { db } = createExportDb({
+      'requirement_responsibility_people.identity': [
+        {
+          email: 'rolf.retentionorphan@example.test',
+          givenName: 'Rolf',
+          hsaId: TARGET_HSA_ID,
+          lastFetchedAt: new Date('2023-01-15T09:00:00Z'),
+          middleName: null,
+          surname: 'RetentionOrphan',
+          updatedAt: new Date('2023-01-15T09:00:00Z'),
+        },
+      ],
+    })
+
+    const result = await collectDataSubjectExport(db, {
+      generatedBy: generatedBy(),
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(result.sources).toEqual([
+      expect.objectContaining({
+        key: 'requirement_responsibility_people.identity',
+        relationToSubject: 'requirement_responsibility_person',
+      }),
+    ])
+    expect(result.sources[0].items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldName: 'hsa_id',
+          value: TARGET_HSA_ID,
+        }),
+        expect.objectContaining({
+          fieldName: 'given_name',
+          value: 'Rolf',
+        }),
+        expect.objectContaining({
+          fieldName: 'email',
+          value: 'rolf.retentionorphan@example.test',
+        }),
+      ]),
+    )
+  })
+
+  it('matches by exact HSA-id and does not export duplicate display-name rows', async () => {
     const { db, query } = createExportDb({
       'improvement_suggestions.resolved_by': [
         {
@@ -200,14 +246,13 @@ describe('data-subject export service', () => {
       'access_review_items.principal': [
         {
           actorTimestamp: new Date('2026-05-04T10:00:00Z'),
-          canGenerateAi: true,
           decision: 'approved',
           displayName: 'Kalle Svensson',
           hsaId: TARGET_HSA_ID,
           itemKey: '42:7',
           permissionType: 'area_co_author',
           scopeKey: '1',
-          scopeLabel: 'AI på',
+          scopeLabel: 'INT Integration',
           scopeType: 'requirement_area',
           sourceKey: 'requirement_area_co_authors.hsa_id',
         },

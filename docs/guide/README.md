@@ -1,7 +1,7 @@
 <!-- AUTO-GENERERAD — redigera inte manuellt. Kör: npm run generate:guide -->
 # Kravhantering — Användarguide
 
-> Guiden genererades automatiskt av Playwright 2026-06-06.
+> Guiden genererades automatiskt av Playwright 2026-06-12.
 > Alla skärmdumpar visar det svenska gränssnittet.
 
 ## Innehållsförteckning
@@ -238,9 +238,10 @@ Filtrera kravunderlag genom att skriva i sökrutan. Listan uppdateras i realtid.
 
 ### Skapa nytt kravunderlag
 
-Klicka på **"Nytt kravunderlag"** för att skapa ett nytt kravunderlag. Ange ett
-namn — ett unikt ID (slug) genereras automatiskt. Kravunderlag används för att
-samla krav som hör till ett specifikt projekt eller leverans.
+Klicka på **"Nytt kravunderlag"** för att öppna dialogrutan för nytt
+kravunderlag. Ange ett namn — ett unikt ID (slug) genereras automatiskt.
+Kravunderlag används för att samla krav som hör till ett specifikt projekt eller
+leverans.
 
 ![Skapa nytt kravunderlag](images/023-skapa-kravunderlag.png)
 
@@ -281,7 +282,7 @@ referenser i tabellen.
 
 ### Redigera kravunderlag
 
-Redigeringspanelen låter dig uppdatera underlagets namn, verksamhetsreferens,
+I dialogrutan kan du uppdatera underlagets namn, underlagssyfte,
 kravunderlagets livscykelstatus, genomförandeform och styrningsobjektstyp.
 Klicka på "Spara" för att tillämpa ändringarna.
 

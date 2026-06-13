@@ -42,6 +42,8 @@ export interface ListRequirementsOptions {
   locale?: 'en' | 'sv'
   normReferenceIds?: number[]
   offset?: number
+  publishedOnly?: boolean
+  publishedOrAreaIds?: number[]
   qualityCharacteristicIds?: number[]
   requirementIds?: number[]
   requirementPackageIds?: number[]

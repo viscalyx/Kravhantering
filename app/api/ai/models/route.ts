@@ -18,9 +18,13 @@ import {
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { checkInMemoryThrottle } from '@/lib/observability/throttle'
 import {
+  createDefaultAuthorizationService,
   createRequestContext,
   type RequestContext,
+  type RequirementsAction,
 } from '@/lib/requirements/auth'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { recordAuthorizationDenied } from '@/lib/requirements/security-audit'
 
 // ---------------------------------------------------------------------------
 // In-memory cache (24 h TTL, keyed by supported_parameters)
@@ -43,9 +47,15 @@ const modelCache = new Map<string, ModelCacheEntry>()
 const modelsQuerySchema = z
   .object({
     refresh: z.literal('1').optional(),
+    scopeId: z.coerce.number().int().positive().optional(),
+    scopeType: z.enum(['requirement_area', 'specification']).optional(),
     supported_parameters: z.string().trim().max(10_000).optional(),
   })
   .strict()
+  .refine(query => (query.scopeId == null) === (query.scopeType == null), {
+    message: 'scopeType and scopeId must be provided together',
+    path: ['scopeId'],
+  })
 
 const supportedParametersSchema = z
   .array(boundedDbStringSchema)
@@ -162,6 +172,24 @@ export async function GET(request: NextRequest) {
   )
   if (!parsedQuery.ok) {
     return parsedQuery.response
+  }
+  const authorizationAction: RequirementsAction = {
+    kind: 'generate_requirements',
+    scopeId: parsedQuery.data.scopeId,
+    scopeType: parsedQuery.data.scopeType,
+  }
+  try {
+    await createDefaultAuthorizationService().assertAuthorized(
+      authorizationAction,
+      context,
+    )
+  } catch (error) {
+    await recordAuthorizationDenied(context, authorizationAction, error)
+    const { body, status } = toHttpErrorPayload(error)
+    return applyResponseCorrelationHeaders(
+      NextResponse.json(body, { status }),
+      context,
+    )
   }
   const refresh = parsedQuery.data.refresh === '1'
   const extraParams = parsedQuery.data.supported_parameters

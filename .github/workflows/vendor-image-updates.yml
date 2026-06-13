@@ -13,6 +13,7 @@ on:
           - nginx
           - sqlserver
           - keycloak
+          - kong
       include-current:
         description: Refresh the saved manifest digest and image ID for the tag already in use, even when no newer tag exists
         required: false

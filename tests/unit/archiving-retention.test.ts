@@ -6,7 +6,7 @@ import {
   previewArchivingRetention,
 } from '@/lib/archiving/retention'
 
-// cspell:ignore retentionorphan
+// cspell:ignore retentionfresh retentionlinked retentionorphan
 
 const POLICY_ROW = {
   action: 'delete',
@@ -66,6 +66,7 @@ const BASE_SOURCE_CANDIDATES: Record<string, Array<Record<string, unknown>>> = {
   ],
   'requirement_selection_answers.archived': [],
   'requirement_selection_questions.archived': [],
+  'requirement_responsibility_people.orphaned': [],
 }
 
 function createRetentionDb(options?: {
@@ -132,6 +133,7 @@ function createRetentionDb(options?: {
       }
       if (
         sql.includes('DELETE area') ||
+        sql.includes('DELETE person') ||
         sql.includes('DECLARE @requirement_id int') ||
         sql.includes('DECLARE @question_id int') ||
         sql.includes('DECLARE @answer_id int') ||
@@ -357,6 +359,70 @@ describe('archiving retention service', () => {
     ).toBe(true)
   })
 
+  it('previews and deletes old unassigned responsibility people by HSA-id', async () => {
+    const { db, query } = createRetentionDb({
+      policy: {
+        action: 'delete',
+        ageDays: 730,
+        id: 7,
+        policyKey: 'orphaned_responsibility_people_delete',
+      },
+      sourceCandidates: {
+        'requirement_responsibility_people.orphaned': [
+          {
+            age_basis: new Date('2023-01-15T09:00:00.000Z'),
+            current_display_value: 'Rolf RetentionOrphan',
+            reference: 'Rolf RetentionOrphan',
+            source_key: 'requirement_responsibility_people.orphaned',
+            subject_id: 'SE5560000001-retentionorphan',
+            subject_table: 'requirement_responsibility_people',
+          },
+        ],
+      },
+    })
+    const preview = await previewArchivingRetention(db as never, {
+      now: new Date('2026-05-14T00:00:00.000Z'),
+      policyId: 7,
+    })
+
+    expect(preview.candidates[0]).toEqual(
+      expect.objectContaining({
+        fieldKey: 'identity',
+        key: 'requirement_responsibility_people.orphaned:SE5560000001-retentionorphan',
+        objectKey: 'requirementResponsibilityPeople',
+        requiresExport: false,
+      }),
+    )
+
+    await executeArchivingRetention(
+      db as never,
+      { policyId: 7, previewToken: preview.previewToken },
+      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE5560000001-privacy1' },
+    )
+    const deletePersonCall = query.mock.calls.find(([sql]) =>
+      String(sql).includes('DELETE person'),
+    )
+    expect(deletePersonCall?.[1]).toEqual(['SE5560000001-retentionorphan'])
+    expect(String(deletePersonCall?.[0])).toContain(
+      'FROM requirement_areas area WHERE area.owner_hsa_id = person.hsa_id',
+    )
+    expect(String(deletePersonCall?.[0])).toContain(
+      'FROM requirement_area_co_authors co_author WHERE co_author.hsa_id = person.hsa_id',
+    )
+    expect(String(deletePersonCall?.[0])).toContain(
+      'WHERE specification_record.responsible_hsa_id = person.hsa_id',
+    )
+    expect(String(deletePersonCall?.[0])).toContain(
+      'FROM specification_co_authors co_author WHERE co_author.hsa_id = person.hsa_id',
+    )
+    expect(String(deletePersonCall?.[0])).toContain(
+      'WHERE requirement_package.lead_hsa_id = person.hsa_id',
+    )
+    expect(String(deletePersonCall?.[0])).toContain(
+      'FROM requirement_package_co_authors co_author WHERE co_author.hsa_id = person.hsa_id',
+    )
+  })
+
   it('previews every active retention source group with expected export requirements', async () => {
     const sourceCandidates = {
       'norm_references.unused': [
@@ -453,6 +519,16 @@ describe('archiving retention service', () => {
           source_key: 'requirement_selection_answers.archived',
           subject_id: '910414',
           subject_table: 'requirement_selection_answers',
+        },
+      ],
+      'requirement_responsibility_people.orphaned': [
+        {
+          age_basis: new Date('2023-01-15T09:00:00.000Z'),
+          current_display_value: 'Rolf RetentionOrphan',
+          reference: 'Rolf RetentionOrphan',
+          source_key: 'requirement_responsibility_people.orphaned',
+          subject_id: 'SE5560000001-retentionorphan',
+          subject_table: 'requirement_responsibility_people',
         },
       ],
     }
@@ -561,6 +637,32 @@ describe('archiving retention service', () => {
         ...selectionPreview.candidates,
       ].every(candidate => !candidate.requiresExport),
     ).toBe(true)
+
+    const responsibilityPeoplePreview = await previewArchivingRetention(
+      createRetentionDb({
+        exceptionCount: 0,
+        policy: {
+          ageDays: 730,
+          id: 7,
+          policyKey: 'orphaned_responsibility_people_delete',
+        },
+        sourceCandidates,
+      }).db as never,
+      { now: new Date('2026-05-14T00:00:00.000Z'), policyId: 7 },
+    )
+    expect(responsibilityPeoplePreview.summary).toMatchObject({
+      archiveCount: 0,
+      candidateCount: 1,
+      deleteCount: 1,
+    })
+    expect(responsibilityPeoplePreview.candidates[0]).toEqual(
+      expect.objectContaining({
+        currentDisplayValue: 'Rolf RetentionOrphan',
+        requiresExport: false,
+        sourceKey: 'requirement_responsibility_people.orphaned',
+        subjectId: 'SE5560000001-retentionorphan',
+      }),
+    )
   })
 
   it('deletes old requirement versions through the guarded multi-step SQL', async () => {

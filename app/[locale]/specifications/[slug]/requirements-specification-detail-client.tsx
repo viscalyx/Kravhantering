@@ -25,10 +25,8 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requirement-detail-client'
-import SpecificationEditPanel, {
-  SPECIFICATION_EDIT_FORM_ID,
-} from '@/app/[locale]/specifications/[slug]/specification-edit-panel'
 import SpecificationRequirementSelectionPanel from '@/app/[locale]/specifications/[slug]/specification-requirement-selection-panel'
+import SpecificationFormModal from '@/app/[locale]/specifications/specification-form-modal'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
@@ -371,7 +369,7 @@ export default function KravunderlagDetailClient({
   const specResource = useAsyncResource<SpecificationMeta | null>({
     fetcher: async signal => {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}`,
+        `/api/requirements-specifications/${specificationSlug}`,
         {
           signal,
         },
@@ -392,7 +390,7 @@ export default function KravunderlagDetailClient({
   const specificationItemsResource = useAsyncResource<SpecificationListItem[]>({
     fetcher: async signal => {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/items`,
+        `/api/requirements-specifications/${specificationSlug}/items`,
         { signal },
       )
       const data = await readJsonOrThrow<{ items?: SpecificationListItem[] }>(
@@ -414,7 +412,7 @@ export default function KravunderlagDetailClient({
     useAsyncResource<AvailableRequirementsData>({
       fetcher: async signal => {
         const response = await apiFetch(
-          `/api/specifications/${specificationSlug}/available-requirements?${availableRequirementsParams}`,
+          `/api/requirements-specifications/${specificationSlug}/available-requirements?${availableRequirementsParams}`,
           { signal },
         )
         const data = await readJsonOrThrow<{
@@ -442,7 +440,7 @@ export default function KravunderlagDetailClient({
   >({
     fetcher: async signal => {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/needs-references`,
+        `/api/requirements-specifications/${specificationSlug}/needs-references`,
         { signal },
       )
       const data = await readJsonOrThrow<{
@@ -724,7 +722,7 @@ export default function KravunderlagDetailClient({
         pagination?: { hasMore?: boolean }
       }>(
         await apiFetch(
-          `/api/specifications/${specificationSlug}/available-requirements?${params}`,
+          `/api/requirements-specifications/${specificationSlug}/available-requirements?${params}`,
         ),
         t('loadAvailableRequirementsFailed'),
       )
@@ -825,7 +823,7 @@ export default function KravunderlagDetailClient({
         body.needsReferenceDescription = addNeedsRefDescription.trim() || null
       }
       const res = await apiFetch(
-        `/api/specifications/${specificationSlug}/items`,
+        `/api/requirements-specifications/${specificationSlug}/items`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -868,7 +866,7 @@ export default function KravunderlagDetailClient({
   const handleCreateLocalRequirement = useCallback(
     async (payload: SpecificationLocalRequirementSubmitPayload) => {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/local-requirements`,
+        `/api/requirements-specifications/${specificationSlug}/local-requirements`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -895,7 +893,7 @@ export default function KravunderlagDetailClient({
     setNeedsReferenceError(null)
     try {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/needs-references`,
+        `/api/requirements-specifications/${specificationSlug}/needs-references`,
         {
           method: needsReferenceForm.id == null ? 'POST' : 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -954,7 +952,7 @@ export default function KravunderlagDetailClient({
       if (!confirmed) return
 
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/needs-references`,
+        `/api/requirements-specifications/${specificationSlug}/needs-references`,
         {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
@@ -1006,7 +1004,7 @@ export default function KravunderlagDetailClient({
 
       try {
         const response = await apiFetch(
-          `/api/specifications/${specificationSlug}/items/${encodeURIComponent(
+          `/api/requirements-specifications/${specificationSlug}/items/${encodeURIComponent(
             itemRef,
           )}`,
           {
@@ -1045,7 +1043,7 @@ export default function KravunderlagDetailClient({
 
     try {
       const response = await apiFetch(
-        `/api/specifications/${specificationSlug}/items`,
+        `/api/requirements-specifications/${specificationSlug}/items`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -1102,7 +1100,7 @@ export default function KravunderlagDetailClient({
 
       try {
         const res = await apiFetch(
-          `/api/specifications/${spec.id}/items/${encodeURIComponent(itemRef)}`,
+          `/api/requirements-specifications/${spec.id}/items/${encodeURIComponent(itemRef)}`,
           {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -1181,7 +1179,7 @@ export default function KravunderlagDetailClient({
 
       try {
         const response = await apiFetch(
-          `/api/specifications/${specificationSlug}/items`,
+          `/api/requirements-specifications/${specificationSlug}/items`,
           {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
@@ -1465,6 +1463,16 @@ export default function KravunderlagDetailClient({
   ])
 
   const specName = spec ? spec.name : '…'
+  const permissions = spec?.permissions ?? {
+    canEditContent: false,
+    canManageAssignments: false,
+    canReviewDecisions: false,
+    canUseAi: false,
+  }
+  const canEditContent = permissions.canEditContent === true
+  const canMutateSpecification =
+    permissions.canEditContent === true ||
+    permissions.canManageAssignments === true
 
   const localName = (obj: { nameSv: string; nameEn: string } | null) =>
     obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null
@@ -1897,20 +1905,17 @@ export default function KravunderlagDetailClient({
   const splitPanelHeaderClassName = `sticky ${specificationDetailStickyTopOffsetClassName} z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80`
   const leftPanelActionPillClassName =
     'inline-flex h-11 w-11 items-center justify-center rounded-full border border-primary-600/80 bg-primary-700 text-white shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:border-primary-700 hover:bg-primary-800 hover:shadow-[0_14px_36px_-20px_rgba(67,56,202,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-primary-500/80 dark:bg-primary-600 dark:hover:border-primary-400 dark:hover:bg-primary-700 dark:focus-visible:ring-offset-secondary-950'
-  const specificationDetailPageShellClassName = showEditSpecificationForm
-    ? specificationDetailPagePaddingClassName
-    : `${specificationDetailPagePaddingClassName} xl:flex xl:h-[calc(100dvh-4rem)] xl:flex-col xl:overflow-hidden`
-  const specificationDetailContainerClassName = showEditSpecificationForm
-    ? 'container-custom max-w-none'
-    : 'container-custom max-w-none xl:flex xl:min-h-0 xl:flex-1 xl:flex-col'
-  const specificationDetailSplitPanelClassName = showEditSpecificationForm
-    ? 'grid grid-cols-1 gap-6 items-start xl:grid-cols-2'
-    : 'grid grid-cols-1 gap-6 items-start xl:-mx-8 xl:min-h-0 xl:flex-1 xl:grid-cols-2 xl:grid-rows-[minmax(0,1fr)] xl:items-stretch xl:gap-4 xl:overflow-hidden'
+  const specificationDetailPageShellClassName = `${specificationDetailPagePaddingClassName} xl:flex xl:h-[calc(100dvh-4rem)] xl:flex-col xl:overflow-hidden`
+  const specificationDetailContainerClassName =
+    'container-custom max-w-none xl:flex xl:min-h-0 xl:flex-1 xl:flex-col'
+  const specificationDetailSplitPanelClassName =
+    'grid grid-cols-1 gap-6 items-start xl:-mx-8 xl:min-h-0 xl:flex-1 xl:grid-cols-2 xl:grid-rows-[minmax(0,1fr)] xl:items-stretch xl:gap-4 xl:overflow-hidden'
   const responsibleDisplayName = formatActorDisplayNameForLocale(
     spec.responsibleDisplayName,
     locale,
   )
   const openNeedsReferenceForm = () => {
+    if (!canEditContent) return
     setNeedsReferenceError(null)
     setNeedsReferenceForm({
       description: '',
@@ -2000,6 +2005,14 @@ export default function KravunderlagDetailClient({
               {loadWarning}
             </p>
           ) : null}
+          {!canMutateSpecification ? (
+            <p
+              className="mb-4 rounded-xl border border-secondary-200 bg-secondary-50 px-4 py-3 text-sm text-secondary-700 dark:border-secondary-800 dark:bg-secondary-900/60 dark:text-secondary-200"
+              role="status"
+            >
+              {t('readOnlyNotice')}
+            </p>
+          ) : null}
           {/* Header */}
           <div className="mb-5">
             <div
@@ -2014,25 +2027,25 @@ export default function KravunderlagDetailClient({
                   <h1 className="min-w-0 text-2xl font-bold text-secondary-900 dark:text-secondary-100 xl:text-[2rem] xl:leading-tight">
                     {specName}
                   </h1>
-                  <button
-                    aria-controls={SPECIFICATION_EDIT_FORM_ID}
-                    aria-expanded={showEditSpecificationForm}
-                    aria-label={t('editSpecification')}
-                    className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-white/80 text-secondary-700 shadow-sm transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:bg-secondary-900/70 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                    {...devMarker({
-                      context: 'requirements specification detail',
-                      name: 'detail action',
-                      priority: 350,
-                      value: 'edit specification',
-                    })}
-                    onClick={() =>
-                      setShowEditSpecificationForm(current => !current)
-                    }
-                    title={t('editSpecification')}
-                    type="button"
-                  >
-                    <Pencil aria-hidden="true" className="h-4 w-4" />
-                  </button>
+                  {canMutateSpecification ? (
+                    <button
+                      aria-expanded={showEditSpecificationForm}
+                      aria-haspopup="dialog"
+                      aria-label={t('editSpecification')}
+                      className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-white/80 text-secondary-700 shadow-sm transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:bg-secondary-900/70 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                      {...devMarker({
+                        context: 'requirements specification detail',
+                        name: 'detail action',
+                        priority: 350,
+                        value: 'edit specification',
+                      })}
+                      onClick={() => setShowEditSpecificationForm(true)}
+                      title={t('editSpecification')}
+                      type="button"
+                    >
+                      <Pencil aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                  ) : null}
                 </div>
                 {spec.businessNeedsReference && (
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary-700 dark:text-secondary-200">
@@ -2091,31 +2104,6 @@ export default function KravunderlagDetailClient({
                 )}
               </dl>
             </div>
-            <AnimatePresence initial={false}>
-              {showEditSpecificationForm ? (
-                <SpecificationEditPanel
-                  className="mt-4"
-                  governanceObjectTypes={specificationGovernanceObjectTypes}
-                  implementationTypes={specificationImplementationTypes}
-                  key="specification-edit-panel"
-                  lifecycleStatuses={specificationLifecycleStatuses}
-                  onCancel={() => setShowEditSpecificationForm(false)}
-                  onSaved={async result => {
-                    setShowEditSpecificationForm(false)
-                    if (
-                      result.newUniqueId &&
-                      result.newUniqueId !== specificationSlug
-                    ) {
-                      router.replace(`/specifications/${result.newUniqueId}`)
-                    } else {
-                      await fetchSpecificationMeta()
-                    }
-                  }}
-                  spec={spec}
-                  specificationSlug={specificationSlug}
-                />
-              ) : null}
-            </AnimatePresence>
           </div>
 
           {/* Split panel */}
@@ -2132,22 +2120,26 @@ export default function KravunderlagDetailClient({
                 >
                   <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
-                    <button
-                      aria-label={t('newNeedsReference')}
-                      className={leftPanelActionPillClassName}
-                      {...devMarker({
-                        context: 'requirements specification detail',
-                        name: 'table action',
-                        priority: 350,
-                        value: 'create needs reference',
-                      })}
-                      onClick={openNeedsReferenceForm}
-                      title={t('newNeedsReference')}
-                      type="button"
-                    >
-                      <Plus aria-hidden="true" className="h-4 w-4" />
-                      <span className="sr-only">{t('newNeedsReference')}</span>
-                    </button>
+                    {canEditContent ? (
+                      <button
+                        aria-label={t('newNeedsReference')}
+                        className={leftPanelActionPillClassName}
+                        {...devMarker({
+                          context: 'requirements specification detail',
+                          name: 'table action',
+                          priority: 350,
+                          value: 'create needs reference',
+                        })}
+                        onClick={openNeedsReferenceForm}
+                        title={t('newNeedsReference')}
+                        type="button"
+                      >
+                        <Plus aria-hidden="true" className="h-4 w-4" />
+                        <span className="sr-only">
+                          {t('newNeedsReference')}
+                        </span>
+                      </button>
+                    ) : null}
                   </div>
                   {needsReferenceError ? (
                     <p
@@ -2240,46 +2232,53 @@ export default function KravunderlagDetailClient({
                                   </td>
                                   <td className="px-3 py-2">
                                     <div className="flex justify-end gap-2">
-                                      <button
-                                        aria-label={t('editNeedsReference')}
-                                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-secondary-200 text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                                        onClick={() => {
-                                          setNeedsReferenceError(null)
-                                          setNeedsReferenceForm({
-                                            description: ref.description ?? '',
-                                            id: ref.id,
-                                            text: ref.text,
-                                          })
-                                        }}
-                                        type="button"
-                                      >
-                                        <Pencil
-                                          aria-hidden="true"
-                                          className="h-4 w-4"
-                                        />
-                                      </button>
-                                      <button
-                                        aria-label={t('deleteNeedsReference')}
-                                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-red-200 text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/20"
-                                        disabled={linkedCount > 0}
-                                        onClick={event =>
-                                          void handleDeleteNeedsReference(
-                                            ref,
-                                            event.currentTarget as HTMLElement,
-                                          )
-                                        }
-                                        title={
-                                          linkedCount > 0
-                                            ? t('deleteNeedsReferenceDisabled')
-                                            : t('deleteNeedsReference')
-                                        }
-                                        type="button"
-                                      >
-                                        <Trash2
-                                          aria-hidden="true"
-                                          className="h-4 w-4"
-                                        />
-                                      </button>
+                                      {canEditContent ? (
+                                        <button
+                                          aria-label={t('editNeedsReference')}
+                                          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-secondary-200 text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                                          onClick={() => {
+                                            setNeedsReferenceError(null)
+                                            setNeedsReferenceForm({
+                                              description:
+                                                ref.description ?? '',
+                                              id: ref.id,
+                                              text: ref.text,
+                                            })
+                                          }}
+                                          type="button"
+                                        >
+                                          <Pencil
+                                            aria-hidden="true"
+                                            className="h-4 w-4"
+                                          />
+                                        </button>
+                                      ) : null}
+                                      {canEditContent ? (
+                                        <button
+                                          aria-label={t('deleteNeedsReference')}
+                                          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-red-200 text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/20"
+                                          disabled={linkedCount > 0}
+                                          onClick={event =>
+                                            void handleDeleteNeedsReference(
+                                              ref,
+                                              event.currentTarget as HTMLElement,
+                                            )
+                                          }
+                                          title={
+                                            linkedCount > 0
+                                              ? t(
+                                                  'deleteNeedsReferenceDisabled',
+                                                )
+                                              : t('deleteNeedsReference')
+                                          }
+                                          type="button"
+                                        >
+                                          <Trash2
+                                            aria-hidden="true"
+                                            className="h-4 w-4"
+                                          />
+                                        </button>
+                                      ) : null}
                                     </div>
                                   </td>
                                 </tr>
@@ -2376,26 +2375,28 @@ export default function KravunderlagDetailClient({
                 >
                   <div className={splitPanelHeaderClassName}>
                     {renderLeftPanelTabs()}
-                    <button
-                      aria-label={t('newLocalRequirement')}
-                      className={leftPanelActionPillClassName}
-                      {...devMarker({
-                        context: 'requirements specification detail',
-                        name: 'table action',
-                        priority: 350,
-                        value: 'create local requirement',
-                      })}
-                      onClick={() =>
-                        void handleOpenCreateLocalRequirementModal()
-                      }
-                      title={t('newLocalRequirement')}
-                      type="button"
-                    >
-                      <Plus aria-hidden="true" className="h-4 w-4" />
-                      <span className="sr-only">
-                        {t('newLocalRequirement')}
-                      </span>
-                    </button>
+                    {canEditContent ? (
+                      <button
+                        aria-label={t('newLocalRequirement')}
+                        className={leftPanelActionPillClassName}
+                        {...devMarker({
+                          context: 'requirements specification detail',
+                          name: 'table action',
+                          priority: 350,
+                          value: 'create local requirement',
+                        })}
+                        onClick={() =>
+                          void handleOpenCreateLocalRequirementModal()
+                        }
+                        title={t('newLocalRequirement')}
+                        type="button"
+                      >
+                        <Plus aria-hidden="true" className="h-4 w-4" />
+                        <span className="sr-only">
+                          {t('newLocalRequirement')}
+                        </span>
+                      </button>
+                    ) : null}
                   </div>
                   <div className="p-8 text-center text-sm text-secondary-500 dark:text-secondary-400">
                     {t('noItems')}
@@ -2413,18 +2414,24 @@ export default function KravunderlagDetailClient({
                     filterValues={leftFilters}
                     floatingActionRailPlacement="inline-top"
                     floatingActions={[
-                      {
-                        ariaLabel: t('newLocalRequirement'),
-                        developerModeContext:
-                          'requirements specification detail',
-                        developerModeValue: 'create local requirement',
-                        icon: <Plus aria-hidden="true" className="h-4 w-4" />,
-                        id: 'create-local',
-                        onClick: () =>
-                          void handleOpenCreateLocalRequirementModal(),
-                        position: 'beforeColumns',
-                        variant: 'primary' as const,
-                      },
+                      ...(canEditContent
+                        ? [
+                            {
+                              ariaLabel: t('newLocalRequirement'),
+                              developerModeContext:
+                                'requirements specification detail',
+                              developerModeValue: 'create local requirement',
+                              icon: (
+                                <Plus aria-hidden="true" className="h-4 w-4" />
+                              ),
+                              id: 'create-local',
+                              onClick: () =>
+                                void handleOpenCreateLocalRequirementModal(),
+                              position: 'beforeColumns' as const,
+                              variant: 'primary' as const,
+                            },
+                          ]
+                        : []),
                       {
                         ariaLabel: tc('print'),
                         icon: (
@@ -2460,14 +2467,20 @@ export default function KravunderlagDetailClient({
                     needsReferenceOptions={availableNeedsRefs}
                     normReferences={leftNormReferenceOptions}
                     onFilterChange={setLeftFilters}
-                    onNeedsReferenceChange={handleNeedsReferenceAssignment}
+                    onNeedsReferenceChange={
+                      canEditContent
+                        ? handleNeedsReferenceAssignment
+                        : undefined
+                    }
                     onRowClick={id =>
                       setLeftExpandedId(prev => (prev === id ? null : id))
                     }
                     onSelectionChange={setLeftSelectedIds}
                     onSortChange={setLeftSort}
                     onSpecificationItemStatusChange={
-                      handleSpecificationItemStatusChange
+                      canEditContent
+                        ? handleSpecificationItemStatusChange
+                        : undefined
                     }
                     onVisibleColumnsChange={setLeftVisibleCols}
                     renderExpanded={id => {
@@ -2515,7 +2528,7 @@ export default function KravunderlagDetailClient({
                     specificationItemStatuses={specificationItemStatuses}
                     stickyTitle={renderLeftPanelTabs()}
                     stickyTitleActions={
-                      leftSelectedIds.size > 0 ? (
+                      leftSelectedIds.size > 0 && canEditContent ? (
                         <>
                           <div className="flex flex-wrap items-start gap-2">
                             <div className="flex min-w-0 flex-col gap-1">
@@ -2707,7 +2720,7 @@ export default function KravunderlagDetailClient({
                               }
                             />
                           )}
-                          {rightSelectedIds.size > 0 ? (
+                          {rightSelectedIds.size > 0 && canEditContent ? (
                             <button
                               className="btn-primary inline-flex items-center gap-1.5"
                               onClick={handleOpenAddModal}
@@ -2749,6 +2762,36 @@ export default function KravunderlagDetailClient({
           </div>
         </div>
       </div>
+      <SpecificationFormModal
+        developerModeContext="requirements specification detail"
+        governanceObjectTypes={specificationGovernanceObjectTypes}
+        implementationTypes={specificationImplementationTypes}
+        lifecycleStatuses={specificationLifecycleStatuses}
+        mode="edit"
+        onClose={() => setShowEditSpecificationForm(false)}
+        onResponsibleChanged={updatedSpec => {
+          setSpec(current =>
+            current
+              ? {
+                  ...current,
+                  responsibleDisplayName: updatedSpec.responsibleDisplayName,
+                  responsibleHsaId: updatedSpec.responsibleHsaId,
+                }
+              : current,
+          )
+        }}
+        onSaved={async result => {
+          setShowEditSpecificationForm(false)
+          if (result.newUniqueId && result.newUniqueId !== specificationSlug) {
+            router.replace(`/specifications/${result.newUniqueId}`)
+          } else {
+            await fetchSpecificationMeta()
+          }
+        }}
+        open={showEditSpecificationForm}
+        spec={spec}
+        specificationSlug={specificationSlug}
+      />
       {addModal}
       {createLocalRequirementModal}
       {needsReferenceFormModal}

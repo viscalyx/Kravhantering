@@ -25,6 +25,12 @@ function keyForPrivacySql(sql: string): string | null {
   if (sql.includes('FROM requirement_areas WHERE owner_hsa_id')) {
     return 'requirement_areas.owner'
   }
+  if (
+    sql.includes('FROM requirement_areas area') &&
+    sql.includes('area.owner_hsa_id = @0')
+  ) {
+    return 'requirement_areas.owner'
+  }
   if (sql.includes('FROM requirement_packages pkg')) {
     return 'requirement_packages.owner'
   }
@@ -116,7 +122,7 @@ function createTransactionalDb(query: ReturnType<typeof vi.fn>) {
 }
 
 describe('privacy erasure service', () => {
-  it('rejects blank target HSA-ID values', async () => {
+  it('rejects blank target HSA-id values', async () => {
     const { db } = createPrivacyDb({})
 
     await expect(
@@ -129,7 +135,7 @@ describe('privacy erasure service', () => {
     })
   })
 
-  it('matches duplicate display names by exact HSA-ID only', async () => {
+  it('matches duplicate display names by exact HSA-id only', async () => {
     const { db, query } = createPrivacyDb({
       'requirement_areas.owner': {
         affectedValues: ['SEC Säkerhet'],
@@ -190,7 +196,7 @@ describe('privacy erasure service', () => {
     ])
   })
 
-  it('finds the second duplicate-name improvement decision only by HSA-ID', async () => {
+  it('finds the second duplicate-name improvement decision only by HSA-id', async () => {
     const { db, query } = createPrivacyDb({
       'improvement_suggestions.resolved_by': {
         affectedValues: ['INT0001 v1 / suggestion 990001'],
@@ -294,7 +300,7 @@ describe('privacy erasure service', () => {
   })
 
   it('allows only skip for a requirement package lead when no replacement exists', async () => {
-    const { db } = createPrivacyDb({
+    const { db, query } = createPrivacyDb({
       'requirement_packages.owner': {
         affectedValues: ['SPR Språkstöd'],
         count: 1,
@@ -316,6 +322,22 @@ describe('privacy erasure service', () => {
         recommendedAction: 'skip',
       }),
     ])
+
+    query.mockClear()
+
+    await executePrivacyErasure(createTransactionalDb(query), {
+      actions: { 'requirement_packages.owner': 'skip' },
+      previewToken: preview.previewToken,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(
+      query.mock.calls.some(
+        ([sql, parameters]) =>
+          String(sql).includes('DELETE person') &&
+          parameters?.[0] === TARGET_HSA_ID,
+      ),
+    ).toBe(true)
   })
 
   it('allows package-lead switching when the target is not an owner row', async () => {
@@ -357,17 +379,23 @@ describe('privacy erasure service', () => {
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE requirement_packages'),
+      [TARGET_HSA_ID, replacement.hsaId, expect.any(Date)],
+    )
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('MERGE INTO requirement_responsibility_people'),
       [
-        TARGET_HSA_ID,
         replacement.hsaId,
         replacement.displayName,
+        null,
+        null,
+        null,
         expect.any(Date),
       ],
     )
     expect(result.actions.switch).toBe(1)
   })
 
-  it('switches requirement area owner HSA-ID directly', async () => {
+  it('switches requirement area owner HSA-id directly', async () => {
     const { db, query } = createPrivacyDb({
       'requirement_areas.owner': {
         affectedValues: ['SEC Säkerhet'],
@@ -403,7 +431,7 @@ describe('privacy erasure service', () => {
     ).toBe(false)
   })
 
-  it('uses the no-user sentinel and clears HSA-ID when no replacement exists', async () => {
+  it('uses the no-user sentinel and clears HSA-id when no replacement exists', async () => {
     const { db, query } = createPrivacyDb({
       'requirement_versions.created_by': {
         count: 1,

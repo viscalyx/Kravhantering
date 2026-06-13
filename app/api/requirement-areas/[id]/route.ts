@@ -1,11 +1,20 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
+import {
+  recordAdminPrivilegedActionSucceeded,
+  recordDelegatedPrivilegedActionSucceeded,
+} from '@/lib/admin/privileged-audit'
 import { isHsaId } from '@/lib/auth/hsa-id'
-import { deleteArea, updateArea } from '@/lib/dal/requirement-areas'
+import {
+  canManageAreaCoAuthors,
+  deleteArea,
+  getAreaById,
+  updateAreaWithOwnerCheck,
+} from '@/lib/dal/requirement-areas'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   adminMutationPolicy,
+  customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
@@ -13,12 +22,14 @@ import {
   idParamSchema,
   optionalBusinessTextSchema,
 } from '@/lib/http/validation'
+import { forbiddenError } from '@/lib/requirements/errors'
+import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 
 export const dynamic = 'force-dynamic'
 
 const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
   message:
-    'HSA-ID must use format <two-letter country code><10-digit org no>-<alphanumeric suffix>.',
+    'HSA-id must use format <two-letter country code><10-digit org no>-<alphanumeric suffix>.',
 })
 
 const updateAreaSchema = z
@@ -26,25 +37,69 @@ const updateAreaSchema = z
     description: optionalBusinessTextSchema,
     name: boundedDbStringSchema.optional(),
     ownerHsaId: hsaIdSchema.optional(),
+    prefix: boundedDbStringSchema.optional(),
   })
   .strict()
+
+function isAdmin(roles: readonly string[]): boolean {
+  return roles.includes('Admin')
+}
 
 export const PUT = secureMutationRoute({
   bodySchema: updateAreaSchema,
   paramsSchema: idParamSchema,
-  policy: adminMutationPolicy(),
+  policy: customMutationPolicy(
+    'requirement_area.update',
+    async ({ context, params }) => {
+      const db = await getRequestSqlServerDataSource()
+      const { id } = params as z.infer<typeof idParamSchema>
+      const area = await getAreaById(db, id)
+      if (!area) return
+
+      const allowed = await canManageAreaCoAuthors(
+        db,
+        id,
+        context.actor.hsaId,
+        isAdmin(context.actor.roles),
+      )
+      if (!allowed) {
+        throw forbiddenError(
+          'Missing requirement area metadata management permission',
+          { reason: 'requirement_area_manager_required' },
+        )
+      }
+    },
+  ),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
-    const area = await updateArea(db, params.id, body)
+    const area = await updateAreaWithOwnerCheck(db, params.id, {
+      ...body,
+      resolveOwnerPerson:
+        body.ownerHsaId === undefined
+          ? undefined
+          : (executor, ownerHsaId) =>
+              resolveVerifiedRequirementResponsibilityPerson(
+                executor,
+                ownerHsaId,
+              ),
+    })
     if (!area) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    await recordAdminPrivilegedActionSucceeded(context, {
+    const auditDetail = {
       changedFields: Object.keys(body),
       operation: 'update',
       resourceId: params.id,
       resourceType: 'requirement_area',
-    })
+    } as const
+    if (isAdmin(context.actor.roles)) {
+      await recordAdminPrivilegedActionSucceeded(context, auditDetail)
+    } else {
+      await recordDelegatedPrivilegedActionSucceeded(context, {
+        ...auditDetail,
+        actorRole: 'delegated_area_manager',
+      })
+    }
     return NextResponse.json(area)
   },
 })

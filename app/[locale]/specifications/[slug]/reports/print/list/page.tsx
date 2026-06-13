@@ -94,11 +94,13 @@ export default function PrintListReportPage() {
           ? fetchSpecificationItemsForReport(slug, itemRefs)
           : Promise.resolve([]),
         slug
-          ? fetch(`/api/specifications/${encodeURIComponent(slug)}`)
+          ? fetch(
+              `/api/requirements-specifications/${encodeURIComponent(slug)}`,
+            )
           : Promise.resolve(null),
         slug
           ? fetch(
-              `/api/specifications/${encodeURIComponent(slug)}/requirement-selection-answers`,
+              `/api/requirements-specifications/${encodeURIComponent(slug)}/requirement-selection-answers`,
             )
           : Promise.resolve(null),
       ])

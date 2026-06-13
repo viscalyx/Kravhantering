@@ -365,7 +365,7 @@ export async function recordResolution(
 
   const resolvedByHsaId = data.resolvedByHsaId.trim()
   if (!resolvedByHsaId) {
-    throw validationError('Resolved by HSA-ID is required')
+    throw validationError('Resolved by HSA-id is required')
   }
 
   const existing = await findSqlServerSuggestionState(db, suggestionId)

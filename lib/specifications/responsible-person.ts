@@ -1,5 +1,4 @@
 export interface SpecificationResponsiblePersonInput {
-  canResponsibleGenerateAi?: boolean
   responsibleDisplayName?: string | null
   responsibleHsaId?: string | null
 }
@@ -29,48 +28,24 @@ export function normalizeResponsibleDisplayName(
   return trimmed.length > 0 ? trimmed : null
 }
 
-export function hasIncompleteResponsiblePerson(
-  input: SpecificationResponsiblePersonInput,
-): boolean {
-  const hsaId = normalizeResponsibleHsaId(input.responsibleHsaId)
-  const displayName = normalizeResponsibleDisplayName(
-    input.responsibleDisplayName,
-  )
-  return Boolean(hsaId) !== Boolean(displayName)
-}
-
 export function normalizeSpecificationResponsiblePersonInput<
   T extends SpecificationResponsiblePersonInput,
 >(input: T, options: SpecificationResponsiblePersonNormalizeOptions = {}): T {
   const preserveOmittedFields = options.preserveOmittedFields === true
   const hasHsaIdField = hasOwn(input, 'responsibleHsaId')
   const hasDisplayNameField = hasOwn(input, 'responsibleDisplayName')
-  const hasGenerateAiField = hasOwn(input, 'canResponsibleGenerateAi')
   const hsaId = normalizeResponsibleHsaId(input.responsibleHsaId)
   const displayName = normalizeResponsibleDisplayName(
     input.responsibleDisplayName,
   )
-  const hasResponsibleFields = hasHsaIdField || hasDisplayNameField
-  const shouldIncludeResponsibleFields =
-    !preserveOmittedFields || hasResponsibleFields
-  const shouldIncludeGenerateAi =
-    !preserveOmittedFields || hasResponsibleFields || hasGenerateAiField
+  const shouldIncludeDisplayName = !preserveOmittedFields || hasDisplayNameField
+  const shouldIncludeHsaId = !preserveOmittedFields || hasHsaIdField
 
   return {
     ...input,
-    ...(shouldIncludeResponsibleFields
-      ? {
-          responsibleDisplayName: displayName,
-          responsibleHsaId: hsaId,
-        }
+    ...(shouldIncludeDisplayName
+      ? { responsibleDisplayName: displayName }
       : {}),
-    ...(shouldIncludeGenerateAi
-      ? {
-          canResponsibleGenerateAi:
-            hsaId != null &&
-            displayName != null &&
-            input.canResponsibleGenerateAi === true,
-        }
-      : {}),
+    ...(shouldIncludeHsaId ? { responsibleHsaId: hsaId } : {}),
   }
 }

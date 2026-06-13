@@ -64,16 +64,6 @@ function stringValue(value: unknown): string | null {
   return String(value)
 }
 
-function booleanValue(value: unknown): boolean | null {
-  if (value == null) return null
-  if (typeof value === 'boolean') return value
-  if (typeof value === 'number') return value !== 0
-  if (typeof value === 'string') {
-    return value === '1' || value.toLowerCase() === 'true'
-  }
-  return Boolean(value)
-}
-
 function relatedObject(
   row: ExportRow,
   type: string,
@@ -131,6 +121,54 @@ function fieldsForRow(
   )
 }
 
+async function collectRequirementResponsibilityPerson(
+  db: QueryExecutor,
+  targetHsaId: string,
+): Promise<DataSubjectExportItem[]> {
+  const policy = policyFor('requirement_responsibility_people.identity')
+  const rows = (await db.query(
+    `/* privacy:data-export:requirement_responsibility_people.identity */
+      SELECT
+        person.hsa_id AS hsaId,
+        person.given_name AS givenName,
+        person.middle_name AS middleName,
+        person.surname AS surname,
+        person.email AS email,
+        person.last_fetched_at AS lastFetchedAt,
+        person.updated_at AS updatedAt
+      FROM requirement_responsibility_people person
+      WHERE person.hsa_id = @0`,
+    [targetHsaId],
+  )) as ExportRow[]
+
+  return rows.flatMap(row =>
+    fieldsForRow(
+      policy,
+      'requirement_responsibility_person',
+      [
+        { fieldName: 'hsa_id', value: stringValue(row.hsaId) },
+        { fieldName: 'given_name', value: stringValue(row.givenName) },
+        { fieldName: 'middle_name', value: stringValue(row.middleName) },
+        { fieldName: 'surname', value: stringValue(row.surname) },
+        { fieldName: 'email', value: stringValue(row.email) },
+        {
+          fieldName: 'last_fetched_at',
+          value: isoTimestamp(row.lastFetchedAt) ?? null,
+        },
+      ],
+      {
+        relatedObject: relatedObject(
+          row,
+          'requirement_responsibility_person',
+          'hsaId',
+        ),
+        table: 'requirement_responsibility_people',
+        timestamp: row.updatedAt,
+      },
+    ),
+  )
+}
+
 async function collectRequirementAreaOwners(
   db: QueryExecutor,
   targetHsaId: string,
@@ -179,7 +217,6 @@ async function collectRequirementPackageOwners(
         pkg.id AS packageId,
         pkg.name AS packageLabel,
         pkg.lead_hsa_id AS hsaId,
-        pkg.lead_display_name AS displayName,
         pkg.updated_at AS updatedAt
       FROM requirement_packages pkg
       WHERE pkg.lead_hsa_id = @0
@@ -191,13 +228,7 @@ async function collectRequirementPackageOwners(
     fieldsForRow(
       policy,
       'live_owner_assignment',
-      [
-        { fieldName: 'owner_hsa_id', value: stringValue(row.hsaId) },
-        {
-          fieldName: 'owner_display_name',
-          value: stringValue(row.displayName),
-        },
-      ],
+      [{ fieldName: 'owner_hsa_id', value: stringValue(row.hsaId) }],
       {
         relatedObject: relatedObject(
           row,
@@ -441,8 +472,6 @@ async function collectSpecificationResponsible(
         spec.id AS specificationId,
         CONCAT(spec.unique_id, N' ', spec.name) AS specificationLabel,
         spec.responsible_hsa_id AS hsaId,
-        spec.responsible_display_name AS displayName,
-        spec.can_responsible_generate_ai AS canGenerateAi,
         spec.updated_at AS updatedAt
       FROM requirements_specifications spec
       WHERE spec.responsible_hsa_id = @0
@@ -454,17 +483,7 @@ async function collectSpecificationResponsible(
     fieldsForRow(
       policy,
       'live_responsible_assignment',
-      [
-        { fieldName: 'responsible_hsa_id', value: stringValue(row.hsaId) },
-        {
-          fieldName: 'responsible_display_name',
-          value: stringValue(row.displayName),
-        },
-        {
-          fieldName: 'can_responsible_generate_ai',
-          value: booleanValue(row.canGenerateAi),
-        },
-      ],
+      [{ fieldName: 'responsible_hsa_id', value: stringValue(row.hsaId) }],
       {
         relatedObject: relatedObject(
           row,
@@ -489,8 +508,6 @@ async function collectAreaCoAuthors(
         co_author.area_id AS areaId,
         CONCAT(area.prefix, N' ', area.name) AS areaLabel,
         co_author.hsa_id AS hsaId,
-        co_author.display_name AS displayName,
-        co_author.can_generate_ai AS canGenerateAi,
         co_author.created_at AS createdAt
       FROM requirement_area_co_authors co_author
       INNER JOIN requirement_areas area ON area.id = co_author.area_id
@@ -503,14 +520,7 @@ async function collectAreaCoAuthors(
     fieldsForRow(
       policy,
       'live_co_author_assignment',
-      [
-        { fieldName: 'hsa_id', value: stringValue(row.hsaId) },
-        { fieldName: 'display_name', value: stringValue(row.displayName) },
-        {
-          fieldName: 'can_generate_ai',
-          value: booleanValue(row.canGenerateAi),
-        },
-      ],
+      [{ fieldName: 'hsa_id', value: stringValue(row.hsaId) }],
       {
         relatedObject: relatedObject(
           row,
@@ -568,6 +578,87 @@ async function collectAreaCoAuthorCreators(
   )
 }
 
+async function collectPackageCoAuthors(
+  db: QueryExecutor,
+  targetHsaId: string,
+): Promise<DataSubjectExportItem[]> {
+  const policy = policyFor('requirement_package_co_authors.hsa_id')
+  const rows = (await db.query(
+    `/* privacy:data-export:requirement_package_co_authors.hsa_id */
+      SELECT
+        co_author.requirement_package_id AS packageId,
+        pkg.name AS packageLabel,
+        co_author.hsa_id AS hsaId,
+        co_author.created_at AS createdAt
+      FROM requirement_package_co_authors co_author
+      INNER JOIN requirement_packages pkg ON pkg.id = co_author.requirement_package_id
+      WHERE co_author.hsa_id = @0
+      ORDER BY pkg.name ASC, pkg.id ASC`,
+    [targetHsaId],
+  )) as ExportRow[]
+
+  return rows.flatMap(row =>
+    fieldsForRow(
+      policy,
+      'live_co_author_assignment',
+      [{ fieldName: 'hsa_id', value: stringValue(row.hsaId) }],
+      {
+        relatedObject: relatedObject(
+          row,
+          'requirement_package',
+          'packageId',
+          'packageLabel',
+        ),
+        timestamp: row.createdAt,
+      },
+    ),
+  )
+}
+
+async function collectPackageCoAuthorCreators(
+  db: QueryExecutor,
+  targetHsaId: string,
+): Promise<DataSubjectExportItem[]> {
+  const policy = policyFor('requirement_package_co_authors.created_by')
+  const rows = (await db.query(
+    `/* privacy:data-export:requirement_package_co_authors.created_by */
+      SELECT
+        co_author.requirement_package_id AS packageId,
+        pkg.name AS packageLabel,
+        co_author.created_by_hsa_id AS hsaId,
+        co_author.created_by_display_name AS displayName,
+        co_author.created_at AS createdAt
+      FROM requirement_package_co_authors co_author
+      INNER JOIN requirement_packages pkg ON pkg.id = co_author.requirement_package_id
+      WHERE co_author.created_by_hsa_id = @0
+      ORDER BY pkg.name ASC, pkg.id ASC`,
+    [targetHsaId],
+  )) as ExportRow[]
+
+  return rows.flatMap(row =>
+    fieldsForRow(
+      policy,
+      'assignment_creator_snapshot',
+      [
+        { fieldName: 'created_by_hsa_id', value: stringValue(row.hsaId) },
+        {
+          fieldName: 'created_by_display_name',
+          value: stringValue(row.displayName),
+        },
+      ],
+      {
+        relatedObject: relatedObject(
+          row,
+          'requirement_package',
+          'packageId',
+          'packageLabel',
+        ),
+        timestamp: row.createdAt,
+      },
+    ),
+  )
+}
+
 async function collectSpecificationCoAuthors(
   db: QueryExecutor,
   targetHsaId: string,
@@ -579,8 +670,6 @@ async function collectSpecificationCoAuthors(
         co_author.specification_id AS specificationId,
         CONCAT(spec.unique_id, N' ', spec.name) AS specificationLabel,
         co_author.hsa_id AS hsaId,
-        co_author.display_name AS displayName,
-        co_author.can_generate_ai AS canGenerateAi,
         co_author.created_at AS createdAt
       FROM specification_co_authors co_author
       INNER JOIN requirements_specifications spec ON spec.id = co_author.specification_id
@@ -593,14 +682,7 @@ async function collectSpecificationCoAuthors(
     fieldsForRow(
       policy,
       'live_co_author_assignment',
-      [
-        { fieldName: 'hsa_id', value: stringValue(row.hsaId) },
-        { fieldName: 'display_name', value: stringValue(row.displayName) },
-        {
-          fieldName: 'can_generate_ai',
-          value: booleanValue(row.canGenerateAi),
-        },
-      ],
+      [{ fieldName: 'hsa_id', value: stringValue(row.hsaId) }],
       {
         relatedObject: relatedObject(
           row,
@@ -750,7 +832,6 @@ async function collectAccessReviewItemActor(
         item.scope_key AS scopeKey,
         item.scope_label AS scopeLabel,
         item.permission_type AS permissionType,
-        item.can_generate_ai AS canGenerateAi,
         item.decision AS decision,
         item.${options.timestampField} AS actorTimestamp
       FROM access_review_items item
@@ -776,10 +857,6 @@ async function collectAccessReviewItemActor(
         {
           fieldName: 'permission_type',
           value: stringValue(row.permissionType),
-        },
-        {
-          fieldName: 'can_generate_ai',
-          value: booleanValue(row.canGenerateAi),
         },
         { fieldName: 'decision', value: stringValue(row.decision) },
       ],
@@ -846,6 +923,11 @@ const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
     collect: collectRequirementAreaOwners,
     policy: policyFor('requirement_areas.owner'),
     relationToSubject: 'live_owner_assignment',
+  },
+  {
+    collect: collectRequirementResponsibilityPerson,
+    policy: policyFor('requirement_responsibility_people.identity'),
+    relationToSubject: 'requirement_responsibility_person',
   },
   {
     collect: collectRequirementPackageOwners,
@@ -942,6 +1024,16 @@ const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
   {
     collect: collectAreaCoAuthorCreators,
     policy: policyFor('requirement_area_co_authors.created_by'),
+    relationToSubject: 'assignment_creator_snapshot',
+  },
+  {
+    collect: collectPackageCoAuthors,
+    policy: policyFor('requirement_package_co_authors.hsa_id'),
+    relationToSubject: 'live_co_author_assignment',
+  },
+  {
+    collect: collectPackageCoAuthorCreators,
+    policy: policyFor('requirement_package_co_authors.created_by'),
     relationToSubject: 'assignment_creator_snapshot',
   },
   {
@@ -1091,7 +1183,7 @@ export function dataSubjectExportLimitations(): DataSubjectExportV1['limitations
     },
     {
       description:
-        'Auth session claims are included only for self-export because sessions are stored in the signed browser session cookie and are not queryable for another HSA-ID.',
+        'Auth session claims are included only for self-export because sessions are stored in the signed browser session cookie and are not queryable for another HSA-id.',
       key: 'session_claims_self_only',
     },
   ]

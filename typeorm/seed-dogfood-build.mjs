@@ -106,7 +106,7 @@ function dogfoodOwnerIdentity(ownerId) {
   }
   const hsaId = DOGFOOD_OWNER_HSA_BY_ID.get(ownerId)
   if (!hsaId) {
-    throw new Error(`Dogfood seed: missing package owner HSA-ID ${ownerId}`)
+    throw new Error(`Dogfood seed: missing package owner HSA-id ${ownerId}`)
   }
   return {
     displayName: `${owner[1]} ${owner[2]}`,
@@ -883,7 +883,7 @@ export function appendDogfoodSeed(SEED_DATA) {
     const lead = dogfoodOwnerIdentity(ownerId)
     ensureRow(
       requirementPackages,
-      [id, sv, dsv, lead.hsaId, lead.displayName, 0, SEED_TS, SEED_TS],
+      [id, sv, dsv, lead.hsaId, 0, SEED_TS, SEED_TS],
       ['id'],
     )
   }
@@ -927,7 +927,7 @@ export function appendDogfoodSeed(SEED_DATA) {
     if (existingAreaIds.has(id)) continue
     const ownerHsaId = DOGFOOD_OWNER_HSA_BY_ID.get(ownerId)
     if (!ownerHsaId) {
-      throw new Error(`Dogfood seed: missing area owner HSA-ID ${ownerId}`)
+      throw new Error(`Dogfood seed: missing area owner HSA-id ${ownerId}`)
     }
     areas.rows.push([
       id,
@@ -1151,7 +1151,6 @@ export function appendDogfoodSeed(SEED_DATA) {
       i % 8 === 0 && khNeedsRefIds.length > 0
         ? khNeedsRefIds[(i / 8) % khNeedsRefIds.length]
         : null,
-      null, // unused_1
       SEED_TS, // created_at
       k.item, // specification_item_status_id
       null, // note
@@ -1171,7 +1170,6 @@ export function appendDogfoodSeed(SEED_DATA) {
       SPEC_KH_INFOR,
       m.requirementId,
       m.versionId,
-      null,
       null,
       SEED_TS,
       // For the controlled introduction we mark most items as "Inkluderad";

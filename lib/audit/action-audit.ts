@@ -106,7 +106,7 @@ const ACTION_AUDIT_CSV_COLUMNS: ActionAuditCsvColumn[] = [
     value: event => event.actorKind,
   },
   {
-    header: { en: 'Actor HSA-ID', sv: 'Aktörens HSA-ID' },
+    header: { en: 'Actor HSA-id', sv: 'Aktörens HSA-id' },
     value: event => event.actorHsaId ?? '',
   },
   {

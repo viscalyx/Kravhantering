@@ -44,6 +44,7 @@ import type {
   RequirementDetail,
   RequirementVersionDetail,
 } from '@/lib/requirements/types'
+import type { SpecificationPermissions } from '@/lib/specifications/permissions'
 
 export { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
@@ -155,6 +156,8 @@ export interface GenerateRequirementsInput {
   locale?: ResponseLocale
   model?: string
   reasoningEffort?: string
+  scopeId?: number
+  scopeType?: 'requirement_area' | 'specification'
   supportedParameters?: string[]
   topic: string
 }
@@ -237,16 +240,16 @@ export interface ListSpecificationsOutput {
   message: string
   specifications: {
     businessNeedsReference: string | null
-    canResponsibleGenerateAi?: boolean
     createdAt?: string
     id: number
     implementationType: { id?: number; nameSv: string; nameEn: string } | null
     itemCount: number
     lifecycleStatus?: { id: number; nameSv: string; nameEn: string } | null
     name: string
+    permissions?: SpecificationPermissions
     requirementAreas?: { id: number; name: string }[]
     responsibleDisplayName?: string | null
-    responsibleHsaId?: string | null
+    responsibleHsaId?: string
     governanceObjectType: { id?: number; nameSv: string; nameEn: string } | null
     specificationImplementationTypeId?: number | null
     specificationLifecycleStatusId?: number | null
@@ -501,7 +504,7 @@ async function resolveSpecificationIdOrThrow(
 export function createRequirementsService(
   db: SqlServerDatabase,
   {
-    authorization = createDefaultAuthorizationService(),
+    authorization = createDefaultAuthorizationService(db),
     logger = createRequirementsLogger(),
   }: {
     authorization?: AuthorizationService
@@ -748,7 +751,15 @@ export function createRequirementsService(
         )
       }
 
-      await authorize(authorization, { kind: 'generate_requirements' }, context)
+      await authorize(
+        authorization,
+        {
+          kind: 'generate_requirements',
+          scopeId: input.scopeId,
+          scopeType: input.scopeType,
+        },
+        context,
+      )
       const throttle = checkInMemoryThrottle({
         key: [
           'requirements.generate_requirements',

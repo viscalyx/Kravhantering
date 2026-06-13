@@ -151,8 +151,30 @@ const riskLevelsRoutePath = join(
   '[id]',
   'route.ts',
 )
+const adminHsaIdPrefixesRoutePath = join(
+  repoRoot,
+  'app',
+  'api',
+  'admin',
+  'hsa-id-prefixes',
+  'route.ts',
+)
 const adminCenterDocPath = join(repoRoot, 'docs', 'admin-center.md')
 const databaseSchemaDocPath = join(repoRoot, 'docs', 'database-schema.md')
+const hsaIdPrefixMigrationPath = join(
+  repoRoot,
+  'typeorm',
+  'migrations',
+  '0032_hsa_id_prefixes.mjs',
+)
+const seedPath = join(repoRoot, 'typeorm', 'seed.mjs')
+const requiredSeedPath = join(repoRoot, 'typeorm', 'seed-required.mjs')
+const uiSettingsPath = join(repoRoot, 'lib', 'dal', 'ui-settings.ts')
+const hsaPersonVerifyFieldPath = join(
+  repoRoot,
+  'components',
+  'HsaPersonVerifyField.tsx',
+)
 const requirementsServicePath = join(
   repoRoot,
   'lib',
@@ -165,6 +187,37 @@ const contributorGuidePath = join(
   'mcp-server-contributor-guide.md',
 )
 const userGuidePath = join(repoRoot, 'docs', 'mcp-server-user-guide.md')
+const assignmentAuthorizationPath = join(
+  repoRoot,
+  'lib',
+  'requirements',
+  'assignment-authorization.ts',
+)
+const specificationPermissionsPath = join(
+  repoRoot,
+  'lib',
+  'specifications',
+  'permissions.ts',
+)
+const specificationPreloadPath = join(
+  repoRoot,
+  'lib',
+  'specifications',
+  'preload.ts',
+)
+const specificationServicePath = join(
+  repoRoot,
+  'lib',
+  'requirements',
+  'service-specifications.ts',
+)
+const specificationsRoutePath = join(
+  repoRoot,
+  'app',
+  'api',
+  'requirements-specifications',
+  'route.ts',
+)
 
 function countRegisterToolCalls(source: string): number {
   return source.match(/\bserver\.registerTool\s*\(/g)?.length ?? 0
@@ -300,6 +353,78 @@ it('Scenario 15: configurable status and risk icons use an allowlist and stay ad
   expect(databaseSchemaDoc).toContain('icon_name')
   expect(databaseSchemaDoc).toContain('`PenLine`')
   expect(databaseSchemaDoc).toContain('`ShieldCheck`')
+})
+
+it('Scenario 18: HSA-id prefixes stay UI guidance with a visible default rule', () => {
+  const migrationSource = readFileSync(hsaIdPrefixMigrationPath, 'utf8')
+  const seedSource = readFileSync(seedPath, 'utf8')
+  const requiredSeedSource = readFileSync(requiredSeedPath, 'utf8')
+  const uiSettingsSource = readFileSync(uiSettingsPath, 'utf8')
+  const routeSource = readFileSync(adminHsaIdPrefixesRoutePath, 'utf8')
+  const fieldSource = readFileSync(hsaPersonVerifyFieldPath, 'utf8')
+  const adminCenterDoc = readFileSync(adminCenterDocPath, 'utf8')
+  const databaseSchemaDoc = readFileSync(databaseSchemaDocPath, 'utf8')
+
+  expect(migrationSource).toContain('CREATE TABLE [hsa_id_prefixes]')
+  expect(migrationSource).toContain(
+    'CONSTRAINT [chk_hsa_id_prefixes_default_visible]',
+  )
+  expect(migrationSource).toContain('ORDER BY [usage_count] DESC, [prefix] ASC')
+  expect(migrationSource).toContain('CROSS JOIN default_prefix')
+
+  expect(seedSource).toContain('hsa_id_prefixes:')
+  expect(seedSource).toContain('SE5560000001')
+  expect(requiredSeedSource).not.toContain('hsa_id_prefixes')
+  expect(requiredSeedSource).not.toContain('SE5560000001')
+
+  expect(uiSettingsSource).toContain('default_hidden')
+  expect(uiSettingsSource).toContain('default_required')
+  expect(uiSettingsSource).toContain('used_prefix_cannot_delete')
+  expect(uiSettingsSource).toContain('used_prefix_cannot_change')
+  expect(uiSettingsSource).toContain('getVisibleHsaIdPrefixes')
+
+  expect(routeSource).toContain('adminMutationPolicy()')
+  expect(routeSource).toContain("resourceType: 'hsa_id_prefix'")
+  expect(routeSource).toContain('HsaIdPrefixSettingsError')
+
+  expect(fieldSource).toContain("apiFetch('/api/hsa-id-prefixes')")
+  expect(fieldSource).toContain('composeHsaId(selectedPrefix')
+  expect(fieldSource).toContain('hsaPrefixMissing')
+
+  expect(adminCenterDoc).toContain('The prefix list is UI support')
+  expect(adminCenterDoc).toContain('Used prefixes cannot be removed')
+  expect(databaseSchemaDoc).toContain('hsa_id_prefixes')
+  expect(databaseSchemaDoc).toContain('uq_hsa_id_prefixes_default')
+})
+
+it('Scenario 19: assignment RBAC denies hidden broad access', () => {
+  const assignmentAuthorizationSource = readFileSync(
+    assignmentAuthorizationPath,
+    'utf8',
+  )
+  const permissionsSource = readFileSync(specificationPermissionsPath, 'utf8')
+  const preloadSource = readFileSync(specificationPreloadPath, 'utf8')
+  const serviceSource = readFileSync(specificationServicePath, 'utf8')
+  const routeSource = readFileSync(specificationsRoutePath, 'utf8')
+
+  expect(assignmentAuthorizationSource).toContain("case 'list_specifications'")
+  expect(assignmentAuthorizationSource).toContain(
+    "case 'get_specification_items'",
+  )
+  expect(assignmentAuthorizationSource).toContain(
+    'return this.assertCanReadSpecification(context, specificationId)',
+  )
+  expect(permissionsSource).toContain("hasRole(context.actor, 'Admin')")
+  expect(permissionsSource).toContain("hasRole(context.actor, 'Reviewer')")
+  expect(permissionsSource).toContain(
+    'canManageAssignments: isAdmin || isResponsible',
+  )
+  expect(serviceSource).toContain('listSpecificationsForActor')
+  expect(preloadSource).toContain('listSpecificationsForActor')
+  expect(preloadSource).toContain('recordAuthorizationDenied')
+  expect(preloadSource).toContain('specification_assignment_required')
+  expect(routeSource).toContain('collectionPermissions')
+  expect(routeSource).toContain('canCreateSpecification')
 })
 
 function resolveFunctionalTestsUrl(): string | null {
@@ -461,6 +586,19 @@ function makeContext(headers?: HeadersInit): Promise<RequestContext> {
   return createRequestContext(request, 'rest')
 }
 
+function specificationResponsibleFields() {
+  return {
+    responsibleHsaId: 'SE5560000001-functional1',
+    responsiblePerson: {
+      email: null,
+      givenName: 'Functional',
+      hsaId: 'SE5560000001-functional1',
+      middleName: null,
+      surname: 'Test Actor',
+    },
+  }
+}
+
 function makeMcpRequest() {
   const request = new Request('https://example.test/api/mcp')
   attachVerifiedActor(request, {
@@ -612,6 +750,8 @@ async function createArea(
   overrides: { name?: string; ownerHsaId?: string; prefix?: string } = {},
 ): Promise<{ id: number; name: string; prefix: string }> {
   const now = new Date()
+  const ownerHsaId = overrides.ownerHsaId ?? 'SE5560000001-1234'
+  await ensureResponsibilityPerson(target, ownerHsaId, now)
   const rows = (await target.query(
     `INSERT INTO requirement_areas (prefix, name, owner_hsa_id, next_sequence, created_at, updated_at)
        OUTPUT INSERTED.id AS id, INSERTED.name AS name, INSERTED.prefix AS prefix
@@ -619,35 +759,54 @@ async function createArea(
     [
       overrides.prefix ?? 'INT',
       overrides.name ?? 'Integration',
-      overrides.ownerHsaId ?? 'SE5560000001-1234',
+      ownerHsaId,
       now,
     ],
   )) as Array<{ id: number; name: string; prefix: string }>
   return rows[0] as { id: number; name: string; prefix: string }
 }
 
+async function ensureResponsibilityPerson(
+  target: SqlServerDatabase,
+  hsaId: string,
+  now: Date,
+): Promise<void> {
+  await target.query(
+    `IF NOT EXISTS (
+        SELECT 1 FROM requirement_responsibility_people WHERE hsa_id = @0
+      )
+      INSERT INTO requirement_responsibility_people (
+        hsa_id,
+        given_name,
+        middle_name,
+        surname,
+        email,
+        last_fetched_at,
+        created_at,
+        updated_at
+      )
+      VALUES (@0, @1, NULL, NULL, NULL, NULL, @2, @2)`,
+    [hsaId, '(saknar namn, kräver nytt uppslag)', now],
+  )
+}
+
 async function createRequirementPackage(
   target: SqlServerDatabase,
 ): Promise<{ id: number }> {
   const now = new Date()
+  const leadHsaId = 'SE5560000001-johlju'
+  await ensureResponsibilityPerson(target, leadHsaId, now)
   const rows = (await target.query(
     `INSERT INTO requirement_packages (
         name,
         description,
         lead_hsa_id,
-        lead_display_name,
         created_at,
         updated_at
       )
        OUTPUT INSERTED.id AS id
-       VALUES (@0, @1, @2, @3, @4, @4)`,
-    [
-      'Säkerhetspaket',
-      'Security package',
-      'SE5560000001-johlju',
-      'Paket Ansvarig',
-      now,
-    ],
+       VALUES (@0, @1, @2, @3, @3)`,
+    ['Säkerhetspaket', 'Security package', leadHsaId, now],
   )) as Array<{ id: number }>
   return rows[0] as { id: number }
 }
@@ -917,6 +1076,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Scenario specification',
+      ...specificationResponsibleFields(),
       uniqueId: 'SCENARIO-SPECIFICATION',
     })
 
@@ -1004,6 +1164,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Status clearing specification',
+      ...specificationResponsibleFields(),
       uniqueId: 'STATUS-CLEARING-SPECIFICATION',
     })
 
@@ -1374,6 +1535,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     })
     const spec = await createSpecification(appDb(), {
       name: 'Scenario 17 specification',
+      ...specificationResponsibleFields(),
       uniqueId: 'SCENARIO-17-SPECIFICATION',
     })
     const service = createRequirementsService(appDb())
@@ -1436,6 +1598,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     const normReference = await createNormReference(appDb())
     const spec = await createSpecification(appDb(), {
       name: 'Graduation specification',
+      ...specificationResponsibleFields(),
       uniqueId: 'GRADUATION-SPECIFICATION',
     })
     const localItem = await createSpecificationLocalRequirement(
@@ -1572,6 +1735,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Link specification',
+      ...specificationResponsibleFields(),
       uniqueId: 'LINK-SPECIFICATION',
     })
 
@@ -1656,6 +1820,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Decision specification',
+      ...specificationResponsibleFields(),
       uniqueId: 'DECISION-SPECIFICATION',
     })
 

@@ -14,7 +14,6 @@ interface ComponentProps {
 
 const labels = {
   en: {
-    ai: 'AI',
     completed: 'Completed',
     decidedBy: 'Decided by',
     decision: 'Decision',
@@ -33,7 +32,6 @@ const labels = {
     title: 'Access review export',
   },
   sv: {
-    ai: 'AI',
     completed: 'Slutförd',
     decidedBy: 'Beslutad av',
     decision: 'Beslut',
@@ -235,7 +233,6 @@ export default function AccessReviewExportPdfRenderer({
                 label={t.decision}
                 value={decisionLabels[localeName][item.decision]}
               />
-              <MetadataRow label={t.ai} value={String(item.canGenerateAi)} />
               <MetadataRow label={t.source} value={item.sourceKey} />
               {item.decidedBy ? (
                 <MetadataRow

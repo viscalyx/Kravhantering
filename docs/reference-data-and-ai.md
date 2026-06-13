@@ -68,9 +68,9 @@ still uses it as-is; uniqueness remains enforced by the DB unique index.
 ## 2 — Requirement Area Ownership
 
 Requirement-area owners are no longer reference data. The requirement area row
-stores `owner_hsa_id` directly and the app displays that HSA-ID wherever the
-owner is shown. Creation requires a valid HSA-ID. Editing shows the current
-HSA-ID as read-only and uses a dedicated owner-change action for replacement.
+stores `owner_hsa_id` directly and the app displays that HSA-id wherever the
+owner is shown. Creation requires a valid HSA-id. Editing shows the current
+HSA-id as read-only and uses a dedicated owner-change action for replacement.
 
 There is no `/owners` admin surface or owners REST resource, and no local
 person catalog lookup is performed in this flow.

@@ -612,7 +612,7 @@ creation does the same in
 only numeric status IDs from
 `app/[locale]/specifications/[slug]/requirements-specification-detail-client.tsx:722-752`,
 and the PATCH schema accepts only positive integer status IDs in
-`app/api/specifications/[id]/items/[itemId]/route.ts:44-57`. DAL updates
+`app/api/requirements-specifications/[id]/items/[itemId]/route.ts:44-57`. DAL updates
 validate allowed status IDs in
 `lib/dal/requirements-specifications.ts:2363-2387` and reject null clearing in
 `lib/dal/requirements-specifications.ts:2394-2477` before any SQL update. The
@@ -682,6 +682,78 @@ the underlying requirements.
 <!-- markdownlint-disable MD013 -->
 ```sh
 npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 17: requirements specification MCP tools enforce identifiers and mutation outcomes"
+```
+<!-- markdownlint-enable MD013 -->
+
+### Scenario 18: HSA-id prefixes stay UI guidance with a visible default rule
+
+**Requirement tag:** `[Req: formal — docs/admin-center.md "Identity"]`
+
+**What happened:** HSA-id-prefixes are admin-managed UI guidance, not HSA
+catalog data and not a server-side allowlist. If the prefix table became
+required seed data, if hidden defaults were allowed, if used prefixes could be
+deleted, or if editable HSA-id fields stopped composing the existing full
+HSA-id value, the Admin Center would either block clean installations or make
+responsibility assignment state drift from historical HSA-id values.
+
+**The requirement:** Required seed data must not create organization-specific
+HSA-id-prefixes. Demo/test seed may provide `SE5560000001` as a visible default.
+The migration must backfill prefix rows from existing active assignments and
+choose the most-used prefix as default, with alphabetical tie-break. Admin
+updates must allow one visible default when visible prefixes exist, reject
+hidden defaults, forbid deleting or changing prefixes that occur in active or
+historical HSA-id fields, and audit successful saves. Editable HSA-id fields
+must use the visible prefix list only as UI guidance and continue to compose a
+full `{prefix}-{suffix}` HSA-id for existing APIs.
+
+**Scenario 18 code coverage:** Migration
+`typeorm/migrations/0032_hsa_id_prefixes.mjs:1-81` creates the table,
+constraints, indexes, active-assignment backfill, and default tie-break.
+Demo seed coverage is in `typeorm/seed.mjs:18-18` and
+`typeorm/seed.mjs:533-548`; `typeorm/seed-required.mjs` intentionally contains
+no `hsa_id_prefixes` seed rows. DAL loading, sorting, visible/default
+validation, usage checks, delete/change protection, transactional writes, and
+audit callback execution are in `lib/dal/ui-settings.ts:99-280` and
+`lib/dal/ui-settings.ts:345-435`. The admin route validates input, requires
+Admin for the admin list, uses `adminMutationPolicy()`, records privileged
+audit, and maps used-prefix conflicts to `409` in
+`app/api/admin/hsa-id-prefixes/route.ts:24-132`. The editable field loads
+`/api/hsa-id-prefixes`, preserves hidden current prefixes, disables suffix entry
+when no visible prefix exists, and composes the full HSA-id in
+`components/HsaPersonVerifyField.tsx:93-168` and
+`components/HsaPersonVerifyField.tsx:239-289`.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 18: HSA-id prefixes stay UI guidance with a visible default rule"
+```
+<!-- markdownlint-enable MD013 -->
+
+### Scenario 19: assignment RBAC denies hidden broad access
+
+**Requirement tag:** `[Req: formal - docs/adr/0012-uppdragsbaserad-rbac.md]`
+
+**What happened:** The old authorization boundary could fall back to broad
+allow-all behavior for requirement workflows. With assignment RBAC, decisions
+must resolve the target resource in the database, ordinary authenticated users
+must see only published library content and assigned requirements
+specifications, non-admin AI calls must provide one authorized authoring scope,
+and `Admin` must not replace `Reviewer` for review decisions.
+
+**The requirement:** Unknown or unresolved requirement actions fail closed.
+`Admin` may bypass authoring scope, including live AI scope, but not
+Reviewer-only decisions. Requirement-area and specification assignments are the
+source of authoring authority. Ordinary users with no assigned requirements
+specifications receive an empty list, unauthorized existing resources return
+403 and produce denial audit evidence, and missing resources return 404.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/unit/requirements-assignment-authorization.test.ts
 ```
 <!-- markdownlint-enable MD013 -->
 

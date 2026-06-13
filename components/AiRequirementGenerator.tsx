@@ -245,6 +245,7 @@ export default function AiRequirementGenerator({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadSessionRef = useRef(0)
   const isBusyRef = useRef(false)
+  const previousAreaIdRef = useRef<number | ''>(areaId)
 
   // Model list
   const [models, setModels] = useState<OpenRouterModel[]>([])
@@ -328,6 +329,10 @@ export default function AiRequirementGenerator({
       const buildModelsUrl = (filters: string[]) => {
         const params = new URLSearchParams()
         if (refresh) params.set('refresh', '1')
+        if (typeof areaId === 'number') {
+          params.set('scopeType', 'requirement_area')
+          params.set('scopeId', String(areaId))
+        }
         if (filters.length > 0) {
           params.set('supported_parameters', filters.join(','))
         }
@@ -415,7 +420,7 @@ export default function AiRequirementGenerator({
           if (!ac.signal.aborted) setModelsLoading(false)
         })
     },
-    [activeFilters, t],
+    [activeFilters, areaId, t],
   )
 
   useEffect(() => {
@@ -425,10 +430,20 @@ export default function AiRequirementGenerator({
 
   // Fetch credits on open
   useEffect(() => {
+    setCredits(null)
+    setCreditsError(null)
     if (!open) return
-    apiFetch('/api/ai/credits')
+    const ac = new AbortController()
+    const params = new URLSearchParams()
+    if (typeof areaId === 'number') {
+      params.set('scopeType', 'requirement_area')
+      params.set('scopeId', String(areaId))
+    }
+    const qs = params.toString()
+    apiFetch(`/api/ai/credits${qs ? `?${qs}` : ''}`, { signal: ac.signal })
       .then(r => r.json() as Promise<CreditInfo & { error?: string }>)
       .then(data => {
+        if (ac.signal.aborted) return
         if (data.error) {
           setCreditsError(data.error)
         } else {
@@ -436,10 +451,34 @@ export default function AiRequirementGenerator({
           setCreditsError(null)
         }
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        if (
+          ac.signal.aborted ||
+          (err instanceof Error && err.name === 'AbortError')
+        ) {
+          return
+        }
         setCreditsError(t('creditsUnreachable'))
       })
-  }, [open, t])
+    return () => ac.abort()
+  }, [areaId, open, t])
+
+  useEffect(() => {
+    const previousAreaId = previousAreaIdRef.current
+    previousAreaIdRef.current = areaId
+    if (previousAreaId === areaId || phase !== 'done') return
+
+    setPhase('idle')
+    setThinking('')
+    setError('')
+    setRawResponse('')
+    setCreateError('')
+    setStats(null)
+    setRequirements([])
+    setSelected(new Set())
+    setTaxonomy(null)
+    setExpandedCards(new Set())
+  }, [areaId, phase])
 
   // Lock body scroll while modal is open
   useEffect(() => {
@@ -657,6 +696,8 @@ export default function AiRequirementGenerator({
               ? providerPreferences
               : undefined,
           reasoningEffort,
+          scopeId: areaId,
+          scopeType: 'requirement_area',
           supportedParameters: selectedModel?.supportedParameters,
           topic: topic.trim(),
           ...(visionEnabled &&

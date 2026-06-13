@@ -185,7 +185,7 @@ describe('data-subject export route', () => {
     expect(JSON.stringify(auditArg.detail)).not.toContain(SELF_HSA_ID)
   })
 
-  it('allows PrivacyOfficer to export another verified HSA-ID', async () => {
+  it('allows PrivacyOfficer to export another verified HSA-id', async () => {
     routeState.createRequestContext.mockResolvedValueOnce(
       context(['PrivacyOfficer']),
     )
@@ -236,7 +236,7 @@ describe('data-subject export route', () => {
     )
   })
 
-  it('rejects invalid target HSA-ID before opening the database', async () => {
+  it('rejects invalid target HSA-id before opening the database', async () => {
     const { POST } = await import('@/app/api/privacy/data-subject-export/route')
     const response = await POST(
       jsonPost({

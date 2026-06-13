@@ -52,6 +52,11 @@ The site must provide approved runtime image refs for:
 - SQL Server
 - Keycloak
 
+The optional `single-node-demo` test support overlay adds Kong and the
+HSA directory mock from `container-test-support.lock.json`. That overlay is
+only for disposable demo or release-test environments and must not be used for
+production.
+
 The refs must use tag-style `image:tag` values that point at public upstream
 registries or an internal registry mirror. Each configured ref must resolve to
 the locked `imageId` in `container-stack.lock.json` when inspected with Podman.
@@ -72,6 +77,10 @@ verification.
 | `VERSION` | Release artifact names | No default | Always record the release version to install, for example `1.2.3`. |
 | `APP_HOST` | `PUBLIC_HOSTNAME`, app URLs, `KC_HOSTNAME`, realm redirect/logout settings, realm web origins, TLS certificate SANs and smoke checks | No default | Always record the public DNS name without `https://`, for example `kravhantering.example.internal`. |
 | `NEXT_PUBLIC_SITE_URL` | `NEXT_PUBLIC_SITE_URL` in `app.env` | `https://<APP_HOST>` | Verify after choosing `APP_HOST`; plan only if the public URL cannot use the normal scheme and host. |
+| `HSA_PERSON_LOOKUP_URL` | `HSA_PERSON_LOOKUP_URL` in `app.env` | No default | Always record the approved server-side HSA person lookup endpoint, normally the environment's Kong or integration-platform REST facade. |
+| `HSA_PERSON_LOOKUP_TIMEOUT_MS` | `HSA_PERSON_LOOKUP_TIMEOUT_MS` in `app.env` | `5000` | Plan only if the HSA integration path needs another timeout. |
+| `KONG_IMAGE_REF` | `KONG_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose a tag-style ref from `container-test-support.lock.json` when using the demo overlay. |
+| `HSA_DIRECTORY_MOCK_IMAGE_REF` | `HSA_DIRECTORY_MOCK_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose the release tag for the project-owned HSA mock image when using the demo overlay. |
 | `KC_HOSTNAME` | `KC_HOSTNAME` in `keycloak.env` | `https://<APP_HOST>/auth` | Verify after choosing `APP_HOST`; plan only if Keycloak is deliberately exposed at another public URL. |
 | `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Verify from the actual Compose network. It can change when the internal network is renamed, recreated or assigned another subnet. |
 | `MSSQL_SA_PASSWORD` | `MSSQL_SA_PASSWORD` in `sqlserver.env` and `DB_BOOTSTRAP_ADMIN_PASSWORD` in `db-job.env` | No default | Always generate a unique SQL Server `sa` password. Use the same value in both places and follow [Generate Unique Secrets](#generate-unique-secrets). |
@@ -517,6 +526,60 @@ bin/kravhantering-images.sh --topology single-node \
 exit
 ```
 
+### Optional Test Support Image Refs
+
+Use this only for a disposable `single-node-demo` release-test or demo
+environment. Do not use these refs in production.
+
+Set the two test support refs from `container-test-support.lock.json` after the
+five production refs are selected:
+
+```bash
+update_ref() {
+  sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
+}
+
+TEST_LOCK_FILE=/opt/kravhantering/current/container-test-support.lock.json
+test_service_image() {
+  jq -r --arg name "$1" \
+    '.services[] | select(.name == $name) | .image' "$TEST_LOCK_FILE"
+}
+test_service_tag() {
+  jq -r --arg name "$1" \
+    '.services[] | select(.name == $name) | .tag' "$TEST_LOCK_FILE"
+}
+test_service_ref() {
+  printf '%s:%s\n' \
+    "$(test_service_image "$1")" "$(test_service_tag "$1")"
+}
+
+update_ref KONG_IMAGE_REF \
+  "$(test_service_ref kong)"
+update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
+  "$(test_service_ref hsa-directory-mock)"
+```
+
+Then pull and verify both lock files together:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+set -a
+. /etc/kravhantering/release.env
+set +a
+
+podman pull "$KONG_IMAGE_REF"
+podman pull "$HSA_DIRECTORY_MOCK_IMAGE_REF"
+
+bin/kravhantering-images.sh --topology single-node-demo \
+  --lock-file container-stack.lock.json \
+  --test-lock-file container-test-support.lock.json \
+  --env-file /etc/kravhantering/release.env \
+  verify
+
+exit
+```
+
 ## Configure Single-Node Services
 
 Replace every placeholder secret, hostname and redirect URI in the copied
@@ -661,6 +724,8 @@ AUTH_SESSION_COOKIE_NAME=kravhantering_session
 AUTH_SESSION_COOKIE_PASSWORD=<at-least-32-random-characters>
 AUTH_SESSION_TTL_SECONDS=28800
 MCP_CLIENT_ID=kravhantering-mcp
+HSA_PERSON_LOOKUP_TIMEOUT_MS=5000
+HSA_PERSON_LOOKUP_URL=https://kong.example.internal/hsa/person-records/lookup
 
 NEXT_PUBLIC_DEFAULT_MODEL=
 OPENROUTER_API_KEY=
@@ -695,6 +760,13 @@ re-authenticate.
 for MCP clients. Keep it aligned with the `kravhantering-mcp` client id in the
 realm JSON, or leave the default when MCP service tokens are not used. It is not
 a secret.
+
+Set `HSA_PERSON_LOOKUP_URL` to the environment-specific server-side HSA
+lookup endpoint. The browser must not call the HSA integration directly; the
+app calls this internal Kong or integration-platform REST facade only when an
+editable HSA-id needs lookup or refresh. Keep
+`HSA_PERSON_LOOKUP_TIMEOUT_MS=5000` unless the approved integration path needs
+another timeout.
 
 Leave `NEXT_PUBLIC_DEFAULT_MODEL`, `OPENROUTER_API_KEY` and
 `OPENROUTER_MGMT_API_KEY` empty unless AI requirement generation is approved
@@ -1199,6 +1271,41 @@ exit
 The production `db-job` image still contains only migrations and required seed
 code; demo seed files are mounted from the release bundle only for this
 explicit command.
+
+Optional, release test and demo only: switch the app runtime to the internal
+Kong route and start the test support overlay with the single-node stack. The
+overlay adds Kong and `hsa-directory-mock` on `kravhantering-internal` without
+publishing host ports. Use it only with `single-node-demo` and only after
+setting and verifying `KONG_IMAGE_REF` and `HSA_DIRECTORY_MOCK_IMAGE_REF` from
+[Optional Test Support Image Refs](#optional-test-support-image-refs).
+
+```bash
+lookup_url="http://kong:8000/hsa/person-records/lookup"
+sudo sed -i \
+  "s#^HSA_PERSON_LOOKUP_URL=.*#HSA_PERSON_LOOKUP_URL=${lookup_url}#" \
+  /etc/kravhantering/app.env
+```
+
+Start the demo/test stack with both Compose files:
+
+```bash
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml \
+  -f compose/single-node-demo.compose.yml up -d
+
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml \
+  -f compose/single-node-demo.compose.yml logs --tail=100 kong
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml \
+  -f compose/single-node-demo.compose.yml logs --tail=100 hsa-directory-mock
+
+exit
+```
+
+Use the normal single-node start command below for production.
 
 Start the long-running services:
 

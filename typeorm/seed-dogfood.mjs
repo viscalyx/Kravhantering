@@ -474,7 +474,7 @@ const DOGFOOD_KRAV = [
   },
   {
     area: ID.area.INT,
-    desc: 'REST API:er för krav och kravunderlag ska finnas under /api/requirements respektive /api/specifications och stödja CRUD enligt dokumentationen.',
+    desc: 'REST API:er för krav och kravunderlag ska finnas under /api/requirements respektive /api/requirements-specifications och stödja CRUD enligt dokumentationen.',
     ac: 'GET, POST, PATCH och DELETE fungerar enligt specifikation och returnerar dokumenterade statuskoder. Felresponser följer ett gemensamt JSON-felschema.',
     vm: 'Vitest enhetstester per route samt scripts/dev-curl.sh för manuell verifiering.',
     cat: ID.cat.it,
@@ -532,7 +532,7 @@ const DOGFOOD_KRAV = [
   {
     area: ID.area.SAK,
     desc: 'Skyddade routes ska returnera 302 till /api/auth/login när giltig session saknas, aldrig läcka data.',
-    ac: 'Anrop utan giltig sessionscookie mot t.ex. /api/requirements eller /api/specifications returnerar 302 mot /api/auth/login med originalvägen i parametern returnTo.',
+    ac: 'Anrop utan giltig sessionscookie mot t.ex. /api/requirements eller /api/requirements-specifications returnerar 302 mot /api/auth/login med originalvägen i parametern returnTo.',
     vm: 'Integrationstester med scripts/dev-curl.sh utan cookie-jar samt enhetstester av middleware-matchningen.',
     cat: ID.cat.it,
     type: ID.type.ickefunk,

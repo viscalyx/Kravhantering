@@ -8,11 +8,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      hsa-directory-mock:
+        condition: service_healthy
       idp:
         # Don't block on healthy — Keycloak takes ~30s to start and would
         # slow every devcontainer attach. The app boots fine without it;
         # OIDC discovery happens lazily on first sign-in.
         condition: service_started
+      kong:
+        condition: service_healthy
     volumes:
       # Mount the root folder that contains .git
       - ..:/workspace:cached
@@ -53,6 +57,8 @@ services:
     environment:
       DATABASE_READONLY_PASSWORD_ENV: ${DATABASE_READONLY_PASSWORD_ENV:-DATABASE_READONLY_PASSWORD}
       DB_TRUST_SERVER_CERTIFICATE: ${DB_TRUST_SERVER_CERTIFICATE:-true}
+      HSA_PERSON_LOOKUP_TIMEOUT_MS: ${HSA_PERSON_LOOKUP_TIMEOUT_MS:-5000}
+      HSA_PERSON_LOOKUP_URL: ${HSA_PERSON_LOOKUP_URL:-http://kong:8000/hsa/person-records/lookup}
       NODE_ENV: ${NODE_ENV:-development}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-1}
     extra_hosts:
@@ -116,6 +122,46 @@ services:
       - "${KEYCLOAK_HOST_PORT:-8080}:8080"
     volumes:
       - ../dev/keycloak:/opt/keycloak/data/import:ro
+
+  kong:
+    image: docker.io/kong/kong-gateway:3.10.0.8-20260210-ubuntu@sha256:031e2abf5b973db9ce5d94ea30a46d4b29b3879088118e0b1c0ff66b8c814853
+    environment:
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+    volumes:
+      - ${WORKSPACE_HOST_ROOT:-..}/containers/kong/kong.yml:/kong/declarative/kong.yml:ro
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      retries: 12
+      start_period: 10s
+      timeout: 5s
+
+  hsa-directory-mock:
+    build:
+      context: ${WORKSPACE_BUILD_ROOT:-..}/containers/hsa-directory-mock
+      dockerfile: Dockerfile
+    environment:
+      PORT: 8080
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "--input-type=module",
+          "-e",
+          "const response = await fetch('http://127.0.0.1:8080/health'); if (!response.ok) process.exit(1);"
+        ]
+      interval: 10s
+      retries: 12
+      start_period: 10s
+      timeout: 5s
 
 volumes:
   sqlserver-devcontainer-data:

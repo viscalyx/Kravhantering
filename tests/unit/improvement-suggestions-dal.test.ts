@@ -146,7 +146,7 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
     )
   })
 
-  it('normalizes blank creator HSA-ID values to null when creating suggestions', async () => {
+  it('normalizes blank creator HSA-id values to null when creating suggestions', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([{ id: 1 }]).mockResolvedValueOnce([{ id: 42 }])
 
@@ -164,7 +164,7 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
     )
   })
 
-  it('rejects blank resolver HSA-ID values before recording a resolution', async () => {
+  it('rejects blank resolver HSA-id values before recording a resolution', async () => {
     const { db, query } = createSqlServerDb()
 
     await expect(
@@ -176,7 +176,7 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
       }),
     ).rejects.toMatchObject({
       code: 'validation',
-      message: 'Resolved by HSA-ID is required',
+      message: 'Resolved by HSA-id is required',
     })
     expect(query).not.toHaveBeenCalled()
   })

@@ -24,7 +24,6 @@ interface QueryExecutor {
 type Row = Record<string, unknown>
 
 export interface AccessReviewPrincipalSnapshot {
-  canGenerateAi: boolean
   permissionType: string
   principalDisplayName: string
   principalHsaId: string
@@ -71,9 +70,23 @@ export interface DecideAccessReviewItemInput {
 const ADMIN_ROLE = 'Admin'
 const PRIVACY_OFFICER_ROLE = 'PrivacyOfficer'
 const ACCESS_REVIEW_ITEM_INSERT_BATCH_SIZE = 150
-const ACCESS_REVIEW_ITEM_INSERT_PARAMETER_COUNT = 11
+const ACCESS_REVIEW_ITEM_INSERT_PARAMETER_COUNT = 10
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+
+function requirementResponsibilityPersonNameSql(alias: string): string {
+  return `NULLIF(LTRIM(RTRIM(CONCAT(
+    ${alias}.given_name,
+    CASE
+      WHEN ${alias}.middle_name IS NULL OR LTRIM(RTRIM(${alias}.middle_name)) = N'' THEN N''
+      ELSE CONCAT(N' ', ${alias}.middle_name)
+    END,
+    CASE
+      WHEN ${alias}.surname IS NULL OR LTRIM(RTRIM(${alias}.surname)) = N'' THEN N''
+      ELSE CONCAT(N' ', ${alias}.surname)
+    END
+  ))), N'')`
+}
 
 function isAdmin(actor: AccessReviewAuthContext): boolean {
   return actor.roles.includes(ADMIN_ROLE)
@@ -99,7 +112,7 @@ function requireAccessReviewRole(
 
 function requireActor(actor: AccessReviewAuthContext): AccessReviewActor {
   if (!actor.hsaId) {
-    throw forbiddenError('Verified actor HSA-ID is required', {
+    throw forbiddenError('Verified actor HSA-id is required', {
       reason: 'missing_actor_hsa_id',
     })
   }
@@ -139,15 +152,6 @@ function nullableStringValue(value: unknown): string | null {
   if (value == null) return null
   const valueString = String(value)
   return valueString.length > 0 ? valueString : null
-}
-
-function booleanValue(value: unknown): boolean {
-  if (typeof value === 'boolean') return value
-  if (typeof value === 'number') return value !== 0
-  if (typeof value === 'string') {
-    return value === '1' || value.toLowerCase() === 'true'
-  }
-  return Boolean(value)
 }
 
 function numberValue(value: unknown): number {
@@ -220,7 +224,6 @@ function mapItem(row: Row): AccessReviewItem {
   const decidedByDisplayName = nullableStringValue(row.decidedByDisplayName)
 
   return {
-    canGenerateAi: booleanValue(row.canGenerateAi),
     comment: nullableStringValue(row.comment),
     createdAt: isoTimestamp(row.createdAt),
     decidedAt: nullableIsoTimestamp(row.decidedAt),
@@ -250,7 +253,6 @@ function mapItem(row: Row): AccessReviewItem {
 
 function mapSnapshotRow(row: Row): AccessReviewPrincipalSnapshot {
   return {
-    canGenerateAi: booleanValue(row.canGenerateAi),
     permissionType: stringValue(row.permissionType),
     principalDisplayName: stringValue(row.principalDisplayName),
     principalHsaId: stringValue(row.principalHsaId),
@@ -273,53 +275,85 @@ export async function collectAccessReviewAssignments(
           N'requirement_areas.owner' AS sourceKey,
           N'requirement_areas' AS sourceTable,
           area.owner_hsa_id AS principalHsaId,
-          area.owner_hsa_id AS principalDisplayName,
+          ${requirementResponsibilityPersonNameSql('owner_person')} AS principalDisplayName,
           N'requirement_area' AS scopeType,
           CAST(area.id AS nvarchar(120)) AS scopeKey,
           CONCAT(area.prefix, N' ', area.name) AS scopeLabel,
-          N'area_owner' AS permissionType,
-          CAST(0 AS bit) AS canGenerateAi
+          N'area_owner' AS permissionType
         FROM requirement_areas area
+        INNER JOIN requirement_responsibility_people owner_person
+          ON owner_person.hsa_id = area.owner_hsa_id
+        UNION ALL
+        SELECT
+          N'requirement_packages.owner' AS sourceKey,
+          N'requirement_packages' AS sourceTable,
+          pkg.lead_hsa_id AS principalHsaId,
+          ${requirementResponsibilityPersonNameSql('lead_person')} AS principalDisplayName,
+          N'requirement_package' AS scopeType,
+          CAST(pkg.id AS nvarchar(120)) AS scopeKey,
+          pkg.name AS scopeLabel,
+          N'package_owner' AS permissionType
+        FROM requirement_packages pkg
+        INNER JOIN requirement_responsibility_people lead_person
+          ON lead_person.hsa_id = pkg.lead_hsa_id
         UNION ALL
         SELECT
           N'requirement_area_co_authors.hsa_id' AS sourceKey,
           N'requirement_area_co_authors' AS sourceTable,
           co_author.hsa_id AS principalHsaId,
-          co_author.display_name AS principalDisplayName,
+          ${requirementResponsibilityPersonNameSql('co_author_person')} AS principalDisplayName,
           N'requirement_area' AS scopeType,
           CAST(area.id AS nvarchar(120)) AS scopeKey,
           CONCAT(area.prefix, N' ', area.name) AS scopeLabel,
-          N'area_co_author' AS permissionType,
-          co_author.can_generate_ai AS canGenerateAi
+          N'area_co_author' AS permissionType
         FROM requirement_area_co_authors co_author
         INNER JOIN requirement_areas area ON area.id = co_author.area_id
+        INNER JOIN requirement_responsibility_people co_author_person
+          ON co_author_person.hsa_id = co_author.hsa_id
+        UNION ALL
+        SELECT
+          N'requirement_package_co_authors.hsa_id' AS sourceKey,
+          N'requirement_package_co_authors' AS sourceTable,
+          co_author.hsa_id AS principalHsaId,
+          ${requirementResponsibilityPersonNameSql('co_author_person')} AS principalDisplayName,
+          N'requirement_package' AS scopeType,
+          CAST(pkg.id AS nvarchar(120)) AS scopeKey,
+          pkg.name AS scopeLabel,
+          N'package_co_author' AS permissionType
+        FROM requirement_package_co_authors co_author
+        INNER JOIN requirement_packages pkg
+          ON pkg.id = co_author.requirement_package_id
+        INNER JOIN requirement_responsibility_people co_author_person
+          ON co_author_person.hsa_id = co_author.hsa_id
         UNION ALL
         SELECT
           N'requirements_specifications.responsible' AS sourceKey,
           N'requirements_specifications' AS sourceTable,
           spec.responsible_hsa_id AS principalHsaId,
-          spec.responsible_display_name AS principalDisplayName,
+          ${requirementResponsibilityPersonNameSql('responsible_person')} AS principalDisplayName,
           N'requirements_specification' AS scopeType,
           CAST(spec.id AS nvarchar(120)) AS scopeKey,
           CONCAT(spec.unique_id, N' ', spec.name) AS scopeLabel,
-          N'specification_responsible' AS permissionType,
-          spec.can_responsible_generate_ai AS canGenerateAi
+          N'specification_responsible' AS permissionType
         FROM requirements_specifications spec
+        INNER JOIN requirement_responsibility_people responsible_person
+          ON responsible_person.hsa_id = spec.responsible_hsa_id
         WHERE spec.responsible_hsa_id IS NOT NULL
         UNION ALL
         SELECT
           N'specification_co_authors.hsa_id' AS sourceKey,
           N'specification_co_authors' AS sourceTable,
           co_author.hsa_id AS principalHsaId,
-          co_author.display_name AS principalDisplayName,
+          ${requirementResponsibilityPersonNameSql('co_author_person')} AS principalDisplayName,
           N'requirements_specification' AS scopeType,
           CAST(spec.id AS nvarchar(120)) AS scopeKey,
           CONCAT(spec.unique_id, N' ', spec.name) AS scopeLabel,
-          N'specification_co_author' AS permissionType,
-          co_author.can_generate_ai AS canGenerateAi
+          N'specification_co_author' AS permissionType
         FROM specification_co_authors co_author
         INNER JOIN requirements_specifications spec
           ON spec.id = co_author.specification_id
+        INNER JOIN requirement_responsibility_people co_author_person
+          ON co_author_person.hsa_id = co_author.hsa_id
       ) assignments
       WHERE assignments.principalHsaId IS NOT NULL
       ORDER BY
@@ -422,10 +456,9 @@ async function insertItems(
         item.scopeKey,
         item.scopeLabel,
         item.permissionType,
-        item.canGenerateAi ? 1 : 0,
         createdAt,
       )
-      return `(@${parameterOffset}, @${parameterOffset + 1}, @${parameterOffset + 2}, @${parameterOffset + 3}, @${parameterOffset + 4}, @${parameterOffset + 5}, @${parameterOffset + 6}, @${parameterOffset + 7}, @${parameterOffset + 8}, @${parameterOffset + 9}, N'pending', @${parameterOffset + 10})`
+      return `(@${parameterOffset}, @${parameterOffset + 1}, @${parameterOffset + 2}, @${parameterOffset + 3}, @${parameterOffset + 4}, @${parameterOffset + 5}, @${parameterOffset + 6}, @${parameterOffset + 7}, @${parameterOffset + 8}, N'pending', @${parameterOffset + 9})`
     })
 
     await db.query(
@@ -439,7 +472,6 @@ async function insertItems(
           scope_key,
           scope_label,
           permission_type,
-          can_generate_ai,
           decision,
           created_at
         )
@@ -589,7 +621,6 @@ export async function getAccessReviewRun(
         scope_key AS scopeKey,
         scope_label AS scopeLabel,
         permission_type AS permissionType,
-        can_generate_ai AS canGenerateAi,
         decision,
         decided_at AS decidedAt,
         decided_by_hsa_id AS decidedByHsaId,

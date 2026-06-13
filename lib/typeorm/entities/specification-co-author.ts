@@ -1,13 +1,13 @@
 import { EntitySchema } from 'typeorm'
+import type { RequirementResponsibilityPersonEntity } from '@/lib/typeorm/entities/requirement-responsibility-person'
 import type { RequirementsSpecificationEntity } from '@/lib/typeorm/entities/requirements-specification'
 
 export interface SpecificationCoAuthorEntity {
-  canGenerateAi: boolean
   createdAt: Date
   createdByDisplayName: string | null
   createdByHsaId: string | null
-  displayName: string
   hsaId: string
+  person: RequirementResponsibilityPersonEntity
   specification: RequirementsSpecificationEntity
   specificationId: number
 }
@@ -26,17 +26,7 @@ export const specificationCoAuthorEntity =
         name: 'hsa_id',
         primary: true,
         type: 'nvarchar',
-        length: 64,
-      },
-      displayName: {
-        name: 'display_name',
-        type: 'nvarchar',
-        length: 'MAX',
-      },
-      canGenerateAi: {
-        name: 'can_generate_ai',
-        type: 'bit',
-        default: false,
+        length: 31,
       },
       createdAt: {
         name: 'created_at',
@@ -77,6 +67,18 @@ export const specificationCoAuthorEntity =
         },
         nullable: false,
         onDelete: 'CASCADE',
+        onUpdate: 'NO ACTION',
+      },
+      person: {
+        type: 'many-to-one',
+        target: 'RequirementResponsibilityPerson',
+        joinColumn: {
+          name: 'hsa_id',
+          referencedColumnName: 'hsaId',
+          foreignKeyConstraintName: 'fk_specification_co_authors_hsa_id',
+        },
+        nullable: false,
+        onDelete: 'NO ACTION',
         onUpdate: 'NO ACTION',
       },
     },

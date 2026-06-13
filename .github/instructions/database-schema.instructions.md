@@ -32,23 +32,19 @@ applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed*.mjs,doc
 
 - Any table or column linked to a requirement must also appear in `requirement_versions` and related version tables so every requirement-linked property is captured in the version snapshot.
 
-## Retired Columns
+## Removed Columns
 
-- If a column is no longer used and cannot be removed safely, rename it to
-  `unused_1`, `unused_2`, etc.
-- Apply this when the column must remain for compatibility/history or when
-  schema or migration constraints prevent safe removal.
-- Number `unused_n` per table. Use the lowest available positive integer in
-  that table.
-- Use `sp_rename '<table>.<old>', '<new>', 'COLUMN'` (or
-  `EXEC sp_rename`) for the rename inside the migration.
-- Clear existing data from the renamed column in the same migration. Prefer
-  `NULL`; if the column cannot be `NULL`, use a neutral empty value with no
-  business meaning.
-- Keep the corresponding TypeORM entity in sync with a neutral field name
-  such as `unused1`.
-- Remove retired-column wiring from DAL, services, UI, tests, and docs. Do
-  not keep product semantics attached to an `unused_n` column.
+- Drop unused columns with `ALTER TABLE [<table>] DROP COLUMN [<column>]` in a
+  new migration.
+- Do not edit already released migrations. Historical migrations may contain
+  the old column before a later removal migration drops it.
+- Drop dependent default constraints, indexes, check constraints, and foreign
+  keys before dropping a column.
+- Remove dropped columns from TypeORM entities, seeds, DAL, services, UI,
+  tests, and docs in the same change.
+- Do not keep unused columns under neutral placeholder names.
+- Use `down` to recreate only the schema shape when dropped data cannot be
+  restored. Use a clear `THROW` when rollback would be misleading or unsafe.
 
 ## Foreign Keys
 
@@ -97,13 +93,13 @@ ALTER TABLE [<table>]
   field, update the Admin Center Privacy / Dataskydd erasure workflow in the
   same change.
 - Add or update the relevant `GROUP_POLICIES` entry in
-  `lib/privacy/erasure.ts` so preview and execution handle the field by HSA-ID.
-- Use HSA-ID as the durable identity key. Names, email addresses, and display
+  `lib/privacy/erasure.ts` so preview and execution handle the field by HSA-id.
+- Use HSA-id as the durable identity key. Names, email addresses, and display
   names are snapshots or contact details, never matching keys for erasure.
 - Add or update seeded privacy scenarios in `typeorm/seed.mjs`, including
-  representative HSA-ID values and duplicate-name coverage when ambiguity is
+  representative HSA-id values and duplicate-name coverage when ambiguity is
   possible.
-- Add or update tests for preview, execution, exact HSA-ID matching, duplicate
+- Add or update tests for preview, execution, exact HSA-id matching, duplicate
   name safety, no-replacement anonymization, and UI/i18n copy when the field is
   visible in Admin Privacy.
 - Update `docs/admin-center.md`, `docs/database-schema.md`, and relevant auth

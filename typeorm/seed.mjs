@@ -10,10 +10,12 @@ const TABLE_ORDER = [
   'specification_item_statuses',
   'specification_lifecycle_statuses',
   'specification_governance_object_types',
+  'requirement_responsibility_people',
   'requirement_areas',
   'requirement_area_co_authors',
   'requirement_categories',
   'requirement_list_column_defaults',
+  'hsa_id_prefixes',
   'requirements_specifications',
   'specification_co_authors',
   'access_review_runs',
@@ -35,6 +37,7 @@ const TABLE_ORDER = [
   'deviations',
   'requirement_version_norm_references',
   'requirement_packages',
+  'requirement_package_co_authors',
   'requirement_selection_question_sequences',
   'requirement_selection_questions',
   'requirement_selection_answers',
@@ -206,6 +209,19 @@ const SEED_DATA = {
         'delete',
         365,
         'Arkiverade kravurvalsfrågor och svar utan sparad kravunderlagshistorik',
+        1,
+        'docs/informationsmangder-kravhantering.md#gallrings--och-arkiveringsmatris',
+        null,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        7,
+        'orphaned_responsibility_people_delete',
+        'Kravansvarspersoner utan kravansvarstilldelning',
+        'delete',
+        730,
+        'Kravansvarspersoner utan aktuella kravansvarstilldelningar och äldre än två år',
         1,
         'docs/informationsmangder-kravhantering.md#gallrings--och-arkiveringsmatris',
         null,
@@ -476,6 +492,16 @@ const SEED_DATA = {
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
       ],
+      [
+        910100,
+        'AUTHZ',
+        'Behörighetstestområde AUTHZ',
+        'Deterministiskt kravområde för manuella och automatiska behörighetstester',
+        'SE5560000001-areaowner1',
+        1,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
     ],
   },
   requirement_categories: {
@@ -512,6 +538,29 @@ const SEED_DATA = {
       [13, 'riskLevel', 12, 0, '2026-04-20 20:07:00'],
       [14, 'specificationItemStatus', 13, 0, '2026-04-20 20:07:00'],
       [15, 'suggestionCount', 14, 0, '2026-04-20 20:07:00'],
+    ],
+  },
+  hsa_id_prefixes: {
+    columns: [
+      'id',
+      'prefix',
+      'label',
+      'is_visible',
+      'is_default',
+      'created_at',
+      'updated_at',
+    ],
+    pk: ['id'],
+    rows: [
+      [
+        1,
+        'SE5560000001',
+        null,
+        1,
+        1,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
     ],
   },
   requirements_specifications: {
@@ -658,6 +707,18 @@ const SEED_DATA = {
         'Deterministiskt kravunderlag för Playwright-tester av avsteg och arkivering',
         'PLAYWRIGHT-LIFECYCLE-2026',
         'Playwright lifecycle fixtures',
+        3,
+        1,
+      ],
+      [
+        910400,
+        2,
+        2,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+        'Deterministiskt kravunderlag för manuella och automatiska behörighetstester',
+        'AUTHZ-SPEC-2026',
+        'Behörighetstest kravunderlag AUTHZ',
         3,
         1,
       ],
@@ -11812,7 +11873,6 @@ const SEED_DATA = {
       'requirement_id',
       'requirement_version_id',
       'needs_reference_id',
-      'unused_1',
       'created_at',
       'specification_item_status_id',
       'note',
@@ -11820,54 +11880,54 @@ const SEED_DATA = {
     ],
     pk: ['id'],
     rows: [
-      [1, 1, 1, 1, 1, null, '2026-03-22 20:07:00', 4, null, null],
-      [2, 1, 2, 3, 2, null, '2026-03-22 20:07:00', 4, null, null],
-      [3, 1, 4, 5, 3, null, '2026-03-22 20:07:00', 3, null, null],
-      [4, 1, 11, 13, 4, null, '2026-03-23 20:07:00', 4, null, null],
-      [5, 1, 13, 15, 5, null, '2026-03-23 20:07:00', 3, null, null],
-      [6, 1, 22, 24, null, null, '2026-03-24 20:07:00', 2, null, null],
-      [7, 1, 24, 26, 6, null, '2026-03-24 20:07:00', 4, null, null],
-      [8, 2, 15, 17, 7, null, '2026-03-27 20:07:00', 3, null, null],
-      [9, 2, 16, 18, 8, null, '2026-03-27 20:07:00', 2, null, null],
-      [10, 2, 17, 19, 9, null, '2026-03-28 20:07:00', 3, null, null],
-      [11, 2, 19, 21, 10, null, '2026-03-28 20:07:00', 1, null, null],
-      [12, 2, 42, 43, null, null, '2026-03-29 20:07:00', 5, null, null],
-      [13, 3, 21, 23, null, null, '2026-04-01 20:07:00', 1, null, null],
-      [14, 3, 22, 24, null, null, '2026-04-01 20:07:00', 2, null, null],
-      [15, 3, 24, 26, null, null, '2026-04-02 20:07:00', 1, null, null],
-      [16, 3, 39, 40, null, null, '2026-04-02 20:07:00', 6, null, null],
-      [17, 4, 26, 28, 11, null, '2026-04-03 20:07:00', 4, null, null],
-      [18, 4, 27, 29, null, null, '2026-04-03 20:07:00', 3, null, null],
-      [19, 4, 29, 31, null, null, '2026-04-04 20:07:00', 2, null, null],
-      [20, 5, 32, 33, null, null, '2026-04-06 20:07:00', 1, null, null],
-      [21, 5, 33, 34, null, null, '2026-04-06 20:07:00', 1, null, null],
-      [22, 5, 34, 35, 12, null, '2026-04-07 20:07:00', 2, null, null],
-      [23, 6, 11, 13, 13, null, '2026-04-09 20:07:00', 4, null, null],
-      [24, 6, 13, 15, 14, null, '2026-04-09 20:07:00', 3, null, null],
-      [25, 6, 17, 19, 15, null, '2026-04-10 20:07:00', 3, null, null],
-      [26, 6, 38, 39, 16, null, '2026-04-10 20:07:00', 2, null, null],
-      [27, 6, 42, 43, 17, null, '2026-04-11 20:07:00', 1, null, null],
-      [28, 6, 43, 44, 18, null, '2026-04-11 20:07:00', 1, null, null],
-      [29, 7, 34, 35, 19, null, '2026-04-11 20:07:00', 1, null, null],
-      [30, 7, 17, 19, 20, null, '2026-04-12 20:07:00', 1, null, null],
-      [31, 8, 38, 39, null, null, '2026-04-13 20:07:00', 1, null, null],
-      [32, 8, 39, 40, null, null, '2026-04-13 20:07:00', 1, null, null],
-      [33, 8, 42, 43, null, null, '2026-04-14 20:07:00', 1, null, null],
-      [34, 8, 43, 44, null, null, '2026-04-14 20:07:00', 1, null, null],
-      [35, 9, 1, 1, null, null, '2026-04-16 20:07:00', 2, null, null],
-      [36, 9, 4, 5, null, null, '2026-04-16 20:07:00', 1, null, null],
-      [37, 9, 13, 15, 21, null, '2026-04-17 20:07:00', 1, null, null],
-      [38, 10, 67, 101, 22, null, '2026-04-18 20:07:00', 1, null, null],
-      [39, 11, 368, 503, null, null, '2026-04-19 20:07:00', 1, null, null],
-      [40, 11, 369, 504, null, null, '2026-04-19 20:07:00', 1, null, null],
-      [41, 11, 370, 505, null, null, '2026-04-19 20:07:00', 1, null, null],
-      [42, 11, 371, 506, null, null, '2026-04-19 20:07:00', 1, null, null],
-      [43, 11, 372, 507, null, null, '2026-04-19 20:07:00', 1, null, null],
-      [44, 11, 373, 508, null, null, '2026-04-19 20:07:00', 1, null, null],
-      [45, 11, 374, 509, null, null, '2026-04-19 20:07:00', 1, null, null],
-      [46, 11, 375, 510, null, null, '2026-04-19 20:07:00', 1, null, null],
-      [47, 11, 376, 511, null, null, '2026-04-19 20:07:00', 1, null, null],
-      [48, 11, 377, 512, null, null, '2026-04-19 20:07:00', 1, null, null],
+      [1, 1, 1, 1, 1, '2026-03-22 20:07:00', 4, null, null],
+      [2, 1, 2, 3, 2, '2026-03-22 20:07:00', 4, null, null],
+      [3, 1, 4, 5, 3, '2026-03-22 20:07:00', 3, null, null],
+      [4, 1, 11, 13, 4, '2026-03-23 20:07:00', 4, null, null],
+      [5, 1, 13, 15, 5, '2026-03-23 20:07:00', 3, null, null],
+      [6, 1, 22, 24, null, '2026-03-24 20:07:00', 2, null, null],
+      [7, 1, 24, 26, 6, '2026-03-24 20:07:00', 4, null, null],
+      [8, 2, 15, 17, 7, '2026-03-27 20:07:00', 3, null, null],
+      [9, 2, 16, 18, 8, '2026-03-27 20:07:00', 2, null, null],
+      [10, 2, 17, 19, 9, '2026-03-28 20:07:00', 3, null, null],
+      [11, 2, 19, 21, 10, '2026-03-28 20:07:00', 1, null, null],
+      [12, 2, 42, 43, null, '2026-03-29 20:07:00', 5, null, null],
+      [13, 3, 21, 23, null, '2026-04-01 20:07:00', 1, null, null],
+      [14, 3, 22, 24, null, '2026-04-01 20:07:00', 2, null, null],
+      [15, 3, 24, 26, null, '2026-04-02 20:07:00', 1, null, null],
+      [16, 3, 39, 40, null, '2026-04-02 20:07:00', 6, null, null],
+      [17, 4, 26, 28, 11, '2026-04-03 20:07:00', 4, null, null],
+      [18, 4, 27, 29, null, '2026-04-03 20:07:00', 3, null, null],
+      [19, 4, 29, 31, null, '2026-04-04 20:07:00', 2, null, null],
+      [20, 5, 32, 33, null, '2026-04-06 20:07:00', 1, null, null],
+      [21, 5, 33, 34, null, '2026-04-06 20:07:00', 1, null, null],
+      [22, 5, 34, 35, 12, '2026-04-07 20:07:00', 2, null, null],
+      [23, 6, 11, 13, 13, '2026-04-09 20:07:00', 4, null, null],
+      [24, 6, 13, 15, 14, '2026-04-09 20:07:00', 3, null, null],
+      [25, 6, 17, 19, 15, '2026-04-10 20:07:00', 3, null, null],
+      [26, 6, 38, 39, 16, '2026-04-10 20:07:00', 2, null, null],
+      [27, 6, 42, 43, 17, '2026-04-11 20:07:00', 1, null, null],
+      [28, 6, 43, 44, 18, '2026-04-11 20:07:00', 1, null, null],
+      [29, 7, 34, 35, 19, '2026-04-11 20:07:00', 1, null, null],
+      [30, 7, 17, 19, 20, '2026-04-12 20:07:00', 1, null, null],
+      [31, 8, 38, 39, null, '2026-04-13 20:07:00', 1, null, null],
+      [32, 8, 39, 40, null, '2026-04-13 20:07:00', 1, null, null],
+      [33, 8, 42, 43, null, '2026-04-14 20:07:00', 1, null, null],
+      [34, 8, 43, 44, null, '2026-04-14 20:07:00', 1, null, null],
+      [35, 9, 1, 1, null, '2026-04-16 20:07:00', 2, null, null],
+      [36, 9, 4, 5, null, '2026-04-16 20:07:00', 1, null, null],
+      [37, 9, 13, 15, 21, '2026-04-17 20:07:00', 1, null, null],
+      [38, 10, 67, 101, 22, '2026-04-18 20:07:00', 1, null, null],
+      [39, 11, 368, 503, null, '2026-04-19 20:07:00', 1, null, null],
+      [40, 11, 369, 504, null, '2026-04-19 20:07:00', 1, null, null],
+      [41, 11, 370, 505, null, '2026-04-19 20:07:00', 1, null, null],
+      [42, 11, 371, 506, null, '2026-04-19 20:07:00', 1, null, null],
+      [43, 11, 372, 507, null, '2026-04-19 20:07:00', 1, null, null],
+      [44, 11, 373, 508, null, '2026-04-19 20:07:00', 1, null, null],
+      [45, 11, 374, 509, null, '2026-04-19 20:07:00', 1, null, null],
+      [46, 11, 375, 510, null, '2026-04-19 20:07:00', 1, null, null],
+      [47, 11, 376, 511, null, '2026-04-19 20:07:00', 1, null, null],
+      [48, 11, 377, 512, null, '2026-04-19 20:07:00', 1, null, null],
     ],
   },
   deviations: {
@@ -11979,7 +12039,6 @@ const SEED_DATA = {
       'name',
       'description',
       'lead_hsa_id',
-      'lead_display_name',
       'is_archived',
       'created_at',
       'updated_at',
@@ -11991,7 +12050,6 @@ const SEED_DATA = {
         'Mobil användning',
         'Krav som gäller när systemet används från mobiltelefon eller surfplatta.',
         'SE5560000001-annaj',
-        'Anna Johansson',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12001,7 +12059,6 @@ const SEED_DATA = {
         'Datamigrering',
         'Krav som gäller import, export, konvertering och kvalitetssäkring av data.',
         'SE5560000001-annaj',
-        'Anna Johansson',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12011,7 +12068,6 @@ const SEED_DATA = {
         'Integration med andra system',
         'Krav som gäller tekniska gränssnitt, informationsutbyte och externa beroenden.',
         'SE5560000001-erikl',
-        'Erik Lindberg',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12021,7 +12077,6 @@ const SEED_DATA = {
         'Ärendehantering',
         'Krav som gäller registrering, handläggning, uppföljning och avslut av ärenden.',
         'SE5560000001-erikl',
-        'Erik Lindberg',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12031,7 +12086,6 @@ const SEED_DATA = {
         'Användarvänlighet',
         'Krav som gäller tydlighet, effektivitet och enkel användning för slutanvändare.',
         'SE5560000001-marias',
-        'Maria Svensson',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12041,7 +12095,6 @@ const SEED_DATA = {
         'Molndrift',
         'Krav som gäller drift, övervakning, skalning och robusthet i molnmiljö.',
         'SE5560000001-marias',
-        'Maria Svensson',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12051,7 +12104,6 @@ const SEED_DATA = {
         'Normal drift',
         'Krav som gäller ordinarie drift och vardaglig användning utan särskilda störningar.',
         'SE5560000001-marias',
-        'Maria Svensson',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12061,7 +12113,6 @@ const SEED_DATA = {
         'Hög belastning',
         'Krav som gäller när många användare, stora datamängder eller många samtidiga operationer belastar systemet.',
         'SE5560000001-marias',
-        'Maria Svensson',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
@@ -12071,10 +12122,58 @@ const SEED_DATA = {
         'Katastrofåterställning',
         'Krav som gäller återställning efter större avbrott, dataförlust eller miljöbortfall.',
         'SE5560000001-marias',
-        'Maria Svensson',
         0,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
+      ],
+      [
+        910200,
+        'AUTHZ kravpaket',
+        'Deterministiskt kravpaket för manuella och automatiska behörighetstester.',
+        'SE5560000001-pkglead1',
+        0,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+    ],
+  },
+  requirement_package_co_authors: {
+    columns: [
+      'requirement_package_id',
+      'hsa_id',
+      'created_at',
+      'created_by_hsa_id',
+      'created_by_display_name',
+    ],
+    pk: ['requirement_package_id', 'hsa_id'],
+    rows: [
+      [
+        1,
+        'SE5560000001-pkgco1',
+        '2026-04-20 20:07:00',
+        'SE5560000001-admin1',
+        'Ada Admin',
+      ],
+      [
+        2,
+        'SE5560000001-2002',
+        '2026-04-20 20:07:00',
+        'SE5560000001-admin1',
+        'Ada Admin',
+      ],
+      [
+        3,
+        'SE5560000001-kalle1',
+        '2026-04-20 20:07:00',
+        'SE5560000001-admin1',
+        'Ada Admin',
+      ],
+      [
+        910200,
+        'SE5560000001-pkgco1',
+        '2026-04-20 20:07:00',
+        'SE5560000001-admin1',
+        'Ada Admin',
       ],
     ],
   },
@@ -12209,6 +12308,213 @@ const { RETENTION_HISTORY_ONLY_VERSION_IDS, appendArchivingRetentionSeed } =
 appendArchivingRetentionSeed(SEED_DATA)
 
 const PRIVACY_SEED_TS = '2026-04-23 09:00:00'
+const RESPONSIBILITY_PERSON_PLACEHOLDER = '(saknar namn, kräver nytt uppslag)'
+const RETENTION_OLD_PERSON_TS = '2023-01-15 09:00:00'
+const RETENTION_FRESH_PERSON_TS = '2026-04-25 09:00:00'
+const RESPONSIBILITY_PERSON_REFRESH_FIXTURE_HSA_ID = 'SE5560000001-pkgco1'
+
+const EXPLICIT_REQUIREMENT_RESPONSIBILITY_PERSON_HSA_IDS = [
+  'SE5560000001-retentionorphan',
+  'SE5560000001-retentionfresh',
+]
+
+const REQUIREMENT_RESPONSIBILITY_PERSON_TIMESTAMPS = new Map([
+  ['SE5560000001-retentionlinked', RETENTION_OLD_PERSON_TS],
+  ['SE5560000001-retentionorphan', RETENTION_OLD_PERSON_TS],
+  ['SE5560000001-retentionfresh', RETENTION_FRESH_PERSON_TS],
+])
+
+const REQUIREMENT_RESPONSIBILITY_PERSON_BY_HSA_ID = new Map([
+  [
+    'SE5560000001-2002',
+    {
+      email: 'pontus.paket@example.test',
+      givenName: 'Pontus',
+      middleName: null,
+      surname: 'Paket',
+    },
+  ],
+  [
+    'SE5560000001-areaco1',
+    {
+      email: 'cora.coauthor@example.test',
+      givenName: 'Cora',
+      middleName: null,
+      surname: 'CoAuthor',
+    },
+  ],
+  [
+    'SE5560000001-areaowner1',
+    {
+      email: 'olle.areaowner@example.test',
+      givenName: 'Olle',
+      middleName: null,
+      surname: 'AreaOwner',
+    },
+  ],
+  [
+    'SE5560000001-annaj',
+    {
+      email: 'anna.johansson@example.test',
+      givenName: 'Anna',
+      middleName: null,
+      surname: 'Johansson',
+    },
+  ],
+  [
+    'SE5560000001-emmal',
+    {
+      email: 'emma.lindqvist@example.test',
+      givenName: 'Emma',
+      middleName: null,
+      surname: 'Lindqvist',
+    },
+  ],
+  [
+    'SE5560000001-erikl',
+    {
+      email: 'erik.lindberg@example.test',
+      givenName: 'Erik',
+      middleName: null,
+      surname: 'Lindberg',
+    },
+  ],
+  [
+    'SE5560000001-kalle1',
+    {
+      email: 'kalle.one@example.test',
+      givenName: 'Kalle',
+      middleName: null,
+      surname: 'Svensson',
+    },
+  ],
+  [
+    'SE5560000001-kalle2',
+    {
+      email: 'kalle.two@example.test',
+      givenName: 'Kalle',
+      middleName: null,
+      surname: 'Svensson',
+    },
+  ],
+  [
+    'SE5560000001-karlpersson',
+    {
+      email: 'karl.persson@example.test',
+      givenName: 'Karl',
+      middleName: null,
+      surname: 'Persson',
+    },
+  ],
+  [
+    'SE5560000001-linneab',
+    {
+      email: 'linnea.bergstrom@example.test',
+      givenName: 'Linnea',
+      middleName: null,
+      surname: 'Bergström',
+    },
+  ],
+  [
+    'SE5560000001-mariaj',
+    {
+      email: 'maria.johansson@example.test',
+      givenName: 'Maria',
+      middleName: null,
+      surname: 'Johansson',
+    },
+  ],
+  [
+    'SE5560000001-marias',
+    {
+      email: 'maria.svensson@example.test',
+      givenName: 'Maria',
+      middleName: null,
+      surname: 'Svensson',
+    },
+  ],
+  [
+    'SE5560000001-oscarn',
+    {
+      email: 'oscar.nilsson@example.test',
+      givenName: 'Oscar',
+      middleName: null,
+      surname: 'Nilsson',
+    },
+  ],
+  [
+    'SE5560000001-pkglead1',
+    {
+      email: 'leo.pkglead@example.test',
+      givenName: 'Leo',
+      middleName: null,
+      surname: 'PackageLead',
+    },
+  ],
+  [
+    'SE5560000001-retentionfresh',
+    {
+      email: 'freja.retentionfresh@example.test',
+      givenName: 'Freja',
+      middleName: null,
+      surname: 'RetentionFresh',
+    },
+  ],
+  [
+    'SE5560000001-retentionlinked',
+    {
+      email: 'lena.retentionlinked@example.test',
+      givenName: 'Lena',
+      middleName: null,
+      surname: 'RetentionLinked',
+    },
+  ],
+  [
+    'SE5560000001-retentionorphan',
+    {
+      email: 'rolf.retentionorphan@example.test',
+      givenName: 'Rolf',
+      middleName: null,
+      surname: 'RetentionOrphan',
+    },
+  ],
+  [
+    'SE5560000001-saraholm',
+    {
+      email: 'sara.holm@example.test',
+      givenName: 'Sara',
+      middleName: null,
+      surname: 'Holm',
+    },
+  ],
+  [
+    'SE5560000001-seed',
+    {
+      email: 'seed.fixture@example.test',
+      givenName: 'Seed',
+      middleName: null,
+      surname: 'Fixture',
+    },
+  ],
+  [
+    'SE5560000001-specco1',
+    {
+      email: 'signe.speccoauthor@example.test',
+      givenName: 'Signe',
+      middleName: null,
+      surname: 'SpecCoAuthor',
+    },
+  ],
+  [
+    'SE5560000001-specresp1',
+    {
+      email: 'petra.specresp@example.test',
+      givenName: 'Petra',
+      middleName: null,
+      surname: 'specresp',
+    },
+  ],
+])
 
 const HSA_BY_DISPLAY_NAME = new Map([
   ['seed', 'SE5560000001-seed'],
@@ -12266,6 +12572,7 @@ const SPEC_RESPONSIBLE_BY_ID = new Map([
   [910300, { displayName: 'seed', hsaId: 'SE5560000001-seed' }],
   [910301, { displayName: 'Oscar Nilsson', hsaId: 'SE5560000001-oscarn' }],
   [910302, { displayName: 'Emma Lindqvist', hsaId: 'SE5560000001-emmal' }],
+  [910400, { displayName: 'Petra specresp', hsaId: 'SE5560000001-specresp1' }],
 ])
 
 function seedTable(name) {
@@ -12471,7 +12778,7 @@ function hsaForDisplayName(displayName) {
   const hsaId = HSA_BY_DISPLAY_NAME.get(displayName)
   if (!hsaId) {
     throw new Error(
-      `Privacy seed: missing explicit HSA-ID mapping for display name '${displayName}'`,
+      `Privacy seed: missing explicit HSA-id mapping for display name '${displayName}'`,
     )
   }
   return hsaId
@@ -12486,6 +12793,101 @@ function normalizeOwnerHsaId(value) {
       ? value
       : null)
   )
+}
+
+function assertSeedHsaId(value, tableName, columnName) {
+  if (
+    typeof value === 'string' &&
+    /^[A-Z]{2}\d{10}-[A-Za-z0-9]+$/u.test(value) &&
+    value.length <= 31
+  ) {
+    return value
+  }
+  throw new Error(
+    `Privacy seed: invalid HSA-id in '${tableName}.${columnName}'`,
+  )
+}
+
+function collectSeedHsaIds(hsaIds, tableName, columnName) {
+  const table = SEED_DATA[tableName]
+  if (!table) {
+    throw new Error(
+      `Privacy seed: missing seed table '${tableName}' while collecting '${columnName}'`,
+    )
+  }
+  const columnIndex = table.columns.indexOf(columnName)
+  if (columnIndex < 0) {
+    throw new Error(
+      `Privacy seed: table '${tableName}' lacks HSA-id column '${columnName}'`,
+    )
+  }
+  for (const row of table.rows) {
+    const value = row[columnIndex]
+    if (value == null || value === '') continue
+    hsaIds.add(assertSeedHsaId(value, tableName, columnName))
+  }
+}
+
+function addRequirementResponsibilityPeopleSeed() {
+  const hsaIds = new Set()
+  collectSeedHsaIds(hsaIds, 'requirement_areas', 'owner_hsa_id')
+  collectSeedHsaIds(hsaIds, 'requirement_area_co_authors', 'hsa_id')
+  collectSeedHsaIds(hsaIds, 'requirements_specifications', 'responsible_hsa_id')
+  collectSeedHsaIds(hsaIds, 'specification_co_authors', 'hsa_id')
+  collectSeedHsaIds(hsaIds, 'requirement_packages', 'lead_hsa_id')
+  collectSeedHsaIds(hsaIds, 'requirement_package_co_authors', 'hsa_id')
+  for (const hsaId of EXPLICIT_REQUIREMENT_RESPONSIBILITY_PERSON_HSA_IDS) {
+    hsaIds.add(
+      assertSeedHsaId(hsaId, 'requirement_responsibility_people', 'hsa_id'),
+    )
+  }
+
+  SEED_DATA.requirement_responsibility_people = {
+    columns: [
+      'hsa_id',
+      'given_name',
+      'middle_name',
+      'surname',
+      'email',
+      'last_fetched_at',
+      'created_at',
+      'updated_at',
+    ],
+    pk: ['hsa_id'],
+    rows: [...hsaIds].sort().map(hsaId => {
+      const timestamp =
+        REQUIREMENT_RESPONSIBILITY_PERSON_TIMESTAMPS.get(hsaId) ??
+        PRIVACY_SEED_TS
+      if (hsaId === RESPONSIBILITY_PERSON_REFRESH_FIXTURE_HSA_ID) {
+        return [
+          hsaId,
+          RESPONSIBILITY_PERSON_PLACEHOLDER,
+          null,
+          null,
+          null,
+          null,
+          timestamp,
+          timestamp,
+        ]
+      }
+      const person = REQUIREMENT_RESPONSIBILITY_PERSON_BY_HSA_ID.get(hsaId)
+      if (!person) {
+        throw new Error(
+          `Privacy seed: missing requirement responsibility person details for '${hsaId}'`,
+        )
+      }
+      return [
+        hsaId,
+        person.givenName,
+        person.middleName,
+        person.surname,
+        person.email,
+        timestamp,
+        timestamp,
+        timestamp,
+      ]
+    }),
+  }
 }
 
 function addHsaColumnForDisplay(tableName, displayColumn, hsaColumn) {
@@ -12505,7 +12907,7 @@ function addDuplicateNameImprovementSuggestionSeed() {
     suggestions,
     seedRowFromColumns(suggestions, {
       content:
-        'Privacy seed proves duplicate display names are matched by HSA-ID.',
+        'Privacy seed proves duplicate display names are matched by HSA-id.',
       created_at: PRIVACY_SEED_TS,
       created_by: 'seed',
       created_by_hsa_id: 'SE5560000001-seed',
@@ -12536,7 +12938,7 @@ function addLinneaPrivacyExerciseSeed() {
     suggestions,
     seedRowFromColumns(suggestions, {
       content:
-        'Privacy seed: submitted improvement suggestion for HSA-ID erasure preview coverage.',
+        'Privacy seed: submitted improvement suggestion for HSA-id erasure preview coverage.',
       created_at: PRIVACY_SEED_TS,
       created_by: 'Linnéa Bergström',
       created_by_hsa_id: 'SE5560000001-linneab',
@@ -12587,7 +12989,7 @@ function addLinneaPrivacyExerciseSeed() {
       id: 990001,
       is_review_requested: 1,
       motivation:
-        'Privacy seed deviation used to verify HSA-ID based decision erasure.',
+        'Privacy seed deviation used to verify HSA-id based decision erasure.',
       specification_item_id: 1,
       updated_at: PRIVACY_SEED_TS,
     }),
@@ -12611,7 +13013,7 @@ function addLinneaPrivacyExerciseSeed() {
       id: 990001,
       is_review_requested: 1,
       motivation:
-        'Privacy seed local deviation used to verify HSA-ID based decision erasure.',
+        'Privacy seed local deviation used to verify HSA-id based decision erasure.',
       specification_local_requirement_id: 2,
       updated_at: PRIVACY_SEED_TS,
     }),
@@ -12635,7 +13037,7 @@ function applyPrivacyIdentitySeed() {
         normalizeOwnerHsaId(currentOwnerValue)
       if (!ownerHsaId) {
         throw new Error(
-          `Privacy seed: missing owner HSA-ID for requirement area owner ${currentOwnerValue}`,
+          `Privacy seed: missing owner HSA-id for requirement area owner ${currentOwnerValue}`,
         )
       }
       row[ownerHsaIndex] = ownerHsaId
@@ -12687,51 +13089,32 @@ function applyPrivacyIdentitySeed() {
       SPEC_RESPONSIBLE_BY_ID.get(row[specIdIndex])?.hsaId ??
       'SE5560000001-seed',
   )
-  ensureColumn(
-    specifications,
-    'responsible_display_name',
-    row => SPEC_RESPONSIBLE_BY_ID.get(row[specIdIndex])?.displayName ?? 'seed',
-  )
-  ensureColumn(specifications, 'can_responsible_generate_ai', () => 0)
 
   SEED_DATA.requirement_area_co_authors = {
     columns: [
       'area_id',
       'hsa_id',
-      'display_name',
-      'can_generate_ai',
       'created_at',
       'created_by_hsa_id',
       'created_by_display_name',
     ],
     pk: ['area_id', 'hsa_id'],
     rows: [
-      [
-        1,
-        'SE5560000001-kalle1',
-        'Kalle Svensson',
-        1,
-        PRIVACY_SEED_TS,
-        'SE5560000001-seed',
-        'seed',
-      ],
-      [
-        2,
-        'SE5560000001-kalle2',
-        'Kalle Svensson',
-        0,
-        PRIVACY_SEED_TS,
-        'SE5560000001-seed',
-        'seed',
-      ],
+      [1, 'SE5560000001-kalle1', PRIVACY_SEED_TS, 'SE5560000001-seed', 'seed'],
+      [2, 'SE5560000001-kalle2', PRIVACY_SEED_TS, 'SE5560000001-seed', 'seed'],
       [
         1001,
         'SE5560000001-linneab',
-        'Linnéa Bergström',
-        1,
         PRIVACY_SEED_TS,
         'SE5560000001-linneab',
         'Linnéa Bergström',
+      ],
+      [
+        910100,
+        'SE5560000001-areaco1',
+        PRIVACY_SEED_TS,
+        'SE5560000001-admin1',
+        'Ada Admin',
       ],
     ],
   }
@@ -12740,37 +13123,17 @@ function applyPrivacyIdentitySeed() {
     columns: [
       'specification_id',
       'hsa_id',
-      'display_name',
-      'can_generate_ai',
       'created_at',
       'created_by_hsa_id',
       'created_by_display_name',
     ],
     pk: ['specification_id', 'hsa_id'],
     rows: [
-      [
-        1,
-        'SE5560000001-kalle1',
-        'Kalle Svensson',
-        1,
-        PRIVACY_SEED_TS,
-        'SE5560000001-seed',
-        'seed',
-      ],
-      [
-        2,
-        'SE5560000001-kalle2',
-        'Kalle Svensson',
-        0,
-        PRIVACY_SEED_TS,
-        'SE5560000001-seed',
-        'seed',
-      ],
+      [1, 'SE5560000001-kalle1', PRIVACY_SEED_TS, 'SE5560000001-seed', 'seed'],
+      [2, 'SE5560000001-kalle2', PRIVACY_SEED_TS, 'SE5560000001-seed', 'seed'],
       [
         1001,
         'SE5560000001-saraholm',
-        'Sara Holm',
-        1,
         PRIVACY_SEED_TS,
         'SE5560000001-seeddogfood',
         'seed-dogfood',
@@ -12778,11 +13141,16 @@ function applyPrivacyIdentitySeed() {
       [
         6,
         'SE5560000001-linneab',
-        'Linnéa Bergström',
-        1,
         PRIVACY_SEED_TS,
         'SE5560000001-linneab',
         'Linnéa Bergström',
+      ],
+      [
+        910400,
+        'SE5560000001-specco1',
+        PRIVACY_SEED_TS,
+        'SE5560000001-admin1',
+        'Ada Admin',
       ],
     ],
   }
@@ -12873,7 +13241,6 @@ function applyPrivacyIdentitySeed() {
       'scope_key',
       'scope_label',
       'permission_type',
-      'can_generate_ai',
       'decision',
       'decided_at',
       'decided_by_hsa_id',
@@ -12894,7 +13261,6 @@ function applyPrivacyIdentitySeed() {
         '1',
         'INT Integration',
         'area_owner',
-        0,
         'pending',
         null,
         null,
@@ -12913,7 +13279,6 @@ function applyPrivacyIdentitySeed() {
         '1',
         'INT Integration',
         'area_co_author',
-        1,
         'pending',
         null,
         null,
@@ -12932,7 +13297,6 @@ function applyPrivacyIdentitySeed() {
         '6',
         'IAM-INFOR-2026 Införande av IAM-lösning',
         'specification_co_author',
-        1,
         'approved',
         '2025-01-18 10:05:00',
         'SE5560000001-saraholm',
@@ -12951,7 +13315,6 @@ function applyPrivacyIdentitySeed() {
         '7',
         'GDPR-FORV-2026 Förvaltningskrav GDPR-efterlevnad 2026',
         'specification_responsible',
-        0,
         'not_applicable',
         '2025-01-18 10:15:00',
         'SE5560000001-saraholm',
@@ -12970,7 +13333,6 @@ function applyPrivacyIdentitySeed() {
         '1001',
         'DOGFOOD Kravhantering',
         'area_co_author',
-        1,
         'approved',
         '2024-01-24 11:20:00',
         'SE5560000001-linneab',
@@ -12989,7 +13351,6 @@ function applyPrivacyIdentitySeed() {
         '1002',
         'AUTH Behörighet',
         'area_owner',
-        0,
         'changed',
         '2024-01-24 11:35:00',
         'SE5560000001-linneab',
@@ -12999,6 +13360,8 @@ function applyPrivacyIdentitySeed() {
       ],
     ],
   }
+
+  addRequirementResponsibilityPeopleSeed()
 }
 
 applyPrivacyIdentitySeed()

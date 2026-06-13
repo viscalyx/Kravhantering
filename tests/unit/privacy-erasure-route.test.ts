@@ -174,7 +174,7 @@ describe('privacy erasure routes', () => {
     )
   })
 
-  it('accepts a replacement HSA-ID and display name that are not seeded', async () => {
+  it('accepts a replacement HSA-id and display name that are not seeded', async () => {
     const { POST } = await import('@/app/api/privacy/erasure-preview/route')
     const response = await POST(
       jsonPost('http://localhost/api/privacy/erasure-preview', {
@@ -353,7 +353,7 @@ describe('privacy erasure routes', () => {
   it('omits privacy error details when no safe row key is available', async () => {
     routeState.executePrivacyErasure.mockRejectedValueOnce(
       validationError(
-        'Replacement requires both a valid HSA-ID and display name',
+        'Replacement requires both a valid HSA-id and display name',
         {
           reason: 'invalid_replacement',
           targetHsaId: 'SE5560000001-kalle1',
@@ -426,7 +426,7 @@ describe('privacy erasure routes', () => {
     }
   })
 
-  it('executes erasure and audits counts without raw target HSA-ID', async () => {
+  it('executes erasure and audits counts without raw target HSA-id', async () => {
     const { POST } = await import('@/app/api/privacy/erasure-requests/route')
     const response = await POST(
       jsonPost('http://localhost/api/privacy/erasure-requests', {

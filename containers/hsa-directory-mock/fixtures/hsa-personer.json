@@ -1,0 +1,354 @@
+{
+  "hsaPersonRecords": [
+    {
+      "hsaIdentity": "SE1000-004",
+      "personalIdentityNumber": "191212121212",
+      "givenName": "Kalle",
+      "middleName": "Bson",
+      "sn": "Karlsson",
+      "mail": "kalle@sos.se",
+      "DN": "cn=Kalle Karlsson,ou=enheten,o=ozon,c=se",
+      "purposes": ["Kontraktsexempel med en träff via HSA-id och personnummer."]
+    },
+    {
+      "hsaIdentity": "SE1000-005",
+      "givenName": "Anna",
+      "sn": "Andersson",
+      "DN": "cn=Anna Andersson,ou=enheten,o=ozon,c=se",
+      "purposes": [
+        "Kontraktsexempel där valfria fält för mellannamn och e-post saknas."
+      ]
+    },
+    {
+      "hsaIdentity": "SE1000-MULTI",
+      "givenName": "Kalle",
+      "middleName": "Bson",
+      "sn": "Karlsson",
+      "mail": "kalle@sos.se",
+      "DN": "cn=Kalle Karlsson,ou=enheten,o=ozon,c=se",
+      "purposes": ["Kontraktsexempel med flera HSA-objekt för samma sökning."]
+    },
+    {
+      "hsaIdentity": "SE1000-MULTI",
+      "givenName": "Kalle",
+      "middleName": "Bson",
+      "sn": "Karlsson",
+      "mail": "kalle@sos.se",
+      "DN": "cn=Kalle Karlsson,ou=annan-enhet,o=ozon,c=se",
+      "purposes": ["Andra HSA-objektet för multiträff."]
+    },
+    {
+      "hsaIdentity": "SE1000-CONFLICT",
+      "givenName": "Kalle",
+      "sn": "Karlsson",
+      "mail": "kalle@sos.se",
+      "DN": "cn=Kalle Karlsson,ou=enheten,o=ozon,c=se",
+      "purposes": ["Första HSA-objektet för konfliktfall."]
+    },
+    {
+      "hsaIdentity": "SE1000-CONFLICT",
+      "givenName": "Karin",
+      "sn": "Karlsson",
+      "mail": "karin@sos.se",
+      "DN": "cn=Karin Karlsson,ou=annan-enhet,o=ozon,c=se",
+      "purposes": ["Andra HSA-objektet för konfliktfall."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-annaj",
+      "givenName": "Anna",
+      "sn": "Johansson",
+      "mail": "anna.johansson@example.test",
+      "DN": "cn=Anna Johansson,ou=kravbibliotek,o=kravhantering,c=se",
+      "purposes": ["Seedad kravpaketsansvarig och kravområdesägare."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-erikl",
+      "givenName": "Erik",
+      "sn": "Lindberg",
+      "mail": "erik.lindberg@example.test",
+      "DN": "cn=Erik Lindberg,ou=kravbibliotek,o=kravhantering,c=se",
+      "purposes": ["Seedad kravpaketsansvarig och kravområdesägare."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-marias",
+      "givenName": "Maria",
+      "sn": "Svensson",
+      "mail": "maria.svensson@example.test",
+      "DN": "cn=Maria Svensson,ou=kravbibliotek,o=kravhantering,c=se",
+      "purposes": ["Seedad kravpaketsansvarig och kravområdesägare."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-mariaj",
+      "givenName": "Maria",
+      "sn": "Johansson",
+      "mail": "maria.johansson@example.test",
+      "DN": "cn=Maria Johansson,ou=kravbibliotek,o=kravhantering,c=se",
+      "purposes": ["Seedad kravunderlagsansvarig."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-saraholm",
+      "givenName": "Sara",
+      "sn": "Holm",
+      "mail": "sara.holm@example.test",
+      "DN": "cn=Sara Holm,ou=kravbibliotek,o=kravhantering,c=se",
+      "purposes": [
+        "Dogfood-seedad kravområdesägare, kravunderlagsansvarig och medförfattare."
+      ]
+    },
+    {
+      "hsaIdentity": "SE5560000001-karlpersson",
+      "givenName": "Karl",
+      "sn": "Persson",
+      "mail": "karl.persson@example.test",
+      "DN": "cn=Karl Persson,ou=kravbibliotek,o=kravhantering,c=se",
+      "purposes": ["Dogfood-seedad kravområdesägare och kravunderlagsansvarig."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-linneab",
+      "givenName": "Linnea",
+      "sn": "Bergström",
+      "mail": "linnea.bergstrom@example.test",
+      "DN": "cn=Linnea Bergström,ou=kravbibliotek,o=kravhantering,c=se",
+      "purposes": [
+        "Seedad kravområdesägare, kravunderlagsansvarig och granskningsperson."
+      ]
+    },
+    {
+      "hsaIdentity": "SE5560000001-oscarn",
+      "givenName": "Oscar",
+      "sn": "Nilsson",
+      "mail": "oscar.nilsson@example.test",
+      "DN": "cn=Oscar Nilsson,ou=kravbibliotek,o=kravhantering,c=se",
+      "purposes": ["Dogfood-seedad kravområdesägare och kravunderlagsansvarig."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-emmal",
+      "givenName": "Emma",
+      "sn": "Lindqvist",
+      "mail": "emma.lindqvist@example.test",
+      "DN": "cn=Emma Lindqvist,ou=kravbibliotek,o=kravhantering,c=se",
+      "purposes": ["Dogfood-seedad kravområdesägare och kravunderlagsansvarig."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-kalle1",
+      "givenName": "Kalle",
+      "sn": "Svensson",
+      "mail": "kalle.one@example.test",
+      "DN": "cn=Kalle Svensson,ou=kravbibliotek,o=kravhantering,c=se",
+      "purposes": [
+        "Seedad person med dubblettnamn för dataskyddstester och tester för medförfattare."
+      ]
+    },
+    {
+      "hsaIdentity": "SE5560000001-kalle2",
+      "givenName": "Kalle",
+      "sn": "Svensson",
+      "mail": "kalle.two@example.test",
+      "DN": "cn=Kalle Svensson,ou=annan-enhet,o=kravhantering,c=se",
+      "purposes": [
+        "Seedad person med dubblettnamn för dataskyddstester och tester för medförfattare."
+      ]
+    },
+    {
+      "hsaIdentity": "SE5560000001-areaowner1",
+      "givenName": "Olle",
+      "sn": "AreaOwner",
+      "mail": "olle.areaowner@example.test",
+      "DN": "cn=Olle AreaOwner,ou=dev-auth,o=kravhantering,c=se",
+      "purposes": ["Dev-auth-person för kravområdesägare."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-areaco1",
+      "givenName": "Cora",
+      "sn": "CoAuthor",
+      "mail": "cora.coauthor@example.test",
+      "DN": "cn=Cora CoAuthor,ou=dev-auth,o=kravhantering,c=se",
+      "purposes": ["Dev-auth-person för kravområdesmedförfattare."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-specresp1",
+      "givenName": "Petra",
+      "sn": "specresp",
+      "mail": "petra.specresp@example.test",
+      "DN": "cn=Petra specresp,ou=dev-auth,o=kravhantering,c=se",
+      "purposes": ["Dev-auth-person för kravunderlagsansvarig."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-specco1",
+      "givenName": "Signe",
+      "sn": "SpecCoAuthor",
+      "mail": "signe.speccoauthor@example.test",
+      "DN": "cn=Signe SpecCoAuthor,ou=dev-auth,o=kravhantering,c=se",
+      "purposes": ["Dev-auth-person för kravunderlagsmedförfattare."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-pkglead1",
+      "givenName": "Leo",
+      "sn": "PackageLead",
+      "mail": "leo.pkglead@example.test",
+      "DN": "cn=Leo PackageLead,ou=dev-auth,o=kravhantering,c=se",
+      "purposes": ["Dev-auth-person för kravpaketsansvarig."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-pkgco1",
+      "givenName": "Paul",
+      "sn": "PkgCoAuthor",
+      "mail": "paul.pkgcoauthor@example.test",
+      "DN": "cn=Paul PkgCoAuthor,ou=dev-auth,o=kravhantering,c=se",
+      "purposes": ["Dev-auth-person för kravpaketsmedförfattare."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-manualarea1",
+      "givenName": "Maja",
+      "sn": "ManualArea",
+      "mail": "maja.manualarea@example.test",
+      "DN": "cn=Maja ManualArea,ou=manual-test,o=kravhantering,c=se",
+      "purposes": ["Manuell testperson för ny kravområdesägare."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-manualarea2",
+      "givenName": "Mats",
+      "sn": "ManualArea",
+      "mail": "mats.manualarea@example.test",
+      "DN": "cn=Mats ManualArea,ou=manual-test,o=kravhantering,c=se",
+      "purposes": ["Manuell testperson för byte av kravområdesägare."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-manualspec1",
+      "givenName": "Sam",
+      "sn": "ManualSpec",
+      "mail": "sam.manualspec@example.test",
+      "DN": "cn=Sam ManualSpec,ou=manual-test,o=kravhantering,c=se",
+      "purposes": ["Manuell testperson för kravunderlagsansvarig."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-manualpkg1",
+      "givenName": "Paula",
+      "sn": "ManualPkg",
+      "mail": "paula.manualpkg@example.test",
+      "DN": "cn=Paula ManualPkg,ou=manual-test,o=kravhantering,c=se",
+      "purposes": ["Manuell testperson för kravpaketsansvar."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-reviewer1",
+      "givenName": "Rita",
+      "sn": "Reviewer",
+      "mail": "rita.reviewer@example.test",
+      "DN": "cn=Rita Reviewer,ou=dev-auth,o=kravhantering,c=se",
+      "purposes": ["Dev-auth-person för kravgranskare."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-admin1",
+      "givenName": "Ada",
+      "sn": "Admin",
+      "mail": "ada.admin@example.test",
+      "DN": "cn=Ada Admin,ou=dev-auth,o=kravhantering,c=se",
+      "purposes": [
+        "Dev-auth-person för administrator och dataskyddshandläggare."
+      ]
+    },
+    {
+      "hsaIdentity": "SE5560000001-admin2",
+      "givenName": "Only",
+      "sn": "Admin",
+      "mail": "only.admin@example.test",
+      "DN": "cn=Only Admin,ou=dev-auth,o=kravhantering,c=se",
+      "purposes": ["Dev-auth-person för administrator utan dataskyddsroll."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-privacy1",
+      "givenName": "Disa",
+      "sn": "PrivacyOfficer",
+      "mail": "disa.privacy@example.test",
+      "DN": "cn=Disa PrivacyOfficer,ou=dev-auth,o=kravhantering,c=se",
+      "purposes": ["Dev-auth-person för dataskyddshandläggare."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-noroles1",
+      "givenName": "Noah",
+      "sn": "NoRoles",
+      "mail": "noah.noroles@example.test",
+      "DN": "cn=Noah NoRoles,ou=dev-auth,o=kravhantering,c=se",
+      "purposes": ["Dev-auth-person utan globala roller."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-2001",
+      "givenName": "Pia",
+      "sn": "Paket",
+      "mail": "pia.paket@example.test",
+      "DN": "cn=Pia Paket,ou=kravpaket,o=kravhantering,c=se",
+      "purposes": ["Extra HSA-personpost för kravpaketsansvarig."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-2002",
+      "givenName": "Pontus",
+      "sn": "Paket",
+      "mail": "pontus.paket@example.test",
+      "DN": "cn=Pontus Paket,ou=kravpaket,o=kravhantering,c=se",
+      "purposes": ["Extra HSA-personpost för kravpaketsmedförfattare."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-seed",
+      "givenName": "Seed",
+      "sn": "Fixture",
+      "mail": "seed.fixture@example.test",
+      "DN": "cn=Seed Fixture,ou=retention,o=kravhantering,c=se",
+      "purposes": ["Seedad kravunderlagsansvarig för test av gallring."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-retentionlinked",
+      "givenName": "Lena",
+      "sn": "RetentionLinked",
+      "mail": "lena.retentionlinked@example.test",
+      "DN": "cn=Lena RetentionLinked,ou=retention,o=kravhantering,c=se",
+      "purposes": [
+        "Gammal Kravansvarsperson som fortfarande har kravansvarstilldelning."
+      ]
+    },
+    {
+      "hsaIdentity": "SE5560000001-retentionorphan",
+      "givenName": "Rolf",
+      "sn": "RetentionOrphan",
+      "mail": "rolf.retentionorphan@example.test",
+      "DN": "cn=Rolf RetentionOrphan,ou=retention,o=kravhantering,c=se",
+      "purposes": [
+        "Gammal Kravansvarsperson utan kravansvarstilldelning för förhandsgranskning av gallring."
+      ]
+    },
+    {
+      "hsaIdentity": "SE5560000001-retentionfresh",
+      "givenName": "Freja",
+      "sn": "RetentionFresh",
+      "mail": "freja.retentionfresh@example.test",
+      "DN": "cn=Freja RetentionFresh,ou=retention,o=kravhantering,c=se",
+      "purposes": [
+        "Ny Kravansvarsperson utan kravansvarstilldelning som inte ska gallras ännu."
+      ]
+    },
+    {
+      "hsaIdentity": "SE5560000001-3001",
+      "givenName": "Beata",
+      "sn": "Oversyn",
+      "mail": "beata.oversyn@example.test",
+      "DN": "cn=Beata Oversyn,ou=granskning,o=kravhantering,c=se",
+      "purposes": ["Tilldelad granskningsperson för behörighetsöversyn."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-3002",
+      "givenName": "Diana",
+      "sn": "Dataskydd",
+      "mail": "diana.dataskydd@example.test",
+      "DN": "cn=Diana Dataskydd,ou=granskning,o=kravhantering,c=se",
+      "purposes": ["Tilldelad granskningsperson för dataskyddsärende."]
+    },
+    {
+      "hsaIdentity": "SE5560000001-3003",
+      "givenName": "Gunnar",
+      "sn": "Gallring",
+      "mail": "gunnar.gallring@example.test",
+      "DN": "cn=Gunnar Gallring,ou=granskning,o=kravhantering,c=se",
+      "purposes": ["Tilldelad granskningsperson för gallringsärende."]
+    }
+  ],
+  "notFoundIdentities": ["SE1000-NOTFOUND"]
+}

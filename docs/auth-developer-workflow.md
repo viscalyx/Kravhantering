@@ -134,6 +134,8 @@ All accounts use the password `devpass` (clearly dev-only, do not reuse).
 | `cora.coauthor` | _(none)_ | `SE5560000001-areaco1` |
 | `linnea.areaowner` | _(none; owns two areas)_ | `SE5560000001-linneab` |
 | `petra.specresp` | _(none)_ | `SE5560000001-specresp1` |
+| `signe.speccoauthor` | _(none)_ | `SE5560000001-specco1` |
+| `leo.pkglead` | _(none)_ | `SE5560000001-pkglead1` |
 | `paul.pkgcoauthor` | _(none)_ | `SE5560000001-pkgco1` |
 | `rita.reviewer` | `Reviewer` | `SE5560000001-reviewer1` |
 | `ada.admin` | `Admin`, `PrivacyOfficer` | `SE5560000001-admin1` |
@@ -340,7 +342,7 @@ attribute with the `employeeHsaId` protocol mapper.
 The `kravhantering-mcp` Keycloak client is configured with the
 `oidc-hardcoded-claim-mapper` protocol mapper that emits
 `employeeHsaId = SE5560000001-mcp1` on the access token used by the MCP
-service-account flow. This gives MCP write workflows a real-format HSA-ID
+service-account flow. This gives MCP write workflows a real-format HSA-id
 for actor stamping in requirement history, deviations, and improvement
 suggestions.
 

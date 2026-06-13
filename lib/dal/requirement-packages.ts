@@ -1,19 +1,36 @@
 import {
+  cleanupUnassignedRequirementResponsibilityPeople,
+  upsertRequirementResponsibilityPerson,
+} from '@/lib/dal/requirement-responsibility-people'
+import {
   cleanupRequirementSelectionPackageLinks,
   type RequirementSelectionCleanupResult,
 } from '@/lib/dal/requirement-selection-questions'
 import type { SqlServerDatabase } from '@/lib/db'
+import {
+  formatRequirementResponsibilityPersonName,
+  type RequirementResponsibilityPersonRecord,
+} from '@/lib/requirements/responsibility-person'
 import { toBoolean, toIsoString } from '@/lib/typeorm/value-mappers'
 
 interface RequirementPackageRow {
+  coAuthors: RequirementPackageCoAuthorRow[]
   createdAt: string
   description: string | null
   id: number
   isArchived: boolean
   leadDisplayName: string
+  leadEmail: string | null
   leadHsaId: string
   name: string
   updatedAt: string
+}
+
+interface RequirementPackageCoAuthorRow {
+  createdAt: string
+  displayName: string
+  email: string | null
+  hsaId: string
 }
 
 interface RequirementPackageUsage {
@@ -59,6 +76,7 @@ function emptyRequirementSelectionCleanup(): RequirementSelectionCleanupResult {
 
 export type {
   LinkedRequirementRow,
+  RequirementPackageCoAuthorRow,
   RequirementPackageMutationResult,
   RequirementPackageRow,
   RequirementPackageUsage,
@@ -67,15 +85,129 @@ export type {
 function mapRequirementPackageRow(
   row: Record<string, unknown>,
 ): RequirementPackageRow {
+  const leadHsaId = row.leadHsaId as string
+  const leadGivenName = row.leadGivenName as string | null | undefined
   return {
+    coAuthors: [],
     createdAt: toIsoString(row.createdAt as Date | string),
     description: row.description as string | null,
     id: row.id as number,
     isArchived: toBoolean(row.isArchived as boolean | number | string),
-    leadDisplayName: row.leadDisplayName as string,
-    leadHsaId: row.leadHsaId as string,
+    leadDisplayName: leadGivenName
+      ? formatRequirementResponsibilityPersonName({
+          givenName: leadGivenName,
+          hsaId: leadHsaId,
+          middleName: row.leadMiddleName as string | null,
+          surname: row.leadSurname as string | null,
+        })
+      : leadHsaId,
+    leadEmail: (row.leadEmail as string | null | undefined) ?? null,
+    leadHsaId,
     name: row.name as string,
     updatedAt: toIsoString(row.updatedAt as Date | string),
+  }
+}
+
+function mapRequirementPackageCoAuthorRow(
+  row: Record<string, unknown>,
+): RequirementPackageCoAuthorRow {
+  const hsaId = row.hsaId as string
+  return {
+    createdAt: toIsoString(row.createdAt as Date | string),
+    displayName: formatRequirementResponsibilityPersonName({
+      givenName: row.givenName as string,
+      hsaId,
+      middleName: row.middleName as string | null,
+      surname: row.surname as string | null,
+    }),
+    email: row.email as string | null,
+    hsaId,
+  }
+}
+
+function uniqueHsaIds(hsaIds: string[] | undefined): string[] {
+  return [...new Set((hsaIds ?? []).map(hsaId => hsaId.trim()).filter(Boolean))]
+}
+
+function canStartTransaction(
+  db: QueryExecutor,
+): db is QueryExecutor & Pick<SqlServerDatabase, 'transaction'> {
+  return typeof (db as Partial<SqlServerDatabase>).transaction === 'function'
+}
+
+async function listRequirementPackageCoAuthors(
+  db: QueryExecutor,
+  requirementPackageIds: number[],
+): Promise<Record<number, RequirementPackageCoAuthorRow[]>> {
+  const ids = [...new Set(requirementPackageIds)]
+  if (ids.length === 0) return {}
+
+  const placeholders = ids.map((_, index) => `@${index}`).join(', ')
+  const rows = (await db.query(
+    `
+      SELECT
+        co_author.requirement_package_id AS requirementPackageId,
+        co_author.hsa_id AS hsaId,
+        person.given_name AS givenName,
+        person.middle_name AS middleName,
+        person.surname AS surname,
+        person.email AS email,
+        co_author.created_at AS createdAt
+      FROM requirement_package_co_authors AS co_author
+      INNER JOIN requirement_responsibility_people AS person
+        ON person.hsa_id = co_author.hsa_id
+      WHERE co_author.requirement_package_id IN (${placeholders})
+      ORDER BY
+        co_author.requirement_package_id ASC,
+        person.surname ASC,
+        person.given_name ASC,
+        co_author.hsa_id ASC
+    `,
+    ids,
+  )) as Record<string, unknown>[]
+
+  const coAuthorsByPackage: Record<number, RequirementPackageCoAuthorRow[]> = {}
+  for (const row of rows) {
+    const requirementPackageId = row.requirementPackageId as number
+    coAuthorsByPackage[requirementPackageId] ??= []
+    coAuthorsByPackage[requirementPackageId].push(
+      mapRequirementPackageCoAuthorRow(row),
+    )
+  }
+  return coAuthorsByPackage
+}
+
+async function getRequirementPackageRowById(
+  db: QueryExecutor,
+  id: number,
+): Promise<RequirementPackageRow | null> {
+  const rows = await db.query<Record<string, unknown>[]>(
+    `
+      SELECT
+        requirementPackages.id AS id,
+        requirementPackages.name AS name,
+        requirementPackages.description AS description,
+        requirementPackages.lead_hsa_id AS leadHsaId,
+        lead_person.given_name AS leadGivenName,
+        lead_person.middle_name AS leadMiddleName,
+        lead_person.surname AS leadSurname,
+        lead_person.email AS leadEmail,
+        requirementPackages.is_archived AS isArchived,
+        requirementPackages.created_at AS createdAt,
+        requirementPackages.updated_at AS updatedAt
+      FROM requirement_packages AS requirementPackages
+      INNER JOIN requirement_responsibility_people AS lead_person
+        ON lead_person.hsa_id = requirementPackages.lead_hsa_id
+      WHERE requirementPackages.id = @0
+    `,
+    [id],
+  )
+  const row = rows[0] ? mapRequirementPackageRow(rows[0]) : null
+  if (!row) return null
+  const coAuthorsByPackage = await listRequirementPackageCoAuthors(db, [id])
+  return {
+    ...row,
+    coAuthors: coAuthorsByPackage[id] ?? [],
   }
 }
 
@@ -90,17 +222,30 @@ export async function listRequirementPackages(
         requirementPackages.name AS name,
         requirementPackages.description AS description,
         requirementPackages.lead_hsa_id AS leadHsaId,
-        requirementPackages.lead_display_name AS leadDisplayName,
+        lead_person.given_name AS leadGivenName,
+        lead_person.middle_name AS leadMiddleName,
+        lead_person.surname AS leadSurname,
+        lead_person.email AS leadEmail,
         requirementPackages.is_archived AS isArchived,
         requirementPackages.created_at AS createdAt,
         requirementPackages.updated_at AS updatedAt
       FROM requirement_packages AS requirementPackages
+      INNER JOIN requirement_responsibility_people AS lead_person
+        ON lead_person.hsa_id = requirementPackages.lead_hsa_id
       WHERE @0 = 1 OR requirementPackages.is_archived = 0
       ORDER BY requirementPackages.is_archived ASC, requirementPackages.name ASC
     `,
     [options.includeArchived ? 1 : 0],
   )) as Record<string, unknown>[]
-  return rows.map(mapRequirementPackageRow)
+  const packages = rows.map(mapRequirementPackageRow)
+  const coAuthorsByPackage = await listRequirementPackageCoAuthors(
+    db,
+    packages.map(requirementPackage => requirementPackage.id),
+  )
+  return packages.map(requirementPackage => ({
+    ...requirementPackage,
+    coAuthors: coAuthorsByPackage[requirementPackage.id] ?? [],
+  }))
 }
 
 export async function countLinkedRequirementsByPackage(
@@ -167,23 +312,7 @@ export async function getRequirementPackageById(
   db: SqlServerDatabase,
   id: number,
 ): Promise<RequirementPackageRow | null> {
-  const rows = await db.query<Record<string, unknown>[]>(
-    `
-      SELECT
-        requirementPackages.id AS id,
-        requirementPackages.name AS name,
-        requirementPackages.description AS description,
-        requirementPackages.lead_hsa_id AS leadHsaId,
-        requirementPackages.lead_display_name AS leadDisplayName,
-        requirementPackages.is_archived AS isArchived,
-        requirementPackages.created_at AS createdAt,
-        requirementPackages.updated_at AS updatedAt
-      FROM requirement_packages AS requirementPackages
-      WHERE requirementPackages.id = @0
-    `,
-    [id],
-  )
-  return rows[0] ? mapRequirementPackageRow(rows[0]) : null
+  return getRequirementPackageRowById(db, id)
 }
 
 export async function getRequirementPackageUsage(
@@ -225,55 +354,162 @@ export async function getRequirementPackageUsage(
 }
 
 export async function createRequirementPackage(
-  db: SqlServerDatabase,
+  db: SqlServerDatabase | QueryExecutor,
   data: {
+    coAuthorHsaIds?: string[]
+    coAuthorPeople?: RequirementResponsibilityPersonRecord[]
+    createdBy?: { displayName: string | null; hsaId: string | null }
     description?: string | null
-    leadDisplayName: string
     leadHsaId: string
+    leadPerson?: RequirementResponsibilityPersonRecord
     name: string
   },
+  options: { useExistingTransaction?: boolean } = {},
 ): Promise<RequirementPackageRow> {
   const now = new Date()
-  const rows = await db.query(
-    `
-      INSERT INTO requirement_packages (
-        name,
-        description,
-        lead_hsa_id,
-        lead_display_name,
-        is_archived,
-        created_at,
-        updated_at
-      )
-      OUTPUT
-        inserted.id AS id,
-        inserted.name AS name,
-        inserted.description AS description,
-        inserted.lead_hsa_id AS leadHsaId,
-        inserted.lead_display_name AS leadDisplayName,
-        inserted.is_archived AS isArchived,
-        inserted.created_at AS createdAt,
-        inserted.updated_at AS updatedAt
-      VALUES (@0, @1, @2, @3, 0, @4, @4)
-    `,
-    [
-      data.name,
-      data.description ?? null,
-      data.leadHsaId,
-      data.leadDisplayName,
+  const leadPerson = data.leadPerson
+  const coAuthorHsaIds = uniqueHsaIds(data.coAuthorHsaIds)
+  const coAuthorPeople = data.coAuthorPeople ?? []
+  const insertPackage = async (executor: QueryExecutor) => {
+    const rows = await executor.query(
+      `
+        INSERT INTO requirement_packages (
+          name,
+          description,
+          lead_hsa_id,
+          is_archived,
+          created_at,
+          updated_at
+        )
+        OUTPUT
+          inserted.id AS id,
+          inserted.name AS name,
+          inserted.description AS description,
+          inserted.lead_hsa_id AS leadHsaId,
+          inserted.is_archived AS isArchived,
+          inserted.created_at AS createdAt,
+          inserted.updated_at AS updatedAt
+        VALUES (@0, @1, @2, 0, @3, @3)
+      `,
+      [data.name, data.description ?? null, data.leadHsaId, now],
+    )
+    const inserted = rows[0] as Record<string, unknown>
+    const requirementPackageId = inserted.id as number
+    await insertRequirementPackageCoAuthors(
+      executor,
+      requirementPackageId,
+      coAuthorHsaIds,
+      data.createdBy,
       now,
-    ],
-  )
-  return mapRequirementPackageRow(rows[0])
+    )
+    return (
+      (await getRequirementPackageRowById(executor, requirementPackageId)) ??
+      mapRequirementPackageRow({
+        ...inserted,
+        leadGivenName: leadPerson?.givenName ?? null,
+        leadMiddleName: leadPerson?.middleName ?? null,
+        leadSurname: leadPerson?.surname ?? null,
+      })
+    )
+  }
+
+  const shouldWriteResponsibilityPeople =
+    leadPerson || coAuthorPeople.length > 0 || coAuthorHsaIds.length > 0
+  const createWithResponsibilityPeople = async (executor: QueryExecutor) => {
+    if (leadPerson) {
+      await upsertRequirementResponsibilityPerson(executor, leadPerson)
+    }
+    for (const coAuthorPerson of coAuthorPeople) {
+      await upsertRequirementResponsibilityPerson(executor, coAuthorPerson)
+    }
+    return insertPackage(executor)
+  }
+
+  if (
+    shouldWriteResponsibilityPeople &&
+    !options.useExistingTransaction &&
+    canStartTransaction(db)
+  ) {
+    return db.transaction(async manager => {
+      return createWithResponsibilityPeople(manager)
+    })
+  }
+
+  return shouldWriteResponsibilityPeople
+    ? createWithResponsibilityPeople(db)
+    : insertPackage(db)
 }
 
 export async function updateRequirementPackage(
   db: SqlServerDatabase,
   id: number,
   data: {
+    coAuthorHsaIds?: string[]
+    coAuthorPeople?: RequirementResponsibilityPersonRecord[]
+    changedBy?: { displayName: string | null; hsaId: string | null }
     description?: string | null
-    leadDisplayName?: string
     leadHsaId?: string
+    leadPerson?: RequirementResponsibilityPersonRecord
+    name?: string
+  },
+): Promise<RequirementPackageRow | undefined> {
+  const leadPerson = data.leadPerson
+  const coAuthorPeople = data.coAuthorPeople ?? []
+  if (
+    leadPerson ||
+    data.coAuthorHsaIds !== undefined ||
+    coAuthorPeople.length > 0
+  ) {
+    return db.transaction(async manager => {
+      const oldRows = (await manager.query(
+        `
+          SELECT lead_hsa_id AS leadHsaId
+          FROM requirement_packages
+          WHERE id = @0
+        `,
+        [id],
+      )) as Array<{ leadHsaId: string }>
+      if (oldRows.length === 0) return undefined
+
+      if (leadPerson) {
+        await upsertRequirementResponsibilityPerson(manager, leadPerson)
+      }
+      for (const coAuthorPerson of coAuthorPeople) {
+        await upsertRequirementResponsibilityPerson(manager, coAuthorPerson)
+      }
+      const removedCoAuthorHsaIds =
+        data.coAuthorHsaIds === undefined
+          ? []
+          : await syncRequirementPackageCoAuthors(
+              manager,
+              id,
+              uniqueHsaIds(data.coAuthorHsaIds),
+              data.changedBy,
+            )
+      const updated = await updateRequirementPackageFields(manager, id, data)
+      await cleanupUnassignedRequirementResponsibilityPeople(manager, [
+        ...(data.leadHsaId === undefined
+          ? []
+          : oldRows.map(row => row.leadHsaId)),
+        ...removedCoAuthorHsaIds,
+      ])
+      return updated
+    })
+  }
+
+  return updateRequirementPackageFields(db, id, data)
+}
+
+async function updateRequirementPackageFields(
+  db: QueryExecutor,
+  id: number,
+  data: {
+    coAuthorHsaIds?: string[]
+    coAuthorPeople?: RequirementResponsibilityPersonRecord[]
+    changedBy?: { displayName: string | null; hsaId: string | null }
+    description?: string | null
+    leadHsaId?: string
+    leadPerson?: RequirementResponsibilityPersonRecord
     name?: string
   },
 ): Promise<RequirementPackageRow | undefined> {
@@ -292,33 +528,100 @@ export async function updateRequirementPackage(
     params.push(data.leadHsaId)
     sets.push(`lead_hsa_id = @${params.length - 1}`)
   }
-  if (data.leadDisplayName !== undefined) {
-    params.push(data.leadDisplayName)
-    sets.push(`lead_display_name = @${params.length - 1}`)
-  }
 
   params.push(new Date())
   sets.push(`updated_at = @${params.length - 1}`)
   params.push(id)
 
-  const rows = await db.query(
+  await db.query(
     `
       UPDATE requirement_packages
       SET ${sets.join(', ')}
-      OUTPUT
-        inserted.id AS id,
-        inserted.name AS name,
-        inserted.description AS description,
-        inserted.lead_hsa_id AS leadHsaId,
-        inserted.lead_display_name AS leadDisplayName,
-        inserted.is_archived AS isArchived,
-        inserted.created_at AS createdAt,
-        inserted.updated_at AS updatedAt
       WHERE id = @${params.length - 1}
     `,
     params,
   )
-  return rows[0] ? mapRequirementPackageRow(rows[0]) : undefined
+  return (await getRequirementPackageRowById(db, id)) ?? undefined
+}
+
+async function insertRequirementPackageCoAuthors(
+  db: QueryExecutor,
+  requirementPackageId: number,
+  coAuthorHsaIds: string[],
+  createdBy: { displayName: string | null; hsaId: string | null } | undefined,
+  createdAt = new Date(),
+): Promise<void> {
+  for (const hsaId of coAuthorHsaIds) {
+    await db.query(
+      `
+        INSERT INTO requirement_package_co_authors (
+          requirement_package_id,
+          hsa_id,
+          created_at,
+          created_by_hsa_id,
+          created_by_display_name
+        )
+        SELECT @0, @1, @2, @3, @4
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM requirement_package_co_authors
+          WHERE requirement_package_id = @0
+            AND hsa_id = @1
+        )
+      `,
+      [
+        requirementPackageId,
+        hsaId,
+        createdAt,
+        createdBy?.hsaId ?? null,
+        createdBy?.displayName ?? null,
+      ],
+    )
+  }
+}
+
+async function syncRequirementPackageCoAuthors(
+  db: QueryExecutor,
+  requirementPackageId: number,
+  nextHsaIds: string[],
+  changedBy: { displayName: string | null; hsaId: string | null } | undefined,
+): Promise<string[]> {
+  const existingRows = (await db.query(
+    `
+      SELECT hsa_id AS hsaId
+      FROM requirement_package_co_authors
+      WHERE requirement_package_id = @0
+    `,
+    [requirementPackageId],
+  )) as Array<{ hsaId: string }>
+  const existingIds = existingRows.map(row => row.hsaId)
+  const nextIdSet = new Set(nextHsaIds)
+  const existingIdSet = new Set(existingIds)
+  const removedIds = existingIds.filter(hsaId => !nextIdSet.has(hsaId))
+  const addedIds = nextHsaIds.filter(hsaId => !existingIdSet.has(hsaId))
+
+  if (removedIds.length > 0) {
+    const placeholders = removedIds
+      .map((_, index) => `@${index + 1}`)
+      .join(', ')
+    await db.query(
+      `
+        DELETE FROM requirement_package_co_authors
+        WHERE requirement_package_id = @0
+          AND hsa_id IN (${placeholders})
+      `,
+      [requirementPackageId, ...removedIds],
+    )
+  }
+
+  await insertRequirementPackageCoAuthors(
+    db,
+    requirementPackageId,
+    addedIds,
+    changedBy,
+  )
+
+  return removedIds
 }
 
 async function setRequirementPackageArchived(
@@ -326,24 +629,15 @@ async function setRequirementPackageArchived(
   id: number,
   isArchived: boolean,
 ): Promise<RequirementPackageRow | undefined> {
-  const rows = await db.query<Record<string, unknown>[]>(
+  await db.query<Record<string, unknown>[]>(
     `
       UPDATE requirement_packages
       SET is_archived = @0, updated_at = @1
-      OUTPUT
-        inserted.id AS id,
-        inserted.name AS name,
-        inserted.description AS description,
-        inserted.lead_hsa_id AS leadHsaId,
-        inserted.lead_display_name AS leadDisplayName,
-        inserted.is_archived AS isArchived,
-        inserted.created_at AS createdAt,
-        inserted.updated_at AS updatedAt
       WHERE id = @2
     `,
     [isArchived ? 1 : 0, new Date(), id],
   )
-  return rows[0] ? mapRequirementPackageRow(rows[0]) : undefined
+  return (await getRequirementPackageRowById(db, id)) ?? undefined
 }
 
 export async function archiveRequirementPackage(
@@ -376,6 +670,18 @@ export async function deleteRequirementPackage(
   deletedCount: number
 }> {
   return db.transaction(async manager => {
+    const assignmentRows = (await manager.query(
+      `
+        SELECT lead_hsa_id AS hsaId
+        FROM requirement_packages
+        WHERE id = @0
+        UNION
+        SELECT hsa_id AS hsaId
+        FROM requirement_package_co_authors
+        WHERE requirement_package_id = @0
+      `,
+      [id],
+    )) as Array<{ hsaId: string }>
     const deletableRows = (await manager.query(
       `
         SELECT requirement_package.id AS id
@@ -408,6 +714,10 @@ export async function deleteRequirementPackage(
         WHERE id = @0
       `,
       [id],
+    )
+    await cleanupUnassignedRequirementResponsibilityPeople(
+      manager,
+      assignmentRows.map(row => row.hsaId),
     )
     return { cleanup, deletedCount: rows.length }
   })

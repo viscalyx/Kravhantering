@@ -18,6 +18,7 @@ import {
 const STATUS_REVIEW = 2
 const STATUS_PUBLISHED = 3
 const STATUS_ARCHIVED = 4
+const REVIEWER_STORAGE_STATE = 'test-results/auth/reviewer.json'
 
 interface RequirementDetail {
   id?: number
@@ -99,6 +100,18 @@ async function ensurePublishedRequirement(
     archiveInitiated: false,
     isArchived: false,
     status: STATUS_PUBLISHED,
+  })
+}
+
+async function ensureArchivingReviewRequirement(
+  request: APIRequestContext,
+  uniqueId: string,
+) {
+  await resetRequirementToArchivingReview(uniqueId)
+  await assertRequirementApiState(request, uniqueId, {
+    archiveInitiated: true,
+    isArchived: false,
+    status: STATUS_REVIEW,
   })
 }
 
@@ -223,6 +236,51 @@ async function resetRequirementToPublished(uniqueId: string) {
             revision_token = NEWID()
         WHERE id = @0`,
       [latestVersionId, now, STATUS_PUBLISHED],
+    )
+  })
+}
+
+async function resetRequirementToArchivingReview(uniqueId: string) {
+  await resetRequirementToPublished(uniqueId)
+
+  const db = await getPlaywrightSqlServerDataSource()
+  const now = new Date()
+
+  await db.transaction(async manager => {
+    const requirementRows = (await manager.query(
+      `SELECT TOP (1) id FROM requirements WHERE unique_id = @0`,
+      [uniqueId],
+    )) as Array<{ id: number }>
+    const requirementId = requirementRows[0]?.id
+    if (requirementId == null) {
+      throw new Error(`Requirement ${uniqueId} not found`)
+    }
+
+    const latestRows = (await manager.query(
+      `SELECT TOP (1) id
+        FROM requirement_versions
+        WHERE requirement_id = @0
+        ORDER BY version_number DESC`,
+      [requirementId],
+    )) as Array<{ id: number }>
+    const latestVersionId = latestRows[0]?.id
+    if (latestVersionId == null) {
+      throw new Error(`Requirement ${uniqueId} has no versions`)
+    }
+
+    await manager.query(
+      `UPDATE requirements SET is_archived = 0 WHERE id = @0`,
+      [requirementId],
+    )
+    await manager.query(
+      `UPDATE requirement_versions
+        SET requirement_status_id = @2,
+            archived_at = NULL,
+            archive_initiated_at = @1,
+            status_updated_at = @1,
+            revision_token = NEWID()
+        WHERE id = @0`,
+      [latestVersionId, now, STATUS_REVIEW],
     )
   })
 }
@@ -366,140 +424,124 @@ for (const viewport of viewports) {
       })
     })
 
-    test('approves archiving after cancelling the approval once', async ({
-      page,
-      request,
-    }) => {
-      const uniqueId = archiveFixtures.approve[viewport.name]
-      let detailPane = page.locator('body')
+    test.describe('reviewer archive decisions', () => {
+      test.use({ storageState: REVIEWER_STORAGE_STATE })
 
-      await test.step('prepare and initiate archiving', async () => {
-        await ensurePublishedRequirement(request, uniqueId)
-        detailPane = await openRequirement(page, uniqueId)
+      test('approves archiving after cancelling the approval once', async ({
+        page,
+        request,
+      }) => {
+        const uniqueId = archiveFixtures.approve[viewport.name]
+        let detailPane = page.locator('body')
 
-        await detailPane
-          .getByRole('button', { exact: true, name: 'Arkivera' })
-          .click()
-        await confirmLatestDialog(page)
-        await assertRequirementApiState(request, uniqueId, {
-          archiveInitiated: true,
-          isArchived: false,
-          status: STATUS_REVIEW,
+        await test.step('prepare and open an archiving review', async () => {
+          await ensureArchivingReviewRequirement(request, uniqueId)
+          detailPane = await openRequirement(page, uniqueId)
+          await assertRequirementListStatus(
+            page,
+            uniqueId,
+            'Arkiveringsgranskning',
+          )
+          await selectLatestVersion(
+            detailPane,
+            request,
+            uniqueId,
+            'Arkiveringsgranskning',
+          )
+
+          await assertActiveStepperStep(detailPane, 'Arkiveringsgranskning')
         })
-        await assertRequirementListStatus(
-          page,
-          uniqueId,
-          'Arkiveringsgranskning',
-        )
-        await selectLatestVersion(
-          detailPane,
-          request,
-          uniqueId,
-          'Arkiveringsgranskning',
-        )
 
-        await assertActiveStepperStep(detailPane, 'Arkiveringsgranskning')
-      })
+        await test.step('cancel the first approval confirmation', async () => {
+          await detailPane
+            .getByRole('button', { name: 'Godkänn arkivering' })
+            .click()
 
-      await test.step('cancel the first approval confirmation', async () => {
-        await detailPane
-          .getByRole('button', { name: 'Godkänn arkivering' })
-          .click()
+          const dialog = page.getByRole('alertdialog')
+          await expect(dialog).toContainText(
+            'Är du säker på att du vill arkivera detta krav?',
+          )
+          await cancelLatestDialog(page)
 
-        const dialog = page.getByRole('alertdialog')
-        await expect(dialog).toContainText(
-          'Är du säker på att du vill arkivera detta krav?',
-        )
-        await cancelLatestDialog(page)
-
-        await assertActiveStepperStep(detailPane, 'Arkiveringsgranskning')
-        await assertRequirementApiState(request, uniqueId, {
-          archiveInitiated: true,
-          isArchived: false,
-          status: STATUS_REVIEW,
+          await assertActiveStepperStep(detailPane, 'Arkiveringsgranskning')
+          await assertRequirementApiState(request, uniqueId, {
+            archiveInitiated: true,
+            isArchived: false,
+            status: STATUS_REVIEW,
+          })
         })
-      })
 
-      await test.step('approve archiving and verify archived state', async () => {
-        await detailPane
-          .getByRole('button', { name: 'Godkänn arkivering' })
-          .click()
-        await confirmLatestDialog(page)
-        await expect(detailPane).toBeHidden()
+        await test.step('approve archiving and verify archived state', async () => {
+          await detailPane
+            .getByRole('button', { name: 'Godkänn arkivering' })
+            .click()
+          await confirmLatestDialog(page)
+          await expect(detailPane).toBeHidden()
 
-        await assertRequirementApiState(request, uniqueId, {
-          archiveInitiated: false,
-          isArchived: true,
-          status: STATUS_ARCHIVED,
-        })
-      })
-    })
-
-    test('cancels archiving after cancelling the cancellation once', async ({
-      page,
-      request,
-    }) => {
-      const uniqueId = archiveFixtures.cancel[viewport.name]
-      let detailPane = page.locator('body')
-
-      await test.step('prepare and initiate archiving', async () => {
-        await ensurePublishedRequirement(request, uniqueId)
-        detailPane = await openRequirement(page, uniqueId)
-
-        await detailPane
-          .getByRole('button', { exact: true, name: 'Arkivera' })
-          .click()
-        await confirmLatestDialog(page)
-        await assertRequirementApiState(request, uniqueId, {
-          archiveInitiated: true,
-          isArchived: false,
-          status: STATUS_REVIEW,
-        })
-        await assertRequirementListStatus(
-          page,
-          uniqueId,
-          'Arkiveringsgranskning',
-        )
-        await selectLatestVersion(
-          detailPane,
-          request,
-          uniqueId,
-          'Arkiveringsgranskning',
-        )
-
-        await assertActiveStepperStep(detailPane, 'Arkiveringsgranskning')
-      })
-
-      await test.step('cancel the first cancellation confirmation', async () => {
-        await detailPane
-          .getByRole('button', { name: 'Avbryt arkivering' })
-          .click()
-
-        const dialog = page.getByRole('alertdialog')
-        await expect(dialog).toContainText(
-          'Är du säker på att du vill avbryta arkiveringen och återgå till Publicerad?',
-        )
-        await cancelLatestDialog(page)
-
-        await assertActiveStepperStep(detailPane, 'Arkiveringsgranskning')
-        await assertRequirementApiState(request, uniqueId, {
-          archiveInitiated: true,
-          isArchived: false,
-          status: STATUS_REVIEW,
+          await assertRequirementApiState(request, uniqueId, {
+            archiveInitiated: false,
+            isArchived: true,
+            status: STATUS_ARCHIVED,
+          })
         })
       })
 
-      await test.step('cancel archiving and verify published state', async () => {
-        await detailPane
-          .getByRole('button', { name: 'Avbryt arkivering' })
-          .click()
-        await confirmLatestDialog(page)
+      test('cancels archiving after cancelling the cancellation once', async ({
+        page,
+        request,
+      }) => {
+        const uniqueId = archiveFixtures.cancel[viewport.name]
+        let detailPane = page.locator('body')
 
-        await assertActiveStepperStep(detailPane, 'Publicerad')
-        await assertRequirementApiState(request, uniqueId, {
-          archiveInitiated: false,
-          isArchived: false,
-          status: STATUS_PUBLISHED,
+        await test.step('prepare and open an archiving review', async () => {
+          await ensureArchivingReviewRequirement(request, uniqueId)
+          detailPane = await openRequirement(page, uniqueId)
+          await assertRequirementListStatus(
+            page,
+            uniqueId,
+            'Arkiveringsgranskning',
+          )
+          await selectLatestVersion(
+            detailPane,
+            request,
+            uniqueId,
+            'Arkiveringsgranskning',
+          )
+
+          await assertActiveStepperStep(detailPane, 'Arkiveringsgranskning')
+        })
+
+        await test.step('cancel the first cancellation confirmation', async () => {
+          await detailPane
+            .getByRole('button', { name: 'Avbryt arkivering' })
+            .click()
+
+          const dialog = page.getByRole('alertdialog')
+          await expect(dialog).toContainText(
+            'Är du säker på att du vill avbryta arkiveringen och återgå till Publicerad?',
+          )
+          await cancelLatestDialog(page)
+
+          await assertActiveStepperStep(detailPane, 'Arkiveringsgranskning')
+          await assertRequirementApiState(request, uniqueId, {
+            archiveInitiated: true,
+            isArchived: false,
+            status: STATUS_REVIEW,
+          })
+        })
+
+        await test.step('cancel archiving and verify published state', async () => {
+          await detailPane
+            .getByRole('button', { name: 'Avbryt arkivering' })
+            .click()
+          await confirmLatestDialog(page)
+
+          await assertActiveStepperStep(detailPane, 'Publicerad')
+          await assertRequirementApiState(request, uniqueId, {
+            archiveInitiated: false,
+            isArchived: false,
+            status: STATUS_PUBLISHED,
+          })
         })
       })
     })

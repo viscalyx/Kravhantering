@@ -60,9 +60,10 @@ npm run test:release-smoke
 npm run container:release-smoke:down
 ```
 
-The suite signs in as `release-smoke-user` through the container Keycloak realm
-and verifies HTTPS, nginx, session reuse, seeded SQL Server reads, one
-CSRF-protected write, static assets and `/build.json`.
+The suite signs in as `release-smoke-user` and `release-smoke-admin` through
+the container Keycloak realm and verifies HTTPS, nginx, session reuse, seeded
+SQL Server reads, one CSRF-protected write, static assets, `/build.json` and
+HSA lookup through Kong plus the HSA directory mock.
 
 In the devcontainer, stack startup trusts the generated container CA for Node
 and Chromium. Other runners must trust `tmp/container-tls/ca.crt` themselves.

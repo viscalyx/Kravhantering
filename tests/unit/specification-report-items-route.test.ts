@@ -64,11 +64,12 @@ vi.mock('@/lib/requirements/auth', async importOriginal => {
     await importOriginal<typeof import('@/lib/requirements/auth')>()
   return {
     ...actual,
+    createDefaultAuthorizationService: () => ({ assertAuthorized: vi.fn() }),
     createRequestContext: vi.fn(async () => mockContext),
   }
 })
 
-import { GET } from '@/app/api/specifications/[id]/report-items/route'
+import { GET } from '@/app/api/requirements-specifications/[id]/report-items/route'
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
@@ -105,7 +106,7 @@ function makeVersion(
   }
 }
 
-describe('specifications/[id]/report-items route', () => {
+describe('requirements-specifications/[id]/report-items route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.getSpecificationBySlug.mockResolvedValue({ id: 7 })
@@ -168,7 +169,7 @@ describe('specifications/[id]/report-items route', () => {
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/specifications/DRIFT-FORV-BAS/report-items?refs=lib%3A31,local%3A41',
+        'http://localhost/api/requirements-specifications/DRIFT-FORV-BAS/report-items?refs=lib%3A31,local%3A41',
       ),
       makeParams('DRIFT-FORV-BAS'),
     )
@@ -254,7 +255,7 @@ describe('specifications/[id]/report-items route', () => {
 
     const response = await GET(
       new NextRequest(
-        `http://localhost/api/specifications/DRIFT-FORV-BAS/report-items?refs=${itemRefs
+        `http://localhost/api/requirements-specifications/DRIFT-FORV-BAS/report-items?refs=${itemRefs
           .map(ref => encodeURIComponent(ref))
           .join(',')}`,
       ),

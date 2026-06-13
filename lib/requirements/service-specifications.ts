@@ -10,8 +10,9 @@ import {
   getSpecificationLocalRequirementDetail,
   graduateSpecificationLocalRequirementToLibrary,
   linkRequirementsToSpecificationAtomically,
+  listSpecificationCoAuthorHsaIdsBySpecification,
   listSpecificationItems,
-  listSpecifications,
+  listSpecificationsForActor,
   unlinkRequirementsFromSpecification,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
@@ -55,6 +56,10 @@ import {
   translateServiceMessage,
   withLogging,
 } from '@/lib/requirements/service-shared'
+import {
+  canReadAllSpecifications,
+  specificationPermissions,
+} from '@/lib/specifications/permissions'
 
 interface SpecificationWorkflowDependencies {
   authorization: AuthorizationService
@@ -163,13 +168,21 @@ export function createSpecificationWorkflow({
           name_search: input.nameSearch,
         },
         async () => {
-          let specifications = await listSpecifications(db)
+          let specifications = await listSpecificationsForActor(db, {
+            actorHsaId: context.actor.hsaId,
+            canReadAll: canReadAllSpecifications(context),
+          })
           if (input.nameSearch) {
             const q = input.nameSearch.toLowerCase()
             specifications = specifications.filter(p =>
               p.name.toLowerCase().includes(q),
             )
           }
+          const coAuthorIdsBySpecification =
+            await listSpecificationCoAuthorHsaIdsBySpecification(
+              db,
+              specifications.map(p => p.id),
+            )
 
           const summary =
             specifications.length === 0
@@ -234,7 +247,10 @@ export function createSpecificationWorkflow({
               requirementAreas: p.requirementAreas,
               responsibleDisplayName: p.responsibleDisplayName,
               responsibleHsaId: p.responsibleHsaId,
-              canResponsibleGenerateAi: p.canResponsibleGenerateAi,
+              permissions: specificationPermissions(context, {
+                coAuthorHsaIds: coAuthorIdsBySpecification.get(p.id) ?? [],
+                responsibleHsaId: p.responsibleHsaId,
+              }),
               governanceObjectType: p.governanceObjectType
                 ? {
                     id: p.governanceObjectType.id,

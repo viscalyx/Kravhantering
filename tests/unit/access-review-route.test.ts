@@ -109,7 +109,6 @@ function reviewDetail() {
   return {
     items: [
       {
-        canGenerateAi: true,
         comment: null,
         createdAt: '2026-05-12T12:00:00.000Z',
         decidedAt: null,
@@ -204,7 +203,7 @@ describe('access review routes', () => {
     })
   })
 
-  it('creates a review run and audits counts without raw reviewed HSA-ID lists', async () => {
+  it('creates a review run and audits counts without raw reviewed HSA-id lists', async () => {
     const auditExecutor = { query: vi.fn() }
     routeState.createAccessReviewRun.mockImplementationOnce(
       async (_db, _input, _actor, options) => {

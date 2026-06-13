@@ -25,6 +25,7 @@ export type SecurityEventName =
   | 'admin.archiving.exported'
   | 'admin.archiving.previewed'
   | 'admin.privileged_action.succeeded'
+  | 'delegated.privileged_action.succeeded'
   | 'auth.login.succeeded'
   | 'auth.login.failed'
   | 'auth.logout'

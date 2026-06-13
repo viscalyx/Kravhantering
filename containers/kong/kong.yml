@@ -1,0 +1,22 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: hsa-directory-mock
+    url: http://hsa-directory-mock:8080
+    routes:
+      - name: hsa-directory-soap
+        paths:
+          - /svr-hsaws2/hsaws
+        methods:
+          - POST
+        strip_path: false
+      - name: hsa-directory-person-lookup-rest
+        paths:
+          - /hsa/person-records/lookup
+        methods:
+          - POST
+        strip_path: false
+
+plugins: []
+upstreams: []

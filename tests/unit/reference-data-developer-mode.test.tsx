@@ -184,9 +184,8 @@ const pages: MarkerSpec[] = [
             itemCount: 0,
             requirementAreas: [],
             businessNeedsReference: null,
-            responsibleDisplayName: null,
-            responsibleHsaId: null,
-            canResponsibleGenerateAi: false,
+            responsibleDisplayName: 'Ada Admin',
+            responsibleHsaId: 'SE5560000001-admin1',
           },
         ],
       }),
@@ -197,7 +196,7 @@ const pages: MarkerSpec[] = [
     fetchHandler: input => {
       const url = String(input)
 
-      if (url === '/api/specifications') {
+      if (url === '/api/requirements-specifications') {
         return okJson({
           specifications: [
             {
@@ -213,11 +212,19 @@ const pages: MarkerSpec[] = [
               itemCount: 0,
               requirementAreas: [],
               businessNeedsReference: null,
-              responsibleDisplayName: null,
-              responsibleHsaId: null,
-              canResponsibleGenerateAi: false,
+              responsibleDisplayName: 'Ada Admin',
+              responsibleHsaId: 'SE5560000001-admin1',
             },
           ],
+        }) as Response
+      }
+
+      if (url === '/api/auth/me') {
+        return okJson({
+          authenticated: true,
+          hsaId: 'SE5560000001-admin1',
+          name: 'Ada Admin',
+          roles: ['Admin'],
         }) as Response
       }
 
@@ -241,7 +248,7 @@ const pages: MarkerSpec[] = [
       'table action',
       'text field',
     ],
-    expectedFetchCalls: 4,
+    expectedFetchCalls: 5,
   },
   {
     label: 'GovernanceObjectTypesClient (governance object types)',

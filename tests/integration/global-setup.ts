@@ -29,10 +29,58 @@ export const ROLES: ReadonlyArray<RoleSpec> = [
     filePath: 'test-results/auth/admin-only.json',
   },
   {
+    role: 'area-owner',
+    username: 'olle.areaowner',
+    password: 'devpass',
+    filePath: 'test-results/auth/area-owner.json',
+  },
+  {
+    role: 'area-coauthor',
+    username: 'cora.coauthor',
+    password: 'devpass',
+    filePath: 'test-results/auth/area-coauthor.json',
+  },
+  {
+    role: 'specification-responsible',
+    username: 'petra.specresp',
+    password: 'devpass',
+    filePath: 'test-results/auth/specification-responsible.json',
+  },
+  {
+    role: 'specification-coauthor',
+    username: 'signe.speccoauthor',
+    password: 'devpass',
+    filePath: 'test-results/auth/specification-coauthor.json',
+  },
+  {
+    role: 'package-lead',
+    username: 'leo.pkglead',
+    password: 'devpass',
+    filePath: 'test-results/auth/package-lead.json',
+  },
+  {
+    role: 'package-coauthor',
+    username: 'paul.pkgcoauthor',
+    password: 'devpass',
+    filePath: 'test-results/auth/package-coauthor.json',
+  },
+  {
+    role: 'no-roles',
+    username: 'noah.noroles',
+    password: 'devpass',
+    filePath: 'test-results/auth/no-roles.json',
+  },
+  {
     role: 'reviewer',
     username: 'rita.reviewer',
     password: 'devpass',
     filePath: 'test-results/auth/reviewer.json',
+  },
+  {
+    role: 'privacy-officer',
+    username: 'disa.privacy',
+    password: 'devpass',
+    filePath: 'test-results/auth/privacy-officer.json',
   },
 ]
 

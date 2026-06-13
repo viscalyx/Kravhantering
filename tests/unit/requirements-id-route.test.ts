@@ -82,7 +82,7 @@ describe('requirements/[id] route', () => {
   })
 
   describe('GET', () => {
-    it('returns requirement with owner HSA-ID as owner name', async () => {
+    it('returns requirement with owner HSA-id as owner name', async () => {
       mockGetRequirement.mockResolvedValue({
         requirement: {
           id: 1,

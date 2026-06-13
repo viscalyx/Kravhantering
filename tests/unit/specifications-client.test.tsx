@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import { StrictMode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -92,11 +93,46 @@ const sampleSpecifications = [
     itemCount: 0,
     requirementAreas: [],
     businessNeedsReference: null,
+    permissions: {
+      canEditContent: true,
+      canManageAssignments: true,
+      canReviewDecisions: false,
+      canUseAi: true,
+    },
     responsibleHsaId: 'SE5560000001-ada1',
     responsibleDisplayName: 'Ada Admin',
-    canResponsibleGenerateAi: true,
   },
 ]
+const sampleCurrentUser = {
+  authenticated: true,
+  email: 'ada.admin@example.test',
+  hsaId: 'SE5560000001-ada1',
+  name: 'Ada Admin',
+  roles: ['Admin'],
+}
+const hsaIdPrefixPayload = {
+  prefixes: [{ id: 1, isDefault: true, label: null, prefix: 'SE5560000001' }],
+}
+
+function mockApi(
+  handler: (url: string, opts?: RequestInit) => Promise<unknown>,
+) {
+  fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+    if (url === '/api/auth/me')
+      return Promise.resolve(okJson(sampleCurrentUser))
+    if (url === '/api/hsa-id-prefixes')
+      return Promise.resolve(okJson(hsaIdPrefixPayload))
+    return handler(url, opts)
+  })
+}
+
+async function openCreateSpecificationForm() {
+  const createButton = await screen.findByRole('button', {
+    name: /specification.newSpecification/i,
+  })
+  await waitFor(() => expect(createButton).not.toBeDisabled())
+  fireEvent.click(createButton)
+}
 
 describe('RequirementsSpecificationsClient', () => {
   afterEach(() => {
@@ -110,8 +146,8 @@ describe('RequirementsSpecificationsClient', () => {
     confirmMock.mockReset()
     fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
-    fetchMock.mockImplementation((url: string) => {
-      if (url === '/api/specifications')
+    mockApi((url: string) => {
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -148,16 +184,14 @@ describe('RequirementsSpecificationsClient', () => {
   })
 
   it('formats anonymized responsible display names in the table', async () => {
-    fetchMock.mockImplementation((url: string) => {
-      if (url === '/api/specifications')
+    mockApi((url: string) => {
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(
           okJson({
             specifications: [
               {
                 ...sampleSpecifications[0],
                 responsibleDisplayName: 'no-user',
-                responsibleHsaId: null,
-                canResponsibleGenerateAi: false,
               },
             ],
           }),
@@ -177,6 +211,35 @@ describe('RequirementsSpecificationsClient', () => {
 
     expect(await screen.findByText('Anonymous')).toBeInTheDocument()
     expect(screen.queryByText('no-user')).toBeNull()
+  })
+
+  it('shows the responsible HSA-id when a specification has no responsible display name', async () => {
+    mockApi((url: string) => {
+      if (url === '/api/requirements-specifications')
+        return Promise.resolve(
+          okJson({
+            specifications: [
+              {
+                ...sampleSpecifications[0],
+                responsibleDisplayName: null,
+              },
+            ],
+          }),
+        )
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      if (url === '/api/specification-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<RequirementsSpecificationsClient />)
+
+    expect(await screen.findByText('SE5560000001-ada1')).toBeInTheDocument()
   })
 
   it('fetches and displays kravunderlag after strict-mode effect replays', async () => {
@@ -199,8 +262,8 @@ describe('RequirementsSpecificationsClient', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
 
-    fetchMock.mockImplementation((url: string) => {
-      if (url === '/api/specifications')
+    mockApi((url: string) => {
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -259,7 +322,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications',
+        '/api/requirements-specifications',
         expect.any(Object),
       )
       expect(fetchMock).toHaveBeenCalledWith(
@@ -282,8 +345,8 @@ describe('RequirementsSpecificationsClient', () => {
   })
 
   it('filters specifications by the name column and clears the search', async () => {
-    fetchMock.mockImplementation((url: string) => {
-      if (url === '/api/specifications')
+    mockApi((url: string) => {
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(
           okJson({
             specifications: [
@@ -352,8 +415,8 @@ describe('RequirementsSpecificationsClient', () => {
   })
 
   it('shows a no-results row when the name filter matches no specifications', async () => {
-    fetchMock.mockImplementation((url: string) => {
-      if (url === '/api/specifications')
+    mockApi((url: string) => {
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(
           okJson({
             specifications: [
@@ -395,8 +458,8 @@ describe('RequirementsSpecificationsClient', () => {
   })
 
   it('renders an empty-state row when there are no specifications', async () => {
-    fetchMock.mockImplementation((url: string) => {
-      if (url === '/api/specifications')
+    mockApi((url: string) => {
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: [] }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -417,8 +480,8 @@ describe('RequirementsSpecificationsClient', () => {
   })
 
   it('renders requirement-area badges as compact static pills', async () => {
-    fetchMock.mockImplementation((url: string) => {
-      if (url === '/api/specifications')
+    mockApi((url: string) => {
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(
           okJson({
             specifications: [
@@ -455,8 +518,8 @@ describe('RequirementsSpecificationsClient', () => {
     const restoreScrollHeight = mockPillListScrollHeight(56)
 
     try {
-      fetchMock.mockImplementation((url: string) => {
-        if (url === '/api/specifications')
+      mockApi((url: string) => {
+        if (url === '/api/requirements-specifications')
           return Promise.resolve(
             okJson({
               specifications: [
@@ -592,14 +655,128 @@ describe('RequirementsSpecificationsClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: /specification.newSpecification/i,
-      }),
+    await openCreateSpecificationForm()
+    const dialog = screen.getByRole('dialog', {
+      name: /specification\.newSpecification/,
+    })
+    expect(dialog).toHaveAttribute(
+      'data-developer-mode-value',
+      'new specification',
     )
+    const form = document.body.querySelector(
+      '[data-developer-mode-name="crud form"][data-developer-mode-context="specifications"]',
+    )
+    expect(form).toHaveAttribute('data-developer-mode-value', 'create')
+    expect(form?.firstElementChild).toHaveClass('lg:grid-cols-2')
     expect(
       screen.getByRole('textbox', { name: /specification\.name/ }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
+    ).toHaveValue(sampleCurrentUser.hsaId)
+    expect(
+      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
+    ).toHaveAttribute('readonly')
+  })
+
+  it('disables create until the current user HSA-id is loaded', async () => {
+    const authRequest = createDeferred<ReturnType<typeof okJson>>()
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/auth/me') return authRequest.promise
+      if (url === '/api/requirements-specifications')
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      if (url === '/api/specification-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<RequirementsSpecificationsClient />)
+
+    const createButton = await screen.findByRole('button', {
+      name: /specification.newSpecification/i,
+    })
+    expect(createButton).toBeDisabled()
+
+    authRequest.resolve(okJson(sampleCurrentUser))
+
+    await waitFor(() => expect(createButton).not.toBeDisabled())
+  })
+
+  it('shows an error and keeps create disabled when the signed-in user has no HSA-id', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/auth/me')
+        return Promise.resolve(okJson({ authenticated: true, hsaId: '' }))
+      if (url === '/api/requirements-specifications')
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      if (url === '/api/specification-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<RequirementsSpecificationsClient />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'specification.currentUserUnavailable',
+    )
+    expect(
+      screen.getByRole('button', {
+        name: /specification.newSpecification/i,
+      }),
+    ).toBeDisabled()
+  })
+
+  it('keeps responsible changes disabled when current user loading fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/auth/me') {
+        return Promise.reject(new Error('auth unavailable'))
+      }
+      if (url === '/api/requirements-specifications')
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      if (url === '/api/specification-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<RequirementsSpecificationsClient />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'specification.currentUserUnavailable',
+    )
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+
+    await waitFor(() => {
+      expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
+    })
+    await waitFor(() => {
+      expect(
+        screen.getByRole('textbox', { name: /specification\.coAuthorHsaId/ }),
+      ).toBeDisabled()
+    })
+    expect(
+      screen.getByRole('button', {
+        name: /specification\.changeResponsible/,
+      }),
+    ).toBeDisabled()
+    consoleError.mockRestore()
   })
 
   it('shows inline help for specification form fields', async () => {
@@ -608,11 +785,7 @@ describe('RequirementsSpecificationsClient', () => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: /specification.newSpecification/i,
-      }),
-    )
+    await openCreateSpecificationForm()
     fireEvent.click(
       screen.getByRole('button', { name: 'common.help: specification.name' }),
     )
@@ -631,20 +804,13 @@ describe('RequirementsSpecificationsClient', () => {
     })
     expect(filterInput.className).toContain('min-h-11')
 
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: /specification.newSpecification/i,
-      }),
-    )
+    await openCreateSpecificationForm()
 
     for (const field of [
       screen.getByRole('textbox', { name: /specification\.name/ }),
       screen.getByRole('textbox', { name: /specification\.uniqueId/ }),
       screen.getByRole('combobox', {
         name: /specification\.governanceObjectType/,
-      }),
-      screen.getByRole('textbox', {
-        name: /specification\.responsibleDisplayName/,
       }),
       screen.getByRole('textbox', {
         name: /specification\.responsibleHsaId/,
@@ -658,14 +824,6 @@ describe('RequirementsSpecificationsClient', () => {
     ]) {
       expect(field.className).toContain('min-h-11')
     }
-
-    expect(
-      screen
-        .getByRole('checkbox', {
-          name: /specification\.canResponsibleGenerateAi/,
-        })
-        .closest('div')?.className,
-    ).toContain('min-h-11')
   })
 
   it('submits create form', async () => {
@@ -673,11 +831,7 @@ describe('RequirementsSpecificationsClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: /specification.newSpecification/i,
-      }),
-    )
+    await openCreateSpecificationForm()
 
     fireEvent.change(
       screen.getByRole('textbox', { name: /specification\.name/ }),
@@ -687,28 +841,16 @@ describe('RequirementsSpecificationsClient', () => {
     )
     fireEvent.blur(screen.getByRole('textbox', { name: /specification\.name/ }))
     fireEvent.change(
-      screen.getByRole('textbox', {
-        name: /specification\.responsibleDisplayName/,
-      }),
-      {
-        target: { value: 'Rita Reviewer' },
-      },
-    )
-    fireEvent.change(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
-      {
-        target: { value: 'SE5560000001-rita1' },
-      },
+      { target: { value: 'SE5560000001-rita1' } },
     )
-    fireEvent.click(
-      screen.getByRole('checkbox', {
-        name: /specification\.canResponsibleGenerateAi/,
-      }),
-    )
+    expect(
+      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
+    ).toHaveValue(sampleCurrentUser.hsaId)
 
-    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+    mockApi((url: string, opts?: RequestInit) => {
       if (opts?.method === 'POST') return Promise.resolve(okJson({ id: 2 }))
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -725,7 +867,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications',
+        '/api/requirements-specifications',
         expect.objectContaining({ method: 'POST' }),
       )
     })
@@ -735,11 +877,7 @@ describe('RequirementsSpecificationsClient', () => {
     )
     expect(
       JSON.parse(((postCall?.[1] as RequestInit)?.body as string) ?? '{}'),
-    ).toMatchObject({
-      responsibleDisplayName: 'Rita Reviewer',
-      responsibleHsaId: 'SE5560000001-rita1',
-      canResponsibleGenerateAi: true,
-    })
+    ).toHaveProperty('responsibleHsaId', sampleCurrentUser.hsaId)
   })
 
   it('shows an inline save error for non-conflict failures', async () => {
@@ -748,11 +886,7 @@ describe('RequirementsSpecificationsClient', () => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: /specification.newSpecification/i,
-      }),
-    )
+    await openCreateSpecificationForm()
 
     const nameInput = screen.getByRole('textbox', {
       name: /specification\.name/,
@@ -760,7 +894,7 @@ describe('RequirementsSpecificationsClient', () => {
     fireEvent.change(nameInput, { target: { value: 'Nytt kravunderlag' } })
     fireEvent.blur(nameInput)
 
-    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+    mockApi((url: string, opts?: RequestInit) => {
       if (opts?.method === 'POST') {
         return Promise.resolve({
           ok: false,
@@ -768,7 +902,7 @@ describe('RequirementsSpecificationsClient', () => {
           text: async () => 'Backend unavailable',
         })
       }
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -791,37 +925,60 @@ describe('RequirementsSpecificationsClient', () => {
     ).toBeInTheDocument()
   })
 
-  it('requires specification lead name and HSA-ID to be saved together', async () => {
+  it('keeps create responsible locked to the current user', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: /specification.newSpecification/i,
-      }),
-    )
+    await openCreateSpecificationForm()
 
     const nameInput = screen.getByRole('textbox', {
       name: /specification\.name/,
     })
     fireEvent.change(nameInput, { target: { value: 'Nytt kravunderlag' } })
     fireEvent.blur(nameInput)
-    fireEvent.change(
-      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
-      {
-        target: { value: 'SE5560000001-rita1' },
-      },
-    )
+    const responsibleInput = screen.getByRole('textbox', {
+      name: /specification\.responsibleHsaId/,
+    })
+    expect(responsibleInput).toHaveValue(sampleCurrentUser.hsaId)
+    expect(responsibleInput).toHaveAttribute('readonly')
+    const dialog = screen.getByRole('dialog', {
+      name: /specification\.newSpecification/,
+    })
+    expect(
+      within(dialog).getByText(new RegExp(sampleCurrentUser.name)),
+    ).toBeInTheDocument()
 
-    const callsBeforeSave = fetchMock.mock.calls.length
+    mockApi((url: string, opts?: RequestInit) => {
+      if (opts?.method === 'POST') return Promise.resolve(okJson({ id: 2 }))
+      if (url === '/api/requirements-specifications')
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      if (url === '/api/specification-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      return Promise.resolve(okJson({}))
+    })
+
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'specification.responsiblePairRequired',
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements-specifications',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+    const postCall = fetchMock.mock.calls.find(
+      ([, init]) => (init as RequestInit | undefined)?.method === 'POST',
     )
-    expect(fetchMock.mock.calls).toHaveLength(callsBeforeSave)
+    expect(
+      JSON.parse(((postCall?.[1] as RequestInit)?.body as string) ?? '{}'),
+    ).toHaveProperty('responsibleHsaId', sampleCurrentUser.hsaId)
   })
 
   it('opens edit form with existing data', async () => {
@@ -833,6 +990,25 @@ describe('RequirementsSpecificationsClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[0])
+    await waitFor(() => {
+      expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
+    })
+    await waitFor(() => {
+      expect(
+        screen.getByRole('textbox', { name: /specification\.coAuthorHsaId/ }),
+      ).toBeEnabled()
+    })
+    const dialog = screen.getByRole('dialog', {
+      name: /specification\.editSpecification/,
+    })
+    expect(dialog).toHaveAttribute(
+      'data-developer-mode-value',
+      'edit specification',
+    )
+    const form = document.body.querySelector(
+      '[data-developer-mode-name="crud form"][data-developer-mode-context="specifications"]',
+    )
+    expect(form).toHaveAttribute('data-developer-mode-value', 'edit')
     expect(
       (
         screen.getByRole('textbox', {
@@ -841,18 +1017,219 @@ describe('RequirementsSpecificationsClient', () => {
       ).value,
     ).toBe('Kravunderlag sv')
     expect(
-      screen.getByRole('textbox', {
-        name: /specification\.responsibleDisplayName/,
-      }),
-    ).toHaveValue('Ada Admin')
-    expect(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     ).toHaveValue('SE5560000001-ada1')
     expect(
-      screen.getByRole('checkbox', {
-        name: /specification\.canResponsibleGenerateAi/,
+      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
+    ).toHaveAttribute('readonly')
+    expect(within(dialog).getByText('Ada Admin')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: /specification\.changeResponsible/,
       }),
-    ).toBeChecked()
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /common\.fetchHsaPerson/ }),
+    ).toBeDisabled()
+  })
+
+  it('omits the responsible HSA-id from ordinary edit saves', async () => {
+    render(<RequirementsSpecificationsClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+      { target: { value: 'Uppdaterat kravunderlag' } },
+    )
+
+    mockApi((url: string, opts?: RequestInit) => {
+      if (opts?.method === 'PUT') return Promise.resolve(okJson({ id: 1 }))
+      if (url === '/api/requirements-specifications')
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      if (url === '/api/specification-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      return Promise.resolve(okJson({}))
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements-specifications/KRAVUNDERLAG-SV',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/requirements-specifications/KRAVUNDERLAG-SV' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    )
+    expect(
+      JSON.parse(((putCall?.[1] as RequestInit)?.body as string) ?? '{}'),
+    ).not.toHaveProperty('responsibleHsaId')
+  })
+
+  it('changes responsible through the modal and keeps admins in the edit form', async () => {
+    render(<RequirementsSpecificationsClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /specification\.changeResponsible/,
+      }),
+    )
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'specification.changeResponsibleTitle',
+    })
+    const newResponsibleInput = within(dialog).getByRole('textbox', {
+      name: /specification\.newResponsibleHsaId/,
+    })
+    await waitFor(() => {
+      expect(newResponsibleInput).toBeEnabled()
+    })
+    fireEvent.change(newResponsibleInput, { target: { value: 'rita1' } })
+
+    mockApi((url: string, opts?: RequestInit) => {
+      if (opts?.method === 'PUT') {
+        return Promise.resolve(
+          okJson({
+            ...sampleSpecifications[0],
+            responsibleDisplayName: 'Rita Reviewer',
+            responsibleHsaId: 'SE5560000001-rita1',
+          }),
+        )
+      }
+      if (url === '/api/requirements-specifications')
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      if (url === '/api/specification-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      return Promise.resolve(okJson({}))
+    })
+
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: /specification\.changeResponsible/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements-specifications/KRAVUNDERLAG-SV/responsible',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url ===
+          '/api/requirements-specifications/KRAVUNDERLAG-SV/responsible' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    )
+    expect(
+      JSON.parse(((putCall?.[1] as RequestInit)?.body as string) ?? '{}'),
+    ).toEqual({ responsibleHsaId: 'SE5560000001-rita1' })
+    expect(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
+    ).toHaveValue('SE5560000001-rita1')
+  })
+
+  it('confirms unsaved edits and closes the form after non-admin responsible changes', async () => {
+    confirmMock.mockResolvedValue(true)
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url === '/api/auth/me')
+        return Promise.resolve(
+          okJson({ ...sampleCurrentUser, roles: ['RequirementsEditor'] }),
+        )
+      if (url === '/api/hsa-id-prefixes')
+        return Promise.resolve(okJson(hsaIdPrefixPayload))
+      if (opts?.method === 'PUT') {
+        return Promise.resolve(
+          okJson({
+            ...sampleSpecifications[0],
+            responsibleDisplayName: 'Rita Reviewer',
+            responsibleHsaId: 'SE5560000001-rita1',
+          }),
+        )
+      }
+      if (url === '/api/requirements-specifications')
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      if (url === '/api/specification-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<RequirementsSpecificationsClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+      { target: { value: 'Osparat namn' } },
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /specification\.changeResponsible/,
+      }),
+    )
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'specification.changeResponsibleTitle',
+    })
+    const newResponsibleInput = within(dialog).getByRole('textbox', {
+      name: /specification\.newResponsibleHsaId/,
+    })
+    await waitFor(() => {
+      expect(newResponsibleInput).toBeEnabled()
+    })
+    fireEvent.change(newResponsibleInput, { target: { value: 'rita1' } })
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: /specification\.changeResponsible/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultCancel: true,
+          message: 'specification.responsibleChangeUnsavedConfirm',
+        }),
+      )
+    })
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('textbox', { name: /specification\.name/ }),
+      ).toBeNull()
+    })
   })
 
   it('closes form on cancel', async () => {
@@ -860,11 +1237,7 @@ describe('RequirementsSpecificationsClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: /specification.newSpecification/i,
-      }),
-    )
+    await openCreateSpecificationForm()
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
     expect(screen.queryByLabelText(/specification\.name/)).toBeNull()
   })
@@ -876,9 +1249,9 @@ describe('RequirementsSpecificationsClient', () => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
-    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+    mockApi((url: string, opts?: RequestInit) => {
       if (opts?.method === 'DELETE') return Promise.resolve(okJson({}))
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: [] }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -901,7 +1274,7 @@ describe('RequirementsSpecificationsClient', () => {
         expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/KRAVUNDERLAG-SV',
+        '/api/requirements-specifications/KRAVUNDERLAG-SV',
         expect.objectContaining({ method: 'DELETE' }),
       )
     })
@@ -913,14 +1286,14 @@ describe('RequirementsSpecificationsClient', () => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
-    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+    mockApi((url: string, opts?: RequestInit) => {
       if (opts?.method === 'POST') {
         return Promise.resolve({
           ok: false,
           status: 409,
         })
       }
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -933,11 +1306,7 @@ describe('RequirementsSpecificationsClient', () => {
       return Promise.resolve(okJson({}))
     })
 
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: /specification.newSpecification/i,
-      }),
-    )
+    await openCreateSpecificationForm()
 
     const nameInput = screen.getByRole('textbox', {
       name: /specification\.name/,
@@ -974,11 +1343,7 @@ describe('RequirementsSpecificationsClient', () => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: /specification.newSpecification/i,
-      }),
-    )
+    await openCreateSpecificationForm()
 
     const nameInput = screen.getByRole('textbox', {
       name: /specification\.name/,
@@ -1004,11 +1369,11 @@ describe('RequirementsSpecificationsClient', () => {
   it('shows saving state and keeps cancel disabled while submitting', async () => {
     const postRequest = createDeferred<ReturnType<typeof okJson>>()
 
-    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+    mockApi((url: string, opts?: RequestInit) => {
       if (opts?.method === 'POST') {
         return postRequest.promise
       }
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -1026,11 +1391,7 @@ describe('RequirementsSpecificationsClient', () => {
       expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: /specification.newSpecification/i,
-      }),
-    )
+    await openCreateSpecificationForm()
 
     const nameInput = screen.getByRole('textbox', {
       name: /specification\.name/,
@@ -1062,14 +1423,14 @@ describe('RequirementsSpecificationsClient', () => {
   it('shows an alert dialog when deleting a specification fails', async () => {
     confirmMock.mockResolvedValueOnce(true).mockResolvedValueOnce(true)
 
-    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+    mockApi((url: string, opts?: RequestInit) => {
       if (opts?.method === 'DELETE') {
         return Promise.resolve({
           ok: false,
           text: async () => 'Delete failed',
         })
       }
-      if (url === '/api/specifications')
+      if (url === '/api/requirements-specifications')
         return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-governance-object-types')
         return Promise.resolve(
@@ -1112,8 +1473,8 @@ describe('RequirementsSpecificationsClient', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
 
-    fetchMock.mockImplementation((url: string) => {
-      if (url === '/api/specifications') {
+    mockApi((url: string) => {
+      if (url === '/api/requirements-specifications') {
         return Promise.resolve({
           ok: false,
           status: 503,

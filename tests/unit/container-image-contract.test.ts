@@ -196,7 +196,7 @@ describe('container image contract', () => {
     expect(elevatedCompose).toContain('/dev/net/tun:/dev/net/tun')
   })
 
-  it('exposes local Buildx commands for both image targets', () => {
+  it('exposes local Buildx commands for image targets', () => {
     const packageJson = JSON.parse(readWorkspaceFile('package.json'))
 
     expect(packageJson.scripts['container:build:app-runtime']).toBe(
@@ -210,6 +210,9 @@ describe('container image contract', () => {
     )
     expect(packageJson.scripts['container:build:db-job:no-cache']).toBe(
       'docker buildx build --no-cache --file containers/app/Dockerfile --target db-job --tag localhost/kravhantering/db-job:local --load .',
+    )
+    expect(packageJson.scripts['container:build:hsa-directory-mock']).toBe(
+      'docker buildx build --file containers/hsa-directory-mock/Dockerfile --tag localhost/kravhantering/hsa-directory-mock:local --load containers/hsa-directory-mock',
     )
   })
 

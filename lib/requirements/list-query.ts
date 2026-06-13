@@ -19,6 +19,7 @@ import {
   type RequirementListItem,
 } from '@/lib/requirements/service'
 import { STATUS_ARCHIVED } from '@/lib/requirements/status-constants.mjs'
+import { resolveRequirementListVisibility } from '@/lib/requirements/visibility'
 
 export interface RequirementListPagination {
   count: number
@@ -128,6 +129,15 @@ export async function queryRequirementList(
   const inferredIncludeArchived =
     !statuses?.length || statuses.includes(STATUS_ARCHIVED)
   const includeArchived = input.includeArchived ?? inferredIncludeArchived
+  const visibility =
+    authorizationOptions?.allowUnauthenticated === true
+      ? { publishedOnly: true }
+      : authorizationOptions?.context
+        ? await resolveRequirementListVisibility(
+            db,
+            authorizationOptions.context,
+          )
+        : {}
 
   const query: ListRequirementsOptions = {
     areaIds: toPositiveIntegerIds(filters.areaIds),
@@ -139,6 +149,7 @@ export async function queryRequirementList(
     locale: input.locale ?? 'en',
     normReferenceIds: toPositiveIntegerIds(filters.normReferenceIds),
     offset,
+    ...visibility,
     qualityCharacteristicIds: toPositiveIntegerIds(
       filters.qualityCharacteristicIds,
     ),

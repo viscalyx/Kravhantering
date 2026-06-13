@@ -269,38 +269,6 @@ async function callToolOk(client: Client, name: string, args: UnknownRecord) {
   return expectToolOk(result, name)
 }
 
-async function findUnlinkedSpecification(
-  client: Client,
-  specifications: UnknownRecord[],
-  requirementUniqueId: string,
-) {
-  for (const specification of specifications) {
-    const specificationId = numberField(specification, 'id', 'specification')
-    const items = await callToolOk(
-      client,
-      'requirements_get_specification_items',
-      {
-        responseFormat: 'json',
-        specificationId,
-      },
-    )
-    const linked = arrayField(items, 'items', 'requirement applications').some(
-      item =>
-        stringField(
-          asRecord(item, 'requirement application'),
-          'uniqueId',
-          'item',
-        ) === requirementUniqueId,
-    )
-    if (!linked) {
-      return specification
-    }
-  }
-  throw new Error(
-    `No seeded specification was unlinked from ${requirementUniqueId}`,
-  )
-}
-
 async function writeSummary(status: string, details: string[]) {
   await mkdir(SCAN_DIR, { recursive: true })
   await writeFile(
@@ -489,11 +457,6 @@ test.describe('MCP seeded HTTP security gate', () => {
         arrayField(publishedRequirements, 'items', 'published requirements'),
         'published requirements',
       )
-      const publishedRequirementId = numberField(
-        publishedRequirement,
-        'id',
-        'published requirement',
-      )
       const publishedRequirementUniqueId = stringField(
         publishedRequirement,
         'uniqueId',
@@ -513,12 +476,9 @@ test.describe('MCP seeded HTTP security gate', () => {
           responseFormat: 'json',
         },
       )
-      const specification = await findUnlinkedSpecification(
-        client,
-        arrayField(specifications, 'specifications', 'specifications').map(
-          item => asRecord(item, 'specification'),
-        ),
-        publishedRequirementUniqueId,
+      const specification = firstRecord(
+        arrayField(specifications, 'specifications', 'specifications'),
+        'specifications',
       )
       const specificationId = numberField(specification, 'id', 'specification')
 
@@ -638,7 +598,7 @@ test.describe('MCP seeded HTTP security gate', () => {
         client,
         'requirements_add_to_specification',
         {
-          requirementIds: [publishedRequirementId],
+          requirementIds: [disposableId],
           responseFormat: 'json',
           specificationId,
         },
@@ -649,7 +609,7 @@ test.describe('MCP seeded HTTP security gate', () => {
         client,
         'requirements_remove_from_specification',
         {
-          requirementIds: [publishedRequirementId],
+          requirementIds: [disposableId],
           responseFormat: 'json',
           specificationId,
         },

@@ -1,6 +1,6 @@
 # Privacy Data Subject Access Export
 
-Kravhantering supports data subject access export for one registered HSA-ID.
+Kravhantering supports data subject access export for one registered HSA-id.
 The JSON payload is the source of truth and remains the machine-readable
 format. PDF export returns a server-rendered report that presents the same
 collected scope in plain Swedish or English for a person who wants to
@@ -9,7 +9,7 @@ understand how their personal data is used.
 ## Entry Points
 
 - Signed-in users can export their own data at `/{locale}/privacy`.
-- Users with `PrivacyOfficer` can preview an HSA-ID in the Admin Center
+- Users with `PrivacyOfficer` can preview an HSA-id in the Admin Center
   `Privacy` tab and export that preview target as JSON or PDF.
 - The API route is `POST /api/privacy/data-subject-export`.
 
@@ -23,8 +23,8 @@ The request body is:
 ```
 
 `target` is optional. When it is omitted, the server derives the subject from
-the signed-in actor's verified session HSA-ID. A target matching the actor is
-allowed. Exporting any other HSA-ID requires `PrivacyOfficer`.
+the signed-in actor's verified session HSA-id. A target matching the actor is
+allowed. Exporting any other HSA-id requires `PrivacyOfficer`.
 
 ## Export Schema
 
@@ -39,7 +39,7 @@ Top-level fields:
 
 - `schemaVersion`
 - `generatedAt`
-- `subject` with the raw HSA-ID and a non-reversible target fingerprint
+- `subject` with the raw HSA-id and a non-reversible target fingerprint
 - `generatedBy`
 - `summary`
 - `sources`
@@ -54,8 +54,8 @@ related-object reference where one is available.
 The PDF report hides raw database field names, table names, schema identifiers,
 source keys, relation keys, and target fingerprints. It groups the collected
 data into human-readable sections such as identity and contact details, active
-assignments, co-authoring and AI access, historical traces, access reviews,
-action log entries, and important limitations.
+assignments, co-authoring, historical traces, access reviews, action log
+entries, and important limitations.
 
 The report uses the requested locale. Swedish exports use plain Swedish labels
 such as `Aktiva uppdrag`, `Kravområde`, `Skapad av`, `Ja` and `Nej`. English
@@ -66,7 +66,7 @@ machine-readable details instead.
 ## Covered Sources
 
 The collector reuses the privacy-erasure source registry so erasure preview and
-data subject access export stay aligned for HSA-ID-backed fields. Current
+data subject access export stay aligned for HSA-id-backed fields. Current
 sources include:
 
 - requirement versions
@@ -75,9 +75,11 @@ sources include:
 - specification lead
 - requirement-area and specification co-authors
 - requirement-area and package owner references
+- local requirement responsibility person identity rows, including standalone
+  rows until retention deletes them
 - current auth session claims for self-export only
 
-Matching is exact HSA-ID matching only. Names and email addresses are never used
+Matching is exact HSA-id matching only. Names and email addresses are never used
 to find a subject.
 
 ## Limits
@@ -94,10 +96,10 @@ implemented in this slice.
 
 Successful export generation records
 `privacy.data_subject_export.generated` with delivery, item count, source count,
-and target fingerprint. Action-log detail must not include the raw target HSA-ID.
+and target fingerprint. Action-log detail must not include the raw target HSA-id.
 
 Downloaded filenames use the target fingerprint and generation date rather than
-the raw HSA-ID.
+the raw HSA-id.
 
 ## API Contract Status
 
@@ -105,4 +107,4 @@ This route is intentionally kept out of the OpenAPI/Schemathesis contract for
 now, aligned with the deferred privacy-route policy in
 [api-security.md](./api-security.md). It should be added only when the contract
 work includes privacy role-matrix checks, self-export behavior, no-store header
-assertions, HSA-ID-only generated examples, and audit-redaction assertions.
+assertions, HSA-id-only generated examples, and audit-redaction assertions.

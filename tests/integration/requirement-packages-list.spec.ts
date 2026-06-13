@@ -1,9 +1,33 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Locator, test } from '@playwright/test'
 
 const viewports = [
   { height: 812, name: 'mobile', width: 375 },
   { height: 720, name: 'desktop', width: 1280 },
 ]
+
+function splitHsaId(hsaId: string): { prefix: string; suffix: string } {
+  const separatorIndex = hsaId.indexOf('-')
+  if (separatorIndex < 0) {
+    throw new Error(`Expected full HSA-id with prefix and suffix: ${hsaId}`)
+  }
+
+  return {
+    prefix: hsaId.slice(0, separatorIndex),
+    suffix: hsaId.slice(separatorIndex + 1),
+  }
+}
+
+async function fillEditableHsaId(
+  scope: Locator,
+  inputName: string,
+  hsaId: string,
+): Promise<void> {
+  const { prefix, suffix } = splitHsaId(hsaId)
+  await scope
+    .getByRole('combobox', { name: 'HSA-id-prefix' })
+    .selectOption(prefix)
+  await scope.getByRole('textbox', { name: inputName }).fill(suffix)
+}
 
 for (const viewport of viewports) {
   test.describe(`Requirement packages list filter — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
@@ -90,6 +114,102 @@ for (const viewport of viewports) {
         await expect(nameFilter).toHaveValue('')
         await expect(mobilePackage).toHaveCount(1)
         await expect(ssoPackage).toHaveCount(1)
+      })
+
+      await test.step('show the signed-in package lead when creating', async () => {
+        await page.getByRole('button', { name: 'Nytt kravpaket' }).click()
+
+        const dialog = page.getByRole('dialog', { name: 'Nytt kravpaket' })
+        await expect(dialog).toBeVisible()
+        const nameInput = dialog.getByRole('textbox', { name: 'Namn' })
+        const coAuthorsHeading = dialog.getByRole('heading', {
+          name: 'Kravpaketsmedförfattare',
+        })
+
+        const leadInput = dialog.getByRole('textbox', {
+          name: 'Kravpaketsansvarigs HSA-id',
+        })
+        await expect(nameInput).toBeVisible()
+        await expect(coAuthorsHeading).toBeVisible()
+        await expect(leadInput).toHaveValue('SE5560000001-admin1')
+        await expect(leadInput).toHaveAttribute('readonly', '')
+        await expect(
+          dialog.getByRole('button', { name: 'Hämta' }),
+        ).toBeVisible()
+        await expect(dialog.getByText(/Ada Admin/)).toBeVisible()
+        await expect(dialog.getByText('Kopplade krav')).toHaveCount(0)
+
+        const dialogBox = await dialog.boundingBox()
+        const leadBox = await leadInput.boundingBox()
+        const coAuthorsBox = await coAuthorsHeading.boundingBox()
+        expect(dialogBox).not.toBeNull()
+        expect(leadBox).not.toBeNull()
+        expect(coAuthorsBox).not.toBeNull()
+
+        if (viewport.name === 'desktop') {
+          expect(dialogBox?.width ?? 0).toBeGreaterThan(800)
+          expect(coAuthorsBox?.x ?? 0).toBeGreaterThan(
+            (leadBox?.x ?? 0) + (leadBox?.width ?? 0),
+          )
+        } else {
+          expect(coAuthorsBox?.y ?? 0).toBeGreaterThan(
+            (leadBox?.y ?? 0) + (leadBox?.height ?? 0),
+          )
+        }
+
+        await dialog.getByRole('button', { name: 'Stäng' }).click()
+        await expect(dialog).toBeHidden()
+      })
+
+      await test.step('change package lead through the edit modal', async () => {
+        const row = page.getByRole('row', { name: /Mobil användning/ })
+        await row.getByRole('button', { name: 'Redigera' }).click()
+
+        const dialog = page.getByRole('dialog', {
+          name: 'Redigera kravpaket',
+        })
+        await expect(dialog).toBeVisible()
+        const leadInput = dialog.getByRole('textbox', {
+          name: 'Kravpaketsansvarigs HSA-id',
+        })
+        await expect(leadInput).toHaveAttribute('readonly', '')
+        await expect(
+          leadInput.locator('xpath=../following-sibling::p'),
+        ).toContainText(/\(.+@.+\)/)
+        await expect(
+          dialog.getByRole('button', { name: 'Byt kravpaketsansvarig' }),
+        ).toBeVisible()
+
+        const currentLeadHsaId = await leadInput.inputValue()
+        await dialog
+          .getByRole('button', { name: 'Byt kravpaketsansvarig' })
+          .click()
+
+        const changeDialog = page.getByRole('dialog', {
+          name: 'Byt kravpaketsansvarig',
+        })
+        await expect(changeDialog).toBeVisible()
+        await expect(
+          changeDialog.getByRole('textbox', {
+            name: 'Förra kravpaketsansvarigs HSA-id',
+          }),
+        ).toHaveValue(currentLeadHsaId)
+        const nextLeadInput = changeDialog.getByRole('textbox', {
+          name: 'Nya kravpaketsansvarigs HSA-id',
+        })
+        await expect(nextLeadInput).toBeVisible()
+        await expect(
+          changeDialog.getByRole('button', { name: 'Hämta' }),
+        ).toBeVisible()
+
+        await fillEditableHsaId(
+          changeDialog,
+          'Nya kravpaketsansvarigs HSA-id',
+          'SE5560000001-pkgco1',
+        )
+        await expect(changeDialog.getByRole('alert')).toContainText(
+          'Kravpaketsansvarig kan inte samtidigt vara',
+        )
       })
     })
   })

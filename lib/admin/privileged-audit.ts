@@ -26,6 +26,7 @@ export type AdminPrivilegedActionOperation =
   | 'update'
 
 export type AdminPrivilegedResourceType =
+  | 'hsa_id_prefix'
   | 'norm_reference'
   | 'owner'
   | 'quality_characteristic'
@@ -45,6 +46,13 @@ export interface AdminPrivilegedActionDetail {
   operation: AdminPrivilegedActionOperation
   resourceId?: number | string
   resourceType: AdminPrivilegedResourceType
+}
+
+type DelegatedPrivilegedActorRole = 'delegated_area_manager'
+
+export interface DelegatedPrivilegedActionDetail
+  extends AdminPrivilegedActionDetail {
+  actorRole: DelegatedPrivilegedActorRole
 }
 
 type AuditDetail = Record<string, SecurityEventDetailValue | null | undefined>
@@ -142,6 +150,10 @@ function adminActionName(detail: AdminPrivilegedActionDetail): string {
   return `admin.${detail.resourceType}.${detail.operation}`
 }
 
+function delegatedActionName(detail: DelegatedPrivilegedActionDetail): string {
+  return `delegated.${detail.resourceType}.${detail.operation}`
+}
+
 export async function recordAdminPrivilegedActionSucceeded(
   context: RequestContext,
   detail: AdminPrivilegedActionDetail,
@@ -184,6 +196,43 @@ export async function recordAdminPrivilegedActionSucceeded(
     request: context.request ?? {
       method: 'UNKNOWN',
       path: '/admin/privileged-action',
+      requestId: context.requestId,
+    },
+  })
+}
+
+export async function recordDelegatedPrivilegedActionSucceeded(
+  context: RequestContext,
+  detail: DelegatedPrivilegedActionDetail,
+  executor?: QueryExecutor,
+): Promise<void> {
+  const auditExecutor = executor ?? (await getRequestSqlServerDataSource())
+  const auditDetail = compactDetail({
+    actionKind: 'delegated.privileged_action',
+    actorRole: detail.actorRole,
+    actorRoles: context.actor.roles,
+    changedFields: detail.changedFields,
+    itemCount: detail.itemCount,
+    operation: detail.operation,
+    privilegeSource: 'resource_assignment',
+    requestSource: context.source,
+    resourceId: detail.resourceId,
+    resourceType: detail.resourceType,
+  })
+  await recordAllowedActionAuditEvent(auditExecutor, context, {
+    action: delegatedActionName(detail),
+    details: auditDetail,
+    targetId: detail.resourceId,
+    targetKind: detail.resourceType,
+  })
+  recordSecurityEvent({
+    actor: auditActor(context),
+    detail: auditDetail,
+    event: 'delegated.privileged_action.succeeded',
+    outcome: 'success',
+    request: context.request ?? {
+      method: 'UNKNOWN',
+      path: '/delegated/privileged-action',
       requestId: context.requestId,
     },
   })

@@ -45,6 +45,11 @@ export const RETENTION_SEED = Object.freeze({
     unused: 910020,
     used: 910021,
   },
+  responsibilityPerson: {
+    freshOrphan: 'SE5560000001-retentionfresh',
+    orphan: 'SE5560000001-retentionorphan',
+    stillAssigned: 'SE5560000001-retentionlinked',
+  },
   requirementVersion: {
     archivedUnused: 910101,
     archiveReview: 910105,
@@ -92,6 +97,7 @@ export const RETENTION_POSITIVE_SOURCE_KEYS = [
   'requirements_specifications.obsolete',
   'requirement_selection_questions.archived',
   'requirement_selection_answers.archived',
+  'requirement_responsibility_people.orphaned',
 ]
 
 function tableSection(seedData, name) {
@@ -217,7 +223,6 @@ function addRetentionTaxonomy(seedData) {
       description: `${pkg.name} för deterministiska arkiveringstester.`,
       id: pkg.id,
       is_archived: 0,
-      lead_display_name: 'Retention Linked',
       lead_hsa_id: 'SE5560000001-retentionlinked',
       name: pkg.name,
       updated_at: pkg.updatedAt,
@@ -455,7 +460,6 @@ function addRetentionSpecifications(seedData) {
       requirements_specification_id: RETENTION_SEED.specification.obsolete,
       specification_item_status_id: 1,
       status_updated_at: OLD_730_TS,
-      unused_1: null,
     })
   }
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "To PRD"
+  short_description: "Turn the current conversation context into a PRD and publish it to the project issue tracker"
+  default_prompt: "Use $to-prd to turn the current conversation context into a PRD (Problem Statement, Solution, User Stories, Implementation Decisions, Testing Decisions, Out of Scope, Further Notes) and publish it to the project's issue tracker with the ready-for-agent triage label. Do NOT interview the user — synthesize from the conversation and repo context."

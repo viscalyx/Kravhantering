@@ -151,7 +151,7 @@ describe('auth logout security audit events', () => {
 
     expect(response.status).toBe(403)
     await expect(response.json()).resolves.toMatchObject({
-      error: 'Missing X-Requested-With header.',
+      error: 'Forbidden',
     })
   })
 

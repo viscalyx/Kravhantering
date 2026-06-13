@@ -3,6 +3,7 @@ import {
   createRequirementPackage,
   deleteRequirementPackage,
   getLinkedRequirementsForPackage,
+  updateRequirementPackage,
 } from '@/lib/dal/requirement-packages'
 
 function createSqlServerDb() {
@@ -13,6 +14,7 @@ function createSqlServerDb() {
       id: 13,
       isArchived: false,
       leadDisplayName: 'Anna Johansson',
+      leadEmail: 'anna.johansson@example.test',
       leadHsaId: 'SE5560000001-annaj',
       name: 'Mobil användning',
       updatedAt: new Date('2026-05-02T08:00:00.000Z'),
@@ -34,7 +36,6 @@ describe('requirement-packages DAL', () => {
 
     const result = await createRequirementPackage(db, {
       description: 'Krav för mobil åtkomst och responsiva flöden.',
-      leadDisplayName: 'Anna Johansson',
       leadHsaId: 'SE5560000001-annaj',
       name: 'Mobil användning',
     })
@@ -45,14 +46,11 @@ describe('requirement-packages DAL', () => {
         'Mobil användning',
         'Krav för mobil åtkomst och responsiva flöden.',
         'SE5560000001-annaj',
-        'Anna Johansson',
         expect.any(Date),
       ]),
     )
     expect(query.mock.calls[0][0]).toContain('updated_at')
-    expect(query.mock.calls[0][0]).toContain(
-      'VALUES (@0, @1, @2, @3, 0, @4, @4)',
-    )
+    expect(query.mock.calls[0][0]).toContain('VALUES (@0, @1, @2, 0, @3, @3)')
     expect(result).toMatchObject({
       createdAt: '2026-05-02T08:00:00.000Z',
       id: 13,
@@ -114,9 +112,11 @@ describe('requirement-packages DAL', () => {
   it('deletes otherwise unused packages after cleaning requirement-selection answer links', async () => {
     const query = vi
       .fn()
+      .mockResolvedValueOnce([{ hsaId: 'SE5560000001-annaj' }])
       .mockResolvedValueOnce([{ id: 5 }])
       .mockResolvedValueOnce([{ answerId: 7, requirementId: null }])
       .mockResolvedValueOnce([{ id: 5 }])
+      .mockResolvedValueOnce([])
     const manager = { query }
     const db = {
       transaction: vi.fn(async callback => callback(manager)),
@@ -131,15 +131,15 @@ describe('requirement-packages DAL', () => {
       deletedCount: 1,
     })
 
-    expect(String(query.mock.calls[0]?.[0])).toContain('NOT EXISTS')
-    expect(String(query.mock.calls[1]?.[0])).toContain('DELETE answer_package')
-    expect(String(query.mock.calls[2]?.[0])).toContain(
+    expect(String(query.mock.calls[1]?.[0])).toContain('NOT EXISTS')
+    expect(String(query.mock.calls[2]?.[0])).toContain('DELETE answer_package')
+    expect(String(query.mock.calls[3]?.[0])).toContain(
       'DELETE FROM requirement_packages',
     )
   })
 
   it('does not clean answer links when package deletion is blocked by real usage', async () => {
-    const query = vi.fn().mockResolvedValueOnce([])
+    const query = vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([])
     const manager = { query }
     const db = {
       transaction: vi.fn(async callback => callback(manager)),
@@ -154,9 +154,88 @@ describe('requirement-packages DAL', () => {
       deletedCount: 0,
     })
 
-    expect(query).toHaveBeenCalledTimes(1)
-    expect(String(query.mock.calls[0]?.[0])).toContain(
+    expect(query).toHaveBeenCalledTimes(2)
+    expect(String(query.mock.calls[1]?.[0])).toContain(
       'requirement_version_requirement_packages',
     )
+  })
+
+  it('syncs package co-authors and cleans removed responsibility people on update', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ leadHsaId: 'SE5560000001-lead1' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ hsaId: 'SE5560000001-old1' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          createdAt: new Date('2026-05-02T08:00:00.000Z'),
+          description: 'Updated package',
+          id: 13,
+          isArchived: false,
+          leadEmail: 'lena.lead@example.test',
+          leadGivenName: 'Lena',
+          leadHsaId: 'SE5560000001-lead1',
+          leadMiddleName: null,
+          leadSurname: 'Lead',
+          name: 'Updated',
+          updatedAt: new Date('2026-05-02T08:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          createdAt: new Date('2026-05-02T08:05:00.000Z'),
+          email: 'new@example.test',
+          givenName: 'Nora',
+          hsaId: 'SE5560000001-new1',
+          middleName: null,
+          requirementPackageId: 13,
+          surname: 'New',
+        },
+      ])
+      .mockResolvedValueOnce([])
+    const manager = { query }
+    const db = {
+      transaction: vi.fn(async callback => callback(manager)),
+    } as unknown as Parameters<typeof updateRequirementPackage>[0]
+
+    const result = await updateRequirementPackage(db, 13, {
+      changedBy: {
+        displayName: 'Ada Admin',
+        hsaId: 'SE5560000001-admin1',
+      },
+      coAuthorHsaIds: [' SE5560000001-new1 ', ' ', 'SE5560000001-new1'],
+      coAuthorPeople: [
+        {
+          email: 'new@example.test',
+          givenName: 'Nora',
+          hsaId: 'SE5560000001-new1',
+          middleName: null,
+          surname: 'New',
+        },
+      ],
+      name: 'Updated',
+    })
+
+    expect(result).toMatchObject({
+      coAuthors: [
+        {
+          displayName: 'Nora New',
+          hsaId: 'SE5560000001-new1',
+        },
+      ],
+      id: 13,
+      leadDisplayName: 'Lena Lead',
+      leadEmail: 'lena.lead@example.test',
+    })
+    expect(String(query.mock.calls[3]?.[0])).toContain(
+      'DELETE FROM requirement_package_co_authors',
+    )
+    expect(String(query.mock.calls[4]?.[0])).toContain(
+      'INSERT INTO requirement_package_co_authors',
+    )
+    expect(String(query.mock.calls[8]?.[0])).toContain('DELETE person')
   })
 })

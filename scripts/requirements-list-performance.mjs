@@ -339,6 +339,33 @@ SELECT
   CASE WHEN n % 10 = 0 THEN 1 ELSE 0 END
 FROM numbers;
 
+INSERT INTO requirement_responsibility_people (
+  hsa_id,
+  given_name,
+  middle_name,
+  surname,
+  email,
+  last_fetched_at,
+  created_at,
+  updated_at
+)
+SELECT
+  CONCAT(N'SE5560000001-perf', area.area_index),
+  N'Performance',
+  NULL,
+  CONCAT(N'Fixture Owner ', area.area_index),
+  NULL,
+  @seededAt,
+  @seededAt,
+  @seededAt
+FROM (VALUES (1), (2), (3), (4)) AS area(area_index)
+WHERE area.area_index <= @areaCount
+  AND NOT EXISTS (
+    SELECT 1
+    FROM requirement_responsibility_people existing
+    WHERE existing.hsa_id = CONCAT(N'SE5560000001-perf', area.area_index)
+  );
+
 SET IDENTITY_INSERT requirement_areas ON;
 
 INSERT INTO requirement_areas (

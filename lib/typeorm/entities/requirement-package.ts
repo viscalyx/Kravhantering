@@ -1,11 +1,12 @@
 import { EntitySchema } from 'typeorm'
+import type { RequirementResponsibilityPersonEntity } from '@/lib/typeorm/entities/requirement-responsibility-person'
 
 export interface RequirementPackageEntity {
   createdAt: Date
   description: string | null
   id: number
   isArchived: boolean
-  leadDisplayName: string
+  lead: RequirementResponsibilityPersonEntity
   leadHsaId: string
   name: string
   updatedAt: Date
@@ -29,12 +30,7 @@ export const requirementPackageEntity =
         length: 'MAX',
         nullable: true,
       },
-      leadHsaId: { name: 'lead_hsa_id', type: 'nvarchar', length: 64 },
-      leadDisplayName: {
-        name: 'lead_display_name',
-        type: 'nvarchar',
-        length: 'MAX',
-      },
+      leadHsaId: { name: 'lead_hsa_id', type: 'nvarchar', length: 31 },
       isArchived: { name: 'is_archived', type: 'bit', default: false },
       createdAt: { name: 'created_at', type: 'datetime2' },
       updatedAt: { name: 'updated_at', type: 'datetime2' },
@@ -49,4 +45,18 @@ export const requirementPackageEntity =
         columns: ['isArchived'],
       },
     ],
+    relations: {
+      lead: {
+        type: 'many-to-one',
+        target: 'RequirementResponsibilityPerson',
+        joinColumn: {
+          name: 'lead_hsa_id',
+          referencedColumnName: 'hsaId',
+          foreignKeyConstraintName: 'fk_requirement_packages_lead_hsa_id',
+        },
+        nullable: false,
+        onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
+      },
+    },
   })

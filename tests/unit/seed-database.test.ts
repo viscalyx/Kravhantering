@@ -12,10 +12,13 @@ import {
   seedRequiredDatabase,
 } from '../../typeorm/seed-required.mjs'
 
-// cspell:ignore linneab repobehörighetsöversyn retentionlinked retentionorphan
+// cspell:ignore linneab manualarea manualpkg manualspec pkglead repobehörighetsöversyn specco
+// cspell:ignore retentionfresh retentionlinked retentionorphan
 
 const LINNEA_HSA_ID = 'SE5560000001-linneab'
 const LINNEA_DISPLAY_NAME = 'Linnéa Bergström'
+const PRIVACY_SEED_TS = '2026-04-23 09:00:00'
+const RESPONSIBILITY_PERSON_PLACEHOLDER = '(saknar namn, kräver nytt uppslag)'
 
 interface SeedInsertRow {
   row: Record<string, unknown>
@@ -173,11 +176,15 @@ describe('seed profiles', () => {
     expect(seedRowsFor(rows, 'requirement_statuses').length).toBeGreaterThan(0)
     expect(seedRowsFor(rows, 'quality_characteristics')).toHaveLength(49)
     const retentionPolicies = seedRowsFor(rows, 'archiving_retention_policies')
-    expect(retentionPolicies).toHaveLength(4)
+    expect(retentionPolicies).toHaveLength(5)
     expect(retentionPolicies).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           policy_key: 'archived_requirement_selection_delete',
+        }),
+        expect.objectContaining({
+          information_set: 'Kravansvarspersoner utan kravansvarstilldelning',
+          policy_key: 'orphaned_responsibility_people_delete',
         }),
       ]),
     )
@@ -303,7 +310,7 @@ describe('seed profiles', () => {
     }
   })
 
-  it('seeds duplicate-name privacy data with distinct HSA-ID decisions', async () => {
+  it('seeds duplicate-name privacy data with distinct HSA-id decisions', async () => {
     const { executor, rows } = collectSeedInsertRows()
 
     await seedDemoDatabase(executor)
@@ -314,11 +321,15 @@ describe('seed profiles', () => {
     ).filter(
       row =>
         row.content ===
-        'Privacy seed proves duplicate display names are matched by HSA-ID.',
+        'Privacy seed proves duplicate display names are matched by HSA-id.',
     )
     const kalleSpecificationHsaIds = new Set(
       seedRowsFor(rows, 'requirements_specifications')
-        .filter(row => row.responsible_display_name === 'Kalle Svensson')
+        .filter(row =>
+          ['SE5560000001-kalle1', 'SE5560000001-kalle2'].includes(
+            String(row.responsible_hsa_id),
+          ),
+        )
         .map(row => row.responsible_hsa_id),
     )
     expect(kalleSpecificationHsaIds).toEqual(
@@ -351,6 +362,191 @@ describe('seed profiles', () => {
     )
     expect(matchingPackages).toHaveLength(1)
     expect(matchingPackages[0]).toMatchObject({ id: 5 })
+  })
+
+  it('seeds requirement package co-author relationships', async () => {
+    const { executor, rows } = collectSeedInsertRows()
+
+    await seedDemoDatabase(executor)
+
+    const packageIds = new Set(
+      seedRowsFor(rows, 'requirement_packages').map(row => row.id),
+    )
+    const responsibilityPersonHsaIds = new Set(
+      seedRowsFor(rows, 'requirement_responsibility_people').map(
+        row => row.hsa_id,
+      ),
+    )
+    const coAuthors = seedRowsFor(rows, 'requirement_package_co_authors')
+
+    expect(coAuthors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          hsa_id: 'SE5560000001-pkgco1',
+          requirement_package_id: 1,
+        }),
+      ]),
+    )
+    for (const coAuthor of coAuthors) {
+      expect(packageIds.has(coAuthor.requirement_package_id)).toBe(true)
+      expect(responsibilityPersonHsaIds.has(coAuthor.hsa_id)).toBe(true)
+    }
+  })
+
+  it('seeds deterministic authorization fixtures for role testing', async () => {
+    const { executor, rows } = collectSeedInsertRows()
+
+    await seedDemoDatabase(executor)
+
+    expect(seedRowsFor(rows, 'requirement_areas')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 910100,
+          owner_hsa_id: 'SE5560000001-areaowner1',
+          prefix: 'AUTHZ',
+        }),
+      ]),
+    )
+    expect(seedRowsFor(rows, 'requirement_area_co_authors')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          area_id: 910100,
+          hsa_id: 'SE5560000001-areaco1',
+        }),
+      ]),
+    )
+    expect(seedRowsFor(rows, 'requirements_specifications')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 910400,
+          responsible_hsa_id: 'SE5560000001-specresp1',
+          unique_id: 'AUTHZ-SPEC-2026',
+        }),
+      ]),
+    )
+    expect(seedRowsFor(rows, 'specification_co_authors')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          hsa_id: 'SE5560000001-specco1',
+          specification_id: 910400,
+        }),
+      ]),
+    )
+    expect(seedRowsFor(rows, 'requirement_packages')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 910200,
+          lead_hsa_id: 'SE5560000001-pkglead1',
+          name: 'AUTHZ kravpaket',
+        }),
+      ]),
+    )
+    expect(seedRowsFor(rows, 'requirement_package_co_authors')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          hsa_id: 'SE5560000001-pkgco1',
+          requirement_package_id: 910200,
+        }),
+      ]),
+    )
+  })
+
+  it('seeds local responsibility people from live assignments and HSA mock details', async () => {
+    const { executor, rows } = collectSeedInsertRows()
+
+    await seedDemoDatabase(executor)
+
+    const hsaFixture = JSON.parse(
+      readFileSync(
+        path.join(
+          process.cwd(),
+          'containers/hsa-directory-mock/fixtures/hsa-personer.json',
+        ),
+        'utf8',
+      ),
+    ) as {
+      hsaPersonRecords: Array<{
+        givenName: string
+        hsaIdentity: string
+        mail?: string
+        middleName?: string
+        sn?: string
+      }>
+    }
+    const hsaMockById = new Map(
+      hsaFixture.hsaPersonRecords.map(record => [record.hsaIdentity, record]),
+    )
+    const responsibilityPeople = seedRowsFor(
+      rows,
+      'requirement_responsibility_people',
+    )
+    const liveAssignmentColumns = [
+      ['requirement_areas', 'owner_hsa_id'],
+      ['requirement_area_co_authors', 'hsa_id'],
+      ['requirements_specifications', 'responsible_hsa_id'],
+      ['specification_co_authors', 'hsa_id'],
+      ['requirement_packages', 'lead_hsa_id'],
+      ['requirement_package_co_authors', 'hsa_id'],
+    ] as const
+    const expectedHsaIds = new Set([
+      'SE5560000001-retentionorphan',
+      'SE5560000001-retentionfresh',
+    ])
+    for (const [table, column] of liveAssignmentColumns) {
+      for (const row of seedRowsFor(rows, table)) {
+        if (row[column]) expectedHsaIds.add(String(row[column]))
+      }
+    }
+
+    expect(responsibilityPeople.map(row => row.hsa_id).sort()).toEqual(
+      [...expectedHsaIds].sort(),
+    )
+    expect(
+      [...expectedHsaIds].filter(hsaId => !hsaMockById.has(hsaId)),
+    ).toEqual([])
+
+    for (const personRow of responsibilityPeople) {
+      if (personRow.hsa_id === 'SE5560000001-pkgco1') {
+        expect(personRow).toMatchObject({
+          email: null,
+          given_name: RESPONSIBILITY_PERSON_PLACEHOLDER,
+          last_fetched_at: null,
+        })
+        continue
+      }
+      const hsaPerson = hsaMockById.get(String(personRow.hsa_id))
+      expect(personRow).toMatchObject({
+        email: hsaPerson?.mail ?? null,
+        given_name: hsaPerson?.givenName,
+        last_fetched_at: expect.any(String),
+        middle_name: hsaPerson?.middleName ?? null,
+        surname: hsaPerson?.sn ?? null,
+      })
+    }
+    expect(
+      responsibilityPeople.find(
+        row => row.hsa_id === 'SE5560000001-retentionorphan',
+      ),
+    ).toMatchObject({
+      given_name: 'Rolf',
+      updated_at: '2023-01-15 09:00:00',
+    })
+    expect(
+      responsibilityPeople.find(
+        row => row.hsa_id === 'SE5560000001-retentionfresh',
+      ),
+    ).toMatchObject({
+      given_name: 'Freja',
+      updated_at: '2026-04-25 09:00:00',
+    })
+    expect(
+      responsibilityPeople.find(
+        row => row.hsa_id === 'SE5560000001-retentionlinked',
+      ),
+    ).toMatchObject({
+      given_name: 'Lena',
+      updated_at: '2023-01-15 09:00:00',
+    })
   })
 
   it('seeds Linnea privacy data with decisions and improvement suggestions', async () => {
@@ -471,10 +667,16 @@ describe('seed profiles', () => {
       )?.created_by_display_name,
     ).toBe(LINNEA_DISPLAY_NAME)
     expect(
-      seedRowsFor(rows, 'specification_co_authors').find(
+      seedRowsFor(rows, 'requirement_responsibility_people').find(
         row => row.hsa_id === LINNEA_HSA_ID,
-      )?.display_name,
-    ).toBe(LINNEA_DISPLAY_NAME)
+      ),
+    ).toMatchObject({
+      email: 'linnea.bergstrom@example.test',
+      given_name: 'Linnea',
+      hsa_id: LINNEA_HSA_ID,
+      last_fetched_at: PRIVACY_SEED_TS,
+      surname: 'Bergström',
+    })
     expect(
       seedRowsFor(rows, 'specification_co_authors').find(
         row => row.created_by_hsa_id === LINNEA_HSA_ID,
@@ -544,6 +746,7 @@ describe('seed profiles', () => {
       'requirements_specifications.obsolete',
       'requirement_selection_questions.archived',
       'requirement_selection_answers.archived',
+      'requirement_responsibility_people.orphaned',
     ])
 
     const areas = rowById(seedRowsFor(rows, 'requirement_areas'))
@@ -559,6 +762,12 @@ describe('seed profiles', () => {
     )
     const requirementSelectionAnswers = rowById(
       seedRowsFor(rows, 'requirement_selection_answers'),
+    )
+    const responsibilityPeople = new Map(
+      seedRowsFor(rows, 'requirement_responsibility_people').map(row => [
+        row.hsa_id,
+        row,
+      ]),
     )
     const savedRequirementSelectionAnswers = seedRowsFor(
       rows,
@@ -614,6 +823,29 @@ describe('seed profiles', () => {
       name: 'RETENTION-SEED oanvänd normreferens',
       updated_at: '2023-01-15 09:00:00',
     })
+    expect(
+      responsibilityPeople.get(RETENTION_SEED.responsibilityPerson.orphan),
+    ).toMatchObject({
+      given_name: 'Rolf',
+      surname: 'RetentionOrphan',
+      updated_at: '2023-01-15 09:00:00',
+    })
+    expect(
+      responsibilityPeople.get(
+        RETENTION_SEED.responsibilityPerson.stillAssigned,
+      ),
+    ).toMatchObject({
+      given_name: 'Lena',
+      surname: 'RetentionLinked',
+      updated_at: '2023-01-15 09:00:00',
+    })
+    expect(
+      responsibilityPeople.get(RETENTION_SEED.responsibilityPerson.freshOrphan),
+    ).toMatchObject({
+      given_name: 'Freja',
+      surname: 'RetentionFresh',
+      updated_at: '2026-04-25 09:00:00',
+    })
 
     expect(
       versions.get(RETENTION_SEED.requirementVersion.archivedUnused),
@@ -643,7 +875,7 @@ describe('seed profiles', () => {
       specifications.get(RETENTION_SEED.specification.obsolete),
     ).toMatchObject({
       name: 'RETENTION-SEED kravunderlag utanför förvaltning',
-      responsible_display_name: 'seed',
+      responsible_hsa_id: 'SE5560000001-seed',
       specification_lifecycle_status_id: 1,
       updated_at: '2023-01-15 09:00:00',
     })

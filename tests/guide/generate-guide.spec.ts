@@ -242,6 +242,19 @@ async function guideGoto(
   }
 }
 
+async function warmGuideApi(page: Page, url: string): Promise<void> {
+  const response = await page.request.get(url, {
+    headers: { Accept: 'application/json' },
+  })
+  if (response.ok()) return
+
+  throw new Error(
+    `Guide API warmup failed for ${url}: ${response.status()} ${(
+      await response.text()
+    ).slice(0, 500)}`,
+  )
+}
+
 /**
  * Set a React controlled input/textarea value reliably by using the native
  * value setter and dispatching an `input` event with bubbles. This is more
@@ -1184,12 +1197,18 @@ test.describe('Kravhantering — Guidegenerering', () => {
       const newPkgBtn = page.getByRole('button', { name: 'Nytt kravunderlag' })
       if ((await newPkgBtn.count()) > 0) {
         await newPkgBtn.click()
+        await expect(
+          page.getByRole('dialog', { name: 'Nytt kravunderlag' }),
+        ).toBeVisible({ timeout: 5_000 })
         await page.waitForTimeout(400)
         await snap(
           page,
           'skapa-kravunderlag',
           'Skapa nytt kravunderlag',
-          'Klicka på **"Nytt kravunderlag"** för att skapa ett nytt kravunderlag. Ange ett namn — ett unikt ID (slug) genereras automatiskt. Kravunderlag används för att samla krav som hör till ett specifikt projekt eller leverans.',
+          'Klicka på **"Nytt kravunderlag"** för att öppna dialogrutan för nytt\n' +
+            'kravunderlag. Ange ett namn — ett unikt ID (slug) genereras automatiskt.\n' +
+            'Kravunderlag används för att samla krav som hör till ett specifikt projekt eller\n' +
+            'leverans.',
           { fullPage: false },
         )
         await page.keyboard.press('Escape')
@@ -1198,7 +1217,14 @@ test.describe('Kravhantering — Guidegenerering', () => {
     })
 
     await guideStep(page, 'Kravunderlagsdetalj', async () => {
+      await warmGuideApi(
+        page,
+        `/api/requirements-specifications/${GUIDE_SPECIFICATION_SLUG}/available-requirements?limit=5&locale=sv&sortBy=uniqueId&sortDirection=asc`,
+      )
       await guideGoto(page, `/sv/specifications/${GUIDE_SPECIFICATION_SLUG}`)
+      await expect(
+        page.getByText(/^Det gick inte att läsa in tillgängliga krav:/),
+      ).toBeHidden({ timeout: 10_000 })
       await snap(
         page,
         'kravunderlagsdetalj',
@@ -1219,7 +1245,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           .first()
           .locator('input[type="checkbox"]')
         if ((await firstCheckbox.count()) > 0) {
-          await firstCheckbox.check()
+          await firstCheckbox.click()
         } else {
           await rightRows
             .first()
@@ -1268,12 +1294,15 @@ test.describe('Kravhantering — Guidegenerering', () => {
       const editBtn = page.getByRole('button', { name: /Redigera/i }).first()
       if ((await editBtn.count()) > 0) {
         await editBtn.click()
+        await expect(
+          page.getByRole('dialog', { name: 'Redigera kravunderlag' }),
+        ).toBeVisible({ timeout: 5_000 })
         await page.waitForTimeout(400)
         await snap(
           page,
           'redigera-kravunderlag',
           'Redigera kravunderlag',
-          'Redigeringspanelen låter dig uppdatera underlagets namn, verksamhetsreferens, kravunderlagets livscykelstatus, genomförandeform och styrningsobjektstyp. Klicka på "Spara" för att tillämpa ändringarna.',
+          'I dialogrutan kan du uppdatera underlagets namn, underlagssyfte, kravunderlagets livscykelstatus, genomförandeform och styrningsobjektstyp. Klicka på "Spara" för att tillämpa ändringarna.',
           { fullPage: false },
         )
         const cancelBtn = page

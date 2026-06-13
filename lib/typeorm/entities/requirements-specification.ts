@@ -1,17 +1,17 @@
 import { EntitySchema } from 'typeorm'
+import type { RequirementResponsibilityPersonEntity } from '@/lib/typeorm/entities/requirement-responsibility-person'
 import type { SpecificationGovernanceObjectTypeEntity } from '@/lib/typeorm/entities/specification-governance-object-type'
 import type { SpecificationImplementationTypeEntity } from '@/lib/typeorm/entities/specification-implementation-type'
 import type { SpecificationLifecycleStatusEntity } from '@/lib/typeorm/entities/specification-lifecycle-status'
 
 export interface RequirementsSpecificationEntity {
   businessNeedsReference: string | null
-  canResponsibleGenerateAi: boolean
   createdAt: Date
   id: number
   localRequirementNextSequence: number
   name: string
-  responsibleDisplayName: string | null
-  responsibleHsaId: string | null
+  responsibleHsaId: string
+  responsiblePerson: RequirementResponsibilityPersonEntity
   specificationGovernanceObjectType: SpecificationGovernanceObjectTypeEntity | null
   specificationImplementationType: SpecificationImplementationTypeEntity | null
   specificationLifecycleStatus: SpecificationLifecycleStatusEntity | null
@@ -58,19 +58,7 @@ export const requirementsSpecificationEntity =
       responsibleHsaId: {
         name: 'responsible_hsa_id',
         type: 'nvarchar',
-        length: 64,
-        nullable: true,
-      },
-      responsibleDisplayName: {
-        name: 'responsible_display_name',
-        type: 'nvarchar',
-        length: 'MAX',
-        nullable: true,
-      },
-      canResponsibleGenerateAi: {
-        name: 'can_responsible_generate_ai',
-        type: 'bit',
-        default: false,
+        length: 31,
       },
     },
     uniques: [
@@ -95,7 +83,6 @@ export const requirementsSpecificationEntity =
           foreignKeyConstraintName:
             'fk_requirements_specifications_specification_governance_object_type_id',
         },
-        nullable: true,
         onDelete: 'NO ACTION',
         onUpdate: 'NO ACTION',
       },
@@ -120,6 +107,19 @@ export const requirementsSpecificationEntity =
           referencedColumnName: 'id',
           foreignKeyConstraintName:
             'fk_requirements_specifications_specification_lifecycle_status_id',
+        },
+        nullable: true,
+        onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
+      },
+      responsiblePerson: {
+        type: 'many-to-one',
+        target: 'RequirementResponsibilityPerson',
+        joinColumn: {
+          name: 'responsible_hsa_id',
+          referencedColumnName: 'hsaId',
+          foreignKeyConstraintName:
+            'fk_requirements_specifications_responsible_hsa_id',
         },
         nullable: true,
         onDelete: 'NO ACTION',

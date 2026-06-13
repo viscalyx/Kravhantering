@@ -204,11 +204,16 @@ let availableRequirementsSelectionFilter:
 
 const initialSpec = {
   businessNeedsReference: 'Shared IAM business case',
-  canResponsibleGenerateAi: true,
   id: 8,
   implementationType: { id: 2, nameEn: 'Program', nameSv: 'Program' },
   lifecycleStatus: { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
   name: 'Authorization and IAM',
+  permissions: {
+    canEditContent: true,
+    canManageAssignments: true,
+    canReviewDecisions: false,
+    canUseAi: true,
+  },
   responsibleDisplayName: 'Ada Admin',
   responsibleHsaId: 'SE5560000001-ada1',
   specificationImplementationTypeId: 2,
@@ -322,7 +327,7 @@ function availableRequirementsFetchUrls(): string[] {
     )
     .filter(url =>
       url.startsWith(
-        '/api/specifications/ETJANST-UPP-2026/available-requirements?',
+        '/api/requirements-specifications/ETJANST-UPP-2026/available-requirements?',
       ),
     )
 }
@@ -354,7 +359,18 @@ describe('RequirementsSpecificationDetailClient', () => {
         const method =
           init?.method ?? (typeof input === 'string' ? 'GET' : input.method)
 
-        if (url === '/api/specifications/ETJANST-UPP-2026') {
+        if (url === '/api/auth/me') {
+          return Promise.resolve(
+            okJson({
+              authenticated: true,
+              hsaId: 'SE5560000001-ada1',
+              name: 'Ada Admin',
+              roles: ['Admin'],
+            }),
+          )
+        }
+
+        if (url === '/api/requirements-specifications/ETJANST-UPP-2026') {
           return Promise.resolve(
             okJson({
               businessNeedsReference: 'Shared IAM business case',
@@ -364,7 +380,6 @@ describe('RequirementsSpecificationDetailClient', () => {
               name: 'Authorization and IAM',
               responsibleDisplayName: 'Ada Admin',
               responsibleHsaId: 'SE5560000001-ada1',
-              canResponsibleGenerateAi: true,
               specificationImplementationTypeId: 2,
               specificationLifecycleStatusId: 3,
               specificationGovernanceObjectTypeId: 1,
@@ -375,7 +390,7 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/items' &&
+          url === '/api/requirements-specifications/ETJANST-UPP-2026/items' &&
           method === 'POST'
         ) {
           return Promise.resolve({
@@ -385,7 +400,7 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/items' &&
+          url === '/api/requirements-specifications/ETJANST-UPP-2026/items' &&
           method === 'PATCH'
         ) {
           if (bulkNeedsReferencePatchError) {
@@ -402,7 +417,7 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/items' &&
+          url === '/api/requirements-specifications/ETJANST-UPP-2026/items' &&
           method === 'GET'
         ) {
           if (failNextSpecificationItemsFetch) {
@@ -447,7 +462,7 @@ describe('RequirementsSpecificationDetailClient', () => {
 
         if (
           url.startsWith(
-            '/api/specifications/ETJANST-UPP-2026/available-requirements?',
+            '/api/requirements-specifications/ETJANST-UPP-2026/available-requirements?',
           ) ||
           url.startsWith('/api/requirements?')
         ) {
@@ -460,7 +475,7 @@ describe('RequirementsSpecificationDetailClient', () => {
           }
 
           const isSpecificationAvailableRequirements = url.startsWith(
-            '/api/specifications/ETJANST-UPP-2026/available-requirements?',
+            '/api/requirements-specifications/ETJANST-UPP-2026/available-requirements?',
           )
           const applyRequirementSelectionFilter =
             isSpecificationAvailableRequirements &&
@@ -528,14 +543,16 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/items/lib%3A31' &&
+          url ===
+            '/api/requirements-specifications/ETJANST-UPP-2026/items/lib%3A31' &&
           method === 'PATCH'
         ) {
           return Promise.resolve(okJson({ ok: true }))
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          url ===
+            '/api/requirements-specifications/ETJANST-UPP-2026/needs-references' &&
           method === 'POST'
         ) {
           return Promise.resolve(
@@ -552,7 +569,8 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          url ===
+            '/api/requirements-specifications/ETJANST-UPP-2026/needs-references' &&
           method === 'PATCH'
         ) {
           return Promise.resolve(
@@ -569,14 +587,16 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          url ===
+            '/api/requirements-specifications/ETJANST-UPP-2026/needs-references' &&
           method === 'DELETE'
         ) {
           return Promise.resolve(okJson({ ok: true }))
         }
 
         if (
-          url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+          url ===
+            '/api/requirements-specifications/ETJANST-UPP-2026/needs-references' &&
           method === 'GET'
         ) {
           return Promise.resolve(okJson({ needsReferences: [] }))
@@ -584,7 +604,7 @@ describe('RequirementsSpecificationDetailClient', () => {
 
         if (
           url ===
-          '/api/specifications/ETJANST-UPP-2026/requirement-selection-answers'
+          '/api/requirements-specifications/ETJANST-UPP-2026/requirement-selection-answers'
         ) {
           return Promise.resolve(okJson({ questions: [] }))
         }
@@ -823,7 +843,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(params.has('statuses')).toBe(false)
   })
 
-  it('opens and closes the specification edit view from the title action', async () => {
+  it('opens and closes the specification edit dialog from the title action', async () => {
     const { container } = renderRequirementsSpecificationDetailClient()
 
     await waitFor(() => {
@@ -907,11 +927,14 @@ describe('RequirementsSpecificationDetailClient', () => {
     fireEvent.click(editButton)
 
     expect(editButton).toHaveAttribute('aria-expanded', 'true')
+    const dialog = screen.getByRole('dialog', {
+      name: /specification\.editSpecification/i,
+    })
     expect(
-      screen.getByRole('textbox', { name: /specification\.name/ }),
+      within(dialog).getByRole('textbox', { name: /specification\.name/ }),
     ).toHaveValue('Authorization and IAM')
 
-    const form = container.querySelector(
+    const form = document.body.querySelector(
       '[data-developer-mode-name="crud form"][data-developer-mode-context="requirements specification detail"]',
     )
     expect(form).toHaveAttribute('data-developer-mode-value', 'edit')
@@ -924,6 +947,63 @@ describe('RequirementsSpecificationDetailClient', () => {
       ).not.toBeInTheDocument()
     })
     expect(editButton).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('does not fail open when specification permissions are missing', async () => {
+    const { permissions: omittedPermissions, ...specWithoutPermissions } =
+      initialSpec
+    void omittedPermissions
+
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      spec: specWithoutPermissions,
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: 'Authorization and IAM',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    expect(
+      screen.queryByRole('button', {
+        name: /specification\.editSpecification/i,
+      }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('does not show a read-only notice for assignment-only managers', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      spec: {
+        ...initialSpec,
+        permissions: {
+          canEditContent: false,
+          canManageAssignments: true,
+          canReviewDecisions: false,
+          canUseAi: false,
+        },
+      },
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: 'Authorization and IAM',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    expect(
+      screen.getByRole('button', {
+        name: /specification\.editSpecification/i,
+      }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('specification.readOnlyNotice')).toBeNull()
   })
 
   it('ignores stale and invalid stored detail column ids', async () => {
@@ -1519,14 +1599,15 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/ETJANST-UPP-2026/needs-references',
+        '/api/requirements-specifications/ETJANST-UPP-2026/needs-references',
         expect.objectContaining({ method: 'POST' }),
       )
     })
 
     const postCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        url === '/api/specifications/ETJANST-UPP-2026/needs-references' &&
+        url ===
+          '/api/requirements-specifications/ETJANST-UPP-2026/needs-references' &&
         (init as RequestInit | undefined)?.method === 'POST',
     )
     expect(JSON.parse(String((postCall?.[1] as RequestInit).body))).toEqual({
@@ -1581,7 +1662,7 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/ETJANST-UPP-2026/items/lib%3A31',
+        '/api/requirements-specifications/ETJANST-UPP-2026/items/lib%3A31',
         expect.objectContaining({
           body: JSON.stringify({ needsReferenceId: 81 }),
           method: 'PATCH',
@@ -1620,7 +1701,7 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/ETJANST-UPP-2026/items',
+        '/api/requirements-specifications/ETJANST-UPP-2026/items',
         expect.objectContaining({
           body: JSON.stringify({
             itemRefs: ['lib:31'],

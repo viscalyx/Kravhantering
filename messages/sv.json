@@ -12,6 +12,19 @@
     "edit": "Redigera",
     "create": "Ny",
     "search": "Sök",
+    "fetchHsaPerson": "Hämta",
+    "fetchingHsaPerson": "Hämtar…",
+    "hsaVerifyEmail": "E-post",
+    "hsaVerifyError": "Kunde inte hämta personuppgifter.",
+    "hsaVerifyName": "Namn",
+    "hsaPrefixCurrent": "Aktuellt prefix",
+    "hsaPrefixLabel": "HSA-id-prefix",
+    "hsaPrefixLoadError": "Kunde inte läsa HSA-id-prefix.",
+    "hsaPrefixMissing": "Inget HSA-id-prefix har konfigurerats. Be en administratör lägga till ett i administrationscenter.",
+    "hsaPrefixMissingOption": "Inget prefix konfigurerat",
+    "hsaSuffixLabel": "HSA-id-suffix",
+    "hsaSuffixPlaceholder": "Suffix",
+    "hsaVerifyUnavailable": "Inte hämtat",
     "clearSearch": "Rensa sökning",
     "filter": "Filtrera",
     "filterBy": "Filtrera efter {label}",
@@ -100,7 +113,7 @@
     "continueSession": "Fortsätt tills den går ut",
     "signedInAs": "Inloggad som {name}",
     "userInfoTitle": "Kontouppgifter",
-    "userInfoHsaId": "HSA-ID",
+    "userInfoHsaId": "HSA-id",
     "userInfoName": "Namn",
     "userInfoEmail": "E-post",
     "userInfoSubject": "Användar-id",
@@ -249,9 +262,9 @@
   },
   "privacyDataExport": {
     "title": "Export av personuppgifter",
-    "description": "Ladda ned personuppgifterna som är kopplade till ditt HSA-ID som strukturerad JSON eller som läsbar PDF.",
+    "description": "Ladda ned personuppgifterna som är kopplade till ditt HSA-id som strukturerad JSON eller som läsbar PDF.",
     "name": "Namn",
-    "hsaId": "HSA-ID",
+    "hsaId": "HSA-id",
     "email": "E-post",
     "exportJson": "Exportera JSON",
     "exportPdf": "Exportera PDF",
@@ -425,19 +438,30 @@
     "owner": "Kravområdesägare",
     "changeOwner": "Byt ägare",
     "changeOwnerTitle": "Byt kravområdesägare",
-    "changeOwnerDescription": "Ange det HSA-ID som ska äga kravområdet framöver.",
-    "currentOwner": "Förra ägarens HSA-ID",
-    "newOwner": "Nya ägarens HSA-ID",
+    "changeOwnerDescription": "Ange det HSA-id som ska äga kravområdet framöver.",
+    "currentOwner": "Förra ägarens HSA-id",
+    "newOwner": "Nya ägarens HSA-id",
     "ownerChangeError": "Det gick inte att byta ägare.",
-    "ownerChangeInvalid": "Ange ett giltigt HSA-ID.",
-    "ownerChangeSame": "Ange ett annat HSA-ID.",
+    "ownerChangeInvalid": "Ange ett giltigt HSA-id.",
+    "ownerChangeSame": "Ange ett annat HSA-id.",
+    "ownerChangeCoAuthorConflict": "Kravområdesägare kan inte samtidigt vara kravområdesmedförfattare.",
+    "coAuthors": "Kravområdesmedförfattare",
+    "coAuthorsHelp": "Lägg till verifierade personer som får författa krav i detta kravområde.",
+    "coAuthorHsaId": "Medförfattares HSA-id",
+    "coAuthorHsaIdHelp": "Ange medförfattarens HSA-id med två versala bokstäver för landskod, organisationsnummer med 10 siffror, bindestreck och alfanumeriskt suffix.",
+    "addCoAuthor": "Lägg till medförfattare",
+    "removeCoAuthor": "Ta bort medförfattare",
+    "removeCoAuthorConfirm": "Ta bort {name} som medförfattare?",
+    "noCoAuthors": "Inga kravområdesmedförfattare.",
+    "loadCoAuthorsFailed": "Det gick inte att läsa in kravområdesmedförfattare.",
+    "saveCoAuthorsFailed": "Det gick inte att spara kravområdesmedförfattare.",
     "help": {
-      "prefix": "Ange det korta prefix med versaler som används när krav-ID:n skapas för kravområdet. Prefixet kan bara ändras när ett nytt kravområde skapas.",
+      "prefix": "Ange det korta prefix med versaler som används när krav-ID:n skapas för kravområdet. Prefixet kan bara ändras så länge kravområdet saknar krav.",
       "name": "Ange visningsnamnet för kravområdet.",
       "description": "Beskriv vid behov vilka typer av krav som hör hemma i kravområdet. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
-      "owner": "Ange HSA-ID för personen som ansvarar för kravområdet. Vid redigering är HSA-ID:t låst; använd knappen för att byta ägare.",
-      "currentOwner": "Visar HSA-ID:t som är tilldelat kravområdet idag.",
-      "newOwner": "Ange det ersättande HSA-ID:t. Värdet måste följa HSA-ID-formatet och skilja sig från förra ägaren."
+      "owner": "Ange HSA-id för personen som ansvarar för kravområdet. Vid redigering är HSA-id:t låst; använd knappen för att byta ägare.",
+      "currentOwner": "Visar HSA-id:t som är tilldelat kravområdet idag.",
+      "newOwner": "Ange det ersättande HSA-id:t. Värdet måste följa HSA-id-formatet och skilja sig från förra ägaren."
     },
     "newArea": "Nytt kravområde",
     "editArea": "Redigera kravområde",
@@ -460,14 +484,42 @@
     "governanceObjectType": "Styrningsobjektstyp",
     "governanceObjectTypeHelp": "Välj vilken styrningsobjektstyp underlaget hör till, eller lämna tomt om underlaget saknar eller spänner över flera styrningsobjektstyper.",
     "responsible": "Kravunderlagsansvarig",
+    "responsibleEmail": "E-post till kravunderlagsansvarig",
+    "responsibleEmailMissing": "Ingen e-postadress finns tillgänglig.",
     "responsibleDisplayName": "Kravunderlagsansvarig",
     "responsibleDisplayNameHelp": "Ange visningsnamnet för kravunderlagsansvarig. Använd inte detta för användaren som registrerar ett avsteg om den personen inte också är kravunderlagsansvarig.",
-    "responsibleHsaId": "HSA-ID för kravunderlagsansvarig",
-    "responsibleHsaIdHelp": "Ange HSA-ID för kravunderlagsansvarig. HSA-ID och visningsnamn måste sparas tillsammans så att dataskyddsexport, radering och behörighetsöversyn kan identifiera tilldelningen.",
-    "canResponsibleGenerateAi": "Kravunderlagsansvarig får använda AI",
-    "canResponsibleGenerateAiHelp": "Aktivera bara när kravunderlagsansvarig får använda AI-stöd för detta kravunderlag.",
-    "responsiblePairRequired": "Ange både kravunderlagsansvarig och HSA-ID för kravunderlagsansvarig, eller lämna båda tomma.",
-    "invalidResponsibleHsaId": "Kontrollera HSA-ID för kravunderlagsansvarig. Formatet ska vara två versala bokstäver för landskod, 10 siffror, bindestreck och en alfanumerisk ändelse.",
+    "responsibleHsaId": "Kravunderlagsansvarigs HSA-id",
+    "responsibleHsaIdHelp": "Kravunderlagsansvarig hämtas via HSA-id. Vid skapande låses fältet till inloggad användare; vid redigering används byt-knappen för att byta ansvarig.",
+    "responsiblePairRequired": "Ange både kravunderlagsansvarig och HSA-id för kravunderlagsansvarig, eller lämna båda tomma.",
+    "invalidResponsibleHsaId": "Kontrollera HSA-id för kravunderlagsansvarig. Formatet ska vara två versala bokstäver för landskod, 10 siffror, bindestreck och en alfanumerisk ändelse.",
+    "currentUserLoading": "Hämtar inloggad användare…",
+    "currentUserUnavailable": "Det gick inte att läsa inloggad användares HSA-id. Kravunderlag kan inte skapas förrän HSA-id finns.",
+    "changeResponsible": "Byt kravunderlagsansvarig",
+    "changeResponsibleTitle": "Byt kravunderlagsansvarig",
+    "changeResponsibleDescription": "Byt kravunderlagsansvarig genom att ange och verifiera ett nytt HSA-id.",
+    "currentResponsibleHsaId": "Förra kravunderlagsansvarigs HSA-id",
+    "currentResponsibleHsaIdHelp": "Visar HSA-id:t som är tilldelat kravunderlaget idag.",
+    "newResponsibleHsaId": "Nya kravunderlagsansvarigs HSA-id",
+    "newResponsibleHsaIdHelp": "Ange det ersättande HSA-id:t. Värdet måste följa HSA-id-formatet och skilja sig från nuvarande ansvarig.",
+    "responsibleChangeError": "Det gick inte att byta kravunderlagsansvarig.",
+    "responsibleChangeInvalid": "Kontrollera HSA-id för ny kravunderlagsansvarig.",
+    "responsibleChangeSame": "Ny kravunderlagsansvarig måste skilja sig från nuvarande ansvarig.",
+    "responsibleChangeCoAuthorConflict": "Kravunderlagsansvarig kan inte samtidigt vara kravunderlagsmedförfattare.",
+    "responsibleChangeUnsavedConfirm": "Du har osparade ändringar i kravunderlaget. Bytet av ansvarig sparas separat och dina osparade ändringar förkastas om formuläret stängs.",
+    "coAuthors": "Kravunderlagsmedförfattare",
+    "coAuthorsHelp": "Lägg till verifierade personer som får författa innehåll i detta kravunderlag.",
+    "coAuthorHsaId": "Medförfattares HSA-id",
+    "coAuthorHsaIdHelp": "Ange medförfattarens HSA-id med två versala bokstäver för landskod, organisationsnummer med 10 siffror, bindestreck och alfanumeriskt suffix.",
+    "addCoAuthor": "Lägg till medförfattare",
+    "removeCoAuthor": "Ta bort medförfattare",
+    "removeCoAuthorConfirm": "Ta bort {name} som medförfattare?",
+    "noCoAuthors": "Inga kravunderlagsmedförfattare.",
+    "loadCoAuthorsFailed": "Det gick inte att läsa in kravunderlagsmedförfattare.",
+    "saveCoAuthorsFailed": "Det gick inte att spara kravunderlagsmedförfattare.",
+    "readOnlyNotice": "Du kan läsa kravunderlaget, men du kan inte ändra innehåll eller tilldelningar.",
+    "forbiddenEyebrow": "Åtkomst nekad",
+    "forbiddenTitle": "Du har inte åtkomst till detta kravunderlag",
+    "forbiddenBody": "Kravunderlaget {uniqueId} ({name}) finns, men är inte tilldelat dig. Kontakta kravunderlagsansvarig för att begära åtkomst.",
     "implementationType": "Genomförandeform",
     "implementationTypeHelp": "Välj den genomförandeform som bäst beskriver hur underlaget ska levereras.",
     "lifecycleStatus": "Kravunderlagets livscykelstatus",
@@ -766,11 +818,31 @@
     "descriptionSvHelp": "Beskriv vid behov kravpaketet på svenska så att användare förstår vilken gruppering det avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "descriptionEnLabel": "Beskrivning (engelska)",
     "descriptionEnHelp": "Beskriv vid behov kravpaketet på engelska så att användare förstår vilken gruppering det avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
-    "lead": "Paketansvarig",
-    "leadDisplayName": "Paketansvarigs namn",
+    "lead": "Kravpaketsansvarig",
+    "leadDisplayName": "Kravpaketsansvarigs namn",
     "leadDisplayNameHelp": "Ange visningsnamnet för den person som ansvarar för kravpaketet.",
-    "leadHsaId": "Paketansvarigs HSA-ID",
-    "leadHsaIdHelp": "Ange HSA-ID för paketansvarig med två versala bokstäver för landskod, organisationsnummer med 10 siffror, bindestreck och alfanumeriskt suffix.",
+    "leadHsaId": "Kravpaketsansvarigs HSA-id",
+    "leadHsaIdHelp": "Ange HSA-id för kravpaketsansvarig med två versala bokstäver för landskod, organisationsnummer med 10 siffror, bindestreck och alfanumeriskt suffix.",
+    "changeLead": "Byt kravpaketsansvarig",
+    "changeLeadTitle": "Byt kravpaketsansvarig",
+    "changeLeadDescription": "Ange det HSA-id som ska ansvara för kravpaketet framöver.",
+    "currentLeadHsaId": "Förra kravpaketsansvarigs HSA-id",
+    "currentLeadHsaIdHelp": "Visar HSA-id:t som är tilldelat kravpaketet idag.",
+    "newLeadHsaId": "Nya kravpaketsansvarigs HSA-id",
+    "newLeadHsaIdHelp": "Ange det ersättande HSA-id:t. Värdet måste följa HSA-id-formatet, skilja sig från förra ansvariga och får inte vara kravpaketsmedförfattare.",
+    "leadChangeError": "Det gick inte att byta kravpaketsansvarig.",
+    "leadChangeInvalid": "Ange ett giltigt HSA-id.",
+    "leadChangeSame": "Ange ett annat HSA-id.",
+    "leadChangeCoAuthorConflict": "Kravpaketsansvarig kan inte samtidigt vara kravpaketsmedförfattare.",
+    "leadChangeUnsavedConfirm": "Du har osparade ändringar i kravpaketet. Om du byter kravpaketsansvarig nu stängs formuläret och ändringarna förloras.",
+    "currentUserUnavailable": "Det går inte att läsa in inloggad användares HSA-id. Logga in igen innan du skapar ett kravpaket.",
+    "coAuthors": "Kravpaketsmedförfattare",
+    "coAuthorsHelp": "Lägg till HSA-id för personer som stödjer kravpaketsansvarig.",
+    "coAuthorHsaId": "Medförfattares HSA-id",
+    "coAuthorHsaIdHelp": "Ange medförfattarens HSA-id med två versala bokstäver för landskod, organisationsnummer med 10 siffror, bindestreck och alfanumeriskt suffix.",
+    "addCoAuthor": "Lägg till medförfattare",
+    "removeCoAuthor": "Ta bort medförfattare",
+    "noCoAuthors": "Inga kravpaketsmedförfattare.",
     "owner": "Ägare",
     "help": {
       "owner": "Välj ägaren som ansvarar för kravpaketet och dess kopplade krav."
@@ -938,18 +1010,51 @@
     "adminCenterDescription": "Uppdatera standardkolumner och administrationsinställningar.",
     "columns": "Kolumner",
     "columnsDescription": "Styr standardordning och synlighet för kravlistans kolumner.",
+    "identity": {
+      "title": "Identitet",
+      "description": "Hantera de HSA-id-prefix som erbjuds när användare anger HSA-id.",
+      "addPrefix": "Lägg till prefix",
+      "defaultSelected": "Valt standardprefix",
+      "defaultMustBeVisible": "Standardprefixet för HSA-id måste vara synligt.",
+      "defaultPrefix": "Standard",
+      "defaultRequired": "Välj ett synligt HSA-id-prefix som standard.",
+      "disabledTooltip": "Du behöver rollen Administratör.",
+      "duplicatePrefix": "Varje HSA-id-prefix måste vara unikt.",
+      "emptyPrefixes": "Inga HSA-id-prefix är konfigurerade. HSA-id-suffixfält är låsta tills en administratör lägger till ett synligt prefix.",
+      "fieldHelp": {
+        "defaultPrefix": "Stjärnan markerar prefixet som är förvalt i nya tomma HSA-id-fält. Om du väljer ett dolt prefix som standard görs det synligt samtidigt.",
+        "label": "Lägg valfritt till en kort visningsetikett. Användare ser etiketten tillsammans med prefixet i listor över HSA-id-prefix.",
+        "prefix": "Ange delen före bindestrecket i ett HSA-id: två versala bokstäver för landskod följt av tio siffror.",
+        "visible": "Ögat styr om prefixet erbjuds i listor över HSA-id-prefix. Dölj ett använt prefix när det ska fortsätta gälla för befintliga tilldelningar men inte längre erbjudas för nya. En icke-tom lista måste alltid ha minst ett synligt prefix."
+      },
+      "hidePrefix": "Dölj prefix",
+      "invalidPrefix": "Ange varje HSA-id-prefix som två versala bokstäver följt av tio siffror.",
+      "label": "Etikett",
+      "loadError": "Kunde inte läsa HSA-id-prefix.",
+      "newPrefix": "Nytt prefix",
+      "prefix": "HSA-id-prefix",
+      "removePrefix": "Ta bort prefix",
+      "saveError": "Kunde inte spara HSA-id-prefix.",
+      "setDefaultPrefix": "Välj som standard",
+      "showPrefix": "Visa prefix",
+      "usedPrefix": "Detta prefix har använts i ett HSA-id och kan döljas, men inte tas bort.",
+      "usedPrefixDeleteBlocked": "Använda HSA-id-prefix kan inte tas bort. Dölj prefixet i stället.",
+      "visible": "Synligt",
+      "visibleRequired": "Minst ett HSA-id-prefix måste vara synligt."
+    },
+    "identityDescription": "Hantera HSA-id-prefix för redigerbara ansvarsfält.",
     "taxonomy": "Taxonomi",
     "taxonomyDescription": "Öppna klassningssidor som används för filtrering, rapportering och AI-stöd.",
     "statusesAndWorkflows": "Statusar och arbetsflöden",
     "statusesAndWorkflowsDescription": "Öppna statuskataloger som styr livscykler, arbetsflödessteg och hur krav används i kravunderlag.",
-    "accessReviewDescription": "Skapa återkommande granskningar av uppdrag och AI-behörigheter som applikationen styr, besluta varje behörighetsrad och exportera granskningsevidens.",
-    "privacyDescription": "Förhandsgranska HSA-ID-baserade träffar, exportera data och kör GDPR-radering för aktörsidentiteter och aktiva tilldelningar.",
+    "accessReviewDescription": "Skapa återkommande granskningar av uppdrag som applikationen styr, besluta varje behörighetsrad och exportera granskningsevidens.",
+    "privacyDescription": "Förhandsgranska HSA-id-baserade träffar, exportera data och kör GDPR-radering för aktörsidentiteter och aktiva tilldelningar.",
     "auditLog": {
       "title": "Åtgärdslogg",
       "eyebrow": "Åtgärdslogg",
       "description": "Sök bland applikationsändringar och nekade behörighetsförsök som lagrats i databasen.",
       "exportCsv": "Exportera CSV",
-      "actorHsaId": "Aktörens HSA-ID",
+      "actorHsaId": "Aktörens HSA-id",
       "action": "Åtgärd",
       "targetKind": "Måltyp",
       "targetId": "Mål-ID",
@@ -974,17 +1079,17 @@
     },
     "privacy": {
       "title": "Dataskydd",
-      "targetHsaId": "HSA-ID att söka efter",
-      "replacementHsaId": "Ersättande HSA-ID",
+      "targetHsaId": "HSA-id att söka efter",
+      "replacementHsaId": "Ersättande HSA-id",
       "replacementName": "Ersättande namn",
       "replacementFirstName": "Ersättande förnamn",
       "replacementLastName": "Ersättande efternamn",
       "replacementEmail": "Ersättande e-postadress",
       "replacementEmailOptional": "E-postadress är valfri.",
       "fieldHelp": {
-        "targetHsaId": "Ange HSA-ID för personen som ska sökas fram för förhandsgranskning, export eller radering. Alla träffar görs med exakt HSA-ID. Namn används inte för matchning och därför finns inget separat namn att söka på.",
-        "replacementHsaId": "Ange HSA-ID för personen som ska ta över aktiva tilldelningar, till exempel ägare, medförfattare eller kravunderlagsansvarig. Fältet måste kombineras med ersättande namn för att åtgärden Byt ska kunna användas.",
-        "replacementName": "Ange visningsnamnet som ska sparas som ögonblicksbild för den ersättande personen. Namnet hjälper användaren att kontrollera bytet, men HSA-ID är den beständiga identiteten.",
+        "targetHsaId": "Ange HSA-id för personen som ska sökas fram för förhandsgranskning, export eller radering. Alla träffar görs med exakt HSA-id. Namn används inte för matchning och därför finns inget separat namn att söka på.",
+        "replacementHsaId": "Ange HSA-id för personen som ska ta över aktiva tilldelningar, till exempel ägare, medförfattare eller kravunderlagsansvarig. Fältet måste kombineras med ersättande namn för att åtgärden Byt ska kunna användas.",
+        "replacementName": "Ange visningsnamnet som ska sparas som ögonblicksbild för den ersättande personen. Namnet hjälper användaren att kontrollera bytet, men HSA-id är den beständiga identiteten.",
         "replacementFirstName": "Valfritt. Ange exakt förnamn för ägarposten när visningsnamnet inte kan delas upp säkert.",
         "replacementLastName": "Valfritt. Ange exakt efternamn för ägarposten när visningsnamnet inte kan delas upp säkert.",
         "replacementEmail": "Valfritt. Ange e-postadress när en ersättande ägare ska skapas eller uppdateras så att kravområden och kravpaket får rätt kontaktuppgift efter bytet."
@@ -1000,9 +1105,9 @@
       "executeError": "Kunde inte köra dataskyddsradering.",
       "disabledTooltip": "Du behöver behörigheten Dataskyddshandläggare.",
       "permissionError": "Du saknar rollen Dataskyddshandläggare. Logga in som dataskyddshandläggare för att köra dataskyddsradering.",
-      "replacementIncomplete": "Ange både ersättande HSA-ID och ersättande namn, eller lämna båda fälten tomma för anonymisering.",
+      "replacementIncomplete": "Ange både ersättande HSA-id och ersättande namn, eller lämna båda fälten tomma för anonymisering.",
       "invalidReplacementEmail": "Kontrollera den ersättande e-postadressen.",
-      "invalidHsaId": "Kontrollera HSA-ID. Formatet ska vara två versala bokstäver för landskod, 10 siffror, bindestreck och en alfanumerisk ändelse.",
+      "invalidHsaId": "Kontrollera HSA-id. Formatet ska vara två versala bokstäver för landskod, 10 siffror, bindestreck och en alfanumerisk ändelse.",
       "serverPreviewError": "Servern kunde inte förhandsgranska dataskyddsraderingen.",
       "serverExecuteError": "Servern kunde inte köra dataskyddsraderingen.",
       "serverErrorWithDetail": "{message} Teknisk feltext: {detail}",
@@ -1012,8 +1117,8 @@
       "confirmTitle": "Kör dataskyddsradering",
       "confirmMessage": "Detta byter {switch}, anonymiserar {anonymize}, tar bort {delete} och hoppar över {skip} förekomster.",
       "guidanceTitle": "Rekommenderad hantering och export",
-      "guidanceBody": "Använd förhandsgranskningen för att kontrollera exakt vilka HSA-ID-träffar som kan exporteras eller raderas. Exporten påverkar inte uppgifterna. Aktiva tilldelningar, inklusive kravunderlagsansvarig, byts oftast till ett annat HSA-ID vid radering. Historiska fält för skapare, beslut och åtgärd anonymiseras oftast i stället för att tilldelas om. Beskrivningsfält och fritext skannas inte eftersom gränssnittet instruerar användare att inte ange personidentifierande uppgifter där.",
-      "previewResult": "{count} HSA-ID-förekomster",
+      "guidanceBody": "Använd förhandsgranskningen för att kontrollera exakt vilka HSA-id-träffar som kan exporteras eller raderas. Exporten påverkar inte uppgifterna. Aktiva tilldelningar, inklusive kravunderlagsansvarig, byts oftast till ett annat HSA-id vid radering. Historiska fält för skapare, beslut och åtgärd anonymiseras oftast i stället för att tilldelas om. Beskrivningsfält och fritext skannas inte eftersom gränssnittet instruerar användare att inte ange personidentifierande uppgifter där.",
+      "previewResult": "{count} HSA-id-förekomster",
       "object": "Objekt",
       "count": "Antal",
       "affected": "Påverkade objekt",
@@ -1036,13 +1141,14 @@
       "executionErrors": {
         "owner_area_references_blocking": "Kravområden måste bytas innan ägaren kan ändras.",
         "owner_references_blocking": "Ägarreferenser måste bytas innan ägaren kan tas bort.",
-        "replacement_required": "Ersättande HSA-ID och ersättande namn krävs för den valda åtgärden.",
+        "replacement_required": "Ersättande HSA-id och ersättande namn krävs för den valda åtgärden.",
         "unsupported_owner_action": "Ägarraden stöder inte den valda åtgärden.",
         "unsupported_privacy_action": "Raden stöder inte den valda åtgärden."
       },
       "objects": {
         "requirementAreas": "Kravområden",
         "requirementPackages": "Kravpaket",
+        "requirementResponsibilityPeople": "Kravansvarspersoner",
         "normReferences": "Normreferenser",
         "requirementVersions": "Versioner",
         "deviations": "Avvikelser",
@@ -1052,6 +1158,7 @@
         "requirementSelectionQuestions": "Kravurvalsfrågor",
         "requirementSelectionAnswers": "Kravurvalssvar",
         "areaCoAuthors": "Kravområdesmedförfattare",
+        "packageCoAuthors": "Kravpaketsmedförfattare",
         "specificationCoAuthors": "Kravunderlagsmedförfattare",
         "accessReviewRuns": "Behörighetsöversyner",
         "accessReviewItems": "Rader i behörighetsöversyn",
@@ -1080,14 +1187,14 @@
         "ownerAreaSwitchOnly": "Ägaren är kopplad till kravområden. Byt tilldelningarna till den ersättande ägaren, eller hoppa över ägarraden.",
         "ownerPackageSwitchOnly": "Ägaren är kopplad till kravpaket. Byt tilldelningarna till den ersättande ägaren, eller hoppa över ägarraden.",
         "ownerAreaAndPackageSwitchOnly": "Ägaren är kopplad till kravområden och kravpaket. Byt tilldelningarna till den ersättande ägaren, eller hoppa över ägarraden.",
-        "liveAssignment": "Aktiva tilldelningar byts normalt till ersättande HSA-ID. Utan ersättare tas rader för medförfattare bort eller så behålls den anonymiserade ägaren.",
+        "liveAssignment": "Aktiva tilldelningar byts normalt till ersättande HSA-id. Utan ersättare tas rader för medförfattare bort eller så behålls den anonymiserade ägaren.",
         "historySwitch": "Att byta historiskt författarskap kan ändra postens innebörd. Anonymisering är standard.",
         "decisionSwitch": "Beslut och åtgärder ska inte tilldelas om utan dokumenterad rättslig grund. Anonymisering är standard."
       },
       "blockers": {
-        "ownerAreaReplacementRequired": "Ägaren är kopplad till kravområden. Uppdatera de kravområdena först eller ange ersättande HSA-ID och namn.",
-        "ownerPackageReplacementRequired": "Ägaren är kopplad till kravpaket. Uppdatera de kravpaketen först eller ange ersättande HSA-ID och namn.",
-        "ownerAreaAndPackageReplacementRequired": "Ägaren är kopplad till kravområden och kravpaket. Uppdatera tilldelningarna först eller ange ersättande HSA-ID och namn."
+        "ownerAreaReplacementRequired": "Ägaren är kopplad till kravområden. Uppdatera de kravområdena först eller ange ersättande HSA-id och namn.",
+        "ownerPackageReplacementRequired": "Ägaren är kopplad till kravpaket. Uppdatera de kravpaketen först eller ange ersättande HSA-id och namn.",
+        "ownerAreaAndPackageReplacementRequired": "Ägaren är kopplad till kravområden och kravpaket. Uppdatera tilldelningarna först eller ange ersättande HSA-id och namn."
       },
       "readOnly": {
         "controlledByOwner": "Visas som information. Kravområden och kravpaket byts automatiskt när ägarraden byts."
@@ -1140,8 +1247,6 @@
       "title": "Behörighetsöversyn",
       "disabledTooltip": "Du behöver rollen Administratör eller Dataskyddshandläggare.",
       "action": "Åtgärd",
-      "aiDisabled": "AI av",
-      "aiEnabled": "AI på",
       "cancel": "Avbryt granskning",
       "cancelConfirmMessage": "Granskning #{id} markeras som avbruten. Granskningsraderna behålls som historik, men kan inte längre beslutas eller slutföras.",
       "cancelConfirmTitle": "Avbryt granskning?",
@@ -1208,6 +1313,8 @@
       "permissionTypes": {
         "area_co_author": "Kravområdesmedförfattare",
         "area_owner": "Kravområdesägare",
+        "package_co_author": "Kravpaketsmedförfattare",
+        "package_owner": "Kravpaketsansvarig",
         "specification_co_author": "Kravunderlagsmedförfattare",
         "specification_responsible": "Kravunderlagsansvarig"
       }
@@ -1566,6 +1673,10 @@
         "heading": "Standardkolumner",
         "body": "Ange vilka kolumner som visas som standard i kravbiblioteket och i vilken ordning. Användare kan fortfarande ändra kolumnsynligheten per session. Låsta kolumner visas alltid."
       },
+      "identity": {
+        "heading": "Identitetsinställningar",
+        "body": "Hantera HSA-id-prefix som används av redigerbara HSA-id-fält. Prefixen är UI-stöd; servervalideringen accepterar fortsatt alla syntaktiskt giltiga HSA-id."
+      },
       "taxonomy": {
         "heading": "Taxonomi",
         "body": "Snabblänkar till klassningar som används för filtrering, rapportering och AI-stöd: kravområden, kategorier, typer, risknivåer, kvalitetsegenskaper, styrningsobjektstyper och genomförandeformer."
@@ -1576,30 +1687,53 @@
       },
       "privacy": {
         "heading": "Dataskyddsradering",
-        "body": "Använd fliken Dataskydd för GDPR-radering. Matchningar görs enbart med HSA-ID; namn visas för kontroll och skapar aldrig matchningar."
+        "body": "Använd fliken Dataskydd för GDPR-radering. Matchningar görs enbart med HSA-id; namn visas för kontroll och skapar aldrig matchningar."
       },
       "accessReview": {
         "heading": "Behörighetsöversyn",
-        "body": "Använd behörighetsöversyn för återkommande granskningar av uppdrag och AI-behörigheter som applikationen styr. Globala roller granskas i identitetsverktyget."
+        "body": "Använd behörighetsöversyn för återkommande granskningar av uppdrag som applikationen styr. Globala roller granskas i identitetsverktyget."
+      },
+      "archiving": {
+        "heading": "Arkivering och gallring",
+        "body": "Använd arkiveringsfliken för att förhandsgranska och köra godkända gallringsregler samt exportera arkivunderlag innan data tas bort. Dataskyddsradering hanteras separat."
+      }
+    },
+    "adminIdentity": {
+      "title": "Identitet",
+      "overview": {
+        "heading": "Syfte",
+        "body": "Identitetsfliken styr vilka HSA-id-prefix som erbjuds när användare fyller i redigerbara HSA-id-fält. Prefixen är stöd i gränssnittet, inte en serverpolicy."
+      },
+      "prefixes": {
+        "heading": "Prefix och etiketter",
+        "body": "Ange prefixet som delen före bindestrecket i ett HSA-id. Etiketten är valfri och används bara för att göra listan lättare att känna igen."
+      },
+      "visibility": {
+        "heading": "Synlighet",
+        "body": "Synliga prefix visas i användarnas prefixlistor. Dölj ett prefix när det ska kunna ligga kvar på befintliga tilldelningar men inte längre erbjudas för nya HSA-id. En icke-tom lista måste alltid ha minst ett synligt prefix."
+      },
+      "defaultPrefix": {
+        "heading": "Standardprefix",
+        "body": "Standardprefixet är förvalt i nya tomma HSA-id-fält. Det måste vara synligt; väljer du ett dolt prefix som standard görs det synligt samtidigt."
       }
     },
     "adminPrivacy": {
       "title": "Dataskydd",
       "overview": {
         "heading": "Syfte",
-        "body": "Dataskyddsfliken används när en behörig handläggare behöver förhandsgranska och genomföra GDPR-radering av aktörsidentiteter. Den hanterar strukturerade identitetsfält som HSA-ID för kravområdesägare, ansvariga för kravpaket, skapare, beslutsfattare och medförfattare. Fritextfält skannas inte, eftersom användare instrueras att inte skriva personidentifierande uppgifter där."
+        "body": "Dataskyddsfliken används när en behörig handläggare behöver förhandsgranska och genomföra GDPR-radering av aktörsidentiteter. Den hanterar strukturerade identitetsfält som HSA-id för kravområdesägare, ansvariga för kravpaket, skapare, beslutsfattare och medförfattare. Fritextfält skannas inte, eftersom användare instrueras att inte skriva personidentifierande uppgifter där."
       },
       "permissions": {
         "heading": "Behörighet",
         "body": "Åtgärden kräver rollen Dataskyddshandläggare. Rollen är avsiktligt smal: den ger åtkomst till dataskyddsflödet men ska inte ge övriga administrativa rättigheter."
       },
       "search": {
-        "heading": "Sökning med HSA-ID",
-        "body": "Börja med att ange personens HSA-ID. Alla träffar görs med exakt HSA-ID, inte med namn. Det gör att två personer med samma namn inte blandas ihop. Namn visas bara som stöd för kontroll i förhandsgranskningen."
+        "heading": "Sökning med HSA-id",
+        "body": "Börja med att ange personens HSA-id. Alla träffar görs med exakt HSA-id, inte med namn. Det gör att två personer med samma namn inte blandas ihop. Namn visas bara som stöd för kontroll i förhandsgranskningen."
       },
       "replacement": {
         "heading": "Ersättare",
-        "body": "Ange ersättande HSA-ID när aktiva tilldelningar ska flyttas till en annan person. Om ingen ersättare anges anonymiseras historiska identitetsfält där det är tillåtet."
+        "body": "Ange ersättande HSA-id när aktiva tilldelningar ska flyttas till en annan person. Om ingen ersättare anges anonymiseras historiska identitetsfält där det är tillåtet."
       },
       "preview": {
         "heading": "Förhandsgranskning",
@@ -1615,7 +1749,7 @@
       },
       "audit": {
         "heading": "Spårbarhet",
-        "body": "Systemet skriver en händelse i säkerhetsloggen till driftens loggström med handläggarens identitet, request-id, antal åtgärder och ett icke-reversibelt fingeravtryck för målet. Den loggen är inte en databastabell, visas inte i förhandsgranskningen och skrivs inte om av detta flöde. Det råa HSA-ID:t och namnet för personen som raderas loggas inte."
+        "body": "Systemet skriver en händelse i säkerhetsloggen till driftens loggström med handläggarens identitet, request-id, antal åtgärder och ett icke-reversibelt fingeravtryck för målet. Den loggen är inte en databastabell, visas inte i förhandsgranskningen och skrivs inte om av detta flöde. Det råa HSA-id:t och namnet för personen som raderas loggas inte."
       },
       "caveats": {
         "heading": "Viktiga begränsningar",
@@ -1630,7 +1764,7 @@
       },
       "scope": {
         "heading": "Omfattning",
-        "body": "Applikationen inventerar kravområdesägare, kravområdesmedförfattare, kravunderlagsansvariga, kravunderlagsmedförfattare och deras AI-behörigheter i applikationen. Globala roller, källkodsåtkomst och extern klientåtkomst granskas i sina källverktyg."
+        "body": "Applikationen inventerar kravområdesägare, kravområdesmedförfattare, kravpaketsansvariga, kravpaketsmedförfattare, kravunderlagsansvariga och kravunderlagsmedförfattare. Globala roller, källkodsåtkomst och extern klientåtkomst granskas i sina källverktyg."
       },
       "decisions": {
         "heading": "Beslut",
@@ -1645,7 +1779,7 @@
       "title": "Export av personuppgifter",
       "description": {
         "heading": "Vad som ingår",
-        "body": "Exporten innehåller strukturerade personuppgifter som är kopplade till ditt verifierade HSA-ID, till exempel ägarposter, ögonblicksbilder av skapare, beslut, tilldelningar som medförfattare och aktuella sessionsuppgifter."
+        "body": "Exporten innehåller strukturerade personuppgifter som är kopplade till ditt verifierade HSA-id, till exempel ägarposter, ögonblicksbilder av skapare, beslut, tilldelningar som medförfattare och aktuella sessionsuppgifter."
       },
       "formats": {
         "heading": "JSON och PDF",

@@ -5,8 +5,9 @@
 
 This suite verifies the administration centre entrypoint: navigating from the
 requirements library, persisting column-order changes across page reloads,
-preserving the selected taxonomy tab in browser history,
-touch-target accessibility on mobile, and locale-specific page loads.
+administering HSA-id-prefixes, preserving the selected taxonomy tab in browser
+history, admin-only tab permissions, touch-target accessibility on mobile, and
+locale-specific page loads.
 
 ## Data Model
 
@@ -14,7 +15,9 @@ touch-target accessibility on mobile, and locale-specific page loads.
 | Item | Purpose |
 | --- | --- |
 | `DEFAULT_COLUMN_PAYLOAD` | Full set of requirement list column defaults. Reset via `PUT /api/admin/requirement-columns`. |
+| `DEFAULT_HSA_ID_PREFIX_PAYLOAD` | Demo HSA-id-prefix settings. Reset via `PUT /api/admin/hsa-id-prefixes`. |
 | `[data-testid^="admin-column-row-"]` | Drag-sortable column rows in the Kolumner tab. |
+| `[data-testid^="hsa-id-prefix-row-"]` | Editable HSA-id-prefix rows in the Identitet tab. |
 | `?tab=taxonomy` | URL state that restores the Taxonomy tab when browser history returns to `/admin`. |
 <!-- markdownlint-enable MD013 -->
 
@@ -31,6 +34,13 @@ flowchart TD
     H --> I[Navigate to /sv/requirements]
     I --> K[Assert column order]
     K --> L[Reload and re-assert]
+    B -- admin-only permissions --> AA[Open /sv/admin with admin-only session]
+    AA --> AB[Assert privileged tab states]
+    AB --> AC[Scroll last tab into view]
+    B -- identity prefixes --> W[Open /sv/admin?tab=identity]
+    W --> X[Edit HSA-id-prefix rows]
+    X --> Y[Open HSA-id edit flow]
+    Y --> Z[Assert prefix dropdown and suffix input]
     B -- browser back --> M[Open /en/admin]
     M --> N[Click Taxonomy]
     N --> O[Open /en/requirement-areas]
@@ -48,12 +58,13 @@ flowchart TD
 - `test.describe.configure({ mode: 'serial' })` runs all tests sequentially to
   avoid concurrent writes to shared admin state.
 - `beforeEach` and `afterEach` both call `resetAdminSettings`, which issues
-  a `PUT` request to `/api/admin/requirement-columns` with the default values.
+  `PUT` requests to `/api/admin/requirement-columns` and
+  `/api/admin/hsa-id-prefixes` with default demo values.
 - Helper functions:
   - `assertOkResponse` — throws with status and body text if a reset request
     fails.
-  - `resetAdminSettings` — calls the column PUT reset and delegates to
-    `assertOkResponse`.
+  - `resetAdminSettings` — calls the column and HSA-id-prefix PUT resets and
+    delegates to `assertOkResponse`.
   - `getAdminColumnOrder` — reads the current drag-row order from
     `[data-testid^="admin-column-row-"]` elements.
   - `setAdminColumnOrder` — clicks "Flytta upp" buttons iteratively until the
@@ -150,6 +161,37 @@ flowchart LR
     D -- Yes --> F[Save]
 ```
 
+## keeps Swedish admin tabs reachable in the header
+
+### Purpose: Admin-Only Permissions
+
+Confirms that an Admin-only user can use the admin tabs they are permitted to
+open, sees privacy-officer-only tabs disabled with explanatory tooltips, and can
+reach the final tab in the horizontally scrollable desktop tab strip.
+
+### Step-by-Step Flow: Admin-Only Permissions
+
+1. Navigate to `/sv/admin` with the `admin-only` storage state.
+1. Assert `Behörighetsöversyn` and `Åtgärdslogg` are enabled.
+1. Assert `Arkivering` and `Dataskydd` are disabled and explain that the
+   `Dataskyddshandläggare` role is required.
+1. Assert the tablist has measurable width and scrollable content.
+1. Scroll `Åtgärdslogg` into view and assert it fits inside the tablist bounds.
+
+### Sequence Diagram: Admin-Only Permissions
+
+```mermaid
+sequenceDiagram
+    participant U as AdminOnlyUser
+    participant A as AdminPage
+
+    U->>A: Open /sv/admin
+    Note over A: ✓ Admin tabs enabled
+    Note over A: ✓ Privacy-officer tabs disabled with tooltip
+    U->>A: Scroll Åtgärdslogg into view
+    Note over A: ✓ Final tab is reachable within tablist bounds
+```
+
 ## browser back returns to the taxonomy tab after opening a taxonomy page
 
 ### Purpose: Browser History
@@ -189,6 +231,42 @@ sequenceDiagram
     Note over A: ✓ Taxonomy tab selected
 ```
 
+## administers HSA-id prefixes and uses them in HSA-id fields
+
+### Purpose: HSA-id Prefixes
+
+Confirms that the Admin Center Identitet tab can change the visible/default
+HSA-id-prefix list and that an editable HSA-id form uses the configured prefix
+dropdown plus suffix input.
+
+### Step-by-Step Flow: HSA-id Prefixes
+
+1. Navigate to `/sv/admin?tab=identity`.
+1. Assert the `Identitet` tab is selected and `SE5560000001` is visible.
+1. Add a disposable prefix, mark it visible and default, and save.
+1. Open an editable HSA-id flow, such as changing a requirement-area owner.
+1. Assert the prefix dropdown has the disposable prefix selected and the suffix
+   textbox remains labelled by the HSA-id field label.
+1. Return to `/sv/admin?tab=identity`, restore `SE5560000001` as default, save,
+   and remove the disposable prefix if unused.
+
+### Sequence Diagram: HSA-id Prefixes
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as AdminPage
+    participant API as API
+    participant F as HSA-idForm
+
+    U->>A: Open /sv/admin?tab=identity
+    U->>A: Add prefix, mark default, Save
+    Note over API: ✓ HSA-id-prefix settings persisted
+    U->>F: Open editable HSA-id field
+    Note over F: ✓ Prefix dropdown + suffix field compose full HSA-id
+    U->>A: Restore demo prefix settings
+```
+
 ## keeps admin tabs and actions usable on mobile
 
 ### Purpose: Mobile Touch Targets
@@ -200,8 +278,8 @@ correctly.
 ### Step-by-Step Flow: Mobile Touch Targets
 
 1. Navigate to `/sv/admin` on the `375×812` mobile viewport.
-1. Locate the Kolumner, Taxonomi, and Statusar och arbetsflöden tabs and the
-   tablist.
+1. Locate the Kolumner, Identitet, Taxonomi, and Statusar och arbetsflöden tabs
+   and the tablist.
 1. Assert the tablist `scrollWidth` exceeds its `clientWidth` (tabs overflow
    horizontally and are scrollable).
 1. Assert the removed Swedish tab label and old "English" toggle are absent.

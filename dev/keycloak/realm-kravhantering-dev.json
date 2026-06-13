@@ -74,9 +74,39 @@
       "email": "petra.specresp@example.test",
       "emailVerified": true,
       "firstName": "Petra",
-      "lastName": "SpecificationResp",
+      "lastName": "specresp",
       "attributes": {
         "hsaId": ["SE5560000001-specresp1"]
+      },
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": []
+    },
+    {
+      "username": "signe.speccoauthor",
+      "enabled": true,
+      "email": "signe.speccoauthor@example.test",
+      "emailVerified": true,
+      "firstName": "Signe",
+      "lastName": "SpecCoAuthor",
+      "attributes": {
+        "hsaId": ["SE5560000001-specco1"]
+      },
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": []
+    },
+    {
+      "username": "leo.pkglead",
+      "enabled": true,
+      "email": "leo.pkglead@example.test",
+      "emailVerified": true,
+      "firstName": "Leo",
+      "lastName": "PackageLead",
+      "attributes": {
+        "hsaId": ["SE5560000001-pkglead1"]
       },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
@@ -335,6 +365,20 @@
           "config": {
             "claim.name": "employeeHsaId",
             "claim.value": "SE5560000001-mcp1",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false"
+          }
+        },
+        {
+          "name": "mcp-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "roles",
+            "claim.value": "Admin Reviewer",
             "jsonType.label": "String",
             "id.token.claim": "false",
             "access.token.claim": "true",

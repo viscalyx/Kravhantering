@@ -21,7 +21,7 @@ describe('fetchSpecificationItemsForReport', () => {
     ).resolves.toBe(rows)
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/specifications/DRIFT-FORV-BAS/report-items?refs=lib%3A38',
+      '/api/requirements-specifications/DRIFT-FORV-BAS/report-items?refs=lib%3A38',
     )
     expect(fetchMock.mock.calls[0]?.[0]).not.toContain('locale=')
   })
@@ -44,7 +44,7 @@ describe('fetchSpecificationItemsForReport', () => {
     ).resolves.toBe(rows)
 
     expect(fetchMock).toHaveBeenCalledWith(
-      `/api/specifications/DRIFT-FORV-BAS/report-items?refs=${itemRefs
+      `/api/requirements-specifications/DRIFT-FORV-BAS/report-items?refs=${itemRefs
         .map(ref => encodeURIComponent(ref))
         .join(',')}`,
     )

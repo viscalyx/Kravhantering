@@ -123,6 +123,8 @@ const providerPreferencesSchema = z
   })
   .strict()
 
+const aiScopeTypeSchema = z.enum(['requirement_area', 'specification'])
+
 const generateRequirementsSchema = z
   .object({
     customInstruction: z
@@ -145,6 +147,8 @@ const generateRequirementsSchema = z
     model: z.string().trim().max(MAX_AI_MODEL_LENGTH).optional(),
     providerPreferences: providerPreferencesSchema.optional(),
     reasoningEffort: z.string().trim().max(MAX_AI_MODEL_LENGTH).optional(),
+    scopeId: z.number().int().positive().optional(),
+    scopeType: aiScopeTypeSchema.optional(),
     supportedParameters: z
       .array(z.string().trim().min(1).max(MAX_AI_PARAMETER_LENGTH))
       .max(ARRAY_INPUT_MAX_ITEMS)
@@ -152,17 +156,27 @@ const generateRequirementsSchema = z
     topic: z.string().trim().min(1).max(MAX_AI_TOPIC_LENGTH),
   })
   .strict()
+  .refine(body => (body.scopeId == null) === (body.scopeType == null), {
+    message: 'scopeType and scopeId must be provided together',
+    path: ['scopeId'],
+  })
+
+type GenerateRequirementsBody = z.infer<typeof generateRequirementsSchema>
 
 export const POST = secureMutationRoute({
   bodySchema: generateRequirementsSchema,
-  policy: requirementsMutationPolicy({ kind: 'generate_requirements' }),
+  policy: requirementsMutationPolicy<GenerateRequirementsBody>(({ body }) => ({
+    kind: 'generate_requirements',
+    scopeId: body.scopeId,
+    scopeType: body.scopeType,
+  })),
   preParse: ({ context }) => {
     const throttle = checkAiGenerateThrottle(context)
     if (!throttle.allowed) {
       return createAiGenerateThrottleResponse(context, throttle)
     }
   },
-  handler: async ({ body, context, request }) => {
+  handler: async ({ body, context, db: authorizationDb, request }) => {
     const providerPreferences = body.providerPreferences
     const { images, locale } = body
     const imageBytes = images.reduce((sum, image) => {
@@ -170,7 +184,7 @@ export const POST = secureMutationRoute({
       return sum + Math.round((data.length * 3) / 4)
     }, 0)
 
-    const db = await getRequestSqlServerDataSource()
+    const db = authorizationDb ?? (await getRequestSqlServerDataSource())
 
     const taxonomy = await loadTaxonomy(db, locale)
     const systemPrompt = buildSystemPrompt(taxonomy, locale)

@@ -12,7 +12,7 @@ It is intentionally not a replacement for the more detailed workflow docs:
   env-var reference, see
   [auth-developer-workflow.md](./auth-developer-workflow.md).
 - For application role and permission decisions, see
-  [permissions.md](./permissions.md).
+  [behörigheter.md](./behörigheter.md).
 
 ## Reading guide
 
@@ -260,14 +260,14 @@ sequenceDiagram
   database action-log row for Admin review. Both include the handler
   identity, request id, grouped counts or delivery metadata, and a
   non-reversible target fingerprint. They must not include the raw target
-  HSA-ID in event detail. Retention or redaction of handler identity in
+  HSA-id in event detail. Retention or redaction of handler identity in
   external security logs is handled by the platform logging policy because
   removing it can reduce traceability.
 - Privileged Admin Center taxonomy and status-catalog mutations emit
   `admin.privileged_action.succeeded` only after the mutation succeeds. The
   detail contains operation, resource type, optional resource id, item counts,
   edited field names, request source, session roles and privileged IdP roles;
-  it does not log raw target names, e-mail addresses, HSA-IDs, secrets or
+  it does not log raw target names, e-mail addresses, HSA-id values, secrets or
   submitted values.
 
 ### Audit event stream

@@ -39,6 +39,7 @@ import { listSpecificationItemStatuses } from '@/lib/dal/specification-item-stat
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   type AuthorizationService,
+  type RequestContext,
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
 import {
@@ -76,6 +77,7 @@ import type {
   RequirementDetail,
   RequirementVersionDetail,
 } from '@/lib/requirements/types'
+import { resolveRequirementListVisibility } from '@/lib/requirements/visibility'
 
 interface RequirementWorkflowDependencies {
   authorization: AuthorizationService
@@ -369,6 +371,13 @@ function withSelectedVersions(
   }
 }
 
+async function resolveCatalogRequirementVisibility(
+  db: SqlServerDatabase,
+  context: RequestContext,
+) {
+  return resolveRequirementListVisibility(db, context)
+}
+
 export function createRequirementWorkflow({
   authorization,
   db,
@@ -419,6 +428,7 @@ export function createRequirementWorkflow({
               typeIds: input.typeIds,
               uniqueIdSearch: input.uniqueIdSearch,
               requirementPackageIds: input.requirementPackageIds,
+              ...(await resolveCatalogRequirementVisibility(db, context)),
             }
             const [rows, total] = await Promise.all([
               listRequirements(db, query),
@@ -622,6 +632,7 @@ export function createRequirementWorkflow({
           id: input.id,
           uniqueId: input.uniqueId,
           versionNumber: input.versionNumber,
+          view: input.view,
         },
         context,
       )
@@ -761,6 +772,7 @@ export function createRequirementWorkflow({
         authorization,
         {
           kind: 'manage_requirement',
+          areaId: input.requirement?.areaId,
           id: input.id,
           uniqueId: input.uniqueId,
           operation: input.operation,

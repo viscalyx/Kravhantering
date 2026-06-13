@@ -1,10 +1,10 @@
-# HSA-ID-avgränsade dataskyddsflöden
+# HSA-id-avgränsade dataskyddsflöden
 
 Status: Antagen 2026-06-05.
 
-Kravhantering avgränsar dataskyddsflöden till ett verifierat HSA-ID i taget.
+Kravhantering avgränsar dataskyddsflöden till ett verifierat HSA-id i taget.
 `Radering av personuppgifter` och `Personuppgiftsutdrag` matchar
-personuppgifter enbart med exakt HSA-ID. Namn, e-postadresser och visningsnamn
+personuppgifter enbart med exakt HSA-id. Namn, e-postadresser och visningsnamn
 behandlas som föränderliga ögonblicksbilder och används inte för att
 identifiera den registrerade personen.
 

@@ -47,6 +47,44 @@ function createDeferred<T>() {
   return { promise, resolve }
 }
 
+function creditResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    json: async () => ({
+      isFreeTier: false,
+      limit: 50,
+      limitRemaining: 37.5,
+      managementKeyMissing: false,
+      totalCredits: 50,
+      usage: 12.5,
+      usageDaily: 12.5,
+      ...overrides,
+    }),
+    ok: true,
+  }
+}
+
+function modelResponse() {
+  return {
+    json: async () => ({
+      models: [
+        {
+          contextLength: 200000,
+          id: 'anthropic/claude-sonnet-4',
+          name: 'Claude Sonnet 4',
+          pricing: {
+            completion: '0.000015',
+            prompt: '0.000003',
+            reasoning: '0.000015',
+          },
+          provider: 'anthropic',
+          supportedParameters: ['reasoning', 'stream'],
+        },
+      ],
+    }),
+    ok: true,
+  }
+}
+
 async function renderOpenGenerator(overrides?: {
   onClose?: () => void
   onCreated?: () => void
@@ -77,39 +115,10 @@ describe('AiRequirementGenerator', () => {
     // Default: models endpoint returns models, credits returns info
     mockFetch.mockImplementation(async (url: string) => {
       if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return {
-          json: async () => ({
-            models: [
-              {
-                contextLength: 200000,
-                id: 'anthropic/claude-sonnet-4',
-                name: 'Claude Sonnet 4',
-                pricing: {
-                  completion: '0.000015',
-                  prompt: '0.000003',
-                  reasoning: '0.000015',
-                },
-                provider: 'anthropic',
-                supportedParameters: ['reasoning', 'stream'],
-              },
-            ],
-          }),
-          ok: true,
-        }
+        return modelResponse()
       }
       if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return {
-          json: async () => ({
-            isFreeTier: false,
-            limit: 50,
-            limitRemaining: 37.5,
-            managementKeyMissing: false,
-            totalCredits: 50,
-            usage: 12.5,
-            usageDaily: 12.5,
-          }),
-          ok: true,
-        }
+        return creditResponse()
       }
       return { json: async () => ({}), ok: true }
     })
@@ -514,5 +523,135 @@ describe('AiRequirementGenerator', () => {
     await waitFor(() => {
       expect(getToolsRow()).toHaveTextContent('(2/2)')
     })
+  })
+
+  it('ignores stale credits responses when the area changes', async () => {
+    const staleAreaCredits = createDeferred<ReturnType<typeof creditResponse>>()
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return modelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        const parsedUrl = new URL(url, 'http://localhost')
+        const scopeId = parsedUrl.searchParams.get('scopeId')
+        if (scopeId === '1') {
+          return staleAreaCredits.promise
+        }
+        if (scopeId === '2') {
+          return creditResponse({ managementKeyMissing: false })
+        }
+        return creditResponse()
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+
+    await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '1')
+    await waitFor(() => {
+      expect(
+        mockFetch.mock.calls.some(([url]) => String(url).includes('scopeId=1')),
+      ).toBe(true)
+    })
+    await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '2')
+    await waitFor(() => {
+      expect(
+        mockFetch.mock.calls.some(([url]) => String(url).includes('scopeId=2')),
+      ).toBe(true)
+    })
+
+    staleAreaCredits.resolve(
+      creditResponse({
+        managementKeyMissing: true,
+        totalCredits: null,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(screen.queryByText('totalCreditsLocked')).not.toBeInTheDocument()
+    })
+  })
+
+  it('clears generated results when the area changes after generation', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+        return modelResponse()
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return creditResponse()
+      }
+      if (typeof url === 'string' && url === '/api/ai/generate-requirements') {
+        const rawContent = JSON.stringify({
+          requirements: [
+            {
+              acceptanceCriteria: null,
+              categoryId: null,
+              description: 'Generated security requirement',
+              qualityCharacteristicId: null,
+              rationale: 'The scope requires this control.',
+              requirementPackageIds: null,
+              requiresTesting: true,
+              riskLevelId: null,
+              typeId: 1,
+              verificationMethod: null,
+            },
+          ],
+        })
+        const payload = {
+          rawContent,
+          stats: {
+            completionTokens: 12,
+            cost: 0,
+            promptTokens: 10,
+            reasoningTokens: 0,
+            totalTokens: 22,
+          },
+          taxonomy: {
+            categories: [],
+            qualityCharacteristics: [],
+            requirementPackages: [],
+            riskLevels: [],
+            types: [],
+          },
+          thinking: 'Prior thinking trace',
+        }
+        const body = new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              new TextEncoder().encode(
+                `event: done\ndata: ${JSON.stringify(payload)}\n\n`,
+              ),
+            )
+            controller.close()
+          },
+        })
+        return { body, ok: true }
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Encrypt logs')
+    await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '1')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+
+    expect(
+      await screen.findByText('Generated security requirement'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Prior thinking trace')).toBeInTheDocument()
+
+    await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '2')
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('Generated security requirement'),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByText('Prior thinking trace')).not.toBeInTheDocument()
+    })
+    expect(
+      screen.queryByRole('button', { name: /createSelected/i }),
+    ).not.toBeInTheDocument()
   })
 })

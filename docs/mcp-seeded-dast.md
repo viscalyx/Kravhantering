@@ -15,7 +15,7 @@ Covered by this workflow:
 - Missing and invalid Bearer tokens return `401` with `WWW-Authenticate:
   Bearer` and a JSON-RPC error body.
 - A valid local `kravhantering-mcp` token can connect to `/api/mcp`.
-- The server exposes exactly the documented 11 MCP tools.
+- The server exposes exactly the documented MCP tool allowlist.
 - The seeded corpus exercises read, requirement mutation, transition,
   specification add/remove, suggestion mutation, and AI-assisted authoring
   surfaces.
@@ -88,6 +88,12 @@ MCP_CLIENT_SECRET=dev-only-mcp-secret
 
 These are local development values only. Do not replace them with production
 client credentials.
+
+The committed dev and container-test realms emit local `Admin` and `Reviewer`
+roles for the `kravhantering-mcp` service token. Those local-only roles let the
+corpus exercise requirement writes, specification add/remove, and reviewer
+transitions through the same production authorization checks without depending
+on assignment-specific seed rows.
 
 In GitHub Actions, the workflow sets
 `AUTH_OIDC_ISSUER_URL=http://127.0.0.1:8080/realms/kravhantering-dev` for this

@@ -78,7 +78,7 @@ function exportPayload(): DataSubjectExportV1 {
         fieldKey: 'owner',
         items: [
           {
-            fieldName: 'lead_hsa_id',
+            fieldName: 'owner_hsa_id',
             relatedObject: {
               key: '1',
               label: 'SEC Säkerhet',
@@ -90,19 +90,6 @@ function exportPayload(): DataSubjectExportV1 {
             timestamp: '2026-05-01T10:00:00.000Z',
             value: 'SE5560000001-kalle1',
           },
-          {
-            fieldName: 'lead_display_name',
-            relatedObject: {
-              key: '1',
-              label: 'SEC Säkerhet',
-              type: 'requirement_area',
-            },
-            relationToSubject: 'live_owner_assignment',
-            sourceKey: 'requirement_areas.owner',
-            table: 'requirement_areas',
-            timestamp: '2026-05-01T10:00:00.000Z',
-            value: 'Kalle Svensson',
-          },
         ],
         key: 'requirement_areas.owner',
         objectKey: 'requirementAreas',
@@ -113,7 +100,7 @@ function exportPayload(): DataSubjectExportV1 {
         fieldKey: 'coAuthor',
         items: [
           {
-            fieldName: 'display_name',
+            fieldName: 'hsa_id',
             relatedObject: {
               key: '2',
               label: 'Användbarhet',
@@ -122,19 +109,7 @@ function exportPayload(): DataSubjectExportV1 {
             relationToSubject: 'live_co_author_assignment',
             sourceKey: 'requirement_area_co_authors.hsa_id',
             table: 'requirement_area_co_authors',
-            value: 'Kalle Svensson',
-          },
-          {
-            fieldName: 'can_generate_ai',
-            relatedObject: {
-              key: '2',
-              label: 'Användbarhet',
-              type: 'requirement_area',
-            },
-            relationToSubject: 'live_co_author_assignment',
-            sourceKey: 'requirement_area_co_authors.hsa_id',
-            table: 'requirement_area_co_authors',
-            value: true,
+            value: 'SE5560000001-kalle1',
           },
         ],
         key: 'requirement_area_co_authors.hsa_id',
@@ -176,6 +151,27 @@ function exportPayload(): DataSubjectExportV1 {
         objectKey: 'requirementVersions',
         relationToSubject: 'historical_creator_snapshot',
         table: 'requirement_versions',
+      },
+      {
+        fieldKey: 'principal',
+        items: [
+          {
+            fieldName: 'scope_type',
+            relatedObject: {
+              key: '42:7',
+              label: 'access_review_item:42:7',
+              type: 'access_review_item',
+            },
+            relationToSubject: 'access_review_principal',
+            sourceKey: 'access_review_items.principal',
+            table: 'access_review_items',
+            value: 'requirement_package',
+          },
+        ],
+        key: 'access_review_items.principal',
+        objectKey: 'accessReviewItems',
+        relationToSubject: 'access_review_principal',
+        table: 'access_review_items',
       },
       {
         fieldKey: 'actor',
@@ -228,9 +224,9 @@ function exportPayload(): DataSubjectExportV1 {
       targetFingerprint: '0123456789abcdef0123456789abcdef',
     },
     summary: {
-      itemCount: 12,
+      itemCount: 13,
       limitationCount: 2,
-      sourceCount: 5,
+      sourceCount: 6,
     },
   }
 }
@@ -286,9 +282,9 @@ describe('DataSubjectExportPdfRenderer', () => {
 
     expect(text).toContain('Export av personuppgifter')
     expect(text).toContain('Aktiva uppdrag')
+    expect(text).toContain('Kravpaket')
     expect(text).toContain('Kravområde')
     expect(text).toContain('Skapad av')
-    expect(text).toContain('Ja')
     expect(text).toContain('Anonym')
     expect(text).toContain('Krav skapades')
     expect(text).toContain('Fritextfält söks inte igenom')
@@ -310,9 +306,9 @@ describe('DataSubjectExportPdfRenderer', () => {
 
     expect(text).toContain('Personal data export')
     expect(text).toContain('Active assignments')
+    expect(text).toContain('Requirements package')
     expect(text).toContain('Requirement area')
     expect(text).toContain('Created by')
-    expect(text).toContain('Yes')
     expect(text).toContain('Anonymous')
     expect(text).toContain('Requirement created')
 

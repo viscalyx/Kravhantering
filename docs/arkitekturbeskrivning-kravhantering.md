@@ -458,8 +458,8 @@ gransknings- och beslutsprocesserna:
    [Assigned to]  [Assigned to]  [Assigned to]  [Assigned]
          ▼              ▼              ▼            ▼
   ┌────────────┐ ┌───────────┐ ┌────────────┐ ┌─────────┐
-  │ Författare │ │ Granskare │ │ Förvaltare │ │  Admin  │
-  │ (Author)   │ │ (Reviewer)│ │ (Manager)  │ │         │
+  │ Områdes-   │ │ Granskare │ │ Underlags- │ │  Admin  │
+  │ författare │ │ Reviewer  │ │ ansvarig   │ │         │
   └────────────┘ └───────────┘ └────────────┘ └─────────┘
 ```
 
@@ -542,29 +542,31 @@ och visar samtliga kravtillämpningar i underlaget med:
 
 ### Administrationscenter
 
-Administrationscentret (`/admin`) erbjuder sex centrala
+Administrationscentret (`/admin`) erbjuder sju centrala
 förvaltningsflikar och en administratörsflik för
 åtgärdslogg:
 
 1. **Kolumner** — Ange standardkolumner och ordning
    för kravlistan organisationsövergripande.
-2. **Taxonomi** — Navigeringsnav till klassningar som kravområden,
+2. **Identitet** — Hantera vilka HSA-id-prefix som erbjuds i
+   redigerbara ansvarsfält. Fliken kräver rollen `Admin`.
+3. **Taxonomi** — Navigeringsnav till klassningar som kravområden,
    kategorier, typer, risknivåer, kvalitetskaraktäristiker och
    underlagsklassningar. Risknivåer är en fast
    klassningsskala där administratören kan underhålla
    namn, färg, ikon och ordning men inte lägga till
    eller ta bort nivåer.
-3. **Statusar och arbetsflöden** — Navigeringsnav till
+4. **Statusar och arbetsflöden** — Navigeringsnav till
    kravversionsstatusar, kravunderlagets livscykelstatusar och
    användningsstatusar.
-4. **Behörighetsöversyn** — Återkommande kontroll av
-   applikationsstyrda uppdrag och AI-behörigheter. Fliken kräver
+5. **Behörighetsöversyn** — Återkommande kontroll av
+   applikationsstyrda uppdrag. Fliken kräver
    `Admin` eller `PrivacyOfficer`.
-5. **Arkivering** — Policybaserad gallring med förhandsgranskning,
+6. **Arkivering** — Policybaserad gallring med förhandsgranskning,
    exportbekräftelse och undantag. Fliken kräver
    `PrivacyOfficer`.
-6. **Dataskydd** — Förhandsgranskning och körning av
-   HSA-ID-baserad radering av personuppgifter. Fliken kräver rollen
+7. **Dataskydd** — Förhandsgranskning och körning av
+   HSA-id-baserad radering av personuppgifter. Fliken kräver rollen
    `PrivacyOfficer` (`Dataskyddshandläggare`) och ger inte
    övriga administratörsrättigheter.
 
@@ -576,9 +578,9 @@ separerad från plattformens `security-audit`-ström för
 operativa säkerhetshändelser. När ingress eller reverse
 proxy validerar klient-IP kan loggen även visa detta som
 forensisk metadata; IP-värdet ingår inte i det
-HSA-ID-baserade dataskyddsflödet.
+HSA-id-baserade dataskyddsflödet.
 
-Dataskyddsflödet matchar endast på HSA-ID. Namn visas för
+Dataskyddsflödet matchar endast på HSA-id. Namn visas för
 operatörens kontroll, men namn används inte som nyckel och
 begäran med endast namn avvisas. Historiska aktörsfält
 anonymiseras normalt till det interna sentinel-värdets visningsnamn
@@ -618,8 +620,8 @@ CSV-kolumnnamn. Språket styrs via URL-prefix
 ### Informationsflöden
 
 Applikationen erbjuder tre huvudsakliga gränssnitt för
-informationsutbyte samt en teknisk
-identitetsintegration:
+informationsutbyte samt tekniska integrationer för identitet och
+personuppslag:
 
 <!-- markdownlint-disable MD013 -->
 | Gränssnitt | Protokoll | Konsument | Syfte |
@@ -628,6 +630,7 @@ identitetsintegration:
 | MCP-server | HTTP/JSON (Streamable) | AI-agenter | Kravfrågor, mutation, statusövergångar |
 | Export | CSV, PDF | Slutanvändare | Rapporter och datautbyte |
 | OIDC-integration | HTTPS / OIDC | Extern identitetsleverantör | Inloggning, tokenutbyte, JWKS, utloggning |
+| HSA-personuppslag | Server-side HTTP/JSON via Kong eller integrationsplattform | Applikationens tilldelningsflöden | Verifiera HSA-id och hämta namnkomponenter/e-post för Kravansvarsperson |
 <!-- markdownlint-enable MD013 -->
 
 ### MCP-integration (AI-agenter)
@@ -669,21 +672,48 @@ men inte en verksamhetsintegration: kravinformation och
 historik lagras fortsatt enbart i applikationens egen
 SQL Server-databas.
 
+### HSA-integration (Kravansvarsperson)
+
+För aktuella kravansvarstilldelningar gör applikationen ett
+server-side personuppslag mot HSA när en behörig användare
+verifierar eller manuellt hämtar om ett HSA-id i redigeringsflöden.
+Om en lokal Kravansvarsperson redan finns återanvänds den när fältet
+lämnas. Webbläsaren anropar endast applikationens
+egna skyddade API:er, till exempel
+`/api/requirement-responsibility-people/verify`; den får inte
+direktåtkomst till HSA-katalogen eller Kong.
+
+Det interna applikationskontraktet är REST/JSON och konfigureras
+med `HSA_PERSON_LOOKUP_URL`. I devcontainer pekar det på Kong,
+som skickar vidare till personuppslagsfasaden i HSA-mocken. Test
+och produktion kan i stället peka på respektive API-hanterare eller
+integrationsplattform, där transformation mot HSA SOAP hanteras utanför
+Kravhanterings applikationskod.
+
+Svaret används för att skapa eller uppdatera
+`requirement_responsibility_people`, där HSA-id, namnkomponenter,
+e-post och hämtningstid samlas för aktuell visning. Levande
+tilldelningstabeller sparar bara HSA-id och pekar på
+Kravansvarsperson. Sparflöden gör inga HSA-anrop utan kräver att
+Kravansvarsperson redan finns lokalt, med en kort omläsning för att
+fånga en verifiering som nyss slutförts. Läsvyer gör inga HSA-anrop
+utan använder den lokalt sparade personraden via join i databasen.
+
 ### Nuvarande integrationslandskap
 
-I nuläget har systemet **inga externa
-verksamhetsintegrationer**. All kravinformation, historik och
-referensdata hanteras inom applikationens egen databas.
-De externa tekniska beroenden som påverkar
-integrationsbilden och bilden av leveranskedjan är
-främst den
-OIDC-baserade identitetsleverantören för inloggning,
-tokenutbyte, nyckelhämtning och utloggning samt,
-när AI-assisterat författande är aktiverat, OpenRouter som
-AI-förmedlande tjänst. `/api/mcp` är ett externt
-anropsgränssnitt för godkända MCP-klienter snarare än
-en verksamhetsintegration. Nedan beskrivs de interna
-applikationssambanden:
+I nuläget har systemet **inga externa integrationer som äger
+kravinformation eller kravhistorik**. All kravinformation, historik
+och referensdata hanteras inom applikationens egen databas. Den nya
+HSA-kopplingen är ett avgränsat personuppgiftsflöde för aktuella
+kravansvarstilldelningar, inte en extern källa för kravens innehåll.
+De externa tekniska beroenden som påverkar integrationsbilden och
+bilden av leveranskedjan är främst den OIDC-baserade
+identitetsleverantören för inloggning, tokenutbyte, nyckelhämtning
+och utloggning, HSA-uppslag via Kong eller integrationsplattform
+samt, när AI-assisterat författande är aktiverat, OpenRouter som
+AI-förmedlande tjänst. `/api/mcp` är ett externt anropsgränssnitt för
+godkända MCP-klienter snarare än en verksamhetsintegration. Nedan
+beskrivs applikationssambanden:
 
 För förvaltningens inventering finns ett samlat underlag i
 [`informationsmangder-kravhantering.md`](./informationsmangder-kravhantering.md).
@@ -700,38 +730,47 @@ förvaltningens ordinarie it-stöd, inte i applikationen.
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │               << Application Cooperation Viewpoint >>                       │
 │                                                                             │
-│  ┌────────────┐   HTTPS   ┌────────────────────────────────┐                │
-│  │ Webbläsare │──────────>│ Next.js App Router (UI + API)  │                │
-│  │ (Användare)│           │ /[locale]/... + /api/auth/*    │                │
-│  └─────┬──────┘           └──────────┬─────┬───────────────┘                │
-│        │ auth request/response       │     │ tokenutbyte, JWKS, logout      │
-│        │                             │     │                                │
-│        ▼                             │     ▼                                │
-│  ┌───────────────────────────────────┴───────────────────────────────┐      │
-│  │ << External Application Service >>                                │      │
-│  │ OIDC-identitetsleverantör                                         │      │
-│  └───────────────────────────────────▲───────────────────────────────┘      │
-│                                      │                                      │
-│  ┌────────────┐   HTTP    ┌──────────┴──┐                                   │
-│  │ AI-agenter │──────────>│ MCP-server  │  JWKS/key retrieval               │
-│  │ (MCP-      │           │ /api/mcp    │  för JWT-verifiering              │
-│  │  klienter) │           └──────┬──────┘                                   │
-│  └────────────┘                  │                                          │
-│                                  ▼                                          │
-│                      ┌──────────────────────────┐                           │
-│                      │   Gemensamma             │                           │
-│                      │   verksamhetsregler      │                           │
-│                      └───────────┬──────────────┘                           │
-│                                  │                                          │
-│                      ┌───────────▼────────────┐                             │
-│                      │   Datatjänster och     │                             │
-│                      │   persistens           │                             │
-│                      └───────────┬────────────┘                             │
-│                                  │                                          │
-│                      ┌───────────▼────────────┐                             │
-│                      │   SQL Server DB-tjänst │                             │
-│                      │   (mssql container)    │                             │
-│                      └────────────────────────┘                             │
+│  ┌────────────┐   HTTPS   ┌─────────────────────────────────────────┐       │
+│  │ Webbläsare │──────────>│ Next.js App Router (UI + API)           │       │
+│  │ (Användare)│           │ /[locale]/... + /api/*                  │       │
+│  └────────────┘           └──────┬─────────────┬─────────────┬──────┘       │
+│                                  │             │             │              │
+│  ┌────────────┐   HTTP    ┌──────▼──────┐      │             │              │
+│  │ AI-agenter │──────────>│ MCP-server  │      │             │              │
+│  │ (MCP-      │           │ /api/mcp    │      │             │              │
+│  │  klienter) │           └──────┬──────┘      │             │              │
+│  └────────────┘                  │             │             │              │
+│                                  │             │             │              │
+│                                  │             │ tokenutbyte,│ server-side  │
+│                                  │             │ JWKS, logout│ HSA-uppslag  │
+│                                  │             ▼             ▼              │
+│                                  │  ┌────────────────┐ ┌─────────────────┐ │
+│                                  │  │ OIDC-          │ │ Kong /          │ │
+│                                  │  │ identitets-    │ │ integrations-   │ │
+│                                  │  │ leverantör     │ │ plattform       │ │
+│                                  │  └────────────────┘ └────────┬────────┘ │
+│                                  │                              │          │
+│                                  │                              ▼          │
+│                                  │                     ┌────────────────┐ │
+│                                  │                     │ HSA-katalog /  │ │
+│                                  │                     │ HSA-mock       │ │
+│                                  │                     └────────────────┘ │
+│                                  ▼                                         │
+│                      ┌──────────────────────────┐                         │
+│                      │   Gemensamma             │                         │
+│                      │   verksamhetsregler      │                         │
+│                      └───────────┬──────────────┘                         │
+│                                  │                                        │
+│                      ┌───────────▼────────────┐                           │
+│                      │   Datatjänster och     │                           │
+│                      │   persistens           │                           │
+│                      └───────────┬────────────┘                           │
+│                                  │                                        │
+│                      ┌───────────▼────────────┐                           │
+│                      │   SQL Server DB-tjänst │                           │
+│                      │   inkl.                │                           │
+│                      │   Kravansvarsperson    │                           │
+│                      └────────────────────────┘                           │
 │                                                                             │
 │  << Application Interfaces >>                                               │
 │  ┌───────────┐  ┌──────────┐  ┌──────────────────────────┐                  │
@@ -740,11 +779,14 @@ förvaltningens ordinarie it-stöd, inte i applikationen.
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Diagrammet markerar OIDC som en extern integration.
-Webbläsaren initierar autentiseringsbegäran och tar emot
-svaret via applikationens callback, medan applikationsgränsen
-ansvarar för tokenutbyte, JWKS-/nyckelhämtning och logout mot
-identitetsleverantören.
+Diagrammet markerar OIDC och HSA som externa tekniska samband.
+Webbläsaren initierar autentiseringsbegäran och tar emot svaret via
+applikationens callback, medan applikationsgränsen ansvarar för
+tokenutbyte, JWKS-/nyckelhämtning och logout mot identitetsleverantören.
+HSA-flödet är däremot enbart server-side: redigeringsflöden i
+applikationen verifierar HSA-id via Kong eller integrationsplattformen,
+hämtar persondata när lokal Kravansvarsperson saknas eller när användaren
+begär ny hämtning, och sparar resultatet lokalt som Kravansvarsperson.
 
 ## 5. Applikationsstrukturperspektiv
 
@@ -806,6 +848,14 @@ ansvar:
 
 ```mermaid
 erDiagram
+    hsa_id_prefixes {
+        integer id PK
+        text prefix UK
+        text label
+        integer is_visible
+        integer is_default
+    }
+
     requirements ||--o{ requirement_versions : "har versioner"
     requirements }o--|| requirement_areas : "tillhör kravområde"
     requirement_versions }o--|| requirement_statuses : "kravversionsstatus"
@@ -819,6 +869,7 @@ erDiagram
     requirement_version_norm_references }o--|| norm_references : "refererar normreferens"
     quality_characteristics }o--o| quality_characteristics : "förälder"
     quality_characteristics }o--|| requirement_types : "kopplad till typ"
+    requirement_responsibility_people ||--o{ requirement_areas : "äger kravområden"
     requirement_areas ||--o{ requirement_area_co_authors : "har medförfattare"
     requirement_areas ||--|| requirement_selection_question_sequences : "fördelar KUF-koder"
     requirement_areas ||--o{ requirement_selection_questions : "äger kravurvalsfrågor"
@@ -841,6 +892,9 @@ erDiagram
     requirements_specifications }o--o| specification_lifecycle_statuses : "kravunderlagets livscykelstatus"
     requirements_specifications ||--o{ specification_needs_references : "behovsreferenser"
     requirements_specifications ||--o{ specification_co_authors : "har medförfattare"
+    requirement_responsibility_people ||--o{ requirements_specifications : "ansvarar för kravunderlag"
+    requirement_responsibility_people ||--o{ requirement_area_co_authors : "är kravområdesmedförfattare"
+    requirement_responsibility_people ||--o{ specification_co_authors : "är kravunderlagsmedförfattare"
     requirements_specification_items }o--|| requirements : "pekar på krav"
     requirements_specification_items }o--o| specification_item_statuses : "användningsstatus"
     requirements_specification_items ||--o{ deviations : "har avsteg"
@@ -852,6 +906,9 @@ erDiagram
     specification_local_requirements }o--o| specification_needs_references : "behovsreferens"
     specification_local_requirements ||--o{ specification_local_requirement_requirement_packages : "kopplade kravpaket"
     specification_local_requirement_requirement_packages }o--|| requirement_packages : "refererar kravpaket"
+    requirement_responsibility_people ||--o{ requirement_packages : "ansvarar för kravpaket"
+    requirement_packages ||--o{ requirement_package_co_authors : "har medförfattare"
+    requirement_responsibility_people ||--o{ requirement_package_co_authors : "är kravpaketsmedförfattare"
     specification_local_requirements ||--o{ specification_local_requirement_norm_references : "kopplade normreferenser"
     specification_local_requirement_norm_references }o--|| norm_references : "refererar normreferens"
     specification_local_requirements ||--o{ specification_local_requirement_deviations : "har avsteg"
@@ -878,17 +935,19 @@ kravbibliotek kan användas i flera verksamhetssammanhang.
 `specification_needs_references` är kravunderlagslokala etiketter med valfri
 beskrivning och uppdateringstid; både bibliotekskrav och kravunderlagets unika
 krav pekar på dem inom samma kravunderlag.
-Kravområden lagrar ansvarigt HSA-ID direkt på
-`requirement_areas.owner_hsa_id`; det finns ingen separat ägarkatalog i
-applikationen.
+Kravområden, kravunderlag och kravpaket lagrar bara HSA-id för levande
+kravansvarstilldelningar. Namnkomponenter och e-post för aktuell visning
+samlas i `requirement_responsibility_people`, så samma Kravansvarsperson inte
+upprepas på varje tilldelning.
 
 > **Tillämpningsbarhet via kravpaket.**
 > Tabellen `requirement_packages` hanterar även
 > *tillämpningsbarhet* — d.v.s. i vilka kontexter
 > eller miljöer ett krav gäller (t.ex. "Alla system").
 > Kravpaket är författat enspråkigt innehåll med `name`,
-> `description`, `lead_hsa_id`, `lead_display_name` och
-> `is_archived`; de ägs inte längre via `owners`.
+> `description`, `lead_hsa_id` och `is_archived`; de ägs inte längre via
+> `owners`. `requirement_package_co_authors` lagrar kravpaketsmedförfattare
+> som HSA-id-tilldelningar.
 >
 > **Kravurvalsfrågor.**
 > Kravområden äger frivilliga kravurvalsfrågor med stabila
@@ -1050,21 +1109,17 @@ Identitetsmodellen i applikationen utgår från:
   som krävs i både webb- och MCP-flöden
 - **`roles`** — globala IdP-roller. Nuvarande
   autentiseringskontrakt normaliserar `roles` till
-  `Reviewer` och `Admin`. Detta är en avsiktlig
-  förenkling av den tekniska rolluppgiften, men inte en
-  permanent förenkling av målmodellen. Målmodellen
-  innehåller `Author`, `Reviewer`, `Manager` och `Admin`:
-  `Reviewer` och `Admin` bevaras som globala roller,
-  `Author` ska härledas från uppdrag som ägare eller
-  medförfattare via `employeeHsaId`, och `Manager`
-  motsvaras i nuläget inte av en egen `roles`-post utan
-  tappar sin separata funktionsavgränsning tills
-  policybaserad auktorisering införs.
+  `Admin`, `Reviewer` och `PrivacyOfficer`. Författande
+  och uppdragsförvaltning är däremot inte globala
+  IdP-roller. De härleds från applikationsägda HSA-id-
+  uppdrag som kravområdesägare, kravområdesmedförfattare,
+  kravunderlagsansvarig och kravunderlagsmedförfattare.
 
 Det är dock viktigt att skilja på autentisering och
-auktorisering: verifierad identitet finns, men
-domänspecifik skrivbehörighet är ännu inte fullt
-finfördelad för alla arbetsflöden.
+auktorisering: verifierad identitet etablerar aktören,
+medan den uppdragsbaserade auktoriseringstjänsten slår upp
+målresursen innan den tillåter läsning, författande,
+uppdragsändringar eller granskningsbeslut.
 
 ### Befintliga säkerhetsmekanismer
 

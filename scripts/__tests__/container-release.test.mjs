@@ -13,6 +13,8 @@ import {
   deploymentBundleArchiveName,
   ensureGitTag,
   extractUnreleasedOperatorUpgradeNotes,
+  HSA_DIRECTORY_MOCK_DESCRIPTION,
+  HSA_DIRECTORY_MOCK_PACKAGE,
   isReleaseRelevantPath,
   packageVersionUrlFromVersions,
   readOperatorUpgradeNotes,
@@ -93,6 +95,7 @@ describe('trusted container release helpers', () => {
       appRuntimeImage: `ghcr.io/viscalyx/${APP_RUNTIME_PACKAGE}`,
       createGitHubRelease: true,
       hasRelevantChange: true,
+      hsaDirectoryMockImage: `ghcr.io/viscalyx/${HSA_DIRECTORY_MOCK_PACKAGE}`,
       prerelease: true,
       releaseTagName: 'v1.2.0-preview.4',
       version: '1.2.0-preview.4',
@@ -105,6 +108,9 @@ describe('trusted container release helpers', () => {
     expect(plan.tag).toBe('1.2.0-preview.4')
     expect(plan.appRuntimeTags[0]).toBe(
       `ghcr.io/viscalyx/${APP_RUNTIME_PACKAGE}:1.2.0-preview.4`,
+    )
+    expect(plan.hsaDirectoryMockTags[0]).toBe(
+      `ghcr.io/viscalyx/${HSA_DIRECTORY_MOCK_PACKAGE}:1.2.0-preview.4`,
     )
   })
 
@@ -119,10 +125,17 @@ describe('trusted container release helpers', () => {
 
     expect(values.APP_RUNTIME_DESCRIPTION).toBe(APP_RUNTIME_DESCRIPTION)
     expect(values.DB_JOB_DESCRIPTION).toBe(DB_JOB_DESCRIPTION)
+    expect(values.HSA_DIRECTORY_MOCK_DESCRIPTION).toBe(
+      HSA_DIRECTORY_MOCK_DESCRIPTION,
+    )
     expect(values.APP_RUNTIME_DESCRIPTION.length).toBeLessThanOrEqual(512)
     expect(values.DB_JOB_DESCRIPTION.length).toBeLessThanOrEqual(512)
+    expect(values.HSA_DIRECTORY_MOCK_DESCRIPTION.length).toBeLessThanOrEqual(
+      512,
+    )
     expect(values.APP_RUNTIME_DESCRIPTION).not.toMatch(/\r|\n/u)
     expect(values.DB_JOB_DESCRIPTION).not.toMatch(/\r|\n/u)
+    expect(values.HSA_DIRECTORY_MOCK_DESCRIPTION).not.toMatch(/\r|\n/u)
   })
 
   it('strips GitVersion build metadata from preview release tags', () => {
@@ -148,6 +161,7 @@ describe('trusted container release helpers', () => {
       ...plan.tags,
       ...plan.appRuntimeTags,
       ...plan.dbJobTags,
+      ...plan.hsaDirectoryMockTags,
     ]) {
       expect(tag).not.toContain('+')
     }
@@ -579,6 +593,7 @@ describe('trusted container release helpers', () => {
       plan,
       buildxMetadata('sha256:app-manifest', 'sha256:app-image'),
       buildxMetadata('sha256:dbjob-manifest', 'sha256:dbjob-image'),
+      buildxMetadata('sha256:hsa-manifest', 'sha256:hsa-image'),
     )
     const execFileSync = vi.fn((command, args) => {
       expect(command).toBe('gh')
@@ -640,6 +655,10 @@ describe('trusted container release helpers', () => {
       plan,
       buildxMetadata('sha256:app-manifest', 'sha256:app-image'),
       buildxMetadata('sha256:dbjob-manifest', 'sha256:dbjob-image'),
+      buildxMetadata(
+        'sha256:hsa-directory-mock-manifest',
+        'sha256:hsa-directory-mock-image',
+      ),
     )
 
     const linkedMetadata = {
@@ -664,6 +683,19 @@ describe('trusted container release helpers', () => {
             'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=main-1234567890ab',
           [metadata.dbJob.tags[2]]:
             'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=sha-1234567890abcdef1234567890abcdef12345678',
+        },
+      },
+      testSupport: {
+        hsaDirectoryMock: {
+          ...metadata.testSupport.hsaDirectoryMock,
+          tagUrls: {
+            [metadata.testSupport.hsaDirectoryMock.tags[0]]:
+              'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-hsa-directory-mock/333?tag=1.2.0-preview.4',
+            [metadata.testSupport.hsaDirectoryMock.tags[1]]:
+              'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-hsa-directory-mock/333?tag=main-1234567890ab',
+            [metadata.testSupport.hsaDirectoryMock.tags[2]]:
+              'https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-hsa-directory-mock/333?tag=sha-1234567890abcdef1234567890abcdef12345678',
+          },
         },
       },
     }
@@ -715,8 +747,16 @@ describe('trusted container release helpers', () => {
     expect(notes).toContain(
       '- [`ghcr.io/viscalyx/kravhantering-db-job:sha-1234567890abcdef1234567890abcdef12345678`](https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-db-job/222?tag=sha-1234567890abcdef1234567890abcdef12345678)',
     )
+    expect(notes).toContain('## Test Support Container Images')
+    expect(notes).toContain('### kravhantering-hsa-directory-mock')
+    expect(notes).toContain(
+      'Test-only HSA directory mock image for the single-node-demo release support topology.',
+    )
+    expect(notes).toContain(
+      '- [`ghcr.io/viscalyx/kravhantering-hsa-directory-mock:1.2.0-preview.4`](https://github.com/Viscalyx/Kravhantering/pkgs/container/kravhantering-hsa-directory-mock/333?tag=1.2.0-preview.4)',
+    )
     expect(notes.match(/Immutable manifest digest reference:/gu)).toHaveLength(
-      2,
+      3,
     )
     expect(notes).not.toContain('Manifest digest verification reference:')
     expect(notes).toContain(
@@ -725,10 +765,16 @@ describe('trusted container release helpers', () => {
     expect(notes).toContain(
       'ghcr.io/viscalyx/kravhantering-db-job@sha256:dbjob-manifest',
     )
+    expect(notes).toContain(
+      'ghcr.io/viscalyx/kravhantering-hsa-directory-mock@sha256:hsa-directory-mock-manifest',
+    )
     expect(notes.indexOf('### kravhantering-app-runtime')).toBeLessThan(
       notes.indexOf('### kravhantering-db-job'),
     )
     expect(notes.indexOf('### kravhantering-db-job')).toBeLessThan(
+      notes.indexOf('## Test Support Container Images'),
+    )
+    expect(notes.indexOf('## Test Support Container Images')).toBeLessThan(
       notes.indexOf('## Production Deployment Bundle'),
     )
     expect(notes).not.toContain('## Checksums')
@@ -773,9 +819,9 @@ describe('trusted container release helpers', () => {
         '',
         '## Unreleased',
         '',
-        '### Requirement area owners must have valid HSA-IDs before upgrade',
+        '### Requirement area owners must have valid HSA-id values before upgrade',
         '',
-        'Confirm owner HSA-IDs before running `db-job migrate`.',
+        'Confirm owner HSA-id values before running `db-job migrate`.',
         '',
         '## 0.1.0 - 2026-01-01',
         '',
@@ -789,10 +835,10 @@ describe('trusted container release helpers', () => {
 
     expect(notes).toContain('## Operator Upgrade Notes')
     expect(notes).toContain(
-      '### Requirement area owners must have valid HSA-IDs before upgrade',
+      '### Requirement area owners must have valid HSA-id values before upgrade',
     )
     expect(notes).toContain(
-      'Confirm owner HSA-IDs before running `db-job migrate`.',
+      'Confirm owner HSA-id values before running `db-job migrate`.',
     )
     expect(notes).not.toContain('Earlier note.')
     expect(notes.indexOf('## Operator Upgrade Notes')).toBeLessThan(
@@ -891,6 +937,12 @@ describe('trusted container release helpers', () => {
     expect(releaseEnv).toContain(
       'NGINX_IMAGE_REF=docker.io/library/nginx:1.31.1-alpine',
     )
+    expect(releaseEnv).toContain(
+      'KONG_IMAGE_REF=docker.io/kong/kong-gateway:3.10.0.8-20260210-ubuntu',
+    )
+    expect(releaseEnv).toContain(
+      'HSA_DIRECTORY_MOCK_IMAGE_REF=ghcr.io/viscalyx/kravhantering-hsa-directory-mock:replace-with-release-tag',
+    )
     expect(releaseEnv).not.toContain('SQLSERVER_HOST_PORT')
     expect(releaseEnv).not.toContain('replace-with-release-manifest-digest')
     expect(releaseEnv).not.toContain('replace-with-release-digest')
@@ -911,6 +963,7 @@ describe('trusted container release helpers', () => {
         plan,
         buildxMetadata('sha256:app-manifest', 'sha256:app-image'),
         buildxMetadata('sha256:dbjob-manifest', 'sha256:dbjob-image'),
+        buildxMetadata('sha256:hsa-manifest', 'sha256:hsa-image'),
       )
       const stackLock = {
         schemaVersion: 2,
@@ -962,18 +1015,50 @@ describe('trusted container release helpers', () => {
           },
         ],
       }
+      const testSupportLock = {
+        schemaVersion: 1,
+        services: [
+          {
+            imageId: 'sha256:kong-image',
+            image: 'docker.io/kong/kong-gateway',
+            manifestDigest: 'sha256:kong-manifest',
+            name: 'kong',
+            role: 'api-management',
+            source: 'docker-hub',
+            tag: '3.10.0.8-20260210-ubuntu',
+          },
+          {
+            imageId: 'sha256:hsa-image',
+            image: 'ghcr.io/viscalyx/kravhantering-hsa-directory-mock',
+            manifestDigest: 'sha256:hsa-manifest',
+            name: 'hsa-directory-mock',
+            role: 'hsa-directory-test-support',
+            source: 'ghcr-release',
+            tag: '1.2.3',
+          },
+        ],
+      }
       const stackLockPath = path.join(tmp, 'container-stack.lock.json')
+      const testSupportLockPath = path.join(
+        tmp,
+        'container-test-support.lock.json',
+      )
       const metadataPath = path.join(tmp, 'release-metadata.json')
       const buildJsonPath = path.join(tmp, 'build.json')
       const hashesPath = path.join(tmp, 'hashes.sha256')
       const sbomDir = path.join(tmp, 'sbom')
       fs.mkdirSync(sbomDir)
       fs.writeFileSync(stackLockPath, JSON.stringify(stackLock))
+      fs.writeFileSync(testSupportLockPath, JSON.stringify(testSupportLock))
       fs.writeFileSync(metadataPath, JSON.stringify(metadata))
       fs.writeFileSync(buildJsonPath, '{"version":"1.2.3"}\n')
       fs.writeFileSync(hashesPath, 'abc123  container-stack.lock.json\n')
       fs.writeFileSync(path.join(sbomDir, 'app-runtime.spdx.json'), '{}\n')
       fs.writeFileSync(path.join(sbomDir, 'db-job.spdx.json'), '{}\n')
+      fs.writeFileSync(
+        path.join(sbomDir, 'hsa-directory-mock.spdx.json'),
+        '{}\n',
+      )
 
       const result = stageProductionDeploymentBundle({
         buildJsonPath,
@@ -986,11 +1071,14 @@ describe('trusted container release helpers', () => {
         sbomDir,
         stackLock,
         stackLockPath,
+        testSupportLock,
+        testSupportLockPath,
       })
 
       expect(result.archiveName).toBe(deploymentBundleArchiveName('1.2.3'))
       expect(result.files).toContain('compose/app-node-tls.compose.yml')
       expect(result.files).toContain('compose/single-node.compose.yml')
+      expect(result.files).toContain('compose/single-node-demo.compose.yml')
       expect(result.files).toContain('docs/rhel10-production-deploy.md')
       expect(result.files).toContain('docs/rhel10-production-disconnected.md')
       expect(result.files).toContain('docs/rhel10-production-upgrade.md')
@@ -1024,6 +1112,8 @@ describe('trusted container release helpers', () => {
       )
       expect(result.files).toContain('env/app.env.template')
       expect(result.files).toContain('env/release.env.template')
+      expect(result.files).toContain('container-test-support.lock.json')
+      expect(result.files).toContain('kong/kong.yml')
       expect(result.files).toContain('bin/kravhantering-images.sh')
       expect(result.files).toContain(
         'systemd/kravhantering-single-node-compose.service',
@@ -1037,14 +1127,16 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain('demo-seed/seed.mjs')
       expect(result.files).toContain('demo-seed/seed-dogfood.mjs')
       expect(result.files).toContain('scripts/keycloak-demo-users.mjs')
+      expect(result.files).toContain('sbom/hsa-directory-mock.spdx.json')
       expect(result.files).toContain(
         'nginx/templates/single-node-tls.conf.template',
       )
       expect(result.files).not.toContain('nginx/conf.d/single-node-tls.conf')
-      for (const file of result.files.filter(
-        bundledFile =>
-          bundledFile.startsWith('compose/') && bundledFile.endsWith('.yml'),
-      )) {
+      for (const file of [
+        'compose/app-node-http.compose.yml',
+        'compose/app-node-tls.compose.yml',
+        'compose/single-node.compose.yml',
+      ]) {
         const compose = fs.readFileSync(
           path.join(result.bundleRoot, file),
           'utf8',
@@ -1062,6 +1154,15 @@ describe('trusted container release helpers', () => {
         expect(compose).toContain('/etc/nginx/templates/default.conf.template')
         expect(compose).not.toContain('/etc/nginx/conf.d/default.conf')
       }
+      const singleNodeDemoCompose = fs.readFileSync(
+        path.join(result.bundleRoot, 'compose/single-node-demo.compose.yml'),
+        'utf8',
+      )
+      expect(singleNodeDemoCompose).toContain('${KONG_IMAGE_REF:?set')
+      expect(singleNodeDemoCompose).toContain(
+        '${HSA_DIRECTORY_MOCK_IMAGE_REF:?set',
+      )
+      expect(singleNodeDemoCompose).not.toContain('\n    ports:')
       const singleNodeCompose = fs.readFileSync(
         path.join(result.bundleRoot, 'compose/single-node.compose.yml'),
         'utf8',
@@ -1124,7 +1225,13 @@ describe('trusted container release helpers', () => {
         supportedTopologies: [
           'app-node-external-sql-external-idp',
           'single-node-internal-sql-internal-keycloak',
+          'single-node-demo',
         ],
+        testSupportImages: {
+          hsaDirectoryMock:
+            'ghcr.io/viscalyx/kravhantering-hsa-directory-mock@sha256:hsa-manifest',
+          kong: 'docker.io/kong/kong-gateway@sha256:kong-manifest',
+        },
         version: '1.2.3',
       })
       expect(
@@ -1180,20 +1287,34 @@ describe('trusted container release helpers', () => {
     )
     expect(workflow).toContain('Attest app-runtime provenance')
     expect(workflow).toContain('Attest db-job provenance')
+    expect(workflow).toContain('Attest HSA directory mock provenance')
     expect(workflow).toContain('Attest app-runtime SBOM')
     expect(workflow).toContain('Attest db-job SBOM')
-    expect(workflow.match(/uses: actions\/attest@/g)).toHaveLength(4)
-    expect(workflow.match(/--provenance=false/g)).toHaveLength(2)
+    expect(workflow).toContain('Attest HSA directory mock SBOM')
+    const usesReferences = workflow.match(/uses:/g) ?? []
+    const shaPinnedUsesReferences =
+      workflow.match(/uses:[^@]+@[0-9a-f]{40}/g) ?? []
+    expect(shaPinnedUsesReferences).toHaveLength(usesReferences.length)
+    expect(workflow.match(/uses: actions\/attest@[0-9a-f]{40}/g)).toHaveLength(
+      6,
+    )
+    expect(workflow.match(/persist-credentials:\s*false/g)).not.toBeNull()
+    expect(workflow.match(/--provenance=false/g)).toHaveLength(3)
     const appRuntimeDescriptionEnv = '$' + '{APP_RUNTIME_DESCRIPTION}'
     const dbJobDescriptionEnv = '$' + '{DB_JOB_DESCRIPTION}'
+    const hsaDirectoryMockDescriptionEnv =
+      '$' + '{HSA_DIRECTORY_MOCK_DESCRIPTION}'
     expect(
       workflow.match(/org\.opencontainers\.image\.description/g),
-    ).toHaveLength(4)
+    ).toHaveLength(6)
     expect(workflow).toContain(
       `--label "org.opencontainers.image.description=${appRuntimeDescriptionEnv}"`,
     )
     expect(workflow).toContain(
       `--label "org.opencontainers.image.description=${dbJobDescriptionEnv}"`,
+    )
+    expect(workflow).toContain(
+      `--label "org.opencontainers.image.description=${hsaDirectoryMockDescriptionEnv}"`,
     )
     expect(workflow).toContain(
       `--annotation "manifest:org.opencontainers.image.description=${appRuntimeDescriptionEnv}"`,
@@ -1202,22 +1323,34 @@ describe('trusted container release helpers', () => {
       `--annotation "manifest:org.opencontainers.image.description=${dbJobDescriptionEnv}"`,
     )
     expect(workflow).toContain(
+      `--annotation "manifest:org.opencontainers.image.description=${hsaDirectoryMockDescriptionEnv}"`,
+    )
+    expect(workflow).toContain(
       'sbom-path: tmp/container-release-artifacts/sbom/app-runtime.spdx.json',
     )
     expect(workflow).toContain(
       'sbom-path: tmp/container-release-artifacts/sbom/db-job.spdx.json',
     )
-    expect(workflow.match(/push-to-registry: false/g)).toHaveLength(4)
+    expect(workflow).toContain(
+      'sbom-path: tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json',
+    )
+    expect(workflow.match(/push-to-registry: false/g)).toHaveLength(6)
     expect(workflow).not.toContain('push-to-registry: true')
     expect(workflow).toContain('--release-images-from-lock')
+    expect(workflow).toContain(
+      '--test-lock-file container-test-support.lock.json',
+    )
     expect(workflow).toContain(
       '--run-id "$' + '{CONTAINER_STACK_RUN_ID}" || true',
     )
     expect(workflow).toContain('container-release.mjs identities')
     expect(workflow).toContain('APP_RUNTIME_MANIFEST_DIGEST_REF')
     expect(workflow).toContain('DB_JOB_MANIFEST_DIGEST_REF')
+    expect(workflow).toContain('HSA_DIRECTORY_MOCK_MANIFEST_DIGEST_REF')
     expect(workflow).toContain('APP_RUNTIME_IMAGE_ID')
     expect(workflow).toContain('DB_JOB_IMAGE_ID')
+    expect(workflow).toContain('HSA_DIRECTORY_MOCK_IMAGE_ID')
+    expect(workflow).toContain('container-test-support.lock.json')
     expect(workflow).not.toContain('APP_RUNTIME_DIGEST_REF')
     expect(workflow).not.toContain('DB_JOB_DIGEST_REF')
     expect(workflow).toContain('container-release.mjs bundle')

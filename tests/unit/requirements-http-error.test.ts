@@ -16,7 +16,7 @@ describe('toHttpErrorPayload', () => {
     expect(result).toEqual({
       body: {
         code: 'forbidden',
-        error: 'Cross-origin request rejected.',
+        error: 'Forbidden',
       },
       status: 403,
     })
@@ -33,7 +33,7 @@ describe('toHttpErrorPayload', () => {
     expect(result).toEqual({
       body: {
         code: 'forbidden',
-        error: 'Not allowed',
+        error: 'Forbidden',
       },
       status: 403,
     })

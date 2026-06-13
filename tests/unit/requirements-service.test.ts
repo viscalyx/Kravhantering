@@ -34,6 +34,8 @@ const mocks = vi.hoisted(() => ({
   listStatuses: vi.fn(),
   listTransitions: vi.fn(),
   listSpecifications: vi.fn(),
+  listSpecificationsForActor: vi.fn(),
+  listSpecificationCoAuthorHsaIdsBySpecification: vi.fn(),
   getSpecificationBySlug: vi.fn(),
   listSpecificationItems: vi.fn(),
   getPublishedVersionIdForRequirement: vi.fn(),
@@ -130,6 +132,9 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
   linkRequirementsToSpecification: mocks.linkRequirementsToSpecification,
   listSpecificationItems: mocks.listSpecificationItems,
   listSpecifications: mocks.listSpecifications,
+  listSpecificationsForActor: mocks.listSpecificationsForActor,
+  listSpecificationCoAuthorHsaIdsBySpecification:
+    mocks.listSpecificationCoAuthorHsaIdsBySpecification,
   unlinkRequirementsFromSpecification:
     mocks.unlinkRequirementsFromSpecification,
 }))
@@ -278,6 +283,13 @@ describe('createRequirementsService', () => {
     info: vi.fn(),
   }
   let infoSpy: ReturnType<typeof vi.spyOn>
+
+  function createTestRequirementsService() {
+    return createRequirementsService({} as never, {
+      authorization: { assertAuthorized: vi.fn(async () => {}) },
+      logger,
+    })
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -504,9 +516,7 @@ describe('createRequirementsService', () => {
     ])
     mocks.countRequirements.mockResolvedValue(3)
 
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'requirements',
       limit: 1,
@@ -564,9 +574,7 @@ describe('createRequirementsService', () => {
     ])
     mocks.countRequirements.mockResolvedValue(1)
 
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'requirements',
     })
@@ -586,9 +594,7 @@ describe('createRequirementsService', () => {
   })
 
   it('passes locale-aware sorting options to the DAL query', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await service.queryCatalog(makeContext(), {
       catalog: 'requirements',
@@ -627,9 +633,7 @@ describe('createRequirementsService', () => {
       },
     ])
 
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'statuses',
@@ -641,9 +645,7 @@ describe('createRequirementsService', () => {
   })
 
   it('creates a requirement and syncs references', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.manageRequirement(makeContext(), {
       operation: 'create',
       requirement: {
@@ -673,9 +675,7 @@ describe('createRequirementsService', () => {
       },
     ])
 
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
       operation: 'restore_version',
@@ -697,9 +697,7 @@ describe('createRequirementsService', () => {
     mocks.getRequirementById.mockResolvedValueOnce(
       makeRequirementRecordWithPublishedVersion(),
     )
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     const result = await service.getRequirement(makeContext(), {
       id: 1,
@@ -721,9 +719,7 @@ describe('createRequirementsService', () => {
     mocks.getRequirementById.mockResolvedValueOnce(
       makeRequirementRecordWithPublishedVersion(),
     )
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     const result = await service.getRequirement(makeContext(), {
       id: 1,
@@ -743,9 +739,7 @@ describe('createRequirementsService', () => {
   })
 
   it('returns not_found when no published version exists for the default detail view', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await expect(
       service.getRequirement(makeContext(), {
@@ -760,9 +754,7 @@ describe('createRequirementsService', () => {
   })
 
   it('returns not_found when a requested version is missing', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await expect(
       service.getRequirement(makeContext(), {
@@ -819,9 +811,7 @@ describe('createRequirementsService', () => {
 
   it('queries areas catalog', async () => {
     mocks.listAreas.mockResolvedValue([{ id: 1, prefix: 'A', name: 'Area A' }])
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'areas',
     })
@@ -834,9 +824,7 @@ describe('createRequirementsService', () => {
     mocks.listCategories.mockResolvedValue([
       { id: 1, nameSv: 'Kat', nameEn: 'Cat' },
     ])
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'categories',
     })
@@ -848,9 +836,7 @@ describe('createRequirementsService', () => {
     mocks.listTypes.mockResolvedValue([
       { id: 1, nameSv: 'Typ', nameEn: 'Type' },
     ])
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'types',
     })
@@ -862,9 +848,7 @@ describe('createRequirementsService', () => {
     mocks.listQualityCharacteristics.mockResolvedValue([
       { id: 1, nameSv: 'TK', nameEn: 'TC' },
     ])
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'quality_characteristics',
       typeId: 1,
@@ -877,9 +861,7 @@ describe('createRequirementsService', () => {
     mocks.listStatuses.mockResolvedValue([
       { id: 1, nameSv: 'Utkast', nameEn: 'Draft' },
     ])
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'statuses',
     })
@@ -900,9 +882,7 @@ describe('createRequirementsService', () => {
         updatedAt: '2026-04-20T20:07:00.000Z',
       },
     ])
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'requirement_packages',
     })
@@ -922,9 +902,7 @@ describe('createRequirementsService', () => {
         toStatus: { nameSv: 'Granskning', nameEn: 'Review' },
       },
     ])
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'transitions',
     })
@@ -934,9 +912,7 @@ describe('createRequirementsService', () => {
 
   it('edits a requirement', async () => {
     mocks.editRequirement.mockResolvedValue({ id: 11 })
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
       operation: 'edit',
@@ -960,9 +936,7 @@ describe('createRequirementsService', () => {
   })
 
   it('rejects edits without an optimistic concurrency token', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await expect(
       service.manageRequirement(makeContext(), {
@@ -985,9 +959,7 @@ describe('createRequirementsService', () => {
         reason: 'stale_requirement_edit',
       }),
     )
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await expect(
       service.manageRequirement(makeContext(), {
@@ -1012,9 +984,7 @@ describe('createRequirementsService', () => {
 
   it('initiates archiving review for a requirement', async () => {
     mocks.initiateArchiving.mockResolvedValue(undefined)
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
       operation: 'archive',
@@ -1025,9 +995,7 @@ describe('createRequirementsService', () => {
 
   it('approves archiving of a requirement', async () => {
     mocks.approveArchiving.mockResolvedValue(undefined)
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
       operation: 'approve_archiving',
@@ -1038,9 +1006,7 @@ describe('createRequirementsService', () => {
 
   it('cancels archiving of a requirement', async () => {
     mocks.cancelArchiving.mockResolvedValue(undefined)
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
       operation: 'cancel_archiving',
@@ -1063,9 +1029,7 @@ describe('createRequirementsService', () => {
     mocks.getRequirementById
       .mockResolvedValueOnce(makeRequirementRecord())
       .mockResolvedValueOnce(null)
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
       operation: 'delete_draft',
@@ -1076,9 +1040,7 @@ describe('createRequirementsService', () => {
   it('reactivates a requirement', async () => {
     mocks.reactivateRequirement.mockResolvedValue(undefined)
     mocks.getRequirementById.mockResolvedValue(makeRequirementRecord())
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
       operation: 'reactivate',
@@ -1091,9 +1053,7 @@ describe('createRequirementsService', () => {
     mocks.getRequirementById.mockResolvedValue(
       makeRequirementRecordWithPublishedVersion(),
     )
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.transitionRequirement(makeContext(), {
       id: 1,
       toStatusId: 2,
@@ -1106,9 +1066,7 @@ describe('createRequirementsService', () => {
     mocks.getRequirementByUniqueId.mockResolvedValue(
       makeRequirementRecordWithPublishedVersion(),
     )
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.getRequirement(makeContext(), {
       uniqueId: 'INT0001',
       view: 'history',
@@ -1121,9 +1079,7 @@ describe('createRequirementsService', () => {
     mocks.listStatuses.mockResolvedValue([
       { id: 1, nameSv: 'Utkast', nameEn: 'Draft' },
     ])
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'statuses',
       locale: 'sv',
@@ -1135,9 +1091,7 @@ describe('createRequirementsService', () => {
     mocks.listStatuses.mockResolvedValue([
       { id: 1, nameSv: 'Utkast', nameEn: 'Draft' },
     ])
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'statuses',
       responseFormat: 'json',
@@ -1148,9 +1102,7 @@ describe('createRequirementsService', () => {
   })
 
   it('rejects edit without description', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     await expect(
       service.manageRequirement(makeContext(), {
         id: 1,
@@ -1161,9 +1113,7 @@ describe('createRequirementsService', () => {
   })
 
   it('rejects edit with blank description', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     await expect(
       service.manageRequirement(makeContext(), {
         id: 1,
@@ -1179,9 +1129,7 @@ describe('createRequirementsService', () => {
   })
 
   it('rejects missing requirement references as validation errors', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await expect(
       service.getRequirement(makeContext(), { view: 'detail' }),
@@ -1212,9 +1160,7 @@ describe('createRequirementsService', () => {
   })
 
   it('rejects create without areaId', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     await expect(
       service.manageRequirement(makeContext(), {
         operation: 'create',
@@ -1224,9 +1170,7 @@ describe('createRequirementsService', () => {
   })
 
   it('rejects create with blank description', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     await expect(
       service.manageRequirement(makeContext(), {
         operation: 'create',
@@ -1238,9 +1182,7 @@ describe('createRequirementsService', () => {
 
   it('rejects restore_version when version not found', async () => {
     mocks.getVersionHistory.mockResolvedValue([{ id: 10, versionNumber: 1 }])
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     await expect(
       service.manageRequirement(makeContext(), {
         id: 1,
@@ -1252,9 +1194,7 @@ describe('createRequirementsService', () => {
   })
 
   it('rejects restore_version without a valid versionNumber before reading history', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await expect(
       service.manageRequirement(makeContext(), {
@@ -1272,9 +1212,7 @@ describe('createRequirementsService', () => {
 
   it('rejects transition when requirement not found', async () => {
     mocks.getRequirementById.mockResolvedValue(null)
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     await expect(
       service.transitionRequirement(makeContext(), {
         id: 999,
@@ -1285,7 +1223,7 @@ describe('createRequirementsService', () => {
   })
 
   it('authorizes and logs specification listing operations', async () => {
-    mocks.listSpecifications.mockResolvedValue([
+    mocks.listSpecificationsForActor.mockResolvedValue([
       {
         businessNeedsReference: null,
         id: 7,
@@ -1294,9 +1232,13 @@ describe('createRequirementsService', () => {
         lifecycleStatus: null,
         name: 'IAM Specification',
         governanceObjectType: null,
+        responsibleHsaId: 'SE5560000001-alice1',
         uniqueId: 'IAM-SPECIFICATION',
       },
     ])
+    mocks.listSpecificationCoAuthorHsaIdsBySpecification.mockResolvedValue(
+      new Map([[7, []]]),
+    )
     const authorization = {
       assertAuthorized: vi.fn().mockResolvedValue(undefined),
     }
@@ -1329,9 +1271,7 @@ describe('createRequirementsService', () => {
   })
 
   it('emits capacity metrics for MCP AI generation', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     const result = await service.generateRequirements(
       {
@@ -1365,9 +1305,7 @@ describe('createRequirementsService', () => {
   })
 
   it('rejects specification workflows without a specification reference', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await expect(
       service.getSpecificationItems(makeContext(), {}),
@@ -1412,9 +1350,7 @@ describe('createRequirementsService', () => {
         },
       },
     ])
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     const result = await service.getSpecificationItems(makeContext(), {
       locale: 'sv',
@@ -1442,9 +1378,7 @@ describe('createRequirementsService', () => {
       .mockResolvedValueOnce(201)
       .mockResolvedValueOnce(202)
     mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(1)
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     const result = await service.addToSpecification(makeContext(), {
       locale: 'en',
@@ -1471,9 +1405,7 @@ describe('createRequirementsService', () => {
 
   it('uses actual deleted specification link counts in removeFromSpecification', async () => {
     mocks.unlinkRequirementsFromSpecification.mockResolvedValue(1)
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     const result = await service.removeFromSpecification(makeContext(), {
       locale: 'en',
@@ -1499,9 +1431,7 @@ describe('createRequirementsService', () => {
         prefix: 'SEC',
       },
     ])
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     const result = await service.listGraduationTargetAreas(makeContext(), {
       localRequirementId: 12,
@@ -1525,9 +1455,7 @@ describe('createRequirementsService', () => {
   it('returns no graduation target requirement areas when the actor cannot author any target requirement area', async () => {
     mocks.canAuthorSpecification.mockResolvedValueOnce(false)
     mocks.listAreasActorCanAuthor.mockResolvedValueOnce([])
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     const result = await service.listGraduationTargetAreas(makeContext(), {
       localRequirementId: 12,
@@ -1550,9 +1478,7 @@ describe('createRequirementsService', () => {
 
   it('returns not found for graduation target requirement areas when the local requirement does not exist', async () => {
     mocks.getSpecificationLocalRequirementDetail.mockResolvedValueOnce(null)
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await expect(
       service.listGraduationTargetAreas(makeContext(), {
@@ -1619,9 +1545,7 @@ describe('createRequirementsService', () => {
         },
       ],
     })
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     const result = await service.graduateSpecificationLocalRequirement(
       makeContext(),
@@ -1681,9 +1605,7 @@ describe('createRequirementsService', () => {
       ownerHsaId: 'SE5560000001-alice1',
       prefix: 'SEC',
     })
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
     const context = {
       ...makeContext(),
       actor: {
@@ -1708,9 +1630,7 @@ describe('createRequirementsService', () => {
 
   it('does not emit specification addition audit events when no links are added', async () => {
     mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(0)
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await service.addToSpecification(makeContext(), {
       specificationSlug: 'IAM-SPECIFICATION',
@@ -1721,9 +1641,7 @@ describe('createRequirementsService', () => {
   })
 
   it('emits security audit events for high-risk requirement mutations', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await service.manageRequirement(makeContext(), {
       id: 1,
@@ -1766,9 +1684,7 @@ describe('createRequirementsService', () => {
       .mockResolvedValueOnce(makeRequirementRecord())
       .mockResolvedValueOnce(null)
     mocks.auditQuery.mockImplementation(async () => [])
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await service.manageRequirement(makeContext(), {
       id: 1,
@@ -1799,9 +1715,7 @@ describe('createRequirementsService', () => {
 
   it('emits security audit events for specification removals', async () => {
     mocks.unlinkRequirementsFromSpecification.mockResolvedValue(2)
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await service.removeFromSpecification(makeContext(), {
       specificationSlug: 'IAM-SPECIFICATION',
@@ -1828,9 +1742,7 @@ describe('createRequirementsService', () => {
       .mockResolvedValueOnce(201)
       .mockResolvedValueOnce(202)
     mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(2)
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await service.addToSpecification(makeContext(), {
       locale: 'sv',
@@ -1857,9 +1769,7 @@ describe('createRequirementsService', () => {
   })
 
   it('emits security audit events for deviation decisions', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await service.manageDeviation(makeContext(), {
       decision: 1,
@@ -1888,9 +1798,7 @@ describe('createRequirementsService', () => {
   })
 
   it('emits security audit events for suggestion resolutions', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await service.manageSuggestion(makeContext(), {
       operation: 'resolve',
@@ -1918,9 +1826,7 @@ describe('createRequirementsService', () => {
   })
 
   it('rejects unsupported suggestion operations without deleting', async () => {
-    const service = createRequirementsService({} as never, {
-      logger,
-    })
+    const service = createTestRequirementsService()
 
     await expect(
       service.manageSuggestion(makeContext(), {

@@ -1,4 +1,4 @@
-# Extern OIDC och HSA-ID som identitet
+# Extern OIDC och HSA-id som identitet
 
 Status: Antagen 2026-06-05.
 
@@ -7,7 +7,7 @@ Webbläsaranvändare autentiserar med Authorization Code + PKCE och får en
 stateless krypterad `iron-session` cookie, medan MCP clients autentiserar med
 Bearer JWTs som verifieras mot OIDC issuer.
 
-I båda vägarna är `employeeHsaId` / HSA-ID applikationens varaktiga
+I båda vägarna är `employeeHsaId` / HSA-id applikationens varaktiga
 identitetsnyckel för auktorisering, uppdrag, audit och dataskyddsflöden. Namn,
 e-postadresser och visningsnamn är kontakt- eller visningsvärden vid
 händelsetillfället, inte matchningsnycklar.

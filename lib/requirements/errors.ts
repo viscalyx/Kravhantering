@@ -4,6 +4,7 @@ export type RequirementsErrorCode =
   | 'conflict'
   | 'unauthorized'
   | 'forbidden'
+  | 'service_unavailable'
   | 'internal'
 
 const STATUS_BY_CODE: Record<RequirementsErrorCode, number> = {
@@ -12,6 +13,7 @@ const STATUS_BY_CODE: Record<RequirementsErrorCode, number> = {
   conflict: 409,
   unauthorized: 401,
   forbidden: 403,
+  service_unavailable: 503,
   internal: 500,
 }
 
@@ -80,6 +82,13 @@ export function forbiddenError(
   details?: Record<string, unknown>,
 ) {
   return createRequirementsError('forbidden', message, details)
+}
+
+export function serviceUnavailableError(
+  message = 'A required service is unavailable',
+  details?: Record<string, unknown>,
+): RequirementsServiceError {
+  return createRequirementsError('service_unavailable', message, details)
 }
 
 export function internalError(

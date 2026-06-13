@@ -7,7 +7,7 @@ export async function fetchSpecificationItemsForReport(
   const refs = itemRefs.map(ref => encodeURIComponent(ref)).join(',')
   const baseUrl = typeof window !== 'undefined' ? '' : 'http://localhost:3000'
   const response = await fetch(
-    `${baseUrl}/api/specifications/${encodeURIComponent(
+    `${baseUrl}/api/requirements-specifications/${encodeURIComponent(
       String(specificationIdOrSlug),
     )}/report-items?refs=${refs}`,
   )

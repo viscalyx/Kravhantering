@@ -17,7 +17,7 @@ applyTo: "{app/**/*.tsx,components/**/*.tsx,lib/reports/**/*,tests/unit/**/*.ts,
   that already receive the localized anonymous label from translations.
 - Never render `DELETED_USER_INTERNAL_NAME`, `no-user`, or raw sentinel values
   directly in UI, report, PDF, print, CSV-visible output, or user-facing tests.
-- Do not use display-name formatting for HSA-ID matching, durable identity,
+- Do not use display-name formatting for HSA-id matching, durable identity,
   privacy execution, audit fingerprints, or internal logs.
 - Do not weaken, skip, narrow, allowlist, or relax
   `tests/unit/privacy-display-name-enforcement.test.ts` to make app code pass.

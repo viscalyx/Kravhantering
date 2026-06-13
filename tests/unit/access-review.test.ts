@@ -11,7 +11,6 @@ import {
 
 function accessReviewSnapshot(index: number): AccessReviewPrincipalSnapshot {
   return {
-    canGenerateAi: index % 2 === 0,
     permissionType: index % 2 === 0 ? 'area_co_author' : 'area_owner',
     principalDisplayName: `Reviewer ${index}`,
     principalHsaId: `SE5560000001-reviewer${index}`,
@@ -51,7 +50,6 @@ function accessReviewRunRow(itemCount: number) {
 
 function accessReviewItemRows(items: AccessReviewPrincipalSnapshot[]) {
   return items.map((item, index) => ({
-    canGenerateAi: item.canGenerateAi ? 1 : 0,
     comment: null,
     createdAt: '2026-05-12T12:00:00.000Z',
     decidedAt: null,
@@ -101,10 +99,9 @@ function accessReviewCreateDb(items: AccessReviewPrincipalSnapshot[]) {
 }
 
 describe('access review service', () => {
-  it('collects app-managed assignments with AI flags', async () => {
+  it('collects app-managed assignments', async () => {
     const rows = [
       {
-        canGenerateAi: 0,
         permissionType: 'area_owner',
         principalDisplayName: 'SE5560000001-admin1',
         principalHsaId: 'SE5560000001-admin1',
@@ -115,7 +112,6 @@ describe('access review service', () => {
         sourceTable: 'requirement_areas',
       },
       {
-        canGenerateAi: 1,
         permissionType: 'area_co_author',
         principalDisplayName: 'Kalle Svensson',
         principalHsaId: 'SE5560000001-kalle1',
@@ -126,7 +122,6 @@ describe('access review service', () => {
         sourceTable: 'requirement_area_co_authors',
       },
       {
-        canGenerateAi: true,
         permissionType: 'specification_responsible',
         principalDisplayName: 'Sara Holm',
         principalHsaId: 'SE5560000001-sara1',
@@ -137,7 +132,6 @@ describe('access review service', () => {
         sourceTable: 'requirements_specifications',
       },
       {
-        canGenerateAi: 0,
         permissionType: 'specification_co_author',
         principalDisplayName: 'Linnéa Bergström',
         principalHsaId: 'SE5560000001-linnea1',
@@ -168,10 +162,7 @@ describe('access review service', () => {
         'specification_co_authors.hsa_id',
       ]),
     )
-    expect(
-      result.find(item => item.permissionType === 'area_co_author')
-        ?.canGenerateAi,
-    ).toBe(true)
+    expect(result.map(item => item.permissionType)).toContain('area_co_author')
     expect(result.map(item => item.principalHsaId)).not.toContain(
       'SE5560000001-unrelated',
     )
@@ -351,15 +342,11 @@ describe('access review service', () => {
     )
     expect(detail.items).toHaveLength(2)
     expect(itemInsertQueries).toHaveLength(1)
-    expect(itemInsertQueries[0].parameters).toHaveLength(22)
+    expect(itemInsertQueries[0].parameters).toHaveLength(20)
     expect(itemInsertQueries[0].sql).toContain('(@0, @1, @2')
-    expect(itemInsertQueries[0].sql).toContain('(@11, @12, @13')
-    expect(itemInsertQueries[0].parameters?.[9]).toBe(0)
-    expect(itemInsertQueries[0].parameters?.[20]).toBe(1)
-    expect(itemInsertQueries[0].parameters?.[10]).toBe(
-      generatedAt.toISOString(),
-    )
-    expect(itemInsertQueries[0].parameters?.[21]).toBe(
+    expect(itemInsertQueries[0].sql).toContain('(@10, @11, @12')
+    expect(itemInsertQueries[0].parameters?.[9]).toBe(generatedAt.toISOString())
+    expect(itemInsertQueries[0].parameters?.[19]).toBe(
       generatedAt.toISOString(),
     )
   })
@@ -428,9 +415,9 @@ describe('access review service', () => {
     )
     expect(detail.items).toHaveLength(151)
     expect(itemInsertQueries).toHaveLength(2)
-    expect(itemInsertQueries[0].parameters).toHaveLength(1650)
-    expect(itemInsertQueries[1].parameters).toHaveLength(11)
-    expect(itemInsertQueries[0].sql).toContain('(@1639, @1640, @1641')
+    expect(itemInsertQueries[0].parameters).toHaveLength(1500)
+    expect(itemInsertQueries[1].parameters).toHaveLength(10)
+    expect(itemInsertQueries[0].sql).toContain('(@1490, @1491, @1492')
     expect(itemInsertQueries[1].sql).toContain('(@0, @1, @2')
   })
 

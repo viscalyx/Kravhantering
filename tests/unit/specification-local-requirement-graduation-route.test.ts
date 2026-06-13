@@ -35,8 +35,8 @@ vi.mock('@/lib/requirements/server', () => ({
   createRequirementsRestRuntime: mocks.createRequirementsRestRuntime,
 }))
 
-import { POST } from '@/app/api/specifications/[id]/local-requirements/[localRequirementId]/graduate/route'
-import { GET } from '@/app/api/specifications/[id]/local-requirements/[localRequirementId]/graduation-target-areas/route'
+import { POST } from '@/app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/graduate/route'
+import { GET } from '@/app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/graduation-target-areas/route'
 import { forbiddenError } from '@/lib/requirements/errors'
 
 function makeParams(id: string, localRequirementId: string) {
@@ -45,7 +45,7 @@ function makeParams(id: string, localRequirementId: string) {
 
 function makePostRequest(body: unknown) {
   return new NextRequest(
-    'http://localhost/api/specifications/spec/local-requirements/41/graduate',
+    'http://localhost/api/requirements-specifications/spec/local-requirements/41/graduate',
     {
       body: JSON.stringify(body),
       headers: {
@@ -90,7 +90,7 @@ describe('specification-local requirement graduation routes', () => {
   it('lists graduation target requirement areas through the shared service', async () => {
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/specifications/spec/local-requirements/41/graduation-target-areas',
+        'http://localhost/api/requirements-specifications/spec/local-requirements/41/graduation-target-areas',
       ),
       makeParams('spec', '41'),
     )
@@ -135,7 +135,7 @@ describe('specification-local requirement graduation routes', () => {
     )
   })
 
-  it('rejects graduation before runtime when the actor lacks a verified HSA-ID', async () => {
+  it('rejects graduation before runtime when the actor lacks a verified HSA-id', async () => {
     mocks.createRequestContext.mockResolvedValueOnce({
       ...mockContext,
       actor: {
@@ -185,7 +185,7 @@ describe('specification-local requirement graduation routes', () => {
     expect(response.status).toBe(403)
     await expect(response.json()).resolves.toEqual({
       code: 'forbidden',
-      error: 'Missing target requirement area owner or co-author permission',
+      error: 'Forbidden',
     })
   })
 })

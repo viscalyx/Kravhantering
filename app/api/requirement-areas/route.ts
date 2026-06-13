@@ -12,10 +12,11 @@ import {
   boundedDbStringSchema,
   optionalBusinessTextSchema,
 } from '@/lib/http/validation'
+import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
 
 const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
   message:
-    'HSA-ID must use format <two-letter country code><10-digit org no>-<alphanumeric suffix>.',
+    'HSA-id must use format <two-letter country code><10-digit org no>-<alphanumeric suffix>.',
 })
 
 const createAreaSchema = z
@@ -38,7 +39,11 @@ export const POST = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ body, context }) => {
     const db = await getRequestSqlServerDataSource()
-    const area = await createArea(db, body)
+    const ownerPerson = await resolveVerifiedRequirementResponsibilityPerson(
+      db,
+      body.ownerHsaId,
+    )
+    const area = await createArea(db, { ...body, ownerPerson })
     await recordAdminPrivilegedActionSucceeded(context, {
       changedFields: Object.keys(body),
       operation: 'create',

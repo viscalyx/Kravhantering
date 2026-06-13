@@ -129,6 +129,21 @@ function expectWebClaimMappers(client: KeycloakRealmClient | undefined) {
   })
 }
 
+function expectLocalMcpPrivilegedRoleMapper(
+  client: KeycloakRealmClient | undefined,
+) {
+  const rolesMapper = getMapper(client, 'mcp-roles')
+  expect(rolesMapper?.protocolMapper).toBe('oidc-hardcoded-claim-mapper')
+  expect(rolesMapper?.config).toMatchObject({
+    'access.token.claim': 'true',
+    'claim.name': 'roles',
+    'claim.value': 'Admin Reviewer',
+    'id.token.claim': 'false',
+    'jsonType.label': 'String',
+    'userinfo.token.claim': 'false',
+  })
+}
+
 describe('production Keycloak realm template', () => {
   it('targets the production issuer realm and canonical clients', () => {
     const realm = readProductionRealm()
@@ -186,7 +201,7 @@ describe('production Keycloak realm template', () => {
       'hsaId',
     ])
     expect(hsaIdAttribute).toMatchObject({
-      displayName: 'HSA ID',
+      displayName: 'HSA-id',
       group: 'user-metadata',
       multivalued: false,
       permissions: {
@@ -196,7 +211,7 @@ describe('production Keycloak realm template', () => {
     })
     expect(hsaIdAttribute?.validations?.length).toMatchObject({ max: 31 })
     expect(hsaIdAttribute?.validations?.pattern).toMatchObject({
-      'error-message': 'Invalid HSA ID format',
+      'error-message': 'Invalid HSA-id format',
       pattern: '^[A-Z]{2}[0-9]{10}-[A-Za-z0-9]+$',
     })
     expect(hsaIdAttribute?.annotations).toMatchObject({
@@ -207,7 +222,7 @@ describe('production Keycloak realm template', () => {
     })
   })
 
-  it('emits the expected MCP audience and real-format HSA-ID', () => {
+  it('emits the expected MCP audience and real-format HSA-id', () => {
     const realm = readProductionRealm()
     const mcpClient = getClient(realm, 'kravhantering-mcp')
 
@@ -268,7 +283,7 @@ describe('dev Keycloak realm', () => {
     expectWebClaimMappers(devClient)
   })
 
-  it('emits the expected audience and real-format HSA-ID for MCP tokens', () => {
+  it('emits the expected audience, local privileged roles, and real-format HSA-id for MCP tokens', () => {
     const realm = readDevRealm()
     const mcpClient = getClient(realm, 'kravhantering-mcp')
 
@@ -287,6 +302,7 @@ describe('dev Keycloak realm', () => {
     expect(hsaMapper?.config?.['access.token.claim']).toBe('true')
     expect(employeeHsaId).toBe('SE5560000001-mcp1')
     expect(isHsaId(employeeHsaId)).toBe(true)
+    expectLocalMcpPrivilegedRoleMapper(mcpClient)
   })
 
   it('keeps canonical realm roles and all documented fixture users', () => {
@@ -323,6 +339,16 @@ describe('dev Keycloak realm', () => {
         hsaId: 'SE5560000001-specresp1',
         roles: [],
         username: 'petra.specresp',
+      },
+      {
+        hsaId: 'SE5560000001-specco1',
+        roles: [],
+        username: 'signe.speccoauthor',
+      },
+      {
+        hsaId: 'SE5560000001-pkglead1',
+        roles: [],
+        username: 'leo.pkglead',
       },
       {
         hsaId: 'SE5560000001-pkgco1',
@@ -409,7 +435,7 @@ describe('container Keycloak realm', () => {
     expectWebClaimMappers(appClient)
   })
 
-  it('emits the expected MCP audience and real-format HSA-ID', () => {
+  it('emits the expected MCP audience, local privileged roles, and real-format HSA-id', () => {
     const realm = readContainerRealm()
     const mcpClient = getClient(realm, 'kravhantering-mcp')
 
@@ -432,6 +458,7 @@ describe('container Keycloak realm', () => {
     expect(hsaMapper?.config?.['access.token.claim']).toBe('true')
     expect(employeeHsaId).toBe('SE5560000001-mcp1')
     expect(isHsaId(employeeHsaId)).toBe(true)
+    expectLocalMcpPrivilegedRoleMapper(mcpClient)
   })
 
   it('keeps canonical roles and minimal smoke users', () => {
