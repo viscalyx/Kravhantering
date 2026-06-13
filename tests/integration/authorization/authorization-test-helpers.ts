@@ -1,10 +1,19 @@
 // cSpell:words privacyofficer
+import { existsSync, readFileSync } from 'node:fs'
 import {
   type APIRequestContext,
   type APIResponse,
   request as playwrightRequest,
   type TestInfo,
 } from '@playwright/test'
+import type { DataSource } from 'typeorm'
+import { upsertRequirementResponsibilityPerson } from '@/lib/dal/requirement-responsibility-people'
+import type { RequirementResponsibilityPersonRecord } from '@/lib/requirements/responsibility-person'
+import {
+  createSqlServerDataSource,
+  getSqlServerDatabaseUrl,
+  type SqlServerRuntimeEnv,
+} from '@/lib/typeorm/sqlserver-config'
 
 export const ROLE_STORAGE_STATE = {
   admin: 'test-results/auth/admin.json',
@@ -34,6 +43,61 @@ export const HSA = {
 } as const
 
 export const STATUS_ARCHIVED = 4
+
+const AUTHORIZATION_RESPONSIBILITY_PEOPLE: Record<
+  string,
+  RequirementResponsibilityPersonRecord
+> = {
+  [HSA.admin]: {
+    email: 'ada.admin@example.test',
+    givenName: 'Ada',
+    hsaId: HSA.admin,
+    middleName: null,
+    surname: 'Admin',
+  },
+  [HSA.areaCoauthor]: {
+    email: 'cora.coauthor@example.test',
+    givenName: 'Cora',
+    hsaId: HSA.areaCoauthor,
+    middleName: null,
+    surname: 'CoAuthor',
+  },
+  [HSA.areaOwner]: {
+    email: 'olle.areaowner@example.test',
+    givenName: 'Olle',
+    hsaId: HSA.areaOwner,
+    middleName: null,
+    surname: 'AreaOwner',
+  },
+  [HSA.packageCoauthor]: {
+    email: 'paul.pkgcoauthor@example.test',
+    givenName: 'Paul',
+    hsaId: HSA.packageCoauthor,
+    middleName: null,
+    surname: 'PkgCoAuthor',
+  },
+  [HSA.packageLead]: {
+    email: 'leo.pkglead@example.test',
+    givenName: 'Leo',
+    hsaId: HSA.packageLead,
+    middleName: null,
+    surname: 'PackageLead',
+  },
+  [HSA.specificationCoauthor]: {
+    email: 'signe.speccoauthor@example.test',
+    givenName: 'Signe',
+    hsaId: HSA.specificationCoauthor,
+    middleName: null,
+    surname: 'SpecCoAuthor',
+  },
+  [HSA.specificationResponsible]: {
+    email: 'petra.specresp@example.test',
+    givenName: 'Petra',
+    hsaId: HSA.specificationResponsible,
+    middleName: null,
+    surname: 'specresp',
+  },
+}
 
 const MANUAL_CASE_LINKS = {
   'AUTH-03':
@@ -133,6 +197,71 @@ function originFor(baseUrl: string): string {
   return new URL(baseUrl).origin
 }
 
+function readEnvFile(path: string): Record<string, string> {
+  if (!existsSync(path)) return {}
+
+  return Object.fromEntries(
+    readFileSync(path, 'utf8')
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line && !line.startsWith('#'))
+      .map(line => {
+        const normalized = line.startsWith('export ')
+          ? line.slice('export '.length).trim()
+          : line
+        const separatorIndex = normalized.indexOf('=')
+        if (separatorIndex === -1) return null
+
+        const key = normalized.slice(0, separatorIndex).trim()
+        let value = normalized.slice(separatorIndex + 1).trim()
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
+          value = value.slice(1, -1)
+        }
+
+        return [key, value] as const
+      })
+      .filter((entry): entry is readonly [string, string] => entry !== null),
+  )
+}
+
+function getPlaywrightSqlServerEnv(): SqlServerRuntimeEnv {
+  return {
+    ...readEnvFile('.env.prodlike'),
+    ...readEnvFile('.env.sqlserver'),
+    ...process.env,
+  } as SqlServerRuntimeEnv
+}
+
+async function withPlaywrightSqlServerDataSource<T>(
+  callback: (dataSource: DataSource) => Promise<T>,
+): Promise<T> {
+  const env = getPlaywrightSqlServerEnv()
+  const dataSource = createSqlServerDataSource({
+    env,
+    url: getSqlServerDatabaseUrl(env),
+  })
+
+  await dataSource.initialize()
+  try {
+    return await callback(dataSource)
+  } finally {
+    if (dataSource.isInitialized) {
+      await dataSource.destroy()
+    }
+  }
+}
+
+async function seedAuthorizationResponsibilityPeople() {
+  await withPlaywrightSqlServerDataSource(async dataSource => {
+    for (const person of Object.values(AUTHORIZATION_RESPONSIBILITY_PEOPLE)) {
+      await upsertRequirementResponsibilityPerson(dataSource, person)
+    }
+  })
+}
+
 export async function newRoleContext(
   testInfo: TestInfo,
   role: RoleContext,
@@ -217,7 +346,7 @@ async function verifyResponsibilityPerson(
     await request.post('/api/requirement-responsibility-people/verify', {
       data: {
         hsaId: input.hsaId,
-        mode: input.mode ?? 'refresh',
+        mode: input.mode ?? 'reuse_local',
         purpose: input.purpose,
         ...(input.scopeId ? { scopeId: input.scopeId } : {}),
       },
@@ -233,6 +362,8 @@ function stamp(): string {
 export async function createAuthorizationFixture(
   testInfo: TestInfo,
 ): Promise<AuthorizationFixture> {
+  await seedAuthorizationResponsibilityPeople()
+
   const admin = await newRoleContext(testInfo, 'admin')
   const specificationResponsible = await newRoleContext(
     testInfo,
