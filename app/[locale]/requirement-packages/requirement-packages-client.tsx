@@ -2,6 +2,7 @@
 
 import {
   Archive,
+  Info,
   Pencil,
   Plus,
   RotateCcw,
@@ -607,6 +608,110 @@ export default function RequirementPackagesClient() {
     },
   )
 
+  const renderCreateLeadSummary = () => (
+    <section
+      aria-labelledby="requirement-package-create-lead-title"
+      className="space-y-3"
+    >
+      <div
+        className="flex items-start gap-3 rounded-xl border border-primary-200 bg-primary-50/80 px-4 py-3 text-sm text-primary-900 dark:border-primary-800/70 dark:bg-primary-950/40 dark:text-primary-100"
+        {...devMarker({
+          context: 'requirementPackages',
+          name: 'responsibility notice',
+          priority: 340,
+          value: 'create package lead',
+        })}
+        role="note"
+      >
+        <Info
+          aria-hidden="true"
+          className="mt-0.5 h-4 w-4 shrink-0 text-primary-700 dark:text-primary-300"
+          focusable={false}
+        />
+        <p>{t('createResponsibilityNotice')}</p>
+      </div>
+      <div className="rounded-xl border border-secondary-200 bg-secondary-50/80 px-4 py-3 dark:border-secondary-700 dark:bg-secondary-900/60">
+        <h3
+          className="text-sm font-medium text-secondary-800 dark:text-secondary-100"
+          id="requirement-package-create-lead-title"
+        >
+          {t('lead')}
+        </h3>
+        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-xs font-medium text-secondary-500 dark:text-secondary-400">
+              {t('leadDisplayName')}
+            </dt>
+            <dd className="mt-1 text-secondary-900 dark:text-secondary-100">
+              {controller.form.leadDisplayName || tc('hsaVerifyUnavailable')}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-secondary-500 dark:text-secondary-400">
+              {t('leadHsaId')}
+            </dt>
+            <dd className="mt-1 font-mono text-secondary-900 dark:text-secondary-100">
+              {controller.form.leadHsaId || tc('hsaVerifyUnavailable')}
+            </dd>
+          </div>
+          {controller.form.leadEmail ? (
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-medium text-secondary-500 dark:text-secondary-400">
+                {t('leadEmail')}
+              </dt>
+              <dd className="mt-1 break-words text-secondary-900 dark:text-secondary-100">
+                {controller.form.leadEmail}
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+      </div>
+    </section>
+  )
+
+  const renderEditLeadField = () => (
+    <div>
+      <FieldLabelWithHelp
+        help={t('leadHsaIdHelp')}
+        htmlFor="requirement-package-lead-hsa-id"
+        label={t('leadHsaId')}
+        required
+      />
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <input
+            aria-readonly="true"
+            className={`${inputClassName} bg-secondary-100 font-mono text-secondary-500 dark:bg-secondary-800 dark:text-secondary-400`}
+            id="requirement-package-lead-hsa-id"
+            readOnly
+            value={controller.form.leadHsaId}
+          />
+          <button
+            aria-label={t('changeLead')}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:text-secondary-300 dark:hover:bg-secondary-800"
+            disabled={controller.submitting}
+            onClick={openLeadChange}
+            title={t('changeLead')}
+            type="button"
+          >
+            <UserRoundCog
+              aria-hidden="true"
+              className="h-4 w-4"
+              focusable={false}
+            />
+          </button>
+        </div>
+        <p className="mt-1 text-xs italic text-secondary-700 dark:text-secondary-300">
+          {controller.form.leadDisplayName && controller.form.leadEmail
+            ? `${controller.form.leadDisplayName} (${controller.form.leadEmail})`
+            : controller.form.leadDisplayName ||
+              controller.form.leadEmail ||
+              tc('hsaVerifyUnavailable')}
+        </p>
+      </div>
+    </div>
+  )
+
   const renderPackageFormFields = () => (
     <>
       <div>
@@ -650,76 +755,9 @@ export default function RequirementPackagesClient() {
           value={controller.form.description}
         />
       </div>
-      <div>
-        <FieldLabelWithHelp
-          help={t('leadHsaIdHelp')}
-          htmlFor="requirement-package-lead-hsa-id"
-          label={t('leadHsaId')}
-          required
-        />
-        {controller.editId == null ? (
-          <HsaPersonVerifyField
-            disabled={controller.submitting}
-            emailLabel={tc('hsaVerifyEmail')}
-            errorFallback={tc('hsaVerifyError')}
-            fetchingLabel={tc('fetchingHsaPerson')}
-            fetchLabel={tc('fetchHsaPerson')}
-            hsaId={controller.form.leadHsaId}
-            initialDisplayName={controller.form.leadDisplayName}
-            initialEmail={controller.form.leadEmail}
-            inputClassName={inputClassName}
-            inputId="requirement-package-lead-hsa-id"
-            nameLabel={tc('hsaVerifyName')}
-            onHsaIdChange={() => undefined}
-            onVerified={person =>
-              controller.setForm(previousForm => ({
-                ...previousForm,
-                leadDisplayName: person.displayName,
-                leadEmail: person.email ?? '',
-                leadPersonVerification: person,
-              }))
-            }
-            purpose="requirement_package_lead"
-            readOnly
-            required
-            showPersonSummaryAsText
-            unavailableText={tc('hsaVerifyUnavailable')}
-          />
-        ) : (
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <input
-                aria-readonly="true"
-                className={`${inputClassName} bg-secondary-100 font-mono text-secondary-500 dark:bg-secondary-800 dark:text-secondary-400`}
-                id="requirement-package-lead-hsa-id"
-                readOnly
-                value={controller.form.leadHsaId}
-              />
-              <button
-                aria-label={t('changeLead')}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:text-secondary-300 dark:hover:bg-secondary-800"
-                disabled={controller.submitting}
-                onClick={openLeadChange}
-                title={t('changeLead')}
-                type="button"
-              >
-                <UserRoundCog
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                  focusable={false}
-                />
-              </button>
-            </div>
-            <p className="mt-1 text-xs italic text-secondary-700 dark:text-secondary-300">
-              {controller.form.leadDisplayName && controller.form.leadEmail
-                ? `${controller.form.leadDisplayName} (${controller.form.leadEmail})`
-                : controller.form.leadDisplayName ||
-                  controller.form.leadEmail ||
-                  tc('hsaVerifyUnavailable')}
-            </p>
-          </div>
-        )}
-      </div>
+      {controller.editId == null
+        ? renderCreateLeadSummary()
+        : renderEditLeadField()}
     </>
   )
 

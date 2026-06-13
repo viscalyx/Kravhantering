@@ -568,14 +568,18 @@ med piltangenter och stäng med Escape.
 
 1. Öppna `Kravbiblioteksförvaltning`.
 1. Kontrollera `Kravpaket` och `Kravurvalsfrågor`.
-1. Skapa, filtrera, redigera och arkivera ett testpaket.
+1. Skapa ett testpaket och kontrollera att formuläret visar ansvarsinformation
+   samt inloggad användare som kravpaketsansvarig utan redigerbart
+   ansvarsfält.
+1. Filtrera, redigera och arkivera testpaketet.
 1. Byt kravpaketsansvarig med HSA-id och testa medförfattare.
 1. Skapa en kravurvalsfråga, lägg till svar och ändra ordning.
 1. Kontrollera synlighetsvillkor, hierarkimodal och kravurvalsförhandsvisning.
 
 **Förväntat resultat:** Förvaltningsytorna ligger utanför Admincenter, paket
-och frågor sparas korrekt, ansvarspersoner hanteras med HSA-id och
-destruktiva åtgärder kräver bekräftelse.
+och frågor sparas korrekt, den som skapar kravpaketet blir
+kravpaketsansvarig, ansvarspersoner hanteras med HSA-id och destruktiva
+åtgärder kräver bekräftelse.
 
 ### REQ-14: AI-kravgenerator rensar scope-bundna resultat
 

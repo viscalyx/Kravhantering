@@ -162,7 +162,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `floating action rail` as
   `requirementPackages > floating pill: new requirement package`. The new
   package form opens in the shared `dialog: new requirement package` surface;
-  editing opens the same modal surface as `dialog: edit requirement package`.
+  its inline responsibility banner renders as
+  `requirementPackages > responsibility notice: create package lead`. Editing
+  opens the same modal surface as `dialog: edit requirement package`.
   The package-lead change action stays inside the edit `crud form`, and the
   follow-up modal uses the shared `dialog: change requirements package lead`
   surface rather than adding a separate curated marker.

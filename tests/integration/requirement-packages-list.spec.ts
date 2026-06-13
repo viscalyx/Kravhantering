@@ -126,21 +126,30 @@ for (const viewport of viewports) {
           name: 'Kravpaketsmedförfattare',
         })
 
-        const leadInput = dialog.getByRole('textbox', {
-          name: 'Kravpaketsansvarigs HSA-id',
-        })
+        const leadSummary = dialog.locator(
+          'section[aria-labelledby="requirement-package-create-lead-title"]',
+        )
         await expect(nameInput).toBeVisible()
         await expect(coAuthorsHeading).toBeVisible()
-        await expect(leadInput).toHaveValue('SE5560000001-admin1')
-        await expect(leadInput).toHaveAttribute('readonly', '')
         await expect(
-          dialog.getByRole('button', { name: 'Hämta' }),
+          dialog.getByText(
+            'Du blir kravpaketsansvarig när kravpaketet skapas.',
+          ),
         ).toBeVisible()
+        await expect(
+          dialog.getByRole('textbox', {
+            name: 'Kravpaketsansvarigs HSA-id',
+          }),
+        ).toHaveCount(0)
+        await expect(dialog.getByRole('button', { name: 'Hämta' })).toHaveCount(
+          0,
+        )
         await expect(dialog.getByText(/Ada Admin/)).toBeVisible()
+        await expect(dialog.getByText('SE5560000001-admin1')).toBeVisible()
         await expect(dialog.getByText('Kopplade krav')).toHaveCount(0)
 
         const dialogBox = await dialog.boundingBox()
-        const leadBox = await leadInput.boundingBox()
+        const leadBox = await leadSummary.boundingBox()
         const coAuthorsBox = await coAuthorsHeading.boundingBox()
         expect(dialogBox).not.toBeNull()
         expect(leadBox).not.toBeNull()
