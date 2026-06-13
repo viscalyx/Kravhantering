@@ -404,7 +404,8 @@ beskriver uppdraget i ärendet, inte en global IdP-roll.
 
 - `en`: Assigned reviewer
 
-_Avoid_: Kravgranskare när den globala rollen avses, Granskare som huvudterm.
+_Avoid_: Kravgranskare när ett ärende- eller underlagsbundet uppdrag avses,
+Granskare som huvudterm.
 
 **Administratör**:
 Ett systemövergripande behörighetsmandat med full rätt att utföra åtgärder i

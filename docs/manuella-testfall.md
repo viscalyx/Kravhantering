@@ -804,13 +804,13 @@ läsåtkomst.
 
 ### DEV-04: godkänn avsteg
 
-**Steg:** Som behörig granskare, godkänn avsteg med kommentar.
+**Steg:** Som behörig kravgranskare, godkänn avsteg med kommentar.
 
 **Förväntat resultat:** Avsteget markeras som godkänt och låses.
 
 ### DEV-05: avslå avsteg
 
-**Steg:** Som behörig granskare, avslå avsteg med kommentar.
+**Steg:** Som behörig kravgranskare, avslå avsteg med kommentar.
 
 **Förväntat resultat:** Avsteget markeras som avslaget och låses.
 

@@ -274,7 +274,7 @@
     "signIn": "Logga in för att exportera dina personuppgifter"
   },
   "roles": {
-    "reviewer": "Granskare",
+    "reviewer": "Kravgranskare",
     "admin": "Administratör",
     "privacyOfficer": "Dataskyddshandläggare"
   },
@@ -1176,7 +1176,7 @@
         "resolvedBy": "Åtgärdad av",
         "responsible": "Kravunderlagsansvarig",
         "coAuthor": "Medförfattare",
-        "reviewer": "Granskare",
+        "reviewer": "Tilldelad granskningsperson",
         "actor": "Aktör",
         "accessReviewPrincipal": "Behörig i översyn",
         "taxonomy": "Taxonomi",
@@ -1271,7 +1271,7 @@
       "dueAt": "Förfaller",
       "dismissError": "Stäng felmeddelande",
       "errorPopupTitle": "Något gick fel",
-      "externalEvidenceHelp": "Fältet är frivilligt och används som en pekare till extern evidens för behörigheter som Kravhantering inte själv äger, till exempel IdP-rollgranskning av administratörer, granskare och Dataskyddshandläggare, källkodsåtkomst och hantering av externa MCP-klienter. Ange t.ex. ett ärende-ID, en revisionsrapport-länk eller ett diarienummer. Underlaget bör visa period, scope, vilka system/roller som granskats, vem som granskat, beslut, åtgärder och sign-off.",
+      "externalEvidenceHelp": "Fältet är frivilligt och används som en pekare till extern evidens för behörigheter som Kravhantering inte själv äger, till exempel IdP-rollgranskning av rollerna Administratör, Kravgranskare och Dataskyddshandläggare, källkodsåtkomst och hantering av externa MCP-klienter. Ange t.ex. ett ärende-ID, en revisionsrapport-länk eller ett diarienummer. Underlaget bör visa period, scope, vilka system/roller som granskats, vem som granskat, beslut, åtgärder och sign-off.",
       "externalEvidenceNote": "Globala roller i identitetsverktyget, källkodsåtkomst och extern MCP-klientåtkomst granskas i verktygen där behörigheterna tilldelas.",
       "externalEvidenceReference": "Extern evidensreferens",
       "exportError": "Kunde inte exportera behörighetsöversyn: {detail}",
@@ -1297,7 +1297,7 @@
       "summary": {
         "due": "Förfaller",
         "progress": "Status",
-        "reviewer": "Granskare",
+        "reviewer": "Tilldelad granskningsperson",
         "status": "Status"
       },
       "statuses": {
@@ -1443,7 +1443,7 @@
         },
         "acceptanceCriteria": {
           "heading": "Acceptanskriterier",
-          "body": "Mätbara villkor som måste vara uppfyllda för att kravet ska anses vara uppnått. De är viktiga vid verifiering och testning och hjälper granskare att förstå den exakta avsikten bakom kravtexten."
+          "body": "Mätbara villkor som måste vara uppfyllda för att kravet ska anses vara uppnått. De är viktiga vid verifiering och testning och hjälper kravgranskare att förstå den exakta avsikten bakom kravtexten."
         },
         "category": {
           "heading": "Kategori",

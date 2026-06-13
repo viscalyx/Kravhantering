@@ -1176,7 +1176,7 @@
         "resolvedBy": "Resolved by",
         "responsible": "Specification lead",
         "coAuthor": "Co-author",
-        "reviewer": "Reviewer",
+        "reviewer": "Assigned reviewer",
         "actor": "Actor",
         "accessReviewPrincipal": "Access review principal",
         "taxonomy": "Taxonomy",
@@ -1271,7 +1271,7 @@
       "dueAt": "Due",
       "dismissError": "Dismiss error message",
       "errorPopupTitle": "Something went wrong",
-      "externalEvidenceHelp": "This field is optional and points to external evidence for permissions that Kravhantering does not own, such as IdP role review for administrators, reviewers and privacy officers, source-code repository access, and external MCP/client provisioning. Enter a ticket ID, audit-report link, or case/document number. The external evidence should show period, scope, systems/roles reviewed, reviewer, decisions, actions, and sign-off.",
+      "externalEvidenceHelp": "This field is optional and points to external evidence for permissions that Kravhantering does not own, such as IdP role review for the Administrator, Reviewer, and Privacy officer roles, source-code repository access, and external MCP/client provisioning. Enter a ticket ID, audit-report link, or case/document number. The external evidence should show period, scope, systems/roles reviewed, reviewer, decisions, actions, and sign-off.",
       "externalEvidenceNote": "Global IdP roles, source-code access, and external MCP client provisioning are reviewed in the tools where those permissions are assigned.",
       "externalEvidenceReference": "External evidence reference",
       "exportError": "Could not export access review: {detail}",
@@ -1297,7 +1297,7 @@
       "summary": {
         "due": "Due",
         "progress": "Progress",
-        "reviewer": "Reviewer",
+        "reviewer": "Assigned reviewer",
         "status": "Status"
       },
       "statuses": {
@@ -1443,7 +1443,7 @@
         },
         "acceptanceCriteria": {
           "heading": "Acceptance criteria",
-          "body": "Measurable conditions that must be met for the requirement to be considered fulfilled. They are essential during verification and testing, and help reviewers understand the precise intent behind the requirement text."
+          "body": "Measurable conditions that must be met for the requirement to be considered fulfilled. They are essential during verification and testing, and help requirement reviewers understand the precise intent behind the requirement text."
         },
         "category": {
           "heading": "Category",

@@ -167,7 +167,7 @@ graph TB
 ┌─────────────────────────────────────────────────────────┐
 │                   << Motivation >>                      │
 │  Mål: Enhetlig kravhantering med full spårbarhet        │
-│  Intressenter: Kravförfattare, Granskare, Förvaltare    │
+│  Intressenter: Kravförfattare, Kravgranskare, Förvaltare │
 └─────────────────────────────────────────────────────────┘
          │ realiseras av
          ▼
@@ -181,7 +181,7 @@ graph TB
 │   Avsteghantering        Rapportgenerering              │
 │                                                         │
 │  [Business Actor]       [Business Actor]                │
-│   Kravförfattare         Granskare                      │
+│   Kravförfattare         Kravgranskare                  │
 │   Förvaltare             Administratör                  │
 └─────────────────────────────────────────────────────────┘
          │ stöds av
@@ -246,7 +246,7 @@ stateDiagram-v2
     end note
 
     note right of Granskning
-        Granskaren bedömer
+        Kravgranskaren bedömer
         och godkänner/avslår
     end note
 
@@ -269,7 +269,7 @@ att säkerställa kvalitetskontroll:
 1. **Initiering** — En förvaltare begär arkivering.
    Kravet övergår till granskning med en
    arkiveringsflagga (`archive_initiated_at`).
-2. **Godkännande** — En granskare bekräftar
+2. **Godkännande** — En kravgranskare bekräftar
    arkiveringen. Kravversionen får kravversionsstatus *Arkiverad* och
    tidsstämpeln `archived_at` sätts.
 
@@ -315,7 +315,7 @@ flowchart TD
 | Aktör | Huvudansvar |
 | --- | --- |
 | Kravförfattare | Skapar och redigerar krav, skickar för granskning |
-| Granskare | Godkänner eller avslår krav och arkiveringsförfrågningar |
+| Kravgranskare | Godkänner eller avslår krav och arkiveringsförfrågningar |
 | Förvaltare | Hanterar livscykel, initierar arkivering, återskapar arkiverade kravversioner |
 | Administratör | Konfigurerar taxonomi, terminologi, kolumnstandard |
 <!-- markdownlint-enable MD013 -->
@@ -383,7 +383,7 @@ stateDiagram-v2
 2. **Begärd granskning** — Avsteget skickas för
    beslut. Det kan återtas till utkast om
    komplettering behövs.
-3. **Beslutat** — Granskaren godkänner eller avslår
+3. **Beslutat** — Kravgranskaren godkänner eller avslår
    avsteget. Beslutsmotivering, beslutsfattare och
    tidsstämpel registreras. Beslutet är permanent.
 
@@ -414,7 +414,7 @@ stateDiagram-v2
    fritext. Det kan redigeras och raderas.
 2. **Granskning begärd** — Förslaget skickas för
    bedömning. Det kan återtas till utkast.
-3. **Åtgärdad/Avvisad** — Granskaren åtgärdar eller
+3. **Åtgärdad/Avvisad** — Kravgranskaren åtgärdar eller
    avvisar förslaget med motivering.
 
 ### Rapportprocesser
@@ -461,10 +461,10 @@ gransknings- och beslutsprocesserna:
          │              │              │            │
    [Assigned to]  [Assigned to]  [Assigned to]  [Assigned]
          ▼              ▼              ▼            ▼
-  ┌────────────┐ ┌───────────┐ ┌────────────┐ ┌─────────┐
-  │ Områdes-   │ │ Granskare │ │ Underlags- │ │  Admin  │
-  │ författare │ │ Reviewer  │ │ ansvarig   │ │         │
-  └────────────┘ └───────────┘ └────────────┘ └─────────┘
+  ┌────────────┐ ┌───────────────┐ ┌────────────┐ ┌─────────┐
+  │ Områdes-   │ │ Kravgranskare │ │ Underlags- │ │  Admin  │
+  │ författare │ │               │ │ ansvarig   │ │         │
+  └────────────┘ └───────────────┘ └────────────┘ └─────────┘
 ```
 
 ## 3. Applikationsanvändningsperspektiv
@@ -837,7 +837,7 @@ På översiktsnivå består lösningen av fem arkitektoniska
 ansvar:
 
 1. **Användarupplevelse** — webbytan samlar de
-   arbetsflöden som författare, granskare, förvaltare
+   arbetsflöden som författare, kravgranskare, förvaltare
    och administratörer använder.
 2. **Åtkomst och spårbarhet** — identitet,
    sessionshantering, rollkontroller, dataskyddsflöden
