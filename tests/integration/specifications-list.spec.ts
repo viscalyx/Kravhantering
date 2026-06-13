@@ -68,9 +68,7 @@ for (const viewport of viewports) {
       await expect(deleteAction.locator('svg')).toBeVisible()
 
       if (viewport.name === 'desktop') {
-        const tableSurface = page.locator(
-          '[data-developer-mode-context="specifications"][data-developer-mode-name="crud table"]',
-        )
+        const tableSurface = page.getByRole('table')
 
         await expect(tableSurface).toHaveCount(1)
 
