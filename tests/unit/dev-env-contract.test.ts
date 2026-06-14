@@ -20,6 +20,8 @@ describe('development environment contract', () => {
 
     expect(envExample).toContain('HSA_PERSON_LOOKUP_URL=')
     expect(envExample).toContain('HSA_PERSON_LOOKUP_TIMEOUT_MS=')
+    expect(envExample).toContain('HSA_PERSON_LOOKUP_CLIENT_CERT_PATH=')
+    expect(envExample).toContain('HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET=')
   })
 
   it('ships HSA lookup settings in prod-like and release app envs', () => {
@@ -44,6 +46,11 @@ describe('development environment contract', () => {
     )
     expect(containerAppExampleEnv).toContain(
       'HSA_PERSON_LOOKUP_URL=https://kong.example.internal/hsa/person-records/lookup',
+    )
+    expect(releaseAppEnv).toContain('HSA_PERSON_LOOKUP_CLIENT_KEY_PATH=')
+    expect(releaseAppEnv).toContain('HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL=')
+    expect(containerAppExampleEnv).toContain(
+      'HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL=',
     )
   })
 })

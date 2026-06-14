@@ -55,20 +55,21 @@ manually with `workflow_dispatch`. Manual runs may select `all`, `nginx`,
 `sqlserver`, `keycloak` or `kong`; the `include-current` input also refreshes
 the immutable digest metadata for the current selected lane.
 
-Kong is a vendor-updated test support image. Its lock under
-`containers/kong/` is copied into `container-test-support.lock.json` during
-container releases and is used by the test-only `single-node-demo` topology.
-Kong is not part of the production runtime topology.
+Kong is a vendor-updated HSA integration support image. Its lock under
+`containers/kong/` is copied into
+`container-hsa-integration-support.lock.json` during container releases and is
+used by the test-only `single-node-demo` topology. Kong is not part of the
+required production runtime topology.
 
-The HSA directory mock is project-owned test support, not a vendor image. The
-container release workflow builds and publishes
+The HSA person lookup adapter and HSA directory mock are project-owned support
+images, not vendor images. The container release workflow builds and publishes
+`kravhantering-hsa-person-lookup-adapter` and
 `kravhantering-hsa-directory-mock` to GHCR with the same release tags as
-`app-runtime` and `db-job`, records it in `container-test-support.lock.json`,
-and publishes SBOM plus provenance attestations for that image. It is excluded
-from the vendor-image updater because its source lives in this repository.
-The current demo path uses the mock-owned REST facade behind Kong. Real HSA
-SOAP integration still requires a later adapter that handles the
-REST/JSON-to-SOAP transformation, authentication and certificates.
+`app-runtime` and `db-job`. The adapter is recorded in
+`container-hsa-integration-support.lock.json`; the mock is recorded in
+`container-test-support.lock.json`. Both images get SBOM and provenance
+attestations and are excluded from the vendor-image updater because their
+source lives in this repository.
 
 The updater uses one branch and one ready-for-review PR per image lane. A lane
 is the image name plus the target major line, or the SQL Server product year:
@@ -198,9 +199,12 @@ Each trusted run also writes runtime evidence:
 - `container-stack.lock.json` lists the exact image name, tag,
   `manifestDigest`, `imageId`, source and role for `app-runtime`, `db-job`,
   nginx, SQL Server and Keycloak.
+- `container-hsa-integration-support.lock.json` lists the exact image name,
+  tag, `manifestDigest`, `imageId`, source and role for Kong and the HSA
+  person lookup adapter.
 - `container-test-support.lock.json` lists the exact image name, tag,
-  `manifestDigest`, `imageId`, source and role for the test-only Kong and HSA
-  directory mock support images.
+  `manifestDigest`, `imageId`, source and role for the test-only HSA directory
+  mock support image.
 - `container-stack.compose.yml` is the generated Compose file that the smoke
   test started.
 - `hashes.sha256` contains checksums for saved runtime evidence.
@@ -251,6 +255,8 @@ artifacts anonymously:
 
 - `ghcr.io/<owner>/kravhantering-app-runtime`
 - `ghcr.io/<owner>/kravhantering-db-job`
+- `ghcr.io/<owner>/kravhantering-hsa-person-lookup-adapter` for optional HSA
+  integration support
 - `ghcr.io/<owner>/kravhantering-hsa-directory-mock` for test-only
   `single-node-demo` support
 <!-- cSpell:ignore opencontainers -->

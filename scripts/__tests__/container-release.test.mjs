@@ -1019,15 +1019,6 @@ describe('trusted container release helpers', () => {
         schemaVersion: 1,
         services: [
           {
-            imageId: 'sha256:kong-image',
-            image: 'docker.io/kong/kong-gateway',
-            manifestDigest: 'sha256:kong-manifest',
-            name: 'kong',
-            role: 'api-management',
-            source: 'docker-hub',
-            tag: '3.10.0.8-20260210-ubuntu',
-          },
-          {
             imageId: 'sha256:hsa-image',
             image: 'ghcr.io/viscalyx/kravhantering-hsa-directory-mock',
             manifestDigest: 'sha256:hsa-manifest',
@@ -1038,7 +1029,34 @@ describe('trusted container release helpers', () => {
           },
         ],
       }
+      const hsaIntegrationSupportLock = {
+        schemaVersion: 1,
+        services: [
+          {
+            imageId: 'sha256:kong-image',
+            image: 'docker.io/kong/kong-gateway',
+            manifestDigest: 'sha256:kong-manifest',
+            name: 'kong',
+            role: 'api-management',
+            source: 'docker-hub',
+            tag: '3.10.0.8-20260210-ubuntu',
+          },
+          {
+            imageId: 'sha256:adapter-image',
+            image: 'ghcr.io/viscalyx/kravhantering-hsa-person-lookup-adapter',
+            manifestDigest: 'sha256:adapter-manifest',
+            name: 'hsa-person-lookup-adapter',
+            role: 'hsa-person-lookup-adapter',
+            source: 'ghcr-release',
+            tag: '1.2.3',
+          },
+        ],
+      }
       const stackLockPath = path.join(tmp, 'container-stack.lock.json')
+      const hsaIntegrationSupportLockPath = path.join(
+        tmp,
+        'container-hsa-integration-support.lock.json',
+      )
       const testSupportLockPath = path.join(
         tmp,
         'container-test-support.lock.json',
@@ -1049,12 +1067,20 @@ describe('trusted container release helpers', () => {
       const sbomDir = path.join(tmp, 'sbom')
       fs.mkdirSync(sbomDir)
       fs.writeFileSync(stackLockPath, JSON.stringify(stackLock))
+      fs.writeFileSync(
+        hsaIntegrationSupportLockPath,
+        JSON.stringify(hsaIntegrationSupportLock),
+      )
       fs.writeFileSync(testSupportLockPath, JSON.stringify(testSupportLock))
       fs.writeFileSync(metadataPath, JSON.stringify(metadata))
       fs.writeFileSync(buildJsonPath, '{"version":"1.2.3"}\n')
       fs.writeFileSync(hashesPath, 'abc123  container-stack.lock.json\n')
       fs.writeFileSync(path.join(sbomDir, 'app-runtime.spdx.json'), '{}\n')
       fs.writeFileSync(path.join(sbomDir, 'db-job.spdx.json'), '{}\n')
+      fs.writeFileSync(
+        path.join(sbomDir, 'hsa-person-lookup-adapter.spdx.json'),
+        '{}\n',
+      )
       fs.writeFileSync(
         path.join(sbomDir, 'hsa-directory-mock.spdx.json'),
         '{}\n',
@@ -1064,6 +1090,8 @@ describe('trusted container release helpers', () => {
         buildJsonPath,
         generatedAt: '2026-05-23T00:00:00.000Z',
         hashesPath,
+        hsaIntegrationSupportLock,
+        hsaIntegrationSupportLockPath,
         metadata,
         metadataPath,
         outputDir: path.join(tmp, 'deployment'),
@@ -1112,7 +1140,15 @@ describe('trusted container release helpers', () => {
       )
       expect(result.files).toContain('env/app.env.template')
       expect(result.files).toContain('env/release.env.template')
+      expect(result.files).toContain(
+        'container-hsa-integration-support.lock.json',
+      )
       expect(result.files).toContain('container-test-support.lock.json')
+      expect(result.files).toContain('openapi/hsa-person-lookup.yaml')
+      expect(result.files).toContain('api-docs/hsa-person-lookup/index.html')
+      expect(result.files).toContain(
+        'api-docs/hsa-person-lookup/swagger-ui-bundle.js',
+      )
       expect(result.files).toContain('kong/kong.yml')
       expect(result.files).toContain('bin/kravhantering-images.sh')
       expect(result.files).toContain(
@@ -1128,6 +1164,7 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain('demo-seed/seed-dogfood.mjs')
       expect(result.files).toContain('scripts/keycloak-demo-users.mjs')
       expect(result.files).toContain('sbom/hsa-directory-mock.spdx.json')
+      expect(result.files).toContain('sbom/hsa-person-lookup-adapter.spdx.json')
       expect(result.files).toContain(
         'nginx/templates/single-node-tls.conf.template',
       )
@@ -1159,6 +1196,9 @@ describe('trusted container release helpers', () => {
         'utf8',
       )
       expect(singleNodeDemoCompose).toContain('${KONG_IMAGE_REF:?set')
+      expect(singleNodeDemoCompose).toContain(
+        '${HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF:?set',
+      )
       expect(singleNodeDemoCompose).toContain(
         '${HSA_DIRECTORY_MOCK_IMAGE_REF:?set',
       )
@@ -1230,6 +1270,10 @@ describe('trusted container release helpers', () => {
         testSupportImages: {
           hsaDirectoryMock:
             'ghcr.io/viscalyx/kravhantering-hsa-directory-mock@sha256:hsa-manifest',
+        },
+        hsaIntegrationSupportImages: {
+          hsaPersonLookupAdapter:
+            'ghcr.io/viscalyx/kravhantering-hsa-person-lookup-adapter@sha256:adapter-manifest',
           kong: 'docker.io/kong/kong-gateway@sha256:kong-manifest',
         },
         version: '1.2.3',
@@ -1300,17 +1344,19 @@ describe('trusted container release helpers', () => {
       workflow.match(/uses:[^@]+@[0-9a-f]{40}/g) ?? []
     expect(shaPinnedUsesReferences).toHaveLength(usesReferences.length)
     expect(workflow.match(/uses: actions\/attest@[0-9a-f]{40}/g)).toHaveLength(
-      6,
+      8,
     )
     expect(workflow.match(/persist-credentials:\s*false/g)).not.toBeNull()
-    expect(workflow.match(/--provenance=false/g)).toHaveLength(3)
+    expect(workflow.match(/--provenance=false/g)).toHaveLength(4)
     const appRuntimeDescriptionEnv = '$' + '{APP_RUNTIME_DESCRIPTION}'
     const dbJobDescriptionEnv = '$' + '{DB_JOB_DESCRIPTION}'
     const hsaDirectoryMockDescriptionEnv =
       '$' + '{HSA_DIRECTORY_MOCK_DESCRIPTION}'
+    const hsaPersonLookupAdapterDescriptionEnv =
+      '$' + '{HSA_PERSON_LOOKUP_ADAPTER_DESCRIPTION}'
     expect(
       workflow.match(/org\.opencontainers\.image\.description/g),
-    ).toHaveLength(6)
+    ).toHaveLength(8)
     expect(workflow).toContain(
       `--label "org.opencontainers.image.description=${appRuntimeDescriptionEnv}"`,
     )
@@ -1319,6 +1365,9 @@ describe('trusted container release helpers', () => {
     )
     expect(workflow).toContain(
       `--label "org.opencontainers.image.description=${hsaDirectoryMockDescriptionEnv}"`,
+    )
+    expect(workflow).toContain(
+      `--label "org.opencontainers.image.description=${hsaPersonLookupAdapterDescriptionEnv}"`,
     )
     expect(workflow).toContain(
       `--annotation "manifest:org.opencontainers.image.description=${appRuntimeDescriptionEnv}"`,
@@ -1330,6 +1379,9 @@ describe('trusted container release helpers', () => {
       `--annotation "manifest:org.opencontainers.image.description=${hsaDirectoryMockDescriptionEnv}"`,
     )
     expect(workflow).toContain(
+      `--annotation "manifest:org.opencontainers.image.description=${hsaPersonLookupAdapterDescriptionEnv}"`,
+    )
+    expect(workflow).toContain(
       'sbom-path: tmp/container-release-artifacts/sbom/app-runtime.spdx.json',
     )
     expect(workflow).toContain(
@@ -1338,11 +1390,17 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain(
       'sbom-path: tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json',
     )
-    expect(workflow.match(/push-to-registry: false/g)).toHaveLength(6)
+    expect(workflow).toContain(
+      'sbom-path: tmp/container-release-artifacts/sbom/hsa-person-lookup-adapter.spdx.json',
+    )
+    expect(workflow.match(/push-to-registry: false/g)).toHaveLength(8)
     expect(workflow).not.toContain('push-to-registry: true')
     expect(workflow).toContain('--release-images-from-lock')
     expect(workflow).toContain(
       '--test-lock-file container-test-support.lock.json',
+    )
+    expect(workflow).toContain(
+      '--hsa-integration-lock-file container-hsa-integration-support.lock.json',
     )
     expect(workflow).toContain(
       '--run-id "$' + '{CONTAINER_STACK_RUN_ID}" || true',

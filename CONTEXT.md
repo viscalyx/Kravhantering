@@ -631,6 +631,27 @@ med HSA-id eller annan identitet som HSA-katalogen stödjer.
 
 _Avoid_: Användare, konto, lokal personpost.
 
+**Skyddade personuppgifter**:
+Skatteverkets samlingsbegrepp för skyddsåtgärder i folkbokföringen när en
+person riskerar att utsättas för brott, förföljelse eller allvarliga
+trakasserier. Begreppet ska användas när Kravhantering beskriver
+personuppgifter med skyddsbehov, inte lokala ord som skyddad identitet.
+Källa: <https://www.skatteverket.se/privat/folkbokforing/skyddadepersonuppgifter.4.18e1b10334ebe8bc80001711.html>
+
+- `en`: Protected personal data
+
+_Avoid_: Skyddad identitet, sekretessperson, hemlig person.
+
+**HSA-personpost med skyddade personuppgifter**:
+En HSA-personpost där HSA anger att personposten har skyddade
+personuppgifter, i Kravhantering transporterat och lagrat som
+`hasProtectedPersonalData`. Fältet beskriver bara uppgiftens HSA-status; det
+bestämmer inte i sig UI-maskering, behörighet eller särskild handläggning.
+
+- `en`: HSA person record with protected personal data
+
+_Avoid_: Skyddad Kravansvarsperson, skyddad användare.
+
 **Kravurvalsfråga**:
 En fråga som förvaltas inom ett kravområde och stödjer urval av publicerade
 bibliotekskrav till ett kravunderlag genom ett eller flera förberedda svar.

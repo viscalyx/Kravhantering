@@ -2,29 +2,39 @@ import childProcess from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { normalizeServiceRecord } from './generate-stack-lock.mjs'
+import {
+  normalizeServiceRecord,
+  SERVICE_FIELDS,
+} from './generate-stack-lock.mjs'
 
-export const TEST_SUPPORT_LOCK_SCHEMA_VERSION = 1
-export const DEFAULT_TEST_SUPPORT_LOCK_PATH = 'container-test-support.lock.json'
-export const GENERATED_BY = 'scripts/containers/generate-test-support-lock.mjs'
+export const HSA_INTEGRATION_SUPPORT_LOCK_SCHEMA_VERSION = 1
+export const DEFAULT_HSA_INTEGRATION_SUPPORT_LOCK_PATH =
+  'container-hsa-integration-support.lock.json'
+export const GENERATED_BY =
+  'scripts/containers/generate-hsa-integration-support-lock.mjs'
 
-export const TEST_SUPPORT_VENDOR_LOCKS = []
+export const HSA_INTEGRATION_VENDOR_LOCKS = [
+  {
+    name: 'kong',
+    path: 'containers/kong/image.lock.json',
+  },
+]
 
 const USAGE = `Usage:
-  node scripts/containers/generate-test-support-lock.mjs generate --hsa-directory-mock-manifest-digest <digest> --hsa-directory-mock-image-id <id> [options]
-  node scripts/containers/generate-test-support-lock.mjs check [--lock-file container-test-support.lock.json]
+  node scripts/containers/generate-hsa-integration-support-lock.mjs generate --hsa-person-lookup-adapter-manifest-digest <digest> --hsa-person-lookup-adapter-image-id <id> [options]
+  node scripts/containers/generate-hsa-integration-support-lock.mjs check [--lock-file container-hsa-integration-support.lock.json]
 
 Generate options:
-  --output <path>                         Output lock file path
-  --release-version <version>             Release or PR version metadata
-  --commit-sha <sha>                      Commit SHA metadata
-  --generated-at <iso-time>               Deterministic generation timestamp
-  --hsa-directory-mock-image <image>       HSA directory mock image name
-  --hsa-directory-mock-tag <tag>           HSA directory mock tag metadata
-  --hsa-directory-mock-manifest-digest <digest>
-                                          HSA directory mock registry manifest digest
-  --hsa-directory-mock-image-id <id>       HSA directory mock image ID
-  --hsa-directory-mock-source <source>     HSA directory mock source metadata`
+  --output <path>                                  Output lock file path
+  --release-version <version>                      Release or PR version metadata
+  --commit-sha <sha>                               Commit SHA metadata
+  --generated-at <iso-time>                        Deterministic generation timestamp
+  --hsa-person-lookup-adapter-image <image>        Adapter image name
+  --hsa-person-lookup-adapter-tag <tag>            Adapter image tag metadata
+  --hsa-person-lookup-adapter-manifest-digest <digest>
+                                                   Adapter registry manifest digest
+  --hsa-person-lookup-adapter-image-id <id>        Adapter image ID
+  --hsa-person-lookup-adapter-source <source>      Adapter image source metadata`
 
 function readNonEmpty(value) {
   if (typeof value !== 'string') return undefined
@@ -41,25 +51,25 @@ function writeTextFile(filePath, content, fsImpl = fs) {
   fsImpl.writeFileSync(filePath, content)
 }
 
-export function formatTestSupportLockJson(lock) {
+export function formatHsaIntegrationSupportLockJson(lock) {
   return `${JSON.stringify(lock, null, 2)}\n`
 }
 
-export function assertTestSupportLockSchema(
+export function assertHsaIntegrationSupportLockSchema(
   lock,
-  context = DEFAULT_TEST_SUPPORT_LOCK_PATH,
+  context = DEFAULT_HSA_INTEGRATION_SUPPORT_LOCK_PATH,
 ) {
-  if (lock?.schemaVersion !== TEST_SUPPORT_LOCK_SCHEMA_VERSION) {
+  if (lock?.schemaVersion !== HSA_INTEGRATION_SUPPORT_LOCK_SCHEMA_VERSION) {
     throw new Error(
-      `${context} must use schemaVersion ${TEST_SUPPORT_LOCK_SCHEMA_VERSION}.`,
+      `${context} must use schemaVersion ${HSA_INTEGRATION_SUPPORT_LOCK_SCHEMA_VERSION}.`,
     )
   }
 }
 
-export function readTestSupportVendorLocks(options = {}) {
+export function readHsaIntegrationVendorLocks(options = {}) {
   const cwd = options.cwd ?? process.cwd()
   const fsImpl = options.fsImpl ?? fs
-  const lockFiles = options.lockFiles ?? TEST_SUPPORT_VENDOR_LOCKS
+  const lockFiles = options.lockFiles ?? HSA_INTEGRATION_VENDOR_LOCKS
 
   return lockFiles.map(lockFile => {
     const filePath = path.resolve(cwd, lockFile.path)
@@ -67,25 +77,56 @@ export function readTestSupportVendorLocks(options = {}) {
   })
 }
 
+function sameFieldSet(actual) {
+  const actualFields = Object.keys(actual).sort()
+  return (
+    JSON.stringify(actualFields) === JSON.stringify([...SERVICE_FIELDS].sort())
+  )
+}
+
 function findService(lock, name) {
   return lock.services?.find(service => service.name === name) ?? null
 }
 
-export function checkTestSupportVendorLocks(lock) {
-  assertTestSupportLockSchema(lock)
+function assertExactServiceMatch(actual, expected) {
+  if (!actual) {
+    throw new Error(
+      `${DEFAULT_HSA_INTEGRATION_SUPPORT_LOCK_PATH} is missing "${expected.name}".`,
+    )
+  }
+  if (!sameFieldSet(actual)) {
+    throw new Error(
+      `Service "${expected.name}" has fields that do not match image.lock.json.`,
+    )
+  }
+  for (const field of SERVICE_FIELDS) {
+    if (actual[field] !== expected[field]) {
+      throw new Error(
+        `Service "${expected.name}" differs from image.lock.json at "${field}".`,
+      )
+    }
+  }
+}
+
+export function checkHsaIntegrationSupportVendorLocks(lock, vendorLocks) {
+  assertHsaIntegrationSupportLockSchema(lock)
   if (!Array.isArray(lock.services)) {
     throw new Error(
-      `${DEFAULT_TEST_SUPPORT_LOCK_PATH} must contain services[].`,
+      `${DEFAULT_HSA_INTEGRATION_SUPPORT_LOCK_PATH} must contain services[].`,
     )
   }
 
-  const hsaDirectoryMock = findService(lock, 'hsa-directory-mock')
-  if (!hsaDirectoryMock) {
+  for (const expected of vendorLocks) {
+    assertExactServiceMatch(findService(lock, expected.name), expected)
+  }
+
+  const adapter = findService(lock, 'hsa-person-lookup-adapter')
+  if (!adapter) {
     throw new Error(
-      `${DEFAULT_TEST_SUPPORT_LOCK_PATH} is missing "hsa-directory-mock".`,
+      `${DEFAULT_HSA_INTEGRATION_SUPPORT_LOCK_PATH} is missing "hsa-person-lookup-adapter".`,
     )
   }
-  normalizeServiceRecord(hsaDirectoryMock, 'hsa-directory-mock')
+  normalizeServiceRecord(adapter, 'hsa-person-lookup-adapter')
 
   return true
 }
@@ -113,65 +154,65 @@ function readGitCommitSha(cwd, execFileSync = childProcess.execFileSync) {
   }
 }
 
-function testSupportProjectServiceOptions(prefix, options, env, defaults) {
+function projectServiceOptions(prefix, options, env, defaults) {
   const envPrefix = prefix.toUpperCase().replaceAll('-', '_')
   return {
     image:
       readNonEmpty(options[`${prefix}-image`]) ??
       readNonEmpty(env[`${envPrefix}_IMAGE`]) ??
       defaults.image,
-    tag:
-      readNonEmpty(options[`${prefix}-tag`]) ??
-      readNonEmpty(env[`${envPrefix}_TAG`]) ??
-      defaults.tag,
-    manifestDigest:
-      readNonEmpty(options[`${prefix}-manifest-digest`]) ??
-      readNonEmpty(env[`${envPrefix}_MANIFEST_DIGEST`]),
     imageId:
       readNonEmpty(options[`${prefix}-image-id`]) ??
       readNonEmpty(env[`${envPrefix}_IMAGE_ID`]),
+    manifestDigest:
+      readNonEmpty(options[`${prefix}-manifest-digest`]) ??
+      readNonEmpty(env[`${envPrefix}_MANIFEST_DIGEST`]),
     source:
       readNonEmpty(options[`${prefix}-source`]) ??
       readNonEmpty(env[`${envPrefix}_SOURCE`]) ??
       defaults.source,
+    tag:
+      readNonEmpty(options[`${prefix}-tag`]) ??
+      readNonEmpty(env[`${envPrefix}_TAG`]) ??
+      defaults.tag,
   }
 }
 
 function createProjectService(name, role, options) {
   return normalizeServiceRecord(
     {
+      image: options.image,
+      imageId: options.imageId,
+      manifestDigest: options.manifestDigest,
       name,
       role,
-      image: options.image,
-      tag: options.tag,
-      manifestDigest: options.manifestDigest,
-      imageId: options.imageId,
       source: options.source,
+      tag: options.tag,
     },
     name,
   )
 }
 
-export function createTestSupportLock(options) {
+export function createHsaIntegrationSupportLock(options) {
   const vendorLocks = options.vendorLocks ?? []
   const generatedAt =
     readNonEmpty(options.generatedAt) ??
     (options.now ?? (() => new Date()))().toISOString()
 
   return {
-    schemaVersion: TEST_SUPPORT_LOCK_SCHEMA_VERSION,
+    schemaVersion: HSA_INTEGRATION_SUPPORT_LOCK_SCHEMA_VERSION,
     releaseVersion: readNonEmpty(options.releaseVersion) ?? '0.0.0-local',
     commitSha: readNonEmpty(options.commitSha) ?? 'unknown',
     generatedAt,
     generatedBy: GENERATED_BY,
     services: [
       ...vendorLocks.map((service, index) =>
-        normalizeServiceRecord(service, `test support vendor ${index + 1}`),
+        normalizeServiceRecord(service, `HSA integration vendor ${index + 1}`),
       ),
       createProjectService(
-        'hsa-directory-mock',
-        'hsa-directory-test-support',
-        options.hsaDirectoryMock,
+        'hsa-person-lookup-adapter',
+        'hsa-person-lookup-adapter',
+        options.hsaPersonLookupAdapter,
       ),
     ],
   }
@@ -186,13 +227,11 @@ export function parseArgs(args) {
     if (!arg.startsWith('--')) {
       throw new Error(`Unexpected argument: ${arg}`)
     }
-
     const key = arg.slice(2)
     const value = rest[index + 1]
     if (!value || value.startsWith('--')) {
       throw new Error(`Missing value for --${key}.`)
     }
-
     options[key] = value
     index += 1
   }
@@ -200,7 +239,7 @@ export function parseArgs(args) {
   return { command, options }
 }
 
-export function createTestSupportLockFromCliOptions(options = {}) {
+export function createHsaIntegrationSupportLockFromCliOptions(options = {}) {
   const cwd = options.cwd ?? process.cwd()
   const env = options.env ?? process.env
   const fsImpl = options.fsImpl ?? fs
@@ -218,17 +257,17 @@ export function createTestSupportLockFromCliOptions(options = {}) {
     readNonEmpty(env.GITHUB_SHA) ??
     readGitCommitSha(cwd, execFileSync)
 
-  return createTestSupportLock({
+  return createHsaIntegrationSupportLock({
     releaseVersion,
     commitSha,
     generatedAt: cliOptions['generated-at'],
-    vendorLocks: readTestSupportVendorLocks({ cwd, fsImpl }),
-    hsaDirectoryMock: testSupportProjectServiceOptions(
-      'hsa-directory-mock',
+    vendorLocks: readHsaIntegrationVendorLocks({ cwd, fsImpl }),
+    hsaPersonLookupAdapter: projectServiceOptions(
+      'hsa-person-lookup-adapter',
       cliOptions,
       env,
       {
-        image: 'localhost/kravhantering/hsa-directory-mock',
+        image: 'localhost/kravhantering/hsa-person-lookup-adapter',
         tag: 'local',
         source: 'local-build',
       },
@@ -247,27 +286,29 @@ export async function main(args, dependencies = {}) {
     const { command, options } = parseArgs(args)
     const lockFile = path.resolve(
       cwd,
-      options['lock-file'] ?? options.output ?? DEFAULT_TEST_SUPPORT_LOCK_PATH,
+      options['lock-file'] ??
+        options.output ??
+        DEFAULT_HSA_INTEGRATION_SUPPORT_LOCK_PATH,
     )
 
     if (command === 'generate') {
-      const lock = createTestSupportLockFromCliOptions({
+      const lock = createHsaIntegrationSupportLockFromCliOptions({
         cwd,
         env,
         fsImpl,
         execFileSync,
         cliOptions: options,
       })
-      writeTextFile(lockFile, formatTestSupportLockJson(lock), fsImpl)
+      writeTextFile(lockFile, formatHsaIntegrationSupportLockJson(lock), fsImpl)
       consoleObj.log(`Wrote ${path.relative(cwd, lockFile)}`)
       return 0
     }
 
     if (command === 'check') {
       const lock = readJsonFile(lockFile, fsImpl)
-      checkTestSupportVendorLocks(
+      checkHsaIntegrationSupportVendorLocks(
         lock,
-        readTestSupportVendorLocks({ cwd, fsImpl }),
+        readHsaIntegrationVendorLocks({ cwd, fsImpl }),
       )
       consoleObj.log(`Checked ${path.relative(cwd, lockFile)}`)
       return 0

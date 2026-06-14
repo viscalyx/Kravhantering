@@ -20,27 +20,29 @@ stored as a local `Kravansvarsperson` row keyed by HSA-id.
 ## Devcontainer and Release Test Support
 
 The devcontainer includes Kong Gateway as the internal `kong` service for
-API-management verification and an HSA directory mock as
-`hsa-directory-mock`. Kong runs DB-less with source-controlled configuration
-from [containers/kong/kong.yml](../containers/kong/kong.yml). Its proxy and
-Admin API are available only on the compose network at `kong:8000` and
-`kong:8001`; no Kong ports are forwarded to the host.
+API-management verification, an `hsa-person-lookup-adapter`, and an HSA
+directory mock as `hsa-directory-mock`. Kong runs DB-less with
+source-controlled configuration from
+[containers/kong/kong.yml](../containers/kong/kong.yml). Its proxy and Admin
+API are available only on the compose network at `kong:8000` and `kong:8001`;
+no Kong ports are forwarded to the host.
 
-The HSA directory mock is also internal-only. It exposes the SOAP
-`GetHsaPerson` endpoint and the dev REST person-lookup facade on
-`hsa-directory-mock:8080`.
+The HSA directory mock is also internal-only. It exposes SOAP
+`GetHsaPerson` over HTTPS with mTLS on `hsa-directory-mock:8443`. The adapter
+exposes the app-facing REST contract on `hsa-person-lookup-adapter:8080` and
+uses generated local test certificates to call the mock SOAP endpoint. Kong
+exposes only `/hsa/person-records/lookup` and routes it to the adapter.
 
 Use `npm run devcontainer:kong:status` from the workspace to verify that the
 devcontainer `app` service can reach the internal Admin API. Use
-`npm run devcontainer:hsa-mock:status` to check the mock directly, or
-`npm run devcontainer:hsa-mock:verify` to post both a SOAP `GetHsaPerson`
-request through Kong at `http://kong:8000/svr-hsaws2/hsaws` and a REST person
-lookup through Kong at `http://kong:8000/hsa/person-records/lookup`.
+`npm run devcontainer:hsa-mock:status` to check the mock and adapter directly,
+or `npm run devcontainer:hsa-mock:verify` to post the REST person lookup
+through Kong at `http://kong:8000/hsa/person-records/lookup`.
 
 The release bundle also includes a test-only `single-node-demo` overlay that
-starts Kong and the HSA directory mock on the internal single-node network.
-That overlay supports release-smoke and disposable demo environments. It is not
-the production HSA integration path.
+starts Kong, the adapter, and the HSA directory mock on the internal
+single-node network. That overlay supports release-smoke and disposable demo
+environments. It is not the required production HSA integration path.
 
 ## Runtime configuration
 
@@ -53,6 +55,19 @@ facade. The browser must never receive this endpoint or call it directly.
 `HSA_PERSON_LOOKUP_TIMEOUT_MS` controls the app-side timeout. Keep the default
 unless the approved integration path for an environment requires a different
 timeout.
+
+If `HSA_PERSON_LOOKUP_URL` points to an external integrationsplattform, the app
+can add app-to-platform authentication without changing the URL knob. Set
+`HSA_PERSON_LOOKUP_CLIENT_CERT_PATH` and `HSA_PERSON_LOOKUP_CLIENT_KEY_PATH`
+for mTLS, optionally with `HSA_PERSON_LOOKUP_CA_PATH` and
+`HSA_PERSON_LOOKUP_TLS_SERVER_NAME`. Set
+`HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`,
+`HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`, and either
+`HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL` or
+`HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL` for OAuth2 client credentials. Optional
+`HSA_PERSON_LOOKUP_OAUTH_SCOPE` and `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` are
+sent to the token endpoint when configured. Supplying both mTLS and OAuth2
+enables mixed mode.
 
 ## Verify route
 
@@ -85,7 +100,7 @@ sequenceDiagram
     Kong->>Upstream: Forward person lookup
 
     alt Person found
-        Upstream-->>Kong: 200 { hsaId, givenName, middleName, surname, email }
+        Upstream-->>Kong: 200 person JSON incl. hasProtectedPersonalData
         Kong-->>App: 200 person JSON
         App->>App: Validate HSA-id and normalize fields
     else Upstream not found
@@ -103,10 +118,11 @@ sequenceDiagram
 ```
 
 In devcontainer, `Kong REST facade` is the DB-less Kong route
-`/hsa/person-records/lookup`, and `HSA lookup upstream` is the HSA directory
-mock's REST facade. Test and production environments can keep the same
-app-facing REST contract while the approved Kong or integration-platform route
-handles any transformation needed for the real HSA upstream.
+`/hsa/person-records/lookup`, and `HSA lookup upstream` is the
+`hsa-person-lookup-adapter`, which calls the HSA directory mock SOAP endpoint
+with mTLS. Test and production environments can keep the same app-facing REST
+contract while the approved Kong or integration-platform route handles any
+transformation needed for the real HSA upstream.
 
 ## Responsibility-assignment flow
 
@@ -169,4 +185,5 @@ the route returns an error asking the editor to verify the HSA-id first.
 
 - [ADR 0024: HSA-katalogmock som SOAP-upstream](./adr/0024-hsa-katalogmock-som-soap-upstream.md)
 - [ADR 0025: Kravansvarsperson för HSA-uppslag](./adr/0025-kravansvarsperson-for-hsa-uppslag.md)
+- [ADR 0029: HSA-personuppslag som REST-gräns mot integrationsplattform](./adr/0029-hsa-personuppslag-som-restgrans-mot-integrationsplattform.md)
 - [API security](./api-security.md)

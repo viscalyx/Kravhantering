@@ -96,7 +96,10 @@ describe('devcontainer HSA mock helper', () => {
         '-f',
         '.devcontainer/docker-compose.yml',
         'config',
+        'hsa-mtls-cert-generator',
         'hsa-directory-mock',
+        'hsa-person-lookup-adapter',
+        'kong',
       ],
       expect.objectContaining({
         env: expect.objectContaining({
@@ -145,8 +148,10 @@ describe('devcontainer HSA mock helper', () => {
         'up',
         '--build',
         '-d',
-        '--no-deps',
+        'hsa-mtls-cert-generator',
         'hsa-directory-mock',
+        'hsa-person-lookup-adapter',
+        'kong',
       ],
       expect.any(Object),
     )
@@ -177,7 +182,7 @@ describe('devcontainer HSA mock helper', () => {
     await expect(main(['restart'])).resolves.toBe(1)
 
     expect(consoleError).toHaveBeenCalledWith(
-      'docker compose restart hsa-directory-mock failed with 12',
+      'docker compose restart HSA lookup services failed with 12',
     )
     expect(consoleError).toHaveBeenCalledWith(
       expect.stringContaining(

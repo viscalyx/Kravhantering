@@ -214,6 +214,11 @@ describe('container image contract', () => {
     expect(packageJson.scripts['container:build:hsa-directory-mock']).toBe(
       'docker buildx build --file containers/hsa-directory-mock/Dockerfile --tag localhost/kravhantering/hsa-directory-mock:local --load containers/hsa-directory-mock',
     )
+    expect(
+      packageJson.scripts['container:build:hsa-person-lookup-adapter'],
+    ).toBe(
+      'docker buildx build --file containers/hsa-person-lookup-adapter/Dockerfile --tag localhost/kravhantering/hsa-person-lookup-adapter:local --load containers/hsa-person-lookup-adapter',
+    )
   })
 
   it('keeps nginx scoped to TLS, app proxying, and Keycloak forwarding', () => {

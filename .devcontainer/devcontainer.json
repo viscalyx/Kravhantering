@@ -2,7 +2,15 @@
   "name": "Kravhantering Development",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
-  "runServices": ["app", "db", "idp", "kong", "hsa-directory-mock"],
+  "runServices": [
+    "app",
+    "db",
+    "idp",
+    "kong",
+    "hsa-person-lookup-adapter",
+    "hsa-directory-mock",
+    "hsa-mtls-cert-generator"
+  ],
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
   "remoteEnv": {

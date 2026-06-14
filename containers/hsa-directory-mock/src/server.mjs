@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import http from 'node:http'
+import https from 'node:https'
 import { SaxesParser } from 'saxes'
 
 export const SOAP_NS = 'http://schemas.xmlsoap.org/soap/envelope/'
@@ -8,12 +9,15 @@ export const HSA_NS = 'urn:riv:hsa:HsaWsResponder:3'
 
 const EXPECTED_TO = 'SE165565594230-1000'
 const SOAP_PATH = '/svr-hsaws2/hsaws'
-const REST_PERSON_LOOKUP_PATH = '/hsa/person-records/lookup'
 const HEALTH_PATH = '/health'
-const DEFAULT_PORT = 8080
+const DEFAULT_PORT = 8443
 const MAX_BODY_BYTES = 1024 * 1024
 
 const FIXTURE_URL = new URL('../fixtures/hsa-personer.json', import.meta.url)
+const DEFAULT_AUTH_MODE = 'realistic-mtls'
+const DEFAULT_TLS_CERT_PATH = '/run/hsa-mtls/server.crt'
+const DEFAULT_TLS_KEY_PATH = '/run/hsa-mtls/server.key'
+const DEFAULT_TLS_CA_PATH = '/run/hsa-mtls/ca.crt'
 
 class SoapFault extends Error {
   constructor(code, message) {
@@ -231,6 +235,7 @@ export async function loadFixtures(fixturesUrl = FIXTURE_URL) {
   const content = await readFile(fixturesUrl, 'utf8')
   const parsed = JSON.parse(content)
   return {
+    callerSystems: parsed.callerSystems ?? [],
     hsaPersonRecords: parsed.hsaPersonRecords ?? [],
     notFoundIdentities: new Set(parsed.notFoundIdentities ?? []),
   }
@@ -247,89 +252,6 @@ function findRecords(fixtures, request) {
   return fixtures.hsaPersonRecords.filter(record => {
     return record.personalIdentityNumber === request.personalIdentityNumber
   })
-}
-
-function trimmedString(value) {
-  if (typeof value !== 'string') return null
-  const trimmed = value.trim()
-  return trimmed || null
-}
-
-function normalizePersonRecord(record) {
-  return {
-    email: trimmedString(record.mail),
-    givenName: trimmedString(record.givenName),
-    hsaId: trimmedString(record.hsaIdentity),
-    middleName: trimmedString(record.middleName),
-    surname: trimmedString(record.sn),
-  }
-}
-
-function personRecordKey(person) {
-  return JSON.stringify({
-    email: person.email?.toLocaleLowerCase('sv') ?? null,
-    givenName: person.givenName,
-    middleName: person.middleName,
-    surname: person.surname,
-  })
-}
-
-async function handleRestPersonLookup(req, res, fixtures) {
-  if (req.method !== 'POST') {
-    res.writeHead(405, {
-      Allow: 'POST',
-      'Cache-Control': 'no-store',
-      'Content-Type': 'application/json; charset=utf-8',
-    })
-    res.end(JSON.stringify({ error: 'Method not allowed' }))
-    return
-  }
-
-  let payload
-  try {
-    payload = JSON.parse(await readBody(req))
-  } catch {
-    jsonResponse(res, 400, {
-      code: 'validation',
-      error: 'Request body must be JSON.',
-    })
-    return
-  }
-
-  const hsaId = trimmedString(payload?.hsaId)
-  if (!hsaId) {
-    jsonResponse(res, 400, {
-      code: 'validation',
-      error: 'hsaId is required.',
-    })
-    return
-  }
-
-  if (fixtures.notFoundIdentities.has(hsaId)) {
-    jsonResponse(res, 404, { code: 'not_found', error: 'HSA-id not found.' })
-    return
-  }
-
-  const people = fixtures.hsaPersonRecords
-    .filter(record => record.hsaIdentity === hsaId)
-    .map(normalizePersonRecord)
-    .filter(person => person.hsaId && person.givenName)
-
-  if (people.length === 0) {
-    jsonResponse(res, 404, { code: 'not_found', error: 'HSA-id not found.' })
-    return
-  }
-
-  const normalizedKeys = new Set(people.map(personRecordKey))
-  if (normalizedKeys.size > 1) {
-    jsonResponse(res, 409, {
-      code: 'conflict',
-      error: 'HSA-id matched conflicting person records.',
-    })
-    return
-  }
-
-  jsonResponse(res, 200, people[0])
 }
 
 function xmlResponse(res, statusCode, body) {
@@ -363,17 +285,124 @@ async function readBody(req) {
   return Buffer.concat(chunks).toString('utf8')
 }
 
-export function createServer(fixtures) {
-  return http.createServer(async (req, res) => {
+function readString(name, fallback = undefined, env = process.env) {
+  const value = env[name]?.trim()
+  return value || fallback
+}
+
+export function readAuthConfig(env = process.env) {
+  return {
+    caPath: readString('HSA_MOCK_TLS_CA_PATH', DEFAULT_TLS_CA_PATH, env),
+    certPath: readString('HSA_MOCK_TLS_CERT_PATH', DEFAULT_TLS_CERT_PATH, env),
+    keyPath: readString('HSA_MOCK_TLS_KEY_PATH', DEFAULT_TLS_KEY_PATH, env),
+    mode: readString('HSA_MOCK_AUTH_MODE', DEFAULT_AUTH_MODE, env),
+  }
+}
+
+async function readTlsOptions(authConfig) {
+  return {
+    ca: await readFile(authConfig.caPath),
+    cert: await readFile(authConfig.certPath),
+    key: await readFile(authConfig.keyPath),
+    rejectUnauthorized: false,
+    requestCert: true,
+  }
+}
+
+function certificateSubjectSerialNumber(certificate) {
+  const subject = certificate?.subject
+  if (!subject || typeof subject !== 'object') return ''
+  return (
+    subject.serialNumber ?? subject.serialnumber ?? subject['2.5.4.5'] ?? ''
+  )
+}
+
+function authFailure(statusCode, code, error) {
+  return { body: { code, error }, statusCode }
+}
+
+function hasEntitlement(callerSystem, property, entitlement) {
+  const values =
+    callerSystem[property] ??
+    callerSystem.entitlements?.[property] ??
+    callerSystem.entitlements ??
+    []
+  return Array.isArray(values) && values.includes(entitlement)
+}
+
+function authenticateCaller(req, fixtures, authConfig) {
+  if (authConfig.mode === 'disabled') return null
+
+  const certificate = req.socket.getPeerCertificate?.()
+  if (!certificate || Object.keys(certificate).length === 0) {
+    return authFailure(
+      401,
+      'missing_client_certificate',
+      'Client certificate is required.',
+    )
+  }
+
+  if (!req.socket.authorized) {
+    return authFailure(
+      403,
+      'untrusted_client_certificate',
+      'Client certificate is not trusted by the HSA mock.',
+    )
+  }
+
+  const callerHsaId = certificateSubjectSerialNumber(certificate).trim()
+  if (!callerHsaId) {
+    return authFailure(
+      401,
+      'missing_client_serial_number',
+      'Client certificate subject.serialNumber is required.',
+    )
+  }
+
+  const callerSystem = fixtures.callerSystems.find(candidate => {
+    return candidate.hsaIdentity === callerHsaId
+  })
+  if (!callerSystem) {
+    return authFailure(
+      403,
+      'unknown_caller_system',
+      'Client certificate does not match a known caller system.',
+    )
+  }
+  if (!callerSystem.active) {
+    return authFailure(
+      403,
+      'inactive_caller_system',
+      'Client certificate matches an inactive caller system.',
+    )
+  }
+  if (!hasEntitlement(callerSystem, 'serviceEntitlements', 'hsaws2')) {
+    return authFailure(
+      403,
+      'missing_hsaws2_entitlement',
+      'Caller system lacks hsaws2 entitlement.',
+    )
+  }
+  if (!hasEntitlement(callerSystem, 'methodEntitlements', 'GetHsaPerson')) {
+    return authFailure(
+      403,
+      'missing_get_hsa_person_entitlement',
+      'Caller system lacks GetHsaPerson entitlement.',
+    )
+  }
+
+  return null
+}
+
+export function createServer(
+  fixtures,
+  { authConfig = { mode: 'disabled' }, tlsOptions } = {},
+) {
+  const requestHandler = async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://hsa-directory-mock')
 
     if (url.pathname === HEALTH_PATH && req.method === 'GET') {
       jsonResponse(res, 200, { status: 'ok' })
-      return
-    }
-
-    if (url.pathname === REST_PERSON_LOOKUP_PATH) {
-      await handleRestPersonLookup(req, res, fixtures)
       return
     }
 
@@ -392,6 +421,12 @@ export function createServer(fixtures) {
       return
     }
 
+    const authError = authenticateCaller(req, fixtures, authConfig)
+    if (authError) {
+      jsonResponse(res, authError.statusCode, authError.body)
+      return
+    }
+
     try {
       const body = await readBody(req)
       const request = extractRequest(body)
@@ -404,16 +439,25 @@ export function createServer(fixtures) {
           : new SoapFault(6, 'Unexpected HSA directory mock error.')
       xmlResponse(res, 500, faultResponse(fault.code, fault.message))
     }
-  })
+  }
+
+  return tlsOptions
+    ? https.createServer(tlsOptions, requestHandler)
+    : http.createServer(requestHandler)
 }
 
 export async function startServer({
+  authConfig = readAuthConfig(),
   fixturesUrl = FIXTURE_URL,
   host = '0.0.0.0',
   port = Number(process.env.PORT ?? DEFAULT_PORT),
 } = {}) {
   const fixtures = await loadFixtures(fixturesUrl)
-  const server = createServer(fixtures)
+  const tlsOptions =
+    authConfig.mode === 'realistic-mtls'
+      ? await readTlsOptions(authConfig)
+      : undefined
+  const server = createServer(fixtures, { authConfig, tlsOptions })
   await new Promise((resolve, reject) => {
     server.once('error', reject)
     server.listen(port, host, () => {

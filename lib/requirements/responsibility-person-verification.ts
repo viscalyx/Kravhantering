@@ -47,6 +47,7 @@ export function toRequirementResponsibilityPersonVerificationPayload(
   return {
     ...person,
     displayName: formatRequirementResponsibilityPersonName(person),
+    hasProtectedPersonalData: person.hasProtectedPersonalData ?? false,
   }
 }
 

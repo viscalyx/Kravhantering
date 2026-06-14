@@ -4,6 +4,7 @@ export interface RequirementResponsibilityPersonEntity {
   createdAt: Date
   email: string | null
   givenName: string
+  hasProtectedPersonalData: boolean
   hsaId: string
   lastFetchedAt: Date | null
   middleName: string | null
@@ -44,6 +45,11 @@ export const requirementResponsibilityPersonEntity =
         type: 'nvarchar',
         length: 450,
         nullable: true,
+      },
+      hasProtectedPersonalData: {
+        name: 'has_protected_personal_data',
+        type: 'bit',
+        default: false,
       },
       lastFetchedAt: {
         name: 'last_fetched_at',

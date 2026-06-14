@@ -31,6 +31,7 @@ describe('requirement responsibility people DAL', () => {
         null,
         'Owner',
         'owner@example.test',
+        false,
         fetchedAt,
       ],
     )

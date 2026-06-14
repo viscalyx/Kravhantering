@@ -1,4 +1,34 @@
 {
+  "callerSystems": [
+    {
+      "hsaIdentity": "SE5560000000-MOCK001",
+      "displayName": "HSA person lookup adapter",
+      "active": true,
+      "serviceEntitlements": ["hsaws2"],
+      "methodEntitlements": ["GetHsaPerson"]
+    },
+    {
+      "hsaIdentity": "SE5560000000-INACTIVE",
+      "displayName": "Inactive HSA person lookup adapter",
+      "active": false,
+      "serviceEntitlements": ["hsaws2"],
+      "methodEntitlements": ["GetHsaPerson"]
+    },
+    {
+      "hsaIdentity": "SE5560000000-NO-HSAWS2",
+      "displayName": "Caller without hsaws2",
+      "active": true,
+      "serviceEntitlements": [],
+      "methodEntitlements": ["GetHsaPerson"]
+    },
+    {
+      "hsaIdentity": "SE5560000000-NO-GET-HSA-PERSON",
+      "displayName": "Caller without GetHsaPerson",
+      "active": true,
+      "serviceEntitlements": ["hsaws2"],
+      "methodEntitlements": []
+    }
+  ],
   "hsaPersonRecords": [
     {
       "hsaIdentity": "SE1000-004",
@@ -52,6 +82,15 @@
       "mail": "karin@sos.se",
       "DN": "cn=Karin Karlsson,ou=annan-enhet,o=ozon,c=se",
       "purposes": ["Andra HSA-objektet för konfliktfall."]
+    },
+    {
+      "hsaIdentity": "SE1000-PROTECTED",
+      "givenName": "Signe",
+      "sn": "Sekretess",
+      "mail": "signe.sekretess@example.test",
+      "DN": "cn=Signe Sekretess,ou=enheten,o=ozon,c=se",
+      "hsaProtectedPerson": "true",
+      "purposes": ["Kontraktsexempel med skyddade personuppgifter i HSA."]
     },
     {
       "hsaIdentity": "SE5560000001-annaj",

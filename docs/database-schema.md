@@ -248,6 +248,7 @@ erDiagram
         text middle_name
         text surname
         text email
+        integer has_protected_personal_data
         text last_fetched_at
         text created_at
         text updated_at
@@ -851,6 +852,7 @@ assignments.
 | `middle_name` | text | Middle name from the HSA lookup (nullable) |
 | `surname` | text | Surname from the HSA lookup (nullable) |
 | `email` | text | E-mail address from the HSA lookup (nullable) |
+| `has_protected_personal_data` | bit | Whether HSA marked the person post with protected personal data |
 | `last_fetched_at` | text (ISO 8601) | Last successful HSA lookup timestamp, null for migration placeholders |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last refresh timestamp |

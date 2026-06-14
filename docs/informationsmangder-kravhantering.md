@@ -88,6 +88,11 @@ avsiktliga personuppgifter i fritext. Förvaltningen och driftorganisationen
 behöver fortsatt verifiera skydd för vilande databaslagring, backup,
 nyckelhantering, loggplattform och behörighet till driftloggar.
 
+Kravansvarsperson kan också bära flaggan `hasProtectedPersonalData`, mappad
+från HSA `hsaProtectedPerson`, för att visa att HSA-personposten har skyddade
+personuppgifter. Flaggan transporteras och exporteras men ger ännu ingen
+särskild UI-maskering eller gallringsregel; sådan policy beslutas separat.
+
 ## Gallrings- och arkiveringsmatris
 
 Kravhanterings funktionella kravarkivering är inte samma sak som

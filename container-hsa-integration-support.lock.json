@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "releaseVersion": "0.1.0",
+  "commitSha": "unknown",
+  "generatedAt": "2026-06-14T00:00:00.000Z",
+  "generatedBy": "scripts/containers/generate-hsa-integration-support-lock.mjs",
+  "services": [
+    {
+      "name": "kong",
+      "role": "api-management",
+      "image": "docker.io/kong/kong-gateway",
+      "tag": "3.10.0.8-20260210-ubuntu",
+      "manifestDigest": "sha256:031e2abf5b973db9ce5d94ea30a46d4b29b3879088118e0b1c0ff66b8c814853",
+      "imageId": "sha256:420fc488a23bc735c8d5acd8d2957b33f538ed2d3423d7103c38f143703b2968",
+      "source": "https://hub.docker.com/r/kong/kong-gateway"
+    },
+    {
+      "name": "hsa-person-lookup-adapter",
+      "role": "hsa-person-lookup-adapter",
+      "image": "localhost/kravhantering/hsa-person-lookup-adapter",
+      "tag": "local",
+      "manifestDigest": "sha256:hsa-person-lookup-adapter-local",
+      "imageId": "sha256:hsa-person-lookup-adapter-local",
+      "source": "local-build"
+    }
+  ]
+}

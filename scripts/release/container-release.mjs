@@ -2,6 +2,7 @@ import childProcess from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { assertHsaIntegrationSupportLockSchema } from '../containers/generate-hsa-integration-support-lock.mjs'
 import { assertStackLockSchema } from '../containers/generate-stack-lock.mjs'
 import { assertTestSupportLockSchema } from '../containers/generate-test-support-lock.mjs'
 import {
@@ -9,11 +10,14 @@ import {
   DEFAULT_DEMO_USERS_PATH,
   DEFAULT_DEV_REALM_PATH,
 } from '../keycloak-demo-users.mjs'
+import { generateHsaPersonLookupSwaggerUi } from '../openapi/generate-hsa-person-lookup-swagger-ui.mjs'
 import { stripOperatorUpgradeSourceMarkers } from './operator-upgrade-notes.mjs'
 
 export const APP_RUNTIME_PACKAGE = 'kravhantering-app-runtime'
 export const DB_JOB_PACKAGE = 'kravhantering-db-job'
 export const HSA_DIRECTORY_MOCK_PACKAGE = 'kravhantering-hsa-directory-mock'
+export const HSA_PERSON_LOOKUP_ADAPTER_PACKAGE =
+  'kravhantering-hsa-person-lookup-adapter'
 export const DEFAULT_RELEASE_OUTPUT_DIR = 'tmp/container-release-artifacts'
 export const DEFAULT_OPERATOR_UPGRADE_NOTES_PATH =
   'docs/operator-upgrade-notes.md'
@@ -24,12 +28,14 @@ export const DB_JOB_DESCRIPTION =
   'Database job image for SQL Server health checks, migrations and required seed operations.'
 export const HSA_DIRECTORY_MOCK_DESCRIPTION =
   'Test-only HSA directory mock image for the single-node-demo release support topology.'
+export const HSA_PERSON_LOOKUP_ADAPTER_DESCRIPTION =
+  'REST to SOAP GetHsaPerson adapter image for optional HSA integration support.'
 
 const USAGE = `Usage:
   node scripts/release/container-release.mjs plan --gitversion-json <path> --output <path> [--github-env <path>] [--changed-files <path>]
-  node scripts/release/container-release.mjs identities --plan <path> --app-metadata <path> --db-job-metadata <path> [--hsa-directory-mock-metadata <path>] --output <path> [--github-env <path>]
+  node scripts/release/container-release.mjs identities --plan <path> --app-metadata <path> --db-job-metadata <path> [--hsa-directory-mock-metadata <path>] [--hsa-person-lookup-adapter-metadata <path>] --output <path> [--github-env <path>]
   node scripts/release/container-release.mjs notes --plan <path> --metadata <path> --hashes <path> --output <path> [--operator-notes <path>]
-  node scripts/release/container-release.mjs bundle --plan <path> --metadata <path> --stack-lock <path> --output-dir <path> [--test-support-lock <path>] [--build-json <path>] [--hashes <path>] [--sbom-dir <path>]
+  node scripts/release/container-release.mjs bundle --plan <path> --metadata <path> --stack-lock <path> --output-dir <path> [--hsa-integration-support-lock <path>] [--test-support-lock <path>] [--build-json <path>] [--hashes <path>] [--sbom-dir <path>]
   node scripts/release/container-release.mjs ensure-tag --plan <path>`
 
 const RELEVANT_PATH_PREFIXES = [
@@ -113,6 +119,10 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
   { source: 'containers/production/sqlserver', target: 'sqlserver' },
   { source: 'containers/production/systemd', target: 'systemd' },
   { source: 'containers/production/bin', target: 'bin' },
+  {
+    source: 'openapi/hsa-person-lookup.yaml',
+    target: 'openapi/hsa-person-lookup.yaml',
+  },
   {
     source: 'scripts/keycloak-demo-users.mjs',
     target: 'scripts/keycloak-demo-users.mjs',
@@ -342,6 +352,7 @@ export function createReleasePlan(input = {}) {
   const appRuntimeImage = `ghcr.io/${owner}/${APP_RUNTIME_PACKAGE}`
   const dbJobImage = `ghcr.io/${owner}/${DB_JOB_PACKAGE}`
   const hsaDirectoryMockImage = `ghcr.io/${owner}/${HSA_DIRECTORY_MOCK_PACKAGE}`
+  const hsaPersonLookupAdapterImage = `ghcr.io/${owner}/${HSA_PERSON_LOOKUP_ADAPTER_PACKAGE}`
   const commitTags = [`main-${shortSha}`, `sha-${sha}`]
   const tags = isStableRelease
     ? [version]
@@ -365,6 +376,11 @@ export function createReleasePlan(input = {}) {
     hsaDirectoryMockImage,
     hsaDirectoryMockPackage: HSA_DIRECTORY_MOCK_PACKAGE,
     hsaDirectoryMockTags: tags.map(tag => `${hsaDirectoryMockImage}:${tag}`),
+    hsaPersonLookupAdapterImage,
+    hsaPersonLookupAdapterPackage: HSA_PERSON_LOOKUP_ADAPTER_PACKAGE,
+    hsaPersonLookupAdapterTags: tags.map(
+      tag => `${hsaPersonLookupAdapterImage}:${tag}`,
+    ),
     isMain,
     isStableRelease,
     makeLatest: isStableRelease,
@@ -412,6 +428,13 @@ export function releasePlanEnv(plan) {
     HSA_DIRECTORY_MOCK_PRIMARY_TAG: plan.hsaDirectoryMockTags[0],
     HSA_DIRECTORY_MOCK_PRIMARY_TAG_NAME: plan.tags[0],
     HSA_DIRECTORY_MOCK_TAGS_CSV: csv(plan.hsaDirectoryMockTags),
+    HSA_PERSON_LOOKUP_ADAPTER_DESCRIPTION:
+      HSA_PERSON_LOOKUP_ADAPTER_DESCRIPTION,
+    HSA_PERSON_LOOKUP_ADAPTER_IMAGE: plan.hsaPersonLookupAdapterImage,
+    HSA_PERSON_LOOKUP_ADAPTER_PACKAGE: plan.hsaPersonLookupAdapterPackage,
+    HSA_PERSON_LOOKUP_ADAPTER_PRIMARY_TAG: plan.hsaPersonLookupAdapterTags[0],
+    HSA_PERSON_LOOKUP_ADAPTER_PRIMARY_TAG_NAME: plan.tags[0],
+    HSA_PERSON_LOOKUP_ADAPTER_TAGS_CSV: csv(plan.hsaPersonLookupAdapterTags),
     RELEASE_CREATE_GITHUB_RELEASE: String(plan.createGitHubRelease),
     RELEASE_IS_STABLE: String(plan.isStableRelease),
     RELEASE_MAKE_LATEST: String(plan.makeLatest),
@@ -480,6 +503,7 @@ export function createReleaseMetadata(
   appBuildxMetadata,
   dbJobBuildxMetadata,
   hsaDirectoryMockBuildxMetadata,
+  hsaPersonLookupAdapterBuildxMetadata,
 ) {
   const testSupport = hsaDirectoryMockBuildxMetadata
     ? {
@@ -487,6 +511,15 @@ export function createReleaseMetadata(
           plan.hsaDirectoryMockImage,
           plan.hsaDirectoryMockTags,
           hsaDirectoryMockBuildxMetadata,
+        ),
+      }
+    : undefined
+  const hsaIntegrationSupport = hsaPersonLookupAdapterBuildxMetadata
+    ? {
+        hsaPersonLookupAdapter: createImageMetadata(
+          plan.hsaPersonLookupAdapterImage,
+          plan.hsaPersonLookupAdapterTags,
+          hsaPersonLookupAdapterBuildxMetadata,
         ),
       }
     : undefined
@@ -503,6 +536,7 @@ export function createReleaseMetadata(
       dbJobBuildxMetadata,
     ),
     generatedAt: new Date().toISOString(),
+    ...(hsaIntegrationSupport ? { hsaIntegrationSupport } : {}),
     releaseTagName: plan.releaseTagName,
     ...(testSupport ? { testSupport } : {}),
     version: plan.version,
@@ -523,6 +557,15 @@ export function releaseMetadataEnv(metadata) {
     values.HSA_DIRECTORY_MOCK_IMAGE_ID = hsaDirectoryMock.imageId
     values.HSA_DIRECTORY_MOCK_MANIFEST_DIGEST = hsaDirectoryMock.manifestDigest
     values.HSA_DIRECTORY_MOCK_MANIFEST_DIGEST_REF = hsaDirectoryMock.manifestRef
+  }
+  const hsaPersonLookupAdapter =
+    metadata.hsaIntegrationSupport?.hsaPersonLookupAdapter
+  if (hsaPersonLookupAdapter) {
+    values.HSA_PERSON_LOOKUP_ADAPTER_IMAGE_ID = hsaPersonLookupAdapter.imageId
+    values.HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST =
+      hsaPersonLookupAdapter.manifestDigest
+    values.HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST_REF =
+      hsaPersonLookupAdapter.manifestRef
   }
   return values
 }
@@ -552,12 +595,16 @@ function serviceByName(stackLock, name) {
 export function createDeploymentBundleManifest({
   files = [],
   generatedAt,
+  hsaIntegrationSupportLock,
   metadata,
   plan,
   stackLock,
   testSupportLock,
 } = {}) {
   assertStackLockSchema(stackLock)
+  if (hsaIntegrationSupportLock) {
+    assertHsaIntegrationSupportLockSchema(hsaIntegrationSupportLock)
+  }
   if (testSupportLock) {
     assertTestSupportLockSchema(testSupportLock)
   }
@@ -572,7 +619,15 @@ export function createDeploymentBundleManifest({
   const testSupportServices = testSupportLock
     ? {
         hsaDirectoryMock: serviceByName(testSupportLock, 'hsa-directory-mock'),
-        kong: serviceByName(testSupportLock, 'kong'),
+      }
+    : undefined
+  const hsaIntegrationSupportServices = hsaIntegrationSupportLock
+    ? {
+        hsaPersonLookupAdapter: serviceByName(
+          hsaIntegrationSupportLock,
+          'hsa-person-lookup-adapter',
+        ),
+        kong: serviceByName(hsaIntegrationSupportLock, 'kong'),
       }
     : undefined
 
@@ -607,20 +662,37 @@ export function createDeploymentBundleManifest({
             hsaDirectoryMock:
               metadata.testSupport?.hsaDirectoryMock?.manifestRef ??
               manifestRef(testSupportServices.hsaDirectoryMock),
-            kong: manifestRef(testSupportServices.kong),
           },
           testSupportImageIds: {
             hsaDirectoryMock:
               metadata.testSupport?.hsaDirectoryMock?.imageId ??
               imageId(testSupportServices.hsaDirectoryMock),
-            kong: imageId(testSupportServices.kong),
+          },
+        }
+      : {}),
+    ...(hsaIntegrationSupportServices
+      ? {
+          hsaIntegrationSupportImages: {
+            hsaPersonLookupAdapter:
+              metadata.hsaIntegrationSupport?.hsaPersonLookupAdapter
+                ?.manifestRef ??
+              manifestRef(hsaIntegrationSupportServices.hsaPersonLookupAdapter),
+            kong: manifestRef(hsaIntegrationSupportServices.kong),
+          },
+          hsaIntegrationSupportImageIds: {
+            hsaPersonLookupAdapter:
+              metadata.hsaIntegrationSupport?.hsaPersonLookupAdapter?.imageId ??
+              imageId(hsaIntegrationSupportServices.hsaPersonLookupAdapter),
+            kong: imageId(hsaIntegrationSupportServices.kong),
           },
         }
       : {}),
     supportedTopologies: [
       'app-node-external-sql-external-idp',
       'single-node-internal-sql-internal-keycloak',
-      ...(testSupportServices ? ['single-node-demo'] : []),
+      ...(testSupportServices || hsaIntegrationSupportServices
+        ? ['single-node-demo']
+        : []),
     ],
     files: [...files].sort(),
   }
@@ -768,6 +840,7 @@ export function stageProductionDeploymentBundle(options = {}) {
   const plan = options.plan
   const metadata = options.metadata
   const stackLock = options.stackLock
+  const hsaIntegrationSupportLock = options.hsaIntegrationSupportLock
   const testSupportLock = options.testSupportLock
 
   if (!plan || !metadata || !stackLock) {
@@ -783,6 +856,11 @@ export function stageProductionDeploymentBundle(options = {}) {
     copyBundleEntry(entry, bundleRoot, { cwd, fsImpl })
     copyBundleMarkdownAssets(entry, bundleRoot, { cwd, fsImpl })
   }
+  generateHsaPersonLookupSwaggerUi({
+    fsImpl,
+    openapiPath: path.resolve(cwd, 'openapi/hsa-person-lookup.yaml'),
+    outputDir: path.join(bundleRoot, 'api-docs/hsa-person-lookup'),
+  })
 
   const demoUsersDocument = buildDemoUsersDocument(
     readJsonFile(path.resolve(cwd, DEFAULT_DEV_REALM_PATH), fsImpl),
@@ -796,6 +874,10 @@ export function stageProductionDeploymentBundle(options = {}) {
 
   const dynamicFiles = [
     [options.stackLockPath, 'container-stack.lock.json'],
+    [
+      options.hsaIntegrationSupportLockPath,
+      'container-hsa-integration-support.lock.json',
+    ],
     [options.testSupportLockPath, 'container-test-support.lock.json'],
     [options.metadataPath, 'release-metadata.json'],
     [options.buildJsonPath, 'public/build.json'],
@@ -809,6 +891,10 @@ export function stageProductionDeploymentBundle(options = {}) {
         'sbom/app-runtime.spdx.json',
       ],
       [path.join(sbomDir, 'db-job.spdx.json'), 'sbom/db-job.spdx.json'],
+      [
+        path.join(sbomDir, 'hsa-person-lookup-adapter.spdx.json'),
+        'sbom/hsa-person-lookup-adapter.spdx.json',
+      ],
       [
         path.join(sbomDir, 'hsa-directory-mock.spdx.json'),
         'sbom/hsa-directory-mock.spdx.json',
@@ -825,6 +911,7 @@ export function stageProductionDeploymentBundle(options = {}) {
   const manifest = createDeploymentBundleManifest({
     files: [...filesBeforeManifest, 'DEPLOYMENT-MANIFEST.json'],
     generatedAt: options.generatedAt,
+    hsaIntegrationSupportLock,
     metadata,
     plan,
     stackLock,
@@ -973,6 +1060,8 @@ export function withReleasePackageUrls(plan, metadata, options = {}) {
   const dbJobPackage = plan.dbJobPackage ?? DB_JOB_PACKAGE
   const hsaDirectoryMockPackage =
     plan.hsaDirectoryMockPackage ?? HSA_DIRECTORY_MOCK_PACKAGE
+  const hsaPersonLookupAdapterPackage =
+    plan.hsaPersonLookupAdapterPackage ?? HSA_PERSON_LOOKUP_ADAPTER_PACKAGE
   const appRuntimeTagUrls = resolvePackageTagUrls(
     plan,
     appRuntimePackage,
@@ -988,6 +1077,16 @@ export function withReleasePackageUrls(plan, metadata, options = {}) {
   const hsaDirectoryMock = metadata.testSupport?.hsaDirectoryMock
   const hsaDirectoryMockTagUrls = hsaDirectoryMock
     ? resolvePackageTagUrls(plan, hsaDirectoryMockPackage, rawTags, options)
+    : {}
+  const hsaPersonLookupAdapter =
+    metadata.hsaIntegrationSupport?.hsaPersonLookupAdapter
+  const hsaPersonLookupAdapterTagUrls = hsaPersonLookupAdapter
+    ? resolvePackageTagUrls(
+        plan,
+        hsaPersonLookupAdapterPackage,
+        rawTags,
+        options,
+      )
     : {}
   return {
     ...metadata,
@@ -1013,6 +1112,21 @@ export function withReleasePackageUrls(plan, metadata, options = {}) {
                 hsaDirectoryMock.tags,
                 rawTags,
                 hsaDirectoryMockTagUrls,
+              ),
+            },
+          },
+        }
+      : {}),
+    ...(hsaPersonLookupAdapter
+      ? {
+          hsaIntegrationSupport: {
+            ...metadata.hsaIntegrationSupport,
+            hsaPersonLookupAdapter: {
+              ...hsaPersonLookupAdapter,
+              tagUrls: imageTagUrls(
+                hsaPersonLookupAdapter.tags,
+                rawTags,
+                hsaPersonLookupAdapterTagUrls,
               ),
             },
           },
@@ -1194,6 +1308,25 @@ function renderTestSupportContainerImagesSection(plan, metadata) {
   ]
 }
 
+function renderHsaIntegrationSupportContainerImagesSection(plan, metadata) {
+  const hsaPersonLookupAdapter =
+    metadata.hsaIntegrationSupport?.hsaPersonLookupAdapter
+  if (!hsaPersonLookupAdapter) return []
+
+  return [
+    '',
+    '## HSA Integration Support Container Images',
+    '',
+    'These images support optional Kong plus adapter HSA person lookup topology and are not part of the required production runtime topology.',
+    '',
+    ...renderContainerImageBlock(
+      plan.hsaPersonLookupAdapterPackage ?? HSA_PERSON_LOOKUP_ADAPTER_PACKAGE,
+      HSA_PERSON_LOOKUP_ADAPTER_DESCRIPTION,
+      hsaPersonLookupAdapter,
+    ),
+  ]
+}
+
 function renderOperatorUpgradeNotesSection(operatorUpgradeNotes) {
   const notes = readNonEmpty(operatorUpgradeNotes)
   if (!notes) return undefined
@@ -1227,6 +1360,7 @@ export function renderReleaseNotes(
       DB_JOB_DESCRIPTION,
       metadata.dbJob,
     ),
+    ...renderHsaIntegrationSupportContainerImagesSection(plan, metadata),
     ...renderTestSupportContainerImagesSection(plan, metadata),
     '',
     '## Production Deployment Bundle',
@@ -1324,11 +1458,17 @@ export async function main(args, dependencies = {}) {
       ]
         ? readJsonFile(options['hsa-directory-mock-metadata'], fsImpl)
         : undefined
+      const hsaPersonLookupAdapterBuildxMetadata = options[
+        'hsa-person-lookup-adapter-metadata'
+      ]
+        ? readJsonFile(options['hsa-person-lookup-adapter-metadata'], fsImpl)
+        : undefined
       const metadata = createReleaseMetadata(
         plan,
         readJsonFile(options['app-metadata'], fsImpl),
         readJsonFile(options['db-job-metadata'], fsImpl),
         hsaDirectoryMockBuildxMetadata,
+        hsaPersonLookupAdapterBuildxMetadata,
       )
       writeJsonFile(options.output, metadata, fsImpl)
       appendGithubEnv(
@@ -1382,6 +1522,9 @@ export async function main(args, dependencies = {}) {
       const plan = readJsonFile(options.plan, fsImpl)
       const metadata = readJsonFile(options.metadata, fsImpl)
       const stackLock = readJsonFile(options['stack-lock'], fsImpl)
+      const hsaIntegrationSupportLock = options['hsa-integration-support-lock']
+        ? readJsonFile(options['hsa-integration-support-lock'], fsImpl)
+        : undefined
       const testSupportLock = options['test-support-lock']
         ? readJsonFile(options['test-support-lock'], fsImpl)
         : undefined
@@ -1391,6 +1534,8 @@ export async function main(args, dependencies = {}) {
         fsImpl,
         generatedAt: options['generated-at'],
         hashesPath: options.hashes,
+        hsaIntegrationSupportLock,
+        hsaIntegrationSupportLockPath: options['hsa-integration-support-lock'],
         metadata,
         metadataPath: options.metadata,
         outputDir: options['output-dir'],

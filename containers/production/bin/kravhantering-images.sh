@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_NAME="$(basename "$0")"
 DEFAULT_LOCK_FILE="./container-stack.lock.json"
 DEFAULT_TEST_LOCK_FILE="./container-test-support.lock.json"
+DEFAULT_HSA_INTEGRATION_LOCK_FILE="./container-hsa-integration-support.lock.json"
 DEFAULT_ENV_FILE="/etc/kravhantering/release.env"
 CLEANUP_WORK_DIR=""
 
@@ -17,6 +18,9 @@ Usage:
 Options:
   --lock-file <path>       Release container-stack.lock.json path
   --test-lock-file <path>  Test support container-test-support.lock.json path
+                           used by single-node-demo
+  --hsa-integration-lock-file <path>
+                           Optional Kong and HSA person lookup adapter lock
                            used by single-node-demo
   --env-file <path>        release.env path with *_IMAGE_REF values
   --output <path>          Exported disconnected image bundle path. Export
@@ -57,6 +61,7 @@ service_env_prefix() {
     keycloak) printf 'KEYCLOAK\n' ;;
     kong) printf 'KONG\n' ;;
     hsa-directory-mock) printf 'HSA_DIRECTORY_MOCK\n' ;;
+    hsa-person-lookup-adapter) printf 'HSA_PERSON_LOOKUP_ADAPTER\n' ;;
     *) fail "Unsupported service: $1" ;;
   esac
 }
@@ -66,7 +71,7 @@ services_for_topology() {
     app-node) printf '%s\n' app-runtime db-job nginx ;;
     single-node | all) printf '%s\n' app-runtime db-job nginx sqlserver keycloak ;;
     single-node-demo)
-      printf '%s\n' app-runtime db-job nginx sqlserver keycloak kong hsa-directory-mock
+      printf '%s\n' app-runtime db-job nginx sqlserver keycloak kong hsa-person-lookup-adapter hsa-directory-mock
       ;;
     *) fail "Unsupported topology: $1" ;;
   esac
@@ -74,14 +79,15 @@ services_for_topology() {
 
 service_lock_file() {
   case "$1" in
-    kong | hsa-directory-mock) printf '%s\n' "$TEST_LOCK_FILE" ;;
+    kong | hsa-person-lookup-adapter) printf '%s\n' "$HSA_INTEGRATION_LOCK_FILE" ;;
+    hsa-directory-mock) printf '%s\n' "$TEST_LOCK_FILE" ;;
     *) printf '%s\n' "$LOCK_FILE" ;;
   esac
 }
 
 service_lock_schema_version() {
   case "$1" in
-    kong | hsa-directory-mock) printf '1\n' ;;
+    kong | hsa-person-lookup-adapter | hsa-directory-mock) printf '1\n' ;;
     *) printf '2\n' ;;
   esac
 }
@@ -208,6 +214,7 @@ export_images() {
   mkdir -p "$work_dir/images"
   cp "$LOCK_FILE" "$work_dir/container-stack.lock.json"
   if [[ "$TOPOLOGY" == "single-node-demo" ]]; then
+    cp "$HSA_INTEGRATION_LOCK_FILE" "$work_dir/container-hsa-integration-support.lock.json"
     cp "$TEST_LOCK_FILE" "$work_dir/container-test-support.lock.json"
   fi
 
@@ -225,12 +232,18 @@ export_images() {
   (
     cd "$work_dir"
     hash_inputs=(container-stack.lock.json)
+    if [[ -f container-hsa-integration-support.lock.json ]]; then
+      hash_inputs+=(container-hsa-integration-support.lock.json)
+    fi
     if [[ -f container-test-support.lock.json ]]; then
       hash_inputs+=(container-test-support.lock.json)
     fi
     hash_inputs+=(transport-manifest.json images/*.oci.tar.gz)
     sha256sum "${hash_inputs[@]}" > hashes.sha256
     tar_inputs=(container-stack.lock.json)
+    if [[ -f container-hsa-integration-support.lock.json ]]; then
+      tar_inputs+=(container-hsa-integration-support.lock.json)
+    fi
     if [[ -f container-test-support.lock.json ]]; then
       tar_inputs+=(container-test-support.lock.json)
     fi
@@ -269,6 +282,7 @@ load_images() {
 TOPOLOGY=""
 LOCK_FILE="$DEFAULT_LOCK_FILE"
 TEST_LOCK_FILE="$DEFAULT_TEST_LOCK_FILE"
+HSA_INTEGRATION_LOCK_FILE="$DEFAULT_HSA_INTEGRATION_LOCK_FILE"
 ENV_FILE="$DEFAULT_ENV_FILE"
 OUTPUT_PATH=""
 BUNDLE_PATH=""
@@ -286,6 +300,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --test-lock-file)
       TEST_LOCK_FILE="${2:-}"
+      shift 2
+      ;;
+    --hsa-integration-lock-file)
+      HSA_INTEGRATION_LOCK_FILE="${2:-}"
       shift 2
       ;;
     --env-file)
@@ -322,6 +340,8 @@ done
 [[ -n "$TOPOLOGY" ]] || fail "Missing --topology."
 [[ -f "$LOCK_FILE" ]] || fail "Missing lock file: $LOCK_FILE"
 if [[ "$TOPOLOGY" == "single-node-demo" ]]; then
+  [[ -f "$HSA_INTEGRATION_LOCK_FILE" ]] ||
+    fail "Missing HSA integration lock file: $HSA_INTEGRATION_LOCK_FILE"
   [[ -f "$TEST_LOCK_FILE" ]] || fail "Missing test lock file: $TEST_LOCK_FILE"
 fi
 

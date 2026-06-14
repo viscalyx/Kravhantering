@@ -1,14 +1,15 @@
 # HSA Directory Mock Contract
 
-This directory owns the mock for the HSA directory SOAP method `GetHsaPerson`
-and a narrow JSON lookup facade used by the Kong route. The mock is used in the
-devcontainer and in the release test-only `single-node-demo` topology so
-Kravhantering can verify HSA lookup through Kong before the production
-API-management and real HSA integration are known.
+This directory owns the mock for the HSA directory SOAP method `GetHsaPerson`.
+The mock is used in the devcontainer and in the release test-only
+`single-node-demo` topology behind `hsa-person-lookup-adapter` so
+Kravhantering can verify HSA lookup through Kong before a real HSA integration
+is available.
 
 ## Scope
 
-The mock implements this SOAP 1.1 endpoint:
+The mock implements this SOAP 1.1 endpoint over HTTPS with client
+certificates:
 
 ```text
 POST /svr-hsaws2/hsaws
@@ -16,31 +17,24 @@ Content-Type: text/xml; charset=utf-8
 Accept: text/xml
 ```
 
-It also implements a dev-only REST/JSON lookup facade:
-
-```text
-POST /hsa/person-records/lookup
-Content-Type: application/json
-```
-
-```json
-{ "hsaId": "SE5560000001-annaj" }
-```
-
-The facade returns a single normalized person record when all HSA records for
-the submitted HSA-id agree on name and e-mail, `404` when the HSA-id is not
-found, and `409` when matching HSA records conflict. It intentionally does not
-implement authentication, authorization, client certificates, organization
-lookups, or non-person HSA methods.
-
-In devcontainer and `single-node-demo` use, Kong exposes the SOAP path at
-`http://kong:8000/svr-hsaws2/hsaws` and the REST lookup path at
-`http://kong:8000/hsa/person-records/lookup`. Kong routes both paths to
-`http://hsa-directory-mock:8080`; the JSON-to-person adapter is mock-owned
-until the production API-management transformation is known.
+The mock does not expose REST. In devcontainer and `single-node-demo` use,
+Kong exposes `http://kong:8000/hsa/person-records/lookup` and routes it to
+`hsa-person-lookup-adapter`; the adapter transforms the REST request into
+SOAP `GetHsaPerson` and calls `https://hsa-directory-mock:8443/svr-hsaws2/hsaws`
+with mTLS.
 
 `GET /health` is a container health endpoint only. It is not routed through
 Kong.
+
+## Authentication and Authorization
+
+Runtime mode defaults to `HSA_MOCK_AUTH_MODE=realistic-mtls`. The mock requires
+a client certificate trusted by `HSA_MOCK_TLS_CA_PATH`, extracts caller HSA-id
+from `subject.serialNumber`, checks that the caller system fixture is active,
+and requires both `hsaws2` and `GetHsaPerson` entitlement. The devcontainer
+and release-smoke paths generate ignored local test certificates with
+`hsa-mtls-cert-generator`; demo operators may mount their own self-signed test
+certificate material at `/run/hsa-mtls`.
 
 ## Namespaces
 
@@ -116,9 +110,9 @@ Other HTTP statuses:
 
 | Status | When |
 | ---: | --- |
-| `200` | Health check and successful SOAP or REST lookup. |
+| `200` | Health check and successful SOAP lookup. |
 | `404` | Unknown path. |
-| `405` | Wrong method on the SOAP or REST lookup path. |
+| `405` | Wrong method on the SOAP path. |
 
 ## Fixture Register
 
@@ -207,11 +201,11 @@ npm run devcontainer:hsa-mock:restart
 npm run devcontainer:hsa-mock:down
 ```
 
-`status` starts the mock if it is not already running and checks
-`http://127.0.0.1:8080/health` from inside the mock container.
+`status` starts the mock and adapter if they are not already running and checks
+`https://127.0.0.1:8443/health` from inside the mock container.
 
-`verify` starts the mock and Kong if needed, then posts a SOAP request through
-`http://kong:8000/svr-hsaws2/hsaws` and a REST lookup through
+`verify` starts the certificate generator, mock, adapter and Kong if needed,
+then posts a REST lookup through
 `http://kong:8000/hsa/person-records/lookup`.
 
 Run the mock's non-Docker SOAP contract tests with:

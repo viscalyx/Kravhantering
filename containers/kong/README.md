@@ -29,11 +29,11 @@ No Kong ports are published to the host. The Admin API has no local dev token
 in this phase because it is reachable only from containers on the same
 devcontainer Compose network.
 
-`kong.yml` contains the routes for the HSA directory mock. Kong proxies
-`POST /svr-hsaws2/hsaws` and `POST /hsa/person-records/lookup` to the
-`hsa-directory-mock` service on the internal Compose network. Kravhantering
-uses the REST route through `HSA_PERSON_LOOKUP_URL`; the SOAP route remains
-available so the mock can verify the external HSA contract.
+`kong.yml` contains one HSA route: `POST /hsa/person-records/lookup`.
+Kong proxies that app-facing REST contract to
+`hsa-person-lookup-adapter` on the internal Compose network. The adapter calls
+the HSA directory mock SOAP `GetHsaPerson` endpoint over mTLS. Kong does not
+proxy the SOAP path in the repository-supported topology.
 
 ## Lifecycle Scripts
 
@@ -103,9 +103,8 @@ policy:
 
 - Keep Kong DB-less and file-configured for the devcontainer.
 - Keep the Admin API internal to the active Compose network.
-- Keep the HSA routes plain and DB-less. The current REST route is a proxy to
-  the mock-owned JSON facade; do not claim a production Kong SOAP
-  transformation or HSA authentication plugin until that API-management
-  contract is designed and implemented.
-- Do not add Kong to the production runtime topology. Its release use is
+- Keep the HSA route plain and DB-less. The current REST route is a proxy to
+  `hsa-person-lookup-adapter`; do not reintroduce a direct SOAP route or a
+  mock-owned JSON facade in Kong.
+- Do not add Kong to the required production runtime topology. Its release use is
   limited to `single-node-demo` test support.

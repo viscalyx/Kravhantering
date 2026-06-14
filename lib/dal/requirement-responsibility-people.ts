@@ -23,7 +23,8 @@ export async function upsertRequirementResponsibilityPerson(
           @2 AS middle_name,
           @3 AS surname,
           @4 AS email,
-          @5 AS fetched_at
+          @5 AS has_protected_personal_data,
+          @6 AS fetched_at
       ) AS source
         ON target.hsa_id = source.hsa_id
       WHEN MATCHED THEN
@@ -32,6 +33,7 @@ export async function upsertRequirementResponsibilityPerson(
           middle_name = source.middle_name,
           surname = source.surname,
           email = source.email,
+          has_protected_personal_data = source.has_protected_personal_data,
           last_fetched_at = source.fetched_at,
           updated_at = source.fetched_at
       WHEN NOT MATCHED THEN
@@ -41,6 +43,7 @@ export async function upsertRequirementResponsibilityPerson(
           middle_name,
           surname,
           email,
+          has_protected_personal_data,
           last_fetched_at,
           created_at,
           updated_at
@@ -51,6 +54,7 @@ export async function upsertRequirementResponsibilityPerson(
           source.middle_name,
           source.surname,
           source.email,
+          source.has_protected_personal_data,
           source.fetched_at,
           source.fetched_at,
           source.fetched_at
@@ -62,6 +66,7 @@ export async function upsertRequirementResponsibilityPerson(
       person.middleName,
       person.surname,
       person.email,
+      person.hasProtectedPersonalData ?? false,
       fetchedAt,
     ],
   )
@@ -124,6 +129,7 @@ export async function getRequirementResponsibilityPerson(
         middle_name AS middleName,
         surname AS surname,
         email AS email,
+        has_protected_personal_data AS hasProtectedPersonalData,
         last_fetched_at AS lastFetchedAt
       FROM requirement_responsibility_people
       WHERE hsa_id = @0
