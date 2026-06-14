@@ -15,6 +15,16 @@ The behaviors below apply to the requirement list rendered by:
 - `components/RequirementsTable.tsx`
 - `lib/requirements/list-view.ts`
 
+## Route Compatibility
+
+- `/requirements/...` remains the existing browser path for the Requirements
+  Library and requirement detail pages.
+- `/krav/...` and `/<locale>/krav/...` are Swedish convenience aliases that
+  redirect to the matching `/requirements/...` or
+  `/<locale>/requirements/...` path while preserving the remaining subpath and
+  query string.
+- The UI continues to generate `/requirements/...` links.
+
 ## Table Structure
 
 - The table is a custom implementation.

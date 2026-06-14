@@ -544,21 +544,31 @@ listbaserad rapport.
 kravlistan innehåller bara publicerade kravversioner även om listan innehåller
 krav med utkast eller granskning.
 
-### REQ-11: lokaliserad felåterhämtning
+### REQ-11: svensk länk till krav omdirigerar till befintlig kravdetalj
+
+**Steg:** Öppna `/krav/INT0001`, `/sv/krav/INT0001` och
+`/en/krav/INT0001` i webbläsaren.
+
+**Förväntat resultat:** Användaren hamnar på samma kravdetalj som via
+`/requirements/INT0001`, `/sv/requirements/INT0001` respektive
+`/en/requirements/INT0001`. Befintliga länkar till krav med `/requirements`
+fortsätter att fungera.
+
+### REQ-12: lokaliserad felåterhämtning
 
 **Steg:** Öppna `/sv/error-boundary-test` och använd länken tillbaka till
 kravbiblioteket.
 
 **Förväntat resultat:** Felpanelen är på svenska och läcker inte stacktrace.
 
-### REQ-12: detaljmenyer går att använda med tangentbord
+### REQ-13: detaljmenyer går att använda med tangentbord
 
 **Steg:** Öppna `Dela` och `Skriv ut` i kravdetaljvyn med tangentbord, navigera
 med piltangenter och stäng med Escape.
 
 **Förväntat resultat:** Fokus hålls korrekt och kopiering annonseras.
 
-### REQ-13: kravbiblioteksförvaltning hanterar paket och frågor
+### REQ-14: kravbiblioteksförvaltning hanterar paket och frågor
 
 **Steg:**
 
@@ -577,7 +587,7 @@ och frågor sparas korrekt, den som skapar kravpaketet blir
 kravpaketsansvarig, ansvarspersoner hanteras med HSA-id och destruktiva
 åtgärder kräver bekräftelse.
 
-### REQ-14: AI-kravgenerator rensar scope-bundna resultat
+### REQ-15: AI-kravgenerator rensar scope-bundna resultat
 
 **Steg:** Generera krav med valt kravområde, byt kravområde efter att resultat
 visas och försök skapa.
