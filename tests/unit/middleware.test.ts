@@ -306,9 +306,12 @@ describe('middleware', () => {
   })
 
   it.each([
+    ['/krav', '/requirements'],
     ['/krav/IDN0001', '/requirements/IDN0001'],
     ['/krav/IDN0001/10', '/requirements/IDN0001/10'],
+    ['/sv/krav', '/sv/requirements'],
     ['/sv/krav/IDN0001', '/sv/requirements/IDN0001'],
+    ['/en/krav', '/en/requirements'],
     ['/en/krav/IDN0001', '/en/requirements/IDN0001'],
     ['/sv/krav/IDN0001/10', '/sv/requirements/IDN0001/10'],
   ])('redirects Swedish requirement alias %s to existing requirements path', async (source, target) => {
