@@ -23,19 +23,11 @@ Export any custom UI terminology values you need to keep before running
 
 ### Topology changes
 
-This release supports two production runtime topologies:
-
-- `app-node` runs nginx and `app-runtime` on each RHEL app node. SQL Server,
-  the IdP and the approved HSA person lookup REST facade are external
-  services. `db-job` runs once per release against the external SQL Server.
-- `single-node` runs nginx, `app-runtime`, SQL Server and Keycloak on one RHEL
-  host in the `kravhantering-internal` Compose network. `db-job` runs once
-  for migrations and required seed.
-
-Production deployments must set up an integration with an approved person
-catalog that `app-runtime` can call through the HSA person lookup REST API.
-That integration can use an existing integration platform, or a
-production-approved Kong route backed by `hsa-person-lookup-adapter`.
+Production deployments must provide an approved HSA person lookup REST facade
+outside `app-runtime` and the standard production Compose files. That facade
+must integrate with an approved person catalog, and can be an existing
+integration platform or a production-approved Kong route backed by
+`hsa-person-lookup-adapter`.
 
 The release adds a test-only `single-node-demo` topology for release smoke,
 disposable demos and other non-production environments. It layers Kong,
