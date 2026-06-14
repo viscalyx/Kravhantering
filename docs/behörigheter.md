@@ -68,6 +68,14 @@ behörighetsstyrt per syfte:
 - vid skapande av kravunderlag får den inloggade användaren verifiera sitt
   eget HSA-id som kravunderlagsansvarig
 
+När en inloggad användare senare genomför en godkänd ändring kan
+Kravhantering uppdatera användarens egen levande personrad för kravansvar i
+bakgrunden från verifierade sessionsfält. Det sker bara om användarens HSA-id
+fortfarande är tilldelat någon levande ansvarsyta. Uppdateringen gör inget
+nytt HSA-uppslag, påverkar inte inloggningen, stoppar inte den utförda
+ändringen om den misslyckas och ändrar inte historiska audit-, beslut- eller
+åtgärdssnapshots.
+
 ## Kravområden
 
 Kravområden skapas och tas bort av `Admin`. När ett kravområde finns kan
@@ -185,6 +193,27 @@ men tjänsten loggar detta som en högriskhändelse.
 Förbättringsförslag kan skapas och ändras av inloggade användare. Att lösa ett
 förslag eller besluta att avvisa det kräver författarbehörighet i kravområdet
 eller `Admin`. Egen lösning loggas som högriskhändelse.
+
+API-svaret för kravdetalj innehåller serverberäknade behörigheter för den
+aktuella användaren och det aktuella kravet. UI:t använder de besluten för
+att visa eller dölja livscykel- och mutationskontroller. Om användaren får
+läsa kravet men inte ändra det visas sidan som skrivskyddad med ett kort
+meddelande. Det finns ingen separat generell `/api/auth/permissions`-yta för
+detta i nuvarande modell.
+
+## Rapporter
+
+Servergenererade PDF-rapporter kontrollerar behörighet innan rapportdata
+hämtas. Rapporter från kravlistan i kravbiblioteket är tillgängliga för
+vanliga inloggade användare, men PDF-versionen bygger bara på publicerade
+kravversioner. Utkast, granskningsversioner och historik exponeras inte genom
+list-PDF:en för användare som saknar starkare åtkomst.
+
+Rapporter för historik, granskning, kombinerad granskning och förslagshistorik
+kräver åtkomst till kravets historik. Kravunderlagsrapporter kontrollerar
+läsåtkomst till kravunderlaget innan kravunderlagets poster hämtas.
+Rapportmallarna fattar inga egna behörighetsbeslut; de renderar bara redan
+auktoriserad rapportdata.
 
 ## AI-assisterat författande
 

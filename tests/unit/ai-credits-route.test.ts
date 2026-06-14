@@ -3,11 +3,21 @@ import { GET } from '@/app/api/ai/credits/route'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
 
+const dbState = vi.hoisted(() => ({
+  getRequestSqlServerDataSource: vi.fn(),
+  query: vi.fn(),
+  transaction: vi.fn(),
+}))
+
+vi.mock('@/lib/db', () => ({
+  getRequestSqlServerDataSource: dbState.getRequestSqlServerDataSource,
+}))
+
 vi.mock('@/lib/ai/openrouter-client', () => ({
   getKeyInfo: vi.fn(),
 }))
 
-function makeRequest(): Request {
+function makeRequest(roles: string[] = ['Admin']): Request {
   const request = new Request('http://localhost:3000/api/ai/credits', {
     headers: {
       'x-correlation-id': 'workflow-credits',
@@ -19,7 +29,7 @@ function makeRequest(): Request {
     hsaId: 'SE5560000001-ai1',
     id: 'ai-user',
     isAuthenticated: true,
-    roles: ['Admin'],
+    roles,
     source: 'oidc',
   })
   return request
@@ -27,7 +37,17 @@ function makeRequest(): Request {
 
 describe('GET /api/ai/credits', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     clearInMemoryThrottleForTests()
+    dbState.getRequestSqlServerDataSource.mockResolvedValue({
+      query: dbState.query,
+      transaction: dbState.transaction,
+    })
+    dbState.query.mockResolvedValue([])
+    dbState.transaction.mockImplementation(
+      async (callback: (manager: { query: typeof dbState.query }) => unknown) =>
+        callback({ query: dbState.query }),
+    )
   })
 
   it('returns key info on success', async () => {
@@ -49,6 +69,17 @@ describe('GET /api/ai/credits', () => {
       limit: 50,
       totalCredits: 10,
     })
+  })
+
+  it('denies credit lookup before calling OpenRouter when AI generation is unauthorized', async () => {
+    const { getKeyInfo } = await import('@/lib/ai/openrouter-client')
+
+    const response = await GET(makeRequest([]))
+    const body = (await response.json()) as { error: string }
+
+    expect(response.status).toBe(403)
+    expect(body.error).toBe('Forbidden')
+    expect(getKeyInfo).not.toHaveBeenCalled()
   })
 
   it('returns sanitized provider errors', async () => {

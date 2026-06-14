@@ -84,12 +84,48 @@ export async function collectRequirementForReport(
   }
 }
 
+function publishedRequirementForReport(
+  data: RequirementReportData,
+  id: string | number,
+): RequirementReportData {
+  const publishedVersion = [...data.versions]
+    .sort((left, right) => right.versionNumber - left.versionNumber)
+    .find(version => version.status === STATUS_PUBLISHED)
+  if (!publishedVersion) {
+    throw new ReportDataError(`Published requirement not found: ${id}`, 404)
+  }
+
+  return {
+    ...data,
+    versions: [publishedVersion],
+  }
+}
+
+export async function collectPublishedRequirementForReport(
+  db: SqlServerDatabase,
+  id: string | number,
+): Promise<RequirementReportData> {
+  return publishedRequirementForReport(
+    await collectRequirementForReport(db, id),
+    id,
+  )
+}
+
 export async function collectMultipleRequirementsForReport(
   db: SqlServerDatabase,
   ids: (number | string)[],
 ): Promise<RequirementReportData[]> {
   return mapReportItemsWithConcurrency(ids, id =>
     collectRequirementForReport(db, id),
+  )
+}
+
+export async function collectMultiplePublishedRequirementsForReport(
+  db: SqlServerDatabase,
+  ids: (number | string)[],
+): Promise<RequirementReportData[]> {
+  return mapReportItemsWithConcurrency(ids, id =>
+    collectPublishedRequirementForReport(db, id),
   )
 }
 
@@ -170,7 +206,7 @@ function mapDeviationVersion(
   }
 }
 
-function parseDeviationItemId(value: string): number {
+export function parseLibrarySpecificationItemId(value: string): number {
   const decoded = decodeSegment(value)
   const parsed = parseSpecificationItemRef(decoded)
   if (parsed?.kind === 'specificationLocal') {
@@ -204,7 +240,7 @@ export async function collectDeviationForReport(
     collectRequirementForReport(db, requirementId),
     listDeviationsForSpecificationItem(
       db,
-      parseDeviationItemId(specificationItemId),
+      parseLibrarySpecificationItemId(specificationItemId),
     ),
   ])
 

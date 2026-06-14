@@ -440,6 +440,13 @@ flowchart LR
 
 - The claim name `employeeHsaId` is fixed by the application contract.
 - `employeeHsaId` is treated as person-stable for the same person over time.
+- Verified session name and e-mail fields may refresh the signed-in actor's
+  live requirement-responsibility person row after successful mutations only
+  when the signed-in actor's current HSA-id is still linked to a live
+  requirement-responsibility assignment. This refresh is asynchronous
+  best-effort work: it does not run in the login critical path, does not call
+  HSA, and sanitized refresh failures must not fail login or the original
+  mutation.
 - The exact redirect URIs and post-logout URIs must be registered for each
   deployed environment.
 - The IdP must be reachable from the hosting environment over TLS.

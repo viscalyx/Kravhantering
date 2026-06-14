@@ -413,6 +413,10 @@ describe('seed profiles', () => {
           area_id: 910100,
           hsa_id: 'SE5560000001-areaco1',
         }),
+        expect.objectContaining({
+          area_id: 910100,
+          hsa_id: 'SE5560000001-smoke1',
+        }),
       ]),
     )
     expect(seedRowsFor(rows, 'requirements_specifications')).toEqual(

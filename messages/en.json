@@ -385,6 +385,7 @@
     "afterSaveInline": "List view",
     "afterSavePage": "Detail page",
     "noPublishedVersion": "There is no published version of this requirement.",
+    "readOnlyNotice": "You can read this requirement, but you cannot change its lifecycle or content.",
     "printHistoryReport": "Print History Report",
     "downloadHistoryReportPdf": "Download History Report (PDF)",
     "printReviewReport": "Print Review Change Report",
@@ -821,8 +822,10 @@
     "lead": "Requirements package lead",
     "leadDisplayName": "Requirements package lead name",
     "leadDisplayNameHelp": "Enter the display name for the person responsible for this requirements package.",
+    "leadEmail": "Requirements package lead email",
     "leadHsaId": "Requirements package lead HSA-id",
     "leadHsaIdHelp": "Enter the requirements package lead HSA-id with two uppercase country-code letters, a 10-digit organization number, a hyphen, and an alphanumeric suffix.",
+    "createResponsibilityNotice": "You become the requirements package lead when the package is created. That means you are responsible for the package's purpose, coherence, and keeping its included requirements relevant and current. Requirements package lead responsibility can be transferred to another person after agreement.",
     "changeLead": "Change requirements package lead",
     "changeLeadTitle": "Change requirements package lead",
     "changeLeadDescription": "Enter the HSA-id that should lead this requirements package from now on.",
@@ -1173,7 +1176,7 @@
         "resolvedBy": "Resolved by",
         "responsible": "Specification lead",
         "coAuthor": "Co-author",
-        "reviewer": "Reviewer",
+        "reviewer": "Assigned reviewer",
         "actor": "Actor",
         "accessReviewPrincipal": "Access review principal",
         "taxonomy": "Taxonomy",
@@ -1268,7 +1271,7 @@
       "dueAt": "Due",
       "dismissError": "Dismiss error message",
       "errorPopupTitle": "Something went wrong",
-      "externalEvidenceHelp": "This field is optional and points to external evidence for permissions that Kravhantering does not own, such as IdP role review for administrators, reviewers and privacy officers, source-code repository access, and external MCP/client provisioning. Enter a ticket ID, audit-report link, or case/document number. The external evidence should show period, scope, systems/roles reviewed, reviewer, decisions, actions, and sign-off.",
+      "externalEvidenceHelp": "This field is optional and points to external evidence for permissions that Kravhantering does not own, such as IdP role review for the Administrator, Reviewer, and Privacy officer roles, source-code repository access, and external MCP/client provisioning. Enter a ticket ID, audit-report link, or case/document number. The external evidence should show period, scope, systems/roles reviewed, reviewer, decisions, actions, and sign-off.",
       "externalEvidenceNote": "Global IdP roles, source-code access, and external MCP client provisioning are reviewed in the tools where those permissions are assigned.",
       "externalEvidenceReference": "External evidence reference",
       "exportError": "Could not export access review: {detail}",
@@ -1294,7 +1297,7 @@
       "summary": {
         "due": "Due",
         "progress": "Progress",
-        "reviewer": "Reviewer",
+        "reviewer": "Assigned reviewer",
         "status": "Status"
       },
       "statuses": {
@@ -1440,7 +1443,7 @@
         },
         "acceptanceCriteria": {
           "heading": "Acceptance criteria",
-          "body": "Measurable conditions that must be met for the requirement to be considered fulfilled. They are essential during verification and testing, and help reviewers understand the precise intent behind the requirement text."
+          "body": "Measurable conditions that must be met for the requirement to be considered fulfilled. They are essential during verification and testing, and help requirement reviewers understand the precise intent behind the requirement text."
         },
         "category": {
           "heading": "Category",

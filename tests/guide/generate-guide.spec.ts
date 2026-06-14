@@ -1460,7 +1460,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'avsteg-granskning',
           'Avsteg — granskning begärd',
-          '**Steg 5 — Granskning begärd.** Avsteget är nu låst för redigering och inväntar beslut. En behörig granskare klickar **"Beslutad ↗"** för att registrera ett beslut, eller **"← Utkast"** för att återföra det om komplettering behövs.',
+          '**Steg 5 — Granskning begärd.** Avsteget är nu låst för redigering och inväntar beslut. En behörig kravgranskare klickar **"Beslutad ↗"** för att registrera ett beslut, eller **"← Utkast"** för att återföra det om komplettering behövs.',
           { fullPage: false },
         )
       })
@@ -1480,7 +1480,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'avsteg-beslut-formular',
           'Registrera beslut',
-          '**Steg 6 — Registrera beslut.** Granskaren anger en **beslutsmotivering**, vem som fattat beslutet och datum. Välj sedan **"Godkänn"** eller **"Avslå"** för att slutföra beslutet.',
+          '**Steg 6 — Registrera beslut.** Kravgranskaren anger en **beslutsmotivering**, vem som fattat beslutet och datum. Välj sedan **"Godkänn"** eller **"Avslå"** för att slutföra beslutet.',
           { fullPage: false },
         )
 

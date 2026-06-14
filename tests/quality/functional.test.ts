@@ -909,7 +909,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     if (!db) return
     await clearTransactionalTables(db)
     await seedLookups(db)
-  })
+  }, 60_000)
 
   it('Scenario 1: published detail never leaks draft content', async () => {
     const area = await createArea(appDb())

@@ -104,7 +104,7 @@ följer en översikt av varje egenskap och hur den stödjer kravets livscykel.
 | **Krav-ID** | Genereras automatiskt utifrån kravområdets prefix och ett löpnummer. Det är den stabila identifieraren som används för spårbarhet i kravunderlag, rapporter och korsreferenser. Du kan inte redigera det direkt — det tilldelas när kravet skapas. |
 | **Kravområde** | Grupperar krav efter domän, till exempel Integration eller Ärendehantering. Kravområdet styr ID-prefixet och avgör vilket team som ansvarar för kravet. Det måste anges när kravet skapas och kan inte ändras efteråt. |
 | **Kravtext** | Den centrala beskrivningen av vad som ska uppfyllas. Det är huvudinnehållet som intressenter granskar under granskningsfasen och som blir bindande när kravet publiceras. Håll texten tydlig och testbar. |
-| **Acceptanskriterier** | Mätbara villkor som måste vara uppfyllda för att kravet ska anses vara uppnått. De är viktiga vid verifiering och testning och hjälper granskare att förstå den exakta avsikten bakom kravtexten. |
+| **Acceptanskriterier** | Mätbara villkor som måste vara uppfyllda för att kravet ska anses vara uppnått. De är viktiga vid verifiering och testning och hjälper kravgranskare att förstå den exakta avsikten bakom kravtexten. |
 | **Kategori** | Klassificerar kravet som Verksamhet, IT eller Leverantör. Det underlättar filtrering i katalogen och gör det enklare att tilldela ansvar till rätt team eller intressentgrupp. |
 | **Typ** | Anger om kravet är Funktionellt eller Icke-funktionellt. Båda typerna låser upp fältet för kvalitetsegenskap, men icke-funktionella krav erbjuder ett bredare urval av egenskaper från standarden ISO/IEC 25010 medan funktionella krav har en mindre delmängd. |
 | **Kvalitetsegenskap** | Följer standarden ISO/IEC 25010 och låter dig klassificera krav med egenskaper som Säkerhet, Prestandaeffektivitet eller Användbarhet. Icke-funktionella krav har tillgång till hela uppsättningen egenskaper, medan funktionella krav erbjuder en mindre delmängd. Det hjälper till att prioritera och gruppera relaterade krav under granskning och implementeringsplanering. |
@@ -337,14 +337,14 @@ klicka **"Granskning ↗"** för att skicka det till granskning.
 ### Avsteg — granskning begärd
 
 **Steg 5 — Granskning begärd.** Avsteget är nu låst för redigering och inväntar
-beslut. En behörig granskare klickar **"Beslutad ↗"** för att registrera ett
+beslut. En behörig kravgranskare klickar **"Beslutad ↗"** för att registrera ett
 beslut, eller **"← Utkast"** för att återföra det om komplettering behövs.
 
 ![Avsteg — granskning begärd](images/033-avsteg-granskning.png)
 
 ### Registrera beslut
 
-**Steg 6 — Registrera beslut.** Granskaren anger en **beslutsmotivering**, vem
+**Steg 6 — Registrera beslut.** Kravgranskaren anger en **beslutsmotivering**, vem
 som fattat beslutet och datum. Välj sedan **"Godkänn"** eller **"Avslå"** för
 att slutföra beslutet.
 

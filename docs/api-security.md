@@ -19,6 +19,9 @@ Covered by this contract:
 - `/api/auth/me`
 - Requirement list, detail, create, edit, archive, version read,
   delete-draft, restore, reactivate, and transition routes.
+- Requirement detail responses include server-derived permissions for the
+  current actor and requirement; there is no separate generic permissions
+  endpoint in the v1 contract.
 - Read-only requirements library routes used by the requirements UI.
 
 Operational probes stay outside the OpenAPI/Schemathesis contract. `/api/health`

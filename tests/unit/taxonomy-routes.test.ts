@@ -1581,7 +1581,10 @@ describe('requirement-specifications routes', () => {
 describe('requirement-packages routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    authState.context.actor.roles = ['Admin']
+    Object.assign(authState.context.actor, {
+      hsaId: 'SE5560000001-route',
+      roles: ['Admin'],
+    })
     routeState.query.mockResolvedValue([{ id: 1 }])
     mockGetRequirementPackageById.mockResolvedValue({
       id: 1,
@@ -1613,6 +1616,31 @@ describe('requirement-packages routes', () => {
     )
     expect(r.status).toBe(201)
   })
+  it('POST allows requirement area authors and assigns actor as package lead', async () => {
+    authState.context.actor.roles = []
+    requirementAreaPermissionState.canAuthorAnyArea.mockResolvedValueOnce(true)
+
+    const r = await postRequirementPackage(
+      new Request('http://l', {
+        method: 'POST',
+        body: '{"name":"A"}',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    expect(r.status).toBe(201)
+    expect(
+      requirementAreaPermissionState.canAuthorAnyArea,
+    ).toHaveBeenCalledWith(expect.anything(), 'SE5560000001-route', false)
+    expect(mockCreateRequirementPackage).toHaveBeenCalledWith(
+      routeState.transactionDb,
+      expect.objectContaining({
+        leadHsaId: 'SE5560000001-route',
+        name: 'A',
+      }),
+      { useExistingTransaction: true },
+    )
+  })
   it('POST creates requirement package and audit row in one transaction', async () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
@@ -1628,6 +1656,7 @@ describe('requirement-packages routes', () => {
       routeState.transactionDb,
       expect.objectContaining({
         coAuthorHsaIds: ['SE5560000001-coa1'],
+        leadHsaId: 'SE5560000001-route',
         name: 'A',
       }),
       { useExistingTransaction: true },
@@ -1653,6 +1682,45 @@ describe('requirement-packages routes', () => {
     expect(r.status).toBe(400)
     await expectInvalidRequest(r)
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  })
+  it('POST rejects client-supplied package lead fields', async () => {
+    const r = await postRequirementPackage(
+      jsonReq('POST', {
+        leadDisplayName: 'Client Lead',
+        leadHsaId: 'SE5560000001-client1',
+        name: 'A',
+      }),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockCreateRequirementPackage).not.toHaveBeenCalled()
+  })
+  it('POST returns 403 when actor lacks requirement area author access', async () => {
+    authState.context.actor.roles = []
+    requirementAreaPermissionState.canAuthorAnyArea.mockResolvedValueOnce(false)
+
+    const r = await postRequirementPackage(jsonReq('POST', { name: 'A' }))
+
+    expect(r.status).toBe(403)
+    await expect(r.json()).resolves.toMatchObject({
+      code: 'forbidden',
+      error: 'Forbidden',
+    })
+    expect(mockCreateRequirementPackage).not.toHaveBeenCalled()
+  })
+  it('POST returns 403 when actor HSA-id is missing', async () => {
+    Object.assign(authState.context.actor, { hsaId: null, roles: [] })
+
+    const r = await postRequirementPackage(jsonReq('POST', { name: 'A' }))
+
+    expect(r.status).toBe(403)
+    await expect(r.json()).resolves.toMatchObject({
+      code: 'forbidden',
+      error: 'Forbidden',
+    })
+    expect(mockCreateRequirementPackage).not.toHaveBeenCalled()
   })
   it('PUT updates', async () => {
     mockUpdateRequirementPackage.mockResolvedValue({ id: 1 })

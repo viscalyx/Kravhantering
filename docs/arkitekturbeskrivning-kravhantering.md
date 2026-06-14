@@ -167,7 +167,7 @@ graph TB
 ┌─────────────────────────────────────────────────────────┐
 │                   << Motivation >>                      │
 │  Mål: Enhetlig kravhantering med full spårbarhet        │
-│  Intressenter: Kravförfattare, Granskare, Förvaltare    │
+│  Intressenter: Kravförfattare, Kravgranskare, Förvaltare │
 └─────────────────────────────────────────────────────────┘
          │ realiseras av
          ▼
@@ -181,7 +181,7 @@ graph TB
 │   Avsteghantering        Rapportgenerering              │
 │                                                         │
 │  [Business Actor]       [Business Actor]                │
-│   Kravförfattare         Granskare                      │
+│   Kravförfattare         Kravgranskare                  │
 │   Förvaltare             Administratör                  │
 └─────────────────────────────────────────────────────────┘
          │ stöds av
@@ -246,7 +246,7 @@ stateDiagram-v2
     end note
 
     note right of Granskning
-        Granskaren bedömer
+        Kravgranskaren bedömer
         och godkänner/avslår
     end note
 
@@ -269,7 +269,7 @@ att säkerställa kvalitetskontroll:
 1. **Initiering** — En förvaltare begär arkivering.
    Kravet övergår till granskning med en
    arkiveringsflagga (`archive_initiated_at`).
-2. **Godkännande** — En granskare bekräftar
+2. **Godkännande** — En kravgranskare bekräftar
    arkiveringen. Kravversionen får kravversionsstatus *Arkiverad* och
    tidsstämpeln `archived_at` sätts.
 
@@ -315,7 +315,7 @@ flowchart TD
 | Aktör | Huvudansvar |
 | --- | --- |
 | Kravförfattare | Skapar och redigerar krav, skickar för granskning |
-| Granskare | Godkänner eller avslår krav och arkiveringsförfrågningar |
+| Kravgranskare | Godkänner eller avslår krav och arkiveringsförfrågningar |
 | Förvaltare | Hanterar livscykel, initierar arkivering, återskapar arkiverade kravversioner |
 | Administratör | Konfigurerar taxonomi, terminologi, kolumnstandard |
 <!-- markdownlint-enable MD013 -->
@@ -383,7 +383,7 @@ stateDiagram-v2
 2. **Begärd granskning** — Avsteget skickas för
    beslut. Det kan återtas till utkast om
    komplettering behövs.
-3. **Beslutat** — Granskaren godkänner eller avslår
+3. **Beslutat** — Kravgranskaren godkänner eller avslår
    avsteget. Beslutsmotivering, beslutsfattare och
    tidsstämpel registreras. Beslutet är permanent.
 
@@ -414,12 +414,12 @@ stateDiagram-v2
    fritext. Det kan redigeras och raderas.
 2. **Granskning begärd** — Förslaget skickas för
    bedömning. Det kan återtas till utkast.
-3. **Åtgärdad/Avvisad** — Granskaren åtgärdar eller
+3. **Åtgärdad/Avvisad** — Kravgranskaren åtgärdar eller
    avvisar förslaget med motivering.
 
 ### Rapportprocesser
 
-Systemet stödjer fyra rapporttyper som stöder
+Systemet stödjer flera rapporttyper som stöder
 gransknings- och beslutsprocesserna:
 
 1. **Historikrapport** — Tidslinje över alla versioner
@@ -431,6 +431,10 @@ gransknings- och beslutsprocesserna:
    krav.
 4. **Kombinerad granskningsrapport** — Flerkravsrapport
    med innehållsförteckning och sidnumrering.
+5. **Förslagshistorik** — Versionerad översikt över
+   förbättringsförslag och beslut.
+6. **Kravunderlagsrapport** — Tabellrapport över krav i ett
+   kravunderlag med urvalskontext.
 
 ### ArchiMate — Verksamhetsprocess (ASCII)
 
@@ -457,10 +461,10 @@ gransknings- och beslutsprocesserna:
          │              │              │            │
    [Assigned to]  [Assigned to]  [Assigned to]  [Assigned]
          ▼              ▼              ▼            ▼
-  ┌────────────┐ ┌───────────┐ ┌────────────┐ ┌─────────┐
-  │ Områdes-   │ │ Granskare │ │ Underlags- │ │  Admin  │
-  │ författare │ │ Reviewer  │ │ ansvarig   │ │         │
-  └────────────┘ └───────────┘ └────────────┘ └─────────┘
+  ┌────────────┐ ┌───────────────┐ ┌────────────┐ ┌─────────┐
+  │ Områdes-   │ │ Kravgranskare │ │ Underlags- │ │  Admin  │
+  │ författare │ │               │ │ ansvarig   │ │         │
+  └────────────┘ └───────────────┘ └────────────┘ └─────────┘
 ```
 
 ## 3. Applikationsanvändningsperspektiv
@@ -598,7 +602,10 @@ hjälptexterna förbjuder personidentifierande uppgifter där.
   eller via webbläsarens utskriftsfunktion (HTML/CSS med `@media print`).
   Webbläsaren importerar inte React-PDF, vilket gör rapportflödet kompatibelt
   med strikt Content Security Policy utan `unsafe-eval` eller
-  `wasm-unsafe-eval`.
+  `wasm-unsafe-eval`. Server-PDF-rutter auktoriserar innan rapportdata hämtas;
+  PDF från kravlistan använder bara publicerade kravversioner. Rapporter för
+  historik, granskning, kombinerad granskning och förslagshistorik kräver
+  åtkomst till historik.
 - **Kravunderlagsrapporter** — Kravlistor för kravunderlag kompletterar
   rubrikdata med kravurval före kravtabellen. CSV-exporten för
   kravunderlag förblir radbaserad utan extra urvalskontext.
@@ -696,8 +703,13 @@ e-post och hämtningstid samlas för aktuell visning. Levande
 tilldelningstabeller sparar bara HSA-id och pekar på
 Kravansvarsperson. Sparflöden gör inga HSA-anrop utan kräver att
 Kravansvarsperson redan finns lokalt, med en kort omläsning för att
-fånga en verifiering som nyss slutförts. Läsvyer gör inga HSA-anrop
-utan använder den lokalt sparade personraden via join i databasen.
+  fånga en verifiering som nyss slutförts. Läsvyer gör inga HSA-anrop
+  utan använder den lokalt sparade personraden via join i databasen.
+  Efter lyckade auktoriserade mutationer kan servern asynkront fräscha upp den
+  aktuella aktörens levande personrad från verifierade sessionsfält, men bara
+  när aktörens aktuella HSA-id fortfarande är kopplat till en levande
+  kravansvarstilldelning. Det sker utanför inloggningsflödet, gör inget
+  HSA-uppslag och får inte blockera eller fälla den ursprungliga åtgärden.
 
 ### Nuvarande integrationslandskap
 
@@ -825,7 +837,7 @@ På översiktsnivå består lösningen av fem arkitektoniska
 ansvar:
 
 1. **Användarupplevelse** — webbytan samlar de
-   arbetsflöden som författare, granskare, förvaltare
+   arbetsflöden som författare, kravgranskare, förvaltare
    och administratörer använder.
 2. **Åtkomst och spårbarhet** — identitet,
    sessionshantering, rollkontroller, dataskyddsflöden
@@ -1077,9 +1089,10 @@ Container deployment / ingress
 
 ### Nuläge
 
-Nuvarande version har **integrerad autentisering**, men
-behörighetsstyrningen i affärslagret är ännu inte fullt
-ut finfördelad.
+Nuvarande version har **integrerad autentisering** och uppdragsbaserad
+auktorisering i affärslagret. Globala IdP-roller används för tvärgående
+ansvar, medan författande, läsning av skyddade resurser och
+uppdragsförvaltning avgörs mot applikationsägda HSA-id-tilldelningar.
 
 Autentiseringsmodellen består av två separata vägar:
 
@@ -1120,6 +1133,9 @@ auktorisering: verifierad identitet etablerar aktören,
 medan den uppdragsbaserade auktoriseringstjänsten slår upp
 målresursen innan den tillåter läsning, författande,
 uppdragsändringar eller granskningsbeslut.
+SQL-uppslag för målresurs och tilldelning ligger bakom en
+`AssignmentLookup`-gräns, medan beslutsreglerna ligger kvar i
+auktoriseringstjänsten.
 
 ### Befintliga säkerhetsmekanismer
 
@@ -1143,12 +1159,10 @@ uppdragsändringar eller granskningsbeslut.
 
 ### Mållägesriktning för behörighetsstyrning
 
-Nuvarande arkitektur har lagt grunden för en striktare
-behörighetsmodell genom att identitet, roller,
-förfrågningskontext och säkerhetsloggning redan är på
-plats. Nästa arkitekturella steg är policybaserad
-behörighetsstyrning för krav, kravunderlag och
-förvaltningsytor.
+Behörighetsmodellen ska fortsätta vara resursnära och gemensam för REST,
+MCP, UI-projektioner och rapportuttag. Nya ytor ska därför ansluta till samma
+auktoriseringstjänst i stället för att duplicera rollkontroller i presentation
+eller rapportmallar.
 
 Övergripande riktning:
 
@@ -1161,7 +1175,10 @@ förvaltningsytor.
   globala roller.
 - **Gemensam policy för REST och MCP** — samma
   behörighetsprinciper ska gälla oavsett om anropet
-  kommer från webbläsare eller MCP-klient.
+  kommer från webbläsare, MCP-klient eller servergenererad rapport.
+- **Serverhärledda UI-beslut** — detaljvyer ska använda serverberäknade
+  behörigheter för att visa skrivskyddade tillstånd och dölja otillåtna
+  mutationskontroller.
 - **Spårbarhet** — säkerhetsrelaterade händelser är
   redan separerade i ett eget JSON-baserat auditflöde,
   vilket skapar en naturlig grund för central
@@ -1492,10 +1509,9 @@ arkitekturkrav och säkerhetsinriktning:
   bör routas till central logghantering, SIEM eller
   annan granskningskedja utan att applikationen själv
   byggs om med transportberoenden.
-- **Finfördelad behörighetsstyrning i affärslagret** —
-  policystyrd auktorisering bör införas så att
-  skrivåtgärder kan nekas konsekvent för både REST och
-  MCP.
+- **Regressionsskydd för behörighetsstyrning** —
+  uppdragsbaserad auktorisering ska fortsätta testas som en gemensam gräns för
+  REST, MCP, UI-projektioner och rapportuttag.
 
 <!-- markdownlint-disable MD013 -->
 <!-- cSpell:words driftplattformar plattformskrav begärandeloggning Självhostad -->

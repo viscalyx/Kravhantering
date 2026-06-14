@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   canAuthorArea,
   createArea,
+  deleteArea,
   listAreasActorCanAuthor,
   replaceRequirementAreaCoAuthors,
   updateArea,
@@ -358,5 +359,69 @@ describe('requirement-areas DAL', () => {
         String(sql).includes('UPDATE requirement_areas'),
       ),
     ).toBe(false)
+  })
+
+  it('deletes an area and cleans owner and co-author person rows in one transaction', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        { hsaId: 'SE5560000001-owner1' },
+        { hsaId: 'SE5560000001-coa1' },
+      ])
+      .mockResolvedValueOnce([{ id: 11 }])
+      .mockResolvedValueOnce([{ hsaId: 'SE5560000001-coa1' }])
+
+    await expect(deleteArea(db, 11)).resolves.toBe(1)
+
+    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(query.mock.calls[0]?.[0]).toContain('UNION')
+    expect(query.mock.calls[0]?.[0]).toContain('requirement_area_co_authors')
+    expect(query.mock.calls[1]?.[0]).toContain('DELETE FROM requirement_areas')
+    expect(query.mock.calls[2]?.[0]).toContain('DELETE person')
+    expect(query.mock.calls[2]?.[1]).toEqual([
+      'SE5560000001-owner1',
+      'SE5560000001-coa1',
+    ])
+  })
+
+  it('propagates owner cleanup failures from the serializable owner-change transaction', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        { ownerHsaId: 'SE5560000001-old1', prefix: 'KH' },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 11,
+          prefix: 'KH',
+          name: 'Kravhantering',
+          description: 'Krav relaterade till kravhantering',
+          ownerHsaId: 'SE5560000001-new1',
+          nextSequence: 1,
+          createdAt: new Date('2026-05-02T08:00:00.000Z'),
+          updatedAt: new Date('2026-05-03T08:00:00.000Z'),
+        },
+      ])
+      .mockRejectedValueOnce(new Error('cleanup failed'))
+
+    await expect(
+      updateAreaWithOwnerCheck(db, 11, {
+        ownerHsaId: 'SE5560000001-new1',
+        ownerPerson: {
+          email: 'new.owner@example.test',
+          givenName: 'New',
+          hsaId: 'SE5560000001-new1',
+          middleName: null,
+          surname: 'Owner',
+        },
+      }),
+    ).rejects.toThrow('cleanup failed')
+
+    expect(transaction).toHaveBeenCalledWith('SERIALIZABLE', expect.anything())
+    expect(query.mock.calls[2]?.[0]).toContain('MERGE INTO')
+    expect(query.mock.calls[3]?.[0]).toContain('UPDATE requirement_areas')
+    expect(query.mock.calls[4]?.[0]).toContain('DELETE person')
   })
 })

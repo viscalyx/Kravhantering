@@ -74,7 +74,17 @@ npm run devcontainer:kong:recreate
 
 `image.lock.json` pins the upstream image by tag, manifest digest and image ID.
 
-To update it manually:
+The normal update path is `.github/workflows/vendor-image-updates.yml`. It runs
+weekly from `main` and can also be started manually with `workflow_dispatch`.
+The updater opens or refreshes one PR per Kong Gateway major-version lane,
+updates `tag`, `manifestDigest` and `imageId` together, keeps devcontainer
+Compose references digest-pinned, and keeps the public release test-support
+example tag-only. Review the generated PR and let the normal PR workflows,
+including Container PR Smoke, validate the change before merging.
+
+Use the manual path when selecting an exceptional LTS tag, recovering a failed
+automation run, or changing devcontainer or release test-support pinning
+policy:
 
 1. Choose the new official Kong Gateway tag. Prefer a version-specific LTS tag
    and avoid moving tags for devcontainer locks.
@@ -85,9 +95,9 @@ To update it manually:
 4. Update `tag`, `manifestDigest` and `imageId` together.
 5. Run `npm run devcontainer:kong:pull`, `npm run devcontainer:kong:up` and
    `npm run devcontainer:kong:status`.
-6. Verify that `.github/workflows/vendor-image-updates.mjs` still keeps both
-   devcontainer Compose files digest-pinned and the `release.env.template`
-   public test-support example tag-only.
+6. Verify that `.github/workflows/vendor-image-updates.yml` still runs the
+   updater that keeps both devcontainer Compose files digest-pinned and the
+   `release.env.template` public test-support example tag-only.
 
 ## Update Rules
 

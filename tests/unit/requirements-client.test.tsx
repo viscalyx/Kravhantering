@@ -260,6 +260,16 @@ vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
               createdAt: '2026-03-01T00:00:00Z',
               id: requirementId ?? 1,
               isArchived: false,
+              permissions: {
+                allowedTransitionStatusIds: [1, 2, 3, 4],
+                canArchive: true,
+                canDeleteDraft: true,
+                canEdit: true,
+                canManageSuggestions: true,
+                canReactivate: true,
+                canRestore: true,
+                canViewHistory: true,
+              },
               specificationCount: 0,
               uniqueId: 'PWT0007',
               versions: [
@@ -380,6 +390,16 @@ function makeRequirementDetail(
     createdAt: '2026-03-01T00:00:00Z',
     id,
     isArchived: false,
+    permissions: {
+      allowedTransitionStatusIds: [1, 2, 3, 4],
+      canArchive: true,
+      canDeleteDraft: true,
+      canEdit: true,
+      canManageSuggestions: true,
+      canReactivate: true,
+      canRestore: true,
+      canViewHistory: true,
+    },
     specificationCount: 0,
     uniqueId: `INT${String(id).padStart(4, '0')}`,
     versions: [

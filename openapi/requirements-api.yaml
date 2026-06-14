@@ -668,7 +668,7 @@ components:
             - $ref: '#/components/schemas/RequirementVersion'
     RequirementDetail:
       type: object
-      required: [id, uniqueId]
+      required: [id, uniqueId, permissions]
       additionalProperties: true
       properties:
         id: { type: integer }
@@ -683,6 +683,33 @@ components:
           minItems: 0
           maxItems: 100
           items: { $ref: '#/components/schemas/RequirementVersion' }
+        permissions:
+          $ref: '#/components/schemas/RequirementDetailPermissions'
+    RequirementDetailPermissions:
+      type: object
+      required:
+        - allowedTransitionStatusIds
+        - canArchive
+        - canDeleteDraft
+        - canEdit
+        - canManageSuggestions
+        - canReactivate
+        - canRestore
+        - canViewHistory
+      additionalProperties: false
+      properties:
+        allowedTransitionStatusIds:
+          type: array
+          minItems: 0
+          maxItems: 20
+          items: { type: integer }
+        canArchive: { type: boolean }
+        canDeleteDraft: { type: boolean }
+        canEdit: { type: boolean }
+        canManageSuggestions: { type: boolean }
+        canReactivate: { type: boolean }
+        canRestore: { type: boolean }
+        canViewHistory: { type: boolean }
     RequirementVersionResponse:
       type: object
       required: [uniqueId, version]

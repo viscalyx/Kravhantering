@@ -203,6 +203,14 @@ describe('requirements route', () => {
       expect(res.status).toBe(201)
       const json = (await res.json()) as { id: number }
       expect(json.id).toBe(42)
+      expect(mockAuthorization.assertAuthorized).toHaveBeenCalledWith(
+        {
+          areaId: 1,
+          kind: 'manage_requirement',
+          operation: 'create',
+        },
+        mockRequestContext,
+      )
       expect(mockManageRequirement).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({

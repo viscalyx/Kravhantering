@@ -96,7 +96,7 @@ const TEXT = {
     activeAssignmentsTitle: 'Active assignments',
     accessReviewItem: 'Access review row',
     accessReviewsDescription:
-      'Access review records where the person appears as reviewer, creator, principal or decision maker.',
+      'Access review records where the person appears as assigned reviewer, creator, principal or decision maker.',
     accessReviewsTitle: 'Access reviews',
     accessReviewRun: 'Access review',
     availableInJson:
@@ -140,7 +140,7 @@ const TEXT = {
     activeAssignmentsTitle: 'Aktiva uppdrag',
     accessReviewItem: 'Rad i behörighetsöversyn',
     accessReviewsDescription:
-      'Behörighetsöversyner där personen förekommer som granskare, skapare, behörig person eller beslutsfattare.',
+      'Behörighetsöversyner där personen förekommer som tilldelad granskningsperson, skapare, behörig person eller beslutsfattare.',
     accessReviewsTitle: 'Behörighetsöversyner',
     accessReviewRun: 'Behörighetsöversyn',
     availableInJson: 'Uppgiften finns i den maskinläsbara JSON-exporten.',
@@ -214,7 +214,7 @@ const SOURCE_TEXT: Record<LocaleKey, Record<string, SourceInfo>> = {
     'access_review_runs.reviewer': {
       description: 'This person was assigned as reviewer for an access review.',
       section: 'accessReviews',
-      title: 'Reviewer in access review',
+      title: 'Assigned reviewer in access review',
     },
     'action_audit_events.actor': {
       description:
@@ -351,9 +351,9 @@ const SOURCE_TEXT: Record<LocaleKey, Record<string, SourceInfo>> = {
     },
     'access_review_runs.reviewer': {
       description:
-        'Personen har varit utsedd granskare i en behörighetsöversyn.',
+        'Personen har varit tilldelad granskningsperson i en behörighetsöversyn.',
       section: 'accessReviews',
-      title: 'Granskare i behörighetsöversyn',
+      title: 'Tilldelad granskningsperson i behörighetsöversyn',
     },
     'action_audit_events.actor': {
       description: 'Applikationen har sparat att personen utförde en åtgärd.',
@@ -646,7 +646,7 @@ const ROLE_LABELS: Record<LocaleKey, Record<string, string>> = {
   sv: {
     Admin: 'Administratör',
     PrivacyOfficer: 'Dataskyddshandläggare',
-    Reviewer: 'Granskare',
+    Reviewer: 'Kravgranskare',
   },
 }
 

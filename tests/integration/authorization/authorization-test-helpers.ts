@@ -112,6 +112,12 @@ const MANUAL_CASE_LINKS = {
     'docs/manuella-testfall.md#auth-10-behorighetsmatris-for-ansvarstilldelningar',
   'AUTH-11':
     'docs/manuella-testfall.md#auth-11-playwrightfaser-for-behorighetsroller',
+  'ADMIN-12':
+    'docs/manuella-testfall.md#admin-12-byte-av-kravomradesagare-anvander-hsa-id',
+  'LIFE-11':
+    'docs/manuella-testfall.md#life-11-detaljrapporter-finns-per-status',
+  'REQ-10': 'docs/manuella-testfall.md#req-10-rapport-fran-kravlistan-fungerar',
+  'SPEC-10': 'docs/manuella-testfall.md#spec-10-generera-kravunderlagsrapport',
 } as const
 
 export type ManualCaseId = keyof typeof MANUAL_CASE_LINKS
@@ -143,6 +149,26 @@ export interface RequirementPackageResponse {
   id: number
   leadHsaId: string
   name: string
+}
+
+export interface RequirementDetailResponse {
+  id: number
+  permissions: {
+    allowedTransitionStatusIds: number[]
+    canArchive: boolean
+    canDeleteDraft: boolean
+    canEdit: boolean
+    canReactivate: boolean
+    canRestore: boolean
+  }
+  uniqueId: string
+}
+
+export interface RequirementListResponse {
+  requirements: Array<{
+    id: number
+    uniqueId: string
+  }>
 }
 
 export interface SpecificationResponse {

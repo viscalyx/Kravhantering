@@ -80,6 +80,8 @@ vi.mock('next-intl', () => ({
         `Published version v${values?.version} is available`,
       'requirement.noPublishedVersion':
         'There is no published version of this requirement.',
+      'requirement.readOnlyNotice':
+        'You can read this requirement, but you cannot change it.',
       'requirement.specificationCount': 'Used in specification',
       'requirement.publishConfirm': 'Publish this requirement?',
       'requirement.reactivateConfirm':
@@ -317,6 +319,16 @@ function makeRequirement(
     specificationCount: 0,
     uniqueId: 'REQ-123',
     versions,
+    permissions: {
+      allowedTransitionStatusIds: [1, 2, 3, 4],
+      canArchive: true,
+      canDeleteDraft: true,
+      canEdit: true,
+      canManageSuggestions: true,
+      canReactivate: true,
+      canRestore: true,
+      canViewHistory: true,
+    },
     ...rest,
   }
 }
@@ -822,6 +834,53 @@ describe('RequirementDetailClient', () => {
         .getByText('Used in specification')
         .closest('[data-developer-mode-name="detail section"]'),
     ).toHaveAttribute('data-developer-mode-value', 'specification count')
+  })
+
+  it('shows read-only state and hides lifecycle controls when mutation permissions are denied', async () => {
+    const requirement = makeRequirement(
+      [
+        makeVersion(1, {
+          description: 'Read-only published requirement',
+          publishedAt: '2026-03-01',
+          status: 3,
+          statusColor: '#22c55e',
+          statusNameEn: 'Published',
+          statusNameSv: 'Publicerad',
+        }),
+      ],
+      {
+        permissions: {
+          allowedTransitionStatusIds: [],
+          canArchive: false,
+          canDeleteDraft: false,
+          canEdit: false,
+          canManageSuggestions: false,
+          canReactivate: false,
+          canRestore: false,
+          canViewHistory: false,
+        },
+      },
+    )
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject()
+
+    expect(
+      await screen.findByText('Read-only published requirement'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'You can read this requirement, but you cannot change it.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Archive' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Publish' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument()
   })
 
   it('shows needs reference and usage status in specification-context inline detail metadata', async () => {

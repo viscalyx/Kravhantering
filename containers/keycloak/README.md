@@ -73,7 +73,16 @@ any exposed environment.
 
 `image.lock.json` pins the upstream image by tag, manifest digest and image ID.
 
-To update it manually:
+The normal update path is `.github/workflows/vendor-image-updates.yml`. It runs
+weekly from `main` and can also be started manually with `workflow_dispatch`.
+The updater opens or refreshes one PR per Keycloak major-version lane, updates
+`tag`, `manifestDigest` and `imageId` together, and keeps static Keycloak
+Compose and developer-documentation references aligned with the lock. Review
+the generated PR and let the normal PR workflows, including Container PR Smoke,
+validate the change before merging.
+
+Use the manual path when selecting an exceptional tag, recovering a failed
+automation run, or changing registry or pinning policy:
 
 1. Choose the new upstream Keycloak tag. Prefer a version-specific tag and keep
    verification against the locked image ID as the runtime source of truth.

@@ -34,7 +34,12 @@ function renderRequirementActionRail(
   props: Partial<RequirementActionRailProps> = {},
 ) {
   const defaultProps: RequirementActionRailProps = {
+    allowedTransitionStatusIds: [1, 2, 3, 4],
     canAddToSpecification: false,
+    canArchive: true,
+    canDeleteDraft: true,
+    canEdit: true,
+    canRestore: true,
     currentStatusId: 3,
     detailContext: 'requirement detail: REQ-123',
     displayVersionNumber: 3,
@@ -274,5 +279,55 @@ describe('RequirementActionRail', () => {
       }
       window.history.pushState({}, '', originalHref)
     }
+  })
+
+  it('hides lifecycle mutation controls denied by server permissions', () => {
+    renderRequirementActionRail({
+      allowedTransitionStatusIds: [],
+      canArchive: false,
+      canDeleteDraft: false,
+      canEdit: false,
+      canRestore: false,
+      currentStatusId: 1,
+      latestStatusForActions: 1,
+      transitions: [
+        {
+          iconName: 'Clock',
+          id: 2,
+          nameEn: 'Review',
+          nameSv: 'Granskning',
+        },
+      ],
+    })
+
+    expect(
+      screen.queryByRole('button', {
+        name: 'requirement.transitionToGranskning',
+      }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'common.edit' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.delete' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'common.share' }),
+    ).toBeInTheDocument()
+  })
+
+  it('hides restore when historical restore permission is denied', () => {
+    renderRequirementActionRail({
+      canRestore: false,
+      isViewingHistory: true,
+      isViewingLatest: false,
+    })
+
+    expect(
+      screen.queryByRole('button', { name: 'common.restoreVersion' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'requirement.backToLatest' }),
+    ).toBeInTheDocument()
   })
 })

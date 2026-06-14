@@ -66,6 +66,9 @@ describe('admin privileged action audit', () => {
 
     expect(context.actor).toEqual({
       displayName: 'Ada Admin',
+      email: undefined,
+      familyName: 'Admin',
+      givenName: 'Ada',
       hsaId: 'SE5560000001-admin1',
       id: 'admin-sub',
       isAuthenticated: true,

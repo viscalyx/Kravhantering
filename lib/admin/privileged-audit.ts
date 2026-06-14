@@ -110,6 +110,9 @@ function requestMetadata(
 function actorFromSession(session: LoggedInSession): ActorContext {
   return {
     displayName: session.name,
+    email: session.email,
+    familyName: session.familyName,
+    givenName: session.givenName,
     hsaId: session.hsaId,
     id: session.sub,
     isAuthenticated: true,

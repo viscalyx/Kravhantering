@@ -33,6 +33,12 @@ export type RequestSource = 'rest' | 'mcp'
 export interface ActorContext {
   /** Resolved display name. Empty string when not known. */
   displayName: string
+  /** Email address when the IdP asserted a verified email. */
+  email?: string
+  /** Family name from the validated session identity claims. */
+  familyName?: string
+  /** Given name from the validated session identity claims. */
+  givenName?: string
   /**
    * HSA-id when the actor was authenticated and a verified `employeeHsaId`
    * claim was present. `null` for anonymous actors.
@@ -260,6 +266,9 @@ async function getActorContextFromSession(
   return {
     id: data.sub,
     displayName: data.name,
+    email: data.email,
+    familyName: data.familyName,
+    givenName: data.givenName,
     hsaId: data.hsaId,
     roles: [...data.roles],
     source: 'oidc',

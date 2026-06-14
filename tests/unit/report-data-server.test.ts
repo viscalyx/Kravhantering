@@ -2,9 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   collectDeviationForReport,
+  collectPublishedRequirementForReport,
   collectSpecificationItemsForReport,
+  parseLibrarySpecificationItemId,
   type ReportDataError,
 } from '@/lib/reports/data/server'
+import {
+  STATUS_DRAFT,
+  STATUS_PUBLISHED,
+  STATUS_REVIEW,
+} from '@/lib/requirements/status-constants.mjs'
 
 const dalState = vi.hoisted(() => ({
   getRequirementById: vi.fn(),
@@ -41,7 +48,7 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
   parseSpecificationItemRef: dalState.parseSpecificationItemRef,
 }))
 
-function reportVersion(id: number) {
+function reportVersion(id: number, status = STATUS_PUBLISHED) {
   return {
     acceptanceCriteria: null,
     archivedAt: null,
@@ -56,11 +63,11 @@ function reportVersion(id: number) {
     qualityCharacteristic: null,
     requiresTesting: false,
     riskLevel: null,
-    status: 3,
+    status,
     statusColor: null,
     statusIconName: null,
-    statusNameEn: 'Published',
-    statusNameSv: 'Publicerad',
+    statusNameEn: status === STATUS_PUBLISHED ? 'Published' : 'Draft',
+    statusNameSv: status === STATUS_PUBLISHED ? 'Publicerad' : 'Utkast',
     type: null,
     verificationMethod: null,
     versionNormReferences: [],
@@ -151,6 +158,26 @@ describe('report data server helpers', () => {
     } satisfies Partial<ReportDataError>)
   })
 
+  it('parses library and numeric item refs for deviation reports', () => {
+    dalState.parseSpecificationItemRef.mockImplementation((value: string) =>
+      value === 'lib:55' ? { id: 55, kind: 'library' } : null,
+    )
+
+    expect(parseLibrarySpecificationItemId('lib%3A55')).toBe(55)
+    expect(parseLibrarySpecificationItemId('77')).toBe(77)
+  })
+
+  it('rejects specification-local item refs for deviation reports', () => {
+    dalState.parseSpecificationItemRef.mockReturnValue({
+      id: 7,
+      kind: 'specificationLocal',
+    })
+
+    expect(() => parseLibrarySpecificationItemId('local%3A7')).toThrow(
+      'Deviation review PDF is only available for library requirement applications',
+    )
+  })
+
   it('loads specification report items concurrently after validating refs', async () => {
     const spec = specification()
     let activeFetches = 0
@@ -208,6 +235,43 @@ describe('report data server helpers', () => {
       101, 7, 102, 8,
     ])
     expect(maxActiveFetches).toBeGreaterThan(1)
+  })
+
+  it('shapes requirement list report data to the latest published version only', async () => {
+    dalState.getRequirementById.mockResolvedValue({
+      ...reportRequirement(42),
+      versions: [
+        reportVersion(1, STATUS_PUBLISHED),
+        reportVersion(2, STATUS_REVIEW),
+        reportVersion(3, STATUS_PUBLISHED),
+        reportVersion(4, STATUS_DRAFT),
+      ],
+    })
+
+    await expect(
+      collectPublishedRequirementForReport(createReportDb(), 42),
+    ).resolves.toMatchObject({
+      id: 42,
+      versions: [{ status: STATUS_PUBLISHED, versionNumber: 3 }],
+    })
+  })
+
+  it('rejects requirement list report data when no published version exists', async () => {
+    dalState.getRequirementById.mockResolvedValue({
+      ...reportRequirement(42),
+      versions: [
+        reportVersion(2, STATUS_REVIEW),
+        reportVersion(4, STATUS_DRAFT),
+      ],
+    })
+
+    await expect(
+      collectPublishedRequirementForReport(createReportDb(), 42),
+    ).rejects.toMatchObject({
+      message: 'Published requirement not found: 42',
+      name: 'ReportDataError',
+      status: 404,
+    } satisfies Partial<ReportDataError>)
   })
 
   it('keeps specification report invalid item ref errors', async () => {

@@ -4,11 +4,24 @@ import { clearAiModelsCacheForTests, GET } from '@/app/api/ai/models/route'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
 
+const dbState = vi.hoisted(() => ({
+  getRequestSqlServerDataSource: vi.fn(),
+  query: vi.fn(),
+  transaction: vi.fn(),
+}))
+
+vi.mock('@/lib/db', () => ({
+  getRequestSqlServerDataSource: dbState.getRequestSqlServerDataSource,
+}))
+
 vi.mock('@/lib/ai/openrouter-client', () => ({
   listModels: vi.fn(),
 }))
 
-function makeRequest(url = 'http://localhost:3000/api/ai/models') {
+function makeRequest(
+  url = 'http://localhost:3000/api/ai/models',
+  roles: string[] = ['Admin'],
+) {
   const request = new NextRequest(url, {
     headers: {
       'x-correlation-id': 'workflow-models',
@@ -20,7 +33,7 @@ function makeRequest(url = 'http://localhost:3000/api/ai/models') {
     hsaId: 'SE5560000001-ai1',
     id: 'ai-user',
     isAuthenticated: true,
-    roles: ['Admin'],
+    roles,
     source: 'oidc',
   })
   return request
@@ -31,6 +44,15 @@ describe('GET /api/ai/models', () => {
     vi.clearAllMocks()
     clearAiModelsCacheForTests()
     clearInMemoryThrottleForTests()
+    dbState.getRequestSqlServerDataSource.mockResolvedValue({
+      query: dbState.query,
+      transaction: dbState.transaction,
+    })
+    dbState.query.mockResolvedValue([])
+    dbState.transaction.mockImplementation(
+      async (callback: (manager: { query: typeof dbState.query }) => unknown) =>
+        callback({ query: dbState.query }),
+    )
   })
 
   afterEach(() => {
@@ -64,6 +86,17 @@ describe('GET /api/ai/models', () => {
     expect(data.models).toHaveLength(1)
     expect(data.models[0].id).toBe('anthropic/claude-sonnet-4')
     expect(data.models[0].supportedParameters).toContain('structured_outputs')
+  })
+
+  it('denies model lookup before calling OpenRouter when AI generation is unauthorized', async () => {
+    const { listModels } = await import('@/lib/ai/openrouter-client')
+
+    const response = await GET(makeRequest(undefined, []))
+    const body = (await response.json()) as { error: string }
+
+    expect(response.status).toBe(403)
+    expect(body.error).toBe('Forbidden')
+    expect(listModels).not.toHaveBeenCalled()
   })
 
   it('does not add structured_outputs when model is not in structured subset', async () => {

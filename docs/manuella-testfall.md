@@ -242,9 +242,13 @@ logga in på nytt.
 1. För varje positiv åtgärd, gör en liten ändring och ladda om sidan.
 1. För varje negativ åtgärd, kontrollera både UI-denial och API-denial när
    API-yta finns.
+1. Öppna kravdetalj där användaren får läsa men inte ändra och kontrollera att
+   sidan visar skrivskyddat läge utan livscykelkontroller.
 
 **Förväntat resultat:** Varje användare får bara göra det som rollen eller
-ansvarstilldelningen uttryckligen medger.
+ansvarstilldelningen uttryckligen medger. Otillåtna åtgärder på kravets
+detaljsida saknas eller är inaktiva redan i UI:t, och API:t nekar samma
+åtgärd.
 
 <a id="auth-11-playwrightfaser-for-behorighetsroller"></a>
 
@@ -332,17 +336,13 @@ tilldelningar.
 
 1. Logga in som `cora.coauthor`.
 1. Öppna kravområdet `AUTHZ-AREA-2026`.
-1. Gör en tillåten innehållsändring inom området och verifiera efter omladdning.
+1. Skapa ett krav i det tilldelade kravområdet via API eller UI och verifiera
+   att kravet sparas.
 1. Försök ändra kravområdets ägare eller listan över medförfattare.
 1. Kör API-kontroll mot samma otillåtna tilldelningsändring.
 
-**Förväntat resultat:** Cora kan bidra inom området men får 403 för
+**Förväntat resultat:** Cora kan skapa krav inom området men får 403 för
 tilldelningsstyrning och global Admin.
-
-**Känd blockerare:** Det positiva steget att skapa krav i tilldelat kravområde
-är blockerat av <https://github.com/viscalyx/Kravhantering/issues/321> tills
-produktionsauktoriseringen skickar med `areaId` till policyn för
-kravskapande.
 
 ### AUTHZ-04: kravunderlagsansvarig
 
@@ -540,7 +540,9 @@ metadata, referenser och paket.
 **Steg:** Öppna rapport-/utskriftsmenyn från kravbiblioteket och välj en
 listbaserad rapport.
 
-**Förväntat resultat:** Rapporten öppnas eller laddas ned utan fel.
+**Förväntat resultat:** Rapporten öppnas eller laddas ned utan fel. PDF från
+kravlistan innehåller bara publicerade kravversioner även om listan innehåller
+krav med utkast eller granskning.
 
 ### REQ-11: lokaliserad felåterhämtning
 
@@ -562,14 +564,18 @@ med piltangenter och stäng med Escape.
 
 1. Öppna `Kravbiblioteksförvaltning`.
 1. Kontrollera `Kravpaket` och `Kravurvalsfrågor`.
-1. Skapa, filtrera, redigera och arkivera ett testpaket.
+1. Skapa ett testpaket och kontrollera att formuläret visar ansvarsinformation
+   samt inloggad användare som kravpaketsansvarig utan redigerbart
+   ansvarsfält.
+1. Filtrera, redigera och arkivera testpaketet.
 1. Byt kravpaketsansvarig med HSA-id och testa medförfattare.
 1. Skapa en kravurvalsfråga, lägg till svar och ändra ordning.
 1. Kontrollera synlighetsvillkor, hierarkimodal och kravurvalsförhandsvisning.
 
 **Förväntat resultat:** Förvaltningsytorna ligger utanför Admincenter, paket
-och frågor sparas korrekt, ansvarspersoner hanteras med HSA-id och
-destruktiva åtgärder kräver bekräftelse.
+och frågor sparas korrekt, den som skapar kravpaketet blir
+kravpaketsansvarig, ansvarspersoner hanteras med HSA-id och destruktiva
+åtgärder kräver bekräftelse.
 
 ### REQ-14: AI-kravgenerator rensar scope-bundna resultat
 
@@ -648,6 +654,8 @@ gången.
 kontrollera rapportmenyn.
 
 **Förväntat resultat:** Tillgängliga rapporter matchar kravets status.
+Rapporter för historik, granskning, kombinerad granskning och förslagshistorik
+går bara att hämta när användaren har åtkomst till kravets historik.
 
 ## Samarbete i kravdetalj
 
@@ -758,7 +766,9 @@ panel.
 
 **Steg:** Öppna rapportmenyn från kravunderlagslistan.
 
-**Förväntat resultat:** Rapporten genereras utan fel.
+**Förväntat resultat:** Rapporten genereras utan fel för användare med
+läsåtkomst till kravunderlaget och nekas innan data visas för användare utan
+läsåtkomst.
 
 ### SPEC-11: återställ kolumnvyer för kravunderlag
 
@@ -794,13 +804,13 @@ panel.
 
 ### DEV-04: godkänn avsteg
 
-**Steg:** Som behörig granskare, godkänn avsteg med kommentar.
+**Steg:** Som behörig kravgranskare, godkänn avsteg med kommentar.
 
 **Förväntat resultat:** Avsteget markeras som godkänt och låses.
 
 ### DEV-05: avslå avsteg
 
-**Steg:** Som behörig granskare, avslå avsteg med kommentar.
+**Steg:** Som behörig kravgranskare, avslå avsteg med kommentar.
 
 **Förväntat resultat:** Avsteget markeras som avslaget och låses.
 
@@ -893,7 +903,10 @@ taxonomiflik i Admincenter.
 
 **Steg:** Ändra kravområdesägare via HSA-id, verifiera personuppslag och spara.
 
-**Förväntat resultat:** Ägarskapet sparas på HSA-id och visas med persondetaljer.
+**Förväntat resultat:** Ägarskapet sparas på HSA-id och visas med
+persondetaljer. Efter nästa lyckade ändring kan den inloggade aktörens egen
+levande personrad uppdateras från sessionen utan att inloggning eller sparande
+fördröjs.
 
 ### ADMIN-13: HSA-id-prefix administreras från Identitet
 

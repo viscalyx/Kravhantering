@@ -256,8 +256,8 @@ används behöver motsvarande pipelines finnas där.
   pull requests. Den bygger containerstacken, verifierar OCI-arkiv och kör
   release-smoke innan ändringen slås ihop.
 - `Vendor Image Updates` (`.github/workflows/vendor-image-updates.yml`) körs
-  schemalagt och manuellt. Den kontrollerar låsta nginx-, SQL Server- och
-  Keycloak-avbildningar och skapar eller uppdaterar PR:er.
+  schemalagt och manuellt. Den kontrollerar låsta nginx-, SQL Server-,
+  Keycloak- och Kong-avbildningar och skapar eller uppdaterar PR:er.
 
 #### Tests
 

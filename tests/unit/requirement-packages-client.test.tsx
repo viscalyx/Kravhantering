@@ -370,13 +370,19 @@ describe('RequirementPackagesClient', () => {
     expect(dialog).toBeInTheDocument()
     expect(dialog).toHaveClass('max-w-5xl')
     expect(requirementPackageNameInput()).toBeInTheDocument()
-    expect(requirementPackageLeadHsaIdInput()).toHaveValue(
-      'SE5560000001-admin1',
-    )
-    expect(requirementPackageLeadHsaIdInput()).toHaveAttribute('readonly')
     expect(
-      screen.getByText('Ada Admin (ada.admin@example.test)'),
+      within(dialog).getByText('requirementPackage.createResponsibilityNotice'),
     ).toBeInTheDocument()
+    expect(
+      within(dialog).queryByRole('textbox', {
+        name: /requirementPackage\.leadHsaId/,
+      }),
+    ).toBeNull()
+    expect(within(dialog).getByText('Ada Admin')).toBeInTheDocument()
+    expect(
+      within(dialog).getByText('ada.admin@example.test'),
+    ).toBeInTheDocument()
+    expect(within(dialog).getByText('SE5560000001-admin1')).toBeInTheDocument()
     expect(
       within(dialog).queryByText('requirementPackage.linkedRequirements'),
     ).toBeNull()
@@ -411,10 +417,19 @@ describe('RequirementPackagesClient', () => {
       'lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]',
     )
     expect(requirementPackageNameInput()).toBeInTheDocument()
-    expect(requirementPackageLeadHsaIdInput()).toHaveValue(
-      'SE5560000001-admin1',
-    )
-    expect(requirementPackageLeadHsaIdInput()).toHaveAttribute('readonly')
+    expect(
+      within(dialog).getByText('requirementPackage.createResponsibilityNotice'),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).queryByRole('textbox', {
+        name: /requirementPackage\.leadHsaId/,
+      }),
+    ).toBeNull()
+    expect(
+      dialog.querySelector(
+        '[data-developer-mode-name="responsibility notice"][data-developer-mode-context="requirementPackages"]',
+      ),
+    ).toHaveAttribute('data-developer-mode-value', 'create package lead')
     expect(
       within(dialog).queryByText('requirementPackage.linkedRequirements'),
     ).toBeNull()

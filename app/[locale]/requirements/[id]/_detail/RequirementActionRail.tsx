@@ -26,7 +26,12 @@ import type { TransitionTarget } from './types'
 import { useDetailActionMenu } from './useDetailActionMenu'
 
 interface RequirementActionRailProps {
+  allowedTransitionStatusIds: number[]
   canAddToSpecification: boolean
+  canArchive: boolean
+  canDeleteDraft: boolean
+  canEdit: boolean
+  canRestore: boolean
   currentStatusId: number
   detailContext?: string
   displayVersionNumber?: number
@@ -80,7 +85,12 @@ function getTransitionActionDeveloperModeValue(
 }
 
 export default function RequirementActionRail({
+  allowedTransitionStatusIds,
   canAddToSpecification,
+  canArchive,
+  canDeleteDraft,
+  canEdit,
+  canRestore,
   currentStatusId,
   detailContext,
   displayVersionNumber,
@@ -119,8 +129,9 @@ export default function RequirementActionRail({
     isOpen: showShareMenu,
     setIsOpen: setShowShareMenu,
   })
+  const allowedTransitionIds = new Set(allowedTransitionStatusIds)
   const restoreDisabled =
-    hasPendingWork || selectedVersionNumberForRestore == null
+    !canRestore || hasPendingWork || selectedVersionNumberForRestore == null
   const backToLatestVersionNumber = latestVersionNumber ?? displayVersionNumber
 
   useEffect(
@@ -265,30 +276,32 @@ export default function RequirementActionRail({
       </div>
       {isViewingHistory ? (
         <>
-          <button
-            className={`btn-secondary inline-flex items-center gap-1.5 w-full justify-center${restoreDisabled ? ' opacity-60 cursor-not-allowed' : ''}`}
-            {...devMarker({
-              context: detailContext,
-              name: 'detail action',
-              priority: 360,
-              value: 'restore version',
-            })}
-            disabled={restoreDisabled}
-            onClick={event => {
-              if (selectedVersionNumberForRestore == null) return
-              void onRestore(
-                selectedVersionNumberForRestore,
-                event.currentTarget,
-              )
-            }}
-            title={
-              hasPendingWork ? t('restoreBlockedByPendingWork') : undefined
-            }
-            type="button"
-          >
-            <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
-            {tc('restoreVersion')}
-          </button>
+          {canRestore && (
+            <button
+              className={`btn-secondary inline-flex items-center gap-1.5 w-full justify-center${restoreDisabled ? ' opacity-60 cursor-not-allowed' : ''}`}
+              {...devMarker({
+                context: detailContext,
+                name: 'detail action',
+                priority: 360,
+                value: 'restore version',
+              })}
+              disabled={restoreDisabled}
+              onClick={event => {
+                if (selectedVersionNumberForRestore == null) return
+                void onRestore(
+                  selectedVersionNumberForRestore,
+                  event.currentTarget,
+                )
+              }}
+              title={
+                hasPendingWork ? t('restoreBlockedByPendingWork') : undefined
+              }
+              type="button"
+            >
+              <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+              {tc('restoreVersion')}
+            </button>
+          )}
           <button
             className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
             {...devMarker({
@@ -310,43 +323,48 @@ export default function RequirementActionRail({
       ) : !isLatestVersionArchived ? (
         isArchiving && isViewingLatest ? (
           <>
-            <button
-              className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
-              {...devMarker({
-                context: detailContext,
-                name: 'detail action',
-                priority: 360,
-                value: 'approve archiving',
-              })}
-              disabled={isTransitioning}
-              onClick={event => void onApproveArchiving(event)}
-              title={t('approveArchivingTooltip')}
-              type="button"
-            >
-              <Archive aria-hidden="true" className="h-4 w-4" />
-              {t('approveArchiving')}
-            </button>
-            <button
-              className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
-              {...devMarker({
-                context: detailContext,
-                name: 'detail action',
-                priority: 360,
-                value: 'cancel archiving',
-              })}
-              disabled={isTransitioning}
-              onClick={event => void onCancelArchiving(event)}
-              title={t('cancelArchivingTooltip')}
-              type="button"
-            >
-              <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
-              {t('cancelArchiving')}
-            </button>
+            {allowedTransitionIds.has(STATUS_ARCHIVED) && (
+              <button
+                className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
+                {...devMarker({
+                  context: detailContext,
+                  name: 'detail action',
+                  priority: 360,
+                  value: 'approve archiving',
+                })}
+                disabled={isTransitioning}
+                onClick={event => void onApproveArchiving(event)}
+                title={t('approveArchivingTooltip')}
+                type="button"
+              >
+                <Archive aria-hidden="true" className="h-4 w-4" />
+                {t('approveArchiving')}
+              </button>
+            )}
+            {allowedTransitionIds.has(STATUS_PUBLISHED) && (
+              <button
+                className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
+                {...devMarker({
+                  context: detailContext,
+                  name: 'detail action',
+                  priority: 360,
+                  value: 'cancel archiving',
+                })}
+                disabled={isTransitioning}
+                onClick={event => void onCancelArchiving(event)}
+                title={t('cancelArchivingTooltip')}
+                type="button"
+              >
+                <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+                {t('cancelArchiving')}
+              </button>
+            )}
           </>
         ) : (
           <>
             {isViewingLatest &&
               transitions
+                .filter(transition => allowedTransitionIds.has(transition.id))
                 .filter(transition => transition.id !== STATUS_ARCHIVED)
                 .filter(
                   transition =>
@@ -379,7 +397,8 @@ export default function RequirementActionRail({
                     {t(`transitionTo${transition.nameSv}`)}
                   </button>
                 ))}
-            {currentStatusId !== STATUS_REVIEW &&
+            {canEdit &&
+              currentStatusId !== STATUS_REVIEW &&
               (hasPendingWorkAbovePublished &&
               !isViewingLatest &&
               currentStatusId === STATUS_PUBLISHED ? (
@@ -416,24 +435,27 @@ export default function RequirementActionRail({
                   </span>
                 </Link>
               ))}
-            {isViewingLatest && latestStatusForActions === STATUS_PUBLISHED && (
-              <button
-                className="btn-destructive inline-flex items-center gap-1.5 w-full justify-center"
-                {...devMarker({
-                  context: detailContext,
-                  name: 'detail action',
-                  priority: 360,
-                  value: 'archive',
-                })}
-                onClick={event => void onArchive(event)}
-                title={tc('archiveTooltip')}
-                type="button"
-              >
-                <Archive aria-hidden="true" className="h-4 w-4" />
-                {tc('archive')}
-              </button>
-            )}
-            {hasPendingWorkAbovePublished &&
+            {canArchive &&
+              isViewingLatest &&
+              latestStatusForActions === STATUS_PUBLISHED && (
+                <button
+                  className="btn-destructive inline-flex items-center gap-1.5 w-full justify-center"
+                  {...devMarker({
+                    context: detailContext,
+                    name: 'detail action',
+                    priority: 360,
+                    value: 'archive',
+                  })}
+                  onClick={event => void onArchive(event)}
+                  title={tc('archiveTooltip')}
+                  type="button"
+                >
+                  <Archive aria-hidden="true" className="h-4 w-4" />
+                  {tc('archive')}
+                </button>
+              )}
+            {canArchive &&
+              hasPendingWorkAbovePublished &&
               !isViewingLatest &&
               currentStatusId === STATUS_PUBLISHED && (
                 <button
@@ -446,44 +468,53 @@ export default function RequirementActionRail({
                   {tc('archive')}
                 </button>
               )}
-            {currentStatusId === STATUS_DRAFT && isViewingLatest && (
-              <button
-                className="btn-destructive inline-flex items-center gap-1.5 w-full justify-center"
-                {...devMarker({
-                  context: detailContext,
-                  name: 'detail action',
-                  priority: 360,
-                  value: 'delete draft',
-                })}
-                onClick={event => void onDeleteDraft(event)}
-                type="button"
-              >
-                <Trash2 aria-hidden="true" className="h-4 w-4" />
-                {tc('delete')}
-              </button>
-            )}
+            {canDeleteDraft &&
+              currentStatusId === STATUS_DRAFT &&
+              isViewingLatest && (
+                <button
+                  className="btn-destructive inline-flex items-center gap-1.5 w-full justify-center"
+                  {...devMarker({
+                    context: detailContext,
+                    name: 'detail action',
+                    priority: 360,
+                    value: 'delete draft',
+                  })}
+                  onClick={event => void onDeleteDraft(event)}
+                  type="button"
+                >
+                  <Trash2 aria-hidden="true" className="h-4 w-4" />
+                  {tc('delete')}
+                </button>
+              )}
           </>
         )
       ) : (
-        <button
-          className={`btn-secondary inline-flex items-center gap-1.5 w-full justify-center${restoreDisabled ? ' opacity-60 cursor-not-allowed' : ''}`}
-          {...devMarker({
-            context: detailContext,
-            name: 'detail action',
-            priority: 360,
-            value: 'restore version',
-          })}
-          disabled={restoreDisabled}
-          onClick={event => {
-            if (selectedVersionNumberForRestore == null) return
-            void onRestore(selectedVersionNumberForRestore, event.currentTarget)
-          }}
-          title={hasPendingWork ? t('restoreBlockedByPendingWork') : undefined}
-          type="button"
-        >
-          <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
-          {tc('restoreVersion')}
-        </button>
+        canRestore && (
+          <button
+            className={`btn-secondary inline-flex items-center gap-1.5 w-full justify-center${restoreDisabled ? ' opacity-60 cursor-not-allowed' : ''}`}
+            {...devMarker({
+              context: detailContext,
+              name: 'detail action',
+              priority: 360,
+              value: 'restore version',
+            })}
+            disabled={restoreDisabled}
+            onClick={event => {
+              if (selectedVersionNumberForRestore == null) return
+              void onRestore(
+                selectedVersionNumberForRestore,
+                event.currentTarget,
+              )
+            }}
+            title={
+              hasPendingWork ? t('restoreBlockedByPendingWork') : undefined
+            }
+            type="button"
+          >
+            <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+            {tc('restoreVersion')}
+          </button>
+        )
       )}
     </div>
   )

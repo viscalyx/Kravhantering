@@ -55,7 +55,16 @@ nginx has no env file in this phase. These mounted values are sensitive:
 
 `image.lock.json` pins the upstream image by tag, manifest digest and image ID.
 
-To update it manually:
+The normal update path is `.github/workflows/vendor-image-updates.yml`. It runs
+weekly from `main` and can also be started manually with `workflow_dispatch`.
+The updater opens or refreshes one PR per image lane, updates `tag`,
+`manifestDigest` and `imageId` together, and keeps the public direct-pull
+example in `containers/production/env/release.env.template` aligned with the
+lock. Review the generated PR and let the normal PR workflows, including
+Container PR Smoke, validate the change before merging.
+
+Use the manual path when selecting an exceptional tag, recovering a failed
+automation run, or changing registry or pinning policy:
 
 1. Choose the new official nginx tag. Prefer a version-specific Alpine tag and
    avoid moving tags such as `stable-alpine` for release locks.

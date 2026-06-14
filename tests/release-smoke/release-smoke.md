@@ -16,6 +16,7 @@ path without duplicating the full integration suite.
 | `RELEASE_SMOKE_RUN_ID` | Environment | Optional stable prefix for created smoke requirements. |
 | `build.json` | `/build.json` | Public build metadata embedded in the app image. |
 | HSA fixture | `containers/hsa-directory-mock/fixtures/hsa-personer.json` | Provides deterministic person data through Kong. |
+| `AUTHZ` requirement area | `typeorm/seed.mjs` | Gives the no-role smoke user a deterministic kravområdesmedförfattare assignment for the write proof. |
 <!-- markdownlint-enable MD013 -->
 
 Example build metadata shape:
@@ -86,7 +87,8 @@ CSRF-protected requirement mutation.
 4. Assert at least one `/_next/static/` resource loaded with HTTP 200.
 5. Attach a full-page screenshot as release smoke evidence.
 6. Request `/build.json`, validate all metadata fields, and attach the JSON.
-7. Request `/api/requirement-areas` and choose the first requirement area.
+7. Request `/api/requirement-areas` and choose the seeded `AUTHZ` requirement
+   area assigned to the smoke user.
 8. POST `/api/requirements` with a description beginning
    `release-smoke-<run-id>`.
 9. GET the created requirement by id and verify it matches the POST result.
@@ -119,7 +121,7 @@ sequenceDiagram
     PW->>APP: GET /api/requirement-areas
     APP->>DB: Read requirement areas
     DB-->>APP: Requirement area rows
-    Note over PW,APP: Select first requirement area
+    Note over PW,APP: Select AUTHZ requirement area assigned to smoke user
     PW->>APP: POST /api/requirements release-smoke-<run-id>
     APP->>DB: Persist release-smoke-<run-id> requirement
     PW->>APP: GET /api/requirements/:id

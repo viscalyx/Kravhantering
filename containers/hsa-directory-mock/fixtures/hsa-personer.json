@@ -198,6 +198,16 @@
       "purposes": ["Dev-auth-person för kravpaketsmedförfattare."]
     },
     {
+      "hsaIdentity": "SE5560000001-smoke1",
+      "givenName": "Release",
+      "sn": "SmokeUser",
+      "mail": "release-smoke-user@example.test",
+      "DN": "cn=Release SmokeUser,ou=release-smoke,o=kravhantering,c=se",
+      "purposes": [
+        "Release-smoke-person med kravområdesmedförfattarskap för skrivtest."
+      ]
+    },
+    {
       "hsaIdentity": "SE5560000001-manualarea1",
       "givenName": "Maja",
       "sn": "ManualArea",
