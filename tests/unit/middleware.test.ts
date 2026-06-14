@@ -305,6 +305,36 @@ describe('middleware', () => {
     }
   })
 
+  it.each([
+    ['/krav', '/requirements'],
+    ['/krav/IDN0001', '/requirements/IDN0001'],
+    ['/krav/IDN0001/10', '/requirements/IDN0001/10'],
+    ['/sv/krav', '/sv/requirements'],
+    ['/sv/krav/IDN0001', '/sv/requirements/IDN0001'],
+    ['/en/krav', '/en/requirements'],
+    ['/en/krav/IDN0001', '/en/requirements/IDN0001'],
+    ['/sv/krav/IDN0001/10', '/sv/requirements/IDN0001/10'],
+  ])('redirects Swedish requirement alias %s to existing requirements path', async (source, target) => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const response = await middleware(
+        buildRequest(`http://localhost${source}?from=alias`, {
+          accept: 'text/html',
+        }),
+      )
+
+      expect(response.status).toBe(307)
+      expect(response.headers.get('location')).toBe(
+        `http://localhost${target}?from=alias`,
+      )
+      expect(response.headers.get('content-type')).toBe(
+        'text/plain; charset=utf-8',
+      )
+    } finally {
+      restore()
+    }
+  })
+
   it('returns 401 JSON for non-HTML unauthenticated requests', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {

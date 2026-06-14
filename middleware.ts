@@ -107,6 +107,39 @@ function ensureLocalePath(pathname: string): string {
   return `/${DEFAULT_LOCALE}${pathname}`
 }
 
+function kravAliasTargetPathname(pathname: string): string | null {
+  if (pathname === '/krav' || pathname.startsWith('/krav/')) {
+    return pathname.replace(/^\/krav(?=\/|$)/, '/requirements')
+  }
+
+  const [, locale, resource] = pathname.split('/')
+  if (
+    typeof locale === 'string' &&
+    resource === 'krav' &&
+    (LOCALES as readonly string[]).includes(locale)
+  ) {
+    return pathname.replace(
+      new RegExp(`^/${locale}/krav(?=/|$)`),
+      `/${locale}/requirements`,
+    )
+  }
+
+  return null
+}
+
+function redirectKravAliasToRequirements(
+  request: NextRequest,
+): NextResponse | null {
+  const { pathname, search } = request.nextUrl
+  const targetPathname = kravAliasTargetPathname(pathname)
+  if (targetPathname === null) return null
+
+  const target = new URL(`${targetPathname}${search ?? ''}`, request.url)
+  return ensureRedirectContentType(
+    stripRedirectBody(NextResponse.redirect(target, { status: 307 })),
+  )
+}
+
 // Production CSP with per-request nonce for inline scripts.
 //
 // CSP is set here instead of next.config.ts headers() because the nonce must
@@ -395,6 +428,9 @@ export default async function middleware(request: NextRequest) {
 
   const methodResponse = rejectUnsupportedApiMethod(request)
   if (methodResponse) return finalizeResponse(methodResponse, ids)
+
+  const kravAliasResponse = redirectKravAliasToRequirements(request)
+  if (kravAliasResponse) return finalizeResponse(kravAliasResponse, ids)
 
   const authResponse = await enforceAuth(request)
   if (authResponse) return finalizeResponse(authResponse, ids)
