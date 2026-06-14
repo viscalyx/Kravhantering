@@ -129,6 +129,7 @@ describe('GitHub Actions workflow security', () => {
     )
 
     expect(workflow).toContain('pull_request_target:')
+    expect(workflow).toContain('branches: [main]')
     expect(workflow).toContain('types: [closed]')
     expect(workflow).toContain('contents: write')
     expect(workflow).toContain('pull-requests: read')
