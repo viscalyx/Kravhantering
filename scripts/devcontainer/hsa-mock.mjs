@@ -2,8 +2,16 @@ import childProcess from 'node:child_process'
 import os from 'node:os'
 
 const SERVICE_NAME = 'hsa-directory-mock'
+const ADAPTER_SERVICE_NAME = 'hsa-person-lookup-adapter'
+const CERT_SERVICE_NAME = 'hsa-mtls-cert-generator'
 const KONG_SERVICE_NAME = 'kong'
 const APP_SERVICE_NAME = 'app'
+const HSA_SERVICES = [
+  CERT_SERVICE_NAME,
+  SERVICE_NAME,
+  ADAPTER_SERVICE_NAME,
+  KONG_SERVICE_NAME,
+]
 const PROFILES = [
   {
     composeFile: '.devcontainer/docker-compose.yml',
@@ -145,32 +153,40 @@ function printProfile(profile) {
 function ensureRunning(profile, serviceName, options) {
   if (runningService(profile, serviceName)) return
   assertSuccess(
-    runCompose(
-      profile,
-      ['up', '--build', '-d', '--no-deps', serviceName],
-      options,
-    ),
+    runCompose(profile, ['up', '--build', '-d', serviceName], options),
     `docker compose up ${serviceName}`,
   )
 }
 
 function runStatus(profile, options) {
   ensureRunning(profile, SERVICE_NAME, options)
+  ensureRunning(profile, ADAPTER_SERVICE_NAME, options)
   assertSuccess(
     runCompose(profile, ['ps', SERVICE_NAME], options),
     'docker compose ps hsa-directory-mock',
   )
+  assertSuccess(
+    runCompose(profile, ['ps', ADAPTER_SERVICE_NAME], options),
+    'docker compose ps hsa-person-lookup-adapter',
+  )
 
   const statusScript = `
-    const response = await fetch('http://127.0.0.1:8080/health')
-    if (!response.ok) {
-      throw new Error(\`HSA directory mock returned \${response.status}\`)
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+    const checks = [
+      ['HSA directory mock', 'https://127.0.0.1:8443/health'],
+      ['HSA person lookup adapter', 'http://hsa-person-lookup-adapter:8080/health'],
+    ]
+    for (const [name, url] of checks) {
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error(\`\${name} returned \${response.status}\`)
+      }
+      const body = await response.json()
+      console.log(JSON.stringify({ name, ...body }, null, 2))
     }
-    const body = await response.json()
-    console.log(JSON.stringify(body, null, 2))
   `
 
-  console.log('Verifying Kong HSA SOAP and REST routes...')
+  console.log('Verifying HSA directory mock and adapter health...')
   assertSuccess(
     runCompose(
       profile,
@@ -193,55 +209,13 @@ function runVerify(profile, options) {
   assertSuccess(
     runCompose(
       profile,
-      ['up', '--build', '-d', '--force-recreate', '--no-deps', SERVICE_NAME],
+      ['up', '--build', '-d', '--force-recreate', ...HSA_SERVICES],
       options,
     ),
-    'docker compose recreate hsa-directory-mock',
+    'docker compose recreate HSA lookup services',
   )
-  assertSuccess(
-    runCompose(
-      profile,
-      ['up', '-d', '--force-recreate', '--no-deps', KONG_SERVICE_NAME],
-      options,
-    ),
-    'docker compose recreate kong',
-  )
-
-  const soapRequest = [
-    '<soap:Envelope',
-    ' xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"',
-    ' xmlns:add="http://www.w3.org/2005/08/addressing"',
-    ' xmlns:urn="urn:riv:hsa:HsaWsResponder:3">',
-    '<soap:Header>',
-    '<add:MessageID>devcontainer-verify</add:MessageID>',
-    '<add:To>SE165565594230-1000</add:To>',
-    '</soap:Header>',
-    '<soap:Body>',
-    '<urn:GetHsaPerson>',
-    '<urn:hsaIdentity>SE1000-004</urn:hsaIdentity>',
-    '<urn:searchBase>c=SE</urn:searchBase>',
-    '</urn:GetHsaPerson>',
-    '</soap:Body>',
-    '</soap:Envelope>',
-  ].join('')
 
   const verifyScript = `
-    async function postSoap() {
-      const response = await fetch('http://kong:8000/svr-hsaws2/hsaws', {
-        method: 'POST',
-        headers: {
-          'Accept': 'text/xml',
-          'Content-Type': 'text/xml; charset=utf-8',
-        },
-        body: ${JSON.stringify(soapRequest)}
-      })
-      const body = await response.text()
-      if (!response.ok || !body.includes('<hsa:hsaIdentity>SE1000-004</hsa:hsaIdentity>')) {
-        throw new Error(\`Kong HSA SOAP verification failed with \${response.status}: \${body.slice(0, 300)}\`)
-      }
-      return body
-    }
-
     async function postRest() {
       const response = await fetch('http://kong:8000/hsa/person-records/lookup', {
         method: 'POST',
@@ -262,9 +236,7 @@ function runVerify(profile, options) {
     let verified = false
     for (let attempt = 1; attempt <= 30; attempt += 1) {
       try {
-        await postSoap()
         const restPerson = await postRest()
-        console.log('SOAP GetHsaPerson OK: SE1000-004')
         console.log(
           \`REST HSA lookup OK: \${restPerson.hsaId} \${restPerson.givenName} \${restPerson.surname}\`,
         )
@@ -293,7 +265,7 @@ function runVerify(profile, options) {
       ],
       options,
     ),
-    'Kong HSA SOAP/REST verification',
+    'Kong HSA REST verification',
   )
   console.log('Kong HSA verification completed.')
 }
@@ -304,26 +276,26 @@ function runAction(action, extraArgs, profile) {
 
   if (action === 'config') {
     return assertSuccess(
-      runCompose(profile, ['config', SERVICE_NAME], options),
-      'docker compose config hsa-directory-mock',
+      runCompose(profile, ['config', ...HSA_SERVICES], options),
+      'docker compose config HSA lookup services',
     )
   }
 
   if (action === 'build') {
     return assertSuccess(
-      runCompose(profile, ['build', SERVICE_NAME], options),
-      'docker compose build hsa-directory-mock',
+      runCompose(
+        profile,
+        ['build', SERVICE_NAME, ADAPTER_SERVICE_NAME],
+        options,
+      ),
+      'docker compose build HSA lookup services',
     )
   }
 
   if (action === 'up') {
     return assertSuccess(
-      runCompose(
-        profile,
-        ['up', '--build', '-d', '--no-deps', SERVICE_NAME],
-        options,
-      ),
-      'docker compose up hsa-directory-mock',
+      runCompose(profile, ['up', '--build', '-d', ...HSA_SERVICES], options),
+      'docker compose up HSA lookup services',
     )
   }
 
@@ -331,18 +303,10 @@ function runAction(action, extraArgs, profile) {
     return assertSuccess(
       runCompose(
         profile,
-        [
-          'up',
-          '--build',
-          '-d',
-          '--force-recreate',
-          '--no-deps',
-          SERVICE_NAME,
-          KONG_SERVICE_NAME,
-        ],
+        ['up', '--build', '-d', '--force-recreate', ...HSA_SERVICES],
         options,
       ),
-      'docker compose recreate hsa-directory-mock and kong',
+      'docker compose recreate HSA lookup services',
     )
   }
 
@@ -354,24 +318,38 @@ function runAction(action, extraArgs, profile) {
     return assertSuccess(
       runCompose(
         profile,
-        ['logs', '--tail=120', ...extraArgs, SERVICE_NAME],
+        [
+          'logs',
+          '--tail=120',
+          ...extraArgs,
+          SERVICE_NAME,
+          ADAPTER_SERVICE_NAME,
+        ],
         options,
       ),
-      'docker compose logs hsa-directory-mock',
+      'docker compose logs HSA lookup services',
     )
   }
 
   if (action === 'restart') {
     return assertSuccess(
-      runCompose(profile, ['restart', SERVICE_NAME], options),
-      'docker compose restart hsa-directory-mock',
+      runCompose(
+        profile,
+        ['restart', SERVICE_NAME, ADAPTER_SERVICE_NAME, KONG_SERVICE_NAME],
+        options,
+      ),
+      'docker compose restart HSA lookup services',
     )
   }
 
   if (action === 'down') {
     return assertSuccess(
-      runCompose(profile, ['rm', '--stop', '--force', SERVICE_NAME], options),
-      'docker compose rm hsa-directory-mock',
+      runCompose(
+        profile,
+        ['rm', '--stop', '--force', ...HSA_SERVICES],
+        options,
+      ),
+      'docker compose rm HSA lookup services',
     )
   }
 

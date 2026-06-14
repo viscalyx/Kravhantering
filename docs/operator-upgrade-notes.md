@@ -23,27 +23,18 @@ Export any custom UI terminology values you need to keep before running
 
 ### Topology changes
 
-For the container release bundle, production `single-node` remains unchanged:
-do not add Kong or the HSA directory mock to production Compose startup. If you
-mirror, archive or attest every release artifact, include the new
-`container-test-support.lock.json`, the `kravhantering-hsa-directory-mock`
-GHCR image, its SBOM and its attestations alongside the existing production
-artifacts. Kong is still a vendor image, but it is now locked as test support
-for `single-node-demo`.
+Production deployments must provide an approved HSA person lookup REST facade
+outside `app-runtime` and the standard production Compose files. That facade
+must integrate with an approved person catalog, and can be an existing
+integration platform or a production-approved Kong route backed by
+`hsa-person-lookup-adapter`.
 
-Only use `single-node-demo` for release smoke, disposable demos or other
-test-only environments. Before starting that topology, set `KONG_IMAGE_REF` and
-`HSA_DIRECTORY_MOCK_IMAGE_REF` from `container-test-support.lock.json` or from
-your internal mirrored tags, and set the demo app runtime to
-`HSA_PERSON_LOOKUP_URL=http://kong:8000/hsa/person-records/lookup`. For
-disconnected demo/test hosts, export and load images with
-`bin/kravhantering-images.sh --topology single-node-demo --test-lock-file
-container-test-support.lock.json`.
-
-Real production HSA integration is still not delivered by this release. Keep
-production `HSA_PERSON_LOOKUP_URL` pointed at the approved server-side REST
-facade or integration platform; the bundled HSA directory mock must not be used
-for production person verification.
+The release adds a test-only `single-node-demo` topology for release smoke,
+disposable demos and other non-production environments. It layers Kong,
+`hsa-person-lookup-adapter`, the HSA directory mock and the demo HSA
+certificate generator on top of `single-node`. The mock, demo certificate
+generator, test support lock file, mock image, SBOM and attestation are relevant
+only for operators who mirror or validate that demo/test topology.
 
 ### Before upgrading
 
@@ -79,7 +70,18 @@ Add `HSA_PERSON_LOOKUP_URL` to the app runtime environment before users edit
 responsibility assignments after the upgrade. The URL must be a server-side
 REST facade reachable from `app-runtime` that accepts `POST { "hsaId": "..." }`
 and returns normalized person data; keep `HSA_PERSON_LOOKUP_TIMEOUT_MS=5000`
-unless the approved integration path needs another timeout.
+unless the approved integration path needs another timeout. If the approved
+facade requires app-to-platform authentication, also set the relevant optional
+mTLS or OAuth2 client credentials variables:
+`HSA_PERSON_LOOKUP_CLIENT_CERT_PATH`, `HSA_PERSON_LOOKUP_CLIENT_KEY_PATH`,
+`HSA_PERSON_LOOKUP_CA_PATH`, `HSA_PERSON_LOOKUP_TLS_SERVER_NAME`,
+`HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`,
+`HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`, and either
+`HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL` or
+`HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL`. Add
+`HSA_PERSON_LOOKUP_OAUTH_SCOPE` or `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` only
+when the token endpoint requires them. The canonical flow is described in
+[HSA person lookup integration](./hsa-person-lookup-integration.md).
 
 ### After upgrading
 

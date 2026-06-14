@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DEFAULT_INTERNAL_NETWORK_NAME } from './generate-compose.mjs'
+import { assertHsaIntegrationSupportLockSchema } from './generate-hsa-integration-support-lock.mjs'
 import { assertStackLockSchema } from './generate-stack-lock.mjs'
 import { assertTestSupportLockSchema } from './generate-test-support-lock.mjs'
 
@@ -10,6 +11,8 @@ import { assertTestSupportLockSchema } from './generate-test-support-lock.mjs'
 
 export const DEFAULT_COMPOSE_FILE = 'container-stack.compose.yml'
 export const DEFAULT_LOCK_FILE = 'container-stack.lock.json'
+export const DEFAULT_HSA_INTEGRATION_SUPPORT_LOCK_FILE =
+  'container-hsa-integration-support.lock.json'
 export const DEFAULT_STATE_FILE = 'tmp/container-stack-local-state.json'
 export const DEFAULT_TEST_SUPPORT_LOCK_FILE = 'container-test-support.lock.json'
 export const DEFAULT_TLS_DIR = './tmp/container-tls'
@@ -21,10 +24,13 @@ export const LOCAL_APP_IMAGE_NAME = 'localhost/kravhantering/app-runtime'
 export const LOCAL_DB_JOB_IMAGE_NAME = 'localhost/kravhantering/db-job'
 export const LOCAL_HSA_DIRECTORY_MOCK_IMAGE_NAME =
   'localhost/kravhantering/hsa-directory-mock'
+export const LOCAL_HSA_PERSON_LOOKUP_ADAPTER_IMAGE_NAME =
+  'localhost/kravhantering/hsa-person-lookup-adapter'
 export const LOCAL_IMAGE_TAG = 'local'
 export const LOCAL_APP_IMAGE = `${LOCAL_APP_IMAGE_NAME}:${LOCAL_IMAGE_TAG}`
 export const LOCAL_DB_JOB_IMAGE = `${LOCAL_DB_JOB_IMAGE_NAME}:${LOCAL_IMAGE_TAG}`
 export const LOCAL_HSA_DIRECTORY_MOCK_IMAGE = `${LOCAL_HSA_DIRECTORY_MOCK_IMAGE_NAME}:${LOCAL_IMAGE_TAG}`
+export const LOCAL_HSA_PERSON_LOOKUP_ADAPTER_IMAGE = `${LOCAL_HSA_PERSON_LOOKUP_ADAPTER_IMAGE_NAME}:${LOCAL_IMAGE_TAG}`
 export const RELEASE_SMOKE_HSA_PERSON_LOOKUP_URL =
   'http://kong:8000/hsa/person-records/lookup'
 export const RELEASE_SMOKE_HSA_PERSON_LOOKUP_TIMEOUT_MS = '5000'
@@ -43,6 +49,9 @@ const USAGE = `Usage:
 Options:
   --compose-file <path>  Generated Compose file path
   --lock-file <path>     Stack lock file path
+  --hsa-integration-lock-file <path>
+                         HSA integration support lock file for release-smoke
+                         Kong and adapter images
   --network-name <name>   Internal Compose network name
   --release-images-from-lock
                          Pull project and release-smoke test support images by
@@ -102,6 +111,9 @@ export function parseArgs(args) {
     command,
     composeFile: readNonEmpty(options['compose-file']) ?? DEFAULT_COMPOSE_FILE,
     lockFile: readNonEmpty(options['lock-file']) ?? DEFAULT_LOCK_FILE,
+    hsaIntegrationSupportLockFile:
+      readNonEmpty(options['hsa-integration-lock-file']) ??
+      DEFAULT_HSA_INTEGRATION_SUPPORT_LOCK_FILE,
     mode,
     networkName:
       readNonEmpty(options['network-name']) ?? DEFAULT_INTERNAL_NETWORK_NAME,
@@ -160,6 +172,15 @@ export function createLocalStackConfig(options = {}) {
     source: 'local-build',
     tag: LOCAL_IMAGE_TAG,
   })
+  const hsaPersonLookupAdapterImage = readEnvImageConfig(
+    env,
+    'HSA_PERSON_LOOKUP_ADAPTER',
+    {
+      image: LOCAL_HSA_PERSON_LOOKUP_ADAPTER_IMAGE_NAME,
+      source: 'local-build',
+      tag: LOCAL_IMAGE_TAG,
+    },
+  )
 
   return {
     appRuntimeImage,
@@ -169,6 +190,14 @@ export function createLocalStackConfig(options = {}) {
     dbJobImageReference: imageReference(dbJobImage),
     hsaDirectoryMockImage,
     hsaDirectoryMockImageReference: imageReference(hsaDirectoryMockImage),
+    hsaIntegrationSupportLockFile:
+      options.hsaIntegrationSupportLockFile ??
+      DEFAULT_HSA_INTEGRATION_SUPPORT_LOCK_FILE,
+    hsaMtlsVolumeName: `${projectName}-hsa-mtls-certs`,
+    hsaPersonLookupAdapterImage,
+    hsaPersonLookupAdapterImageReference: imageReference(
+      hsaPersonLookupAdapterImage,
+    ),
     lockFile: options.lockFile ?? DEFAULT_LOCK_FILE,
     mode,
     networkName:
@@ -404,6 +433,22 @@ function readTestSupportLock(config, options = {}) {
   return lock
 }
 
+function readHsaIntegrationSupportLock(config, options = {}) {
+  const cwd = options.cwd ?? process.cwd()
+  const fsImpl = options.fsImpl ?? fs
+  const lock = JSON.parse(
+    fsImpl.readFileSync(
+      path.resolve(cwd, config.hsaIntegrationSupportLockFile),
+      'utf8',
+    ),
+  )
+  assertHsaIntegrationSupportLockSchema(
+    lock,
+    config.hsaIntegrationSupportLockFile,
+  )
+  return lock
+}
+
 function lockedProjectService(config, serviceName, options = {}) {
   const stackLock = readStackLock(config, options)
   const service = stackLock.services?.find(item => item.name === serviceName)
@@ -442,6 +487,30 @@ function lockedTestSupportService(config, serviceName, options = {}) {
   return service
 }
 
+function lockedHsaIntegrationSupportService(config, serviceName, options = {}) {
+  const hsaIntegrationSupportLock = readHsaIntegrationSupportLock(
+    config,
+    options,
+  )
+  const service = hsaIntegrationSupportLock.services?.find(
+    item => item.name === serviceName,
+  )
+
+  if (
+    !service?.image ||
+    !service.tag ||
+    !service.manifestDigest ||
+    !service.imageId ||
+    !service.source
+  ) {
+    throw new Error(
+      `Missing ${serviceName} image lock in ${config.hsaIntegrationSupportLockFile}.`,
+    )
+  }
+
+  return service
+}
+
 function withReleaseImagesFromLock(config, options = {}) {
   if (!config.releaseImagesFromLock) return config
 
@@ -450,6 +519,14 @@ function withReleaseImagesFromLock(config, options = {}) {
   const hsaDirectoryMockImage =
     config.mode === 'release-smoke'
       ? lockedTestSupportService(config, 'hsa-directory-mock', options)
+      : undefined
+  const hsaPersonLookupAdapterImage =
+    config.mode === 'release-smoke'
+      ? lockedHsaIntegrationSupportService(
+          config,
+          'hsa-person-lookup-adapter',
+          options,
+        )
       : undefined
 
   return {
@@ -463,6 +540,14 @@ function withReleaseImagesFromLock(config, options = {}) {
           hsaDirectoryMockImage,
           hsaDirectoryMockImageReference: imageManifestDigestReference(
             hsaDirectoryMockImage,
+          ),
+        }
+      : {}),
+    ...(hsaPersonLookupAdapterImage
+      ? {
+          hsaPersonLookupAdapterImage,
+          hsaPersonLookupAdapterImageReference: imageManifestDigestReference(
+            hsaPersonLookupAdapterImage,
           ),
         }
       : {}),
@@ -539,7 +624,7 @@ function containerName(config, service) {
 
 function projectNameFromContainerName(name) {
   const match = String(name).match(
-    /^(kravhantering-container-stack-(?:test|release-smoke)-[^_]+)_(?:app-runtime|db-bootstrap|db-migrate|db-seed-demo|db-seed-required|hsa-directory-mock|keycloak|kong|nginx|sqlserver)_\d+$/u,
+    /^(kravhantering-container-stack-(?:test|release-smoke)-[^_]+)_(?:app-runtime|db-bootstrap|db-migrate|db-seed-demo|db-seed-required|hsa-directory-mock|hsa-mtls-cert-generator|hsa-person-lookup-adapter|keycloak|kong|nginx|sqlserver)_\d+$/u,
   )
   return match?.[1] ?? null
 }
@@ -653,15 +738,22 @@ function lockedVendorImageReference(config, serviceName, options = {}) {
   return `${service.image}@${service.manifestDigest}`
 }
 
-function lockedTestSupportImageReference(config, serviceName, options = {}) {
-  const testSupportLock = readTestSupportLock(config, options)
-  const service = testSupportLock.services?.find(
+function lockedHsaIntegrationSupportImageReference(
+  config,
+  serviceName,
+  options = {},
+) {
+  const hsaIntegrationSupportLock = readHsaIntegrationSupportLock(
+    config,
+    options,
+  )
+  const service = hsaIntegrationSupportLock.services?.find(
     item => item.name === serviceName,
   )
 
   if (!service?.image || !service.manifestDigest) {
     throw new Error(
-      `Missing ${serviceName} image lock in ${config.testSupportLockFile}.`,
+      `Missing ${serviceName} image lock in ${config.hsaIntegrationSupportLockFile}.`,
     )
   }
 
@@ -692,7 +784,8 @@ function pullReleaseProjectImages(config, options = {}) {
 function pullReleaseTestSupportImages(config, options = {}) {
   if (config.mode !== 'release-smoke') return
   for (const imageRef of [
-    lockedTestSupportImageReference(config, 'kong', options),
+    lockedHsaIntegrationSupportImageReference(config, 'kong', options),
+    config.hsaPersonLookupAdapterImageReference,
     config.hsaDirectoryMockImageReference,
   ]) {
     runCommand('podman', ['pull', imageRef], options)
@@ -831,7 +924,9 @@ function runHsaDirectoryMock(config, options = {}) {
       containerName(config, 'hsa-directory-mock'),
       '--detach',
       '--env',
-      'PORT=8080',
+      'PORT=8443',
+      '--volume',
+      `${config.hsaMtlsVolumeName}:/run/hsa-mtls:ro`,
       '--net',
       podmanComposeNetworkName(config),
       '--network-alias',
@@ -843,10 +938,74 @@ function runHsaDirectoryMock(config, options = {}) {
   )
 }
 
+function runHsaMtlsCertGenerator(config, options = {}) {
+  runCommand(
+    'podman',
+    [
+      'volume',
+      'create',
+      '--label',
+      `io.podman.compose.project=${config.projectName}`,
+      config.hsaMtlsVolumeName,
+    ],
+    options,
+  )
+  runCommand(
+    'podman',
+    [
+      'run',
+      '--rm',
+      '--pull=never',
+      '--user',
+      '0:0',
+      '--name',
+      containerName(config, 'hsa-mtls-cert-generator'),
+      '--volume',
+      `${config.hsaMtlsVolumeName}:/run/hsa-mtls`,
+      '--net',
+      podmanComposeNetworkName(config),
+      ...podmanLabelArgs(config, 'hsa-mtls-cert-generator'),
+      config.hsaPersonLookupAdapterImageReference,
+      'npm',
+      'run',
+      'generate-certs',
+    ],
+    options,
+  )
+}
+
+function runHsaPersonLookupAdapter(config, options = {}) {
+  runCommand(
+    'podman',
+    [
+      'run',
+      '--name',
+      containerName(config, 'hsa-person-lookup-adapter'),
+      '--detach',
+      '--pull=never',
+      '--env',
+      'PORT=8080',
+      '--env',
+      'HSA_SOAP_ENDPOINT_URL=https://hsa-directory-mock:8443/svr-hsaws2/hsaws',
+      '--env',
+      'HSA_SOAP_TIMEOUT_MS=5000',
+      '--volume',
+      `${config.hsaMtlsVolumeName}:/run/hsa-mtls:ro`,
+      '--net',
+      podmanComposeNetworkName(config),
+      '--network-alias',
+      'hsa-person-lookup-adapter',
+      ...podmanLabelArgs(config, 'hsa-person-lookup-adapter'),
+      config.hsaPersonLookupAdapterImageReference,
+    ],
+    options,
+  )
+}
+
 function runKong(config, options = {}) {
   const cwd = options.cwd ?? process.cwd()
   const kongImageReference = config.releaseImagesFromLock
-    ? lockedTestSupportImageReference(config, 'kong', options)
+    ? lockedHsaIntegrationSupportImageReference(config, 'kong', options)
     : lockedImageLockReference('containers/kong/image.lock.json', options)
   runCommand(
     'podman',
@@ -909,6 +1068,11 @@ async function up(config, options = {}) {
     runCommand('npm', ['run', 'container:build:db-job'], options)
     if (runtimeConfig.mode === 'release-smoke') {
       runCommand('npm', ['run', 'container:build:hsa-directory-mock'], options)
+      runCommand(
+        'npm',
+        ['run', 'container:build:hsa-person-lookup-adapter'],
+        options,
+      )
     }
   }
   if (runtimeConfig.releaseImagesFromLock) {
@@ -923,6 +1087,10 @@ async function up(config, options = {}) {
     if (runtimeConfig.mode === 'release-smoke') {
       await loadDockerImageIntoPodman(
         runtimeConfig.hsaDirectoryMockImageReference,
+        options,
+      )
+      await loadDockerImageIntoPodman(
+        runtimeConfig.hsaPersonLookupAdapterImageReference,
         options,
       )
     }
@@ -943,6 +1111,20 @@ async function up(config, options = {}) {
       runtimeConfig.dbJobImageReference,
       options,
     )
+    const hsaPersonLookupAdapterImageId =
+      runtimeConfig.mode === 'release-smoke'
+        ? inspectImageId(
+            runtimeConfig.hsaPersonLookupAdapterImageReference,
+            options,
+          )
+        : null
+    const hsaPersonLookupAdapterManifestDigest =
+      runtimeConfig.mode === 'release-smoke'
+        ? inspectManifestDigest(
+            runtimeConfig.hsaPersonLookupAdapterImageReference,
+            options,
+          )
+        : null
     runCommand(
       'node',
       [
@@ -973,6 +1155,28 @@ async function up(config, options = {}) {
       ],
       options,
     )
+    if (runtimeConfig.mode === 'release-smoke') {
+      runCommand(
+        'node',
+        [
+          'scripts/containers/generate-hsa-integration-support-lock.mjs',
+          'generate',
+          '--lock-file',
+          runtimeConfig.hsaIntegrationSupportLockFile,
+          '--hsa-person-lookup-adapter-image',
+          runtimeConfig.hsaPersonLookupAdapterImage.image,
+          '--hsa-person-lookup-adapter-tag',
+          runtimeConfig.hsaPersonLookupAdapterImage.tag,
+          '--hsa-person-lookup-adapter-manifest-digest',
+          hsaPersonLookupAdapterManifestDigest,
+          '--hsa-person-lookup-adapter-image-id',
+          hsaPersonLookupAdapterImageId,
+          '--hsa-person-lookup-adapter-source',
+          runtimeConfig.hsaPersonLookupAdapterImage.source,
+        ],
+        options,
+      )
+    }
   }
   runCommand(
     'node',
@@ -1010,7 +1214,9 @@ async function up(config, options = {}) {
   }
   if (runtimeConfig.mode === 'release-smoke') {
     runDatabaseJob('db-seed-demo', runtimeConfig, options)
+    runHsaMtlsCertGenerator(runtimeConfig, options)
     runHsaDirectoryMock(runtimeConfig, options)
+    runHsaPersonLookupAdapter(runtimeConfig, options)
     runKong(runtimeConfig, options)
   }
 

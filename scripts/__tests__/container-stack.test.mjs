@@ -57,13 +57,30 @@ describe('container stack helpers', () => {
     return {
       schemaVersion: 1,
       services: [
-        kongLock(),
         {
           imageId: 'sha256:hsa-directory-mock-image',
           image: 'ghcr.io/viscalyx/kravhantering-hsa-directory-mock',
           manifestDigest: 'sha256:hsa-directory-mock-release',
           name: 'hsa-directory-mock',
           role: 'hsa-directory-test-support',
+          source: 'ghcr-release',
+          tag: '1.2.3',
+        },
+      ],
+    }
+  }
+
+  function hsaIntegrationSupportLock() {
+    return {
+      schemaVersion: 1,
+      services: [
+        kongLock(),
+        {
+          imageId: 'sha256:hsa-person-lookup-adapter-image',
+          image: 'ghcr.io/viscalyx/kravhantering-hsa-person-lookup-adapter',
+          manifestDigest: 'sha256:hsa-person-lookup-adapter-release',
+          name: 'hsa-person-lookup-adapter',
+          role: 'hsa-person-lookup-rest-to-soap-adapter',
           source: 'ghcr-release',
           tag: '1.2.3',
         },
@@ -773,6 +790,13 @@ describe('container stack helpers', () => {
           if (String(filePath).endsWith('container-test-support.lock.json')) {
             return JSON.stringify(testSupportLock())
           }
+          if (
+            String(filePath).endsWith(
+              'container-hsa-integration-support.lock.json',
+            )
+          ) {
+            return JSON.stringify(hsaIntegrationSupportLock())
+          }
           if (String(filePath).endsWith('container-stack.lock.json')) {
             return JSON.stringify({
               schemaVersion: 2,
@@ -842,6 +866,9 @@ describe('container stack helpers', () => {
     )
     expect(commands).toContain(
       'podman pull docker.io/kong/kong-gateway@sha256:kong',
+    )
+    expect(commands).toContain(
+      'podman pull ghcr.io/viscalyx/kravhantering-hsa-person-lookup-adapter@sha256:hsa-person-lookup-adapter-release',
     )
     expect(commands).toContain(
       'podman pull ghcr.io/viscalyx/kravhantering-hsa-directory-mock@sha256:hsa-directory-mock-release',

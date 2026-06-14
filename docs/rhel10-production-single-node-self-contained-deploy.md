@@ -52,10 +52,11 @@ The site must provide approved runtime image refs for:
 - SQL Server
 - Keycloak
 
-The optional `single-node-demo` test support overlay adds Kong and the
-HSA directory mock from `container-test-support.lock.json`. That overlay is
-only for disposable demo or release-test environments and must not be used for
-production.
+The optional `single-node-demo` test support overlay adds Kong, the HSA person
+lookup adapter and the HSA directory mock from
+`container-hsa-integration-support.lock.json` and
+`container-test-support.lock.json`. That overlay is only for disposable demo or
+release-test environments and must not be used for production.
 
 The refs must use tag-style `image:tag` values that point at public upstream
 registries or an internal registry mirror. Each configured ref must resolve to
@@ -79,7 +80,11 @@ verification.
 | `NEXT_PUBLIC_SITE_URL` | `NEXT_PUBLIC_SITE_URL` in `app.env` | `https://<APP_HOST>` | Verify after choosing `APP_HOST`; plan only if the public URL cannot use the normal scheme and host. |
 | `HSA_PERSON_LOOKUP_URL` | `HSA_PERSON_LOOKUP_URL` in `app.env` | No default | Always record the approved server-side HSA person lookup endpoint, normally the environment's Kong or integration-platform REST facade. |
 | `HSA_PERSON_LOOKUP_TIMEOUT_MS` | `HSA_PERSON_LOOKUP_TIMEOUT_MS` in `app.env` | `5000` | Plan only if the HSA integration path needs another timeout. |
-| `KONG_IMAGE_REF` | `KONG_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose a tag-style ref from `container-test-support.lock.json` when using the demo overlay. |
+| `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH`, `HSA_PERSON_LOOKUP_CLIENT_KEY_PATH` | Optional mTLS client credential paths in `app.env` | Blank | Set both when the approved external integration platform requires app-to-platform mTLS. |
+| `HSA_PERSON_LOOKUP_CA_PATH`, `HSA_PERSON_LOOKUP_TLS_SERVER_NAME` | Optional mTLS trust and TLS server-name values in `app.env` | Blank | Set only when the approved mTLS route requires a custom CA bundle or TLS server name. |
+| `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL`, `HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL`, `HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`, `HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`, `HSA_PERSON_LOOKUP_OAUTH_SCOPE`, `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` | Optional OAuth2 client credentials values in `app.env` | Blank | Set client id, client secret and either token URL or issuer URL when the approved external integration platform requires OAuth2. Add scope or audience only when the token endpoint requires them. |
+| `KONG_IMAGE_REF` | `KONG_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose a tag-style ref from `container-hsa-integration-support.lock.json` when using the demo overlay. |
+| `HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` | `HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose the release tag for the project-owned HSA lookup adapter image when using the demo overlay. |
 | `HSA_DIRECTORY_MOCK_IMAGE_REF` | `HSA_DIRECTORY_MOCK_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose the release tag for the project-owned HSA mock image when using the demo overlay. |
 | `KC_HOSTNAME` | `KC_HOSTNAME` in `keycloak.env` | `https://<APP_HOST>/auth` | Verify after choosing `APP_HOST`; plan only if Keycloak is deliberately exposed at another public URL. |
 | `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Verify from the actual Compose network. It can change when the internal network is renamed, recreated or assigned another subnet. |
@@ -116,6 +121,9 @@ verification.
 | `OPENROUTER_MGMT_API_KEY` | `OPENROUTER_MGMT_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation and organization credit display are approved. |
 | `NEXT_PUBLIC_DEFAULT_MODEL` | `NEXT_PUBLIC_DEFAULT_MODEL` in `app.env` | Empty | Plan only if the deployment should preselect a public default AI model. |
 <!-- markdownlint-enable MD013 -->
+
+For the full HSA person lookup transport and authentication contract, see
+[HSA person lookup integration](./hsa-person-lookup-integration.md).
 
 ### Generate Unique Secrets
 
@@ -531,32 +539,38 @@ exit
 Use this only for a disposable `single-node-demo` release-test or demo
 environment. Do not use these refs in production.
 
-Set the two test support refs from `container-test-support.lock.json` after the
-five production refs are selected:
+Set Kong and the adapter refs from
+`container-hsa-integration-support.lock.json`, and set the HSA directory mock
+ref from `container-test-support.lock.json` after the five production refs are
+selected:
 
 ```bash
 update_ref() {
   sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
 }
 
+HSA_LOCK_FILE=/opt/kravhantering/current/container-hsa-integration-support.lock.json
 TEST_LOCK_FILE=/opt/kravhantering/current/container-test-support.lock.json
-test_service_image() {
-  jq -r --arg name "$1" \
-    '.services[] | select(.name == $name) | .image' "$TEST_LOCK_FILE"
+support_service_image() {
+  jq -r --arg name "$2" \
+    '.services[] | select(.name == $name) | .image' "$1"
 }
-test_service_tag() {
-  jq -r --arg name "$1" \
-    '.services[] | select(.name == $name) | .tag' "$TEST_LOCK_FILE"
+support_service_tag() {
+  jq -r --arg name "$2" \
+    '.services[] | select(.name == $name) | .tag' "$1"
 }
-test_service_ref() {
+support_service_ref() {
   printf '%s:%s\n' \
-    "$(test_service_image "$1")" "$(test_service_tag "$1")"
+    "$(support_service_image "$1" "$2")" \
+    "$(support_service_tag "$1" "$2")"
 }
 
 update_ref KONG_IMAGE_REF \
-  "$(test_service_ref kong)"
+  "$(support_service_ref "$HSA_LOCK_FILE" kong)"
+update_ref HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF \
+  "$(support_service_ref "$HSA_LOCK_FILE" hsa-person-lookup-adapter)"
 update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
-  "$(test_service_ref hsa-directory-mock)"
+  "$(support_service_ref "$TEST_LOCK_FILE" hsa-directory-mock)"
 ```
 
 Then pull and verify both lock files together:
@@ -569,10 +583,12 @@ set -a
 set +a
 
 podman pull "$KONG_IMAGE_REF"
+podman pull "$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF"
 podman pull "$HSA_DIRECTORY_MOCK_IMAGE_REF"
 
 bin/kravhantering-images.sh --topology single-node-demo \
   --lock-file container-stack.lock.json \
+  --hsa-integration-lock-file container-hsa-integration-support.lock.json \
   --test-lock-file container-test-support.lock.json \
   --env-file /etc/kravhantering/release.env \
   verify
@@ -726,6 +742,16 @@ AUTH_SESSION_TTL_SECONDS=28800
 MCP_CLIENT_ID=kravhantering-mcp
 HSA_PERSON_LOOKUP_TIMEOUT_MS=5000
 HSA_PERSON_LOOKUP_URL=https://kong.example.internal/hsa/person-records/lookup
+HSA_PERSON_LOOKUP_CA_PATH=
+HSA_PERSON_LOOKUP_CLIENT_CERT_PATH=
+HSA_PERSON_LOOKUP_CLIENT_KEY_PATH=
+HSA_PERSON_LOOKUP_TLS_SERVER_NAME=
+HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL=
+HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL=
+HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID=
+HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET=
+HSA_PERSON_LOOKUP_OAUTH_SCOPE=
+HSA_PERSON_LOOKUP_OAUTH_AUDIENCE=
 
 NEXT_PUBLIC_DEFAULT_MODEL=
 OPENROUTER_API_KEY=
@@ -767,6 +793,20 @@ app calls this internal Kong or integration-platform REST facade only when an
 editable HSA-id needs lookup or refresh. Keep
 `HSA_PERSON_LOOKUP_TIMEOUT_MS=5000` unless the approved integration path needs
 another timeout.
+
+Leave the optional `HSA_PERSON_LOOKUP_*` authentication values blank for an
+internal same-stack route. When the approved external route requires mTLS, set
+both `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH` and
+`HSA_PERSON_LOOKUP_CLIENT_KEY_PATH`, plus `HSA_PERSON_LOOKUP_CA_PATH` or
+`HSA_PERSON_LOOKUP_TLS_SERVER_NAME` only when required by the platform. When it
+requires OAuth2 client credentials, set
+`HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`, `HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`
+and either `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL` or
+`HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL`; add
+`HSA_PERSON_LOOKUP_OAUTH_SCOPE` or `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` only
+when the token endpoint requires them. Supplying both mTLS and OAuth2 enables
+mixed mode. The canonical flow is described in
+[HSA person lookup integration](./hsa-person-lookup-integration.md).
 
 Leave `NEXT_PUBLIC_DEFAULT_MODEL`, `OPENROUTER_API_KEY` and
 `OPENROUTER_MGMT_API_KEY` empty unless AI requirement generation is approved
@@ -1274,9 +1314,10 @@ explicit command.
 
 Optional, release test and demo only: switch the app runtime to the internal
 Kong route and start the test support overlay with the single-node stack. The
-overlay adds Kong and `hsa-directory-mock` on `kravhantering-internal` without
-publishing host ports. Use it only with `single-node-demo` and only after
-setting and verifying `KONG_IMAGE_REF` and `HSA_DIRECTORY_MOCK_IMAGE_REF` from
+overlay adds Kong, `hsa-person-lookup-adapter` and `hsa-directory-mock` on
+`kravhantering-internal` without publishing host ports. Use it only with
+`single-node-demo` and only after setting and verifying `KONG_IMAGE_REF`,
+`HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` and `HSA_DIRECTORY_MOCK_IMAGE_REF` from
 [Optional Test Support Image Refs](#optional-test-support-image-refs).
 
 ```bash
@@ -1298,6 +1339,9 @@ podman compose --env-file /etc/kravhantering/release.env \
 podman compose --env-file /etc/kravhantering/release.env \
   -f compose/single-node.compose.yml \
   -f compose/single-node-demo.compose.yml logs --tail=100 kong
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml \
+  -f compose/single-node-demo.compose.yml logs --tail=100 hsa-person-lookup-adapter
 podman compose --env-file /etc/kravhantering/release.env \
   -f compose/single-node.compose.yml \
   -f compose/single-node-demo.compose.yml logs --tail=100 hsa-directory-mock
@@ -1345,13 +1389,15 @@ podman compose --env-file /etc/kravhantering/release.env \
 exit
 ```
 
-Check readiness through nginx:
+Check readiness and the static HSA-person lookup Swagger UI through nginx:
 
 ```bash
 curl --fail --silent --show-error \
   https://kravhantering.example.internal/api/health
 curl --fail --silent --show-error \
   https://kravhantering.example.internal/api/ready
+curl --fail --silent --show-error \
+  https://kravhantering.example.internal/api-docs/hsa-person-lookup/
 ```
 
 If the host uses the temporary self-signed certificate from Appendix A, or the

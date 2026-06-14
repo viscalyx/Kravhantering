@@ -134,6 +134,7 @@ async function collectRequirementResponsibilityPerson(
         person.middle_name AS middleName,
         person.surname AS surname,
         person.email AS email,
+        person.has_protected_personal_data AS hasProtectedPersonalData,
         person.last_fetched_at AS lastFetchedAt,
         person.updated_at AS updatedAt
       FROM requirement_responsibility_people person
@@ -151,6 +152,10 @@ async function collectRequirementResponsibilityPerson(
         { fieldName: 'middle_name', value: stringValue(row.middleName) },
         { fieldName: 'surname', value: stringValue(row.surname) },
         { fieldName: 'email', value: stringValue(row.email) },
+        {
+          fieldName: 'has_protected_personal_data',
+          value: Boolean(row.hasProtectedPersonalData),
+        },
         {
           fieldName: 'last_fetched_at',
           value: isoTimestamp(row.lastFetchedAt) ?? null,

@@ -65,6 +65,7 @@ certificates
 out
 build/
 /public/build.json
+/public/api-docs/
 
 bundled
 

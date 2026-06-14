@@ -19,6 +19,6 @@ till för ett befintligt REST workflow flyttas motsvarande REST-beteende bakom
 - Duplicera verksamhetslogik mellan REST och MCP: avvisat eftersom kravets
   livscykel, medlemskap i kravunderlag, förslag och säkerhetsbeslut måste vara
   konsekventa över användargränssnitt och AI-riktade gränssnitt.
-- Skicka varje REST endpoint genom `RequirementsService`: avvisat eftersom
+- Skicka varje REST-ändpunkt genom `RequirementsService`: avvisat eftersom
   enkla REST-only admin- och lookup routes inte behöver den extra
   tjänstegränsen förrän de delar beteende med MCP.

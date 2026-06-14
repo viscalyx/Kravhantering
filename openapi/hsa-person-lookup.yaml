@@ -1,0 +1,221 @@
+openapi: 3.1.0
+info:
+  title: Kravhantering HSA Person Lookup Facade
+  version: 1.0.0
+  description: >
+    Stable REST/JSON contract used by Kravhantering to resolve HSA person
+    records. SOAP GetHsaPerson, HSAWS mTLS, and REST-to-SOAP transformation are
+    handled behind the integrationsplattform boundary.
+servers:
+  - url: https://integrationsplattform.example.test
+    description: Environment-specific Kong or integrationsplattform endpoint
+security:
+  - mtlsClientCertificate: []
+  - oauthClientCredentials: []
+paths:
+  /hsa/person-records/lookup:
+    post:
+      operationId: lookupHsaPersonRecord
+      summary: Lookup one HSA person record
+      description: >
+        Resolves one HSA-id to the person fields Kravhantering stores for
+        Kravansvarsperson. The facade returns not-found and conflict as stable
+        domain responses; other upstream failures are reported as unavailable.
+      tags:
+        - HSA person records
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HsaPersonLookupRequest'
+            examples:
+              hsaId:
+                value:
+                  hsaId: SE5560000001-annaj
+      responses:
+        '200':
+          description: The HSA person record was found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HsaPersonLookupResponse'
+        '400':
+          description: The REST request is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '401':
+          description: Optional app-to-platform authentication failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '403':
+          description: Optional app-to-platform authorization failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthzError'
+        '404':
+          description: HSA returned no userInformations for the supplied HSA-id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '409':
+          description: HSA returned conflicting normalized person records.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+        '503':
+          description: SOAP fault or upstream platform/HSA service unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceUnavailableError'
+        '504':
+          description: Upstream HSA lookup timed out.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeoutError'
+components:
+  securitySchemes:
+    mtlsClientCertificate:
+      type: mutualTLS
+      description: >
+        Client certificate authentication used when the integration platform
+        protects the facade with app-to-platform mTLS.
+    oauthClientCredentials:
+      type: oauth2
+      description: >
+        OAuth2 client credentials used when the integration platform protects
+        the facade with bearer-token authentication.
+      flows:
+        clientCredentials:
+          tokenUrl: https://idp.example.test/oauth2/token
+          scopes:
+            hsa.person.lookup: Resolve HSA person records.
+  schemas:
+    HsaPersonLookupRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - hsaId
+      properties:
+        hsaId:
+          type: string
+          minLength: 1
+          description: HSA-id to look up.
+          examples:
+            - SE5560000001-annaj
+    HsaPersonLookupResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - hsaId
+        - givenName
+        - middleName
+        - surname
+        - email
+        - hasProtectedPersonalData
+      properties:
+        hsaId:
+          type: string
+          examples:
+            - SE5560000001-annaj
+        givenName:
+          type: string
+          examples:
+            - Anna
+        middleName:
+          type:
+            - string
+            - 'null'
+          examples:
+            - null
+        surname:
+          type:
+            - string
+            - 'null'
+          examples:
+            - Johansson
+        email:
+          type:
+            - string
+            - 'null'
+          format: email
+          examples:
+            - anna.johansson@example.test
+        hasProtectedPersonalData:
+          type: boolean
+          description: >
+            True when the upstream HSA person post carries hsaProtectedPerson.
+          examples:
+            - false
+    ErrorResponse:
+      type: object
+      additionalProperties: true
+      required:
+        - code
+      properties:
+        code:
+          type: string
+        error:
+          type: string
+    ValidationError:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            code:
+              const: validation
+    AuthError:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            code:
+              type: string
+              examples:
+                - authentication_failed
+    AuthzError:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            code:
+              type: string
+              examples:
+                - authorization_failed
+    NotFoundError:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            code:
+              const: not_found
+    ConflictError:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            code:
+              const: conflict
+    ServiceUnavailableError:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            code:
+              const: service_unavailable
+    TimeoutError:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            code:
+              const: timeout

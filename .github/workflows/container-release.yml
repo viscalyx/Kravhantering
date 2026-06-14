@@ -183,6 +183,28 @@ jobs:
             --push \
             containers/hsa-directory-mock
 
+      - name: Build and publish HSA person lookup adapter image
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra tags <<< "${HSA_PERSON_LOOKUP_ADAPTER_TAGS_CSV}"
+          tag_args=()
+          for tag in "${tags[@]}"; do
+            tag_args+=(--tag "${tag}")
+          done
+          docker buildx build \
+            --file containers/hsa-person-lookup-adapter/Dockerfile \
+            --platform linux/amd64 \
+            --metadata-file tmp/container-release-artifacts/metadata/hsa-person-lookup-adapter-buildx.json \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.description=${HSA_PERSON_LOOKUP_ADAPTER_DESCRIPTION}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.version=${RELEASE_VERSION}" \
+            --annotation "manifest:org.opencontainers.image.description=${HSA_PERSON_LOOKUP_ADAPTER_DESCRIPTION}" \
+            --provenance=false \
+            "${tag_args[@]}" \
+            --push \
+            containers/hsa-person-lookup-adapter
+
       - name: Record published image identities
         run: |
           node scripts/release/container-release.mjs identities \
@@ -190,6 +212,7 @@ jobs:
             --app-metadata tmp/container-release-artifacts/metadata/app-runtime-buildx.json \
             --db-job-metadata tmp/container-release-artifacts/metadata/db-job-buildx.json \
             --hsa-directory-mock-metadata tmp/container-release-artifacts/metadata/hsa-directory-mock-buildx.json \
+            --hsa-person-lookup-adapter-metadata tmp/container-release-artifacts/metadata/hsa-person-lookup-adapter-buildx.json \
             --output tmp/container-release-artifacts/metadata/release-metadata.json \
             --github-env "${GITHUB_ENV}"
 
@@ -209,6 +232,18 @@ jobs:
             --db-job-image-id "${DB_JOB_IMAGE_ID}" \
             --db-job-source ghcr-release
           node scripts/containers/generate-stack-lock.mjs check
+
+      - name: Generate release HSA integration support lock
+        run: |
+          node scripts/containers/generate-hsa-integration-support-lock.mjs generate \
+            --release-version "${RELEASE_VERSION}" \
+            --commit-sha "${GITHUB_SHA}" \
+            --hsa-person-lookup-adapter-image "${HSA_PERSON_LOOKUP_ADAPTER_IMAGE}" \
+            --hsa-person-lookup-adapter-tag "${HSA_PERSON_LOOKUP_ADAPTER_PRIMARY_TAG_NAME}" \
+            --hsa-person-lookup-adapter-manifest-digest "${HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST}" \
+            --hsa-person-lookup-adapter-image-id "${HSA_PERSON_LOOKUP_ADAPTER_IMAGE_ID}" \
+            --hsa-person-lookup-adapter-source ghcr-release
+          node scripts/containers/generate-hsa-integration-support-lock.mjs check
 
       - name: Generate release test support lock
         run: |
@@ -249,6 +284,14 @@ jobs:
           output-file: tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json
           upload-artifact: false
 
+      - name: Generate HSA person lookup adapter SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST_REF }}
+          format: spdx-json
+          output-file: tmp/container-release-artifacts/sbom/hsa-person-lookup-adapter.spdx.json
+          upload-artifact: false
+
       - name: Attest app-runtime provenance
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
@@ -268,6 +311,13 @@ jobs:
         with:
           subject-name: ${{ env.HSA_DIRECTORY_MOCK_IMAGE }}
           subject-digest: ${{ env.HSA_DIRECTORY_MOCK_MANIFEST_DIGEST }}
+          push-to-registry: false
+
+      - name: Attest HSA person lookup adapter provenance
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-name: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_IMAGE }}
+          subject-digest: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST }}
           push-to-registry: false
 
       - name: Attest app-runtime SBOM
@@ -294,12 +344,20 @@ jobs:
           sbom-path: tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json
           push-to-registry: false
 
+      - name: Attest HSA person lookup adapter SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-name: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_IMAGE }}
+          subject-digest: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST }}
+          sbom-path: tmp/container-release-artifacts/sbom/hsa-person-lookup-adapter.spdx.json
+          push-to-registry: false
+
       - name: Verify artifact attestations
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          for ref in "${APP_RUNTIME_MANIFEST_DIGEST_REF}" "${DB_JOB_MANIFEST_DIGEST_REF}" "${HSA_DIRECTORY_MOCK_MANIFEST_DIGEST_REF}"; do
+          for ref in "${APP_RUNTIME_MANIFEST_DIGEST_REF}" "${DB_JOB_MANIFEST_DIGEST_REF}" "${HSA_DIRECTORY_MOCK_MANIFEST_DIGEST_REF}" "${HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST_REF}"; do
             gh attestation verify "oci://${ref}" \
               --repo "${GITHUB_REPOSITORY}" \
               --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/container-release.yml"
@@ -317,6 +375,7 @@ jobs:
           node scripts/containers/run-local-stack.mjs up \
             --mode release-smoke \
             --run-id "${CONTAINER_STACK_RUN_ID}" \
+            --hsa-integration-lock-file container-hsa-integration-support.lock.json \
             --test-lock-file container-test-support.lock.json \
             --release-images-from-lock
 
@@ -359,6 +418,7 @@ jobs:
           node scripts/containers/write-hashes.mjs \
             --output hashes.sha256 \
             container-stack.lock.json \
+            container-hsa-integration-support.lock.json \
             container-test-support.lock.json \
             container-stack.compose.yml \
             container-status.txt \
@@ -373,6 +433,7 @@ jobs:
             tmp/container-release-artifacts/metadata/release-metadata.json \
             tmp/container-release-artifacts/sbom/app-runtime.spdx.json \
             tmp/container-release-artifacts/sbom/db-job.spdx.json \
+            tmp/container-release-artifacts/sbom/hsa-person-lookup-adapter.spdx.json \
             tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json || true
 
       - name: Stage production deployment bundle
@@ -382,6 +443,7 @@ jobs:
             --plan tmp/container-release-artifacts/metadata/release-plan.json \
             --metadata tmp/container-release-artifacts/metadata/release-metadata.json \
             --stack-lock container-stack.lock.json \
+            --hsa-integration-support-lock container-hsa-integration-support.lock.json \
             --test-support-lock container-test-support.lock.json \
             --build-json public/build.json \
             --hashes hashes.sha256 \
@@ -423,6 +485,7 @@ jobs:
 
           for file in \
             container-stack.lock.json \
+            container-hsa-integration-support.lock.json \
             container-test-support.lock.json \
             container-stack.compose.yml \
             container-status.txt \
@@ -487,6 +550,7 @@ jobs:
 
           gh release upload "${RELEASE_TAG_NAME}" \
             container-stack.lock.json \
+            container-hsa-integration-support.lock.json \
             container-test-support.lock.json \
             container-stack.compose.yml \
             hashes.sha256 \
@@ -494,6 +558,7 @@ jobs:
             tmp/container-release-artifacts/metadata/release-metadata.json \
             tmp/container-release-artifacts/sbom/app-runtime.spdx.json \
             tmp/container-release-artifacts/sbom/db-job.spdx.json \
+            tmp/container-release-artifacts/sbom/hsa-person-lookup-adapter.spdx.json \
             tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json \
             tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz \
             tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz.sha256 \

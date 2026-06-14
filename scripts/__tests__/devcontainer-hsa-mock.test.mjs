@@ -96,7 +96,10 @@ describe('devcontainer HSA mock helper', () => {
         '-f',
         '.devcontainer/docker-compose.yml',
         'config',
+        'hsa-mtls-cert-generator',
         'hsa-directory-mock',
+        'hsa-person-lookup-adapter',
+        'kong',
       ],
       expect.objectContaining({
         env: expect.objectContaining({
@@ -145,11 +148,52 @@ describe('devcontainer HSA mock helper', () => {
         'up',
         '--build',
         '-d',
-        '--no-deps',
+        'hsa-mtls-cert-generator',
         'hsa-directory-mock',
+        'hsa-person-lookup-adapter',
+        'kong',
       ],
       expect.any(Object),
     )
+  })
+
+  it('starts dependencies and checks both services for status', async () => {
+    vi.spyOn(os, 'hostname').mockReturnValue('test-host')
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const spawnSync = mockSpawnSync((_command, args) => {
+      const text = args.join(' ')
+      if (text.includes('ps --format json app')) {
+        return {
+          stdout: JSON.stringify([
+            { ID: 'test-host-abc', Name: 'app', State: 'running' },
+          ]),
+        }
+      }
+      if (args[0] === 'inspect') {
+        return { stdout: '/workspace-host\n' }
+      }
+      return {}
+    })
+
+    await expect(main(['status'])).resolves.toBe(0)
+
+    const calls = spawnSync.mock.calls.map(([, args]) => args.join(' '))
+    expect(calls).toContain(
+      'compose -f .devcontainer/docker-compose.yml up --build -d hsa-directory-mock',
+    )
+    expect(calls).toContain(
+      'compose -f .devcontainer/docker-compose.yml up --build -d hsa-person-lookup-adapter',
+    )
+    expect(calls.some(call => call.includes('up --build -d --no-deps'))).toBe(
+      false,
+    )
+    expect(
+      calls.some(
+        call =>
+          call.includes('exec -T hsa-directory-mock') &&
+          call.includes('http://hsa-person-lookup-adapter:8080/health'),
+      ),
+    ).toBe(true)
   })
 
   it('returns exit code 1 and logs usage when an action command fails', async () => {
@@ -177,7 +221,7 @@ describe('devcontainer HSA mock helper', () => {
     await expect(main(['restart'])).resolves.toBe(1)
 
     expect(consoleError).toHaveBeenCalledWith(
-      'docker compose restart hsa-directory-mock failed with 12',
+      'docker compose restart HSA lookup services failed with 12',
     )
     expect(consoleError).toHaveBeenCalledWith(
       expect.stringContaining(

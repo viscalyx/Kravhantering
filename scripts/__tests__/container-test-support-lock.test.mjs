@@ -7,7 +7,6 @@ import {
   createTestSupportLockFromCliOptions,
   formatTestSupportLockJson,
   main,
-  readTestSupportVendorLocks,
 } from '../containers/generate-test-support-lock.mjs'
 
 const tempDirs = []
@@ -57,7 +56,7 @@ afterEach(() => {
 })
 
 describe('container test support lock generation', () => {
-  it('copies Kong exactly and records HSA mock release metadata', () => {
+  it('records only HSA mock release metadata', () => {
     const cwd = makeProject()
 
     const lock = createTestSupportLockFromCliOptions({
@@ -83,7 +82,6 @@ describe('container test support lock generation', () => {
       generatedBy: 'scripts/containers/generate-test-support-lock.mjs',
     })
     expect(lock.services).toEqual([
-      ...readTestSupportVendorLocks({ cwd }),
       {
         name: 'hsa-directory-mock',
         role: 'hsa-directory-test-support',
@@ -97,52 +95,13 @@ describe('container test support lock generation', () => {
     expect(formatTestSupportLockJson(lock)).toMatch(/\n$/u)
   })
 
-  it('fails check mode when Kong is missing or edited', () => {
-    const vendorLocks = [
-      service(
-        'kong',
-        'api-management',
-        'docker.io/kong/kong-gateway',
-        '3.10.0.8-20260210-ubuntu',
-        'sha256:kong-manifest',
-        'sha256:kong-image',
-      ),
-    ]
-
+  it('fails check mode when HSA mock is missing', () => {
     expect(() =>
-      checkTestSupportVendorLocks(
-        { schemaVersion: 2, services: [] },
-        vendorLocks,
-      ),
+      checkTestSupportVendorLocks({ schemaVersion: 2, services: [] }, []),
     ).toThrow('must use schemaVersion 1')
     expect(() =>
-      checkTestSupportVendorLocks(
-        { schemaVersion: 1, services: [] },
-        vendorLocks,
-      ),
-    ).toThrow('missing "kong"')
-    expect(() =>
-      checkTestSupportVendorLocks(
-        {
-          schemaVersion: 1,
-          services: [
-            {
-              ...vendorLocks[0],
-              manifestDigest: 'different',
-            },
-            service(
-              'hsa-directory-mock',
-              'hsa-directory-test-support',
-              'ghcr.io/viscalyx/kravhantering-hsa-directory-mock',
-              '1.2.3',
-              'sha256:hsa-manifest',
-              'sha256:hsa-image',
-            ),
-          ],
-        },
-        vendorLocks,
-      ),
-    ).toThrow('differs from image.lock.json at "manifestDigest"')
+      checkTestSupportVendorLocks({ schemaVersion: 1, services: [] }, []),
+    ).toThrow('missing "hsa-directory-mock"')
   })
 
   it('writes and checks the lock through the CLI wrapper', async () => {

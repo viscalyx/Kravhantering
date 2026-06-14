@@ -1,6 +1,7 @@
 export interface RequirementResponsibilityPersonRecord {
   email: string | null
   givenName: string
+  hasProtectedPersonalData?: boolean
   hsaId: string
   lastFetchedAt?: Date | string | null
   middleName: string | null

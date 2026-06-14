@@ -70,6 +70,9 @@ verification.
 | `NEXT_PUBLIC_SITE_URL` | `NEXT_PUBLIC_SITE_URL` in `app.env` | `https://<APP_HOST>` | Verify after choosing `APP_HOST`; plan only if the public URL cannot use the normal scheme and host. |
 | `HSA_PERSON_LOOKUP_URL` | `HSA_PERSON_LOOKUP_URL` in `app.env` | No default | Always record the approved server-side HSA person lookup endpoint, normally the environment's Kong or integration-platform REST facade. |
 | `HSA_PERSON_LOOKUP_TIMEOUT_MS` | `HSA_PERSON_LOOKUP_TIMEOUT_MS` in `app.env` | `5000` | Plan only if the HSA integration path needs another timeout. |
+| `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH`, `HSA_PERSON_LOOKUP_CLIENT_KEY_PATH` | Optional mTLS client credential paths in `app.env` | Blank | Set both when the approved external integration platform requires app-to-platform mTLS. |
+| `HSA_PERSON_LOOKUP_CA_PATH`, `HSA_PERSON_LOOKUP_TLS_SERVER_NAME` | Optional mTLS trust and TLS server-name values in `app.env` | Blank | Set only when the approved mTLS route requires a custom CA bundle or TLS server name. |
+| `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL`, `HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL`, `HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`, `HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`, `HSA_PERSON_LOOKUP_OAUTH_SCOPE`, `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` | Optional OAuth2 client credentials values in `app.env` | Blank | Set client id, client secret and either token URL or issuer URL when the approved external integration platform requires OAuth2. Add scope or audience only when the token endpoint requires them. |
 | `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Verify from the actual Compose network. It can change when the internal network is renamed, recreated or assigned another subnet. |
 | `SQLSERVER_HOST` | `DB_HOST` in `app.env` and `db-job.env` | No default | Always obtain the external SQL Server host from the DBA. |
 | `DB_PORT` | `DB_PORT` in `app.env` and `db-job.env` | `1433` | Plan only if the DBA provides another SQL Server port. |
@@ -99,6 +102,9 @@ verification.
 | `OPENROUTER_MGMT_API_KEY` | `OPENROUTER_MGMT_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation and organization credit display are approved. |
 | `NEXT_PUBLIC_DEFAULT_MODEL` | `NEXT_PUBLIC_DEFAULT_MODEL` in `app.env` | Empty | Plan only if the deployment should preselect a public default AI model. |
 <!-- markdownlint-enable MD013 -->
+
+For the full HSA person lookup transport and authentication contract, see
+[HSA person lookup integration](./hsa-person-lookup-integration.md).
 
 ### Generate Unique Secrets
 
@@ -481,6 +487,16 @@ AUTH_SESSION_TTL_SECONDS=28800
 MCP_CLIENT_ID=kravhantering-mcp
 HSA_PERSON_LOOKUP_TIMEOUT_MS=5000
 HSA_PERSON_LOOKUP_URL=https://kong.example.internal/hsa/person-records/lookup
+HSA_PERSON_LOOKUP_CA_PATH=
+HSA_PERSON_LOOKUP_CLIENT_CERT_PATH=
+HSA_PERSON_LOOKUP_CLIENT_KEY_PATH=
+HSA_PERSON_LOOKUP_TLS_SERVER_NAME=
+HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL=
+HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL=
+HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID=
+HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET=
+HSA_PERSON_LOOKUP_OAUTH_SCOPE=
+HSA_PERSON_LOOKUP_OAUTH_AUDIENCE=
 
 NEXT_PUBLIC_DEFAULT_MODEL=
 OPENROUTER_API_KEY=
@@ -514,6 +530,20 @@ app calls this internal Kong or integration-platform REST facade only when an
 editable HSA-id needs lookup or refresh. Keep
 `HSA_PERSON_LOOKUP_TIMEOUT_MS=5000` unless the approved integration path needs
 another timeout.
+
+Leave the optional `HSA_PERSON_LOOKUP_*` authentication values blank for an
+internal same-stack route. When the approved external route requires mTLS, set
+both `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH` and
+`HSA_PERSON_LOOKUP_CLIENT_KEY_PATH`, plus `HSA_PERSON_LOOKUP_CA_PATH` or
+`HSA_PERSON_LOOKUP_TLS_SERVER_NAME` only when required by the platform. When it
+requires OAuth2 client credentials, set
+`HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`, `HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`
+and either `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL` or
+`HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL`; add
+`HSA_PERSON_LOOKUP_OAUTH_SCOPE` or `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` only
+when the token endpoint requires them. Supplying both mTLS and OAuth2 enables
+mixed mode. The canonical flow is described in
+[HSA person lookup integration](./hsa-person-lookup-integration.md).
 
 Ownership for the optional MCP service-token client is split by responsibility:
 
@@ -719,13 +749,16 @@ The full start command reads the corrected value from
 The app-facing public URLs in `app.env` must still use the external HTTPS
 origin exposed by the load balancer.
 
-After either alternative, check readiness through nginx:
+After either alternative, check readiness and the static HSA-person lookup
+Swagger UI through nginx:
 
 ```bash
 curl --fail --silent --show-error \
   https://kravhantering.example.internal/api/health
 curl --fail --silent --show-error \
   https://kravhantering.example.internal/api/ready
+curl --fail --silent --show-error \
+  https://kravhantering.example.internal/api-docs/hsa-person-lookup/
 ```
 
 If the host uses a self-signed certificate, or the operator workstation does

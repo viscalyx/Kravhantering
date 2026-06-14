@@ -2,10 +2,55 @@
 # Do not use this Compose file in production.
 
 services:
+  hsa-mtls-cert-generator:
+    image: ${HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF:?set HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF}
+    command: npm run generate-certs
+    user: "0:0"
+    volumes:
+      - hsa-mtls-certs:/run/hsa-mtls
+    networks:
+      - kravhantering-internal
+    restart: "no"
+
   hsa-directory-mock:
     image: ${HSA_DIRECTORY_MOCK_IMAGE_REF:?set HSA_DIRECTORY_MOCK_IMAGE_REF}
+    depends_on:
+      hsa-mtls-cert-generator:
+        condition: service_completed_successfully
     environment:
+      PORT: 8443
+    volumes:
+      - hsa-mtls-certs:/run/hsa-mtls:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "--input-type=module",
+          "-e",
+          "process.env.NODE_TLS_REJECT_UNAUTHORIZED='0'; const response = await fetch('https://127.0.0.1:8443/health'); if (!response.ok) process.exit(1);"
+        ]
+      interval: 10s
+      retries: 12
+      start_period: 10s
+      timeout: 5s
+    networks:
+      - kravhantering-internal
+    restart: unless-stopped
+
+  hsa-person-lookup-adapter:
+    image: ${HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF:?set HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF}
+    depends_on:
+      hsa-directory-mock:
+        condition: service_healthy
+      hsa-mtls-cert-generator:
+        condition: service_completed_successfully
+    environment:
+      HSA_SOAP_ENDPOINT_URL: https://hsa-directory-mock:8443/svr-hsaws2/hsaws
+      HSA_SOAP_TIMEOUT_MS: 5000
       PORT: 8080
+    volumes:
+      - hsa-mtls-certs:/run/hsa-mtls:ro
     healthcheck:
       test:
         [
@@ -26,7 +71,7 @@ services:
   kong:
     image: ${KONG_IMAGE_REF:?set KONG_IMAGE_REF}
     depends_on:
-      hsa-directory-mock:
+      hsa-person-lookup-adapter:
         condition: service_healthy
     environment:
       KONG_ADMIN_ACCESS_LOG: /dev/stdout
@@ -52,3 +97,6 @@ services:
 networks:
   kravhantering-internal:
     name: kravhantering-internal
+
+volumes:
+  hsa-mtls-certs:

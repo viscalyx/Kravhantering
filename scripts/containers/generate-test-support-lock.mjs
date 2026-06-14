@@ -2,21 +2,13 @@ import childProcess from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import {
-  normalizeServiceRecord,
-  SERVICE_FIELDS,
-} from './generate-stack-lock.mjs'
+import { normalizeServiceRecord } from './generate-stack-lock.mjs'
 
 export const TEST_SUPPORT_LOCK_SCHEMA_VERSION = 1
 export const DEFAULT_TEST_SUPPORT_LOCK_PATH = 'container-test-support.lock.json'
 export const GENERATED_BY = 'scripts/containers/generate-test-support-lock.mjs'
 
-export const TEST_SUPPORT_VENDOR_LOCKS = [
-  {
-    name: 'kong',
-    path: 'containers/kong/image.lock.json',
-  },
-]
+export const TEST_SUPPORT_VENDOR_LOCKS = []
 
 const USAGE = `Usage:
   node scripts/containers/generate-test-support-lock.mjs generate --hsa-directory-mock-manifest-digest <digest> --hsa-directory-mock-image-id <id> [options]
@@ -75,49 +67,16 @@ export function readTestSupportVendorLocks(options = {}) {
   })
 }
 
-function sameFieldSet(actual) {
-  const actualFields = Object.keys(actual).sort()
-  return (
-    JSON.stringify(actualFields) === JSON.stringify([...SERVICE_FIELDS].sort())
-  )
-}
-
 function findService(lock, name) {
   return lock.services?.find(service => service.name === name) ?? null
 }
 
-function assertExactServiceMatch(actual, expected) {
-  if (!actual) {
-    throw new Error(
-      `${DEFAULT_TEST_SUPPORT_LOCK_PATH} is missing "${expected.name}".`,
-    )
-  }
-
-  if (!sameFieldSet(actual)) {
-    throw new Error(
-      `Service "${expected.name}" has fields that do not match image.lock.json.`,
-    )
-  }
-
-  for (const field of SERVICE_FIELDS) {
-    if (actual[field] !== expected[field]) {
-      throw new Error(
-        `Service "${expected.name}" differs from image.lock.json at "${field}".`,
-      )
-    }
-  }
-}
-
-export function checkTestSupportVendorLocks(lock, vendorLocks) {
+export function checkTestSupportVendorLocks(lock) {
   assertTestSupportLockSchema(lock)
   if (!Array.isArray(lock.services)) {
     throw new Error(
       `${DEFAULT_TEST_SUPPORT_LOCK_PATH} must contain services[].`,
     )
-  }
-
-  for (const expected of vendorLocks) {
-    assertExactServiceMatch(findService(lock, expected.name), expected)
   }
 
   const hsaDirectoryMock = findService(lock, 'hsa-directory-mock')

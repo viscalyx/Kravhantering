@@ -11,8 +11,9 @@ safe error shaping innan route handler-arbete körs.
 
 Varje wrapper-baserad mutation deklarerar en av applikationens policy shapes:
 `admin`, `requirements` eller `custom`. Logout använder det uttryckliga
-specialfallet `secureLogoutMutationRoute` eftersom det är en auth endpoint med
-CSRF och behov av audit men utan verksamhetsauktoriseringspolicy.
+specialfallet `secureLogoutMutationRoute` eftersom det är en
+autentiseringsändpunkt med CSRF och behov av audit men utan
+verksamhetsauktoriseringspolicy.
 
 `/api/mcp` förblir det avsiktliga undantaget. MCP använder Bearer JWT
 authentication och JSON-RPC/MCP tool schemas i stället för REST-omslaget för

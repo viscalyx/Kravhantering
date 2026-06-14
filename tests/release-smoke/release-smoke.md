@@ -15,7 +15,7 @@ path without duplicating the full integration suite.
 | `storageState` | `tests/release-smoke/global-setup.ts` | Reuses the `release-smoke-user` and `release-smoke-admin` browser sessions. |
 | `RELEASE_SMOKE_RUN_ID` | Environment | Optional stable prefix for created smoke requirements. |
 | `build.json` | `/build.json` | Public build metadata embedded in the app image. |
-| HSA fixture | `containers/hsa-directory-mock/fixtures/hsa-personer.json` | Provides deterministic person data through Kong. |
+| HSA fixture | `containers/hsa-directory-mock/fixtures/hsa-personer.json` | Provides deterministic person data through Kong and the adapter. |
 | `AUTHZ` requirement area | `typeorm/seed.mjs` | Gives the no-role smoke user a deterministic kravområdesmedförfattare assignment for the write proof. |
 <!-- markdownlint-enable MD013 -->
 
@@ -47,7 +47,7 @@ flowchart TD
     K --> L[Attach build metadata]
     L --> M[POST /api/requirements]
     M --> N[GET /api/requirements/:id]
-    N --> O[Admin verifies HSA person through Kong]
+    N --> O[Admin verifies HSA person through Kong and adapter]
 ```
 
 ## Test Setup
@@ -62,8 +62,8 @@ flowchart TD
 - `global-setup.ts` signs in as `release-smoke-user` and
   `release-smoke-admin` with the committed non-production passwords from the
   container Keycloak realm.
-- `container:release-smoke:up` starts Kong and the HSA directory mock for the
-  release-smoke stack. The app runtime receives
+- `container:release-smoke:up` starts Kong, the HSA person lookup adapter and
+  the HSA directory mock for the release-smoke stack. The app runtime receives
   `HSA_PERSON_LOOKUP_URL=http://kong:8000/hsa/person-records/lookup`.
 - The config adds same-origin and `X-Requested-With` headers so API mutations
   exercise the same CSRF path as the browser UI.
@@ -129,12 +129,13 @@ sequenceDiagram
     Note over PW,DB: ✓ SQL Server write path is proven
 ```
 
-## verifies HSA person lookup through Kong and the HSA mock
+## verifies HSA person lookup through Kong, adapter and the HSA mock
 
 ### HSA Purpose
 
 This test proves that the release-smoke stack contains the locked test support
-path for HSA verification. It uses the admin session because verifying a new
+path for HSA verification: Kong, `hsa-person-lookup-adapter`, and the HSA
+directory mock. It uses the admin session because verifying a new
 kravområdesägare requires the `Admin` role.
 
 ### HSA Flow
@@ -154,13 +155,16 @@ sequenceDiagram
     participant PW as Playwright
     participant APP as App
     participant K as Kong
+    participant A as HSA lookup adapter
     participant HSA as HSA mock
     participant DB as SQL Server
 
     PW->>APP: POST /api/requirement-responsibility-people/verify
     APP->>K: POST /hsa/person-records/lookup
-    K->>HSA: Forward REST lookup
-    HSA-->>K: Normalized Maja ManualArea record
+    K->>A: Forward REST lookup
+    A->>HSA: SOAP GetHsaPerson over mTLS
+    HSA-->>A: SOAP userInformation for Maja ManualArea
+    A-->>K: Normalized Maja ManualArea record
     K-->>APP: Person JSON
     APP->>DB: Upsert Kravansvarsperson
     APP-->>PW: Verified person payload

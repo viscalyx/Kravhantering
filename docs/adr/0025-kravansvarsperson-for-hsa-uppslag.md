@@ -29,9 +29,3 @@ ursprungliga åtgärden. Endast den aktuella aktörens rad i
 `requirement_responsibility_people` uppdateras, och bara när samma HSA-id
 fortfarande förekommer i en levande kravansvarstilldelning. Fel loggas
 sanerat.
-
-Applikationen anropar HSA-integrationen via ett konfigurerbart appnära
-REST/JSON-kontrakt. I lokal utveckling pekar den konfigurationen på Kong, som
-skickar vidare till fasaden för personuppslag i HSA-mocken. Test- och
-produktionsmiljöer kan peka på den API-hanterare eller integrationsplattform
-som gäller där utan att Kravhanterings interna kontrakt ändras.

@@ -7,8 +7,9 @@ from the tag trigger so the preview tag push does not start a second container
 release workflow.
 
 The workflow builds the production `app-runtime` and `db-job` images plus the
-test-only `hsa-directory-mock` image, publishes them to GHCR, and records the
-production image identities in `container-stack.lock.json`. The
+HSA person lookup adapter and test-only `hsa-directory-mock` images, publishes
+them to GHCR, and records the production image identities in
+`container-stack.lock.json`. The
 `manifestDigest` is the registry manifest digest used for GitHub Artifact
 Attestations, SBOM subjects and GHCR release smoke tests. The `imageId` is the
 container image ID used by production operators to verify runtime equivalence
@@ -55,20 +56,21 @@ manually with `workflow_dispatch`. Manual runs may select `all`, `nginx`,
 `sqlserver`, `keycloak` or `kong`; the `include-current` input also refreshes
 the immutable digest metadata for the current selected lane.
 
-Kong is a vendor-updated test support image. Its lock under
-`containers/kong/` is copied into `container-test-support.lock.json` during
-container releases and is used by the test-only `single-node-demo` topology.
-Kong is not part of the production runtime topology.
+Kong is a vendor-updated HSA integration support image. Its lock under
+`containers/kong/` is copied into
+`container-hsa-integration-support.lock.json` during container releases and is
+used by the test-only `single-node-demo` topology. Kong is not part of the
+required production runtime topology.
 
-The HSA directory mock is project-owned test support, not a vendor image. The
-container release workflow builds and publishes
+The HSA person lookup adapter and HSA directory mock are project-owned support
+images, not vendor images. The container release workflow builds and publishes
+`kravhantering-hsa-person-lookup-adapter` and
 `kravhantering-hsa-directory-mock` to GHCR with the same release tags as
-`app-runtime` and `db-job`, records it in `container-test-support.lock.json`,
-and publishes SBOM plus provenance attestations for that image. It is excluded
-from the vendor-image updater because its source lives in this repository.
-The current demo path uses the mock-owned REST facade behind Kong. Real HSA
-SOAP integration still requires a later adapter that handles the
-REST/JSON-to-SOAP transformation, authentication and certificates.
+`app-runtime` and `db-job`. The adapter is recorded in
+`container-hsa-integration-support.lock.json`; the mock is recorded in
+`container-test-support.lock.json`. Both images get SBOM and provenance
+attestations and are excluded from the vendor-image updater because their
+source lives in this repository.
 
 The updater uses one branch and one ready-for-review PR per image lane. A lane
 is the image name plus the target major line, or the SQL Server product year:
@@ -198,14 +200,19 @@ Each trusted run also writes runtime evidence:
 - `container-stack.lock.json` lists the exact image name, tag,
   `manifestDigest`, `imageId`, source and role for `app-runtime`, `db-job`,
   nginx, SQL Server and Keycloak.
+- `container-hsa-integration-support.lock.json` lists the exact image name,
+  tag, `manifestDigest`, `imageId`, source and role for Kong and the HSA
+  person lookup adapter.
 - `container-test-support.lock.json` lists the exact image name, tag,
-  `manifestDigest`, `imageId`, source and role for the test-only Kong and HSA
-  directory mock support images.
+  `manifestDigest`, `imageId`, source and role for the test-only HSA directory
+  mock support image.
 - `container-stack.compose.yml` is the generated Compose file that the smoke
   test started.
 - `hashes.sha256` contains checksums for saved runtime evidence.
 - `public/build.json` contains the app version, commit SHA, build time and
   image tag embedded in the tested app image.
+- `api-docs/hsa-person-lookup/` contains the static Swagger UI for the
+  HSA-person lookup REST contract.
 
 The workflow uploads these artifact groups:
 
@@ -223,6 +230,9 @@ Bash and jq helper for explicit operator verification. It can verify configured
 tag-style `release.env` image refs against locked image IDs, export already
 present verified local images into a transport bundle, and load and tag that
 bundle on a disconnected host.
+The bundled nginx Compose files mount `api-docs/` and serve the HSA-person
+lookup Swagger UI at `/api-docs/hsa-person-lookup/` on the same public origin
+as the application.
 
 The production deployment bundle is also uploaded to GitHub Releases as:
 
@@ -251,6 +261,8 @@ artifacts anonymously:
 
 - `ghcr.io/<owner>/kravhantering-app-runtime`
 - `ghcr.io/<owner>/kravhantering-db-job`
+- `ghcr.io/<owner>/kravhantering-hsa-person-lookup-adapter` for optional HSA
+  integration support
 - `ghcr.io/<owner>/kravhantering-hsa-directory-mock` for test-only
   `single-node-demo` support
 <!-- cSpell:ignore opencontainers -->

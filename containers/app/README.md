@@ -117,6 +117,17 @@ Optional application values:
   `AUTH_SESSION_COOKIE_NAME`, and `AUTH_SESSION_TTL_SECONDS` override
   defaults.
 - `HSA_PERSON_LOOKUP_TIMEOUT_MS` overrides the HSA lookup timeout.
+- `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH`, `HSA_PERSON_LOOKUP_CLIENT_KEY_PATH`,
+  `HSA_PERSON_LOOKUP_CA_PATH`, and `HSA_PERSON_LOOKUP_TLS_SERVER_NAME`
+  enable optional mTLS from the app to an external integrationsplattform.
+- `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL`,
+  `HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL`,
+  `HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`,
+  `HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`,
+  `HSA_PERSON_LOOKUP_OAUTH_SCOPE`, and
+  `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` enable optional OAuth2 client
+  credentials auth. Set either token URL or issuer URL; issuer URL uses OIDC
+  discovery.
 - `OPENROUTER_API_KEY`, `OPENROUTER_MGMT_API_KEY`, and
   `NEXT_PUBLIC_DEFAULT_MODEL` enable optional AI integrations.
 
@@ -129,6 +140,7 @@ These values are sensitive outside local test and smoke-test contexts:
 - `AUTH_SESSION_COOKIE_PASSWORD`
 - `OPENROUTER_API_KEY`
 - `OPENROUTER_MGMT_API_KEY`
+- `HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`
 
 The example file contains public demo values only. Treat them as unsafe for
 any exposed environment.

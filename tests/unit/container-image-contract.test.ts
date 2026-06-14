@@ -13,6 +13,12 @@ function listPublicPngFiles() {
     return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
       const absolutePath = path.join(directory, entry.name)
       if (entry.isDirectory()) {
+        const relativeDirectory = path
+          .relative(publicRoot, absolutePath)
+          .replaceAll(path.sep, '/')
+        if (relativeDirectory === 'api-docs') {
+          return []
+        }
         return walk(absolutePath)
       }
       if (!entry.isFile() || !entry.name.endsWith('.png')) {
@@ -140,6 +146,7 @@ describe('container image contract', () => {
     expect(dockerignore).toContain('tests/')
     expect(dockerignore).toContain('.github/')
     expect(dockerignore).toContain('.devcontainer/')
+    expect(dockerignore).toContain('public/api-docs/')
     expect(dockerignore).toContain('typeorm/seed.mjs')
     expect(dockerignore).toContain('typeorm/seed-dogfood.mjs')
     expect(dockerignore).toContain('typeorm/seed-archiving-retention-build.mjs')
@@ -213,6 +220,11 @@ describe('container image contract', () => {
     )
     expect(packageJson.scripts['container:build:hsa-directory-mock']).toBe(
       'docker buildx build --file containers/hsa-directory-mock/Dockerfile --tag localhost/kravhantering/hsa-directory-mock:local --load containers/hsa-directory-mock',
+    )
+    expect(
+      packageJson.scripts['container:build:hsa-person-lookup-adapter'],
+    ).toBe(
+      'docker buildx build --file containers/hsa-person-lookup-adapter/Dockerfile --tag localhost/kravhantering/hsa-person-lookup-adapter:local --load containers/hsa-person-lookup-adapter',
     )
   })
 

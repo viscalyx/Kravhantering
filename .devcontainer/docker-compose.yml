@@ -8,8 +8,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      hsa-directory-mock:
-        condition: service_healthy
       idp:
         # Don't block on healthy — Keycloak takes ~30s to start and would
         # slow every devcontainer attach. The app boots fine without it;
@@ -125,6 +123,9 @@ services:
 
   kong:
     image: docker.io/kong/kong-gateway:3.10.0.8-20260210-ubuntu@sha256:031e2abf5b973db9ce5d94ea30a46d4b29b3879088118e0b1c0ff66b8c814853
+    depends_on:
+      hsa-person-lookup-adapter:
+        condition: service_healthy
     environment:
       KONG_ADMIN_ACCESS_LOG: /dev/stdout
       KONG_ADMIN_ERROR_LOG: /dev/stderr
@@ -143,12 +144,30 @@ services:
       start_period: 10s
       timeout: 5s
 
-  hsa-directory-mock:
+  hsa-mtls-cert-generator:
     build:
-      context: ${WORKSPACE_BUILD_ROOT:-..}/containers/hsa-directory-mock
+      context: ${WORKSPACE_BUILD_ROOT:-..}/containers/hsa-person-lookup-adapter
       dockerfile: Dockerfile
+    command: npm run generate-certs
+    user: "0:0"
+    volumes:
+      - hsa-mtls-certs:/run/hsa-mtls
+
+  hsa-person-lookup-adapter:
+    build:
+      context: ${WORKSPACE_BUILD_ROOT:-..}/containers/hsa-person-lookup-adapter
+      dockerfile: Dockerfile
+    depends_on:
+      hsa-directory-mock:
+        condition: service_healthy
+      hsa-mtls-cert-generator:
+        condition: service_completed_successfully
     environment:
+      HSA_SOAP_ENDPOINT_URL: https://hsa-directory-mock:8443/svr-hsaws2/hsaws
+      HSA_SOAP_TIMEOUT_MS: 5000
       PORT: 8080
+    volumes:
+      - hsa-mtls-certs:/run/hsa-mtls:ro
     healthcheck:
       test:
         [
@@ -163,7 +182,33 @@ services:
       start_period: 10s
       timeout: 5s
 
+  hsa-directory-mock:
+    build:
+      context: ${WORKSPACE_BUILD_ROOT:-..}/containers/hsa-directory-mock
+      dockerfile: Dockerfile
+    depends_on:
+      hsa-mtls-cert-generator:
+        condition: service_completed_successfully
+    environment:
+      PORT: 8443
+    volumes:
+      - hsa-mtls-certs:/run/hsa-mtls:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "--input-type=module",
+          "-e",
+          "process.env.NODE_TLS_REJECT_UNAUTHORIZED='0'; const response = await fetch('https://127.0.0.1:8443/health'); if (!response.ok) process.exit(1);"
+        ]
+      interval: 10s
+      retries: 12
+      start_period: 10s
+      timeout: 5s
+
 volumes:
   sqlserver-devcontainer-data:
   codex-tmp:
   codex-state:
+  hsa-mtls-certs:

@@ -16,6 +16,7 @@ logs/
 node_modules/
 out/
 playwright-report*/
+public/api-docs/
 test-results/
 tests/
 tmp/

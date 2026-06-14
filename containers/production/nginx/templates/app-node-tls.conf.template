@@ -23,6 +23,16 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers off;
 
+    location = /api-docs/hsa-person-lookup {
+        return 308 /api-docs/hsa-person-lookup/;
+    }
+
+    location /api-docs/ {
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files $uri $uri/ =404;
+    }
+
     location / {
         proxy_pass http://app_runtime_upstream;
         proxy_http_version 1.1;
