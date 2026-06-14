@@ -9,6 +9,7 @@ import {
   DEFAULT_DEMO_USERS_PATH,
   DEFAULT_DEV_REALM_PATH,
 } from '../keycloak-demo-users.mjs'
+import { stripOperatorUpgradeSourceMarkers } from './operator-upgrade-notes.mjs'
 
 export const APP_RUNTIME_PACKAGE = 'kravhantering-app-runtime'
 export const DB_JOB_PACKAGE = 'kravhantering-db-job'
@@ -166,7 +167,7 @@ export function extractUnreleasedOperatorUpgradeNotes(content, filePath) {
     nextReleaseHeadingIndex === -1
       ? afterHeading
       : afterHeading.slice(0, nextReleaseHeadingIndex)
-  const trimmed = unreleasedSection.trim()
+  const trimmed = stripOperatorUpgradeSourceMarkers(unreleasedSection).trim()
 
   return trimmed.length > 0 ? trimmed : undefined
 }
