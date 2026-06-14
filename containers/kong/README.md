@@ -95,9 +95,9 @@ policy:
 4. Update `tag`, `manifestDigest` and `imageId` together.
 5. Run `npm run devcontainer:kong:pull`, `npm run devcontainer:kong:up` and
    `npm run devcontainer:kong:status`.
-6. Verify that `.github/workflows/vendor-image-updates.mjs` still keeps both
-   devcontainer Compose files digest-pinned and the `release.env.template`
-   public test-support example tag-only.
+6. Verify that `.github/workflows/vendor-image-updates.yml` still runs the
+   updater that keeps both devcontainer Compose files digest-pinned and the
+   `release.env.template` public test-support example tag-only.
 
 ## Update Rules
 
