@@ -6,6 +6,7 @@ import {
   main,
   operatorUpgradeSourceEndMarker,
   operatorUpgradeSourceStartMarker,
+  readPullRequestsForCommitFromGitHub,
   stripOperatorUpgradeSourceMarkers,
   syncPullRequestNotesFile,
 } from '../operator-upgrade-notes.mjs'
@@ -241,5 +242,68 @@ Do not carry forward.
       'Operator upgrade notes updated (synced).',
     )
     expect(fileContent).toContain('operator-upgrade:source pr-318 start')
+  })
+
+  it('passes an abort signal to GitHub commit pull request lookups', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      json: async () => [{ number: 318 }],
+      ok: true,
+      status: 200,
+    }))
+
+    await expect(
+      readPullRequestsForCommitFromGitHub({
+        commit: 'abc123',
+        fetchImpl,
+        repository: 'viscalyx/Kravhantering',
+        token: 'token',
+      }),
+    ).resolves.toEqual([{ number: 318 }])
+
+    const init = fetchImpl.mock.calls[0]?.[1]
+    expect(init?.headers).toMatchObject({
+      accept: 'application/vnd.github+json',
+      authorization: 'Bearer token',
+      'user-agent': 'kravhantering-operator-upgrade-notes',
+      'x-github-api-version': '2022-11-28',
+    })
+    expect(init?.signal).toBeInstanceOf(AbortSignal)
+    expect(init?.signal.aborted).toBe(false)
+  })
+
+  it('aborts GitHub commit pull request lookups after the timeout', async () => {
+    vi.useFakeTimers()
+    try {
+      let signal
+      const fetchImpl = vi.fn(
+        (_url, init) =>
+          new Promise((_resolve, reject) => {
+            signal = init.signal
+            init.signal.addEventListener('abort', () => {
+              const error = new Error('aborted')
+              error.name = 'AbortError'
+              reject(error)
+            })
+          }),
+      )
+
+      const lookup = readPullRequestsForCommitFromGitHub({
+        commit: 'abc123',
+        fetchImpl,
+        repository: 'viscalyx/Kravhantering',
+        token: 'token',
+      })
+      const expectation = expect(lookup).rejects.toThrow(
+        'GitHub API request timed out after 30000 ms',
+      )
+
+      await vi.advanceTimersByTimeAsync(30_000)
+
+      expect(signal).toBeInstanceOf(AbortSignal)
+      expect(signal.aborted).toBe(true)
+      await expectation
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

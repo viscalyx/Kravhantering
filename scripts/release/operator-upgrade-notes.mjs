@@ -9,6 +9,8 @@ export const DEFAULT_OPERATOR_UPGRADE_NOTES_PATH =
   'docs/operator-upgrade-notes.md'
 export const OPERATOR_UPGRADE_SOURCE_PREFIX = 'operator-upgrade:source'
 
+const GITHUB_API_TIMEOUT_MS = 30_000
+
 const USAGE = `Usage:
   node scripts/release/operator-upgrade-notes.mjs sync-pr --github-pr <number> [--operator-notes <path>]
   node scripts/release/operator-upgrade-notes.mjs sync-commit-prs --commit <sha> [--operator-notes <path>]
@@ -242,20 +244,37 @@ function repositoryParts(repository) {
 }
 
 async function fetchGitHubJson(url, { fetchImpl, token }) {
-  const response = await fetchImpl(url, {
-    headers: {
-      accept: 'application/vnd.github+json',
-      authorization: `Bearer ${token}`,
-      'user-agent': 'kravhantering-operator-upgrade-notes',
-      'x-github-api-version': '2022-11-28',
-    },
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), GITHUB_API_TIMEOUT_MS)
 
-  if (!response.ok) {
-    throw new Error(`GitHub API request failed (${response.status}) for ${url}`)
+  try {
+    const response = await fetchImpl(url, {
+      headers: {
+        accept: 'application/vnd.github+json',
+        authorization: `Bearer ${token}`,
+        'user-agent': 'kravhantering-operator-upgrade-notes',
+        'x-github-api-version': '2022-11-28',
+      },
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      throw new Error(
+        `GitHub API request failed (${response.status}) for ${url}`,
+      )
+    }
+
+    return await response.json()
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(
+        `GitHub API request timed out after ${GITHUB_API_TIMEOUT_MS} ms for ${url}`,
+      )
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
   }
-
-  return response.json()
 }
 
 export async function readPullRequestsForCommitFromGitHub({
