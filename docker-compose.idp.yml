@@ -17,7 +17,7 @@ name: kravhantering-idp-dev
 services:
   idp:
     # https://www.keycloak.org/docs/latest/upgrading/
-    image: quay.io/keycloak/keycloak:26.6.2-2
+    image: quay.io/keycloak/keycloak:26.6.3-0
     command:
       - start-dev
       - --import-realm

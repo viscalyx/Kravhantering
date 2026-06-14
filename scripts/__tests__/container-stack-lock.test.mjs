@@ -64,7 +64,7 @@ function makeProject() {
       'keycloak',
       'identity-provider',
       'quay.io/keycloak/keycloak',
-      '26.6.2-2',
+      '26.6.3-0',
       'sha256:keycloak-manifest',
       'sha256:keycloak-image',
     ),

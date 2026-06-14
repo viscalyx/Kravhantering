@@ -160,7 +160,7 @@ components:
       # from dev/keycloak/realm-kravhantering-dev.json — same as the
       # devcontainer compose service.
       # https://www.keycloak.org/docs/latest/upgrading/
-      image: quay.io/keycloak/keycloak:26.6.2-2
+      image: quay.io/keycloak/keycloak:26.6.3-0
       memoryRequest: 512Mi
       memoryLimit: 1Gi
       cpuRequest: 200m

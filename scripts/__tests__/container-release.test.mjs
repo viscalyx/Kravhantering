@@ -1011,7 +1011,7 @@ describe('trusted container release helpers', () => {
             name: 'keycloak',
             role: 'identity-provider',
             source: 'quay',
-            tag: '26.6.2-2',
+            tag: '26.6.3-0',
           },
         ],
       }
