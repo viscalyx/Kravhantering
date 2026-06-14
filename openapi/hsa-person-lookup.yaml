@@ -9,6 +9,9 @@ info:
 servers:
   - url: https://integrationsplattform.example.test
     description: Environment-specific Kong or integrationsplattform endpoint
+security:
+  - mtlsClientCertificate: []
+  - oauthClientCredentials: []
 paths:
   /hsa/person-records/lookup:
     post:
@@ -80,6 +83,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/TimeoutError'
 components:
+  securitySchemes:
+    mtlsClientCertificate:
+      type: mutualTLS
+      description: >
+        Client certificate authentication used when the integration platform
+        protects the facade with app-to-platform mTLS.
+    oauthClientCredentials:
+      type: oauth2
+      description: >
+        OAuth2 client credentials used when the integration platform protects
+        the facade with bearer-token authentication.
+      flows:
+        clientCredentials:
+          tokenUrl: https://idp.example.test/oauth2/token
+          scopes:
+            hsa.person.lookup: Resolve HSA person records.
   schemas:
     HsaPersonLookupRequest:
       type: object

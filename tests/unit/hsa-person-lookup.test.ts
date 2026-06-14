@@ -1,7 +1,11 @@
+import { mkdtemp, rm, utimes, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   getHsaPersonLookupConfig,
   lookupHsaPerson,
+  readHsaPersonLookupTlsFileForTests,
   resetHsaPersonLookupAuthCacheForTests,
 } from '@/lib/hsa/person-lookup'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
@@ -78,6 +82,22 @@ describe('HSA person lookup', () => {
     expect(() =>
       getHsaPersonLookupConfig({
         HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID: 'client-id',
+        HSA_PERSON_LOOKUP_URL:
+          'https://kong.example.internal/hsa/person-records/lookup',
+      } as unknown as NodeJS.ProcessEnv),
+    ).toThrow(/OAuth2 configuration/u)
+
+    expect(() =>
+      getHsaPersonLookupConfig({
+        HSA_PERSON_LOOKUP_OAUTH_SCOPE: 'lookup:person',
+        HSA_PERSON_LOOKUP_URL:
+          'https://kong.example.internal/hsa/person-records/lookup',
+      } as unknown as NodeJS.ProcessEnv),
+    ).toThrow(/OAuth2 configuration/u)
+
+    expect(() =>
+      getHsaPersonLookupConfig({
+        HSA_PERSON_LOOKUP_OAUTH_AUDIENCE: 'hsa-lookup',
         HSA_PERSON_LOOKUP_URL:
           'https://kong.example.internal/hsa/person-records/lookup',
       } as unknown as NodeJS.ProcessEnv),
@@ -311,6 +331,53 @@ describe('HSA person lookup', () => {
         url: 'https://kong.example.internal/hsa/person-records/lookup',
       }),
     )
+  })
+
+  it('rejects mTLS lookup config over plaintext HTTP before reading certificates', async () => {
+    await expect(
+      lookupHsaPerson(HSA_ID, {
+        config: {
+          mtls: {
+            certPath: '/missing/client.crt',
+            keyPath: '/missing/client.key',
+          },
+          timeoutMs: 5000,
+          url: 'http://kong.example.internal/hsa/person-records/lookup',
+        },
+      }),
+    ).rejects.toSatisfy(error => {
+      expectRequirementsError(error, 'service_unavailable')
+      return true
+    })
+  })
+
+  it('refreshes cached TLS file content after the file mtime changes', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'hsa-tls-cache-'))
+    const filePath = path.join(dir, 'client.key')
+    try {
+      await writeFile(filePath, 'first')
+      await utimes(
+        filePath,
+        new Date('2026-06-14T10:00:00.000Z'),
+        new Date('2026-06-14T10:00:00.000Z'),
+      )
+      await expect(
+        readHsaPersonLookupTlsFileForTests(filePath),
+      ).resolves.toEqual(Buffer.from('first'))
+
+      await writeFile(filePath, 'second')
+      await utimes(
+        filePath,
+        new Date('2026-06-14T10:00:01.000Z'),
+        new Date('2026-06-14T10:00:01.000Z'),
+      )
+
+      await expect(
+        readHsaPersonLookupTlsFileForTests(filePath),
+      ).resolves.toEqual(Buffer.from('second'))
+    } finally {
+      await rm(dir, { force: true, recursive: true })
+    }
   })
 
   it('acquires and caches OAuth2 client credentials tokens', async () => {

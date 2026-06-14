@@ -31,13 +31,17 @@ describe('requirement responsibility people DAL', () => {
         null,
         'Owner',
         'owner@example.test',
-        false,
+        null,
         fetchedAt,
       ],
     )
     const sql = String(query.mock.calls[0]?.[0])
     expect(sql).toContain('ON target.hsa_id = source.hsa_id')
     expect(sql).toContain('WHEN MATCHED THEN')
+    expect(sql).toContain('target.has_protected_personal_data')
+    expect(sql).toContain(
+      'COALESCE(source.has_protected_personal_data, CONVERT(bit, 0))',
+    )
     expect(sql).toContain('WHEN NOT MATCHED THEN')
   })
 

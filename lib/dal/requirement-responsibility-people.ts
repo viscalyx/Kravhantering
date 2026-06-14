@@ -33,7 +33,10 @@ export async function upsertRequirementResponsibilityPerson(
           middle_name = source.middle_name,
           surname = source.surname,
           email = source.email,
-          has_protected_personal_data = source.has_protected_personal_data,
+          has_protected_personal_data = COALESCE(
+            source.has_protected_personal_data,
+            target.has_protected_personal_data
+          ),
           last_fetched_at = source.fetched_at,
           updated_at = source.fetched_at
       WHEN NOT MATCHED THEN
@@ -54,7 +57,7 @@ export async function upsertRequirementResponsibilityPerson(
           source.middle_name,
           source.surname,
           source.email,
-          source.has_protected_personal_data,
+          COALESCE(source.has_protected_personal_data, CONVERT(bit, 0)),
           source.fetched_at,
           source.fetched_at,
           source.fetched_at
@@ -66,7 +69,7 @@ export async function upsertRequirementResponsibilityPerson(
       person.middleName,
       person.surname,
       person.email,
-      person.hasProtectedPersonalData ?? false,
+      person.hasProtectedPersonalData ?? null,
       fetchedAt,
     ],
   )

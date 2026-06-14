@@ -211,6 +211,8 @@ Each trusted run also writes runtime evidence:
 - `hashes.sha256` contains checksums for saved runtime evidence.
 - `public/build.json` contains the app version, commit SHA, build time and
   image tag embedded in the tested app image.
+- `api-docs/hsa-person-lookup/` contains the static Swagger UI for the
+  HSA-person lookup REST contract.
 
 The workflow uploads these artifact groups:
 
@@ -228,6 +230,9 @@ Bash and jq helper for explicit operator verification. It can verify configured
 tag-style `release.env` image refs against locked image IDs, export already
 present verified local images into a transport bundle, and load and tag that
 bundle on a disconnected host.
+The bundled nginx Compose files mount `api-docs/` and serve the HSA-person
+lookup Swagger UI at `/api-docs/hsa-person-lookup/` on the same public origin
+as the application.
 
 The production deployment bundle is also uploaded to GitHub Releases as:
 

@@ -720,13 +720,16 @@ The full start command reads the corrected value from
 The app-facing public URLs in `app.env` must still use the external HTTPS
 origin exposed by the load balancer.
 
-After either alternative, check readiness through nginx:
+After either alternative, check readiness and the static HSA-person lookup
+Swagger UI through nginx:
 
 ```bash
 curl --fail --silent --show-error \
   https://kravhantering.example.internal/api/health
 curl --fail --silent --show-error \
   https://kravhantering.example.internal/api/ready
+curl --fail --silent --show-error \
+  https://kravhantering.example.internal/api-docs/hsa-person-lookup/
 ```
 
 If the host uses a self-signed certificate, or the operator workstation does

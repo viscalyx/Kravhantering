@@ -8,7 +8,12 @@ import {
   generateCertificates,
   generateClientCertificate,
 } from '../../hsa-person-lookup-adapter/src/generate-certs.mjs'
-import { createServer, loadFixtures } from '../src/server.mjs'
+import {
+  createServer,
+  loadFixtures,
+  readAuthConfig,
+  startServer,
+} from '../src/server.mjs'
 
 const SOAP_URL = '/svr-hsaws2/hsaws'
 
@@ -75,6 +80,22 @@ async function postSoap(xml) {
 }
 
 describe('HSA directory SOAP mock', () => {
+  it('rejects unsupported authentication modes during configuration and startup', async () => {
+    assert.throws(
+      () => readAuthConfig({ HSA_MOCK_AUTH_MODE: 'bad-mode' }),
+      /Unsupported HSA_MOCK_AUTH_MODE "bad-mode"/u,
+    )
+    await assert.rejects(
+      () =>
+        startServer({
+          authConfig: { mode: 'bad-mode' },
+          host: '127.0.0.1',
+          port: 0,
+        }),
+      /Unsupported HSA_MOCK_AUTH_MODE "bad-mode"/u,
+    )
+  })
+
   it('serves a health endpoint', async () => {
     const response = await fetch(`${baseUrl}/health`)
     assert.equal(response.status, 200)

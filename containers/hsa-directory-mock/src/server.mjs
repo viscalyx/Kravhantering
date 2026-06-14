@@ -15,6 +15,7 @@ const MAX_BODY_BYTES = 1024 * 1024
 
 const FIXTURE_URL = new URL('../fixtures/hsa-personer.json', import.meta.url)
 const DEFAULT_AUTH_MODE = 'realistic-mtls'
+const SUPPORTED_AUTH_MODES = new Set(['disabled', 'realistic-mtls'])
 const DEFAULT_TLS_CERT_PATH = '/run/hsa-mtls/server.crt'
 const DEFAULT_TLS_KEY_PATH = '/run/hsa-mtls/server.key'
 const DEFAULT_TLS_CA_PATH = '/run/hsa-mtls/ca.crt'
@@ -290,12 +291,20 @@ function readString(name, fallback = undefined, env = process.env) {
   return value || fallback
 }
 
+function validateAuthMode(mode) {
+  if (SUPPORTED_AUTH_MODES.has(mode)) return mode
+  throw new Error(
+    `Unsupported HSA_MOCK_AUTH_MODE "${mode}". Supported values are: ${[...SUPPORTED_AUTH_MODES].join(', ')}.`,
+  )
+}
+
 export function readAuthConfig(env = process.env) {
+  const mode = readString('HSA_MOCK_AUTH_MODE', DEFAULT_AUTH_MODE, env)
   return {
     caPath: readString('HSA_MOCK_TLS_CA_PATH', DEFAULT_TLS_CA_PATH, env),
     certPath: readString('HSA_MOCK_TLS_CERT_PATH', DEFAULT_TLS_CERT_PATH, env),
     keyPath: readString('HSA_MOCK_TLS_KEY_PATH', DEFAULT_TLS_KEY_PATH, env),
-    mode: readString('HSA_MOCK_AUTH_MODE', DEFAULT_AUTH_MODE, env),
+    mode: validateAuthMode(mode),
   }
 }
 
@@ -452,6 +461,7 @@ export async function startServer({
   host = '0.0.0.0',
   port = Number(process.env.PORT ?? DEFAULT_PORT),
 } = {}) {
+  validateAuthMode(authConfig.mode)
   const fixtures = await loadFixtures(fixturesUrl)
   const tlsOptions =
     authConfig.mode === 'realistic-mtls'

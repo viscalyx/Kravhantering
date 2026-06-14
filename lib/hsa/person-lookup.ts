@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import http from 'node:http'
 import https from 'node:https'
 import { isHsaId } from '@/lib/auth/hsa-id'
@@ -73,6 +73,11 @@ interface CachedOAuthToken {
   expiresAt: number
 }
 
+interface CachedTlsFile {
+  content: Buffer
+  mtimeMs: number
+}
+
 class HsaPersonLookupConfigError extends Error {
   constructor(message: string) {
     super(message)
@@ -81,7 +86,7 @@ class HsaPersonLookupConfigError extends Error {
 }
 
 const oauthTokenCache = new Map<string, CachedOAuthToken>()
-const tlsFileCache = new Map<string, Buffer>()
+const tlsFileCache = new Map<string, CachedTlsFile>()
 
 function parseTimeout(value: string | undefined): number {
   if (!value) return DEFAULT_TIMEOUT_MS
@@ -102,7 +107,10 @@ function oauthConfigFromEnv(
   const issuerUrl = envString(env, 'HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL')
   const clientId = envString(env, 'HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID')
   const clientSecret = envString(env, 'HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET')
-  const anyOAuth = tokenUrl || issuerUrl || clientId || clientSecret
+  const audience = envString(env, 'HSA_PERSON_LOOKUP_OAUTH_AUDIENCE')
+  const scope = envString(env, 'HSA_PERSON_LOOKUP_OAUTH_SCOPE')
+  const anyOAuth =
+    tokenUrl || issuerUrl || clientId || clientSecret || audience || scope
   if (!anyOAuth) return undefined
   if (!clientId || !clientSecret || (!tokenUrl && !issuerUrl)) {
     throw new HsaPersonLookupConfigError(
@@ -110,8 +118,6 @@ function oauthConfigFromEnv(
     )
   }
 
-  const audience = envString(env, 'HSA_PERSON_LOOKUP_OAUTH_AUDIENCE')
-  const scope = envString(env, 'HSA_PERSON_LOOKUP_OAUTH_SCOPE')
   return {
     ...(audience ? { audience } : {}),
     clientId,
@@ -264,10 +270,11 @@ function cacheKeyForOAuth(
 }
 
 async function cachedReadFile(filePath: string): Promise<Buffer> {
+  const fileStat = await stat(filePath)
   const cached = tlsFileCache.get(filePath)
-  if (cached) return cached
+  if (cached && cached.mtimeMs === fileStat.mtimeMs) return cached.content
   const content = await readFile(filePath)
-  tlsFileCache.set(filePath, content)
+  tlsFileCache.set(filePath, { content, mtimeMs: fileStat.mtimeMs })
   return content
 }
 
@@ -289,6 +296,10 @@ function executeHttpRequest(input: HttpRequestInput): Promise<HttpResponse> {
     const isHttps = parsed.protocol === 'https:'
     if (!isHttps && parsed.protocol !== 'http:') {
       reject(new Error(`Unsupported URL protocol: ${parsed.protocol}`))
+      return
+    }
+    if (!isHttps && input.mtls) {
+      reject(new Error('HSA lookup mTLS requires an HTTPS URL.'))
       return
     }
 
@@ -532,4 +543,10 @@ export async function lookupHsaPerson(
 export function resetHsaPersonLookupAuthCacheForTests(): void {
   oauthTokenCache.clear()
   tlsFileCache.clear()
+}
+
+export async function readHsaPersonLookupTlsFileForTests(
+  filePath: string,
+): Promise<Buffer> {
+  return cachedReadFile(filePath)
 }

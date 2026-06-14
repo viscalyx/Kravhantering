@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { chmod, mkdir, writeFile } from 'node:fs/promises'
+import { chmod, chown, mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 
@@ -8,6 +8,8 @@ const execFileAsync = promisify(execFile)
 const DEFAULT_OUTPUT_DIR = '/run/hsa-mtls'
 const DEFAULT_CLIENT_SERIAL_NUMBER = 'SE5560000000-MOCK001'
 const DEFAULT_SERVER_DNS = 'hsa-directory-mock'
+const NODE_RUNTIME_UID = 1000
+const NODE_RUNTIME_GID = 1000
 
 function readString(name, fallback = undefined, env = process.env) {
   const value = env[name]?.trim()
@@ -21,11 +23,20 @@ async function openssl(args, options = {}) {
   })
 }
 
+async function setGeneratedFileMode(file, mode, owner) {
+  if (process.getuid?.() === 0) {
+    await chown(file, owner.uid, owner.gid)
+  }
+  await chmod(file, mode)
+}
+
 export async function generateClientCertificate({
   caCert,
   caKey,
   clientSerialNumber,
   commonName = 'HSA Person Lookup Adapter',
+  fileOwnerGid = NODE_RUNTIME_GID,
+  fileOwnerUid = NODE_RUNTIME_UID,
   name = 'client',
   outputDir,
 } = {}) {
@@ -67,9 +78,9 @@ export async function generateClientCertificate({
     '-extfile',
     clientExt,
   ])
-  for (const file of [clientCert, clientKey]) {
-    await chmod(file, 0o644)
-  }
+  const owner = { gid: fileOwnerGid, uid: fileOwnerUid }
+  await setGeneratedFileMode(clientCert, 0o644, owner)
+  await setGeneratedFileMode(clientKey, 0o600, owner)
 
   return { clientCert, clientKey }
 }
@@ -79,6 +90,8 @@ export async function generateCertificates({
     'HSA_MTLS_CLIENT_SERIAL_NUMBER',
     DEFAULT_CLIENT_SERIAL_NUMBER,
   ),
+  fileOwnerGid = NODE_RUNTIME_GID,
+  fileOwnerUid = NODE_RUNTIME_UID,
   outputDir = readString('HSA_MTLS_CERT_DIR', DEFAULT_OUTPUT_DIR),
   serverDns = readString('HSA_MTLS_SERVER_DNS', DEFAULT_SERVER_DNS),
 } = {}) {
@@ -117,10 +130,13 @@ export async function generateCertificates({
     '-out',
     serverCsr,
   ])
+  const subjectAltNames = [
+    ...new Set([serverDns, DEFAULT_SERVER_DNS, 'localhost']),
+  ]
   await writeFile(
     serverExt,
     [
-      'subjectAltName=DNS:hsa-directory-mock,DNS:localhost,IP:127.0.0.1',
+      `subjectAltName=${subjectAltNames.map(name => `DNS:${name}`).join(',')},IP:127.0.0.1`,
       'extendedKeyUsage=serverAuth',
       '',
     ].join('\n'),
@@ -148,11 +164,17 @@ export async function generateCertificates({
     caCert,
     caKey,
     clientSerialNumber,
+    fileOwnerGid,
+    fileOwnerUid,
     outputDir,
   })
 
-  for (const file of [caCert, serverCert, clientCert, serverKey, clientKey]) {
-    await chmod(file, 0o644)
+  const owner = { gid: fileOwnerGid, uid: fileOwnerUid }
+  for (const file of [caCert, serverCert, clientCert]) {
+    await setGeneratedFileMode(file, 0o644, owner)
+  }
+  for (const file of [caKey, serverKey, clientKey]) {
+    await setGeneratedFileMode(file, 0o600, owner)
   }
 
   return {

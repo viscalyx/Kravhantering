@@ -367,6 +367,11 @@ async function handleLookup(req, res, config) {
         'HSA SOAP upstream is unavailable.',
       )
     }
+    throw new AdapterError(
+      503,
+      'service_unavailable',
+      `HSA SOAP upstream returned HTTP ${soapResponse.status}.`,
+    )
   }
 
   try {

@@ -9,9 +9,10 @@
     "node": "24"
   },
   "scripts": {
-    "predev": "node ./scripts/prebuild.js --metadata-only",
+    "predev": "npm run dev:prepare",
     "dev": "next dev",
     "dev:fresh": "npm run kill:port && npm run clean && npm run dev",
+    "dev:prepare": "node ./scripts/prebuild.js --metadata-only && npm run openapi:hsa-person-lookup:generate:public",
     "idp:up": "docker compose -f docker-compose.idp.yml up -d idp",
     "idp:down": "docker compose -f docker-compose.idp.yml down",
     "idp:reset": "docker compose -f docker-compose.idp.yml down --remove-orphans && docker compose -f docker-compose.idp.yml up -d --force-recreate idp",
@@ -33,7 +34,7 @@
     "devcontainer:hsa-mock:logs": "node scripts/devcontainer/hsa-mock.mjs logs",
     "devcontainer:hsa-mock:restart": "node scripts/devcontainer/hsa-mock.mjs restart",
     "devcontainer:hsa-mock:down": "node scripts/devcontainer/hsa-mock.mjs down",
-    "predev:https": "node ./scripts/prebuild.js --metadata-only",
+    "predev:https": "npm run dev:prepare",
     "dev:https": "next dev --experimental-https --experimental-https-key certificates/localhost-key.pem --experimental-https-cert certificates/localhost.pem --port 4443",
     "prebuild": "node ./scripts/prebuild.js",
     "build": "cross-env NODE_ENV=production BUILD_TARGET=prod next build",
@@ -102,6 +103,7 @@
     "perf:requirements-list": "node scripts/requirements-list-performance.mjs check",
     "perf:requirements-list:update": "node scripts/requirements-list-performance.mjs update-baseline",
     "openapi:hsa-person-lookup:generate": "node scripts/openapi/generate-hsa-person-lookup-swagger-ui.mjs",
+    "openapi:hsa-person-lookup:generate:public": "node scripts/openapi/generate-hsa-person-lookup-swagger-ui.mjs --output-dir public/api-docs/hsa-person-lookup --asset-base-path /api-docs/hsa-person-lookup/",
     "generate:guide": "npm run kill:port && npm run db:setup && playwright test --config playwright.guide.config.ts",
     "generate:guide:report": "playwright show-report --host 0.0.0.0 playwright-report-guide",
     "clean:all": "rimraf .next out && echo 'Run npm run db:setup to restore the local SQL Server database'",

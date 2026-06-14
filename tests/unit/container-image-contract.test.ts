@@ -13,6 +13,12 @@ function listPublicPngFiles() {
     return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
       const absolutePath = path.join(directory, entry.name)
       if (entry.isDirectory()) {
+        const relativeDirectory = path
+          .relative(publicRoot, absolutePath)
+          .replaceAll(path.sep, '/')
+        if (relativeDirectory === 'api-docs') {
+          return []
+        }
         return walk(absolutePath)
       }
       if (!entry.isFile() || !entry.name.endsWith('.png')) {
@@ -140,6 +146,7 @@ describe('container image contract', () => {
     expect(dockerignore).toContain('tests/')
     expect(dockerignore).toContain('.github/')
     expect(dockerignore).toContain('.devcontainer/')
+    expect(dockerignore).toContain('public/api-docs/')
     expect(dockerignore).toContain('typeorm/seed.mjs')
     expect(dockerignore).toContain('typeorm/seed-dogfood.mjs')
     expect(dockerignore).toContain('typeorm/seed-archiving-retention-build.mjs')

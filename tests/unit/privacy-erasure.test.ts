@@ -389,7 +389,7 @@ describe('privacy erasure service', () => {
         null,
         null,
         null,
-        false,
+        null,
         expect.any(Date),
       ],
     )

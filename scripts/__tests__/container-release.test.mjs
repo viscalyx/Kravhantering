@@ -1182,6 +1182,9 @@ describe('trusted container release helpers', () => {
         expect(compose).not.toMatch(/-\s+\.\/nginx\//)
         expect(compose).toContain('NGINX_RESOLVER')
         expect(compose).toContain('name: kravhantering-internal')
+        expect(compose).toContain(
+          '../api-docs:/usr/share/nginx/html/api-docs:ro',
+        )
         expect(compose).not.toContain(
           'kravhantering-app-node_kravhantering-internal',
         )
@@ -1190,6 +1193,18 @@ describe('trusted container release helpers', () => {
         )
         expect(compose).toContain('/etc/nginx/templates/default.conf.template')
         expect(compose).not.toContain('/etc/nginx/conf.d/default.conf')
+      }
+      for (const file of [
+        'nginx/templates/app-node-http.conf.template',
+        'nginx/templates/app-node-tls.conf.template',
+        'nginx/templates/single-node-tls.conf.template',
+      ]) {
+        const template = fs.readFileSync(
+          path.join(result.bundleRoot, file),
+          'utf8',
+        )
+        expect(template).toContain('location /api-docs/')
+        expect(template).toContain('/usr/share/nginx/html')
       }
       const singleNodeDemoCompose = fs.readFileSync(
         path.join(result.bundleRoot, 'compose/single-node-demo.compose.yml'),

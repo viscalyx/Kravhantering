@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises'
 import http from 'node:http'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -74,8 +74,12 @@ async function stop(server) {
 }
 
 async function postLookup(hsaId) {
+  return postLookupAt(adapterBaseUrl, hsaId)
+}
+
+async function postLookupAt(baseUrl, hsaId) {
   const body = JSON.stringify({ hsaId })
-  const url = new URL(`${adapterBaseUrl}/hsa/person-records/lookup`)
+  const url = new URL(`${baseUrl}/hsa/person-records/lookup`)
   return new Promise((resolve, reject) => {
     const request = http.request(
       {
@@ -123,6 +127,40 @@ function successEnvelope(userInformations) {
 }
 
 describe('HSA person lookup adapter SOAP mapping', () => {
+  it('generates dynamic server SANs and owner-only private key permissions', async () => {
+    const customCertDir = await mkdtemp(path.join(tmpdir(), 'hsa-certs-'))
+    try {
+      const generated = await generateCertificates({
+        outputDir: customCertDir,
+        serverDns: 'hsa.example.test',
+      })
+      const serverExt = await readFile(
+        path.join(customCertDir, 'server.ext'),
+        'utf8',
+      )
+      assert.match(serverExt, /DNS:hsa\.example\.test/u)
+      assert.match(serverExt, /DNS:hsa-directory-mock/u)
+      assert.match(serverExt, /DNS:localhost/u)
+
+      for (const file of [
+        generated.caKey,
+        generated.clientKey,
+        generated.serverKey,
+      ]) {
+        assert.equal((await stat(file)).mode & 0o777, 0o600)
+      }
+      for (const file of [
+        generated.caCert,
+        generated.clientCert,
+        generated.serverCert,
+      ]) {
+        assert.equal((await stat(file)).mode & 0o777, 0o644)
+      }
+    } finally {
+      await rm(customCertDir, { force: true, recursive: true })
+    }
+  })
+
   it('constructs GetHsaPerson SOAP requests with the configured addressing target', () => {
     const xml = soapRequestXml('SE1000-004', { messageId: 'test-id', to: 'TO' })
 
@@ -249,5 +287,31 @@ describe('HSA person lookup adapter REST facade', () => {
 
     assert.equal(response.status, 409)
     assert.equal(response.body.code, 'conflict')
+  })
+
+  it('maps non-2xx SOAP responses with bodies to REST 503', async () => {
+    const upstream = http.createServer((_req, res) => {
+      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
+      res.end('upstream error')
+    })
+    const upstreamBaseUrl = await listen(upstream, 'http')
+    const adapter = createServer({
+      endpointUrl: `${upstreamBaseUrl}${SOAP_URL}`,
+      timeoutMs: 5000,
+      to: 'SE165565594230-1000',
+    })
+    const localAdapterBaseUrl = await listen(adapter, 'http')
+    try {
+      const response = await postLookupAt(
+        localAdapterBaseUrl,
+        'SE5560000001-annaj',
+      )
+
+      assert.equal(response.status, 503)
+      assert.equal(response.body.code, 'service_unavailable')
+    } finally {
+      await stop(adapter)
+      await stop(upstream)
+    }
   })
 })

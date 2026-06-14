@@ -54,6 +54,7 @@ services:
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ../nginx/templates/single-node-tls.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ../api-docs:/usr/share/nginx/html/api-docs:ro
       - /etc/kravhantering/tls/fullchain.pem:/etc/nginx/tls/fullchain.pem:ro
       - /etc/kravhantering/tls/privkey.pem:/etc/nginx/tls/privkey.pem:ro
     networks:

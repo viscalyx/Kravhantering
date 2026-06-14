@@ -105,6 +105,14 @@ Mermaid-diagrammen för autentisering mellan app och Kong samt för
 Kong-adapter-HSA-flödet finns i
 [hsa-person-lookup-integration.md](./hsa-person-lookup-integration.md).
 
+`npm run dev` genererar även en statisk Swagger UI för REST-kontraktet och
+låter Next.js utvecklingsserver exponera den på samma ursprung som
+applikationen:
+
+```text
+http://localhost:3000/api-docs/hsa-person-lookup
+```
+
 ## Test- och kvalitetsverktyg
 
 Följande verktyg installeras via projektets npm-beroenden:

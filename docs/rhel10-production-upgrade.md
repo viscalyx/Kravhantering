@@ -310,15 +310,18 @@ place.
    exit
    ```
 
-10. Check `/api/health`, `/api/ready`, sign-in and a read-only UI workflow.
-    Check readiness through nginx, then sign in through the browser and open an
-    existing read-only requirement view:
+10. Check `/api/health`, `/api/ready`, `/api-docs/hsa-person-lookup/`,
+    sign-in and a read-only UI workflow. Check readiness and the static
+    HSA-person lookup Swagger UI through nginx, then sign in through the
+    browser and open an existing read-only requirement view:
 
     ```bash
     curl --fail --silent --show-error \
       https://kravhantering.example.internal/api/health
     curl --fail --silent --show-error \
       https://kravhantering.example.internal/api/ready
+    curl --fail --silent --show-error \
+      https://kravhantering.example.internal/api-docs/hsa-person-lookup/
     ```
 
     If the host uses a self-signed certificate, or the operator workstation

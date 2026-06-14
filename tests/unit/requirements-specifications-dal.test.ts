@@ -366,7 +366,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         null,
         'Admin',
         'ada@example.test',
-        false,
+        null,
         expect.any(Date),
       ],
     )

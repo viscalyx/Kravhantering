@@ -153,11 +153,7 @@ function printProfile(profile) {
 function ensureRunning(profile, serviceName, options) {
   if (runningService(profile, serviceName)) return
   assertSuccess(
-    runCompose(
-      profile,
-      ['up', '--build', '-d', '--no-deps', serviceName],
-      options,
-    ),
+    runCompose(profile, ['up', '--build', '-d', serviceName], options),
     `docker compose up ${serviceName}`,
   )
 }
@@ -176,12 +172,18 @@ function runStatus(profile, options) {
 
   const statusScript = `
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-    const response = await fetch('https://127.0.0.1:8443/health')
-    if (!response.ok) {
-      throw new Error(\`HSA directory mock returned \${response.status}\`)
+    const checks = [
+      ['HSA directory mock', 'https://127.0.0.1:8443/health'],
+      ['HSA person lookup adapter', 'http://hsa-person-lookup-adapter:8080/health'],
+    ]
+    for (const [name, url] of checks) {
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error(\`\${name} returned \${response.status}\`)
+      }
+      const body = await response.json()
+      console.log(JSON.stringify({ name, ...body }, null, 2))
     }
-    const body = await response.json()
-    console.log(JSON.stringify(body, null, 2))
   `
 
   console.log('Verifying HSA directory mock and adapter health...')

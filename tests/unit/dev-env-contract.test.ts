@@ -6,6 +6,23 @@ function readWorkspaceFile(path: string) {
 }
 
 describe('development environment contract', () => {
+  it('generates HSA lookup Swagger UI for the Next dev server', () => {
+    const packageJson = JSON.parse(readWorkspaceFile('package.json'))
+    const scripts = packageJson.scripts
+
+    expect(scripts.predev).toBe('npm run dev:prepare')
+    expect(scripts['dev:prepare']).toContain(
+      'openapi:hsa-person-lookup:generate:public',
+    )
+    expect(scripts['dev:fresh']).toContain('npm run dev')
+    expect(scripts['openapi:hsa-person-lookup:generate:public']).toContain(
+      'public/api-docs/hsa-person-lookup',
+    )
+    expect(scripts['openapi:hsa-person-lookup:generate:public']).toContain(
+      '--asset-base-path /api-docs/hsa-person-lookup/',
+    )
+  })
+
   it('ships the devcontainer Kong HSA lookup URL in the committed dev env', () => {
     const env = readWorkspaceFile('.env.development')
 
@@ -21,7 +38,13 @@ describe('development environment contract', () => {
     expect(envExample).toContain('HSA_PERSON_LOOKUP_URL=')
     expect(envExample).toContain('HSA_PERSON_LOOKUP_TIMEOUT_MS=')
     expect(envExample).toContain('HSA_PERSON_LOOKUP_CLIENT_CERT_PATH=')
+    expect(envExample).toContain('HSA_PERSON_LOOKUP_CLIENT_KEY_PATH=')
+    expect(envExample).toContain('HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID=')
     expect(envExample).toContain('HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET=')
+    expect(
+      envExample.includes('HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL=') ||
+        envExample.includes('HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL='),
+    ).toBe(true)
   })
 
   it('ships HSA lookup settings in prod-like and release app envs', () => {
@@ -48,6 +71,25 @@ describe('development environment contract', () => {
       'HSA_PERSON_LOOKUP_URL=https://kong.example.internal/hsa/person-records/lookup',
     )
     expect(releaseAppEnv).toContain('HSA_PERSON_LOOKUP_CLIENT_KEY_PATH=')
+    expect(releaseAppEnv).toContain('HSA_PERSON_LOOKUP_CLIENT_CERT_PATH=')
+    expect(releaseAppEnv).toContain('HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID=')
+    expect(releaseAppEnv).toContain('HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET=')
+    expect(
+      releaseAppEnv.includes('HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL=') ||
+        releaseAppEnv.includes('HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL='),
+    ).toBe(true)
+    expect(containerAppExampleEnv).toContain(
+      'HSA_PERSON_LOOKUP_CLIENT_CERT_PATH=',
+    )
+    expect(containerAppExampleEnv).toContain(
+      'HSA_PERSON_LOOKUP_CLIENT_KEY_PATH=',
+    )
+    expect(containerAppExampleEnv).toContain(
+      'HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID=',
+    )
+    expect(containerAppExampleEnv).toContain(
+      'HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET=',
+    )
     expect(releaseAppEnv).toContain('HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL=')
     expect(containerAppExampleEnv).toContain(
       'HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL=',

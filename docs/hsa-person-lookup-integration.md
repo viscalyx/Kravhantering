@@ -46,6 +46,8 @@ starts Kong, the adapter, and the HSA directory mock on the internal
 single-node network. That overlay supports release-smoke and disposable demo
 environments. It is not the required production HSA integration path.
 
+![HSA person lookup integration paths](./images/hsa-person-lookup_integration-paths.png)
+
 ## Runtime configuration
 
 The app calls the configured person lookup endpoint through
@@ -94,6 +96,8 @@ The route has two explicit modes:
 These diagrams start after the app verify route has decided that a live HSA
 lookup is needed. They do not replace the browser OIDC login diagrams in
 [auth-how-it-works.md](./auth-how-it-works.md).
+
+![HSA person lookup authentication and transport](./images/hsa-person-lookup_authentication-and-transport.png)
 
 ### Application to Kong or integration platform
 

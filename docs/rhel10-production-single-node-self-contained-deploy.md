@@ -534,32 +534,38 @@ exit
 Use this only for a disposable `single-node-demo` release-test or demo
 environment. Do not use these refs in production.
 
-Set the two test support refs from `container-test-support.lock.json` after the
-five production refs are selected:
+Set Kong and the adapter refs from
+`container-hsa-integration-support.lock.json`, and set the HSA directory mock
+ref from `container-test-support.lock.json` after the five production refs are
+selected:
 
 ```bash
 update_ref() {
   sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
 }
 
+HSA_LOCK_FILE=/opt/kravhantering/current/container-hsa-integration-support.lock.json
 TEST_LOCK_FILE=/opt/kravhantering/current/container-test-support.lock.json
-test_service_image() {
-  jq -r --arg name "$1" \
-    '.services[] | select(.name == $name) | .image' "$TEST_LOCK_FILE"
+support_service_image() {
+  jq -r --arg name "$2" \
+    '.services[] | select(.name == $name) | .image' "$1"
 }
-test_service_tag() {
-  jq -r --arg name "$1" \
-    '.services[] | select(.name == $name) | .tag' "$TEST_LOCK_FILE"
+support_service_tag() {
+  jq -r --arg name "$2" \
+    '.services[] | select(.name == $name) | .tag' "$1"
 }
-test_service_ref() {
+support_service_ref() {
   printf '%s:%s\n' \
-    "$(test_service_image "$1")" "$(test_service_tag "$1")"
+    "$(support_service_image "$1" "$2")" \
+    "$(support_service_tag "$1" "$2")"
 }
 
 update_ref KONG_IMAGE_REF \
-  "$(test_service_ref kong)"
+  "$(support_service_ref "$HSA_LOCK_FILE" kong)"
+update_ref HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF \
+  "$(support_service_ref "$HSA_LOCK_FILE" hsa-person-lookup-adapter)"
 update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
-  "$(test_service_ref hsa-directory-mock)"
+  "$(support_service_ref "$TEST_LOCK_FILE" hsa-directory-mock)"
 ```
 
 Then pull and verify both lock files together:
@@ -572,10 +578,12 @@ set -a
 set +a
 
 podman pull "$KONG_IMAGE_REF"
+podman pull "$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF"
 podman pull "$HSA_DIRECTORY_MOCK_IMAGE_REF"
 
 bin/kravhantering-images.sh --topology single-node-demo \
   --lock-file container-stack.lock.json \
+  --hsa-integration-lock-file container-hsa-integration-support.lock.json \
   --test-lock-file container-test-support.lock.json \
   --env-file /etc/kravhantering/release.env \
   verify
@@ -1352,13 +1360,15 @@ podman compose --env-file /etc/kravhantering/release.env \
 exit
 ```
 
-Check readiness through nginx:
+Check readiness and the static HSA-person lookup Swagger UI through nginx:
 
 ```bash
 curl --fail --silent --show-error \
   https://kravhantering.example.internal/api/health
 curl --fail --silent --show-error \
   https://kravhantering.example.internal/api/ready
+curl --fail --silent --show-error \
+  https://kravhantering.example.internal/api-docs/hsa-person-lookup/
 ```
 
 If the host uses the temporary self-signed certificate from Appendix A, or the
