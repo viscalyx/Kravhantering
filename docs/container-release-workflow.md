@@ -7,8 +7,9 @@ from the tag trigger so the preview tag push does not start a second container
 release workflow.
 
 The workflow builds the production `app-runtime` and `db-job` images plus the
-test-only `hsa-directory-mock` image, publishes them to GHCR, and records the
-production image identities in `container-stack.lock.json`. The
+HSA person lookup adapter and test-only `hsa-directory-mock` images, publishes
+them to GHCR, and records the production image identities in
+`container-stack.lock.json`. The
 `manifestDigest` is the registry manifest digest used for GitHub Artifact
 Attestations, SBOM subjects and GHCR release smoke tests. The `imageId` is the
 container image ID used by production operators to verify runtime equivalence

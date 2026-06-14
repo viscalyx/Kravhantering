@@ -1,9 +1,11 @@
 # HSA person lookup integration
 
 This document covers the server-side integration used to fetch person
-information for responsibility assignments. Authentication and local Keycloak
-developer setup are documented separately in
-[auth-developer-workflow.md](./auth-developer-workflow.md).
+information for responsibility assignments. Browser sign-in, MCP Bearer-token
+authentication, and local Keycloak developer setup are documented separately in
+[auth-developer-workflow.md](./auth-developer-workflow.md). Authentication in
+this document means the HSA lookup transport authentication between the app,
+Kong or an integration platform, the adapter, and the HSA directory.
 
 ## Scope
 
@@ -56,11 +58,13 @@ facade. The browser must never receive this endpoint or call it directly.
 unless the approved integration path for an environment requires a different
 timeout.
 
-If `HSA_PERSON_LOOKUP_URL` points to an external integrationsplattform, the app
-can add app-to-platform authentication without changing the URL knob. Set
-`HSA_PERSON_LOOKUP_CLIENT_CERT_PATH` and `HSA_PERSON_LOOKUP_CLIENT_KEY_PATH`
-for mTLS, optionally with `HSA_PERSON_LOOKUP_CA_PATH` and
-`HSA_PERSON_LOOKUP_TLS_SERVER_NAME`. Set
+The devcontainer and `single-node-demo` route is internal to the Compose
+network and does not configure app-to-Kong mTLS or OAuth2. If
+`HSA_PERSON_LOOKUP_URL` points to an external Kong route or
+integrationsplattform, the app can add app-to-platform authentication without
+changing the URL knob. Set `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH` and
+`HSA_PERSON_LOOKUP_CLIENT_KEY_PATH` for mTLS, optionally with
+`HSA_PERSON_LOOKUP_CA_PATH` and `HSA_PERSON_LOOKUP_TLS_SERVER_NAME`. Set
 `HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`,
 `HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`, and either
 `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL` or
@@ -85,44 +89,101 @@ The route has two explicit modes:
   `HSA_PERSON_LOOKUP_URL` and updates or inserts the local person row with the
   returned name components and e-mail.
 
-## Technical API flow
+## Technical API and authentication flows
 
-This diagram focuses only on the external lookup path after the app has decided
-that it needs to call the configured HSA integration endpoint.
+These diagrams start after the app verify route has decided that a live HSA
+lookup is needed. They do not replace the browser OIDC login diagrams in
+[auth-how-it-works.md](./auth-how-it-works.md).
 
+### Application to Kong or integration platform
+
+The app authenticates the editor and authorizes the assignment purpose before
+this outbound call. The devcontainer path then posts directly to the internal
+Kong route. External environments can require mTLS, OAuth2 client credentials,
+or both before accepting the same REST request.
+
+<!-- markdownlint-disable MD013 -->
 ```mermaid
 sequenceDiagram
-    participant App as App HSA client
-    participant Kong as Kong REST facade
-    participant Upstream as HSA lookup upstream
+    actor Editor as Authorized editor
+    participant UI as Browser UI
+    participant Verify as App verify API
+    participant Client as App HSA client
+    participant Token as OAuth2 token endpoint
+    participant Kong as Kong or integration platform
 
-    App->>Kong: POST HSA_PERSON_LOOKUP_URL { hsaId }
-    Kong->>Upstream: Forward person lookup
+    Editor->>UI: Enter or refresh HSA-id
+    UI->>Verify: POST /api/requirement-responsibility-people/verify
+    Verify->>Verify: Validate session, CSRF, purpose and scope
+    Verify->>Client: lookupHsaPerson(hsaId)
+
+    opt OAuth2 client credentials configured
+        Client->>Token: Request access token
+        Token-->>Client: access_token
+    end
+
+    opt mTLS configured
+        Client->>Kong: TLS handshake with client certificate
+        Kong-->>Client: TLS accepted
+    end
+
+    alt OAuth2 token is present
+        Client->>Kong: POST HSA_PERSON_LOOKUP_URL { hsaId } + Bearer token
+    else No OAuth2 token
+        Client->>Kong: POST HSA_PERSON_LOOKUP_URL { hsaId }
+    end
+    Kong-->>Client: Person JSON or mapped error
+    Client-->>Verify: Normalized person or domain error
+    Verify-->>UI: Verified person payload or validation error
+```
+<!-- markdownlint-enable MD013 -->
+
+### Kong, adapter and HSA directory
+
+The repository-supported devcontainer and `single-node-demo` topology keeps
+Kong DB-less and plain. Kong exposes only `POST /hsa/person-records/lookup`
+and routes that request to `hsa-person-lookup-adapter`. The adapter owns the
+REST-to-SOAP transformation and authenticates to the HSA directory with an
+HSAWS client certificate. In dev and release smoke the directory is
+`hsa-directory-mock`; production can use a real HSA service behind the same
+adapter pattern only when that route is approved for the environment.
+
+<!-- markdownlint-disable MD013 -->
+```mermaid
+sequenceDiagram
+    participant Kong as Kong REST route
+    participant Adapter as hsa-person-lookup-adapter
+    participant HSA as HSA-katalog<br/>(mock or production)
+
+    Kong->>Adapter: POST /hsa/person-records/lookup { hsaId }
+    Adapter->>Adapter: Validate JSON and build SOAP request
+    Adapter->>HSA: mTLS handshake with HSAWS client certificate
+    HSA-->>Adapter: Client certificate accepted
+    Adapter->>HSA: SOAP GetHsaPerson(hsaIdentity=hsaId)
 
     alt Person found
-        Upstream-->>Kong: 200 person JSON incl. hasProtectedPersonalData
-        Kong-->>App: 200 person JSON
-        App->>App: Validate HSA-id and normalize fields
-    else Upstream not found
-        Upstream-->>Kong: 404 { code: "not_found" }
-        Kong-->>App: 404
-        App->>App: Map to validation error
-    else Conflicting upstream records
-        Upstream-->>Kong: 409 { code: "conflict" }
-        Kong-->>App: 409
-        App->>App: Map to conflict error
-    else Timeout or unavailable
-        Kong-->>App: 5xx or no response
-        App->>App: Map to service unavailable error
+        HSA-->>Adapter: SOAP 200 userInformation
+        Adapter->>Adapter: Map SOAP fields to REST JSON
+        Adapter-->>Kong: 200 person JSON incl. hasProtectedPersonalData
+    else No matching HSA person
+        HSA-->>Adapter: SOAP 200 empty userInformations
+        Adapter-->>Kong: 404 { code: "not_found" }
+    else Conflicting HSA person records
+        HSA-->>Adapter: SOAP 200 conflicting userInformation records
+        Adapter-->>Kong: 409 { code: "conflict" }
+    else SOAP fault, auth failure or timeout
+        HSA-->>Adapter: SOAP fault, 401, 403 or no response
+        Adapter-->>Kong: 503 { code: "service_unavailable" }
     end
 ```
+<!-- markdownlint-enable MD013 -->
 
-In devcontainer, `Kong REST facade` is the DB-less Kong route
-`/hsa/person-records/lookup`, and `HSA lookup upstream` is the
-`hsa-person-lookup-adapter`, which calls the HSA directory mock SOAP endpoint
-with mTLS. Test and production environments can keep the same app-facing REST
-contract while the approved Kong or integration-platform route handles any
-transformation needed for the real HSA upstream.
+In devcontainer, the app-facing endpoint is the DB-less Kong route
+`/hsa/person-records/lookup`, and Kong routes only to
+`hsa-person-lookup-adapter`. The adapter calls the HSA directory mock SOAP
+endpoint with mTLS. Test and production environments can keep the same
+app-facing REST contract while the approved Kong or integration-platform route
+handles any transformation needed for the real HSA upstream.
 
 ## Responsibility-assignment flow
 

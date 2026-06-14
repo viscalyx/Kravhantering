@@ -8,9 +8,11 @@ for the self-contained single-node RHEL 10 production topology, where nginx,
 Compose network.
 
 The default disconnected topology is `single-node`. The optional
-`single-node-demo` topology is test-only and adds Kong plus the HSA directory
-mock from `container-test-support.lock.json`. Use `single-node-demo` only for
-release smoke, disposable demos or other non-production environments.
+`single-node-demo` topology is test-only and adds Kong, the HSA person lookup
+adapter and the HSA directory mock from
+`container-hsa-integration-support.lock.json` and
+`container-test-support.lock.json`. Use `single-node-demo` only for release
+smoke, disposable demos or other non-production environments.
 
 Use this guide before starting a first install in a disconnected environment
 with
@@ -156,27 +158,25 @@ custom repository layout. Edit the five `*_IMAGE_REF` values in
 
 #### Optional Test Support Refs For `single-node-demo`
 
-Use this only when `TOPOLOGY=single-node-demo`. The test support refs come from
-`container-test-support.lock.json` and are not part of the production
-`single-node` topology.
+Use this only when `TOPOLOGY=single-node-demo`. Kong and the adapter refs come
+from `container-hsa-integration-support.lock.json`; the HSA directory mock ref
+comes from `container-test-support.lock.json`. They are not part of the
+production `single-node` topology.
 
 After Alternative A or B, run:
 
 ```bash
 if [ "$TOPOLOGY" = "single-node-demo" ]; then
+  HSA_LOCK_FILE="$OFFLINE_WORK/container-hsa-integration-support.lock.json"
   TEST_LOCK_FILE="$OFFLINE_WORK/container-test-support.lock.json"
-  test_service_image() {
-    jq -r --arg name "$1" \
-      '.services[] | select(.name == $name) | .image' "$TEST_LOCK_FILE"
-  }
-  test_service_tag() {
-    jq -r --arg name "$1" \
-      '.services[] | select(.name == $name) | .tag' "$TEST_LOCK_FILE"
-  }
-  test_service_ref() {
-    local image tag
-    image="$(test_service_image "$1")"
-    tag="$(test_service_tag "$1")"
+  support_service_ref() {
+    local lock_file name image tag
+    lock_file="$1"
+    name="$2"
+    image="$(jq -r --arg name "$name" \
+      '.services[] | select(.name == $name) | .image' "$lock_file")"
+    tag="$(jq -r --arg name "$name" \
+      '.services[] | select(.name == $name) | .tag' "$lock_file")"
     if [ -n "${TARGET_IMAGE_REGISTRY:-}" ]; then
       printf '%s/%s:%s\n' \
         "$TARGET_IMAGE_REGISTRY" "${image#*/}" "$tag"
@@ -186,14 +186,17 @@ if [ "$TOPOLOGY" = "single-node-demo" ]; then
   }
 
   update_ref KONG_IMAGE_REF \
-    "$(test_service_ref kong)"
+    "$(support_service_ref "$HSA_LOCK_FILE" kong)"
+  update_ref HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF \
+    "$(support_service_ref "$HSA_LOCK_FILE" hsa-person-lookup-adapter)"
   update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
-    "$(test_service_ref hsa-directory-mock)"
+    "$(support_service_ref "$TEST_LOCK_FILE" hsa-directory-mock)"
 fi
 ```
 
-For Alternative C, manually edit `KONG_IMAGE_REF` and
-`HSA_DIRECTORY_MOCK_IMAGE_REF` as well.
+For Alternative C, manually edit `KONG_IMAGE_REF`,
+`HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` and `HSA_DIRECTORY_MOCK_IMAGE_REF` as
+well.
 
 ### Pull, Verify And Export Images
 
@@ -214,24 +217,27 @@ podman pull "$NGINX_IMAGE_REF"
 podman pull "$SQLSERVER_IMAGE_REF"
 podman pull "$KEYCLOAK_IMAGE_REF"
 
-TEST_LOCK_ARGS=()
+SUPPORT_LOCK_ARGS=()
 if [ "$TOPOLOGY" = "single-node-demo" ]; then
   podman pull "$KONG_IMAGE_REF"
+  podman pull "$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF"
   podman pull "$HSA_DIRECTORY_MOCK_IMAGE_REF"
-  TEST_LOCK_ARGS=(
+  SUPPORT_LOCK_ARGS=(
+    --hsa-integration-lock-file \
+    "$OFFLINE_WORK/container-hsa-integration-support.lock.json"
     --test-lock-file "$OFFLINE_WORK/container-test-support.lock.json"
   )
 fi
 
 bash "$OFFLINE_WORK/bin/kravhantering-images.sh" --topology "$TOPOLOGY" \
   --lock-file "$OFFLINE_WORK/container-stack.lock.json" \
-  "${TEST_LOCK_ARGS[@]}" \
+  "${SUPPORT_LOCK_ARGS[@]}" \
   --env-file "$OFFLINE_ROOT/release.env" \
   verify
 
 bash "$OFFLINE_WORK/bin/kravhantering-images.sh" --topology "$TOPOLOGY" \
   --lock-file "$OFFLINE_WORK/container-stack.lock.json" \
-  "${TEST_LOCK_ARGS[@]}" \
+  "${SUPPORT_LOCK_ARGS[@]}" \
   --env-file "$OFFLINE_ROOT/release.env" \
   export --output "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
 ```
@@ -410,6 +416,8 @@ update_ref SQLSERVER_IMAGE_REF "$(target_ref sqlserver)"
 update_ref KEYCLOAK_IMAGE_REF "$(target_ref keycloak)"
 if [ "$TOPOLOGY" = "single-node-demo" ]; then
   update_ref KONG_IMAGE_REF "$(target_ref kong)"
+  update_ref HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF \
+    "$(target_ref hsa-person-lookup-adapter)"
   update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
     "$(target_ref hsa-directory-mock)"
 fi
@@ -425,13 +433,16 @@ TOPOLOGY=single-node
 OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
 cd /opt/kravhantering/current
-TEST_LOCK_ARGS=()
+SUPPORT_LOCK_ARGS=()
 if [ "$TOPOLOGY" = "single-node-demo" ]; then
-  TEST_LOCK_ARGS=(--test-lock-file container-test-support.lock.json)
+  SUPPORT_LOCK_ARGS=(
+    --hsa-integration-lock-file container-hsa-integration-support.lock.json
+    --test-lock-file container-test-support.lock.json
+  )
 fi
 bin/kravhantering-images.sh --topology "$TOPOLOGY" \
   --lock-file container-stack.lock.json \
-  "${TEST_LOCK_ARGS[@]}" \
+  "${SUPPORT_LOCK_ARGS[@]}" \
   --env-file /etc/kravhantering/release.env \
   load --bundle "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
 exit
@@ -524,6 +535,8 @@ update_ref SQLSERVER_IMAGE_REF "$(target_ref sqlserver)"
 update_ref KEYCLOAK_IMAGE_REF "$(target_ref keycloak)"
 if [ "$TOPOLOGY" = "single-node-demo" ]; then
   update_ref KONG_IMAGE_REF "$(target_ref kong)"
+  update_ref HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF \
+    "$(target_ref hsa-person-lookup-adapter)"
   update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
     "$(target_ref hsa-directory-mock)"
 fi
@@ -539,13 +552,16 @@ TOPOLOGY=single-node
 OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
 cd /opt/kravhantering/current
-TEST_LOCK_ARGS=()
+SUPPORT_LOCK_ARGS=()
 if [ "$TOPOLOGY" = "single-node-demo" ]; then
-  TEST_LOCK_ARGS=(--test-lock-file container-test-support.lock.json)
+  SUPPORT_LOCK_ARGS=(
+    --hsa-integration-lock-file container-hsa-integration-support.lock.json
+    --test-lock-file container-test-support.lock.json
+  )
 fi
 bin/kravhantering-images.sh --topology "$TOPOLOGY" \
   --lock-file container-stack.lock.json \
-  "${TEST_LOCK_ARGS[@]}" \
+  "${SUPPORT_LOCK_ARGS[@]}" \
   --env-file /etc/kravhantering/release.env \
   load --bundle "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
 exit

@@ -124,6 +124,33 @@ devcontainer:
 docker compose -f .devcontainer/docker-compose.yml up -d idp
 ```
 
+### Local HSA-id lookup support
+
+Keycloak gives the signed-in actor an `employeeHsaId` claim; it does not verify
+editable responsibility-assignment HSA-id values against HSA. That verification
+uses the server-side person lookup flow in
+[hsa-person-lookup-integration.md](./hsa-person-lookup-integration.md).
+
+In the devcontainer, the `app` service receives
+`HSA_PERSON_LOOKUP_URL=http://kong:8000/hsa/person-records/lookup`. The app
+posts to the internal Kong route, Kong routes to
+`hsa-person-lookup-adapter`, and the adapter calls the HSA directory mock SOAP
+`GetHsaPerson` endpoint with mTLS. No Kong ports are forwarded to the host.
+
+Use these checks from the workspace when HSA-id verification behaves
+unexpectedly:
+
+```sh
+npm run devcontainer:kong:status
+npm run devcontainer:hsa-mock:status
+npm run devcontainer:hsa-mock:verify
+```
+
+Host-based development with only `npm run idp:up` starts Keycloak but not
+Kong, the adapter or the HSA directory mock. To test responsibility-assignment
+HSA lookup outside the devcontainer, run equivalent support services or point
+`HSA_PERSON_LOOKUP_URL` at an approved development lookup endpoint.
+
 ### Seeded users
 
 All accounts use the password `devpass` (clearly dev-only, do not reuse).

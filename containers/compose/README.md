@@ -98,9 +98,9 @@ Inside the devcontainer, `container:release-smoke:up` imports the generated
 `tmp/container-tls/ca.crt` into the runner's system CA bundle and Chromium NSS
 database. Outside the devcontainer, trust that CA for both Node and the browser
 runner before starting the Playwright suite.
-The release-smoke stack also starts Kong and the HSA directory mock on the
-internal network. The app runtime receives the internal HSA lookup URL through
-an explicit container environment override.
+The release-smoke stack also starts Kong, the HSA person lookup adapter and the
+HSA directory mock on the internal network. The app runtime receives the
+internal HSA lookup URL through an explicit container environment override.
 
 Stop the most recent local stack:
 
@@ -120,14 +120,15 @@ default network.
 The local orchestration does the same explicit ordering intended for CI:
 
 1. Generate short-lived TLS files in `tmp/container-tls`.
-2. Build `app-runtime`, `db-job` and, for release-smoke, the HSA directory
-   mock with Docker Buildx.
+2. Build `app-runtime`, `db-job` and, for release-smoke, the HSA person lookup
+   adapter plus HSA directory mock with Docker Buildx.
 3. Load those local images into Podman.
 4. Generate `container-stack.lock.json` and `container-stack.compose.yml`.
 5. Start SQL Server and Keycloak.
 6. Run `db-bootstrap`, `db-migrate` and `db-seed-required`.
 7. Run `db-seed-demo` only for release-smoke mode.
-8. Start Kong and the HSA directory mock only for release-smoke mode.
+8. Start Kong, the HSA person lookup adapter and the HSA directory mock only
+   for release-smoke mode.
 9. Start `app-runtime` and nginx, then wait for nginx, Keycloak discovery,
    `/api/health` and `/api/ready`.
 
@@ -151,9 +152,10 @@ node scripts/containers/run-local-stack.mjs up \
 ```
 
 `--skip-build` only skips the local Buildx commands. The helper still loads the
-configured Docker tags into Podman, including the HSA mock image for
-release-smoke, creates `container-stack.lock.json`, generates PR-mode Compose
-and runs the same explicit startup order as local release-smoke.
+configured Docker tags into Podman, including the HSA person lookup adapter and
+HSA mock images for release-smoke, creates `container-stack.lock.json`,
+generates PR-mode Compose and runs the same explicit startup order as local
+release-smoke.
 
 The workflow exports and verifies separate short-lived OCI archives for the
 project images:

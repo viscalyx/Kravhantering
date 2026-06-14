@@ -52,10 +52,11 @@ The site must provide approved runtime image refs for:
 - SQL Server
 - Keycloak
 
-The optional `single-node-demo` test support overlay adds Kong and the
-HSA directory mock from `container-test-support.lock.json`. That overlay is
-only for disposable demo or release-test environments and must not be used for
-production.
+The optional `single-node-demo` test support overlay adds Kong, the HSA person
+lookup adapter and the HSA directory mock from
+`container-hsa-integration-support.lock.json` and
+`container-test-support.lock.json`. That overlay is only for disposable demo or
+release-test environments and must not be used for production.
 
 The refs must use tag-style `image:tag` values that point at public upstream
 registries or an internal registry mirror. Each configured ref must resolve to
@@ -1276,9 +1277,10 @@ explicit command.
 
 Optional, release test and demo only: switch the app runtime to the internal
 Kong route and start the test support overlay with the single-node stack. The
-overlay adds Kong and `hsa-directory-mock` on `kravhantering-internal` without
-publishing host ports. Use it only with `single-node-demo` and only after
-setting and verifying `KONG_IMAGE_REF` and `HSA_DIRECTORY_MOCK_IMAGE_REF` from
+overlay adds Kong, `hsa-person-lookup-adapter` and `hsa-directory-mock` on
+`kravhantering-internal` without publishing host ports. Use it only with
+`single-node-demo` and only after setting and verifying `KONG_IMAGE_REF`,
+`HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` and `HSA_DIRECTORY_MOCK_IMAGE_REF` from
 [Optional Test Support Image Refs](#optional-test-support-image-refs).
 
 ```bash
@@ -1300,6 +1302,9 @@ podman compose --env-file /etc/kravhantering/release.env \
 podman compose --env-file /etc/kravhantering/release.env \
   -f compose/single-node.compose.yml \
   -f compose/single-node-demo.compose.yml logs --tail=100 kong
+podman compose --env-file /etc/kravhantering/release.env \
+  -f compose/single-node.compose.yml \
+  -f compose/single-node-demo.compose.yml logs --tail=100 hsa-person-lookup-adapter
 podman compose --env-file /etc/kravhantering/release.env \
   -f compose/single-node.compose.yml \
   -f compose/single-node-demo.compose.yml logs --tail=100 hsa-directory-mock

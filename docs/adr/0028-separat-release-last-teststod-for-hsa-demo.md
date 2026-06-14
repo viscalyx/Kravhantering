@@ -26,7 +26,8 @@ container-release-workflow med samma release-tags som `app-runtime` och
 `db-job`. De ska därför inte ingå i vendor-image-uppdateraren.
 
 Konsekvensen är att produktionsoperatörer får en oförändrad single-node-väg
-utan Kong eller HSA-mock, medan release-test kan verifiera hela HSA-uppslaget
-mot låsta artefakter. Disconnected-flöden kan exportera och ladda
+utan Kong, HSA-personuppslagsadapter eller HSA-mock, medan release-test kan
+verifiera hela HSA-uppslaget mot låsta artefakter. Disconnected-flöden kan
+exportera och ladda
 `single-node-demo` genom att ange produktionslåset,
 HSA-integrationsstödlåset och teststödslåset.

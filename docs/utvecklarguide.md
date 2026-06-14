@@ -48,13 +48,15 @@ Utvecklaren behöver kunna köra eller nå dessa tjänster:
 - SQL Server Developer för applikationsdatabasen.
 - Keycloak för lokal OIDC-inloggning.
 - Kong Gateway för devcontainer-lokal API-management-verifiering.
+- HSA-personuppslagsadapter för devcontainer-lokal REST-till-SOAP-verifiering
+  av personuppslag via Kong.
 - HSA-katalogmock för devcontainer-lokal SOAP-verifiering av `GetHsaPerson`
-  och REST-verifiering av personuppslag via Kong.
+  bakom adaptern.
 - OpenRouter-konto och API-nyckel om AI-stödet ska testas.
 
-I devcontainer, Codespaces och Dev Spaces hanteras SQL Server, Keycloak, Kong
-och HSA-katalogmocken som sidotjänster. Vid host-baserad utveckling krävs lokal
-Docker Compose-körning.
+I devcontainer, Codespaces och Dev Spaces hanteras SQL Server, Keycloak, Kong,
+HSA-personuppslagsadaptern och HSA-katalogmocken som sidotjänster. Vid
+host-baserad utveckling krävs lokal Docker Compose-körning.
 
 ## Databasverktyg
 
@@ -82,6 +84,26 @@ För lokal auth behövs:
   utvecklingsservern.
 
 Vanlig `curl` räcker inte för skyddade routes eftersom auth alltid är aktiv.
+
+## HSA-id-uppslagsverktyg
+
+För lokala HSA-id-uppslag i devcontainer används `HSA_PERSON_LOOKUP_URL` mot
+Kong på `http://kong:8000/hsa/person-records/lookup`. Kong skickar vidare till
+`hsa-person-lookup-adapter`, som anropar SOAP-slutpunkten `GetHsaPerson` i
+HSA-katalogmocken med mTLS.
+
+Använd följande kommandon när personuppslag eller Kong-routning behöver
+felsökas:
+
+```sh
+npm run devcontainer:kong:status
+npm run devcontainer:hsa-mock:status
+npm run devcontainer:hsa-mock:verify
+```
+
+Mermaid-diagrammen för autentisering mellan app och Kong samt för
+Kong-adapter-HSA-flödet finns i
+[hsa-person-lookup-integration.md](./hsa-person-lookup-integration.md).
 
 ## Test- och kvalitetsverktyg
 

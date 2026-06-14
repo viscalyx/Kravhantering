@@ -692,10 +692,11 @@ direktåtkomst till HSA-katalogen eller Kong.
 
 Det interna applikationskontraktet är REST/JSON och konfigureras
 med `HSA_PERSON_LOOKUP_URL`. I devcontainer pekar det på Kong,
-som skickar vidare till personuppslagsfasaden i HSA-mocken. Test
-och produktion kan i stället peka på respektive API-hanterare eller
-integrationsplattform, där transformation mot HSA SOAP hanteras utanför
-Kravhanterings applikationskod.
+som skickar vidare till `hsa-person-lookup-adapter`. Adaptern
+transformerar REST-anropet till SOAP `GetHsaPerson` och anropar
+HSA-katalogmocken med mTLS. Test och produktion kan i stället peka på
+respektive API-hanterare eller integrationsplattform, där transformation mot
+HSA SOAP hanteras utanför Kravhanterings applikationskod.
 
 Svaret används för att skapa eller uppdatera
 `requirement_responsibility_people`, där HSA-id, namnkomponenter,
@@ -762,6 +763,12 @@ förvaltningens ordinarie it-stöd, inte i applikationen.
 │                                  │  │ leverantör     │ │ plattform       │ │
 │                                  │  └────────────────┘ └────────┬────────┘ │
 │                                  │                              │          │
+│                                  │                              ▼          │
+│                                  │                     ┌────────────────┐ │
+│                                  │                     │ HSA-adapter    │ │
+│                                  │                     │ REST till SOAP │ │
+│                                  │                     └────────┬───────┘ │
+│                                  │                              │ mTLS     │
 │                                  │                              ▼          │
 │                                  │                     ┌────────────────┐ │
 │                                  │                     │ HSA-katalog /  │ │

@@ -24,21 +24,30 @@ Export any custom UI terminology values you need to keep before running
 ### Topology changes
 
 For the container release bundle, production `single-node` remains unchanged:
-do not add Kong or the HSA directory mock to production Compose startup. If you
-mirror, archive or attest every release artifact, include the new
-`container-test-support.lock.json`, the `kravhantering-hsa-directory-mock`
-GHCR image, its SBOM and its attestations alongside the existing production
-artifacts. Kong is still a vendor image, but it is now locked as test support
-for `single-node-demo`.
+do not add Kong, the HSA person lookup adapter or the HSA directory mock to
+production Compose startup. If you mirror, archive or attest every release
+artifact, include `container-hsa-integration-support.lock.json`,
+`container-test-support.lock.json`, the
+`kravhantering-hsa-person-lookup-adapter` GHCR image, the
+`kravhantering-hsa-directory-mock` GHCR image, their SBOMs and their
+attestations alongside the existing production artifacts. Kong is still a
+vendor image, but it is now locked as integration support for
+`single-node-demo`.
 
 Only use `single-node-demo` for release smoke, disposable demos or other
-test-only environments. Before starting that topology, set `KONG_IMAGE_REF` and
-`HSA_DIRECTORY_MOCK_IMAGE_REF` from `container-test-support.lock.json` or from
-your internal mirrored tags, and set the demo app runtime to
+test-only environments. Before starting that topology, set `KONG_IMAGE_REF`,
+`HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` and `HSA_DIRECTORY_MOCK_IMAGE_REF` from
+the support lock files or from your internal mirrored tags, and set the demo
+app runtime to
 `HSA_PERSON_LOOKUP_URL=http://kong:8000/hsa/person-records/lookup`. For
-disconnected demo/test hosts, export and load images with
-`bin/kravhantering-images.sh --topology single-node-demo --test-lock-file
-container-test-support.lock.json`.
+disconnected demo/test hosts, export and load images with both support lock
+files:
+
+```bash
+bin/kravhantering-images.sh --topology single-node-demo \
+  --hsa-integration-lock-file container-hsa-integration-support.lock.json \
+  --test-lock-file container-test-support.lock.json
+```
 
 Real production HSA integration is still not delivered by this release. Keep
 production `HSA_PERSON_LOOKUP_URL` pointed at the approved server-side REST
