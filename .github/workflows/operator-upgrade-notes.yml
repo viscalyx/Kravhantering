@@ -1,0 +1,57 @@
+name: Operator Upgrade Notes
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [closed]
+
+concurrency:
+  group: ${{ github.workflow }}-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  persist-operator-upgrade-notes:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Sync operator upgrade notes
+        run: node scripts/release/operator-upgrade-notes.mjs sync-pr --github-pr "${PR_NUMBER}"
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+
+      - name: Commit operator upgrade notes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- "docs/operator-upgrade-notes.md"; then
+            echo "No operator upgrade notes changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "docs/operator-upgrade-notes.md"
+          git commit -m "docs: persist operator upgrade notes from #${PR_NUMBER}"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin HEAD:main

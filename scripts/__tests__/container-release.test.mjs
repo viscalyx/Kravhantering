@@ -1011,7 +1011,7 @@ describe('trusted container release helpers', () => {
             name: 'keycloak',
             role: 'identity-provider',
             source: 'quay',
-            tag: '26.6.2-2',
+            tag: '26.6.3-0',
           },
         ],
       }
@@ -1270,6 +1270,10 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain('id-token: write')
     expect(workflow).toContain('attestations: write')
     expect(workflow).toContain('fetch-depth: 0')
+    expect(workflow).toContain('operator-upgrade-notes.mjs sync-commit-prs')
+    expect(workflow).toContain(
+      "if: env.RELEASE_CREATE_GITHUB_RELEASE == 'true' && env.RELEASE_PRERELEASE == 'true'",
+    )
     expect(workflow).not.toContain('Install latest npm')
     expect(workflow).not.toContain('npm install -g npm@latest')
     expect(workflow).not.toContain('verify-ghcr-public')
@@ -1363,6 +1367,14 @@ describe('trusted container release helpers', () => {
     )
     expect(workflow).toContain(
       `container-release-deployment-\${{ github.run_id }}`,
+    )
+    expect(workflow).toContain('Archive stable operator upgrade notes')
+    expect(workflow).toContain('operator-upgrade-notes.mjs archive-stable')
+    expect(workflow).toContain(
+      "if: env.RELEASE_CREATE_GITHUB_RELEASE == 'true' && env.RELEASE_IS_STABLE == 'true'",
+    )
+    expect(workflow).toContain(
+      'git switch --force-create operator-upgrade-notes-archive origin/main',
     )
     expect(workflow).toContain('npm run test:release-smoke')
     expect(workflow).not.toContain('pull_request_target')

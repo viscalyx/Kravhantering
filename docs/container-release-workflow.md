@@ -148,6 +148,51 @@ Only pull requests labeled `ignore-for-release` are excluded from the generated
 section. If GitHub-generated notes are unavailable, the release still publishes
 with the runtime evidence below.
 
+Operator upgrade notes are maintained in `docs/operator-upgrade-notes.md`. A
+separate merged-pull-request workflow reads completed Operator Upgrade Impact
+evidence from the trusted pull request body and appends it under
+`## Unreleased` with hidden source markers. The container release job also runs
+a local best-effort sync for the merge commit before image publication so a
+preview release can include notes even when the persistence workflow is still
+catching up. That fallback only changes the release workspace; it does not push
+documentation commits.
+
+Stable releases consume the visible `## Unreleased` notes into the GitHub
+Release body and then archive that same section under
+`## vX.Y.Z - YYYY-MM-DD` on `main` after the GitHub Release and assets have
+been published. Preview releases include current `## Unreleased` notes but do
+not archive them.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Maintainer
+    participant PR as Pull request
+    participant Notes as Operator notes workflow
+    participant Main as docs/operator-upgrade-notes.md
+    participant Release as Container release workflow
+    participant GitHub as GitHub Release
+
+    Maintainer->>PR: Completes Operator Upgrade Impact
+    PR-->>Notes: Merged into main
+    par Persist notes on main
+        Notes->>Main: Append PR notes under Unreleased
+    and Prepare release
+        Release->>Release: Compute release plan
+        Release->>Release: Best-effort sync for merge commit PR
+    end
+
+    alt Preview release
+        Release->>Release: Read Unreleased notes from workspace
+        Release->>GitHub: Publish prerelease with current notes
+        Release-->>Main: Leave Unreleased unchanged
+    else Stable release
+        Release->>Release: Read Unreleased notes from workspace
+        Release->>GitHub: Publish stable release with current notes
+        Release->>Main: Archive Unreleased under version date
+    end
+```
+
 Each trusted run also writes runtime evidence:
 
 - `container-stack.lock.json` lists the exact image name, tag,

@@ -121,4 +121,29 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).not.toMatch(/\bgithub\.head_ref\b/iu)
     expect(workflow).not.toMatch(/\bnpm\s+(?:ci|install|run)\b/iu)
   })
+
+  it('keeps merged PR operator notes persistence on trusted main code', () => {
+    const workflow = readFileSync(
+      path.join(WORKFLOWS_DIR, 'operator-upgrade-notes.yml'),
+      'utf8',
+    )
+
+    expect(workflow).toContain('pull_request_target:')
+    expect(workflow).toContain('branches: [main]')
+    expect(workflow).toContain('types: [closed]')
+    expect(workflow).toContain('contents: write')
+    expect(workflow).toContain('pull-requests: read')
+    expect(workflow).toContain('if: github.event.pull_request.merged == true')
+    expect(workflow).toContain('ref: main')
+    expect(workflow).toContain('persist-credentials: false')
+    expect(workflow).toContain(
+      'node scripts/release/operator-upgrade-notes.mjs sync-pr --github-pr',
+    )
+    expect(workflow).toContain(
+      'git diff --quiet -- "docs/operator-upgrade-notes.md"',
+    )
+    expect(workflow).not.toMatch(/github\.event\.pull_request\.head/iu)
+    expect(workflow).not.toMatch(/\bgithub\.head_ref\b/iu)
+    expect(workflow).not.toMatch(/\bnpm\s+(?:ci|install|run)\b/iu)
+  })
 })

@@ -69,7 +69,7 @@ function writeLockFile(dir) {
       service(
         'keycloak',
         'registry.example/keycloak',
-        '26.6.2-2',
+        '26.6.3-0',
         'sha256:keycloak-manifest',
         'sha256:keycloak-image',
       ),
@@ -107,7 +107,7 @@ function writeEnvFile(dir, overrides = {}) {
     APP_RUNTIME_IMAGE_REF: 'registry.example/app-runtime:1.2.3',
     DB_JOB_IMAGE_REF: 'registry.example/db-job:1.2.3',
     HSA_DIRECTORY_MOCK_IMAGE_REF: 'registry.example/hsa-directory-mock:1.2.3',
-    KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.6.2-2',
+    KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.6.3-0',
     KONG_IMAGE_REF: 'registry.example/kong:3.10.0.8-20260210-ubuntu',
     NGINX_IMAGE_REF: 'registry.example/nginx:1.31.1-alpine',
     SQLSERVER_IMAGE_REF: 'registry.example/sqlserver:2025-CU5-ubuntu-24.04',
