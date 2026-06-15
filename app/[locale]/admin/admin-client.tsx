@@ -792,7 +792,7 @@ function IdentitySettingsPanel() {
   return (
     <section
       aria-labelledby="identity-tab"
-      className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+      className="rounded-4xl border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
       {...devMarker({
         context: 'admin center',
         name: 'tab panel',
@@ -1420,7 +1420,7 @@ function PrivacyErasurePanel() {
     <>
       <section
         aria-labelledby="privacy-tab"
-        className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+        className="rounded-4xl border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
         {...devMarker({
           context: 'admin center',
           name: 'tab panel',
@@ -1782,12 +1782,12 @@ function PrivacyErasurePanel() {
                         </td>
                         <td className="px-4 py-3">
                           {isReadOnly ? (
-                            <span className="inline-flex min-h-[40px] items-center rounded-lg border border-secondary-200 bg-secondary-100 px-3 py-2 text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-400">
+                            <span className="inline-flex min-h-10 items-center rounded-lg border border-secondary-200 bg-secondary-100 px-3 py-2 text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-400">
                               {ta(`privacy.actions.${actionValue}`)}
                             </span>
                           ) : (
                             <select
-                              className="min-h-[40px] rounded-lg border border-secondary-200 bg-white px-3 py-2 disabled:cursor-not-allowed disabled:bg-secondary-100 disabled:text-secondary-500 dark:border-secondary-700 dark:bg-secondary-950 dark:disabled:bg-secondary-800 dark:disabled:text-secondary-400"
+                              className="min-h-10 rounded-lg border border-secondary-200 bg-white px-3 py-2 disabled:cursor-not-allowed disabled:bg-secondary-100 disabled:text-secondary-500 dark:border-secondary-700 dark:bg-secondary-950 dark:disabled:bg-secondary-800 dark:disabled:text-secondary-400"
                               disabled={
                                 isDisabled ||
                                 status === 'saving' ||
@@ -2155,7 +2155,7 @@ function ArchivingPanel() {
   return (
     <section
       aria-labelledby="archiving-tab"
-      className="rounded-[2rem] border border-secondary-200/70 bg-white/88 p-6 shadow-soft dark:border-secondary-800 dark:bg-secondary-950/70"
+      className="rounded-4xl border border-secondary-200/70 bg-white/88 p-6 shadow-soft dark:border-secondary-800 dark:bg-secondary-950/70"
       data-developer-mode-name="admin archiving panel"
       data-developer-mode-priority="330"
       data-developer-mode-value="retention and archive exports"
@@ -2398,7 +2398,7 @@ function ArchivingPanel() {
                       </td>
                       <td className="px-4 py-3">
                         <button
-                          className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-secondary-200 px-3 py-2 text-xs font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                          className="inline-flex min-h-10 items-center gap-2 rounded-full border border-secondary-200 px-3 py-2 text-xs font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
                           disabled={retentionStatus === 'saving'}
                           onClick={() =>
                             void createRetentionException(candidate)
@@ -2807,7 +2807,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
     <>
       <section
         aria-labelledby="accessReview-tab"
-        className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+        className="rounded-4xl border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
         {...devMarker({
           context: 'admin center',
           name: 'tab panel',
@@ -2833,7 +2833,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                 <p className="text-sm font-semibold text-red-800 dark:text-red-200">
                   {ta('accessReview.errorPopupTitle')}
                 </p>
-                <p className="mt-1 break-words text-sm text-red-700 dark:text-red-300">
+                <p className="mt-1 wrap-break-word text-sm text-red-700 dark:text-red-300">
                   {accessReviewErrorMessage}
                 </p>
               </div>
@@ -3239,7 +3239,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                               <td className="whitespace-nowrap px-4 py-3 text-left align-middle">
                                 {canChooseDecision ? (
                                   <select
-                                    className="mt-2 block min-h-[40px] rounded-lg border border-secondary-200 bg-white px-3 py-2 disabled:cursor-not-allowed disabled:bg-secondary-100 disabled:text-secondary-500 dark:border-secondary-700 dark:bg-secondary-950 dark:disabled:bg-secondary-800 dark:disabled:text-secondary-400"
+                                    className="mt-2 block min-h-10 rounded-lg border border-secondary-200 bg-white px-3 py-2 disabled:cursor-not-allowed disabled:bg-secondary-100 disabled:text-secondary-500 dark:border-secondary-700 dark:bg-secondary-950 dark:disabled:bg-secondary-800 dark:disabled:text-secondary-400"
                                     disabled={
                                       isDetailLoading || status === 'saving'
                                     }
@@ -3321,7 +3321,7 @@ function AccessReviewPanel({ canManage }: { canManage: boolean }) {
                 </div>
               </div>
             ) : isDetailLoading ? (
-              <div aria-hidden="true" className="min-h-[32rem]" />
+              <div aria-hidden="true" className="min-h-128" />
             ) : hasLoadedRuns && !selectedRunId ? (
               <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/70 p-6 text-sm text-secondary-600 dark:border-secondary-700/60 dark:bg-secondary-950/40 dark:text-secondary-300">
                 {ta('accessReview.selectRun')}
@@ -3642,7 +3642,7 @@ export default function AdminClient({
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom space-y-6">
-        <section className="overflow-hidden rounded-[2rem] border border-secondary-200/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(238,242,255,0.82))] p-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.55)] backdrop-blur-md dark:border-secondary-700/60 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.92),rgba(30,41,59,0.86))]">
+        <section className="overflow-hidden rounded-4xl border border-secondary-200/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(238,242,255,0.82))] p-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.55)] backdrop-blur-md dark:border-secondary-700/60 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.92),rgba(30,41,59,0.86))]">
           <div className="space-y-4">
             <div className="space-y-2 xl:flex xl:flex-row xl:items-center xl:gap-6 xl:justify-between">
               <h1 className="text-3xl font-semibold tracking-tight text-secondary-950 dark:text-secondary-50 xl:shrink-0">
@@ -3720,7 +3720,7 @@ export default function AdminClient({
         {activeTab === 'columns' ? (
           <section
             aria-labelledby="columns-tab"
-            className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+            className="rounded-4xl border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
             {...devMarker({
               context: 'admin center',
               name: 'tab panel',
@@ -3839,7 +3839,7 @@ export default function AdminClient({
         {activeTab === 'taxonomy' ? (
           <section
             aria-labelledby="taxonomy-tab"
-            className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+            className="rounded-4xl border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
             {...devMarker({
               context: 'admin center',
               name: 'tab panel',
@@ -3861,7 +3861,7 @@ export default function AdminClient({
             <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {taxonomyItems.map(item => (
                 <Link
-                  className="group rounded-[1.5rem] border border-secondary-200/70 bg-[linear-gradient(155deg,rgba(248,250,252,0.95),rgba(255,255,255,0.98))] p-5 transition-transform hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-lg dark:border-secondary-700/60 dark:bg-[linear-gradient(155deg,rgba(15,23,42,0.88),rgba(30,41,59,0.88))]"
+                  className="group rounded-3xl border border-secondary-200/70 bg-[linear-gradient(155deg,rgba(248,250,252,0.95),rgba(255,255,255,0.98))] p-5 transition-transform hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-lg dark:border-secondary-700/60 dark:bg-[linear-gradient(155deg,rgba(15,23,42,0.88),rgba(30,41,59,0.88))]"
                   data-testid={`taxonomy-card-${item.id}`}
                   href={item.href}
                   key={item.href}
@@ -3892,7 +3892,7 @@ export default function AdminClient({
         {activeTab === 'statusesAndWorkflows' ? (
           <section
             aria-labelledby="statusesAndWorkflows-tab"
-            className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+            className="rounded-4xl border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
             {...devMarker({
               context: 'admin center',
               name: 'tab panel',
@@ -3914,7 +3914,7 @@ export default function AdminClient({
             <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {statusesAndWorkflowItems.map(item => (
                 <Link
-                  className="group rounded-[1.5rem] border border-secondary-200/70 bg-[linear-gradient(155deg,rgba(248,250,252,0.95),rgba(255,255,255,0.98))] p-5 transition-transform hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-lg dark:border-secondary-700/60 dark:bg-[linear-gradient(155deg,rgba(15,23,42,0.88),rgba(30,41,59,0.88))]"
+                  className="group rounded-3xl border border-secondary-200/70 bg-[linear-gradient(155deg,rgba(248,250,252,0.95),rgba(255,255,255,0.98))] p-5 transition-transform hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-lg dark:border-secondary-700/60 dark:bg-[linear-gradient(155deg,rgba(15,23,42,0.88),rgba(30,41,59,0.88))]"
                   data-testid={`statuses-workflows-card-${item.id}`}
                   href={item.href}
                   key={item.href}

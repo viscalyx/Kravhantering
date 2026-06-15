@@ -310,7 +310,7 @@ function ConfirmModalInner({
               <div className="flex justify-end gap-2 mt-5">
                 {showCancel && (
                   <button
-                    className="btn-secondary text-sm !py-2 !px-4"
+                    className="btn-secondary text-sm py-2! px-4!"
                     onClick={() => onClose(false)}
                     ref={cancelBtnRef}
                     type="button"
@@ -322,7 +322,7 @@ function ConfirmModalInner({
                   className={
                     variant === 'danger'
                       ? 'text-sm font-medium py-2 px-4 rounded-xl text-white bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-400/50 focus:ring-offset-2 dark:focus:ring-offset-secondary-950'
-                      : 'btn-primary text-sm !py-2 !px-4'
+                      : 'btn-primary text-sm py-2! px-4!'
                   }
                   onClick={() => onClose(true)}
                   ref={confirmBtnRef}

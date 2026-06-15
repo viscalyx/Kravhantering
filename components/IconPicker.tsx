@@ -207,7 +207,7 @@ export default function IconPicker({
                 <motion.div
                   aria-label={t('title')}
                   aria-modal="true"
-                  className="fixed z-50 w-[22rem] max-w-[calc(100vw-2rem)] rounded-xl bg-white p-4 shadow-2xl dark:bg-secondary-900"
+                  className="fixed z-50 w-88 max-w-[calc(100vw-2rem)] rounded-xl bg-white p-4 shadow-2xl dark:bg-secondary-900"
                   onKeyDown={event => {
                     handleKeyDown(event)
                     handleGridKeyDown(event)

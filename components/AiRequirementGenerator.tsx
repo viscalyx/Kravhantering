@@ -1255,7 +1255,7 @@ export default function AiRequirementGenerator({
                       {helpPanel('imageAttachHelp', 'imageAttach')}
                       <button
                         aria-label={t('imageDropZone')}
-                        className="flex min-h-[64px] w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-secondary-300 bg-secondary-50 px-4 py-3 text-sm text-secondary-500 transition-colors hover:border-primary-400 hover:bg-primary-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary-600 dark:bg-secondary-800/50 dark:text-secondary-400 dark:hover:border-primary-500 dark:hover:bg-primary-900/20"
+                        className="flex min-h-16 w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-secondary-300 bg-secondary-50 px-4 py-3 text-sm text-secondary-500 transition-colors hover:border-primary-400 hover:bg-primary-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary-600 dark:bg-secondary-800/50 dark:text-secondary-400 dark:hover:border-primary-500 dark:hover:bg-primary-900/20"
                         disabled={isBusy}
                         onClick={() => fileInputRef.current?.click()}
                         onDragOver={handleDragOver}
@@ -2203,7 +2203,7 @@ export default function AiRequirementGenerator({
                         </h3>
                       </div>
                       <pre
-                        className="flex-1 overflow-y-auto whitespace-pre-wrap break-words p-4 font-mono text-xs text-secondary-500 dark:text-secondary-400"
+                        className="flex-1 overflow-y-auto whitespace-pre-wrap wrap-break-word p-4 font-mono text-xs text-secondary-500 dark:text-secondary-400"
                         ref={thinkingRef}
                       >
                         {thinking}
@@ -2217,7 +2217,7 @@ export default function AiRequirementGenerator({
                           {t('rawOutput')}
                         </h3>
                       </div>
-                      <pre className="flex-1 overflow-y-auto whitespace-pre-wrap break-words p-4 font-mono text-xs text-secondary-500 dark:text-secondary-400">
+                      <pre className="flex-1 overflow-y-auto whitespace-pre-wrap wrap-break-word p-4 font-mono text-xs text-secondary-500 dark:text-secondary-400">
                         {rawResponse}
                       </pre>
                     </div>
