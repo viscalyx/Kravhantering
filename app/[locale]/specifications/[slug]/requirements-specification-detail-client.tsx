@@ -2062,7 +2062,7 @@ export default function KravunderlagDetailClient({
                     <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
                       {t('governanceObjectType')}
                     </dt>
-                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 break-words dark:text-secondary-100">
+                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
                       {localName(spec.governanceObjectType)}
                     </dd>
                   </div>
@@ -2072,11 +2072,11 @@ export default function KravunderlagDetailClient({
                     <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
                       {t('responsible')}
                     </dt>
-                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 break-words dark:text-secondary-100">
+                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
                       {responsibleDisplayName}
                     </dd>
                     {spec.responsibleHsaId ? (
-                      <dd className="mt-0.5 font-mono text-xs leading-5 text-secondary-500 break-words dark:text-secondary-400">
+                      <dd className="mt-0.5 font-mono text-xs leading-5 text-secondary-500 wrap-break-word dark:text-secondary-400">
                         {spec.responsibleHsaId}
                       </dd>
                     ) : null}
@@ -2087,7 +2087,7 @@ export default function KravunderlagDetailClient({
                     <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
                       {t('implementationType')}
                     </dt>
-                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 break-words dark:text-secondary-100">
+                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
                       {localName(spec.implementationType)}
                     </dd>
                   </div>
@@ -2097,7 +2097,7 @@ export default function KravunderlagDetailClient({
                     <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
                       {t('lifecycleStatus')}
                     </dt>
-                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 break-words dark:text-secondary-100">
+                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 wrap-break-word dark:text-secondary-100">
                       {localName(spec.lifecycleStatus)}
                     </dd>
                   </div>

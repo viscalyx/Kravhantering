@@ -124,10 +124,16 @@ Följande verktyg installeras via projektets npm-beroenden:
 - markdownlint.
 - cSpell.
 - Pyright.
+- Tailwind CSS kanonisk klass-lint.
 
 Playwright behöver egna webbläsare. Devcontainer och Codespaces installerar dem
 som en del av miljön. Vid host-baserad utveckling behöver utvecklaren kunna köra
 Playwrights installationssteg.
+
+`npm run lint` kör även Tailwind-kontrollen för kanoniska klassnamn. När
+kontrollen rapporterar en klass ska utvecklaren normalt ersätta den med den
+föreslagna kanoniska formen, till exempel `rounded-4xl` i stället för ett
+likvärdigt godtyckligt värde.
 
 ## Container- och leveransverktyg
 

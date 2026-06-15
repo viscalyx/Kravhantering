@@ -61,7 +61,7 @@ const selectClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
 
 const textareaClassName =
-  'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 min-h-[100px]'
+  'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 min-h-25'
 
 const associationFieldsetClassName = 'm-0 flex min-h-0 flex-col border-0 p-0'
 
@@ -640,7 +640,7 @@ export default function RequirementFormFields({
         {mainFields}
       </div>
       <div
-        className="grid min-h-0 gap-6 sm:grid-cols-2 lg:h-[var(--requirement-association-height)] lg:max-h-[var(--requirement-association-height)] lg:w-[34rem] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden"
+        className="grid min-h-0 gap-6 sm:grid-cols-2 lg:h-(--requirement-association-height) lg:max-h-(--requirement-association-height) lg:w-136 lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden"
         style={associationSidebarStyle}
       >
         {requirementPackagesFieldset}
