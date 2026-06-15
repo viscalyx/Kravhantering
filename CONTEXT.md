@@ -7,7 +7,7 @@ hur krav formuleras, granskas, publiceras, används och följs upp.
 
 Primärt ordlistespråk: `sv`
 
-### Kärnbegrepp
+### Kravbibliotek och kravversioner
 
 **Krav**:
 En styrande utsaga om något som ska vara uppfyllt. Ett krav har en
@@ -96,102 +96,129 @@ primära namnet på ytan där användaren hittar och arbetar med gemensamma krav
 
 _Avoid_: Kravkatalog som primär UI-benämning.
 
-**Kravbiblioteksförvaltning**:
-Processen och ansvaret för att hålla kravbiblioteket korrekt, aktuellt,
-granskat, publicerat, versionerat, arkiverat och förbättrat över tid.
+**Acceptanskriterium**:
+Ett objektivt villkor som måste vara uppfyllt för att en kravversion ska kunna
+bedömas som uppnådd.
 
-- `en`: Requirements Library stewardship
+- `en`: Acceptance criterion
 
-_Avoid_: Kravbibliotek när processen avses, administration,
-förvaltning utan tydligt kravbibliotekssammanhang.
+_Avoid_: Verifieringsmetod, testfall.
 
-**Tillämpningsstyrning**:
-Arbetet med att använda kravbiblioteket i ett konkret tillämpningssammanhang,
-till exempel genom behov, urval, kravunderlagslokala krav, prioritering,
-kravtillämpningar, avsteg och uppföljning.
+**Verifierbar**:
+En egenskap hos en kravversion som innebär att det finns objektiva villkor som
+kan kontrolleras.
 
-- `en`: Requirement application governance
+- `en`: Verifiable
 
-<!-- cSpell:disable-next-line -->
-_Avoid_: Kravstyrning som huvudterm.
+_Avoid_: Testad, godkänd.
 
-**Tillämpningsstyrning för kravarbete**:
-Preciserad form av tillämpningsstyrning när sammanhanget inte redan tydligt är
-kravhantering.
+**Verifieringsmetod**:
+Det sätt som används för att kontrollera om acceptanskriterierna är uppfyllda,
+till exempel test, demonstration, analys eller inspektion.
 
-- `en`: Requirements work application governance
+- `en`: Verification method
 
-<!-- cSpell:disable-next-line -->
-_Avoid_: Kravstyrning och kravmodellering för tillämpning som vardaglig term.
+_Avoid_: Acceptanskriterium.
 
-**Tillämpningsspårbarhet**:
-Förmågan att följa varför och hur krav används i kravunderlag genom
-kravtillämpningar, behovsreferenser, användningsstatus, avsteg och uppföljning.
-Begreppet hör hemma i rapportering och statistik om kravens användning.
+**Kravkatalog**:
+Ett accepterat vardagligt eller äldre ord för kravbiblioteket. Begreppet får
+förekomma när människor talar om samma samling, men bör inte vara den primära
+benämningen i gränssnittet.
 
-- `en`: Requirement application traceability
+- `en`: Requirements Catalog
 
-_Avoid_: Kravhistorik, teknisk audit.
+_Avoid_: Separat katalog om samma kravbibliotek avses.
 
-**Tillämpningsstatistik**:
-Sammanställningar som visar hur krav används i kravunderlag, till exempel antal
-kravtillämpningar, mest använda krav, avsteg per kravområde eller risknivåer i
-kravunderlag.
+**Utkast**:
+En kravversion som är under framtagning och ännu inte är redo att godkännas.
+Ett raderat utkast betraktas inte som en etablerad kravversion i
+verksamhetshistoriken.
 
-- `en`: Requirement application statistics
+- `en`: Draft
 
-_Avoid_: Tillämpningsspårbarhet när enskild spårbarhet avses.
+_Avoid_: Påbörjat krav, preliminärt krav.
 
-**Åtgärdslogg**:
-Spår av viktiga användar- och systemåtgärder i applikationen, till exempel
-ändringar och nekade behörighetsförsök.
+**Granskning**:
+En kravversion som är färdig för bedömning men ännu inte publicerad.
 
-- `en`: Action log
+- `en`: Review
 
-_Avoid_: Audit som svensk UI-term, tillämpningsspårbarhet.
+_Avoid_: Remiss om ingen faktisk remissprocess avses.
 
-**Säkerhetslogg**:
-En strukturerad loggström för autentisering, auktorisering, privilegierade
-åtgärder och andra säkerhetsrelevanta händelser. Säkerhetslogg är inte samma
-sak som åtgärdsloggen och hör hemma i plattformens logg- och SIEM-flöde.
+**Återremiss**:
+Att en kravversion i granskning skickas tillbaka till utkast för omarbetning i
+stället för att publiceras.
 
-- `en`: Security audit log
+- `en`: Return to draft
 
-_Avoid_: Säkerhetsaudit, säkerhetsrevision när loggströmmen avses,
-Åtgärdslogg, vanlig applikationslogg, tillämpningsspårbarhet.
+_Avoid_: Avslag när omarbetning snarare än slutligt nej avses.
 
-**HSA-id-prefix**:
-Delen före bindestrecket i ett HSA-id. Ett HSA-id-prefix består av två versala
-bokstäver för landskod följt av tio siffror för organisationsnummer och skrivs
-utan bindestreck.
+**Arkiveringsgranskning**:
+En särskild granskning där en publicerad kravversion bedöms inför arkivering.
+Begreppet beskriver granskningens syfte, inte en separat typ av krav.
 
-- `en`: HSA-id prefix
+- `en`: Archiving review
 
-_Avoid_: HSA-prefix, HSA-id-prefix med bindestreck inkluderat.
+_Avoid_: Vanlig granskning när syftet är arkivering.
 
-**HSA-id-suffix**:
-Delen efter bindestrecket i ett HSA-id.
+**Publicerad**:
+En kravversion som har godkänts och gjorts tillgänglig för användning.
 
-- `en`: HSA-id suffix
+- `en`: Published
 
-_Avoid_: HSA-id-prefix, ändelse när den exakta HSA-id-termen behövs.
+_Avoid_: Gällande.
 
-**Behörighetsöversyn**:
-En formell genomgång av uppdrag och roller där varje behörighetsrad bedöms och
-beslutas.
+**Arkiverad**:
+En kravversion som inte längre ska användas aktivt men bevaras för historik och
+spårbarhet.
 
-- `en`: Access review
+- `en`: Archived
 
-_Avoid_: Åtkomstgranskning som huvudterm, granskning av kravversioner.
+_Avoid_: Borttagen, raderad.
 
-**Behörighetssammanhang**:
-Den resurs eller arbetsyta inom kravhanteringen som en behörighetsprövning
-avser, till exempel ett kravområde eller kravunderlag. Behörighetssammanhanget
-anger var en användare får utföra en åtgärd, inte en separat roll.
+**Arkiverad kravversion**:
+En tidigare kravversion som inte längre används aktivt men finns kvar för
+historik och spårbarhet. När en ny kravversion publiceras blir den tidigare
+publicerade kravversionen en arkiverad kravversion.
 
-- `en`: Authorization context
+- `en`: Archived requirement version
 
-_Avoid_: Scope som svensk term, separat behörighet, roll.
+_Avoid_: Arkiverat krav när kravet har en ny publicerad kravversion.
+
+**Arkiverat krav**:
+En vardaglig genväg för ett krav där den sista kravversionen är arkiverad och
+ingen ny utkastversion finns. Den precisa modellen är fortfarande att
+kravversionen är arkiverad.
+
+- `en`: Archived requirement
+
+_Avoid_: Raderat krav, borttaget krav.
+
+**Återskapad kravversion**:
+En ny utkastversion som skapas med innehåll från en tidigare kravversion. Den
+tidigare kravversionen ändras inte när den återskapas.
+
+- `en`: Restored requirement version
+
+_Avoid_: Återaktiverad version, återställd version.
+
+**Återskapa version**:
+Att skapa en ny utkastversion baserad på en vald tidigare kravversion. Den
+tidigare kravversionen ändras inte och blir inte aktiv igen.
+
+- `en`: Restore version
+
+_Avoid_: Återaktivera version, återställa samma version.
+
+**Återaktivera krav**:
+En möjlig folkmunsterm när någon menar att en arkiverad kravversion återskapas
+som nytt utkast. Använd återskapa som huvudterm.
+
+- `en`: Restore requirement
+
+_Avoid_: Huvudterm i UI eller dokumentation.
+
+### Klassning, taxonomi och referensdata
 
 **Kravområde**:
 En ansvarsbärande domän- eller ämnesindelning i kravbiblioteket. Kravområdet
@@ -252,54 +279,6 @@ teknisk påverkan.
 
 _Avoid_: Fullständig riskanalys, sannolikhet.
 
-**Acceptanskriterium**:
-Ett objektivt villkor som måste vara uppfyllt för att en kravversion ska kunna
-bedömas som uppnådd.
-
-- `en`: Acceptance criterion
-
-_Avoid_: Verifieringsmetod, testfall.
-
-**Verifierbar**:
-En egenskap hos en kravversion som innebär att det finns objektiva villkor som
-kan kontrolleras.
-
-- `en`: Verifiable
-
-_Avoid_: Testad, godkänd.
-
-**Verifieringsmetod**:
-Det sätt som används för att kontrollera om acceptanskriterierna är uppfyllda,
-till exempel test, demonstration, analys eller inspektion.
-
-- `en`: Verification method
-
-_Avoid_: Acceptanskriterium.
-
-**Normreferens**:
-En styrande extern eller intern normkälla som ett krav härleds från eller måste
-uppfylla, till exempel lag, föreskrift, standard eller riktlinje.
-
-- `en`: Norm reference
-
-_Avoid_: Vanlig referens, länk.
-
-**Normbibliotek**:
-Den förvaltade samlingen av normreferenser som kan kopplas till krav.
-Normbibliotek avser ytan eller samlingen, inte den enskilda normreferensen.
-
-- `en`: Norm library
-
-_Avoid_: Referensdata, normreferens när en enskild normkälla avses.
-
-**Referens**:
-Stödjande material eller hänvisning som kan hjälpa läsaren att förstå ett krav
-men som inte nödvändigtvis är normerande.
-
-- `en`: Reference
-
-_Avoid_: Normreferens när källan är styrande.
-
 **Referensdata**:
 Administrerade uppslag, klassningar och statuskataloger som stödjer krav och
 kravunderlag. Referensdata är samlingsbegreppet som omfattar både taxonomi
@@ -328,16 +307,6 @@ eller användning av krav och kravunderlag.
 
 _Avoid_: Taxonomi, kravstatus som övergripande term.
 
-**AI-assisterat författande**:
-Ett stödflöde där en användare får förslag till krav baserat på ämne,
-instruktioner, bilder och referensdata. Förslagen blir krav först när de
-hanteras i ordinarie kravprocess.
-
-- `en`: AI-assisted authoring
-
-_Avoid_: AI-generering som huvudterm, AI-assistering, automatisk publicering,
-AI-beslut, källa till sanning.
-
 **Terminologi**:
 De verksamhetsbegrepp och användargränssnittstermer som används för att
 beskriva kravhanteringen. I administrationen ska terminologi vara namnet på
@@ -354,105 +323,191 @@ _Avoid_: Benämningar som huvudterm.
 
 _Avoid_: Huvudterm i UI och dokumentation.
 
-**Kravområdesägare**:
-Den person, identifierad med HSA-id, som har huvudansvar för förvaltning av ett
-kravområde och dess krav i kravbiblioteket. Kravområdesägare administreras på
-kravområdet, inte som en egen katalog.
+### Normbibliotek och referenser
 
-- `en`: Requirement area owner
+**Normreferens**:
+En styrande extern eller intern normkälla som ett krav härleds från eller måste
+uppfylla, till exempel lag, föreskrift, standard eller riktlinje.
 
-_Avoid_: Områdesägare utanför tydligt kravområdessammanhang.
+- `en`: Norm reference
 
-**Kravområdesmedförfattare**:
-En person som stödjer kravområdesägaren i framtagning och underhåll av krav
-inom ett kravområde.
+_Avoid_: Vanlig referens, länk.
 
-- `en`: Requirement area co-author
+**Normbibliotek**:
+Den förvaltade samlingen av normreferenser som kan kopplas till krav.
+Normbibliotek avser ytan eller samlingen, inte den enskilda normreferensen.
 
-_Avoid_: Medförfattare när sammanhanget inte visar kravområde.
+- `en`: Norm library
 
-**Kravunderlagsmedförfattare**:
-En person som stödjer arbetet med ett kravunderlag och dess
-kravunderlagslokala innehåll.
+_Avoid_: Referensdata, normreferens när en enskild normkälla avses.
 
-- `en`: Specification co-author
+**Referens**:
+Stödjande material eller hänvisning som kan hjälpa läsaren att förstå ett krav
+men som inte nödvändigtvis är normerande.
 
-_Avoid_: Medförfattare när sammanhanget inte visar kravunderlag.
+- `en`: Reference
 
-**Medförfattare**:
-Accepterad kortform för kravområdesmedförfattare,
-kravpaketsmedförfattare eller kravunderlagsmedförfattare när sammanhanget
-tydligt visar vilket behörighetssammanhang som avses.
+_Avoid_: Normreferens när källan är styrande.
 
-- `en`: Co-author
+### Kravbiblioteksförvaltning
 
-_Avoid_: Medförfattare när behörighetssammanhanget är oklart.
+**Kravbiblioteksförvaltning**:
+Processen och ansvaret för att hålla kravbiblioteket korrekt, aktuellt,
+granskat, publicerat, versionerat, arkiverat och förbättrat över tid.
 
-**Kravgranskare**:
-En global roll som oberoende bedömer kravversioner och avsteg inför
-publicering, återremiss eller beslut.
+- `en`: Requirements Library stewardship
 
-- `en`: Reviewer
+_Avoid_: Kravbibliotek när processen avses, administration,
+förvaltning utan tydligt kravbibliotekssammanhang.
 
-_Avoid_: Granskare som huvudterm när begreppet kan förväxlas med en tilldelad
-granskningsperson, kravområdesgranskare om rollen inte är områdesbunden.
+**AI-assisterat författande**:
+Ett stödflöde där en användare får förslag till krav baserat på ämne,
+instruktioner, bilder och referensdata. Förslagen blir krav först när de
+hanteras i ordinarie kravprocess.
 
-**Tilldelad granskningsperson**:
-En person som har tilldelats att granska ett specifikt ärende eller underlag,
-till exempel inom behörighetsöversyn, dataskydd eller gallring. Begreppet
-beskriver uppdraget i ärendet, inte en global IdP-roll.
+- `en`: AI-assisted authoring
 
-- `en`: Assigned reviewer
+_Avoid_: AI-generering som huvudterm, AI-assistering, automatisk publicering,
+AI-beslut, källa till sanning.
 
-_Avoid_: Kravgranskare när ett ärende- eller underlagsbundet uppdrag avses,
-Granskare som huvudterm.
+**Kravpaket**:
+En återanvändbar gruppering av krav i kravbiblioteket för ett visst
+användningsområde, scenario eller leveransbehov.
 
-**Administratör**:
-Ett systemövergripande behörighetsmandat med full rätt att utföra åtgärder i
-systemet. Administratören blir inte verksamhetsansvarig ägare för innehållet
-bara genom rollen.
+- `en`: Requirements package
 
-- `en`: Administrator
+_Avoid_: Kravunderlag, referensdata.
 
-_Avoid_: Kravområdesägare, kravunderlagsansvarig.
+**Kravurvalsfråga**:
+En fråga som förvaltas inom ett kravområde och stödjer urval av publicerade
+bibliotekskrav till ett kravunderlag genom ett eller flera förberedda svar.
 
-**Dataskyddshandläggare**:
-En roll som hanterar dataskyddsärenden kopplade till personuppgifter, till
-exempel förhandsgranskning, export och radering.
+- `en`: Requirement selection question
 
-- `en`: Privacy officer
+_Avoid_: Kravpaket, referensdata, fråga utan kravurvalssammanhang, fråga med
+härlett ägarskap från kopplade krav.
 
-_Avoid_: Administratör när dataskyddsmandat avses.
+**Kravurvalsfråge-ID**:
+Den stabila identifieraren för en kravurvalsfråga, sammansatt av kravområdets
+prefix och en markör för kravurvalsfrågor.
 
-**Radering av personuppgifter**:
-Ett dataskyddsflöde där personkopplade fält för en registrerad HSA-id hanteras
-genom att raderas, anonymiseras, hoppas över eller bytas till en ersättare.
-Radering av personuppgifter ska inte ta bort verksamhetshistorik som behöver
-finnas kvar.
+- `en`: Requirement selection question ID
 
-- `en`: Personal data erasure
+_Avoid_: Krav-ID, databas-ID, radnummer.
 
-_Avoid_: GDPR-radering, gallring, arkivering, borttagning av kravhistorik.
+**Kravurvalssvar**:
+Ett förberett svarsalternativ i en kravurvalsfråga som kan peka ut relevanta
+kravpaket, krav eller inget kravurval alls.
 
-**Personuppgiftsutdrag**:
-Ett dataskyddsunderlag som visar vilka personuppgifter Kravhantering kan
-koppla till en registrerad HSA-id, var uppgifterna förekommer i applikationen
-och vilka begränsningar utdraget har. JSON är det maskinläsbara och
-auktoritativa formatet; PDF är en läsbar återgivning av samma uppgifter.
+- `en`: Requirement selection answer
 
-- `en`: Data subject access export
+_Avoid_: Användarens svar, kravpaket.
 
-_Avoid_: Export för dataportabilitet, dataportabilitetsexport, arkivexport,
-rapport, export av åtgärdslogg.
+**Utan kravurval**:
+En egenskap hos ett kravurvalssvar som markerar att svaret avsiktligt inte
+bidrar med krav till kravurvalsfilter.
 
-**Kravkatalog**:
-Ett accepterat vardagligt eller äldre ord för kravbiblioteket. Begreppet får
-förekomma när människor talar om samma samling, men bör inte vara den primära
-benämningen i gränssnittet.
+- `en`: No requirement selection
 
-- `en`: Requirements Catalog
+_Avoid_: Saknar kravurval när kopplingar har tappats eller behöver åtgärdas.
 
-_Avoid_: Separat katalog om samma kravbibliotek avses.
+**Saknar kravurval**:
+Ett hälsoläge för ett kravurvalssvar som saknar kravkopplingar utan att vara
+markerat som utan kravurval.
+
+- `en`: Missing requirement selection
+
+_Avoid_: Utan kravurval när avsiktligt nollbidrag avses.
+
+**Synlighetsvillkor**:
+Ett villkor som avgör när en kravurvalsfråga hör till det aktuella
+frågesammanhanget i ett kravunderlag, baserat på valda kravurvalssvar i
+överliggande kravurvalsfrågor.
+
+- `en`: Visibility condition
+
+_Avoid_: Kravurvalsfilter, obligatoriskt krav, vanligt tabellfilter.
+
+**Villkorsgrupp**:
+En samling synlighetsvillkor där alla ingående överliggande frågor måste vara
+uppfyllda för att gruppen ska göra en underordnad kravurvalsfråga synlig. Om
+en kravurvalsfråga har flera villkorsgrupper räcker det att en grupp är
+uppfylld.
+
+- `en`: Condition group
+
+_Avoid_: Kravpaket, svarsalternativ, kravurvalsfilter.
+
+**Fristående kravurvalsfråga**:
+En kravurvalsfråga som varken styrs av synlighetsvillkor eller används som
+överliggande kravurvalsfråga i synlighetsvillkor.
+
+- `en`: Standalone requirement selection question
+
+_Avoid_: Rotfråga, huvudfråga, huvudkravurvalsfråga, toppfråga i
+kravurvalsfrågehierarki.
+
+**Överliggande kravurvalsfråga**:
+En kravurvalsfråga vars valda svar kan göra en annan kravurvalsfråga synlig.
+
+- `en`: Parent requirement selection question
+
+_Avoid_: Överordnat krav, kravområde.
+
+**Underordnad kravurvalsfråga**:
+En kravurvalsfråga som bara hör till frågesammanhanget när dess
+synlighetsvillkor är uppfyllda.
+
+- `en`: Child requirement selection question
+
+_Avoid_: Obligatorisk fråga, kravpaket.
+
+**Kravurvalsfrågehierarki**:
+En sammanhängande struktur av kravurvalsfrågor där överliggande
+kravurvalsfrågor och underordnade kravurvalsfrågor hänger ihop genom
+synlighetsvillkor.
+
+- `en`: Requirement selection question hierarchy
+
+_Avoid_: Sorteringsordning, kravområdesgrupp, kravhierarki.
+
+**Förbättringsförslag**:
+Återkoppling om att ett krav i kravbiblioteket kan förbättras, förtydligas
+eller ändras framåt. Förbättringsförslag hör till kravbibliotekets förvaltning,
+inte till ett enskilt avsteg i ett kravunderlag.
+
+- `en`: Improvement suggestion
+
+_Avoid_: Avsteg, felanmälan.
+
+**Förbättringsförslagshistorik**:
+Rapport eller vy som visar förbättringsförslag, granskning och åtgärder kring
+ett krav i kravbiblioteket.
+
+- `en`: Improvement suggestion history
+
+_Avoid_: Historikrapport när kravets egen versionshistorik avses.
+
+### Kravunderlag och tillämpningsstyrning
+
+**Tillämpningsstyrning**:
+Arbetet med att använda kravbiblioteket i ett konkret tillämpningssammanhang,
+till exempel genom behov, urval, kravunderlagslokala krav, prioritering,
+kravtillämpningar, avsteg och uppföljning.
+
+- `en`: Requirement application governance
+
+<!-- cSpell:disable-next-line -->
+_Avoid_: Kravstyrning som huvudterm.
+
+**Tillämpningsstyrning för kravarbete**:
+Preciserad form av tillämpningsstyrning när sammanhanget inte redan tydligt är
+kravhantering.
+
+- `en`: Requirements work application governance
+
+<!-- cSpell:disable-next-line -->
+_Avoid_: Kravstyrning och kravmodellering för tillämpning som vardaglig term.
 
 **Bibliotekskrav**:
 Ett krav från kravbiblioteket när det används eller jämförs i ett sammanhang
@@ -547,13 +602,199 @@ upphandling, utveckling/införande eller förvaltning.
 
 _Avoid_: Kravversionsstatus, genomförandeform.
 
-**Kravpaket**:
-En återanvändbar gruppering av krav i kravbiblioteket för ett visst
-användningsområde, scenario eller leveransbehov.
+**Kravurvalsfilter**:
+Ett användaraktiverat styrt grundurval av bibliotekskrav som bildas av valda
+kravurvalssvar inför att krav läggs till i ett kravunderlag. Valda
+kravurvalssvar kan bevaras som urvalskontext utan att kravurvalsfilter är
+aktivt.
 
-- `en`: Requirements package
+- `en`: Requirement selection filter
 
-_Avoid_: Kravunderlag, referensdata.
+_Avoid_: Vanligt tabellfilter, kravpaket, sparade kravurvalssvar när de bara
+dokumenterar urvalskontext.
+
+**Kravtillämpning**:
+Att en publicerad kravversion från kravbiblioteket används i ett visst
+kravunderlag. Kravtillämpningen bär det underlagsspecifika sammanhanget, inte
+kravet i kravbiblioteket.
+
+- `en`: Requirement application
+
+_Avoid_: Kravunderlagsrad, kopia av krav.
+
+**Behovsreferens**:
+En underlagsspecifik hänvisning som förklarar varför en kravtillämpning behövs
+i kravunderlaget. Behovsreferensen ger också sammanhang när kravtillämpningen
+ska verifieras.
+
+- `en`: Needs reference
+
+_Avoid_: Normreferens.
+
+**Användningsstatus**:
+Det underlagsspecifika läget för en kravtillämpning i ett kravunderlag. Det
+beskriver hur kravet används eller följs upp i just det sammanhanget.
+
+- `en`: Usage status
+
+_Avoid_: Kravstatus, kravversionsstatus.
+
+**Avsteg**:
+Ett underlagsspecifikt undantag från att följa en kravtillämpning fullt ut.
+Avsteget hör till kravtillämpningen i ett kravunderlag och ändrar inte kravet i
+kravbiblioteket.
+
+- `en`: Deviation
+
+_Avoid_: Ändring av bibliotekskrav, kravändring.
+
+### Avsteg, uppföljning och rapporter
+
+**Tillämpningsspårbarhet**:
+Förmågan att följa varför och hur krav används i kravunderlag genom
+kravtillämpningar, behovsreferenser, användningsstatus, avsteg och uppföljning.
+Begreppet hör hemma i rapportering och statistik om kravens användning.
+
+- `en`: Requirement application traceability
+
+_Avoid_: Kravhistorik, teknisk audit.
+
+**Tillämpningsstatistik**:
+Sammanställningar som visar hur krav används i kravunderlag, till exempel antal
+kravtillämpningar, mest använda krav, avsteg per kravområde eller risknivåer i
+kravunderlag.
+
+- `en`: Requirement application statistics
+
+_Avoid_: Tillämpningsspårbarhet när enskild spårbarhet avses.
+
+**Granskningsrapport**:
+Rapport som stödjer granskning och publiceringsbeslut för en eller flera
+kravversioner.
+
+- `en`: Review report
+
+_Avoid_: Avstegsrapport.
+
+**Avstegsgranskningsrapport**:
+Rapport som stödjer granskning och beslut om avsteg i ett kravunderlag.
+
+- `en`: Deviation review report
+
+_Avoid_: Granskningsrapport när avsteg avses.
+
+**Historikrapport**:
+Rapport som visar ett kravs versioner, statusändringar och
+metadataförändringar över tid.
+
+- `en`: History report
+
+_Avoid_: Förbättringsförslagshistorik.
+
+### Behörighet, identitet och ansvar
+
+**HSA-id-prefix**:
+Delen före bindestrecket i ett HSA-id. Ett HSA-id-prefix består av två versala
+bokstäver för landskod följt av tio siffror för organisationsnummer och skrivs
+utan bindestreck.
+
+- `en`: HSA-id prefix
+
+_Avoid_: HSA-prefix, HSA-id-prefix med bindestreck inkluderat.
+
+**HSA-id-suffix**:
+Delen efter bindestrecket i ett HSA-id.
+
+- `en`: HSA-id suffix
+
+_Avoid_: HSA-id-prefix, ändelse när den exakta HSA-id-termen behövs.
+
+**Behörighetsöversyn**:
+En formell genomgång av uppdrag och roller där varje behörighetsrad bedöms och
+beslutas.
+
+- `en`: Access review
+
+_Avoid_: Åtkomstgranskning som huvudterm, granskning av kravversioner.
+
+**Behörighetssammanhang**:
+Den resurs eller arbetsyta inom kravhanteringen som en behörighetsprövning
+avser, till exempel ett kravområde eller kravunderlag. Behörighetssammanhanget
+anger var en användare får utföra en åtgärd, inte en separat roll.
+
+- `en`: Authorization context
+
+_Avoid_: Scope som svensk term, separat behörighet, roll.
+
+**Kravområdesägare**:
+Den person, identifierad med HSA-id, som har huvudansvar för förvaltning av ett
+kravområde och dess krav i kravbiblioteket. Kravområdesägare administreras på
+kravområdet, inte som en egen katalog.
+
+- `en`: Requirement area owner
+
+_Avoid_: Områdesägare utanför tydligt kravområdessammanhang.
+
+**Kravområdesmedförfattare**:
+En person som stödjer kravområdesägaren i framtagning och underhåll av krav
+inom ett kravområde.
+
+- `en`: Requirement area co-author
+
+_Avoid_: Medförfattare när sammanhanget inte visar kravområde.
+
+**Kravunderlagsmedförfattare**:
+En person som stödjer arbetet med ett kravunderlag och dess
+kravunderlagslokala innehåll.
+
+- `en`: Specification co-author
+
+_Avoid_: Medförfattare när sammanhanget inte visar kravunderlag.
+
+**Medförfattare**:
+Accepterad kortform för kravområdesmedförfattare,
+kravpaketsmedförfattare eller kravunderlagsmedförfattare när sammanhanget
+tydligt visar vilket behörighetssammanhang som avses.
+
+- `en`: Co-author
+
+_Avoid_: Medförfattare när behörighetssammanhanget är oklart.
+
+**Kravgranskare**:
+En global roll som oberoende bedömer kravversioner och avsteg inför
+publicering, återremiss eller beslut.
+
+- `en`: Reviewer
+
+_Avoid_: Granskare som huvudterm när begreppet kan förväxlas med en tilldelad
+granskningsperson, kravområdesgranskare om rollen inte är områdesbunden.
+
+**Tilldelad granskningsperson**:
+En person som har tilldelats att granska ett specifikt ärende eller underlag,
+till exempel inom behörighetsöversyn, dataskydd eller gallring. Begreppet
+beskriver uppdraget i ärendet, inte en global IdP-roll.
+
+- `en`: Assigned reviewer
+
+_Avoid_: Kravgranskare när ett ärende- eller underlagsbundet uppdrag avses,
+Granskare som huvudterm.
+
+**Administratör**:
+Ett systemövergripande behörighetsmandat med full rätt att utföra åtgärder i
+systemet. Administratören blir inte verksamhetsansvarig ägare för innehållet
+bara genom rollen.
+
+- `en`: Administrator
+
+_Avoid_: Kravområdesägare, kravunderlagsansvarig.
+
+**Dataskyddshandläggare**:
+En roll som hanterar dataskyddsärenden kopplade till personuppgifter, till
+exempel förhandsgranskning, export och radering.
+
+- `en`: Privacy officer
+
+_Avoid_: Administratör när dataskyddsmandat avses.
 
 **Kravpaketsansvarig**:
 Den person eller funktion som har huvudansvar för ett kravpakets syfte,
@@ -652,249 +893,46 @@ bestämmer inte i sig UI-maskering, behörighet eller särskild handläggning.
 
 _Avoid_: Skyddad Kravansvarsperson, skyddad användare.
 
-**Kravurvalsfråga**:
-En fråga som förvaltas inom ett kravområde och stödjer urval av publicerade
-bibliotekskrav till ett kravunderlag genom ett eller flera förberedda svar.
+### Dataskydd, loggning och gallring
 
-- `en`: Requirement selection question
+**Åtgärdslogg**:
+Spår av viktiga användar- och systemåtgärder i applikationen, till exempel
+ändringar och nekade behörighetsförsök.
 
-_Avoid_: Kravpaket, referensdata, fråga utan kravurvalssammanhang, fråga med
-härlett ägarskap från kopplade krav.
+- `en`: Action log
 
-**Kravurvalsfråge-ID**:
-Den stabila identifieraren för en kravurvalsfråga, sammansatt av kravområdets
-prefix och en markör för kravurvalsfrågor.
+_Avoid_: Audit som svensk UI-term, tillämpningsspårbarhet.
 
-- `en`: Requirement selection question ID
+**Säkerhetslogg**:
+En strukturerad loggström för autentisering, auktorisering, privilegierade
+åtgärder och andra säkerhetsrelevanta händelser. Säkerhetslogg är inte samma
+sak som åtgärdsloggen och hör hemma i plattformens logg- och SIEM-flöde.
 
-_Avoid_: Krav-ID, databas-ID, radnummer.
+- `en`: Security audit log
 
-**Kravurvalssvar**:
-Ett förberett svarsalternativ i en kravurvalsfråga som kan peka ut relevanta
-kravpaket, krav eller inget kravurval alls.
+_Avoid_: Säkerhetsaudit, säkerhetsrevision när loggströmmen avses,
+Åtgärdslogg, vanlig applikationslogg, tillämpningsspårbarhet.
 
-- `en`: Requirement selection answer
+**Radering av personuppgifter**:
+Ett dataskyddsflöde där personkopplade fält för en registrerad HSA-id hanteras
+genom att raderas, anonymiseras, hoppas över eller bytas till en ersättare.
+Radering av personuppgifter ska inte ta bort verksamhetshistorik som behöver
+finnas kvar.
 
-_Avoid_: Användarens svar, kravpaket.
+- `en`: Personal data erasure
 
-**Utan kravurval**:
-En egenskap hos ett kravurvalssvar som markerar att svaret avsiktligt inte
-bidrar med krav till kravurvalsfilter.
+_Avoid_: GDPR-radering, gallring, arkivering, borttagning av kravhistorik.
 
-- `en`: No requirement selection
+**Personuppgiftsutdrag**:
+Ett dataskyddsunderlag som visar vilka personuppgifter Kravhantering kan
+koppla till en registrerad HSA-id, var uppgifterna förekommer i applikationen
+och vilka begränsningar utdraget har. JSON är det maskinläsbara och
+auktoritativa formatet; PDF är en läsbar återgivning av samma uppgifter.
 
-_Avoid_: Saknar kravurval när kopplingar har tappats eller behöver åtgärdas.
+- `en`: Data subject access export
 
-**Saknar kravurval**:
-Ett hälsoläge för ett kravurvalssvar som saknar kravkopplingar utan att vara
-markerat som utan kravurval.
-
-- `en`: Missing requirement selection
-
-_Avoid_: Utan kravurval när avsiktligt nollbidrag avses.
-
-**Kravurvalsfilter**:
-Ett användaraktiverat styrt grundurval av bibliotekskrav som bildas av valda
-kravurvalssvar inför att krav läggs till i ett kravunderlag. Valda
-kravurvalssvar kan bevaras som urvalskontext utan att kravurvalsfilter är
-aktivt.
-
-- `en`: Requirement selection filter
-
-_Avoid_: Vanligt tabellfilter, kravpaket, sparade kravurvalssvar när de bara
-dokumenterar urvalskontext.
-
-**Synlighetsvillkor**:
-Ett villkor som avgör när en kravurvalsfråga hör till det aktuella
-frågesammanhanget i ett kravunderlag, baserat på valda kravurvalssvar i
-överliggande kravurvalsfrågor.
-
-- `en`: Visibility condition
-
-_Avoid_: Kravurvalsfilter, obligatoriskt krav, vanligt tabellfilter.
-
-**Villkorsgrupp**:
-En samling synlighetsvillkor där alla ingående överliggande frågor måste vara
-uppfyllda för att gruppen ska göra en underordnad kravurvalsfråga synlig. Om
-en kravurvalsfråga har flera villkorsgrupper räcker det att en grupp är
-uppfylld.
-
-- `en`: Condition group
-
-_Avoid_: Kravpaket, svarsalternativ, kravurvalsfilter.
-
-**Fristående kravurvalsfråga**:
-En kravurvalsfråga som varken styrs av synlighetsvillkor eller används som
-överliggande kravurvalsfråga i synlighetsvillkor.
-
-- `en`: Standalone requirement selection question
-
-_Avoid_: Rotfråga, huvudfråga, huvudkravurvalsfråga, toppfråga i
-kravurvalsfrågehierarki.
-
-**Överliggande kravurvalsfråga**:
-En kravurvalsfråga vars valda svar kan göra en annan kravurvalsfråga synlig.
-
-- `en`: Parent requirement selection question
-
-_Avoid_: Överordnat krav, kravområde.
-
-**Underordnad kravurvalsfråga**:
-En kravurvalsfråga som bara hör till frågesammanhanget när dess
-synlighetsvillkor är uppfyllda.
-
-- `en`: Child requirement selection question
-
-_Avoid_: Obligatorisk fråga, kravpaket.
-
-**Kravurvalsfrågehierarki**:
-En sammanhängande struktur av kravurvalsfrågor där överliggande
-kravurvalsfrågor och underordnade kravurvalsfrågor hänger ihop genom
-synlighetsvillkor.
-
-- `en`: Requirement selection question hierarchy
-
-_Avoid_: Sorteringsordning, kravområdesgrupp, kravhierarki.
-
-**Kravtillämpning**:
-Att en publicerad kravversion från kravbiblioteket används i ett visst
-kravunderlag. Kravtillämpningen bär det underlagsspecifika sammanhanget, inte
-kravet i kravbiblioteket.
-
-- `en`: Requirement application
-
-_Avoid_: Kravunderlagsrad, kopia av krav.
-
-**Behovsreferens**:
-En underlagsspecifik hänvisning som förklarar varför en kravtillämpning behövs
-i kravunderlaget. Behovsreferensen ger också sammanhang när kravtillämpningen
-ska verifieras.
-
-- `en`: Needs reference
-
-_Avoid_: Normreferens.
-
-**Användningsstatus**:
-Det underlagsspecifika läget för en kravtillämpning i ett kravunderlag. Det
-beskriver hur kravet används eller följs upp i just det sammanhanget.
-
-- `en`: Usage status
-
-_Avoid_: Kravstatus, kravversionsstatus.
-
-**Avsteg**:
-Ett underlagsspecifikt undantag från att följa en kravtillämpning fullt ut.
-Avsteget hör till kravtillämpningen i ett kravunderlag och ändrar inte kravet i
-kravbiblioteket.
-
-- `en`: Deviation
-
-_Avoid_: Ändring av bibliotekskrav, kravändring.
-
-**Förbättringsförslag**:
-Återkoppling om att ett krav i kravbiblioteket kan förbättras, förtydligas
-eller ändras framåt. Förbättringsförslag hör till kravbibliotekets förvaltning,
-inte till ett enskilt avsteg i ett kravunderlag.
-
-- `en`: Improvement suggestion
-
-_Avoid_: Avsteg, felanmälan.
-
-**Granskningsrapport**:
-Rapport som stödjer granskning och publiceringsbeslut för en eller flera
-kravversioner.
-
-- `en`: Review report
-
-_Avoid_: Avstegsrapport.
-
-**Avstegsgranskningsrapport**:
-Rapport som stödjer granskning och beslut om avsteg i ett kravunderlag.
-
-- `en`: Deviation review report
-
-_Avoid_: Granskningsrapport när avsteg avses.
-
-**Historikrapport**:
-Rapport som visar ett kravs versioner, statusändringar och
-metadataförändringar över tid.
-
-- `en`: History report
-
-_Avoid_: Förbättringsförslagshistorik.
-
-**Förbättringsförslagshistorik**:
-Rapport eller vy som visar förbättringsförslag, granskning och åtgärder kring
-ett krav i kravbiblioteket.
-
-- `en`: Improvement suggestion history
-
-_Avoid_: Historikrapport när kravets egen versionshistorik avses.
-
-**Utkast**:
-En kravversion som är under framtagning och ännu inte är redo att godkännas.
-Ett raderat utkast betraktas inte som en etablerad kravversion i
-verksamhetshistoriken.
-
-- `en`: Draft
-
-_Avoid_: Påbörjat krav, preliminärt krav.
-
-**Granskning**:
-En kravversion som är färdig för bedömning men ännu inte publicerad.
-
-- `en`: Review
-
-_Avoid_: Remiss om ingen faktisk remissprocess avses.
-
-**Återremiss**:
-Att en kravversion i granskning skickas tillbaka till utkast för omarbetning i
-stället för att publiceras.
-
-- `en`: Return to draft
-
-_Avoid_: Avslag när omarbetning snarare än slutligt nej avses.
-
-**Arkiveringsgranskning**:
-En särskild granskning där en publicerad kravversion bedöms inför arkivering.
-Begreppet beskriver granskningens syfte, inte en separat typ av krav.
-
-- `en`: Archiving review
-
-_Avoid_: Vanlig granskning när syftet är arkivering.
-
-**Publicerad**:
-En kravversion som har godkänts och gjorts tillgänglig för användning.
-
-- `en`: Published
-
-_Avoid_: Gällande.
-
-**Arkiverad**:
-En kravversion som inte längre ska användas aktivt men bevaras för historik och
-spårbarhet.
-
-- `en`: Archived
-
-_Avoid_: Borttagen, raderad.
-
-**Arkiverad kravversion**:
-En tidigare kravversion som inte längre används aktivt men finns kvar för
-historik och spårbarhet. När en ny kravversion publiceras blir den tidigare
-publicerade kravversionen en arkiverad kravversion.
-
-- `en`: Archived requirement version
-
-_Avoid_: Arkiverat krav när kravet har en ny publicerad kravversion.
-
-**Arkiverat krav**:
-En vardaglig genväg för ett krav där den sista kravversionen är arkiverad och
-ingen ny utkastversion finns. Den precisa modellen är fortfarande att
-kravversionen är arkiverad.
-
-- `en`: Archived requirement
-
-_Avoid_: Raderat krav, borttaget krav.
+_Avoid_: Export för dataportabilitet, dataportabilitetsexport, arkivexport,
+rapport, export av åtgärdslogg.
 
 **Gallring**:
 Att enligt fastställda regler ta bort information när den inte längre ska
@@ -914,30 +952,6 @@ personuppgiftsutdrag.
 - `en`: Archive export
 
 _Avoid_: Rapport, vanlig export, personuppgiftsutdrag.
-
-**Återskapad kravversion**:
-En ny utkastversion som skapas med innehåll från en tidigare kravversion. Den
-tidigare kravversionen ändras inte när den återskapas.
-
-- `en`: Restored requirement version
-
-_Avoid_: Återaktiverad version, återställd version.
-
-**Återskapa version**:
-Att skapa en ny utkastversion baserad på en vald tidigare kravversion. Den
-tidigare kravversionen ändras inte och blir inte aktiv igen.
-
-- `en`: Restore version
-
-_Avoid_: Återaktivera version, återställa samma version.
-
-**Återaktivera krav**:
-En möjlig folkmunsterm när någon menar att en arkiverad kravversion återskapas
-som nytt utkast. Använd återskapa som huvudterm.
-
-- `en`: Restore requirement
-
-_Avoid_: Huvudterm i UI eller dokumentation.
 
 ### Drift och leverans
 
