@@ -184,12 +184,10 @@ describe('RequirementForm', () => {
       expect(sidebarGrid).toBe(normReferenceFieldset?.parentElement)
       expect(sidebarGrid?.parentElement).toHaveClass('items-stretch')
       expect(sidebarGrid).toHaveClass('sm:grid-cols-2')
-      expect(sidebarGrid).toHaveClass('lg:w-[34rem]')
+      expect(sidebarGrid).toHaveClass('lg:w-136')
+      expect(sidebarGrid).toHaveClass('lg:h-(--requirement-association-height)')
       expect(sidebarGrid).toHaveClass(
-        'lg:h-[var(--requirement-association-height)]',
-      )
-      expect(sidebarGrid).toHaveClass(
-        'lg:max-h-[var(--requirement-association-height)]',
+        'lg:max-h-(--requirement-association-height)',
       )
       expect(sidebarGrid).toHaveClass('lg:overflow-hidden')
 

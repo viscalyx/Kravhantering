@@ -79,9 +79,10 @@
     "test:integration": "playwright test",
     "test:integration:prodlike": "playwright test --config=playwright.prodlike.config.ts",
     "test:release-smoke": "cross-env NODE_EXTRA_CA_CERTS=tmp/container-tls/ca.crt playwright test --config=playwright.release-smoke.config.ts",
-    "lint": "biome check --error-on-warnings --assist-enabled=false --formatter-enabled=false .",
+    "lint": "biome check --error-on-warnings --assist-enabled=false --formatter-enabled=false . && npm run lint:tailwind",
     "lint:fix": "biome check --write --assist-enabled=false --formatter-enabled=false .",
     "lint:strict": "node scripts/biome-lint-strict.js .",
+    "lint:tailwind": "node scripts/lint-tailwind.mjs",
     "format": "biome check --write --linter-enabled=false .",
     "format:check": "biome check --linter-enabled=false --max-diagnostics=none .",
     "spell": "cspell \"**/*.{ts,tsx,js,jsx,md,json}\"",
@@ -145,7 +146,8 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",
     "@cspell/dict-sv": "^2.3.2",
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "^1.61.0",
+    "@tailwindcss/node": "^4.3.1",
     "@tailwindcss/postcss": "^4.3.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -156,8 +158,8 @@
     "@types/react-dom": "^19.2.3",
     "@viscalyx/developer-mode-core": "^0.2.2",
     "@viscalyx/developer-mode-react": "^0.2.0",
-    "@vitest/coverage-v8": "^4.1.8",
-    "@vitest/ui": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.9",
+    "@vitest/ui": "^4.1.9",
     "autoprefixer": "^10.5.0",
     "cross-env": "^10.1.0",
     "cspell": "^10.0.1",
@@ -171,7 +173,7 @@
     "swagger-ui-dist": "^5.32.6",
     "tailwindcss": "^4.3.1",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.9"
   },
   "//purge:install": [
     "Two-phase install: first install rebuilds node_modules with a (possibly corrupt) lockfile,",
@@ -183,6 +185,7 @@
   "overrides": {
     "hono": "4.12.25",
     "ip-address": "10.2.0",
+    "js-yaml": "4.2.0",
     "postcss": "8.5.15",
     "qs": "6.15.2",
     "uuid": "11.1.1",
@@ -196,6 +199,7 @@
     "Document below this. Example: @swc/helpers: next@16.1.6 pins 0.5.15, but next-intl's @swc/core@^1.15.2 peer-requires >=0.5.17. Override to 0.5.19 resolves the conflict.",
     "hono: @modelcontextprotocol/sdk@1.29.0 resolves hono@4.12.19 directly and through @hono/node-server@1.19.14 when unforced. Override maps vulnerable hono <4.12.21 to 4.12.25 for GHSA-xrhx-7g5j-rcj5, GHSA-3hrh-pfw6-9m5x, GHSA-f577-qrjj-4474, and GHSA-2gcr-mfcq-wcc3.",
     "ip-address: @modelcontextprotocol/sdk@1.29.0 resolves express-rate-limit@8.4.1 -> ip-address@10.1.0 when unforced. Override maps vulnerable ip-address <=10.1.0 to 10.2.0 for GHSA-v2v4-37r5-5v8g.",
+    "js-yaml: markdownlint-cli2@0.22.1 pins js-yaml@4.1.1. Override maps vulnerable js-yaml <=4.1.1 to 4.2.0 for GHSA-h67p-54hq-rp68.",
     "postcss: next@16.2.7 pins postcss@8.4.31 when unforced. Override maps the vulnerable Next postcss pin to 8.5.15 for GHSA-qx2v-qp2m-jg93.",
     "qs: @modelcontextprotocol/sdk@1.29.0 resolves express@5.2.1 -> qs@6.15.1 and body-parser@2.2.2 -> qs@6.15.1. Override maps vulnerable qs <=6.15.1 to 6.15.2 for GHSA-q8mj-m7cp-5q26.",
     "uuid: mssql@12.5.5 resolves tedious@19.2.1 -> @azure/identity@4.13.1 -> @azure/msal-node@5.1.4 -> uuid@8.3.2 when unforced. Override maps vulnerable uuid <11.1.1 to 11.1.1 for GHSA-w5hq-g745-h8pq.",

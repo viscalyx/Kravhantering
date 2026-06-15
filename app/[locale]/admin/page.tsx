@@ -69,8 +69,8 @@ export default async function AdminPage({
         <div className="section-padding px-4 sm:px-6 lg:px-8" role="status">
           <span className="sr-only">{t('loading')}</span>
           <div className="container-custom space-y-6">
-            <div className="h-40 rounded-[2rem] border border-secondary-200/70 bg-secondary-100/70 dark:border-secondary-700/60 dark:bg-secondary-900/70" />
-            <div className="h-64 rounded-[2rem] border border-secondary-200/70 bg-white/70 dark:border-secondary-700/60 dark:bg-secondary-900/70" />
+            <div className="h-40 rounded-4xl border border-secondary-200/70 bg-secondary-100/70 dark:border-secondary-700/60 dark:bg-secondary-900/70" />
+            <div className="h-64 rounded-4xl border border-secondary-200/70 bg-white/70 dark:border-secondary-700/60 dark:bg-secondary-900/70" />
           </div>
         </div>
       }

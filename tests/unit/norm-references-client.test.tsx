@@ -131,7 +131,7 @@ describe('NormReferencesClient', () => {
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     expect(link).toHaveAttribute('title', 'normReference.openUri')
-    expect(screen.getByText(longName)).toHaveClass('break-words')
+    expect(screen.getByText(longName)).toHaveClass('wrap-break-word')
     expect(screen.getByText(longName).parentElement).toHaveClass(
       'grid',
       'grid-cols-[minmax(0,1fr)_auto]',

@@ -84,7 +84,7 @@ export default function ActionAuditLogView({
   if (!result) {
     return (
       <>
-        <section className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80">
+        <section className="rounded-4xl border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               {showEyebrow ? (
@@ -107,7 +107,7 @@ export default function ActionAuditLogView({
         </section>
 
         <section
-          className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 text-sm text-secondary-600 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80 dark:text-secondary-300"
+          className="rounded-4xl border border-secondary-200/70 bg-white/90 p-6 text-sm text-secondary-600 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80 dark:text-secondary-300"
           role="status"
         >
           {loadingLabel}
@@ -143,7 +143,7 @@ export default function ActionAuditLogView({
 
   return (
     <>
-      <section className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80">
+      <section className="rounded-4xl border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             {showEyebrow ? (
@@ -165,7 +165,7 @@ export default function ActionAuditLogView({
         </div>
       </section>
 
-      <section className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80">
+      <section className="rounded-4xl border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80">
         <form
           action={basePath}
           className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
@@ -254,7 +254,7 @@ export default function ActionAuditLogView({
         </form>
       </section>
 
-      <section className="overflow-hidden rounded-[2rem] border border-secondary-200/70 bg-white/90 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80">
+      <section className="overflow-hidden rounded-4xl border border-secondary-200/70 bg-white/90 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-secondary-200 text-sm dark:divide-secondary-700">
             <thead className="bg-secondary-50 text-left text-xs font-semibold uppercase tracking-wide text-secondary-600 dark:bg-secondary-900 dark:text-secondary-300">

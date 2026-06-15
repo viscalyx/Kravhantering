@@ -710,7 +710,7 @@ export default function NormReferencesClient() {
                         </td>
                         <td className="px-4 py-3 font-medium">
                           <span className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                            <span className="min-w-0 break-words">
+                            <span className="min-w-0 wrap-break-word">
                               {normReference.name}
                             </span>
                             {browserLinkUri && (

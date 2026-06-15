@@ -659,7 +659,7 @@ export default function RequirementPackagesClient() {
               <dt className="text-xs font-medium text-secondary-500 dark:text-secondary-400">
                 {t('leadEmail')}
               </dt>
-              <dd className="mt-1 break-words text-secondary-900 dark:text-secondary-100">
+              <dd className="mt-1 wrap-break-word text-secondary-900 dark:text-secondary-100">
                 {controller.form.leadEmail}
               </dd>
             </div>
@@ -1301,7 +1301,7 @@ export default function RequirementPackagesClient() {
                           {requirementPackage.name}
                         </td>
                         <td
-                          className="w-[28rem] max-w-[28rem] whitespace-normal break-words px-4 py-3 align-top leading-6 text-secondary-600 dark:text-secondary-400"
+                          className="w-md max-w-md whitespace-normal wrap-break-word px-4 py-3 align-top leading-6 text-secondary-600 dark:text-secondary-400"
                           title={requirementPackage.description || '-'}
                         >
                           {requirementPackage.description || '-'}

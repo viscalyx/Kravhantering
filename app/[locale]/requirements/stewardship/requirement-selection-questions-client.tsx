@@ -402,14 +402,14 @@ function ScrollOverflowCue({
       {hasOverflowAbove ? (
         <div
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-x-0 top-0 z-10 h-8 rounded-t-lg bg-gradient-to-b ${topSurfaceClass} to-transparent`}
+          className={`pointer-events-none absolute inset-x-0 top-0 z-10 h-8 rounded-t-lg bg-linear-to-b ${topSurfaceClass} to-transparent`}
           data-scroll-overflow-cue="start"
         />
       ) : null}
       {hasOverflowBelow ? (
         <div
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 flex h-12 items-end justify-center rounded-b-lg bg-gradient-to-t ${bottomSurfaceClass} to-transparent pb-1`}
+          className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 flex h-12 items-end justify-center rounded-b-lg bg-linear-to-t ${bottomSurfaceClass} to-transparent pb-1`}
           data-scroll-overflow-cue="end"
         >
           <span className="rounded-full border border-secondary-200 bg-white/95 px-2 py-0.5 text-secondary-500 shadow-sm dark:border-secondary-700 dark:bg-secondary-900/95 dark:text-secondary-300">
@@ -3372,7 +3372,7 @@ export default function RequirementSelectionQuestionsClient() {
   const questionDropMarkerContent = questionDropMarker ? (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed z-[90] rounded-2xl bg-secondary-200/45 ring-2 ring-inset ring-secondary-500/75 dark:bg-secondary-700/45 dark:ring-secondary-400/70"
+      className="pointer-events-none fixed z-90 rounded-2xl bg-secondary-200/45 ring-2 ring-inset ring-secondary-500/75 dark:bg-secondary-700/45 dark:ring-secondary-400/70"
       data-question-drop-marker="true"
       style={{
         height: questionDropMarker.height,
@@ -3395,7 +3395,7 @@ export default function RequirementSelectionQuestionsClient() {
         return (
           <div
             aria-hidden="true"
-            className="pointer-events-none fixed z-[80] overflow-hidden rounded-2xl border border-primary-200 bg-white/95 text-left shadow-2xl ring-2 ring-primary-300/70 backdrop-blur-sm dark:border-primary-800 dark:bg-secondary-900/95 dark:ring-primary-700/70"
+            className="pointer-events-none fixed z-80 overflow-hidden rounded-2xl border border-primary-200 bg-white/95 text-left shadow-2xl ring-2 ring-primary-300/70 backdrop-blur-sm dark:border-primary-800 dark:bg-secondary-900/95 dark:ring-primary-700/70"
             data-question-drag-preview="true"
             style={{
               left: questionDragPreview.x,

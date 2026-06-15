@@ -49,7 +49,7 @@ export default function PrivacyClient({ currentUser }: ComponentProps) {
         <div className="container-custom max-w-4xl">
           <section
             aria-labelledby="privacy-data-export-title"
-            className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+            className="rounded-4xl border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
             {...devMarker({
               name: 'page',
               priority: 330,
