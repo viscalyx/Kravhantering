@@ -243,7 +243,7 @@ function RequirementLifecycleVisual() {
               <div className="flex items-start gap-3">
                 <div className="mt-0.5 flex shrink-0 flex-col items-center">
                   <span
-                    className={`inline-flex min-w-[7.5rem] justify-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${step.colorClassName}`}
+                    className={`inline-flex min-w-30 justify-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${step.colorClassName}`}
                   >
                     {t(step.titleKey as Parameters<typeof t>[0])}
                   </span>
@@ -600,7 +600,7 @@ function HelpPanelInner({
                     className="help-panel-scroll-indicator pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-center pb-3"
                     {...scrollCueMotion(shouldReduceMotion)}
                   >
-                    <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white via-white/95 to-transparent dark:from-secondary-900 dark:via-secondary-900/95" />
+                    <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-white via-white/95 to-transparent dark:from-secondary-900 dark:via-secondary-900/95" />
                     <motion.div
                       className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-secondary-200/80 bg-white/92 text-secondary-500 shadow-sm dark:border-secondary-700/80 dark:bg-secondary-900/92 dark:text-secondary-300"
                       {...repeatingScrollCueMotion(shouldReduceMotion)}

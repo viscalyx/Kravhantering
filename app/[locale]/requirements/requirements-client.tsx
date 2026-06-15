@@ -887,7 +887,7 @@ export default function RequirementsClient({
             {shouldShowInitialLoadingState ? (
               <div
                 aria-live="polite"
-                className="flex min-h-[20rem] flex-col items-center justify-center gap-3 px-6 py-16"
+                className="flex min-h-80 flex-col items-center justify-center gap-3 px-6 py-16"
                 data-testid="requirements-card-loading"
               >
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600 dark:border-primary-700 dark:border-t-primary-400" />

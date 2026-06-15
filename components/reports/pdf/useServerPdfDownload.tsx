@@ -199,7 +199,7 @@ function ServerPdfDownloadDialog({
               </div>
               <div className="mt-5 flex justify-end">
                 <button
-                  className="btn-primary text-sm !px-4 !py-2"
+                  className="btn-primary text-sm px-4! py-2!"
                   onClick={onCloseError}
                   ref={closeButtonRef}
                   type="button"

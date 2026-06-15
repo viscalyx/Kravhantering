@@ -73,12 +73,9 @@
     "typescript": "javascript",
     "typescriptreact": "javascript"
   },
-  "tailwindCSS.experimental.classRegex": [
-      "tw`([^`]*)",
-      ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
-      ["classNames\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
-      ["cn\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
-    ],
+  "tailwindCSS.classFunctions": ["cn", "clsx", "classNames", "tw"],
+  "tailwindCSS.experimental.configFile": "app/globals.css",
+  "tailwindCSS.lint.suggestCanonicalClasses": "error",
 
   // Spell Checker extras
   "cSpell.language": "en,sv",

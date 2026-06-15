@@ -224,7 +224,7 @@ describe('RequirementPackagesClient', () => {
 
     expect(descriptionCell).toBeInTheDocument()
     expect(descriptionCell).toHaveClass('whitespace-normal')
-    expect(descriptionCell).toHaveClass('break-words')
+    expect(descriptionCell).toHaveClass('wrap-break-word')
     expect(descriptionCell).not.toHaveClass('truncate')
   })
 
