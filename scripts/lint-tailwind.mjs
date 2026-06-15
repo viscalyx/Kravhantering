@@ -3,11 +3,13 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+// Tailwind exposes this loader as unstable in @tailwindcss/node (^4.3.1).
+// Recheck this script and its tests when upgrading Tailwind packages.
 import { __unstable__loadDesignSystem } from '@tailwindcss/node'
 import ts from 'typescript'
 
 const DEFAULT_ROOTS = ['app', 'components', 'lib']
-const DEFAULT_CLASS_FUNCTIONS = ['cn', 'clsx', 'classNames']
+const DEFAULT_CLASS_FUNCTIONS = ['cn', 'clsx', 'classNames', 'tw']
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.css'])
 const EXCLUDED_DIRECTORIES = new Set([
   '.git',
@@ -37,8 +39,7 @@ function createLineStarts(text) {
   return lineStarts
 }
 
-function getPosition(text, offset) {
-  const lineStarts = createLineStarts(text)
+function getPosition(lineStarts, offset) {
   let low = 0
   let high = lineStarts.length - 1
 
@@ -440,6 +441,7 @@ export function findCanonicalClassDiagnostics(
   canonicalize,
 ) {
   const diagnostics = []
+  const lineStarts = createLineStarts(sourceText)
   const seen = new Set()
 
   for (const classList of classLists) {
@@ -456,7 +458,7 @@ export function findCanonicalClassDiagnostics(
       if (!replacement || replacement === current) continue
 
       const start = classList.start + match.index
-      const position = getPosition(sourceText, start)
+      const position = getPosition(lineStarts, start)
       const key = `${classList.filePath}:${start}:${current}:${replacement}`
       if (seen.has(key)) continue
       seen.add(key)

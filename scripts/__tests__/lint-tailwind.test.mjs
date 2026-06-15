@@ -167,6 +167,20 @@ export function View() {
     ])
   })
 
+  it('extracts tw helper calls by default to match editor Tailwind settings', () => {
+    const source = "const classes = tw('rounded-[2rem]')\n"
+    const classLists = extractClassListsFromScript(source, 'example.ts')
+    const diagnostics = findCanonicalClassDiagnostics(
+      source,
+      classLists,
+      canonicalize,
+    )
+
+    expect(diagnostics.map(diagnostic => diagnostic.current)).toEqual([
+      'rounded-[2rem]',
+    ])
+  })
+
   it('extracts Tailwind class lists from CSS @apply rules', () => {
     const source = '.panel { @apply rounded-[2rem] min-h-[40px]; }\n'
     const classLists = extractClassListsFromCss(source, 'app/globals.css')
