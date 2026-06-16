@@ -263,10 +263,6 @@ npm run start:prodlike
 
 `npm run start:prodlike` rebuilds with `NODE_ENV=production` and then starts
 the built app on port `3001`.
-The production build now requires database-backed UI terminology and
-requirement column defaults to load successfully. If `DATABASE_URL` points to
-an unavailable or uninitialized database, `npm run build` and
-`npm run start:prodlike` will fail instead of falling back to shipped defaults.
 
 ## Security CI
 

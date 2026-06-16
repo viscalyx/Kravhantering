@@ -29,15 +29,9 @@ applyTo: "{components/**/*.tsx,app/[locale]/requirements/**/*.tsx,app/api/**/*.t
 
 ## Terminology
 
-- If the property label is one of the admin-configurable term families, add or update the mapping in `lib/ui-terminology.ts`.
+- Use `CONTEXT.md` for domain terminology and naming decisions.
 - See `.github/instructions/translations.instructions.md` for the message-file update workflow.
 - Bind all visible labels to translation keys. Do not hardcode labels in list headers, edit forms, inline detail panes, detail pages, CSV, service output, or MCP HTML.
-- If the new column introduces a new configurable term family, add it to:
-  - `UI_TERM_KEYS`
-  - add default terminology values
-  - wire the message bindings
-  - update admin terminology UI expectations
-  - extend the terminology route tests
 
 ## Data Wiring
 

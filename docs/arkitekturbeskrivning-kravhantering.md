@@ -317,7 +317,7 @@ flowchart TD
 | Kravförfattare | Skapar och redigerar krav, skickar för granskning |
 | Kravgranskare | Godkänner eller avslår krav och arkiveringsförfrågningar |
 | Förvaltare | Hanterar livscykel, initierar arkivering, återskapar arkiverade kravversioner |
-| Administratör | Konfigurerar taxonomi, terminologi, kolumnstandard |
+| Administratör | Konfigurerar taxonomi, statusar, kolumnstandard och identitetsinställningar |
 <!-- markdownlint-enable MD013 -->
 
 ### Kravunderlagshantering

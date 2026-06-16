@@ -340,8 +340,8 @@ AI-beslut, källa till sanning.
 
 **Terminologi**:
 De verksamhetsbegrepp och användargränssnittstermer som används för att
-beskriva kravhanteringen. I administrationen ska terminologi vara namnet på
-ytan där konfigurerbara ord hanteras.
+beskriva kravhanteringen. Terminologi förvaltas genom detta sammanhang,
+arkitekturbeslut och språkfiler.
 
 - `en`: Terminology
 

@@ -78,7 +78,7 @@ function dataSubjectExportPayload(): DataSubjectExportV1 {
   }
 }
 
-describe('UI terminology', () => {
+describe('reviewer wording', () => {
   it('uses precise Swedish terms for global and assigned reviewers', () => {
     const sv = readJson('messages/sv.json')
     const en = readJson('messages/en.json')

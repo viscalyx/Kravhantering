@@ -16,10 +16,11 @@ valid HSA-id before running `db-job migrate`. The migration creates
 columns, and cannot reconstruct removed name snapshots on rollback without data
 loss.
 
-### Custom UI terminology must be exported before upgrade if it must be retained
+### Custom UI terminology values must be exported before upgrade if retained
 
-Export any custom UI terminology values you need to keep before running
-`db-job migrate`; migration rollback will not restore them.
+The upgrade removes the retired UI terminology table. Export any historical
+custom UI terminology values you need to keep before running `db-job migrate`;
+migration rollback will not restore them.
 
 ### Topology changes
 
@@ -61,10 +62,11 @@ requirement areas that already contain requirement rows should be completed
 before the rollout; once the new version is live, those prefix changes return
 `409 conflict`.
 
-Export any custom UI terminology values and any assignment-level AI permission
-evidence that must be retained before `db-job migrate`. This branch removes
-duplicated live display-name columns and unused AI permission flag columns, and
-the destructive migrations cannot reconstruct those values on rollback.
+Export any historical custom UI terminology values and any assignment-level AI
+permission evidence that must be retained before `db-job migrate`. This branch
+removes duplicated live display-name columns and unused AI permission flag
+columns, and the destructive migrations cannot reconstruct those values on
+rollback.
 
 Add `HSA_PERSON_LOOKUP_URL` to the app runtime environment before users edit
 responsibility assignments after the upgrade. The URL must be a server-side
