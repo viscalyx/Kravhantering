@@ -28,6 +28,7 @@ Options:
   --output <path>                Generated Compose output path
   --project-name <name>          Compose project name
   --network-name <name>          Internal Compose network name
+  --demo-seed-image <ref>        Optional demo seed image for release-smoke
   --tls-dir <path>               Runtime TLS directory mounted into nginx/app
   --sqlserver-volume-name <name> SQL Server named volume
   --sqlserver-host-port <value>  Host bind value, for example 127.0.0.1:1433`
@@ -113,6 +114,9 @@ export function buildComposeValues(stackLock, options = {}) {
   return {
     appRuntimeImage: imageReference(services.appRuntime, mode),
     dbJobImage: imageReference(services.dbJob, mode),
+    demoSeedImage:
+      readNonEmpty(options.demoSeedImage) ??
+      imageReference(services.dbJob, mode),
     keycloakImage: imageReference(services.keycloak, mode),
     networkName:
       readNonEmpty(options.networkName) ?? DEFAULT_INTERNAL_NETWORK_NAME,
@@ -159,6 +163,7 @@ export function generateCompose(template, stackLock, options = {}) {
     template,
     buildComposeValues(stackLock, {
       mode,
+      demoSeedImage: options.demoSeedImage,
       networkName: options.networkName,
       projectName: options.projectName,
       sqlServerHostPort: options.sqlServerHostPort,
@@ -192,6 +197,7 @@ export async function main(args, dependencies = {}) {
     const template = fsImpl.readFileSync(templatePath, 'utf8')
     const compose = generateCompose(template, stackLock, {
       mode,
+      demoSeedImage: options['demo-seed-image'],
       networkName: options['network-name'],
       projectName: options['project-name'],
       sqlServerHostPort: options['sqlserver-host-port'],

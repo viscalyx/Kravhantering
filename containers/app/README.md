@@ -1,8 +1,8 @@
 # App Container Contract
 
 This directory owns the runtime contract for the Next.js application
-container and the Dockerfile used to build the app runtime and database-job
-production images.
+container and the Dockerfile used to build the app runtime, database-job and
+optional demo seed images.
 
 ## Owned Configuration
 
@@ -22,6 +22,7 @@ The Dockerfile is built from the repository root as context:
 ```bash
 npm run container:build:app-runtime
 npm run container:build:db-job
+npm run container:build:demo-seed
 ```
 
 Use the no-cache variants when dependency or base-image cache reuse needs to
@@ -30,6 +31,7 @@ be bypassed:
 ```bash
 npm run container:build:app-runtime:no-cache
 npm run container:build:db-job:no-cache
+npm run container:build:demo-seed:no-cache
 ```
 
 The app build stage sets `NEXT_PUBLIC_SITE_URL` to
@@ -46,8 +48,14 @@ user and starts `node server.js` on port `3000`.
 documented in [../db-job/README.md](../db-job/README.md) because it has a
 separate runtime contract.
 
+`demo-seed` uses the same minimal dependency subset as `db-job`, but includes
+the optional demo seed modules and defaults to `seed:demo`. It also owns
+`demo:clear --confirm-clear-non-required-data` so destructive demo-data
+operations stay behind the same opt-in image boundary. Use it only for
+disposable demonstration and test environments.
+
 The Node base image is pinned directly in the Dockerfile with both tag and
-digest. Update the tag and digest together in a pull request, then rebuild both
+digest. Update the tag and digest together in a pull request, then rebuild the
 targets locally.
 
 ## Docker Tooling

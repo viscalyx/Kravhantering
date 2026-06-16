@@ -14,6 +14,11 @@ adapter and the HSA directory mock from
 `container-test-support.lock.json`. Use `single-node-demo` only for release
 smoke, disposable demos or other non-production environments.
 
+The standard `single-node` and `single-node-demo` disconnected image bundles do
+not include the optional `kravhantering-demo-seed` image. Treat demo seed as a
+separate opt-in demonstration artifact if a disposable offline demo environment
+needs it.
+
 Use this guide before starting a first install in a disconnected environment
 with
 [rhel10-production-single-node-self-contained-deploy.md](./rhel10-production-single-node-self-contained-deploy.md),
@@ -46,6 +51,8 @@ Set the release version and download source:
 VERSION=1.2.3 # Change to the version being deployed.
 TOPOLOGY=single-node
 # Test/demo only: set TOPOLOGY=single-node-demo.
+INCLUDE_DEMO_SEED=false
+# Disposable offline demo only: set INCLUDE_DEMO_SEED=true.
 
 # Default: internal release repository.
 RELEASE_DOWNLOAD_URL="https://release.example.internal/kravhantering/${VERSION}"
@@ -58,6 +65,7 @@ OFFLINE_WORK="/tmp/kravhantering-offline-work-${VERSION}-${TOPOLOGY}"
 OFFLINE_BUNDLE="${OFFLINE_ROOT}.tar.gz"
 RELEASE_ARCHIVE="kravhantering-production-deploy-${VERSION}.tar.gz"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
+DEMO_SEED_ARCHIVE_NAME="kravhantering-demo-seed-${VERSION}.oci.tar.gz"
 
 # Start from a clean staging area for this version and topology.
 rm -rf -- "$OFFLINE_ROOT" "$OFFLINE_WORK"
@@ -198,13 +206,39 @@ For Alternative C, manually edit `KONG_IMAGE_REF`,
 `HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` and `HSA_DIRECTORY_MOCK_IMAGE_REF` as
 well.
 
+#### Optional Demo Seed Image
+
+Use this only for disposable offline demo environments where operators need to
+run `seed:demo` or `demo:clear` without network access. The demo seed image is
+not part of `container-stack.lock.json`, `release.env.template` or the standard
+image helper bundle, so it is carried as a separate OCI archive inside the
+offline package.
+
+Set `INCLUDE_DEMO_SEED=true`, then choose the exact demo seed image ref from
+the release notes section `Demonstration Container Images` or from your
+internal mirror:
+
+```bash
+if [ "$INCLUDE_DEMO_SEED" = "true" ]; then
+  # Alternative A, public upstream refs:
+  DEMO_SEED_IMAGE_REF="ghcr.io/viscalyx/kravhantering-demo-seed:${VERSION}"
+
+  # Alternative B, internal mirror with preserved paths:
+  # DEMO_SEED_IMAGE_REF="${TARGET_IMAGE_REGISTRY}/viscalyx/kravhantering-demo-seed:${VERSION}"
+
+  # Alternative C, custom repository layout:
+  # DEMO_SEED_IMAGE_REF="registry.example.internal/custom/kravhantering-demo-seed:${VERSION}"
+fi
+```
+
 ### Pull, Verify And Export Images
 
-After completing exactly one image-ref alternative above, and the optional
-test support refs when `TOPOLOGY=single-node-demo`, pull, verify and export the
-images with the same connected-host account. Do not prefix the helper commands
-with `sudo`; they must use the same Podman image store as the pull commands.
-The `bash` invocation also works when `/tmp` is mounted `noexec`:
+After completing exactly one image-ref alternative above, the optional test
+support refs when `TOPOLOGY=single-node-demo`, and the optional demo seed ref,
+pull, verify and export the images with the same connected-host account. Do not
+prefix the helper commands with `sudo`; they must use the same Podman image
+store as the pull commands. The `bash` invocation also works when `/tmp` is
+mounted `noexec`:
 
 ```bash
 set -a
@@ -227,6 +261,19 @@ if [ "$TOPOLOGY" = "single-node-demo" ]; then
     "$OFFLINE_WORK/container-hsa-integration-support.lock.json"
     --test-lock-file "$OFFLINE_WORK/container-test-support.lock.json"
   )
+fi
+
+DEMO_SEED_ARCHIVE_PATH=""
+DEMO_SEED_MANIFEST_REF=""
+if [ "$INCLUDE_DEMO_SEED" = "true" ]; then
+  : "${DEMO_SEED_IMAGE_REF:?Set DEMO_SEED_IMAGE_REF before exporting demo seed.}"
+  DEMO_SEED_ARCHIVE_PATH="images/$DEMO_SEED_ARCHIVE_NAME"
+  DEMO_SEED_MANIFEST_REF="$DEMO_SEED_IMAGE_REF"
+  podman pull "$DEMO_SEED_IMAGE_REF"
+  podman save --format oci-archive \
+    --output "$OFFLINE_ROOT/images/${DEMO_SEED_ARCHIVE_NAME%.gz}" \
+    "$DEMO_SEED_IMAGE_REF"
+  gzip --force --best "$OFFLINE_ROOT/images/${DEMO_SEED_ARCHIVE_NAME%.gz}"
 fi
 
 bash "$OFFLINE_WORK/bin/kravhantering-images.sh" --topology "$TOPOLOGY" \
@@ -258,7 +305,9 @@ jq -n \
   --arg keycloak "$KEYCLOAK_IMAGE_REF" \
   --arg kong "${KONG_IMAGE_REF:-}" \
   --arg hsaDirectoryMock "${HSA_DIRECTORY_MOCK_IMAGE_REF:-}" \
-  '{
+  --arg demoSeed "$DEMO_SEED_MANIFEST_REF" \
+  --arg demoSeedArchive "$DEMO_SEED_ARCHIVE_PATH" \
+  '({
     schemaVersion: 1,
     kind: "kravhantering-offline-bundle",
     version: $version,
@@ -266,7 +315,7 @@ jq -n \
     releaseArchive: $releaseArchive,
     releaseChecksum: $releaseChecksum,
     imageBundle: $imageBundle,
-    imageRefs: ({
+    imageRefs: (({
       "app-runtime": $appRuntime,
       "db-job": $dbJob,
       nginx: $nginx,
@@ -275,16 +324,26 @@ jq -n \
     } + (if $topology == "single-node-demo" then {
       kong: $kong,
       "hsa-directory-mock": $hsaDirectoryMock
+    } else {} end)) +
+    (if $demoSeed != "" then {
+      "demo-seed": $demoSeed
     } else {} end))
-  }' > "$OFFLINE_ROOT/offline-manifest.json"
+  } + (if $demoSeedArchive != "" then {
+    demoSeedArchive: $demoSeedArchive
+  } else {} end))' > "$OFFLINE_ROOT/offline-manifest.json"
 
 (
   cd "$OFFLINE_ROOT"
-  sha256sum offline-manifest.json \
-    "release/$RELEASE_ARCHIVE" \
-    "release/${RELEASE_ARCHIVE}.sha256" \
-    "images/$IMAGE_BUNDLE_NAME" \
-    > hashes.sha256
+  HASH_INPUTS=(
+    offline-manifest.json
+    "release/$RELEASE_ARCHIVE"
+    "release/${RELEASE_ARCHIVE}.sha256"
+    "images/$IMAGE_BUNDLE_NAME"
+  )
+  if [ -n "$DEMO_SEED_ARCHIVE_PATH" ]; then
+    HASH_INPUTS+=("$DEMO_SEED_ARCHIVE_PATH")
+  fi
+  sha256sum "${HASH_INPUTS[@]}" > hashes.sha256
 )
 
 tar -czf "$OFFLINE_BUNDLE" \
@@ -432,6 +491,8 @@ TOPOLOGY=single-node
 # Test/demo only: set TOPOLOGY=single-node-demo.
 OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
+# Set this to the same local registry host if loaded images are retagged.
+TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
 cd /opt/kravhantering/current
 SUPPORT_LOCK_ARGS=()
 if [ "$TOPOLOGY" = "single-node-demo" ]; then
@@ -445,6 +506,25 @@ bin/kravhantering-images.sh --topology "$TOPOLOGY" \
   "${SUPPORT_LOCK_ARGS[@]}" \
   --env-file /etc/kravhantering/release.env \
   load --bundle "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
+
+DEMO_SEED_ARCHIVE="$(jq -r '.demoSeedArchive // empty' \
+  "$OFFLINE_ROOT/offline-manifest.json")"
+if [ -n "$DEMO_SEED_ARCHIVE" ]; then
+  DEMO_SEED_SOURCE_REF="$(jq -r '.imageRefs["demo-seed"]' \
+    "$OFFLINE_ROOT/offline-manifest.json")"
+  DEMO_SEED_IMAGE_REF="$DEMO_SEED_SOURCE_REF"
+  if [ -n "$TARGET_IMAGE_REGISTRY" ]; then
+    tag="${DEMO_SEED_SOURCE_REF##*:}"
+    path="${DEMO_SEED_SOURCE_REF%:*}"
+    DEMO_SEED_IMAGE_REF="${TARGET_IMAGE_REGISTRY}/${path#*/}:${tag}"
+  fi
+  podman load --input "$OFFLINE_ROOT/$DEMO_SEED_ARCHIVE"
+  if [ "$DEMO_SEED_IMAGE_REF" != "$DEMO_SEED_SOURCE_REF" ]; then
+    podman tag "$DEMO_SEED_SOURCE_REF" "$DEMO_SEED_IMAGE_REF"
+  fi
+  printf 'Use DEMO_SEED_IMAGE_REF=%s for seed:demo or demo:clear.\n' \
+    "$DEMO_SEED_IMAGE_REF"
+fi
 exit
 ```
 
@@ -551,6 +631,8 @@ TOPOLOGY=single-node
 # Test/demo only: set TOPOLOGY=single-node-demo.
 OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
+# Set this to the same local registry host if loaded images are retagged.
+TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
 cd /opt/kravhantering/current
 SUPPORT_LOCK_ARGS=()
 if [ "$TOPOLOGY" = "single-node-demo" ]; then
@@ -564,6 +646,25 @@ bin/kravhantering-images.sh --topology "$TOPOLOGY" \
   "${SUPPORT_LOCK_ARGS[@]}" \
   --env-file /etc/kravhantering/release.env \
   load --bundle "$OFFLINE_ROOT/images/$IMAGE_BUNDLE_NAME"
+
+DEMO_SEED_ARCHIVE="$(jq -r '.demoSeedArchive // empty' \
+  "$OFFLINE_ROOT/offline-manifest.json")"
+if [ -n "$DEMO_SEED_ARCHIVE" ]; then
+  DEMO_SEED_SOURCE_REF="$(jq -r '.imageRefs["demo-seed"]' \
+    "$OFFLINE_ROOT/offline-manifest.json")"
+  DEMO_SEED_IMAGE_REF="$DEMO_SEED_SOURCE_REF"
+  if [ -n "$TARGET_IMAGE_REGISTRY" ]; then
+    tag="${DEMO_SEED_SOURCE_REF##*:}"
+    path="${DEMO_SEED_SOURCE_REF%:*}"
+    DEMO_SEED_IMAGE_REF="${TARGET_IMAGE_REGISTRY}/${path#*/}:${tag}"
+  fi
+  podman load --input "$OFFLINE_ROOT/$DEMO_SEED_ARCHIVE"
+  if [ "$DEMO_SEED_IMAGE_REF" != "$DEMO_SEED_SOURCE_REF" ]; then
+    podman tag "$DEMO_SEED_SOURCE_REF" "$DEMO_SEED_IMAGE_REF"
+  fi
+  printf 'Use DEMO_SEED_IMAGE_REF=%s for seed:demo or demo:clear.\n' \
+    "$DEMO_SEED_IMAGE_REF"
+fi
 exit
 ```
 

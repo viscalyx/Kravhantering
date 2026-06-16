@@ -56,7 +56,9 @@ configuration change.
 
    Ensure the site has approved tag-style image refs for every single-node
    image named in the target release lock. Each configured ref must resolve to
-   the locked `imageId`.
+   the locked `imageId`. The optional `kravhantering-demo-seed` image can be
+   listed separately in the GitHub Release notes, but it is not part of
+   `container-stack.lock.json`, `release.env` or the production upgrade path.
 
 2. Confirm a tested SQL Server backup, volume snapshot or restore point.
    Complete the site-approved restore procedure before the window begins and
@@ -221,7 +223,9 @@ configuration change.
    Server password provisioning or rotation. For DBA-pre-provisioned production
    environments where the `DB_BOOTSTRAP_*` values have been removed, leave
    `RUN_BOOTSTRAP=false` to avoid unintended `ALTER LOGIN` password rotations.
-   Do not run `seed:demo` in production.
+
+   >[!IMPORTANT]
+   >Do not run `seed:demo` or the optional demo seed image in production.
 
    ```bash
    sudo -iu kravhantering
@@ -374,7 +378,9 @@ configuration change.
 
    For disposable test and development databases that should match the new
    release's current fixtures, rerun the destructive demo seed after
-   `seed:required`:
+   `seed:required` with the optional `kravhantering-demo-seed` image listed
+   under Demonstration Container Images in the GitHub Release notes. This image
+   is not configured in `/etc/kravhantering/release.env`.
 
    ```bash
    sudo -iu kravhantering
@@ -384,19 +390,12 @@ configuration change.
    set +a
 
    STACK_NETWORK=kravhantering-internal
-   DEMO=$PWD/demo-seed
-   TYPEORM=/workspace/typeorm
-   DOG=seed-dogfood.mjs
-   DOG_BUILD=seed-dogfood-build.mjs
-   RET_BUILD=seed-archiving-retention-build.mjs
+   DEMO_SEED_IMAGE_REF=ghcr.io/viscalyx/kravhantering-demo-seed:replace-with-release-tag
 
+   podman pull "$DEMO_SEED_IMAGE_REF"
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
-     --volume "$DEMO/seed.mjs:$TYPEORM/seed.mjs:ro" \
-     --volume "$DEMO/$DOG:$TYPEORM/$DOG:ro" \
-     --volume "$DEMO/$DOG_BUILD:$TYPEORM/$DOG_BUILD:ro" \
-     --volume "$DEMO/$RET_BUILD:$TYPEORM/$RET_BUILD:ro" \
-     "$DB_JOB_IMAGE_REF" seed:demo
+     "$DEMO_SEED_IMAGE_REF"
 
    exit
    ```

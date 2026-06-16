@@ -40,8 +40,3 @@ dev/
 docker-compose*.yml
 playwright*.config.ts
 vitest*.config.*
-
-typeorm/seed.mjs
-typeorm/seed-dogfood.mjs
-typeorm/seed-dogfood-build.mjs
-typeorm/seed-archiving-retention-build.mjs

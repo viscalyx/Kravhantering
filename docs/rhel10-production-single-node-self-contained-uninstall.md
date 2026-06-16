@@ -39,8 +39,9 @@ Run this section only for disposable test or development deployments where demo
 data was intentionally added. Keep SQL Server and Keycloak running until these
 commands finish.
 
-Clear SQL Server demo data. This deletes all non-required application rows,
-preserving only required system and lookup seed data:
+Clear SQL Server demo data with the optional `kravhantering-demo-seed` image
+from the release notes or your internal mirror. This deletes all non-required
+application rows, preserving only required system and lookup seed data:
 
 The `STACK_NETWORK` variable is for temporary `podman run` containers that
 need internal service-name DNS such as `keycloak` or `sqlserver`. `podman
@@ -54,10 +55,13 @@ set -a
 set +a
 
 STACK_NETWORK=kravhantering-internal
+DEMO_SEED_IMAGE_REF=ghcr.io/viscalyx/kravhantering-demo-seed:replace-with-release-tag
+
+podman pull "$DEMO_SEED_IMAGE_REF"
 
 podman run --rm --network "$STACK_NETWORK" \
   --env-file /etc/kravhantering/db-job.env \
-  "$DB_JOB_IMAGE_REF" demo:clear --confirm-clear-non-required-data
+  "$DEMO_SEED_IMAGE_REF" demo:clear --confirm-clear-non-required-data
 
 exit
 ```

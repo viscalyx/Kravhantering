@@ -122,9 +122,40 @@ export const DEFAULT_PORT = 1433
 export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000
 export const DEFAULT_WAIT_RETRY_MS = 1_000
 export const DEFAULT_WAIT_TIMEOUT_MS = 30_000
-const USAGE =
-  'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migrate|seed:required|seed:demo|demo:clear|setup|browse-config>'
+const DB_ADMIN_IMAGE_ENV = 'KRAVHANTERING_DB_ADMIN_IMAGE'
+const DB_JOB_IMAGE_KIND = 'db-job'
+const CORE_COMMANDS = Object.freeze([
+  'health',
+  'wait',
+  'reset',
+  'bootstrap',
+  'migrate',
+  'seed:required',
+])
+const DEMO_DATA_COMMANDS = Object.freeze(['seed:demo', 'demo:clear', 'setup'])
+const AUXILIARY_COMMANDS = Object.freeze(['browse-config'])
 const CONFIRM_CLEAR_NON_REQUIRED_DATA_FLAG = '--confirm-clear-non-required-data'
+
+function isProductionDbJobImage(env) {
+  return env[DB_ADMIN_IMAGE_ENV] === DB_JOB_IMAGE_KIND
+}
+
+function commandUsage(env) {
+  const commands = [
+    ...CORE_COMMANDS,
+    ...(isProductionDbJobImage(env) ? [] : DEMO_DATA_COMMANDS),
+    ...AUXILIARY_COMMANDS,
+  ]
+  return `Usage: node scripts/db-sqlserver-admin.mjs <${commands.join('|')}>`
+}
+
+function isSupportedCommand(command, env) {
+  return [
+    ...CORE_COMMANDS,
+    ...(isProductionDbJobImage(env) ? [] : DEMO_DATA_COMMANDS),
+    ...AUXILIARY_COMMANDS,
+  ].includes(command)
+}
 
 export function stripWrappingQuotes(value) {
   if (
@@ -1027,7 +1058,7 @@ export async function main(args, dependencies = {}) {
 
   const [command] = args
   if (!command) {
-    consoleObj.error(USAGE)
+    consoleObj.error(commandUsage(env))
     return 1
   }
 
@@ -1040,20 +1071,14 @@ export async function main(args, dependencies = {}) {
     return 0
   }
 
-  if (
-    ![
-      'health',
-      'wait',
-      'reset',
-      'bootstrap',
-      'migrate',
-      'seed:required',
-      'seed:demo',
-      'demo:clear',
-      'setup',
-    ].includes(command)
-  ) {
-    consoleObj.error(USAGE)
+  if (!isSupportedCommand(command, env)) {
+    if (isProductionDbJobImage(env) && DEMO_DATA_COMMANDS.includes(command)) {
+      consoleObj.error(
+        `${command} is only available from local source workflows or the kravhantering-demo-seed image. Use bootstrap, migrate and seed:required in the production db-job image.`,
+      )
+      return 1
+    }
+    consoleObj.error(commandUsage(env))
     return 1
   }
 

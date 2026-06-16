@@ -58,7 +58,7 @@ describe('container image contract', () => {
       .split('\n')
       .filter(line => line.startsWith('FROM node:24-bookworm-slim@sha256:'))
 
-    expect(fromLines).toHaveLength(4)
+    expect(fromLines).toHaveLength(5)
     expect(fromLines).toEqual(
       expect.arrayContaining([
         expect.stringMatching(
@@ -72,6 +72,9 @@ describe('container image contract', () => {
         ),
         expect.stringMatching(
           /^FROM node:24-bookworm-slim@sha256:[a-f0-9]{64} AS db-job$/,
+        ),
+        expect.stringMatching(
+          /^FROM node:24-bookworm-slim@sha256:[a-f0-9]{64} AS demo-seed$/,
         ),
       ]),
     )
@@ -113,6 +116,7 @@ describe('container image contract', () => {
     expect(target).toContain('typeorm/migrations')
     expect(target).toContain('typeorm/seed-required.mjs')
     expect(target).toContain('typeorm/seed-runner.mjs')
+    expect(target).toContain('ENV KRAVHANTERING_DB_ADMIN_IMAGE=db-job')
     expect(target).toContain('USER node')
     expect(target).toContain(
       'ENTRYPOINT ["node", "scripts/db-sqlserver-admin.mjs"]',
@@ -137,6 +141,28 @@ describe('container image contract', () => {
     expect(target).not.toContain('react')
   })
 
+  it('keeps demo-seed explicit and limited to demo seed code', () => {
+    const target = dockerfileTarget('demo-seed')
+
+    expect(target).toContain('COPY --from=db-job-dependencies')
+    expect(target).toContain('scripts/db-sqlserver-admin.mjs')
+    expect(target).toContain('typeorm/migrations')
+    expect(target).toContain('typeorm/seed-required.mjs')
+    expect(target).toContain('typeorm/seed-runner.mjs')
+    expect(target).toContain('typeorm/seed.mjs')
+    expect(target).toContain('typeorm/seed-dogfood.mjs')
+    expect(target).toContain('typeorm/seed-dogfood-build.mjs')
+    expect(target).toContain('typeorm/seed-archiving-retention-build.mjs')
+    expect(target).toContain('ENV KRAVHANTERING_DB_ADMIN_IMAGE=demo-seed')
+    expect(target).toContain('USER node')
+    expect(target).toContain(
+      'ENTRYPOINT ["node", "scripts/db-sqlserver-admin.mjs"]',
+    )
+    expect(target).toContain('CMD ["seed:demo"]')
+    expect(target).not.toContain('tests/')
+    expect(target).not.toContain('docs/')
+  })
+
   it('uses a Dockerfile-specific ignore file for production builds', () => {
     const dockerignore = readWorkspaceFile(
       'containers/app/Dockerfile.dockerignore',
@@ -147,9 +173,11 @@ describe('container image contract', () => {
     expect(dockerignore).toContain('.github/')
     expect(dockerignore).toContain('.devcontainer/')
     expect(dockerignore).toContain('public/api-docs/')
-    expect(dockerignore).toContain('typeorm/seed.mjs')
-    expect(dockerignore).toContain('typeorm/seed-dogfood.mjs')
-    expect(dockerignore).toContain('typeorm/seed-archiving-retention-build.mjs')
+    expect(dockerignore).not.toContain('typeorm/seed.mjs')
+    expect(dockerignore).not.toContain('typeorm/seed-dogfood.mjs')
+    expect(dockerignore).not.toContain(
+      'typeorm/seed-archiving-retention-build.mjs',
+    )
     expect(dockerignore).not.toContain('typeorm/seed-required.mjs')
   })
 
@@ -218,6 +246,12 @@ describe('container image contract', () => {
     expect(packageJson.scripts['container:build:db-job:no-cache']).toBe(
       'docker buildx build --no-cache --file containers/app/Dockerfile --target db-job --tag localhost/kravhantering/db-job:local --load .',
     )
+    expect(packageJson.scripts['container:build:demo-seed']).toBe(
+      'docker buildx build --file containers/app/Dockerfile --target demo-seed --tag localhost/kravhantering/demo-seed:local --load .',
+    )
+    expect(packageJson.scripts['container:build:demo-seed:no-cache']).toBe(
+      'docker buildx build --no-cache --file containers/app/Dockerfile --target demo-seed --tag localhost/kravhantering/demo-seed:local --load .',
+    )
     expect(packageJson.scripts['container:build:hsa-directory-mock']).toBe(
       'docker buildx build --file containers/hsa-directory-mock/Dockerfile --tag localhost/kravhantering/hsa-directory-mock:local --load containers/hsa-directory-mock',
     )
@@ -283,9 +317,8 @@ describe('container image contract', () => {
     expect(compose).toContain(
       'db-bootstrap:\n        condition: service_completed_successfully',
     )
-    expect(compose).toContain(
-      './typeorm/seed.mjs:/workspace/typeorm/seed.mjs:ro',
-    )
+    expect(compose).toContain('image: "{{demoSeedImage}}"')
+    expect(compose).not.toContain('./typeorm/seed.mjs')
     expect(compose).toContain('name: "{{sqlServerVolumeName}}"')
     expect(dbJobEnv).toContain('DB_BOOTSTRAP_ADMIN_USER=sa')
     expect(dbJobEnv).toContain('DB_BOOTSTRAP_APP_USER=kravhantering_app')

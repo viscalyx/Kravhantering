@@ -6,7 +6,7 @@ image.
 
 ## Owned Configuration
 
-- Env vars for migration, required seed, and optional demo seed jobs.
+- Env vars for migration and required seed jobs.
 - Public example values in `.env.db-job.example`.
 - One-shot command documentation for migration and required seed jobs.
 
@@ -27,7 +27,6 @@ manual runs pass the admin command as arguments:
 - `bootstrap` creates the database plus the app and job SQL principals.
 - `migrate` applies TypeORM migrations.
 - `seed:required` applies only required system and lookup seed data.
-- `demo:clear --confirm-clear-non-required-data` clears non-required rows.
 - `health` runs a simple SQL Server read check.
 - `wait` polls SQL Server until it responds.
 
@@ -41,12 +40,9 @@ The image installs only the dependency subset needed by the one-shot job:
 `mssql`, `typeorm`, and `reflect-metadata`. It deliberately does not include
 the Next.js application dependency tree.
 
-`seed:demo` remains a local development and release-smoke command in the
-source tree. The local container stack runs it only in release-smoke mode by
-mounting the demo seed files read-only from the workspace. Demo/test data must
-not be baked into this production `db-job` image. `demo:clear` is available in
-the production image because it only removes non-required data and does not
-load the demo seed files.
+Demo/test data must not be baked into this production `db-job` image. See
+[../app/README.md](../app/README.md) for the separate opt-in
+`kravhantering-demo-seed` image contract.
 
 ## Environment Variables
 

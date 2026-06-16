@@ -75,18 +75,13 @@ services:
     restart: "no"
 
   db-seed-demo:
-    image: "{{dbJobImage}}"
+    image: "{{demoSeedImage}}"
     command: ["seed:demo"]
     depends_on:
       db-seed-required:
         condition: service_completed_successfully
     env_file:
       - ./containers/db-job/.env.db-job.local
-    volumes:
-      - ./typeorm/seed.mjs:/workspace/typeorm/seed.mjs:ro
-      - ./typeorm/seed-dogfood.mjs:/workspace/typeorm/seed-dogfood.mjs:ro
-      - ./typeorm/seed-dogfood-build.mjs:/workspace/typeorm/seed-dogfood-build.mjs:ro
-      - ./typeorm/seed-archiving-retention-build.mjs:/workspace/typeorm/seed-archiving-retention-build.mjs:ro
     profiles:
       - release-smoke
     restart: "no"

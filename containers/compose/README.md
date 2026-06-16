@@ -120,8 +120,8 @@ default network.
 The local orchestration does the same explicit ordering intended for CI:
 
 1. Generate short-lived TLS files in `tmp/container-tls`.
-2. Build `app-runtime`, `db-job` and, for release-smoke, the HSA person lookup
-   adapter plus HSA directory mock with Docker Buildx.
+2. Build `app-runtime`, `db-job` and, for release-smoke, `demo-seed`, the HSA
+   person lookup adapter plus HSA directory mock with Docker Buildx.
 3. Load those local images into Podman.
 4. Generate `container-stack.lock.json` and `container-stack.compose.yml`.
 5. Start SQL Server and Keycloak.
@@ -140,9 +140,9 @@ TLS private keys or raw container inspect output.
 ## PR Smoke Workflow
 
 The PR workflow in `.github/workflows/container-pr-smoke.yml` builds
-`app-runtime` and `db-job` with Docker Buildx, tags them with local
-`localhost/kravhantering/...:pr-<pr>-<run-id>-<sha>` references and then starts
-the release-smoke stack without rebuilding:
+`app-runtime`, `db-job` and `demo-seed` with Docker Buildx, tags them with
+local `localhost/kravhantering/...:pr-<pr>-<run-id>-<sha>` references and then
+starts the release-smoke stack without rebuilding:
 
 ```bash
 node scripts/containers/run-local-stack.mjs up \

@@ -175,6 +175,9 @@ describe('container stack helpers', () => {
       DB_JOB_IMAGE: 'localhost/kravhantering/db-job',
       DB_JOB_SOURCE: 'pr-build',
       DB_JOB_TAG: 'pr-7-99-deadbeef',
+      DEMO_SEED_IMAGE: 'localhost/kravhantering/demo-seed',
+      DEMO_SEED_SOURCE: 'pr-build',
+      DEMO_SEED_TAG: 'pr-7-99-deadbeef',
     }
     const config = createLocalStackConfig({
       env,
@@ -187,6 +190,8 @@ describe('container stack helpers', () => {
       appRuntimeImageReference:
         'localhost/kravhantering/app-runtime:pr-7-99-deadbeef',
       dbJobImageReference: 'localhost/kravhantering/db-job:pr-7-99-deadbeef',
+      demoSeedImageReference:
+        'localhost/kravhantering/demo-seed:pr-7-99-deadbeef',
       skipBuild: true,
     })
 
@@ -270,12 +275,16 @@ describe('container stack helpers', () => {
     const commandText = commands.join('\n')
     expect(commandText).not.toContain('container:build:app-runtime')
     expect(commandText).not.toContain('container:build:db-job')
+    expect(commandText).not.toContain('container:build:demo-seed')
     expect(commandText).not.toContain('container:build:hsa-directory-mock')
     expect(spawned).toContain(
       'docker save localhost/kravhantering/app-runtime:pr-7-99-deadbeef',
     )
     expect(spawned).toContain(
       'docker save localhost/kravhantering/db-job:pr-7-99-deadbeef',
+    )
+    expect(spawned).toContain(
+      'docker save localhost/kravhantering/demo-seed:pr-7-99-deadbeef',
     )
     expect(spawned).toContain(
       'docker save localhost/kravhantering/hsa-directory-mock:local',
@@ -297,10 +306,11 @@ describe('container stack helpers', () => {
       '--db-job-manifest-digest sha256:db-job-manifest-pr',
     )
     expect(commandText).toContain('--db-job-image-id sha256:db-job-pr')
+    expect(commandText).not.toContain('/workspace/typeorm/seed.mjs')
     expect(
       commands.some(command =>
         command.endsWith(
-          'localhost/kravhantering/db-job:pr-7-99-deadbeef seed:demo',
+          'localhost/kravhantering/demo-seed:pr-7-99-deadbeef seed:demo',
         ),
       ),
     ).toBe(true)
@@ -733,7 +743,7 @@ describe('container stack helpers', () => {
     ).resolves.toBe(0)
 
     const seedDemoIndex = commands.findIndex(command =>
-      command.endsWith('localhost/kravhantering/db-job:local seed:demo'),
+      command.endsWith('localhost/kravhantering/demo-seed:local seed:demo'),
     )
     const appRuntimeIndex = commands.findIndex(command =>
       command.includes(
@@ -754,7 +764,9 @@ describe('container stack helpers', () => {
     expect(commands).toContain(
       'podman compose -f container-stack.compose.yml --project-name kravhantering-container-stack-release-smoke-smoke up -d sqlserver keycloak',
     )
+    expect(commands).toContain('npm run container:build:demo-seed')
     expect(commands).toContain('npm run container:build:hsa-directory-mock')
+    expect(commands.join('\n')).not.toContain('/workspace/typeorm/seed.mjs')
     expect(seedDemoIndex).toBeGreaterThan(-1)
     expect(hsaIndex).toBeGreaterThan(seedDemoIndex)
     expect(kongIndex).toBeGreaterThan(hsaIndex)
@@ -771,6 +783,10 @@ describe('container stack helpers', () => {
       consoleObj: {
         error: vi.fn(),
         log: vi.fn(),
+      },
+      env: {
+        DEMO_SEED_MANIFEST_DIGEST_REF:
+          'ghcr.io/viscalyx/kravhantering-demo-seed@sha256:demo-seed-release',
       },
       execFileSync: vi.fn((command, args) => {
         expect(command).toBe('podman')
@@ -865,6 +881,9 @@ describe('container stack helpers', () => {
       'podman pull ghcr.io/viscalyx/kravhantering-db-job@sha256:db-job-release',
     )
     expect(commands).toContain(
+      'podman pull ghcr.io/viscalyx/kravhantering-demo-seed@sha256:demo-seed-release',
+    )
+    expect(commands).toContain(
       'podman pull docker.io/kong/kong-gateway@sha256:kong',
     )
     expect(commands).toContain(
@@ -878,6 +897,13 @@ describe('container stack helpers', () => {
       commands.some(command =>
         command.endsWith(
           'ghcr.io/viscalyx/kravhantering-db-job@sha256:db-job-release seed:required',
+        ),
+      ),
+    ).toBe(true)
+    expect(
+      commands.some(command =>
+        command.endsWith(
+          'ghcr.io/viscalyx/kravhantering-demo-seed@sha256:demo-seed-release seed:demo',
         ),
       ),
     ).toBe(true)
