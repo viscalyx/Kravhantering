@@ -177,10 +177,20 @@ export function createLocalStackConfig(options = {}) {
     source: 'local-build',
     tag: LOCAL_IMAGE_TAG,
   })
-  const demoSeedImageReference =
+  const explicitDemoSeedImageReference =
     readNonEmpty(env.DEMO_SEED_MANIFEST_DIGEST_REF) ??
-    readNonEmpty(env.DEMO_SEED_IMAGE_REF) ??
-    imageReference(demoSeedImage)
+    readNonEmpty(env.DEMO_SEED_IMAGE_REF)
+  const demoSeedImageReference =
+    explicitDemoSeedImageReference ?? imageReference(demoSeedImage)
+  if (
+    mode === 'release-smoke' &&
+    options.releaseImagesFromLock &&
+    !explicitDemoSeedImageReference
+  ) {
+    throw new Error(
+      'Release-smoke lock mode requires DEMO_SEED_MANIFEST_DIGEST_REF or DEMO_SEED_IMAGE_REF. Configure a demo-seed image reference before using --release-images-from-lock.',
+    )
+  }
   const hsaDirectoryMockImage = readEnvImageConfig(env, 'HSA_DIRECTORY_MOCK', {
     image: LOCAL_HSA_DIRECTORY_MOCK_IMAGE_NAME,
     source: 'local-build',

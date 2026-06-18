@@ -1489,6 +1489,9 @@ describe('trusted container release helpers', () => {
     expect(workflow).toContain(
       'sbom-path: tmp/container-release-artifacts/sbom/hsa-person-lookup-adapter.spdx.json',
     )
+    expect(workflow).toMatch(
+      /node scripts\/containers\/write-hashes\.mjs[\s\S]*tmp\/container-release-artifacts\/sbom\/demo-seed\.spdx\.json[\s\S]*tmp\/container-release-artifacts\/sbom\/hsa-person-lookup-adapter\.spdx\.json/u,
+    )
     expect(workflow.match(/push-to-registry: false/g)).toHaveLength(10)
     expect(workflow).not.toContain('push-to-registry: true')
     expect(workflow).toContain('--release-images-from-lock')

@@ -776,6 +776,19 @@ describe('container stack helpers', () => {
     )
   })
 
+  it('requires an explicit demo seed image for release-smoke lock mode', () => {
+    expect(() =>
+      createLocalStackConfig({
+        env: {},
+        mode: 'release-smoke',
+        releaseImagesFromLock: true,
+        runId: 'release',
+      }),
+    ).toThrow(
+      'Release-smoke lock mode requires DEMO_SEED_MANIFEST_DIGEST_REF or DEMO_SEED_IMAGE_REF.',
+    )
+  })
+
   it('uses manifest-locked release images from the stack lock without local build or load', async () => {
     const commands = []
     const spawned = []

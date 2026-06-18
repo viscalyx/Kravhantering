@@ -480,6 +480,7 @@ jobs:
             tmp/container-release-artifacts/metadata/release-metadata.json \
             tmp/container-release-artifacts/sbom/app-runtime.spdx.json \
             tmp/container-release-artifacts/sbom/db-job.spdx.json \
+            tmp/container-release-artifacts/sbom/demo-seed.spdx.json \
             tmp/container-release-artifacts/sbom/hsa-person-lookup-adapter.spdx.json \
             tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json || true
 
