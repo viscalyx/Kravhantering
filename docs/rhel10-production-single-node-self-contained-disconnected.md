@@ -491,7 +491,7 @@ TOPOLOGY=single-node
 # Test/demo only: set TOPOLOGY=single-node-demo.
 OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
-# Set this to the same local registry host if loaded images are retagged.
+# Set this to the same local registry host if loaded images are re-tagged.
 TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
 cd /opt/kravhantering/current
 SUPPORT_LOCK_ARGS=()
@@ -631,7 +631,7 @@ TOPOLOGY=single-node
 # Test/demo only: set TOPOLOGY=single-node-demo.
 OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
 IMAGE_BUNDLE_NAME="kravhantering-images-${VERSION}-${TOPOLOGY}.tar.gz"
-# Set this to the same local registry host if loaded images are retagged.
+# Set this to the same local registry host if loaded images are re-tagged.
 TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
 cd /opt/kravhantering/current
 SUPPORT_LOCK_ARGS=()
