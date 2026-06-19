@@ -511,6 +511,7 @@ function PdfVersionSummary({
   const requirementPackageNames = version.requirementPackages
     .map(requirementPackage => requirementPackage.name)
     .filter(name => name.length > 0)
+  const { createdBy: createdByLabel } = labels.columns
   const createdBy = formatActorDisplayNameForLocale(version.createdBy, locale)
 
   return (
@@ -577,7 +578,7 @@ function PdfVersionSummary({
           value={formatReportBoolean(version.requiresTesting, labels)}
         />
         {createdBy && (
-          <PdfMetadataItem label={labels.columns.createdBy} value={createdBy} />
+          <PdfMetadataItem label={createdByLabel} value={createdBy} />
         )}
       </View>
       {version.normReferences.length > 0 && (

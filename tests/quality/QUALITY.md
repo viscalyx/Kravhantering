@@ -159,9 +159,11 @@ utkast som paketmedlemmar.
 
 **Scenario 20 code coverage:** Publiceringens flytt av
 kravpaketsmedlemskap finns i `transitionStatus()` i
-`lib/dal/requirements.ts`. Kravpaketets aktuella list- och räkneytor filtrerar
-publicerade kravversioner i `lib/dal/requirement-packages.ts`.
-`tests/quality/functional.test.ts` skapar en publicerad version i ett
+`lib/dal/requirements.ts:1120-1141`, där föregångaren arkiveras och äldre
+paketkopplingar för samma krav tas bort. Kravpaketets aktuella list- och
+räkneytor filtrerar publicerade kravversioner i
+`lib/dal/requirement-packages.ts:252-312`. Den körbara kontrollen i
+`tests/quality/functional.test.ts:1093-1170` skapar en publicerad version i ett
 kravpaket, förbereder ett utkast med nytt paketval, verifierar att
 paketlistan fortfarande visar den publicerade versionen, publicerar utkastet
 och kontrollerar att bara den nya publicerade versionens paketkoppling finns
@@ -200,13 +202,15 @@ medlemskapslistor och urval ska exkludera den arkiverade versionen och bara
 behandla publicerade kravversioner som användbara paketmedlemmar.
 
 **Scenario 21 code coverage:** Arkiveringsflödet i
-`lib/dal/requirements.ts` lämnar kravpaketskopplingen kvar när ingen ny
-publicerad efterträdare ersätter den. Kravpaketets praktiska list- och
-räkneytor i `lib/dal/requirement-packages.ts` filtrerar till publicerade
-kravversioner. `tests/quality/functional.test.ts` arkiverar ett paketerat krav
-utan efterträdare, kontrollerar att paketkopplingen finns kvar på den
-arkiverade versionen och verifierar att kravpaketets praktiska lista inte
-returnerar kravet.
+`lib/dal/requirements.ts:801-920` markerar den publicerade kravversionen för
+arkivering och godkänner arkiveringen utan att radera kravpaketskopplingen när
+ingen ny publicerad efterträdare ersätter den. Kravpaketets praktiska list- och
+räkneytor i `lib/dal/requirement-packages.ts:252-312` filtrerar till
+publicerade kravversioner. Den körbara kontrollen i
+`tests/quality/functional.test.ts:1172-1213` arkiverar ett paketerat krav utan
+efterträdare, kontrollerar att paketkopplingen finns kvar på den arkiverade
+versionen och verifierar att kravpaketets praktiska lista inte returnerar
+kravet.
 
 **How to verify:**
 
@@ -243,14 +247,15 @@ användaren inkluderar status `Arkiverad` i listans statusfilter.
 
 **Scenario 22 code coverage:** Kravunderlagets urval via
 `listRequirementSelectionMatchedRequirements()` i
-`lib/dal/requirement-selection-questions.ts` filtrerar paketträffar till
-publicerade kravversioner. Kravbibliotekets lista via `listRequirements()` i
-`lib/dal/requirements.ts` tillämpar kravpaketsfiltret på den visade versionen
-och låter statusfiltret avgöra om arkiverade krav ingår.
-`tests/quality/functional.test.ts` skapar ett publicerat och ett arkiverat krav
-i samma kravpaket, verifierar att kravunderlagets paketmatchning bara ger det
-publicerade kravet och att kravbibliotekets paketfilter kan visa det
-arkiverade kravet när status `Arkiverad` väljs.
+`lib/dal/requirement-selection-questions.ts:721-815` filtrerar paketträffar
+till publicerade kravversioner. Kravbibliotekets lista via `listRequirements()`
+i `lib/dal/requirements.ts:159-237` anropar SQL-byggaren där statusfiltret
+finns i `lib/dal/requirements-list-sql.mjs:92-95` och kravpaketsfiltret finns
+i `lib/dal/requirements-list-sql.mjs:135-142`. Den körbara kontrollen i
+`tests/quality/functional.test.ts:1215-1265` skapar ett publicerat och ett
+arkiverat krav i samma kravpaket, verifierar att kravunderlagets
+paketmatchning bara ger det publicerade kravet och att kravbibliotekets
+paketfilter kan visa det arkiverade kravet när status `Arkiverad` väljs.
 
 **How to verify:**
 
