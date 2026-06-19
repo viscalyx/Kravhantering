@@ -87,6 +87,9 @@ describe('HsaPersonChangeModal', () => {
     expect(
       within(dialog).getByRole('textbox', { name: 'Current HSA-id' }),
     ).toBeDisabled()
+    expect(within(dialog).queryByRole('textbox', { name: 'Name' })).toBeNull()
+    expect(within(dialog).queryByRole('textbox', { name: 'Email' })).toBeNull()
+    expect(within(dialog).getByText('Unavailable')).toBeInTheDocument()
     const newInput = within(dialog).getByRole('textbox', {
       name: /New HSA-id/,
     })
@@ -152,7 +155,9 @@ describe('HsaPersonChangeModal', () => {
         '/api/requirement-responsibility-people/verify',
         expect.objectContaining({ method: 'POST' }),
       )
-      expect(within(dialog).getByDisplayValue('Nora New')).toBeInTheDocument()
+      expect(
+        within(dialog).getByText('Nora New (nora.new@example.test)'),
+      ).toBeInTheDocument()
     })
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Change' }))

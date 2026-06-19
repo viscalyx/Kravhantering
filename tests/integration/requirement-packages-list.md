@@ -74,7 +74,10 @@ action.
 1. Assert `Kravpaketsansvarigs HSA-id` is locked and has a
    `Byt kravpaketsansvarig` action.
 1. Open `Byt kravpaketsansvarig` and assert the current HSA-id field plus the
-   editable prefix and suffix controls for the new HSA-id are shown.
+   editable prefix and suffix controls for the new HSA-id are shown, without
+   separate locked name or email fields.
+1. Enter a valid replacement suffix, tab from the suffix field, and assert the
+   verified person summary appears without clicking the refresh action.
 1. Select the seeded package co-author HSA-id prefix, enter its suffix, and
    assert the conflict is shown.
 

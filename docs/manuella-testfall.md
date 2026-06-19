@@ -578,7 +578,9 @@ med piltangenter och stäng med Escape.
    samt inloggad användare som kravpaketsansvarig utan redigerbart
    ansvarsfält.
 1. Filtrera, redigera och arkivera testpaketet.
-1. Byt kravpaketsansvarig med HSA-id och testa medförfattare.
+1. Byt kravpaketsansvarig med HSA-id, tabba från suffixfältet och kontrollera
+   att verifierat namn och e-post visas som text i bytesdialogen, och testa
+   medförfattare.
 1. Skapa en kravurvalsfråga, lägg till svar och ändra ordning.
 1. Kontrollera synlighetsvillkor, hierarkimodal och kravurvalsförhandsvisning.
 
@@ -911,12 +913,16 @@ taxonomiflik i Admincenter.
 
 ### ADMIN-12: byte av kravområdesägare använder HSA-id
 
-**Steg:** Ändra kravområdesägare via HSA-id, verifiera personuppslag och spara.
+**Steg:** Öppna kravområdeslistan och kontrollera att radåtgärderna för
+redigering och borttagning visas som ikonknappar. Öppna sedan ett kravområde
+för redigering. Kontrollera att formuläret öppnas i en modal, att
+kravområdesmedförfattare visas i högerkolumnen och ändra kravområdesägare via
+HSA-id med verifierat personuppslag.
 
-**Förväntat resultat:** Ägarskapet sparas på HSA-id och visas med
-persondetaljer. Efter nästa lyckade ändring kan den inloggade aktörens egen
-levande personrad uppdateras från sessionen utan att inloggning eller sparande
-fördröjs.
+**Förväntat resultat:** Listan visar ikonbaserade knappar för Redigera och Ta
+bort. Ägarskapet sparas på HSA-id och visas med persondetaljer. Efter nästa
+lyckade ändring kan den inloggade aktörens egen levande personrad uppdateras
+från sessionen utan att inloggning eller sparande fördröjs.
 
 ### ADMIN-13: HSA-id-prefix administreras från Identitet
 

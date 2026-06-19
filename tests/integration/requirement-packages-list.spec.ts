@@ -210,6 +210,23 @@ for (const viewport of viewports) {
         await expect(
           changeDialog.getByRole('button', { name: 'Hämta' }),
         ).toBeVisible()
+        await expect(
+          changeDialog.getByRole('textbox', { name: 'Namn' }),
+        ).toHaveCount(0)
+        await expect(
+          changeDialog.getByRole('textbox', { name: 'E-post' }),
+        ).toHaveCount(0)
+        await expect(changeDialog.getByText('Inte hämtat')).toBeVisible()
+
+        await fillEditableHsaId(
+          changeDialog,
+          'Nya kravpaketsansvarigs HSA-id',
+          'SE5560000001-admin1',
+        )
+        await nextLeadInput.press('Tab')
+        await expect(
+          changeDialog.getByText('Ada Admin (ada.admin@example.test)'),
+        ).toBeVisible()
 
         await fillEditableHsaId(
           changeDialog,

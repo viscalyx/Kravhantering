@@ -185,6 +185,7 @@ export default function HsaPersonChangeModal({
             purpose={purpose}
             required
             scopeId={scopeId}
+            showPersonSummaryAsText
             unavailableText={unavailableText}
           />
         </div>

@@ -125,6 +125,7 @@ export default function HsaPersonVerifyField({
   )
   const currentHsaIdRef = useRef(trimmedHsaId)
   const refreshButtonRef = useRef<HTMLButtonElement>(null)
+  const skipBlurVerifyForRefreshPointerRef = useRef(false)
   const activeVerification =
     verification?.hsaId === trimmedHsaId ? verification : null
   const displayName =
@@ -280,8 +281,12 @@ export default function HsaPersonVerifyField({
           id={inputId}
           maxLength={maxSuffixLength}
           onBlur={event => {
-            if (event.relatedTarget === refreshButtonRef.current) return
-            void verifyPerson('reuse_local')
+            const skipBlurVerify =
+              event.relatedTarget === refreshButtonRef.current &&
+              skipBlurVerifyForRefreshPointerRef.current
+            skipBlurVerifyForRefreshPointerRef.current = false
+            if (skipBlurVerify) return
+            void verifyPerson('refresh')
           }}
           onChange={event => {
             setError(null)
@@ -307,6 +312,9 @@ export default function HsaPersonVerifyField({
           disabled={disabled || loading || !isHsaId(trimmedHsaId)}
           onClick={() => {
             void verifyPerson('refresh')
+          }}
+          onPointerDown={() => {
+            skipBlurVerifyForRefreshPointerRef.current = true
           }}
           ref={refreshButtonRef}
           title={loading ? fetchingLabel : fetchLabel}

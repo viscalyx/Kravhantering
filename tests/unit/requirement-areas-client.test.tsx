@@ -55,6 +55,24 @@ const hsaIdPrefixPayload = {
   ],
 }
 
+async function openAreaEditDialog() {
+  fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+  return screen.findByRole('dialog', { name: 'area.editArea' })
+}
+
+async function openAreaCoAuthorDraft(dialog: HTMLElement) {
+  fireEvent.click(
+    within(dialog).getByRole('button', { name: /area\.addCoAuthor/ }),
+  )
+  const coAuthorInput = within(dialog).getByRole('textbox', {
+    name: /area\.coAuthorHsaId/,
+  })
+  await waitFor(() => {
+    expect(coAuthorInput).toBeEnabled()
+  })
+  return coAuthorInput
+}
+
 describe('RequirementAreasClient', () => {
   afterEach(cleanup)
 
@@ -77,6 +95,16 @@ describe('RequirementAreasClient', () => {
 
     expect(screen.getByText('INT')).toBeInTheDocument()
     expect(screen.getByText('SE5560000001-annaj')).toBeInTheDocument()
+    const editAction = screen.getAllByRole('button', {
+      name: /common\.edit/i,
+    })[0]
+    const deleteAction = screen.getAllByRole('button', {
+      name: /common\.delete/i,
+    })[0]
+    expect(editAction).not.toHaveTextContent('common.edit')
+    expect(deleteAction).not.toHaveTextContent('common.delete')
+    expect(editAction.querySelector('svg')).toBeInTheDocument()
+    expect(deleteAction.querySelector('svg')).toBeInTheDocument()
     const urls = fetchMock.mock.calls.map(call => call[0])
     expect(urls).not.toContain('/api/owners')
   })
@@ -89,13 +117,24 @@ describe('RequirementAreasClient', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
-    fireEvent.change(screen.getByRole('textbox', { name: /area\.prefix/ }), {
-      target: { value: 'NEW' },
+    const dialog = screen.getByRole('dialog', { name: 'area.newArea' })
+    expect(within(dialog).queryByText('area.coAuthors')).toBeNull()
+
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: /area\.prefix/ }),
+      {
+        target: { value: 'NEW' },
+      },
+    )
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: /area\.name/ }),
+      {
+        target: { value: 'New requirement area' },
+      },
+    )
+    const ownerInput = within(dialog).getByRole('textbox', {
+      name: /area\.owner/,
     })
-    fireEvent.change(screen.getByRole('textbox', { name: /area\.name/ }), {
-      target: { value: 'New requirement area' },
-    })
-    const ownerInput = screen.getByRole('textbox', { name: /area\.owner/ })
     await waitFor(() => {
       expect(ownerInput).toBeEnabled()
     })
@@ -112,7 +151,9 @@ describe('RequirementAreasClient', () => {
       return okJson({})
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: /common\.save/i }),
+    )
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -141,22 +182,25 @@ describe('RequirementAreasClient', () => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+    const dialog = await openAreaEditDialog()
 
     await waitFor(() => {
-      expect(screen.getByText('area.noCoAuthors')).toBeInTheDocument()
+      expect(within(dialog).getByText('area.noCoAuthors')).toBeInTheDocument()
     })
-    await waitFor(() => {
-      expect(
-        screen.getByRole('textbox', { name: /area\.coAuthorHsaId/ }),
-      ).toBeEnabled()
-    })
+    expect(
+      within(dialog).getByRole('button', { name: /area\.addCoAuthor/ }),
+    ).toBeEnabled()
+    expect(
+      within(dialog).queryByRole('textbox', { name: /area\.coAuthorHsaId/ }),
+    ).toBeNull()
 
-    const ownerInput = screen.getByRole('textbox', { name: /area\.owner/ })
+    const ownerInput = within(dialog).getByRole('textbox', {
+      name: /area\.owner/,
+    })
     expect(ownerInput).toBeDisabled()
     expect(ownerInput).toHaveValue('SE5560000001-annaj')
     expect(
-      screen.getByRole('button', { name: /area\.changeOwner/ }),
+      within(dialog).getByRole('button', { name: /area\.changeOwner/ }),
     ).toBeInTheDocument()
   })
 
@@ -166,10 +210,13 @@ describe('RequirementAreasClient', () => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
-    fireEvent.change(screen.getByRole('textbox', { name: /area\.name/ }), {
-      target: { value: 'Updated' },
-    })
+    const dialog = await openAreaEditDialog()
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: /area\.name/ }),
+      {
+        target: { value: 'Updated' },
+      },
+    )
 
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === '/api/requirement-areas/1' && init?.method === 'PUT')
@@ -179,7 +226,9 @@ describe('RequirementAreasClient', () => {
       return okJson({})
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: /common\.save/i }),
+    )
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -229,17 +278,12 @@ describe('RequirementAreasClient', () => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+    const dialog = await openAreaEditDialog()
 
     await waitFor(() => {
-      expect(screen.getByText('area.noCoAuthors')).toBeInTheDocument()
+      expect(within(dialog).getByText('area.noCoAuthors')).toBeInTheDocument()
     })
-    const coAuthorInput = screen.getByRole('textbox', {
-      name: /area\.coAuthorHsaId/,
-    })
-    await waitFor(() => {
-      expect(coAuthorInput).toBeEnabled()
-    })
+    const coAuthorInput = await openAreaCoAuthorDraft(dialog as HTMLElement)
     fireEvent.change(coAuthorInput, { target: { value: 'coa1' } })
     let verifyButton: HTMLButtonElement | undefined
     await waitFor(() => {
@@ -274,7 +318,7 @@ describe('RequirementAreasClient', () => {
     expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
       coAuthorHsaIds: ['SE5560000001-coa1'],
     })
-    expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
+    expect(within(dialog).getByText(/Cora CoAuthor/)).toBeInTheDocument()
   })
 
   it('shows an error and keeps the requirement area co-author draft when assignment autosave fails', async () => {
@@ -310,17 +354,12 @@ describe('RequirementAreasClient', () => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+    const dialog = await openAreaEditDialog()
 
     await waitFor(() => {
-      expect(screen.getByText('area.noCoAuthors')).toBeInTheDocument()
+      expect(within(dialog).getByText('area.noCoAuthors')).toBeInTheDocument()
     })
-    const coAuthorInput = screen.getByRole('textbox', {
-      name: /area\.coAuthorHsaId/,
-    })
-    await waitFor(() => {
-      expect(coAuthorInput).toBeEnabled()
-    })
+    const coAuthorInput = await openAreaCoAuthorDraft(dialog as HTMLElement)
     fireEvent.change(coAuthorInput, { target: { value: 'coa1' } })
     let verifyButton: HTMLButtonElement | undefined
     await waitFor(() => {
@@ -334,11 +373,11 @@ describe('RequirementAreasClient', () => {
     fireEvent.click(verifyButton as HTMLButtonElement)
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(
+      expect(within(dialog).getByRole('alert')).toHaveTextContent(
         'Requirement area co-author autosave failed',
       )
     })
-    expect(screen.getByText('area.noCoAuthors')).toBeInTheDocument()
+    expect(within(dialog).queryByText('area.noCoAuthors')).toBeNull()
     expect(coAuthorInput).toHaveValue('coa1')
   })
 
@@ -367,13 +406,13 @@ describe('RequirementAreasClient', () => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+    const dialog = await openAreaEditDialog()
 
     await waitFor(() => {
-      expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
+      expect(within(dialog).getByText(/Cora CoAuthor/)).toBeInTheDocument()
     })
     fireEvent.click(
-      screen.getByRole('button', { name: /area\.removeCoAuthor/ }),
+      within(dialog).getByRole('button', { name: /area\.removeCoAuthor/ }),
     )
 
     await waitFor(() => {
@@ -428,21 +467,21 @@ describe('RequirementAreasClient', () => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
+    const dialog = await openAreaEditDialog()
 
     await waitFor(() => {
-      expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
+      expect(within(dialog).getByText(/Cora CoAuthor/)).toBeInTheDocument()
     })
     fireEvent.click(
-      screen.getByRole('button', { name: /area\.removeCoAuthor/ }),
+      within(dialog).getByRole('button', { name: /area\.removeCoAuthor/ }),
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(
+      expect(within(dialog).getByRole('alert')).toHaveTextContent(
         'Requirement area co-author removal failed',
       )
     })
-    expect(screen.getByText('Cora CoAuthor')).toBeInTheDocument()
+    expect(within(dialog).getByText(/Cora CoAuthor/)).toBeInTheDocument()
     const putCall = fetchMock.mock.calls.find(
       ([url, init]) =>
         url === '/api/requirement-areas/1/co-authors' &&
@@ -459,10 +498,14 @@ describe('RequirementAreasClient', () => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
-    fireEvent.click(screen.getByRole('button', { name: /area\.changeOwner/ }))
+    const editDialog = await openAreaEditDialog()
+    fireEvent.click(
+      within(editDialog).getByRole('button', { name: /area\.changeOwner/ }),
+    )
 
-    const dialog = screen.getByRole('dialog')
+    const dialog = screen.getByRole('dialog', {
+      name: /area\.changeOwnerTitle/,
+    })
     expect(
       within(dialog).getByRole('textbox', { name: /area\.currentOwner/ }),
     ).toHaveValue('SE5560000001-annaj')
@@ -527,11 +570,16 @@ describe('RequirementAreasClient', () => {
       JSON.stringify({ ownerHsaId: 'NO5560000001-next1' }),
     )
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(
+        screen.queryByRole('dialog', { name: /area\.changeOwnerTitle/ }),
+      ).toBeNull()
     })
-    expect(screen.getByRole('textbox', { name: /area\.owner/ })).toHaveValue(
-      'NO5560000001-next1',
-    )
+    expect(
+      within(editDialog).getByRole('textbox', { name: /area\.owner/ }),
+    ).toHaveValue('NO5560000001-next1')
+    expect(
+      screen.getByRole('dialog', { name: 'area.editArea' }),
+    ).toBeInTheDocument()
   })
 
   it('keeps the modal open and shows an error when owner change fails', async () => {
@@ -540,10 +588,14 @@ describe('RequirementAreasClient', () => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
-    fireEvent.click(screen.getByRole('button', { name: /area\.changeOwner/ }))
+    const editDialog = await openAreaEditDialog()
+    fireEvent.click(
+      within(editDialog).getByRole('button', { name: /area\.changeOwner/ }),
+    )
 
-    const dialog = screen.getByRole('dialog')
+    const dialog = screen.getByRole('dialog', {
+      name: /area\.changeOwnerTitle/,
+    })
     const newOwnerInput = within(dialog).getByRole('textbox', {
       name: /area\.newOwner/,
     })
@@ -570,6 +622,7 @@ describe('RequirementAreasClient', () => {
         'Owner change failed',
       )
     })
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(dialog).toBeInTheDocument()
+    expect(editDialog).toBeInTheDocument()
   })
 })

@@ -197,6 +197,97 @@ describe('HsaPersonVerifyField', () => {
     })
   })
 
+  it('refreshes person details when tabbing from the suffix field', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              prefixes: [
+                {
+                  id: 1,
+                  isDefault: true,
+                  label: null,
+                  prefix: 'SE5560000001',
+                },
+              ],
+            }),
+            { headers: { 'Content-Type': 'application/json' }, status: 200 },
+          ),
+        )
+      }
+      if (url === '/api/requirement-responsibility-people/verify') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              person: {
+                displayName: 'Nora New',
+                email: 'nora.new@example.test',
+                givenName: 'Nora',
+                hsaId: 'SE5560000001-new1',
+                middleName: null,
+                surname: 'New',
+              },
+            }),
+            { headers: { 'Content-Type': 'application/json' }, status: 200 },
+          ),
+        )
+      }
+      throw new Error(`Unexpected fetch ${url} ${init?.method ?? 'GET'}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    function StatefulHsaPersonVerifyField() {
+      const [hsaId, setHsaId] = useState('')
+      return (
+        <HsaPersonVerifyField
+          emailLabel="Email"
+          errorFallback="Could not verify"
+          fetchingLabel="Fetching"
+          fetchLabel="Fetch"
+          hsaId={hsaId}
+          inputClassName="input"
+          inputId="hsa-id"
+          nameLabel="Name"
+          onHsaIdChange={setHsaId}
+          purpose="requirement_package_lead"
+          showPersonSummaryAsText
+          unavailableText="Unavailable"
+        />
+      )
+    }
+
+    render(<StatefulHsaPersonVerifyField />)
+
+    await screen.findByRole('combobox', {
+      name: 'common.hsaPrefixLabel',
+    })
+    const hsaIdInput = document.querySelector('#hsa-id')
+    expect(hsaIdInput).not.toBeNull()
+    const fetchButton = screen.getByRole('button', { name: 'Fetch' })
+    fireEvent.change(hsaIdInput as Element, { target: { value: 'new1' } })
+    fireEvent.blur(hsaIdInput as Element, { relatedTarget: fetchButton })
+
+    await waitFor(() => {
+      const verifyCall = fetchMock.mock.calls.find(
+        ([url]) => url === '/api/requirement-responsibility-people/verify',
+      )
+      expect(verifyCall).toBeTruthy()
+      expect(
+        JSON.parse((verifyCall?.[1] as RequestInit).body as string),
+      ).toEqual(
+        expect.objectContaining({
+          hsaId: 'SE5560000001-new1',
+          mode: 'refresh',
+        }),
+      )
+      expect(
+        screen.getByText('Nora New (nora.new@example.test)'),
+      ).toBeInTheDocument()
+    })
+  })
+
   it('locks suffix entry when no visible prefix exists', async () => {
     vi.stubGlobal(
       'fetch',

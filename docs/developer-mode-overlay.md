@@ -146,6 +146,13 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `crud-admin-visible-error` in the affected admin page context so
   scanner checks can distinguish the visible banner from row/form
   controls.
+- Shared CRUD admin panel edit and delete row actions render as icon-only
+  buttons while keeping the existing `table action: edit` and
+  `table action: delete` markers in each admin page context.
+- Requirement area create and edit actions use the shared modal `dialog`
+  surface. Creating opens `dialog: new requirement area`; editing opens
+  `dialog: edit requirement area`, with the existing `areas > crud form:
+  create` or `areas > crud form: edit` marker inside the dialog.
 - App Router error recovery pages expose the `error boundary` context with
   `error recovery: locale`, `error recovery: root`, or
   `error recovery: global` on the visible fallback surface. Their retry

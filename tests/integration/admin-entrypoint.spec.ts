@@ -168,6 +168,12 @@ async function expectTouchTargetSize(locator: Locator) {
   expect(box?.width ?? 0).toBeGreaterThanOrEqual(44)
 }
 
+async function expectIconOnlyAction(action: Locator, accessibleName: string) {
+  await expect(action).toBeVisible()
+  await expect(action).not.toContainText(accessibleName)
+  await expect(action.locator('svg')).toBeVisible()
+}
+
 test.describe.configure({ mode: 'serial' })
 
 test.beforeEach(async ({ request }) => {
@@ -332,6 +338,19 @@ for (const { name, viewport } of viewportVariants) {
 
         await page.getByTestId('taxonomy-card-areas').click()
         await expect(page).toHaveURL('/en/requirement-areas')
+        await expect(
+          page.getByRole('heading', { level: 1, name: 'Requirement areas' }),
+        ).toBeVisible()
+
+        const areasTable = page.getByRole('table')
+        await expectIconOnlyAction(
+          areasTable.getByRole('button', { name: 'Edit' }).first(),
+          'Edit',
+        )
+        await expectIconOnlyAction(
+          areasTable.getByRole('button', { name: 'Delete' }).first(),
+          'Delete',
+        )
 
         await page.goBack()
         await expect(page).toHaveURL('/en/admin?tab=taxonomy')

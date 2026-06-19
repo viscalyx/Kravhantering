@@ -650,6 +650,19 @@ describe('RequirementPackagesClient', () => {
         name: /requirementPackage\.currentLeadHsaId/,
       }),
     ).toHaveValue('SE5560000001-anna1')
+    expect(
+      within(changeDialog).queryByRole('textbox', {
+        name: /common\.hsaVerifyName/,
+      }),
+    ).toBeNull()
+    expect(
+      within(changeDialog).queryByRole('textbox', {
+        name: /common\.hsaVerifyEmail/,
+      }),
+    ).toBeNull()
+    expect(
+      within(changeDialog).getByText('common.hsaVerifyUnavailable'),
+    ).toBeInTheDocument()
     const newLeadInput = within(changeDialog).getByRole('textbox', {
       name: /requirementPackage\.newLeadHsaId/,
     })
