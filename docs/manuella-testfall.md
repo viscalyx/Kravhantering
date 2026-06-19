@@ -857,7 +857,9 @@ kravunderlag där användaren saknar läsbehörighet.
 
 **Steg:** Öppna kravunderlagets kravurvalsfrågor, välj svar och spara urval.
 
-**Förväntat resultat:** Urvalet sparas och kravlistan uppdateras.
+**Förväntat resultat:** Laddningstexten visas utan en tillfällig svarsräknare.
+När frågorna har laddats visas svarsräknaren, till exempel `Besvarade: 0/1`.
+Urvalet sparas och kravlistan uppdateras.
 
 ## Avsteg
 
