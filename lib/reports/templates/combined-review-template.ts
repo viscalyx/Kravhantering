@@ -1,5 +1,6 @@
 import { isArchivingReviewState } from '@/lib/requirements/lifecycle'
 import type { RequirementReportData } from '../data/fetch-requirement'
+import { getReportLabels } from '../report-labels'
 import type { ReportModel, ReportSection } from '../types'
 import { buildReviewReport } from './review-template'
 
@@ -22,21 +23,17 @@ export function buildCombinedReviewReport(
   const archiving = requirements.filter(r => isArchivingReview(r))
   const reviewing = requirements.filter(r => !isArchivingReview(r))
   const ordered = [...archiving, ...reviewing]
+  const labels = getReportLabels(locale)
 
   sections.push({
     type: 'header',
-    title:
-      locale === 'sv'
-        ? 'Kombinerad granskningsrapport'
-        : 'Combined Review Report',
+    title: labels.titles.combinedReview,
     requirementId: requirements.map(r => r.uniqueId).join(', '),
     generatedAt: now,
   })
 
-  const archivingHeading =
-    locale === 'sv' ? 'Arkiveringsförfrågningar' : 'Archive Requests'
-  const reviewHeading =
-    locale === 'sv' ? 'Granskningsändringsrapporter' : 'Review Change Reports'
+  const archivingHeading = labels.titles.archiveRequests
+  const reviewHeading = labels.titles.reviewChangeReports
 
   const groups: {
     heading: string
@@ -66,7 +63,7 @@ export function buildCombinedReviewReport(
 
   sections.push({
     type: 'toc',
-    title: locale === 'sv' ? 'Innehållsförteckning' : 'Contents',
+    title: labels.titles.contents,
     groups,
   })
 

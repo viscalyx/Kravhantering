@@ -1,4 +1,9 @@
 import type { RequirementReportData } from '../data/fetch-requirement'
+import {
+  formatRequirementCount,
+  getReportLabels,
+  localizeReportValue,
+} from '../report-labels'
 import type { ReportModel, ReportSection } from '../types'
 
 export interface SpecificationCoverInfo {
@@ -35,14 +40,12 @@ export function buildListReport(
   const now = new Date().toISOString()
 
   const count = requirements.length
-  const subtitle =
-    locale === 'sv'
-      ? `${count} krav`
-      : `${count} requirement${count !== 1 ? 's' : ''}`
+  const labels = getReportLabels(locale)
+  const subtitle = formatRequirementCount(count, labels)
 
   sections.push({
     type: 'header',
-    title: locale === 'sv' ? 'Kravlista' : 'Requirements List',
+    title: labels.titles.list,
     requirementId: subtitle,
     generatedAt: now,
   })
@@ -50,7 +53,7 @@ export function buildListReport(
   if (requirementSelectionContext.length > 0) {
     sections.push({
       type: 'requirement-selection-context',
-      title: locale === 'sv' ? 'Urvalskontext' : 'Selection context',
+      title: labels.titles.selectionContext,
       rows: requirementSelectionContext,
     })
   }
@@ -58,23 +61,23 @@ export function buildListReport(
   const getStatusName = (
     v: RequirementReportData['versions'][number],
   ): string => {
-    return (locale === 'sv' ? v.statusNameSv : v.statusNameEn) ?? ''
+    return localizeReportValue(locale, v.statusNameSv, v.statusNameEn)
   }
 
   const columns = [
     {
       key: 'uniqueId',
-      label: locale === 'sv' ? 'Krav-ID' : 'Requirement ID',
+      label: labels.columns.requirementId,
     },
     {
       key: 'description',
-      label: locale === 'sv' ? 'Kravtext' : 'Requirement text',
+      label: labels.columns.requirementText,
     },
     {
       key: 'area',
-      label: locale === 'sv' ? 'Kravområde' : 'Requirement area',
+      label: labels.columns.requirementArea,
     },
-    { key: 'status', label: 'Status' },
+    { key: 'status', label: labels.columns.status },
   ]
 
   const rows = requirements.map(req => {

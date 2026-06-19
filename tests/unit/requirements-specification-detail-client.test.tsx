@@ -59,8 +59,15 @@ vi.mock('@/components/RequirementsTable', () => ({
       ariaLabel: string
       developerModeContext?: string
       developerModeValue?: string
+      hidden?: boolean
       icon: ReactNode
       id: string
+      menuItems?: {
+        href?: string
+        id: string
+        label: string
+        onClick?: () => void
+      }[]
       onClick?: () => void
     }[]
     filterValues?: { requirementPackageIds?: number[] }
@@ -340,6 +347,15 @@ async function waitForInitialAvailableRequirementsRefresh() {
 
 function searchParamsFromPath(path: string): URLSearchParams {
   return new URLSearchParams(path.split('?')[1] ?? '')
+}
+
+function latestItemsTableProps() {
+  const calls = requirementsTableMock.mock.calls.map(([props]) => props)
+  const itemsTable = calls.find(
+    props => props.floatingActionRailPlacement === 'inline-top',
+  )
+  expect(itemsTable).toBeDefined()
+  return itemsTable as NonNullable<typeof itemsTable>
 }
 
 describe('RequirementsSpecificationDetailClient', () => {
@@ -665,6 +681,31 @@ describe('RequirementsSpecificationDetailClient', () => {
       'specification.partialDataLoadWarning',
     )
     await waitForInitialAvailableRequirementsRefresh()
+  })
+
+  it('shows lifecycle-matched report options and always keeps full CSV export', () => {
+    renderRequirementsSpecificationDetailClient()
+
+    const itemsTable = latestItemsTableProps()
+    const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
+      hidden?: boolean
+      id: string
+      menuItems?: Array<{ href?: string; id: string }>
+    }>
+    const printAction = floatingActions.find(action => action.id === 'print')
+    const exportAction = floatingActions.find(action => action.id === 'export')
+
+    expect(printAction?.hidden).toBe(false)
+    expect(printAction?.menuItems).toEqual([
+      expect.objectContaining({
+        href: '/specifications/ETJANST-UPP-2026/reports/print/progress',
+        id: 'print-progress',
+      }),
+      expect.objectContaining({ id: 'pdf-progress' }),
+    ])
+    expect(exportAction?.menuItems?.map(item => item.id)).toEqual([
+      'export-full',
+    ])
   })
 
   it('loads available requirements without sending the fixed status filter', async () => {

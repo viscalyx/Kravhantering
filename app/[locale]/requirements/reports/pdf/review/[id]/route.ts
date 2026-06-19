@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
 import { collectRequirementForReport } from '@/lib/reports/data/server'
+import { getReportLabels } from '@/lib/reports/report-labels'
 import { buildReviewReport } from '@/lib/reports/templates/review-template'
 import {
   authorizeRequirementReportRead,
@@ -26,7 +27,7 @@ export async function GET(
       'history',
     )
     const requirement = await collectRequirementForReport(runtime.db, id)
-    const label = locale === 'sv' ? 'Granskningsrapport' : 'Review Report'
+    const label = getReportLabels(locale).filenames.review
     return renderReportModelPdfResponse(
       buildReviewReport(requirement, locale),
       locale,

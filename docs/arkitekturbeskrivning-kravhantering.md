@@ -606,9 +606,12 @@ hjälptexterna förbjuder personidentifierande uppgifter där.
   PDF från kravlistan använder bara publicerade kravversioner. Rapporter för
   historik, granskning, kombinerad granskning och förslagshistorik kräver
   åtkomst till historik.
-- **Kravunderlagsrapporter** — Kravlistor för kravunderlag kompletterar
-  rubrikdata med kravurval före kravtabellen. CSV-exporten för
-  kravunderlag förblir radbaserad utan extra urvalskontext.
+- **Kravunderlagsrapporter** — Kravunderlag har livscykelstyrda
+  rapportprofiler för upphandling, införande/utveckling och förvaltning.
+  Rapporterna omfattar hela kravunderlaget, använder den kravversion som är
+  kopplad till respektive kravtillämpning och sorterar på Krav-ID. CSV-exporter
+  för kravunderlag genereras server-side, är radbaserade och saknar
+  metadata-rader.
 
 ### Språkväxling
 

@@ -68,6 +68,10 @@ Deferred from this contract:
   and focused unit/UI tests, but their useful assertions are state-machine,
   duplicate, cleanup, and filter-calculation behavior rather than broad fuzzing
   in this first contract slice.
+- Requirements specification report-output and CSV export routes remain outside
+  the OpenAPI/Schemathesis v1 contract with the other specification and CSV
+  surfaces. Their useful assertions are authorization-before-data, lifecycle
+  profile gating, linked-version selection, and exact output columns.
 - Norm-reference stewardship mutations remain outside the OpenAPI/Schemathesis
   v1 contract for the same reason. The read-only `GET /api/norm-references`
   catalog route stays in scope; create, update, archive, reactivate, and delete

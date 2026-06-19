@@ -190,52 +190,56 @@ function SpecificationCoverSection({
             {section.uniqueId}
           </dd>
         </div>
-        <div>
-          <dt
-            style={{
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: '#64748b',
-              marginBottom: '0.25rem',
-            }}
-          >
-            {t('specificationCover.governanceObjectType')}
-          </dt>
-          <dd style={{ fontSize: '0.875rem', margin: 0 }}>
-            {section.governanceObjectType ?? '—'}
-          </dd>
-        </div>
-        <div>
-          <dt
-            style={{
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: '#64748b',
-              marginBottom: '0.25rem',
-            }}
-          >
-            {t('specificationCover.implementationType')}
-          </dt>
-          <dd style={{ fontSize: '0.875rem', margin: 0 }}>
-            {section.implementationType ?? '—'}
-          </dd>
-        </div>
-        <div>
-          <dt
-            style={{
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: '#64748b',
-              marginBottom: '0.25rem',
-            }}
-          >
-            {t('specificationCover.lifecycleStatus')}
-          </dt>
-          <dd style={{ fontSize: '0.875rem', margin: 0 }}>
-            {section.lifecycleStatus ?? '—'}
-          </dd>
-        </div>
-        {section.businessNeedsReference && (
+        {section.variant !== 'minimal' && (
+          <>
+            <div>
+              <dt
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: '#64748b',
+                  marginBottom: '0.25rem',
+                }}
+              >
+                {t('specificationCover.governanceObjectType')}
+              </dt>
+              <dd style={{ fontSize: '0.875rem', margin: 0 }}>
+                {section.governanceObjectType ?? '—'}
+              </dd>
+            </div>
+            <div>
+              <dt
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: '#64748b',
+                  marginBottom: '0.25rem',
+                }}
+              >
+                {t('specificationCover.implementationType')}
+              </dt>
+              <dd style={{ fontSize: '0.875rem', margin: 0 }}>
+                {section.implementationType ?? '—'}
+              </dd>
+            </div>
+            <div>
+              <dt
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: '#64748b',
+                  marginBottom: '0.25rem',
+                }}
+              >
+                {t('specificationCover.lifecycleStatus')}
+              </dt>
+              <dd style={{ fontSize: '0.875rem', margin: 0 }}>
+                {section.lifecycleStatus ?? '—'}
+              </dd>
+            </div>
+          </>
+        )}
+        {section.variant !== 'minimal' && section.businessNeedsReference && (
           <div style={{ gridColumn: '1 / -1' }}>
             <dt
               style={{
@@ -835,6 +839,7 @@ function RequirementTableSection({
                 color: '#64748b',
                 fontWeight: 600,
                 whiteSpace: 'nowrap',
+                ...(col.width ? { width: col.width } : {}),
               }}
             >
               {col.label}
@@ -853,9 +858,14 @@ function RequirementTableSection({
                   padding: '0.5rem 0.75rem',
                   borderBottom: '1px solid #f1f5f9',
                   verticalAlign: 'top',
+                  ...(col.width ? { width: col.width } : {}),
                   ...(col.key === 'description'
                     ? { maxWidth: '400px' }
-                    : { whiteSpace: 'nowrap' }),
+                    : col.key === 'normReferences' ||
+                        col.key === 'needsReference' ||
+                        col.key === 'qualityCharacteristic'
+                      ? { whiteSpace: 'normal' }
+                      : { whiteSpace: 'nowrap' }),
                 }}
               >
                 {col.key === 'status' && row.statusColor ? (

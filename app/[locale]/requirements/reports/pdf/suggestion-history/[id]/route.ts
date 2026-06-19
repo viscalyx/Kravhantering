@@ -4,6 +4,7 @@ import {
   collectRequirementForReport,
   collectSuggestionsForReport,
 } from '@/lib/reports/data/server'
+import { getReportLabels } from '@/lib/reports/report-labels'
 import { buildSuggestionHistoryReport } from '@/lib/reports/templates/suggestion-history-template'
 import {
   authorizeRequirementReportRead,
@@ -32,10 +33,7 @@ export async function GET(
       collectRequirementForReport(runtime.db, id),
       collectSuggestionsForReport(runtime.db, id),
     ])
-    const label =
-      locale === 'sv'
-        ? 'Andringsforslagshistorik'
-        : 'Improvement Suggestion History'
+    const label = getReportLabels(locale).filenames.suggestionHistory
     return renderReportModelPdfResponse(
       buildSuggestionHistoryReport(requirement, suggestions, locale),
       locale,

@@ -639,8 +639,17 @@
       "riskLevel": "Risknivå",
       "specificationItemStatus": "Användningsstatus"
     },
-    "printListReport": "Skriv ut kravlista",
-    "downloadListReportPdf": "Ladda ner kravlista (PDF)"
+    "reportProfiles": {
+      "procurement": "Kravbilaga för upphandling",
+      "progress": "Genomföranderapport",
+      "management": "Förvaltningsrapport"
+    },
+    "exportProfiles": {
+      "procurement": "Anbuds-CSV",
+      "full": "Full CSV-export"
+    },
+    "printProfileReport": "Skriv ut {report}",
+    "downloadProfileReportPdf": "Ladda ner {report} (PDF)"
   },
   "deviation": {
     "title": "Avsteg",
@@ -765,6 +774,7 @@
     "printButton": "Skriv ut",
     "historicalSelectionAnswer": "(historiskt svar)",
     "noRequirementIds": "Inga krav-ID:n angavs",
+    "missingItemId": "Objekt-ID saknas i URL:en",
     "noRequirementsSelected": "Inga krav valda",
     "failedToLoadReport": "Det gick inte att läsa in rapporten",
     "specificationFetchFailed": "Det gick inte att läsa in kravunderlaget för rapporten (status {status}).",
@@ -772,6 +782,110 @@
     "listPdfFilename": "Kravlista {stamp}.pdf",
     "listPdfFilenameLabel": "Kravlista",
     "suggestionHistoryFilenameLabel": "Ändringsförslagshistorik",
+    "reportOutput": {
+      "common": {
+        "unknown": "Okänd",
+        "yes": "Ja",
+        "no": "Nej",
+        "requirementSingular": "krav",
+        "requirementPlural": "krav",
+        "version": "Version {version}",
+        "reviewVersion": "Granskningsversion (v{version})",
+        "currentPublishedVersion": "Nuvarande publicerad version",
+        "unpublishedVersion": "Opublicerad version (v{version})",
+        "requirementVersion": "Krav (v{version})",
+        "published": "Publicerad",
+        "archived": "Arkiverad",
+        "uniqueRequirement": "Unikt krav"
+      },
+      "filenames": {
+        "list": "Kravlista",
+        "review": "Granskningsrapport",
+        "combinedReview": "Kombinerad granskningsrapport",
+        "history": "Historikrapport",
+        "deviationReview": "Granskningsrapport avsteg",
+        "suggestionHistory": "Ändringsförslagshistorik"
+      },
+      "titles": {
+        "list": "Kravlista",
+        "selectionContext": "Urvalskontext",
+        "combinedReview": "Kombinerad granskningsrapport",
+        "archiveRequests": "Arkiveringsförfrågningar",
+        "reviewChangeReports": "Granskningsändringsrapporter",
+        "contents": "Innehållsförteckning",
+        "deviationReview": "Granskningsrapport för avvikelse",
+        "history": "Historikrapport",
+        "suggestionHistory": "Ändringsförslagshistorik",
+        "archiveRequest": "Arkiveringsförfrågan",
+        "reviewChangeReport": "Granskningsändringsrapport"
+      },
+      "subtitles": {
+        "requirementUnderArchivingReview": "Kravet granskas för arkivering",
+        "deviationRequestedWithMotivation": "Avvikelse begärd med motivering"
+      },
+      "notices": {
+        "noRequirementInReviewStatus": "Inget krav i granskningsstatus hittades.",
+        "archivingReviewNoBase": "Detta krav granskas för arkivering. Innehållet är oförändrat jämfört med den publicerade versionen.",
+        "noPublishedOrArchivedBase": "Ingen publicerad eller arkiverad version finns att jämföra med.",
+        "archivingComparison": "Detta krav granskas för arkivering. Jämförelse: v{reviewVersion} mot {baseLabel} v{baseVersion}.",
+        "reviewComparison": "Granskning v{reviewVersion} jämfört med {baseLabel} v{baseVersion}",
+        "specificationPrefix": "Kravunderlag: {name} ({uniqueId})",
+        "unlinkedSuggestions": "Följande ändringsförslag är inte kopplade till en specifik version"
+      },
+      "columns": {
+        "description": "Beskrivning",
+        "acceptanceCriteria": "Acceptanskriterier",
+        "category": "Kategori",
+        "type": "Typ",
+        "qualityCharacteristic": "Kvalitetsegenskap",
+        "riskLevel": "Risknivå",
+        "riskLevelValue": "Risknivå:",
+        "requiresTesting": "Kräver testning",
+        "createdBy": "Skapad av",
+        "references": "Referenser",
+        "referencesValue": "Referenser: ",
+        "requirementPackages": "Kravpaket",
+        "requirementPackagesValue": "Kravpaket: ",
+        "requirementId": "Krav-ID",
+        "requirementText": "Kravtext",
+        "requirementArea": "Kravområde",
+        "status": "Status",
+        "verificationMethod": "Verifieringsmetod",
+        "normReferences": "Normreferenser",
+        "normReferenceUri": "Norm-URI",
+        "deviationSignal": "Avstegssignal",
+        "fullCsvExportTitle": "Full CSV-export",
+        "improvementSuggestions": "Förbättringsförslag",
+        "isoChapter": "ISO-kapitel",
+        "managementReportTitle": "Förvaltningsrapport",
+        "needsReference": "Behovsreferens",
+        "procurementCsvTitle": "Anbuds-CSV",
+        "procurementReportTitle": "Kravbilaga för upphandling",
+        "progressReportTitle": "Genomföranderapport",
+        "requirementPackage": "Kravpaket",
+        "requirementVersionStatus": "Kravversionsstatus",
+        "residualFromImplementation": "Rest från införande",
+        "usageStatus": "Användningsstatus",
+        "verifiable": "Verifierbar",
+        "version": "Version"
+      },
+      "suggestions": {
+        "resolved": "Åtgärdad",
+        "dismissed": "Avvisad",
+        "reviewRequested": "Granskning begärd",
+        "draft": "Utkast",
+        "empty": "Inga ändringsförslag"
+      },
+      "deviations": {
+        "title": "Avvikelse",
+        "riskLevel": "Risknivå:",
+        "motivation": "Motivering:",
+        "submittedBy": "Inlämnad av",
+        "pending": "Väntande",
+        "approved": "Godkänd",
+        "rejected": "Avslagen"
+      }
+    },
     "specificationCover": {
       "specificationId": "Kravunderlag-ID",
       "governanceObjectType": "Styrningsobjektstyp",
@@ -1611,7 +1725,7 @@
       },
       "export": {
         "heading": "Exportera",
-        "body": "Använd utskrifts- och PDF-knapparna för att exportera underlagets kravlista som en rapport."
+        "body": "Använd rapportmenyn för den livscykelstyrda rapporten och exportmenyn för Anbuds-CSV eller Full CSV-export."
       },
       "specificationItemStatus": {
         "heading": "Användningsstatus",

@@ -808,13 +808,44 @@ panel.
 
 **Förväntat resultat:** Referenser sparas och tas bort enligt användarens val.
 
-### SPEC-10: generera kravunderlagsrapport
+### SPEC-10: generera upphandlingsrapport och Anbuds-CSV
 
-**Steg:** Öppna rapportmenyn från kravunderlagslistan.
+**Steg:** Öppna ett kravunderlag med livscykelstatus `Upphandling`, öppna
+rapportmenyn och välj `Kravbilaga för upphandling`. Öppna exportmenyn och välj
+`Anbuds-CSV` samt `Full CSV-export`.
 
-**Förväntat resultat:** Rapporten genereras utan fel för användare med
-läsåtkomst till kravunderlaget och nekas innan data visas för användare utan
-läsåtkomst.
+**Förväntat resultat:** Rapporten genereras för hela kravunderlaget, sorterad
+på Krav-ID, och innehåller bara Krav-ID, Kravtext, Kvalitetsegenskap med
+ISO-kapitel och Normreferenser utan rå URI. `Anbuds-CSV` innehåller samma
+kravfält och en separat Norm-URI-kolumn. `Full CSV-export` finns också.
+
+### SPEC-10b: generera genomföranderapport för införande och utveckling
+
+**Steg:** Öppna kravunderlag med livscykelstatus `Införande` respektive
+`Utveckling`, öppna rapportmenyn och välj `Genomföranderapport`. Kontrollera även
+exportmenyn.
+
+**Förväntat resultat:** Rapporten genereras för hela kravunderlaget och
+innehåller intern uppföljningsmetadata, kravversion, kravområde, kategori, typ,
+kvalitetsegenskap, risknivå, kravversionsstatus, verifierbarhet,
+behovsreferens, användningsstatus och normreferenser. `Anbuds-CSV` visas inte.
+`Full CSV-export` visas.
+
+### SPEC-10c: generera förvaltningsrapport
+
+**Steg:** Öppna kravunderlag med livscykelstatus `Förvaltning`, öppna
+rapportmenyn och välj `Förvaltningsrapport`.
+
+**Förväntat resultat:** Rapporten återanvänder genomföranderapportens fält och
+visar dessutom avstegssignal och rest från införande. Avvikna krav flaggas via
+avstegssignalen, inte genom att räknas som implementerad rest.
+
+### SPEC-10d: kravunderlagsrapporter kräver läsbehörighet
+
+**Steg:** Försök öppna en kravunderlagsrapport eller CSV-export för ett
+kravunderlag där användaren saknar läsbehörighet.
+
+**Förväntat resultat:** Åtkomsten nekas innan rapport- eller exportdata visas.
 
 ### SPEC-11: återställ kolumnvyer för kravunderlag
 

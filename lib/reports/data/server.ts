@@ -4,13 +4,7 @@ import {
   getRequirementById,
   getRequirementByUniqueId,
 } from '@/lib/dal/requirements'
-import {
-  getSpecificationById,
-  getSpecificationBySlug,
-  getSpecificationItemById,
-  getSpecificationLocalRequirementDetail,
-  parseSpecificationItemRef,
-} from '@/lib/dal/requirements-specifications'
+import { parseSpecificationItemRef } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { mapReportItemsWithConcurrency } from '@/lib/reports/data/concurrency'
 import type {
@@ -23,6 +17,10 @@ import type {
   SuggestionReportRow,
 } from '@/lib/reports/data/fetch-requirement'
 import { requirementPackageName } from '@/lib/reports/package-name'
+import {
+  getReportLabels,
+  localizeReportValue,
+} from '@/lib/reports/report-labels'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
 export class ReportDataError extends Error {
@@ -157,6 +155,7 @@ function mapDeviationVersion(
   version: RequirementReportVersion,
   locale: string,
 ): DeviationReportVersion {
+  const labels = getReportLabels(locale)
   return {
     acceptanceCriteria: version.acceptanceCriteria,
     category: version.category
@@ -195,8 +194,11 @@ function mapDeviationVersion(
       color: version.statusColor,
       iconName: version.statusIconName ?? null,
       label:
-        (locale === 'sv' ? version.statusNameSv : version.statusNameEn) ??
-        'Unknown',
+        localizeReportValue(
+          locale,
+          version.statusNameSv,
+          version.statusNameEn,
+        ) || labels.common.unknown,
     },
     type: version.type
       ? { nameEn: version.type.nameEn, nameSv: version.type.nameSv }
@@ -272,181 +274,4 @@ export async function collectDeviationForReport(
     specificationUniqueId: inReview.specificationUniqueId,
     version: mapDeviationVersion(version, locale),
   }
-}
-
-function mapSpecificationLocalRequirementToReportData(
-  requirement: NonNullable<
-    Awaited<ReturnType<typeof getSpecificationLocalRequirementDetail>>
-  >,
-): RequirementReportData {
-  return {
-    area: null,
-    createdAt: requirement.createdAt,
-    id: requirement.id,
-    isArchived: false,
-    uniqueId: requirement.uniqueId,
-    versions: [
-      {
-        acceptanceCriteria: requirement.acceptanceCriteria,
-        archivedAt: null,
-        archiveInitiatedAt: null,
-        category: requirement.requirementCategory
-          ? {
-              id: requirement.requirementCategory.id,
-              nameEn: requirement.requirementCategory.nameEn,
-              nameSv: requirement.requirementCategory.nameSv,
-            }
-          : null,
-        createdAt: requirement.createdAt,
-        createdBy: null,
-        description: requirement.description,
-        editedAt:
-          requirement.updatedAt !== requirement.createdAt
-            ? requirement.updatedAt
-            : null,
-        id: requirement.id,
-        publishedAt: requirement.createdAt,
-        qualityCharacteristic: requirement.qualityCharacteristic
-          ? {
-              id: requirement.qualityCharacteristic.id,
-              nameEn: requirement.qualityCharacteristic.nameEn,
-              nameSv: requirement.qualityCharacteristic.nameSv,
-            }
-          : null,
-        requiresTesting: requirement.requiresTesting,
-        riskLevel: requirement.riskLevel
-          ? {
-              id: requirement.riskLevel.id,
-              color: requirement.riskLevel.color,
-              iconName: requirement.riskLevel.iconName,
-              nameEn: requirement.riskLevel.nameEn,
-              nameSv: requirement.riskLevel.nameSv,
-            }
-          : null,
-        status: STATUS_PUBLISHED,
-        statusColor: '#22c55e',
-        statusIconName: 'CheckCircle2',
-        statusNameEn: 'Published',
-        statusNameSv: 'Publicerad',
-        type: requirement.requirementType
-          ? {
-              id: requirement.requirementType.id,
-              nameEn: requirement.requirementType.nameEn,
-              nameSv: requirement.requirementType.nameSv,
-            }
-          : null,
-        verificationMethod: requirement.verificationMethod,
-        versionNormReferences: requirement.normReferences.map(reference => ({
-          normReference: {
-            id: reference.id,
-            name: reference.name,
-            normReferenceId: reference.normReferenceId,
-            reference: reference.normReferenceId,
-            uri: reference.uri,
-          },
-        })),
-        versionNumber: 1,
-        versionRequirementPackages: requirement.requirementPackages.map(
-          requirementPackage => ({
-            requirementPackage: {
-              id: requirementPackage.id,
-              name: requirementPackageName(requirementPackage),
-            },
-          }),
-        ),
-      },
-    ],
-  }
-}
-
-type SpecificationReportFetchRef =
-  | { id: number; itemRef: string; kind: 'lib' }
-  | { id: number; itemRef: string; kind: 'local' }
-
-export async function collectSpecificationItemsForReport(
-  db: SqlServerDatabase,
-  specificationIdOrSlug: string | number,
-  itemRefs: string[],
-): Promise<{
-  requirements: RequirementReportData[]
-  specification: NonNullable<Awaited<ReturnType<typeof getSpecificationBySlug>>>
-}> {
-  const decodedSpecificationId = decodeSegment(specificationIdOrSlug)
-  const specification = /^\d+$/.test(decodedSpecificationId)
-    ? await getSpecificationById(db, Number(decodedSpecificationId))
-    : await getSpecificationBySlug(db, decodedSpecificationId)
-
-  if (!specification) {
-    throw new ReportDataError(
-      `Specification not found: ${specificationIdOrSlug}`,
-      404,
-    )
-  }
-
-  const toFetch: SpecificationReportFetchRef[] = []
-  for (const itemRef of itemRefs) {
-    const parsed = parseSpecificationItemRef(decodeSegment(itemRef))
-    if (!parsed) {
-      throw new ReportDataError(`Invalid item ref: ${itemRef}`, 400)
-    }
-
-    if (parsed.kind === 'library') {
-      const specificationItem = await getSpecificationItemById(db, parsed.id)
-      if (
-        !specificationItem ||
-        specificationItem.specificationId !== specification.id
-      ) {
-        throw new ReportDataError(
-          `Item not found in specification: ${itemRef}`,
-          404,
-        )
-      }
-
-      toFetch.push({
-        id: specificationItem.requirementId,
-        itemRef,
-        kind: 'lib',
-      })
-      continue
-    }
-
-    const localRequirement = await getSpecificationLocalRequirementDetail(
-      db,
-      specification.id,
-      parsed.id,
-    )
-    if (!localRequirement) {
-      throw new ReportDataError(
-        `Item not found in specification: ${itemRef}`,
-        404,
-      )
-    }
-
-    toFetch.push({ id: parsed.id, itemRef, kind: 'local' })
-  }
-
-  const requirements = await mapReportItemsWithConcurrency(
-    toFetch,
-    async reportItem => {
-      if (reportItem.kind === 'lib') {
-        return collectRequirementForReport(db, reportItem.id)
-      }
-
-      const localRequirement = await getSpecificationLocalRequirementDetail(
-        db,
-        specification.id,
-        reportItem.id,
-      )
-      if (!localRequirement) {
-        throw new ReportDataError(
-          `Item not found in specification: ${reportItem.itemRef}`,
-          404,
-        )
-      }
-
-      return mapSpecificationLocalRequirementToReportData(localRequirement)
-    },
-  )
-
-  return { requirements, specification }
 }

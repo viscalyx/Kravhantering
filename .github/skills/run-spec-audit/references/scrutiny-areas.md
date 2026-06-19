@@ -148,12 +148,30 @@ maintenance rule.
 
 ## 13. CSV Export
 
-- **Code:** `lib/export-csv.ts`.
+- **Code:** `lib/export-csv.ts`, `lib/reports/specification-csv.ts`,
+  and `lib/reports/specification-profiles.ts`.
 - **Spec:** `docs/reports.md`.
 - **Field contracts:** `references/integration-contracts.md` — verify
   exported fields align with the REST response schemas.
 - **Question:** Does export behavior match the documented CSV
   expectations for separators and escaping?
+
+## 13a. Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions
+
+- **Code:** `lib/reports/data/specification-output.ts`,
+  `lib/reports/templates/specification-profile-template.ts`,
+  `lib/reports/specification-csv.ts`,
+  `lib/reports/specification-profiles.ts`, and specification report/export
+  routes.
+- **Spec:** `docs/reports.md` and `docs/requirements-ui-behaviour.md`.
+- **Req tag:** `[Req: formal - docs/reports.md
+  "Requirements Specification Field Profiles"]`
+- **Question:** Do specification reports use linked requirement versions,
+  cover the whole specification, expose only lifecycle-matching report
+  profiles, keep full CSV export always available, and document each field
+  choice?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions"`
 
 ## 14. Coverage Target Alignment
 

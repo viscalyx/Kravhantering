@@ -1,4 +1,5 @@
 import type { DeviationReportData } from '../data/fetch-deviation'
+import { formatReportTemplate, getReportLabels } from '../report-labels'
 import type { ReportModel, ReportSection, VersionSummaryData } from '../types'
 
 export function buildDeviationReviewReport(
@@ -7,17 +8,12 @@ export function buildDeviationReviewReport(
 ): ReportModel {
   const sections: ReportSection[] = []
   const now = new Date().toISOString()
+  const labels = getReportLabels(locale)
 
   sections.push({
     type: 'header',
-    title:
-      locale === 'sv'
-        ? 'Granskningsrapport för avvikelse'
-        : 'Deviation Review Report',
-    subtitle:
-      locale === 'sv'
-        ? 'Avvikelse begärd med motivering'
-        : 'Deviation requested with motivation',
+    title: labels.titles.deviationReview,
+    subtitle: labels.subtitles.deviationRequestedWithMotivation,
     requirementId: data.requirementUniqueId,
     generatedAt: now,
   })
@@ -25,10 +21,10 @@ export function buildDeviationReviewReport(
   if (data.specificationName) {
     sections.push({
       type: 'notice',
-      message:
-        locale === 'sv'
-          ? `Kravunderlag: ${data.specificationName} (${data.specificationUniqueId})`
-          : `Requirements specification: ${data.specificationName} (${data.specificationUniqueId})`,
+      message: formatReportTemplate(labels.notices.specificationPrefix, {
+        name: data.specificationName,
+        uniqueId: data.specificationUniqueId ?? '',
+      }),
       severity: 'info',
     })
   }
@@ -60,10 +56,9 @@ export function buildDeviationReviewReport(
   sections.push({
     type: 'version-summary',
     version: versionSummary,
-    label:
-      locale === 'sv'
-        ? `Krav (v${v.versionNumber})`
-        : `Requirement (v${v.versionNumber})`,
+    label: formatReportTemplate(labels.common.requirementVersion, {
+      version: v.versionNumber,
+    }),
     borderColor: '#3b82f6',
   })
 

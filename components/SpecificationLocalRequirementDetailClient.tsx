@@ -1,13 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import {
-  AlertTriangle,
-  LibraryBig,
-  Pencil,
-  Printer,
-  Trash2,
-} from 'lucide-react'
+import { AlertTriangle, LibraryBig, Pencil, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -490,19 +484,6 @@ export default function SpecificationLocalRequirementDetailClient({
   const refreshAll = useCallback(async () => {
     await Promise.all([fetchRequirement(), fetchDeviations(), onChange?.()])
   }, [fetchDeviations, fetchRequirement, onChange])
-
-  const handlePrint = useCallback(() => {
-    if (!requirement?.itemRef) {
-      return
-    }
-
-    window.open(
-      `/${locale}/specifications/${encodeURIComponent(
-        specificationSlug,
-      )}/reports/print/list?refs=${encodeURIComponent(requirement.itemRef)}`,
-      '_blank',
-    )
-  }, [locale, specificationSlug, requirement?.itemRef])
 
   const railSecondaryButtonClass =
     'btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-11 min-w-11 disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none'
@@ -1121,24 +1102,6 @@ export default function SpecificationLocalRequirementDetailClient({
                   <div className="shrink-0 sm:w-64">
                     {graduationTargetAreasLoaded ? (
                       <div className="flex flex-col gap-2">
-                        {deviationStep !== 'draft' ? (
-                          <button
-                            className={railSecondaryButtonClass}
-                            {...devMarker({
-                              context: detailContext,
-                              name: 'report print button',
-                              priority: 289,
-                              value: 'reports',
-                            })}
-                            onClick={handlePrint}
-                            title={tc('print')}
-                            type="button"
-                          >
-                            <Printer aria-hidden="true" className="h-4 w-4" />
-                            {tc('print')}
-                          </button>
-                        ) : null}
-
                         {deviationError ? (
                           <p
                             className="text-sm text-red-600 dark:text-red-400"

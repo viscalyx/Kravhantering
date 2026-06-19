@@ -639,8 +639,17 @@
       "riskLevel": "Risk level",
       "specificationItemStatus": "Usage status"
     },
-    "printListReport": "Print requirement list",
-    "downloadListReportPdf": "Download requirement list (PDF)"
+    "reportProfiles": {
+      "procurement": "Procurement requirements appendix",
+      "progress": "Progress report",
+      "management": "Management report"
+    },
+    "exportProfiles": {
+      "procurement": "Tender CSV",
+      "full": "Full CSV export"
+    },
+    "printProfileReport": "Print {report}",
+    "downloadProfileReportPdf": "Download {report} (PDF)"
   },
   "deviation": {
     "title": "Deviations",
@@ -765,6 +774,7 @@
     "printButton": "Print",
     "historicalSelectionAnswer": "(historical answer)",
     "noRequirementIds": "No requirement IDs provided",
+    "missingItemId": "Missing item ID in URL",
     "noRequirementsSelected": "No requirements selected",
     "failedToLoadReport": "Failed to load report",
     "specificationFetchFailed": "Could not load the requirements specification for this report (status {status}).",
@@ -772,6 +782,110 @@
     "listPdfFilename": "Requirements List {stamp}.pdf",
     "listPdfFilenameLabel": "Requirements List",
     "suggestionHistoryFilenameLabel": "Improvement Suggestion History",
+    "reportOutput": {
+      "common": {
+        "unknown": "Unknown",
+        "yes": "Yes",
+        "no": "No",
+        "requirementSingular": "requirement",
+        "requirementPlural": "requirements",
+        "version": "Version {version}",
+        "reviewVersion": "Review Version (v{version})",
+        "currentPublishedVersion": "Current Published Version",
+        "unpublishedVersion": "Unpublished Version (v{version})",
+        "requirementVersion": "Requirement (v{version})",
+        "published": "Published",
+        "archived": "Archived",
+        "uniqueRequirement": "Unique requirement"
+      },
+      "filenames": {
+        "list": "Requirements List",
+        "review": "Review Report",
+        "combinedReview": "Combined Review Report",
+        "history": "History Report",
+        "deviationReview": "Deviation Review Report",
+        "suggestionHistory": "Improvement Suggestion History"
+      },
+      "titles": {
+        "list": "Requirements List",
+        "selectionContext": "Selection context",
+        "combinedReview": "Combined Review Report",
+        "archiveRequests": "Archive Requests",
+        "reviewChangeReports": "Review Change Reports",
+        "contents": "Contents",
+        "deviationReview": "Deviation Review Report",
+        "history": "History Report",
+        "suggestionHistory": "Improvement Suggestion History",
+        "archiveRequest": "Archive Request",
+        "reviewChangeReport": "Review Change Report"
+      },
+      "subtitles": {
+        "requirementUnderArchivingReview": "Requirement is under review for archiving",
+        "deviationRequestedWithMotivation": "Deviation requested with motivation"
+      },
+      "notices": {
+        "noRequirementInReviewStatus": "No requirement in review status found.",
+        "archivingReviewNoBase": "This requirement is under review for archiving. Content is unchanged from the published version.",
+        "noPublishedOrArchivedBase": "No published or archived version exists for comparison.",
+        "archivingComparison": "This requirement is under review for archiving. Comparison: v{reviewVersion} vs {baseLabel} v{baseVersion}.",
+        "reviewComparison": "Review v{reviewVersion} vs {baseLabel} v{baseVersion}",
+        "specificationPrefix": "Requirements specification: {name} ({uniqueId})",
+        "unlinkedSuggestions": "The following improvement suggestions are not linked to a specific version"
+      },
+      "columns": {
+        "description": "Description",
+        "acceptanceCriteria": "Acceptance Criteria",
+        "category": "Category",
+        "type": "Type",
+        "qualityCharacteristic": "Quality characteristic",
+        "riskLevel": "Risk level",
+        "riskLevelValue": "Risk level:",
+        "requiresTesting": "Requires Testing",
+        "createdBy": "Created By",
+        "references": "References",
+        "referencesValue": "References: ",
+        "requirementPackages": "Requirement package",
+        "requirementPackagesValue": "Requirements packages: ",
+        "requirementId": "Requirement ID",
+        "requirementText": "Requirement text",
+        "requirementArea": "Requirement area",
+        "status": "Status",
+        "verificationMethod": "Verification Method",
+        "normReferences": "Norm references",
+        "normReferenceUri": "Norm URI",
+        "deviationSignal": "Deviation signal",
+        "fullCsvExportTitle": "Full CSV export",
+        "improvementSuggestions": "Improvement suggestions",
+        "isoChapter": "ISO chapter",
+        "managementReportTitle": "Management report",
+        "needsReference": "Needs reference",
+        "procurementCsvTitle": "Tender CSV",
+        "procurementReportTitle": "Procurement requirements appendix",
+        "progressReportTitle": "Progress report",
+        "requirementPackage": "Requirement package",
+        "requirementVersionStatus": "Requirement version status",
+        "residualFromImplementation": "Residual from implementation",
+        "usageStatus": "Usage status",
+        "verifiable": "Verifiable",
+        "version": "Version"
+      },
+      "suggestions": {
+        "resolved": "Resolved",
+        "dismissed": "Dismissed",
+        "reviewRequested": "Review Requested",
+        "draft": "Draft",
+        "empty": "No improvement suggestions"
+      },
+      "deviations": {
+        "title": "Deviation",
+        "riskLevel": "Risk Level:",
+        "motivation": "Motivation:",
+        "submittedBy": "Submitted by",
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      }
+    },
     "specificationCover": {
       "specificationId": "Specification ID",
       "governanceObjectType": "Governance object type",
@@ -1611,7 +1725,7 @@
       },
       "export": {
         "heading": "Exporting",
-        "body": "Use the print and PDF buttons to export the specification's requirement list as a report."
+        "body": "Use the report menu for the lifecycle-driven report and the export menu for Tender CSV or Full CSV export."
       },
       "specificationItemStatus": {
         "heading": "Usage status",

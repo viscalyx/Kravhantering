@@ -354,12 +354,11 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Admin CRUD empty-state rows use the current page context with `empty state`.
   When the table supports creation, the inline empty-state CTA uses
   `empty state create button` and opens the same create form as the page header.
-- Requirements specification list print pages expose `report state` markers
+- Requirements specification print pages expose `report state` markers
   with values `report-print:error`, `report-print:loading`, and
   `report-print:renderer`.
 - PDF downloads use the shared modal marker `dialog` with values
-  `Generating PDF` and `PDF download error`; specification list PDFs no longer
-  render an intermediate client-side PDF page.
+  `Generating PDF` and `PDF download error`.
 - AI Requirement Generator dialog uses the `ai-requirement-generator`
   context with `dialog: ai-requirement-generator` on the modal
   container, `dialog title` on the heading,

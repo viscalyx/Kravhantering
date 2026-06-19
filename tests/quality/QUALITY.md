@@ -35,7 +35,7 @@ recorded production incident.
 | `lib/dal/deviations.ts` and `lib/dal/improvement-suggestions.ts` | 88-92% | These modules hold the project's write-once decision history. Mutability after approval, rejection, resolution, or dismissal breaks traceability instead of throwing obvious errors. |
 | `lib/audit/action-audit.ts` and `app/api/admin/audit-events/route.ts` | 88-92% | The action log is fail-closed review evidence for mutations and denials. A regression here can make a valid business change untraceable or leak personal/free-text data into action-log details. |
 | `lib/requirements/list-view.ts` and requirements-table UI consumers | 82-88% | Admin defaults, visible-column persistence, filter clearing, and width clamps are fail-safe logic. Bad fallback behavior leaves the UI looking normal while applying stale filters. |
-| `lib/mcp/http.ts`, `lib/mcp/server.ts`, and `lib/export-csv.ts` | 80-85% | These are outward-facing contracts. Wrong method handling, malformed MCP fields, or CSV escaping defects break integrations and downstream reporting even when the app UI still works. |
+| `lib/mcp/http.ts`, `lib/mcp/server.ts`, `lib/export-csv.ts`, and `lib/reports/specification-*.ts` | 80-85% | These are outward-facing contracts. Wrong method handling, malformed MCP fields, CSV escaping defects, or lifecycle/report-profile drift break integrations and downstream reporting even when the app UI still works. |
 <!-- markdownlint-enable MD013 -->
 
 ## Coverage Theater Prevention
@@ -884,6 +884,36 @@ specifications receive an empty list, unauthorized existing resources return
 <!-- markdownlint-disable MD013 -->
 ```sh
 npm exec -- vitest run tests/unit/requirements-assignment-authorization.test.ts
+```
+<!-- markdownlint-enable MD013 -->
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions
+
+<!-- markdownlint-disable-next-line MD013 -->
+**Requirement tag:** `[Req: formal - docs/reports.md "Requirements Specification Field Profiles"]`
+
+**What happened:** Requirements specification reports and exports are now
+lifecycle-scoped outputs rather than row-selected list snapshots. They are
+used as procurement attachments, progress follow-up, management reports, and
+CSV analysis extracts. If report data follows the latest requirement version
+instead of the version linked to the specification item, a generated report can
+change without an explicit specification decision. If the menu exposes the
+wrong profile for a lifecycle status, external procurement artifacts can leak
+internal risk, need, or follow-up fields.
+
+**The requirement:** Requirements specification reports must use the linked
+`requirement_version_id`, cover the whole specification sorted by `Krav-ID`,
+show only the report profile matching the specification lifecycle status, and
+keep `Full CSV-export` always available while limiting `Anbuds-CSV` to
+`Upphandling`. Field inclusions and exclusions must stay documented in
+`docs/reports.md`.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions"
 ```
 <!-- markdownlint-enable MD013 -->
 

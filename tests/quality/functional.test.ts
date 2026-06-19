@@ -94,8 +94,8 @@ import {
  * Scenario names here must match the QUALITY.md `vitest -t "Scenario N: ..."`
  * invocations verbatim so that spec-referenced commands keep working.
  *
- * Scenarios 10 and 15 are pure file-content checks and always run as part of
- * `npm run test`.
+ * Scenarios 10, 15, 18, 19, and 23 are pure file-content checks and always run
+ * as part of `npm run test`.
  *
  * Scenarios 1-9, 11-12, 14, 16, and 17 exercise lifecycle/audit/MCP invariants
  * that require a real SQL Server instance. The harness derives a connection URL automatically from
@@ -219,6 +219,41 @@ const specificationsRoutePath = join(
   'api',
   'requirements-specifications',
   'route.ts',
+)
+const reportsDocPath = join(repoRoot, 'docs', 'reports.md')
+const specificationDetailClientPath = join(
+  repoRoot,
+  'app',
+  '[locale]',
+  'specifications',
+  '[slug]',
+  'requirements-specification-detail-client.tsx',
+)
+const specificationOutputDataPath = join(
+  repoRoot,
+  'lib',
+  'reports',
+  'data',
+  'specification-output.ts',
+)
+const specificationProfileTemplatePath = join(
+  repoRoot,
+  'lib',
+  'reports',
+  'templates',
+  'specification-profile-template.ts',
+)
+const specificationCsvPath = join(
+  repoRoot,
+  'lib',
+  'reports',
+  'specification-csv.ts',
+)
+const specificationProfilesPath = join(
+  repoRoot,
+  'lib',
+  'reports',
+  'specification-profiles.ts',
 )
 
 function countRegisterToolCalls(source: string): number {
@@ -427,6 +462,56 @@ it('Scenario 19: assignment RBAC denies hidden broad access', () => {
   expect(preloadSource).toContain('specification_assignment_required')
   expect(routeSource).toContain('collectionPermissions')
   expect(routeSource).toContain('canCreateSpecification')
+})
+
+it('Scenario 23: specification reports stay lifecycle-scoped and pinned to selected versions', () => {
+  const reportsDoc = readFileSync(reportsDocPath, 'utf8')
+  const detailClientSource = readFileSync(specificationDetailClientPath, 'utf8')
+  const outputDataSource = readFileSync(specificationOutputDataPath, 'utf8')
+  const profileTemplateSource = readFileSync(
+    specificationProfileTemplatePath,
+    'utf8',
+  )
+  const csvSource = readFileSync(specificationCsvPath, 'utf8')
+  const profilesSource = readFileSync(specificationProfilesPath, 'utf8')
+
+  expect(outputDataSource).toContain(
+    'requirement_version.id = specification_item.requirement_version_id',
+  )
+  expect(profilesSource).toContain(
+    'SPECIFICATION_LIFECYCLE_STATUS_PROCUREMENT_ID',
+  )
+  expect(profilesSource).toContain(
+    'PROGRESS_REPORT_SPECIFICATION_LIFECYCLE_STATUS_IDS',
+  )
+  expect(profilesSource).toContain(
+    'SPECIFICATION_LIFECYCLE_STATUS_MANAGEMENT_ID',
+  )
+  expect(detailClientSource).toContain(
+    'getSpecificationReportProfileForLifecycleStatus',
+  )
+  expect(detailClientSource).toContain(
+    'canExportProcurementCsvForLifecycleStatus',
+  )
+  expect(detailClientSource).toContain('export-full')
+  expect(detailClientSource).not.toContain('refs=')
+
+  expect(profileTemplateSource).toContain(
+    "profile === 'procurement' ? 'minimal' : 'default'",
+  )
+  expect(profileTemplateSource).toContain("key: 'deviationSignal'")
+  expect(profileTemplateSource).toContain("key: 'residualFromImplementation'")
+  expect(csvSource).toContain('labels.normReferenceUri')
+  expect(csvSource).toContain('labels.improvementSuggestions')
+  expect(csvSource).toContain('buildProcurementCsv')
+  expect(csvSource).toContain('buildFullCsv')
+
+  expect(reportsDoc).toContain('Kravbilaga för upphandling')
+  expect(reportsDoc).toContain('Genomföranderapport')
+  expect(reportsDoc).toContain('Förvaltningsrapport')
+  expect(reportsDoc).toContain('Anbuds-CSV')
+  expect(reportsDoc).toContain('Full CSV-export')
+  expect(reportsDoc).toContain('requirement_version_id')
 })
 
 function resolveFunctionalTestsUrl(): string | null {

@@ -25,8 +25,8 @@ Manual cases: `AUTH-03`, `AUTH-08`, `AUTH-10`, `AUTH-11`, `REQ-10`,
    PDF response for an ordinary authenticated user.
 1. Verify requirement history, review, suggestion-history, and combined review
    PDF routes return 403 when the actor lacks requirement history access.
-1. Verify an unassigned specification list PDF route returns 403 before exposing
-   report data.
+1. Verify an unassigned specification profile PDF route returns 403 before
+   exposing report data.
 1. Verify Admin-only action-log and unauthorized AI model, credit, and
    generation requests return 403 before provider access.
 1. Verify the forbidden specification UI shows safe denial details on mobile

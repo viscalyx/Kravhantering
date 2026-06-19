@@ -40,11 +40,16 @@ import SpecificationLocalRequirementForm, {
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
-import { exportToCsv } from '@/lib/export-csv'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
+import {
+  canExportProcurementCsvForLifecycleStatus,
+  getSpecificationReportProfileForLifecycleStatus,
+  type SpecificationCsvProfile,
+  type SpecificationReportProfile,
+} from '@/lib/reports/specification-profiles'
 import {
   type AreaOption,
   buildRequirementListParams,
@@ -65,7 +70,6 @@ import type {
   SpecificationNeedsReference,
   SpecificationTaxonomyItem,
 } from '@/lib/specifications/preload-types'
-import { createUtf8BomBlob } from '@/lib/text-export'
 
 const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
   sections: [
@@ -195,14 +199,6 @@ function readStoredCols(
   return fallback
 }
 
-function buildItemRefsQuery(rows: RequirementRow[]) {
-  const refs = rows
-    .map(row => row.itemRef)
-    .filter((value): value is string => typeof value === 'string')
-
-  return refs.map(ref => encodeURIComponent(ref)).join(',')
-}
-
 async function readJsonOrThrow<T>(response: Response, fallbackMessage: string) {
   if (!response.ok) {
     const details = await readResponseMessage(response)
@@ -234,7 +230,6 @@ export default function KravunderlagDetailClient({
   const t = useTranslations('specification')
   const tc = useTranslations('common')
   const td = useTranslations('deviation')
-  const tr = useTranslations('reports')
   const locale = useLocale()
   const router = useRouter()
   const { confirm } = useConfirmModal()
@@ -1397,70 +1392,82 @@ export default function KravunderlagDetailClient({
     return requirementPackages.filter(s => usedIds.has(s.id))
   }, [specificationItems, requirementPackages])
 
-  const handleExportCsv = useCallback(() => {
-    const headers = [
-      t('csvHeaders.uniqueId'),
-      t('csvHeaders.description'),
-      t('csvHeaders.area'),
-      t('csvHeaders.needsReference'),
-      t('csvHeaders.status'),
-      t('csvHeaders.category'),
-      t('csvHeaders.type'),
-      t('csvHeaders.qualityCharacteristic'),
-      t('csvHeaders.specificationItemStatus'),
-    ]
-    const csvRows = filteredSpecificationItems.map(r => ({
-      [headers[0]]: r.uniqueId,
-      [headers[1]]: r.version?.description ?? '',
-      [headers[2]]: r.area?.name ?? '',
-      [headers[3]]: (r as SpecificationListItem).needsReference ?? '',
-      [headers[4]]:
-        (locale === 'sv' ? r.version?.statusNameSv : r.version?.statusNameEn) ??
-        '',
-      [headers[5]]:
-        (locale === 'sv'
-          ? r.version?.categoryNameSv
-          : r.version?.categoryNameEn) ?? '',
-      [headers[6]]:
-        (locale === 'sv' ? r.version?.typeNameSv : r.version?.typeNameEn) ?? '',
-      [headers[7]]:
-        (locale === 'sv'
-          ? r.version?.qualityCharacteristicNameSv
-          : r.version?.qualityCharacteristicNameEn) ?? '',
-      [headers[8]]:
-        (locale === 'sv'
-          ? r.specificationItemStatusNameSv
-          : r.specificationItemStatusNameEn) ?? '',
-    }))
-    const csv = exportToCsv(headers, csvRows)
-    const blob = createUtf8BomBlob(csv, 'text/csv;charset=utf-8;')
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = t('downloadFilename')
-    a.click()
-    URL.revokeObjectURL(url)
-  }, [filteredSpecificationItems, locale, t])
+  const specificationReportProfile = useMemo(
+    () =>
+      getSpecificationReportProfileForLifecycleStatus(
+        spec?.specificationLifecycleStatusId,
+      ),
+    [spec?.specificationLifecycleStatusId],
+  )
+  const showProcurementCsv = canExportProcurementCsvForLifecycleStatus(
+    spec?.specificationLifecycleStatusId,
+  )
 
-  const handleDownloadPdf = useCallback(() => {
-    if (!spec) return
-    const refs = buildItemRefsQuery(filteredSpecificationItems)
-    if (!refs) return
-    const label = tr('listPdfFilenameLabel')
-    void pdfDownload.download({
-      fallbackFilename: `${label} ${spec.name} ${spec.uniqueId}.pdf`,
-      url: `/${locale}/specifications/${encodeURIComponent(
-        specificationSlug,
-      )}/reports/pdf/list?refs=${refs}`,
-    })
-  }, [
-    filteredSpecificationItems,
-    locale,
-    pdfDownload,
-    specificationSlug,
-    spec,
-    tr,
-  ])
+  const reportProfileLabel = useCallback(
+    (profile: SpecificationReportProfile) => {
+      if (profile === 'procurement') return t('reportProfiles.procurement')
+      if (profile === 'management') return t('reportProfiles.management')
+      return t('reportProfiles.progress')
+    },
+    [t],
+  )
+
+  const exportProfileLabel = useCallback(
+    (profile: SpecificationCsvProfile) => {
+      if (profile === 'procurement') return t('exportProfiles.procurement')
+      return t('exportProfiles.full')
+    },
+    [t],
+  )
+
+  const handleExportCsv = useCallback(
+    async (profile: SpecificationCsvProfile) => {
+      if (!spec) return
+      const response = await fetch(
+        `/api/requirements-specifications/${encodeURIComponent(
+          specificationSlug,
+        )}/exports?profile=${encodeURIComponent(
+          profile,
+        )}&locale=${encodeURIComponent(locale)}`,
+      )
+      if (!response.ok) {
+        const details = await readResponseMessage(response)
+        console.error(details || tc('error'))
+        return
+      }
+
+      const blob = await response.blob()
+      const label = exportProfileLabel(profile)
+      const fallbackFilename = `${label} ${spec.name} ${spec.uniqueId}.csv`
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = fallbackFilename
+      a.click()
+      URL.revokeObjectURL(url)
+    },
+    [exportProfileLabel, locale, spec, specificationSlug, tc],
+  )
+
+  const handleDownloadPdf = useCallback(
+    (profile: SpecificationReportProfile) => {
+      if (!spec) return
+      const label = reportProfileLabel(profile)
+      void pdfDownload.download({
+        fallbackFilename: `${label} ${spec.name} ${spec.uniqueId}.pdf`,
+        url: `/${locale}/specifications/${encodeURIComponent(
+          specificationSlug,
+        )}/reports/pdf/${profile}`,
+      })
+    },
+    [locale, pdfDownload, reportProfileLabel, specificationSlug, spec],
+  )
+
+  const openPrintReportHref = useCallback(
+    (profile: SpecificationReportProfile) =>
+      `/specifications/${specificationSlug}/reports/print/${profile}`,
+    [specificationSlug],
+  )
 
   const specName = spec ? spec.name : '…'
   const permissions = spec?.permissions ?? {
@@ -2434,24 +2441,38 @@ export default function KravunderlagDetailClient({
                         : []),
                       {
                         ariaLabel: tc('print'),
+                        hidden: !specificationReportProfile,
                         icon: (
                           <Printer aria-hidden="true" className="h-4 w-4" />
                         ),
                         id: 'print',
-                        menuItems: [
-                          {
-                            href: `/specifications/${specificationSlug}/reports/print/list?refs=${buildItemRefsQuery(
-                              filteredSpecificationItems,
-                            )}`,
-                            id: 'print-list',
-                            label: t('printListReport'),
-                          },
-                          {
-                            id: 'pdf-list',
-                            label: t('downloadListReportPdf'),
-                            onClick: () => void handleDownloadPdf(),
-                          },
-                        ],
+                        menuItems: specificationReportProfile
+                          ? [
+                              {
+                                href: openPrintReportHref(
+                                  specificationReportProfile,
+                                ),
+                                id: `print-${specificationReportProfile}`,
+                                label: t('printProfileReport', {
+                                  report: reportProfileLabel(
+                                    specificationReportProfile,
+                                  ),
+                                }),
+                              },
+                              {
+                                id: `pdf-${specificationReportProfile}`,
+                                label: t('downloadProfileReportPdf', {
+                                  report: reportProfileLabel(
+                                    specificationReportProfile,
+                                  ),
+                                }),
+                                onClick: () =>
+                                  void handleDownloadPdf(
+                                    specificationReportProfile,
+                                  ),
+                              },
+                            ]
+                          : [],
                       },
                       {
                         ariaLabel: tc('export'),
@@ -2459,7 +2480,23 @@ export default function KravunderlagDetailClient({
                           <Download aria-hidden="true" className="h-4 w-4" />
                         ),
                         id: 'export',
-                        onClick: handleExportCsv,
+                        menuItems: [
+                          ...(showProcurementCsv
+                            ? [
+                                {
+                                  id: 'export-procurement',
+                                  label: exportProfileLabel('procurement'),
+                                  onClick: () =>
+                                    void handleExportCsv('procurement'),
+                                },
+                              ]
+                            : []),
+                          {
+                            id: 'export-full',
+                            label: exportProfileLabel('full'),
+                            onClick: () => void handleExportCsv('full'),
+                          },
+                        ],
                       },
                     ]}
                     getName={getName}

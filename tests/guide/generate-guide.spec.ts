@@ -1229,7 +1229,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'kravunderlagsdetalj',
         'Kravunderlagsdetalj — delad vy',
-        'Kravunderlagsdetaljsidan har en delad layout: **vänster panel** har tabbarna **Krav i underlaget** och **Behovsreferenser** i listans rubrik, och **höger panel** har tabbarna **Tillgängliga krav** och **Kravurvalsfrågor** i samma typ av sticky rubrik. I tabben för krav visas både bibliotekskrav och eventuella kravunderlagets unika krav med deras användningsstatus. Knapparna till höger i rubriken byts när du växlar tabb: tabben för krav har kravlistans verktyg, medan tabben för behovsreferenser har åtgärden för att skapa en ny referens. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag. Klicka på en rad för att se kravets fullständiga detaljer.',
+        'Kravunderlagsdetaljsidan har en delad layout: **vänster panel** har tabbarna **Krav i underlaget** och **Behovsreferenser** i listans rubrik, och **höger panel** har tabbarna **Tillgängliga krav** och **Kravurvalsfrågor** i samma typ av sticky rubrik. I tabben för krav visas både bibliotekskrav och eventuella kravunderlagets unika krav med deras användningsstatus. Knapparna till höger i rubriken byts när du växlar tabb: tabben för krav har kravtabellens verktyg, medan tabben för behovsreferenser har åtgärden för att skapa en ny referens. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag. Klicka på en rad för att se kravets fullständiga detaljer.',
         { fullPage: false },
       )
     })
@@ -1783,10 +1783,10 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
 
       textEntry(
-        'Kravlista — Kravunderlag',
-        'Skriver ut kraven som ingår i ett specifikt kravunderlag som en formaterad tabell. Rapporten inkluderar underlagets metadata (namn, ID, verksamhetsområde, genomförandeform, underlagssyfte) som rubrik. Om kravurvalsfrågor har besvarats visas urvalskontexten före kravtabellen. Historiska svar som inte längre är aktuell urvalskontext markeras som historiska svar.\n\n' +
-          '**Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält.\n\n' +
-          '**Rutt:** `/specifications/[slug]/reports/print/list?refs=...` (utskrift) · `/specifications/[slug]/reports/pdf/list?refs=...` (PDF)',
+        'Kravunderlagsrapporter',
+        'Skriver ut hela kravunderlaget med den rapportprofil som passar underlagets livscykelstatus. `Kravbilaga för upphandling` visas för upphandling, `Genomföranderapport` för införande och utveckling, och `Förvaltningsrapport` för förvaltning. Alla profiler sorterar kraven på Krav-ID och använder den kravversion som är kopplad till kravunderlaget.\n\n' +
+          '**Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält när underlaget har en livscykelstatus med rapportprofil.\n\n' +
+          '**Rutt:** `/specifications/[slug]/reports/print/[profile]` (utskrift) · `/specifications/[slug]/reports/pdf/[profile]` (PDF)',
       )
 
       textEntry(

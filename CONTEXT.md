@@ -541,7 +541,7 @@ _Avoid_: Livscykelstatus, förvaltning.
 
 **Kravunderlagets livscykelstatus**:
 Status som beskriver var kravunderlaget befinner sig i processen, till exempel
-upphandling, utveckling/införande eller förvaltning.
+upphandling, införande, utveckling eller förvaltning.
 
 - `en`: Specification lifecycle status
 
@@ -824,6 +824,30 @@ Rapport som stödjer granskning och beslut om avsteg i ett kravunderlag.
 - `en`: Deviation review report
 
 _Avoid_: Granskningsrapport när avsteg avses.
+
+**Kravbilaga för upphandling**:
+Rapport som sammanställer krav som ska ingå i ett upphandlingsunderlag.
+
+- `en`: Procurement requirements appendix
+
+_Avoid_: Kravlista när rapportens upphandlingssyfte avses.
+
+**Genomföranderapport**:
+Rapport som sammanställer kravstatus, risk och spårbarhet under införande eller
+utveckling.
+
+- `en`: Progress report
+
+_Avoid_: Progressrapport, uppföljningsrapport, statusrapport,
+förvaltningsrapport.
+
+**Förvaltningsrapport**:
+Rapport som sammanställer kvarvarande rest, användningsläge och avstegsläge för
+krav i förvaltning.
+
+- `en`: Management report
+
+_Avoid_: Genomföranderapport, avstegsrapport.
 
 **Historikrapport**:
 Rapport som visar ett kravs versioner, statusändringar och

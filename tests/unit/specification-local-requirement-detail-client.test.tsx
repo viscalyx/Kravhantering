@@ -13,7 +13,6 @@ const translations: Record<string, string> = {
   'common.error': 'Error',
   'common.no': 'No',
   'common.noneAvailable': 'None available',
-  'common.print': 'Print',
   'common.save': 'Save',
   'common.unexpectedError': 'Unexpected error',
   'common.updatedAt': 'Updated',
@@ -239,29 +238,26 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(screen.getByText('ISO27001')).toBeInTheDocument()
     expect(screen.getByText('Bestallning')).toBeInTheDocument()
     expect(screen.queryByText('KRAV0001')).not.toBeInTheDocument()
-    const printButton = await screen.findByRole('button', { name: 'Print' })
-    expect(printButton).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Print' }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText('Deviation')).not.toBeInTheDocument()
     expect(
       screen.queryByText('Only exists in this specification.'),
     ).not.toBeInTheDocument()
 
-    expect(screen.getByRole('button', { name: 'Edit' })).toHaveAttribute(
+    const editButton = await screen.findByRole('button', { name: 'Edit' })
+    expect(editButton).toHaveAttribute(
       'data-developer-mode-name',
       'detail action',
     )
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'Edit' })).toHaveAttribute(
+    expect(editButton).toBeEnabled()
+    expect(editButton).toHaveAttribute(
       'data-developer-mode-value',
       'edit local requirement',
     )
-    expect(screen.getByRole('button', { name: 'Edit' }).className).toContain(
-      'min-h-11',
-    )
-    expect(screen.getByRole('button', { name: 'Edit' }).className).toContain(
-      'min-w-11',
-    )
-    expect(printButton.className).toContain('w-full')
+    expect(editButton.className).toContain('min-h-11')
+    expect(editButton.className).toContain('min-w-11')
     expect(screen.getByRole('button', { name: 'Delete' })).toHaveAttribute(
       'data-developer-mode-value',
       'delete local requirement',
