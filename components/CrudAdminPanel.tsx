@@ -5,6 +5,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { ReactNode } from 'react'
 import FormModal from '@/components/FormModal'
+import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
 import type { CrudAdminResourceController } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
@@ -41,12 +42,15 @@ interface CrudAdminPanelProps<TItem extends { id: CrudId }, TForm> {
     inputClassName: string
     isEditing: boolean
     setForm: React.Dispatch<React.SetStateAction<TForm>>
+    textareaClassName: string
   }) => ReactNode
   title: ReactNode
 }
 
 const inputClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
+
+const modalTextareaClassName = `${inputClassName} ${modalResizableTextareaClassName}`
 
 const rowActionButtonClassName =
   'inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
@@ -93,6 +97,10 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
         inputClassName,
         isEditing: controller.editId !== null,
         setForm: controller.setForm,
+        textareaClassName:
+          formPresentation === 'modal'
+            ? modalTextareaClassName
+            : inputClassName,
       })}
       {controller.formError && (
         <p

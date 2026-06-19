@@ -98,7 +98,7 @@ export default function FormModal({
           <motion.div
             aria-labelledby={titleId}
             aria-modal="true"
-            className={`relative z-50 max-h-[calc(100vh-2rem)] w-full overflow-y-auto overscroll-contain rounded-2xl bg-white shadow-2xl dark:bg-secondary-900 ${maxWidthClassName}`}
+            className={`relative z-50 max-h-[calc(100dvh-2rem)] w-full overflow-y-auto overscroll-contain rounded-2xl bg-white shadow-2xl dark:bg-secondary-900 ${maxWidthClassName}`}
             {...devMarker({
               name: 'dialog',
               priority: 420,

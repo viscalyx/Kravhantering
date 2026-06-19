@@ -470,9 +470,11 @@ describe('RequirementSelectionQuestionsClient', () => {
       screen.queryByRole('spinbutton', { name: 'Sort order' }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: /Help text/ })).toHaveClass(
-      'max-h-[28vh]',
+      'min-h-24',
+      'max-h-[clamp(5rem,28dvh,16rem)]',
       'resize-y',
       'overflow-auto',
+      'overscroll-contain',
     )
   })
 

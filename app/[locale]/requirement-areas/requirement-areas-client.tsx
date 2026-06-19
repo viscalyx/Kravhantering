@@ -435,6 +435,7 @@ export default function RequirementAreasClient() {
         inputClassName,
         isEditing,
         setForm,
+        textareaClassName,
       }) => (
         <div
           className={
@@ -494,7 +495,7 @@ export default function RequirementAreasClient() {
                 label={t('description')}
               />
               <textarea
-                className={inputClassName}
+                className={textareaClassName}
                 disabled={disabled}
                 id="area-desc"
                 onChange={event =>

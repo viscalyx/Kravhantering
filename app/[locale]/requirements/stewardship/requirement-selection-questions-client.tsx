@@ -27,6 +27,7 @@ import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import { modalResizableTextareaResizeClassName } from '@/components/modal-textarea-class'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 import StatusBadge from '@/components/StatusBadge'
@@ -206,7 +207,7 @@ function createEmptyVisibilityGroupForm(): VisibilityGroupForm {
 const inputClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
 
-const modalTextareaClassName = `${inputClassName} min-h-24 max-h-[28vh] resize-y overflow-auto overscroll-contain`
+const modalTextareaClassName = `${inputClassName} min-h-24 ${modalResizableTextareaResizeClassName}`
 
 const lockedInputClassName =
   ' disabled:cursor-not-allowed disabled:border-secondary-200 disabled:bg-secondary-100 disabled:text-secondary-500 disabled:opacity-100 dark:disabled:border-secondary-700 dark:disabled:bg-secondary-900/70 dark:disabled:text-secondary-500'

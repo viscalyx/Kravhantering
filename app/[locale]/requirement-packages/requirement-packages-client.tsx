@@ -31,6 +31,7 @@ import HsaPersonChangeModal, {
 import HsaPersonVerifyField, {
   type HsaPersonVerification,
 } from '@/components/HsaPersonVerifyField'
+import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
@@ -239,6 +240,8 @@ const uniqueTrimmedHsaIds = (values: readonly string[]) =>
 
 const inputClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
+
+const textareaClassName = `${inputClassName} ${modalResizableTextareaClassName}`
 
 const rowActionButtonClassName =
   'inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
@@ -809,7 +812,7 @@ export default function RequirementPackagesClient() {
           label={t('description')}
         />
         <textarea
-          className={inputClassName}
+          className={textareaClassName}
           disabled={controller.submitting}
           id="requirement-package-description"
           onChange={event =>

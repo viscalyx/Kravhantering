@@ -950,13 +950,17 @@ taxonomiflik i Admincenter.
 **Steg:** Öppna kravområdeslistan och kontrollera att radåtgärderna för
 redigering och borttagning visas som ikonknappar. Öppna sedan ett kravområde
 för redigering. Kontrollera att formuläret öppnas i en modal, att
-kravområdesmedförfattare visas i högerkolumnen och ändra kravområdesägare via
-HSA-id med verifierat personuppslag.
+kravområdesmedförfattare visas i högerkolumnen, dra beskrivningsfältet nedåt
+så långt webbläsaren tillåter och försök sedan minska fältet under
+öppningshöjden. Ändra därefter kravområdesägare via HSA-id med verifierat
+personuppslag.
 
 **Förväntat resultat:** Listan visar ikonbaserade knappar för Redigera och Ta
-bort. Ägarskapet sparas på HSA-id och visas med persondetaljer. Efter nästa
-lyckade ändring kan den inloggade aktörens egen levande personrad uppdateras
-från sessionen utan att inloggning eller sparande fördröjs.
+bort. Beskrivningsfältet begränsas av fönstrets höjd så att Spara och Avbryt
+fortfarande är åtkomliga, och fältet kan inte minskas under öppningshöjden.
+Ägarskapet sparas på HSA-id och visas med persondetaljer. Efter nästa lyckade
+ändring kan den inloggade aktörens egen levande personrad uppdateras från
+sessionen utan att inloggning eller sparande fördröjs.
 
 ### ADMIN-13: HSA-id-prefix administreras från Identitet
 

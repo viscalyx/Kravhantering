@@ -6,9 +6,12 @@ import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import { modalResizableTextareaRows3ClassName } from '@/components/modal-textarea-class'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
+
+const textareaClassName = `w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500 dark:border-secondary-600 dark:bg-secondary-900 ${modalResizableTextareaRows3ClassName}`
 
 interface SuggestionResolutionModalProps {
   loading?: boolean
@@ -72,7 +75,7 @@ export default function SuggestionResolutionModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
           key="suggestion-resolution-backdrop"
           {...fadeMotion(shouldReduceMotion)}
         >
@@ -86,7 +89,7 @@ export default function SuggestionResolutionModal({
           <motion.div
             aria-labelledby="suggestion-resolution-title"
             aria-modal="true"
-            className="relative z-50 w-full max-w-md rounded-xl bg-white dark:bg-secondary-900 shadow-2xl"
+            className="relative z-50 max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-xl bg-white shadow-2xl dark:bg-secondary-900"
             {...devMarker({
               name: 'dialog',
               priority: 420,
@@ -152,7 +155,7 @@ export default function SuggestionResolutionModal({
                   {tf('resolutionMotivationHelp')}
                 </AnimatedHelpPanel>
                 <textarea
-                  className="w-full rounded-lg border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className={textareaClassName}
                   id="resolution-motivation"
                   onChange={e => setMotivation(e.target.value)}
                   placeholder={tf('resolutionMotivationPlaceholder')}

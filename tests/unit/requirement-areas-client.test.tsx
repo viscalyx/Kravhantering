@@ -74,7 +74,10 @@ async function openAreaCoAuthorDraft(dialog: HTMLElement) {
 }
 
 describe('RequirementAreasClient', () => {
-  afterEach(cleanup)
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -119,6 +122,16 @@ describe('RequirementAreasClient', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'area.newArea' })
     expect(within(dialog).queryByText('area.coAuthors')).toBeNull()
+    const descriptionInput = within(dialog).getByRole('textbox', {
+      name: /area\.description/,
+    })
+    expect(descriptionInput).toHaveClass(
+      'min-h-15.5',
+      'max-h-[clamp(5rem,28dvh,16rem)]',
+      'resize-y',
+      'overflow-auto',
+      'overscroll-contain',
+    )
 
     fireEvent.change(
       within(dialog).getByRole('textbox', { name: /area\.prefix/ }),
