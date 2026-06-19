@@ -549,7 +549,8 @@ _Avoid_: Kravversionsstatus, genomförandeform.
 
 **Kravpaket**:
 En återanvändbar gruppering av krav i kravbiblioteket för ett visst
-användningsområde, scenario eller leveransbehov.
+användningsområde, scenario eller leveransbehov. Ett kravpaket samlar krav som
+får användas, även när ett krav samtidigt har nyare opublicerade kravversioner.
 
 - `en`: Requirements package
 
