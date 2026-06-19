@@ -132,6 +132,136 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 3: publishi
 
 ---
 
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 20: publishing a successor replaces requirement-package membership
+
+**Requirement tag:**
+
+<!-- markdownlint-disable MD013 -->
+```text
+[Req: formal — docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md]
+```
+<!-- markdownlint-enable MD013 -->
+
+**What happened:** Kravpaket representerar aktuellt medlemskap för krav i
+kravbiblioteket, inte historik över tidigare kravversioner. Publicering av en
+efterträdare måste därför arkivera föregångaren och flytta
+kravpaketsmedlemskapet till den nya publicerade kravversionen i samma
+publiceringsflöde. Kravpaketets egna listor och räkningar måste samtidigt
+behandla bara publicerade kravversioner som aktuellt paketmedlemskap, så att
+ett utkast med ändrade paketval inte syns som paketets nuvarande innehåll.
+
+**The requirement:** När en ny kravversion publiceras ska den ersätta den
+tidigare publicerade kravversionen i alla kravpaket där kravet används.
+Kravpaketskopplingar ska inte ligga kvar som historik på den arkiverade
+föregångaren, och kravpaketets aktuella listor ska inte visa opublicerade
+utkast som paketmedlemmar.
+
+**Scenario 20 code coverage:** Publiceringens flytt av
+kravpaketsmedlemskap finns i `transitionStatus()` i
+`lib/dal/requirements.ts`. Kravpaketets aktuella list- och räkneytor filtrerar
+publicerade kravversioner i `lib/dal/requirement-packages.ts`.
+`tests/quality/functional.test.ts` skapar en publicerad version i ett
+kravpaket, förbereder ett utkast med nytt paketval, verifierar att
+paketlistan fortfarande visar den publicerade versionen, publicerar utkastet
+och kontrollerar att bara den nya publicerade versionens paketkoppling finns
+kvar.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 20: publishing a successor replaces requirement-package membership"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 21: archiving without successor preserves package history but excludes practical use
+
+**Requirement tag:**
+
+<!-- markdownlint-disable MD013 -->
+```text
+[Req: formal — docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md]
+```
+<!-- markdownlint-enable MD013 -->
+
+**What happened:** Arkivering utan efterträdare är inte samma sak som att
+publicera en ersättande kravversion. I det fallet ska kravpaketskopplingen få
+ligga kvar som historik över att den arkiverade kravversionen har ingått i
+paketet. Samtidigt får praktisk kravpaketsanvändning, till exempel urval till
+kravunderlag, inte använda arkiverade kravversioner.
+
+**The requirement:** När en publicerad kravversion arkiveras utan efterträdare
+ska paketkopplingen bevaras för historik, men kravpaketets praktiska
+medlemskapslistor och urval ska exkludera den arkiverade versionen och bara
+behandla publicerade kravversioner som användbara paketmedlemmar.
+
+**Scenario 21 code coverage:** Arkiveringsflödet i
+`lib/dal/requirements.ts` lämnar kravpaketskopplingen kvar när ingen ny
+publicerad efterträdare ersätter den. Kravpaketets praktiska list- och
+räkneytor i `lib/dal/requirement-packages.ts` filtrerar till publicerade
+kravversioner. `tests/quality/functional.test.ts` arkiverar ett paketerat krav
+utan efterträdare, kontrollerar att paketkopplingen finns kvar på den
+arkiverade versionen och verifierar att kravpaketets praktiska lista inte
+returnerar kravet.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 21: archiving without successor preserves package history but excludes practical use"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 22: package filters keep archived history out of specifications but available in the library
+
+**Requirement tag:**
+
+<!-- markdownlint-disable MD013 -->
+```text
+[Req: formal — docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md]
+```
+<!-- markdownlint-enable MD013 -->
+
+**What happened:** Samma kravpaketskoppling kan behöva läsas i två olika
+sammanhang. Kravunderlag och kravurval använder kravpaket för att föra in
+användbara krav och måste därför bara se publicerade kravversioner. I
+kravbiblioteket är kravpaket däremot ett sökfilter över den statusmängd
+användaren har valt; om användaren uttryckligen filtrerar på arkiverade krav
+ska arkiverade krav med historisk paketkoppling kunna visas.
+
+**The requirement:** Kravunderlagets paketurval ska exkludera arkiverade
+kravversioner även när deras historiska paketkoppling finns kvar. Kravbibliotekets
+kravpaketsfilter ska inte i sig dölja arkiverade kravversioner; de visas när
+användaren inkluderar status `Arkiverad` i listans statusfilter.
+
+**Scenario 22 code coverage:** Kravunderlagets urval via
+`listRequirementSelectionMatchedRequirements()` i
+`lib/dal/requirement-selection-questions.ts` filtrerar paketträffar till
+publicerade kravversioner. Kravbibliotekets lista via `listRequirements()` i
+`lib/dal/requirements.ts` tillämpar kravpaketsfiltret på den visade versionen
+och låter statusfiltret avgöra om arkiverade krav ingår.
+`tests/quality/functional.test.ts` skapar ett publicerat och ett arkiverat krav
+i samma kravpaket, verifierar att kravunderlagets paketmatchning bara ger det
+publicerade kravet och att kravbibliotekets paketfilter kan visa det
+arkiverade kravet när status `Arkiverad` väljs.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 22: package filters keep archived history out of specifications but available in the library"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
 ### Scenario 4: review and archived versions are immutable until the state changes
 
 **Requirement tag:**

@@ -374,3 +374,47 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   the authorization boundary?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 19: assignment RBAC denies hidden broad access"`
+
+## 28. Scenario 20: publishing a successor replaces requirement-package membership
+
+- **Code:** `lib/dal/requirements.ts` — successor publication;
+  `lib/dal/requirement-packages.ts` — package current-membership queries.
+- **Spec:**
+  `docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md`.
+- **Req tag:**
+  `[Req: formal — docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md]`
+- **Question:** Does publishing a successor atomically replace the predecessor
+  in requirement-package membership while package lists and counts ignore
+  unpublished draft package choices?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 20: publishing a successor replaces requirement-package membership"`
+
+## 29. Scenario 21: archiving without successor preserves package history but excludes practical use
+
+- **Code:** `lib/dal/requirements.ts` — archiving without successor;
+  `lib/dal/requirement-packages.ts` — package practical-use queries.
+- **Spec:**
+  `docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md`.
+- **Req tag:**
+  `[Req: formal — docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md]`
+- **Question:** Does archiving a packaged requirement without a successor keep
+  the historical package link while practical package lists and counts exclude
+  the archived version?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 21: archiving without successor preserves package history but excludes practical use"`
+
+## 30. Scenario 22: package filters keep archived history out of specifications but available in the library
+
+- **Code:** `lib/dal/requirement-selection-questions.ts` — specification
+  package matching; `lib/dal/requirements.ts` — requirement library package
+  filtering.
+- **Spec:**
+  `docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md`.
+- **Req tag:**
+  `[Req: formal — docs/adr/0031-kravpaket-ersatter-kravversion-vid-publicering.md]`
+- **Question:** Do requirement-specification package selections exclude
+  archived package links while the requirement library can still show archived
+  package-linked requirements when the user includes `Archived` in the status
+  filter?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 22: package filters keep archived history out of specifications but available in the library"`

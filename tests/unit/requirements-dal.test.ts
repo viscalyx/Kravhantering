@@ -1052,6 +1052,7 @@ describe('archiving helpers (atomicity & strict-target rule)', () => {
         .mockResolvedValueOnce([{ id: 12 }])
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
         .mockRejectedValueOnce(
           uniqueIndexViolation(
             'uq_requirement_versions_published_requirement_id',

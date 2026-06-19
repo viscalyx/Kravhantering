@@ -1826,6 +1826,15 @@ permission.
 ### `requirement_version_requirement_packages`
 
 Many-to-many link between requirement versions and requirement packages.
+For package stewardship this represents current membership for the requirement:
+while a replacement version is Draft or Review, package queries use the
+existing Published version; when the replacement is published, publication
+moves membership to the new Published version and removes it from the archived
+predecessor. If a Published version is archived without a successor, the link
+may remain for historical package membership, while practical package queries
+filter to Published versions. Requirement-library package filters may still
+match archived package-linked versions when the list status filter includes
+Archived.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |

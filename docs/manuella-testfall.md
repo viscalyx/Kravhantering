@@ -675,6 +675,34 @@ kontrollera rapportmenyn.
 Rapporter för historik, granskning, kombinerad granskning och förslagshistorik
 går bara att hämta när användaren har åtkomst till kravets historik.
 
+### LIFE-12: publicering ersätter kravpaketsmedlemskap
+
+**Steg:** Skapa eller välj ett publicerat krav som ingår i ett kravpaket.
+Skapa en ny utkastversion med ett annat kravpaketsval. Öppna
+kravpaketslistans dialog för kopplade krav innan publicering och kontrollera
+att bara den publicerade föregångaren visas. Skicka utkastet till granskning
+och publicera det. Öppna de berörda kravpaketens dialoger igen.
+
+**Förväntat resultat:** Före publicering visar kravpaketet fortfarande den
+publicerade föregångaren. Efter publicering visas den nya publicerade
+kravversionen i sitt valda kravpaket, och föregångaren ligger inte kvar som
+kopplat krav i det tidigare paketet.
+
+### LIFE-13: arkivering utan efterträdare bevarar pakethistorik
+
+**Steg:** Skapa eller välj ett publicerat krav som ingår i ett kravpaket.
+Arkivera kravet utan att först skapa en ny kravversion. Öppna kravpaketets
+dialog för kopplade krav och kontrollera praktisk användning, till exempel
+kravurval till kravunderlag om paketet används där. Öppna därefter
+kravbibliotekets kravlista, filtrera på samma kravpaket och välj status
+`Arkiverad`.
+
+**Förväntat resultat:** Den arkiverade kravversionens paketkoppling bevaras
+som historik, men kravpaketets praktiska listor och urval använder inte det
+arkiverade kravet som tillgängligt krav. Kravbibliotekets paketfilter kan
+däremot visa det arkiverade kravet när användaren själv har valt status
+`Arkiverad`.
+
 ## Samarbete i kravdetalj
 
 ### COL-01: lägg till krav i kravunderlag

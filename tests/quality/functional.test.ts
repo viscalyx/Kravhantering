@@ -33,6 +33,8 @@ import {
   SUGGESTION_DISMISSED,
   SUGGESTION_RESOLVED,
 } from '@/lib/dal/improvement-suggestions'
+import { getLinkedRequirementsForPackage } from '@/lib/dal/requirement-packages'
+import { listRequirementSelectionMatchedRequirements } from '@/lib/dal/requirement-selection-questions'
 import {
   approveArchiving,
   cancelArchiving,
@@ -792,6 +794,7 @@ async function ensureResponsibilityPerson(
 
 async function createRequirementPackage(
   target: SqlServerDatabase,
+  overrides: { description?: string; name?: string } = {},
 ): Promise<{ id: number }> {
   const now = new Date()
   const leadHsaId = 'SE5560000001-johlju'
@@ -806,7 +809,12 @@ async function createRequirementPackage(
       )
        OUTPUT INSERTED.id AS id
        VALUES (@0, @1, @2, @3, @3)`,
-    ['Säkerhetspaket', 'Security package', leadHsaId, now],
+    [
+      overrides.name ?? 'Säkerhetspaket',
+      overrides.description ?? 'Security package',
+      leadHsaId,
+      now,
+    ],
   )) as Array<{ id: number }>
   return rows[0] as { id: number }
 }
@@ -847,6 +855,7 @@ async function createPublishedRequirement(
   target: SqlServerDatabase,
   areaId: number,
   description: string,
+  options: { requirementPackageIds?: number[] } = {},
 ): Promise<{
   requirementId: number
   revisionToken: string
@@ -856,6 +865,7 @@ async function createPublishedRequirement(
   const created = await createRequirement(target, {
     description,
     requirementAreaId: areaId,
+    requirementPackageIds: options.requirementPackageIds,
   })
   await transitionStatus(target, created.requirement.id, STATUS_REVIEW)
   const published = await transitionStatus(
@@ -993,6 +1003,180 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(currentPublished?.publishedAt).not.toBeNull()
     expect(archivedPredecessor?.archivedAt).toBe(republished.publishedAt)
     expect(archivedPredecessor?.status).toBe(STATUS_ARCHIVED)
+  })
+
+  it('Scenario 20: publishing a successor replaces requirement-package membership', async () => {
+    const area = await createArea(appDb())
+    const originalPackage = await createRequirementPackage(appDb(), {
+      name: 'Original package',
+    })
+    const replacementPackage = await createRequirementPackage(appDb(), {
+      name: 'Replacement package',
+    })
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Packaged version one',
+      { requirementPackageIds: [originalPackage.id] },
+    )
+
+    const draft = await editRequirement(appDb(), published.requirementId, {
+      baseRevisionToken: published.revisionToken,
+      baseVersionId: published.publishedVersionId,
+      description: 'Packaged version two',
+      requirementPackageIds: [replacementPackage.id],
+    })
+
+    await expect(
+      getLinkedRequirementsForPackage(appDb(), originalPackage.id),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        statusId: STATUS_PUBLISHED,
+        versionNumber: 1,
+      }),
+    ])
+    await expect(
+      getLinkedRequirementsForPackage(appDb(), replacementPackage.id),
+    ).resolves.toEqual([])
+
+    await transitionStatus(appDb(), published.requirementId, STATUS_REVIEW)
+    const republished = await transitionStatus(
+      appDb(),
+      published.requirementId,
+      STATUS_PUBLISHED,
+    )
+
+    const packageRows = (await appDb().query(
+      `SELECT
+         version.version_number AS versionNumber,
+         version.requirement_status_id AS statusId,
+         link.requirement_package_id AS requirementPackageId
+       FROM requirement_version_requirement_packages AS link
+       INNER JOIN requirement_versions AS version
+         ON version.id = link.requirement_version_id
+       WHERE version.requirement_id = @0
+       ORDER BY version.version_number ASC, link.requirement_package_id ASC`,
+      [published.requirementId],
+    )) as Array<{
+      requirementPackageId: number
+      statusId: number
+      versionNumber: number
+    }>
+
+    expect(republished.id).toBe(draft.id)
+    expect(packageRows).toEqual([
+      {
+        requirementPackageId: replacementPackage.id,
+        statusId: STATUS_PUBLISHED,
+        versionNumber: 2,
+      },
+    ])
+    await expect(
+      getLinkedRequirementsForPackage(appDb(), originalPackage.id),
+    ).resolves.toEqual([])
+    await expect(
+      getLinkedRequirementsForPackage(appDb(), replacementPackage.id),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        statusId: STATUS_PUBLISHED,
+        versionNumber: 2,
+      }),
+    ])
+  })
+
+  it('Scenario 21: archiving without successor preserves package history but excludes practical use', async () => {
+    const area = await createArea(appDb())
+    const requirementPackage = await createRequirementPackage(appDb(), {
+      name: 'Historical package',
+    })
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Packaged version to archive',
+      { requirementPackageIds: [requirementPackage.id] },
+    )
+
+    await initiateArchiving(appDb(), published.requirementId)
+    await approveArchiving(appDb(), published.requirementId)
+
+    const packageRows = (await appDb().query(
+      `SELECT
+         version.version_number AS versionNumber,
+         version.requirement_status_id AS statusId,
+         link.requirement_package_id AS requirementPackageId
+       FROM requirement_version_requirement_packages AS link
+       INNER JOIN requirement_versions AS version
+         ON version.id = link.requirement_version_id
+       WHERE version.requirement_id = @0`,
+      [published.requirementId],
+    )) as Array<{
+      requirementPackageId: number
+      statusId: number
+      versionNumber: number
+    }>
+
+    expect(packageRows).toEqual([
+      {
+        requirementPackageId: requirementPackage.id,
+        statusId: STATUS_ARCHIVED,
+        versionNumber: 1,
+      },
+    ])
+    await expect(
+      getLinkedRequirementsForPackage(appDb(), requirementPackage.id),
+    ).resolves.toEqual([])
+  })
+
+  it('Scenario 22: package filters keep archived history out of specifications but available in the library', async () => {
+    const area = await createArea(appDb())
+    const requirementPackage = await createRequirementPackage(appDb(), {
+      name: 'Lifecycle package',
+    })
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Published package member',
+      { requirementPackageIds: [requirementPackage.id] },
+    )
+    const archived = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Archived package member',
+      { requirementPackageIds: [requirementPackage.id] },
+    )
+
+    await initiateArchiving(appDb(), archived.requirementId)
+    await approveArchiving(appDb(), archived.requirementId)
+
+    const specificationMatches =
+      await listRequirementSelectionMatchedRequirements(appDb(), {
+        packageIds: [requirementPackage.id],
+      })
+    expect(specificationMatches).toEqual([
+      expect.objectContaining({
+        id: published.requirementId,
+        sourcePackages: [
+          {
+            id: requirementPackage.id,
+            name: 'Lifecycle package',
+          },
+        ],
+        uniqueId: published.uniqueId,
+      }),
+    ])
+
+    const archivedLibraryRows = await listRequirements(appDb(), {
+      includeArchived: true,
+      requirementPackageIds: [requirementPackage.id],
+      statuses: [STATUS_ARCHIVED],
+    })
+    expect(archivedLibraryRows).toEqual([
+      expect.objectContaining({
+        description: 'Archived package member',
+        id: archived.requirementId,
+        status: STATUS_ARCHIVED,
+      }),
+    ])
   })
 
   it('Scenario 4: review and archived versions are immutable until the state changes', async () => {

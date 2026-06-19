@@ -11,6 +11,7 @@ import {
   formatRequirementResponsibilityPersonName,
   type RequirementResponsibilityPersonRecord,
 } from '@/lib/requirements/responsibility-person'
+import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 import { toBoolean, toIsoString } from '@/lib/typeorm/value-mappers'
 
 interface RequirementPackageRow {
@@ -258,6 +259,7 @@ export async function countLinkedRequirementsByPackage(
     FROM requirement_version_requirement_packages AS links
     INNER JOIN requirement_versions AS versions
       ON links.requirement_version_id = versions.id
+    WHERE versions.requirement_status_id = ${STATUS_PUBLISHED}
     GROUP BY requirement_package_id
   `)
   const counts: Record<number, number> = {}
@@ -295,6 +297,7 @@ export async function getLinkedRequirementsForPackage(
       LEFT JOIN requirement_statuses
         ON requirement_versions.requirement_status_id = requirement_statuses.id
       WHERE links.requirement_package_id = @0
+        AND requirement_versions.requirement_status_id = ${STATUS_PUBLISHED}
       ORDER BY requirements.unique_id ASC
     `,
     [requirementPackageId],
@@ -328,6 +331,7 @@ export async function getRequirementPackageUsage(
           INNER JOIN requirement_versions AS versions
             ON links.requirement_version_id = versions.id
           WHERE links.requirement_package_id = @0
+            AND versions.requirement_status_id = ${STATUS_PUBLISHED}
         ) AS libraryRequirementCount,
         (
           SELECT COUNT(DISTINCT links.specification_local_requirement_id)

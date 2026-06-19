@@ -60,27 +60,27 @@ describe('requirement-packages DAL', () => {
     })
   })
 
-  it('returns linked requirements with normalized archive review timestamps', async () => {
+  it('returns only published linked requirements with normalized timestamps', async () => {
     const query = vi.fn().mockResolvedValue([
       {
-        archiveInitiatedAt: new Date('2026-05-15T09:30:00.000Z'),
-        description: 'Archiving review requirement',
+        archiveInitiatedAt: null,
+        description: 'Published requirement',
         id: 1,
-        statusColor: '#f59e0b',
-        statusId: 2,
-        statusNameEn: 'Review',
-        statusNameSv: 'Granskning',
+        statusColor: '#22c55e',
+        statusId: 3,
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
         uniqueId: 'REQ-1',
         versionNumber: 3,
       },
       {
         archiveInitiatedAt: null,
-        description: 'Ordinary review requirement',
+        description: 'Published requirement',
         id: 2,
-        statusColor: '#f59e0b',
-        statusId: 2,
-        statusNameEn: 'Review',
-        statusNameSv: 'Granskning',
+        statusColor: '#22c55e',
+        statusId: 3,
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
         uniqueId: 'REQ-2',
         versionNumber: 1,
       },
@@ -97,9 +97,12 @@ describe('requirement-packages DAL', () => {
       ),
       [7],
     )
+    expect(String(query.mock.calls[0]?.[0])).toContain(
+      'requirement_versions.requirement_status_id = 3',
+    )
     expect(result).toMatchObject([
       {
-        archiveInitiatedAt: '2026-05-15T09:30:00.000Z',
+        archiveInitiatedAt: null,
         uniqueId: 'REQ-1',
       },
       {
