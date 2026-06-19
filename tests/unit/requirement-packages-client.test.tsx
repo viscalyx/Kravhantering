@@ -271,6 +271,64 @@ describe('RequirementPackagesClient', () => {
     expect(deleteButton.querySelector('svg')).not.toBeNull()
   })
 
+  it('opens linked requirements from the package list count', async () => {
+    setupRequirementPackageMocks(() =>
+      okJson({ linkedRequirements: [linkedRequirement] }),
+    )
+
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /requirementPackage\.requirementCount/i,
+      }),
+    )
+
+    const dialog = await screen.findByRole('dialog', {
+      name: /requirementPackage\.linkedRequirementsTitle/i,
+    })
+    expect(within(dialog).getByText('REQ-10')).toBeInTheDocument()
+    expect(within(dialog).getByText('v4')).toBeInTheDocument()
+    expect(within(dialog).getByText('Review')).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('link', { name: 'REQ-10' }),
+    ).toHaveAttribute('href', '/requirements/REQ-10/4')
+  })
+
+  it('loads linked requirements lazily from the edit form action', async () => {
+    setupRequirementPackageMocks(() =>
+      okJson({ linkedRequirements: [linkedRequirement] }),
+    )
+
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/requirement-packages/1')
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /requirementPackage\.showLinkedRequirements/i,
+      }),
+    )
+
+    const linkedDialog = await screen.findByRole('dialog', {
+      name: /requirementPackage\.linkedRequirementsTitle/i,
+    })
+    expect(
+      screen.getByRole('dialog', {
+        name: /requirementPackage\.editRequirementPackage/i,
+      }),
+    ).toBeInTheDocument()
+    expect(within(linkedDialog).getByText('REQ-10')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith('/api/requirement-packages/1')
+  })
+
   it('filters requirement packages by name or description and clears the search', async () => {
     fetchMock.mockImplementation(async (url: string) => {
       const urlString = requestUrl(url)
@@ -582,9 +640,12 @@ describe('RequirementPackagesClient', () => {
     expect(
       screen.getByText('Anna Owner (anna.owner@example.test)'),
     ).toBeInTheDocument()
-    await waitFor(() => {
-      expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
-    })
+    expect(
+      screen.getByRole('button', {
+        name: /requirementPackage\.showLinkedRequirements/i,
+      }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('common.noneAvailable')).toBeNull()
   })
 
   it('saves ordinary package edits without leadHsaId in the payload', async () => {
@@ -854,10 +915,26 @@ describe('RequirementPackagesClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[0])
+    expect(
+      screen.getByRole('dialog', {
+        name: /requirementPackage\.editRequirementPackage/i,
+      }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /requirementPackage\.showLinkedRequirements/i,
+      }),
+    )
 
     await waitFor(() => {
       expect(screen.getByRole('status')).toHaveTextContent('common.loading')
     })
+    expect(
+      screen.getByRole('dialog', {
+        name: /requirementPackage\.linkedRequirementsTitle/i,
+      }),
+    ).toBeInTheDocument()
   })
 
   it('shows an error instead of an empty state when linked requirements fail to load', async () => {
@@ -872,10 +949,18 @@ describe('RequirementPackagesClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[0])
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /requirementPackage\.showLinkedRequirements/i,
+      }),
+    )
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('common.error')
     })
+    expect(
+      screen.getByRole('button', { name: /common\.retry/i }),
+    ).toBeInTheDocument()
     expect(screen.queryByText('common.noneAvailable')).toBeNull()
   })
 
@@ -897,6 +982,11 @@ describe('RequirementPackagesClient', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /requirementPackage\.showLinkedRequirements/i,
+      }),
+    )
 
     await waitFor(() => {
       expect(
@@ -917,6 +1007,11 @@ describe('RequirementPackagesClient', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /requirementPackage\.showLinkedRequirements/i,
+      }),
+    )
 
     await waitFor(() => {
       expect(screen.getByText('Review')).toBeInTheDocument()

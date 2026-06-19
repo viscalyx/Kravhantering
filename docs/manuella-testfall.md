@@ -577,7 +577,11 @@ med piltangenter och stäng med Escape.
 1. Skapa ett testpaket och kontrollera att formuläret visar ansvarsinformation
    samt inloggad användare som kravpaketsansvarig utan redigerbart
    ansvarsfält.
+1. Klicka antalet i kolumnen `Kopplade krav` och kontrollera att en
+   skrivskyddad dialog öppnas för kravpaketets kopplade krav.
 1. Filtrera, redigera och arkivera testpaketet.
+1. Öppna samma skrivskyddade dialog via knappen i redigeringsformuläret och
+   kontrollera att redigeringsformuläret ligger kvar när dialogen stängs.
 1. Byt kravpaketsansvarig med HSA-id, tabba från suffixfältet och kontrollera
    att verifierat namn och e-post visas som text i bytesdialogen, och testa
    medförfattare.

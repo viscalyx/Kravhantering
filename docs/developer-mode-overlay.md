@@ -172,15 +172,17 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   its inline responsibility banner renders as
   `requirementPackages > responsibility notice: create package lead`. Editing
   opens the same modal surface as `dialog: edit requirement package`.
+  The edit form's linked-requirements reader renders as
+  `requirementPackages > crud form action: linked requirements` and opens the
+  shared `dialog: linked requirements` read-only surface.
   The package-lead change action stays inside the edit `crud form`, and the
   follow-up modal uses the shared `dialog: change requirements package lead`
   surface rather than adding a separate curated marker.
   The package name-or-description search field renders as
   `requirementPackages > text field: name or description filter`. Package list
-  row actions render as icon-only buttons and keep their developer-mode markers
-  as
-  `requirementPackages > table action: edit`, `archive`, `reactivate`, and
-  `delete`.
+  row actions keep their developer-mode markers as
+  `requirementPackages > table action: linked requirements`, `edit`,
+  `archive`, `reactivate`, and `delete`.
 - Requirement selection questions expose their create trigger in the fixed
   `floating action rail` as
   `requirementSelectionQuestions > floating pill: new requirement selection question`.

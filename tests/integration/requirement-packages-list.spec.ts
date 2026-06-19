@@ -189,6 +189,23 @@ for (const viewport of viewports) {
           dialog.getByRole('button', { name: 'Byt kravpaketsansvarig' }),
         ).toBeVisible()
 
+        const linkedRequirementsButton = dialog.getByRole('button', {
+          name: /Visa kopplade krav/,
+        })
+        await expect(linkedRequirementsButton).toBeVisible()
+        await linkedRequirementsButton.click()
+
+        const linkedRequirementsDialog = page.getByRole('dialog', {
+          name: /Kopplade krav:/,
+        })
+        await expect(linkedRequirementsDialog).toBeVisible()
+        await linkedRequirementsDialog
+          .getByRole('button', { name: 'Stäng' })
+          .last()
+          .click()
+        await expect(linkedRequirementsDialog).toBeHidden()
+        await expect(dialog).toBeVisible()
+
         const currentLeadHsaId = await leadInput.inputValue()
         await dialog
           .getByRole('button', { name: 'Byt kravpaketsansvarig' })

@@ -3,6 +3,7 @@
 import {
   Archive,
   Info,
+  ListChecks,
   Pencil,
   Plus,
   RotateCcw,
@@ -114,6 +115,12 @@ interface CurrentUser {
 interface PackageLeadChangeState {
   currentLeadHsaId: string
   packageId: number
+}
+
+interface LinkedRequirementsModalState {
+  linkedRequirementCount: number
+  packageId: number
+  packageName: string
 }
 
 const DESCRIPTION_TRUNCATE = 80
@@ -257,6 +264,8 @@ export default function RequirementPackagesClient() {
   const [leadChange, setLeadChange] = useState<PackageLeadChangeState | null>(
     null,
   )
+  const [linkedRequirementsModal, setLinkedRequirementsModal] =
+    useState<LinkedRequirementsModalState | null>(null)
   const linkedReqRequestId = useRef(0)
   const editFormSignatureRef = useRef<string | null>(null)
   const persistedCoAuthorHsaIdsRef = useRef<string[]>([])
@@ -351,6 +360,32 @@ export default function RequirementPackagesClient() {
     [tc],
   )
 
+  const openLinkedRequirementsModal = (
+    requirementPackage: RequirementPackage,
+  ) => {
+    setLinkedRequirementsModal({
+      linkedRequirementCount: requirementPackage.linkedRequirementCount,
+      packageId: requirementPackage.id,
+      packageName: requirementPackage.name,
+    })
+    setLinkedRequirements([])
+    setLinkedRequirementsError(null)
+    void fetchLinkedRequirements(requirementPackage.id)
+  }
+
+  const retryLinkedRequirements = () => {
+    if (!linkedRequirementsModal) return
+    void fetchLinkedRequirements(linkedRequirementsModal.packageId)
+  }
+
+  const closeLinkedRequirementsModal = () => {
+    linkedReqRequestId.current++
+    setLinkedRequirementsModal(null)
+    setLinkedRequirements([])
+    setLinkedRequirementsError(null)
+    setLinkedRequirementsLoading(false)
+  }
+
   const currentUserError = currentUserUnavailable
     ? t('currentUserUnavailable')
     : null
@@ -371,6 +406,7 @@ export default function RequirementPackagesClient() {
     setLinkedRequirements([])
     setLinkedRequirementsError(null)
     setLinkedRequirementsLoading(false)
+    setLinkedRequirementsModal(null)
     setStateError(null)
     controller.openCreate()
     editFormSignatureRef.current = null
@@ -393,7 +429,6 @@ export default function RequirementPackagesClient() {
       .map(coAuthor => coAuthor.hsaId.trim())
       .filter(Boolean)
     controller.openEdit(requirementPackage)
-    void fetchLinkedRequirements(requirementPackage.id)
   }
 
   const closeForm = () => {
@@ -401,6 +436,7 @@ export default function RequirementPackagesClient() {
     setLinkedRequirements([])
     setLinkedRequirementsError(null)
     setLinkedRequirementsLoading(false)
+    setLinkedRequirementsModal(null)
     setLeadChange(null)
     editFormSignatureRef.current = null
     persistedCoAuthorHsaIdsRef.current = []
@@ -414,6 +450,7 @@ export default function RequirementPackagesClient() {
       setLinkedRequirements([])
       setLinkedRequirementsError(null)
       setLinkedRequirementsLoading(false)
+      setLinkedRequirementsModal(null)
       setLeadChange(null)
       editFormSignatureRef.current = null
       persistedCoAuthorHsaIdsRef.current = []
@@ -425,6 +462,10 @@ export default function RequirementPackagesClient() {
     if (didRemove && controller.editId === id) {
       setLinkedRequirements([])
       setLinkedRequirementsError(null)
+      setLinkedRequirementsModal(null)
+    }
+    if (didRemove && linkedRequirementsModal?.packageId === id) {
+      closeLinkedRequirementsModal()
     }
   }
 
@@ -495,6 +536,7 @@ export default function RequirementPackagesClient() {
         setLinkedRequirements([])
         setLinkedRequirementsError(null)
         setLinkedRequirementsLoading(false)
+        setLinkedRequirementsModal(null)
         editFormSignatureRef.current = null
         persistedCoAuthorHsaIdsRef.current = []
         controller.closeForm()
@@ -556,6 +598,16 @@ export default function RequirementPackagesClient() {
     controller.submitting ||
     controller.deletingIds.has(requirementPackage.id) ||
     stateChangingIds.has(requirementPackage.id)
+  const requirementCountLabel = (count: number) =>
+    t('requirementCount', { count })
+  const showLinkedRequirementsLabel = (count: number) =>
+    t('showLinkedRequirements', { count })
+  const editedRequirementPackage =
+    controller.editId == null
+      ? null
+      : (controller.items.find(
+          requirementPackage => requirementPackage.id === controller.editId,
+        ) ?? null)
   const addCoAuthor = () => {
     controller.setForm(previousForm => ({
       ...previousForm,
@@ -936,35 +988,54 @@ export default function RequirementPackagesClient() {
         </div>
         {renderCoAuthorsSection()}
       </div>
-      <div className="flex gap-3">
-        <button
-          className="btn-primary"
-          disabled={controller.submitting}
-          type="submit"
-        >
-          {controller.submitting ? tc('saving') : tc('save')}
-        </button>
-        <button
-          className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
-          disabled={controller.submitting}
-          onClick={closeForm}
-          type="button"
-        >
-          {tc('cancel')}
-        </button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex gap-3">
+          <button
+            className="btn-primary"
+            disabled={controller.submitting}
+            type="submit"
+          >
+            {controller.submitting ? tc('saving') : tc('save')}
+          </button>
+          <button
+            className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
+            disabled={controller.submitting}
+            onClick={closeForm}
+            type="button"
+          >
+            {tc('cancel')}
+          </button>
+        </div>
+        {editedRequirementPackage && (
+          <button
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-secondary-300 px-4 py-2.5 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:ml-auto dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+            {...devMarker({
+              context: 'requirementPackages',
+              name: 'crud form action',
+              priority: 340,
+              value: 'linked requirements',
+            })}
+            disabled={controller.submitting}
+            onClick={() =>
+              openLinkedRequirementsModal(editedRequirementPackage)
+            }
+            title={showLinkedRequirementsLabel(
+              editedRequirementPackage.linkedRequirementCount,
+            )}
+            type="button"
+          >
+            <ListChecks aria-hidden="true" className="h-4 w-4" />
+            {showLinkedRequirementsLabel(
+              editedRequirementPackage.linkedRequirementCount,
+            )}
+          </button>
+        )}
       </div>
-      <div>
-        <div className="h-px border-t-2 border-dashed border-secondary-200 dark:border-secondary-700" />
-      </div>
-      {renderLinkedRequirements()}
     </form>
   )
 
-  const renderLinkedRequirements = () => (
+  const renderLinkedRequirementsContent = () => (
     <div>
-      <h3 className="mb-3 text-sm font-medium text-secondary-600 dark:text-secondary-400">
-        {t('linkedRequirements')}
-      </h3>
       {linkedRequirementsLoading ? (
         <p
           className="text-sm text-secondary-500 dark:text-secondary-400"
@@ -973,12 +1044,19 @@ export default function RequirementPackagesClient() {
           {tc('loading')}
         </p>
       ) : linkedRequirementsError ? (
-        <p
-          className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+        <div
+          className="space-y-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
           role="alert"
         >
-          {linkedRequirementsError}
-        </p>
+          <p>{linkedRequirementsError}</p>
+          <button
+            className="inline-flex min-h-11 items-center rounded-xl border border-red-300 bg-white px-4 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/50 focus-visible:ring-offset-2 dark:border-red-700 dark:bg-secondary-950 dark:text-red-300 dark:hover:bg-red-950/30"
+            onClick={retryLinkedRequirements}
+            type="button"
+          >
+            {tc('retry')}
+          </button>
+        </div>
       ) : linkedRequirements.length === 0 ? (
         <p className="text-sm text-secondary-500 dark:text-secondary-400">
           {tc('noneAvailable')}
@@ -1210,6 +1288,34 @@ export default function RequirementPackagesClient() {
           />
         )}
 
+        <FormModal
+          developerModeValue="linked requirements"
+          maxWidthClassName="max-w-4xl"
+          onClose={closeLinkedRequirementsModal}
+          open={linkedRequirementsModal !== null}
+          title={
+            linkedRequirementsModal
+              ? t('linkedRequirementsTitle', {
+                  name: linkedRequirementsModal.packageName,
+                })
+              : t('linkedRequirements')
+          }
+          titleId="requirement-package-linked-requirements-title"
+        >
+          <div className="space-y-5">
+            {renderLinkedRequirementsContent()}
+            <div className="flex justify-end">
+              <button
+                className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
+                onClick={closeLinkedRequirementsModal}
+                type="button"
+              >
+                {tc('close')}
+              </button>
+            </div>
+          </div>
+        </FormModal>
+
         {controller.loading ? (
           <p
             className="text-secondary-600 dark:text-secondary-400"
@@ -1319,10 +1425,26 @@ export default function RequirementPackagesClient() {
                             ? t('archived')
                             : t('active')}
                         </td>
-                        <td className="px-4 py-3 text-center text-secondary-600 dark:text-secondary-400">
-                          {t('requirementCount', {
-                            count: requirementPackage.linkedRequirementCount,
-                          })}
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-50 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-primary-300 dark:hover:bg-primary-950/30"
+                            {...devMarker({
+                              context: 'requirementPackages',
+                              name: 'table action',
+                              value: 'linked requirements',
+                            })}
+                            onClick={() =>
+                              openLinkedRequirementsModal(requirementPackage)
+                            }
+                            title={showLinkedRequirementsLabel(
+                              requirementPackage.linkedRequirementCount,
+                            )}
+                            type="button"
+                          >
+                            {requirementCountLabel(
+                              requirementPackage.linkedRequirementCount,
+                            )}
+                          </button>
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex justify-end gap-1">
