@@ -148,6 +148,24 @@ for (const viewport of viewports) {
         await expect(dialog.getByText('SE5560000001-admin1')).toBeVisible()
         await expect(dialog.getByText('Kopplade krav')).toHaveCount(0)
 
+        const addCoAuthorButton = dialog.getByRole('button', {
+          name: 'Lägg till medförfattare',
+        })
+        await expect(addCoAuthorButton).toBeEnabled()
+        await addCoAuthorButton.click()
+        await expect(addCoAuthorButton).toBeDisabled()
+        await expect(addCoAuthorButton).toHaveAttribute(
+          'title',
+          'Spara eller ta bort den osparade medförfattaren innan du lägger till en ny.',
+        )
+        await expect(
+          dialog.getByRole('textbox', { name: 'Medförfattares HSA-id' }),
+        ).toBeVisible()
+        await dialog
+          .getByRole('button', { name: 'Ta bort medförfattare' })
+          .click()
+        await expect(addCoAuthorButton).toBeEnabled()
+
         const dialogBox = await dialog.boundingBox()
         const leadBox = await leadSummary.boundingBox()
         const coAuthorsBox = await coAuthorsHeading.boundingBox()

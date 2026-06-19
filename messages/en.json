@@ -845,6 +845,7 @@
     "coAuthorHsaId": "Co-author HSA-id",
     "coAuthorHsaIdHelp": "Enter the co-author HSA-id with two uppercase country-code letters, a 10-digit organization number, a hyphen, and an alphanumeric suffix.",
     "addCoAuthor": "Add co-author",
+    "addCoAuthorUnsavedDisabled": "Save or remove the unsaved co-author before adding another one.",
     "removeCoAuthor": "Remove co-author",
     "noCoAuthors": "No package co-authors.",
     "owner": "Requirements package owner",

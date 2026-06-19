@@ -29,8 +29,10 @@ flowchart TD
     L --> M[No-results state appears]
     M --> N[Clear search]
     N --> O[All package rows return]
-    O --> P[Open package edit modal]
-    P --> Q[Assert locked lead field and change-lead modal]
+    O --> P[Open create modal]
+    P --> Q[Assert one unsaved co-author row blocks another]
+    Q --> R[Open package edit modal]
+    R --> S[Assert locked lead field and change-lead modal]
 ```
 
 ## Test Setup
@@ -70,6 +72,8 @@ action.
 1. Assert `Inga resultat hittades` appears and package rows are hidden.
 1. Click `Rensa sökning`.
 1. Assert the filter is empty and both package rows are visible again.
+1. Open `Nytt kravpaket`, click `Lägg till medförfattare`, and assert the add
+   action is disabled until the unsaved co-author row is removed.
 1. Open `Mobil användning` for editing.
 1. Assert `Kravpaketsansvarigs HSA-id` is locked and has a
    `Byt kravpaketsansvarig` action.
@@ -109,6 +113,10 @@ sequenceDiagram
     U->>F: Click clear search
     F->>P: Reset filter
     Note over P: ✓ Full list returns
+    U->>P: Open create and add co-author row
+    Note over P: ✓ Add co-author is disabled while the unsaved row is shown
+    U->>P: Remove unsaved co-author row
+    Note over P: ✓ Add co-author is enabled again
     U->>P: Open edit
     Note over P: ✓ Package lead field is locked
     U->>P: Open lead-change modal

@@ -79,6 +79,7 @@ interface RequirementPackageCoAuthorForm {
   displayName: string
   email: string
   hsaId: string
+  persistedHsaId: string | null
   personVerification: HsaPersonVerification | null
 }
 
@@ -152,6 +153,7 @@ const toForm = (
     displayName: coAuthor.displayName,
     email: coAuthor.email ?? '',
     hsaId: coAuthor.hsaId,
+    persistedHsaId: coAuthor.hsaId.trim(),
     personVerification: null,
   })),
   description: requirementPackage.description ?? '',
@@ -164,6 +166,15 @@ const toForm = (
 
 const coAuthorHsaIdsFromForm = (form: RequirementPackageForm) =>
   form.coAuthors.map(coAuthor => coAuthor.hsaId.trim()).filter(Boolean)
+
+const hasUnsavedCoAuthorEntry = (
+  coAuthors: readonly RequirementPackageCoAuthorForm[],
+) =>
+  coAuthors.some(
+    coAuthor =>
+      coAuthor.persistedHsaId === null ||
+      coAuthor.hsaId.trim() !== coAuthor.persistedHsaId,
+  )
 
 const toCreatePayload = (form: RequirementPackageForm) => ({
   coAuthorHsaIds: coAuthorHsaIdsFromForm(form),
@@ -611,16 +622,19 @@ export default function RequirementPackagesClient() {
   const addCoAuthor = () => {
     controller.setForm(previousForm => ({
       ...previousForm,
-      coAuthors: [
-        ...previousForm.coAuthors,
-        {
-          clientId: createCoAuthorClientId(),
-          displayName: '',
-          email: '',
-          hsaId: '',
-          personVerification: null,
-        },
-      ],
+      coAuthors: hasUnsavedCoAuthorEntry(previousForm.coAuthors)
+        ? previousForm.coAuthors
+        : [
+            ...previousForm.coAuthors,
+            {
+              clientId: createCoAuthorClientId(),
+              displayName: '',
+              email: '',
+              hsaId: '',
+              persistedHsaId: null,
+              personVerification: null,
+            },
+          ],
     }))
   }
   const removeCoAuthor = (index: number) => {
@@ -826,8 +840,18 @@ export default function RequirementPackagesClient() {
         </div>
         <button
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3.5 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:text-secondary-200 dark:hover:bg-secondary-800"
-          disabled={controller.submitting}
+          disabled={
+            controller.submitting ||
+            hasUnsavedCoAuthorEntry(controller.form.coAuthors)
+          }
           onClick={addCoAuthor}
+          title={
+            controller.submitting
+              ? tc('saving')
+              : hasUnsavedCoAuthorEntry(controller.form.coAuthors)
+                ? t('addCoAuthorUnsavedDisabled')
+                : t('addCoAuthor')
+          }
           type="button"
         >
           <Plus aria-hidden="true" className="h-4 w-4" />

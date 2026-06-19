@@ -584,7 +584,9 @@ med piltangenter och stäng med Escape.
    kontrollera att redigeringsformuläret ligger kvar när dialogen stängs.
 1. Byt kravpaketsansvarig med HSA-id, tabba från suffixfältet och kontrollera
    att verifierat namn och e-post visas som text i bytesdialogen, och testa
-   medförfattare.
+   medförfattare. Kontrollera att `Lägg till medförfattare` är inaktiv medan
+   en osparad rad för medförfattare visas och blir aktiv igen när raden tas
+   bort eller sparas.
 1. Skapa en kravurvalsfråga, lägg till svar och ändra ordning.
 1. Kontrollera synlighetsvillkor, hierarkimodal och kravurvalsförhandsvisning.
 

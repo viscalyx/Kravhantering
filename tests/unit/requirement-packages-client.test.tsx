@@ -608,6 +608,109 @@ describe('RequirementPackagesClient', () => {
     })
   })
 
+  it('disables adding another package co-author while a draft row is shown', async () => {
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+    const createButton = await screen.findByRole('button', {
+      name: /requirementPackage.newRequirementPackage/i,
+    })
+    await waitFor(() => {
+      expect(createButton).toBeEnabled()
+    })
+    fireEvent.click(createButton)
+
+    const dialog = screen.getByRole('dialog', {
+      name: /requirementPackage\.newRequirementPackage/i,
+    })
+    const addCoAuthorButton = within(dialog).getByRole('button', {
+      name: /requirementPackage\.addCoAuthor/i,
+    })
+    expect(addCoAuthorButton).toBeEnabled()
+
+    fireEvent.click(addCoAuthorButton)
+
+    await waitFor(() => {
+      expect(addCoAuthorButton).toBeDisabled()
+    })
+    expect(addCoAuthorButton).toHaveAttribute(
+      'title',
+      'requirementPackage.addCoAuthorUnsavedDisabled',
+    )
+    expect(
+      within(dialog).getByRole('textbox', {
+        name: /requirementPackage\.coAuthorHsaId/,
+      }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: /requirementPackage\.removeCoAuthor/i,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(addCoAuthorButton).toBeEnabled()
+    })
+    expect(addCoAuthorButton).toHaveAttribute(
+      'title',
+      'requirementPackage.addCoAuthor',
+    )
+  })
+
+  it('allows adding a package co-author when only persisted co-authors are shown', async () => {
+    const packageWithPersistedCoAuthor = {
+      ...sampleRequirementPackages[0],
+      coAuthors: [
+        {
+          displayName: 'Pat Package',
+          email: 'pat.package@example.test',
+          hsaId: 'SE5560000001-pat1',
+        },
+      ],
+    }
+    fetchMock.mockImplementation(async (url: string) => {
+      const urlString = requestUrl(url)
+      if (urlString === '/api/auth/me') return okJson(currentAuthMe)
+      if (urlString === '/api/hsa-id-prefixes')
+        return okJson(hsaIdPrefixPayload)
+      if (urlString.startsWith('/api/requirement-packages?')) {
+        return okJson({ requirementPackages: [packageWithPersistedCoAuthor] })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementPackagesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+
+    const dialog = screen.getByRole('dialog', {
+      name: /requirementPackage\.editRequirementPackage/i,
+    })
+    expect(
+      within(dialog).getByText('Pat Package (pat.package@example.test)'),
+    ).toBeInTheDocument()
+    const addCoAuthorButton = within(dialog).getByRole('button', {
+      name: /requirementPackage\.addCoAuthor/i,
+    })
+    expect(addCoAuthorButton).toBeEnabled()
+
+    fireEvent.click(addCoAuthorButton)
+
+    await waitFor(() => {
+      expect(addCoAuthorButton).toBeDisabled()
+    })
+    expect(
+      within(dialog).getAllByRole('textbox', {
+        name: /requirementPackage\.coAuthorHsaId/,
+      }),
+    ).toHaveLength(2)
+  })
+
   it('opens edit form with existing data', async () => {
     render(<RequirementPackagesClient />)
     await waitFor(() => {
