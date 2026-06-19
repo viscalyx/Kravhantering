@@ -586,7 +586,6 @@
     "graduateLocalRequirementConfirmTitle": "Graduate unique requirement",
     "graduateLocalRequirementConfirm": "Create a new draft requirement in the Requirements Library from this unique requirement? The unique requirement stays in this specification.",
     "graduateLocalRequirementConfirmText": "Graduate",
-    "graduateLocalRequirementDisabledTooltip": "This unique requirement can only be graduated when Usage status is Included.",
     "graduateLocalRequirementFailed": "Could not graduate the unique requirement.",
     "deleteLocalRequirementConfirmTitle": "Delete unique requirement",
     "deleteLocalRequirementConfirm": "Are you sure you want to permanently delete this unique requirement? It cannot be restored.",

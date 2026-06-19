@@ -385,13 +385,12 @@ down.
   visually muted so they no longer read as active actions.
 - The same specification-local action rail may show **Graduate to library** when
   the actor owns or co-authors at least one requirement area. The action is
-  disabled unless **Användningsstatus** is **Inkluderad**. Opening the action
-  shows a modal target requirement area picker over a dimmed background,
-  including the copy-only outcome text. Pressing the modal's **Graduate**
-  action copies the unique requirement into the selected library requirement
-  area as a new Draft library
-  requirement, navigates to that new requirement's created Draft version, and
-  leaves the source unique row and any local deviations unchanged.
+  available regardless of **Användningsstatus**. Opening the action shows a
+  modal target requirement area picker over a dimmed background, including the
+  copy-only outcome text. Pressing the modal's **Graduate** action copies the
+  unique requirement into the selected library requirement area as a new Draft
+  library requirement, navigates to that new requirement's created Draft
+  version, and leaves the source unique row and any local deviations unchanged.
 
 ## Print List Report Floating Pill
 

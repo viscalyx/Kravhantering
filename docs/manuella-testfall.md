@@ -790,11 +790,15 @@ panel.
 
 **Förväntat resultat:** Kopplingen skapas och tas bort korrekt.
 
-### SPEC-07: skapa unikt krav i kravunderlag
+### SPEC-07: skapa och lyft unikt krav i kravunderlag
 
-**Steg:** Skapa ett nytt krav direkt från kravunderlaget.
+**Steg:** Skapa ett nytt krav direkt från kravunderlaget. Ändra
+användningsstatus till ett annat läge än `Inkluderad` och lyft sedan kravet
+till kravbiblioteket.
 
-**Förväntat resultat:** Kravet får unikt ID och kopplas till underlaget.
+**Förväntat resultat:** Kravet får unikt ID och kopplas till underlaget. Lyft
+skapar ett nytt utkast i kravbiblioteket oavsett användningsstatus, medan
+källkravet ligger kvar i kravunderlaget.
 
 ### SPEC-08: uppdatera användningsstatus
 

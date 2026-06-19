@@ -650,16 +650,18 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12f: storag
 
 **What happened:** `graduateSpecificationLocalRequirementToLibrary()` in
 `lib/dal/requirements-specifications.ts` locks the source
-specification-local row, requires Included usage status, creates a new
-library requirement and Draft version in the selected target requirement area, copies
+specification-local row, allows any usage status, creates a new library
+requirement and Draft version in the selected target requirement area, copies
 supported classification, verification, requirement-package and norm-reference
 joins, and leaves the original local row untouched. Without this fitness
 scenario, a later implementation could silently revert to the old replace/link
-idea and move or delete evidence from the source specification.
+idea, reintroduce a status gate, or move or delete evidence from the source
+specification.
 
-**The requirement:** Graduation must be copy-only. The source unique
-requirement, its usage status, note, and local deviations remain unchanged; the
-target library requirement is a new Draft in the chosen requirement area.
+**The requirement:** Graduation must be copy-only and independent of usage
+status. The source unique requirement, its usage status, note, and local
+deviations remain unchanged; the target library requirement is a new Draft in
+the chosen requirement area.
 
 **How to verify:**
 

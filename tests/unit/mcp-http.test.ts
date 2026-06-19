@@ -510,7 +510,10 @@ describe('handleRequirementsMcpRequest', () => {
       const graduateTool = getTool('requirements_graduate_local_requirement')
 
       expect(graduateTool).toBeDefined()
-      expect(graduateTool?.description).toContain('Copy an Included')
+      expect(graduateTool?.description).toContain('Copy a unique requirement')
+      expect(graduateTool?.description).toContain(
+        'regardless of its usage status',
+      )
       expect(graduateTool?.description).toContain(
         'source unique requirement remains unchanged',
       )

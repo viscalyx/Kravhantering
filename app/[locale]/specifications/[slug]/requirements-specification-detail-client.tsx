@@ -2545,6 +2545,18 @@ export default function KravunderlagDetailClient({
                             ])
                           }}
                           specificationSlug={specificationSlug}
+                          usageStatus={{
+                            specificationItemStatusColor:
+                              item.specificationItemStatusColor ?? null,
+                            specificationItemStatusIconName:
+                              item.specificationItemStatusIconName ?? null,
+                            specificationItemStatusId:
+                              item.specificationItemStatusId ?? null,
+                            specificationItemStatusNameEn:
+                              item.specificationItemStatusNameEn ?? null,
+                            specificationItemStatusNameSv:
+                              item.specificationItemStatusNameSv ?? null,
+                          }}
                         />
                       ) : item?.specificationItemId != null ? (
                         <RequirementDetailClient

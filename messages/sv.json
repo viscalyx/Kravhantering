@@ -586,7 +586,6 @@
     "graduateLocalRequirementConfirmTitle": "Lyft unikt krav",
     "graduateLocalRequirementConfirm": "Skapa ett nytt utkast i kravbiblioteket från detta unika krav? Det unika kravet ligger kvar i kravunderlaget.",
     "graduateLocalRequirementConfirmText": "Lyft",
-    "graduateLocalRequirementDisabledTooltip": "Det unika kravet kan bara lyftas när användningsstatus är Inkluderad.",
     "graduateLocalRequirementFailed": "Det gick inte att lyfta det unika kravet.",
     "deleteLocalRequirementConfirmTitle": "Ta bort unikt krav",
     "deleteLocalRequirementConfirm": "Är du säker på att du vill radera detta unika krav permanent? Det går inte att återskapa.",

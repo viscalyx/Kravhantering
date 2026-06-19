@@ -1882,9 +1882,28 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         verificationMethod: 'Inspection',
       },
     )
+    const nonIncludedUsageStatusId = 99
     await appDb().query(
-      `UPDATE specification_local_requirements SET note = @0 WHERE id = @1`,
-      ['Keep source note', localItem.id],
+      `IF NOT EXISTS (SELECT 1 FROM specification_item_statuses WHERE id = @0)
+         BEGIN
+           SET IDENTITY_INSERT specification_item_statuses ON;
+           INSERT INTO specification_item_statuses (id, name_sv, name_en, color, sort_order)
+             VALUES (@0, @1, @2, @3, @4);
+           SET IDENTITY_INSERT specification_item_statuses OFF;
+         END`,
+      [
+        nonIncludedUsageStatusId,
+        'Pågående test',
+        'Ongoing test',
+        '#f59e0b',
+        99,
+      ],
+    )
+    await appDb().query(
+      `UPDATE specification_local_requirements
+       SET note = @0, specification_item_status_id = @1
+       WHERE id = @2`,
+      ['Keep source note', nonIncludedUsageStatusId, localItem.id],
     )
     await createDeviationForItemRef(appDb(), {
       itemRef: `local:${localItem.id}`,
@@ -1972,7 +1991,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(sourceRows).toEqual([
       {
         note: 'Keep source note',
-        specificationItemStatusId: DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+        specificationItemStatusId: nonIncludedUsageStatusId,
       },
     ])
     expect(targetRows).toEqual([

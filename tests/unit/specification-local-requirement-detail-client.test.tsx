@@ -41,8 +41,6 @@ const translations: Record<string, string> = {
   'specification.graduateLocalRequirementConfirmText': 'Graduate',
   'specification.graduateLocalRequirementConfirmTitle':
     'Graduate unique requirement',
-  'specification.graduateLocalRequirementDisabledTooltip':
-    'This unique requirement can only be graduated when Usage status is Included.',
   'specification.graduateLocalRequirementFailed':
     'Could not graduate the unique requirement.',
   'specification.graduateLocalRequirementTargetHelp':
@@ -482,7 +480,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     })
   })
 
-  it('disables edit and delete when usage status is not Included', async () => {
+  it('keeps graduation enabled when usage status is not Included', async () => {
     vi.mocked(fetch)
       .mockImplementationOnce(() =>
         okJson({
@@ -535,7 +533,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
 
     expect(editButton).toBeDisabled()
     expect(deleteButton).toBeDisabled()
-    expect(graduateButton).toBeDisabled()
+    expect(graduateButton).toBeEnabled()
     expect(editButton.className).toContain('disabled:cursor-not-allowed')
     expect(deleteButton.className).toContain('btn-destructive')
     expect(deleteButton.className).not.toContain('disabled:text-secondary-400')
@@ -547,9 +545,95 @@ describe('SpecificationLocalRequirementDetailClient', () => {
       'title',
       'This unique requirement can only be edited or removed when Usage status is Included and no deviation is pending.',
     )
-    expect(graduateButton.parentElement).toHaveAttribute(
+    expect(graduateButton.parentElement).not.toHaveAttribute('title')
+  })
+
+  it('updates edit and delete availability when the row usage status changes', async () => {
+    vi.mocked(fetch)
+      .mockImplementationOnce(() =>
+        okJson({
+          acceptanceCriteria: 'Specification local acceptance',
+          createdAt: '2026-04-01T00:00:00.000Z',
+          description: 'Status synced unique requirement',
+          id: 1,
+          itemRef: 'local:1',
+          needsReference: 'Need A',
+          needsReferenceId: 3,
+          normReferences: [],
+          specificationId: 8,
+          specificationItemStatusColor: '#94a3b8',
+          specificationItemStatusId: 1,
+          specificationItemStatusNameEn: 'Included',
+          specificationItemStatusNameSv: 'Inkluderad',
+          qualityCharacteristic: null,
+          requirementArea: null,
+          requirementCategory: null,
+          requirementType: null,
+          requiresTesting: false,
+          riskLevel: null,
+          requirementPackages: [],
+          uniqueId: 'KRAV0004',
+          updatedAt: '2026-04-02T00:00:00.000Z',
+          verificationMethod: null,
+        }),
+      )
+      .mockImplementationOnce(() => okJson({ deviations: [] }))
+      .mockImplementationOnce(() =>
+        okJson({ areas: [{ id: 2, name: 'Security', prefix: 'SEC' }] }),
+      )
+
+    const { rerender } = render(
+      <SpecificationLocalRequirementDetailClient
+        localRequirementId={1}
+        needsReferences={[]}
+        specificationSlug="ETJANST-UPP-2026"
+        usageStatus={{
+          specificationItemStatusColor: '#94a3b8',
+          specificationItemStatusIconName: null,
+          specificationItemStatusId: 1,
+          specificationItemStatusNameEn: 'Included',
+          specificationItemStatusNameSv: 'Inkluderad',
+        }}
+      />,
+    )
+
+    expect(
+      await screen.findByText('Status synced unique requirement'),
+    ).toBeInTheDocument()
+
+    const editButton = await screen.findByRole('button', { name: 'Edit' })
+    const deleteButton = screen.getByRole('button', { name: 'Delete' })
+    const graduateButton = await screen.findByRole('button', {
+      name: 'Graduate to library',
+    })
+
+    expect(editButton).toBeEnabled()
+    expect(deleteButton).toBeEnabled()
+
+    rerender(
+      <SpecificationLocalRequirementDetailClient
+        localRequirementId={1}
+        needsReferences={[]}
+        specificationSlug="ETJANST-UPP-2026"
+        usageStatus={{
+          specificationItemStatusColor: '#f59e0b',
+          specificationItemStatusIconName: 'Play',
+          specificationItemStatusId: 2,
+          specificationItemStatusNameEn: 'In Progress',
+          specificationItemStatusNameSv: 'Pågående',
+        }}
+      />,
+    )
+
+    expect(await screen.findByText('Pågående')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(editButton).toBeDisabled()
+      expect(deleteButton).toBeDisabled()
+    })
+    expect(graduateButton).toBeEnabled()
+    expect(editButton.parentElement).toHaveAttribute(
       'title',
-      'This unique requirement can only be graduated when Usage status is Included.',
+      'This unique requirement can only be edited or removed when Usage status is Included and no deviation is pending.',
     )
   })
 

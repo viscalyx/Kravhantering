@@ -82,8 +82,8 @@ agents can use it reliably.
   ```
 
 - `requirements_graduate_local_requirement`
-  Copy an Included unique requirement into a chosen library
-  requirement area as a new Draft library requirement. The source unique
+  Copy a unique requirement into a chosen library requirement area as a new Draft
+  library requirement, regardless of its usage status. The source unique
   requirement remains unchanged in the specification, and deviations stay with
   that source row.
 - `requirements_remove_from_specification`

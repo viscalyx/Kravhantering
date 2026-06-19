@@ -64,6 +64,48 @@ interface SpecificationLocalRequirementDetail {
   verificationMethod: string | null
 }
 
+interface SpecificationLocalRequirementUsageStatusSnapshot {
+  specificationItemStatusColor: string | null
+  specificationItemStatusIconName: string | null
+  specificationItemStatusId: number | null
+  specificationItemStatusNameEn: string | null
+  specificationItemStatusNameSv: string | null
+}
+
+function applyUsageStatusSnapshot(
+  requirement: SpecificationLocalRequirementDetail,
+  usageStatus: SpecificationLocalRequirementUsageStatusSnapshot | undefined,
+) {
+  if (!usageStatus) {
+    return requirement
+  }
+
+  if (
+    requirement.specificationItemStatusId ===
+      usageStatus.specificationItemStatusId &&
+    requirement.specificationItemStatusNameSv ===
+      usageStatus.specificationItemStatusNameSv &&
+    requirement.specificationItemStatusNameEn ===
+      usageStatus.specificationItemStatusNameEn &&
+    requirement.specificationItemStatusColor ===
+      usageStatus.specificationItemStatusColor &&
+    requirement.specificationItemStatusIconName ===
+      usageStatus.specificationItemStatusIconName
+  ) {
+    return requirement
+  }
+
+  return {
+    ...requirement,
+    specificationItemStatusColor: usageStatus.specificationItemStatusColor,
+    specificationItemStatusIconName:
+      usageStatus.specificationItemStatusIconName,
+    specificationItemStatusId: usageStatus.specificationItemStatusId,
+    specificationItemStatusNameEn: usageStatus.specificationItemStatusNameEn,
+    specificationItemStatusNameSv: usageStatus.specificationItemStatusNameSv,
+  }
+}
+
 interface DeviationData {
   createdAt: string
   createdBy: string | null
@@ -87,6 +129,7 @@ interface SpecificationLocalRequirementDetailClientProps {
   needsReferences: { id: number; text: string }[]
   onChange?: () => void | Promise<void>
   specificationSlug: string
+  usageStatus?: SpecificationLocalRequirementUsageStatusSnapshot
 }
 
 function readResponseError(body: unknown): string | null {
@@ -266,6 +309,7 @@ export default function SpecificationLocalRequirementDetailClient({
   needsReferences,
   onChange,
   specificationSlug,
+  usageStatus,
 }: SpecificationLocalRequirementDetailClientProps) {
   const t = useTranslations('requirement')
   const tp = useTranslations('specification')
@@ -312,6 +356,7 @@ export default function SpecificationLocalRequirementDetailClient({
   const [selectedGraduationAreaId, setSelectedGraduationAreaId] =
     useState<string>('')
   const [showGraduationModal, setShowGraduationModal] = useState(false)
+  const usageStatusRef = useRef(usageStatus)
 
   const latestDeviation = useMemo(() => {
     if (deviations.length === 0) {
@@ -354,9 +399,9 @@ export default function SpecificationLocalRequirementDetailClient({
         )
       }
 
-      setRequirement(
-        (await response.json()) as SpecificationLocalRequirementDetail,
-      )
+      const detail =
+        (await response.json()) as SpecificationLocalRequirementDetail
+      setRequirement(applyUsageStatusSnapshot(detail, usageStatusRef.current))
     } catch (fetchError) {
       setRequirement(null)
       setError(
@@ -465,6 +510,22 @@ export default function SpecificationLocalRequirementDetailClient({
   useEffect(() => {
     void fetchRequirement()
   }, [fetchRequirement])
+
+  useEffect(() => {
+    usageStatusRef.current = usageStatus
+
+    if (!usageStatus) {
+      return
+    }
+
+    setRequirement(current => {
+      if (!current) {
+        return current
+      }
+
+      return applyUsageStatusSnapshot(current, usageStatus)
+    })
+  }, [usageStatus])
 
   useEffect(() => {
     setDeviations([])
@@ -977,12 +1038,6 @@ export default function SpecificationLocalRequirementDetailClient({
   const localRequirementMutationTooltip = canMutateLocalRequirement
     ? undefined
     : tp('localRequirementActionDisabledTooltip')
-  const canGraduateLocalRequirement =
-    requirement.specificationItemStatusId ===
-    DEFAULT_SPECIFICATION_ITEM_STATUS_ID
-  const graduationTooltip = canGraduateLocalRequirement
-    ? undefined
-    : tp('graduateLocalRequirementDisabledTooltip')
 
   return (
     <div
@@ -1005,7 +1060,7 @@ export default function SpecificationLocalRequirementDetailClient({
         }}
         onSelectArea={setSelectedGraduationAreaId}
         onSubmit={() => void handleGraduate()}
-        open={showGraduationModal && canGraduateLocalRequirement}
+        open={showGraduationModal}
         selectedAreaId={selectedGraduationAreaId}
       />
 
@@ -1179,15 +1234,10 @@ export default function SpecificationLocalRequirementDetailClient({
 
                         {graduationTargetAreas.length > 0 ? (
                           <>
-                            <span
-                              className="inline-flex w-full"
-                              title={graduationTooltip}
-                            >
+                            <span className="inline-flex w-full">
                               <button
                                 className={railSecondaryButtonClass}
-                                disabled={
-                                  !canGraduateLocalRequirement || isGraduating
-                                }
+                                disabled={isGraduating}
                                 {...devMarker({
                                   context: detailContext,
                                   name: 'detail action',

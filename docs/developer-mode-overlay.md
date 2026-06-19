@@ -278,9 +278,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   print/deviation/detail action marker surfaces.
 - Those existing specification-local edit/delete `detail action` controls may
   render disabled when usage status is not Included or when a deviation is still
-  pending. The graduation action is disabled when usage status is not Included.
-  In either disabled state the controls are visually muted, but this
-  state change does not add any new developer-mode markers.
+  pending. The graduation action is available regardless of usage status when a
+  graduation target area is available. Disabled edit/delete state does not add
+  any new developer-mode markers.
 - Specification-local inline details now also use the same outer inset as the
   library inline detail surface; this is a layout-only alignment change
   and does not add any new developer-mode markers.

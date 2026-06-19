@@ -785,8 +785,10 @@ ska verifieras.
 _Avoid_: Normreferens.
 
 **Användningsstatus**:
-Det underlagsspecifika läget för en kravtillämpning i ett kravunderlag. Det
-beskriver hur kravet används eller följs upp i just det sammanhanget.
+Det underlagsspecifika livscykelläget för ett krav inom ett kravunderlag,
+oavsett om kravet är en kravtillämpning eller ett kravunderlagslokalt krav. Det
+beskriver till exempel om kravet är inkluderat, pågående, implementerat eller
+verifierat inom just den tillämpningen.
 
 - `en`: Usage status
 
