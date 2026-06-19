@@ -1423,28 +1423,35 @@ export default function KravunderlagDetailClient({
   const handleExportCsv = useCallback(
     async (profile: SpecificationCsvProfile) => {
       if (!spec) return
-      const response = await fetch(
-        `/api/requirements-specifications/${encodeURIComponent(
-          specificationSlug,
-        )}/exports?profile=${encodeURIComponent(
-          profile,
-        )}&locale=${encodeURIComponent(locale)}`,
-      )
-      if (!response.ok) {
-        const details = await readResponseMessage(response)
-        console.error(details || tc('error'))
-        return
-      }
+      try {
+        const response = await fetch(
+          `/api/requirements-specifications/${encodeURIComponent(
+            specificationSlug,
+          )}/exports?profile=${encodeURIComponent(
+            profile,
+          )}&locale=${encodeURIComponent(locale)}`,
+        )
+        if (!response.ok) {
+          const details = await readResponseMessage(response)
+          console.error(details || tc('error'))
+          return
+        }
 
-      const blob = await response.blob()
-      const label = exportProfileLabel(profile)
-      const fallbackFilename = `${label} ${spec.name} ${spec.uniqueId}.csv`
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = fallbackFilename
-      a.click()
-      URL.revokeObjectURL(url)
+        const blob = await response.blob()
+        const label = exportProfileLabel(profile)
+        const fallbackFilename = `${label} ${spec.name} ${spec.uniqueId}.csv`
+        const url = URL.createObjectURL(blob)
+        try {
+          const a = document.createElement('a')
+          a.href = url
+          a.download = fallbackFilename
+          a.click()
+        } finally {
+          URL.revokeObjectURL(url)
+        }
+      } catch (error) {
+        console.error(error)
+      }
     },
     [exportProfileLabel, locale, spec, specificationSlug, tc],
   )
@@ -1465,7 +1472,9 @@ export default function KravunderlagDetailClient({
 
   const openPrintReportHref = useCallback(
     (profile: SpecificationReportProfile) =>
-      `/specifications/${specificationSlug}/reports/print/${profile}`,
+      `/specifications/${encodeURIComponent(
+        specificationSlug,
+      )}/reports/print/${profile}`,
     [specificationSlug],
   )
 

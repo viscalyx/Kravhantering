@@ -812,12 +812,15 @@ panel.
 
 **Steg:** Öppna ett kravunderlag med livscykelstatus `Upphandling`, öppna
 rapportmenyn och välj `Kravbilaga för upphandling`. Öppna exportmenyn och välj
-`Anbuds-CSV` samt `Full CSV-export`.
+`Anbuds-CSV` samt `Full CSV-export`. Upprepa robusthetskontrollen med ett
+kravunderlag vars ID innehåller mellanslag eller snedstreck.
 
 **Förväntat resultat:** Rapporten genereras för hela kravunderlaget, sorterad
 på Krav-ID, och innehåller bara Krav-ID, Kravtext, Kvalitetsegenskap med
 ISO-kapitel och Normreferenser utan rå URI. `Anbuds-CSV` innehåller samma
 kravfält och en separat Norm-URI-kolumn. `Full CSV-export` finns också.
+Rapportlänken öppnas korrekt och CSV-exporten hanterar fel från servern eller
+webbläsaren utan att bryta sidan.
 
 ### SPEC-10b: generera genomföranderapport för införande och utveckling
 

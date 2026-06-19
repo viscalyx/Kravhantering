@@ -200,9 +200,12 @@ function okJson(body: unknown) {
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
+const defaultSpecificationSlug = 'ETJANST-UPP-2026'
 let addRequirementsResponse: { body: unknown; ok: boolean }
+let activeSpecificationSlug = defaultSpecificationSlug
 let bulkNeedsReferencePatchError: Error | null
 let bulkNeedsReferencePatchResponse: { body: unknown; ok: boolean } | null
+let exportCsvError: Error | null
 let failNextAvailableRequirementsFetch = false
 let failNextSpecificationItemsFetch = false
 let availableRequirementsSelectionFilter:
@@ -316,15 +319,21 @@ function createInitialData(): RequirementsSpecificationDetailInitialData {
 
 function renderRequirementsSpecificationDetailClient(
   initialData = createInitialData(),
+  specificationSlug = defaultSpecificationSlug,
 ) {
+  activeSpecificationSlug = specificationSlug
   return render(
     <ConfirmModalProvider>
       <RequirementsSpecificationDetailClient
         initialData={initialData}
-        specificationSlug="ETJANST-UPP-2026"
+        specificationSlug={specificationSlug}
       />
     </ConfirmModalProvider>,
   )
+}
+
+function specificationApiPath(path = '') {
+  return `/api/requirements-specifications/${activeSpecificationSlug}${path}`
 }
 
 function availableRequirementsFetchUrls(): string[] {
@@ -333,9 +342,7 @@ function availableRequirementsFetchUrls(): string[] {
       typeof input === 'string' ? input : (input as Request).url,
     )
     .filter(url =>
-      url.startsWith(
-        '/api/requirements-specifications/ETJANST-UPP-2026/available-requirements?',
-      ),
+      url.startsWith(`${specificationApiPath('/available-requirements')}?`),
     )
 }
 
@@ -364,8 +371,10 @@ describe('RequirementsSpecificationDetailClient', () => {
     vi.mocked(useReducedMotion).mockReturnValue(false)
     requirementsTableMock.mockReset()
     addRequirementsResponse = { body: { ok: true }, ok: true }
+    activeSpecificationSlug = defaultSpecificationSlug
     bulkNeedsReferencePatchError = null
     bulkNeedsReferencePatchResponse = null
+    exportCsvError = null
     failNextAvailableRequirementsFetch = false
     failNextSpecificationItemsFetch = false
     availableRequirementsSelectionFilter = undefined
@@ -386,7 +395,7 @@ describe('RequirementsSpecificationDetailClient', () => {
           )
         }
 
-        if (url === '/api/requirements-specifications/ETJANST-UPP-2026') {
+        if (url === specificationApiPath()) {
           return Promise.resolve(
             okJson({
               businessNeedsReference: 'Shared IAM business case',
@@ -405,20 +414,14 @@ describe('RequirementsSpecificationDetailClient', () => {
           )
         }
 
-        if (
-          url === '/api/requirements-specifications/ETJANST-UPP-2026/items' &&
-          method === 'POST'
-        ) {
+        if (url === specificationApiPath('/items') && method === 'POST') {
           return Promise.resolve({
             json: async () => addRequirementsResponse.body,
             ok: addRequirementsResponse.ok,
           })
         }
 
-        if (
-          url === '/api/requirements-specifications/ETJANST-UPP-2026/items' &&
-          method === 'PATCH'
-        ) {
+        if (url === specificationApiPath('/items') && method === 'PATCH') {
           if (bulkNeedsReferencePatchError) {
             return Promise.reject(bulkNeedsReferencePatchError)
           }
@@ -432,10 +435,7 @@ describe('RequirementsSpecificationDetailClient', () => {
           return Promise.resolve(okJson({ ok: true, updatedCount: 1 }))
         }
 
-        if (
-          url === '/api/requirements-specifications/ETJANST-UPP-2026/items' &&
-          method === 'GET'
-        ) {
+        if (url === specificationApiPath('/items') && method === 'GET') {
           if (failNextSpecificationItemsFetch) {
             failNextSpecificationItemsFetch = false
             return Promise.resolve({
@@ -478,7 +478,7 @@ describe('RequirementsSpecificationDetailClient', () => {
 
         if (
           url.startsWith(
-            '/api/requirements-specifications/ETJANST-UPP-2026/available-requirements?',
+            `${specificationApiPath('/available-requirements')}?`,
           ) ||
           url.startsWith('/api/requirements?')
         ) {
@@ -491,7 +491,7 @@ describe('RequirementsSpecificationDetailClient', () => {
           }
 
           const isSpecificationAvailableRequirements = url.startsWith(
-            '/api/requirements-specifications/ETJANST-UPP-2026/available-requirements?',
+            `${specificationApiPath('/available-requirements')}?`,
           )
           const applyRequirementSelectionFilter =
             isSpecificationAvailableRequirements &&
@@ -538,6 +538,17 @@ describe('RequirementsSpecificationDetailClient', () => {
           )
         }
 
+        if (url.startsWith(`${specificationApiPath('/exports')}?`)) {
+          if (exportCsvError) {
+            return Promise.reject(exportCsvError)
+          }
+
+          return Promise.resolve({
+            blob: async () => new Blob(['Krav-ID\r\nBEH0001']),
+            ok: true,
+          })
+        }
+
         if (url === '/api/requirement-areas') {
           return Promise.resolve(okJson({ areas: [] }))
         }
@@ -559,16 +570,14 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
-          url ===
-            '/api/requirements-specifications/ETJANST-UPP-2026/items/lib%3A31' &&
+          url === `${specificationApiPath('/items')}/lib%3A31` &&
           method === 'PATCH'
         ) {
           return Promise.resolve(okJson({ ok: true }))
         }
 
         if (
-          url ===
-            '/api/requirements-specifications/ETJANST-UPP-2026/needs-references' &&
+          url === specificationApiPath('/needs-references') &&
           method === 'POST'
         ) {
           return Promise.resolve(
@@ -585,8 +594,7 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
-          url ===
-            '/api/requirements-specifications/ETJANST-UPP-2026/needs-references' &&
+          url === specificationApiPath('/needs-references') &&
           method === 'PATCH'
         ) {
           return Promise.resolve(
@@ -603,25 +611,20 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
-          url ===
-            '/api/requirements-specifications/ETJANST-UPP-2026/needs-references' &&
+          url === specificationApiPath('/needs-references') &&
           method === 'DELETE'
         ) {
           return Promise.resolve(okJson({ ok: true }))
         }
 
         if (
-          url ===
-            '/api/requirements-specifications/ETJANST-UPP-2026/needs-references' &&
+          url === specificationApiPath('/needs-references') &&
           method === 'GET'
         ) {
           return Promise.resolve(okJson({ needsReferences: [] }))
         }
 
-        if (
-          url ===
-          '/api/requirements-specifications/ETJANST-UPP-2026/requirement-selection-answers'
-        ) {
+        if (url === specificationApiPath('/requirement-selection-answers')) {
           return Promise.resolve(okJson({ questions: [] }))
         }
 
@@ -683,14 +686,15 @@ describe('RequirementsSpecificationDetailClient', () => {
     await waitForInitialAvailableRequirementsRefresh()
   })
 
-  it('shows lifecycle-matched report options and always keeps full CSV export', () => {
+  it('shows lifecycle-matched report options and always keeps full CSV export', async () => {
     renderRequirementsSpecificationDetailClient()
+    await waitForInitialAvailableRequirementsRefresh()
 
     const itemsTable = latestItemsTableProps()
     const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
       hidden?: boolean
       id: string
-      menuItems?: Array<{ href?: string; id: string }>
+      menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
     }>
     const printAction = floatingActions.find(action => action.id === 'print')
     const exportAction = floatingActions.find(action => action.id === 'export')
@@ -706,6 +710,60 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(exportAction?.menuItems?.map(item => item.id)).toEqual([
       'export-full',
     ])
+  })
+
+  it('encodes profile print report href slugs as one route segment', async () => {
+    renderRequirementsSpecificationDetailClient(
+      createInitialData(),
+      'ETJANST UPP/2026',
+    )
+    await waitForInitialAvailableRequirementsRefresh()
+
+    const itemsTable = latestItemsTableProps()
+    const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
+      hidden?: boolean
+      id: string
+      menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
+    }>
+    const printAction = floatingActions.find(action => action.id === 'print')
+
+    expect(printAction?.menuItems).toEqual([
+      expect.objectContaining({
+        href: '/specifications/ETJANST%20UPP%2F2026/reports/print/progress',
+        id: 'print-progress',
+      }),
+      expect.objectContaining({ id: 'pdf-progress' }),
+    ])
+  })
+
+  it('logs CSV export failures from discarded menu handlers', async () => {
+    const csvError = new Error('network unavailable')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    exportCsvError = csvError
+
+    try {
+      renderRequirementsSpecificationDetailClient()
+
+      const itemsTable = latestItemsTableProps()
+      const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
+        hidden?: boolean
+        id: string
+        menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
+      }>
+      const exportAction = floatingActions.find(
+        action => action.id === 'export',
+      )
+
+      exportAction?.menuItems
+        ?.find(menuItem => menuItem.id === 'export-full')
+        ?.onClick?.()
+
+      await waitFor(() => {
+        expect(consoleError).toHaveBeenCalledWith(csvError)
+      })
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 
   it('loads available requirements without sending the fixed status filter', async () => {

@@ -13,10 +13,7 @@ import {
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { ReportDataError } from '@/lib/reports/data/server'
 import { collectSpecificationOutputData } from '@/lib/reports/data/specification-output'
-import {
-  getSpecificationReportProfileForLifecycleStatus,
-  parseSpecificationReportProfile,
-} from '@/lib/reports/specification-profiles'
+import { getSpecificationReportProfileForLifecycleStatus } from '@/lib/reports/specification-profiles'
 import { buildSpecificationProfileReport } from '@/lib/reports/templates/specification-profile-template'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
@@ -80,13 +77,7 @@ export async function GET(
   }
 
   const { id } = parsedParams.data
-  const profile = parseSpecificationReportProfile(parsedQuery.data.profile)
-  if (!profile) {
-    return NextResponse.json(
-      { error: 'Invalid report profile' },
-      { headers: { 'Cache-Control': 'no-store' }, status: 400 },
-    )
-  }
+  const { profile } = parsedQuery.data
 
   const runtime = await createRequirementsRestRuntime(request)
   try {

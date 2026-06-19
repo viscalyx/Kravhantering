@@ -907,6 +907,25 @@ change without an explicit specification decision. If the menu exposes the
 wrong profile for a lifecycle status, external procurement artifacts can leak
 internal risk, need, or follow-up fields.
 
+**Covered code line ranges:** This scenario covers report generation,
+lifecycle-scoping, selected-version pinning, and profile matching in these
+implementation ranges:
+
+<!-- markdownlint-disable MD013 -->
+```text
+app/[locale]/specifications/[slug]/requirements-specification-detail-client.tsx:1395-1479
+app/[locale]/specifications/[slug]/requirements-specification-detail-client.tsx:2426-2508
+app/[locale]/specifications/[slug]/reports/print/[profile]/page.tsx:20-94
+app/[locale]/specifications/[slug]/reports/pdf/[profile]/route.ts:22-78
+app/api/requirements-specifications/[id]/report-output/route.ts:35-120
+app/api/requirements-specifications/[id]/exports/route.ts:37-160
+lib/reports/data/specification-output.ts:345-472
+lib/reports/templates/specification-profile-template.ts:28-263
+lib/reports/specification-csv.ts:28-132
+lib/reports/specification-profiles.ts:7-65
+```
+<!-- markdownlint-enable MD013 -->
+
 **The requirement:** Requirements specification reports must use the linked
 `requirement_version_id`, cover the whole specification sorted by `Krav-ID`,
 show only the report profile matching the specification lifecycle status, and
