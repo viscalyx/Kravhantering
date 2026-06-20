@@ -12,7 +12,6 @@ import {
 } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
-import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import type {
   NormReferenceOption,
   QualityCharacteristicOption,
@@ -547,7 +546,6 @@ export default function RequirementFormFields({
   if (layout === 'bottom') {
     return (
       <div className="space-y-5">
-        <RequiredFieldsHint />
         {mainFields}
         <div className="grid gap-5 lg:grid-cols-2">
           {requirementPackagesFieldset && (
@@ -641,7 +639,6 @@ export default function RequirementFormFields({
 
   return (
     <div className="space-y-5">
-      <RequiredFieldsHint />
       <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(32rem,34rem)]">
         <div className="space-y-5" ref={mainFieldsRef}>
           {mainFields}

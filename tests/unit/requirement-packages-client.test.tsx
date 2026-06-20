@@ -468,7 +468,19 @@ describe('RequirementPackagesClient', () => {
     expect(dialog).toHaveClass('max-w-5xl')
     const form = dialog.querySelector('[data-developer-mode-name="crud form"]')
     expect(form).toHaveClass('space-y-6')
-    expect(within(dialog).getByText('common.requiredFieldsHint')).toBeVisible()
+    const requiredFieldsHint = within(dialog).getByText(
+      'common.requiredFieldsHint',
+    )
+    const actionRow = requiredFieldsHint.closest(
+      '[data-form-action-row="true"]',
+    )
+    expect(actionRow).toContainElement(requiredFieldsHint)
+    expect(actionRow).toContainElement(
+      within(dialog).getByRole('button', { name: /common\.save/i }),
+    )
+    expect(actionRow).toContainElement(
+      within(dialog).getByRole('button', { name: /common\.cancel/i }),
+    )
     const layoutGrid = form?.querySelector('.grid')
     expect(layoutGrid).toHaveClass('grid')
     expect(layoutGrid).toHaveClass('grid-cols-1')

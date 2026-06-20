@@ -674,7 +674,17 @@ describe('RequirementsSpecificationsClient', () => {
       '[data-developer-mode-name="crud form"][data-developer-mode-context="specifications"]',
     )
     expect(form).toHaveAttribute('data-developer-mode-value', 'create')
-    expect(screen.getByText('common.requiredFieldsHint')).toBeInTheDocument()
+    const requiredFieldsHint = screen.getByText('common.requiredFieldsHint')
+    const actionRow = requiredFieldsHint.closest(
+      '[data-form-action-row="true"]',
+    )
+    expect(actionRow).toContainElement(requiredFieldsHint)
+    expect(actionRow).toContainElement(
+      within(dialog).getByRole('button', { name: /common\.save/i }),
+    )
+    expect(actionRow).toContainElement(
+      within(dialog).getByRole('button', { name: /common\.cancel/i }),
+    )
     expect(form?.querySelector('.grid')).toHaveClass('lg:grid-cols-2')
     expect(
       screen.getByRole('textbox', { name: /specification\.name/ }),

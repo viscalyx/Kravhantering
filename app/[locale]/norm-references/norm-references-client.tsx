@@ -14,6 +14,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useDeferredValue, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FloatingActionRail from '@/components/FloatingActionRail'
+import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import NormReferenceFormFields from '@/components/NormReferenceFormFields'
@@ -375,7 +376,7 @@ export default function NormReferencesClient() {
           {controller.formError}
         </p>
       )}
-      <div className="flex gap-3">
+      <FormActionRow>
         <button
           className="btn-primary"
           disabled={controller.submitting}
@@ -393,7 +394,7 @@ export default function NormReferencesClient() {
         >
           {tc('cancel')}
         </button>
-      </div>
+      </FormActionRow>
     </form>
   )
 

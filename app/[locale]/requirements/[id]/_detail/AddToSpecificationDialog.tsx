@@ -6,8 +6,8 @@ import { useTranslations } from 'next-intl'
 import type { KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import FormActionRow from '@/components/FormActionRow'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
-import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 import type { UseAddToSpecificationDialogResult } from './use-add-to-specification-dialog'
 
@@ -113,7 +113,6 @@ export default function AddToSpecificationDialog({
               </p>
             ) : (
               <form className="space-y-4" onSubmit={dialog.handleSubmit}>
-                <RequiredFieldsHint />
                 <div>
                   <div className="mb-1 flex items-center gap-1.5">
                     <label
@@ -254,7 +253,7 @@ export default function AddToSpecificationDialog({
                     {state.addToSpecificationError}
                   </p>
                 )}
-                <div className="flex gap-3 pt-1">
+                <FormActionRow className="pt-1">
                   <button
                     className="btn-primary"
                     disabled={
@@ -274,7 +273,7 @@ export default function AddToSpecificationDialog({
                   >
                     {tc('cancel')}
                   </button>
-                </div>
+                </FormActionRow>
               </form>
             )}
           </motion.div>

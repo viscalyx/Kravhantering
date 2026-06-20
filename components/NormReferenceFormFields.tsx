@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl'
 import { type ReactNode, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
-import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { getBrowserLinkUri } from '@/lib/norm-references/browser-link-uri'
 
@@ -261,24 +260,20 @@ export default function NormReferenceFormFields({
 
   if (layout === 'create') {
     return (
-      <>
-        <RequiredFieldsHint />
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-4">
-          {nameField}
-          {typeField}
-          {referenceField}
-          {versionField}
-          {issuerField}
-          {uriField}
-          {normReferenceIdField('lg:col-span-2')}
-        </div>
-      </>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-4">
+        {nameField}
+        {typeField}
+        {referenceField}
+        {versionField}
+        {issuerField}
+        {uriField}
+        {normReferenceIdField('lg:col-span-2')}
+      </div>
     )
   }
 
   return (
     <>
-      <RequiredFieldsHint />
       {normReferenceIdField()}
       {nameField}
       {typeField}

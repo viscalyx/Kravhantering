@@ -29,6 +29,37 @@ async function fillEditableHsaId(
   await scope.getByRole('textbox', { name: inputName }).fill(suffix)
 }
 
+async function expectRequiredFieldsHintInActionRow(
+  form: Locator,
+): Promise<void> {
+  const actionRow = form.locator(':scope > [data-form-action-row="true"]')
+  await expect(actionRow).toHaveCount(1)
+  await expect(
+    actionRow.getByText('Fält markerade med * är obligatoriska.', {
+      exact: true,
+    }),
+  ).toBeVisible()
+  await expect(actionRow.getByRole('button', { name: 'Spara' })).toBeVisible()
+  await expect(actionRow.getByRole('button', { name: 'Avbryt' })).toBeVisible()
+
+  const childOrder = await form.evaluate(element => {
+    const children = Array.from(element.children)
+    return {
+      actionRowIndex: children.findIndex(
+        child =>
+          child instanceof HTMLElement &&
+          child.dataset.formActionRow === 'true',
+      ),
+      gridIndex: children.findIndex(
+        child =>
+          child instanceof HTMLElement && child.classList.contains('grid'),
+      ),
+    }
+  })
+  expect(childOrder.gridIndex).toBeGreaterThanOrEqual(0)
+  expect(childOrder.actionRowIndex).toBeGreaterThan(childOrder.gridIndex)
+}
+
 for (const viewport of viewports) {
   test.describe(`Requirements specifications list filter — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } })
@@ -111,9 +142,7 @@ for (const viewport of viewports) {
           'form#requirement-specification-form',
         )
         await expect(createForm).toBeVisible()
-        await expect(
-          createForm.getByText('Fält markerade med * är obligatoriska.'),
-        ).toBeVisible()
+        await expectRequiredFieldsHintInActionRow(createForm)
         await expect(createForm.locator(':scope > div.grid')).toHaveClass(
           /lg:grid-cols-2/,
         )
@@ -154,9 +183,7 @@ for (const viewport of viewports) {
           'form#requirement-specification-form',
         )
         await expect(editForm).toBeVisible()
-        await expect(
-          editForm.getByText('Fält markerade med * är obligatoriska.'),
-        ).toBeVisible()
+        await expectRequiredFieldsHintInActionRow(editForm)
         await expect(editForm.locator(':scope > div.grid')).toHaveClass(
           /lg:grid-cols-2/,
         )

@@ -610,7 +610,8 @@ visas och försök skapa.
 obligatoriska fält, spara.
 
 **Förväntat resultat:** Obligatoriska fält är markerade med asterisk och en
-kort notis förklarar markeringen. Kravet skapas och öppnas i listan.
+kort notis vid formulärets actionknappar förklarar markeringen. Kravet skapas
+och öppnas i listan.
 
 ### LIFE-02: validera obligatoriska fält vid skapande
 

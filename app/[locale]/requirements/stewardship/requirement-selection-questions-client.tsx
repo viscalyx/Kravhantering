@@ -25,10 +25,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
+import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { modalResizableTextareaResizeClassName } from '@/components/modal-textarea-class'
-import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 import StatusBadge from '@/components/StatusBadge'
@@ -2496,7 +2496,6 @@ export default function RequirementSelectionQuestionsClient() {
       })}
       onSubmit={submitQuestion}
     >
-      <RequiredFieldsHint />
       {showQuestionForm && error ? (
         <p
           className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
@@ -2615,18 +2614,20 @@ export default function RequirementSelectionQuestionsClient() {
           <option value="multiple">{copy.multiple}</option>
         </select>
       </div>
-      <button
-        className="btn-primary inline-flex items-center gap-1.5"
-        disabled={submitting}
-        type="submit"
-      >
-        {editingQuestionId ? (
-          <Save aria-hidden="true" className="h-4 w-4" />
-        ) : (
-          <Plus aria-hidden="true" className="h-4 w-4" />
-        )}
-        {editingQuestionId ? copy.save : copy.create}
-      </button>
+      <FormActionRow>
+        <button
+          className="btn-primary inline-flex items-center gap-1.5"
+          disabled={submitting}
+          type="submit"
+        >
+          {editingQuestionId ? (
+            <Save aria-hidden="true" className="h-4 w-4" />
+          ) : (
+            <Plus aria-hidden="true" className="h-4 w-4" />
+          )}
+          {editingQuestionId ? copy.save : copy.create}
+        </button>
+      </FormActionRow>
     </form>
   )
 
@@ -2659,7 +2660,6 @@ export default function RequirementSelectionQuestionsClient() {
       })}
       onSubmit={createAnswer}
     >
-      <RequiredFieldsHint />
       {showAnswerForm && error ? (
         <p
           className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
@@ -2734,7 +2734,7 @@ export default function RequirementSelectionQuestionsClient() {
               value={answerForm.description}
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <FormActionRow actionsClassName="gap-2">
             <button
               className="btn-primary inline-flex items-center gap-1.5"
               disabled={submitting}
@@ -2755,7 +2755,7 @@ export default function RequirementSelectionQuestionsClient() {
             >
               {copy.cancel}
             </button>
-          </div>
+          </FormActionRow>
         </div>
 
         <div
@@ -4647,9 +4647,6 @@ export default function RequirementSelectionQuestionsClient() {
                                         {error}
                                       </p>
                                     ) : null}
-                                    {visibilityGroupsForm.length > 0 ? (
-                                      <RequiredFieldsHint />
-                                    ) : null}
                                     {visibilityGroupsForm.length === 0 ? (
                                       <div className="rounded-xl border border-secondary-200 bg-secondary-50 px-4 py-3 text-sm text-secondary-700 dark:border-secondary-800 dark:bg-secondary-900/50 dark:text-secondary-200">
                                         {copy.standaloneQuestionVisibility}
@@ -5032,7 +5029,15 @@ export default function RequirementSelectionQuestionsClient() {
                                       {copy.addVisibilityGroup}
                                     </button>
                                   </div>
-                                  <div className="flex justify-end gap-2 border-t border-secondary-200 px-4 py-3 dark:border-secondary-800">
+                                  <FormActionRow
+                                    actionsClassName="gap-2"
+                                    className="border-t border-secondary-200 px-4 py-3 dark:border-secondary-800"
+                                    hint={
+                                      visibilityGroupsForm.length > 0
+                                        ? undefined
+                                        : null
+                                    }
+                                  >
                                     <button
                                       className="btn-secondary inline-flex items-center gap-1.5"
                                       disabled={submitting}
@@ -5053,7 +5058,7 @@ export default function RequirementSelectionQuestionsClient() {
                                       />
                                       {copy.saveVisibility}
                                     </button>
-                                  </div>
+                                  </FormActionRow>
                                 </aside>
                               ) : null}
                             </div>

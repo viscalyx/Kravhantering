@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
+import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
 import HsaPersonChangeModal, {
   type HsaPersonChangeSubmitResult,
@@ -12,7 +13,6 @@ import HsaPersonChangeModal, {
 import HsaPersonVerifyField, {
   type HsaPersonVerification,
 } from '@/components/HsaPersonVerifyField'
-import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
@@ -784,7 +784,6 @@ export default function SpecificationFormModal({
           })}
           onSubmit={handleSubmit}
         >
-          <RequiredFieldsHint />
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="space-y-5">
               <div>
@@ -1211,7 +1210,7 @@ export default function SpecificationFormModal({
             </p>
           ) : null}
 
-          <div className="flex justify-end gap-3">
+          <FormActionRow>
             <button
               className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:opacity-60"
               disabled={isSubmitting}
@@ -1229,7 +1228,7 @@ export default function SpecificationFormModal({
             >
               {isSubmitting ? tc('saving') : tc('save')}
             </button>
-          </div>
+          </FormActionRow>
         </form>
       </FormModal>
 

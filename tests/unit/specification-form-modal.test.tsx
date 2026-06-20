@@ -182,7 +182,17 @@ describe('SpecificationFormModal', () => {
     expect(
       screen.getByRole('combobox', { name: /specification\.lifecycleStatus/ }),
     ).toHaveValue('3')
-    expect(screen.getByText('common.requiredFieldsHint')).toBeInTheDocument()
+    const requiredFieldsHint = screen.getByText('common.requiredFieldsHint')
+    const actionRow = requiredFieldsHint.closest(
+      '[data-form-action-row="true"]',
+    )
+    expect(actionRow).toContainElement(requiredFieldsHint)
+    expect(actionRow).toContainElement(
+      screen.getByRole('button', { name: /common\.save/i }),
+    )
+    expect(actionRow).toContainElement(
+      screen.getByRole('button', { name: /common\.cancel/i }),
+    )
     expect(screen.getByText('Ada Admin')).toBeInTheDocument()
     expect(
       screen.getByRole('button', {

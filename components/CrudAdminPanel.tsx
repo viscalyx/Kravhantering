@@ -4,9 +4,9 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { ReactNode } from 'react'
+import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
 import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
-import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import type { CrudAdminResourceController } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
@@ -91,7 +91,6 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
       {showHeading ? (
         <h2 className="text-lg font-semibold">{resolvedFormTitle}</h2>
       ) : null}
-      <RequiredFieldsHint />
       {renderFormFields({
         disabled: controller.submitting,
         editId: controller.editId,
@@ -112,7 +111,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
           {controller.formError}
         </p>
       )}
-      <div className="flex gap-3">
+      <FormActionRow>
         <button
           className="btn-primary"
           disabled={controller.submitting}
@@ -128,7 +127,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
         >
           {common('cancel')}
         </button>
-      </div>
+      </FormActionRow>
     </>
   )
 

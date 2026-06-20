@@ -3,10 +3,10 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useRef, useState } from 'react'
+import FormActionRow from '@/components/FormActionRow'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import IconPicker from '@/components/IconPicker'
 import RequiredFieldMarker from '@/components/RequiredFieldMarker'
-import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
@@ -209,7 +209,6 @@ export default function RiskLevelsClient() {
                   onSubmit={submit}
                 >
                   <h2 className="text-lg font-semibold">{tc('edit')}</h2>
-                  <RequiredFieldsHint />
                   <div>
                     <label
                       className="block text-sm font-medium mb-1"
@@ -359,7 +358,7 @@ export default function RiskLevelsClient() {
                       {controller.formError}
                     </p>
                   )}
-                  <div className="flex gap-3">
+                  <FormActionRow>
                     <button
                       className="btn-primary"
                       disabled={controller.submitting}
@@ -375,7 +374,7 @@ export default function RiskLevelsClient() {
                     >
                       {tc('cancel')}
                     </button>
-                  </div>
+                  </FormActionRow>
                 </form>
 
                 {controller.editId && (

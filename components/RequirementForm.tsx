@@ -5,6 +5,7 @@ import { AlertTriangle, ExternalLink, Plus, RotateCcw, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import FormActionRow from '@/components/FormActionRow'
 import NormReferenceFormFields from '@/components/NormReferenceFormFields'
 import RequirementFormFields, {
   type RequirementFormFieldValues,
@@ -434,7 +435,7 @@ export default function RequirementForm({
       )}
 
       <div className="flex flex-col gap-3 pt-4 mt-5 border-t">
-        <div className="flex items-center gap-3">
+        <FormActionRow>
           <button
             className="btn-primary"
             disabled={submitting || isRefreshing}
@@ -450,7 +451,7 @@ export default function RequirementForm({
           >
             {tc('cancel')}
           </button>
-        </div>
+        </FormActionRow>
         <div className="flex items-center gap-2 text-sm text-secondary-600 dark:text-secondary-400">
           <span>{t('afterSave')}</span>
           <div className="inline-flex rounded-lg border overflow-hidden text-xs font-medium">
@@ -645,7 +646,7 @@ function NormReferenceModal({
           />
         </div>
 
-        <div className="flex gap-3 pt-2">
+        <FormActionRow className="pt-2">
           <button
             className="btn-primary"
             disabled={!canSave}
@@ -662,7 +663,7 @@ function NormReferenceModal({
           >
             {tc('cancel')}
           </button>
-        </div>
+        </FormActionRow>
       </motion.div>
     </div>
   )

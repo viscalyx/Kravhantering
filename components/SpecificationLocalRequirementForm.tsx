@@ -4,6 +4,7 @@ import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import FormActionRow from '@/components/FormActionRow'
 import RequirementFormFields, {
   type RequirementFormFieldValues,
 } from '@/components/RequirementFormFields'
@@ -211,7 +212,7 @@ export default function SpecificationLocalRequirementForm({
         </p>
       ) : null}
 
-      <div className="flex gap-3">
+      <FormActionRow>
         <button className="btn-primary" disabled={isSubmitting} type="submit">
           {isSubmitting ? tc('saving') : submitLabel}
         </button>
@@ -223,7 +224,7 @@ export default function SpecificationLocalRequirementForm({
         >
           {tc('cancel')}
         </button>
-      </div>
+      </FormActionRow>
     </form>
   )
 }

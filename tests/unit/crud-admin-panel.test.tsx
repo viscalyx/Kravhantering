@@ -164,6 +164,19 @@ describe('CrudAdminPanel', () => {
       dialog.querySelector('[data-developer-mode-name="crud form"]'),
     ).toHaveAttribute('data-developer-mode-value', 'create')
     expect(within(dialog).getByLabelText('Name')).toBeInTheDocument()
+    const requiredFieldsHint = within(dialog).getByText(
+      'common.requiredFieldsHint',
+    )
+    const actionRow = requiredFieldsHint.closest(
+      '[data-form-action-row="true"]',
+    )
+    expect(actionRow).toContainElement(requiredFieldsHint)
+    expect(actionRow).toContainElement(
+      within(dialog).getByRole('button', { name: 'common.save' }),
+    )
+    expect(actionRow).toContainElement(
+      within(dialog).getByRole('button', { name: 'common.cancel' }),
+    )
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'common.save' }))
     expect(submitMock).toHaveBeenCalledTimes(1)

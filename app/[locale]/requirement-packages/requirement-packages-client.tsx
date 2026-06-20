@@ -23,6 +23,7 @@ import {
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
+import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import HsaPersonChangeModal, {
@@ -32,7 +33,6 @@ import HsaPersonVerifyField, {
   type HsaPersonVerification,
 } from '@/components/HsaPersonVerifyField'
 import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
-import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
@@ -957,7 +957,6 @@ export default function RequirementPackagesClient() {
       })}
       onSubmit={submit}
     >
-      <RequiredFieldsHint />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div className="space-y-5">
           {renderPackageFormFields()}
@@ -972,7 +971,7 @@ export default function RequirementPackagesClient() {
         </div>
         {renderCoAuthorsSection()}
       </div>
-      <div className="flex gap-3">
+      <FormActionRow>
         <button
           className="btn-primary"
           disabled={controller.submitting}
@@ -988,7 +987,7 @@ export default function RequirementPackagesClient() {
         >
           {tc('cancel')}
         </button>
-      </div>
+      </FormActionRow>
     </form>
   )
 
@@ -1003,7 +1002,6 @@ export default function RequirementPackagesClient() {
       })}
       onSubmit={submit}
     >
-      <RequiredFieldsHint />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div className="space-y-5">
           {renderPackageFormFields()}
@@ -1018,27 +1016,25 @@ export default function RequirementPackagesClient() {
         </div>
         {renderCoAuthorsSection()}
       </div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex gap-3">
-          <button
-            className="btn-primary"
-            disabled={controller.submitting}
-            type="submit"
-          >
-            {controller.submitting ? tc('saving') : tc('save')}
-          </button>
-          <button
-            className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
-            disabled={controller.submitting}
-            onClick={closeForm}
-            type="button"
-          >
-            {tc('cancel')}
-          </button>
-        </div>
+      <FormActionRow>
+        <button
+          className="btn-primary"
+          disabled={controller.submitting}
+          type="submit"
+        >
+          {controller.submitting ? tc('saving') : tc('save')}
+        </button>
+        <button
+          className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
+          disabled={controller.submitting}
+          onClick={closeForm}
+          type="button"
+        >
+          {tc('cancel')}
+        </button>
         {editedRequirementPackage && (
           <button
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-secondary-300 px-4 py-2.5 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:ml-auto dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-secondary-300 px-4 py-2.5 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
             {...devMarker({
               context: 'requirementPackages',
               name: 'crud form action',
@@ -1060,7 +1056,7 @@ export default function RequirementPackagesClient() {
             )}
           </button>
         )}
-      </div>
+      </FormActionRow>
     </form>
   )
 

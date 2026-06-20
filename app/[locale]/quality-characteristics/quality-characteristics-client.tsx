@@ -6,8 +6,8 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
+import FormActionRow from '@/components/FormActionRow'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
-import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -282,7 +282,6 @@ export default function QualityCharacteristicsClient() {
               <h2 className="text-lg font-semibold">
                 {controller.editId ? tc('edit') : tc('create')}
               </h2>
-              <RequiredFieldsHint />
               <div>
                 <FieldLabelWithHelp
                   help={t('chapterIdHelp')}
@@ -403,7 +402,7 @@ export default function QualityCharacteristicsClient() {
                   ))}
                 </select>
               </div>
-              <div className="flex gap-3">
+              <FormActionRow>
                 <button
                   className="btn-primary"
                   disabled={controller.submitting}
@@ -421,7 +420,7 @@ export default function QualityCharacteristicsClient() {
                 >
                   {tc('cancel')}
                 </button>
-              </div>
+              </FormActionRow>
             </motion.form>
           )}
         </AnimatePresence>
