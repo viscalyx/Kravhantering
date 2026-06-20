@@ -14,4 +14,6 @@ Manual cases: `AUTH-10`, `AUTH-11`.
 1. Read the specification and verify `canEditContent`,
    `canManageAssignments`, and `canUseAi`.
 1. Update a safe metadata field.
+1. Open the separate co-author management modal from the specification list and
+   verify the assigned co-author is listed.
 1. Read the specification co-author list.

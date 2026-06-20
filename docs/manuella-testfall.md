@@ -319,6 +319,8 @@ kravområdesägare.
 1. Öppna kravområdet `AUTHZ-AREA-2026` eller skapa en isolerad testyta.
 1. Gör en liten tillåten ändring i kravområdets metadata eller skapa ett krav
    inom det ägda området.
+1. Öppna radåtgärden `Hantera medförfattare` och verifiera att
+   kravområdesmedförfattaren visas i den separata dialogen.
 1. Ladda om sidan och kontrollera att ändringen finns kvar.
 1. Försök administrera global Admin-yta och ändra kravunderlagsansvarig.
 

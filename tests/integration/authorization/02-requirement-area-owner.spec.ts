@@ -45,7 +45,6 @@ test('AUTH-10/AUTH-11: requirement area owners can manage their area and co-auth
     await expect(
       form.getByRole('textbox', { name: 'Kravområdesägare' }),
     ).toHaveValue(HSA.areaOwner)
-    await expect(form.getByText('Cora CoAuthor')).toBeVisible()
     await form
       .getByRole('textbox', { name: 'Beskrivning' })
       .fill(updatedDescription)
@@ -55,6 +54,23 @@ test('AUTH-10/AUTH-11: requirement area owners can manage their area and co-auth
 
     await page.reload()
     await expect(page.getByText(updatedDescription)).toBeVisible()
+
+    const updatedRow = page.getByRole('row', {
+      name: new RegExp(fixture.areaPrefix),
+    })
+    await updatedRow
+      .getByRole('button', { name: 'Hantera medförfattare' })
+      .click()
+    const coAuthorsDialog = page.getByRole('dialog', {
+      name: 'Kravområdesmedförfattare',
+    })
+    await expect(coAuthorsDialog).toBeVisible()
+    await expect(coAuthorsDialog.getByText(HSA.areaCoauthor)).toBeVisible()
+    await expect(
+      coAuthorsDialog.getByRole('textbox', { name: 'Medförfattares HSA-id' }),
+    ).toBeVisible()
+    await coAuthorsDialog.getByRole('button', { name: 'Stäng' }).last().click()
+    await expect(coAuthorsDialog).toBeHidden()
 
     const updateResponse = await areaOwner.put(
       `/api/requirement-areas/${fixture.areaId}`,

@@ -4,6 +4,7 @@ import {
   createAuthorizationFixture,
   expectOk,
   expectStatus,
+  HSA,
   newRoleContext,
   ROLE_STORAGE_STATE,
   referenceManualCases,
@@ -42,10 +43,6 @@ test('AUTH-10/AUTH-11: specification responsible users can manage assignments', 
       name: 'Redigera kravunderlag',
     })
     await expect(dialog).toBeVisible()
-    await expect(
-      dialog.getByRole('heading', { name: 'Kravunderlagsmedförfattare' }),
-    ).toBeVisible()
-    await expect(dialog.getByText('Signe SpecCoAuthor')).toBeVisible()
     await dialog
       .getByRole('textbox', { name: 'Underlagssyfte' })
       .fill(updatedPurpose)
@@ -55,6 +52,27 @@ test('AUTH-10/AUTH-11: specification responsible users can manage assignments', 
 
     await page.reload()
     await expect(page.getByText(updatedPurpose)).toBeVisible()
+
+    await page.goto('/sv/specifications')
+    const row = page.getByRole('row', {
+      name: new RegExp(fixture.specificationName),
+    })
+    await expect(row).toBeVisible()
+    await row.getByRole('button', { name: 'Hantera medförfattare' }).click()
+    const coAuthorsDialog = page.getByRole('dialog', {
+      name: 'Kravunderlagsmedförfattare',
+    })
+    await expect(coAuthorsDialog).toBeVisible()
+    await expect(
+      coAuthorsDialog.getByText(HSA.specificationCoauthor),
+    ).toBeVisible()
+    await expect(
+      coAuthorsDialog.getByRole('textbox', {
+        name: 'Medförfattares HSA-id',
+      }),
+    ).toBeVisible()
+    await coAuthorsDialog.getByRole('button', { name: 'Stäng' }).last().click()
+    await expect(coAuthorsDialog).toBeHidden()
 
     const readResponse = await specificationResponsible.get(
       `/api/requirements-specifications/${fixture.specificationSlug}`,

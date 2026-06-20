@@ -159,15 +159,11 @@ for (const viewport of viewports) {
         const dialog = page.getByRole('dialog', { name: 'Nytt kravpaket' })
         await expect(dialog).toBeVisible()
         const nameInput = dialog.getByRole('textbox', { name: 'Namn' })
-        const coAuthorsHeading = dialog.getByRole('heading', {
-          name: 'Kravpaketsmedförfattare',
-        })
 
         const leadSummary = dialog.locator(
           'section[aria-labelledby="requirement-package-create-lead-title"]',
         )
         await expect(nameInput).toBeVisible()
-        await expect(coAuthorsHeading).toBeVisible()
         await expect(
           dialog.getByText(
             'Du blir kravpaketsansvarig när kravpaketet skapas.',
@@ -184,44 +180,43 @@ for (const viewport of viewports) {
         await expect(dialog.getByText(/Ada Admin/)).toBeVisible()
         await expect(dialog.getByText('SE5560000001-admin1')).toBeVisible()
         await expect(dialog.getByText('Kopplade krav')).toHaveCount(0)
+        await expect(
+          dialog.getByRole('button', { name: 'Lägg till medförfattare' }),
+        ).toHaveCount(0)
+        await expect(
+          dialog.getByRole('button', { name: 'Hantera medförfattare' }),
+        ).toHaveCount(0)
+        await expect(
+          dialog.getByRole('heading', { name: 'Kravpaketsansvarig' }),
+        ).toBeVisible()
+        await expect(leadSummary).toBeVisible()
 
-        const addCoAuthorButton = dialog.getByRole('button', {
-          name: 'Lägg till medförfattare',
+        await dialog.getByRole('button', { name: 'Stäng' }).last().click()
+        await expect(dialog).toBeHidden()
+      })
+
+      await test.step('manage package co-authors through the row action', async () => {
+        const row = page.getByRole('row', { name: /Mobil användning/ })
+        await row.getByRole('button', { name: 'Hantera medförfattare' }).click()
+
+        const dialog = page.getByRole('dialog', {
+          name: 'Kravpaketsmedförfattare',
         })
-        await expect(addCoAuthorButton).toBeEnabled()
-        await addCoAuthorButton.click()
-        await expect(addCoAuthorButton).toBeDisabled()
-        await expect(addCoAuthorButton).toHaveAttribute(
-          'title',
-          'Spara eller ta bort den osparade medförfattaren innan du lägger till en ny.',
-        )
+        await expect(dialog).toBeVisible()
+        await expect(
+          dialog.getByText(
+            'Lägg till HSA-id för personer som stödjer kravpaketsansvarig.',
+          ),
+        ).toBeVisible()
+        await expect(dialog.getByText('SE5560000001-pkgco1')).toBeVisible()
         await expect(
           dialog.getByRole('textbox', { name: 'Medförfattares HSA-id' }),
         ).toBeVisible()
-        await dialog
-          .getByRole('button', { name: 'Ta bort medförfattare' })
-          .click()
-        await expect(addCoAuthorButton).toBeEnabled()
+        await expect(
+          dialog.getByRole('button', { name: 'Hämta' }),
+        ).toBeVisible()
 
-        const dialogBox = await dialog.boundingBox()
-        const leadBox = await leadSummary.boundingBox()
-        const coAuthorsBox = await coAuthorsHeading.boundingBox()
-        expect(dialogBox).not.toBeNull()
-        expect(leadBox).not.toBeNull()
-        expect(coAuthorsBox).not.toBeNull()
-
-        if (viewport.name === 'desktop') {
-          expect(dialogBox?.width ?? 0).toBeGreaterThan(800)
-          expect(coAuthorsBox?.x ?? 0).toBeGreaterThan(
-            (leadBox?.x ?? 0) + (leadBox?.width ?? 0),
-          )
-        } else {
-          expect(coAuthorsBox?.y ?? 0).toBeGreaterThan(
-            (leadBox?.y ?? 0) + (leadBox?.height ?? 0),
-          )
-        }
-
-        await dialog.getByRole('button', { name: 'Stäng' }).click()
+        await dialog.getByRole('button', { name: 'Stäng' }).last().click()
         await expect(dialog).toBeHidden()
       })
 

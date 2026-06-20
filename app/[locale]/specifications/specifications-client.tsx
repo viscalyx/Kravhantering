@@ -720,6 +720,16 @@ export default function RequirementsSpecificationsClient({
           >
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
+                <colgroup>
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col className="w-56" />
+                  <col className="w-44" />
+                </colgroup>
                 <thead>
                   <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
                     <th className="py-3 px-4 font-medium">{t('name')}</th>
@@ -736,10 +746,10 @@ export default function RequirementsSpecificationsClient({
                       {t('lifecycleStatus')}
                     </th>
                     <th className="py-3 px-4 font-medium">{t('itemCount')}</th>
-                    <th className="py-3 px-4 font-medium">
+                    <th className="w-56 py-3 px-4 font-medium">
                       {t('requirementAreas')}
                     </th>
-                    <th className="py-3 px-4" />
+                    <th className="w-44 py-3 pr-4 pl-2" />
                   </tr>
                 </thead>
                 <tbody>
@@ -794,7 +804,7 @@ export default function RequirementsSpecificationsClient({
                           <span className="text-secondary-400">0</span>
                         )}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="w-56 max-w-56 py-3 px-4">
                         <RequirementAreaPills
                           areas={spec.requirementAreas}
                           key={spec.requirementAreas
@@ -802,7 +812,7 @@ export default function RequirementsSpecificationsClient({
                             .join('|')}
                         />
                       </td>
-                      <td className="py-3 px-4 align-top">
+                      <td className="w-44 py-3 pr-4 pl-2 align-top">
                         <div className="flex justify-end gap-1">
                           {spec.permissions?.canManageAssignments ? (
                             <button

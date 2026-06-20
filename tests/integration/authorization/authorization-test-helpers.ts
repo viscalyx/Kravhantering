@@ -1,4 +1,5 @@
 // cSpell:words privacyofficer
+import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import {
   type APIRequestContext,
@@ -9,6 +10,7 @@ import {
 import type { DataSource } from 'typeorm'
 import { upsertRequirementResponsibilityPerson } from '@/lib/dal/requirement-responsibility-people'
 import type { RequirementResponsibilityPersonRecord } from '@/lib/requirements/responsibility-person'
+import { SPECIFICATION_LIFECYCLE_STATUS_MANAGEMENT_ID } from '@/lib/specifications/lifecycle-status-constants'
 import {
   createSqlServerDataSource,
   getSqlServerDatabaseUrl,
@@ -382,7 +384,7 @@ async function verifyResponsibilityPerson(
 }
 
 function stamp(): string {
-  return Date.now().toString(36).toUpperCase()
+  return `${Date.now().toString(36)}${randomUUID().slice(0, 8)}`.toUpperCase()
 }
 
 export async function createAuthorizationFixture(
@@ -396,7 +398,7 @@ export async function createAuthorizationFixture(
     'specificationResponsible',
   )
   const uniqueStamp = stamp()
-  const areaPrefix = `AZ${uniqueStamp.slice(-4)}`
+  const areaPrefix = `AZ${uniqueStamp.slice(-8)}`
   const specificationSlug = `AUTHZ-${uniqueStamp}`
   const specificationName = `Behörighetsmatris ${uniqueStamp}`
   const packageName = `Behörighetspaket ${uniqueStamp}`
@@ -441,6 +443,8 @@ export async function createAuthorizationFixture(
           businessNeedsReference:
             'Playwright fixture for assignment authorization.',
           name: specificationName,
+          specificationLifecycleStatusId:
+            SPECIFICATION_LIFECYCLE_STATUS_MANAGEMENT_ID,
           uniqueId: specificationSlug,
         },
       },

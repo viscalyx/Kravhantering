@@ -238,8 +238,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   descriptions and lock hints, answer row reorder handles, and health badges
   render inside the existing `requirementSelectionQuestions` form/list surfaces.
 - Requirements specification list requirement-area labels render as compact,
-  non-interactive pills inside the existing `specifications > crud table`
-  surface; they do not add separate developer-mode marker names.
+  non-interactive pills inside a constrained column in the existing
+  `specifications > crud table` surface; they do not add separate developer-mode
+  marker names.
 - Requirements specification list responsible-person metadata renders inside the
   existing `specifications > crud table` surface, and the create/edit controls
   stay inside the modal `specifications > crud form` surface.
