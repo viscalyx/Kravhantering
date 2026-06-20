@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const confirmMock = vi.fn()
 
 vi.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: (ns?: string) => (key: string) =>
     ns ? `${ns}.${key}` : key,
 }))
@@ -38,6 +39,7 @@ const sampleAreas = [
     name: 'Integration',
     description: 'System integration',
     ownerHsaId: 'SE5560000001-annaj',
+    permissions: { canManageAssignments: true },
   },
   {
     id: 2,
@@ -45,6 +47,7 @@ const sampleAreas = [
     name: 'Säkerhet',
     description: null,
     ownerHsaId: 'SE5560000001-1002',
+    permissions: { canManageAssignments: true },
   },
 ]
 
@@ -60,10 +63,14 @@ async function openAreaEditDialog() {
   return screen.findByRole('dialog', { name: 'area.editArea' })
 }
 
-async function openAreaCoAuthorDraft(dialog: HTMLElement) {
+async function openAreaCoAuthorsDialog() {
   fireEvent.click(
-    within(dialog).getByRole('button', { name: /area\.addCoAuthor/ }),
+    screen.getAllByRole('button', { name: /area\.manageCoAuthors/ })[0],
   )
+  return screen.findByRole('dialog', { name: 'area.coAuthors' })
+}
+
+async function getAreaCoAuthorInput(dialog: HTMLElement) {
   const coAuthorInput = within(dialog).getByRole('textbox', {
     name: /area\.coAuthorHsaId/,
   })
@@ -104,10 +111,15 @@ describe('RequirementAreasClient', () => {
     const deleteAction = screen.getAllByRole('button', {
       name: /common\.delete/i,
     })[0]
+    const manageCoAuthorsAction = screen.getAllByRole('button', {
+      name: /area\.manageCoAuthors/i,
+    })[0]
     expect(editAction).not.toHaveTextContent('common.edit')
     expect(deleteAction).not.toHaveTextContent('common.delete')
+    expect(manageCoAuthorsAction).not.toHaveTextContent('area.manageCoAuthors')
     expect(editAction.querySelector('svg')).toBeInTheDocument()
     expect(deleteAction.querySelector('svg')).toBeInTheDocument()
+    expect(manageCoAuthorsAction.querySelector('svg')).toBeInTheDocument()
     const urls = fetchMock.mock.calls.map(call => call[0])
     expect(urls).not.toContain('/api/owners')
   })
@@ -197,12 +209,6 @@ describe('RequirementAreasClient', () => {
 
     const dialog = await openAreaEditDialog()
 
-    await waitFor(() => {
-      expect(within(dialog).getByText('area.noCoAuthors')).toBeInTheDocument()
-    })
-    expect(
-      within(dialog).getByRole('button', { name: /area\.addCoAuthor/ }),
-    ).toBeEnabled()
     expect(
       within(dialog).queryByRole('textbox', { name: /area\.coAuthorHsaId/ }),
     ).toBeNull()
@@ -291,12 +297,12 @@ describe('RequirementAreasClient', () => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
 
-    const dialog = await openAreaEditDialog()
+    const dialog = await openAreaCoAuthorsDialog()
 
     await waitFor(() => {
       expect(within(dialog).getByText('area.noCoAuthors')).toBeInTheDocument()
     })
-    const coAuthorInput = await openAreaCoAuthorDraft(dialog as HTMLElement)
+    const coAuthorInput = await getAreaCoAuthorInput(dialog as HTMLElement)
     fireEvent.change(coAuthorInput, { target: { value: 'coa1' } })
     let verifyButton: HTMLButtonElement | undefined
     await waitFor(() => {
@@ -367,12 +373,12 @@ describe('RequirementAreasClient', () => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
 
-    const dialog = await openAreaEditDialog()
+    const dialog = await openAreaCoAuthorsDialog()
 
     await waitFor(() => {
       expect(within(dialog).getByText('area.noCoAuthors')).toBeInTheDocument()
     })
-    const coAuthorInput = await openAreaCoAuthorDraft(dialog as HTMLElement)
+    const coAuthorInput = await getAreaCoAuthorInput(dialog as HTMLElement)
     fireEvent.change(coAuthorInput, { target: { value: 'coa1' } })
     let verifyButton: HTMLButtonElement | undefined
     await waitFor(() => {
@@ -390,7 +396,7 @@ describe('RequirementAreasClient', () => {
         'Requirement area co-author autosave failed',
       )
     })
-    expect(within(dialog).queryByText('area.noCoAuthors')).toBeNull()
+    expect(within(dialog).getByText('area.noCoAuthors')).toBeInTheDocument()
     expect(coAuthorInput).toHaveValue('coa1')
   })
 
@@ -419,7 +425,7 @@ describe('RequirementAreasClient', () => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
 
-    const dialog = await openAreaEditDialog()
+    const dialog = await openAreaCoAuthorsDialog()
 
     await waitFor(() => {
       expect(within(dialog).getByText(/Cora CoAuthor/)).toBeInTheDocument()
@@ -480,7 +486,7 @@ describe('RequirementAreasClient', () => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
 
-    const dialog = await openAreaEditDialog()
+    const dialog = await openAreaCoAuthorsDialog()
 
     await waitFor(() => {
       expect(within(dialog).getByText(/Cora CoAuthor/)).toBeInTheDocument()

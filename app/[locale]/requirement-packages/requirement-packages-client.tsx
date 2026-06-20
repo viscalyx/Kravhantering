@@ -10,6 +10,7 @@ import {
   Search,
   Trash2,
   UserRoundCog,
+  UsersRound,
   X,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
@@ -20,6 +21,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import CoAuthorsManagementModal from '@/components/CoAuthorsManagementModal'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
@@ -30,9 +32,7 @@ import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import HsaPersonChangeModal, {
   type HsaPersonChangeSubmitResult,
 } from '@/components/HsaPersonChangeModal'
-import HsaPersonVerifyField, {
-  type HsaPersonVerification,
-} from '@/components/HsaPersonVerifyField'
+import type { HsaPersonVerification } from '@/components/HsaPersonVerifyField'
 import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
@@ -60,7 +60,7 @@ const REQUIREMENT_PACKAGES_HELP: HelpContent = {
 }
 
 interface RequirementPackage {
-  coAuthors: RequirementPackageCoAuthor[]
+  coAuthors?: RequirementPackageCoAuthor[]
   description: string | null
   id: number
   isArchived: boolean
@@ -69,6 +69,9 @@ interface RequirementPackage {
   leadHsaId: string
   linkedRequirementCount: number
   name: string
+  permissions?: {
+    canManageAssignments: boolean
+  }
 }
 
 interface RequirementPackageCoAuthor {
@@ -77,17 +80,7 @@ interface RequirementPackageCoAuthor {
   hsaId: string
 }
 
-interface RequirementPackageCoAuthorForm {
-  clientId: string
-  displayName: string
-  email: string
-  hsaId: string
-  persistedHsaId: string | null
-  personVerification: HsaPersonVerification | null
-}
-
 interface RequirementPackageForm {
-  coAuthors: RequirementPackageCoAuthorForm[]
   description: string
   leadDisplayName: string
   leadEmail: string
@@ -129,17 +122,8 @@ interface LinkedRequirementsModalState {
 
 const DESCRIPTION_TRUNCATE = 80
 const REQUIREMENT_PACKAGE_TABLE_COLUMN_COUNT = 6
-let coAuthorClientIdSequence = 0
-
-const createCoAuthorClientId = () => {
-  const randomId = globalThis.crypto?.randomUUID?.()
-  if (randomId) return randomId
-  coAuthorClientIdSequence += 1
-  return `co-author-${coAuthorClientIdSequence}`
-}
 
 const getInitialForm = (): RequirementPackageForm => ({
-  coAuthors: [],
   description: '',
   leadDisplayName: '',
   leadEmail: '',
@@ -151,14 +135,6 @@ const getInitialForm = (): RequirementPackageForm => ({
 const toForm = (
   requirementPackage: RequirementPackage,
 ): RequirementPackageForm => ({
-  coAuthors: (requirementPackage.coAuthors ?? []).map(coAuthor => ({
-    clientId: createCoAuthorClientId(),
-    displayName: coAuthor.displayName,
-    email: coAuthor.email ?? '',
-    hsaId: coAuthor.hsaId,
-    persistedHsaId: coAuthor.hsaId.trim(),
-    personVerification: null,
-  })),
   description: requirementPackage.description ?? '',
   leadDisplayName: requirementPackage.leadDisplayName,
   leadEmail: requirementPackage.leadEmail ?? '',
@@ -167,26 +143,12 @@ const toForm = (
   name: requirementPackage.name,
 })
 
-const coAuthorHsaIdsFromForm = (form: RequirementPackageForm) =>
-  form.coAuthors.map(coAuthor => coAuthor.hsaId.trim()).filter(Boolean)
-
-const hasUnsavedCoAuthorEntry = (
-  coAuthors: readonly RequirementPackageCoAuthorForm[],
-) =>
-  coAuthors.some(
-    coAuthor =>
-      coAuthor.persistedHsaId === null ||
-      coAuthor.hsaId.trim() !== coAuthor.persistedHsaId,
-  )
-
 const toCreatePayload = (form: RequirementPackageForm) => ({
-  coAuthorHsaIds: coAuthorHsaIdsFromForm(form),
   description: form.description || undefined,
   name: form.name,
 })
 
 const toUpdatePayload = (form: RequirementPackageForm) => ({
-  coAuthorHsaIds: coAuthorHsaIdsFromForm(form),
   description: form.description || undefined,
   name: form.name,
 })
@@ -262,6 +224,8 @@ export default function RequirementPackagesClient() {
   const [leadChange, setLeadChange] = useState<PackageLeadChangeState | null>(
     null,
   )
+  const [coAuthorsPackage, setCoAuthorsPackage] =
+    useState<RequirementPackage | null>(null)
   const [linkedRequirementsModal, setLinkedRequirementsModal] =
     useState<LinkedRequirementsModalState | null>(null)
   const linkedReqRequestId = useRef(0)
@@ -275,7 +239,6 @@ export default function RequirementPackagesClient() {
     endpoint: '/api/requirement-packages',
     errorMessage: tc('error'),
     getInitialForm,
-    dirtySnapshotOptions: { unorderedArrayPaths: ['coAuthorHsaIds'] },
     listEndpoint: '/api/requirement-packages?includeArchived=true',
     listKey: 'requirementPackages',
     toCreatePayload,
@@ -405,6 +368,7 @@ export default function RequirementPackagesClient() {
     setLinkedRequirementsError(null)
     setLinkedRequirementsLoading(false)
     setLinkedRequirementsModal(null)
+    setCoAuthorsPackage(null)
     setStateError(null)
     controller.openCreate()
     persistedCoAuthorHsaIdsRef.current = []
@@ -420,6 +384,7 @@ export default function RequirementPackagesClient() {
   const openEdit = (requirementPackage: RequirementPackage) => {
     setStateError(null)
     setLeadChange(null)
+    setCoAuthorsPackage(null)
     persistedCoAuthorHsaIdsRef.current = (requirementPackage.coAuthors ?? [])
       .map(coAuthor => coAuthor.hsaId.trim())
       .filter(Boolean)
@@ -433,6 +398,7 @@ export default function RequirementPackagesClient() {
     setLinkedRequirementsError(null)
     setLinkedRequirementsLoading(false)
     setLinkedRequirementsModal(null)
+    setCoAuthorsPackage(null)
     setLeadChange(null)
     persistedCoAuthorHsaIdsRef.current = []
   }
@@ -445,6 +411,7 @@ export default function RequirementPackagesClient() {
       setLinkedRequirementsError(null)
       setLinkedRequirementsLoading(false)
       setLinkedRequirementsModal(null)
+      setCoAuthorsPackage(null)
       setLeadChange(null)
       persistedCoAuthorHsaIdsRef.current = []
     }
@@ -477,10 +444,7 @@ export default function RequirementPackagesClient() {
   const hasUnsavedPackageEdits = () => controller.formDirty
 
   const blockedLeadHsaIds = () =>
-    uniqueTrimmedHsaIds([
-      ...persistedCoAuthorHsaIdsRef.current,
-      ...coAuthorHsaIdsFromForm(controller.form),
-    ])
+    uniqueTrimmedHsaIds(persistedCoAuthorHsaIdsRef.current)
 
   const submitLeadChange = async (
     nextLeadHsaId: string,
@@ -528,6 +492,7 @@ export default function RequirementPackagesClient() {
         setLinkedRequirementsError(null)
         setLinkedRequirementsLoading(false)
         setLinkedRequirementsModal(null)
+        setCoAuthorsPackage(null)
         persistedCoAuthorHsaIdsRef.current = []
         controller.markFormClean()
         void controller.closeForm()
@@ -599,43 +564,6 @@ export default function RequirementPackagesClient() {
       : (controller.items.find(
           requirementPackage => requirementPackage.id === controller.editId,
         ) ?? null)
-  const addCoAuthor = () => {
-    controller.setForm(previousForm => ({
-      ...previousForm,
-      coAuthors: hasUnsavedCoAuthorEntry(previousForm.coAuthors)
-        ? previousForm.coAuthors
-        : [
-            ...previousForm.coAuthors,
-            {
-              clientId: createCoAuthorClientId(),
-              displayName: '',
-              email: '',
-              hsaId: '',
-              persistedHsaId: null,
-              personVerification: null,
-            },
-          ],
-    }))
-  }
-  const removeCoAuthor = (index: number) => {
-    controller.setForm(previousForm => ({
-      ...previousForm,
-      coAuthors: previousForm.coAuthors.filter(
-        (_, rowIndex) => rowIndex !== index,
-      ),
-    }))
-  }
-  const updateCoAuthor = (
-    index: number,
-    values: Partial<RequirementPackageCoAuthorForm>,
-  ) => {
-    controller.setForm(previousForm => ({
-      ...previousForm,
-      coAuthors: previousForm.coAuthors.map((coAuthor, rowIndex) =>
-        rowIndex === index ? { ...coAuthor, ...values } : coAuthor,
-      ),
-    }))
-  }
   const deferredNameFilter = useDeferredValue(nameFilter)
   const normalizedNameFilter = deferredNameFilter
     .trim()
@@ -807,121 +735,6 @@ export default function RequirementPackagesClient() {
     </>
   )
 
-  const renderCoAuthorsSection = () => (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h3 className="text-sm font-medium text-secondary-700 dark:text-secondary-300">
-            {t('coAuthors')}
-          </h3>
-          <p className="mt-1 text-sm text-secondary-500 dark:text-secondary-400">
-            {t('coAuthorsHelp')}
-          </p>
-        </div>
-        <button
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3.5 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:text-secondary-200 dark:hover:bg-secondary-800"
-          disabled={
-            controller.submitting ||
-            hasUnsavedCoAuthorEntry(controller.form.coAuthors)
-          }
-          onClick={addCoAuthor}
-          title={
-            controller.submitting
-              ? tc('saving')
-              : hasUnsavedCoAuthorEntry(controller.form.coAuthors)
-                ? t('addCoAuthorUnsavedDisabled')
-                : t('addCoAuthor')
-          }
-          type="button"
-        >
-          <Plus aria-hidden="true" className="h-4 w-4" />
-          {t('addCoAuthor')}
-        </button>
-      </div>
-      {controller.form.coAuthors.length === 0 ? (
-        <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-secondary-500 dark:text-secondary-400">
-          {t('noCoAuthors')}
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {controller.form.coAuthors.map((coAuthor, index) => {
-            const inputId = `requirement-package-co-author-${coAuthor.clientId}`
-            return (
-              <div className="rounded-xl border p-3" key={coAuthor.clientId}>
-                <div className="flex items-start gap-3">
-                  <div className="min-w-0 flex-1">
-                    <FieldLabelWithHelp
-                      help={t('coAuthorHsaIdHelp')}
-                      htmlFor={inputId}
-                      label={t('coAuthorHsaId')}
-                      required
-                    />
-                    <HsaPersonVerifyField
-                      disabled={controller.submitting}
-                      emailLabel={tc('hsaVerifyEmail')}
-                      errorFallback={tc('hsaVerifyError')}
-                      fetchingLabel={tc('fetchingHsaPerson')}
-                      fetchLabel={tc('fetchHsaPerson')}
-                      hsaId={coAuthor.hsaId}
-                      initialDisplayName={coAuthor.displayName}
-                      initialEmail={coAuthor.email}
-                      inputClassName={inputClassName}
-                      inputId={inputId}
-                      nameLabel={tc('hsaVerifyName')}
-                      onHsaIdChange={value =>
-                        updateCoAuthor(index, {
-                          displayName:
-                            value.trim() === coAuthor.hsaId.trim()
-                              ? coAuthor.displayName
-                              : '',
-                          email:
-                            value.trim() === coAuthor.hsaId.trim()
-                              ? coAuthor.email
-                              : '',
-                          hsaId: value,
-                          personVerification:
-                            value.trim() === coAuthor.personVerification?.hsaId
-                              ? coAuthor.personVerification
-                              : null,
-                        })
-                      }
-                      onVerified={person =>
-                        updateCoAuthor(index, {
-                          displayName: person.displayName,
-                          email: person.email ?? '',
-                          personVerification: person,
-                        })
-                      }
-                      purpose="requirement_package_co_author"
-                      required
-                      scopeId={controller.editId ?? undefined}
-                      showPersonSummaryAsText
-                      unavailableText={tc('hsaVerifyUnavailable')}
-                    />
-                  </div>
-                  <button
-                    aria-label={t('removeCoAuthor')}
-                    className={`${rowActionButtonClassName} mt-7 text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30`}
-                    disabled={controller.submitting}
-                    onClick={() => removeCoAuthor(index)}
-                    title={t('removeCoAuthor')}
-                    type="button"
-                  >
-                    <Trash2
-                      aria-hidden="true"
-                      className="h-4 w-4"
-                      focusable={false}
-                    />
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-
   const renderPackageForm = () => (
     <form
       className="space-y-6"
@@ -933,19 +746,16 @@ export default function RequirementPackagesClient() {
       })}
       onSubmit={submit}
     >
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <div className="space-y-5">
-          {renderPackageFormFields()}
-          {controller.formError && (
-            <p
-              className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
-              role="alert"
-            >
-              {controller.formError}
-            </p>
-          )}
-        </div>
-        {renderCoAuthorsSection()}
+      <div className="space-y-5">
+        {renderPackageFormFields()}
+        {controller.formError && (
+          <p
+            className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+            role="alert"
+          >
+            {controller.formError}
+          </p>
+        )}
       </div>
       <FormActionRow>
         <DirtyStateButton
@@ -979,19 +789,16 @@ export default function RequirementPackagesClient() {
       })}
       onSubmit={submit}
     >
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <div className="space-y-5">
-          {renderPackageFormFields()}
-          {controller.formError && (
-            <p
-              className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
-              role="alert"
-            >
-              {controller.formError}
-            </p>
-          )}
-        </div>
-        {renderCoAuthorsSection()}
+      <div className="space-y-5">
+        {renderPackageFormFields()}
+        {controller.formError && (
+          <p
+            className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+            role="alert"
+          >
+            {controller.formError}
+          </p>
+        )}
       </div>
       <FormActionRow>
         <DirtyStateButton
@@ -1294,6 +1101,30 @@ export default function RequirementPackagesClient() {
           />
         )}
 
+        {coAuthorsPackage ? (
+          <CoAuthorsManagementModal
+            description={t('coAuthorsHelp')}
+            developerModeValue="manage requirement package co-authors"
+            endpoint={`/api/requirement-packages/${coAuthorsPackage.id}/co-authors`}
+            hsaIdHelp={t('coAuthorHsaIdHelp')}
+            hsaIdLabel={t('coAuthorHsaId')}
+            loadErrorMessage={t('loadCoAuthorsFailed')}
+            noCoAuthorsMessage={t('noCoAuthors')}
+            onChanged={async () => {
+              await controller.reload()
+            }}
+            onClose={() => setCoAuthorsPackage(null)}
+            open
+            purpose="requirement_package_co_author"
+            removeConfirmMessage={name => t('removeCoAuthorConfirm', { name })}
+            removeLabel={t('removeCoAuthor')}
+            saveErrorMessage={t('saveCoAuthorsFailed')}
+            scopeId={coAuthorsPackage.id}
+            title={t('coAuthors')}
+            titleId="requirement-package-co-authors-title"
+          />
+        ) : null}
+
         <FormModal
           developerModeValue="linked requirements"
           maxWidthClassName="max-w-4xl"
@@ -1454,6 +1285,30 @@ export default function RequirementPackagesClient() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex justify-end gap-1">
+                            {requirementPackage.permissions
+                              ?.canManageAssignments ? (
+                              <button
+                                aria-label={t('manageCoAuthors')}
+                                className={`${rowActionButtonClassName} text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800/70`}
+                                {...devMarker({
+                                  context: 'requirementPackages',
+                                  name: 'table action',
+                                  value: 'manage co-authors',
+                                })}
+                                disabled={busy}
+                                onClick={() =>
+                                  setCoAuthorsPackage(requirementPackage)
+                                }
+                                title={t('manageCoAuthors')}
+                                type="button"
+                              >
+                                <UsersRound
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                  focusable={false}
+                                />
+                              </button>
+                            ) : null}
                             <button
                               aria-label={tc('edit')}
                               className={`${rowActionButtonClassName} text-primary-700 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-950/30`}

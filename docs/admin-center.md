@@ -449,11 +449,12 @@ with text-only labels until an admin selects one.
 
 Each requirement area must have an assigned owner HSA-id. A new requirement area
 is created in a modal with an editable HSA-id field. When an existing
-requirement area is edited, the modal uses a two-column form: metadata and the
-read-only current owner HSA-id are on the left, and requirement area
-co-authors are on the right. The icon button next to the owner opens the
-owner-change dialog where admins enter the replacement HSA-id and confirm with
-`Byt ägare`.
+requirement area is edited, the modal contains metadata and the read-only
+current owner HSA-id. The icon button next to the owner opens the owner-change
+dialog where admins enter the replacement HSA-id and confirm with `Byt ägare`.
+Requirement area co-authors are managed separately from the list row with
+`Hantera medförfattare`, which opens a dedicated co-author modal for adding and
+removing verified HSA-id assignments.
 
 - as HSA-id in the requirement area taxonomy table
 - as HSA-id under the requirement area dropdown in the requirement

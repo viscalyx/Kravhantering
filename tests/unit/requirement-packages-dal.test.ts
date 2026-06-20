@@ -3,7 +3,7 @@ import {
   createRequirementPackage,
   deleteRequirementPackage,
   getLinkedRequirementsForPackage,
-  updateRequirementPackage,
+  replaceRequirementPackageCoAuthors,
 } from '@/lib/dal/requirement-packages'
 
 function createSqlServerDb() {
@@ -163,7 +163,7 @@ describe('requirement-packages DAL', () => {
     )
   })
 
-  it('syncs package co-authors and cleans removed responsibility people on update', async () => {
+  it('replaces package co-authors and cleans removed responsibility people', async () => {
     const query = vi
       .fn()
       .mockResolvedValueOnce([{ leadHsaId: 'SE5560000001-lead1' }])
@@ -172,39 +172,12 @@ describe('requirement-packages DAL', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          createdAt: new Date('2026-05-02T08:00:00.000Z'),
-          description: 'Updated package',
-          id: 13,
-          isArchived: false,
-          leadEmail: 'lena.lead@example.test',
-          leadGivenName: 'Lena',
-          leadHsaId: 'SE5560000001-lead1',
-          leadMiddleName: null,
-          leadSurname: 'Lead',
-          name: 'Updated',
-          updatedAt: new Date('2026-05-02T08:00:00.000Z'),
-        },
-      ])
-      .mockResolvedValueOnce([
-        {
-          createdAt: new Date('2026-05-02T08:05:00.000Z'),
-          email: 'new@example.test',
-          givenName: 'Nora',
-          hsaId: 'SE5560000001-new1',
-          middleName: null,
-          requirementPackageId: 13,
-          surname: 'New',
-        },
-      ])
-      .mockResolvedValueOnce([])
     const manager = { query }
     const db = {
-      transaction: vi.fn(async callback => callback(manager)),
-    } as unknown as Parameters<typeof updateRequirementPackage>[0]
+      transaction: vi.fn(async (_isolation, callback) => callback(manager)),
+    } as unknown as Parameters<typeof replaceRequirementPackageCoAuthors>[0]
 
-    const result = await updateRequirementPackage(db, 13, {
+    const result = await replaceRequirementPackageCoAuthors(db, 13, {
       changedBy: {
         displayName: 'Ada Admin',
         hsaId: 'SE5560000001-admin1',
@@ -219,19 +192,15 @@ describe('requirement-packages DAL', () => {
           surname: 'New',
         },
       ],
-      name: 'Updated',
     })
 
-    expect(result).toMatchObject({
-      coAuthors: [
-        {
-          displayName: 'Nora New',
-          hsaId: 'SE5560000001-new1',
-        },
-      ],
-      id: 13,
-      leadDisplayName: 'Lena Lead',
-      leadEmail: 'lena.lead@example.test',
+    expect(db.transaction).toHaveBeenCalledWith(
+      'SERIALIZABLE',
+      expect.any(Function),
+    )
+    expect(result).toEqual({
+      coAuthorHsaIds: ['SE5560000001-new1'],
+      requirementPackageId: 13,
     })
     expect(String(query.mock.calls[3]?.[0])).toContain(
       'DELETE FROM requirement_package_co_authors',
@@ -239,6 +208,24 @@ describe('requirement-packages DAL', () => {
     expect(String(query.mock.calls[4]?.[0])).toContain(
       'INSERT INTO requirement_package_co_authors',
     )
-    expect(String(query.mock.calls[8]?.[0])).toContain('DELETE person')
+    expect(String(query.mock.calls[5]?.[0])).toContain('DELETE person')
+  })
+
+  it('rejects package co-author replacements that include the package lead', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ leadHsaId: 'SE5560000001-lead1' }])
+    const manager = { query }
+    const db = {
+      transaction: vi.fn(async (_isolation, callback) => callback(manager)),
+    } as unknown as Parameters<typeof replaceRequirementPackageCoAuthors>[0]
+
+    await expect(
+      replaceRequirementPackageCoAuthors(db, 13, {
+        coAuthorHsaIds: ['SE5560000001-lead1'],
+      }),
+    ).rejects.toMatchObject({
+      details: { reason: 'package_lead_cannot_be_co_author' },
+    })
   })
 })

@@ -608,6 +608,21 @@ describe('RequirementsSpecificationsClient', () => {
     const [deleteButton] = screen.getAllByRole('button', {
       name: /common\.delete/i,
     })
+    const manageCoAuthorsButton = screen.getByRole('button', {
+      name: /specification\.manageCoAuthors/i,
+    })
+
+    expect(manageCoAuthorsButton).toHaveAttribute(
+      'title',
+      'specification.manageCoAuthors',
+    )
+    expect(manageCoAuthorsButton.textContent?.trim()).toBe('')
+    expect(manageCoAuthorsButton).toHaveAccessibleName(
+      'specification.manageCoAuthors',
+    )
+    expect(manageCoAuthorsButton.className).toContain('h-11')
+    expect(manageCoAuthorsButton.className).toContain('w-11')
+    expect(manageCoAuthorsButton.querySelector('svg')).not.toBeNull()
 
     expect(editButton).toHaveAttribute('title', 'common.edit')
     expect(editButton.closest('td')?.className).toContain('align-top')
@@ -623,6 +638,58 @@ describe('RequirementsSpecificationsClient', () => {
     expect(deleteButton.className).toContain('h-11')
     expect(deleteButton.className).toContain('w-11')
     expect(deleteButton.querySelector('svg')).not.toBeNull()
+  })
+
+  it('opens the co-author management modal from the row action', async () => {
+    mockApi((url: string) => {
+      if (url === '/api/requirements-specifications')
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
+      if (url === '/api/specification-governance-object-types')
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      if (url === '/api/specification-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      if (
+        url === '/api/requirements-specifications/KRAVUNDERLAG-SV/co-authors'
+      ) {
+        return Promise.resolve(okJson({ coAuthors: [] }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<RequirementsSpecificationsClient />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
+    })
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /specification\.manageCoAuthors/i,
+      }),
+    )
+
+    const dialog = await screen.findByRole('dialog', {
+      name: /specification\.coAuthors/,
+    })
+    expect(dialog).toHaveAttribute(
+      'data-developer-mode-value',
+      'manage specification co-authors',
+    )
+    expect(
+      within(dialog).getByText('specification.noCoAuthors'),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('textbox', {
+        name: /specification\.coAuthorHsaId/,
+      }),
+    ).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/requirements-specifications/KRAVUNDERLAG-SV/co-authors',
+      expect.any(Object),
+    )
   })
 
   it('does not show spinner immediately while loading', () => {
@@ -793,13 +860,8 @@ describe('RequirementsSpecificationsClient', () => {
     )
     fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
 
-    await waitFor(() => {
-      expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
-    })
-    await waitFor(() => {
-      expect(
-        screen.getByRole('textbox', { name: /specification\.coAuthorHsaId/ }),
-      ).toBeDisabled()
+    await screen.findByRole('dialog', {
+      name: /specification\.editSpecification/,
     })
     expect(
       screen.getByRole('button', {
@@ -1032,14 +1094,6 @@ describe('RequirementsSpecificationsClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[0])
-    await waitFor(() => {
-      expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
-    })
-    await waitFor(() => {
-      expect(
-        screen.getByRole('textbox', { name: /specification\.coAuthorHsaId/ }),
-      ).toBeEnabled()
-    })
     const dialog = screen.getByRole('dialog', {
       name: /specification\.editSpecification/,
     })
@@ -1077,8 +1131,10 @@ describe('RequirementsSpecificationsClient', () => {
       }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /common\.fetchHsaPerson/ }),
-    ).toBeDisabled()
+      within(dialog).queryByRole('textbox', {
+        name: /specification\.coAuthorHsaId/,
+      }),
+    ).toBeNull()
   })
 
   it('omits the responsible HSA-id from ordinary edit saves', async () => {

@@ -482,7 +482,6 @@ export async function createAuthorizationFixture(
     })
     const packageResponse = await admin.post('/api/requirement-packages', {
       data: {
-        coAuthorHsaIds: [HSA.packageCoauthor],
         description: 'Playwright fixture for package authorization.',
         name: packageName,
       },
@@ -493,11 +492,21 @@ export async function createAuthorizationFixture(
     await expectOk(
       await admin.put(`/api/requirement-packages/${requirementPackage.id}`, {
         data: {
-          coAuthorHsaIds: [HSA.packageCoauthor],
           leadHsaId: HSA.packageLead,
         },
       }),
       'assign package lead fixture',
+    )
+    await expectOk(
+      await admin.put(
+        `/api/requirement-packages/${requirementPackage.id}/co-authors`,
+        {
+          data: {
+            coAuthorHsaIds: [HSA.packageCoauthor],
+          },
+        },
+      ),
+      'assign package co-author fixture',
     )
 
     return {

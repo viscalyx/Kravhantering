@@ -353,9 +353,12 @@ tilldelningsstyrning och global Admin.
 **Steg:**
 
 1. Logga in som `petra.specresp`.
-1. Öppna `/sv/specifications/AUTHZ-SPEC-2026`.
-1. Ändra ett säkert metadatafält, till exempel verksamhetsbehovsreferens.
-1. Lägg till eller verifiera en medförfattare där UI tillåter det.
+1. Öppna `/sv/specifications` och filtrera fram `AUTHZ-SPEC-2026`.
+1. Öppna redigeringsåtgärden och ändra ett säkert metadatafält, till exempel
+   verksamhetsbehovsreferens.
+1. Stäng redigeringen och öppna radåtgärden `Hantera medförfattare`.
+1. Lägg till eller verifiera en medförfattare i den separata dialogen för
+   medförfattare.
 1. Försök utföra Admin-only-åtgärd eller dataskyddsförhandsgranskning.
 
 **Förväntat resultat:** Petra kan förvalta sitt kravunderlag och dess
@@ -374,7 +377,8 @@ inte delegera ansvar.
 1. Öppna `/sv/specifications/AUTHZ-SPEC-2026`.
 1. Gör en liten tillåten innehållsändring.
 1. Ladda om sidan och verifiera att ändringen finns kvar.
-1. Försök ändra medförfattare eller kravunderlagsansvarig.
+1. Öppna kravunderlagslistan och försök hitta radåtgärden för att hantera
+   medförfattare, och försök ändra kravunderlagsansvarig.
 
 **Förväntat resultat:** Signe kan ändra innehåll men inte ändra ansvar eller
 medförfattare.
@@ -391,6 +395,8 @@ utföra Admin-only-åtgärder.
 1. Logga in som `leo.pkglead`.
 1. Öppna `Kravbiblioteksförvaltning` och sök efter `AUTHZ kravpaket`.
 1. Redigera paketets beskrivning med en liten unik testtext.
+1. Öppna radåtgärden `Hantera medförfattare` och verifiera att paketets
+   medförfattare kan läggas till eller tas bort i den separata dialogen.
 1. Ladda om sidan och verifiera att Leo fortfarande är kravpaketsansvarig.
 1. Försök arkivera paketet om UI visar åtgärden, annars kontrollera API.
 
@@ -409,7 +415,8 @@ inte ta över ansvar.
 1. Logga in som `paul.pkgcoauthor`.
 1. Öppna `AUTHZ kravpaket`.
 1. Gör en tillåten innehållsändring om UI tillåter det.
-1. Försök ändra kravpaketsansvarig eller medförfattare.
+1. Försök ändra kravpaketsansvarig eller öppna radåtgärden för att hantera
+   medförfattare.
 1. Kontrollera otillåten åtgärd med API om UI inte visar kontrollen.
 
 **Förväntat resultat:** Paul får bara de paketåtgärder som
@@ -583,10 +590,9 @@ med piltangenter och stäng med Escape.
 1. Öppna samma skrivskyddade dialog via knappen i redigeringsformuläret och
    kontrollera att redigeringsformuläret ligger kvar när dialogen stängs.
 1. Byt kravpaketsansvarig med HSA-id, tabba från suffixfältet och kontrollera
-   att verifierat namn och e-post visas som text i bytesdialogen, och testa
-   medförfattare. Kontrollera att `Lägg till medförfattare` är inaktiv medan
-   en osparad rad för medförfattare visas och blir aktiv igen när raden tas
-   bort eller sparas.
+   att verifierat namn och e-post visas som text i bytesdialogen.
+1. Öppna radåtgärden `Hantera medförfattare` för testpaketet och kontrollera
+   att en separat modal kan lägga till och ta bort kravpaketsmedförfattare.
 1. Skapa en kravurvalsfråga, lägg till svar och ändra ordning.
 1. Kontrollera synlighetsvillkor, hierarkimodal och kravurvalsförhandsvisning.
 
@@ -1024,19 +1030,21 @@ Normreferens-ID sist och fullbrett. Mobil visar samma fält i en kolumn utan
 ### ADMIN-13: byte av kravområdesägare använder HSA-id
 
 **Steg:** Öppna kravområdeslistan och kontrollera att radåtgärderna för
-redigering och borttagning visas som ikonknappar. Öppna sedan ett kravområde
-för redigering. Kontrollera att formuläret öppnas i en modal, att
-kravområdesmedförfattare visas i högerkolumnen, dra beskrivningsfältet nedåt
-så långt webbläsaren tillåter och försök sedan minska fältet under
-öppningshöjden. Ändra därefter kravområdesägare via HSA-id med verifierat
-personuppslag.
+medförfattare, redigering och borttagning visas som ikonknappar. Öppna
+radåtgärden `Hantera medförfattare` och kontrollera att den separata dialogen
+kan läsa in, lägga till och ta bort kravområdesmedförfattare. Öppna sedan ett
+kravområde för redigering. Kontrollera att formuläret öppnas i en modal, dra
+beskrivningsfältet nedåt så långt webbläsaren tillåter och försök sedan minska
+fältet under öppningshöjden. Ändra därefter kravområdesägare via HSA-id med
+verifierat personuppslag.
 
-**Förväntat resultat:** Listan visar ikonbaserade knappar för Redigera och Ta
-bort. Beskrivningsfältet begränsas av fönstrets höjd så att Spara och Avbryt
-fortfarande är åtkomliga, och fältet kan inte minskas under öppningshöjden.
-Ägarskapet sparas på HSA-id och visas med persondetaljer. Efter nästa lyckade
-ändring kan den inloggade aktörens egen levande personrad uppdateras från
-sessionen utan att inloggning eller sparande fördröjs.
+**Förväntat resultat:** Listan visar ikonbaserade knappar för Hantera
+medförfattare, Redigera och Ta bort. Medförfattare hanteras i en separat modal,
+inte i metadataformuläret. Beskrivningsfältet begränsas av fönstrets höjd så
+att Spara och Avbryt fortfarande är åtkomliga, och fältet kan inte minskas
+under öppningshöjden. Ägarskapet sparas på HSA-id och visas med persondetaljer.
+Efter nästa lyckade ändring kan den inloggade aktörens egen levande personrad
+uppdateras från sessionen utan att inloggning eller sparande fördröjs.
 
 ### ADMIN-14: HSA-id-prefix administreras från Identitet
 

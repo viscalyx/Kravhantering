@@ -285,6 +285,14 @@ const mockCreateRequirementPackage = vi.fn(async (..._args: unknown[]) => ({
 const mockUpdateRequirementPackage = vi.fn()
 const mockDeleteRequirementPackage = vi.fn()
 const mockArchiveRequirementPackage = vi.fn()
+const mockListRequirementPackageCoAuthors = vi.fn<
+  (
+    ..._args: unknown[]
+  ) => Promise<
+    Array<{ displayName: string; email: string | null; hsaId: string }>
+  >
+>(async () => [])
+const mockReplaceRequirementPackageCoAuthors = vi.fn()
 const mockGetRequirementPackageById = vi.fn(
   async (
     ..._args: unknown[]
@@ -310,6 +318,8 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
   getLinkedRequirementsForPackage: async () => [],
   getRequirementPackageById: (...a: unknown[]) =>
     mockGetRequirementPackageById(...a),
+  listRequirementPackageCoAuthors: (...a: unknown[]) =>
+    mockListRequirementPackageCoAuthors(...a),
   getRequirementPackageUsage: async () => ({
     answerLinkCount: 0,
     libraryRequirementCount: 0,
@@ -321,6 +331,8 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
     mockDeleteRequirementPackage(...a),
   archiveRequirementPackage: (...a: unknown[]) =>
     mockArchiveRequirementPackage(...a),
+  replaceRequirementPackageCoAuthors: (...a: unknown[]) =>
+    mockReplaceRequirementPackageCoAuthors(...a),
 }))
 
 const mockListNormReferences = vi.fn(async (..._args: unknown[]) => [{ id: 1 }])
@@ -391,6 +403,10 @@ import {
 } from '@/app/api/requirement-areas/route'
 import { GET as getCats } from '@/app/api/requirement-categories/route'
 import { POST as archiveRequirementPackage } from '@/app/api/requirement-packages/[id]/archive/route'
+import {
+  GET as getRequirementPackageCoAuthors,
+  PUT as putRequirementPackageCoAuthors,
+} from '@/app/api/requirement-packages/[id]/co-authors/route'
 import {
   DELETE as deleteRequirementPackage,
   PUT as putRequirementPackage,
@@ -1668,7 +1684,7 @@ describe('requirement-packages routes', () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
-        body: '{"name":"A","coAuthorHsaIds":["SE5560000001-coa1"]}',
+        body: '{"name":"A"}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -1703,7 +1719,7 @@ describe('requirement-packages routes', () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
-        body: '{"name":"A","coAuthorHsaIds":["SE5560000001-coa1"]}',
+        body: '{"name":"A"}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -1713,7 +1729,6 @@ describe('requirement-packages routes', () => {
     expect(mockCreateRequirementPackage).toHaveBeenCalledWith(
       routeState.transactionDb,
       expect.objectContaining({
-        coAuthorHsaIds: ['SE5560000001-coa1'],
         leadHsaId: 'SE5560000001-route',
         name: 'A',
       }),
@@ -1733,13 +1748,26 @@ describe('requirement-packages routes', () => {
     const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
-        body: '{"name":"A","coAuthorHsaIds":["abc"]}',
+        body: '{"name":""}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
     expect(r.status).toBe(400)
     await expectInvalidRequest(r)
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  })
+  it('POST rejects package co-author fields in metadata payloads', async () => {
+    const r = await postRequirementPackage(
+      jsonReq('POST', {
+        coAuthorHsaIds: ['SE5560000001-coa1'],
+        name: 'A',
+      }),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockCreateRequirementPackage).not.toHaveBeenCalled()
   })
   it('POST rejects client-supplied package lead fields', async () => {
     const r = await postRequirementPackage(
@@ -1820,6 +1848,89 @@ describe('requirement-packages routes', () => {
     await expectInvalidRequest(r)
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(mockUpdateRequirementPackage).not.toHaveBeenCalled()
+  })
+  it('PUT rejects package co-author fields in metadata payloads', async () => {
+    const r = await putRequirementPackage(
+      jsonReq('PUT', { coAuthorHsaIds: ['SE5560000001-coa1'] }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockUpdateRequirementPackage).not.toHaveBeenCalled()
+  })
+  it('GET co-authors returns package co-author assignments', async () => {
+    mockListRequirementPackageCoAuthors.mockResolvedValueOnce([
+      {
+        displayName: 'Co Author',
+        email: 'co.author@example.test',
+        hsaId: 'SE5560000001-coa1',
+      },
+    ])
+
+    const r = await getRequirementPackageCoAuthors(
+      new NextRequest('http://l', { method: 'GET' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(200)
+    await expect(r.json()).resolves.toMatchObject({
+      coAuthors: [
+        {
+          displayName: 'Co Author',
+          email: 'co.author@example.test',
+          hsaId: 'SE5560000001-coa1',
+        },
+      ],
+    })
+    expect(mockListRequirementPackageCoAuthors).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+    )
+  })
+  it('PUT co-authors replaces package co-author assignments', async () => {
+    mockReplaceRequirementPackageCoAuthors.mockResolvedValue({
+      coAuthorHsaIds: ['SE5560000001-coa1'],
+      requirementPackageId: 1,
+    })
+    responsibilityPersonState.getRequirementResponsibilityPerson.mockResolvedValueOnce(
+      {
+        email: 'coa1@example.test',
+        givenName: 'Co',
+        hsaId: 'SE5560000001-coa1',
+        middleName: null,
+        surname: 'Author',
+      },
+    )
+
+    const r = await putRequirementPackageCoAuthors(
+      jsonReq('PUT', {
+        coAuthorHsaIds: ['SE5560000001-coa1'],
+      }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(200)
+    expect(mockReplaceRequirementPackageCoAuthors).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      expect.objectContaining({
+        coAuthorHsaIds: ['SE5560000001-coa1'],
+        coAuthorPeople: [
+          expect.objectContaining({ hsaId: 'SE5560000001-coa1' }),
+        ],
+      }),
+    )
+    expect(actionAuditState.recordAllowedActionAuditEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        action: 'requirement_package.co_authors.update',
+        targetId: 1,
+        targetKind: 'requirement_package',
+      }),
+    )
   })
   it('PUT returns 403 without Admin before updating', async () => {
     authState.context.actor.roles = []

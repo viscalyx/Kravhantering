@@ -46,6 +46,11 @@ interface CrudAdminPanelProps<TItem extends { id: CrudId }, TForm> {
     setForm: React.Dispatch<React.SetStateAction<TForm>>
     textareaClassName: string
   }) => ReactNode
+  renderRowActions?: (props: {
+    disabled: boolean
+    item: TItem
+    rowActionButtonClassName: string
+  }) => ReactNode
   title: ReactNode
 }
 
@@ -72,6 +77,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
   formTitle,
   formTitleId,
   renderFormFields,
+  renderRowActions,
   title,
 }: CrudAdminPanelProps<TItem, TForm>) {
   const common = useTranslations('common')
@@ -298,6 +304,11 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
                           ))}
                           <td className="py-3 px-4 text-right">
                             <div className="flex justify-end gap-1">
+                              {renderRowActions?.({
+                                disabled: rowActionDisabled,
+                                item,
+                                rowActionButtonClassName,
+                              })}
                               <button
                                 aria-label={common('edit')}
                                 className={`${rowActionButtonClassName} text-primary-700 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-950/30`}

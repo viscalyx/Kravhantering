@@ -7,6 +7,7 @@ import {
   Plus,
   Search,
   Trash2,
+  UsersRound,
   X,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
@@ -17,6 +18,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import CoAuthorsManagementModal from '@/components/CoAuthorsManagementModal'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
@@ -387,6 +389,7 @@ export default function RequirementsSpecificationsClient({
   const spinnerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editSpec, setEditSpec] = useState<Specification | null>(null)
+  const [coAuthorsSpec, setCoAuthorsSpec] = useState<Specification | null>(null)
   const [nameFilter, setNameFilter] = useState('')
   const [currentUser, setCurrentUser] =
     useState<SpecificationFormModalCurrentUser | null>(null)
@@ -466,15 +469,16 @@ export default function RequirementsSpecificationsClient({
   }, [isFetchingSpecifications])
 
   const handleEdit = (spec: Specification) => {
-    if (
-      spec.permissions &&
-      !spec.permissions.canEditContent &&
-      !spec.permissions.canManageAssignments
-    ) {
+    if (spec.permissions && !spec.permissions.canEditContent) {
       return
     }
     setEditSpec(spec)
     setShowForm(true)
+  }
+
+  const handleManageCoAuthors = (spec: Specification) => {
+    if (!spec.permissions?.canManageAssignments) return
+    setCoAuthorsSpec(spec)
   }
 
   const { confirm } = useConfirmModal()
@@ -537,6 +541,10 @@ export default function RequirementsSpecificationsClient({
   const closeForm = () => {
     setShowForm(false)
     setEditSpec(null)
+  }
+
+  const closeCoAuthorsModal = () => {
+    setCoAuthorsSpec(null)
   }
 
   const currentUserError = currentUserUnavailable
@@ -616,6 +624,30 @@ export default function RequirementsSpecificationsClient({
           spec={editSpec}
           specificationSlug={editSpec?.uniqueId}
         />
+
+        {coAuthorsSpec ? (
+          <CoAuthorsManagementModal
+            description={t('coAuthorsHelp')}
+            developerModeValue="manage specification co-authors"
+            endpoint={`/api/requirements-specifications/${coAuthorsSpec.uniqueId}/co-authors`}
+            hsaIdHelp={t('coAuthorHsaIdHelp')}
+            hsaIdLabel={t('coAuthorHsaId')}
+            loadErrorMessage={t('loadCoAuthorsFailed')}
+            noCoAuthorsMessage={t('noCoAuthors')}
+            onChanged={async () => {
+              await specificationsResource.reload()
+            }}
+            onClose={closeCoAuthorsModal}
+            open
+            purpose="requirements_specification_co_author"
+            removeConfirmMessage={name => t('removeCoAuthorConfirm', { name })}
+            removeLabel={t('removeCoAuthor')}
+            saveErrorMessage={t('saveCoAuthorsFailed')}
+            scopeId={coAuthorsSpec.id}
+            title={t('coAuthors')}
+            titleId="specification-co-authors-title"
+          />
+        ) : null}
 
         <div className="mb-4">
           {!loading && specifications.length > 0 && (
@@ -772,8 +804,27 @@ export default function RequirementsSpecificationsClient({
                       </td>
                       <td className="py-3 px-4 align-top">
                         <div className="flex justify-end gap-1">
-                          {(spec.permissions?.canEditContent ?? true) ||
-                          (spec.permissions?.canManageAssignments ?? false) ? (
+                          {spec.permissions?.canManageAssignments ? (
+                            <button
+                              aria-label={t('manageCoAuthors')}
+                              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-secondary-700 transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-secondary-300 dark:hover:bg-secondary-800/70"
+                              {...devMarker({
+                                context: 'specifications',
+                                name: 'table action',
+                                value: 'manage co-authors',
+                              })}
+                              onClick={() => handleManageCoAuthors(spec)}
+                              title={t('manageCoAuthors')}
+                              type="button"
+                            >
+                              <UsersRound
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                                focusable={false}
+                              />
+                            </button>
+                          ) : null}
+                          {(spec.permissions?.canEditContent ?? true) ? (
                             <button
                               aria-label={tc('edit')}
                               className="inline-flex h-11 w-11 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-primary-300 dark:hover:bg-primary-950/30"

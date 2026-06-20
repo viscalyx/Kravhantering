@@ -77,6 +77,7 @@ const sampleRequirementPackages = [
     leadHsaId: 'SE5560000001-anna1',
     linkedRequirementCount: 0,
     name: 'Mobile use',
+    permissions: { canManageAssignments: true },
   },
 ]
 
@@ -89,6 +90,7 @@ const additionalRequirementPackage = {
   leadHsaId: 'SE5560000001-sara1',
   linkedRequirementCount: 3,
   name: 'API use',
+  permissions: { canManageAssignments: true },
 }
 
 const requirementPackageNameInput = () =>
@@ -244,6 +246,21 @@ describe('RequirementPackagesClient', () => {
     const [deleteButton] = screen.getAllByRole('button', {
       name: /common\.delete/i,
     })
+    const manageCoAuthorsButton = screen.getByRole('button', {
+      name: /requirementPackage\.manageCoAuthors/i,
+    })
+
+    expect(manageCoAuthorsButton).toHaveAttribute(
+      'title',
+      'requirementPackage.manageCoAuthors',
+    )
+    expect(manageCoAuthorsButton.textContent?.trim()).toBe('')
+    expect(manageCoAuthorsButton).toHaveAccessibleName(
+      'requirementPackage.manageCoAuthors',
+    )
+    expect(manageCoAuthorsButton.className).toContain('h-11')
+    expect(manageCoAuthorsButton.className).toContain('w-11')
+    expect(manageCoAuthorsButton.querySelector('svg')).not.toBeNull()
 
     expect(editButton).toHaveAttribute('title', 'common.edit')
     expect(editButton.textContent?.trim()).toBe('')
@@ -269,6 +286,53 @@ describe('RequirementPackagesClient', () => {
     expect(deleteButton.className).toContain('h-11')
     expect(deleteButton.className).toContain('w-11')
     expect(deleteButton.querySelector('svg')).not.toBeNull()
+  })
+
+  it('opens the package co-author management modal from the row action', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      const urlString = requestUrl(url)
+      if (urlString === '/api/auth/me') return okJson(currentAuthMe)
+      if (urlString === '/api/hsa-id-prefixes')
+        return okJson(hsaIdPrefixPayload)
+      if (urlString === '/api/requirement-packages/1/co-authors') {
+        return okJson({ coAuthors: [] })
+      }
+      if (urlString.startsWith('/api/requirement-packages?')) {
+        return okJson({ requirementPackages: sampleRequirementPackages })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementPackagesClient />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /requirementPackage\.manageCoAuthors/i,
+      }),
+    )
+
+    const dialog = await screen.findByRole('dialog', {
+      name: /requirementPackage\.coAuthors/i,
+    })
+    expect(dialog).toHaveAttribute(
+      'data-developer-mode-value',
+      'manage requirement package co-authors',
+    )
+    expect(
+      within(dialog).getByText('requirementPackage.noCoAuthors'),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('textbox', {
+        name: /requirementPackage\.coAuthorHsaId/,
+      }),
+    ).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/requirement-packages/1/co-authors',
+      expect.any(Object),
+    )
   })
 
   it('opens linked requirements from the package list count', async () => {
@@ -445,8 +509,10 @@ describe('RequirementPackagesClient', () => {
       within(dialog).queryByText('requirementPackage.linkedRequirements'),
     ).toBeNull()
     expect(
-      screen.getByText('requirementPackage.noCoAuthors'),
-    ).toBeInTheDocument()
+      within(dialog).queryByRole('textbox', {
+        name: /requirementPackage\.coAuthorHsaId/,
+      }),
+    ).toBeNull()
   })
 
   it('opens create form', async () => {
@@ -481,12 +547,6 @@ describe('RequirementPackagesClient', () => {
     expect(actionRow).toContainElement(
       within(dialog).getByRole('button', { name: /common\.cancel/i }),
     )
-    const layoutGrid = form?.querySelector('.grid')
-    expect(layoutGrid).toHaveClass('grid')
-    expect(layoutGrid).toHaveClass('grid-cols-1')
-    expect(layoutGrid).toHaveClass(
-      'lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]',
-    )
     expect(requirementPackageNameInput()).toBeInTheDocument()
     expect(
       within(dialog).getByText('requirementPackage.createResponsibilityNotice'),
@@ -504,15 +564,17 @@ describe('RequirementPackagesClient', () => {
     expect(
       within(dialog).queryByText('requirementPackage.linkedRequirements'),
     ).toBeNull()
+    expect(
+      within(dialog).queryByRole('textbox', {
+        name: /requirementPackage\.coAuthorHsaId/,
+      }),
+    ).toBeNull()
     const nameHelpButton = screen.getByRole('button', {
       name: 'common.help: requirementPackage.name',
     })
     fireEvent.click(nameHelpButton)
     expect(nameHelpButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('requirementPackage.nameHelp')).toBeInTheDocument()
-    expect(
-      screen.getByText('requirementPackage.coAuthorsHelp'),
-    ).toBeInTheDocument()
   })
 
   it('does not fetch owner options for package leads', async () => {
@@ -562,166 +624,12 @@ describe('RequirementPackagesClient', () => {
         '/api/requirement-packages',
         expect.objectContaining({
           body: JSON.stringify({
-            coAuthorHsaIds: [],
-            description: undefined,
             name: 'Ny',
           }),
           method: 'POST',
         }),
       )
     })
-  })
-
-  it('submits package co-authors as HSA-id assignments', async () => {
-    render(<RequirementPackagesClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Mobile use')).toBeInTheDocument()
-    })
-    const createButton = await screen.findByRole('button', {
-      name: /requirementPackage.newRequirementPackage/i,
-    })
-    await waitFor(() => {
-      expect(createButton).toBeEnabled()
-    })
-    fireEvent.click(createButton)
-    fireEvent.change(requirementPackageNameInput(), {
-      target: { value: 'Ny' },
-    })
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: /requirementPackage\.addCoAuthor/i,
-      }),
-    )
-    const coAuthorInput = screen.getByRole('textbox', {
-      name: /requirementPackage\.coAuthorHsaId/,
-    })
-    await waitFor(() => {
-      expect(coAuthorInput).toBeEnabled()
-    })
-    fireEvent.change(coAuthorInput, { target: { value: 'coa1' } })
-
-    fetchMock.mockResolvedValueOnce(okJson({ id: 2 }))
-    fetchMock.mockResolvedValueOnce(
-      okJson({ requirementPackages: sampleRequirementPackages }),
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirement-packages',
-        expect.objectContaining({
-          body: JSON.stringify({
-            coAuthorHsaIds: ['SE5560000001-coa1'],
-            name: 'Ny',
-          }),
-          method: 'POST',
-        }),
-      )
-    })
-  })
-
-  it('disables adding another package co-author while a draft row is shown', async () => {
-    render(<RequirementPackagesClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Mobile use')).toBeInTheDocument()
-    })
-    const createButton = await screen.findByRole('button', {
-      name: /requirementPackage.newRequirementPackage/i,
-    })
-    await waitFor(() => {
-      expect(createButton).toBeEnabled()
-    })
-    fireEvent.click(createButton)
-
-    const dialog = screen.getByRole('dialog', {
-      name: /requirementPackage\.newRequirementPackage/i,
-    })
-    const addCoAuthorButton = within(dialog).getByRole('button', {
-      name: /requirementPackage\.addCoAuthor/i,
-    })
-    expect(addCoAuthorButton).toBeEnabled()
-
-    fireEvent.click(addCoAuthorButton)
-
-    await waitFor(() => {
-      expect(addCoAuthorButton).toBeDisabled()
-    })
-    expect(addCoAuthorButton).toHaveAttribute(
-      'title',
-      'requirementPackage.addCoAuthorUnsavedDisabled',
-    )
-    expect(
-      within(dialog).getByRole('textbox', {
-        name: /requirementPackage\.coAuthorHsaId/,
-      }),
-    ).toBeInTheDocument()
-
-    fireEvent.click(
-      within(dialog).getByRole('button', {
-        name: /requirementPackage\.removeCoAuthor/i,
-      }),
-    )
-
-    await waitFor(() => {
-      expect(addCoAuthorButton).toBeEnabled()
-    })
-    expect(addCoAuthorButton).toHaveAttribute(
-      'title',
-      'requirementPackage.addCoAuthor',
-    )
-  })
-
-  it('allows adding a package co-author when only persisted co-authors are shown', async () => {
-    const packageWithPersistedCoAuthor = {
-      ...sampleRequirementPackages[0],
-      coAuthors: [
-        {
-          displayName: 'Pat Package',
-          email: 'pat.package@example.test',
-          hsaId: 'SE5560000001-pat1',
-        },
-      ],
-    }
-    fetchMock.mockImplementation(async (url: string) => {
-      const urlString = requestUrl(url)
-      if (urlString === '/api/auth/me') return okJson(currentAuthMe)
-      if (urlString === '/api/hsa-id-prefixes')
-        return okJson(hsaIdPrefixPayload)
-      if (urlString.startsWith('/api/requirement-packages?')) {
-        return okJson({ requirementPackages: [packageWithPersistedCoAuthor] })
-      }
-      return okJson({})
-    })
-
-    render(<RequirementPackagesClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Mobile use')).toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
-
-    const dialog = screen.getByRole('dialog', {
-      name: /requirementPackage\.editRequirementPackage/i,
-    })
-    expect(
-      within(dialog).getByText('Pat Package (pat.package@example.test)'),
-    ).toBeInTheDocument()
-    const addCoAuthorButton = within(dialog).getByRole('button', {
-      name: /requirementPackage\.addCoAuthor/i,
-    })
-    expect(addCoAuthorButton).toBeEnabled()
-
-    fireEvent.click(addCoAuthorButton)
-
-    await waitFor(() => {
-      expect(addCoAuthorButton).toBeDisabled()
-    })
-    expect(
-      within(dialog).getAllByRole('textbox', {
-        name: /requirementPackage\.coAuthorHsaId/,
-      }),
-    ).toHaveLength(2)
   })
 
   it('opens edit form with existing data', async () => {
@@ -801,7 +709,6 @@ describe('RequirementPackagesClient', () => {
     )
     expect((putCall?.[1] as RequestInit).body).toBe(
       JSON.stringify({
-        coAuthorHsaIds: [],
         description: 'Requirements for mobile access and responsive flows.',
         name: 'Updated mobile use',
       }),

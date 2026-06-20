@@ -68,6 +68,11 @@ Deferred from this contract:
   and focused unit/UI tests, but their useful assertions are state-machine,
   duplicate, cleanup, and filter-calculation behavior rather than broad fuzzing
   in this first contract slice.
+- Co-author assignment management routes for requirement areas, requirements
+  specifications, and requirement packages remain outside the
+  OpenAPI/Schemathesis v1 contract. They are same-origin editing helpers backed
+  by `secureMutationRoute`, HSA-id verification, scoped assignment permissions,
+  conflict checks against owner/lead roles, and focused route/UI tests.
 - Requirements specification report-output and CSV export routes remain outside
   the OpenAPI/Schemathesis v1 contract with the other specification and CSV
   surfaces. Their useful assertions are authorization-before-data, lifecycle

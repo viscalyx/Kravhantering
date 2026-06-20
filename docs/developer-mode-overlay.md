@@ -152,11 +152,16 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   controls.
 - Shared CRUD admin panel edit and delete row actions render as icon-only
   buttons while keeping the existing `table action: edit` and
-  `table action: delete` markers in each admin page context.
+  `table action: delete` markers in each admin page context. Row-level
+  co-author assignment actions use `table action: manage co-authors` in the
+  relevant page context.
 - Requirement area create and edit actions use the shared modal `dialog`
   surface. Creating opens `dialog: new requirement area`; editing opens
   `dialog: edit requirement area`, with the existing `areas > crud form:
-  create` or `areas > crud form: edit` marker inside the dialog.
+  create` or `areas > crud form: edit` marker inside the dialog. Requirement
+  area co-authors open from the list row action
+  `areas > table action: manage co-authors` into
+  `dialog: manage requirement area co-authors`.
 - App Router error recovery pages expose the `error boundary` context with
   `error recovery: locale`, `error recovery: root`, or
   `error recovery: global` on the visible fallback surface. Their retry
@@ -168,7 +173,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `floating action rail` as
   `specifications > floating pill: new specification`. Creating opens
   `dialog: new specification`; list row editing opens
-  `dialog: edit specification`.
+  `dialog: edit specification`. Specification co-authors open from the list
+  row action `specifications > table action: manage co-authors` into
+  `dialog: manage specification co-authors`.
 - Requirements packages expose their create trigger in the fixed
   `floating action rail` as
   `requirementPackages > floating pill: new requirement package`. The new
@@ -185,8 +192,10 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   The package name-or-description search field renders as
   `requirementPackages > text field: name or description filter`. Package list
   row actions keep their developer-mode markers as
-  `requirementPackages > table action: linked requirements`, `edit`,
-  `archive`, `reactivate`, and `delete`.
+  `requirementPackages > table action: linked requirements`,
+  `manage co-authors`, `edit`, `archive`, `reactivate`, and `delete`.
+  Requirement package co-authors open into
+  `dialog: manage requirement package co-authors`.
 - Requirement selection questions expose their create trigger in the fixed
   `floating action rail` as
   `requirementSelectionQuestions > floating pill: new requirement selection question`.
