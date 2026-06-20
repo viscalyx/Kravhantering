@@ -12,7 +12,11 @@ import {
   customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { idParamSchema, parseRouteParams } from '@/lib/http/validation'
+import {
+  ARRAY_INPUT_MAX_ITEMS,
+  idParamSchema,
+  parseRouteParams,
+} from '@/lib/http/validation'
 import {
   createRequestContext,
   type RequestContext,
@@ -30,7 +34,12 @@ const hsaIdSchema = z.string().trim().max(HSA_ID_MAX_LENGTH).refine(isHsaId, {
 
 const updateRequirementPackageCoAuthorsSchema = z
   .object({
-    coAuthorHsaIds: z.array(hsaIdSchema),
+    coAuthorHsaIds: z
+      .array(hsaIdSchema)
+      .max(ARRAY_INPUT_MAX_ITEMS)
+      .refine(values => new Set(values).size === values.length, {
+        message: 'Co-author HSA-ids must be unique',
+      }),
   })
   .strict()
 
@@ -68,7 +77,7 @@ export async function GET(
       db,
       context,
       parsedParams.data.id,
-      'requirement_package.update',
+      'requirement_package.co_authors.update',
     )
 
     return NextResponse.json({
@@ -95,7 +104,7 @@ export const PUT = secureMutationRoute({
       db,
       context,
       params.id,
-      'requirement_package.update',
+      'requirement_package.co_authors.update',
     )
   }),
   handler: async ({ body, context, params }) => {

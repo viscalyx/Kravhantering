@@ -2,11 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import { isHsaId } from '@/lib/auth/hsa-id'
-import {
-  canManageAreaCoAuthors,
-  createArea,
-  listAreas,
-} from '@/lib/dal/requirement-areas'
+import { createArea, listAreas } from '@/lib/dal/requirement-areas'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   adminMutationPolicy,
@@ -41,19 +37,13 @@ export async function GET(
   const areas = await listAreas(db)
   const isAdmin = context.actor.roles.includes('Admin')
   return NextResponse.json({
-    areas: await Promise.all(
-      areas.map(async area => ({
-        ...area,
-        permissions: {
-          canManageAssignments: await canManageAreaCoAuthors(
-            db,
-            area.id,
-            context.actor.hsaId,
-            isAdmin,
-          ),
-        },
-      })),
-    ),
+    areas: areas.map(area => ({
+      ...area,
+      permissions: {
+        canManageAssignments:
+          isAdmin || context.actor.hsaId === area.ownerHsaId,
+      },
+    })),
   })
 }
 

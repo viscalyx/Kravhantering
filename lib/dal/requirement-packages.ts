@@ -131,6 +131,10 @@ function uniqueHsaIds(hsaIds: string[] | undefined): string[] {
   return [...new Set((hsaIds ?? []).map(hsaId => hsaId.trim()).filter(Boolean))]
 }
 
+function normalizeHsaIdForComparison(hsaId: string): string {
+  return hsaId.trim().toLowerCase()
+}
+
 function canStartTransaction(
   db: QueryExecutor,
 ): db is QueryExecutor & Pick<SqlServerDatabase, 'transaction'> {
@@ -451,17 +455,35 @@ export async function updateRequirementPackage(
   },
 ): Promise<RequirementPackageRow | undefined> {
   const leadPerson = data.leadPerson
-  if (leadPerson) {
-    return db.transaction(async manager => {
+  if (data.leadHsaId !== undefined || leadPerson) {
+    return db.transaction('SERIALIZABLE', async manager => {
       const oldRows = (await manager.query(
         `
           SELECT lead_hsa_id AS leadHsaId
-          FROM requirement_packages
+          FROM requirement_packages WITH (UPDLOCK, HOLDLOCK)
           WHERE id = @0
         `,
         [id],
       )) as Array<{ leadHsaId: string }>
       if (oldRows.length === 0) return undefined
+
+      if (data.leadHsaId !== undefined) {
+        const coAuthorRows = (await manager.query(
+          `
+            SELECT TOP (1) requirement_package_id AS requirementPackageId
+            FROM requirement_package_co_authors WITH (UPDLOCK, HOLDLOCK)
+            WHERE requirement_package_id = @0
+              AND hsa_id = @1
+          `,
+          [id, data.leadHsaId.trim()],
+        )) as Array<{ requirementPackageId: number }>
+        if (coAuthorRows.length > 0) {
+          throw validationError(
+            'Package lead cannot also be package co-author',
+            { reason: 'package_lead_cannot_be_co_author' },
+          )
+        }
+      }
 
       if (leadPerson) {
         await upsertRequirementResponsibilityPerson(manager, leadPerson)
@@ -624,15 +646,23 @@ export async function replaceRequirementPackageCoAuthors(
     if (!requirementPackage) return undefined
 
     const coAuthorHsaIds = uniqueHsaIds(data.coAuthorHsaIds)
-    if (coAuthorHsaIds.includes(requirementPackage.leadHsaId)) {
+    const normalizedLeadHsaId = normalizeHsaIdForComparison(
+      requirementPackage.leadHsaId,
+    )
+    const normalizedCoAuthorHsaIds = coAuthorHsaIds.map(
+      normalizeHsaIdForComparison,
+    )
+    if (normalizedCoAuthorHsaIds.includes(normalizedLeadHsaId)) {
       throw validationError('Package lead cannot also be package co-author', {
         reason: 'package_lead_cannot_be_co_author',
       })
     }
 
-    const coAuthorHsaIdSet = new Set(coAuthorHsaIds)
+    const coAuthorHsaIdSet = new Set(normalizedCoAuthorHsaIds)
     for (const coAuthorPerson of data.coAuthorPeople ?? []) {
-      if (!coAuthorHsaIdSet.has(coAuthorPerson.hsaId)) {
+      if (
+        !coAuthorHsaIdSet.has(normalizeHsaIdForComparison(coAuthorPerson.hsaId))
+      ) {
         throw validationError(
           'Requirement package co-author person must match a co-author HSA-id',
           { reason: 'co_author_person_hsa_id_mismatch' },

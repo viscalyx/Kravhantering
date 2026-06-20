@@ -13,6 +13,10 @@ import {
 
 let fixture: AuthorizationFixture
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 test.describe.configure({ mode: 'serial' })
 test.use({
   storageState: ROLE_STORAGE_STATE.areaOwner,
@@ -31,12 +35,14 @@ test('AUTH-10/AUTH-11: requirement area owners can manage their area and co-auth
   const updatedDescription = `Updated by area owner ${Date.now()}`
 
   try {
+    const areaPrefixPattern = escapeRegExp(fixture.areaPrefix)
+
     await page.goto('/sv/requirement-areas')
     await expect(
       page.getByRole('heading', { level: 1, name: 'Kravområden' }),
     ).toBeVisible()
 
-    const row = page.getByRole('row', { name: new RegExp(fixture.areaPrefix) })
+    const row = page.getByRole('row', { name: new RegExp(areaPrefixPattern) })
     await expect(row).toBeVisible()
     await row.getByRole('button', { name: 'Redigera' }).click()
 
@@ -56,7 +62,7 @@ test('AUTH-10/AUTH-11: requirement area owners can manage their area and co-auth
     await expect(page.getByText(updatedDescription)).toBeVisible()
 
     const updatedRow = page.getByRole('row', {
-      name: new RegExp(fixture.areaPrefix),
+      name: new RegExp(areaPrefixPattern),
     })
     await updatedRow
       .getByRole('button', { name: 'Hantera medförfattare' })

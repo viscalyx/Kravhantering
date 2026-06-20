@@ -210,7 +210,7 @@ vi.mock('@/lib/dal/specification-governance-object-types', () => ({
 const mockUpdateReqArea = vi.fn()
 const mockDeleteReqArea = vi.fn()
 vi.mock('@/lib/dal/requirement-areas', () => ({
-  listAreas: async () => [{ id: 1 }],
+  listAreas: async () => [{ id: 1, ownerHsaId: 'SE5560000001-route' }],
   canAuthorAnyArea: (...a: unknown[]) =>
     requirementAreaPermissionState.canAuthorAnyArea(...a),
   canAuthorArea: (...a: unknown[]) =>
@@ -1931,6 +1931,33 @@ describe('requirement-packages routes', () => {
         targetKind: 'requirement_package',
       }),
     )
+  })
+  it('PUT co-authors rejects duplicate package co-author HSA-ids', async () => {
+    const r = await putRequirementPackageCoAuthors(
+      jsonReq('PUT', {
+        coAuthorHsaIds: ['SE5560000001-coa1', 'SE5560000001-coa1'],
+      }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'coAuthorHsaIds')
+    expect(mockReplaceRequirementPackageCoAuthors).not.toHaveBeenCalled()
+  })
+  it('PUT co-authors rejects oversized package co-author lists', async () => {
+    const r = await putRequirementPackageCoAuthors(
+      jsonReq('PUT', {
+        coAuthorHsaIds: Array.from(
+          { length: 201 },
+          (_value, index) => `SE5560000001-coa${index}`,
+        ),
+      }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'coAuthorHsaIds')
+    expect(mockReplaceRequirementPackageCoAuthors).not.toHaveBeenCalled()
   })
   it('PUT returns 403 without Admin before updating', async () => {
     authState.context.actor.roles = []

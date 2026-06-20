@@ -322,7 +322,7 @@ export default function CoAuthorsManagementModal({
             onVerified={person => {
               setCoAuthorDraft({
                 displayName: person.displayName,
-                email: '',
+                email: person.email ?? '',
                 hsaId: person.hsaId,
                 personVerification: person,
               })

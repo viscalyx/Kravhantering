@@ -4,6 +4,7 @@ import {
   deleteRequirementPackage,
   getLinkedRequirementsForPackage,
   replaceRequirementPackageCoAuthors,
+  updateRequirementPackage,
 } from '@/lib/dal/requirement-packages'
 
 function createSqlServerDb() {
@@ -110,6 +111,113 @@ describe('requirement-packages DAL', () => {
         uniqueId: 'REQ-2',
       },
     ])
+  })
+
+  it('checks lead and co-author exclusivity inside a locked transaction', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ leadHsaId: 'SE5560000001-old1' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          createdAt: new Date('2026-05-02T08:00:00.000Z'),
+          description: 'Updated package',
+          id: 13,
+          isArchived: false,
+          leadEmail: 'new.lead@example.test',
+          leadGivenName: 'New',
+          leadHsaId: 'SE5560000001-new1',
+          leadMiddleName: null,
+          leadSurname: 'Lead',
+          name: 'Updated package',
+          updatedAt: new Date('2026-05-03T08:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+    type MockManager = { query: typeof query }
+    const manager: MockManager = { query }
+    const transaction = vi.fn(
+      async (
+        _isolation: unknown,
+        callback: (manager: MockManager) => Promise<unknown> | unknown,
+      ) => callback(manager),
+    )
+    const db = {
+      transaction,
+    } as unknown as Parameters<typeof updateRequirementPackage>[0]
+
+    const result = await updateRequirementPackage(db, 13, {
+      leadHsaId: 'SE5560000001-new1',
+      leadPerson: {
+        email: 'new.lead@example.test',
+        givenName: 'New',
+        hsaId: 'SE5560000001-new1',
+        middleName: null,
+        surname: 'Lead',
+      },
+    })
+
+    expect(transaction).toHaveBeenCalledWith(
+      'SERIALIZABLE',
+      expect.any(Function),
+    )
+    expect(String(query.mock.calls[0]?.[0])).toContain(
+      'FROM requirement_packages WITH (UPDLOCK, HOLDLOCK)',
+    )
+    expect(String(query.mock.calls[1]?.[0])).toContain(
+      'FROM requirement_package_co_authors WITH (UPDLOCK, HOLDLOCK)',
+    )
+    expect(String(query.mock.calls[2]?.[0])).toContain(
+      'MERGE INTO requirement_responsibility_people',
+    )
+    expect(String(query.mock.calls[3]?.[0])).toContain(
+      'UPDATE requirement_packages',
+    )
+    expect(String(query.mock.calls[6]?.[0])).toContain('DELETE person')
+    expect(result).toMatchObject({
+      id: 13,
+      leadHsaId: 'SE5560000001-new1',
+    })
+  })
+
+  it('rejects lead changes to an existing package co-author before updating', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ leadHsaId: 'SE5560000001-old1' }])
+      .mockResolvedValueOnce([{ requirementPackageId: 13 }])
+    type MockManager = { query: typeof query }
+    const manager: MockManager = { query }
+    const transaction = vi.fn(
+      async (
+        _isolation: unknown,
+        callback: (manager: MockManager) => Promise<unknown> | unknown,
+      ) => callback(manager),
+    )
+    const db = {
+      transaction,
+    } as unknown as Parameters<typeof updateRequirementPackage>[0]
+
+    await expect(
+      updateRequirementPackage(db, 13, {
+        leadHsaId: 'SE5560000001-coa1',
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'package_lead_cannot_be_co_author' },
+    })
+
+    expect(transaction).toHaveBeenCalledWith(
+      'SERIALIZABLE',
+      expect.any(Function),
+    )
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('UPDATE requirement_packages'),
+      ),
+    ).toBe(false)
   })
 
   it('deletes otherwise unused packages after cleaning requirement-selection answer links', async () => {

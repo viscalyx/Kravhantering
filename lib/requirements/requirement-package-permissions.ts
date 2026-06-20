@@ -5,6 +5,7 @@ import { forbiddenError, unauthorizedError } from '@/lib/requirements/errors'
 
 export type RequirementPackagePermission =
   | 'requirement_package.archive'
+  | 'requirement_package.co_authors.update'
   | 'requirement_package.delete'
   | 'requirement_package.create'
   | 'requirement_package.reactivate'
@@ -15,6 +16,7 @@ const REQUIREMENT_PACKAGE_PERMISSION_ROLES: Record<
   readonly string[]
 > = {
   'requirement_package.archive': ['Admin'],
+  'requirement_package.co_authors.update': ['Admin'],
   'requirement_package.create': [],
   'requirement_package.delete': ['Admin'],
   'requirement_package.reactivate': ['Admin'],
