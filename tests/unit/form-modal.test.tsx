@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import FormModal from '@/components/FormModal'
 
@@ -131,5 +131,29 @@ describe('FormModal', () => {
     expect(
       screen.queryByRole('button', { name: 'close' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('does not close when the backdrop is clicked', () => {
+    const onClose = vi.fn()
+    render(
+      <FormModal
+        onClose={onClose}
+        open
+        title="Edit answer"
+        titleId="edit-answer-title"
+      >
+        <button type="button">Focusable content</button>
+      </FormModal>,
+    )
+
+    const backdrop = document.body.querySelector(
+      '.absolute.inset-0',
+    ) as HTMLElement | null
+    expect(backdrop).not.toBeNull()
+
+    fireEvent.click(backdrop as HTMLElement)
+
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: 'Edit answer' })).toBeVisible()
   })
 })

@@ -55,7 +55,10 @@ function PanelHarness({
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<PanelForm>({ name: '' })
   const controller: CrudAdminResourceController<PanelItem, PanelForm> = {
-    closeForm: () => setShowForm(false),
+    closeForm: async () => {
+      setShowForm(false)
+      return true
+    },
     deleteError,
     deletingIds: new Set(),
     editId: null,

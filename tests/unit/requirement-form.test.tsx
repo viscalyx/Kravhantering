@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const pushMock = vi.fn()
 const backMock = vi.fn()
+const confirmDiscardChangesMock = vi.hoisted(() => vi.fn())
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
@@ -22,6 +23,10 @@ vi.mock('next-intl', () => ({
 
 vi.mock('@/i18n/routing', () => ({
   useRouter: () => ({ push: pushMock, back: backMock }),
+}))
+
+vi.mock('@/hooks/useDiscardChangesConfirmation', () => ({
+  useDiscardChangesConfirmation: () => confirmDiscardChangesMock,
 }))
 
 function okJson(body: unknown) {
@@ -74,6 +79,7 @@ describe('RequirementForm', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    confirmDiscardChangesMock.mockResolvedValue(true)
     localStorage.removeItem('requirement-save-destination')
     fetchMock.mockImplementation((url: string) => {
       if (typeof url === 'string' && url.includes('/api/requirement-areas'))
@@ -127,6 +133,30 @@ describe('RequirementForm', () => {
 
     fireEvent.change(desc, { target: { value: '   ' } })
     expect(saveButton).toBeDisabled()
+  })
+
+  it('confirms before cancelling a dirty create form', async () => {
+    confirmDiscardChangesMock
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+    render(<RequirementForm mode="create" />)
+
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: 'Unsaved requirement text' } },
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }))
+
+    await waitFor(() => {
+      expect(confirmDiscardChangesMock).toHaveBeenCalledTimes(1)
+    })
+    expect(backMock).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }))
+
+    await waitFor(() => {
+      expect(backMock).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('renders edit mode form', async () => {

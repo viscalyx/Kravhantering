@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import { modalResizableTextareaRows3ClassName } from '@/components/modal-textarea-class'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
@@ -39,6 +40,7 @@ export default function DeviationDecisionModal({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
   const shouldReduceMotion = useReducedMotion()
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
 
   useEffect(() => {
     if (open) {
@@ -48,13 +50,6 @@ export default function DeviationDecisionModal({
       setOpenHelp(new Set())
     }
   }, [open])
-
-  const { handleKeyDown } = useModalFocus({
-    modalRef,
-    initialFocusRef: textareaRef,
-    onClose,
-    open,
-  })
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -70,6 +65,25 @@ export default function DeviationDecisionModal({
 
   const formDirty =
     baselineSignature !== createDirtySnapshot({ decision, motivation })
+
+  const requestClose = useCallback(
+    async (anchorEl?: HTMLElement | null) => {
+      if (loading) return
+      if (formDirty && !(await confirmDiscardChanges(anchorEl))) return
+      onClose()
+    },
+    [confirmDiscardChanges, formDirty, loading, onClose],
+  )
+
+  const { handleKeyDown } = useModalFocus({
+    closeDisabled: loading,
+    modalRef,
+    initialFocusRef: textareaRef,
+    onClose: () => {
+      void requestClose()
+    },
+    open,
+  })
 
   const handleSubmit = useCallback(() => {
     if (!motivation.trim()) return
@@ -87,13 +101,7 @@ export default function DeviationDecisionModal({
           key="deviation-decision-backdrop"
           {...fadeMotion(shouldReduceMotion)}
         >
-          {/* Backdrop */}
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
-          {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={onClose}
-          />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
 
           {/* Dialog */}
           <motion.div
@@ -179,7 +187,9 @@ export default function DeviationDecisionModal({
                 <button
                   className="btn-secondary text-sm px-4 py-2"
                   disabled={loading}
-                  onClick={onClose}
+                  onClick={event => {
+                    void requestClose(event.currentTarget)
+                  }}
                   type="button"
                 >
                   {tc('cancel')}

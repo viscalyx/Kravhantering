@@ -89,12 +89,7 @@ export default function FormModal({
           key={`${titleId}-backdrop`}
           {...fadeMotion(shouldReduceMotion)}
         >
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss pattern */}
-          {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={close}
-          />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <motion.div
             aria-labelledby={titleId}
             aria-modal="true"

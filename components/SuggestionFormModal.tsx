@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import { modalResizableTextareaRows4ClassName } from '@/components/modal-textarea-class'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
@@ -45,6 +46,7 @@ export default function SuggestionFormModal({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
   const shouldReduceMotion = useReducedMotion()
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
 
   useEffect(() => {
     if (open) {
@@ -62,14 +64,6 @@ export default function SuggestionFormModal({
     }
   }, [open, initialContent, initialCreatedBy])
 
-  const { handleKeyDown } = useModalFocus({
-    closeDisabled: loading,
-    modalRef,
-    initialFocusRef: textareaRef,
-    onClose,
-    open,
-  })
-
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
       const next = new Set(prev)
@@ -84,6 +78,25 @@ export default function SuggestionFormModal({
 
   const formDirty =
     baselineSignature !== createDirtySnapshot({ content, createdBy })
+
+  const requestClose = useCallback(
+    async (anchorEl?: HTMLElement | null) => {
+      if (loading) return
+      if (formDirty && !(await confirmDiscardChanges(anchorEl))) return
+      onClose()
+    },
+    [confirmDiscardChanges, formDirty, loading, onClose],
+  )
+
+  const { handleKeyDown } = useModalFocus({
+    closeDisabled: loading,
+    modalRef,
+    initialFocusRef: textareaRef,
+    onClose: () => {
+      void requestClose()
+    },
+    open,
+  })
 
   const handleSubmit = useCallback(() => {
     if (!content.trim()) return
@@ -101,12 +114,7 @@ export default function SuggestionFormModal({
           key="suggestion-form-backdrop"
           {...fadeMotion(shouldReduceMotion)}
         >
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
-          {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={loading ? undefined : onClose}
-          />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
 
           <motion.div
             aria-labelledby="suggestion-form-title"
@@ -205,7 +213,9 @@ export default function SuggestionFormModal({
                 <button
                   className="btn-secondary text-sm px-4 py-2"
                   disabled={loading}
-                  onClick={onClose}
+                  onClick={event => {
+                    void requestClose(event.currentTarget)
+                  }}
                   type="button"
                 >
                   {tc('cancel')}

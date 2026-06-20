@@ -426,7 +426,8 @@ export default function RequirementPackagesClient() {
     controller.openEdit(requirementPackage)
   }
 
-  const closeForm = () => {
+  const closeForm = async (anchorEl?: HTMLElement | null) => {
+    if (!(await controller.closeForm(anchorEl))) return
     linkedReqRequestId.current++
     setLinkedRequirements([])
     setLinkedRequirementsError(null)
@@ -434,7 +435,6 @@ export default function RequirementPackagesClient() {
     setLinkedRequirementsModal(null)
     setLeadChange(null)
     persistedCoAuthorHsaIdsRef.current = []
-    controller.closeForm()
   }
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -529,7 +529,8 @@ export default function RequirementPackagesClient() {
         setLinkedRequirementsLoading(false)
         setLinkedRequirementsModal(null)
         persistedCoAuthorHsaIdsRef.current = []
-        controller.closeForm()
+        controller.markFormClean()
+        void controller.closeForm()
       } else {
         const nextDisplayName =
           payload.leadDisplayName ?? person?.displayName ?? nextLeadHsaId
@@ -958,7 +959,7 @@ export default function RequirementPackagesClient() {
         <button
           className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
           disabled={controller.submitting}
-          onClick={closeForm}
+          onClick={event => void closeForm(event.currentTarget)}
           type="button"
         >
           {tc('cancel')}
@@ -1004,7 +1005,7 @@ export default function RequirementPackagesClient() {
         <button
           className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
           disabled={controller.submitting}
-          onClick={closeForm}
+          onClick={event => void closeForm(event.currentTarget)}
           type="button"
         >
           {tc('cancel')}
@@ -1244,7 +1245,9 @@ export default function RequirementPackagesClient() {
           }
           initialFocusRef={nameInputRef}
           maxWidthClassName="max-w-5xl"
-          onClose={closeForm}
+          onClose={() => {
+            void closeForm()
+          }}
           open={controller.showForm}
           title={formModalTitle}
           titleId={

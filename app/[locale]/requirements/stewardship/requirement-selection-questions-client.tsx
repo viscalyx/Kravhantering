@@ -33,6 +33,7 @@ import { modalResizableTextareaResizeClassName } from '@/components/modal-textar
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 import StatusBadge from '@/components/StatusBadge'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -804,6 +805,7 @@ function CompactRequirementDetail({
 export default function RequirementSelectionQuestionsClient() {
   useHelpContent(REQUIREMENT_SELECTION_QUESTIONS_STEWARDSHIP_HELP)
   const { confirm } = useConfirmModal()
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
   const locale = useLocale()
   const t = useTranslations('requirementSelectionQuestionsStewardship')
   const tc = useTranslations('common')
@@ -1539,8 +1541,11 @@ export default function RequirementSelectionQuestionsClient() {
     setHierarchyQuestionId(null)
   }
 
-  const closeVisibilityPanel = () => {
+  const closeVisibilityPanel = async (anchorEl?: HTMLElement | null) => {
     if (submitting) return
+    if (isVisibilityGroupsDirty && !(await confirmDiscardChanges(anchorEl))) {
+      return
+    }
     setVisibilityPanelQuestionId(null)
     setVisibilityGroupsForm([])
     setVisibilityGroupsBaseline(visibilityGroupsFingerprint([]))
@@ -1577,7 +1582,7 @@ export default function RequirementSelectionQuestionsClient() {
         setError((await readResponseMessage(response)) ?? copy.error)
         return
       }
-      closeVisibilityPanel()
+      void closeVisibilityPanel()
       await reload()
     } catch {
       setError(copy.error)
@@ -1586,8 +1591,11 @@ export default function RequirementSelectionQuestionsClient() {
     }
   }
 
-  const closeQuestionForm = () => {
+  const closeQuestionForm = async (anchorEl?: HTMLElement | null) => {
     if (submitting) return
+    if (isQuestionFormDirty && !(await confirmDiscardChanges(anchorEl))) {
+      return
+    }
     setQuestionForm(initialQuestionForm)
     setQuestionFormBaseline(
       questionFormFingerprint(initialQuestionForm, 'create'),
@@ -1633,23 +1641,16 @@ export default function RequirementSelectionQuestionsClient() {
     setShowAnswerForm(true)
   }
 
-  const requestCloseAnswerForm = (anchorEl?: HTMLElement | null) => {
+  const requestCloseAnswerForm = async (anchorEl?: HTMLElement | null) => {
     if (submitting) return
     if (!isAnswerFormDirty) {
       resetAnswerEditingState()
       return
     }
 
-    void confirm({
-      anchorEl,
-      confirmText: copy.discardChanges,
-      defaultCancel: true,
-      icon: 'caution',
-      message: copy.unsavedChangesConfirm,
-      variant: 'danger',
-    }).then(confirmed => {
-      if (confirmed) resetAnswerEditingState()
-    })
+    if (await confirmDiscardChanges(anchorEl)) {
+      resetAnswerEditingState()
+    }
   }
 
   const selectQuestion = useCallback(
@@ -2839,7 +2840,9 @@ export default function RequirementSelectionQuestionsClient() {
             <button
               className="btn-secondary inline-flex items-center gap-1.5"
               disabled={submitting}
-              onClick={event => requestCloseAnswerForm(event.currentTarget)}
+              onClick={event =>
+                void requestCloseAnswerForm(event.currentTarget)
+              }
               type="button"
             >
               {copy.cancel}
@@ -3569,7 +3572,9 @@ export default function RequirementSelectionQuestionsClient() {
           closeDisabled={submitting}
           developerModeValue="new requirement selection question"
           initialFocusRef={questionTextRef}
-          onClose={closeQuestionForm}
+          onClose={() => {
+            void closeQuestionForm()
+          }}
           open={showQuestionForm}
           title={editingQuestionId ? copy.editQuestion : copy.createQuestion}
           titleId="requirement-selection-question-create-title"
@@ -3585,7 +3590,9 @@ export default function RequirementSelectionQuestionsClient() {
           }
           initialFocusRef={answerTextRef}
           maxWidthClassName="max-w-7xl"
-          onClose={() => requestCloseAnswerForm()}
+          onClose={() => {
+            void requestCloseAnswerForm()
+          }}
           open={showAnswerForm}
           showHeader={false}
           title={
@@ -4718,7 +4725,11 @@ export default function RequirementSelectionQuestionsClient() {
                                       aria-label={copy.cancel}
                                       className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-900"
                                       disabled={submitting}
-                                      onClick={closeVisibilityPanel}
+                                      onClick={event =>
+                                        void closeVisibilityPanel(
+                                          event.currentTarget,
+                                        )
+                                      }
                                       type="button"
                                     >
                                       <X
@@ -5130,7 +5141,11 @@ export default function RequirementSelectionQuestionsClient() {
                                     <button
                                       className="btn-secondary inline-flex items-center gap-1.5"
                                       disabled={submitting}
-                                      onClick={closeVisibilityPanel}
+                                      onClick={event =>
+                                        void closeVisibilityPanel(
+                                          event.currentTarget,
+                                        )
+                                      }
                                       type="button"
                                     >
                                       {copy.cancel}

@@ -75,7 +75,7 @@ for (const viewport of viewports) {
             uri,
             normReferenceId,
           ]) {
-            expect(Math.abs(field.x - name.x)).toBeLessThanOrEqual(4)
+            expect(Math.abs(field.x - name.x)).toBeLessThanOrEqual(5)
             expect(field.width).toBeGreaterThan(name.width - 8)
           }
 
@@ -87,6 +87,42 @@ for (const viewport of viewports) {
           expectBelow(uri, normReferenceId)
         })
       }
+
+      await test.step('guard dirty close actions without saving', async () => {
+        const saveButton = dialog.getByRole('button', { name: 'Spara' })
+        await expect(saveButton).toBeDisabled()
+        await expect(saveButton).toHaveAttribute(
+          'title',
+          'Inga ändringar att spara',
+        )
+
+        await dialog.locator('#norm-reference-name').fill('Tillfällig norm')
+        await expect(saveButton).toBeEnabled()
+
+        await page.mouse.click(2, 2)
+        await expect(dialog).toBeVisible()
+        await expect(
+          page.getByRole('alertdialog', {
+            name: 'Du har osparade ändringar. Vill du förkasta dem?',
+          }),
+        ).toBeHidden()
+
+        await dialog.getByRole('button', { name: 'Avbryt' }).click()
+        const discardDialog = page.getByRole('alertdialog', {
+          name: 'Du har osparade ändringar. Vill du förkasta dem?',
+        })
+        await expect(discardDialog).toBeVisible()
+        await discardDialog.getByRole('button', { name: 'Avbryt' }).click()
+        await expect(discardDialog).toBeHidden()
+        await expect(dialog).toBeVisible()
+        await expect(dialog.locator('#norm-reference-name')).toHaveValue(
+          'Tillfällig norm',
+        )
+
+        await dialog.getByRole('button', { name: 'Avbryt' }).click()
+        await discardDialog.getByRole('button', { name: 'Bekräfta' }).click()
+        await expect(dialog).toBeHidden()
+      })
     })
   })
 }

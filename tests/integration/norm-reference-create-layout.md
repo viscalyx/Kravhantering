@@ -5,7 +5,7 @@
 
 This suite verifies that the new norm-reference form stays compact on
 desktop by using two columns, while remaining a single readable column on
-mobile.
+mobile. It also checks the shared dirty-form close rule without saving data.
 
 ## Data Model
 
@@ -15,6 +15,7 @@ mobile.
 | Field boxes | Browser bounding boxes for the create-form inputs. |
 | Row checks | Compare field positions to verify column layout. |
 | Width checks | Confirm the ID override field spans the desktop form. |
+| Dirty close | Uses a temporary name value and discards it before exit. |
 
 ## Overview Flowchart
 
@@ -29,8 +30,11 @@ flowchart TD
     F -- Desktop --> G[Verify three two-column rows]
     G --> H[Verify ID field spans both columns]
     F -- Mobile --> I[Verify one-column stack]
-    H --> J[Test passes]
+    H --> J[Change one field]
     I --> J
+    J --> K[Backdrop does not close]
+    K --> L[Cancel discard keeps dialog open]
+    L --> M[Confirm discard closes dialog]
 ```
 
 ## Test Setup
@@ -49,8 +53,9 @@ flowchart TD
 ### Purpose
 
 This test validates that the create dialog grows horizontally on desktop
-instead of only becoming taller, and that the same form remains a safe
-single-column layout on mobile.
+instead of only becoming taller, that the same form remains a safe
+single-column layout on mobile, and that dirty close actions use the shared
+discard confirmation.
 
 ### Step-by-Step Flow
 
@@ -67,6 +72,12 @@ single-column layout on mobile.
    spans wider than one ordinary column.
 9. On mobile, assert that every field aligns with Benämning on the same
    x-axis and appears in vertical order.
+10. Assert `Spara` is disabled while the form is clean.
+11. Enter a temporary Benämning and assert `Spara` is enabled.
+12. Click outside the dialog and assert it remains open without a prompt.
+13. Click `Avbryt`, cancel the discard prompt, and assert the temporary value
+    remains.
+14. Click `Avbryt` again, confirm discard, and assert the dialog closes.
 
 ### Sequence Diagram
 
@@ -89,4 +100,15 @@ sequenceDiagram
     else Mobile
         Note over F: ✓ Fields stay in one vertical column
     end
+    Note over F: ✓ Clean Spara is disabled
+    U->>F: Enter temporary Benämning
+    Note over F: ✓ Spara is enabled
+    U->>D: Click outside dialog
+    Note over D: ✓ Dialog remains open
+    U->>D: Click Avbryt
+    D->>D: Show discard confirmation
+    U->>D: Cancel discard
+    Note over F: ✓ Temporary value remains
+    U->>D: Click Avbryt, then Bekräfta
+    Note over D: ✓ Dialog closes without saving
 ```

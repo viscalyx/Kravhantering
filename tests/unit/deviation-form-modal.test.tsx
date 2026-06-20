@@ -1,7 +1,9 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DeviationFormModal from '@/components/DeviationFormModal'
+
+const confirmDiscardChangesMock = vi.hoisted(() => vi.fn())
 
 const translations: Record<string, Record<string, string>> = {
   common: {
@@ -25,7 +27,16 @@ vi.mock('next-intl', () => ({
     translations[namespace]?.[key] ?? key,
 }))
 
+vi.mock('@/hooks/useDiscardChangesConfirmation', () => ({
+  useDiscardChangesConfirmation: () => confirmDiscardChangesMock,
+}))
+
 describe('DeviationFormModal', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    confirmDiscardChangesMock.mockResolvedValue(true)
+  })
+
   it('submits motivation only after opening', async () => {
     const onSubmit = vi.fn()
     const user = userEvent.setup()
@@ -58,5 +69,34 @@ describe('DeviationFormModal', () => {
     await user.click(submitButton)
 
     expect(onSubmit).toHaveBeenCalledWith('Needs exception')
+  })
+
+  it('confirms dirty cancel and ignores backdrop clicks', async () => {
+    confirmDiscardChangesMock.mockResolvedValueOnce(false)
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <DeviationFormModal onClose={onClose} onSubmit={vi.fn()} open={true} />,
+    )
+
+    const dialog = screen.getByRole('dialog', { name: 'Begär ett avsteg' })
+    await user.type(
+      within(dialog).getByLabelText(/Motivering/, { selector: 'textarea' }),
+      'Needs exception',
+    )
+
+    const backdrop = document.body.querySelector(
+      '.absolute.inset-0',
+    ) as HTMLElement | null
+    expect(backdrop).not.toBeNull()
+    await user.click(backdrop as HTMLElement)
+    expect(confirmDiscardChangesMock).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Avbryt' }))
+
+    expect(confirmDiscardChangesMock).toHaveBeenCalledTimes(1)
+    expect(onClose).not.toHaveBeenCalled()
   })
 })

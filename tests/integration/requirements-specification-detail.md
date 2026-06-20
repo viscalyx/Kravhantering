@@ -80,8 +80,12 @@ changes, and leaves the detail split-panel layout unchanged.
 4. Assert the `role="dialog"` surface named "Redigera kravunderlag" is visible.
 5. Assert the `Namn` field is prefilled and the split-panel classes are stable.
 6. Assert `Spara` is disabled with title `Inga ändringar att spara`.
-7. Change `Namn`, assert `Spara` is enabled, revert `Namn`, and assert `Spara`
-   is disabled again.
+7. Change `Namn` and assert `Spara` is enabled.
+8. Click outside the dialog and assert the dirty form remains open without a
+   discard prompt.
+9. Click `Stäng`, cancel the discard prompt, and assert the changed value is
+   still present.
+10. Revert `Namn` and assert `Spara` is disabled again.
 
 ### Sequence Diagram
 

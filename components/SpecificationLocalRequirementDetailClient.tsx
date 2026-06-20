@@ -201,11 +201,6 @@ function GraduationTargetAreaModal({
           <div
             aria-hidden="true"
             className="absolute inset-0 bg-black/45 backdrop-blur-sm"
-            onClick={() => {
-              if (!loading) {
-                onClose()
-              }
-            }}
           />
           <motion.div
             aria-describedby={`${descriptionId} ${targetHelpId}`}

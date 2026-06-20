@@ -8,6 +8,11 @@ vi.mock('@/components/ConfirmModal', () => ({
   useConfirmModal: () => ({ confirm: confirmMock }),
 }))
 
+vi.mock('next-intl', () => ({
+  useTranslations: (namespace?: string) => (key: string) =>
+    namespace ? `${namespace}.${key}` : key,
+}))
+
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
@@ -163,6 +168,75 @@ describe('useCrudAdminResource', () => {
     })
 
     expect(result.current.formDirty).toBe(false)
+  })
+
+  it('closes clean forms without confirming discard', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ items: [] }))
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openCreate()
+    })
+
+    let didClose = false
+    await act(async () => {
+      didClose = await result.current.closeForm()
+    })
+
+    expect(didClose).toBe(true)
+    expect(confirmMock).not.toHaveBeenCalled()
+    expect(result.current.showForm).toBe(false)
+  })
+
+  it('keeps dirty forms open when discard is cancelled', async () => {
+    confirmMock.mockResolvedValueOnce(false)
+    fetchMock.mockResolvedValueOnce(jsonResponse({ items: [] }))
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openCreate()
+      result.current.setForm({ name: 'Unsaved' })
+    })
+
+    let didClose = true
+    await act(async () => {
+      didClose = await result.current.closeForm()
+    })
+
+    expect(didClose).toBe(false)
+    expect(confirmMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        icon: 'caution',
+        message: 'common.unsavedChangesConfirm',
+        variant: 'danger',
+      }),
+    )
+    expect(result.current.showForm).toBe(true)
+  })
+
+  it('closes dirty forms when discard is confirmed', async () => {
+    confirmMock.mockResolvedValueOnce(true)
+    fetchMock.mockResolvedValueOnce(jsonResponse({ items: [] }))
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openCreate()
+      result.current.setForm({ name: 'Unsaved' })
+    })
+
+    let didClose = false
+    await act(async () => {
+      didClose = await result.current.closeForm()
+    })
+
+    expect(didClose).toBe(true)
+    expect(result.current.showForm).toBe(false)
   })
 
   it('does not submit a clean open form', async () => {

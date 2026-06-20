@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import { modalResizableTextareaRows3ClassName } from '@/components/modal-textarea-class'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
@@ -40,13 +41,7 @@ export default function SuggestionResolutionModal({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
   const shouldReduceMotion = useReducedMotion()
-
-  const { handleKeyDown } = useModalFocus({
-    modalRef,
-    initialFocusRef: textareaRef,
-    onClose,
-    open,
-  })
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
 
   useEffect(() => {
     if (open) {
@@ -76,6 +71,25 @@ export default function SuggestionResolutionModal({
     baselineSignature !==
     createDirtySnapshot({ motivation, resolution, resolvedBy })
 
+  const requestClose = useCallback(
+    async (anchorEl?: HTMLElement | null) => {
+      if (loading) return
+      if (formDirty && !(await confirmDiscardChanges(anchorEl))) return
+      onClose()
+    },
+    [confirmDiscardChanges, formDirty, loading, onClose],
+  )
+
+  const { handleKeyDown } = useModalFocus({
+    closeDisabled: loading,
+    modalRef,
+    initialFocusRef: textareaRef,
+    onClose: () => {
+      void requestClose()
+    },
+    open,
+  })
+
   const handleSubmit = useCallback(() => {
     if (!motivation.trim() || !resolvedBy.trim()) return
     if (!formDirty) return
@@ -92,12 +106,7 @@ export default function SuggestionResolutionModal({
           key="suggestion-resolution-backdrop"
           {...fadeMotion(shouldReduceMotion)}
         >
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
-          {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={onClose}
-          />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
 
           <motion.div
             aria-labelledby="suggestion-resolution-title"
@@ -217,7 +226,9 @@ export default function SuggestionResolutionModal({
                 <button
                   className="btn-secondary text-sm px-4 py-2"
                   disabled={loading}
-                  onClick={onClose}
+                  onClick={event => {
+                    void requestClose(event.currentTarget)
+                  }}
                   type="button"
                 >
                   {tc('cancel')}

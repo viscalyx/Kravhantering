@@ -39,6 +39,7 @@ import SpecificationLocalRequirementForm, {
   type SpecificationLocalRequirementSubmitPayload,
 } from '@/components/SpecificationLocalRequirementForm'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
@@ -241,6 +242,7 @@ export default function KravunderlagDetailClient({
   const locale = useLocale()
   const router = useRouter()
   const { confirm } = useConfirmModal()
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
   const searchParams = useSearchParams()
   const shouldReduceMotion = useReducedMotion()
   const preFilterAreaId = searchParams.get('areaId')
@@ -326,6 +328,8 @@ export default function KravunderlagDetailClient({
   // Add modal state
   const [showAddModal, setShowAddModal] = useState(false)
   const [showCreateLocalRequirementModal, setShowCreateLocalRequirementModal] =
+    useState(false)
+  const [createLocalRequirementFormDirty, setCreateLocalRequirementFormDirty] =
     useState(false)
   const [pendingAddIds, setPendingAddIds] = useState<number[]>([])
   const [addNeedsRefMode, setAddNeedsRefMode] = useState<
@@ -578,16 +582,20 @@ export default function KravunderlagDetailClient({
     setShowAddModal(false)
   }, [addModalLoading])
 
-  const closeCreateLocalRequirementModal = useCallback(async () => {
-    const confirmed = await confirm({
-      message: tc('unsavedChangesConfirm'),
-      variant: 'danger',
-      icon: 'warning',
-    })
-    if (confirmed) {
+  const closeCreateLocalRequirementModal = useCallback(
+    async (anchorEl?: HTMLElement | null) => {
+      if (
+        createLocalRequirementFormDirty &&
+        !(await confirmDiscardChanges(anchorEl))
+      ) {
+        return false
+      }
+      setCreateLocalRequirementFormDirty(false)
       setShowCreateLocalRequirementModal(false)
-    }
-  }, [confirm, tc])
+      return true
+    },
+    [confirmDiscardChanges, createLocalRequirementFormDirty],
+  )
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -803,6 +811,7 @@ export default function KravunderlagDetailClient({
   }, [needsReferencesResource, rightSelectedIds])
 
   const handleOpenCreateLocalRequirementModal = useCallback(async () => {
+    setCreateLocalRequirementFormDirty(false)
     setShowCreateLocalRequirementModal(true)
 
     if (availableNeedsRefs.length > 0) {
@@ -887,6 +896,7 @@ export default function KravunderlagDetailClient({
         throw new Error(body?.error ?? tc('error'))
       }
 
+      setCreateLocalRequirementFormDirty(false)
       setShowCreateLocalRequirementModal(false)
       await fetchSpecificationItems({ throwOnError: true })
     },
@@ -897,6 +907,19 @@ export default function KravunderlagDetailClient({
     needsReferenceForm !== null &&
     needsReferenceFormBaseline !==
       needsReferenceFormSignature(needsReferenceForm)
+
+  const closeNeedsReferenceForm = useCallback(
+    async (anchorEl?: HTMLElement | null) => {
+      if (needsReferenceSaving) return false
+      if (needsReferenceFormDirty && !(await confirmDiscardChanges(anchorEl))) {
+        return false
+      }
+      setNeedsReferenceForm(null)
+      setNeedsReferenceError(null)
+      return true
+    },
+    [confirmDiscardChanges, needsReferenceFormDirty, needsReferenceSaving],
+  )
 
   const handleSaveNeedsReference = useCallback(async () => {
     if (!needsReferenceForm) return
@@ -1518,7 +1541,6 @@ export default function KravunderlagDetailClient({
           <div
             aria-modal="true"
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onClick={closeAddModal}
             onKeyDown={e => {
               if (e.key === 'Escape') {
                 closeAddModal()
@@ -1528,7 +1550,6 @@ export default function KravunderlagDetailClient({
           >
             <div
               className="w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 shadow-2xl p-6 space-y-4"
-              onClick={e => e.stopPropagation()}
               onKeyDown={e => {
                 e.stopPropagation()
                 if (e.key === 'Escape') {
@@ -1695,12 +1716,7 @@ export default function KravunderlagDetailClient({
             }}
             role="dialog"
           >
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
-            {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
-            <div
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              onClick={() => void closeCreateLocalRequirementModal()}
-            />
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <div
               className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-secondary-900"
               role="document"
@@ -1717,7 +1733,9 @@ export default function KravunderlagDetailClient({
                 <button
                   aria-label={tc('close')}
                   className="rounded-lg p-1.5 transition-colors hover:bg-secondary-100 dark:hover:bg-secondary-800"
-                  onClick={() => void closeCreateLocalRequirementModal()}
+                  onClick={event =>
+                    void closeCreateLocalRequirementModal(event.currentTarget)
+                  }
                   type="button"
                 >
                   <X aria-hidden="true" className="h-4 w-4" />
@@ -1726,7 +1744,11 @@ export default function KravunderlagDetailClient({
 
               <SpecificationLocalRequirementForm
                 needsReferences={availableNeedsRefs}
-                onCancel={() => void closeCreateLocalRequirementModal()}
+                onCancel={() => {
+                  setCreateLocalRequirementFormDirty(false)
+                  setShowCreateLocalRequirementModal(false)
+                }}
+                onDirtyChange={setCreateLocalRequirementFormDirty}
                 onSubmit={handleCreateLocalRequirement}
                 submitLabel={tc('save')}
               />
@@ -1747,22 +1769,13 @@ export default function KravunderlagDetailClient({
                 key="needs-reference-form-backdrop"
                 onKeyDown={event => {
                   if (event.key === 'Escape' && !needsReferenceSaving) {
-                    setNeedsReferenceForm(null)
+                    void closeNeedsReferenceForm()
                   }
                 }}
                 role="dialog"
                 {...fadeMotion(shouldReduceMotion)}
               >
-                {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
-                {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
-                <div
-                  className="absolute inset-0"
-                  onClick={() => {
-                    if (!needsReferenceSaving) {
-                      setNeedsReferenceForm(null)
-                    }
-                  }}
-                />
+                <div className="absolute inset-0" />
                 <motion.div
                   className="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-secondary-900"
                   role="document"
@@ -1783,7 +1796,9 @@ export default function KravunderlagDetailClient({
                       aria-label={tc('close')}
                       className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg transition-colors hover:bg-secondary-100 dark:hover:bg-secondary-800"
                       disabled={needsReferenceSaving}
-                      onClick={() => setNeedsReferenceForm(null)}
+                      onClick={event =>
+                        void closeNeedsReferenceForm(event.currentTarget)
+                      }
                       type="button"
                     >
                       <X aria-hidden="true" className="h-4 w-4" />
@@ -1880,7 +1895,9 @@ export default function KravunderlagDetailClient({
                       <button
                         className="min-h-11 rounded-xl border px-4 py-2.5 text-sm transition-colors hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-secondary-800"
                         disabled={needsReferenceSaving}
-                        onClick={() => setNeedsReferenceForm(null)}
+                        onClick={event =>
+                          void closeNeedsReferenceForm(event.currentTarget)
+                        }
                         type="button"
                       >
                         {tc('cancel')}

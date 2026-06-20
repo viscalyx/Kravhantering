@@ -253,9 +253,9 @@ describe('SpecificationFormModal', () => {
     await waitFor(() => {
       expect(confirmMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          confirmText: 'common.discardChanges',
-          defaultCancel: true,
+          icon: 'caution',
           message: 'common.unsavedChangesConfirm',
+          variant: 'danger',
         }),
       )
     })
@@ -276,16 +276,6 @@ describe('SpecificationFormModal', () => {
       name: 'close button',
       trigger: () =>
         fireEvent.click(screen.getByRole('button', { name: /common\.close/i })),
-    },
-    {
-      name: 'backdrop',
-      trigger: () => {
-        const backdrop = document.body.querySelector(
-          '.absolute.inset-0',
-        ) as HTMLElement | null
-        expect(backdrop).not.toBeNull()
-        fireEvent.click(backdrop as HTMLElement)
-      },
     },
     {
       name: 'Escape',
@@ -313,13 +303,35 @@ describe('SpecificationFormModal', () => {
     await waitFor(() => {
       expect(confirmMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          confirmText: 'common.discardChanges',
-          defaultCancel: true,
+          icon: 'caution',
           message: 'common.unsavedChangesConfirm',
+          variant: 'danger',
         }),
       )
     })
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('does not close or confirm dirty form changes on backdrop click', () => {
+    const onClose = vi.fn()
+
+    renderEditModal({ onClose })
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+      { target: { value: 'Osparat namn' } },
+    )
+    const backdrop = document.body.querySelector(
+      '.absolute.inset-0',
+    ) as HTMLElement | null
+    expect(backdrop).not.toBeNull()
+    fireEvent.click(backdrop as HTMLElement)
+
+    expect(confirmMock).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+    ).toHaveValue('Osparat namn')
   })
 
   it('shows contextual help for specification fields', () => {

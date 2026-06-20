@@ -1195,8 +1195,6 @@ describe('RequirementSelectionQuestionsClient', () => {
       expect(confirmState.confirm).toHaveBeenCalledWith(
         expect.objectContaining({
           anchorEl: cancelButton,
-          confirmText: 'Discard changes',
-          defaultCancel: true,
           icon: 'caution',
           message: 'You have unsaved changes. Discard them?',
           variant: 'danger',

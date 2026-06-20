@@ -163,10 +163,10 @@ export default function SpecificationItemStatusesClient() {
     void fetchLinkedItems(status.id)
   }
 
-  const closeForm = () => {
+  const closeForm = async (anchorEl?: HTMLElement | null) => {
+    if (!(await controller.closeForm(anchorEl))) return
     setLinkedItems([])
     setLinkedItemsError(null)
-    controller.closeForm()
   }
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -416,7 +416,7 @@ export default function SpecificationItemStatusesClient() {
                     <button
                       className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
                       disabled={controller.submitting}
-                      onClick={closeForm}
+                      onClick={event => void closeForm(event.currentTarget)}
                       type="button"
                     >
                       {tc('cancel')}

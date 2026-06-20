@@ -3,7 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { AlertTriangle, ExternalLink, Plus, RotateCcw, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import DirtyStateButton from '@/components/DirtyStateButton'
 import FormActionRow from '@/components/FormActionRow'
@@ -11,6 +11,7 @@ import NormReferenceFormFields from '@/components/NormReferenceFormFields'
 import RequirementFormFields, {
   type RequirementFormFieldValues,
 } from '@/components/RequirementFormFields'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 import { useRouter } from '@/i18n/routing'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
@@ -173,6 +174,7 @@ export default function RequirementForm({
   const t = useTranslations('requirement')
   const router = useRouter()
   const shouldReduceMotion = useReducedMotion()
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
 
   const [showCreateNormRef, setShowCreateNormRef] = useState(false)
   const [normRefForm, setNormRefForm] = useState(EMPTY_NORM_REFERENCE_FORM)
@@ -334,6 +336,12 @@ export default function RequirementForm({
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleCancel = async (anchorEl?: HTMLElement | null) => {
+    if (submitting || isRefreshing) return
+    if (formDirty && !(await confirmDiscardChanges(anchorEl))) return
+    router.back()
   }
 
   const latestConflictTarget = staleConflict?.latest?.uniqueId
@@ -507,7 +515,7 @@ export default function RequirementForm({
           <button
             className="px-4 py-2.5 rounded-xl border text-sm font-medium min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-all duration-200"
             disabled={submitting || isRefreshing}
-            onClick={() => router.back()}
+            onClick={event => void handleCancel(event.currentTarget)}
             type="button"
           >
             {tc('cancel')}
@@ -591,6 +599,16 @@ function NormReferenceModal({
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const previouslyFocused = useRef<Element | null>(null)
   const shouldReduceMotion = useReducedMotion()
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
+
+  const requestCancel = useCallback(
+    async (anchorEl?: HTMLElement | null) => {
+      if (normRefSubmitting) return
+      if (normRefFormDirty && !(await confirmDiscardChanges(anchorEl))) return
+      onCancel()
+    },
+    [confirmDiscardChanges, normRefFormDirty, normRefSubmitting, onCancel],
+  )
 
   useEffect(() => {
     previouslyFocused.current = document.activeElement
@@ -612,7 +630,7 @@ function NormReferenceModal({
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !normRefSubmitting) {
-        onCancel()
+        void requestCancel()
         return
       }
       if (e.key === 'Tab') {
@@ -637,7 +655,7 @@ function NormReferenceModal({
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onCancel, normRefSubmitting])
+  }, [normRefSubmitting, requestCancel])
 
   const hasRequiredNormReferenceFields =
     normRefForm.name.trim() !== '' &&
@@ -653,7 +671,6 @@ function NormReferenceModal({
       <motion.div
         aria-hidden="true"
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={normRefSubmitting ? undefined : onCancel}
         {...fadeMotion(shouldReduceMotion, { duration: 0.22 })}
       />
       <motion.div
@@ -676,7 +693,7 @@ function NormReferenceModal({
             aria-label={tc('cancel')}
             className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-lg text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50 disabled:opacity-50 disabled:pointer-events-none"
             disabled={normRefSubmitting}
-            onClick={onCancel}
+            onClick={event => void requestCancel(event.currentTarget)}
             ref={closeButtonRef}
             type="button"
           >
@@ -724,7 +741,7 @@ function NormReferenceModal({
           <button
             className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-600 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
             disabled={normRefSubmitting}
-            onClick={onCancel}
+            onClick={event => void requestCancel(event.currentTarget)}
             type="button"
           >
             {tc('cancel')}

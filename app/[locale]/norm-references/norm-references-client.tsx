@@ -21,6 +21,7 @@ import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import NormReferenceFormFields from '@/components/NormReferenceFormFields'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -132,6 +133,7 @@ export default function NormReferencesClient() {
   const tr = useTranslations('requirement')
   const locale = useLocale()
   const { confirm } = useConfirmModal()
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
   const contentRef = useRef<HTMLDivElement>(null)
   const tableAnchorRef = useRef<HTMLDivElement>(null)
   const [nameFilter, setNameFilter] = useState('')
@@ -160,33 +162,11 @@ export default function NormReferencesClient() {
     toPayload,
   })
 
-  const isFormDirty = () => {
-    const editedNormReference = controller.editId
-      ? controller.items.find(
-          normReference => normReference.id === controller.editId,
-        )
-      : null
-    const initialForm = editedNormReference
-      ? toForm(editedNormReference)
-      : getInitialForm()
-
-    return Object.keys(initialForm).some(
-      key =>
-        controller.form[key as keyof NormReferenceForm] !==
-        initialForm[key as keyof NormReferenceForm],
-    )
-  }
-
   const guardUnsavedChanges = async (
     anchorEl?: HTMLElement | null,
   ): Promise<boolean> => {
-    if (controller.showForm && isFormDirty()) {
-      return confirm({
-        anchorEl: anchorEl ?? undefined,
-        icon: 'caution',
-        message: tc('unsavedChangesConfirm'),
-        variant: 'danger',
-      })
+    if (controller.showForm && controller.formDirty) {
+      return confirmDiscardChanges(anchorEl)
     }
     return true
   }
@@ -244,12 +224,11 @@ export default function NormReferencesClient() {
   }
 
   const closeForm = async (anchorEl?: HTMLElement | null) => {
-    if (!(await guardUnsavedChanges(anchorEl))) return
+    if (!(await controller.closeForm(anchorEl))) return
     linkedReqRequestId.current++
     setLinkedRequirements([])
     setLinkedRequirementsError(null)
     setLinkedRequirementsLoading(false)
-    controller.closeForm()
   }
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {

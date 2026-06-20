@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import {
   createDirtySnapshot,
   type DirtySnapshotOptions,
@@ -45,7 +46,7 @@ export interface CrudAdminResourceController<
   TItem extends { id: CrudId },
   TForm,
 > {
-  closeForm: () => void
+  closeForm: (anchorEl?: HTMLElement | null) => Promise<boolean>
   deleteError: string | null
   deletingIds: Set<TItem['id']>
   editId: TItem['id'] | null
@@ -116,6 +117,7 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
   TForm
 > {
   const { confirm } = useConfirmModal()
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
   const [items, setItems] = useState<TItem[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -205,9 +207,16 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
     void reload()
   }, [reload])
 
-  const closeForm = useCallback(() => {
-    setShowForm(false)
-  }, [])
+  const closeForm = useCallback(
+    async (anchorEl?: HTMLElement | null) => {
+      if (formDirty && !(await confirmDiscardChanges(anchorEl))) {
+        return false
+      }
+      setShowForm(false)
+      return true
+    },
+    [confirmDiscardChanges, formDirty],
+  )
 
   const openCreate = useCallback(() => {
     const nextForm = getInitialForm()

@@ -14,6 +14,7 @@ import HsaPersonChangeModal, {
 import HsaPersonVerifyField, {
   type HsaPersonVerification,
 } from '@/components/HsaPersonVerifyField'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
@@ -270,6 +271,7 @@ export default function SpecificationFormModal({
   const tc = useTranslations('common')
   const locale = useLocale()
   const { confirm } = useConfirmModal()
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
   const formResetKeyRef = useRef<string | null>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const [loadedCurrentUser, setLoadedCurrentUser] =
@@ -533,13 +535,7 @@ export default function SpecificationFormModal({
   const requestClose = async () => {
     if (isSubmitting) return
     if (hasUnsavedSpecificationEdits()) {
-      const confirmed = await confirm({
-        cancelText: tc('cancel'),
-        confirmText: tc('discardChanges'),
-        defaultCancel: true,
-        icon: 'warning',
-        message: tc('unsavedChangesConfirm'),
-      })
+      const confirmed = await confirmDiscardChanges()
       if (!confirmed) return
     }
     closeDirectly()

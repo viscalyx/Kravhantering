@@ -9,6 +9,7 @@ import FormActionRow from '@/components/FormActionRow'
 import RequirementFormFields, {
   type RequirementFormFieldValues,
 } from '@/components/RequirementFormFields'
+import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 
@@ -32,6 +33,7 @@ interface SpecificationLocalRequirementFormProps {
   >
   needsReferences: { id: number; text: string }[]
   onCancel: () => void
+  onDirtyChange?: (dirty: boolean) => void
   onSubmit: (
     payload: SpecificationLocalRequirementSubmitPayload,
   ) => Promise<void>
@@ -129,11 +131,13 @@ export default function SpecificationLocalRequirementForm({
   initialValue,
   needsReferences,
   onCancel,
+  onDirtyChange,
   onSubmit,
   submitLabel,
 }: SpecificationLocalRequirementFormProps) {
   const tc = useTranslations('common')
   const tp = useTranslations('specification')
+  const confirmDiscardChanges = useDiscardChangesConfirmation()
 
   const [fields, setFields] = useState<RequirementFormFieldValues>(() =>
     toFieldValues(initialValue),
@@ -170,6 +174,10 @@ export default function SpecificationLocalRequirementForm({
   const formDirty =
     baselineSignature !== createSubmitSignature(fields, needsReferenceId)
 
+  useEffect(() => {
+    onDirtyChange?.(formDirty)
+  }, [formDirty, onDirtyChange])
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!formDirty) return
@@ -188,6 +196,12 @@ export default function SpecificationLocalRequirementForm({
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleCancel = async (anchorEl?: HTMLElement | null) => {
+    if (isSubmitting) return
+    if (formDirty && !(await confirmDiscardChanges(anchorEl))) return
+    onCancel()
   }
 
   const needsReferenceField = (
@@ -261,7 +275,7 @@ export default function SpecificationLocalRequirementForm({
         <button
           className="min-h-11 rounded-xl border px-4 py-2.5 text-sm text-secondary-700 dark:text-secondary-300 transition-colors hover:bg-secondary-50 dark:hover:bg-secondary-800"
           disabled={isSubmitting}
-          onClick={onCancel}
+          onClick={event => void handleCancel(event.currentTarget)}
           type="button"
         >
           {tc('cancel')}

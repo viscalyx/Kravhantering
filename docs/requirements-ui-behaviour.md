@@ -40,6 +40,12 @@ The behaviors below apply to the requirement list rendered by:
 - When a submit button is disabled only because the form is clean, it exposes
   the title `Inga ändringar att spara` in Swedish and `No changes to save` in
   English.
+- Closing a dirty create/edit form through `Avbryt`/`Cancel`, the close `X`, or
+  Escape asks the user to confirm discarding unsaved changes with the shared
+  danger confirmation dialog. Rejecting the confirmation leaves the form open
+  with the entered values intact.
+- Clicking outside a modal form does not close it. Users must use the explicit
+  cancel or close controls.
 
 ## Route Compatibility
 

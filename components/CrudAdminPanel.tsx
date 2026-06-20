@@ -124,7 +124,9 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
         <button
           className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200 disabled:opacity-60"
           disabled={closeDisabled}
-          onClick={controller.closeForm}
+          onClick={event => {
+            void controller.closeForm(event.currentTarget)
+          }}
           type="button"
         >
           {common('cancel')}
@@ -192,7 +194,9 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
             closeDisabled={closeDisabled}
             developerModeValue={formDialogDeveloperModeValue?.(formMode)}
             maxWidthClassName={formMaxWidthClassName}
-            onClose={controller.closeForm}
+            onClose={() => {
+              void controller.closeForm()
+            }}
             open={controller.showForm}
             title={resolvedFormTitle}
             titleId={resolvedFormTitleId}
