@@ -911,7 +911,7 @@ erDiagram
     specification_requirement_selection_answers }o--|| requirement_selection_answers : "historiskt svar"
     requirements_specifications }o--o| specification_governance_object_types : "styrningsobjektstyp"
     requirements_specifications }o--o| specification_implementation_types : "genomförandeform"
-    requirements_specifications }o--o| specification_lifecycle_statuses : "kravunderlagets livscykelstatus"
+    requirements_specifications }o--|| specification_lifecycle_statuses : "kravunderlagets livscykelstatus"
     requirements_specifications ||--o{ specification_needs_references : "behovsreferenser"
     requirements_specifications ||--o{ specification_co_authors : "har medförfattare"
     requirement_responsibility_people ||--o{ requirements_specifications : "ansvarar för kravunderlag"

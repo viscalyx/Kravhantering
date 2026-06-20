@@ -1450,7 +1450,7 @@ specific procurement or project.
 | `local_requirement_next_sequence` | integer NOT NULL DEFAULT 1 | Next sequence number reserved for specification-local requirement IDs such as `KRAV0001` |
 | `specification_governance_object_type_id` | integer FK → `specification_governance_object_types.id` | Governance object type classification (nullable) |
 | `specification_implementation_type_id` | integer FK → `specification_implementation_types.id` | Implementation type classification (nullable) |
-| `specification_lifecycle_status_id` | integer FK → `specification_lifecycle_statuses.id` | Specification lifecycle status classification (nullable) |
+| `specification_lifecycle_status_id` | integer FK → `specification_lifecycle_statuses.id` | Specification lifecycle status classification |
 | `business_needs_reference` | text | Optional free-text reference to the underlying business need |
 | `responsible_hsa_id` | text FK → `requirement_responsibility_people.hsa_id` | HSA-id for the live specification lead |
 | `created_at` | text (ISO 8601) | Creation timestamp |

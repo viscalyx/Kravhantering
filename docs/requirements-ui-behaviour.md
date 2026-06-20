@@ -404,6 +404,13 @@ down.
 - The report shows Requirement ID, requirement text, requirement area, and
   status columns.
 
+## Requirements Specification Create And Edit
+
+- Creating or editing a requirements specification requires selecting
+  **Kravunderlagets livscykelstatus**. The create form starts with a disabled
+  blank placeholder so the user must choose the lifecycle status explicitly.
+  Edit forms keep the current value selected and do not allow clearing it.
+
 ## Requirements Specification Reports And Exports
 
 - The specification-detail print dropdown is lifecycle-driven and shows at most

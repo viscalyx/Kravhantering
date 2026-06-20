@@ -126,6 +126,12 @@ for (const viewport of viewports) {
           createForm.getByRole('button', { name: 'Hämta' }),
         ).toBeVisible()
         await expect(createForm.getByText(/Ada Admin/)).toBeVisible()
+        const createLifecycleStatus = createForm.getByRole('combobox', {
+          name: /Kravunderlagets livscykelstatus/,
+        })
+        await expect(createLifecycleStatus).toBeVisible()
+        await expect(createLifecycleStatus).toHaveJSProperty('required', true)
+        await expect(createLifecycleStatus).toHaveValue('')
 
         await createForm.getByRole('button', { name: 'Avbryt' }).click()
         await expect(createDialog).toBeHidden()
@@ -156,6 +162,11 @@ for (const viewport of viewports) {
         })
         await expect(responsibleInput).toHaveAttribute('readonly', '')
         await expect(editForm.getByText('Emma Lindqvist')).toBeVisible()
+        const editLifecycleStatus = editForm.getByRole('combobox', {
+          name: /Kravunderlagets livscykelstatus/,
+        })
+        await expect(editLifecycleStatus).toHaveJSProperty('required', true)
+        await expect(editLifecycleStatus).toHaveValue('1')
 
         const currentResponsibleHsaId = await responsibleInput.inputValue()
         await editForm

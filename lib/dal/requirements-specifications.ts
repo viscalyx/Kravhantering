@@ -842,7 +842,7 @@ export async function createSpecification(
     name: string
     specificationGovernanceObjectTypeId?: number | null
     specificationImplementationTypeId?: number | null
-    specificationLifecycleStatusId?: number | null
+    specificationLifecycleStatusId: number
     businessNeedsReference?: string | null
     responsibleHsaId: string
     responsibleDisplayName?: string | null
@@ -886,7 +886,7 @@ export async function createSpecification(
         data.name,
         data.specificationGovernanceObjectTypeId ?? null,
         data.specificationImplementationTypeId ?? null,
-        data.specificationLifecycleStatusId ?? null,
+        data.specificationLifecycleStatusId,
         data.businessNeedsReference ?? null,
         responsibleHsaId,
         now,
@@ -936,7 +936,7 @@ async function updateSpecificationFields(
     name?: string
     specificationGovernanceObjectTypeId?: number | null
     specificationImplementationTypeId?: number | null
-    specificationLifecycleStatusId?: number | null
+    specificationLifecycleStatusId?: number
     businessNeedsReference?: string | null
     responsibleHsaId?: string
     responsiblePerson?: RequirementResponsibilityPersonRecord | null
@@ -965,7 +965,7 @@ async function updateSpecificationFields(
   }
   if ('specificationLifecycleStatusId' in data) {
     setClauses.push(`specification_lifecycle_status_id = @${params.length}`)
-    params.push(data.specificationLifecycleStatusId ?? null)
+    params.push(data.specificationLifecycleStatusId)
   }
   if ('businessNeedsReference' in data) {
     setClauses.push(`business_needs_reference = @${params.length}`)
@@ -1021,7 +1021,7 @@ export async function updateSpecification(
     name?: string
     specificationGovernanceObjectTypeId?: number | null
     specificationImplementationTypeId?: number | null
-    specificationLifecycleStatusId?: number | null
+    specificationLifecycleStatusId?: number
     businessNeedsReference?: string | null
     responsibleHsaId?: string
     responsibleDisplayName?: string | null

@@ -450,6 +450,15 @@ function jsonReq(method: string, body: Record<string, unknown>): NextRequest {
   })
 }
 
+function specificationCreateBody(overrides: Record<string, unknown> = {}) {
+  return {
+    name: 'A',
+    specificationLifecycleStatusId: 4,
+    uniqueId: 'A',
+    ...overrides,
+  }
+}
+
 async function expectInvalidRequest(
   response: Response,
   path?: string,
@@ -1235,7 +1244,7 @@ describe('requirement-specifications routes', () => {
     const r = await postPkg(
       new NextRequest('http://l', {
         method: 'POST',
-        body: '{"name":"A","uniqueId":"A"}',
+        body: JSON.stringify(specificationCreateBody()),
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -1247,6 +1256,7 @@ describe('requirement-specifications routes', () => {
     const r = await postPkg(
       jsonReq('POST', {
         name: 'A',
+        specificationLifecycleStatusId: 4,
         uniqueId: 'A',
       }),
     )
@@ -1270,10 +1280,13 @@ describe('requirement-specifications routes', () => {
   })
   it('POST accepts long existing-style specification slugs', async () => {
     const r = await postPkg(
-      jsonReq('POST', {
-        name: 'Playwright lifecycle',
-        uniqueId: 'PLAYWRIGHT-LIFECYCLE-2026',
-      }),
+      jsonReq(
+        'POST',
+        specificationCreateBody({
+          name: 'Playwright lifecycle',
+          uniqueId: 'PLAYWRIGHT-LIFECYCLE-2026',
+        }),
+      ),
     )
 
     expect(r.status).toBe(201)
@@ -1307,9 +1320,43 @@ describe('requirement-specifications routes', () => {
     expect(mockCreatePkg).not.toHaveBeenCalled()
   })
   it.each([
-    ['missing name', { uniqueId: 'VALID-SLUG' }, 'name'],
-    ['empty name', { name: '', uniqueId: 'VALID-SLUG' }, 'name'],
-    ['empty uniqueId', { name: 'A', uniqueId: '' }, 'uniqueId'],
+    ['missing', { name: 'A', uniqueId: 'A' }],
+    [
+      'null',
+      {
+        name: 'A',
+        specificationLifecycleStatusId: null,
+        uniqueId: 'A',
+      },
+    ],
+  ])('POST rejects %s specification lifecycle status', async (_label, body) => {
+    const r = await postPkg(jsonReq('POST', body))
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'specificationLifecycleStatusId')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockCreatePkg).not.toHaveBeenCalled()
+  })
+  it.each([
+    [
+      'missing name',
+      { specificationLifecycleStatusId: 4, uniqueId: 'VALID-SLUG' },
+      'name',
+    ],
+    [
+      'empty name',
+      {
+        name: '',
+        specificationLifecycleStatusId: 4,
+        uniqueId: 'VALID-SLUG',
+      },
+      'name',
+    ],
+    [
+      'empty uniqueId',
+      { name: 'A', specificationLifecycleStatusId: 4, uniqueId: '' },
+      'uniqueId',
+    ],
   ])('POST rejects %s', async (_label, body, path) => {
     const r = await postPkg(jsonReq('POST', body))
 
@@ -1328,7 +1375,9 @@ describe('requirement-specifications routes', () => {
     ['numeric only', '123'],
     ['oversize', 'A'.repeat(451)],
   ])('POST rejects invalid uniqueId: %s', async (_label, uniqueId) => {
-    const r = await postPkg(jsonReq('POST', { name: 'A', uniqueId }))
+    const r = await postPkg(
+      jsonReq('POST', specificationCreateBody({ uniqueId })),
+    )
 
     expect(r.status).toBe(400)
     await expectInvalidRequest(r, 'uniqueId')
@@ -1336,12 +1385,7 @@ describe('requirement-specifications routes', () => {
     expect(mockCreatePkg).not.toHaveBeenCalled()
   })
   it('POST sets the specification lead from the authenticated actor', async () => {
-    const r = await postPkg(
-      jsonReq('POST', {
-        name: 'A',
-        uniqueId: 'A',
-      }),
-    )
+    const r = await postPkg(jsonReq('POST', specificationCreateBody()))
 
     expect(r.status).toBe(201)
     expect(mockCreatePkg).toHaveBeenCalledWith(
@@ -1356,11 +1400,12 @@ describe('requirement-specifications routes', () => {
   })
   it('POST accepts the authenticated actor as the specification lead HSA-id', async () => {
     const r = await postPkg(
-      jsonReq('POST', {
-        name: 'A',
-        uniqueId: 'A',
-        responsibleHsaId: 'SE5560000001-route',
-      }),
+      jsonReq(
+        'POST',
+        specificationCreateBody({
+          responsibleHsaId: 'SE5560000001-route',
+        }),
+      ),
     )
 
     expect(r.status).toBe(201)
@@ -1376,11 +1421,12 @@ describe('requirement-specifications routes', () => {
   })
   it('POST rejects a client-selected specification lead HSA-id', async () => {
     const r = await postPkg(
-      jsonReq('POST', {
-        name: 'A',
-        uniqueId: 'A',
-        responsibleHsaId: 'SE5560000001-ada1',
-      }),
+      jsonReq(
+        'POST',
+        specificationCreateBody({
+          responsibleHsaId: 'SE5560000001-ada1',
+        }),
+      ),
     )
 
     expect(r.status).toBe(400)
@@ -1394,11 +1440,12 @@ describe('requirement-specifications routes', () => {
   })
   it('POST rejects a client-selected specification lead display name', async () => {
     const r = await postPkg(
-      jsonReq('POST', {
-        name: 'A',
-        uniqueId: 'A',
-        responsibleDisplayName: 'Ada Lovelace',
-      }),
+      jsonReq(
+        'POST',
+        specificationCreateBody({
+          responsibleDisplayName: 'Ada Lovelace',
+        }),
+      ),
     )
 
     expect(r.status).toBe(400)
@@ -1416,6 +1463,17 @@ describe('requirement-specifications routes', () => {
 
     expect(r.status).toBe(400)
     await expectInvalidRequest(r, 'uniqueId')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockUpdatePkg).not.toHaveBeenCalled()
+  })
+  it('PUT rejects clearing specification lifecycle status', async () => {
+    const r = await putPkg(
+      jsonReq('PUT', { specificationLifecycleStatusId: null }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'specificationLifecycleStatusId')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(mockUpdatePkg).not.toHaveBeenCalled()
   })

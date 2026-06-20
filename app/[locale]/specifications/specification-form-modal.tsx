@@ -682,6 +682,10 @@ export default function SpecificationFormModal({
       setSaveError(t('currentUserUnavailable'))
       return
     }
+    if (!form.specificationLifecycleStatusId) {
+      setSaveError(t('lifecycleStatusRequired'))
+      return
+    }
 
     setSlugError(null)
     setSaveError(null)
@@ -699,9 +703,9 @@ export default function SpecificationFormModal({
           form.specificationImplementationTypeId
             ? Number(form.specificationImplementationTypeId)
             : null,
-        specificationLifecycleStatusId: form.specificationLifecycleStatusId
-          ? Number(form.specificationLifecycleStatusId)
-          : null,
+        specificationLifecycleStatusId: Number(
+          form.specificationLifecycleStatusId,
+        ),
         businessNeedsReference: form.businessNeedsReference || null,
       }
       const requestBody =
@@ -1034,6 +1038,7 @@ export default function SpecificationFormModal({
                   help={t('lifecycleStatusHelp')}
                   htmlFor="spec-lifecycle-status"
                   label={t('lifecycleStatus')}
+                  required
                 />
                 <select
                   className={selectClassName}
@@ -1045,9 +1050,12 @@ export default function SpecificationFormModal({
                       specificationLifecycleStatusId: event.target.value,
                     }))
                   }
+                  required
                   value={form.specificationLifecycleStatusId}
                 >
-                  <option value="">—</option>
+                  <option disabled value="">
+                    —
+                  </option>
                   {lifecycleStatuses.map(status => (
                     <option key={status.id} value={status.id}>
                       {locale === 'sv' ? status.nameSv : status.nameEn}

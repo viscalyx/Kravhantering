@@ -759,15 +759,20 @@ paket och referenser visas.
 
 ### SPEC-02: skapa nytt kravunderlag
 
-**Steg:** Skapa kravunderlag med unikt ID och namn.
+**Steg:** Skapa kravunderlag med unikt ID, namn och kravunderlagets
+livscykelstatus. Försök först spara utan livscykelstatus.
 
-**Förväntat resultat:** Kravunderlaget skapas och öppnas.
+**Förväntat resultat:** Formuläret stoppar sparning utan livscykelstatus. När
+livscykelstatus är vald skapas kravunderlaget och öppnas.
 
 ### SPEC-03: redigera kravunderlag från titelåtgärd
 
 **Steg:** Öppna detalj, använd titelns redigeringsåtgärd och spara ny text.
+Kontrollera att kravunderlagets livscykelstatus är obligatorisk och inte kan
+blankas.
 
-**Förväntat resultat:** Ändringen visas efter omladdning.
+**Förväntat resultat:** Ändringen visas efter omladdning och
+livscykelstatusen finns kvar.
 
 ### SPEC-04: ta bort kravunderlag med bekräftelse
 

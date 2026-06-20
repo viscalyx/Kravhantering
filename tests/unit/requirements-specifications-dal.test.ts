@@ -404,6 +404,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       createSpecification(db, {
         uniqueId: 'SPEC-012',
         name: 'Specification Twelve',
+        specificationLifecycleStatusId: 4,
         responsibleHsaId: ' ',
       }),
     ).rejects.toMatchObject({

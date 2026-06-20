@@ -7,6 +7,13 @@ target version.
 
 ## Unreleased
 
+### Requirements specifications need lifecycle status before upgrade
+
+The migration backfills requirements specifications without lifecycle status to
+`Förvaltning` (`Management`, ID `4`) before making the column mandatory. Correct
+legacy rows before running `db-job migrate` if they should instead use
+`Upphandling`, `Införande` or `Utveckling`.
+
 ### Responsibility assignments must have valid HSA-id values before upgrade
 
 Confirm that every live requirement-area owner, requirement-area co-author,
@@ -38,6 +45,9 @@ generator, test support lock file, mock image, SBOM and attestation are relevant
 only for operators who mirror or validate that demo/test topology.
 
 ### Before upgrading
+
+Correct legacy requirements specifications that lack lifecycle status before
+running `db-job migrate` if `Förvaltning` is not the intended value.
 
 Confirm that every live responsibility assignment has a valid HSA-id before
 running `db-job migrate`: requirement-area owners, requirement-area

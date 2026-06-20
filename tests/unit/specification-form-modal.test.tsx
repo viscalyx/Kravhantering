@@ -176,6 +176,12 @@ describe('SpecificationFormModal', () => {
     expect(
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     ).toHaveAttribute('readonly')
+    expect(
+      screen.getByRole('combobox', { name: /specification\.lifecycleStatus/ }),
+    ).toBeRequired()
+    expect(
+      screen.getByRole('combobox', { name: /specification\.lifecycleStatus/ }),
+    ).toHaveValue('3')
     expect(screen.getByText('Ada Admin')).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
@@ -423,6 +429,35 @@ describe('SpecificationFormModal', () => {
 
     fireEvent.submit(document.getElementById(SPECIFICATION_FORM_ID) as Element)
 
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          url === '/api/requirements-specifications' &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      ),
+    ).toBe(false)
+  })
+
+  it('blocks create saves when lifecycle status is empty', () => {
+    renderCreateModal()
+
+    expect(
+      screen.getByRole('combobox', { name: /specification\.lifecycleStatus/ }),
+    ).toBeRequired()
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+      { target: { value: 'Specification without lifecycle status' } },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.uniqueId/ }),
+      { target: { value: 'SPEC-WITHOUT-LIFECYCLE' } },
+    )
+
+    fireEvent.submit(document.getElementById(SPECIFICATION_FORM_ID) as Element)
+
+    expect(
+      screen.getByText('specification.lifecycleStatusRequired'),
+    ).toBeInTheDocument()
     expect(
       fetchMock.mock.calls.some(
         ([url, init]) =>

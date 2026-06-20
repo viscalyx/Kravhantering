@@ -526,6 +526,7 @@
     "implementationTypeHelp": "Välj den genomförandeform som bäst beskriver hur underlaget ska levereras.",
     "lifecycleStatus": "Kravunderlagets livscykelstatus",
     "lifecycleStatusHelp": "Välj den status som bäst beskriver var kravunderlaget befinner sig i livscykeln.",
+    "lifecycleStatusRequired": "Välj kravunderlagets livscykelstatus.",
     "needsReference": "Behovsreferens",
     "needsReferenceHelp": "Beskriv varför kravtillämpningen behövs i kravunderlaget. Referensen kan också ge stöd för när och hur kravet ska verifieras.",
     "needsReferences": "Behovsreferenser",

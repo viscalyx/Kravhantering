@@ -526,6 +526,7 @@
     "implementationTypeHelp": "Choose the implementation type that best describes how this specification will be delivered.",
     "lifecycleStatus": "Specification lifecycle status",
     "lifecycleStatusHelp": "Choose the specification lifecycle status that best describes the current phase of the specification.",
+    "lifecycleStatusRequired": "Choose a specification lifecycle status.",
     "needsReference": "Needs reference",
     "needsReferenceHelp": "Describe why the requirement application is needed in the specification. The reference can also support when and how the requirement should be verified.",
     "needsReferences": "Needs references",

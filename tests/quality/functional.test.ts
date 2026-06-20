@@ -1345,6 +1345,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Scenario specification',
+      specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
       uniqueId: 'SCENARIO-SPECIFICATION',
     })
@@ -1433,6 +1434,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Status clearing specification',
+      specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
       uniqueId: 'STATUS-CLEARING-SPECIFICATION',
     })
@@ -1804,6 +1806,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     })
     const spec = await createSpecification(appDb(), {
       name: 'Scenario 17 specification',
+      specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
       uniqueId: 'SCENARIO-17-SPECIFICATION',
     })
@@ -1867,6 +1870,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     const normReference = await createNormReference(appDb())
     const spec = await createSpecification(appDb(), {
       name: 'Graduation specification',
+      specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
       uniqueId: 'GRADUATION-SPECIFICATION',
     })
@@ -2023,6 +2027,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Link specification',
+      specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
       uniqueId: 'LINK-SPECIFICATION',
     })
@@ -2108,6 +2113,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
     const spec = await createSpecification(appDb(), {
       name: 'Decision specification',
+      specificationLifecycleStatusId: 4,
       ...specificationResponsibleFields(),
       uniqueId: 'DECISION-SPECIFICATION',
     })
