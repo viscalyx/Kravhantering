@@ -1,6 +1,6 @@
 'use client'
 
-import { Trash2 } from 'lucide-react'
+import { Loader2, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
@@ -38,6 +38,7 @@ interface CoAuthorsManagementModalProps {
   hsaIdHelp: string
   hsaIdLabel: string
   loadErrorMessage: string
+  loadingMessage: string
   noCoAuthorsMessage: string
   onChanged?: () => Promise<void> | void
   onClose: () => void
@@ -45,10 +46,12 @@ interface CoAuthorsManagementModalProps {
   purpose: HsaPersonVerificationPurpose
   removeConfirmMessage: (name: string) => string
   removeLabel: string
+  savedCoAuthorsHeading: string
   saveErrorMessage: string
   scopeId: number
   title: string
   titleId: string
+  verifiedDraftMessage: (name: string) => string
 }
 
 let coAuthorClientIdSequence = 0
@@ -71,8 +74,23 @@ const inputClassName =
   'min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50'
 
 function coAuthorLabel(coAuthor: CoAuthorSummary, locale: string): string {
-  const value = coAuthor.displayName || coAuthor.email || coAuthor.hsaId
+  const value = coAuthor.displayName || coAuthor.hsaId
   return formatActorDisplayNameForLocale(value, locale) ?? value
+}
+
+function sortCoAuthorsByHsaId<T extends CoAuthorSummary>(coAuthors: T[]): T[] {
+  return [...coAuthors].sort((a, b) =>
+    a.hsaId.localeCompare(b.hsaId, 'sv', { sensitivity: 'base' }),
+  )
+}
+
+function toCoAuthorRows(coAuthors: CoAuthorSummary[]): CoAuthorFormRow[] {
+  return sortCoAuthorsByHsaId(coAuthors).map(coAuthor => ({
+    clientId: createCoAuthorClientId(),
+    displayName: coAuthor.displayName ?? null,
+    email: coAuthor.email ?? null,
+    hsaId: coAuthor.hsaId,
+  }))
 }
 
 export default function CoAuthorsManagementModal({
@@ -82,6 +100,7 @@ export default function CoAuthorsManagementModal({
   hsaIdHelp,
   hsaIdLabel,
   loadErrorMessage,
+  loadingMessage,
   noCoAuthorsMessage,
   onChanged,
   onClose,
@@ -90,9 +109,11 @@ export default function CoAuthorsManagementModal({
   removeConfirmMessage,
   removeLabel,
   saveErrorMessage,
+  savedCoAuthorsHeading,
   scopeId,
   title,
   titleId,
+  verifiedDraftMessage,
 }: CoAuthorsManagementModalProps) {
   const tc = useTranslations('common')
   const locale = useLocale()
@@ -132,14 +153,7 @@ export default function CoAuthorsManagementModal({
         const body = (await response.json()) as {
           coAuthors?: CoAuthorSummary[]
         }
-        setCoAuthors(
-          (body.coAuthors ?? []).map(coAuthor => ({
-            clientId: createCoAuthorClientId(),
-            displayName: coAuthor.displayName ?? null,
-            email: coAuthor.email ?? null,
-            hsaId: coAuthor.hsaId,
-          })),
-        )
+        setCoAuthors(toCoAuthorRows(body.coAuthors ?? []))
       } catch (loadError) {
         if (controller.signal.aborted) return
         setError(
@@ -162,12 +176,13 @@ export default function CoAuthorsManagementModal({
   const saveCoAuthorAssignments = async (
     nextCoAuthors: CoAuthorFormRow[],
   ): Promise<boolean> => {
+    const sortedNextCoAuthors = sortCoAuthorsByHsaId(nextCoAuthors)
     setSaving(true)
     setError(null)
     try {
       const response = await apiFetch(endpoint, {
         body: JSON.stringify({
-          coAuthorHsaIds: nextCoAuthors.map(coAuthor => coAuthor.hsaId),
+          coAuthorHsaIds: sortedNextCoAuthors.map(coAuthor => coAuthor.hsaId),
         }),
         headers: { 'Content-Type': 'application/json' },
         method: 'PUT',
@@ -176,7 +191,7 @@ export default function CoAuthorsManagementModal({
         setError((await readResponseMessage(response)) ?? saveErrorMessage)
         return false
       }
-      setCoAuthors(nextCoAuthors)
+      setCoAuthors(sortedNextCoAuthors)
       await onChanged?.()
       return true
     } catch (saveError) {
@@ -188,6 +203,30 @@ export default function CoAuthorsManagementModal({
       setSaving(false)
     }
   }
+
+  const verifiedDraftContext =
+    error &&
+    coAuthorDraft.personVerification?.hsaId === coAuthorDraft.hsaId.trim()
+      ? verifiedDraftMessage(
+          formatActorDisplayNameForLocale(
+            coAuthorDraft.personVerification.displayName,
+            locale,
+          ) ?? coAuthorDraft.personVerification.displayName,
+        )
+      : null
+
+  const renderRemoveButton = (coAuthor: CoAuthorFormRow) => (
+    <button
+      aria-label={removeLabel}
+      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-red-200 text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/30"
+      disabled={saving || loading}
+      onClick={event => void removeCoAuthor(coAuthor, event.currentTarget)}
+      title={removeLabel}
+      type="button"
+    >
+      <Trash2 aria-hidden="true" className="h-4 w-4" focusable={false} />
+    </button>
+  )
 
   const addVerifiedCoAuthor = async (person: HsaPersonVerification) => {
     if (coAuthors.some(coAuthor => coAuthor.hsaId === person.hsaId)) {
@@ -232,7 +271,7 @@ export default function CoAuthorsManagementModal({
     <FormModal
       closeDisabled={saving}
       developerModeValue={developerModeValue}
-      maxWidthClassName="max-w-3xl"
+      maxWidthClassName="max-w-xl"
       onClose={onClose}
       open={open}
       title={title}
@@ -243,67 +282,6 @@ export default function CoAuthorsManagementModal({
           {description}
         </p>
 
-        {saving ? (
-          <p
-            className="text-sm text-secondary-500 dark:text-secondary-400"
-            role="status"
-          >
-            {tc('saving')}
-          </p>
-        ) : null}
-        {error ? (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            {error}
-          </p>
-        ) : null}
-
-        {loading ? (
-          <p
-            className="text-sm text-secondary-500 dark:text-secondary-400"
-            role="status"
-          >
-            {tc('loading')}
-          </p>
-        ) : coAuthors.length === 0 ? (
-          <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-secondary-500 dark:text-secondary-400">
-            {noCoAuthorsMessage}
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {coAuthors.map(coAuthor => (
-              <div
-                className="flex items-center justify-between gap-3 rounded-xl border border-secondary-200 px-3 py-2 dark:border-secondary-700"
-                key={coAuthor.clientId}
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-secondary-800 dark:text-secondary-100">
-                    {coAuthorLabel(coAuthor, locale)}
-                  </p>
-                  <p className="mt-0.5 truncate font-mono text-xs text-secondary-500 dark:text-secondary-400">
-                    {coAuthor.hsaId}
-                  </p>
-                </div>
-                <button
-                  aria-label={removeLabel}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-red-200 text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/30"
-                  disabled={saving || loading}
-                  onClick={event =>
-                    void removeCoAuthor(coAuthor, event.currentTarget)
-                  }
-                  title={removeLabel}
-                  type="button"
-                >
-                  <Trash2
-                    aria-hidden="true"
-                    className="h-4 w-4"
-                    focusable={false}
-                  />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
         <div>
           <FieldLabelWithHelp
             help={hsaIdHelp}
@@ -311,6 +289,7 @@ export default function CoAuthorsManagementModal({
             label={hsaIdLabel}
           />
           <HsaPersonVerifyField
+            compactHsaIdLayout
             disabled={saving || loading}
             emailLabel={tc('hsaVerifyEmail')}
             errorFallback={tc('hsaVerifyError')}
@@ -343,18 +322,115 @@ export default function CoAuthorsManagementModal({
             onVerified={person => {
               setCoAuthorDraft({
                 displayName: person.displayName,
-                email: person.email ?? '',
+                email: '',
                 hsaId: person.hsaId,
                 personVerification: person,
               })
               void addVerifiedCoAuthor(person)
             }}
+            personSummaryMode="hidden"
             purpose={purpose}
             scopeId={scopeId}
-            showPersonSummaryAsText
             unavailableText={tc('hsaVerifyUnavailable')}
           />
+          {verifiedDraftContext ? (
+            <p className="mt-2 text-xs text-secondary-600 dark:text-secondary-300">
+              {verifiedDraftContext}
+            </p>
+          ) : null}
         </div>
+
+        {saving ? (
+          <p
+            className="text-sm text-secondary-500 dark:text-secondary-400"
+            role="status"
+          >
+            {tc('saving')}
+          </p>
+        ) : null}
+        {error ? (
+          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        <section
+          aria-labelledby={`${titleId}-saved-co-authors-heading`}
+          className="space-y-3 border-t border-secondary-200 pt-4 dark:border-secondary-700"
+        >
+          <h3
+            className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
+            id={`${titleId}-saved-co-authors-heading`}
+          >
+            {savedCoAuthorsHeading}
+          </h3>
+          {loading ? (
+            <p
+              className="inline-flex items-center gap-2 text-sm text-secondary-500 dark:text-secondary-400"
+              role="status"
+            >
+              <Loader2
+                aria-hidden="true"
+                className="h-4 w-4 animate-spin"
+                focusable={false}
+              />
+              {loadingMessage}
+            </p>
+          ) : coAuthors.length === 0 ? (
+            <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-secondary-500 dark:text-secondary-400">
+              {noCoAuthorsMessage}
+            </p>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-secondary-200 dark:border-secondary-700">
+              <table className="w-full text-left text-sm">
+                <caption className="sr-only">{savedCoAuthorsHeading}</caption>
+                <thead className="hidden bg-secondary-50 text-xs font-semibold uppercase text-secondary-500 dark:bg-secondary-800/60 dark:text-secondary-400 sm:table-header-group">
+                  <tr>
+                    <th className="w-68 px-3 py-2" scope="col">
+                      {tc('hsaId')}
+                    </th>
+                    <th className="px-3 py-2" scope="col">
+                      {tc('hsaVerifyName')}
+                    </th>
+                    <th className="w-14 px-2 py-2 text-right" scope="col">
+                      <span className="sr-only">{tc('actions')}</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="sm:divide-y sm:divide-secondary-200 sm:dark:divide-secondary-700">
+                  {coAuthors.map(coAuthor => (
+                    <tr
+                      className="grid gap-2 border-b border-secondary-200 px-3 py-3 last:border-b-0 dark:border-secondary-700 sm:table-row sm:border-b-0 sm:p-0"
+                      key={coAuthor.clientId}
+                    >
+                      <td className="block sm:table-cell sm:px-3 sm:py-2">
+                        <span className="block text-xs font-medium text-secondary-500 dark:text-secondary-400 sm:hidden">
+                          {tc('hsaId')}
+                        </span>
+                        <span className="break-all font-mono text-xs text-secondary-800 dark:text-secondary-100">
+                          {coAuthor.hsaId}
+                        </span>
+                      </td>
+                      <td className="block sm:table-cell sm:px-3 sm:py-2">
+                        <span className="block text-xs font-medium text-secondary-500 dark:text-secondary-400 sm:hidden">
+                          {tc('hsaVerifyName')}
+                        </span>
+                        <span className="block truncate text-secondary-800 dark:text-secondary-100">
+                          {coAuthorLabel(coAuthor, locale)}
+                        </span>
+                      </td>
+                      <td className="block sm:table-cell sm:px-2 sm:py-2 sm:text-right">
+                        <div className="flex justify-end">
+                          {renderRemoveButton(coAuthor)}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
 
         <div className="flex justify-end">
           <button

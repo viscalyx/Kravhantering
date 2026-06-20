@@ -320,7 +320,8 @@ kravområdesägare.
 1. Gör en liten tillåten ändring i kravområdets metadata eller skapa ett krav
    inom det ägda området.
 1. Öppna radåtgärden `Hantera medförfattare` och verifiera att
-   kravområdesmedförfattaren visas i den separata dialogen.
+   dialogen visar ett tilläggsfält överst, laddningsläge vid hämtning och en
+   sparad tabell med kravområdesmedförfattare.
 1. Ladda om sidan och kontrollera att ändringen finns kvar.
 1. Försök administrera global Admin-yta och ändra kravunderlagsansvarig.
 
@@ -359,8 +360,8 @@ tilldelningsstyrning och global Admin.
 1. Öppna redigeringsåtgärden och ändra ett säkert metadatafält, till exempel
    verksamhetsbehovsreferens.
 1. Stäng redigeringen och öppna radåtgärden `Hantera medförfattare`.
-1. Lägg till eller verifiera en medförfattare i den separata dialogen för
-   medförfattare.
+1. Kontrollera att tilläggsfältet ligger över den sparade tabellen och lägg
+   till eller verifiera en kravunderlagsmedförfattare i dialogen.
 1. Försök utföra Admin-only-åtgärd eller dataskyddsförhandsgranskning.
 
 **Förväntat resultat:** Petra kan förvalta sitt kravunderlag och dess
@@ -398,7 +399,8 @@ utföra Admin-only-åtgärder.
 1. Öppna `Kravbiblioteksförvaltning` och sök efter `AUTHZ kravpaket`.
 1. Redigera paketets beskrivning med en liten unik testtext.
 1. Öppna radåtgärden `Hantera medförfattare` och verifiera att paketets
-   medförfattare kan läggas till eller tas bort i den separata dialogen.
+   kravpaketsmedförfattare visas i en sparad tabell och kan läggas till eller
+   tas bort i den separata dialogen.
 1. Ladda om sidan och verifiera att Leo fortfarande är kravpaketsansvarig.
 1. Försök arkivera paketet om UI visar åtgärden, annars kontrollera API.
 
@@ -594,7 +596,8 @@ med piltangenter och stäng med Escape.
 1. Byt kravpaketsansvarig med HSA-id, tabba från suffixfältet och kontrollera
    att verifierat namn och e-post visas som text i bytesdialogen.
 1. Öppna radåtgärden `Hantera medförfattare` för testpaketet och kontrollera
-   att en separat modal kan lägga till och ta bort kravpaketsmedförfattare.
+   att den separata dialogen har tilläggsfält överst, laddningsläge och en
+   sparad tabell för att lägga till och ta bort kravpaketsmedförfattare.
 1. Skapa en kravurvalsfråga, lägg till svar och ändra ordning.
 1. Kontrollera synlighetsvillkor, hierarkimodal och kravurvalsförhandsvisning.
 
@@ -1034,8 +1037,9 @@ Normreferens-ID sist och fullbrett. Mobil visar samma fält i en kolumn utan
 **Steg:** Öppna kravområdeslistan och kontrollera att radåtgärderna för
 medförfattare, redigering och borttagning visas som ikonknappar. Öppna
 radåtgärden `Hantera medförfattare` och kontrollera att den separata dialogen
-kan läsa in, lägga till och ta bort kravområdesmedförfattare. Öppna sedan ett
-kravområde för redigering. Kontrollera att formuläret öppnas i en modal, dra
+kan läsa in, visa laddningsläge, lägga till och ta bort
+kravområdesmedförfattare i en sparad tabell. Öppna sedan ett kravområde för
+redigering. Kontrollera att formuläret öppnas i en modal, dra
 beskrivningsfältet nedåt så långt webbläsaren tillåter och försök sedan minska
 fältet under öppningshöjden. Ändra därefter kravområdesägare via HSA-id med
 verifierat personuppslag.

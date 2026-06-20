@@ -432,4 +432,78 @@ describe('HsaPersonVerifyField', () => {
       ).toBeInTheDocument()
     })
   })
+
+  it('can hide the person summary completely', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ prefixes: [] }), {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+          }),
+      ),
+    )
+
+    render(
+      <HsaPersonVerifyField
+        emailLabel="Email"
+        errorFallback="Could not verify"
+        fetchingLabel="Fetching"
+        fetchLabel="Fetch"
+        hsaId=""
+        inputClassName="input"
+        inputId="hsa-id"
+        nameLabel="Name"
+        onHsaIdChange={vi.fn()}
+        personSummaryMode="hidden"
+        purpose="requirement_package_co_author"
+        showPersonSummaryAsText
+        unavailableText="Unavailable"
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('common.hsaPrefixMissing')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('Unavailable')).not.toBeInTheDocument()
+    expect(screen.queryByText('Name')).not.toBeInTheDocument()
+    expect(screen.queryByText('Email')).not.toBeInTheDocument()
+  })
+
+  it('uses the compact HSA-id layout only when requested', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ prefixes: [] }), {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+          }),
+      ),
+    )
+
+    render(
+      <HsaPersonVerifyField
+        compactHsaIdLayout
+        emailLabel="Email"
+        errorFallback="Could not verify"
+        fetchingLabel="Fetching"
+        fetchLabel="Fetch"
+        hsaId=""
+        inputClassName="input"
+        inputId="hsa-id"
+        nameLabel="Name"
+        onHsaIdChange={vi.fn()}
+        personSummaryMode="hidden"
+        purpose="requirement_package_co_author"
+        unavailableText="Unavailable"
+      />,
+    )
+
+    const prefixSelect = await screen.findByRole('combobox', {
+      name: 'common.hsaPrefixLabel',
+    })
+    expect(prefixSelect.parentElement?.className).toContain('minmax(9rem')
+  })
 })

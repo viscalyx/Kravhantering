@@ -161,7 +161,8 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   create` or `areas > crud form: edit` marker inside the dialog. Requirement
   area co-authors open from the list row action
   `areas > table action: manage co-authors` into
-  `dialog: manage requirement area co-authors`.
+  `dialog: manage requirement area co-authors`, where the add field sits above
+  a saved co-authors table.
 - App Router error recovery pages expose the `error boundary` context with
   `error recovery: locale`, `error recovery: root`, or
   `error recovery: global` on the visible fallback surface. Their retry
@@ -175,7 +176,8 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `dialog: new specification`; list row editing opens
   `dialog: edit specification`. Specification co-authors open from the list
   row action `specifications > table action: manage co-authors` into
-  `dialog: manage specification co-authors`.
+  `dialog: manage specification co-authors`, where the add field sits above a
+  saved co-authors table.
 - Requirements packages expose their create trigger in the fixed
   `floating action rail` as
   `requirementPackages > floating pill: new requirement package`. The new
@@ -195,7 +197,8 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `requirementPackages > table action: linked requirements`,
   `manage co-authors`, `edit`, `archive`, `reactivate`, and `delete`.
   Requirement package co-authors open into
-  `dialog: manage requirement package co-authors`.
+  `dialog: manage requirement package co-authors`, where the add field sits
+  above a saved co-authors table.
 - Requirement selection questions expose their create trigger in the fixed
   `floating action rail` as
   `requirementSelectionQuestions > floating pill: new requirement selection question`.

@@ -633,6 +633,7 @@ export default function RequirementsSpecificationsClient({
             hsaIdHelp={t('coAuthorHsaIdHelp')}
             hsaIdLabel={t('coAuthorHsaId')}
             loadErrorMessage={t('loadCoAuthorsFailed')}
+            loadingMessage={t('loadingCoAuthors')}
             noCoAuthorsMessage={t('noCoAuthors')}
             onChanged={async () => {
               await specificationsResource.reload()
@@ -642,10 +643,12 @@ export default function RequirementsSpecificationsClient({
             purpose="requirements_specification_co_author"
             removeConfirmMessage={name => t('removeCoAuthorConfirm', { name })}
             removeLabel={t('removeCoAuthor')}
+            savedCoAuthorsHeading={t('savedCoAuthors')}
             saveErrorMessage={t('saveCoAuthorsFailed')}
             scopeId={coAuthorsSpec.id}
             title={t('coAuthors')}
             titleId="specification-co-authors-title"
+            verifiedDraftMessage={name => t('verifiedCoAuthorDraft', { name })}
           />
         ) : null}
 

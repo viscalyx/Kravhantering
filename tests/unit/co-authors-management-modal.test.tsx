@@ -1,9 +1,11 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import CoAuthorsManagementModal from '@/components/CoAuthorsManagementModal'
@@ -36,6 +38,14 @@ function errJson(body: unknown, status = 500, statusText = 'Server Error') {
   }
 }
 
+function deferredResponse() {
+  let resolve!: (response: ReturnType<typeof okJson>) => void
+  const promise = new Promise<ReturnType<typeof okJson>>(resolver => {
+    resolve = resolver
+  })
+  return { promise, resolve }
+}
+
 const hsaIdPrefixPayload = {
   prefixes: [{ id: 1, isDefault: true, label: null, prefix: 'SE5560000001' }],
 }
@@ -51,6 +61,7 @@ function renderModal(onChanged = vi.fn()) {
       hsaIdHelp="specification.help.coAuthorHsaId"
       hsaIdLabel="specification.coAuthorHsaId"
       loadErrorMessage="specification.loadCoAuthorsFailed"
+      loadingMessage="specification.loadingCoAuthors"
       noCoAuthorsMessage="specification.noCoAuthors"
       onChanged={onChanged}
       onClose={() => {}}
@@ -58,10 +69,14 @@ function renderModal(onChanged = vi.fn()) {
       purpose="requirements_specification_co_author"
       removeConfirmMessage={() => 'specification.removeCoAuthorConfirm'}
       removeLabel="specification.removeCoAuthor"
+      savedCoAuthorsHeading="specification.savedCoAuthors"
       saveErrorMessage="specification.saveCoAuthorsFailed"
       scopeId={7}
       title="specification.manageCoAuthors"
       titleId="specification-co-authors-title"
+      verifiedDraftMessage={name =>
+        `specification.verifiedCoAuthorDraft:${name}`
+      }
     />,
   )
 }
@@ -77,6 +92,39 @@ describe('CoAuthorsManagementModal', () => {
     confirmMock.mockReset()
     fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
+  })
+
+  it('shows a loading status and keeps the add field disabled while co-authors load', async () => {
+    const coAuthorsRequest = deferredResponse()
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(okJson(hsaIdPrefixPayload))
+      }
+      if (
+        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
+      ) {
+        return coAuthorsRequest.promise
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    renderModal()
+
+    expect(
+      screen.getByText('specification.loadingCoAuthors'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /specification\.coAuthorHsaId/ }),
+    ).toBeDisabled()
+
+    await act(async () => {
+      coAuthorsRequest.resolve(okJson({ coAuthors: [] }))
+      await coAuthorsRequest.promise
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
+    })
   })
 
   it('autosaves a verified co-author assignment', async () => {
@@ -113,6 +161,8 @@ describe('CoAuthorsManagementModal', () => {
     await waitFor(() => {
       expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
     })
+    expect(screen.getByText('specification.savedCoAuthors')).toBeInTheDocument()
+    expect(screen.queryByText('common.hsaVerifyUnavailable')).toBeNull()
     const coAuthorInput = screen.getByRole('textbox', {
       name: /specification\.coAuthorHsaId/,
     })
@@ -153,6 +203,13 @@ describe('CoAuthorsManagementModal', () => {
       coAuthorHsaIds: ['SE5560000001-coa1'],
     })
     expect(await screen.findByText('Cora CoAuthor')).toBeInTheDocument()
+    expect(
+      screen.getByRole('columnheader', { name: 'common.hsaId' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('columnheader', { name: 'common.hsaVerifyName' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('cora.coauthor@example.test')).toBeNull()
     expect(onChanged).toHaveBeenCalledTimes(1)
   })
 
@@ -220,6 +277,62 @@ describe('CoAuthorsManagementModal', () => {
     })
     expect(screen.getByText('specification.noCoAuthors')).toBeInTheDocument()
     expect(coAuthorInput).toHaveValue('coa1')
+    expect(
+      screen.getByText('specification.verifiedCoAuthorDraft:Cora CoAuthor'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/cora\.coauthor@example\.test/)).toBeNull()
+  })
+
+  it('renders saved co-authors as a table sorted by HSA-id', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(okJson(hsaIdPrefixPayload))
+      }
+      if (
+        url === '/api/requirements-specifications/ETJANST-UPP-2026/co-authors'
+      ) {
+        return Promise.resolve(
+          okJson({
+            coAuthors: [
+              {
+                displayName: 'Zelda CoAuthor',
+                email: 'zelda.coauthor@example.test',
+                hsaId: 'SE5560000001-zzz',
+              },
+              {
+                displayName: 'Ada CoAuthor',
+                email: 'ada.coauthor@example.test',
+                hsaId: 'SE5560000001-aaa',
+              },
+              {
+                displayName: 'Mira CoAuthor',
+                email: 'mira.coauthor@example.test',
+                hsaId: 'SE5560000001-mmm',
+              },
+            ],
+          }),
+        )
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    renderModal()
+
+    await waitFor(() => {
+      expect(screen.getByText('Ada CoAuthor')).toBeInTheDocument()
+    })
+    const table = screen.getByRole('table', {
+      name: 'specification.savedCoAuthors',
+    })
+    const hsaIds = within(table)
+      .getAllByText(/SE5560000001-/)
+      .map(element => element.textContent)
+    expect(hsaIds).toEqual([
+      'SE5560000001-aaa',
+      'SE5560000001-mmm',
+      'SE5560000001-zzz',
+    ])
+    expect(screen.queryByText(/coauthor@example\.test/)).toBeNull()
   })
 
   it('confirms and autosaves co-author removal', async () => {

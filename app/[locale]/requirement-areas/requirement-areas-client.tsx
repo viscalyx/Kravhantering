@@ -402,6 +402,7 @@ export default function RequirementAreasClient() {
           hsaIdHelp={t('coAuthorHsaIdHelp')}
           hsaIdLabel={t('coAuthorHsaId')}
           loadErrorMessage={t('loadCoAuthorsFailed')}
+          loadingMessage={t('loadingCoAuthors')}
           noCoAuthorsMessage={t('noCoAuthors')}
           onChanged={async () => {
             await controller.reload()
@@ -411,10 +412,12 @@ export default function RequirementAreasClient() {
           purpose="requirement_area_co_author"
           removeConfirmMessage={name => t('removeCoAuthorConfirm', { name })}
           removeLabel={t('removeCoAuthor')}
+          savedCoAuthorsHeading={t('savedCoAuthors')}
           saveErrorMessage={t('saveCoAuthorsFailed')}
           scopeId={coAuthorsArea.id}
           title={t('coAuthors')}
           titleId="area-co-authors-title"
+          verifiedDraftMessage={name => t('verifiedCoAuthorDraft', { name })}
         />
       ) : null}
     </CrudAdminPanel>

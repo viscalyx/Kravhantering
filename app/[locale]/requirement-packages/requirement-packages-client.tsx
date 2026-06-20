@@ -1109,6 +1109,7 @@ export default function RequirementPackagesClient() {
             hsaIdHelp={t('coAuthorHsaIdHelp')}
             hsaIdLabel={t('coAuthorHsaId')}
             loadErrorMessage={t('loadCoAuthorsFailed')}
+            loadingMessage={t('loadingCoAuthors')}
             noCoAuthorsMessage={t('noCoAuthors')}
             onChanged={async () => {
               await controller.reload()
@@ -1118,10 +1119,12 @@ export default function RequirementPackagesClient() {
             purpose="requirement_package_co_author"
             removeConfirmMessage={name => t('removeCoAuthorConfirm', { name })}
             removeLabel={t('removeCoAuthor')}
+            savedCoAuthorsHeading={t('savedCoAuthors')}
             saveErrorMessage={t('saveCoAuthorsFailed')}
             scopeId={coAuthorsPackage.id}
             title={t('coAuthors')}
             titleId="requirement-package-co-authors-title"
+            verifiedDraftMessage={name => t('verifiedCoAuthorDraft', { name })}
           />
         ) : null}
 
