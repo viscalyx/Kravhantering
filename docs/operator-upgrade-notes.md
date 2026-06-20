@@ -10,9 +10,7 @@ target version.
 ### Requirements specifications need lifecycle status before upgrade
 
 The migration backfills requirements specifications without lifecycle status to
-`Förvaltning` (`Management`, ID `4`) before making the column mandatory. Correct
-legacy rows before running `db-job migrate` if they should instead use
-`Upphandling`, `Införande` or `Utveckling`.
+`Förvaltning` (`Management`, ID `4`) before making the column mandatory.
 
 ### Responsibility assignments must have valid HSA-id values before upgrade
 
