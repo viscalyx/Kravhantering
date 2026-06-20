@@ -5,6 +5,7 @@ import { AlertTriangle, ExternalLink, Plus, RotateCcw, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import FormActionRow from '@/components/FormActionRow'
 import NormReferenceFormFields from '@/components/NormReferenceFormFields'
 import RequirementFormFields, {
@@ -12,6 +13,7 @@ import RequirementFormFields, {
 } from '@/components/RequirementFormFields'
 import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 import { useRouter } from '@/i18n/routing'
+import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { apiFetch } from '@/lib/http/api-fetch'
 import {
   dialogPanelMotion,
@@ -72,6 +74,91 @@ const EMPTY_FORM: RequirementFormFieldValues = {
   verificationMethod: '',
 }
 
+const EMPTY_NORM_REFERENCE_FORM = {
+  issuer: '',
+  name: '',
+  normReferenceId: '',
+  reference: '',
+  type: '',
+  uri: '',
+  version: '',
+}
+
+const REQUIREMENT_DIRTY_SNAPSHOT_OPTIONS = {
+  unorderedArrayPaths: ['normReferenceIds', 'requirementPackageIds'],
+} as const
+
+function createInitialRequirementForm(
+  initialData: RequirementFormProps['initialData'],
+  initialNormReferenceIds: RequirementFormProps['initialNormReferenceIds'],
+  initialRequirementPackageIds: RequirementFormProps['initialRequirementPackageIds'],
+): RequirementFormFieldValues {
+  return {
+    ...EMPTY_FORM,
+    ...initialData,
+    normReferenceIds: initialNormReferenceIds ?? [],
+    requirementPackageIds: initialRequirementPackageIds ?? [],
+  }
+}
+
+function toRequirementPayload(
+  form: RequirementFormFieldValues,
+  options: {
+    baseRevisionToken?: string | null
+    baseVersionId?: number | null
+    includeEditTokens: boolean
+    mode: RequirementFormProps['mode']
+  },
+) {
+  return {
+    areaId: form.areaId ? Number(form.areaId) : undefined,
+    categoryId: form.categoryId ? Number(form.categoryId) : undefined,
+    typeId: form.typeId ? Number(form.typeId) : undefined,
+    qualityCharacteristicId: form.qualityCharacteristicId
+      ? Number(form.qualityCharacteristicId)
+      : undefined,
+    riskLevelId: form.riskLevelId ? Number(form.riskLevelId) : undefined,
+    description: form.description || undefined,
+    baseRevisionToken:
+      options.includeEditTokens && options.mode === 'edit'
+        ? options.baseRevisionToken
+        : undefined,
+    baseVersionId:
+      options.includeEditTokens && options.mode === 'edit'
+        ? options.baseVersionId
+        : undefined,
+    acceptanceCriteria: form.acceptanceCriteria || undefined,
+    requiresTesting: form.requiresTesting,
+    verificationMethod: form.requiresTesting
+      ? form.verificationMethod || undefined
+      : undefined,
+    normReferenceIds:
+      options.mode === 'edit'
+        ? form.normReferenceIds
+        : form.normReferenceIds.length > 0
+          ? form.normReferenceIds
+          : undefined,
+    requirementPackageIds:
+      options.mode === 'edit'
+        ? form.requirementPackageIds
+        : form.requirementPackageIds.length > 0
+          ? form.requirementPackageIds
+          : undefined,
+  }
+}
+
+function toNormReferencePayload(form: typeof EMPTY_NORM_REFERENCE_FORM) {
+  return {
+    issuer: form.issuer,
+    name: form.name,
+    normReferenceId: form.normReferenceId || undefined,
+    reference: form.reference,
+    type: form.type,
+    uri: form.uri || null,
+    version: form.version || null,
+  }
+}
+
 export default function RequirementForm({
   baseRevisionToken,
   baseVersionId,
@@ -88,15 +175,7 @@ export default function RequirementForm({
   const shouldReduceMotion = useReducedMotion()
 
   const [showCreateNormRef, setShowCreateNormRef] = useState(false)
-  const [normRefForm, setNormRefForm] = useState({
-    normReferenceId: '',
-    name: '',
-    type: '',
-    reference: '',
-    version: '',
-    issuer: '',
-    uri: '',
-  })
+  const [normRefForm, setNormRefForm] = useState(EMPTY_NORM_REFERENCE_FORM)
   const [normRefSubmitting, setNormRefSubmitting] = useState(false)
   const [normRefError, setNormRefError] = useState<string | null>(null)
   const [createdNormRefs, setCreatedNormRefs] = useState<
@@ -123,16 +202,29 @@ export default function RequirementForm({
     },
   )
 
-  const [form, setForm] = useState<RequirementFormFieldValues>({
-    ...EMPTY_FORM,
-    ...initialData,
-    normReferenceIds: initialNormReferenceIds ?? [],
-    requirementPackageIds: initialRequirementPackageIds ?? [],
-  })
+  const [form, setForm] = useState<RequirementFormFieldValues>(() =>
+    createInitialRequirementForm(
+      initialData,
+      initialNormReferenceIds,
+      initialRequirementPackageIds,
+    ),
+  )
+  const [baselineSignature, setBaselineSignature] = useState(() =>
+    createDirtySnapshot(
+      toRequirementPayload(
+        createInitialRequirementForm(
+          initialData,
+          initialNormReferenceIds,
+          initialRequirementPackageIds,
+        ),
+        { includeEditTokens: false, mode },
+      ),
+      REQUIREMENT_DIRTY_SNAPSHOT_OPTIONS,
+    ),
+  )
 
   const taxonomyOptions = useTaxonomyOptions(form.typeId, form.normReferenceIds)
 
-  const dirtyFields = useRef<Set<string>>(new Set())
   const prevInitialData = useRef(initialData)
   const prevNormReferenceIds = useRef(initialNormReferenceIds)
   const prevRequirementPackageIds = useRef(initialRequirementPackageIds)
@@ -149,31 +241,36 @@ export default function RequirementForm({
     prevNormReferenceIds.current = initialNormReferenceIds
     prevRequirementPackageIds.current = initialRequirementPackageIds
 
-    if (dataChanged) {
-      dirtyFields.current = new Set()
-    }
-
-    setForm(() => ({
-      ...EMPTY_FORM,
-      ...(initialData ?? {}),
-      normReferenceIds: initialNormReferenceIds ?? [],
-      requirementPackageIds: initialRequirementPackageIds ?? [],
-    }))
-  }, [initialData, initialNormReferenceIds, initialRequirementPackageIds])
+    const nextForm = createInitialRequirementForm(
+      initialData,
+      initialNormReferenceIds,
+      initialRequirementPackageIds,
+    )
+    setForm(nextForm)
+    setBaselineSignature(
+      createDirtySnapshot(
+        toRequirementPayload(nextForm, { includeEditTokens: false, mode }),
+        REQUIREMENT_DIRTY_SNAPSHOT_OPTIONS,
+      ),
+    )
+  }, [initialData, initialNormReferenceIds, initialRequirementPackageIds, mode])
 
   const handleFieldsChange = (values: RequirementFormFieldValues) => {
-    for (const key of Object.keys(
-      values,
-    ) as (keyof RequirementFormFieldValues)[]) {
-      if (values[key] !== form[key]) {
-        dirtyFields.current.add(key)
-      }
-    }
     setForm(values)
   }
 
+  const currentSignature = createDirtySnapshot(
+    toRequirementPayload(form, { includeEditTokens: false, mode }),
+    REQUIREMENT_DIRTY_SNAPSHOT_OPTIONS,
+  )
+  const formDirty = baselineSignature !== currentSignature
+  const normRefFormDirty =
+    createDirtySnapshot(toNormReferencePayload(normRefForm)) !==
+    createDirtySnapshot(toNormReferencePayload(EMPTY_NORM_REFERENCE_FORM))
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!formDirty) return
     setSubmitting(true)
     setError(null)
     setStaleConflict(null)
@@ -186,35 +283,14 @@ export default function RequirementForm({
       const res = await apiFetch(url, {
         method: mode === 'create' ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          areaId: form.areaId ? Number(form.areaId) : undefined,
-          categoryId: form.categoryId ? Number(form.categoryId) : undefined,
-          typeId: form.typeId ? Number(form.typeId) : undefined,
-          qualityCharacteristicId: form.qualityCharacteristicId
-            ? Number(form.qualityCharacteristicId)
-            : undefined,
-          riskLevelId: form.riskLevelId ? Number(form.riskLevelId) : undefined,
-          description: form.description || undefined,
-          baseRevisionToken: mode === 'edit' ? baseRevisionToken : undefined,
-          baseVersionId: mode === 'edit' ? baseVersionId : undefined,
-          acceptanceCriteria: form.acceptanceCriteria || undefined,
-          requiresTesting: form.requiresTesting,
-          verificationMethod: form.requiresTesting
-            ? form.verificationMethod || undefined
-            : undefined,
-          normReferenceIds:
-            mode === 'edit'
-              ? form.normReferenceIds
-              : form.normReferenceIds.length > 0
-                ? form.normReferenceIds
-                : undefined,
-          requirementPackageIds:
-            mode === 'edit'
-              ? form.requirementPackageIds
-              : form.requirementPackageIds.length > 0
-                ? form.requirementPackageIds
-                : undefined,
-        }),
+        body: JSON.stringify(
+          toRequirementPayload(form, {
+            baseRevisionToken,
+            baseVersionId,
+            includeEditTokens: true,
+            mode,
+          }),
+        ),
       })
 
       if (res.ok) {
@@ -315,6 +391,7 @@ export default function RequirementForm({
                 key="create-norm-reference-modal"
                 normRefError={normRefError}
                 normRefForm={normRefForm}
+                normRefFormDirty={normRefFormDirty}
                 normRefSubmitting={normRefSubmitting}
                 onCancel={() => {
                   setShowCreateNormRef(false)
@@ -325,18 +402,9 @@ export default function RequirementForm({
                   setNormRefError(null)
                   try {
                     const res = await apiFetch('/api/norm-references', {
-                      method: 'POST',
+                      body: JSON.stringify(toNormReferencePayload(normRefForm)),
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        normReferenceId:
-                          normRefForm.normReferenceId || undefined,
-                        name: normRefForm.name,
-                        type: normRefForm.type,
-                        reference: normRefForm.reference,
-                        version: normRefForm.version || null,
-                        issuer: normRefForm.issuer,
-                        uri: normRefForm.uri || null,
-                      }),
+                      method: 'POST',
                     })
                     if (!res.ok) {
                       const data = (await res.json().catch(() => null)) as {
@@ -360,15 +428,7 @@ export default function RequirementForm({
                           created.id,
                         ],
                       }))
-                      setNormRefForm({
-                        normReferenceId: '',
-                        name: '',
-                        type: '',
-                        reference: '',
-                        version: '',
-                        issuer: '',
-                        uri: '',
-                      })
+                      setNormRefForm(EMPTY_NORM_REFERENCE_FORM)
                       setShowCreateNormRef(false)
                     }
                   } catch {
@@ -436,13 +496,14 @@ export default function RequirementForm({
 
       <div className="flex flex-col gap-3 pt-4 mt-5 border-t">
         <FormActionRow>
-          <button
+          <DirtyStateButton
             className="btn-primary"
+            dirty={formDirty}
             disabled={submitting || isRefreshing}
             type="submit"
           >
             {submitting ? tc('saving') : tc('save')}
-          </button>
+          </DirtyStateButton>
           <button
             className="px-4 py-2.5 rounded-xl border text-sm font-medium min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-all duration-200"
             disabled={submitting || isRefreshing}
@@ -507,6 +568,7 @@ interface NormReferenceModalProps {
     uri: string
     version: string
   }
+  normRefFormDirty: boolean
   normRefSubmitting: boolean
   onCancel: () => void
   onSave: () => void
@@ -516,6 +578,7 @@ interface NormReferenceModalProps {
 function NormReferenceModal({
   normRefError,
   normRefForm,
+  normRefFormDirty,
   normRefSubmitting,
   onCancel,
   onSave,
@@ -576,8 +639,7 @@ function NormReferenceModal({
     return () => document.removeEventListener('keydown', onKey)
   }, [onCancel, normRefSubmitting])
 
-  const canSave =
-    !normRefSubmitting &&
+  const hasRequiredNormReferenceFields =
     normRefForm.name.trim() !== '' &&
     normRefForm.type.trim() !== '' &&
     normRefForm.reference.trim() !== '' &&
@@ -647,14 +709,18 @@ function NormReferenceModal({
         </div>
 
         <FormActionRow className="pt-2">
-          <button
+          <DirtyStateButton
             className="btn-primary"
-            disabled={!canSave}
+            dirty={normRefFormDirty}
+            disabled={
+              normRefSubmitting ||
+              (normRefFormDirty && !hasRequiredNormReferenceFields)
+            }
             onClick={onSave}
             type="button"
           >
             {normRefSubmitting ? tc('saving') : tc('save')}
-          </button>
+          </DirtyStateButton>
           <button
             className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-600 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
             disabled={normRefSubmitting}

@@ -69,7 +69,8 @@ flowchart TD
 ### Purpose
 
 Verifies that clicking "Redigera kravunderlag" opens the edit dialog, pre-fills
-the specification name, and leaves the detail split-panel layout unchanged.
+the specification name, keeps `Spara` disabled until normalized metadata
+changes, and leaves the detail split-panel layout unchanged.
 
 ### Step-by-Step Flow
 
@@ -78,6 +79,9 @@ the specification name, and leaves the detail split-panel layout unchanged.
 3. Click "Redigera kravunderlag".
 4. Assert the `role="dialog"` surface named "Redigera kravunderlag" is visible.
 5. Assert the `Namn` field is prefilled and the split-panel classes are stable.
+6. Assert `Spara` is disabled with title `Inga ändringar att spara`.
+7. Change `Namn`, assert `Spara` is enabled, revert `Namn`, and assert `Spara`
+   is disabled again.
 
 ### Sequence Diagram
 

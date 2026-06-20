@@ -6,9 +6,11 @@ import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import { modalResizableTextareaRows3ClassName } from '@/components/modal-textarea-class'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 
 const textareaClassName = `w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500 dark:border-secondary-600 dark:bg-secondary-900 ${modalResizableTextareaRows3ClassName}`
@@ -31,6 +33,9 @@ export default function SuggestionResolutionModal({
   const [resolution, setResolution] = useState<1 | 2>(1)
   const [motivation, setMotivation] = useState('')
   const [resolvedBy, setResolvedBy] = useState('')
+  const [baselineSignature, setBaselineSignature] = useState(() =>
+    createDirtySnapshot({ motivation: '', resolution: 1, resolvedBy: '' }),
+  )
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
@@ -48,6 +53,9 @@ export default function SuggestionResolutionModal({
       setResolution(1)
       setMotivation('')
       setResolvedBy('')
+      setBaselineSignature(
+        createDirtySnapshot({ motivation: '', resolution: 1, resolvedBy: '' }),
+      )
       setOpenHelp(new Set())
     }
   }, [open])
@@ -64,10 +72,15 @@ export default function SuggestionResolutionModal({
     })
   }
 
+  const formDirty =
+    baselineSignature !==
+    createDirtySnapshot({ motivation, resolution, resolvedBy })
+
   const handleSubmit = useCallback(() => {
     if (!motivation.trim() || !resolvedBy.trim()) return
+    if (!formDirty) return
     onSubmit(resolution, motivation.trim(), resolvedBy.trim())
-  }, [resolution, motivation, resolvedBy, onSubmit])
+  }, [formDirty, resolution, motivation, resolvedBy, onSubmit])
 
   if (typeof window === 'undefined') return null
 
@@ -209,14 +222,15 @@ export default function SuggestionResolutionModal({
                 >
                   {tc('cancel')}
                 </button>
-                <button
+                <DirtyStateButton
                   className="btn-primary text-sm px-4 py-2"
+                  dirty={formDirty}
                   disabled={!motivation.trim() || !resolvedBy.trim() || loading}
                   onClick={handleSubmit}
                   type="button"
                 >
                   {loading ? tc('saving') : tf('recordResolution')}
-                </button>
+                </DirtyStateButton>
               </div>
             </div>
           </motion.div>

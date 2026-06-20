@@ -4,6 +4,7 @@ import { Plus, Trash2, UserRoundCog } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
@@ -416,6 +417,13 @@ export default function SpecificationFormModal({
     if (formResetKeyRef.current === formResetKey) return
     if (mode === 'edit' && !spec) return
 
+    const previousFormResetKey = formResetKeyRef.current
+    if (mode === 'create' && previousFormResetKey?.startsWith('create:')) {
+      setForm(current => applyEffectiveCurrentUserResponsible(current))
+      formResetKeyRef.current = formResetKey
+      return
+    }
+
     const nextForm =
       mode === 'edit' && spec
         ? buildEditFormState(spec, locale)
@@ -434,7 +442,15 @@ export default function SpecificationFormModal({
     setSlugEdited(mode === 'edit')
     setSlugError(null)
     formResetKeyRef.current = formResetKey
-  }, [effectiveCurrentUser, formResetKey, locale, mode, open, spec])
+  }, [
+    applyEffectiveCurrentUserResponsible,
+    effectiveCurrentUser,
+    formResetKey,
+    locale,
+    mode,
+    open,
+    spec,
+  ])
 
   useEffect(() => {
     if (!open || !isEdit || !editSpecificationSlug || !canManageAssignments) {
@@ -677,7 +693,7 @@ export default function SpecificationFormModal({
     event.preventDefault()
     if (isSubmitting) return
     if (mode === 'edit' && !editSpecificationSlug) return
-    if (isEdit && !metadataDirty) return
+    if (!metadataDirty) return
     if (isEdit && !canEditContent) return
     if (createCurrentUserBlocked) {
       setSaveError(t('currentUserUnavailable'))
@@ -1221,13 +1237,14 @@ export default function SpecificationFormModal({
             >
               {tc('cancel')}
             </button>
-            <button
+            <DirtyStateButton
               className="btn-primary"
-              disabled={metadataControlsDisabled || (isEdit && !metadataDirty)}
+              dirty={metadataDirty}
+              disabled={metadataControlsDisabled}
               type="submit"
             >
               {isSubmitting ? tc('saving') : tc('save')}
-            </button>
+            </DirtyStateButton>
           </FormActionRow>
         </form>
       </FormModal>

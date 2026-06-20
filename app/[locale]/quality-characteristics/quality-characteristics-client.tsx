@@ -5,6 +5,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FormActionRow from '@/components/FormActionRow'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
@@ -403,14 +404,15 @@ export default function QualityCharacteristicsClient() {
                 </select>
               </div>
               <FormActionRow>
-                <button
+                <DirtyStateButton
                   className="btn-primary"
+                  dirty={controller.formDirty}
                   disabled={controller.submitting}
                   title={getMutationActionTitle(tc('save'))}
                   type="submit"
                 >
                   {controller.submitting ? tc('saving') : tc('save')}
-                </button>
+                </DirtyStateButton>
                 <button
                   className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
                   disabled={controller.submitting}

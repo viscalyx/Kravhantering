@@ -24,6 +24,23 @@ The behaviors below apply to the requirement list rendered by:
 - The marker is a visual convention only; browser `required` attributes and
   server-side route validation remain the enforcement points.
 
+## Form Submit Dirty State
+
+- Primary create/edit submit buttons, including labels such as `Spara`,
+  `Skapa`, `Lägg till svar`, and equivalent English labels, stay disabled until
+  the user changes something that affects the normalized API payload.
+- Programmatic defaults such as the signed-in actor, default colors, computed
+  sort order, and loaded edit data establish the clean baseline and do not count
+  as user changes.
+- If the user changes a value back to the normalized baseline, the primary
+  submit button becomes disabled again.
+- Required-field validation is unchanged: once a user has made a payload
+  change, the primary submit button can become enabled and browser or API
+  validation reports missing required values on submit.
+- When a submit button is disabled only because the form is clean, it exposes
+  the title `Inga ändringar att spara` in Swedish and `No changes to save` in
+  English.
+
 ## Route Compatibility
 
 - `/requirements/...` remains the existing browser path for the Requirements

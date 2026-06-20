@@ -30,6 +30,7 @@ import SpecificationFormModal from '@/app/[locale]/specifications/specification-
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementsTable from '@/components/RequirementsTable'
 import { useServerPdfDownload } from '@/components/reports/pdf/useServerPdfDownload'
@@ -40,6 +41,7 @@ import SpecificationLocalRequirementForm, {
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
@@ -122,6 +124,12 @@ interface NeedsReferenceFormState {
   id: number | null
   text: string
 }
+
+const needsReferenceFormSignature = (form: NeedsReferenceFormState) =>
+  createDirtySnapshot({
+    description: form.description.trim() || null,
+    text: form.text.trim(),
+  })
 
 interface RequirementSelectionFilterToggleProps {
   checked: boolean
@@ -334,6 +342,9 @@ export default function KravunderlagDetailClient({
   >(null)
   const [needsReferenceForm, setNeedsReferenceForm] =
     useState<NeedsReferenceFormState | null>(null)
+  const [needsReferenceFormBaseline, setNeedsReferenceFormBaseline] = useState(
+    () => needsReferenceFormSignature({ description: '', id: null, text: '' }),
+  )
   const [needsReferenceSaving, setNeedsReferenceSaving] = useState(false)
   const [needsReferenceError, setNeedsReferenceError] = useState<string | null>(
     null,
@@ -882,8 +893,14 @@ export default function KravunderlagDetailClient({
     [fetchSpecificationItems, specificationSlug, tc],
   )
 
+  const needsReferenceFormDirty =
+    needsReferenceForm !== null &&
+    needsReferenceFormBaseline !==
+      needsReferenceFormSignature(needsReferenceForm)
+
   const handleSaveNeedsReference = useCallback(async () => {
     if (!needsReferenceForm) return
+    if (!needsReferenceFormDirty) return
     setNeedsReferenceSaving(true)
     setNeedsReferenceError(null)
     try {
@@ -924,6 +941,7 @@ export default function KravunderlagDetailClient({
     fetchNeedsReferences,
     fetchSpecificationItems,
     needsReferenceForm,
+    needsReferenceFormDirty,
     specificationSlug,
     tc,
   ])
@@ -1847,8 +1865,9 @@ export default function KravunderlagDetailClient({
                       </p>
                     ) : null}
                     <div className="flex gap-3 pt-1">
-                      <button
+                      <DirtyStateButton
                         className="btn-primary"
+                        dirty={needsReferenceFormDirty}
                         disabled={
                           needsReferenceSaving ||
                           !needsReferenceForm.text.trim()
@@ -1857,7 +1876,7 @@ export default function KravunderlagDetailClient({
                         type="button"
                       >
                         {needsReferenceSaving ? tc('saving') : tc('save')}
-                      </button>
+                      </DirtyStateButton>
                       <button
                         className="min-h-11 rounded-xl border px-4 py-2.5 text-sm transition-colors hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-secondary-800"
                         disabled={needsReferenceSaving}
@@ -1933,11 +1952,13 @@ export default function KravunderlagDetailClient({
   const openNeedsReferenceForm = () => {
     if (!canEditContent) return
     setNeedsReferenceError(null)
-    setNeedsReferenceForm({
+    const nextForm = {
       description: '',
       id: null,
       text: '',
-    })
+    }
+    setNeedsReferenceForm(nextForm)
+    setNeedsReferenceFormBaseline(needsReferenceFormSignature(nextForm))
   }
   const splitPanelTabsClassName =
     'inline-flex max-w-full shrink gap-1 overflow-x-auto rounded-full bg-secondary-100 p-1 shadow-inner dark:bg-secondary-950/80'
@@ -2253,13 +2274,19 @@ export default function KravunderlagDetailClient({
                                           aria-label={t('editNeedsReference')}
                                           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-secondary-200 text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
                                           onClick={() => {
-                                            setNeedsReferenceError(null)
-                                            setNeedsReferenceForm({
+                                            const nextForm = {
                                               description:
                                                 ref.description ?? '',
                                               id: ref.id,
                                               text: ref.text,
-                                            })
+                                            }
+                                            setNeedsReferenceError(null)
+                                            setNeedsReferenceForm(nextForm)
+                                            setNeedsReferenceFormBaseline(
+                                              needsReferenceFormSignature(
+                                                nextForm,
+                                              ),
+                                            )
                                           }}
                                           type="button"
                                         >

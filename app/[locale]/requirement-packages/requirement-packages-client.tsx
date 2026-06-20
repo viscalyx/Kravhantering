@@ -21,6 +21,7 @@ import {
   useState,
 } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import FormActionRow from '@/components/FormActionRow'
@@ -218,24 +219,6 @@ function readCurrentUser(body: unknown): CurrentUser | null {
   }
 }
 
-const packageEditableSignature = (form: RequirementPackageForm) =>
-  JSON.stringify({
-    coAuthorHsaIds: coAuthorHsaIdsFromForm(form),
-    description: form.description,
-    name: form.name,
-  })
-
-const packageEditableSignatureFromItem = (
-  requirementPackage: RequirementPackage,
-) =>
-  JSON.stringify({
-    coAuthorHsaIds: (requirementPackage.coAuthors ?? [])
-      .map(coAuthor => coAuthor.hsaId.trim())
-      .filter(Boolean),
-    description: requirementPackage.description ?? '',
-    name: requirementPackage.name,
-  })
-
 const uniqueTrimmedHsaIds = (values: readonly string[]) =>
   Array.from(new Set(values.map(value => value.trim()).filter(Boolean)))
 
@@ -282,7 +265,6 @@ export default function RequirementPackagesClient() {
   const [linkedRequirementsModal, setLinkedRequirementsModal] =
     useState<LinkedRequirementsModalState | null>(null)
   const linkedReqRequestId = useRef(0)
-  const editFormSignatureRef = useRef<string | null>(null)
   const persistedCoAuthorHsaIdsRef = useRef<string[]>([])
 
   const controller = useCrudAdminResource<
@@ -293,6 +275,7 @@ export default function RequirementPackagesClient() {
     endpoint: '/api/requirement-packages',
     errorMessage: tc('error'),
     getInitialForm,
+    dirtySnapshotOptions: { unorderedArrayPaths: ['coAuthorHsaIds'] },
     listEndpoint: '/api/requirement-packages?includeArchived=true',
     listKey: 'requirementPackages',
     toCreatePayload,
@@ -424,7 +407,6 @@ export default function RequirementPackagesClient() {
     setLinkedRequirementsModal(null)
     setStateError(null)
     controller.openCreate()
-    editFormSignatureRef.current = null
     persistedCoAuthorHsaIdsRef.current = []
     controller.setForm(previousForm => ({
       ...previousForm,
@@ -438,8 +420,6 @@ export default function RequirementPackagesClient() {
   const openEdit = (requirementPackage: RequirementPackage) => {
     setStateError(null)
     setLeadChange(null)
-    editFormSignatureRef.current =
-      packageEditableSignatureFromItem(requirementPackage)
     persistedCoAuthorHsaIdsRef.current = (requirementPackage.coAuthors ?? [])
       .map(coAuthor => coAuthor.hsaId.trim())
       .filter(Boolean)
@@ -453,7 +433,6 @@ export default function RequirementPackagesClient() {
     setLinkedRequirementsLoading(false)
     setLinkedRequirementsModal(null)
     setLeadChange(null)
-    editFormSignatureRef.current = null
     persistedCoAuthorHsaIdsRef.current = []
     controller.closeForm()
   }
@@ -467,7 +446,6 @@ export default function RequirementPackagesClient() {
       setLinkedRequirementsLoading(false)
       setLinkedRequirementsModal(null)
       setLeadChange(null)
-      editFormSignatureRef.current = null
       persistedCoAuthorHsaIdsRef.current = []
     }
   }
@@ -496,9 +474,7 @@ export default function RequirementPackagesClient() {
     setLeadChange(null)
   }
 
-  const hasUnsavedPackageEdits = () =>
-    editFormSignatureRef.current !== null &&
-    editFormSignatureRef.current !== packageEditableSignature(controller.form)
+  const hasUnsavedPackageEdits = () => controller.formDirty
 
   const blockedLeadHsaIds = () =>
     uniqueTrimmedHsaIds([
@@ -552,7 +528,6 @@ export default function RequirementPackagesClient() {
         setLinkedRequirementsError(null)
         setLinkedRequirementsLoading(false)
         setLinkedRequirementsModal(null)
-        editFormSignatureRef.current = null
         persistedCoAuthorHsaIdsRef.current = []
         controller.closeForm()
       } else {
@@ -972,13 +947,14 @@ export default function RequirementPackagesClient() {
         {renderCoAuthorsSection()}
       </div>
       <FormActionRow>
-        <button
+        <DirtyStateButton
           className="btn-primary"
+          dirty={controller.formDirty}
           disabled={controller.submitting}
           type="submit"
         >
           {controller.submitting ? tc('saving') : tc('save')}
-        </button>
+        </DirtyStateButton>
         <button
           className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
           disabled={controller.submitting}
@@ -1017,13 +993,14 @@ export default function RequirementPackagesClient() {
         {renderCoAuthorsSection()}
       </div>
       <FormActionRow>
-        <button
+        <DirtyStateButton
           className="btn-primary"
+          dirty={controller.formDirty}
           disabled={controller.submitting}
           type="submit"
         >
           {controller.submitting ? tc('saving') : tc('save')}
-        </button>
+        </DirtyStateButton>
         <button
           className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
           disabled={controller.submitting}

@@ -23,6 +23,7 @@ import {
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import FormActionRow from '@/components/FormActionRow'
@@ -33,6 +34,7 @@ import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 import StatusBadge from '@/components/StatusBadge'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
@@ -271,18 +273,64 @@ function filterMatchedRequirementsBySources(
   )
 }
 
-function answerFormFingerprint(form: AnswerForm) {
-  return JSON.stringify({
-    description: form.description,
-    isNoRequirementSelection: form.isNoRequirementSelection,
-    packageIds: [...new Set(form.packageIds.map(Number))].sort(
-      (left, right) => left - right,
-    ),
-    requirementIds: [...new Set(form.requirements.map(item => item.id))].sort(
-      (left, right) => left - right,
-    ),
-    sortOrder: form.sortOrder,
+function questionFormFingerprint(form: QuestionForm, mode: 'create' | 'edit') {
+  return createDirtySnapshot({
+    ...(mode === 'create'
+      ? { areaId: form.areaId ? Number(form.areaId) : null }
+      : {}),
+    helpText: form.helpText || undefined,
+    selectionType: form.selectionType,
     text: form.text,
+  })
+}
+
+function answerFormFingerprint(form: AnswerForm) {
+  return createDirtySnapshot(
+    {
+      description: form.description || undefined,
+      isNoRequirementSelection: form.isNoRequirementSelection,
+      packageIds: form.isNoRequirementSelection
+        ? []
+        : form.packageIds.map(Number),
+      requirementIds: form.isNoRequirementSelection
+        ? []
+        : form.requirements.map(item => item.id),
+      sortOrder: Number(form.sortOrder || 0),
+      text: form.text,
+    },
+    { unorderedArrayPaths: ['packageIds', 'requirementIds'] },
+  )
+}
+
+function visibilityGroupsFingerprint(groups: VisibilityGroupForm[]) {
+  return createDirtySnapshot({
+    groups: groups
+      .map(group => ({
+        conditions: group.conditions
+          .filter(
+            condition =>
+              condition.parentQuestionId && condition.answerIds.length > 0,
+          )
+          .map(condition => ({
+            answerIds: condition.answerIds
+              .map(Number)
+              .sort((left, right) => left - right),
+            parentQuestionId: Number(condition.parentQuestionId),
+          }))
+          .sort((left, right) => {
+            const parentDelta = left.parentQuestionId - right.parentQuestionId
+            if (parentDelta !== 0) return parentDelta
+            return JSON.stringify(left.answerIds).localeCompare(
+              JSON.stringify(right.answerIds),
+            )
+          }),
+      }))
+      .filter(group => group.conditions.length > 0)
+      .sort((left, right) =>
+        JSON.stringify(left.conditions).localeCompare(
+          JSON.stringify(right.conditions),
+        ),
+      ),
   })
 }
 
@@ -886,6 +934,9 @@ export default function RequirementSelectionQuestionsClient() {
   const [questions, setQuestions] = useState<RequirementSelectionQuestion[]>([])
   const [questionForm, setQuestionForm] =
     useState<QuestionForm>(initialQuestionForm)
+  const [questionFormBaseline, setQuestionFormBaseline] = useState(() =>
+    questionFormFingerprint(initialQuestionForm, 'create'),
+  )
   const [answerForm, setAnswerForm] = useState<AnswerForm>(initialAnswerForm)
   const [answerFormBaseline, setAnswerFormBaseline] =
     useState<AnswerForm>(initialAnswerForm)
@@ -917,6 +968,9 @@ export default function RequirementSelectionQuestionsClient() {
   const [visibilityGroupsForm, setVisibilityGroupsForm] = useState<
     VisibilityGroupForm[]
   >([])
+  const [visibilityGroupsBaseline, setVisibilityGroupsBaseline] = useState(() =>
+    visibilityGroupsFingerprint([]),
+  )
   const [packageSelectorOpen, setPackageSelectorOpen] = useState(false)
   const [packageSearch, setPackageSearch] = useState('')
   const [requirementSearch, setRequirementSearch] = useState('')
@@ -1160,11 +1214,26 @@ export default function RequirementSelectionQuestionsClient() {
         : answerForm.requirements.map(requirement => requirement.id),
     [answerForm.isNoRequirementSelection, answerForm.requirements],
   )
+  const isQuestionFormDirty = useMemo(
+    () =>
+      questionFormBaseline !==
+      questionFormFingerprint(
+        questionForm,
+        editingQuestionId == null ? 'create' : 'edit',
+      ),
+    [editingQuestionId, questionForm, questionFormBaseline],
+  )
   const isAnswerFormDirty = useMemo(
     () =>
       answerFormFingerprint(answerForm) !==
       answerFormFingerprint(answerFormBaseline),
     [answerForm, answerFormBaseline],
+  )
+  const isVisibilityGroupsDirty = useMemo(
+    () =>
+      visibilityGroupsBaseline !==
+      visibilityGroupsFingerprint(visibilityGroupsForm),
+    [visibilityGroupsBaseline, visibilityGroupsForm],
   )
 
   useEffect(() => {
@@ -1428,6 +1497,9 @@ export default function RequirementSelectionQuestionsClient() {
 
   const openQuestionForm = () => {
     setQuestionForm(initialQuestionForm)
+    setQuestionFormBaseline(
+      questionFormFingerprint(initialQuestionForm, 'create'),
+    )
     setEditingQuestionId(null)
     setError(null)
     setShowQuestionForm(true)
@@ -1435,12 +1507,14 @@ export default function RequirementSelectionQuestionsClient() {
 
   const openQuestionEditForm = (question: RequirementSelectionQuestion) => {
     expandQuestion(question.id)
-    setQuestionForm({
+    const nextQuestionForm = {
       areaId: String(question.areaId),
       helpText: question.helpText ?? '',
       selectionType: question.selectionType,
       text: question.text,
-    })
+    }
+    setQuestionForm(nextQuestionForm)
+    setQuestionFormBaseline(questionFormFingerprint(nextQuestionForm, 'edit'))
     setEditingQuestionId(question.id)
     setError(null)
     setShowQuestionForm(true)
@@ -1451,6 +1525,9 @@ export default function RequirementSelectionQuestionsClient() {
     setVisibilityPanelQuestionId(question.id)
     const nextForm = visibilityFormFromQuestion(question)
     setVisibilityGroupsForm(nextForm.length > 0 ? nextForm : [])
+    setVisibilityGroupsBaseline(
+      visibilityGroupsFingerprint(nextForm.length > 0 ? nextForm : []),
+    )
     setError(null)
   }
 
@@ -1466,10 +1543,12 @@ export default function RequirementSelectionQuestionsClient() {
     if (submitting) return
     setVisibilityPanelQuestionId(null)
     setVisibilityGroupsForm([])
+    setVisibilityGroupsBaseline(visibilityGroupsFingerprint([]))
   }
 
   const saveVisibilityGroups = async () => {
     if (!visibilityPanelQuestion) return
+    if (!isVisibilityGroupsDirty) return
     setSubmitting(true)
     setError(null)
     try {
@@ -1510,6 +1589,9 @@ export default function RequirementSelectionQuestionsClient() {
   const closeQuestionForm = () => {
     if (submitting) return
     setQuestionForm(initialQuestionForm)
+    setQuestionFormBaseline(
+      questionFormFingerprint(initialQuestionForm, 'create'),
+    )
     setEditingQuestionId(null)
     setShowQuestionForm(false)
   }
@@ -1643,6 +1725,7 @@ export default function RequirementSelectionQuestionsClient() {
 
   const submitQuestion = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (!isQuestionFormDirty) return
     if (!questionForm.areaId) return
     const areaId = Number(questionForm.areaId)
     const nextSortOrder =
@@ -1676,6 +1759,9 @@ export default function RequirementSelectionQuestionsClient() {
       }
       const created = (await response.json()) as RequirementSelectionQuestion
       setQuestionForm(initialQuestionForm)
+      setQuestionFormBaseline(
+        questionFormFingerprint(initialQuestionForm, 'create'),
+      )
       expandQuestion(created.id)
       selectQuestion(created.id)
       setEditingQuestionId(null)
@@ -1691,6 +1777,7 @@ export default function RequirementSelectionQuestionsClient() {
   const createAnswer = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!selectedQuestion) return
+    if (!isAnswerFormDirty) return
     setSubmitting(true)
     setError(null)
     try {
@@ -2615,8 +2702,9 @@ export default function RequirementSelectionQuestionsClient() {
         </select>
       </div>
       <FormActionRow>
-        <button
+        <DirtyStateButton
           className="btn-primary inline-flex items-center gap-1.5"
+          dirty={isQuestionFormDirty}
           disabled={submitting}
           type="submit"
         >
@@ -2626,7 +2714,7 @@ export default function RequirementSelectionQuestionsClient() {
             <Plus aria-hidden="true" className="h-4 w-4" />
           )}
           {editingQuestionId ? copy.save : copy.create}
-        </button>
+        </DirtyStateButton>
       </FormActionRow>
     </form>
   )
@@ -2735,8 +2823,9 @@ export default function RequirementSelectionQuestionsClient() {
             />
           </div>
           <FormActionRow actionsClassName="gap-2">
-            <button
+            <DirtyStateButton
               className="btn-primary inline-flex items-center gap-1.5"
+              dirty={isAnswerFormDirty}
               disabled={submitting}
               type="submit"
             >
@@ -2746,7 +2835,7 @@ export default function RequirementSelectionQuestionsClient() {
                 <Plus aria-hidden="true" className="h-4 w-4" />
               )}
               {editingAnswerId ? copy.save : copy.addAnswer}
-            </button>
+            </DirtyStateButton>
             <button
               className="btn-secondary inline-flex items-center gap-1.5"
               disabled={submitting}
@@ -5046,8 +5135,9 @@ export default function RequirementSelectionQuestionsClient() {
                                     >
                                       {copy.cancel}
                                     </button>
-                                    <button
+                                    <DirtyStateButton
                                       className="btn-primary inline-flex items-center gap-1.5"
+                                      dirty={isVisibilityGroupsDirty}
                                       disabled={submitting}
                                       onClick={saveVisibilityGroups}
                                       type="button"
@@ -5057,7 +5147,7 @@ export default function RequirementSelectionQuestionsClient() {
                                         className="h-4 w-4"
                                       />
                                       {copy.saveVisibility}
-                                    </button>
+                                    </DirtyStateButton>
                                   </FormActionRow>
                                 </aside>
                               ) : null}

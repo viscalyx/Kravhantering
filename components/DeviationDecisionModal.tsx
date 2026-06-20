@@ -6,9 +6,11 @@ import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import { modalResizableTextareaRows3ClassName } from '@/components/modal-textarea-class'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 
 const textareaClassName = `w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500 dark:border-secondary-600 dark:bg-secondary-900 ${modalResizableTextareaRows3ClassName}`
@@ -30,6 +32,9 @@ export default function DeviationDecisionModal({
   const tc = useTranslations('common')
   const [decision, setDecision] = useState<1 | 2>(1)
   const [motivation, setMotivation] = useState('')
+  const [baselineSignature, setBaselineSignature] = useState(() =>
+    createDirtySnapshot({ decision: 1, motivation: '' }),
+  )
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
@@ -39,6 +44,7 @@ export default function DeviationDecisionModal({
     if (open) {
       setDecision(1)
       setMotivation('')
+      setBaselineSignature(createDirtySnapshot({ decision: 1, motivation: '' }))
       setOpenHelp(new Set())
     }
   }, [open])
@@ -62,10 +68,14 @@ export default function DeviationDecisionModal({
     })
   }
 
+  const formDirty =
+    baselineSignature !== createDirtySnapshot({ decision, motivation })
+
   const handleSubmit = useCallback(() => {
     if (!motivation.trim()) return
+    if (!formDirty) return
     onSubmit(decision, motivation.trim())
-  }, [decision, motivation, onSubmit])
+  }, [decision, formDirty, motivation, onSubmit])
 
   if (typeof window === 'undefined') return null
 
@@ -174,14 +184,15 @@ export default function DeviationDecisionModal({
                 >
                   {tc('cancel')}
                 </button>
-                <button
+                <DirtyStateButton
                   className="btn-primary text-sm px-4 py-2"
+                  dirty={formDirty}
                   disabled={!motivation.trim() || loading}
                   onClick={handleSubmit}
                   type="button"
                 >
                   {loading ? tc('saving') : td('recordDecision')}
-                </button>
+                </DirtyStateButton>
               </div>
             </div>
           </motion.div>

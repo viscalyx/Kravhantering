@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { ReactNode } from 'react'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
 import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
@@ -112,13 +113,14 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
         </p>
       )}
       <FormActionRow>
-        <button
+        <DirtyStateButton
           className="btn-primary"
+          dirty={controller.formDirty}
           disabled={controller.submitting}
           type="submit"
         >
           {controller.submitting ? common('saving') : common('save')}
-        </button>
+        </DirtyStateButton>
         <button
           className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200 disabled:opacity-60"
           disabled={closeDisabled}

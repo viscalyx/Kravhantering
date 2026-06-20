@@ -216,6 +216,7 @@ for (const { name, viewport } of viewportVariants) {
 
       const originalOrder = await getAdminColumnOrder(page)
       const targetOrder = swapColumns(originalOrder, 'area', 'category')
+      await expect(page.getByRole('button', { name: 'Spara' })).toBeDisabled()
 
       await setAdminColumnOrder(page, targetOrder)
       await page.getByRole('button', { name: 'Spara' }).click()

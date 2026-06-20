@@ -113,6 +113,97 @@ describe('useCrudAdminResource', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
+  it('tracks create form dirty state from the normalized payload', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ items: [] }))
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openCreate()
+    })
+
+    expect(result.current.formDirty).toBe(false)
+
+    act(() => {
+      result.current.setForm({ name: 'Created' })
+    })
+
+    expect(result.current.formDirty).toBe(true)
+
+    act(() => {
+      result.current.setForm({ name: '   ' })
+    })
+
+    expect(result.current.formDirty).toBe(false)
+  })
+
+  it('tracks edit form dirty state and reset to baseline', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ items: [{ id: 7, name: 'Editable' }] }),
+    )
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openEdit({ id: 7, name: 'Editable' })
+    })
+
+    expect(result.current.formDirty).toBe(false)
+
+    act(() => {
+      result.current.setForm({ name: 'Changed' })
+    })
+
+    expect(result.current.formDirty).toBe(true)
+
+    act(() => {
+      result.current.setForm({ name: '  Editable  ' })
+    })
+
+    expect(result.current.formDirty).toBe(false)
+  })
+
+  it('does not submit a clean open form', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ items: [] }))
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openCreate()
+    })
+
+    let didSubmit = true
+    await act(async () => {
+      didSubmit = await result.current.submit()
+    })
+
+    expect(didSubmit).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('can mark the current dirty form as clean after an in-place save', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ items: [] }))
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openCreate()
+      result.current.setForm({ name: 'Saved in place' })
+    })
+
+    expect(result.current.formDirty).toBe(true)
+
+    act(() => {
+      result.current.markFormClean()
+    })
+
+    expect(result.current.formDirty).toBe(false)
+  })
+
   it('submits a create request and reloads the list', async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse({ items: [] }))

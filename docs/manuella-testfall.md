@@ -606,16 +606,20 @@ visas och försök skapa.
 
 ### LIFE-01: skapa krav från UI
 
-**Steg:** Öppna `/sv/requirements/new`, välj kravområde, fyll kravtext och
-obligatoriska fält, spara.
+**Steg:** Öppna `/sv/requirements/new`, kontrollera att Spara är dimmad, välj
+kravområde, fyll kravtext och obligatoriska fält, kontrollera att Spara tänds,
+och spara.
 
 **Förväntat resultat:** Obligatoriska fält är markerade med asterisk och en
-kort notis vid formulärets actionknappar förklarar markeringen. Kravet skapas
-och öppnas i listan.
+kort notis vid formulärets actionknappar förklarar markeringen. Spara är
+dimmad tills användaren har gjort en normaliserad formulärändring. Kravet
+skapas och öppnas i listan.
 
 ### LIFE-02: validera obligatoriska fält vid skapande
 
-**Steg:** Skicka formuläret utan obligatoriska fält.
+**Steg:** Kontrollera att ett helt oförändrat formulär inte kan skickas. Gör
+sedan en ofullständig ändring, till exempel fyll kravtext men lämna ett annat
+obligatoriskt fält tomt, och försök skicka.
 
 **Förväntat resultat:** Obligatoriska fält är markerade med asterisk,
 fältfel visas och inget krav skapas.
@@ -762,20 +766,22 @@ paket och referenser visas.
 
 ### SPEC-02: skapa nytt kravunderlag
 
-**Steg:** Skapa kravunderlag med unikt ID, namn och kravunderlagets
-livscykelstatus. Försök först spara utan livscykelstatus.
+**Steg:** Öppna skapa-dialogen och kontrollera att Spara är dimmad. Fyll unikt
+ID och namn men lämna kravunderlagets livscykelstatus tom och försök spara.
+Välj därefter livscykelstatus och spara.
 
-**Förväntat resultat:** Formuläret stoppar sparning utan livscykelstatus. När
-livscykelstatus är vald skapas kravunderlaget och öppnas.
+**Förväntat resultat:** Spara är dimmad tills användaren har gjort en
+normaliserad metadataändring. Formuläret stoppar sparning utan
+livscykelstatus. När livscykelstatus är vald skapas kravunderlaget och öppnas.
 
 ### SPEC-03: redigera kravunderlag från titelåtgärd
 
-**Steg:** Öppna detalj, använd titelns redigeringsåtgärd och spara ny text.
-Kontrollera att kravunderlagets livscykelstatus är obligatorisk och inte kan
-blankas.
+**Steg:** Öppna detalj, använd titelns redigeringsåtgärd och kontrollera att
+Spara är dimmad innan ändring. Spara ny text. Kontrollera att kravunderlagets
+livscykelstatus är obligatorisk och inte kan blankas.
 
-**Förväntat resultat:** Ändringen visas efter omladdning och
-livscykelstatusen finns kvar.
+**Förväntat resultat:** Spara tänds först efter metadataändringen. Ändringen
+visas efter omladdning och livscykelstatusen finns kvar.
 
 ### SPEC-04: ta bort kravunderlag med bekräftelse
 
@@ -932,9 +938,11 @@ session.
 
 ### ADMIN-02: taxonomi- och statussidor sparar ändringar
 
-**Steg:** Gör en liten ändring i testbar taxonomi eller status och spara.
+**Steg:** Öppna ett testbart taxonomi- eller statusformulär, kontrollera att
+Spara är dimmad innan ändring, gör en liten ändring och spara.
 
-**Förväntat resultat:** Ändringen visas efter omladdning.
+**Förväntat resultat:** Spara tänds först efter ändringen. Ändringen visas
+efter omladdning.
 
 ### ADMIN-03: webbläsarens bakåtknapp återställer taxonomiflik
 

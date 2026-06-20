@@ -6,9 +6,11 @@ import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import { modalResizableTextareaRows4ClassName } from '@/components/modal-textarea-class'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 
 const textareaClassName = `w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500 dark:border-secondary-600 dark:bg-secondary-900 ${modalResizableTextareaRows4ClassName}`
@@ -36,6 +38,9 @@ export default function SuggestionFormModal({
   const tc = useTranslations('common')
   const [content, setContent] = useState('')
   const [createdBy, setCreatedBy] = useState('')
+  const [baselineSignature, setBaselineSignature] = useState(() =>
+    createDirtySnapshot({ content: '', createdBy: '' }),
+  )
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
@@ -43,8 +48,16 @@ export default function SuggestionFormModal({
 
   useEffect(() => {
     if (open) {
-      setContent(initialContent ?? '')
-      setCreatedBy(initialCreatedBy ?? '')
+      const nextContent = initialContent ?? ''
+      const nextCreatedBy = initialCreatedBy ?? ''
+      setContent(nextContent)
+      setCreatedBy(nextCreatedBy)
+      setBaselineSignature(
+        createDirtySnapshot({
+          content: nextContent,
+          createdBy: nextCreatedBy,
+        }),
+      )
       setOpenHelp(new Set())
     }
   }, [open, initialContent, initialCreatedBy])
@@ -69,10 +82,14 @@ export default function SuggestionFormModal({
     })
   }
 
+  const formDirty =
+    baselineSignature !== createDirtySnapshot({ content, createdBy })
+
   const handleSubmit = useCallback(() => {
     if (!content.trim()) return
+    if (!formDirty) return
     onSubmit(content.trim(), createdBy.trim())
-  }, [content, createdBy, onSubmit])
+  }, [content, createdBy, formDirty, onSubmit])
 
   if (typeof window === 'undefined') return null
 
@@ -193,14 +210,15 @@ export default function SuggestionFormModal({
                 >
                   {tc('cancel')}
                 </button>
-                <button
+                <DirtyStateButton
                   className="btn-primary text-sm px-4 py-2"
+                  dirty={formDirty}
                   disabled={!content.trim() || loading}
                   onClick={handleSubmit}
                   type="button"
                 >
                   {loading ? tc('saving') : tc('save')}
-                </button>
+                </DirtyStateButton>
               </div>
             </div>
           </motion.div>

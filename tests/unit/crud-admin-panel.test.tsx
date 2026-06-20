@@ -38,6 +38,7 @@ function PanelHarness({
   canCreate = true,
   deleteError = null,
   empty = false,
+  formDirty = true,
   formPresentation,
   loading = false,
   submitting = false,
@@ -46,6 +47,7 @@ function PanelHarness({
   canCreate?: boolean
   deleteError?: string | null
   empty?: boolean
+  formDirty?: boolean
   formPresentation?: 'inline' | 'modal'
   loading?: boolean
   submitting?: boolean
@@ -58,6 +60,7 @@ function PanelHarness({
     deletingIds: new Set(),
     editId: null,
     form,
+    formDirty,
     formError: null,
     items: loading || empty ? [] : [{ id: 1, name: 'One' }],
     loading,
@@ -65,6 +68,7 @@ function PanelHarness({
     openCreate: () => setShowForm(true),
     openEdit: openEditMock,
     reload: async () => {},
+    markFormClean: () => {},
     remove: removeMock,
     setForm,
     showForm,
@@ -237,6 +241,19 @@ describe('CrudAdminPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
 
     expect(submitMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('disables save for a clean form', () => {
+    render(<PanelHarness formDirty={false} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.create' }))
+
+    const saveButton = screen.getByRole('button', { name: 'common.save' })
+    expect(saveButton).toBeDisabled()
+    expect(saveButton).toHaveAttribute('title', 'common.noChangesToSave')
+
+    fireEvent.click(saveButton)
+    expect(submitMock).not.toHaveBeenCalled()
   })
 
   it('renders error and loading states', () => {

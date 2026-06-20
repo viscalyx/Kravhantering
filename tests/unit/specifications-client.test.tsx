@@ -685,6 +685,12 @@ describe('RequirementsSpecificationsClient', () => {
     expect(actionRow).toContainElement(
       within(dialog).getByRole('button', { name: /common\.cancel/i }),
     )
+    expect(
+      within(dialog).getByRole('button', { name: /common\.save/i }),
+    ).toBeDisabled()
+    expect(
+      within(dialog).getByRole('button', { name: /common\.save/i }),
+    ).toHaveAttribute('title', 'common.noChangesToSave')
     expect(form?.querySelector('.grid')).toHaveClass('lg:grid-cols-2')
     expect(
       screen.getByRole('textbox', { name: /specification\.name/ }),

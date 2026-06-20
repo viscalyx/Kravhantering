@@ -1094,6 +1094,9 @@ describe('RequirementSelectionQuestionsClient', () => {
     expect(screen.getByRole('textbox', { name: /^Text/ })).toHaveValue(
       'Second answer',
     )
+    fireEvent.change(screen.getByRole('textbox', { name: /^Text/ }), {
+      target: { value: 'Second answer updated' },
+    })
     expect(
       within(
         screen.getByRole('dialog', {

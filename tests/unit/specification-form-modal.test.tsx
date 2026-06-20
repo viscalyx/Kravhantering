@@ -193,6 +193,10 @@ describe('SpecificationFormModal', () => {
     expect(actionRow).toContainElement(
       screen.getByRole('button', { name: /common\.cancel/i }),
     )
+    expect(screen.getByRole('button', { name: /common\.save/i })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /common\.save/i }),
+    ).toHaveAttribute('title', 'common.noChangesToSave')
     expect(screen.getByText('Ada Admin')).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
@@ -490,6 +494,11 @@ describe('SpecificationFormModal', () => {
       screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
     ).toHaveValue('')
 
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+      { target: { value: 'Påbörjat kravunderlag' } },
+    )
+
     view.rerender(createModalElement({ currentUser }))
 
     await waitFor(() => {
@@ -499,6 +508,9 @@ describe('SpecificationFormModal', () => {
         }),
       ).toHaveValue(currentUser.hsaId)
     })
+    expect(
+      screen.getByRole('textbox', { name: /specification\.name/ }),
+    ).toHaveValue('Påbörjat kravunderlag')
     expect(
       screen.getByRole('button', { name: /common\.save/i }),
     ).not.toBeDisabled()

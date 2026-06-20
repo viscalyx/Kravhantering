@@ -121,8 +121,9 @@ in the requirements library and survives a hard page reload.
 1. Navigate to `/sv/admin`.
 1. Read the current column order.
 1. Compute a target order that swaps `area` and `category`.
-1. Apply the target order via `setAdminColumnOrder`, and click "Spara".
-   Assert "Sparat" appears.
+1. Assert "Spara" is disabled before any column change.
+1. Apply the target order via `setAdminColumnOrder`, and click "Spara". Assert
+   "Sparat" appears.
 1. Navigate to `/sv/requirements`.
 1. Assert the column index of "Kategori" is before or after "Kravområde"
    consistent with the swapped order.

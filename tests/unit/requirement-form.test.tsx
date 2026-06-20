@@ -110,6 +110,25 @@ describe('RequirementForm', () => {
     ).toBeInTheDocument()
   })
 
+  it('keeps create save disabled until the form has a normalized change', async () => {
+    render(<RequirementForm mode="create" />)
+
+    const saveButton = await screen.findByRole('button', {
+      name: /common\.save/i,
+    })
+    expect(saveButton).toBeDisabled()
+    expect(saveButton).toHaveAttribute('title', 'common.noChangesToSave')
+
+    const desc = screen.getByRole('textbox', {
+      name: /requirement\.description/,
+    })
+    fireEvent.change(desc, { target: { value: 'My desc' } })
+    expect(saveButton).toBeEnabled()
+
+    fireEvent.change(desc, { target: { value: '   ' } })
+    expect(saveButton).toBeDisabled()
+  })
+
   it('renders edit mode form', async () => {
     const { container } = render(
       <RequirementForm
@@ -268,6 +287,11 @@ describe('RequirementForm', () => {
       expect(fetchMock).toHaveBeenCalledWith('/api/requirement-areas')
     })
 
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: 'Created description' } },
+    )
+
     const form = container.querySelector('form') as HTMLFormElement
     fireEvent.submit(form)
 
@@ -325,6 +349,11 @@ describe('RequirementForm', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/requirement-areas')
     })
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: 'Changed existing' } },
+    )
 
     const form = container.querySelector('form') as HTMLFormElement
     fireEvent.submit(form)
@@ -457,6 +486,12 @@ describe('RequirementForm', () => {
       />,
     )
 
+    fireEvent.change(
+      await screen.findByRole('textbox', {
+        name: /requirement\.description/,
+      }),
+      { target: { value: 'Changed before conflict' } },
+    )
     fireEvent.submit(container.querySelector('form') as HTMLFormElement)
 
     await waitFor(() => {
@@ -521,6 +556,12 @@ describe('RequirementForm', () => {
       />,
     )
 
+    fireEvent.change(
+      await screen.findByRole('textbox', {
+        name: /requirement\.description/,
+      }),
+      { target: { value: 'Changed before reload conflict' } },
+    )
     fireEvent.submit(container.querySelector('form') as HTMLFormElement)
 
     const reload = await screen.findByRole('button', {

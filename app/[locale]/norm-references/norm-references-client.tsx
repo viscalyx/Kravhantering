@@ -13,6 +13,7 @@ import {
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useDeferredValue, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import FloatingActionRail from '@/components/FloatingActionRail'
 import FormActionRow from '@/components/FormActionRow'
 import FormModal from '@/components/FormModal'
@@ -377,13 +378,14 @@ export default function NormReferencesClient() {
         </p>
       )}
       <FormActionRow>
-        <button
+        <DirtyStateButton
           className="btn-primary"
+          dirty={controller.formDirty}
           disabled={controller.submitting}
           type="submit"
         >
           {controller.submitting ? tc('saving') : tc('save')}
-        </button>
+        </DirtyStateButton>
         <button
           className="min-h-11 min-w-11 rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
           disabled={controller.submitting}

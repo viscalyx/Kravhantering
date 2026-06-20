@@ -151,6 +151,8 @@ Admin center reset:
 
 - reverts the unsaved admin form state to the last successfully saved server
   state
+- keeps the primary save button disabled until the normalized admin form payload
+  differs from that saved state
 
 Requirements list reset:
 

@@ -12,9 +12,11 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import { modalResizableTextareaRows4ClassName } from '@/components/modal-textarea-class'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 
 const textareaClassName = `w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm dark:border-secondary-600 dark:bg-secondary-900 ${modalResizableTextareaRows4ClassName}`
@@ -44,6 +46,9 @@ export default function DeviationFormModal({
   const td = useTranslations('deviation')
   const tc = useTranslations('common')
   const [motivation, setMotivation] = useState('')
+  const [baselineSignature, setBaselineSignature] = useState(() =>
+    createDirtySnapshot({ motivation: '' }),
+  )
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
@@ -52,7 +57,9 @@ export default function DeviationFormModal({
   // Reset fields when opening
   useClientLayoutEffect(() => {
     if (open) {
-      setMotivation(initialMotivation ?? '')
+      const nextMotivation = initialMotivation ?? ''
+      setMotivation(nextMotivation)
+      setBaselineSignature(createDirtySnapshot({ motivation: nextMotivation }))
       setOpenHelp(new Set())
     }
   }, [open, initialMotivation])
@@ -76,10 +83,13 @@ export default function DeviationFormModal({
     })
   }
 
+  const formDirty = baselineSignature !== createDirtySnapshot({ motivation })
+
   const handleSubmit = useCallback(() => {
     if (!motivation.trim()) return
+    if (!formDirty) return
     onSubmit(motivation.trim())
-  }, [motivation, onSubmit])
+  }, [formDirty, motivation, onSubmit])
 
   if (typeof window === 'undefined') return null
 
@@ -182,8 +192,9 @@ export default function DeviationFormModal({
                 >
                   {tc('cancel')}
                 </button>
-                <button
+                <DirtyStateButton
                   className="btn-primary text-sm px-4 py-2"
+                  dirty={formDirty}
                   disabled={!motivation.trim() || loading}
                   onClick={handleSubmit}
                   type="button"
@@ -193,7 +204,7 @@ export default function DeviationFormModal({
                     : initialMotivation
                       ? tc('save')
                       : td('newDeviation')}
-                </button>
+                </DirtyStateButton>
               </div>
             </div>
           </motion.div>
