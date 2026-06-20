@@ -15,6 +15,15 @@ The behaviors below apply to the requirement list rendered by:
 - `components/RequirementsTable.tsx`
 - `lib/requirements/list-view.ts`
 
+## Form Required Fields
+
+- Create and edit forms show a short hint near the start explaining that fields
+  marked with `*` are required.
+- Required field labels use a visible red `*` marker. The marker is part of the
+  label text so the field name remains clear in assistive technology and tests.
+- The marker is a visual convention only; browser `required` attributes and
+  server-side route validation remain the enforcement points.
+
 ## Route Compatibility
 
 - `/requirements/...` remains the existing browser path for the Requirements

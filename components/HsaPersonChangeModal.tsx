@@ -7,6 +7,7 @@ import HsaPersonVerifyField, {
   type HsaPersonVerification,
   type HsaPersonVerificationPurpose,
 } from '@/components/HsaPersonVerifyField'
+import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import { isHsaId } from '@/lib/auth/hsa-id'
 
 export type HsaPersonChangeSubmitResult =
@@ -146,6 +147,7 @@ export default function HsaPersonChangeModal({
         <p className="text-sm text-secondary-600 dark:text-secondary-400">
           {description}
         </p>
+        <RequiredFieldsHint />
         <div>
           <FieldLabelWithHelp
             help={currentHelp}

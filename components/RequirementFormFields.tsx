@@ -11,6 +11,8 @@ import {
   useState,
 } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import RequiredFieldMarker from '@/components/RequiredFieldMarker'
+import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import type {
   NormReferenceOption,
   QualityCharacteristicOption,
@@ -238,7 +240,7 @@ export default function RequirementFormFields({
           <div className="flex items-center gap-1.5 mb-1">
             <label className="text-sm font-medium" htmlFor={fid('areaId')}>
               {t('area')}
-              {areaRequired ? <span aria-hidden="true"> *</span> : null}
+              {areaRequired ? <RequiredFieldMarker /> : null}
             </label>
             {helpButton(fid('areaId'), t('area'))}
           </div>
@@ -271,7 +273,8 @@ export default function RequirementFormFields({
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <label className="text-sm font-medium" htmlFor={fid('description')}>
-            {t('description')} <span aria-hidden="true">*</span>
+            {t('description')}
+            <RequiredFieldMarker />
           </label>
           {helpButton(fid('description'), t('description'))}
         </div>
@@ -441,7 +444,8 @@ export default function RequirementFormFields({
               className="text-sm font-medium"
               htmlFor={fid('verificationMethod')}
             >
-              {t('verificationMethod')} <span aria-hidden="true">*</span>
+              {t('verificationMethod')}
+              <RequiredFieldMarker />
             </label>
             {helpButton(fid('verificationMethod'), t('verificationMethod'))}
           </div>
@@ -543,6 +547,7 @@ export default function RequirementFormFields({
   if (layout === 'bottom') {
     return (
       <div className="space-y-5">
+        <RequiredFieldsHint />
         {mainFields}
         <div className="grid gap-5 lg:grid-cols-2">
           {requirementPackagesFieldset && (
@@ -635,16 +640,19 @@ export default function RequirementFormFields({
   }
 
   return (
-    <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(32rem,34rem)]">
-      <div className="space-y-5" ref={mainFieldsRef}>
-        {mainFields}
-      </div>
-      <div
-        className="grid min-h-0 gap-6 sm:grid-cols-2 lg:h-(--requirement-association-height) lg:max-h-(--requirement-association-height) lg:w-136 lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden"
-        style={associationSidebarStyle}
-      >
-        {requirementPackagesFieldset}
-        {normReferencesFieldset}
+    <div className="space-y-5">
+      <RequiredFieldsHint />
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(32rem,34rem)]">
+        <div className="space-y-5" ref={mainFieldsRef}>
+          {mainFields}
+        </div>
+        <div
+          className="grid min-h-0 gap-6 sm:grid-cols-2 lg:h-(--requirement-association-height) lg:max-h-(--requirement-association-height) lg:w-136 lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden"
+          style={associationSidebarStyle}
+        >
+          {requirementPackagesFieldset}
+          {normReferencesFieldset}
+        </div>
       </div>
     </div>
   )

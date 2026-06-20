@@ -32,6 +32,7 @@ import HsaPersonVerifyField, {
   type HsaPersonVerification,
 } from '@/components/HsaPersonVerifyField'
 import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
+import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
@@ -956,6 +957,7 @@ export default function RequirementPackagesClient() {
       })}
       onSubmit={submit}
     >
+      <RequiredFieldsHint />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div className="space-y-5">
           {renderPackageFormFields()}
@@ -1001,6 +1003,7 @@ export default function RequirementPackagesClient() {
       })}
       onSubmit={submit}
     >
+      <RequiredFieldsHint />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div className="space-y-5">
           {renderPackageFormFields()}

@@ -162,7 +162,8 @@ normreferenser och kravpaket.
 
 Fyll i kravtext och acceptanskriterier. Välj sedan kravområde, kategori, typ och
 risknivå i respektive rullgardinsmeny. Alla obligatoriska fält markeras med
-asterisk (*). Klicka på "Spara" när formuläret är komplett.
+asterisk (*) och formuläret visar en kort notis om markeringen. Klicka på
+"Spara" när formuläret är komplett.
 
 ![Skapa krav — ifyllt formulär](images/014-nytt-krav-ifyllt.png)
 

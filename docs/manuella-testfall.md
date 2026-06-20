@@ -609,13 +609,15 @@ visas och försök skapa.
 **Steg:** Öppna `/sv/requirements/new`, välj kravområde, fyll kravtext och
 obligatoriska fält, spara.
 
-**Förväntat resultat:** Kravet skapas och öppnas i listan.
+**Förväntat resultat:** Obligatoriska fält är markerade med asterisk och en
+kort notis förklarar markeringen. Kravet skapas och öppnas i listan.
 
 ### LIFE-02: validera obligatoriska fält vid skapande
 
 **Steg:** Skicka formuläret utan obligatoriska fält.
 
-**Förväntat resultat:** Fältfel visas och inget krav skapas.
+**Förväntat resultat:** Obligatoriska fält är markerade med asterisk,
+fältfel visas och inget krav skapas.
 
 ### LIFE-03: skicka utkast till granskning
 

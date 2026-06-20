@@ -28,6 +28,7 @@ import FloatingActionRail from '@/components/FloatingActionRail'
 import FormModal from '@/components/FormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { modalResizableTextareaResizeClassName } from '@/components/modal-textarea-class'
+import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 import StatusBadge from '@/components/StatusBadge'
@@ -2495,6 +2496,7 @@ export default function RequirementSelectionQuestionsClient() {
       })}
       onSubmit={submitQuestion}
     >
+      <RequiredFieldsHint />
       {showQuestionForm && error ? (
         <p
           className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
@@ -2657,6 +2659,7 @@ export default function RequirementSelectionQuestionsClient() {
       })}
       onSubmit={createAnswer}
     >
+      <RequiredFieldsHint />
       {showAnswerForm && error ? (
         <p
           className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
@@ -4643,6 +4646,9 @@ export default function RequirementSelectionQuestionsClient() {
                                       >
                                         {error}
                                       </p>
+                                    ) : null}
+                                    {visibilityGroupsForm.length > 0 ? (
+                                      <RequiredFieldsHint />
                                     ) : null}
                                     {visibilityGroupsForm.length === 0 ? (
                                       <div className="rounded-xl border border-secondary-200 bg-secondary-50 px-4 py-3 text-sm text-secondary-700 dark:border-secondary-800 dark:bg-secondary-900/50 dark:text-secondary-200">

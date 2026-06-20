@@ -12,6 +12,7 @@ import HsaPersonChangeModal, {
 import HsaPersonVerifyField, {
   type HsaPersonVerification,
 } from '@/components/HsaPersonVerifyField'
+import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
@@ -783,6 +784,7 @@ export default function SpecificationFormModal({
           })}
           onSubmit={handleSubmit}
         >
+          <RequiredFieldsHint />
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="space-y-5">
               <div>

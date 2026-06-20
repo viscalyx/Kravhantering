@@ -67,6 +67,7 @@
     "share": "Share",
     "copied": "Copied",
     "help": "Help",
+    "requiredFieldsHint": "Fields marked with * are required.",
     "backToTop": "Back to top",
     "anonymousUser": "Anonymous",
     "selectAll": "Select all",

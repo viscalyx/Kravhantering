@@ -468,7 +468,8 @@ describe('RequirementPackagesClient', () => {
     expect(dialog).toHaveClass('max-w-5xl')
     const form = dialog.querySelector('[data-developer-mode-name="crud form"]')
     expect(form).toHaveClass('space-y-6')
-    const layoutGrid = form?.firstElementChild
+    expect(within(dialog).getByText('common.requiredFieldsHint')).toBeVisible()
+    const layoutGrid = form?.querySelector('.grid')
     expect(layoutGrid).toHaveClass('grid')
     expect(layoutGrid).toHaveClass('grid-cols-1')
     expect(layoutGrid).toHaveClass(

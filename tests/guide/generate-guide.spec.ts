@@ -987,7 +987,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'nytt-krav-ifyllt',
         'Skapa krav — ifyllt formulär',
-        'Fyll i kravtext och acceptanskriterier. Välj sedan kravområde, kategori, typ och risknivå i respektive rullgardinsmeny. Alla obligatoriska fält markeras med asterisk (*). Klicka på "Spara" när formuläret är komplett.',
+        'Fyll i kravtext och acceptanskriterier. Välj sedan kravområde, kategori, typ och risknivå i respektive rullgardinsmeny. Alla obligatoriska fält markeras med asterisk (*) och formuläret visar en kort notis om markeringen. Klicka på "Spara" när formuläret är komplett.',
       )
     })
 

@@ -5,6 +5,8 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useRef, useState } from 'react'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import IconPicker from '@/components/IconPicker'
+import RequiredFieldMarker from '@/components/RequiredFieldMarker'
+import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
@@ -207,12 +209,14 @@ export default function RiskLevelsClient() {
                   onSubmit={submit}
                 >
                   <h2 className="text-lg font-semibold">{tc('edit')}</h2>
+                  <RequiredFieldsHint />
                   <div>
                     <label
                       className="block text-sm font-medium mb-1"
                       htmlFor="rl-name-sv"
                     >
-                      {t('name')} (SV) <span aria-hidden="true">*</span>
+                      {t('name')} (SV)
+                      <RequiredFieldMarker />
                     </label>
                     <input
                       className={inputClassName}
@@ -233,7 +237,8 @@ export default function RiskLevelsClient() {
                       className="block text-sm font-medium mb-1"
                       htmlFor="rl-name-en"
                     >
-                      {t('name')} (EN) <span aria-hidden="true">*</span>
+                      {t('name')} (EN)
+                      <RequiredFieldMarker />
                     </label>
                     <input
                       className={inputClassName}
@@ -254,7 +259,8 @@ export default function RiskLevelsClient() {
                       className="block text-sm font-medium mb-1"
                       htmlFor="rl-color"
                     >
-                      {t('color')} <span aria-hidden="true">*</span>
+                      {t('color')}
+                      <RequiredFieldMarker />
                     </label>
                     <div className="flex items-center gap-3">
                       <input

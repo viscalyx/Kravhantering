@@ -4,6 +4,8 @@ import { ExternalLink, HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { type ReactNode, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import RequiredFieldMarker from '@/components/RequiredFieldMarker'
+import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { getBrowserLinkUri } from '@/lib/norm-references/browser-link-uri'
 
@@ -86,6 +88,7 @@ export default function NormReferenceFormFields({
 
   return (
     <>
+      <RequiredFieldsHint />
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <label className="text-sm font-medium" htmlFor={`${idPrefix}-id`}>
@@ -105,7 +108,8 @@ export default function NormReferenceFormFields({
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <label className="text-sm font-medium" htmlFor={`${idPrefix}-name`}>
-            {t('name')} <span aria-hidden="true">*</span>
+            {t('name')}
+            <RequiredFieldMarker />
           </label>
           {helpButton('name', t('name'))}
         </div>
@@ -121,7 +125,8 @@ export default function NormReferenceFormFields({
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <label className="text-sm font-medium" htmlFor={`${idPrefix}-type`}>
-            {t('type')} <span aria-hidden="true">*</span>
+            {t('type')}
+            <RequiredFieldMarker />
           </label>
           {helpButton('type', t('type'))}
         </div>
@@ -147,7 +152,8 @@ export default function NormReferenceFormFields({
             className="text-sm font-medium"
             htmlFor={`${idPrefix}-reference`}
           >
-            {t('reference')} <span aria-hidden="true">*</span>
+            {t('reference')}
+            <RequiredFieldMarker />
           </label>
           {helpButton('reference', t('reference'))}
         </div>
@@ -182,7 +188,8 @@ export default function NormReferenceFormFields({
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <label className="text-sm font-medium" htmlFor={`${idPrefix}-issuer`}>
-            {t('issuer')} <span aria-hidden="true">*</span>
+            {t('issuer')}
+            <RequiredFieldMarker />
           </label>
           {helpButton('issuer', t('issuer'))}
         </div>

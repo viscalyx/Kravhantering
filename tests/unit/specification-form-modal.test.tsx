@@ -182,6 +182,7 @@ describe('SpecificationFormModal', () => {
     expect(
       screen.getByRole('combobox', { name: /specification\.lifecycleStatus/ }),
     ).toHaveValue('3')
+    expect(screen.getByText('common.requiredFieldsHint')).toBeInTheDocument()
     expect(screen.getByText('Ada Admin')).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
@@ -193,9 +194,9 @@ describe('SpecificationFormModal', () => {
       '[data-developer-mode-name="crud form"][data-developer-mode-context="requirements specification detail"]',
     )
     expect(form).toHaveAttribute('data-developer-mode-value', 'edit')
-    expect(form?.firstElementChild).toHaveClass('grid')
-    expect(form?.firstElementChild).toHaveClass('grid-cols-1')
-    expect(form?.firstElementChild).toHaveClass('lg:grid-cols-2')
+    const fieldGrid = form?.querySelector('.grid')
+    expect(fieldGrid).toHaveClass('grid-cols-1')
+    expect(fieldGrid).toHaveClass('lg:grid-cols-2')
   })
 
   it('keeps edit controls disabled when server permissions are missing', () => {

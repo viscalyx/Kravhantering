@@ -6,6 +6,8 @@ import { useTranslations } from 'next-intl'
 import type { KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import RequiredFieldMarker from '@/components/RequiredFieldMarker'
+import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 import type { UseAddToSpecificationDialogResult } from './use-add-to-specification-dialog'
 
@@ -111,14 +113,15 @@ export default function AddToSpecificationDialog({
               </p>
             ) : (
               <form className="space-y-4" onSubmit={dialog.handleSubmit}>
+                <RequiredFieldsHint />
                 <div>
                   <div className="mb-1 flex items-center gap-1.5">
                     <label
                       className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
                       htmlFor="atp-specification"
                     >
-                      {tp('selectSpecification')}{' '}
-                      <span aria-hidden="true">*</span>
+                      {tp('selectSpecification')}
+                      <RequiredFieldMarker />
                     </label>
                     {helpButton('atp-specification', tp('selectSpecification'))}
                   </div>

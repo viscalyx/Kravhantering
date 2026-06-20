@@ -674,7 +674,8 @@ describe('RequirementsSpecificationsClient', () => {
       '[data-developer-mode-name="crud form"][data-developer-mode-context="specifications"]',
     )
     expect(form).toHaveAttribute('data-developer-mode-value', 'create')
-    expect(form?.firstElementChild).toHaveClass('lg:grid-cols-2')
+    expect(screen.getByText('common.requiredFieldsHint')).toBeInTheDocument()
+    expect(form?.querySelector('.grid')).toHaveClass('lg:grid-cols-2')
     expect(
       screen.getByRole('textbox', { name: /specification\.name/ }),
     ).toBeInTheDocument()

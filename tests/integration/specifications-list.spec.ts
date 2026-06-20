@@ -111,7 +111,10 @@ for (const viewport of viewports) {
           'form#requirement-specification-form',
         )
         await expect(createForm).toBeVisible()
-        await expect(createForm.locator('> div').first()).toHaveClass(
+        await expect(
+          createForm.getByText('Fält markerade med * är obligatoriska.'),
+        ).toBeVisible()
+        await expect(createForm.locator(':scope > div.grid')).toHaveClass(
           /lg:grid-cols-2/,
         )
         await expect(
@@ -151,7 +154,10 @@ for (const viewport of viewports) {
           'form#requirement-specification-form',
         )
         await expect(editForm).toBeVisible()
-        await expect(editForm.locator('> div').first()).toHaveClass(
+        await expect(
+          editForm.getByText('Fält markerade med * är obligatoriska.'),
+        ).toBeVisible()
+        await expect(editForm.locator(':scope > div.grid')).toHaveClass(
           /lg:grid-cols-2/,
         )
         await expect(

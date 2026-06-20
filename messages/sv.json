@@ -67,6 +67,7 @@
     "share": "Dela",
     "copied": "Kopierad",
     "help": "Hjälp",
+    "requiredFieldsHint": "Fält markerade med * är obligatoriska.",
     "backToTop": "Till toppen",
     "anonymousUser": "Anonym",
     "selectAll": "Markera alla",

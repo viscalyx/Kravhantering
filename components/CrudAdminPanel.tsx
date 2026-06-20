@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import type { ReactNode } from 'react'
 import FormModal from '@/components/FormModal'
 import { modalResizableTextareaClassName } from '@/components/modal-textarea-class'
+import RequiredFieldsHint from '@/components/RequiredFieldsHint'
 import type { CrudAdminResourceController } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
@@ -90,6 +91,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
       {showHeading ? (
         <h2 className="text-lg font-semibold">{resolvedFormTitle}</h2>
       ) : null}
+      <RequiredFieldsHint />
       {renderFormFields({
         disabled: controller.submitting,
         editId: controller.editId,
