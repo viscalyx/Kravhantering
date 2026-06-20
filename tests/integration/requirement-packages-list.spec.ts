@@ -17,6 +17,15 @@ function splitHsaId(hsaId: string): { prefix: string; suffix: string } {
   }
 }
 
+const deterministicPackageLeadVerification = {
+  displayName: 'Ada Admin',
+  email: 'ada.admin@example.test',
+  givenName: 'Ada',
+  hsaId: 'SE5560000001-admin1',
+  middleName: null,
+  surname: 'Admin',
+}
+
 async function fillEditableHsaId(
   scope: Locator,
   inputName: string,
@@ -36,6 +45,34 @@ for (const viewport of viewports) {
     test('filters the table by package name or description and clears the search', async ({
       page,
     }) => {
+      const hsaVerifyRequests: Record<string, unknown>[] = []
+      await page.route(
+        '**/api/requirement-responsibility-people/verify',
+        async route => {
+          const payload = route.request().postDataJSON() as Record<
+            string,
+            unknown
+          >
+          hsaVerifyRequests.push(payload)
+
+          if (
+            payload.hsaId === deterministicPackageLeadVerification.hsaId &&
+            payload.purpose === 'requirement_package_lead'
+          ) {
+            await route.fulfill({
+              body: JSON.stringify({
+                person: deterministicPackageLeadVerification,
+              }),
+              contentType: 'application/json',
+              status: 200,
+            })
+            return
+          }
+
+          await route.continue()
+        },
+      )
+
       await test.step('open the package stewardship list', async () => {
         await page.goto('/sv/requirements/stewardship?tab=packages')
 
@@ -262,6 +299,14 @@ for (const viewport of viewports) {
         await expect(
           changeDialog.getByText('Ada Admin (ada.admin@example.test)'),
         ).toBeVisible()
+        expect(hsaVerifyRequests).toContainEqual(
+          expect.objectContaining({
+            hsaId: deterministicPackageLeadVerification.hsaId,
+            mode: 'refresh',
+            purpose: 'requirement_package_lead',
+            scopeId: 1,
+          }),
+        )
 
         await fillEditableHsaId(
           changeDialog,

@@ -40,6 +40,9 @@ flowchart TD
 - The suite runs the same scenario for mobile (`375x812`) and desktop
   (`1280x720`) viewports.
 - The standard Playwright global setup provides an authenticated admin session.
+- The spec fulfills the HSA person verification request for the lead-change
+  blur flow with a deterministic person, because the normal dev and prodlike CI
+  matrix starts SQL Server and Keycloak but not the optional HSA mock stack.
 - The desktop variant measures the floating create button and package-list
   surface to prevent regressions where the button follows the search field
   instead of the list.
