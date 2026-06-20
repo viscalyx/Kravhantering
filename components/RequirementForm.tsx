@@ -597,7 +597,7 @@ function NormReferenceModal({
         aria-describedby="modal-desc-norm-ref"
         aria-labelledby="modal-title-norm-ref"
         aria-modal="true"
-        className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+        className="relative z-10 w-full max-w-4xl rounded-2xl bg-white dark:bg-secondary-900 border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto"
         ref={dialogRef}
         role="dialog"
         {...dialogPanelMotion(shouldReduceMotion, { duration: 0.22 })}
@@ -640,6 +640,7 @@ function NormReferenceModal({
           <NormReferenceFormFields
             form={normRefForm}
             idPrefix="modal-nr"
+            layout="create"
             onSetField={onSetField}
           />
         </div>

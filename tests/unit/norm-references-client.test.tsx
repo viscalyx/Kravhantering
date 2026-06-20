@@ -219,6 +219,43 @@ describe('NormReferencesClient', () => {
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
+  it('uses the domain-ordered two-column layout when creating norm references', async () => {
+    render(<NormReferencesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('BBR')).toBeInTheDocument()
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /normReference\.newNormReference/i,
+      }),
+    )
+
+    const nameInput = await screen.findByRole('textbox', {
+      name: /^normReference\.name/,
+    })
+    const form = nameInput.closest('form')
+    expect(form).toBeInTheDocument()
+
+    const createGrid = nameInput.closest('div')?.parentElement
+    expect(createGrid).toHaveClass('grid', 'grid-cols-1', 'lg:grid-cols-2')
+
+    expect(
+      Array.from(form?.querySelectorAll('input') ?? []).map(input => input.id),
+    ).toEqual([
+      'norm-reference-name',
+      'norm-reference-type',
+      'norm-reference-reference',
+      'norm-reference-version',
+      'norm-reference-issuer',
+      'norm-reference-uri',
+      'norm-reference-id',
+    ])
+    expect(
+      form?.querySelector('#norm-reference-id')?.closest('div'),
+    ).toHaveClass('lg:col-span-2')
+  })
+
   it('opens create form and submits it', async () => {
     render(<NormReferencesClient />)
     await waitFor(() => {
@@ -299,6 +336,19 @@ describe('NormReferencesClient', () => {
       name: /^normReference\.name/,
     })) as HTMLInputElement
     expect(nameInput.value).toBe('BBR')
+    const form = nameInput.closest('form')
+    expect(
+      Array.from(form?.querySelectorAll('input') ?? []).map(input => input.id),
+    ).toEqual([
+      'norm-reference-id',
+      'norm-reference-name',
+      'norm-reference-type',
+      'norm-reference-reference',
+      'norm-reference-version',
+      'norm-reference-issuer',
+      'norm-reference-uri',
+    ])
+    expect(nameInput.closest('div')?.parentElement).toBe(form)
     await waitFor(() => {
       expect(screen.getByText('REQ-1')).toBeInTheDocument()
     })

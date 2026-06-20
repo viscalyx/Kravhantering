@@ -22,6 +22,7 @@ interface NormReferenceFormData {
 interface NormReferenceFormFieldsProps {
   form: NormReferenceFormData
   idPrefix: string
+  layout?: 'create' | 'stacked'
   onSetField: (field: string, value: string) => void
 }
 
@@ -45,6 +46,7 @@ const uriLinkClass =
 export default function NormReferenceFormFields({
   form,
   idPrefix,
+  layout = 'stacked',
   onSetField,
 }: NormReferenceFormFieldsProps) {
   const t = useTranslations('normReference')
@@ -86,162 +88,204 @@ export default function NormReferenceFormFields({
     </AnimatedHelpPanel>
   )
 
+  const normReferenceIdField = (className?: string) => (
+    <div className={className}>
+      <div className="flex items-center gap-1.5 mb-1">
+        <label className="text-sm font-medium" htmlFor={`${idPrefix}-id`}>
+          {t('normReferenceId')}
+        </label>
+        {helpButton('normReferenceId', t('normReferenceId'))}
+      </div>
+      {helpPanel('normReferenceIdHelp', 'normReferenceId')}
+      <input
+        className={fieldClass}
+        id={`${idPrefix}-id`}
+        onChange={e => onSetField('normReferenceId', e.target.value)}
+        placeholder={t('normReferenceIdPlaceholder')}
+        value={form.normReferenceId}
+      />
+    </div>
+  )
+
+  const nameField = (
+    <div>
+      <div className="flex items-center gap-1.5 mb-1">
+        <label className="text-sm font-medium" htmlFor={`${idPrefix}-name`}>
+          {t('name')}
+          <RequiredFieldMarker />
+        </label>
+        {helpButton('name', t('name'))}
+      </div>
+      {helpPanel('help.name', 'name')}
+      <input
+        className={fieldClass}
+        id={`${idPrefix}-name`}
+        onChange={e => onSetField('name', e.target.value)}
+        required
+        value={form.name}
+      />
+    </div>
+  )
+
+  const typeField = (
+    <div>
+      <div className="flex items-center gap-1.5 mb-1">
+        <label className="text-sm font-medium" htmlFor={`${idPrefix}-type`}>
+          {t('type')}
+          <RequiredFieldMarker />
+        </label>
+        {helpButton('type', t('type'))}
+      </div>
+      {helpPanel('typeHelp', 'type')}
+      <input
+        className={fieldClass}
+        id={`${idPrefix}-type`}
+        list={`${idPrefix}-type-list`}
+        onChange={e => onSetField('type', e.target.value)}
+        placeholder={t('typePlaceholder')}
+        required
+        value={form.type}
+      />
+      <datalist id={`${idPrefix}-type-list`}>
+        {TYPE_SUGGESTION_KEYS.map(key => (
+          <option key={key} value={t(key)} />
+        ))}
+      </datalist>
+    </div>
+  )
+
+  const referenceField = (
+    <div>
+      <div className="flex items-center gap-1.5 mb-1">
+        <label
+          className="text-sm font-medium"
+          htmlFor={`${idPrefix}-reference`}
+        >
+          {t('reference')}
+          <RequiredFieldMarker />
+        </label>
+        {helpButton('reference', t('reference'))}
+      </div>
+      {helpPanel('referenceHelp', 'reference')}
+      <input
+        className={fieldClass}
+        id={`${idPrefix}-reference`}
+        onChange={e => onSetField('reference', e.target.value)}
+        placeholder={t('referencePlaceholder')}
+        required
+        value={form.reference}
+      />
+    </div>
+  )
+
+  const versionField = (
+    <div>
+      <div className="flex items-center gap-1.5 mb-1">
+        <label className="text-sm font-medium" htmlFor={`${idPrefix}-version`}>
+          {t('version')}
+        </label>
+        {helpButton('version', t('version'))}
+      </div>
+      {helpPanel('versionHelp', 'version')}
+      <input
+        className={fieldClass}
+        id={`${idPrefix}-version`}
+        onChange={e => onSetField('version', e.target.value)}
+        value={form.version}
+      />
+    </div>
+  )
+
+  const issuerField = (
+    <div>
+      <div className="flex items-center gap-1.5 mb-1">
+        <label className="text-sm font-medium" htmlFor={`${idPrefix}-issuer`}>
+          {t('issuer')}
+          <RequiredFieldMarker />
+        </label>
+        {helpButton('issuer', t('issuer'))}
+      </div>
+      {helpPanel('issuerHelp', 'issuer')}
+      <input
+        className={fieldClass}
+        id={`${idPrefix}-issuer`}
+        onChange={e => onSetField('issuer', e.target.value)}
+        required
+        value={form.issuer}
+      />
+    </div>
+  )
+
+  const uriField = (
+    <div>
+      <div className="flex items-center gap-1.5 mb-1">
+        <label className="text-sm font-medium" htmlFor={`${idPrefix}-uri`}>
+          {t('uri')}
+        </label>
+        {helpButton('uri', t('uri'))}
+      </div>
+      {helpPanel('uriHelp', 'uri')}
+      <div className="flex items-center gap-2">
+        <input
+          className={`${fieldClass} min-w-0 flex-1`}
+          id={`${idPrefix}-uri`}
+          onChange={e => onSetField('uri', e.target.value)}
+          placeholder={t('uriPlaceholder')}
+          type="url"
+          value={form.uri}
+        />
+        {browserLinkUri && (
+          <a
+            aria-label={t('openUri')}
+            className={uriLinkClass}
+            {...devMarker({
+              context: 'normReferences',
+              name: 'form action',
+              value: 'open URI',
+            })}
+            href={browserLinkUri}
+            rel="noopener noreferrer"
+            target="_blank"
+            title={t('openUri')}
+          >
+            <ExternalLink
+              aria-hidden="true"
+              className="h-4 w-4"
+              focusable={false}
+            />
+          </a>
+        )}
+      </div>
+    </div>
+  )
+
+  if (layout === 'create') {
+    return (
+      <>
+        <RequiredFieldsHint />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-4">
+          {nameField}
+          {typeField}
+          {referenceField}
+          {versionField}
+          {issuerField}
+          {uriField}
+          {normReferenceIdField('lg:col-span-2')}
+        </div>
+      </>
+    )
+  }
+
   return (
     <>
       <RequiredFieldsHint />
-      <div>
-        <div className="flex items-center gap-1.5 mb-1">
-          <label className="text-sm font-medium" htmlFor={`${idPrefix}-id`}>
-            {t('normReferenceId')}
-          </label>
-          {helpButton('normReferenceId', t('normReferenceId'))}
-        </div>
-        {helpPanel('normReferenceIdHelp', 'normReferenceId')}
-        <input
-          className={fieldClass}
-          id={`${idPrefix}-id`}
-          onChange={e => onSetField('normReferenceId', e.target.value)}
-          placeholder={t('normReferenceIdPlaceholder')}
-          value={form.normReferenceId}
-        />
-      </div>
-      <div>
-        <div className="flex items-center gap-1.5 mb-1">
-          <label className="text-sm font-medium" htmlFor={`${idPrefix}-name`}>
-            {t('name')}
-            <RequiredFieldMarker />
-          </label>
-          {helpButton('name', t('name'))}
-        </div>
-        {helpPanel('help.name', 'name')}
-        <input
-          className={fieldClass}
-          id={`${idPrefix}-name`}
-          onChange={e => onSetField('name', e.target.value)}
-          required
-          value={form.name}
-        />
-      </div>
-      <div>
-        <div className="flex items-center gap-1.5 mb-1">
-          <label className="text-sm font-medium" htmlFor={`${idPrefix}-type`}>
-            {t('type')}
-            <RequiredFieldMarker />
-          </label>
-          {helpButton('type', t('type'))}
-        </div>
-        {helpPanel('typeHelp', 'type')}
-        <input
-          className={fieldClass}
-          id={`${idPrefix}-type`}
-          list={`${idPrefix}-type-list`}
-          onChange={e => onSetField('type', e.target.value)}
-          placeholder={t('typePlaceholder')}
-          required
-          value={form.type}
-        />
-        <datalist id={`${idPrefix}-type-list`}>
-          {TYPE_SUGGESTION_KEYS.map(key => (
-            <option key={key} value={t(key)} />
-          ))}
-        </datalist>
-      </div>
-      <div>
-        <div className="flex items-center gap-1.5 mb-1">
-          <label
-            className="text-sm font-medium"
-            htmlFor={`${idPrefix}-reference`}
-          >
-            {t('reference')}
-            <RequiredFieldMarker />
-          </label>
-          {helpButton('reference', t('reference'))}
-        </div>
-        {helpPanel('referenceHelp', 'reference')}
-        <input
-          className={fieldClass}
-          id={`${idPrefix}-reference`}
-          onChange={e => onSetField('reference', e.target.value)}
-          placeholder={t('referencePlaceholder')}
-          required
-          value={form.reference}
-        />
-      </div>
-      <div>
-        <div className="flex items-center gap-1.5 mb-1">
-          <label
-            className="text-sm font-medium"
-            htmlFor={`${idPrefix}-version`}
-          >
-            {t('version')}
-          </label>
-          {helpButton('version', t('version'))}
-        </div>
-        {helpPanel('versionHelp', 'version')}
-        <input
-          className={fieldClass}
-          id={`${idPrefix}-version`}
-          onChange={e => onSetField('version', e.target.value)}
-          value={form.version}
-        />
-      </div>
-      <div>
-        <div className="flex items-center gap-1.5 mb-1">
-          <label className="text-sm font-medium" htmlFor={`${idPrefix}-issuer`}>
-            {t('issuer')}
-            <RequiredFieldMarker />
-          </label>
-          {helpButton('issuer', t('issuer'))}
-        </div>
-        {helpPanel('issuerHelp', 'issuer')}
-        <input
-          className={fieldClass}
-          id={`${idPrefix}-issuer`}
-          onChange={e => onSetField('issuer', e.target.value)}
-          required
-          value={form.issuer}
-        />
-      </div>
-      <div>
-        <div className="flex items-center gap-1.5 mb-1">
-          <label className="text-sm font-medium" htmlFor={`${idPrefix}-uri`}>
-            {t('uri')}
-          </label>
-          {helpButton('uri', t('uri'))}
-        </div>
-        {helpPanel('uriHelp', 'uri')}
-        <div className="flex items-center gap-2">
-          <input
-            className={`${fieldClass} min-w-0 flex-1`}
-            id={`${idPrefix}-uri`}
-            onChange={e => onSetField('uri', e.target.value)}
-            placeholder={t('uriPlaceholder')}
-            type="url"
-            value={form.uri}
-          />
-          {browserLinkUri && (
-            <a
-              aria-label={t('openUri')}
-              className={uriLinkClass}
-              {...devMarker({
-                context: 'normReferences',
-                name: 'form action',
-                value: 'open URI',
-              })}
-              href={browserLinkUri}
-              rel="noopener noreferrer"
-              target="_blank"
-              title={t('openUri')}
-            >
-              <ExternalLink
-                aria-hidden="true"
-                className="h-4 w-4"
-                focusable={false}
-              />
-            </a>
-          )}
-        </div>
-      </div>
+      {normReferenceIdField()}
+      {nameField}
+      {typeField}
+      {referenceField}
+      {versionField}
+      {issuerField}
+      {uriField}
     </>
   )
 }

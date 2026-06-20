@@ -364,6 +364,7 @@ export default function NormReferencesClient() {
       <NormReferenceFormFields
         form={controller.form}
         idPrefix="norm-reference"
+        layout={controller.editId == null ? 'create' : 'stacked'}
         onSetField={setFormField}
       />
       {controller.formError && (
@@ -587,7 +588,7 @@ export default function NormReferencesClient() {
           developerModeValue={
             isEditing ? 'edit norm reference' : 'new norm reference'
           }
-          maxWidthClassName={isEditing ? 'max-w-5xl' : undefined}
+          maxWidthClassName={isEditing ? 'max-w-5xl' : 'max-w-4xl'}
           onClose={() => {
             void closeForm()
           }}

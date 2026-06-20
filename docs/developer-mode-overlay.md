@@ -96,6 +96,10 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Reference-data CRUD forms may use shared field help toggles; those
   triggers stay inside the existing `crud form` surface rather than
   adding separate developer-mode markers.
+- Norm-reference create dialogs may use a responsive two-column field
+  layout on desktop. The fields remain inside the existing shared
+  `dialog` and `normReferences > crud form` surfaces rather than adding
+  separate developer-mode markers.
 - Admin Center Dataskydd field help toggles stay inside the existing
   `tab panel: privacy` surface rather than adding separate developer-mode
   markers.

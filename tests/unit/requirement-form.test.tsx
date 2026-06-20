@@ -148,7 +148,30 @@ describe('RequirementForm', () => {
     const dialog = await screen.findByRole('dialog', {
       name: /requirement\.addNewNormReference/i,
     })
+    expect(dialog).toHaveClass('max-w-4xl')
     expect(dialog).toHaveTextContent('requirement.newNormReferenceWarning')
+    const nameInput = within(dialog).getByRole('textbox', {
+      name: /^normReference\.name/,
+    })
+    expect(nameInput.closest('div')?.parentElement).toHaveClass(
+      'grid',
+      'grid-cols-1',
+      'lg:grid-cols-2',
+    )
+    expect(
+      Array.from(dialog.querySelectorAll('input')).map(input => input.id),
+    ).toEqual([
+      'modal-nr-name',
+      'modal-nr-type',
+      'modal-nr-reference',
+      'modal-nr-version',
+      'modal-nr-issuer',
+      'modal-nr-uri',
+      'modal-nr-id',
+    ])
+    expect(dialog.querySelector('#modal-nr-id')?.closest('div')).toHaveClass(
+      'lg:col-span-2',
+    )
 
     fireEvent.click(within(dialog).getByText('common.cancel'))
 

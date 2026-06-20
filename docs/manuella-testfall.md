@@ -956,43 +956,52 @@ placering och länkar.
 **Förväntat resultat:** Normbiblioteket finns i förvaltningsytan, inte som
 taxonomiflik i Admincenter.
 
-### ADMIN-06: åtgärdslogg filtrerar och exporterar CSV
+### ADMIN-06: ny normreferens använder responsiv formulärlayout
+
+**Steg:** Öppna Normbibliotek, klicka `Ny normreferens` och jämför layout på
+desktop respektive smal mobilbredd.
+
+**Förväntat resultat:** Desktop visar formuläret i två kolumner med
+Normreferens-ID sist och fullbrett. Mobil visar samma fält i en kolumn utan
+överlapp.
+
+### ADMIN-07: åtgärdslogg filtrerar och exporterar CSV
 
 **Steg:** Öppna åtgärdslogg, filtrera på aktör eller händelse och exportera.
 
 **Förväntat resultat:** Listan filtreras och CSV innehåller matchande rader.
 
-### ADMIN-07: åtkomstöversyn, beslut och export
+### ADMIN-08: åtkomstöversyn, beslut och export
 
 **Steg:** Öppna åtkomstöversyn, fatta ett testbeslut och exportera underlag.
 
 **Förväntat resultat:** Beslut sparas och exporten innehåller beslutet.
 
-### ADMIN-08: åtkomstöversyn avvisar för långa kommentarer
+### ADMIN-09: åtkomstöversyn avvisar för långa kommentarer
 
 **Steg:** Ange kommentar som överskrider maxlängd och försök spara.
 
 **Förväntat resultat:** Valideringsfel visas och beslutet sparas inte.
 
-### ADMIN-09: arkiveringsgallring kräver dataskyddsroll
+### ADMIN-10: arkiveringsgallring kräver dataskyddsroll
 
 **Steg:** Jämför `only.admin` och `ada.admin` på gallringsförhandsgranskning.
 
 **Förväntat resultat:** Only nekas; Ada kan förhandsgranska.
 
-### ADMIN-10: status- och riskikoner visas på kravytor
+### ADMIN-11: status- och riskikoner visas på kravytor
 
 **Steg:** Öppna kravlista, kravdetalj och rapport där status/risk visas.
 
 **Förväntat resultat:** Ikoner och etiketter renderas konsekvent.
 
-### ADMIN-11: arkiverad kravurvalsretention undantar sparad historik
+### ADMIN-12: arkiverad kravurvalsretention undantar sparad historik
 
 **Steg:** Kör gallringsförhandsgranskning för arkiverade kravurvalsdata.
 
 **Förväntat resultat:** Sparad historik undantas enligt retentionregeln.
 
-### ADMIN-12: byte av kravområdesägare använder HSA-id
+### ADMIN-13: byte av kravområdesägare använder HSA-id
 
 **Steg:** Öppna kravområdeslistan och kontrollera att radåtgärderna för
 redigering och borttagning visas som ikonknappar. Öppna sedan ett kravområde
@@ -1009,7 +1018,7 @@ fortfarande är åtkomliga, och fältet kan inte minskas under öppningshöjden.
 ändring kan den inloggade aktörens egen levande personrad uppdateras från
 sessionen utan att inloggning eller sparande fördröjs.
 
-### ADMIN-13: HSA-id-prefix administreras från Identitet
+### ADMIN-14: HSA-id-prefix administreras från Identitet
 
 **Steg:** Öppna fliken `Identitet`, lägg till eller ändra ett testprefix och
 kontrollera valideringen.
