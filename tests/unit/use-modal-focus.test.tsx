@@ -89,6 +89,54 @@ function DisabledTrapModal() {
   )
 }
 
+function ExplicitReturnFocusModal() {
+  const [open, setOpen] = useState(false)
+  const modalRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const returnFocusRef = useRef<HTMLButtonElement>(null)
+
+  const { handleKeyDown } = useModalFocus({
+    initialFocusRef: inputRef,
+    modalRef,
+    onClose: () => setOpen(false),
+    open,
+    returnFocusRef,
+  })
+
+  return (
+    <div>
+      {!open ? (
+        <button
+          onClick={event => {
+            returnFocusRef.current = event.currentTarget
+            setOpen(true)
+          }}
+          ref={returnFocusRef}
+          type="button"
+        >
+          Open explicit
+        </button>
+      ) : null}
+      {open ? (
+        <div
+          data-testid="modal"
+          onKeyDown={handleKeyDown}
+          ref={modalRef}
+          role="dialog"
+        >
+          <input data-testid="first" ref={inputRef} />
+          <button data-testid="last" type="button">
+            Last
+          </button>
+          <button data-testid="skipped" tabIndex={-1} type="button">
+            Skipped
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 describe('useModalFocus', () => {
   beforeEach(() => {
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
@@ -226,5 +274,34 @@ describe('useModalFocus', () => {
     fireEvent.keyDown(screen.getByTestId('modal'), { key: 'Tab' })
 
     expect(first).toHaveFocus()
+  })
+
+  it('restores focus to an explicit return ref after the trigger remounts', async () => {
+    const user = userEvent.setup()
+    render(<ExplicitReturnFocusModal />)
+
+    await user.click(screen.getByRole('button', { name: 'Open explicit' }))
+    await waitFor(() => expect(screen.getByTestId('first')).toHaveFocus())
+
+    fireEvent.keyDown(screen.getByTestId('modal'), { key: 'Escape' })
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Open explicit' }),
+      ).toHaveFocus(),
+    )
+  })
+
+  it('excludes controls with tabIndex -1 from the focus trap', async () => {
+    const user = userEvent.setup()
+    render(<ExplicitReturnFocusModal />)
+
+    await user.click(screen.getByRole('button', { name: 'Open explicit' }))
+    await waitFor(() => expect(screen.getByTestId('first')).toHaveFocus())
+
+    screen.getByTestId('last').focus()
+    fireEvent.keyDown(screen.getByTestId('modal'), { key: 'Tab' })
+
+    expect(screen.getByTestId('first')).toHaveFocus()
   })
 })

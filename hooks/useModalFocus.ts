@@ -13,6 +13,8 @@ interface UseModalFocusOptions {
   onClose: () => void
   /** Whether the modal is currently visible. */
   open: boolean
+  /** Ref to the element that should receive focus when the modal closes. */
+  returnFocusRef?: React.RefObject<HTMLElement | null>
 }
 
 interface UseModalFocusReturn {
@@ -23,7 +25,7 @@ interface UseModalFocusReturn {
 /* ---------- Focusable selector ---------- */
 
 const FOCUSABLE =
-  'a[href], input:not([disabled]), textarea:not([disabled]), button:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])'
+  'a[href]:not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"]):not([disabled])'
 
 /* ---------- Hook ---------- */
 
@@ -43,6 +45,7 @@ export function useModalFocus({
   initialFocusRef,
   onClose,
   open,
+  returnFocusRef,
 }: UseModalFocusOptions): UseModalFocusReturn {
   const previousFocusRef = useRef<Element | null>(null)
   const rafIdRef = useRef<number | null>(null)
@@ -67,8 +70,9 @@ export function useModalFocus({
       // Restore focus when the modal closes or the component unmounts
       return () => {
         cancelScheduledFocus()
-        if (previousFocusRef.current instanceof HTMLElement) {
-          previousFocusRef.current.focus()
+        const returnTarget = returnFocusRef?.current ?? previousFocusRef.current
+        if (returnTarget instanceof HTMLElement) {
+          returnTarget.focus()
           previousFocusRef.current = null
         }
       }
@@ -77,7 +81,7 @@ export function useModalFocus({
     return () => {
       cancelScheduledFocus()
     }
-  }, [open, initialFocusRef])
+  }, [open, initialFocusRef, returnFocusRef])
 
   /* Keyboard handler: Escape + focus trap */
   const handleKeyDown = useCallback(

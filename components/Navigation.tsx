@@ -15,12 +15,13 @@ import {
 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AuthMenu from '@/components/AuthMenu'
 import { useHelp } from '@/components/HelpPanel'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import Logo from '@/components/Logo'
 import ThemeToggle from '@/components/ThemeToggle'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import { Link, usePathname } from '@/i18n/routing'
 import type { BuildMetadata } from '@/lib/build-metadata'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -205,6 +206,9 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
   const [desktopExpanded, setDesktopExpanded] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [canOpenRequirementAreas, setCanOpenRequirementAreas] = useState(false)
+  const mobileCloseButtonRef = useRef<HTMLButtonElement>(null)
+  const mobileDrawerRef = useRef<HTMLDivElement>(null)
+  const mobileDrawerReturnFocusRef = useRef<HTMLButtonElement>(null)
   const {
     toggle: toggleHelp,
     content: helpContent,
@@ -217,6 +221,23 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
   const buildVersionTitle = buildMetadata
     ? tc('buildVersionTooltip', { version: buildMetadata.version })
     : undefined
+
+  const closeMobileDrawer = useCallback(() => {
+    setMobileOpen(false)
+  }, [])
+
+  const openMobileDrawer = useCallback((trigger: HTMLButtonElement) => {
+    mobileDrawerReturnFocusRef.current = trigger
+    setMobileOpen(true)
+  }, [])
+
+  const { handleKeyDown: handleMobileDrawerKeyDown } = useModalFocus({
+    initialFocusRef: mobileCloseButtonRef,
+    modalRef: mobileDrawerRef,
+    onClose: closeMobileDrawer,
+    open: mobileOpen,
+    returnFocusRef: mobileDrawerReturnFocusRef,
+  })
 
   useEffect(() => {
     if (readStoredRailExpanded()) {
@@ -234,21 +255,6 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
       dispatchGlobalNavigationLayoutEvent()
     }
   }, [desktopExpanded])
-
-  useEffect(() => {
-    if (!mobileOpen) return undefined
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setMobileOpen(false)
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [mobileOpen])
 
   useEffect(() => {
     let cancelled = false
@@ -415,7 +421,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
       mobile = false,
     }: { closeOnNavigate?: boolean; mobile?: boolean } = {},
   ) => {
-    const close = closeOnNavigate ? () => setMobileOpen(false) : undefined
+    const close = closeOnNavigate ? closeMobileDrawer : undefined
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
         <NavigationSection
@@ -447,7 +453,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
   return (
     <>
       <nav
-        aria-label="Huvudnavigation"
+        aria-label={t('mainNavigation')}
         className="fixed inset-y-0 left-0 z-50 hidden flex-col border-r border-secondary-200/80 bg-white/92 shadow-[12px_0_40px_-32px_rgba(15,23,42,0.45)] backdrop-blur-xl transition-[width] duration-200 md:flex dark:border-secondary-800 dark:bg-secondary-950/92"
         data-global-navigation-rail="desktop"
         style={{
@@ -511,7 +517,8 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
           aria-expanded={mobileOpen}
           aria-label={t('openMenu')}
           className="fixed left-3 top-3 z-50 inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-secondary-200/80 bg-white/92 text-secondary-700 shadow-lg backdrop-blur-xl transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white md:hidden dark:border-secondary-800 dark:bg-secondary-950/92 dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950"
-          onClick={() => setMobileOpen(true)}
+          onClick={event => openMobileDrawer(event.currentTarget)}
+          ref={mobileDrawerReturnFocusRef}
           title={t('openMenu')}
           type="button"
           {...devMarker({
@@ -529,12 +536,15 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
           aria-label={t('mainMenu')}
           aria-modal="true"
           className="fixed inset-0 z-50 md:hidden"
+          onKeyDown={handleMobileDrawerKeyDown}
+          ref={mobileDrawerRef}
           role="dialog"
         >
           <button
             aria-label={t('closeMenu')}
             className="absolute inset-0 h-full w-full bg-secondary-950/35 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
+            onClick={closeMobileDrawer}
+            tabIndex={-1}
             type="button"
           />
           <div className="relative flex h-full w-[min(20rem,calc(100vw-2rem))] flex-col border-r border-secondary-200 bg-white shadow-2xl dark:border-secondary-800 dark:bg-secondary-950">
@@ -542,7 +552,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
               <Link
                 className="inline-flex min-h-11 min-w-0 items-center gap-3 rounded-xl pr-3 font-bold text-primary-700 dark:text-primary-300"
                 href="/requirements"
-                onClick={() => setMobileOpen(false)}
+                onClick={closeMobileDrawer}
                 title={buildVersionTitle}
                 {...devMarker({
                   context: 'navigation',
@@ -558,7 +568,8 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
               <button
                 aria-label={t('closeMenu')}
                 className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-secondary-700 transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950"
-                onClick={() => setMobileOpen(false)}
+                onClick={closeMobileDrawer}
+                ref={mobileCloseButtonRef}
                 title={t('closeMenu')}
                 type="button"
                 {...devMarker({
@@ -571,7 +582,7 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
               </button>
             </div>
             <nav
-              aria-label="Huvudnavigation"
+              aria-label={t('mainNavigation')}
               className="flex min-h-0 flex-1 flex-col"
               data-global-navigation-rail="mobile-drawer"
               {...devMarker({

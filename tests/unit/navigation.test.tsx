@@ -5,7 +5,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Navigation from '@/components/Navigation'
 import { GLOBAL_NAVIGATION_LAYOUT_EVENT } from '@/lib/navigation-layout-events'
 
@@ -108,6 +108,11 @@ vi.mock('@/components/HelpPanel', () => ({
 
 describe('Navigation', () => {
   beforeEach(() => {
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0)
+      return 1
+    })
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
     pathnameState.value = '/requirements'
     searchParamsState.value = new URLSearchParams()
     authState.value = { authenticated: true, roles: [] }
@@ -135,6 +140,10 @@ describe('Navigation', () => {
         throw new Error(`Unexpected fetch ${url}`)
       }),
     )
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('exposes build version on the app title tooltip', () => {
@@ -171,7 +180,7 @@ describe('Navigation', () => {
     layoutListener.mockClear()
 
     const navigation = screen.getByRole('navigation', {
-      name: 'Huvudnavigation',
+      name: 'nav.mainNavigation',
     })
     expect(navigation).toHaveStyle({ width: '4.5rem' })
     expect(
@@ -313,6 +322,46 @@ describe('Navigation', () => {
     fireEvent.click(closeButtons[closeButtons.length - 1])
 
     expect(screen.queryByRole('dialog', { name: 'nav.mainMenu' })).toBeNull()
+  })
+
+  it('traps focus in the mobile drawer and restores it to the trigger', async () => {
+    render(<Navigation />)
+
+    const openButton = screen.getByRole('button', { name: 'nav.openMenu' })
+    openButton.focus()
+    fireEvent.click(openButton)
+
+    const dialog = screen.getByRole('dialog', { name: 'nav.mainMenu' })
+    const closeButtons = within(dialog).getAllByRole('button', {
+      name: 'nav.closeMenu',
+    })
+    const closeButton = closeButtons[closeButtons.length - 1]
+    const firstLink = within(dialog).getByRole('link', {
+      name: 'common.appName',
+    })
+    const lastLink = within(dialog).getByRole('link', {
+      name: 'admin.settings',
+    })
+
+    await waitFor(() => expect(closeButton).toHaveFocus())
+
+    firstLink.focus()
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })
+    expect(lastLink).toHaveFocus()
+
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(firstLink).toHaveFocus()
+
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'nav.mainMenu' })).toBeNull(),
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'nav.openMenu' }),
+      ).toHaveFocus(),
+    )
   })
 
   it('renders utility actions in the rail', () => {
