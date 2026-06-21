@@ -208,11 +208,11 @@ For every finding, include:
 
 Add a short summary above the table:
 
-- Number of `confirmed dead` findings.
-- Number of `likely dead` findings.
-- Number of `possible future-use placeholder` findings.
-- Number of `backward-compatibility keep` findings.
-- Number of `past-tense documentation cleanup` findings.
+- `confirmed dead` finding count.
+- `likely dead` finding count.
+- `possible future-use placeholder` finding count.
+- Separate counts for `backward-compatibility keep` and
+  `past-tense documentation cleanup` findings.
 - Total estimated removable lines.
 
 ## Output Contract
