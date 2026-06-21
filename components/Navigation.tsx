@@ -28,6 +28,7 @@ import { devMarker } from '@/lib/developer-mode-markers'
 import { dispatchGlobalNavigationLayoutEvent } from '@/lib/navigation-layout-events'
 
 type StewardshipTab = 'packages' | 'questions' | 'norms' | 'rfi'
+type StewardshipTabParam = StewardshipTab | 'information-requests'
 
 const NAV_RAIL_STORAGE_KEY = 'requirements.navigationRail.expanded.v1'
 const STEWARDSHIP_STORAGE_KEY = 'requirements.stewardship.tab'
@@ -121,6 +122,7 @@ interface ComponentProps {
 }
 
 function stewardshipTabFromValue(value: string | null): StewardshipTab | null {
+  if (value === 'information-requests') return 'rfi'
   return value === 'packages' ||
     value === 'questions' ||
     value === 'norms' ||
@@ -130,7 +132,9 @@ function stewardshipTabFromValue(value: string | null): StewardshipTab | null {
 }
 
 function getStewardshipHref(tab: StewardshipTab) {
-  return `/requirements/stewardship?tab=${tab}`
+  const tabParam: StewardshipTabParam =
+    tab === 'rfi' ? 'information-requests' : tab
+  return `/requirements/stewardship?tab=${tabParam}`
 }
 
 function readStoredRailExpanded() {
@@ -299,17 +303,15 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
   const renderNavigationLink = (
     item: NavigationLinkDefinition,
     expanded: boolean,
-    surface: 'desktop' | 'mobile',
     onNavigate?: () => void,
   ) => {
     const label = t(item.labelKey)
-    const labelId = `global-navigation-${surface}-${item.id}-label`
     const isActive = item.isActive(pathname, activeStewardshipTab)
     const Icon = item.icon
     return (
       <Link
         aria-current={isActive ? 'page' : undefined}
-        aria-labelledby={labelId}
+        aria-label={expanded ? undefined : label}
         className={getNavigationLinkClassName(isActive, expanded)}
         href={item.href}
         key={item.id}
@@ -327,12 +329,9 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
         })}
       >
         <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
-        <span
-          className={expanded ? 'min-w-0 flex-1 truncate text-left' : 'sr-only'}
-          id={labelId}
-        >
-          {label}
-        </span>
+        {expanded ? (
+          <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+        ) : null}
       </Link>
     )
   }
@@ -435,23 +434,13 @@ export default function Navigation({ buildMetadata = null }: ComponentProps) {
           label={t('work')}
         >
           {workNavItems.map(item =>
-            renderNavigationLink(
-              item,
-              expanded,
-              mobile ? 'mobile' : 'desktop',
-              close,
-            ),
+            renderNavigationLink(item, expanded, close),
           )}
         </NavigationSection>
         <NavigationSection expanded={expanded} label={t('stewardship')}>
           {renderRequirementAreasLink(expanded, close)}
           {stewardshipNavItems.map(item =>
-            renderNavigationLink(
-              item,
-              expanded,
-              mobile ? 'mobile' : 'desktop',
-              close,
-            ),
+            renderNavigationLink(item, expanded, close),
           )}
         </NavigationSection>
         <NavigationSection expanded={expanded} label={t('utilities')}>

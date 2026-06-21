@@ -9,16 +9,22 @@ import RequirementSelectionQuestionsClient from './requirement-selection-questio
 import RfiQuestionsClient from './rfi-questions-client'
 
 type StewardshipTab = 'packages' | 'questions' | 'norms' | 'rfi'
+type StewardshipTabParam = StewardshipTab | 'information-requests'
 
 const STORAGE_KEY = 'requirements.stewardship.tab'
 
 function tabFromValue(value: string | null): StewardshipTab | null {
+  if (value === 'information-requests') return 'rfi'
   return value === 'questions' ||
     value === 'packages' ||
     value === 'norms' ||
     value === 'rfi'
     ? value
     : null
+}
+
+function tabParamFromTab(tab: StewardshipTab): StewardshipTabParam {
+  return tab === 'rfi' ? 'information-requests' : tab
 }
 
 function getStoredTab(): StewardshipTab | null {
@@ -46,9 +52,14 @@ export default function StewardshipClient() {
     if (fromQuery) {
       setActiveTab(fromQuery)
       localStorage.setItem(STORAGE_KEY, fromQuery)
-      if (searchParams.has('variant')) {
+      const canonicalTabParam = tabParamFromTab(fromQuery)
+      if (
+        searchParams.has('variant') ||
+        searchParams.get('tab') !== canonicalTabParam
+      ) {
         const params = new URLSearchParams(searchParams.toString())
         params.delete('variant')
+        params.set('tab', canonicalTabParam)
         router.replace(`${pathname}?${params.toString()}`, { scroll: false })
       }
       return
@@ -58,7 +69,7 @@ export default function StewardshipClient() {
     setActiveTab(nextTab)
     const params = new URLSearchParams(searchParams.toString())
     params.delete('variant')
-    params.set('tab', nextTab)
+    params.set('tab', tabParamFromTab(nextTab))
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }, [pathname, router, searchParams])
 

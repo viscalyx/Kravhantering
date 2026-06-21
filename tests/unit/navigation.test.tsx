@@ -233,12 +233,11 @@ describe('Navigation', () => {
       screen.getByRole('link', { name: 'nav.requirementSelectionQuestions' }),
     ).toHaveAttribute('href', '/requirements/stewardship?tab=questions')
     const rfiLink = screen.getByRole('link', { name: 'nav.rfiQuestions' })
-    expect(rfiLink).toHaveAttribute('href', '/requirements/stewardship?tab=rfi')
-    expect(rfiLink).not.toHaveAttribute('aria-label')
     expect(rfiLink).toHaveAttribute(
-      'aria-labelledby',
-      'global-navigation-desktop-rfi-questions-label',
+      'href',
+      '/requirements/stewardship?tab=information-requests',
     )
+    expect(rfiLink).toHaveAttribute('aria-label', 'nav.rfiQuestions')
     expect(
       screen.getByRole('link', { name: 'nav.normLibrary' }),
     ).toHaveAttribute('href', '/requirements/stewardship?tab=norms')
@@ -257,7 +256,7 @@ describe('Navigation', () => {
 
   it('marks the active flattened stewardship item', () => {
     pathnameState.value = '/requirements/stewardship'
-    searchParamsState.value = new URLSearchParams('tab=rfi')
+    searchParamsState.value = new URLSearchParams('tab=information-requests')
 
     render(<Navigation />)
 
