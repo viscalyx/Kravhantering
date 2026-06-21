@@ -67,6 +67,8 @@ const BASE_SOURCE_CANDIDATES: Record<string, Array<Record<string, unknown>>> = {
   'requirement_selection_answers.archived': [],
   'requirement_selection_questions.archived': [],
   'requirement_responsibility_people.orphaned': [],
+  'rfi_question_versions.historical_unreferenced': [],
+  'rfi_questions.archived_unreferenced': [],
 }
 
 function createRetentionDb(options?: {
@@ -135,6 +137,7 @@ function createRetentionDb(options?: {
         sql.includes('DELETE area') ||
         sql.includes('DELETE person') ||
         sql.includes('DECLARE @requirement_id int') ||
+        sql.includes('DECLARE @version_id int') ||
         sql.includes('DECLARE @question_id int') ||
         sql.includes('DECLARE @answer_id int') ||
         sql.includes('DELETE FROM specification_local_requirements')
@@ -521,6 +524,29 @@ describe('archiving retention service', () => {
           subject_table: 'requirement_selection_answers',
         },
       ],
+      'rfi_question_versions.historical_unreferenced': [
+        {
+          age_basis: new Date('2023-01-15T09:00:00.000Z'),
+          current_display_value:
+            'RETENTION-SEED historisk RFI-frågeversion utan RFI-listreferens',
+          reference: 'RSK-RFI901 v1',
+          source_key: 'rfi_question_versions.historical_unreferenced',
+          subject_id: '910501',
+          subject_table: 'rfi_question_versions',
+        },
+      ],
+      'rfi_questions.archived_unreferenced': [
+        {
+          age_basis: new Date('2023-01-15T09:00:00.000Z'),
+          current_display_value:
+            'RETENTION-SEED arkiverad RFI-fråga utan RFI-listreferens',
+          reference:
+            'RSK-RFI911 RETENTION-SEED arkiverad RFI-fråga utan RFI-listreferens',
+          source_key: 'rfi_questions.archived_unreferenced',
+          subject_id: '910511',
+          subject_table: 'rfi_questions',
+        },
+      ],
       'requirement_responsibility_people.orphaned': [
         {
           age_basis: new Date('2023-01-15T09:00:00.000Z'),
@@ -636,6 +662,33 @@ describe('archiving retention service', () => {
         ...versionPreview.candidates,
         ...selectionPreview.candidates,
       ].every(candidate => !candidate.requiresExport),
+    ).toBe(true)
+
+    const rfiPreview = await previewArchivingRetention(
+      createRetentionDb({
+        exceptionCount: 0,
+        policy: {
+          ageDays: 730,
+          id: 8,
+          policyKey: 'rfi_questions_retention_delete',
+        },
+        sourceCandidates,
+      }).db as never,
+      { now: new Date('2026-05-14T00:00:00.000Z'), policyId: 8 },
+    )
+    expect(rfiPreview.summary).toMatchObject({
+      archiveCount: 0,
+      candidateCount: 2,
+      deleteCount: 2,
+    })
+    expect(rfiPreview.candidates.map(candidate => candidate.sourceKey)).toEqual(
+      [
+        'rfi_question_versions.historical_unreferenced',
+        'rfi_questions.archived_unreferenced',
+      ],
+    )
+    expect(
+      rfiPreview.candidates.every(candidate => !candidate.requiresExport),
     ).toBe(true)
 
     const responsibilityPeoplePreview = await previewArchivingRetention(
@@ -773,6 +826,88 @@ describe('archiving retention service', () => {
     )
     expect(executeSql).toContain(
       'DELETE FROM requirement_selection_answers WHERE id = @answer_id',
+    )
+  })
+
+  it('previews and deletes RFI rows only when RFI-list references and suggestions are absent', async () => {
+    const sourceCandidates = {
+      'rfi_question_versions.historical_unreferenced': [
+        {
+          age_basis: new Date('2023-01-15T09:00:00.000Z'),
+          current_display_value: 'Historical RFI question version',
+          reference: 'RSK-RFI901 v1',
+          source_key: 'rfi_question_versions.historical_unreferenced',
+          subject_id: '910501',
+          subject_table: 'rfi_question_versions',
+        },
+      ],
+      'rfi_questions.archived_unreferenced': [
+        {
+          age_basis: new Date('2023-01-15T09:00:00.000Z'),
+          current_display_value: 'Archived RFI question',
+          reference: 'RSK-RFI911 Archived RFI question',
+          source_key: 'rfi_questions.archived_unreferenced',
+          subject_id: '910511',
+          subject_table: 'rfi_questions',
+        },
+      ],
+    }
+    const { db, query } = createRetentionDb({
+      policy: {
+        action: 'delete',
+        ageDays: 730,
+        id: 8,
+        policyKey: 'rfi_questions_retention_delete',
+      },
+      sourceCandidates,
+    })
+
+    const preview = await previewArchivingRetention(db as never, {
+      now: new Date('2026-05-14T00:00:00.000Z'),
+      policyId: 8,
+    })
+
+    expect(preview.candidates).toEqual([
+      expect.objectContaining({
+        key: 'rfi_question_versions.historical_unreferenced:910501',
+        objectKey: 'rfiQuestionVersions',
+        requiresExport: false,
+      }),
+      expect.objectContaining({
+        key: 'rfi_questions.archived_unreferenced:910511',
+        objectKey: 'rfiQuestions',
+        requiresExport: false,
+      }),
+    ])
+    const previewSql = query.mock.calls.map(([sql]) => String(sql)).join('\n')
+    expect(previewSql).toContain('version.is_active = 0')
+    expect(previewSql).toContain('version.updated_at <= @0')
+    expect(previewSql).toContain('item.rfi_question_version_id = version.id')
+    expect(previewSql).toContain('question.is_archived = 1')
+    expect(previewSql).toContain('question.archived_at <= @0')
+    expect(previewSql).toContain('item.rfi_question_id = question.id')
+    expect(previewSql).toContain('WHERE version.rfi_question_id = question.id')
+    expect(previewSql).toContain('suggestion.rfi_question_id = question.id')
+
+    await executeArchivingRetention(
+      db as never,
+      { policyId: 8, previewToken: preview.previewToken },
+      { displayName: 'Disa PrivacyOfficer', hsaId: 'SE5560000001-privacy1' },
+    )
+    const executeSql = query.mock.calls.map(([sql]) => String(sql)).join('\n')
+    expect(executeSql).toContain('DECLARE @version_id int')
+    expect(executeSql).toContain('DECLARE @question_id int')
+    expect(executeSql).toContain(
+      'DELETE FROM rfi_question_version_requirement_selection_questions WHERE rfi_question_version_id = @version_id',
+    )
+    expect(executeSql).toContain(
+      'DELETE FROM rfi_question_versions WHERE id = @version_id',
+    )
+    expect(executeSql).toContain(
+      'DELETE FROM rfi_question_versions WHERE rfi_question_id = @question_id',
+    )
+    expect(executeSql).toContain(
+      'DELETE FROM rfi_questions WHERE id = @question_id',
     )
   })
 

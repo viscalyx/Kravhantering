@@ -163,6 +163,7 @@ const ARCHIVED_REQUIREMENT_SELECTION_POLICY_KEY =
   'archived_requirement_selection_delete'
 const ORPHANED_RESPONSIBILITY_PEOPLE_POLICY_KEY =
   'orphaned_responsibility_people_delete'
+const RFI_QUESTIONS_RETENTION_POLICY_KEY = 'rfi_questions_retention_delete'
 const SPECIFICATION_MANAGEMENT_STATUS_ID = 4
 const EXPORT_CONFIRMATION_TTL_MS = 15 * 60 * 1000
 
@@ -256,6 +257,68 @@ const DELETE_REQUIREMENT_SELECTION_ANSWER_SQL = `DECLARE @answer_id int;
         DELETE FROM requirement_selection_answer_packages WHERE answer_id = @answer_id;
         DELETE FROM requirement_selection_answer_requirements WHERE answer_id = @answer_id;
         DELETE FROM requirement_selection_answers WHERE id = @answer_id;
+      END`
+
+const DELETE_RFI_QUESTION_VERSION_SQL = `DECLARE @version_id int;
+      SELECT @version_id = version.id
+      FROM rfi_question_versions version
+      WHERE version.id = @0
+        AND version.is_active = 0
+        AND NOT EXISTS (
+          SELECT 1
+          FROM specification_rfi_question_items item
+          WHERE item.rfi_question_version_id = version.id
+        );
+      IF @version_id IS NOT NULL
+      BEGIN
+        DELETE FROM rfi_question_version_requirement_selection_questions WHERE rfi_question_version_id = @version_id;
+        DELETE FROM rfi_question_version_requirement_packages WHERE rfi_question_version_id = @version_id;
+        DELETE FROM rfi_question_version_requirements WHERE rfi_question_version_id = @version_id;
+        DELETE FROM rfi_question_versions WHERE id = @version_id;
+      END`
+
+const DELETE_RFI_QUESTION_SQL = `DECLARE @question_id int;
+      SELECT @question_id = question.id
+      FROM rfi_questions question
+      WHERE question.id = @0
+        AND question.is_archived = 1
+        AND question.archived_at IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM specification_rfi_question_items item
+          WHERE item.rfi_question_id = question.id
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM specification_rfi_question_items item
+          INNER JOIN rfi_question_versions version
+            ON version.id = item.rfi_question_version_id
+          WHERE version.rfi_question_id = question.id
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM rfi_question_suggestions suggestion
+          WHERE suggestion.rfi_question_id = question.id
+        );
+      IF @question_id IS NOT NULL
+      BEGIN
+        DELETE version_selection_question
+        FROM rfi_question_version_requirement_selection_questions AS version_selection_question
+        INNER JOIN rfi_question_versions AS version
+          ON version.id = version_selection_question.rfi_question_version_id
+        WHERE version.rfi_question_id = @question_id;
+        DELETE version_package
+        FROM rfi_question_version_requirement_packages AS version_package
+        INNER JOIN rfi_question_versions AS version
+          ON version.id = version_package.rfi_question_version_id
+        WHERE version.rfi_question_id = @question_id;
+        DELETE version_requirement
+        FROM rfi_question_version_requirements AS version_requirement
+        INNER JOIN rfi_question_versions AS version
+          ON version.id = version_requirement.rfi_question_version_id
+        WHERE version.rfi_question_id = @question_id;
+        DELETE FROM rfi_question_versions WHERE rfi_question_id = @question_id;
+        DELETE FROM rfi_questions WHERE id = @question_id;
       END`
 
 function requirementResponsibilityPersonNameSql(alias: string): string {
@@ -578,6 +641,107 @@ const SOURCE_DEFINITIONS: readonly RetentionSourceDefinition[] = [
       ORDER BY source.reference ASC`,
     sourceKey: 'requirement_selection_answers.archived',
     subjectTable: 'requirement_selection_answers',
+  },
+  {
+    action: 'delete',
+    executeSql: DELETE_RFI_QUESTION_VERSION_SQL,
+    fieldKey: 'rfiQuestionVersion',
+    objectKey: 'rfiQuestionVersions',
+    policyKey: RFI_QUESTIONS_RETENTION_POLICY_KEY,
+    selectSql: `SELECT *
+      FROM (
+        SELECT
+          N'rfi_question_versions.historical_unreferenced' AS source_key,
+          N'rfi_question_versions' AS subject_table,
+          CAST(version.id AS nvarchar(120)) AS subject_id,
+          CONCAT(question.question_code, N' v', version.version_number) AS reference,
+          version.question_text AS current_display_value,
+          version.updated_at AS age_basis
+        FROM rfi_question_versions version
+        INNER JOIN rfi_questions question
+          ON question.id = version.rfi_question_id
+        WHERE version.is_active = 0
+          AND version.updated_at <= @0
+          AND NOT EXISTS (
+            SELECT 1
+            FROM specification_rfi_question_items item
+            WHERE item.rfi_question_version_id = version.id
+          )
+          AND NOT (
+            question.is_archived = 1
+            AND question.archived_at <= @0
+            AND NOT EXISTS (
+              SELECT 1
+              FROM specification_rfi_question_items question_item
+              WHERE question_item.rfi_question_id = question.id
+            )
+            AND NOT EXISTS (
+              SELECT 1
+              FROM specification_rfi_question_items version_item
+              INNER JOIN rfi_question_versions sibling_version
+                ON sibling_version.id = version_item.rfi_question_version_id
+              WHERE sibling_version.rfi_question_id = question.id
+            )
+            AND NOT EXISTS (
+              SELECT 1
+              FROM rfi_question_suggestions suggestion
+              WHERE suggestion.rfi_question_id = question.id
+            )
+          )
+      ) source
+      WHERE ${ACTIVE_EXCEPTION_SQL}
+      ORDER BY source.reference ASC`,
+    sourceKey: 'rfi_question_versions.historical_unreferenced',
+    subjectTable: 'rfi_question_versions',
+  },
+  {
+    action: 'delete',
+    executeSql: DELETE_RFI_QUESTION_SQL,
+    fieldKey: 'rfiQuestion',
+    objectKey: 'rfiQuestions',
+    policyKey: RFI_QUESTIONS_RETENTION_POLICY_KEY,
+    selectSql: `SELECT *
+      FROM (
+        SELECT
+          N'rfi_questions.archived_unreferenced' AS source_key,
+          N'rfi_questions' AS subject_table,
+          CAST(question.id AS nvarchar(120)) AS subject_id,
+          CONCAT(question.question_code, N' ', active_version.question_text) AS reference,
+          active_version.question_text AS current_display_value,
+          question.archived_at AS age_basis
+        FROM rfi_questions question
+        OUTER APPLY (
+          SELECT TOP (1)
+            version.question_text
+          FROM rfi_question_versions version
+          WHERE version.rfi_question_id = question.id
+            AND version.is_active = 1
+          ORDER BY version.version_number DESC
+        ) active_version
+        WHERE question.is_archived = 1
+          AND question.archived_at <= @0
+          AND NOT EXISTS (
+            SELECT 1
+            FROM specification_rfi_question_items item
+            WHERE item.rfi_question_id = question.id
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM specification_rfi_question_items item
+            INNER JOIN rfi_question_versions version
+              ON version.id = item.rfi_question_version_id
+            WHERE version.rfi_question_id = question.id
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM rfi_question_suggestions suggestion
+            WHERE suggestion.rfi_question_id = question.id
+          )
+      ) source
+      WHERE ${ACTIVE_EXCEPTION_SQL}
+      ORDER BY source.reference ASC`,
+    sourceKey: 'rfi_questions.archived_unreferenced',
+    subjectTable: 'rfi_questions',
   },
   {
     action: 'delete',

@@ -50,6 +50,30 @@ export const RETENTION_SEED = Object.freeze({
     orphan: 'SE5560000001-retentionorphan',
     stillAssigned: 'SE5560000001-retentionlinked',
   },
+  rfiQuestion: {
+    archivedBlockedList: 910513,
+    archivedBlockedSuggestion: 910514,
+    archivedFresh: 910512,
+    archivedUnreferenced: 910511,
+    historicalBlockedList: 910503,
+    historicalFresh: 910502,
+    historicalUnreferenced: 910501,
+  },
+  rfiQuestionSuggestion: {
+    archivedBlockedSuggestion: 910501,
+  },
+  rfiQuestionVersion: {
+    archivedBlockedListActive: 910515,
+    archivedBlockedSuggestionActive: 910516,
+    archivedFreshActive: 910514,
+    archivedUnreferencedActive: 910513,
+    historicalBlockedListActive: 910506,
+    historicalBlockedListVersion: 910505,
+    historicalFreshActive: 910504,
+    historicalFreshVersion: 910503,
+    historicalUnreferencedActive: 910502,
+    historicalUnreferencedVersion: 910501,
+  },
   requirementVersion: {
     archivedUnused: 910101,
     archiveReview: 910105,
@@ -97,6 +121,8 @@ export const RETENTION_POSITIVE_SOURCE_KEYS = [
   'requirements_specifications.obsolete',
   'requirement_selection_questions.archived',
   'requirement_selection_answers.archived',
+  'rfi_question_versions.historical_unreferenced',
+  'rfi_questions.archived_unreferenced',
   'requirement_responsibility_people.orphaned',
 ]
 
@@ -667,11 +693,255 @@ function addRetentionRequirementSelection(seedData) {
   }
 }
 
+function addRetentionRfi(seedData) {
+  addRow(seedData, 'rfi_question_sequences', {
+    area_id: RETENTION_SEED.requirementArea.used,
+    next_sequence: 905,
+  })
+
+  for (const question of [
+    {
+      archivedAt: null,
+      code: 'RSK-RFI901',
+      id: RETENTION_SEED.rfiQuestion.historicalUnreferenced,
+      isArchived: 0,
+      sortOrder: 901,
+      updatedAt: OLD_730_TS,
+    },
+    {
+      archivedAt: null,
+      code: 'RSK-RFI902',
+      id: RETENTION_SEED.rfiQuestion.historicalFresh,
+      isArchived: 0,
+      sortOrder: 902,
+      updatedAt: NEW_TS,
+    },
+    {
+      archivedAt: null,
+      code: 'RSK-RFI903',
+      id: RETENTION_SEED.rfiQuestion.historicalBlockedList,
+      isArchived: 0,
+      sortOrder: 903,
+      updatedAt: OLD_730_TS,
+    },
+    {
+      archivedAt: OLD_730_TS,
+      code: 'RSK-RFI911',
+      id: RETENTION_SEED.rfiQuestion.archivedUnreferenced,
+      isArchived: 1,
+      sortOrder: 911,
+      updatedAt: OLD_730_TS,
+    },
+    {
+      archivedAt: NEW_TS,
+      code: 'RSK-RFI912',
+      id: RETENTION_SEED.rfiQuestion.archivedFresh,
+      isArchived: 1,
+      sortOrder: 912,
+      updatedAt: NEW_TS,
+    },
+    {
+      archivedAt: OLD_730_TS,
+      code: 'RSK-RFI913',
+      id: RETENTION_SEED.rfiQuestion.archivedBlockedList,
+      isArchived: 1,
+      sortOrder: 913,
+      updatedAt: OLD_730_TS,
+    },
+    {
+      archivedAt: OLD_730_TS,
+      code: 'RSK-RFI914',
+      id: RETENTION_SEED.rfiQuestion.archivedBlockedSuggestion,
+      isArchived: 1,
+      sortOrder: 914,
+      updatedAt: OLD_730_TS,
+    },
+  ]) {
+    addRow(seedData, 'rfi_questions', {
+      archived_at: question.archivedAt,
+      area_id: RETENTION_SEED.requirementArea.used,
+      created_at: OLD_730_TS,
+      id: question.id,
+      is_archived: question.isArchived,
+      question_code: question.code,
+      sort_order: question.sortOrder,
+      updated_at: question.updatedAt,
+    })
+  }
+
+  for (const version of [
+    {
+      id: RETENTION_SEED.rfiQuestionVersion.historicalUnreferencedVersion,
+      isActive: 0,
+      questionId: RETENTION_SEED.rfiQuestion.historicalUnreferenced,
+      text: 'RETENTION-SEED historisk RFI-frågeversion utan RFI-listreferens',
+      updatedAt: OLD_730_TS,
+      versionNumber: 1,
+    },
+    {
+      id: RETENTION_SEED.rfiQuestionVersion.historicalUnreferencedActive,
+      isActive: 1,
+      questionId: RETENTION_SEED.rfiQuestion.historicalUnreferenced,
+      text: 'RETENTION-SEED aktuell RFI-frågeversion för historisk kandidat',
+      updatedAt: OLD_730_TS,
+      versionNumber: 2,
+    },
+    {
+      id: RETENTION_SEED.rfiQuestionVersion.historicalFreshVersion,
+      isActive: 0,
+      questionId: RETENTION_SEED.rfiQuestion.historicalFresh,
+      text: 'RETENTION-SEED ny historisk RFI-frågeversion',
+      updatedAt: NEW_TS,
+      versionNumber: 1,
+    },
+    {
+      id: RETENTION_SEED.rfiQuestionVersion.historicalFreshActive,
+      isActive: 1,
+      questionId: RETENTION_SEED.rfiQuestion.historicalFresh,
+      text: 'RETENTION-SEED aktuell RFI-frågeversion för färsk historik',
+      updatedAt: NEW_TS,
+      versionNumber: 2,
+    },
+    {
+      id: RETENTION_SEED.rfiQuestionVersion.historicalBlockedListVersion,
+      isActive: 0,
+      questionId: RETENTION_SEED.rfiQuestion.historicalBlockedList,
+      text: 'RETENTION-SEED historisk RFI-frågeversion med RFI-listreferens',
+      updatedAt: OLD_730_TS,
+      versionNumber: 1,
+    },
+    {
+      id: RETENTION_SEED.rfiQuestionVersion.historicalBlockedListActive,
+      isActive: 1,
+      questionId: RETENTION_SEED.rfiQuestion.historicalBlockedList,
+      text: 'RETENTION-SEED aktuell RFI-frågeversion för blockerad historik',
+      updatedAt: OLD_730_TS,
+      versionNumber: 2,
+    },
+    {
+      id: RETENTION_SEED.rfiQuestionVersion.archivedUnreferencedActive,
+      isActive: 1,
+      questionId: RETENTION_SEED.rfiQuestion.archivedUnreferenced,
+      text: 'RETENTION-SEED arkiverad RFI-fråga utan RFI-listreferens',
+      updatedAt: OLD_730_TS,
+      versionNumber: 1,
+    },
+    {
+      id: RETENTION_SEED.rfiQuestionVersion.archivedFreshActive,
+      isActive: 1,
+      questionId: RETENTION_SEED.rfiQuestion.archivedFresh,
+      text: 'RETENTION-SEED ny arkiverad RFI-fråga',
+      updatedAt: NEW_TS,
+      versionNumber: 1,
+    },
+    {
+      id: RETENTION_SEED.rfiQuestionVersion.archivedBlockedListActive,
+      isActive: 1,
+      questionId: RETENTION_SEED.rfiQuestion.archivedBlockedList,
+      text: 'RETENTION-SEED arkiverad RFI-fråga med RFI-listreferens',
+      updatedAt: OLD_730_TS,
+      versionNumber: 1,
+    },
+    {
+      id: RETENTION_SEED.rfiQuestionVersion.archivedBlockedSuggestionActive,
+      isActive: 1,
+      questionId: RETENTION_SEED.rfiQuestion.archivedBlockedSuggestion,
+      text: 'RETENTION-SEED arkiverad RFI-fråga med hanterat förslag',
+      updatedAt: OLD_730_TS,
+      versionNumber: 1,
+    },
+  ]) {
+    addRow(seedData, 'rfi_question_versions', {
+      created_at: version.updatedAt,
+      created_by_display_name: 'Retention Linked',
+      created_by_hsa_id: 'SE5560000001-retentionlinked',
+      expected_answer_format:
+        'RETENTION-SEED svarsmall för Admin > Arkivering.',
+      help_text:
+        'RETENTION-SEED fixture för Admin > Arkivering av RFI-frågeversioner.',
+      id: version.id,
+      is_active: version.isActive,
+      question_text: version.text,
+      rfi_question_id: version.questionId,
+      updated_at: version.updatedAt,
+      version_number: version.versionNumber,
+    })
+  }
+
+  addRow(seedData, 'rfi_question_version_requirement_packages', {
+    requirement_package_id: RETENTION_SEED.requirementPackage.used,
+    rfi_question_version_id:
+      RETENTION_SEED.rfiQuestionVersion.historicalUnreferencedVersion,
+  })
+  addRow(seedData, 'rfi_question_version_requirement_selection_questions', {
+    requirement_selection_question_id:
+      RETENTION_SEED.requirementSelectionQuestion.withArchivedAnswer,
+    rfi_question_version_id:
+      RETENTION_SEED.rfiQuestionVersion.historicalUnreferencedVersion,
+  })
+
+  addRow(seedData, 'specification_rfi_lists', {
+    created_at: OLD_730_TS,
+    is_locked: 0,
+    locked_at: null,
+    locked_by_display_name: null,
+    locked_by_hsa_id: null,
+    specification_id: RETENTION_SEED.specification.management,
+    updated_at: OLD_730_TS,
+  })
+
+  for (const item of [
+    {
+      questionId: RETENTION_SEED.rfiQuestion.historicalBlockedList,
+      versionId: RETENTION_SEED.rfiQuestionVersion.historicalBlockedListVersion,
+    },
+    {
+      questionId: RETENTION_SEED.rfiQuestion.archivedBlockedList,
+      versionId: RETENTION_SEED.rfiQuestionVersion.archivedBlockedListActive,
+    },
+  ]) {
+    addRow(seedData, 'specification_rfi_question_items', {
+      changed_at: OLD_730_TS,
+      changed_by_display_name: 'Retention Linked',
+      changed_by_hsa_id: 'SE5560000001-retentionlinked',
+      is_included: 1,
+      relevance: null,
+      rfi_question_id: item.questionId,
+      rfi_question_version_id: item.versionId,
+      specification_id: RETENTION_SEED.specification.management,
+    })
+  }
+
+  addRow(seedData, 'rfi_question_suggestions', {
+    area_id: RETENTION_SEED.requirementArea.used,
+    content:
+      'RETENTION-SEED hanterat RFI-frågeförslag blockerar gallring av arkiverad RFI-fråga.',
+    created_at: OLD_730_TS,
+    created_by_display_name: 'Retention Linked',
+    created_by_hsa_id: 'SE5560000001-retentionlinked',
+    id: RETENTION_SEED.rfiQuestionSuggestion.archivedBlockedSuggestion,
+    is_review_requested: 1,
+    resolution: 1,
+    resolution_motivation:
+      'RETENTION-SEED förslaget är hanterat men bevarar RFI-frågereferensen.',
+    resolved_at: OLD_730_TS,
+    resolved_by_display_name: 'Retention Linked',
+    resolved_by_hsa_id: 'SE5560000001-retentionlinked',
+    review_requested_at: OLD_730_TS,
+    rfi_question_id: RETENTION_SEED.rfiQuestion.archivedBlockedSuggestion,
+    source_specification_name: 'RETENTION-SEED kravunderlag i förvaltning',
+    source_specification_unique_id: 'RETENTION-SEED-MANAGEMENT-SPEC',
+    specification_id: RETENTION_SEED.specification.management,
+    updated_at: OLD_730_TS,
+  })
+}
+
 export function appendArchivingRetentionSeed(seedData) {
   addRetentionTaxonomy(seedData)
   addRetentionRequirements(seedData)
   addRetentionSpecifications(seedData)
   addRetentionRequirementSelection(seedData)
+  addRetentionRfi(seedData)
   return {
     positiveSourceKeys: RETENTION_POSITIVE_SOURCE_KEYS.length,
   }

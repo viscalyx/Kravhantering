@@ -176,11 +176,17 @@ describe('seed profiles', () => {
     expect(seedRowsFor(rows, 'requirement_statuses').length).toBeGreaterThan(0)
     expect(seedRowsFor(rows, 'quality_characteristics')).toHaveLength(49)
     const retentionPolicies = seedRowsFor(rows, 'archiving_retention_policies')
-    expect(retentionPolicies).toHaveLength(5)
+    expect(retentionPolicies).toHaveLength(6)
     expect(retentionPolicies).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           policy_key: 'archived_requirement_selection_delete',
+        }),
+        expect.objectContaining({
+          age_days: 730,
+          information_set:
+            'Arkiverade RFI-frågor och historiska RFI-frågeversioner',
+          policy_key: 'rfi_questions_retention_delete',
         }),
         expect.objectContaining({
           information_set: 'Kravansvarspersoner utan kravansvarstilldelning',
@@ -750,6 +756,8 @@ describe('seed profiles', () => {
       'requirements_specifications.obsolete',
       'requirement_selection_questions.archived',
       'requirement_selection_answers.archived',
+      'rfi_question_versions.historical_unreferenced',
+      'rfi_questions.archived_unreferenced',
       'requirement_responsibility_people.orphaned',
     ])
 
@@ -766,6 +774,13 @@ describe('seed profiles', () => {
     )
     const requirementSelectionAnswers = rowById(
       seedRowsFor(rows, 'requirement_selection_answers'),
+    )
+    const rfiQuestions = rowById(seedRowsFor(rows, 'rfi_questions'))
+    const rfiQuestionVersions = rowById(
+      seedRowsFor(rows, 'rfi_question_versions'),
+    )
+    const rfiQuestionSuggestions = rowById(
+      seedRowsFor(rows, 'rfi_question_suggestions'),
     )
     const responsibilityPeople = new Map(
       seedRowsFor(rows, 'requirement_responsibility_people').map(row => [
@@ -799,6 +814,11 @@ describe('seed profiles', () => {
     const localNorms = seedRowsFor(
       rows,
       'specification_local_requirement_norm_references',
+    )
+    const specificationRfiLists = seedRowsFor(rows, 'specification_rfi_lists')
+    const specificationRfiQuestionItems = seedRowsFor(
+      rows,
+      'specification_rfi_question_items',
     )
 
     expect(seedRowsFor(rows, 'owners')).toHaveLength(0)
@@ -1044,5 +1064,77 @@ describe('seed profiles', () => {
           RETENTION_SEED.requirementSelectionAnswer.blockedHistory,
       ),
     ).toBe(true)
+    expect(
+      rfiQuestionVersions.get(
+        RETENTION_SEED.rfiQuestionVersion.historicalUnreferencedVersion,
+      ),
+    ).toMatchObject({
+      is_active: 0,
+      rfi_question_id: RETENTION_SEED.rfiQuestion.historicalUnreferenced,
+      updated_at: '2023-01-15 09:00:00',
+    })
+    expect(
+      rfiQuestionVersions.get(
+        RETENTION_SEED.rfiQuestionVersion.historicalUnreferencedActive,
+      ),
+    ).toMatchObject({
+      is_active: 1,
+      rfi_question_id: RETENTION_SEED.rfiQuestion.historicalUnreferenced,
+      version_number: 2,
+    })
+    expect(
+      rfiQuestions.get(RETENTION_SEED.rfiQuestion.archivedUnreferenced),
+    ).toMatchObject({
+      archived_at: '2023-01-15 09:00:00',
+      is_archived: 1,
+      question_code: 'RSK-RFI911',
+    })
+    expect(
+      rfiQuestionVersions.get(
+        RETENTION_SEED.rfiQuestionVersion.historicalFreshVersion,
+      ),
+    ).toMatchObject({
+      is_active: 0,
+      updated_at: '2026-04-25 09:00:00',
+    })
+    expect(
+      rfiQuestions.get(RETENTION_SEED.rfiQuestion.archivedFresh),
+    ).toMatchObject({
+      archived_at: '2026-04-25 09:00:00',
+      is_archived: 1,
+    })
+    expect(specificationRfiLists).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          is_locked: 0,
+          specification_id: RETENTION_SEED.specification.management,
+        }),
+      ]),
+    )
+    expect(specificationRfiQuestionItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rfi_question_id: RETENTION_SEED.rfiQuestion.historicalBlockedList,
+          rfi_question_version_id:
+            RETENTION_SEED.rfiQuestionVersion.historicalBlockedListVersion,
+          specification_id: RETENTION_SEED.specification.management,
+        }),
+        expect.objectContaining({
+          rfi_question_id: RETENTION_SEED.rfiQuestion.archivedBlockedList,
+          rfi_question_version_id:
+            RETENTION_SEED.rfiQuestionVersion.archivedBlockedListActive,
+          specification_id: RETENTION_SEED.specification.management,
+        }),
+      ]),
+    )
+    expect(
+      rfiQuestionSuggestions.get(
+        RETENTION_SEED.rfiQuestionSuggestion.archivedBlockedSuggestion,
+      ),
+    ).toMatchObject({
+      resolution: 1,
+      rfi_question_id: RETENTION_SEED.rfiQuestion.archivedBlockedSuggestion,
+      specification_id: RETENTION_SEED.specification.management,
+    })
   })
 })

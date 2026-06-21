@@ -783,6 +783,15 @@ svarsformat och rådgivande länkar.
 
 _Avoid_: Kravversion, historikrad, kopia.
 
+**Historisk RFI-frågeversion**:
+En RFI-frågeversion som inte längre är den version som RFI-frågan använder
+framåt, men som kan bevaras för kravunderlagshistorik, spårbarhet eller
+gallringsprövning.
+
+- `en`: Historical RFI question version
+
+_Avoid_: Inaktiv version, gammal version.
+
 **RFI-frågelista**:
 Kravunderlagets lista av RFI-frågor.
 
