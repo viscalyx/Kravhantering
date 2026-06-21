@@ -489,6 +489,9 @@ Static (per-response, non-nonce) security headers are set in the
 `headers()` block of [next.config.ts](../next.config.ts) and apply to
 every route. CSP is intentionally **not** set there — it carries a
 per-request nonce and is set in [middleware.ts](../middleware.ts) instead.
+The supported browser baseline is modern Chrome, Edge, Firefox, Safari, and
+current platform WebViews. IE and pre-CSP2 browser engines are unsupported, so
+CSP `frame-ancestors` is the clickjacking control.
 
 > **Filename note.** Next.js 16 renamed the entry-gate convention to
 > `proxy.ts`, but Next 16.2.4 emits the chunk for `proxy.ts` without
@@ -500,8 +503,6 @@ per-request nonce and is set in [middleware.ts](../middleware.ts) instead.
 
 Current static headers and rationale:
 
-- `X-Frame-Options: DENY` — clickjacking defense for legacy clients
-  that ignore CSP `frame-ancestors`.
 - `X-Content-Type-Options: nosniff` — disable MIME sniffing.
 - `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
   — applied in production; the prodlike CI runner serves over plain

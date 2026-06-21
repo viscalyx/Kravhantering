@@ -90,10 +90,10 @@ These are local development values only. Do not replace them with production
 client credentials.
 
 The committed dev and container-test realms emit local `Admin` and `Reviewer`
-roles for the `kravhantering-mcp` service token. Those local-only roles let the
-corpus exercise requirement writes, specification add/remove, and reviewer
-transitions through the same production authorization checks without depending
-on assignment-specific seed rows.
+roles as a JSON-array `roles` claim for the `kravhantering-mcp` service token.
+Those local-only roles let the corpus exercise requirement writes,
+specification add/remove, and reviewer transitions through the same production
+authorization checks without depending on assignment-specific seed rows.
 
 In GitHub Actions, the workflow sets
 `AUTH_OIDC_ISSUER_URL=http://127.0.0.1:8080/realms/kravhantering-dev` for this

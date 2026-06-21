@@ -20,24 +20,35 @@ describe('parseRolesClaim', () => {
     ])
   })
 
-  it('parses space/comma-separated strings', () => {
-    expect(parseRolesClaim('Reviewer Admin')).toEqual(['Reviewer', 'Admin'])
-    expect(parseRolesClaim('Admin, Reviewer')).toEqual(['Admin', 'Reviewer'])
+  it('deduplicates canonical role values while preserving claim order', () => {
+    expect(parseRolesClaim(['Admin', 'Reviewer', 'Admin'])).toEqual([
+      'Admin',
+      'Reviewer',
+    ])
   })
 
   it('drops legacy Author/Steward role values', () => {
     expect(parseRolesClaim(['Author', 'Steward', 'Admin'])).toEqual(['Admin'])
   })
 
-  it('maps LDAP group CNs to canonical roles', () => {
-    const result = parseRolesClaim([
-      'CN=kravhantering-reviewer,OU=Groups,DC=example,DC=com',
-      'CN=kravhantering-admin,OU=Groups,DC=example,DC=com',
-      'CN=kravhantering-privacy-officer,OU=Groups,DC=example,DC=com',
-    ])
-    expect(result).toContain('Reviewer')
-    expect(result).toContain('Admin')
-    expect(result).toContain('PrivacyOfficer')
+  it('drops non-canonical array entries', () => {
+    expect(
+      parseRolesClaim([
+        'reviewer',
+        ' Reviewer ',
+        'CN=kravhantering-admin,OU=Groups,DC=example,DC=com',
+        42,
+        'Admin',
+      ]),
+    ).toEqual(['Admin'])
+  })
+
+  it('does not parse non-array role claims', () => {
+    expect(parseRolesClaim('Reviewer Admin')).toEqual([])
+    expect(parseRolesClaim('Admin, Reviewer')).toEqual([])
+    expect(
+      parseRolesClaim('CN=kravhantering-admin,OU=Groups,DC=example,DC=com'),
+    ).toEqual([])
   })
 
   it('returns an empty array for unknown shapes', () => {

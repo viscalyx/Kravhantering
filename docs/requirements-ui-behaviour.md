@@ -47,14 +47,16 @@ The behaviors below apply to the requirement list rendered by:
 - Clicking outside a modal form does not close it. Users must use the explicit
   cancel or close controls.
 
-## Route Compatibility
+## Requirement Routes
 
-- `/requirements/...` remains the existing browser path for the Requirements
-  Library and requirement detail pages.
-- `/krav/...` and `/<locale>/krav/...` are Swedish convenience aliases that
-  redirect to the matching `/requirements/...` or
-  `/<locale>/requirements/...` path while preserving the remaining subpath and
-  query string.
+- `/requirements/...` is the application page path for the Requirements Library
+  and requirement detail pages.
+- `/krav/...` and `/<locale>/krav/...` are supported Swedish production routes
+  for the same surfaces. They include `/krav/{krav-id}/{version}` for a
+  specific kravversion.
+- Middleware maps Swedish requirement routes to the matching `/requirements/...`
+  or `/<locale>/requirements/...` page path while preserving the remaining
+  subpath and query string.
 - The UI continues to generate `/requirements/...` links.
 
 ## Table Structure

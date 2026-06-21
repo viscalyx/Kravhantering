@@ -341,8 +341,9 @@ The realm emits a `roles` claim as a JSON array of strings on both ID and
 access tokens. Values are exactly `Reviewer`, `Admin`, and
 `PrivacyOfficer` (the canonical names used throughout the app). Authoring
 rights are not carried by the roles claim — they are assignment-driven via
-`employeeHsaId`. `PrivacyOfficer` grants the narrow Admin Center privacy,
-archiving retention, and access-review surfaces; it does not imply `Admin`.
+`employeeHsaId`. Non-array role claims grant no global roles.
+`PrivacyOfficer` grants the narrow Admin Center privacy, archiving retention,
+and access-review surfaces; it does not imply `Admin`.
 
 ### `employeeHsaId` claim
 
@@ -449,7 +450,7 @@ envs at the per-env OIDC issuer and client registration.
 | `AUTH_OIDC_REDIRECT_URI` | yes | `http://localhost:3000/api/auth/callback` | Full callback URL, scheme + host + path. Must be an absolute `http://` or `https://` URL and **must be pre-registered in the IdP**; mismatches surface as `redirect_uri_mismatch` from the configured OIDC provider. This URL's origin is also the canonical origin for CSRF checks; forwarded headers do not override it. Re-register on every OpenShift Route hostname change (blue/green cutover). |
 | `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` | yes | `http://localhost:3000/` | Where the IdP sends the browser after `end_session_endpoint`. Must be an absolute `http://` or `https://` URL and also pre-registered per env. |
 | `AUTH_OIDC_SCOPES` | no | `openid profile email` | Space-separated. `openid` is mandatory; `profile` carries `name` / `given_name` / `family_name`; `email` carries `email` / `email_verified`. Add custom scopes if your OIDC provider requires them to release the `roles` claim. |
-| `AUTH_OIDC_ROLES_CLAIM` | no | `roles` | Claim name the parser in [lib/auth/roles.ts](../lib/auth/roles.ts) reads. Override only if the IdP cannot emit `roles` and the committed auth contract has been updated accordingly. |
+| `AUTH_OIDC_ROLES_CLAIM` | no | `roles` | Claim name the parser in [lib/auth/roles.ts](../lib/auth/roles.ts) reads as a JSON array of exact canonical role strings. Override only if the IdP cannot emit `roles` and the committed auth contract has been updated accordingly. |
 | `AUTH_OIDC_API_AUDIENCE` | no | falls back to `AUTH_OIDC_CLIENT_ID` | Audience expected on **access tokens** validated by the MCP path ([lib/auth/mcp-token.ts](../lib/auth/mcp-token.ts)). Set explicitly when the MCP client receives tokens scoped to a different `aud` than the web client. |
 <!-- markdownlint-enable MD013 -->
 

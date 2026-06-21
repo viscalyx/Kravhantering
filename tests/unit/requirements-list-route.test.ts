@@ -193,7 +193,6 @@ describe('requirements route', () => {
         body: JSON.stringify({
           description: 'New requirement',
           areaId: 1,
-          ownerId: 'spoofed-actor',
           typeId: 2,
           requirementPackageIds: [1, 2],
         }),
@@ -223,6 +222,33 @@ describe('requirements route', () => {
         requirement: Record<string, unknown>
       }
       expect(manageInput.requirement).not.toHaveProperty('createdBy')
+      expect(manageInput.requirement).not.toHaveProperty('ownerId')
+    })
+
+    it('returns 400 when POST contains legacy ownerId', async () => {
+      const { POST } = await import('@/app/api/requirements/route')
+      const req = new Request('http://localhost/api/requirements', {
+        method: 'POST',
+        body: JSON.stringify({
+          description: 'New requirement',
+          areaId: 1,
+          ownerId: 'spoofed-actor',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const res = await POST(req as never)
+
+      expect(res.status).toBe(400)
+      await expect(res.json()).resolves.toMatchObject({
+        error: 'Invalid request',
+        issues: [
+          {
+            code: 'unrecognized_keys',
+            path: '$',
+          },
+        ],
+      })
+      expect(mockManageRequirement).not.toHaveBeenCalled()
     })
 
     it('returns 400 when POST contains invalid requirement package ids', async () => {

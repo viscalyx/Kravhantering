@@ -1164,13 +1164,14 @@ Identitetsmodellen i applikationen utgår från:
 - **`sub`** — stabil identitet från leverantören
 - **`employeeHsaId`** — verksamhetsnära identitetsnyckel
   som krävs i både webb- och MCP-flöden
-- **`roles`** — globala IdP-roller. Nuvarande
-  autentiseringskontrakt normaliserar `roles` till
-  `Admin`, `Reviewer` och `PrivacyOfficer`. Författande
-  och uppdragsförvaltning är däremot inte globala
-  IdP-roller. De härleds från applikationsägda HSA-id-
-  uppdrag som kravområdesägare, kravområdesmedförfattare,
-  kravunderlagsansvarig och kravunderlagsmedförfattare.
+- **`roles`** — globala IdP-roller. Autentiseringskontraktet
+  kräver en JSON-array med de exakta rollvärdena `Admin`,
+  `Reviewer` och `PrivacyOfficer`; andra former ger inga
+  globala roller. Författande och uppdragsförvaltning är
+  däremot inte globala IdP-roller. De härleds från
+  applikationsägda HSA-id-uppdrag som kravområdesägare,
+  kravområdesmedförfattare, kravunderlagsansvarig och
+  kravunderlagsmedförfattare.
 
 Det är dock viktigt att skilja på autentisering och
 auktorisering: verifierad identitet etablerar aktören,

@@ -107,7 +107,12 @@ function ensureLocalePath(pathname: string): string {
   return `/${DEFAULT_LOCALE}${pathname}`
 }
 
-function kravAliasTargetPathname(pathname: string): string | null {
+function swedishRequirementRouteTargetPathname(
+  pathname: string,
+): string | null {
+  // `/krav/...` is a supported Swedish production route for requirement and
+  // requirement-version links. Page files live under `/requirements`, so map
+  // the Swedish route to that implementation path while preserving subpaths.
   if (pathname === '/krav' || pathname.startsWith('/krav/')) {
     return pathname.replace(/^\/krav(?=\/|$)/, '/requirements')
   }
@@ -127,11 +132,11 @@ function kravAliasTargetPathname(pathname: string): string | null {
   return null
 }
 
-function redirectKravAliasToRequirements(
+function redirectSwedishRequirementRouteToRequirements(
   request: NextRequest,
 ): NextResponse | null {
   const { pathname, search } = request.nextUrl
-  const targetPathname = kravAliasTargetPathname(pathname)
+  const targetPathname = swedishRequirementRouteTargetPathname(pathname)
   if (targetPathname === null) return null
 
   const target = new URL(`${targetPathname}${search ?? ''}`, request.url)
@@ -429,8 +434,11 @@ export default async function middleware(request: NextRequest) {
   const methodResponse = rejectUnsupportedApiMethod(request)
   if (methodResponse) return finalizeResponse(methodResponse, ids)
 
-  const kravAliasResponse = redirectKravAliasToRequirements(request)
-  if (kravAliasResponse) return finalizeResponse(kravAliasResponse, ids)
+  const swedishRequirementRouteResponse =
+    redirectSwedishRequirementRouteToRequirements(request)
+  if (swedishRequirementRouteResponse) {
+    return finalizeResponse(swedishRequirementRouteResponse, ids)
+  }
 
   const authResponse = await enforceAuth(request)
   if (authResponse) return finalizeResponse(authResponse, ids)

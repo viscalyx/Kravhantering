@@ -142,7 +142,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RequirementMutation' }
+            schema: { $ref: '#/components/schemas/RequirementCreateMutation' }
       responses:
         '201':
           description: Created requirement version.
@@ -807,42 +807,59 @@ components:
         statusNameSv: { type: string, nullable: true }
         statusNameEn: { type: string, nullable: true }
         revisionToken: { type: string }
-    RequirementMutation:
+    RequirementCreateMutation:
       type: object
       required: [areaId, description]
-      additionalProperties: true
+      additionalProperties: false
       properties:
         acceptanceCriteria: { type: string, maxLength: 4000 }
         areaId: { type: integer, minimum: 1 }
-        baseRevisionToken: { type: string, nullable: true, maxLength: 200 }
-        baseVersionId: { type: integer, minimum: 1, nullable: true }
-        categoryId: { type: integer, minimum: 1 }
+        categoryId: { type: integer, minimum: 1, nullable: true }
         description: { type: string, minLength: 1, maxLength: 4000 }
         normReferenceIds:
           type: array
+          nullable: true
           maxItems: 100
           items: { type: integer, minimum: 1 }
-        ownerId: { type: string, maxLength: 80 }
-        qualityCharacteristicId: { type: integer, minimum: 1 }
+        qualityCharacteristicId: { type: integer, minimum: 1, nullable: true }
         requirementPackageIds:
           type: array
+          nullable: true
           maxItems: 100
           items: { type: integer, minimum: 1 }
         requiresTesting: { type: boolean }
-        riskLevelId: { type: integer, minimum: 1 }
-        typeId: { type: integer, minimum: 1 }
+        riskLevelId: { type: integer, minimum: 1, nullable: true }
+        typeId: { type: integer, minimum: 1, nullable: true }
         verificationMethod: { type: string, maxLength: 4000 }
     RequirementEditMutation:
-      allOf:
-        - $ref: '#/components/schemas/RequirementMutation'
-        - type: object
-          required: [baseRevisionToken, baseVersionId]
-          properties:
-            baseRevisionToken:
-              type: string
-              nullable: false
-              maxLength: 200
-            baseVersionId:
-              type: integer
-              minimum: 1
-              nullable: false
+      type: object
+      required: [baseRevisionToken, baseVersionId, description]
+      additionalProperties: false
+      properties:
+        acceptanceCriteria: { type: string, maxLength: 4000 }
+        areaId: { type: integer, minimum: 1, nullable: true }
+        baseRevisionToken:
+          type: string
+          format: uuid
+          nullable: false
+        baseVersionId:
+          type: integer
+          minimum: 1
+          nullable: false
+        categoryId: { type: integer, minimum: 1, nullable: true }
+        description: { type: string, minLength: 1, maxLength: 4000 }
+        normReferenceIds:
+          type: array
+          nullable: true
+          maxItems: 100
+          items: { type: integer, minimum: 1 }
+        qualityCharacteristicId: { type: integer, minimum: 1, nullable: true }
+        requirementPackageIds:
+          type: array
+          nullable: true
+          maxItems: 100
+          items: { type: integer, minimum: 1 }
+        requiresTesting: { type: boolean }
+        riskLevelId: { type: integer, minimum: 1, nullable: true }
+        typeId: { type: integer, minimum: 1, nullable: true }
+        verificationMethod: { type: string, maxLength: 4000 }

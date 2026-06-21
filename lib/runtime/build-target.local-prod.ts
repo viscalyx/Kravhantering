@@ -5,8 +5,9 @@
  * Frozen values appropriate for running the production bundle locally
  * against a dev Keycloak instance (http://) — never use in a real deployment.
  *
- * No `process.env` reads — all values are compile-time constants so webpack
- * can eliminate branches that are conditional on these flags.
+ * No `process.env` reads — all values are compile-time constants so the
+ * production bundler can eliminate branches that are conditional on these
+ * flags.
  *
  * @see lib/runtime/build-target.ts for the full API contract.
  */

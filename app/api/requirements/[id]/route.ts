@@ -60,10 +60,6 @@ const requirementEditSchema = z
     categoryId: optionalBodyIdSchema,
     description: businessTextSchema,
     normReferenceIds: optionalBodyIdArraySchema,
-    // Accepted for edit-requirement-client.tsx compatibility; the PUT handler
-    // below intentionally omits ownerId from the requirement object passed to
-    // manageRequirement().
-    ownerId: optionalBusinessTextSchema,
     qualityCharacteristicId: optionalBodyIdSchema,
     requirementPackageIds: optionalBodyIdArraySchema,
     requiresTesting: z.boolean().optional().default(false),

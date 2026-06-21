@@ -314,18 +314,18 @@ describe('middleware', () => {
     ['/en/krav', '/en/requirements'],
     ['/en/krav/IDN0001', '/en/requirements/IDN0001'],
     ['/sv/krav/IDN0001/10', '/sv/requirements/IDN0001/10'],
-  ])('redirects Swedish requirement alias %s to existing requirements path', async (source, target) => {
+  ])('redirects Swedish requirement route %s to the requirements page path', async (source, target) => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
       const response = await middleware(
-        buildRequest(`http://localhost${source}?from=alias`, {
+        buildRequest(`http://localhost${source}?from=swedish-route`, {
           accept: 'text/html',
         }),
       )
 
       expect(response.status).toBe(307)
       expect(response.headers.get('location')).toBe(
-        `http://localhost${target}?from=alias`,
+        `http://localhost${target}?from=swedish-route`,
       )
       expect(response.headers.get('content-type')).toBe(
         'text/plain; charset=utf-8',

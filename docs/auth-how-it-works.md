@@ -413,11 +413,11 @@ flowchart LR
 - For Keycloak realms, keep the underlying user attribute named `hsaId` and
   map it to the token claim `employeeHsaId`. Newer Keycloak admin consoles
   expose that field through the realm user-profile configuration.
-- Emit global role information in a way that resolves to the canonical app
-  roles `Reviewer`, `Admin`, and `PrivacyOfficer`. For the least friction,
-  emit those exact values on a `roles` claim. `PrivacyOfficer` is a narrow
-  role for privacy, archiving retention, and access-review handling; it does
-  not imply `Admin`.
+- Emit global role information as a JSON array of exact canonical app role
+  strings: `Reviewer`, `Admin`, and `PrivacyOfficer`. The default claim name is
+  `roles`. Non-array role claims and unknown values grant no global roles.
+  `PrivacyOfficer` is a narrow role for privacy, archiving retention, and
+  access-review handling; it does not imply `Admin`.
 - Do not model authoring rights as IdP roles. The application derives
   authoring rights from area and specification assignments matched on
   `employeeHsaId`.
@@ -433,8 +433,8 @@ flowchart LR
   If a local or prodlike token lacks the claim, update the Keycloak realm
   configuration or reset the local IdP so the current realm JSON is imported.
 - The current MCP implementation may also consume `roles` and/or `scope`.
-  If role-based behavior is needed there, emit the canonical app roles on a
-  `roles` claim.
+  If role-based behavior is needed there, emit the canonical app roles as a
+  JSON array on a `roles` claim.
 
 #### Identity semantics
 

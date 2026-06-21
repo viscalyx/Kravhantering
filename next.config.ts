@@ -1,4 +1,3 @@
-import { fileURLToPath } from 'node:url'
 import type { NextConfig } from 'next'
 import createNextIntlPlugin from 'next-intl/plugin'
 
@@ -39,9 +38,6 @@ if (!isBuildTarget(buildTarget)) {
 const resolvedBuildTarget: BuildTarget = buildTarget
 const buildTargetSuffix =
   resolvedBuildTarget === 'dev' ? '' : `.${resolvedBuildTarget}`
-const buildTargetModulePath = fileURLToPath(
-  new URL(`./lib/runtime/build-target${buildTargetSuffix}.ts`, import.meta.url),
-)
 // Turbopack's `resolveAlias` interprets a leading `/` as project-root-
 // relative, so absolute paths like `/workspace/...` get resolved against
 // the project root and 404. Use a project-relative path with `./` prefix.
@@ -64,24 +60,24 @@ if (explicitDeveloperModeEnabled && isProduction) {
 // pointing the alias at the published package's own `/noop` subpath so that
 // production builds (and the production runtime they produce) contain zero
 // references to the developer-mode packages — they can be pruned with
-// `npm prune --omit=dev` without breaking the build. Webpack accepts both
-// specifiers and absolute paths; Turbopack treats a leading `/` as
-// project-root-relative, so we use a `./`-prefixed relative path.
+// `npm prune --omit=dev` without breaking the build. Turbopack treats a
+// leading `/` as project-root-relative, so aliases use `./`-prefixed paths.
 const developerModeCoreNoopPathRelative =
   './lib/runtime/developer-mode-core-noop.ts'
 const developerModeReactNoopPathRelative =
   './lib/runtime/developer-mode-react-noop.tsx'
-const developerModeCoreNoopPathAbsolute = fileURLToPath(
-  new URL(developerModeCoreNoopPathRelative, import.meta.url),
-)
-const developerModeReactNoopPathAbsolute = fileURLToPath(
-  new URL(developerModeReactNoopPathRelative, import.meta.url),
-)
 const expoSqliteUnavailablePathRelative =
   './lib/runtime/expo-sqlite-unavailable.ts'
-const expoSqliteUnavailablePathAbsolute = fileURLToPath(
-  new URL(expoSqliteUnavailablePathRelative, import.meta.url),
-)
+
+const UNSUPPORTED_WEBPACK_BUILD_MESSAGE = [
+  'Webpack builds are unsupported for this app.',
+  'Use the Turbopack build path via npm run build or npm run build:local-prod.',
+  'If Webpack support is required, add explicit webpack(config) aliases matching',
+  'the Turbopack resolveAlias entries for @/lib/runtime/build-target,',
+  '@viscalyx/developer-mode-core, @viscalyx/developer-mode-react, and expo-sqlite.',
+  'Then add a CI-backed next build --webpack check and unit coverage that proves',
+  'the Webpack aliases stay in sync.',
+].join(' ')
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -108,11 +104,8 @@ const nextConfig: NextConfig = {
   // Server application.
   serverExternalPackages: ['mermaid', 'typeorm'],
   allowedDevOrigins: ['0.0.0.0', '127.0.0.1'],
-  // Turbopack-equivalent of the webpack alias block below. Next.js 16
-  // uses Turbopack for `next build`, so the `webpack(config)` hook is
-  // silently ignored — the aliases must also be declared here for
-  // production builds to swap in the right `build-target.*.ts` and the
-  // developer-mode no-op modules. Keep both blocks in sync.
+  // Next.js 16 production builds use Turbopack for this app. These aliases
+  // swap in the right `build-target.*.ts` and developer-mode no-op modules.
   turbopack: {
     resolveAlias: {
       'expo-sqlite': expoSqliteUnavailablePathRelative,
@@ -128,27 +121,8 @@ const nextConfig: NextConfig = {
         : {}),
     },
   },
-  webpack(config) {
-    // Build-target module swap: alias @/lib/runtime/build-target to the
-    // concrete implementation for this build target. Applied for both server
-    // and client bundles so production builds are uniformly frozen.
-    // (Webpack is no longer used by `next build` in Next 16 — it is the
-    // Turbopack alias above that takes effect — but this stays in place for
-    // any tooling that still drives a webpack build.)
-    if (resolvedBuildTarget !== 'dev') {
-      config.resolve.alias['@/lib/runtime/build-target'] = buildTargetModulePath
-    }
-
-    if (!enableDeveloperMode) {
-      config.resolve.alias['@viscalyx/developer-mode-core'] =
-        developerModeCoreNoopPathAbsolute
-      config.resolve.alias['@viscalyx/developer-mode-react'] =
-        developerModeReactNoopPathAbsolute
-    }
-
-    config.resolve.alias['expo-sqlite'] = expoSqliteUnavailablePathAbsolute
-
-    return config
+  webpack() {
+    throw new Error(UNSUPPORTED_WEBPACK_BUILD_MESSAGE)
   },
   // CSP is set per-request in middleware.ts (nonce-based).
   // Only static security headers are defined here.
@@ -157,7 +131,6 @@ const nextConfig: NextConfig = {
       {
         source: '/(.*)',
         headers: [
-          { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           {
             key: 'Strict-Transport-Security',

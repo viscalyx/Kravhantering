@@ -480,4 +480,29 @@ describe('verifyMcpBearerToken security audit events', () => {
       scopes: ['mcp:read', 'mcp:write'],
     })
   })
+
+  it('grants no roles for non-array role claims', async () => {
+    jwtVerifyMock.mockResolvedValue({
+      payload: {
+        sub: 'svc',
+        roles: 'Admin Reviewer',
+        employeeHsaId: 'SE5560000001-mcp1',
+        client_id: 'kravhantering-mcp',
+      },
+    })
+    const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
+    const result = await verifyMcpBearerToken(
+      new Request('http://x/api/mcp', {
+        headers: { authorization: 'Bearer x.y.z' },
+      }),
+    )
+    expect(result.actor.roles).toEqual([])
+    const events = emittedSecurityEvents()
+    expect(events).toHaveLength(1)
+    expect(events[0].event).toBe('auth.mcp.token.accepted')
+    expect(events[0].detail).toEqual({
+      roles: [],
+      scopes: [],
+    })
+  })
 })

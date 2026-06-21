@@ -25,12 +25,6 @@ const originalEnv = Object.fromEntries(
 ) as Record<EnvKey, string | undefined>
 
 type TurbopackAliases = Record<string, string>
-type WebpackConfig = {
-  resolve: {
-    alias: Record<string, string>
-  }
-}
-type WebpackHook = (config: WebpackConfig, context: unknown) => WebpackConfig
 
 function setEnv(env: Partial<Record<EnvKey, string>>) {
   const mutableEnv = process.env as Record<string, string | undefined>
@@ -62,11 +56,19 @@ function getTurbopackAliases(config: NextConfig): TurbopackAliases {
   return aliases as TurbopackAliases
 }
 
-function getWebpackAliases(config: NextConfig): Record<string, string> {
+function expectWebpackBuildUnsupported(config: NextConfig) {
   expect(config.webpack).toBeTypeOf('function')
-  const webpackConfig: WebpackConfig = { resolve: { alias: {} } }
-  const result = (config.webpack as WebpackHook)(webpackConfig, {})
-  return result.resolve.alias
+  const webpack = config.webpack as () => void
+  expect(() => webpack()).toThrowError(
+    /Webpack builds are unsupported for this app.*@\/lib\/runtime\/build-target.*next build --webpack/,
+  )
+}
+
+async function getStaticHeaderKeys(config: NextConfig): Promise<string[]> {
+  expect(config.headers).toBeTypeOf('function')
+  const routes = await config.headers?.()
+  const allHeaders = routes?.flatMap(route => route.headers) ?? []
+  return allHeaders.map(header => header.key)
 }
 
 afterEach(() => {
@@ -88,13 +90,8 @@ describe('next.config Developer Mode wiring', () => {
 
     expect(config.transpilePackages).toEqual([])
     expect(getTurbopackAliases(config)).toMatchObject(NOOP_ALIASES)
-    expect(getWebpackAliases(config)).toMatchObject({
-      '@viscalyx/developer-mode-core': expect.stringMatching(
-        /lib[/\\]runtime[/\\]developer-mode-core-noop\.ts$/,
-      ),
-      '@viscalyx/developer-mode-react': expect.stringMatching(
-        /lib[/\\]runtime[/\\]developer-mode-react-noop\.tsx$/,
-      ),
+    expect(getTurbopackAliases(config)).toMatchObject({
+      '@/lib/runtime/build-target': './lib/runtime/build-target.prod.ts',
     })
     expect(warn).toHaveBeenCalledTimes(1)
     expect(warn).toHaveBeenCalledWith(IGNORED_PRODUCTION_WARNING)
@@ -127,14 +124,6 @@ describe('next.config Developer Mode wiring', () => {
 
     expect(config.transpilePackages).toEqual([])
     expect(getTurbopackAliases(config)).toMatchObject(NOOP_ALIASES)
-    expect(getWebpackAliases(config)).toMatchObject({
-      '@viscalyx/developer-mode-core': expect.stringMatching(
-        /lib[/\\]runtime[/\\]developer-mode-core-noop\.ts$/,
-      ),
-      '@viscalyx/developer-mode-react': expect.stringMatching(
-        /lib[/\\]runtime[/\\]developer-mode-react-noop\.tsx$/,
-      ),
-    })
     expect(warn).not.toHaveBeenCalled()
   })
 
@@ -155,6 +144,15 @@ describe('next.config Developer Mode wiring', () => {
       '@viscalyx/developer-mode-react',
     )
     expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('rejects Webpack builds with alias restoration guidance', async () => {
+    const config = await loadNextConfig({
+      BUILD_TARGET: 'prod',
+      NODE_ENV: 'production',
+    })
+
+    expectWebpackBuildUnsupported(config)
   })
 })
 
@@ -190,6 +188,20 @@ describe('next.config container output', () => {
   })
 })
 
+describe('next.config static security headers', () => {
+  it('relies on CSP frame-ancestors instead of X-Frame-Options', async () => {
+    const config = await loadNextConfig({
+      BUILD_TARGET: 'prod',
+      NODE_ENV: 'production',
+    })
+
+    const headerKeys = await getStaticHeaderKeys(config)
+
+    expect(headerKeys).not.toContain('X-Frame-Options')
+    expect(headerKeys).not.toContain('Content-Security-Policy')
+  })
+})
+
 describe('next.config TypeORM bundling', () => {
   it('keeps TypeORM external to the server bundle', async () => {
     const config = await loadNextConfig({
@@ -202,7 +214,7 @@ describe('next.config TypeORM bundling', () => {
     )
   })
 
-  it('aliases expo-sqlite to a local unavailable stub for both builders', async () => {
+  it('aliases expo-sqlite to a local unavailable stub for Turbopack', async () => {
     const config = await loadNextConfig({
       BUILD_TARGET: 'prod',
       NODE_ENV: 'production',
@@ -210,11 +222,6 @@ describe('next.config TypeORM bundling', () => {
 
     expect(getTurbopackAliases(config)).toMatchObject({
       'expo-sqlite': EXPO_SQLITE_UNAVAILABLE_ALIAS,
-    })
-    expect(getWebpackAliases(config)).toMatchObject({
-      'expo-sqlite': expect.stringMatching(
-        /lib[/\\]runtime[/\\]expo-sqlite-unavailable\.ts$/,
-      ),
     })
   })
 })
