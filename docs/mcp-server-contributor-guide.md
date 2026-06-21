@@ -252,8 +252,8 @@ call `requirements_manage_requirement` with `operation: "create"` for
 each generated requirement.
 
 - **Inputs:** `topic` (required), `areaId` (optional), `locale`
-  (`en` | `sv`), `model` (optional OpenRouter model ID),
-  `customInstruction` (optional)
+  (`en` | `sv`), `model` (optional eligible OpenRouter model ID from the
+  server model catalog), `customInstruction` (optional)
 - **Output:** generated requirements list with thinking trace
 - **Grouping:** AI-assisted authoring
 
@@ -381,7 +381,7 @@ Current behavior:
   source only: the iron-session cookie for browser/REST callers, or a
   verified `Authorization: Bearer` JWT for MCP callers. Auth is mandatory,
   and the app does not accept `x-user-id` or `x-user-roles` request
-  headers as a stand-in for a logged-in user; `middleware.ts` strips both
+  headers as a stand-in for a logged-in user; `proxy.ts` strips both
   headers from every inbound request before any handler runs.
 - The MCP HTTP route additionally verifies a Bearer JWT against the IdP's
   JWKS. The verified actor is attached to the in-flight `Request` object

@@ -11,12 +11,20 @@ shape used by the DAST workflow: SQL Server, Keycloak, and Next.js on
 
 The static contract lives in
 [openapi/requirements-api.yaml](../openapi/requirements-api.yaml). It documents
-current JSON behavior for the browser-backed requirements REST API. The file is
+current JSON behavior for browser-backed app REST APIs in scope. The file is
 not served by the app and does not add a runtime `/openapi` route.
 
 Covered by this contract:
 
 - `/api/auth/me`
+- Privacy erasure and data subject access export routes
+  (`POST /api/privacy/erasure-preview`,
+  `POST /api/privacy/erasure-requests`,
+  `POST /api/privacy/data-subject-export`). Contract examples use disposable
+  seeded HSA-ids, the scan session has `PrivacyOfficer`, and the export route
+  documents `Cache-Control: no-store` for success and validation/authorization
+  errors. Erasure execution accepts stale generated preview tokens as a normal
+  `409` response during fuzzing.
 - Requirement list, detail, create, edit, archive, version read,
   delete-draft, restore, reactivate, and transition routes.
 - Requirement detail responses include server-derived permissions for the
@@ -41,27 +49,16 @@ Deferred from this contract:
 - CSV export, MCP, AI routes, admin catalog mutations, specifications,
   deviations, improvement suggestions, and Admin Center access-review routes
   (`/api/admin/access-reviews/**`).
-- Privacy erasure and data subject access export routes
-  (`POST /api/privacy/erasure-preview`,
-  `POST /api/privacy/erasure-requests`,
-  `POST /api/privacy/data-subject-export`). They require the separate
-  `PrivacyOfficer` role, strict CSRF/origin handling, HSA-id-only matching,
-  stale-preview rejection, and audit-redaction checks before they should be
-  added to the OpenAPI fuzzing contract. The access export route also supports
-  self-service export for the signed-in user's own HSA-id, returns
-  `Cache-Control: no-store`, and records only a non-reversible target
-  fingerprint in audit details.
 - Access-review routes remain outside the OpenAPI/Schemathesis contract for
-  now, aligned with the deferred privacy-route policy. They use the same
-  request-context and CSRF protections as other Admin Center mutations, but the
-  useful assertions are role-matrix and audit-redaction tests: Admin can create,
-  cancel, complete, and export runs; create derives the reviewer from the
-  verified session actor instead of accepting a reviewer body; create is
-  rejected with conflict while another run is `draft` or `in_review`;
-  cancellation is a status change rather than hard deletion; the assigned
-  reviewer can decide their own run; other users receive 403; export responses
-  use `Cache-Control: no-store`; and audit detail never contains a raw reviewed
-  HSA-id list.
+  now. They use the same request-context and CSRF protections as other Admin
+  Center mutations, but the useful assertions are role-matrix and
+  audit-redaction tests: Admin can create, cancel, complete, and export runs;
+  create derives the reviewer from the verified session actor instead of
+  accepting a reviewer body; create is rejected with conflict while another run
+  is `draft` or `in_review`; cancellation is a status change rather than hard
+  deletion; the assigned reviewer can decide their own run; other users receive
+  403; export responses use `Cache-Control: no-store`; and audit detail never
+  contains a raw reviewed HSA-id list.
 - Requirement-selection stewardship routes and specification saved-answer
   mutations remain outside the OpenAPI/Schemathesis v1 contract. They are still
   protected by `secureMutationRoute`, CSRF/origin checks, route/body validation,
@@ -264,7 +261,5 @@ their auth/CSRF behavior is understood.
   scan targets.
 - For privacy paths, include only disposable seeded identities and assert that
   generated examples never log or expose raw target HSA-id values in audit
-  details.
-  Data-subject export should remain outside this contract until the privacy
-  route policy explicitly covers both self-export and `PrivacyOfficer`
-  cross-user export.
+  details. Data-subject export examples should keep covering both self-export
+  and `PrivacyOfficer` cross-user export.

@@ -3,6 +3,7 @@ import {
   type ContentPart,
   generateChatStream,
 } from '@/lib/ai/openrouter-client'
+import { resolveOpenRouterModelCapabilities } from '@/lib/ai/openrouter-model-catalog'
 import {
   buildSystemPrompt,
   buildUserPrompt,
@@ -20,7 +21,7 @@ import {
   requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { ARRAY_INPUT_MAX_ITEMS, localeSchema } from '@/lib/http/validation'
+import { localeSchema } from '@/lib/http/validation'
 import { recordCapacityEvent } from '@/lib/observability/capacity'
 import {
   applyResponseCorrelationHeaders,
@@ -40,7 +41,6 @@ const MAX_AI_IMAGE_BYTES = 10 * 1024 * 1024
 const MAX_AI_IMAGES = 3
 const MAX_AI_INSTRUCTION_LENGTH = 4000
 const MAX_AI_MODEL_LENGTH = 100
-const MAX_AI_PARAMETER_LENGTH = 100
 const MAX_AI_TOPIC_LENGTH = 4000
 const AI_GENERATE_RATE_LIMIT = 5
 const AI_GENERATE_RATE_WINDOW_MS = 60_000
@@ -149,10 +149,6 @@ const generateRequirementsSchema = z
     reasoningEffort: z.string().trim().max(MAX_AI_MODEL_LENGTH).optional(),
     scopeId: z.number().int().positive().optional(),
     scopeType: aiScopeTypeSchema.optional(),
-    supportedParameters: z
-      .array(z.string().trim().min(1).max(MAX_AI_PARAMETER_LENGTH))
-      .max(ARRAY_INPUT_MAX_ITEMS)
-      .optional(),
     topic: z.string().trim().min(1).max(MAX_AI_TOPIC_LENGTH),
   })
   .strict()
@@ -258,9 +254,6 @@ export const POST = secureMutationRoute({
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder()
-        const supportedParameters = Array.isArray(body.supportedParameters)
-          ? body.supportedParameters
-          : undefined
 
         function send(event: string, data: unknown) {
           controller.enqueue(
@@ -271,20 +264,24 @@ export const POST = secureMutationRoute({
         }
 
         try {
+          const modelCapabilities = await resolveOpenRouterModelCapabilities(
+            body.model,
+          )
+          const resolvedModel = modelCapabilities.id
           for await (const event of generateChatStream({
             format: REQUIREMENT_FORMAT_SCHEMA,
             messages: [
               { content: systemPrompt, role: 'system' },
               { content: userContent, role: 'user' },
             ],
-            model: body.model,
+            model: resolvedModel,
             providerPreferences,
             reasoningEffort:
               typeof body.reasoningEffort === 'string'
                 ? body.reasoningEffort
                 : undefined,
             signal: request.signal,
-            supportedParameters,
+            supportedParameters: modelCapabilities.supportedParameters,
           })) {
             switch (event.phase) {
               case 'thinking':
@@ -316,8 +313,7 @@ export const POST = secureMutationRoute({
                   // If parsing fails, send raw content; client will handle the error
                 }
                 send('done', {
-                  model:
-                    body.model ?? process.env.NEXT_PUBLIC_DEFAULT_MODEL ?? '',
+                  model: resolvedModel,
                   rawContent: validated,
                   stats: event.stats,
                   taxonomy,

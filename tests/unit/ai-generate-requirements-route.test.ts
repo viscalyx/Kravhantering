@@ -8,6 +8,7 @@ const routeState = vi.hoisted(() => ({
   getRequestSqlServerDataSource: vi.fn(),
   loadTaxonomy: vi.fn(),
   query: vi.fn(),
+  resolveOpenRouterModelCapabilities: vi.fn(),
   transaction: vi.fn(),
 }))
 
@@ -31,6 +32,11 @@ vi.mock('@/lib/ai/requirement-prompt', () => ({
 
 vi.mock('@/lib/ai/openrouter-client', () => ({
   generateChatStream: routeState.generateChatStream,
+}))
+
+vi.mock('@/lib/ai/openrouter-model-catalog', () => ({
+  resolveOpenRouterModelCapabilities:
+    routeState.resolveOpenRouterModelCapabilities,
 }))
 
 import { POST } from '@/app/api/ai/generate-requirements/route'
@@ -85,6 +91,19 @@ describe('POST /api/ai/generate-requirements', () => {
       riskLevels: [{ id: 1, name: 'Low' }],
       types: [{ id: 1, name: 'Functional' }],
     })
+    routeState.resolveOpenRouterModelCapabilities.mockResolvedValue({
+      contextLength: 200000,
+      id: 'anthropic/claude-sonnet-4',
+      name: 'Claude Sonnet 4',
+      pricing: { completion: '0', prompt: '0', reasoning: '0' },
+      provider: 'anthropic',
+      supportedParameters: [
+        'reasoning',
+        'stream',
+        'response_format',
+        'structured_outputs',
+      ],
+    })
   })
 
   it('logs successful generation capacity metrics', async () => {
@@ -114,6 +133,18 @@ describe('POST /api/ai/generate-requirements', () => {
       const streamOptions = routeState.generateChatStream.mock.calls[0]?.[0]
       expect(streamOptions).not.toHaveProperty('logprobs')
       expect(streamOptions).not.toHaveProperty('topLogprobs')
+      expect(streamOptions).toMatchObject({
+        model: 'anthropic/claude-sonnet-4',
+        supportedParameters: [
+          'reasoning',
+          'stream',
+          'response_format',
+          'structured_outputs',
+        ],
+      })
+      expect(
+        routeState.resolveOpenRouterModelCapabilities,
+      ).toHaveBeenCalledWith(undefined)
       expect(response.headers.get('X-Request-Id')).toBe('request-ai')
       expect(response.headers.get('X-Correlation-Id')).toBe('workflow-ai')
       expect(parseCapacityEvents(consoleInfoSpy)[0]).toMatchObject({
@@ -127,6 +158,20 @@ describe('POST /api/ai/generate-requirements', () => {
     } finally {
       consoleInfoSpy.mockRestore()
     }
+  })
+
+  it('rejects stale client-supplied model capabilities', async () => {
+    const response = await POST(
+      makeRequest({
+        locale: 'en',
+        supportedParameters: ['structured_outputs'],
+        topic: 'secure audit logging',
+      }),
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.resolveOpenRouterModelCapabilities).not.toHaveBeenCalled()
+    expect(routeState.generateChatStream).not.toHaveBeenCalled()
   })
 
   it('denies generation before loading taxonomy or calling the provider', async () => {
@@ -200,6 +245,27 @@ describe('POST /api/ai/generate-requirements', () => {
       expect(JSON.stringify(consoleErrorSpy.mock.calls)).not.toContain(
         'sk-or-v1-secret',
       )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('sends a sanitized error when model capabilities cannot be resolved', async () => {
+    routeState.resolveOpenRouterModelCapabilities.mockRejectedValueOnce(
+      new Error('OpenRouter lookup failed with sk-or-v1-secret'),
+    )
+
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await POST(makeRequest())
+      const text = await response.text()
+
+      expect(text).toContain('"message":"AI provider is unavailable"')
+      expect(text).not.toContain('sk-or-v1-secret')
+      expect(routeState.generateChatStream).not.toHaveBeenCalled()
     } finally {
       consoleErrorSpy.mockRestore()
     }

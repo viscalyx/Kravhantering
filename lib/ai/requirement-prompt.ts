@@ -252,9 +252,6 @@ export const DEFAULT_INSTRUCTION_SV = getPromptMessage('sv', [
   'defaultInstruction',
 ])
 
-/** @deprecated Use DEFAULT_INSTRUCTION_EN instead */
-export const DEFAULT_INSTRUCTION = DEFAULT_INSTRUCTION_EN
-
 export function getDefaultInstruction(locale: 'en' | 'sv' = 'en'): string {
   return getPromptMessage(locale, ['ai', 'prompt', 'defaultInstruction'])
 }

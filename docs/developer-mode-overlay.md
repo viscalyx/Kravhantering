@@ -320,9 +320,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Specification lead changes start inside the existing specification `crud form`
   surfaces. The separate change modal is layered above the edit dialog and uses
   `dialog: change specification lead`.
-- The specification-detail page no longer renders a separate breadcrumb-style
-  back control in that header area; browser navigation is the supported
-  way back from this compact header.
+- The compact specification-detail header relies on browser navigation for
+  returning from the detail page and does not expose a separate
+  breadcrumb-style back-control marker.
 - Published requirement detail views expose the specification-link control as
   `detail action: add to specification` when the currently displayed
   published version is the one that can be added to a specification.

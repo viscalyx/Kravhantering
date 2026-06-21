@@ -221,6 +221,7 @@ describe('trusted container release helpers', () => {
   it('identifies release-relevant paths conservatively', () => {
     expect(isReleaseRelevantPath('containers/app/Dockerfile')).toBe(true)
     expect(isReleaseRelevantPath('package-lock.json')).toBe(true)
+    expect(isReleaseRelevantPath('proxy.ts')).toBe(true)
     expect(
       isReleaseRelevantPath(
         'docs/images/infographic-production-access-and-service-flow.png',

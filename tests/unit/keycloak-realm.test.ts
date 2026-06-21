@@ -137,11 +137,14 @@ function expectLocalMcpPrivilegedRoleMapper(
   expect(rolesMapper?.config).toMatchObject({
     'access.token.claim': 'true',
     'claim.name': 'roles',
-    'claim.value': 'Admin Reviewer',
     'id.token.claim': 'false',
-    'jsonType.label': 'String',
+    'jsonType.label': 'JSON',
     'userinfo.token.claim': 'false',
   })
+  expect(JSON.parse(rolesMapper?.config?.['claim.value'] ?? 'null')).toEqual([
+    'Admin',
+    'Reviewer',
+  ])
 }
 
 describe('production Keycloak realm template', () => {

@@ -107,7 +107,12 @@ function ensureLocalePath(pathname: string): string {
   return `/${DEFAULT_LOCALE}${pathname}`
 }
 
-function kravAliasTargetPathname(pathname: string): string | null {
+function swedishRequirementRouteTargetPathname(
+  pathname: string,
+): string | null {
+  // `/krav/...` is a supported Swedish production route for requirement and
+  // requirement-version links. Page files live under `/requirements`, so map
+  // the Swedish route to that implementation path while preserving subpaths.
   if (pathname === '/krav' || pathname.startsWith('/krav/')) {
     return pathname.replace(/^\/krav(?=\/|$)/, '/requirements')
   }
@@ -127,11 +132,11 @@ function kravAliasTargetPathname(pathname: string): string | null {
   return null
 }
 
-function redirectKravAliasToRequirements(
+function redirectSwedishRequirementRouteToRequirements(
   request: NextRequest,
 ): NextResponse | null {
   const { pathname, search } = request.nextUrl
-  const targetPathname = kravAliasTargetPathname(pathname)
+  const targetPathname = swedishRequirementRouteTargetPathname(pathname)
   if (targetPathname === null) return null
 
   const target = new URL(`${targetPathname}${search ?? ''}`, request.url)
@@ -298,9 +303,9 @@ function enforceRestCsrf(request: NextRequest): NextResponse | null {
 // Locale roots (`/sv`, `/en`) only exist to redirect to `/<locale>/requirements`.
 // The original implementation lived in `app/[locale]/page.tsx` as a Server
 // Component `redirect('/requirements')`, but Server-Component redirects emit a
-// ~83 KB `__next_error__` HTML scaffold AFTER middleware runs, which trips ZAP
+// ~83 KB `__next_error__` HTML scaffold AFTER proxy runs, which trips ZAP
 // rule 10044 (Big Redirect, body > 1024 bytes) on /sv and /en. Doing the
-// redirect here keeps it inside the middleware response pipeline, so
+// redirect here keeps it inside the proxy response pipeline, so
 // `stripRedirectBody` and `ensureRedirectContentType` can sanitize it. Issue
 // #110.
 function isLocaleRootPath(pathname: string): boolean {
@@ -423,14 +428,17 @@ function applyPageHeaders(
   )
 }
 
-export default async function middleware(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const ids = resolveRequestCorrelationIds(request.headers)
 
   const methodResponse = rejectUnsupportedApiMethod(request)
   if (methodResponse) return finalizeResponse(methodResponse, ids)
 
-  const kravAliasResponse = redirectKravAliasToRequirements(request)
-  if (kravAliasResponse) return finalizeResponse(kravAliasResponse, ids)
+  const swedishRequirementRouteResponse =
+    redirectSwedishRequirementRouteToRequirements(request)
+  if (swedishRequirementRouteResponse) {
+    return finalizeResponse(swedishRequirementRouteResponse, ids)
+  }
 
   const authResponse = await enforceAuth(request)
   if (authResponse) return finalizeResponse(authResponse, ids)

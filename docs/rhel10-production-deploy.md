@@ -454,7 +454,7 @@ Register a confidential OIDC web client in the external IdP. The app requires:
 - client secret
 - redirect URI `https://<app-host>/api/auth/callback`
 - post-logout redirect URI `https://<app-host>/`
-- `roles` claim as a JSON array of strings
+- `roles` claim as a JSON array of exact canonical role strings
 - `employeeHsaId` claim on ID token, access token and userinfo
 - optional MCP service client audience for `kravhantering-app`
 
@@ -571,10 +571,10 @@ the app should display organization credit information.
 in it.
 
 For Keycloak, the client must emit the realm roles and `hsaId` user attribute
-as the `roles` and `employeeHsaId` claims. The bundle's
+as the `roles` and `employeeHsaId` claims. The `roles` claim must be a JSON
+array of exact canonical role strings. The bundle's
 `keycloak/realm-kravhantering-production.template.json` shows the expected
-mapper shape and declares `hsaId` as a managed Keycloak user-profile
-attribute.
+mapper shape and declares `hsaId` as a managed Keycloak user-profile attribute.
 
 ### Keycloak Appendix
 

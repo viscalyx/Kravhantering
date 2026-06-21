@@ -484,6 +484,22 @@ describe('auth callback security audit events', () => {
     })
   })
 
+  it('grants no roles for non-array role claims', async () => {
+    getLoginStateMock.mockResolvedValue(freshLoginState())
+    getSessionMock.mockResolvedValue(freshPriorSession())
+    authorizationCodeGrantMock.mockResolvedValue({
+      claims: () => ({ ...SUCCESS_CLAIMS, roles: 'Reviewer Admin' }),
+      expiresIn: () => 3600,
+      id_token: 'idt',
+    })
+    const GET = await importGet()
+    await GET(buildCallbackRequest())
+    const events = emittedSecurityEvents()
+    expect(events).toHaveLength(1)
+    expect(events[0].event).toBe('auth.login.succeeded')
+    expect(events[0].detail).toEqual({ roles: [] })
+  })
+
   it('emits auth.roles.changed when prior session roles differ', async () => {
     getLoginStateMock.mockResolvedValue(freshLoginState())
     getSessionMock.mockResolvedValue(

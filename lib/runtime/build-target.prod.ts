@@ -2,7 +2,7 @@
  * Build-time configuration for the `prod` target.
  *
  * Used by `npm run build:prod` (and the `build` alias). All values are
- * compile-time constants — no `process.env` reads — so webpack dead-code
+ * compile-time constants — no `process.env` reads — so production dead-code
  * elimination removes every dev/escape-hatch branch from the bundle.
  *
  * CRITICAL: never add `process.env` reads to this file.

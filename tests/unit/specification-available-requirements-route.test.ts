@@ -81,7 +81,7 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
     mocks.resolveSpecificationId.mockResolvedValue(6)
   })
 
-  it('accepts legacy status query params while keeping the published-only filter', async () => {
+  it('rejects status query params because available requirements are always published-only', async () => {
     const response = await GET(
       new NextRequest(
         'http://localhost/api/requirements-specifications/IAM-INFOR-2026/available-requirements?limit=15&locale=sv&sortBy=uniqueId&sortDirection=asc&statuses=3',
@@ -89,33 +89,18 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
       makeParams('IAM-INFOR-2026'),
     )
 
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({
-      pagination: { hasMore: false, total: 1 },
-      requirements: [{ id: 201, uniqueId: 'IAM0201' }],
-      selectionFilter: {
-        applied: false,
-        hasCurrentAnswers: false,
-        hasRequirementSelection: false,
-        hasNoRequirementSelection: false,
-        requirementIds: [],
-      },
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Invalid request',
+      issues: [
+        {
+          code: 'unrecognized_keys',
+          path: '$',
+        },
+      ],
     })
-    expect(mocks.queryRequirementList).toHaveBeenCalledWith(
-      mockDb,
-      expect.objectContaining({
-        filters: expect.objectContaining({
-          statuses: [3],
-        }),
-        limit: 15,
-        locale: 'sv',
-        sort: { by: 'uniqueId', direction: 'asc' },
-      }),
-      { authorization: mockAuthorization, context: mockContext },
-    )
-    expect(mocks.queryRequirementList.mock.calls[0]?.[1]).not.toHaveProperty(
-      'requirementIds',
-    )
+    expect(mocks.createRequirementsRestRuntime).not.toHaveBeenCalled()
+    expect(mocks.queryRequirementList).not.toHaveBeenCalled()
   })
 
   it('applies requirement-selection ids only when explicitly requested', async () => {

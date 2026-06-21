@@ -162,7 +162,6 @@ const requirementMutationSchema = z
     categoryId: optionalBodyIdSchema,
     description: businessTextSchema,
     normReferenceIds: optionalBodyIdArraySchema,
-    ownerId: optionalBusinessTextSchema,
     qualityCharacteristicId: optionalBodyIdSchema,
     requirementPackageIds: optionalBodyIdArraySchema,
     requiresTesting: z.boolean().optional().default(false),

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildSystemPrompt,
   buildUserPrompt,
-  DEFAULT_INSTRUCTION,
+  DEFAULT_INSTRUCTION_EN,
   DEFAULT_INSTRUCTION_SV,
   type GeneratedRequirement,
   getDefaultInstruction,
@@ -175,7 +175,7 @@ describe('prompt localization helpers', () => {
 describe('buildUserPrompt', () => {
   it('uses default instruction when none provided', () => {
     const prompt = buildUserPrompt('User management system')
-    expect(prompt).toContain(DEFAULT_INSTRUCTION)
+    expect(prompt).toContain(DEFAULT_INSTRUCTION_EN)
     expect(prompt).toContain('User management system')
   })
 
@@ -183,7 +183,7 @@ describe('buildUserPrompt', () => {
     const custom = 'Generate 3 security requirements'
     const prompt = buildUserPrompt('Auth service', custom)
     expect(prompt).toContain(custom)
-    expect(prompt).not.toContain(DEFAULT_INSTRUCTION)
+    expect(prompt).not.toContain(DEFAULT_INSTRUCTION_EN)
     expect(prompt).toContain('Auth service')
   })
 
@@ -203,7 +203,7 @@ describe('buildUserPrompt', () => {
 
 describe('getDefaultInstruction', () => {
   it('returns English instruction by default', () => {
-    expect(getDefaultInstruction()).toBe(DEFAULT_INSTRUCTION)
+    expect(getDefaultInstruction()).toBe(DEFAULT_INSTRUCTION_EN)
   })
 
   it('returns Swedish instruction for sv locale', () => {

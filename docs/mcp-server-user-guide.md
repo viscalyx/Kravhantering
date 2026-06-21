@@ -107,6 +107,7 @@ agents can use it reliably.
 - `requirements_generate_requirements`
   Generate system requirements using AI (OpenRouter) based on a
   topic. Returns generated requirements with a thinking trace.
+  Optional model IDs must belong to the server's eligible model catalog.
   To create the generated requirements, call
   `requirements_manage_requirement` with `operation: "create"`
   for each requirement.
@@ -125,7 +126,7 @@ Add `?version=<number>` to either URI to target a specific version.
 The MCP route is authenticated. Every request to `/api/mcp` must include an
 `Authorization: Bearer <token>` header.
 
-The middleware checks that the Bearer header is present. The MCP HTTP route then
+`proxy.ts` checks that the Bearer header is present. The MCP HTTP route then
 validates the JWT against the configured issuer JWKS and API audience before any
 MCP transport or tool handler runs. Accepted tokens must contain a real-format
 `employeeHsaId` claim. The committed local MCP service client emits

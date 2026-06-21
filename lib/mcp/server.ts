@@ -8,7 +8,10 @@ import {
   createRequestContext,
   type RequestContext,
 } from '@/lib/requirements/auth'
-import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import {
+  isRequirementsServiceError,
+  type RequirementsErrorCode,
+} from '@/lib/requirements/errors'
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 import {
   buildRequirementViewUri,
@@ -30,6 +33,14 @@ const HTML_BASE_MESSAGES = {
   en: enMessages,
   sv: svMessages,
 } satisfies Record<'en' | 'sv', Record<string, unknown>>
+
+const READABLE_MCP_ERROR_CODES = new Set<RequirementsErrorCode>([
+  'not_found',
+  'validation',
+  'conflict',
+  'unauthorized',
+  'forbidden',
+])
 
 const PaginationSchema = z
   .object({
@@ -329,7 +340,8 @@ function toRequirementResourceUri(uniqueId: string, versionNumber?: number) {
 
 function formatError(error: unknown) {
   const message =
-    isRequirementsServiceError(error) && error.code !== 'internal'
+    isRequirementsServiceError(error) &&
+    READABLE_MCP_ERROR_CODES.has(error.code)
       ? error.message
       : 'An internal error occurred'
 
@@ -2157,7 +2169,7 @@ export function createKravhanteringMcpServer(
             .max(100)
             .optional()
             .describe(
-              'OpenRouter model ID (e.g. "anthropic/claude-sonnet-4"). Uses NEXT_PUBLIC_DEFAULT_MODEL env var if omitted.',
+              'Eligible OpenRouter model ID from the server model catalog (e.g. "anthropic/claude-sonnet-4"). Uses NEXT_PUBLIC_DEFAULT_MODEL env var if omitted.',
             ),
           scopeId: z
             .number()

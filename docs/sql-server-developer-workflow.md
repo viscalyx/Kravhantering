@@ -82,11 +82,9 @@ For the read-only login, avoid passwords that contain the login name
 (`readonly`) because SQL Server password policy can reject them even when they
 otherwise look complex.
 
-`DATABASE_URL` and `DATABASE_READONLY_URL` are the canonical runtime contract
-when you need to point at an explicit connection string instead of the derived
-local/dev settings. `SQLSERVER_DATABASE_URL` and
-`SQLSERVER_DATABASE_READONLY_URL` are accepted aliases used by the admin CLI;
-the Next.js runtime only reads `DATABASE_URL`.
+`DATABASE_URL` and `DATABASE_READONLY_URL` are the canonical explicit
+connection string contract when you need to override the derived local/dev
+settings. The Next.js runtime and admin CLI both use these names.
 
 The canonical runtime contract is:
 

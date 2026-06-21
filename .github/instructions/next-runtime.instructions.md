@@ -29,6 +29,9 @@ applyTo: "{app/api/**/*.ts,package.json}"
 
 ## Local And Prod-Like Scripts
 
-- Keep `DATABASE_URL` (and optionally `DATABASE_READONLY_URL`) as the runtime contract in scripts and route-related setup. The application connects to Microsoft SQL Server via TypeORM.
-- `SQLSERVER_DATABASE_URL` / `SQLSERVER_DATABASE_READONLY_URL` are accepted aliases used by the admin scripts; routes only read `DATABASE_URL`.
+- Keep `DATABASE_URL` and optional `DATABASE_READONLY_URL` as the explicit
+  connection string contract in scripts and route-related setup. The
+  application connects to Microsoft SQL Server via TypeORM.
+- Use derived `DB_*` values for local scaffold defaults when a full URL is not
+  needed.
 - Prod-like validation uses `npm run build` and `npm run start:prodlike`.

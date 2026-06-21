@@ -45,6 +45,7 @@ describe('SSDLC gate', () => {
 
     const groups = classifyChangedFiles([
       'app/api/requirements/route.ts',
+      'proxy.ts',
       'typeorm/migrations/0013_example.mjs',
       'package-lock.json',
     ])
@@ -53,6 +54,7 @@ describe('SSDLC gate', () => {
       expect.arrayContaining([
         'api',
         'application-code',
+        'authentication-authorization',
         'database',
         'dependency-supply-chain',
       ]),

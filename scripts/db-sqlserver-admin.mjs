@@ -267,9 +267,7 @@ export function isSqlServerUrl(connectionString) {
 
 function getExplicitSqlServerDatabaseUrl(env = process.env, options = {}) {
   const readonly = options.readonly ?? false
-  const candidates = readonly
-    ? [env.SQLSERVER_DATABASE_READONLY_URL, env.DATABASE_READONLY_URL]
-    : [env.SQLSERVER_DATABASE_URL, env.DATABASE_URL]
+  const candidates = readonly ? [env.DATABASE_READONLY_URL] : [env.DATABASE_URL]
 
   return (
     candidates
@@ -320,8 +318,8 @@ export function getSqlServerDatabaseUrl(env = process.env, options = {}) {
 
   if (!resolved) {
     const variableName = readonly
-      ? 'SQLSERVER_DATABASE_READONLY_URL or DATABASE_READONLY_URL, or DB_HOST/DB_PORT/DB_NAME/DB_READONLY_USER/DB_READONLY_PASSWORD'
-      : 'SQLSERVER_DATABASE_URL or DATABASE_URL, or DB_HOST/DB_PORT/DB_NAME with DB_USER/DB_PASSWORD (or MSSQL_SA_PASSWORD for the default sa login)'
+      ? 'DATABASE_READONLY_URL, or DB_HOST/DB_PORT/DB_NAME/DB_READONLY_USER/DB_READONLY_PASSWORD'
+      : 'DATABASE_URL, or DB_HOST/DB_PORT/DB_NAME with DB_USER/DB_PASSWORD (or MSSQL_SA_PASSWORD for the default sa login)'
 
     throw new Error(
       `${variableName} is required for SQL Server administration commands.`,

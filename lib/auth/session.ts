@@ -85,7 +85,7 @@ export async function getSession(): Promise<IronSession<SessionData>> {
 
 /**
  * Read the session from a raw `Request`/`Response` pair (for use in
- * `middleware.ts` where `cookies()` is also available, but for tests we want
+ * `proxy.ts` where `cookies()` is also available, but for tests we want
  * a Request-only path too). Pass an empty `Response` if you only need to
  * read; pass a real Response to allow `save()`/`destroy()` to mutate the
  * `Set-Cookie` header.

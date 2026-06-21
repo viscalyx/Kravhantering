@@ -11,10 +11,10 @@ the configured issuer (Keycloak in dev and the local-prod target — both
 point at the local Keycloak at `http://localhost:8080` — and the real
 OIDC provider in deployed environments). Identity is derived only from
 the verified iron-session cookie (browser flow) or a verified
-`Authorization: Bearer` JWT (MCP flow); the app no longer accepts
-`x-user-id` / `x-user-roles` request headers as a stand-in for a
-logged-in user, and `middleware.ts` strips both headers from every inbound
-request before any handler runs.
+`Authorization: Bearer` JWT (MCP flow). `x-user-id` and
+`x-user-roles` request headers are not identity sources, and
+`proxy.ts` strips both headers from every inbound request before
+any handler runs.
 
 If the dev server cannot reach the IdP, requests fail loudly instead of
 falling back to an unauthenticated mode. Bring up Keycloak first with
@@ -214,8 +214,9 @@ The compose file does not mount a Keycloak data volume, so recreation
 is non-destructive (the JSON is the source of truth). Wait ~30 s for
 Keycloak to finish booting before signing in.
 
-Existing application sessions still contain the old role claims. After a
-realm reset, log out and sign in again, or force-refresh helper cookies:
+Application sessions contain the role claims from the sign-in that created the
+cookie. After a realm reset, log out and sign in again, or force-refresh helper
+cookies:
 
 <!-- markdownlint-disable MD013 -->
 ```sh
@@ -341,8 +342,9 @@ The realm emits a `roles` claim as a JSON array of strings on both ID and
 access tokens. Values are exactly `Reviewer`, `Admin`, and
 `PrivacyOfficer` (the canonical names used throughout the app). Authoring
 rights are not carried by the roles claim — they are assignment-driven via
-`employeeHsaId`. `PrivacyOfficer` grants the narrow Admin Center privacy,
-archiving retention, and access-review surfaces; it does not imply `Admin`.
+`employeeHsaId`. Non-array role claims grant no global roles.
+`PrivacyOfficer` grants the narrow Admin Center privacy, archiving retention,
+and access-review surfaces; it does not imply `Admin`.
 
 ### `employeeHsaId` claim
 
@@ -449,7 +451,7 @@ envs at the per-env OIDC issuer and client registration.
 | `AUTH_OIDC_REDIRECT_URI` | yes | `http://localhost:3000/api/auth/callback` | Full callback URL, scheme + host + path. Must be an absolute `http://` or `https://` URL and **must be pre-registered in the IdP**; mismatches surface as `redirect_uri_mismatch` from the configured OIDC provider. This URL's origin is also the canonical origin for CSRF checks; forwarded headers do not override it. Re-register on every OpenShift Route hostname change (blue/green cutover). |
 | `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` | yes | `http://localhost:3000/` | Where the IdP sends the browser after `end_session_endpoint`. Must be an absolute `http://` or `https://` URL and also pre-registered per env. |
 | `AUTH_OIDC_SCOPES` | no | `openid profile email` | Space-separated. `openid` is mandatory; `profile` carries `name` / `given_name` / `family_name`; `email` carries `email` / `email_verified`. Add custom scopes if your OIDC provider requires them to release the `roles` claim. |
-| `AUTH_OIDC_ROLES_CLAIM` | no | `roles` | Claim name the parser in [lib/auth/roles.ts](../lib/auth/roles.ts) reads. Override only if the IdP cannot emit `roles` and the committed auth contract has been updated accordingly. |
+| `AUTH_OIDC_ROLES_CLAIM` | no | `roles` | Claim name the parser in [lib/auth/roles.ts](../lib/auth/roles.ts) reads as a JSON array of exact canonical role strings. Override only if the IdP cannot emit `roles` and the committed auth contract has been updated accordingly. |
 | `AUTH_OIDC_API_AUDIENCE` | no | falls back to `AUTH_OIDC_CLIENT_ID` | Audience expected on **access tokens** validated by the MCP path ([lib/auth/mcp-token.ts](../lib/auth/mcp-token.ts)). Set explicitly when the MCP client receives tokens scoped to a different `aud` than the web client. |
 <!-- markdownlint-enable MD013 -->
 
@@ -502,7 +504,7 @@ independent — the shortest one wins.
 | Knob | Where | Default | Meaning |
 | --- | --- | --- | --- |
 | `AUTH_SESSION_TTL_SECONDS` | env → [lib/auth/config.ts](../lib/auth/config.ts), [lib/auth/session.ts](../lib/auth/session.ts) | `28800` (8 h) | Absolute lifetime of the encrypted `iron-session` cookie. **Does not slide on activity.** If the cookie expires first, the next request hits `/api/auth/login` and is silently re-authenticated if the IdP SSO session is still alive; otherwise the user sees the IdP login page. |
-| `session.accessTokenExpiresAt` | written in [app/api/auth/callback/route.ts](../app/api/auth/callback/route.ts) | `tokens.expiresIn()` from the IdP, falling back to `AUTH_SESSION_TTL_SECONDS` | Active browser-session validity boundary. The client warns two minutes before this timestamp and redirects through `/api/auth/login` at expiry. Middleware also treats cookies past this timestamp as signed out. |
+| `session.accessTokenExpiresAt` | written in [app/api/auth/callback/route.ts](../app/api/auth/callback/route.ts) | `tokens.expiresIn()` from the IdP, falling back to `AUTH_SESSION_TTL_SECONDS` | Active browser-session validity boundary. The client warns two minutes before this timestamp and redirects through `/api/auth/login` at expiry. The proxy also treats cookies past this timestamp as signed out. |
 <!-- markdownlint-enable MD013 -->
 
 The app does **not** implement an idle/inactivity timeout. There is no
@@ -620,7 +622,7 @@ log in against the local IdP via `npm run idp:up`) and then re-run with
 ## Authenticated `curl` against the dev server
 
 The OIDC redirect chain makes plain `curl http://localhost:3000/...`
-useless for any protected route — middleware always returns `302
+useless for any protected route — the proxy always returns `302
 /api/auth/login`. Use the helper at `scripts/dev-login.mjs` (or the
 `scripts/dev-curl.sh` wrapper) to log in once via the dev Keycloak realm
 and reuse the resulting cookie jar:

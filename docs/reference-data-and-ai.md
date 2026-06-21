@@ -67,10 +67,10 @@ still uses it as-is; uniqueness remains enforced by the DB unique index.
 
 ## 2 — Requirement Area Ownership
 
-Requirement-area owners are no longer reference data. The requirement area row
-stores `owner_hsa_id` directly and the app displays that HSA-id wherever the
-owner is shown. Creation requires a valid HSA-id. Editing shows the current
-HSA-id as read-only and uses a dedicated owner-change action for replacement.
+Requirement-area ownership is stored on the requirement area row as
+`owner_hsa_id`. The app displays that HSA-id wherever the owner is shown.
+Creation requires a valid HSA-id. Editing shows the current HSA-id as
+read-only and uses a dedicated owner-change action for replacement.
 
 There is no `/owners` admin surface or owners REST resource, and no local
 person catalog lookup is performed in this flow.
@@ -118,7 +118,8 @@ governance object types are informational taxonomy values.
 ## 4 — AI Requirement Generation
 
 Sources: `lib/ai/openrouter-client.ts`,
-`lib/ai/requirement-prompt.ts`, `lib/ai/taxonomy.ts`
+`lib/ai/openrouter-model-catalog.ts`, `lib/ai/requirement-prompt.ts`,
+`lib/ai/taxonomy.ts`
 
 ### OpenRouter Client Contracts
 
@@ -145,10 +146,12 @@ cancels the fetch.
 **Reasoning effort:** `'high'` by default; `'none'` disables
 reasoning tokens.
 
-**Format negotiation:** when the model's
-`supportedParameters` includes `structured_outputs`, the
-request uses `json_schema` response format. Otherwise it
-falls back to `json_object`.
+**Format negotiation:** generation resolves the selected or default model's
+capabilities server-side from the eligible OpenRouter model catalog. When the
+resolved model supports `structured_outputs`, the request uses `json_schema`;
+otherwise it uses `json_object`. If the model catalog cannot be resolved, or
+the selected model is outside the eligible catalog, generation fails closed
+with the sanitized AI-provider-unavailable response.
 
 ### OpenRouter Test Policy
 

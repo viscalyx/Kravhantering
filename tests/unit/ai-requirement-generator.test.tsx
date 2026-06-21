@@ -637,6 +637,14 @@ describe('AiRequirementGenerator', () => {
       screen.getByRole('button', { name: /generateButton/i }),
     )
 
+    const generateCall = mockFetch.mock.calls.find(([url]) => {
+      return url === '/api/ai/generate-requirements'
+    })
+    const generateBody = JSON.parse(
+      (generateCall?.[1] as { body: string }).body,
+    ) as Record<string, unknown>
+    expect(generateBody).not.toHaveProperty('supportedParameters')
+
     expect(
       await screen.findByText('Generated security requirement'),
     ).toBeInTheDocument()

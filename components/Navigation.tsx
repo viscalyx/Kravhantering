@@ -28,7 +28,9 @@ import { devMarker } from '@/lib/developer-mode-markers'
 import { dispatchGlobalNavigationLayoutEvent } from '@/lib/navigation-layout-events'
 
 type StewardshipTab = 'packages' | 'questions' | 'norms' | 'rfi'
-type StewardshipTabParam = StewardshipTab | 'information-requests'
+export type StewardshipTabParam =
+  | Exclude<StewardshipTab, 'rfi'>
+  | 'information-requests'
 
 const NAV_RAIL_STORAGE_KEY = 'requirements.navigationRail.expanded.v1'
 const STEWARDSHIP_STORAGE_KEY = 'requirements.stewardship.tab'
@@ -123,10 +125,7 @@ interface ComponentProps {
 
 function stewardshipTabFromValue(value: string | null): StewardshipTab | null {
   if (value === 'information-requests') return 'rfi'
-  return value === 'packages' ||
-    value === 'questions' ||
-    value === 'norms' ||
-    value === 'rfi'
+  return value === 'packages' || value === 'questions' || value === 'norms'
     ? value
     : null
 }

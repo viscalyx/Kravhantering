@@ -76,7 +76,7 @@ interface GenerateOptions {
   /** Reasoning effort level (default: 'high'). Use 'none' to disable reasoning. */
   reasoningEffort?: string
   signal?: AbortSignal
-  /** Model's supported_parameters from OpenRouter, used to decide response_format strategy */
+  /** Model capabilities from the server catalog. Required when format is supplied. */
   supportedParameters?: string[]
 }
 
@@ -92,7 +92,7 @@ function getApiKey(): string {
   return key
 }
 
-function getDefaultModel(): string {
+export function getDefaultModel(): string {
   return process.env.NEXT_PUBLIC_DEFAULT_MODEL || 'anthropic/claude-sonnet-4'
 }
 
@@ -100,20 +100,15 @@ const OPENROUTER_BASE = 'https://openrouter.ai/api/v1'
 
 /**
  * Apply the best response_format strategy based on the model's capabilities.
- * - When capabilities are unknown (undefined): use json_schema (backward-compatible)
  * - structured_outputs → json_schema (strict schema enforcement)
- * - otherwise → json_object (basic JSON mode, all listed models support response_format)
+ * - otherwise → json_object (basic JSON mode, all eligible models support response_format)
  */
 function applyResponseFormat(
   body: Record<string, unknown>,
   schema: Record<string, unknown>,
-  supportedParameters?: string[],
+  supportedParameters: string[],
 ): void {
-  // When capabilities are unknown, default to json_schema (MCP/non-UI callers)
-  if (
-    !supportedParameters ||
-    supportedParameters.includes('structured_outputs')
-  ) {
+  if (supportedParameters.includes('structured_outputs')) {
     body.response_format = {
       json_schema: {
         name: 'requirements',
@@ -125,6 +120,19 @@ function applyResponseFormat(
   } else {
     body.response_format = { type: 'json_object' }
   }
+}
+
+function applyKnownResponseFormat(
+  body: Record<string, unknown>,
+  schema: Record<string, unknown>,
+  supportedParameters?: string[],
+): void {
+  if (!supportedParameters) {
+    throw new Error(
+      'OpenRouter model capabilities are required for formatted responses',
+    )
+  }
+  applyResponseFormat(body, schema, supportedParameters)
 }
 
 // ---------------------------------------------------------------------------
@@ -146,7 +154,7 @@ export async function generateChat<T>(
   }
 
   if (options.format) {
-    applyResponseFormat(body, options.format, options.supportedParameters)
+    applyKnownResponseFormat(body, options.format, options.supportedParameters)
   }
 
   if (options.providerPreferences) {
@@ -263,7 +271,7 @@ export async function* generateChatStream(
   }
 
   if (options.format) {
-    applyResponseFormat(body, options.format, options.supportedParameters)
+    applyKnownResponseFormat(body, options.format, options.supportedParameters)
   }
 
   if (options.providerPreferences) {

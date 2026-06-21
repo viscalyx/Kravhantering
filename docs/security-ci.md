@@ -387,7 +387,7 @@ The mutating scan requests include the masked local session cookie,
 enabled. HAR export is intentionally not used by this workflow.
 
 The root `schemathesis.toml` disables coverage probes for unexpected HTTP
-methods. Next.js constructs a web `Request` before application middleware runs,
+methods. Next.js constructs a web `Request` before the application proxy runs,
 and forbidden Fetch methods such as `TRACE` fail inside the framework before the
 app can return a controlled `405`.
 
@@ -488,20 +488,26 @@ workflows back to `app.pid` unless the startup and cleanup model changes.
 Static (per-response, non-nonce) security headers are set in the
 `headers()` block of [next.config.ts](../next.config.ts) and apply to
 every route. CSP is intentionally **not** set there — it carries a
-per-request nonce and is set in [middleware.ts](../middleware.ts) instead.
+per-request nonce and is set in [proxy.ts](../proxy.ts) instead.
+The supported browser baseline is modern Chrome, Edge, Firefox, Safari, and
+current platform WebViews. IE and pre-CSP2 browser engines are unsupported, so
+CSP `frame-ancestors` is the primary clickjacking control for page responses.
+`X-Frame-Options` remains as a static fallback because the proxy matcher
+intentionally skips dotted paths such as asset probes, while static headers
+still apply to those responses.
 
-> **Filename note.** Next.js 16 renamed the entry-gate convention to
-> `proxy.ts`, but Next 16.2.4 emits the chunk for `proxy.ts` without
-> registering it in `.next/server/middleware-manifest.json`, so the
-> matcher never runs at runtime. Renaming the file back to
-> `middleware.ts` (the still-supported legacy name) populates the
-> manifest and restores execution. Revisit when a future Next release
-> fixes `proxy.ts` registration; the file content is identical.
+> **Filename note.** This app keeps the entry gate in `proxy.ts`.
+> On `next@16.2.9`, the proxy runs as Node.js middleware and records the
+> matcher under `/_middleware` in
+> `.next/server/functions-config-manifest.json`. For this convention,
+> `.next/server/middleware-manifest.json` can be empty; do not use that
+> file alone as the registration check.
 
 Current static headers and rationale:
 
-- `X-Frame-Options: DENY` — clickjacking defense for legacy clients
-  that ignore CSP `frame-ancestors`.
+- `X-Frame-Options: DENY` — static clickjacking fallback for responses that
+  do not pass through the proxy and therefore do not receive the nonce-based
+  CSP header.
 - `X-Content-Type-Options: nosniff` — disable MIME sniffing.
 - `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
   — applied in production; the prodlike CI runner serves over plain

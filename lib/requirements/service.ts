@@ -22,7 +22,11 @@ import {
   type RequirementsAction,
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
-import { notFoundError, validationError } from '@/lib/requirements/errors'
+import {
+  notFoundError,
+  serviceUnavailableError,
+  validationError,
+} from '@/lib/requirements/errors'
 import type {
   RequirementSortDirection,
   RequirementSortField,
@@ -158,7 +162,6 @@ export interface GenerateRequirementsInput {
   reasoningEffort?: string
   scopeId?: number
   scopeType?: 'requirement_area' | 'specification'
-  supportedParameters?: string[]
   topic: string
 }
 
@@ -810,6 +813,9 @@ export function createRequirementsService(
             validateGeneratedRequirements,
           } = await import('@/lib/ai/requirement-prompt')
           const { generateChat } = await import('@/lib/ai/openrouter-client')
+          const { resolveOpenRouterModelCapabilities } = await import(
+            '@/lib/ai/openrouter-model-catalog'
+          )
 
           const systemPrompt = buildSystemPrompt(
             taxonomy,
@@ -825,6 +831,18 @@ export function createRequirementsService(
             input.model ||
             process.env.NEXT_PUBLIC_DEFAULT_MODEL ||
             'anthropic/claude-sonnet-4'
+          let modelCapabilities: Awaited<
+            ReturnType<typeof resolveOpenRouterModelCapabilities>
+          >
+          try {
+            modelCapabilities =
+              await resolveOpenRouterModelCapabilities(resolvedModel)
+          } catch {
+            throw serviceUnavailableError('AI provider is unavailable', {
+              model: resolvedModel,
+              reason: 'model_capabilities_unavailable',
+            })
+          }
 
           const result = await generateChat<{
             requirements: import('@/lib/ai/requirement-prompt').GeneratedRequirement[]
@@ -834,9 +852,9 @@ export function createRequirementsService(
               { content: systemPrompt, role: 'system' },
               { content: userPrompt, role: 'user' },
             ],
-            model: resolvedModel,
+            model: modelCapabilities.id,
             reasoningEffort: input.reasoningEffort,
-            supportedParameters: input.supportedParameters,
+            supportedParameters: modelCapabilities.supportedParameters,
           })
 
           if (!result?.content || !Array.isArray(result.content.requirements)) {
@@ -866,7 +884,7 @@ export function createRequirementsService(
 
           return {
             message,
-            model: resolvedModel,
+            model: modelCapabilities.id,
             requirements: validated,
             stats: result.stats,
             thinking: result.thinking,

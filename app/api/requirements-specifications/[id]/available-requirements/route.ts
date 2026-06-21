@@ -54,7 +54,6 @@ const querySchema = z
     riskLevelIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     sortBy: z.enum(REQUIREMENT_SORT_FIELDS).optional(),
     sortDirection: z.enum(['asc', 'desc']).optional(),
-    statuses: optionalQueryArraySchema(positiveIntegerStringSchema),
     typeIds: optionalQueryArraySchema(positiveIntegerStringSchema),
     uniqueIdSearch: optionalSearchStringSchema,
   })

@@ -17,7 +17,8 @@ applyTo: "{lib/typeorm/**/*.ts,typeorm/**/*.ts,lib/db.ts,scripts/db-admin.mjs,sc
 - Create one shared `DataSource` per app process. Do not create a connection per request.
 - Reuse connection pooling.
 - Keep configuration centralized in `lib/typeorm/sqlserver-config.ts` and `lib/typeorm/data-source.ts`.
-- Runtime contract: `DATABASE_URL` and `DATABASE_READONLY_URL`. `SQLSERVER_DATABASE_URL` / `SQLSERVER_DATABASE_READONLY_URL` are accepted aliases used by admin scripts.
+- Explicit URL contract: `DATABASE_URL` and `DATABASE_READONLY_URL`.
+- Admin scripts may derive connection strings from `DB_*` scaffold values.
 - Production defaults:
   - `synchronize: false`
   - `schema: "dbo"` unless a different schema is explicitly required

@@ -50,7 +50,7 @@ const RELEVANT_PATH_PREFIXES = [
   'i18n/',
   'lib/',
   'messages/',
-  'middleware.ts',
+  'proxy.ts',
   'next.config.ts',
   'package-lock.json',
   'package.json',

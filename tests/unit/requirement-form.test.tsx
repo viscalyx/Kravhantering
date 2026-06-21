@@ -339,6 +339,7 @@ describe('RequirementForm', () => {
     )
     const body = JSON.parse((postCall?.[1] as RequestInit).body as string)
     expect(body).toHaveProperty('requiresTesting', false)
+    expect(body).not.toHaveProperty('ownerId')
     expect(body).not.toHaveProperty('typeCategoryId')
 
     await waitFor(() => {
@@ -402,6 +403,7 @@ describe('RequirementForm', () => {
     const body = JSON.parse((putCall?.[1] as RequestInit).body as string)
     expect(body.baseRevisionToken).toBe('11111111-1111-4111-8111-111111111111')
     expect(body.baseVersionId).toBe(10)
+    expect(body).not.toHaveProperty('ownerId')
   })
 
   it('shows a stale edit conflict prompt without clearing form data', async () => {

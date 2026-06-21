@@ -42,7 +42,7 @@ cutover to an environment with the external IdP.
   and `email_verified` claims when available.
 - **Roles claim**: emit the canonical application roles `Reviewer`, `Admin`
   and `PrivacyOfficer` through the configured roles claim, normally `roles`.
-- **Role shape**: prefer a JSON array of strings, for example
+- **Role shape**: use a JSON array of exact strings, for example
   `"roles": ["Reviewer"]`.
 - **Initial app admin**: provision at least one real application user with a
   real `employeeHsaId` and the launch roles required by the site.
@@ -129,7 +129,8 @@ Please confirm or provide the following information.
    - `PrivacyOfficer`
 
    Please emit them through the configured roles claim, normally `roles`, as a
-   JSON array of strings. Unknown values are ignored by the application.
+   JSON array of exact strings. Unknown values and non-array role claims are
+   ignored by the application.
    Authoring permissions are not IdP roles; they are assigned inside the
    application and matched by `employeeHsaId`.
 
@@ -206,7 +207,7 @@ första driftsättning mot en extern IdP.
   `preferred_username`, `email` och `email_verified` när de finns.
 - **`roles`-claim**: emittera de kanoniska applikationsrollerna `Reviewer`,
   `Admin` och `PrivacyOfficer` i konfigurerat claim, normalt `roles`.
-- **Rollformat**: använd helst en JSON-array av strängar, till exempel
+- **Rollformat**: använd en JSON-array av exakta strängar, till exempel
   `"roles": ["Reviewer"]`.
 - **Första applikationsadministratör**: skapa minst en riktig
   applikationsanvändare med verkligt `employeeHsaId` och de startroller som
@@ -294,9 +295,9 @@ Bekräfta eller lämna följande information.
    - `PrivacyOfficer`
 
    Emittera dem i konfigurerat claim, normalt `roles`, som en JSON-array
-   av strängar. Okända värden ignoreras av applikationen. Författarbehörighet
-   är inte en IdP-roll; den tilldelas i applikationen och matchas med
-   `employeeHsaId`.
+   av exakta strängar. Okända värden och `roles`-claims som inte är
+   JSON-arrayer ignoreras av applikationen. Författarbehörighet är inte en
+   IdP-roll; den tilldelas i applikationen och matchas med `employeeHsaId`.
 
 7. **Första applikationsadministratör**
 
