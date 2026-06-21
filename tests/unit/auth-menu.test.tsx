@@ -332,6 +332,38 @@ describe('AuthMenu', () => {
     )
   })
 
+  it('opens the rail user popup outside the rail scroll container', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        authenticated: true,
+        sub: 'user-1',
+        hsaId: 'SE5560000001-admin1',
+        givenName: 'Ada',
+        familyName: 'Admin',
+        name: 'Ada Admin',
+        email: 'ada@example.test',
+        roles: ['Admin'],
+        expiresAt: 123,
+      }),
+    })
+
+    render(<AuthMenu variant="rail" />)
+
+    const trigger = await screen.findByRole('button', {
+      name: 'signedInAs Ada Admin',
+    })
+    fireEvent.click(trigger)
+
+    const dialog = await screen.findByRole('dialog', { name: 'userInfoTitle' })
+
+    expect(dialog.className).toContain('fixed')
+    expect(dialog.className).toContain(
+      'left-[calc(var(--global-nav-width)+0.5rem)]',
+    )
+    expect(dialog.className).not.toContain('left-full')
+  })
+
   it('skips the session expiry row when expiresAt is invalid', async () => {
     fetchMock.mockResolvedValue({
       ok: true,

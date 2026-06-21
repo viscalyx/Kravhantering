@@ -33,6 +33,10 @@ vi.mock(
   }),
 )
 
+vi.mock('@/app/[locale]/requirements/stewardship/rfi-questions-client', () => ({
+  default: () => <h1>RFI questions</h1>,
+}))
+
 vi.mock('@/app/[locale]/norm-references/norm-references-client', () => ({
   default: () => <h1>Norm library</h1>,
 }))
@@ -91,6 +95,38 @@ describe('StewardshipClient', () => {
         name: 'Requirements Library Stewardship',
       }),
     ).not.toBeInTheDocument()
+  })
+
+  it('uses the RFI question view for the information requests tab', () => {
+    searchParamsState.value = new URLSearchParams('tab=information-requests')
+
+    render(<StewardshipClient />)
+
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'RFI questions',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('normalizes the legacy RFI tab token', async () => {
+    searchParamsState.value = new URLSearchParams('tab=rfi')
+
+    render(<StewardshipClient />)
+
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'RFI questions',
+      }),
+    ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(routerState.replace).toHaveBeenCalledWith(
+        '/requirements/stewardship?tab=information-requests',
+        { scroll: false },
+      )
+    })
   })
 
   it('restores the remembered question tab without first rendering packages', async () => {

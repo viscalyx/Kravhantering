@@ -1311,9 +1311,7 @@ describe('RequirementsSpecificationDetailClient', () => {
       ),
     ).toBe(true)
     expect(
-      tableProps.every(
-        props => props.stickyTopOffsetClassName === 'top-16 xl:top-0',
-      ),
+      tableProps.every(props => props.stickyTopOffsetClassName === 'top-0'),
     ).toBe(true)
     expect(
       container.querySelector('[data-specification-detail-list-panel="items"]'),

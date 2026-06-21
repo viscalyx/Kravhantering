@@ -1351,7 +1351,7 @@ export default function RequirementsTable({
   selectable = false,
   selectedIds,
   sortState = DEFAULT_REQUIREMENT_SORT,
-  stickyTopOffsetClassName = 'top-16',
+  stickyTopOffsetClassName = 'top-0',
   stickyTitle,
   stickyTitleActions,
   statusOptions = [],

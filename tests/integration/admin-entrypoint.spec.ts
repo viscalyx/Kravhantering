@@ -189,7 +189,7 @@ for (const { name, viewport } of viewportVariants) {
     test.describe.configure({ mode: 'serial' })
     test.use({ viewport })
 
-    test('header settings link opens the Swedish admin center', async ({
+    test('side navigation settings link opens the Swedish admin center', async ({
       page,
     }) => {
       await page.goto('/sv/requirements')
@@ -197,6 +197,9 @@ for (const { name, viewport } of viewportVariants) {
       await expect(page.getByRole('button', { name: 'Taxonomi' })).toHaveCount(
         0,
       )
+      if (name === 'mobile') {
+        await page.getByRole('button', { name: 'Öppna meny' }).click()
+      }
 
       const settingsLink = page.getByRole('link', { name: 'Inställningar' })
       await expect(settingsLink).toBeVisible()
@@ -265,7 +268,7 @@ for (const { name, viewport } of viewportVariants) {
       test.describe('admin-only permissions', () => {
         test.use({ storageState: 'test-results/auth/admin-only.json' })
 
-        test('keeps Swedish admin tabs reachable in the header', async ({
+        test('keeps Swedish admin tabs reachable in the admin center', async ({
           page,
         }) => {
           await page.goto('/sv/admin')

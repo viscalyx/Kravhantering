@@ -14,6 +14,7 @@ mobile. It also checks the shared dirty-form close rule without saving data.
 | Viewport matrix | Runs at `375x812` and `1280x720`. |
 | Field boxes | Browser bounding boxes for the create-form inputs. |
 | Row checks | Compare field positions to verify column layout. |
+| Mobile alignment tolerance | Allows up to 6 px of browser subpixel drift. |
 | Width checks | Confirm the ID override field spans the desktop form. |
 | Dirty close | Uses a temporary name value and discards it before exit. |
 
@@ -70,8 +71,8 @@ discard confirmation.
    Utfärdare/URI share rows.
 8. On desktop, assert that Normreferens-ID sits below the three rows and
    spans wider than one ordinary column.
-9. On mobile, assert that every field aligns with Benämning on the same
-   x-axis and appears in vertical order.
+9. On mobile, assert that every field aligns with Benämning within the
+   geometry tolerance and appears in vertical order.
 10. Assert `Spara` is disabled while the form is clean.
 11. Enter a temporary Benämning and assert `Spara` is enabled.
 12. Click outside the dialog and assert it remains open without a prompt.

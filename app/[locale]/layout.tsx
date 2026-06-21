@@ -83,10 +83,12 @@ export default async function LocaleLayout({
           <HelpProvider>
             <LocaleStorageSync />
             <AuthExpiryGuard />
-            <div className="flex flex-col min-h-screen">
+            <div className="min-h-screen">
               <Navigation buildMetadata={buildMetadata} />
-              <main className="flex-1">{children}</main>
-              <Footer />
+              <div className="flex min-h-screen flex-col transition-[padding-left] duration-200 md:pl-(--global-nav-width)">
+                <main className="flex-1">{children}</main>
+                <Footer />
+              </div>
             </div>
           </HelpProvider>
         </ConfirmModalProvider>

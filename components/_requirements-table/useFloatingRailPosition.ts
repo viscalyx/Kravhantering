@@ -2,6 +2,10 @@
 
 import { type RefObject, useCallback, useRef, useState } from 'react'
 import {
+  GLOBAL_NAVIGATION_LAYOUT_EVENT,
+  GLOBAL_NAVIGATION_LAYOUT_SETTLE_MS,
+} from '@/lib/navigation-layout-events'
+import {
   areFloatingActionRailPositionsEqual,
   FLOATING_ACTION_RAIL_MIN_TOP_OFFSET,
   FLOATING_ACTION_RAIL_TABLE_TOP_OFFSET,
@@ -153,6 +157,7 @@ export function useFloatingRailPosition({
 
   useClientLayoutEffect(() => {
     runUpdate()
+    let navigationLayoutUpdateId: number | null = null
 
     const resizeObserver =
       typeof ResizeObserver === 'undefined'
@@ -167,13 +172,34 @@ export function useFloatingRailPosition({
     }
 
     const handleEvent = () => scheduleFloatingRailUpdate()
+    const handleNavigationLayoutChange = () => {
+      scheduleFloatingRailUpdate()
+      if (navigationLayoutUpdateId !== null) {
+        window.clearTimeout(navigationLayoutUpdateId)
+      }
+      navigationLayoutUpdateId = window.setTimeout(
+        scheduleFloatingRailUpdate,
+        GLOBAL_NAVIGATION_LAYOUT_SETTLE_MS,
+      )
+    }
     window.addEventListener('resize', handleEvent)
     window.addEventListener('scroll', handleEvent, true)
+    window.addEventListener(
+      GLOBAL_NAVIGATION_LAYOUT_EVENT,
+      handleNavigationLayoutChange,
+    )
 
     return () => {
       resizeObserver?.disconnect()
+      if (navigationLayoutUpdateId !== null) {
+        window.clearTimeout(navigationLayoutUpdateId)
+      }
       window.removeEventListener('resize', handleEvent)
       window.removeEventListener('scroll', handleEvent, true)
+      window.removeEventListener(
+        GLOBAL_NAVIGATION_LAYOUT_EVENT,
+        handleNavigationLayoutChange,
+      )
       if (
         frameRef.current !== null &&
         typeof globalThis.cancelAnimationFrame === 'function'

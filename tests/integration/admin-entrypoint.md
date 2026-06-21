@@ -77,18 +77,19 @@ flowchart TD
   viewports for most tests. The mobile-touch-target test is desktop-skipped.
 - The locale-load tests are viewport-independent and loop over `['sv', 'en']`.
 
-## header settings link opens the Swedish admin center
+## side navigation settings link opens the Swedish admin center
 
 ### Purpose
 
-Verifies that the "Inställningar" link in the requirements page header is
-present, points to `/sv/admin`, and successfully navigates there, rendering the
-Swedish admin heading.
+Verifies that the "Inställningar" link in the global side navigation points to
+`/sv/admin` and successfully navigates there, rendering the Swedish admin
+heading.
 
 ### Step-by-Step Flow
 
 1. Navigate to `/sv/requirements`.
 1. Assert the "Taxonomi" button is absent (not an admin context).
+1. On mobile, open the navigation drawer.
 1. Assert the "Inställningar" link is visible with `href="/sv/admin"`.
 1. Click the link.
 1. Assert the URL is `/sv/admin`.
@@ -163,7 +164,7 @@ flowchart LR
     D -- Yes --> F[Save]
 ```
 
-## keeps Swedish admin tabs reachable in the header
+## keeps Swedish admin tabs reachable in the admin center
 
 ### Purpose: Admin-Only Permissions
 

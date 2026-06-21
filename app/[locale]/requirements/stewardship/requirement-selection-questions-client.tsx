@@ -3700,7 +3700,7 @@ export default function RequirementSelectionQuestionsClient() {
               groupedQuestions.map(group => (
                 <section className="space-y-3" key={group.areaId}>
                   <div
-                    className="sticky top-16 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-primary-200 bg-primary-50/95 px-3 py-2 shadow-[0_8px_18px_-14px_rgba(67,56,202,0.45)] backdrop-blur dark:border-primary-800/70 dark:bg-primary-950/80"
+                    className="sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-primary-200 bg-primary-50/95 px-3 py-2 shadow-[0_8px_18px_-14px_rgba(67,56,202,0.45)] backdrop-blur dark:border-primary-800/70 dark:bg-primary-950/80"
                     {...devMarker({
                       context: 'requirementSelectionQuestions',
                       name: 'requirement area heading',

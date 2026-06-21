@@ -9,6 +9,7 @@ import {
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsTable from '@/components/RequirementsTable'
+import { GLOBAL_NAVIGATION_LAYOUT_EVENT } from '@/lib/navigation-layout-events'
 import {
   DEFAULT_FILTERS,
   DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
@@ -1130,6 +1131,58 @@ describe('RequirementsTable', () => {
     })
   })
 
+  it('repositions the floating action rail when the global navigation layout changes', async () => {
+    const { container } = render(
+      <RequirementsTable locale="sv" rows={[makeRow()]} />,
+    )
+
+    const scrollContainer = container.querySelector(
+      '[data-requirements-scroll-container="true"]',
+    ) as HTMLDivElement | null
+
+    expect(scrollContainer).toBeTruthy()
+    if (!scrollContainer) {
+      throw new Error('Expected the scroll container to be rendered.')
+    }
+
+    setViewportWidth(1280)
+    setElementRect(scrollContainer, {
+      bottom: 560,
+      left: 100,
+      right: 800,
+      top: 120,
+      width: 700,
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event('resize'))
+    })
+
+    await waitFor(() => {
+      expect(getFloatingActionRailContainer(container)?.style.left).toBe(
+        '812px',
+      )
+    })
+
+    setElementRect(scrollContainer, {
+      bottom: 560,
+      left: 220,
+      right: 920,
+      top: 120,
+      width: 700,
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event(GLOBAL_NAVIGATION_LAYOUT_EVENT))
+    })
+
+    await waitFor(() => {
+      expect(getFloatingActionRailContainer(container)?.style.left).toBe(
+        '932px',
+      )
+    })
+  })
+
   it('keeps the floating action rail fixed while the table remains in view and hides it when scrolled away', async () => {
     const { container } = render(
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
@@ -1233,7 +1286,7 @@ describe('RequirementsTable', () => {
     ).toBeNull()
   })
 
-  it('renders the synced header inside a sticky table chrome container below the navigation', () => {
+  it('renders the synced header inside a sticky table chrome container', () => {
     const { container } = render(
       <RequirementsTable
         locale="sv"
@@ -1262,7 +1315,7 @@ describe('RequirementsTable', () => {
     )
 
     expect(stickyTableChrome?.className).toContain('sticky')
-    expect(stickyTableChrome?.className).toContain('top-16')
+    expect(stickyTableChrome?.className).toContain('top-0')
     expect(stickyTableChrome?.className).toContain('rounded-t-2xl')
     expect(stickyHeaderTable).toHaveAttribute('role', 'presentation')
     expect(stickyHeaderCells.length).toBeGreaterThan(1)
@@ -1277,7 +1330,7 @@ describe('RequirementsTable', () => {
       <RequirementsTable
         locale="sv"
         rows={[makeRow()]}
-        stickyTopOffsetClassName="top-16 xl:top-0"
+        stickyTopOffsetClassName="top-4 xl:top-0"
       />,
     )
 
@@ -1285,7 +1338,7 @@ describe('RequirementsTable', () => {
       '[data-sticky-table-chrome="true"]',
     ) as HTMLDivElement | null
 
-    expect(stickyTableChrome?.className).toContain('top-16')
+    expect(stickyTableChrome?.className).toContain('top-4')
     expect(stickyTableChrome?.className).toContain('xl:top-0')
   })
 

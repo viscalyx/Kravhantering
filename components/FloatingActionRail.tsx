@@ -10,6 +10,10 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { devMarker } from '@/lib/developer-mode-markers'
+import {
+  GLOBAL_NAVIGATION_LAYOUT_EVENT,
+  GLOBAL_NAVIGATION_LAYOUT_SETTLE_MS,
+} from '@/lib/navigation-layout-events'
 
 type FloatingActionPillVariant = 'default' | 'primary'
 
@@ -42,8 +46,6 @@ const FLOATING_ACTION_RAIL_MIN_TOP_OFFSET = 80
 const FLOATING_ACTION_RAIL_TOP_OFFSET = 4
 const FLOATING_ACTION_RAIL_WIDTH = 44
 const POPOVER_VIEWPORT_MARGIN = 8
-const HEADER_CLEARANCE = 12
-
 const floatingPillBaseClassName =
   'inline-flex h-11 w-11 items-center justify-center rounded-full border shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:-translate-y-px dark:focus-visible:ring-offset-secondary-950'
 
@@ -79,22 +81,6 @@ function arePositionsEqual(
     left.top === right.top &&
     left.visible === right.visible
   )
-}
-
-function getStickyHeaderBottom() {
-  if (typeof document === 'undefined') {
-    return 0
-  }
-
-  const navigation = document.querySelector<HTMLElement>(
-    '[data-developer-mode-name="navigation"], nav',
-  )
-  const rect = navigation?.getBoundingClientRect()
-  if (!rect || rect.bottom <= 0) {
-    return 0
-  }
-
-  return rect.bottom + HEADER_CLEARANCE
 }
 
 export default function FloatingActionRail({
@@ -145,10 +131,7 @@ export default function FloatingActionRail({
           POPOVER_VIEWPORT_MARGIN,
           viewportWidth - FLOATING_ACTION_RAIL_WIDTH - POPOVER_VIEWPORT_MARGIN,
         )
-    const headerSafeTop = Math.max(
-      FLOATING_ACTION_RAIL_MIN_TOP_OFFSET,
-      getStickyHeaderBottom(),
-    )
+    const headerSafeTop = FLOATING_ACTION_RAIL_MIN_TOP_OFFSET
     const railTop = measuredAnchorRect
       ? Math.max(
           headerSafeTop,
@@ -192,6 +175,7 @@ export default function FloatingActionRail({
     runUpdate()
     scheduleUpdate()
     const delayedUpdateId = window.setTimeout(scheduleUpdate, 50)
+    let navigationLayoutUpdateId: number | null = null
 
     const anchor = anchorRef?.current
     const resizeObserver =
@@ -202,14 +186,36 @@ export default function FloatingActionRail({
       resizeObserver?.observe(anchor)
     }
 
+    const handleNavigationLayoutChange = () => {
+      scheduleUpdate()
+      if (navigationLayoutUpdateId !== null) {
+        window.clearTimeout(navigationLayoutUpdateId)
+      }
+      navigationLayoutUpdateId = window.setTimeout(
+        scheduleUpdate,
+        GLOBAL_NAVIGATION_LAYOUT_SETTLE_MS,
+      )
+    }
+
     window.addEventListener('resize', scheduleUpdate)
     window.addEventListener('scroll', scheduleUpdate, true)
+    window.addEventListener(
+      GLOBAL_NAVIGATION_LAYOUT_EVENT,
+      handleNavigationLayoutChange,
+    )
 
     return () => {
       resizeObserver?.disconnect()
       window.clearTimeout(delayedUpdateId)
+      if (navigationLayoutUpdateId !== null) {
+        window.clearTimeout(navigationLayoutUpdateId)
+      }
       window.removeEventListener('resize', scheduleUpdate)
       window.removeEventListener('scroll', scheduleUpdate, true)
+      window.removeEventListener(
+        GLOBAL_NAVIGATION_LAYOUT_EVENT,
+        handleNavigationLayoutChange,
+      )
       if (
         frameRef.current !== null &&
         typeof globalThis.cancelAnimationFrame === 'function'

@@ -63,6 +63,7 @@ async function listDeviations(
 ): Promise<DeviationData[]> {
   const response = await request.get(
     `/api/specification-item-deviations/${encodeURIComponent(itemRef)}`,
+    { maxRetries: 2 },
   )
   await expectOk(response)
   const body = (await response.json()) as { deviations: DeviationData[] }

@@ -183,7 +183,8 @@ function AuthLogoutButton({
 }
 
 interface ComponentProps {
-  variant: 'desktop' | 'mobile'
+  expanded?: boolean
+  variant: 'desktop' | 'mobile' | 'rail'
 }
 
 type UserInfoRowMarker =
@@ -199,7 +200,10 @@ interface UserInfoRow {
   value: string
 }
 
-export default function AuthMenu({ variant }: ComponentProps) {
+export default function AuthMenu({
+  expanded = false,
+  variant,
+}: ComponentProps) {
   const t = useTranslations('nav')
   const tr = useTranslations('roles')
   const locale = useLocale()
@@ -239,19 +243,26 @@ export default function AuthMenu({ variant }: ComponentProps) {
         ? ''
         : `${window.location.search}${window.location.hash}`
     const returnTo = encodeURIComponent(`${localePrefixed}${searchAndHash}`)
+    const isRail = variant === 'rail'
     return (
       <a
         aria-label={t('signIn')}
         className={
-          variant === 'desktop'
-            ? 'inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-950'
-            : 'flex min-h-11 min-w-11 items-center gap-2 rounded-xl px-3.5 py-3 text-sm font-medium text-secondary-700 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-950'
+          isRail
+            ? 'inline-flex min-h-11 w-full min-w-11 items-center justify-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-950'
+            : variant === 'desktop'
+              ? 'inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-950'
+              : 'flex min-h-11 min-w-11 items-center gap-2 rounded-xl px-3.5 py-3 text-sm font-medium text-secondary-700 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-950'
         }
         href={`/api/auth/login?returnTo=${returnTo}`}
         {...devMarker({ name: 'link', value: 'sign in' })}
       >
-        <LogIn aria-hidden="true" className="h-4 w-4" />
-        {t('signIn')}
+        <LogIn aria-hidden="true" className="h-4 w-4 shrink-0" />
+        {isRail && !expanded ? null : (
+          <span className={isRail ? 'min-w-0 flex-1 truncate text-left' : ''}>
+            {t('signIn')}
+          </span>
+        )}
       </a>
     )
   }
@@ -319,8 +330,7 @@ export default function AuthMenu({ variant }: ComponentProps) {
   )
 
   if (variant === 'mobile') {
-    // Mobile: no hover popup. Roles are not shown in the header; tap the
-    // identity row in the desktop view to see them in the popup.
+    // Mobile drawer: no hover popup. Roles remain in the desktop rail popup.
     return (
       <div
         className="flex flex-col gap-2 px-3.5 py-3"
@@ -350,9 +360,11 @@ export default function AuthMenu({ variant }: ComponentProps) {
     )
   }
 
+  const isRail = variant === 'rail'
+
   return (
     <div
-      className="flex items-center gap-2"
+      className={isRail ? 'w-full' : 'flex items-center gap-2'}
       {...devMarker({
         name: 'auth menu',
         priority: 310,
@@ -363,7 +375,7 @@ export default function AuthMenu({ variant }: ComponentProps) {
           state are coordinated on this wrapper so the keyboard-reachable user
           info popover stays mounted while focus moves within it. */}
       <div
-        className="relative"
+        className="relative w-full"
         onBlur={event => {
           const nextTarget = event.relatedTarget
           if (
@@ -392,7 +404,11 @@ export default function AuthMenu({ variant }: ComponentProps) {
           aria-expanded={isPopupOpen}
           aria-haspopup="dialog"
           aria-label={t('signedInAs', { name: displayName })}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950"
+          className={
+            isRail
+              ? 'inline-flex min-h-11 w-full min-w-11 items-center justify-center gap-3 rounded-xl px-3 py-2 text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950'
+              : 'inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950'
+          }
           onClick={() => setIsPopupOpen(open => !open)}
           onFocus={event => {
             if (suppressNextFocusOpenRef.current) {
@@ -408,13 +424,22 @@ export default function AuthMenu({ variant }: ComponentProps) {
           type="button"
           {...devMarker({ name: 'button', value: 'user info trigger' })}
         >
-          <UserCircle2 aria-hidden="true" className="h-5 w-5" />
+          <UserCircle2 aria-hidden="true" className="h-5 w-5 shrink-0" />
+          {isRail && expanded ? (
+            <span className="min-w-0 flex-1 truncate text-left text-sm font-medium">
+              {displayName}
+            </span>
+          ) : null}
         </button>
         <AnimatePresence>
           {isPopupOpen && (
             <motion.div
               aria-label={t('userInfoTitle')}
-              className="absolute right-0 top-full z-50 mt-2 w-[min(calc(100vw-2rem),24rem)] max-w-sm rounded-xl border border-secondary-200 bg-white p-4 shadow-lg dark:border-secondary-700 dark:bg-secondary-900"
+              className={
+                isRail
+                  ? 'fixed bottom-4 left-[calc(var(--global-nav-width)+0.5rem)] z-80 w-[min(calc(100vw-var(--global-nav-width)-1rem),24rem)] max-w-sm rounded-xl border border-secondary-200 bg-white p-4 shadow-lg dark:border-secondary-700 dark:bg-secondary-900'
+                  : 'absolute right-0 top-full z-50 mt-2 w-[min(calc(100vw-2rem),24rem)] max-w-sm rounded-xl border border-secondary-200 bg-white p-4 shadow-lg dark:border-secondary-700 dark:bg-secondary-900'
+              }
               id={popupId}
               onKeyDown={event => {
                 if (event.key !== 'Escape') return

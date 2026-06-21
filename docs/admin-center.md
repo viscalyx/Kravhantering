@@ -18,11 +18,10 @@ reach app-owned taxonomy and status administration, and run privileged admin
 workflows without changing route slugs, API field names, or MCP tool
 identifiers.
 
-The current entrypoint is the global header settings icon, which links to
+The global side navigation contains the settings item that links to
 `/{locale}/admin`.
 
-Taxonomy and status links no longer live in the header dropdown. They are
-grouped in the admin center instead.
+Taxonomy and status links are grouped in the Admin Center.
 
 ## Tabs
 

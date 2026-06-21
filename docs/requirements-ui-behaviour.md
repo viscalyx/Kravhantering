@@ -105,8 +105,8 @@ The behaviors below apply to the requirement list rendered by:
 - The requirements table actions live in a floating rail outside the table.
 - When possible, the rail aligns with the table’s top edge with a slight
   downward offset.
-- Once the table top scrolls under the sticky navigation, the rail stays fixed
-  below the navigation while its table remains in view.
+- Once the table top scrolls above the floating rail's minimum top offset, the
+  rail stays fixed at that offset while its table remains in view.
 - The rail uses a short motion-safe top/left transition with subpixel
   positioning so the handoff between those two positions tracks scrolling
   smoothly.
@@ -121,7 +121,7 @@ The behaviors below apply to the requirement list rendered by:
 ## Sticky Header
 
 - The column header row stays sticky during vertical page scroll.
-- Sticky headers pin directly below the `h-16` site navigation using a `top-16`
+- Sticky headers pin to the top of their scroll context using a `top-0`
   offset.
 - The sticky table chrome keeps the requirement-package chips visible together with
   the header when those chips are present.
@@ -133,8 +133,8 @@ The behaviors below apply to the requirement list rendered by:
   with the headers.
 - On `xl` and wider specification-detail layouts, the `Krav i underlaget` and
   `Tillgängliga krav` cards each become their own vertically scrollable region
-  and stay pinned below the site navigation while the user scrolls inside a
-  list.
+  and stay pinned to the top of their scroll context while the user scrolls
+  inside a list.
 - The left specification-detail panel has tabs for `Krav i underlaget` and
   `Behovsreferenser` embedded in the panel's sticky list header rather than in
   a separate row above the list; the tab selection is reflected in the URL
@@ -163,13 +163,10 @@ The behaviors below apply to the requirement list rendered by:
   viewport-locked so the two list panels fit inside the visible window without
   requiring page-level vertical scrolling.
 - Those desktop list panels stretch to the padded page edges and use the full
-  available width under the header instead of sitting inside an additional
-  inset content column.
+  available width instead of sitting inside an additional inset content column.
 - In that desktop split-panel mode, the specification-detail sticky chrome
-  uses the
-  card’s own top edge instead of the global `top-16` viewport offset so the
-  title bar, requirement-package chips, and header stay visually attached to
-  the table.
+  uses the card’s own top edge so the title bar, requirement-package chips, and
+  header stay visually attached to the table.
 - The specification-detail bulk-add dialog keeps API failures inline inside the
   modal and leaves the current selection in place so the user can adjust the
   needs-reference choice or retry without rebuilding the selection.

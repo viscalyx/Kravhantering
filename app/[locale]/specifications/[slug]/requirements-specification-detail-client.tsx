@@ -1954,7 +1954,7 @@ export default function KravunderlagDetailClient({
 
   const desktopSplitPanelCardClassName =
     'bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain'
-  const specificationDetailStickyTopOffsetClassName = 'top-16 xl:top-0'
+  const specificationDetailStickyTopOffsetClassName = 'top-0'
   const specificationDetailPagePaddingClassName =
     'px-4 pb-8 pt-6 sm:px-6 sm:pb-10 sm:pt-7 lg:px-8 lg:pt-8'
   const splitPanelHeaderClassName = `sticky ${specificationDetailStickyTopOffsetClassName} z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80`
