@@ -16,12 +16,7 @@ vi.mock('next-intl/middleware', () => ({
 }))
 vi.mock('@/i18n/routing', () => ({ routing: {} }))
 
-// Source file is `middleware.ts` (not `proxy.ts`) because Next.js 16.2.4
-// emits a chunk for `proxy.ts` but never registers it in
-// `middleware-manifest.json`, so the matcher never runs at runtime. The
-// exported function is still semantically a Next 16 "proxy" — only the
-// filename is the legacy name. See docs/security-ci.md.
-const { config, default: middleware } = await import('@/middleware')
+const { config, default: proxy } = await import('@/proxy')
 const { resetAuthConfigForTests } = await import('@/lib/auth/config')
 const { getSessionFromRequest } = await import('@/lib/auth/session')
 
@@ -124,11 +119,11 @@ function parseSecurityEvents(
     )
 }
 
-describe('middleware', () => {
+describe('proxy', () => {
   it('redirects unauthenticated browser GET to /api/auth/login', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/sv/requirements', {
           accept: 'text/html',
         }),
@@ -154,7 +149,7 @@ describe('middleware', () => {
     const restore = withEnv(AUTH_ON_ENV)
     intlMiddlewareMock.mockClear()
     try {
-      const response = await middleware(
+      const response = await proxy(
         buildRequest(
           'http://localhost/auth/error?code=login_state_cookie_missing',
           {
@@ -177,7 +172,7 @@ describe('middleware', () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     try {
       const cookie = await writeSignedInCookie(1)
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/sv/requirements', {
           accept: 'text/html',
           cookie,
@@ -220,7 +215,7 @@ describe('middleware', () => {
         }) as unknown as ReturnType<typeof NextResponse.next>,
     )
     try {
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/_next/static/foo.js'),
       )
       expect(response.status).toBe(307)
@@ -255,7 +250,7 @@ describe('middleware', () => {
         }) as unknown as ReturnType<typeof NextResponse.next>,
     )
     try {
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/_next/static/page'),
       )
       expect(response.status).toBe(307)
@@ -275,7 +270,7 @@ describe('middleware', () => {
       return r
     })
     try {
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/_next/static/foo.js'),
       )
       expect(response.status).toBe(200)
@@ -290,7 +285,7 @@ describe('middleware', () => {
   it('prepends the default locale to returnTo for unprefixed paths', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/requirements', {
           accept: 'text/html',
         }),
@@ -317,7 +312,7 @@ describe('middleware', () => {
   ])('redirects Swedish requirement route %s to the requirements page path', async (source, target) => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await middleware(
+      const response = await proxy(
         buildRequest(`http://localhost${source}?from=swedish-route`, {
           accept: 'text/html',
         }),
@@ -338,7 +333,7 @@ describe('middleware', () => {
   it('returns 401 JSON for non-HTML unauthenticated requests', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/api/requirement-areas', {
           method: 'POST',
         }),
@@ -356,7 +351,7 @@ describe('middleware', () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
       const cookie = await writeSignedInCookie(1)
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/api/requirement-areas', {
           cookie,
           method: 'POST',
@@ -372,8 +367,8 @@ describe('middleware', () => {
     }
   })
 
-  it('returns 405 JSON for unsupported API methods that reach middleware', async () => {
-    const response = await middleware(
+  it('returns 405 JSON for unsupported API methods that reach proxy', async () => {
+    const response = await proxy(
       buildRequest('http://localhost/api/auth/me', { method: 'PROPFIND' }),
     )
 
@@ -389,7 +384,7 @@ describe('middleware', () => {
     const restore = withEnv(AUTH_ON_ENV)
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     try {
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/api/requirement-areas', {
           cookie: 'kravhantering_session=this-is-not-a-real-session',
         }),
@@ -411,7 +406,7 @@ describe('middleware', () => {
   it('passes through public allow-list paths', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/api/auth/login'),
       )
       expect(response.status).toBe(200)
@@ -426,7 +421,7 @@ describe('middleware', () => {
   ])('passes through exact public probe route %s', async path => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await middleware(buildRequest(`http://localhost${path}`))
+      const response = await proxy(buildRequest(`http://localhost${path}`))
       expect(response.status).toBe(200)
     } finally {
       restore()
@@ -436,9 +431,7 @@ describe('middleware', () => {
   it('passes through /sitemap.xml without auth', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await middleware(
-        buildRequest('http://localhost/sitemap.xml'),
-      )
+      const response = await proxy(buildRequest('http://localhost/sitemap.xml'))
       expect(response.status).toBe(200)
     } finally {
       restore()
@@ -448,9 +441,7 @@ describe('middleware', () => {
   it('passes through /robots.txt without auth', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await middleware(
-        buildRequest('http://localhost/robots.txt'),
-      )
+      const response = await proxy(buildRequest('http://localhost/robots.txt'))
       expect(response.status).toBe(200)
     } finally {
       restore()
@@ -460,7 +451,7 @@ describe('middleware', () => {
   it('requires auth for dotted api paths', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/api/files/report.json', {
           method: 'POST',
         }),
@@ -478,7 +469,7 @@ describe('middleware', () => {
   it('requires Authorization: Bearer for /api/mcp', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const without = await middleware(
+      const without = await proxy(
         buildRequest('http://localhost/api/mcp', { method: 'POST' }),
       )
       expect(without.status).toBe(401)
@@ -489,7 +480,7 @@ describe('middleware', () => {
         jsonrpc: '2.0',
       })
 
-      const withBearer = await middleware(
+      const withBearer = await proxy(
         buildRequest('http://localhost/api/mcp', {
           method: 'POST',
           bearer: 'token-value',
@@ -505,7 +496,7 @@ describe('middleware', () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
       const cookie = await writeSignedInCookie()
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/api/requirement-areas', {
           cookie,
           method: 'POST',
@@ -526,7 +517,7 @@ describe('middleware', () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
       const cookie = await writeSignedInCookie()
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/api/requirement-areas', {
           cookie,
           method: 'POST',
@@ -548,7 +539,7 @@ describe('middleware', () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
       const cookie = await writeSignedInCookie()
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/api/requirement-areas', {
           cookie,
           method: 'POST',
@@ -570,9 +561,7 @@ describe('middleware', () => {
   it('strips inbound x-user-* headers', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await middleware(
-        buildRequest('http://localhost/api/auth/me'),
-      )
+      const response = await proxy(buildRequest('http://localhost/api/auth/me'))
       const overrides = (
         response.headers.get('x-middleware-override-headers') ?? ''
       ).split(',')

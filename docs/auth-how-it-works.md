@@ -17,7 +17,7 @@ It is intentionally not a replacement for the more detailed workflow docs:
 ## Reading guide
 
 - **Implemented now** means the behavior is backed by the current code in
-  `middleware.ts`, `app/api/auth/*`, `lib/auth/*`, `lib/mcp/http.ts`, and the
+  `proxy.ts`, `app/api/auth/*`, `lib/auth/*`, `lib/mcp/http.ts`, and the
   auth-focused tests.
 - **Required for production** means this is the intended deployment contract.
   Some of it is already reflected in config and docs, but it should still be
@@ -28,7 +28,7 @@ It is intentionally not a replacement for the more detailed workflow docs:
 
 ## Current auth architecture in the app
 
-- [`middleware.ts`](../middleware.ts) is the front door. Auth is always on, so it:
+- [`proxy.ts`](../proxy.ts) is the front door. Auth is always on, so it:
   allows public paths, redirects unauthenticated browser page requests to
   `/api/auth/login`, returns `401` for unauthenticated API requests, and
   requires a Bearer header to be present for `/api/mcp`.
@@ -56,7 +56,7 @@ It is intentionally not a replacement for the more detailed workflow docs:
 ```mermaid
 sequenceDiagram
     actor Browser
-    participant Middleware as middleware.ts
+    participant Proxy as proxy.ts
     participant Login as /api/auth/login
     participant LoginState as login-state cookie
     participant IdP as OIDC Identity Provider<br/>(Keycloak in local dev)
@@ -64,8 +64,8 @@ sequenceDiagram
     participant Session as main session cookie
     participant Audit as security-audit log
 
-    Browser->>Middleware: GET /sv/... (no session)
-    Middleware-->>Browser: 302 /api/auth/login?returnTo=/sv/...
+    Browser->>Proxy: GET /sv/... (no session)
+    Proxy-->>Browser: 302 /api/auth/login?returnTo=/sv/...
 
     Browser->>Login: GET /api/auth/login?returnTo=...
     Login->>Login: Generate PKCE verifier/challenge, state, nonce
@@ -93,7 +93,7 @@ sequenceDiagram
 ```
 <!-- markdownlint-enable MD013 -->
 
-- The redirect into `/api/auth/login` is usually triggered by `middleware.ts`, not
+- The redirect into `/api/auth/login` is usually triggered by `proxy.ts`, not
   by the page itself.
 - The login-state cookie is separate from the main session cookie and has a
   much shorter lifetime. Its only job is to carry the PKCE verifier, `state`,
@@ -152,7 +152,7 @@ sequenceDiagram
 - `GET /api/auth/logout` is intentionally non-destructive. It only redirects
   locally and does not clear the session.
 - If a session cookie is present but past `accessTokenExpiresAt`,
-  `middleware.ts` records `auth.session.expired` and treats the request as
+  `proxy.ts` records `auth.session.expired` and treats the request as
   signed out. Invalid or unreadable cookies still record
   `auth.session.rejected`.
 
@@ -162,7 +162,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Middleware as middleware.ts
+    participant Proxy as proxy.ts
     participant Route as /api/mcp
     participant Verify as verifyMcpBearerToken()
     participant JWKS as JWKS endpoint
@@ -170,9 +170,9 @@ sequenceDiagram
     participant Attach as attachVerifiedActor()
     participant Handler as MCP JSON-RPC handler
 
-    Client->>Middleware: POST /api/mcp with Authorization Bearer JWT
-    Middleware->>Middleware: Require Bearer header to be present
-    Middleware->>Route: Forward request
+    Client->>Proxy: POST /api/mcp with Authorization Bearer JWT
+    Proxy->>Proxy: Require Bearer header to be present
+    Proxy->>Route: Forward request
     Route->>Verify: verifyMcpBearerToken(request)
     Verify->>JWKS: Fetch/cache signing keys via createRemoteJWKSet(...)
     JWKS-->>Verify: JWK set
@@ -185,14 +185,14 @@ sequenceDiagram
     Handler-->>Client: JSON-RPC response
 
     alt Missing or invalid token
-        Middleware-->>Client: JSON-RPC 401 if Authorization header is missing
+        Proxy-->>Client: JSON-RPC 401 if Authorization header is missing
         Verify->>Audit: auth.token.rejected
         Route-->>Client: JSON-RPC 401 + WWW-Authenticate: Bearer
     end
 ```
 <!-- markdownlint-enable MD013 -->
 
-- `middleware.ts` only checks that a Bearer token is present for `/api/mcp`.
+- `proxy.ts` only checks that a Bearer token is present for `/api/mcp`.
   Cryptographic verification is done later in
   [`lib/auth/mcp-token.ts`](../lib/auth/mcp-token.ts).
 - Missing-header and invalid-token failures use a JSON-RPC error body so MCP
@@ -215,17 +215,17 @@ sequenceDiagram
 - Identity is derived only from the verified iron-session cookie (browser
   flow) or a verified `Authorization: Bearer` JWT (MCP flow). The app does
   not accept `x-user-id` or `x-user-roles` request headers as a stand-in
-  for a logged-in user, and `middleware.ts` strips both headers from every
+  for a logged-in user, and `proxy.ts` strips both headers from every
   inbound request before any handler runs so a caller cannot use them to
   impersonate a user.
 - Cookie-authenticated mutating requests go through the same-origin check in
   [`lib/auth/csrf.ts`](../lib/auth/csrf.ts). They must present a same-origin
   `Origin` or `Referer` and `X-Requested-With: XMLHttpRequest`.
-  `lib/auth/csrf.ts` and `middleware.ts` compare only the URL origin
+  `lib/auth/csrf.ts` and `proxy.ts` compare only the URL origin
   (scheme + host + port) of `AUTH_OIDC_REDIRECT_URI`; path and query values are
   ignored. `X-Forwarded-Proto` and `X-Forwarded-Host` are ignored for this
   check.
-  `middleware.ts` enforces this centrally for mutating REST API requests after
+  `proxy.ts` enforces this centrally for mutating REST API requests after
   authentication has succeeded, excluding `/api/mcp`, which uses Bearer-token
   auth. Route-level checks remain as defense-in-depth through
   `lib/http/secure-mutation-route.ts`: app-owned `POST`, `PUT`, `PATCH`, and
@@ -236,7 +236,7 @@ sequenceDiagram
   an auth endpoint with CSRF and audit but no business authorization policy.
   `/api/mcp` remains the documented exception because it is guarded by Bearer
   JWT verification and MCP tool schemas instead of the REST mutation wrapper.
-- Page responses get a per-request CSP nonce from `middleware.ts`.
+- Page responses get a per-request CSP nonce from `proxy.ts`.
 - Security audit events are emitted through
   [`lib/auth/audit.ts`](../lib/auth/audit.ts). The current event set is:
   `auth.login.succeeded`, `auth.login.failed`, `auth.logout`,
@@ -359,7 +359,7 @@ flowchart LR
 - Terminate TLS at the public reverse proxy or load balancer and set
   `AUTH_OIDC_REDIRECT_URI` and `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` to the
   public HTTPS host. CSRF origin checks in `lib/auth/csrf.ts` and
-  `middleware.ts` compare only the URL origin (scheme + host + port) of
+  `proxy.ts` compare only the URL origin (scheme + host + port) of
   `AUTH_OIDC_REDIRECT_URI`, not its path or query, and ignore inbound
   `X-Forwarded-*` headers. The same edge layer may also distribute traffic
   across multiple app replicas; because the session is carried in the encrypted

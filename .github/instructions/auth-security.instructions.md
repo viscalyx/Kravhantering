@@ -1,12 +1,12 @@
 ---
-applyTo: "{app/api/**/*.ts,app/**/*.tsx,components/**/*.tsx,lib/auth/**/*.ts,lib/http/api-fetch.ts,lib/requirements/auth.ts,middleware.ts,tests/**/*.{ts,tsx}}"
+applyTo: "{app/api/**/*.ts,app/**/*.tsx,components/**/*.tsx,lib/auth/**/*.ts,lib/http/api-fetch.ts,lib/requirements/auth.ts,proxy.ts,tests/**/*.{ts,tsx}}"
 ---
 
 # Auth Security
 
 ## Server Auth And CSRF
 
-- Preserve auth-before-CSRF ordering in `middleware.ts`: unauthenticated REST
+- Preserve auth-before-CSRF ordering in `proxy.ts`: unauthenticated REST
   mutations return `401`; signed-in CSRF failures return `403`.
 - Enforce CSRF for cookie-authenticated REST mutations: `POST`, `PUT`, `PATCH`,
   `DELETE`.
@@ -14,7 +14,7 @@ applyTo: "{app/api/**/*.ts,app/**/*.tsx,components/**/*.tsx,lib/auth/**/*.ts,lib
   `Authorization: Bearer` JWT validation.
 - Use `assertSameOriginRequest(request)` for CSRF checks. Do not hand-roll
   `Origin`, `Referer`, or `X-Requested-With` logic.
-- Keep middleware-level CSRF enforcement for REST mutations. Route-level CSRF
+- Keep proxy-level CSRF enforcement for REST mutations. Route-level CSRF
   checks may remain as defense-in-depth.
 - Preserve inbound stripping of `x-user-id` and `x-user-roles`; never derive
   actor identity from request headers.

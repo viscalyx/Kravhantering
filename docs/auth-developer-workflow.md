@@ -13,7 +13,7 @@ OIDC provider in deployed environments). Identity is derived only from
 the verified iron-session cookie (browser flow) or a verified
 `Authorization: Bearer` JWT (MCP flow). `x-user-id` and
 `x-user-roles` request headers are not identity sources, and
-`middleware.ts` strips both headers from every inbound request before
+`proxy.ts` strips both headers from every inbound request before
 any handler runs.
 
 If the dev server cannot reach the IdP, requests fail loudly instead of
@@ -504,7 +504,7 @@ independent — the shortest one wins.
 | Knob | Where | Default | Meaning |
 | --- | --- | --- | --- |
 | `AUTH_SESSION_TTL_SECONDS` | env → [lib/auth/config.ts](../lib/auth/config.ts), [lib/auth/session.ts](../lib/auth/session.ts) | `28800` (8 h) | Absolute lifetime of the encrypted `iron-session` cookie. **Does not slide on activity.** If the cookie expires first, the next request hits `/api/auth/login` and is silently re-authenticated if the IdP SSO session is still alive; otherwise the user sees the IdP login page. |
-| `session.accessTokenExpiresAt` | written in [app/api/auth/callback/route.ts](../app/api/auth/callback/route.ts) | `tokens.expiresIn()` from the IdP, falling back to `AUTH_SESSION_TTL_SECONDS` | Active browser-session validity boundary. The client warns two minutes before this timestamp and redirects through `/api/auth/login` at expiry. Middleware also treats cookies past this timestamp as signed out. |
+| `session.accessTokenExpiresAt` | written in [app/api/auth/callback/route.ts](../app/api/auth/callback/route.ts) | `tokens.expiresIn()` from the IdP, falling back to `AUTH_SESSION_TTL_SECONDS` | Active browser-session validity boundary. The client warns two minutes before this timestamp and redirects through `/api/auth/login` at expiry. The proxy also treats cookies past this timestamp as signed out. |
 <!-- markdownlint-enable MD013 -->
 
 The app does **not** implement an idle/inactivity timeout. There is no
@@ -622,7 +622,7 @@ log in against the local IdP via `npm run idp:up`) and then re-run with
 ## Authenticated `curl` against the dev server
 
 The OIDC redirect chain makes plain `curl http://localhost:3000/...`
-useless for any protected route — middleware always returns `302
+useless for any protected route — the proxy always returns `302
 /api/auth/login`. Use the helper at `scripts/dev-login.mjs` (or the
 `scripts/dev-curl.sh` wrapper) to log in once via the dev Keycloak realm
 and reuse the resulting cookie jar:

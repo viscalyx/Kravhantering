@@ -124,7 +124,7 @@ const nextConfig: NextConfig = {
   webpack() {
     throw new Error(UNSUPPORTED_WEBPACK_BUILD_MESSAGE)
   },
-  // CSP is set per-request in middleware.ts (nonce-based).
+  // CSP is set per-request in proxy.ts (nonce-based).
   // Only static security headers are defined here.
   async headers() {
     return [
@@ -134,7 +134,7 @@ const nextConfig: NextConfig = {
           {
             key: 'X-Frame-Options',
             // CSP frame-ancestors is the primary clickjacking control for
-            // page responses, but middleware intentionally skips dotted paths
+            // page responses, but the proxy intentionally skips dotted paths
             // such as asset probes. Keep this static fallback on every route.
             value: 'DENY',
           },

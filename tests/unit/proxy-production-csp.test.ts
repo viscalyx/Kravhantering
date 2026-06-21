@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { describe, expect, it, vi } from 'vitest'
 
 // next-intl's middleware module imports `next/server` via a path that the
-// Vitest ESM resolver cannot follow. Match the main middleware test's
+// Vitest ESM resolver cannot follow. Match the main proxy test's
 // pass-through mock so this file only varies the build target.
 const { intlMiddlewareMock } = vi.hoisted(() => ({
   intlMiddlewareMock: vi.fn(() => NextResponse.next()),
@@ -19,7 +19,7 @@ vi.mock('@/lib/runtime/build-target', () => ({
   USE_INSECURE_COOKIE: false,
 }))
 
-const { default: middleware } = await import('@/middleware')
+const { default: proxy } = await import('@/proxy')
 const { resetAuthConfigForTests } = await import('@/lib/auth/config')
 const { getSessionFromRequest } = await import('@/lib/auth/session')
 
@@ -83,12 +83,12 @@ async function writeSignedInCookie(): Promise<string> {
   return response.headers.get('set-cookie')?.split(';')[0] ?? ''
 }
 
-describe('middleware production CSP', () => {
+describe('proxy production CSP', () => {
   it('emits the strict production policy and request nonce override', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
       const cookie = await writeSignedInCookie()
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/sv/requirements', cookie),
       )
 
@@ -115,7 +115,7 @@ describe('middleware production CSP', () => {
   it('redirects missing sessions without emitting a production nonce', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await middleware(
+      const response = await proxy(
         buildRequest('http://localhost/sv/requirements'),
       )
 
@@ -134,7 +134,7 @@ describe('middleware production CSP', () => {
     const restore = withEnv(AUTH_ON_ENV)
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     try {
-      const response = await middleware(
+      const response = await proxy(
         buildRequest(
           'http://localhost/sv/requirements',
           'kravhantering_session=this-is-not-a-real-session',
@@ -158,7 +158,7 @@ describe('middleware production CSP', () => {
   ])('passes public API route %s without page CSP headers', async path => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await middleware(buildRequest(`http://localhost${path}`))
+      const response = await proxy(buildRequest(`http://localhost${path}`))
 
       expect(response.status).toBe(200)
       expect(response.headers.get('content-security-policy')).toBeNull()

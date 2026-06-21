@@ -1,6 +1,6 @@
 # Security-sensitive application, data, workflow, AI, and MCP surfaces.
 app/api/** @viscalyx/security-reviewers
-middleware.ts @viscalyx/security-reviewers
+proxy.ts @viscalyx/security-reviewers
 lib/auth/** @viscalyx/security-reviewers
 lib/http/** @viscalyx/security-reviewers
 lib/access-review/** @viscalyx/security-reviewers
