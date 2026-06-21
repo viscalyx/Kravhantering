@@ -52,6 +52,7 @@ const mocks = vi.hoisted(() => ({
   recordDecision: vi.fn(),
   recordResolution: vi.fn(),
   requestReview: vi.fn(),
+  resolveOpenRouterModelCapabilities: vi.fn(),
   revertToDraft: vi.fn(),
   restoreVersion: vi.fn(),
   transitionStatus: vi.fn(),
@@ -68,6 +69,10 @@ vi.mock('@/lib/db', () => ({
 
 vi.mock('@/lib/ai/openrouter-client', () => ({
   generateChat: mocks.generateChat,
+}))
+
+vi.mock('@/lib/ai/openrouter-model-catalog', () => ({
+  resolveOpenRouterModelCapabilities: mocks.resolveOpenRouterModelCapabilities,
 }))
 
 vi.mock('@/lib/ai/requirement-prompt', () => ({
@@ -329,6 +334,19 @@ describe('createRequirementsService', () => {
         totalTokens: 10,
       },
       thinking: '',
+    })
+    mocks.resolveOpenRouterModelCapabilities.mockResolvedValue({
+      contextLength: 200000,
+      id: 'anthropic/claude-sonnet-4',
+      name: 'Claude Sonnet 4',
+      pricing: { completion: '0', prompt: '0', reasoning: '0' },
+      provider: 'anthropic',
+      supportedParameters: [
+        'reasoning',
+        'stream',
+        'response_format',
+        'structured_outputs',
+      ],
     })
     mocks.getAreaById.mockResolvedValue({
       id: 1,
@@ -1288,6 +1306,20 @@ describe('createRequirementsService', () => {
     )
 
     expect(result.stats.totalTokens).toBe(10)
+    expect(mocks.resolveOpenRouterModelCapabilities).toHaveBeenCalledWith(
+      'anthropic/claude-sonnet-4',
+    )
+    expect(mocks.generateChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'anthropic/claude-sonnet-4',
+        supportedParameters: [
+          'reasoning',
+          'stream',
+          'response_format',
+          'structured_outputs',
+        ],
+      }),
+    )
     expect(parseCapacityEvents(infoSpy)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -1335,6 +1367,33 @@ describe('createRequirementsService', () => {
     })
 
     expect(mocks.loadTaxonomy).not.toHaveBeenCalled()
+    expect(mocks.generateChat).not.toHaveBeenCalled()
+  })
+
+  it('fails MCP AI generation before chat completion when model capabilities cannot be resolved', async () => {
+    const service = createTestRequirementsService()
+    mocks.resolveOpenRouterModelCapabilities.mockRejectedValueOnce(
+      new Error('OpenRouter model lookup failed with sk-or-v1-secret'),
+    )
+
+    await expect(
+      service.generateRequirements(
+        {
+          ...makeContext(),
+          source: 'mcp',
+          toolName: 'requirements_generate_requirements',
+        },
+        {
+          locale: 'sv',
+          topic: 'kapacitetshantering',
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: 'service_unavailable',
+      message: 'AI provider is unavailable',
+      status: 503,
+    })
+
     expect(mocks.generateChat).not.toHaveBeenCalled()
   })
 

@@ -94,7 +94,23 @@ describe('generateChat (non-streaming)', () => {
     expect(body.model).toBe('google/gemini-2.5-flash')
   })
 
-  it('sends json_schema response_format when supportedParameters is undefined', async () => {
+  it('requires known model capabilities for formatted responses', async () => {
+    await expect(
+      generateChat({
+        format: {
+          properties: { requirements: { type: 'array' } },
+          type: 'object',
+        },
+        messages: [],
+      }),
+    ).rejects.toThrow(
+      'OpenRouter model capabilities are required for formatted responses',
+    )
+
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
+  it('sends json_object when known model capabilities do not include structured_outputs', async () => {
     mockFetch.mockResolvedValueOnce({
       json: async () => ({
         choices: [{ message: { content: '{"requirements":[]}' } }],
@@ -108,22 +124,13 @@ describe('generateChat (non-streaming)', () => {
         type: 'object',
       },
       messages: [],
+      supportedParameters: [],
     })
 
     const body = JSON.parse(
       (mockFetch.mock.calls[0][1] as { body: string }).body,
     )
-    expect(body.response_format).toEqual({
-      json_schema: {
-        name: 'requirements',
-        schema: {
-          properties: { requirements: { type: 'array' } },
-          type: 'object',
-        },
-        strict: true,
-      },
-      type: 'json_schema',
-    })
+    expect(body.response_format).toEqual({ type: 'json_object' })
   })
 
   it('sends json_schema when model supports structured_outputs', async () => {
@@ -170,29 +177,6 @@ describe('generateChat (non-streaming)', () => {
       (mockFetch.mock.calls[0][1] as { body: string }).body,
     )
     expect(body.response_format).toEqual({ type: 'json_object' })
-  })
-
-  it('sends json_schema when supportedParameters is undefined (MCP callers)', async () => {
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({
-        choices: [{ message: { content: '{"requirements":[]}' } }],
-      }),
-      ok: true,
-    })
-
-    await generateChat({
-      format: {
-        properties: { requirements: { type: 'array' } },
-        type: 'object',
-      },
-      messages: [],
-      // supportedParameters intentionally omitted
-    })
-
-    const body = JSON.parse(
-      (mockFetch.mock.calls[0][1] as { body: string }).body,
-    )
-    expect(body.response_format.type).toBe('json_schema')
   })
 
   it('throws on non-OK response', async () => {

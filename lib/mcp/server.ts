@@ -2157,7 +2157,7 @@ export function createKravhanteringMcpServer(
             .max(100)
             .optional()
             .describe(
-              'OpenRouter model ID (e.g. "anthropic/claude-sonnet-4"). Uses NEXT_PUBLIC_DEFAULT_MODEL env var if omitted.',
+              'Eligible OpenRouter model ID from the server model catalog (e.g. "anthropic/claude-sonnet-4"). Uses NEXT_PUBLIC_DEFAULT_MODEL env var if omitted.',
             ),
           scopeId: z
             .number()

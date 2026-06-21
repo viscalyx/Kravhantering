@@ -15,6 +15,7 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/ai/openrouter-client', () => ({
+  getDefaultModel: vi.fn(() => 'anthropic/claude-sonnet-4'),
   listModels: vi.fn(),
 }))
 

@@ -107,6 +107,7 @@ agents can use it reliably.
 - `requirements_generate_requirements`
   Generate system requirements using AI (OpenRouter) based on a
   topic. Returns generated requirements with a thinking trace.
+  Optional model IDs must belong to the server's eligible model catalog.
   To create the generated requirements, call
   `requirements_manage_requirement` with `operation: "create"`
   for each requirement.

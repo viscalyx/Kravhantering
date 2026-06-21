@@ -252,8 +252,8 @@ call `requirements_manage_requirement` with `operation: "create"` for
 each generated requirement.
 
 - **Inputs:** `topic` (required), `areaId` (optional), `locale`
-  (`en` | `sv`), `model` (optional OpenRouter model ID),
-  `customInstruction` (optional)
+  (`en` | `sv`), `model` (optional eligible OpenRouter model ID from the
+  server model catalog), `customInstruction` (optional)
 - **Output:** generated requirements list with thinking trace
 - **Grouping:** AI-assisted authoring
 

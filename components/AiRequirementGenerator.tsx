@@ -681,8 +681,6 @@ export default function AiRequirementGenerator({
     abortRef.current = ac
 
     try {
-      const selectedModel = models.find(m => m.id === model)
-
       // Build provider preferences from active data policies
       const providerPreferences: Record<string, unknown> = {}
       if (dataPolicies.includes('data_collection')) {
@@ -707,7 +705,6 @@ export default function AiRequirementGenerator({
           reasoningEffort,
           scopeId: areaId,
           scopeType: 'requirement_area',
-          supportedParameters: selectedModel?.supportedParameters,
           topic: topic.trim(),
           ...(visionEnabled &&
             attachedImages.length > 0 && {
@@ -849,7 +846,6 @@ export default function AiRequirementGenerator({
     topic,
     areaId,
     model,
-    models,
     customInstruction,
     dataPolicies,
     locale,

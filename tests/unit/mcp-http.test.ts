@@ -572,6 +572,7 @@ describe('handleRequirementsMcpRequest', () => {
       expect(generateTool).toBeDefined()
       const generateInputSchemaText = JSON.stringify(generateTool?.inputSchema)
       expect(generateInputSchemaText).toContain('"maxLength":1000')
+      expect(generateInputSchemaText).toContain('Eligible OpenRouter model ID')
       expect(generateTool?.description).toContain('using the generated fields')
       expect(JSON.stringify(generateTool?.outputSchema)).toContain('stats')
     })
