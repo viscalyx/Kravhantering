@@ -1,5 +1,9 @@
 const UP_STATEMENTS = [
-  `IF NOT EXISTS (
+  `IF EXISTS (
+      SELECT 1
+      FROM [archiving_retention_policies]
+    )
+    AND NOT EXISTS (
       SELECT 1
       FROM [archiving_retention_policies]
       WHERE [policy_key] = N'rfi_questions_retention_delete'
