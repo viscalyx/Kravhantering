@@ -312,6 +312,9 @@ V1 supports direct deletion after preview and confirmation for:
   specification dependency
 - archived requirement-selection questions and answers older than one year
   when no saved requirements-specification answers still reference them
+- historical RFI question versions and archived RFI questions older than two
+  years when no specification RFI-list rows or RFI question suggestions still
+  reference them
 - unassigned requirement responsibility people older than the policy age when
   no live requirement area, specification or package assignment references
   their HSA-id
@@ -330,6 +333,14 @@ Archived requirement-selection deletion uses the `archived_at` timestamp on the
 question or answer as its age basis. Saved answers in
 `specification_requirement_selection_answers` block deletion so requirements
 specification history remains intact.
+
+RFI retention deletes historical RFI question versions by their `updated_at`
+timestamp and archived RFI questions by their `archived_at` timestamp. Any
+`specification_rfi_question_items` reference blocks deletion, including unlocked
+lists that still use a historical version to show that a newer version exists.
+RFI question suggestions block deletion of the archived RFI question they refer
+to. RFI candidates do not require a separate archive export because those
+references keep active specification history intact.
 
 Requirements specifications outside `Förvaltning` and older than the policy age
 require an anonymized JSON archive export before deletion. The export includes

@@ -1352,6 +1352,8 @@
         "specifications": "Specifications",
         "requirementSelectionQuestions": "Requirement selection questions",
         "requirementSelectionAnswers": "Requirement selection answers",
+        "rfiQuestions": "RFI questions",
+        "rfiQuestionVersions": "RFI question versions",
         "areaCoAuthors": "Requirement area co-authors",
         "packageCoAuthors": "Requirement package co-authors",
         "specificationCoAuthors": "Specification co-authors",
@@ -1374,7 +1376,9 @@
         "taxonomy": "Taxonomy",
         "requirementVersion": "Requirement version",
         "specificationArchive": "Specification",
-        "requirementSelection": "Requirement selection"
+        "requirementSelection": "Requirement selection",
+        "rfiQuestion": "RFI question",
+        "rfiQuestionVersion": "Historical RFI question version"
       },
       "warnings": {
         "ownerSwitch": "Switch references to a replacement owner, or anonymize to the deleted-user sentinel when no replacement is supplied.",

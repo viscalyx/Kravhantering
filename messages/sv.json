@@ -1352,6 +1352,8 @@
         "specifications": "Kravunderlag",
         "requirementSelectionQuestions": "Kravurvalsfrågor",
         "requirementSelectionAnswers": "Kravurvalssvar",
+        "rfiQuestions": "RFI-frågor",
+        "rfiQuestionVersions": "RFI-frågeversioner",
         "areaCoAuthors": "Kravområdesmedförfattare",
         "packageCoAuthors": "Kravpaketsmedförfattare",
         "specificationCoAuthors": "Kravunderlagsmedförfattare",
@@ -1374,7 +1376,9 @@
         "taxonomy": "Taxonomi",
         "requirementVersion": "Kravversion",
         "specificationArchive": "Kravunderlag",
-        "requirementSelection": "Kravurval"
+        "requirementSelection": "Kravurval",
+        "rfiQuestion": "RFI-fråga",
+        "rfiQuestionVersion": "Historisk RFI-frågeversion"
       },
       "warnings": {
         "ownerSwitch": "Byt referenser till en ersättande ägare, eller anonymisera till den raderade användaren när ingen ersättare anges.",
