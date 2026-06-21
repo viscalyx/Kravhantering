@@ -23,7 +23,7 @@ export const SECURITY_SENSITIVE_PATH_RULES = [
     id: 'authentication-authorization',
     label: 'authentication, authorization, or session boundary',
     patterns: [
-      'middleware.ts',
+      'proxy.ts',
       'lib/auth/**',
       'lib/access-review/**',
       'lib/http/**',

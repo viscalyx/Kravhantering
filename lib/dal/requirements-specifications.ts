@@ -3407,6 +3407,3 @@ export async function deleteSpecificationItemsByRefs(
     return { deletedLibraryCount, deletedSpecificationLocalCount }
   })
 }
-
-// Re-export buildInClause-style helper to satisfy unused lint if any
-void buildInClause

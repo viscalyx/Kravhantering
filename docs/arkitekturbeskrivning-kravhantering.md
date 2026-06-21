@@ -641,7 +641,7 @@ Språkval (svenska/engelska) påverkar hela
 applikationen: navigation, etiketter, kravmetadata
 i listor och detaljvyer, rapportrubriker och
 CSV-kolumnnamn. Språket styrs via URL-prefix
-(`/sv/...` eller `/en/...`) och next-intl-middleware.
+(`/sv/...` eller `/en/...`) och next-intl i `proxy.ts`.
 
 ## 4. Applikationssambandsperspektiv
 
@@ -1486,7 +1486,7 @@ informationssäkerhetsåtgärder i nuvarande version:
 - **CSRF-skydd för cookie-baserade mutationer** —
   muterande anrop måste vara same-origin och bära
   `X-Requested-With: XMLHttpRequest`.
-- **Header-härdning** — applikationens edge middleware
+- **Header-härdning** — applikationens proxy
   rensar `x-user-id` och `x-user-roles` och accepterar
   inte identitet från inkommande headers.
 - **Avvisning av ogiltiga sessioner** — Trasiga eller
