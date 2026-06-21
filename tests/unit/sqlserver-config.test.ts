@@ -111,7 +111,17 @@ describe('SQL Server TypeORM config', () => {
 
   it('throws a helpful error when no write SQL Server URL can be resolved', () => {
     expect(() => getSqlServerDatabaseUrl(env({}))).toThrow(
-      /SQLSERVER_DATABASE_URL or DATABASE_URL/,
+      /DATABASE_URL, or DB_HOST/,
     )
+  })
+
+  it('ignores removed SQL Server-specific URL aliases', () => {
+    const aliasOnlyEnv = {
+      NODE_ENV: 'test',
+      SQLSERVER_DATABASE_URL:
+        'mssql://app:secret@db.example:1433/kravhantering',
+    } as unknown as SqlServerRuntimeEnv
+
+    expect(tryGetSqlServerDatabaseUrl(aliasOnlyEnv)).toBeNull()
   })
 })

@@ -42,16 +42,14 @@ describe('db-sqlserver-admin.mjs', () => {
     expect(stripWrappingQuotes('"value')).toBe('"value')
   })
 
-  it('prefers SQLSERVER_DATABASE_URL over a legacy DATABASE_URL', () => {
-    expect(
+  it('ignores removed SQL Server-specific URL aliases', () => {
+    expect(() =>
       getSqlServerDatabaseUrl({
         DATABASE_URL: 'postgres://legacy.example.invalid/kravhantering',
         SQLSERVER_DATABASE_URL:
           'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
       }),
-    ).toBe(
-      'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
-    )
+    ).toThrow(/DATABASE_URL, or DB_HOST\/DB_PORT\/DB_NAME/)
   })
 
   it('derives the main SQL Server URL from DB_* parts when no explicit URL is set', () => {
@@ -163,7 +161,7 @@ describe('db-sqlserver-admin.mjs', () => {
     const passwordToken = '$' + '{env:DATABASE_READONLY_PASSWORD}'
     const config = buildReadonlyBrowseConfig({
       DATABASE_READONLY_PASSWORD_ENV: 'DATABASE_READONLY_PASSWORD',
-      SQLSERVER_DATABASE_READONLY_URL:
+      DATABASE_READONLY_URL:
         'mssql://readonly:Secret123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
       SQLSERVER_BROWSE_CONNECTION_NAME: 'Read-only local SQL Server',
     })
@@ -270,7 +268,7 @@ describe('db-sqlserver-admin.mjs', () => {
     const exitCode = await main(['browse-config'], {
       consoleObj: { error, log },
       env: {
-        SQLSERVER_DATABASE_READONLY_URL:
+        DATABASE_READONLY_URL:
           'mssql://readonly:Secret123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
       },
     })
@@ -574,9 +572,8 @@ describe('db-sqlserver-admin.mjs', () => {
         DATABASE_READONLY_URL: '',
         DB_READONLY_PASSWORD: '',
         DB_READONLY_USER: '',
-        SQLSERVER_DATABASE_URL:
+        DATABASE_URL:
           'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
-        SQLSERVER_DATABASE_READONLY_URL: '',
       },
       seedRequiredDatabaseImpl: vi.fn(async () => 3),
     })
@@ -587,9 +584,8 @@ describe('db-sqlserver-admin.mjs', () => {
         DATABASE_READONLY_URL: '',
         DB_READONLY_PASSWORD: '',
         DB_READONLY_USER: '',
-        SQLSERVER_DATABASE_URL:
+        DATABASE_URL:
           'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
-        SQLSERVER_DATABASE_READONLY_URL: '',
       },
       seedDemoDatabaseImpl: vi.fn(async () => 4),
     })
@@ -710,7 +706,7 @@ describe('db-sqlserver-admin.mjs', () => {
         dataSourceCtor: FakeDataSource,
         demoResetTables: ['requirements'],
         env: {
-          SQLSERVER_DATABASE_URL:
+          DATABASE_URL:
             'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
         },
       },
@@ -729,7 +725,7 @@ describe('db-sqlserver-admin.mjs', () => {
     const dataSourceCtor = vi.fn()
     const env = {
       KRAVHANTERING_DB_ADMIN_IMAGE: 'db-job',
-      SQLSERVER_DATABASE_URL:
+      DATABASE_URL:
         'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
     }
 
@@ -799,9 +795,8 @@ describe('db-sqlserver-admin.mjs', () => {
         DATABASE_READONLY_URL: '',
         DB_READONLY_PASSWORD: '',
         DB_READONLY_USER: '',
-        SQLSERVER_DATABASE_URL:
+        DATABASE_URL:
           'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
-        SQLSERVER_DATABASE_READONLY_URL: '',
       },
       healthCheckImpl,
       seedDemoDatabaseImpl: vi.fn(async () => {
@@ -840,7 +835,7 @@ describe('db-sqlserver-admin.mjs', () => {
     const exitCode = await main(['wait'], {
       consoleObj: { error, log },
       env: {
-        SQLSERVER_DATABASE_URL:
+        DATABASE_URL:
           'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
       },
       healthCheckImpl,
@@ -869,13 +864,12 @@ describe('db-sqlserver-admin.mjs', () => {
         DB_PORT: '',
         DB_USER: '',
         MSSQL_SA_PASSWORD: '',
-        SQLSERVER_DATABASE_URL: '',
       },
     })
 
     expect(exitCode).toBe(1)
     expect(error).toHaveBeenCalledWith(
-      expect.stringContaining('SQLSERVER_DATABASE_URL or DATABASE_URL'),
+      expect.stringContaining('DATABASE_URL, or DB_HOST'),
     )
   })
 
@@ -885,7 +879,7 @@ describe('db-sqlserver-admin.mjs', () => {
     const exitCode = await main(['unknown'], {
       consoleObj: { error, log: vi.fn() },
       env: {
-        SQLSERVER_DATABASE_URL:
+        DATABASE_URL:
           'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
       },
     })
@@ -902,7 +896,7 @@ describe('db-sqlserver-admin.mjs', () => {
     const exitCode = await main(['seed'], {
       consoleObj: { error, log: vi.fn() },
       env: {
-        SQLSERVER_DATABASE_URL:
+        DATABASE_URL:
           'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
       },
     })

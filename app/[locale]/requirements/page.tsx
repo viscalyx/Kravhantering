@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 function isMissingSqlServerConfigurationError(error: unknown) {
   return (
     error instanceof Error &&
-    (error.message.includes('SQLSERVER_DATABASE_URL or DATABASE_URL') ||
+    (error.message.includes('DATABASE_URL, or DB_HOST/DB_PORT/DB_NAME') ||
       error.message.includes('No SQL Server connection string is configured'))
   )
 }

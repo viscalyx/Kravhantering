@@ -280,7 +280,7 @@ For the full `npm run db:*` command reference, see
 Use the SQLTools + MSSQL workflow described in
 [docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md).
 `npm run db:browse` prints a ready-to-paste read-only SQLTools connection block
-based on `DATABASE_READONLY_URL` (or `SQLSERVER_DATABASE_READONLY_URL`).
+based on `DATABASE_READONLY_URL` or derived `DB_*` values.
 
 > [!Tip]
 > The default contributor path is:

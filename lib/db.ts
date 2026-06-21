@@ -26,7 +26,7 @@ function normalize(connectionString?: string): string {
   const value = connectionString?.trim()
   if (!value) {
     throw new Error(
-      'No SQL Server connection string is configured. Set DATABASE_URL or SQLSERVER_DATABASE_URL using the mssql:// or sqlserver:// scheme, or set DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD.',
+      'No SQL Server connection string is configured. Set DATABASE_URL using the mssql:// or sqlserver:// scheme, or set DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD.',
     )
   }
   return value
