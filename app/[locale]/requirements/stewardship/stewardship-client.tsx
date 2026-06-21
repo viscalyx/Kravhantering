@@ -9,12 +9,20 @@ import RequirementSelectionQuestionsClient from './requirement-selection-questio
 import RfiQuestionsClient from './rfi-questions-client'
 
 type StewardshipTab = 'packages' | 'questions' | 'norms' | 'rfi'
-type StewardshipTabParam = StewardshipTab | 'information-requests'
+type StewardshipTabParam =
+  | Exclude<StewardshipTab, 'rfi'>
+  | 'information-requests'
 
 const STORAGE_KEY = 'requirements.stewardship.tab'
 
-function tabFromValue(value: string | null): StewardshipTab | null {
+function tabFromQueryValue(value: string | null): StewardshipTab | null {
   if (value === 'information-requests') return 'rfi'
+  return value === 'questions' || value === 'packages' || value === 'norms'
+    ? value
+    : null
+}
+
+function tabFromStoredValue(value: string | null): StewardshipTab | null {
   return value === 'questions' ||
     value === 'packages' ||
     value === 'norms' ||
@@ -29,12 +37,14 @@ function tabParamFromTab(tab: StewardshipTab): StewardshipTabParam {
 
 function getStoredTab(): StewardshipTab | null {
   if (typeof window === 'undefined') return null
-  return tabFromValue(localStorage.getItem(STORAGE_KEY))
+  return tabFromStoredValue(localStorage.getItem(STORAGE_KEY))
 }
 
 function getInitialTab(searchParams: URLSearchParams): StewardshipTab | null {
-  const fromQuery = tabFromValue(searchParams.get('tab'))
+  const tabParam = searchParams.get('tab')
+  const fromQuery = tabFromQueryValue(tabParam)
   if (fromQuery) return fromQuery
+  if (tabParam != null) return 'packages'
   if (typeof window === 'undefined') return null
   return getStoredTab() ?? 'packages'
 }
@@ -48,7 +58,8 @@ export default function StewardshipClient() {
   )
 
   useEffect(() => {
-    const fromQuery = tabFromValue(searchParams.get('tab'))
+    const tabParam = searchParams.get('tab')
+    const fromQuery = tabFromQueryValue(tabParam)
     if (fromQuery) {
       setActiveTab(fromQuery)
       localStorage.setItem(STORAGE_KEY, fromQuery)
@@ -65,7 +76,8 @@ export default function StewardshipClient() {
       return
     }
 
-    const nextTab = getStoredTab() ?? 'packages'
+    const nextTab =
+      tabParam == null ? (getStoredTab() ?? 'packages') : 'packages'
     setActiveTab(nextTab)
     const params = new URLSearchParams(searchParams.toString())
     params.delete('variant')
