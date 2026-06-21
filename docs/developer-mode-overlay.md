@@ -241,6 +241,15 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   Search, area/status filters, edit buttons, question-form requirement-area
   descriptions and lock hints, answer row reorder handles, and health badges
   render inside the existing `requirementSelectionQuestions` form/list surfaces.
+- RFI questions expose their create trigger in the fixed
+  `floating action rail` as
+  `rfiQuestions > floating pill: new RFI question`. The RFI question form opens
+  in the shared `dialog: new RFI question` or `dialog: edit RFI question`
+  surface. Requirement-area group headers render as
+  `rfiQuestions > requirement area heading: <prefix>`, and compact question
+  rows render as `rfiQuestions > question disclosure: <question code>`. The
+  row-level edit, archive, and reactivate icon buttons render as
+  `rfiQuestions > question action: <question code> edit|archive|reactivate`.
 - Requirements specification list requirement-area labels render as compact,
   non-interactive pills inside a constrained column in the existing
   `specifications > crud table` surface; they do not add separate developer-mode

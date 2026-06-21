@@ -770,10 +770,12 @@ _Avoid_: Sorteringsordning, kravområdesgrupp, kravhierarki.
 En områdesägd fråga som används i en Request for Information inför
 kravarbete. RFI-frågan hjälper kravunderlagsansvariga att förstå vad som bör
 beaktas när krav väljs eller formuleras, men väljer inte krav automatiskt.
+RFI-frågor är fristående från varandra och har ingen inbördes
+verksamhetsordning.
 
 - `en`: RFI question
 
-_Avoid_: Kravurvalsfråga, leverantörssvar, krav.
+_Avoid_: Kravurvalsfråga, leverantörssvar, krav, prioriterad RFI-fråga.
 
 **RFI-frågeversion**:
 En bestämd version av en RFI-frågas frågetext, hjälptext, önskade

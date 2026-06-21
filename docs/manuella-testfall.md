@@ -601,6 +601,13 @@ med piltangenter och stäng med Escape.
    sparad tabell för att lägga till och ta bort kravpaketsmedförfattare.
 1. Skapa en kravurvalsfråga, lägg till svar och ändra ordning.
 1. Kontrollera synlighetsvillkor, hierarkimodal och kravurvalsförhandsvisning.
+1. Öppna `RFI-frågor`, sök efter en fråga, filtrera på kravområde och status
+   samt kontrollera att frågorna visas grupperade per kravområde.
+1. Skapa och redigera en RFI-fråga via den flytande skapa-knappen och
+   radens högerjusterade redigeringsikon. Kontrollera att kravområdet väljs
+   vid skapande men är låst vid redigering.
+1. Kontrollera att RFI-frågeförslag ligger kvar som ett separat arbetsflöde på
+   sidan och inte påverkas av frågelistans sök- och statusfilter.
 
 **Förväntat resultat:** Förvaltningsytorna ligger utanför Admincenter, paket
 och frågor sparas korrekt, den som skapar kravpaketet blir
