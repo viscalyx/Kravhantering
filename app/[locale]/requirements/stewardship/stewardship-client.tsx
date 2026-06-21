@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import type { StewardshipTabParam } from '@/components/Navigation'
 import { usePathname, useRouter } from '@/i18n/routing'
 import NormReferencesClient from '../../norm-references/norm-references-client'
 import RequirementPackagesClient from '../../requirement-packages/requirement-packages-client'
@@ -9,9 +10,6 @@ import RequirementSelectionQuestionsClient from './requirement-selection-questio
 import RfiQuestionsClient from './rfi-questions-client'
 
 type StewardshipTab = 'packages' | 'questions' | 'norms' | 'rfi'
-type StewardshipTabParam =
-  | Exclude<StewardshipTab, 'rfi'>
-  | 'information-requests'
 
 const STORAGE_KEY = 'requirements.stewardship.tab'
 

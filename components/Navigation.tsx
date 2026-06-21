@@ -28,7 +28,7 @@ import { devMarker } from '@/lib/developer-mode-markers'
 import { dispatchGlobalNavigationLayoutEvent } from '@/lib/navigation-layout-events'
 
 type StewardshipTab = 'packages' | 'questions' | 'norms' | 'rfi'
-type StewardshipTabParam =
+export type StewardshipTabParam =
   | Exclude<StewardshipTab, 'rfi'>
   | 'information-requests'
 
